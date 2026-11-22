@@ -1511,17 +1511,17 @@
       }
     ]
   },
-  "geometryHash": "640ebedb",
+  "geometryHash": "263a2e77",
   "metadataHash": "2038345f",
   "presentationAnchor": {
-    "xM": -0.0006,
-    "zM": -0.1653
+    "xM": 0,
+    "zM": -0.1662
   },
-  "presentationHash": "00daa784",
+  "presentationHash": "183eb1e3",
   "presentationProjection": {
     "centerYM": 2.4928,
-    "topHalfM": 6.4911,
-    "sideHalfM": 3.2455
+    "topHalfM": 6.492,
+    "sideHalfM": 3.246
   },
   "appearance": {
     "version": 1,
@@ -1539,7 +1539,7 @@
       "gunmetal": 12,
       "hullRubber": 1,
       "opticGlass": 3,
-      "unclassified": 20,
+      "unclassified": 21,
       "gearShadow": 2,
       "machineGun": 5,
       "fittingPaint": 4,
@@ -1570,16 +1570,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26894,
-      "sha256": "63efbf6a81199e82388b4bce569f01be945854063e0d56a6837ef50d8850a9b9",
+      "bytes": 26320,
+      "sha256": "a8ae22d45e2a0d6ff0343248aeda2663817e502cb88cd64b6a0eaf4a9103ecda",
       "thumbnail": {
         "file": "thumbs/leo2_improved_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11046,
-        "sha256": "5a8e9905dacea5bff6950f23a108952cd2f8f5549f076f4c50d83d72788d0bae",
-        "frame": [23,104,225,249]
+        "bytes": 10804,
+        "sha256": "645b379f186b3eb3231e9b7421b55ea55c8530c6e8260b0475c22e6c62ad035f",
+        "frame": [23,117,225,249]
       }
     },
     "top": {
@@ -1587,56 +1587,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13334,
-      "sha256": "d38cfdfad25f1423a65c839504e22d57cbf6aefb6e0c9901e58d152f61f93b7c"
+      "bytes": 13262,
+      "sha256": "55dd376d1ecffadb4624b58f1853e3ecb2fb8c2a1151484d1aff7c265c54fdaa"
     },
     "side": {
       "file": "leo2_improved_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12914,
-      "sha256": "b6cdcd6ea5cf84653a783519dceaa3caf265b9738b2e1e47d0a69da20c8acedd"
+      "bytes": 12004,
+      "sha256": "44b5f706b7653964c52303e9c405ea9c4ecbd7ee17d1bf77f5b9a2e47602a486"
     },
     "topSilhouette": {
       "file": "leo2_improved_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1235,
-      "sha256": "1947e7b69fb0b247b0a5814f7df888851bebef94b5fff1e50d92e14db1985420"
+      "bytes": 1234,
+      "sha256": "7e8d4a030bb48f113438209dd5f844595f64ea164b66d4ad2845023b43035e3b"
     },
     "sideSilhouette": {
       "file": "leo2_improved_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4963,
-      "sha256": "596d124fbe7c5e62ea872e77146f22fc6b4e6529d5d9a69ea1296063d9819a2d"
+      "bytes": 5042,
+      "sha256": "e1c3a1d4a59b529406a5dd8351879f54479ad071358a79601a9d57c0b82d8e1f"
     },
     "armorSide": {
       "file": "leo2_improved_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28964,
-      "sha256": "e62cf21e148129c9e1895fcf09f930a50f7114212308de00daa695a7e9b377d3"
+      "bytes": 29394,
+      "sha256": "31b767d321a3e4128fe72c3a36f8ada668eb7d92828400af1634b951dc477b6e"
     },
     "modulesSide": {
       "file": "leo2_improved_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28768,
-      "sha256": "e4515e8e1c52c78608a22758f187b03bda42dddf08331ba73f6c433aaee741d1"
+      "bytes": 28682,
+      "sha256": "6e8d9a422b63ea39d95516a8322b91b35805e987f78c3f54248c0fa3b8446cb1"
     },
     "crewSide": {
       "file": "leo2_improved_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26118,
-      "sha256": "c9bb3f7e916913ee2e821f81ea1cdcacecb541036b2ef394422bf379ea436e61"
+      "bytes": 26024,
+      "sha256": "a20993023dbbff06f762886eef61af11f95899bf943aa1b4cfd77e8e3234651e"
     },
     "markings": {
       "file": "leo2_improved_markings.png",
@@ -1649,8 +1649,8 @@
     "technicalLabels": {
       "file": "leo2_improved_technical.json",
       "mime": "application/json",
-      "bytes": 5453,
-      "sha256": "88b8268c0f5a15bb1a76d5b8afe0f2397efb2aa79acd06e3c2372b443a89f182"
+      "bytes": 5451,
+      "sha256": "796d3532f17d59f70f647566ecccd8d286764c9b51fc2a5de2a2a769a06a0ca9"
     }
   }
 }

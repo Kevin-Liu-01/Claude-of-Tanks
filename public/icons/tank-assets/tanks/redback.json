@@ -903,7 +903,7 @@
       }
     ]
   },
-  "geometryHash": "b2ded0f1",
+  "geometryHash": "4b3d979d",
   "metadataHash": "924c2d32",
   "presentationAnchor": {
     "xM": 0,
@@ -921,7 +921,7 @@
     "roles": {
       "wheelTire": 2,
       "wheelDish": 6,
-      "suspensionLink": 1,
+      "suspensionLink": 2,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
@@ -959,15 +959,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29894,
-      "sha256": "9279766ef1a51ceaea28307578294cdcbd98a564b0a4b7064217b9aecfb20ed9",
+      "bytes": 29910,
+      "sha256": "84d2b0df383c4135413412e3b307a53d09ccf1682d1f0937d24964ae9dde95d9",
       "thumbnail": {
         "file": "thumbs/redback_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12236,
-        "sha256": "ca183be562597b78cb75eca5e7339fbe92280c115ccf03892ba17f672c639486",
+        "bytes": 12246,
+        "sha256": "80b713f36b160312e4f29478d1518528229e6dcbe03f6d21c6bdd38fee2562af",
         "frame": [26,110,226,249]
       }
     },
@@ -984,8 +984,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16888,
-      "sha256": "549d8e8059e5b24601cbd48f43015ae6ac74523151a4c6be50f37c3828521673"
+      "bytes": 16836,
+      "sha256": "31908ff48bec50fa3e58577069348672a3be851dd6682441a56519b3c160e8fa"
     },
     "topSilhouette": {
       "file": "redback_top_silhouette.png",
@@ -1008,24 +1008,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39512,
-      "sha256": "2c972f50c5e6a0f7b3a5c80c1b2cc44df26ca850aac63c99d7f18299566df55f"
+      "bytes": 39406,
+      "sha256": "ae003ae32aca7dd0f893f9bd2b8b4f715637c8a50d46cdf79a72e0c925910904"
     },
     "modulesSide": {
       "file": "redback_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39432,
-      "sha256": "1e10aae40510bcfaaf9ea84731ffaee912746df572ee698a24a14e98c5d65ab2"
+      "bytes": 39274,
+      "sha256": "6ea7f32c9906315225eb63f0d6fd4e4f1bf1fbc66be1d1292aa25668980fdb1b"
     },
     "crewSide": {
       "file": "redback_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34922,
-      "sha256": "63da8c2fb9d52c11450fe14fdf178d2ae1f31ab53d93476520142c21357e4408"
+      "bytes": 34786,
+      "sha256": "cda122534cdf156f2fd70dae9326c791ccea0266de66ec5656c002234740e1b7"
     },
     "markings": {
       "file": "redback_markings.png",

@@ -567,15 +567,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23320,
-      "sha256": "c391fd1f4667324d05b5d2aba7f1952f7514f56d796adb6e0dcb610de9de9bac",
+      "bytes": 23322,
+      "sha256": "7c832658ec055e689ae1cc3c6a846ff82d40ab3f078db6b8b38585d9bb6ab2ff",
       "thumbnail": {
         "file": "thumbs/c1_ariete_preserie_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9550,
-        "sha256": "1139c2889479f07dac208524717a60b3af29abc1ea2f7d1e47312b141f23633b",
+        "bytes": 9564,
+        "sha256": "4f5850f73b7a28781793d10ae660a3e37cd791b43360f0de8e23d15e53d3b9a5",
         "frame": [26,118,227,248]
       }
     },
@@ -584,16 +584,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11526,
-      "sha256": "f487d20eba878595b1cc83c58ef9defd48d6bf3efec92162e242b88e5e7f6219"
+      "bytes": 11514,
+      "sha256": "e741850736633cf66ab36752026df72bbc369d69bc10b0516b0bdd6fa424abbd"
     },
     "side": {
       "file": "c1_ariete_preserie_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11092,
-      "sha256": "463bd75e3b8c854578fae7e1a57408c7c4adad0f0fecda0a9e518807132d4e26"
+      "bytes": 11110,
+      "sha256": "eea44068f1d7439a456745d54e0a46dff497754cb32061c60c990373459eb5bd"
     },
     "topSilhouette": {
       "file": "c1_ariete_preserie_top_silhouette.png",
@@ -616,24 +616,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23614,
-      "sha256": "32f8abfa9e0f541911c0a6ae61e78e761520b77ce0dd7533f86d7279751aef72"
+      "bytes": 23692,
+      "sha256": "30553c277905e7f805c84e84f4982e092f29088b6d9ae85403ce60d012278dfa"
     },
     "modulesSide": {
       "file": "c1_ariete_preserie_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25978,
-      "sha256": "421eb64ac5682af100c0c1c0fcd5f8becc50fe8048676417c80b7eaacf828e50"
+      "bytes": 26106,
+      "sha256": "8d193314b7014132182a9b0bf1e10b3e2da7145d2e48e549090f2f15bb9b93f7"
     },
     "crewSide": {
       "file": "c1_ariete_preserie_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23092,
-      "sha256": "b2d587dee4bec4b5e1f0bc6adaae88cfda20388dbf819b6821a52e31a815aecb"
+      "bytes": 23084,
+      "sha256": "cee70ff6fc9a2fb69049b3d773d9ceea5f262290984385ab6b6370e00bf589b9"
     },
     "markings": {
       "file": "c1_ariete_preserie_markings.png",

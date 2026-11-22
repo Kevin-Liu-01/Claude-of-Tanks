@@ -675,16 +675,16 @@
       }
     ]
   },
-  "geometryHash": "18c4f6d3",
+  "geometryHash": "a5272861",
   "metadataHash": "80d17001",
   "presentationAnchor": {
     "xM": 0,
-    "zM": -0.0015
+    "zM": -0.0036
   },
-  "presentationHash": "b69f9ed8",
+  "presentationHash": "e070b2b9",
   "presentationProjection": {
     "centerYM": 2.2973,
-    "topHalfM": 4.1942,
+    "topHalfM": 4.1964,
     "sideHalfM": 2.4581
   },
   "appearance": {
@@ -705,7 +705,7 @@
       "gunmetal": 10,
       "opticGlass": 2,
       "wood": 1,
-      "unclassified": 9,
+      "unclassified": 15,
       "machineGun": 3,
       "ammoBox": 1
     }
@@ -734,15 +734,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29894,
-      "sha256": "f721a54d340204ae14df6c260835364c1ff978e5d6c1dbd6af7dd401bd9a376d",
+      "bytes": 30134,
+      "sha256": "429c67a86271b7e7570accf135f39e9a08212b146714da0d48de1fc0b1e13931",
       "thumbnail": {
         "file": "thumbs/x1a2_carcara_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12048,
-        "sha256": "2af4fc8337b1f0f44c66d12c371af8f80566efd31ae383493f29d93d3e448600"
+        "bytes": 12120,
+        "sha256": "5e1156892a657099bdf91417e4fe275084070edeeb0ad5e6471074ad3411f1e6"
       }
     },
     "top": {
@@ -750,56 +750,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11596,
-      "sha256": "56efeb803353fc8821d0b76b21eca6a8bf6ea84cc6b90e34b4bd8c79c44e1a56"
+      "bytes": 12680,
+      "sha256": "b32803f79d515eefae51294d745265af8401feb66b71ee6288e2ce0613ed7d52"
     },
     "side": {
       "file": "x1a2_carcara_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14662,
-      "sha256": "8818e5cd48cd9c294eeaf9f6cb211c55957ad538961e9ab9950e12f2883ca53e"
+      "bytes": 15158,
+      "sha256": "66f51143cb2554ffacf1880ef903def510031a3b06a64fcd91e6dc98f7f61cb9"
     },
     "topSilhouette": {
       "file": "x1a2_carcara_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1091,
-      "sha256": "4e3a5617ac0768ac9eb87628fb8e60eddce457650fa0784b3d448df45b52504c"
+      "bytes": 1189,
+      "sha256": "8cfc8db2c6118a4fc9ba4cb9e31d9ecf5eb2d8eba86617ec94d7a57452b2a8c0"
     },
     "sideSilhouette": {
       "file": "x1a2_carcara_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4979,
-      "sha256": "28bdc09206d65babac69f3c4cdba675afbb235008c8a9d398c712b3ce9374610"
+      "bytes": 5155,
+      "sha256": "8f837935636ef059dd1739e97d42727431f435ce87e381db9d8e357dc069f75a"
     },
     "armorSide": {
       "file": "x1a2_carcara_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31166,
-      "sha256": "169aae3d2d1502a82c1271e1f6edb8cb93acadf66819d8dcd693fe72069592ee"
+      "bytes": 32280,
+      "sha256": "d41847df429ceed0bada886bd7c64be058081d5d06439469130324a8905e2287"
     },
     "modulesSide": {
       "file": "x1a2_carcara_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32762,
-      "sha256": "5c48d68ce540e6031affa277959930bacce84f364d88cb5674cb30a0e9bdc52b"
+      "bytes": 33848,
+      "sha256": "ae3d631e4648776efb2b079e784a9a9d1bb9322ef5b25462e9f015c1a686f520"
     },
     "crewSide": {
       "file": "x1a2_carcara_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28124,
-      "sha256": "74ba08d4d35c0874bc6e759a2be1f5df5520ea3892f34c96668e7bebe9afe36b"
+      "bytes": 29342,
+      "sha256": "5da619d54f1b1b8f608ad2cee710c4c99318f7d3c7d6f923d955f88e8ff8035b"
     },
     "markings": {
       "file": "x1a2_carcara_markings.png",
@@ -812,8 +812,8 @@
     "technicalLabels": {
       "file": "x1a2_carcara_technical.json",
       "mime": "application/json",
-      "bytes": 4797,
-      "sha256": "54fa8861196c7e4a5b1a292ca64f0d2595b7e1b483701ed10b86e645dcd87641"
+      "bytes": 4795,
+      "sha256": "014bd395fee70ac03e2d6a53e8f1575cabeef0fe94bee53e7d25de8c8770c9f9"
     }
   }
 }

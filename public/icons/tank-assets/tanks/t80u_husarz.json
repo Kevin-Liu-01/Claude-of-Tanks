@@ -52246,39 +52246,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34968,
-      "sha256": "160638ca8a4305bdcaedad937c3f9bb6cd1a326223933ea690f5956d31c5297d"
+      "bytes": 34956,
+      "sha256": "8bd704c68a803dc362d6299a38874147db0f6cf065ce75df5bf598556f3e8331"
     },
     "modulesSide": {
       "file": "t80u_husarz_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27400,
-      "sha256": "9f89fdf8cd1ce431aa9f6261ed0a369bcb96e532b0dbdf98557b374ac1429b96"
+      "bytes": 27390,
+      "sha256": "1878ea5fa874bdba925c3fce26f76a23f2220a8032983493541d37e7195a7220"
     },
     "crewSide": {
       "file": "t80u_husarz_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25350,
-      "sha256": "570d80f2caa1a2080379f793fa02268714b934527fb3b78280e9cc1ad19b14f2"
+      "bytes": 25420,
+      "sha256": "47f6d39ba38698ce8f8e9b92b095150a0a0ad691f9bb896187951c7d827419c5"
     },
     "angle": {
       "file": "t80u_husarz_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27876,
-      "sha256": "4680c570be364226e39bd42961fb65e423784db61010df502ff04522dc2015e9",
+      "bytes": 27886,
+      "sha256": "f8382084809ab492834b95074b3857c008d24dd53c9d97db7b1907bdb2a2a73b",
       "thumbnail": {
         "file": "thumbs/t80u_husarz_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10450,
-        "sha256": "7e8cab5d6d002be753a4c7eda19b932696f82cddae446ff864751f3cace0ae5d",
+        "bytes": 10448,
+        "sha256": "35ea7a2733f2529577893bf5ab42bcbda16c7397e61d7be4bf10bb5b26346632",
         "frame": [25,121,229,249]
       }
     },
@@ -52295,8 +52295,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10828,
-      "sha256": "11555cf238a23330a2ab624337f9f22d0c65fe6041b328310ad96628efd983dd"
+      "bytes": 10824,
+      "sha256": "2b927660216de4c687639efe0bd884a041412c236f80eba1d14e6151d9895740"
     },
     "topSilhouette": {
       "file": "t80u_husarz_top_silhouette.png",

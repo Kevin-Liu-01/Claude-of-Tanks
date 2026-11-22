@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27210,
-      "sha256": "fa7a17d7c377f658aff6613edfb4147d02933bbab97568fd64c7adc88c9da564",
+      "bytes": 27192,
+      "sha256": "55793798bb6bf28d72fc280ee339b6a693b40866615e05bec2bd216d06c24b6b",
       "thumbnail": {
         "file": "thumbs/semel_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11186,
-        "sha256": "3dadff9173948872e9055b996446b2832ec1366270d56d7de046f6c4d99fe2f0",
+        "bytes": 11182,
+        "sha256": "a7f891480d17de06b57d3418e3c349debc32180bb71c2ba432a01c8dd69b7512",
         "frame": [24,115,225,249]
       }
     },
@@ -880,8 +880,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11854,
-      "sha256": "01717870bcb12090c314e4d0ebdad3b7010755e97a8bc9331633dd1d04122069"
+      "bytes": 11866,
+      "sha256": "ba0aa903ea9a822a2f4691287a9ce069340f828063735ba0a090b0071cd8ef5a"
     },
     "topSilhouette": {
       "file": "semel_top_silhouette.png",
@@ -904,24 +904,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25948,
-      "sha256": "a3eafcad526588d4c77e4f2c1285b2fd2197e3506dc18868bcfbe00588b7c0d4"
+      "bytes": 25980,
+      "sha256": "30b4fbed5c93959eed6b5b85891088fcc8601ab15bba80735bf20680f9b286d4"
     },
     "modulesSide": {
       "file": "semel_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24994,
-      "sha256": "46df6fc0d55fa587bfffe287c7bc10b4be003da5b0c69aee441a6beeb4e4f120"
+      "bytes": 24986,
+      "sha256": "b73b5180581191c6e2dbb6332380c95b7a3949f0913e454a0fc1899c4aae4b05"
     },
     "crewSide": {
       "file": "semel_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22730,
-      "sha256": "66ed473049d2b56f102643e249ef723cb60e6714cd468b5f20a47eea97a864ad"
+      "bytes": 22716,
+      "sha256": "b0f6082c9ded1418f622f612f2cb02b4cf1e095a4bbfbfdaf76a923172f630f6"
     },
     "markings": {
       "file": "semel_markings.png",

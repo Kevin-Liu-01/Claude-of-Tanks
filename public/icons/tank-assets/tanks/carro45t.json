@@ -898,21 +898,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.4426,-0.61,-0.3034],
+        "min": [0.4426,-0.61,-0.3031],
         "max": [0.8711,0.7421,0.4746],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.9088,-0.6184,-0.8466],
+        "min": [-0.9088,-0.6184,-0.8465],
         "max": [-0.4803,0.7694,-0.0116],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "7ca8097c",
-  "metadataHash": "b0583c24",
+  "geometryHash": "5a30079f",
+  "metadataHash": "52ede642",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0499
@@ -972,15 +972,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24066,
-      "sha256": "5c806ac883e8393df16461645096b33473b1318090c894275e24618e192e63a5",
+      "bytes": 24068,
+      "sha256": "32b2996490348933bc5aaa3fa1bc5e5cf85de1cb8be4a12aab3b7ba1bbf76c6e",
       "thumbnail": {
         "file": "thumbs/carro45t_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10250,
-        "sha256": "6d57271325ba75381c8f22e17af5d14f20f4336db099761014d861571bd5513a",
+        "bytes": 10242,
+        "sha256": "002a65c6c5a95587e4bf24fcd03ccc32c14b3b645763041d5203bb5b77d51ed1",
         "frame": [7,117,227,249]
       }
     },
@@ -989,16 +989,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 7466,
-      "sha256": "3b56898f9bd5b0b58e3879763c3094d5eee3543b848dfd3844b14006ae6e9ebf"
+      "bytes": 7464,
+      "sha256": "981b5edfe027fe24640e8e0d310bc772e0aa839368c49f0186d424fdee776025"
     },
     "side": {
       "file": "carro45t_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7564,
-      "sha256": "5bdc874fd1ef5b73130fe2a04ff842a907234c71cb4c454082714de55344ed73"
+      "bytes": 7554,
+      "sha256": "58a44b1941a97110b853bfb710ceefbc0f187117c7727583bd1d5bcdea53f39c"
     },
     "topSilhouette": {
       "file": "carro45t_top_silhouette.png",
@@ -1013,32 +1013,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3524,
-      "sha256": "ac3eb7151c5d2054d867da83708b6516757621951ddfe723d6fa10204af77d31"
+      "bytes": 3525,
+      "sha256": "88c021962d8bf3c3bfe8c1fd83a5d03a8865c1cf35119a577bdefd1a36411b0d"
     },
     "armorSide": {
       "file": "carro45t_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17100,
-      "sha256": "a006817e0c8d5a3b6a41ab34b1eac2ed6b44307ab90791a8178cc31ab6c49863"
+      "bytes": 17212,
+      "sha256": "88af61229ae0f3c90bf7f6c17fd448f0188f2b8c5214a2f85a418f601b5c6f47"
     },
     "modulesSide": {
       "file": "carro45t_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18230,
-      "sha256": "af5a3c80b0a5ba6db1d7c49f5ab602f23515a29f6d81ebd3af29f40ebd99444d"
+      "bytes": 18208,
+      "sha256": "20723d82f9d8ab65ff86331c2de026928036ace312bf6ae86539fb39f12d8273"
     },
     "crewSide": {
       "file": "carro45t_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15776,
-      "sha256": "7b3a9a73c1c6761d08cb75692ffab6fe0d12b4451beb89d9c07a4d5da141c87c"
+      "bytes": 15824,
+      "sha256": "709be3ddc1d48b520579f660506d7f35b199ad69c4faae7d6c58fcb74bdd836f"
     },
     "markings": {
       "file": "carro45t_markings.png",
@@ -1051,8 +1051,8 @@
     "technicalLabels": {
       "file": "carro45t_technical.json",
       "mime": "application/json",
-      "bytes": 4705,
-      "sha256": "2a0aeaf0a179d4c62a2d3c4ad796e40cc8145ad3b9f53715b46bc167c785e19b"
+      "bytes": 4706,
+      "sha256": "f4f83c25afd6208ae40ff3c58803518f815a6187c0f680d1c4315e2c49f51d30"
     }
   }
 }

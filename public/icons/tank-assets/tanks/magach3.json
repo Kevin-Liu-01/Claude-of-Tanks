@@ -803,15 +803,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28282,
-      "sha256": "c4898f9ad669e075b09b79139b79f967add29e2bc6d9c9382f520e4e46f6169f",
+      "bytes": 28250,
+      "sha256": "f2c099d2c6cd9ea87180b5562bb707c8b4817111f4d80d61ffc06575cab1c323",
       "thumbnail": {
         "file": "thumbs/magach3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11458,
-        "sha256": "b3b68aab77a97c39f07ca1de59fee858d3380c2b7279987be5aec35cf5300791",
+        "bytes": 11438,
+        "sha256": "cd009a5fa2df746efc9c19f13b1dad5adb29404a755267f97dda2e8feeb7396a",
         "frame": [23,115,227,249]
       }
     },
@@ -821,15 +821,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 11382,
-      "sha256": "dc888af1e0ae49219e1d8d9c3066e381994f452ed6b64deb35f8c64dc8a719e9"
+      "sha256": "6432ea46be58ff2dbbd4bed8682fd1d61d564c504f399f6f02f65075aaf067c4"
     },
     "side": {
       "file": "magach3_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12580,
-      "sha256": "fbab733d4f6656962d55bc3487b5d6639de9ad800ee24aacfedf1c34cde08848"
+      "bytes": 12562,
+      "sha256": "ae6bde6cd2db26994a786de2af8687110b40d6fd23f13c4f21438000981b09d8"
     },
     "topSilhouette": {
       "file": "magach3_top_silhouette.png",
@@ -852,24 +852,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29808,
-      "sha256": "6ca48a9d46d41ad40a7e02676669a787c8e2abd4b3876672aba19fe1bba1cc28"
+      "bytes": 29830,
+      "sha256": "238f484e5b802550665b36984930404b1e7419c07c8cf54c6e30a3aec00350e1"
     },
     "modulesSide": {
       "file": "magach3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28982,
-      "sha256": "cb4c73b4a8c72d957251eaaa977fe93a1428a6d8df08284caf151ea351c9a848"
+      "bytes": 28980,
+      "sha256": "4d0acbcd3a01dc0bf7da61b4fd6a2152367cac1a805eba54db64ca2c287cc1ae"
     },
     "crewSide": {
       "file": "magach3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28490,
-      "sha256": "7e198a427e2f7512ee16bfa386f9902b9de86f6dd3519cee1149f00cc6e5db1b"
+      "bytes": 28640,
+      "sha256": "a38975d6afbbe5d6bd81cd5e94aca9335d2e5e53c8689dd26228aa576755dc4e"
     },
     "markings": {
       "file": "magach3_markings.png",

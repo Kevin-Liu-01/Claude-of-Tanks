@@ -952,15 +952,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37170,
-      "sha256": "a317af77f53cb351adc0f3ff98d3f9c4f1f46ffb3718d74e92287ec39794b2ed",
+      "bytes": 37162,
+      "sha256": "ce6c67310d77a62e132d62fd1c824e1d39e8281f4323fe6d2f030407b7e11b97",
       "thumbnail": {
         "file": "thumbs/m163_vads_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 15024,
-        "sha256": "16b470af30f2b138d2a81a2b31b2b1048b1979d463caf01a27ea64ee6adf2703",
+        "bytes": 15048,
+        "sha256": "1a8d512a38da3b23de6cbaa8d321cd7a5ac13b2f5572f11c821eed83d9991add",
         "frame": [27,75,226,250]
       }
     },
@@ -977,8 +977,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14434,
-      "sha256": "2ba51d08faaa8a851a594356761460b4dcdc7b057a01cc34a344f2926098f1ac"
+      "bytes": 14436,
+      "sha256": "cb7bfea2452b341d6cf9eb8daf7dbacd410ba346095145095f0124cd7ba2d6e2"
     },
     "topSilhouette": {
       "file": "m163_vads_top_silhouette.png",
@@ -1001,24 +1001,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28350,
-      "sha256": "109d068e3d9a7f3bbf490d9d43dfd161121796fb908265ed484d30e79a324078"
+      "bytes": 28294,
+      "sha256": "904c850c13c7769861a143f2746abe3b839f08b09932bdae23a6f6358b744594"
     },
     "modulesSide": {
       "file": "m163_vads_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28824,
-      "sha256": "a96bc3bcb56a56b509377bd9d34f04ff1fee157660770e98858b0fa592deb119"
+      "bytes": 28760,
+      "sha256": "6e0019ea74e6bb742ca106a3e0ec5e4bb7a95a274a489b5b1281a0a369f1739b"
     },
     "crewSide": {
       "file": "m163_vads_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28142,
-      "sha256": "b6723ef3f925f8b872e460ecb5b020bf7c1eef5daed4288b565b2c92fa2f9177"
+      "bytes": 28120,
+      "sha256": "e22ed297e303df6e4bcfe34f5f565d3aaa7a7d980be4dcd3e2047ecbd015cb2f"
     },
     "markings": {
       "file": "m163_vads_markings.png",

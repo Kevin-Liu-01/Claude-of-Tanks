@@ -37234,8 +37234,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -37247,17 +37247,17 @@
       }
     ]
   },
-  "geometryHash": "a33dc3a6",
-  "metadataHash": "64d2912a",
+  "geometryHash": "95c51ab9",
+  "metadataHash": "89c83a7b",
   "presentationAnchor": {
-    "xM": -0.0005,
-    "zM": -0.2349
+    "xM": -0.0007,
+    "zM": -0.2373
   },
-  "presentationHash": "f3d1a34c",
+  "presentationHash": "1464cce5",
   "presentationProjection": {
     "centerYM": 1.4748,
-    "topHalfM": 6.6743,
-    "sideHalfM": 3.3371
+    "topHalfM": 6.6769,
+    "sideHalfM": 3.3384
   },
   "appearance": {
     "version": 1,
@@ -37307,15 +37307,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28132,
-      "sha256": "dd666fa98d6a7f34cef009f0d10aae6f88463b2d18a279831c7a4320091e657a",
+      "bytes": 28122,
+      "sha256": "f504382b2305078b808811d2381fa90933a76a03d43b0326afd184e00f660cb3",
       "thumbnail": {
         "file": "thumbs/t80u_kursk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11132,
-        "sha256": "2b765a2757754e806dfbdae900d757e21727f19e82268962043b598910f6e6dc"
+        "bytes": 11104,
+        "sha256": "897cb8c618681d8328a6d57dc4d215da74fd54ff3d074120459bcc8dc986027c"
       }
     },
     "top": {
@@ -37323,56 +37323,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12950,
-      "sha256": "b3a0bfb83daf9506c3471f4103641d1a2d6048f49c4bba7efea9a73068206a50"
+      "bytes": 13624,
+      "sha256": "49899cec47546b090f566ee3753bc9bd5daf4577584a4815437a373e18d7d21c"
     },
     "side": {
       "file": "t80u_kursk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11942,
-      "sha256": "53f71b2fe0d38e9e433c0ba95dd5c842706e9a1aa2fd4a85110c4a279e4e837a"
+      "bytes": 11804,
+      "sha256": "aa7ec8a83781d2d3d49344b6447b91d065ed7fe62b245ba92bbd2f26269777d9"
     },
     "topSilhouette": {
       "file": "t80u_kursk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1301,
-      "sha256": "a80f8ea2446f8a3a18d8024bdfa2fd4da7cad26119ea9126dffe325ad86689c1"
+      "bytes": 1461,
+      "sha256": "d2e59d30508284341c069ec4950be5bc8f1e1ea10810edf1cb8e1e17bf95e317"
     },
     "sideSilhouette": {
       "file": "t80u_kursk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4474,
-      "sha256": "8c8b7c92d11d115cf2bf7d36a56648234fcaeb570d43d8440bebf03e556498e8"
+      "bytes": 4460,
+      "sha256": "32973b948c22a7fa0cc14984efb23c1d8a0ebf9f34fd9fa03d04d8b9040ab51b"
     },
     "armorSide": {
       "file": "t80u_kursk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29376,
-      "sha256": "2f34ce98f27ed59dfdd2b06849f91fb31cee315d059db3fd9e8201e173bc9524"
+      "bytes": 30538,
+      "sha256": "2327613fadb3f9e1961684413312e489aee0aac86bcedbfa2796fe7053c4568d"
     },
     "modulesSide": {
       "file": "t80u_kursk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25888,
-      "sha256": "7354f60e02fbabc7116243963d568038e6583d2ab70cbabe3e1ace5f2eb262ed"
+      "bytes": 25978,
+      "sha256": "478e9a61c7176470aed9bfc280e9e2ca75b21c5f6c5ac29a01d4890081855efd"
     },
     "crewSide": {
       "file": "t80u_kursk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23496,
-      "sha256": "42847ecc82b82e3d022d3a26e52f24dec2c7d1f4b037d6b29922e0938185692d"
+      "bytes": 23760,
+      "sha256": "c3d7b7d4312d5205121c7807243b09f3c63512f77059d86c283ea26355032cc5"
     },
     "markings": {
       "file": "t80u_kursk_markings.png",
@@ -37386,7 +37386,7 @@
       "file": "t80u_kursk_technical.json",
       "mime": "application/json",
       "bytes": 4675,
-      "sha256": "510fdc51a35340e426ee4a048373f8b52e1f5df08a8ab613d725623f46854513"
+      "sha256": "e90971862de5837bd5266264a26176824245c091f47291738abdec9167e89ef3"
     }
   }
 }

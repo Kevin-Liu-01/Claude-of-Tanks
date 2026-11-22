@@ -4327,15 +4327,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29560,
-      "sha256": "30d2fee9d13f3c62c1f826e0a885e7a82d893cf6033dd6000384df6606ae64eb",
+      "bytes": 29512,
+      "sha256": "872e80e03e35d7e134279cf455f92584950c4d2e04807a669680a446425396ac",
       "thumbnail": {
         "file": "thumbs/t90sm_2013_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11542,
-        "sha256": "1fd7500e22d7b78ae5e2f80dbf6f0faedb12a9caeef110fcf372475a0df8fc66"
+        "bytes": 11544,
+        "sha256": "4fa2923aa4fbfcac5ff73a5daf0f3726732484aed0979c3b3e50e3a5ab1590ae"
       }
     },
     "top": {
@@ -4351,8 +4351,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10450,
-      "sha256": "8167621d3019d3adf925fc23e7bc66e775bd271b72ff8530c8b6bd4e84c21281"
+      "bytes": 10444,
+      "sha256": "f63fc6269e2bd2fb9b3843f6572e51b3d905aabd26b90cb5643b0ea13e567006"
     },
     "topSilhouette": {
       "file": "t90sm_2013_top_silhouette.png",
@@ -4375,24 +4375,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27020,
-      "sha256": "30582c4cf87a41a50a15d68904d86a35648427eea75e7e1400d6f1e19cce8537"
+      "bytes": 27018,
+      "sha256": "9bb901ff65515843da255cabd48ec8c58e2076f3ab68eedcf5f717fa6d29923b"
     },
     "modulesSide": {
       "file": "t90sm_2013_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24146,
-      "sha256": "d66239b8edd193e1b03deca3d8be420bfab1b3f27e283d241b9caad4497fdc43"
+      "bytes": 24176,
+      "sha256": "8550e4cc05ef194f484f7670a0006f6f6196ff79fcba20a8268091613fb61c5f"
     },
     "crewSide": {
       "file": "t90sm_2013_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22828,
-      "sha256": "4c286747fd44f71307eeb1c2c2083f6dda03303041f1c933e8adb885cb80be32"
+      "bytes": 22834,
+      "sha256": "4d110644d579e792d1816d14cf7ea88fd92130d3568d2ba512824bca3ae5ece5"
     },
     "markings": {
       "file": "t90sm_2013_markings.png",

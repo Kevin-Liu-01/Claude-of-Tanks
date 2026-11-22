@@ -1073,6 +1073,21 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
+          [-1.2469,0.0886,0.8196],
+          [-1.0095,0.2547,0.93],
+          [-0.9914,0.3357,0.7692],
+          [-1.2288,0.1695,0.6588]
+        ]
+      },
+      {
+        "hitboxId": "T09",
+        "name": "amx30b2_turret_era",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
           [-1.2107,0.1023,0.8145],
           [-1.0278,0.2456,0.8955],
           [-1.0278,0.3102,0.7813],
@@ -1080,7 +1095,7 @@
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T10",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1095,7 +1110,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T11",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1110,7 +1125,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T12",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1125,7 +1140,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T13",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1140,7 +1155,7 @@
         ]
       },
       {
-        "hitboxId": "T13",
+        "hitboxId": "T14",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1155,7 +1170,7 @@
         ]
       },
       {
-        "hitboxId": "T14",
+        "hitboxId": "T15",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1170,7 +1185,7 @@
         ]
       },
       {
-        "hitboxId": "T15",
+        "hitboxId": "T16",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1185,7 +1200,7 @@
         ]
       },
       {
-        "hitboxId": "T16",
+        "hitboxId": "T17",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1200,7 +1215,7 @@
         ]
       },
       {
-        "hitboxId": "T17",
+        "hitboxId": "T18",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1215,7 +1230,7 @@
         ]
       },
       {
-        "hitboxId": "T18",
+        "hitboxId": "T19",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1223,14 +1238,29 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [1.0975,0.1813,0.8884],
-          [0.8984,0.3045,0.9641],
-          [0.8984,0.2359,1.0759],
-          [1.0975,0.1127,1.0003]
+          [1.1172,0.185,0.85],
+          [0.8618,0.3262,0.951],
+          [0.8769,0.2417,1.1075],
+          [1.1323,0.1004,1.0065]
         ]
       },
       {
-        "hitboxId": "T19",
+        "hitboxId": "T20",
+        "name": "amx30b2_turret_era",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [1.2127,0.1686,0.6782],
+          [0.9623,0.327,0.7645],
+          [0.9773,0.261,0.9289],
+          [1.2277,0.1026,0.8425]
+        ]
+      },
+      {
+        "hitboxId": "T21",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1245,7 +1275,7 @@
         ]
       },
       {
-        "hitboxId": "T20",
+        "hitboxId": "T22",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1260,7 +1290,7 @@
         ]
       },
       {
-        "hitboxId": "T21",
+        "hitboxId": "T23",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1275,7 +1305,7 @@
         ]
       },
       {
-        "hitboxId": "T22",
+        "hitboxId": "T24",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1290,7 +1320,7 @@
         ]
       },
       {
-        "hitboxId": "T23",
+        "hitboxId": "T25",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1305,7 +1335,7 @@
         ]
       },
       {
-        "hitboxId": "T24",
+        "hitboxId": "T26",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1320,7 +1350,7 @@
         ]
       },
       {
-        "hitboxId": "T25",
+        "hitboxId": "T27",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1335,7 +1365,7 @@
         ]
       },
       {
-        "hitboxId": "T26",
+        "hitboxId": "T28",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1350,7 +1380,7 @@
         ]
       },
       {
-        "hitboxId": "T27",
+        "hitboxId": "T29",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1365,7 +1395,7 @@
         ]
       },
       {
-        "hitboxId": "T28",
+        "hitboxId": "T30",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1380,7 +1410,7 @@
         ]
       },
       {
-        "hitboxId": "T29",
+        "hitboxId": "T31",
         "name": "amx30b2_turret_era",
         "physicalMm": 10,
         "keMm": 10,
@@ -1395,7 +1425,7 @@
         ]
       },
       {
-        "hitboxId": "T30",
+        "hitboxId": "T32",
         "name": "turret_cupola_01_front",
         "physicalMm": 20,
         "keMm": 20,
@@ -1410,7 +1440,7 @@
         ]
       },
       {
-        "hitboxId": "T31",
+        "hitboxId": "T33",
         "name": "turret_cupola_01_rear",
         "physicalMm": 20,
         "keMm": 20,
@@ -1425,7 +1455,7 @@
         ]
       },
       {
-        "hitboxId": "T32",
+        "hitboxId": "T34",
         "name": "turret_cupola_01_right",
         "physicalMm": 20,
         "keMm": 20,
@@ -1440,7 +1470,7 @@
         ]
       },
       {
-        "hitboxId": "T33",
+        "hitboxId": "T35",
         "name": "turret_cupola_01_left",
         "physicalMm": 20,
         "keMm": 20,
@@ -1455,7 +1485,7 @@
         ]
       },
       {
-        "hitboxId": "T34",
+        "hitboxId": "T36",
         "name": "turret_cupola_01_top",
         "physicalMm": 20,
         "keMm": 20,
@@ -1470,7 +1500,7 @@
         ]
       },
       {
-        "hitboxId": "T35",
+        "hitboxId": "T37",
         "name": "turret_cupola_02_front",
         "physicalMm": 20,
         "keMm": 20,
@@ -1485,7 +1515,7 @@
         ]
       },
       {
-        "hitboxId": "T36",
+        "hitboxId": "T38",
         "name": "turret_cupola_02_rear",
         "physicalMm": 20,
         "keMm": 20,
@@ -1500,7 +1530,7 @@
         ]
       },
       {
-        "hitboxId": "T37",
+        "hitboxId": "T39",
         "name": "turret_cupola_02_right",
         "physicalMm": 20,
         "keMm": 20,
@@ -1515,7 +1545,7 @@
         ]
       },
       {
-        "hitboxId": "T38",
+        "hitboxId": "T40",
         "name": "turret_cupola_02_left",
         "physicalMm": 20,
         "keMm": 20,
@@ -1530,7 +1560,7 @@
         ]
       },
       {
-        "hitboxId": "T39",
+        "hitboxId": "T41",
         "name": "turret_cupola_02_top",
         "physicalMm": 20,
         "keMm": 20,
@@ -1584,14 +1614,14 @@
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.8264,0.3671,-0.1179],
+        "min": [-0.1476,0.3671,-0.5608],
         "max": [0.8264,1.172,0.6499],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [0.243,0.7037,-1.3208],
+        "min": [0.243,0.7616,-1.3208],
         "max": [0.7777,1.3696,-0.3317],
         "turretLocal": false
       },
@@ -1707,15 +1737,15 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7288,0.0873,-0.6342],
-        "max": [-0.2694,0.6773,0.1872],
+        "min": [-0.7288,0.0966,-0.6842],
+        "max": [-0.2694,0.6866,0.1372],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.3217,-1.2058,-0.6994],
-        "max": [0.048,-0.03,0.1432],
+        "min": [-0.5417,-1.23,-0.5494],
+        "max": [-0.152,-0.03,0.2932],
         "turretLocal": true
       },
       {
@@ -1727,8 +1757,8 @@
       }
     ]
   },
-  "geometryHash": "41758d5d",
-  "metadataHash": "21683bc2",
+  "geometryHash": "e08664c8",
+  "metadataHash": "d735ebbc",
   "presentationAnchor": {
     "xM": -0.0014,
     "zM": -0.0493
@@ -1788,15 +1818,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26830,
-      "sha256": "66f89396ec0427ac8248f877b028b9bb88e36131de4dfec9cf60c0dbb1dd4d88",
+      "bytes": 26866,
+      "sha256": "8c0d5330cb00d73f30ec51c3a5b87549be3dfd506581b20890effd27322f4dc6",
       "thumbnail": {
         "file": "thumbs/amx30b2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10778,
-        "sha256": "d16cf1afedab9e536fe7a44e56f15b62186f2a0e39d5e98974f63612f8412198",
+        "bytes": 10788,
+        "sha256": "0d5f15a14c716658ff6e609c9efd54bc06529e3612aa0facfd89ac6de3290a76",
         "frame": [14,98,224,248]
       }
     },
@@ -1805,16 +1835,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9564,
-      "sha256": "4372c34720b4673abd6a20b09d4795ee3050e95ff9985e34a28fab32c97577ec"
+      "bytes": 9536,
+      "sha256": "01b4826d9f0c40ed3ada6a10e427a41077ab05baff414d2c314a4b7aba438482"
     },
     "side": {
       "file": "amx30b2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9736,
-      "sha256": "212b1ca98f40d4ed8d7f50a434d23a0921ea9c5b752d28db7ea2b1e71a1b2ec6"
+      "bytes": 9768,
+      "sha256": "417555cbd4164ccf7649161de113075192e9ecb75fa46afb5f56cd0c07eb3bbb"
     },
     "topSilhouette": {
       "file": "amx30b2_top_silhouette.png",
@@ -1829,32 +1859,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4116,
-      "sha256": "d412f31544672ddee764d50b36b4151e53ec876f1a7228c13113a098557cadc2"
+      "bytes": 4159,
+      "sha256": "861259d7e0f1076c754d61319592037a6db35d3237bf41afa43f39126b0c8651"
     },
     "armorSide": {
       "file": "amx30b2_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27768,
-      "sha256": "2c96b145bafca09bd8539fb17d4769adcb6a0fca2afaf9f0f606819da64a1c21"
+      "bytes": 27772,
+      "sha256": "c505954ef69f3ce846b5280ad2246a3b298444c79ab7929a5f87ae0cfcb80b87"
     },
     "modulesSide": {
       "file": "amx30b2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23422,
-      "sha256": "3762c27298b2ed138cddbc3a363003acaf3378af14b1a1c8f210c95d1b48888a"
+      "bytes": 23734,
+      "sha256": "88ea7f6bfcbc20c59c24a7edf92fca033c5166aa8e370c17e15a7282d73f17bb"
     },
     "crewSide": {
       "file": "amx30b2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21584,
-      "sha256": "aaa76f0bb8cc2f655f06a4218778e79b6f9f0bf27cfea5f8c8e771350e5aab14"
+      "bytes": 21542,
+      "sha256": "064cc74cd3f9ac5feb20967e5d303260b9fa97022e9be4b49a2fd5446d8d97cd"
     },
     "markings": {
       "file": "amx30b2_markings.png",
@@ -1867,8 +1897,8 @@
     "technicalLabels": {
       "file": "amx30b2_technical.json",
       "mime": "application/json",
-      "bytes": 4767,
-      "sha256": "f0ec6c0fd4a8fdb5e9e4ed12f164a57bb47116f519003241260dfe33c36f1d1f"
+      "bytes": 4771,
+      "sha256": "fdf8498375ce7b7a1a7a2a0ff0be00d62094e0c8e7ae7738444a1d66bd6ca290"
     }
   }
 }

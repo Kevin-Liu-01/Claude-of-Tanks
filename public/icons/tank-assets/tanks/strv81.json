@@ -854,15 +854,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27524,
-      "sha256": "68d852e03314c95d4f80a2e63fe4d26e2244cd00fa54989008ffd7d1ed5dadce",
+      "bytes": 27538,
+      "sha256": "eca97ce5831eed5b30c6a95fd34e026f3b8860bdc08fbdebffd4b56c83893587",
       "thumbnail": {
         "file": "thumbs/strv81_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11354,
-        "sha256": "ce0b4856709b217519220c650e5e6954c865b5bea26778da440a9144cd15a682",
+        "bytes": 11328,
+        "sha256": "19cf0c2d3cd4eea7cfbfe33bd34adc09bcdc796e318896c157fdb4467dfd626c",
         "frame": [23,113,225,249]
       }
     },
@@ -879,8 +879,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10956,
-      "sha256": "4916f8961e5a8e8190cfb47c30befa5a281be12e8736556b431b069dd1cfebef"
+      "bytes": 10980,
+      "sha256": "79208f20c68841b37eee36db1577beea5d778613ee12002b5d4e78037b208d02"
     },
     "topSilhouette": {
       "file": "strv81_top_silhouette.png",
@@ -903,24 +903,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26036,
-      "sha256": "eed699f5846854467f4831f66ead6d7a97ec0a38912e521620c864b387b9e58d"
+      "bytes": 26002,
+      "sha256": "ee4bc6975af3bdbfe5d0d3452a6e0bda6e7731b1317377a0560c365c1ca3ad9e"
     },
     "modulesSide": {
       "file": "strv81_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25044,
-      "sha256": "2e1f0ea12cfe859fb246ac58b09d84733b728e2fe62001d4e33b9bcef8557239"
+      "bytes": 25124,
+      "sha256": "b06a17388bec719e556c5d2f72f13b59e81c682beebb26ff641c66381fa7f301"
     },
     "crewSide": {
       "file": "strv81_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23118,
-      "sha256": "204fd00935e859d1d1171906b8eb2fc8fedeee382da46e2b0c05a755eaa41c3d"
+      "bytes": 23102,
+      "sha256": "9da62f7a05c879c4fa1802d10fdb7401ead012d4f0c24bbdf1225a00f728020a"
     },
     "markings": {
       "file": "strv81_markings.png",

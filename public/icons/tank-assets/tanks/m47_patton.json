@@ -445,28 +445,28 @@
       {
         "volumeId": "C04",
         "name": "commander",
-        "min": [0.2614,0.1855,-0.9108],
-        "max": [0.7208,0.9255,-0.2231],
+        "min": [0.2614,0.1892,-0.8608],
+        "max": [0.7208,0.9292,-0.1731],
         "turretLocal": true
       },
       {
         "volumeId": "C05",
         "name": "loader",
-        "min": [-0.6933,0.2092,-0.9889],
-        "max": [-0.2339,0.9892,-0.3012],
+        "min": [-0.6933,0.1992,-0.8889],
+        "max": [-0.2339,1.0392,-0.2012],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "8fa59103",
-  "metadataHash": "d87343b6",
+  "geometryHash": "41be2fff",
+  "metadataHash": "7f746371",
   "presentationAnchor": {
     "xM": 0,
     "zM": -1.0226
   },
   "presentationHash": "c502cfab",
   "presentationProjection": {
-    "centerYM": 1.939,
+    "centerYM": 1.6948,
     "topHalfM": 5.8379,
     "sideHalfM": 2.9189
   },
@@ -488,7 +488,7 @@
       "trackPadSimplified": 1,
       "armorPaint": 7,
       "hullRubber": 1,
-      "unclassified": 20,
+      "unclassified": 18,
       "gearShadow": 2,
       "machineGun": 3,
       "canvas": 1
@@ -518,15 +518,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25632,
-      "sha256": "b74cb5ef91f54586fddb76ab1487979902647a8a661105747b63de78bc165983",
+      "bytes": 25420,
+      "sha256": "2510bc244557d05ef346b01a4487036c89880e85e84e15b5666939c541d4f707",
       "thumbnail": {
         "file": "thumbs/m47_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10650,
-        "sha256": "505ae5df6502b87aca414ae43abd7169e6734f2501a3b92b8063ac1a7624e964"
+        "bytes": 10526,
+        "sha256": "029eee50d9964ed14cb32cfdeb44d4e6a5844fdd05078c859036d3a3be30c8b2"
       }
     },
     "top": {
@@ -534,16 +534,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10156,
-      "sha256": "6223f07397482749384ff7a04237c448623579c79ca9626070c7a5c1f44f223e"
+      "bytes": 10260,
+      "sha256": "ee6d50b88a4c1dbeb88b4a98c7369856b87643e4f289e613f85aa7c1b2edd8ad"
     },
     "side": {
       "file": "m47_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11692,
-      "sha256": "ebc90d75fe84ea18cfadb909cfeb0a7558f2a11656f3655832f5e6f58ccab66a"
+      "bytes": 11912,
+      "sha256": "4c1eca677f28359f944c9b36682e89171c9220ae2cc6ec57d13fbaf3e2039c00"
     },
     "topSilhouette": {
       "file": "m47_patton_top_silhouette.png",
@@ -558,32 +558,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4579,
-      "sha256": "2900b3ed8c0d26b41c6d57ff48497e5957506d3ccfe67d86924a20e549eddec7"
+      "bytes": 4631,
+      "sha256": "9c13a7b20ad42d73ba2eae5c2fb3c7a8148a31fd5099665d174816721b823db3"
     },
     "armorSide": {
       "file": "m47_patton_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28212,
-      "sha256": "968a79b22198e5cdbf4ce46228b7dbc19863aac4902781fb11245cb1ebfde781"
+      "bytes": 28660,
+      "sha256": "48fa7772699aa037850e242fb7b4c665279e0a8cb3dac7592aebe48f6044a248"
     },
     "modulesSide": {
       "file": "m47_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27656,
-      "sha256": "490c32c5876b1fe7faa3125a55ada636ee15ca01c54b7dc46e57ec1b1732da34"
+      "bytes": 27758,
+      "sha256": "4503953eacfd9fbbed935077e79485ed15814c664079cfae5cf8904df3a83775"
     },
     "crewSide": {
       "file": "m47_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25738,
-      "sha256": "b859efdc3d7334955ad52ba89b69fc5fc1fac5e2ea27b2681d9b11f7b33f68b3"
+      "bytes": 25532,
+      "sha256": "23c5f9f457feaebb584996caf793c92ca358b5e1456893eca98b4b93664ea25d"
     },
     "markings": {
       "file": "m47_patton_markings.png",
@@ -596,8 +596,8 @@
     "technicalLabels": {
       "file": "m47_patton_technical.json",
       "mime": "application/json",
-      "bytes": 4589,
-      "sha256": "6df9b28781ad50e702cb64b6db4ab6a9b8bf7ed12cfca352f0f941c615233b10"
+      "bytes": 4587,
+      "sha256": "dd7562e8c013fb8c312a9764a511d1ffc69890e8a153c27764bfe27135c24492"
     }
   }
 }

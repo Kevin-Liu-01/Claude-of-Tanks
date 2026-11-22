@@ -1148,39 +1148,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28628,
-      "sha256": "909a68b33c96abd712adca3d468e04345c77a8237ad534abebd580d544fde0df"
+      "bytes": 28722,
+      "sha256": "df570e14e9cc286e1b7411aeeea675b87778c1f1d98301e6479ea67ffeb32453"
     },
     "modulesSide": {
       "file": "borsuk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29458,
-      "sha256": "fc36a58eae79d894e93401b64804fafec824aee341827f9a0948869596336e94"
+      "bytes": 29564,
+      "sha256": "4203a1d4ba4aa64f676888595a8500bd185eb1b924556a26ff42003e0e7cc24a"
     },
     "crewSide": {
       "file": "borsuk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24840,
-      "sha256": "bb1bd9c82e7541d75bd5b1d71275aa2d2f28af445fa410f88f56e8b00e8f21ad"
+      "bytes": 24916,
+      "sha256": "26e9d6cb05b91e587574e01448f835edc1870bd3105b4c023e006519fe68701f"
     },
     "angle": {
       "file": "borsuk_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24590,
-      "sha256": "1c415c52b7c6e662059e693afb55930edcceeb2dfeda577c097e7a995e04af68",
+      "bytes": 24538,
+      "sha256": "9bc083bb9eb8b1abd4ab505dc24631f439cce0892ff4553e02eaa49fe2c60514",
       "thumbnail": {
         "file": "thumbs/borsuk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10444,
-        "sha256": "d4d49abef786f012cbc044614a10063a014cb931ca5a3780e5fe3390e977a677",
+        "bytes": 10430,
+        "sha256": "4b80dd10d8c94bfcd31c82487d70bc25a1354e8eda5bdd629205ce69a474f30c",
         "frame": [25,62,226,250]
       }
     },
@@ -1189,16 +1189,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14892,
-      "sha256": "4f8d42369926052dda0d88c48d4bee223b3302f1847bd1d6158e41bc5fc36768"
+      "bytes": 14902,
+      "sha256": "db33fe0873fe2bad4cf37c128858e8376858ca82ae508fabe6dc8df7295393c5"
     },
     "side": {
       "file": "borsuk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11938,
-      "sha256": "f3f504ffeb56e3da9059677edf5074663492f13229d6831d8082a154250d67b0"
+      "bytes": 12070,
+      "sha256": "684c6308bef6fa5429aa915778e8f5717ef178f74e711e4c51f6836b795f266d"
     },
     "topSilhouette": {
       "file": "borsuk_top_silhouette.png",

@@ -2590,15 +2590,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38296,
-      "sha256": "d26e2fa7fb3c03dbcb3394a563eef7cd22499ea16f13aa666667090eb886c3d3",
+      "bytes": 38306,
+      "sha256": "41bdf0b48a016188a8711b394c22dddaa4bef2df447fbe636a7e33cfe091d08a",
       "thumbnail": {
         "file": "thumbs/m551a1_tts_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 14968,
-        "sha256": "4434f0a476cc6c3ed43799dec59180abe6d775d60bf1fd7d31f61bb608e84967",
+        "bytes": 14978,
+        "sha256": "91d67aff1d882e2b85bf8989a0e5f85a74055b96616078859b39afdb50eb2b03",
         "frame": [24,84,226,250]
       }
     },
@@ -2615,8 +2615,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18852,
-      "sha256": "f9a5e147933c19f5a24f0f11a3944b3f91bebe9467b1df09c8396e7557a4a32b"
+      "bytes": 18846,
+      "sha256": "9ce0ed510e25c1c80e490f58f1718b47455a3a09f4ebc04f893bfd597687fac5"
     },
     "topSilhouette": {
       "file": "m551a1_tts_top_silhouette.png",
@@ -2640,23 +2640,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 39502,
-      "sha256": "eee534185e051da6a507c0a005683f321b735bc307e40e21adf8cdb7c82470d6"
+      "sha256": "77fa77771e8f2f9062c50add57b3fcdbe2fa6bb267cac1b7abfbf6f25e8e37cb"
     },
     "modulesSide": {
       "file": "m551a1_tts_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39524,
-      "sha256": "892ea499675f15d4baa0f920e0128304eea46bd59f622ed364e6a24d63f11083"
+      "bytes": 39482,
+      "sha256": "7f29711151a83ac734c757cf469f6478a500a225f59125f36e8e4e04133c24dd"
     },
     "crewSide": {
       "file": "m551a1_tts_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39508,
-      "sha256": "0ab94d958515bf1b092eef43f5b394a4ff8a1b94502be6e40faa16cf6350ec96"
+      "bytes": 39484,
+      "sha256": "b90085fc1b405213de56cc20989321cff43c52fde79c8bcd3b94479c11e3262e"
     },
     "markings": {
       "file": "m551a1_tts_markings.png",

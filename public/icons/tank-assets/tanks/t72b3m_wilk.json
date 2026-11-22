@@ -55405,39 +55405,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36734,
-      "sha256": "ca15fd08fbb4d0614a41bfec8c99da539366a5013baf85d22b1615b3c59d1090"
+      "bytes": 36790,
+      "sha256": "7d2970fba8d258af536205673cc4a0892d8e95788f089edb9ae536168fe315ac"
     },
     "modulesSide": {
       "file": "t72b3m_wilk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27498,
-      "sha256": "c869263441161dd8011abe0dae06ee24fa00cd73e65da85f46f77bbe33d5c11a"
+      "bytes": 27510,
+      "sha256": "0f9db98b2241fa725d0f9c947b5469c28e7db1cf338d64cec4ec10a61b737b48"
     },
     "crewSide": {
       "file": "t72b3m_wilk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26130,
-      "sha256": "47a777ae7fb176870ca2120112b74f1bb22ad5e8537bcb01c7d97e3647441570"
+      "bytes": 26132,
+      "sha256": "ec58b9fb2bd623472d7fde66713c98b94f4e584d44aeb99925aaef80fb381036"
     },
     "angle": {
       "file": "t72b3m_wilk_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26262,
-      "sha256": "76e5c0ee8e64a74496e66bcca269d4d21bfb2cb01d7f0d95d9ea06e13b918e87",
+      "bytes": 26254,
+      "sha256": "241f2464a017a7e804029867c371534b28ae36d16c633a55f5919c5a82d0ad31",
       "thumbnail": {
         "file": "thumbs/t72b3m_wilk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10420,
-        "sha256": "8631a4abe19de6a7d316302881307c12bec8355a3fc239901fadedaf9ad200d6",
+        "bytes": 10416,
+        "sha256": "51f490e38e044fdcab910281e20b34dbb261bfd6b510c035a4faea543ba5177f",
         "frame": [26,120,230,249]
       }
     },
@@ -55446,16 +55446,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16962,
-      "sha256": "77616e139e4542516c739d255315dccf476db6e937f8a66cbaf6e5a0658893f3"
+      "bytes": 16966,
+      "sha256": "93ec419ea721b19b0d5fcbdcde599c4ec2c9fc87f1c9279c153bc134cdd802be"
     },
     "side": {
       "file": "t72b3m_wilk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10098,
-      "sha256": "0f34e5111750031c48edcb21f00639cd11319c8eb686e484e8ba06260e660fc8"
+      "bytes": 10084,
+      "sha256": "ae312d3bf809caded64f6db764b8a3897230d1a31579fbd6e90d6c4d14a91276"
     },
     "topSilhouette": {
       "file": "t72b3m_wilk_top_silhouette.png",

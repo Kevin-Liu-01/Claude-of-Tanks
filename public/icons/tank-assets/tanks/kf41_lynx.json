@@ -831,39 +831,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23382,
-      "sha256": "032f6e0446e2b2e2137fa744d2eb7859d590a43953af268fab20a997a0161a4e"
+      "bytes": 23410,
+      "sha256": "8a6a491767acb85f95d1514b941900559c1fbdaf9ffa7302d716ae96fea865b8"
     },
     "modulesSide": {
       "file": "kf41_lynx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25432,
-      "sha256": "235d828b8efe50dde98de8c51fd1c306c5aa11fc548a8ec0d09dd0d078c6e5ad"
+      "bytes": 25216,
+      "sha256": "c103ba09633cc0b89606a94b3da2dfc78f095f4091cbfba69a18902899f7cc06"
     },
     "crewSide": {
       "file": "kf41_lynx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22576,
-      "sha256": "c78b0db15cce8b851081cded00fd34c8b483bbdd4d6ff4941d0f49ca5ac8fb61"
+      "bytes": 22588,
+      "sha256": "1551f36350544d24bb3c20408b60453b40e752348b1a583bceab7687554845d8"
     },
     "angle": {
       "file": "kf41_lynx_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26278,
-      "sha256": "3adae23454acac8279fd7e06ca663024093bff31cf00cbb23f375eb8cfc92ca4",
+      "bytes": 26422,
+      "sha256": "43a7d45db02b740983375775b07fd2a481bbfbdf63a8f6cfa9520f6194f41fde",
       "thumbnail": {
         "file": "thumbs/kf41_lynx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11118,
-        "sha256": "25ee37693ab64a9b94c9564860e38054feeedc02d4721a60a7217d1998e642ff",
+        "sha256": "d7a94590ac62175735cae6524685e73f6bf0f5062831ef19ec8a18b086aeacf1",
         "frame": [25,87,227,250]
       }
     },
@@ -880,8 +880,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10610,
-      "sha256": "cef89ba26a29ab011f65c3516e03222d5fb685faa1d43dda5bc11350752acddf"
+      "bytes": 10642,
+      "sha256": "50546a13e7efa1e3ecb05ff66822fa9b7d57b535013cefa6900b902b26e2e387"
     },
     "topSilhouette": {
       "file": "kf41_lynx_top_silhouette.png",

@@ -481,7 +481,7 @@
       }
     ]
   },
-  "geometryHash": "ba39c977",
+  "geometryHash": "1a37886b",
   "metadataHash": "7f5c862d",
   "presentationAnchor": {
     "xM": 0.0017,
@@ -489,9 +489,9 @@
   },
   "presentationHash": "da39e1ab",
   "presentationProjection": {
-    "centerYM": 2.1812,
+    "centerYM": 1.9975,
     "topHalfM": 3.9502,
-    "sideHalfM": 2.3339
+    "sideHalfM": 2.1373
   },
   "appearance": {
     "version": 1,
@@ -539,40 +539,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30342,
-      "sha256": "798636f81c6ddb31bf2e0fcc1a2e8016999e432f18ce713b194c162cba713c50"
+      "bytes": 34512,
+      "sha256": "803259e4e2420929357557f49a6860c0691c8929284676e771462d5baba3cbb7"
     },
     "modulesSide": {
       "file": "griffin50mm_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31846,
-      "sha256": "d5ddddef061fcd48e850d1890e541cbbd5954a79f4122db88ce7eef069c6ec8a"
+      "bytes": 34702,
+      "sha256": "ee7c91c6466a6f849070682ded528510ed6719a5a76aacaa47fc6830a8770fed"
     },
     "crewSide": {
       "file": "griffin50mm_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29308,
-      "sha256": "d9ce1b2e4775f29c5bb9f87c15a528cc6a43b54095200e04902ed3515089f944"
+      "bytes": 32518,
+      "sha256": "147c510e7d1b2fd3c65f2b6aff316ad8cb5fd348f91382d8c3cc85ebd2d829d1"
     },
     "angle": {
       "file": "griffin50mm_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31328,
-      "sha256": "02336084ab43e9339e093ef6f1c3d45eb6ccecaf257f228f4d3dab54b74962ac",
+      "bytes": 30156,
+      "sha256": "958c68d9b979ed8b50b0b22a16c205156f1be9225735899d7f56fed94da64292",
       "thumbnail": {
         "file": "thumbs/griffin50mm_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12980,
-        "sha256": "2ade88e2edee89ac8dff0dc8891b31bafb7253ab3d23d6ba4ea5a893ea33b954",
-        "frame": [24,62,227,250]
+        "bytes": 12658,
+        "sha256": "05bb647b90eb26e36a4a97065bdd9ca337d9fa8f03d5ca5c33df6eff385ad4cc",
+        "frame": [24,98,227,250]
       }
     },
     "top": {
@@ -580,16 +580,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17458,
-      "sha256": "570443c833f4d537dc5d47e92794a8117ed324c1041bdfbd464aec0b5263d5fe"
+      "bytes": 17422,
+      "sha256": "1f346c7ca31aec568a6a960654e944c9c1a0500a2cf3d41b1e9090457efa28dd"
     },
     "side": {
       "file": "griffin50mm_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15336,
-      "sha256": "21727e610c518eaf49debf978a9de2e77042c4faa7e3816b2681df7609fdcb61"
+      "bytes": 17310,
+      "sha256": "c36f164ae93ff75c56e775e2d02148162937615fe029c78cba41490ab8893173"
     },
     "topSilhouette": {
       "file": "griffin50mm_top_silhouette.png",
@@ -604,8 +604,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5037,
-      "sha256": "27a02450be967ed27c2ffc4223d03086e1ccf2c7c5b42871ff654439864e54f4"
+      "bytes": 5327,
+      "sha256": "04206860916b5c2b8046ba4ba58eaa80858c1316faa962705b5f8743d9cccf3b"
     },
     "markings": {
       "file": "griffin50mm_markings.png",
@@ -618,8 +618,8 @@
     "technicalLabels": {
       "file": "griffin50mm_technical.json",
       "mime": "application/json",
-      "bytes": 4777,
-      "sha256": "f368dc744a39ae5cf5178f492e94d910d86db70fe84ee866f9c283df11edab33"
+      "bytes": 4773,
+      "sha256": "7f0c1993ad1d916969f25c159a0479ff25942fec0339d49254697311a75b27c2"
     }
   }
 }

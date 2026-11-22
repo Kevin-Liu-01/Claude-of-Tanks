@@ -26666,38 +26666,38 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26916,
-      "sha256": "c8e96338ffb94f31c43167c1fc25d4570a4d96a0d790e92f66ff56d2e2e57222"
+      "sha256": "b0e36797ac828bb58e86078f7ad2b6e37566d2c2a83d802e6f72227fb9985940"
     },
     "modulesSide": {
       "file": "t72b_1987_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23362,
-      "sha256": "df6b49704059bb0ce462c858b4cc7e0b93d0719a58545a635dcb73ecd96659c6"
+      "bytes": 23198,
+      "sha256": "ac76fb3e8b5302ae91834388d766d1195d95f39f2252845e2f8fa6227a71fdec"
     },
     "crewSide": {
       "file": "t72b_1987_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20250,
-      "sha256": "9c790a4eab6510a0722c3b0635bf801d2c328b82aa5cd9020f2dd72c06a94e14"
+      "bytes": 20226,
+      "sha256": "cb4868999868d03c4bfed61a4c9bf74f2600d7dd6a4fd72c2bd81f6affbe3757"
     },
     "angle": {
       "file": "t72b_1987_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27184,
-      "sha256": "9bc875b81fe9e156d137ac45a0acf5d6621012bf621d7ee8fdda97475ac85f91",
+      "bytes": 27250,
+      "sha256": "35fd332b36fac6901090301a2d50e2d2ceaeb8f406b99e17d46bd081eb5116c6",
       "thumbnail": {
         "file": "thumbs/t72b_1987_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10892,
-        "sha256": "313f1f71b426ebe177bc8ef3144060511f26e8b2f05ace93512fba11639d6194",
+        "bytes": 10874,
+        "sha256": "b9aeb3cb9c9865b5d0f4a0008bc8654c10e313964af11772d8c5d0d137582407",
         "frame": [24,108,225,249]
       }
     },
@@ -26714,8 +26714,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10580,
-      "sha256": "23cea97bc2061439dde93426d73ef9bba571300c0b26ec8fb2ebcf625a53e363"
+      "bytes": 10596,
+      "sha256": "b9434b73b4767c35ce4a0ccbaa477bd30f83e010b4468dd72a783c7d7c2119bd"
     },
     "topSilhouette": {
       "file": "t72b_1987_top_silhouette.png",

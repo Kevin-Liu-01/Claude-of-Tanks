@@ -755,15 +755,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31874,
-      "sha256": "7156a788959013d636de65249fd784cf198acb172fe4f5a7371d3897cb8a449f",
+      "bytes": 32064,
+      "sha256": "00c43384d26011c275b7e24a0adf13268b0e2fbcecb660fe53a489849d4386c3",
       "thumbnail": {
         "file": "thumbs/k30_biho_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13334,
-        "sha256": "14cff9ffc6922f9e518fb63db60308e271b26626a60ae161ea400b498cb4808f",
+        "bytes": 13336,
+        "sha256": "b734ee41ad8c080979353f92a16580f2a7d2149e094c2d5b0799279586d6fcbb",
         "frame": [25,66,226,250]
       }
     },
@@ -780,8 +780,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11526,
-      "sha256": "2a8febf142d02aaf9ccd978d2a62e8b5b6a2af587abcac1a6d584899ee57305c"
+      "bytes": 11548,
+      "sha256": "1a64aef000cdf8db206ed7f592565a8a5a38aec95f24fc8c01e746adf5f7290b"
     },
     "topSilhouette": {
       "file": "k30_biho_top_silhouette.png",
@@ -804,24 +804,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27248,
-      "sha256": "6ebfe82dcafb4933097bee09381f69585c1df5abace7b0f0e905dead77cb863c"
+      "bytes": 27380,
+      "sha256": "a513a617cc0080ddb76570c2a5a604cc5aa020c16c5ac7213daff2aeab2b8e78"
     },
     "modulesSide": {
       "file": "k30_biho_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28942,
-      "sha256": "2c53878b4a21b30423ac289c6a4dcd0f1a10fa3fb529e82c1b47aeda47fc1e7c"
+      "bytes": 29248,
+      "sha256": "0d614cb892a9cb53e729f88c5eb512788b77c344bdab239216eef7cb0c75ebfc"
     },
     "crewSide": {
       "file": "k30_biho_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26332,
-      "sha256": "378c0b9b57b0b6d1488c9490779d01591065d775ef0ad831a03a689c1a6768a0"
+      "bytes": 26702,
+      "sha256": "0751d99a53a44198618b3ebd3919fde438606265edbbb87d598f4262e9edf48d"
     },
     "markings": {
       "file": "k30_biho_markings.png",

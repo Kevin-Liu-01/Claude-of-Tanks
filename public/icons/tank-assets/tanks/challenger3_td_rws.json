@@ -1017,7 +1017,7 @@
       }
     ]
   },
-  "geometryHash": "b6fc261d",
+  "geometryHash": "55b13e37",
   "metadataHash": "315149cc",
   "presentationAnchor": {
     "xM": 0.0003,
@@ -1074,15 +1074,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26746,
-      "sha256": "d45add5946d4fb6d9eda4556f261164873320f53b453eb1d7041f9e06e7905ff",
+      "bytes": 26760,
+      "sha256": "bb4c74a0758ea45b6a87d48663aba946dbdbb037057927f727d29a7f8f963a6f",
       "thumbnail": {
         "file": "thumbs/challenger3_td_rws_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11336,
-        "sha256": "570f67d64da6e63ab0a097b846845cd5072bc24228906d446d9247b14ae91e11",
+        "bytes": 11326,
+        "sha256": "e5799dd2ae78f6943fb5b66b15fa82a360bcae770b06da416b4921ab4f10859b",
         "frame": [19,105,225,250]
       }
     },
@@ -1099,8 +1099,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10610,
-      "sha256": "8be3924aa42d6cfb9987e40a86cac337b28c98167fe1a0f637df1d79e528779a"
+      "bytes": 10580,
+      "sha256": "3a7e2e9bdc47df2d2c37b71bd153afbea3ad7c66bd0cc559ea82e9750b2d5a30"
     },
     "topSilhouette": {
       "file": "challenger3_td_rws_top_silhouette.png",
@@ -1123,24 +1123,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20972,
-      "sha256": "efdf02c6d0d8e16641a1ea33698170d49a44c59c94735a828c69cbae77805531"
+      "bytes": 21010,
+      "sha256": "117d1d38033189c7ea423d69f7df50648b8c0cb3da3235daf84330e4b27e632f"
     },
     "modulesSide": {
       "file": "challenger3_td_rws_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23348,
-      "sha256": "76ee20cb7e7a5c881fd13a8f2cc9fd2a5d56fc23396843f33703dd94e82dbb38"
+      "bytes": 23382,
+      "sha256": "1548c89ebffd77117f762bc8b18760e5681e99b1f2d03e7072a07ec6b62c46b2"
     },
     "crewSide": {
       "file": "challenger3_td_rws_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19868,
-      "sha256": "73fbab8171cc4e2664be5c1d640666ff55b90bb8233c3ffac165504ac346ef19"
+      "bytes": 19874,
+      "sha256": "acc46ea19df3b396b184fca590511565ff14164c2ee92e22c517c07e889425c3"
     },
     "markings": {
       "file": "challenger3_td_rws_markings.png",

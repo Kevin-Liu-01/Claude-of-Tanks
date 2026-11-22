@@ -970,39 +970,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47246,
-      "sha256": "9734f150151ccd31d2515dbf7656a8857d0f796f973c5d0bec36a5448fe22c35"
+      "bytes": 47166,
+      "sha256": "01f9e1e5b475ef16025894f5eac4f39d4bbfc846eed7e5099a491cb0cce7ef3e"
     },
     "modulesSide": {
       "file": "cv9040c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44046,
-      "sha256": "1f46cc77fcd2bf1c5087180e435dd79686e0fbaf9bfd48de56d3a62b9be3fa08"
+      "bytes": 44028,
+      "sha256": "bca062be15ab5fcd8b5820177a559dee5d34c30e9c890e2dbd8cb7e4a7df1cb5"
     },
     "crewSide": {
       "file": "cv9040c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40896,
-      "sha256": "af790a5402a598b3ab8c703986d8e42032ba39d7aaae4db62461fc0414ba7614"
+      "bytes": 40942,
+      "sha256": "3a0e9965092c806f191ec0766493769ccd77cd6b1509975ccb7a754a3930ce12"
     },
     "angle": {
       "file": "cv9040c_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30436,
-      "sha256": "4e347747522483a6dbeaf28aa6c46a8b43bf1a5b1e56129e4cf2276664f20bca",
+      "bytes": 30418,
+      "sha256": "8b696488d39dcd8cbc7e8197f5ca03231bcdd739ed93b90904321c2c80e1213e",
       "thumbnail": {
         "file": "thumbs/cv9040c_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11616,
-        "sha256": "792247a88dee8f6bed64fe8dfd5b35b0dc3e2901b69d4bd7fa5eb4255558c7bc",
+        "bytes": 11630,
+        "sha256": "4da752da5f6f1e3fdee0778836f9af0554577bde7c23784d85d5beca6ca6ab1c",
         "frame": [28,82,227,249]
       }
     },
@@ -1019,8 +1019,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18316,
-      "sha256": "9655c008c1336a692dd0dcbd2610f88a866559129bc85c54c4d77599c47c1716"
+      "bytes": 18328,
+      "sha256": "4f878fab6f25250f4914daa421de4b1520efe348235089df895161a352491e7c"
     },
     "topSilhouette": {
       "file": "cv9040c_top_silhouette.png",

@@ -754,15 +754,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30838,
-      "sha256": "dbb145740dad5ab6a84dcbfd1c373365adfbfacb3980b307364b367d8cca7a44",
+      "bytes": 30776,
+      "sha256": "ec8eee92c71c33345858d6c4fc1af4a8c69896205f1f9f57fe396d28c4a48577",
       "thumbnail": {
         "file": "thumbs/leo2_revolution_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11442,
-        "sha256": "89b2b8881a19743afb1625e3dfa2bca070dc4f6340f2306dead53027703e5c45",
+        "bytes": 11444,
+        "sha256": "47e765c07427e96a54b39f513ce33be360384883ead5a6b4df33b1d044df98ed",
         "frame": [25,116,233,249]
       }
     },
@@ -779,8 +779,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12296,
-      "sha256": "db9f274f57ae5b07635dbe827ce868cb28011605a8257d3d89415328b2edca75"
+      "bytes": 12286,
+      "sha256": "7b232e425830e234a1d8841ac79bffd84307dcc45077e5f24779183dee5c3f3b"
     },
     "topSilhouette": {
       "file": "leo2_revolution_top_silhouette.png",
@@ -803,24 +803,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29628,
-      "sha256": "15351d1b95c184982a2577092cdfc18c5819a9ae06280bb6f31350a9d441d3c7"
+      "bytes": 29672,
+      "sha256": "689d24648e15de7ca4d80c51d708ffdd6f85233f597b47fffcdff934210a032f"
     },
     "modulesSide": {
       "file": "leo2_revolution_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29442,
-      "sha256": "681a399588087efa9550a88582ab3159c05e2a8e70d0c88016b314a24a0f3fc4"
+      "bytes": 29458,
+      "sha256": "351807188054b6386a01078c717ec72b4bb18cd6542f55e571b6e46d3ff2f09e"
     },
     "crewSide": {
       "file": "leo2_revolution_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28290,
-      "sha256": "aba0f24cb37df514c29db6bf3a8c300f7a0fc35fb22935ebc04733a5a73a618a"
+      "bytes": 28350,
+      "sha256": "6904718a16586ddf8a617d10067152d3e155fa54df1f0dc245a14ca7095d0943"
     },
     "markings": {
       "file": "leo2_revolution_markings.png",

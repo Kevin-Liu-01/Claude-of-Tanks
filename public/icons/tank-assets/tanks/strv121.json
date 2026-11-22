@@ -934,15 +934,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27672,
-      "sha256": "a35ff16ec40898c9a7364c10585fe313a0ccccdda7d5983871e480e3bd16b15a",
+      "bytes": 27708,
+      "sha256": "5eb385a4581caac9867dbf8f439f3f0d75e1f26efc7e507607926fdc0ed95dc0",
       "thumbnail": {
         "file": "thumbs/strv121_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10754,
-        "sha256": "425fab2fcfed5ba1ca3c96ccdb073829ba6dcc8f4df49376bf1e25617ca1e9d5",
+        "sha256": "562d2ab5e6471326660075daf4f33e572a6bd52072a886117a11f6fda50e556d",
         "frame": [25,119,225,249]
       }
     },
@@ -959,8 +959,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13280,
-      "sha256": "a6943535cbf2b402bc9e677e35a2a807730c2fe4717ac062b548d15ac1379abc"
+      "bytes": 13260,
+      "sha256": "e242a41109ce883a323b42c706f7ec380d24759fc6fbc25495af46eeda089dbf"
     },
     "topSilhouette": {
       "file": "strv121_top_silhouette.png",
@@ -983,24 +983,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29848,
-      "sha256": "5fd435349ceeddfd015960cce4292ef1145475410a223fceef8d59d94ca82a12"
+      "bytes": 29846,
+      "sha256": "bdd4817657c47c26ac5a236b0e86e11ce0ecd5825c938280fc1ef9f2db1abf7c"
     },
     "modulesSide": {
       "file": "strv121_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31530,
-      "sha256": "042593f10e747f0c674d78dcd79709835d2518d088c87100ac2df0fb846a48d0"
+      "bytes": 31394,
+      "sha256": "50051ec227ce0bb09f12230a365edcae45b42fd772067fccc4c0eee2c494ef1a"
     },
     "crewSide": {
       "file": "strv121_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28798,
-      "sha256": "b7c2c2ead0a8822fa23a7683465e7afe8419751f142f4904941aa765e505ad41"
+      "bytes": 28746,
+      "sha256": "be1a5e63695087c67df010096469e057e898616882aff7b878e913c145983b34"
     },
     "markings": {
       "file": "strv121_markings.png",

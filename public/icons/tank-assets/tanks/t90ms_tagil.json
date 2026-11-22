@@ -15134,39 +15134,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29778,
-      "sha256": "6085f509b5e03aec6beb15a3f71ccc09f0273bbbe31a38986b70dfffc4b8030e"
+      "bytes": 29266,
+      "sha256": "58e2e2e701a9a69ed01c6b353bfba4bd48667e63422d6fc9470058276632b868"
     },
     "modulesSide": {
       "file": "t90ms_tagil_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23274,
-      "sha256": "d7b2afa1314570126a20bcedd1a5d4f9fc7ed1f5b261cffb5043c63f0c0016f4"
+      "bytes": 23334,
+      "sha256": "ec664e1ac204bde4fd2b622e2d4d2fe5e21f3cd3c1ca2acb8937c514e48f101a"
     },
     "crewSide": {
       "file": "t90ms_tagil_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21628,
-      "sha256": "a93124d3cde669f90042c2c41e13a64662cd3133dba313350560fc953c30be73"
+      "bytes": 21728,
+      "sha256": "9af2b4c799697e755bc2873bd6604788be880cd3eeef59b4ce2da13195b85ce4"
     },
     "angle": {
       "file": "t90ms_tagil_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29656,
-      "sha256": "2662d5d3f940703887ad86fb0fd3f262083cb748cc893a1da681de52a18fdeb8",
+      "bytes": 29654,
+      "sha256": "ee6fbb15e2abaa26c1e4aa345a6eb3433ae55cb4d166fbd9d404019e0e4dfc09",
       "thumbnail": {
         "file": "thumbs/t90ms_tagil_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11622,
-        "sha256": "9ec57eada8f2f875d76f58618f8e5800da9411b097c11a7f5da2d361ad5ad359",
+        "bytes": 11626,
+        "sha256": "f5546d9c62095606f44aef01058d40e00ba085dc8d7d245d649b6358d5205565",
         "frame": [23,103,228,250]
       }
     },
@@ -15183,8 +15183,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10710,
-      "sha256": "6e5f15bcbeb8038d792c67579007982dfe09a5b4496e88ac1d1bc00c28966e93"
+      "bytes": 10742,
+      "sha256": "061f080a0ca8ac8c3ad930b2d9291e2ceb8363ea304d8082f81744c4da7021df"
     },
     "topSilhouette": {
       "file": "t90ms_tagil_top_silhouette.png",

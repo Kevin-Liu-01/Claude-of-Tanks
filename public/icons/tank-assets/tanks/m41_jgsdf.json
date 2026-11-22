@@ -754,14 +754,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26342,
-      "sha256": "5c87ba84a459eb6e0e9b5da5a10a798f60691a829d9fc9daca2a6b157bd5db87",
+      "sha256": "592879bdfef2a1fa5ed78630912c4ca65690b5473f60e060c8812f1b3b5dcfb8",
       "thumbnail": {
         "file": "thumbs/m41_jgsdf_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10884,
-        "sha256": "64ee2a6f57326563aa034be1758fce3edb5d18792ee74ca35f8c272bc0f9d34e",
+        "bytes": 10924,
+        "sha256": "7a66cbfe33b953df3811996fe6485c8f6d7bebce5bdb9ea7b1bdee927fc2f69d",
         "frame": [23,112,226,249]
       }
     },
@@ -778,8 +778,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11158,
-      "sha256": "bbc28f3f729dc2743032755c23d2e26580b728b748cdf2cd63e53ca4bed4d3ed"
+      "bytes": 11140,
+      "sha256": "bd0c36adf90f1f8e70bb2c058ffc4e664d753d347d1f8bc6658a98915bc87dfa"
     },
     "topSilhouette": {
       "file": "m41_jgsdf_top_silhouette.png",
@@ -802,24 +802,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25834,
-      "sha256": "c04a56583a9593b22ec889180be552642e7d17a04774bac4fd1af847eb288c2e"
+      "bytes": 25840,
+      "sha256": "9a83f05c57125eb80b8e64ef05138b69c235dd1a6583c50a8700b019678740a7"
     },
     "modulesSide": {
       "file": "m41_jgsdf_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25430,
-      "sha256": "d1de347afe48f2cbf81a2e58ef97a960d1d9ad3f6a5cdf0161ed20cbd63d4e0b"
+      "bytes": 25450,
+      "sha256": "5dacad5a015c41c9acae822a1180f4b8ce524932fdaeab70d57411ecc3fff33a"
     },
     "crewSide": {
       "file": "m41_jgsdf_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24240,
-      "sha256": "3a8fa8ae7cac2c8412f8d8911db74c0fec1bffb6022fdb7d75d73c928f732c05"
+      "bytes": 24300,
+      "sha256": "bffe238e09a111220e815ccd6658675acfce06638da45c4bb5707f7f0fd60793"
     },
     "markings": {
       "file": "m41_jgsdf_markings.png",

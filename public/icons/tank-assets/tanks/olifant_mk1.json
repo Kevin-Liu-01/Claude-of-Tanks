@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28394,
-      "sha256": "6faf7374f13ea551daa1b7c5a2cc8f209099230d71736e514842fe3a52536a66",
+      "bytes": 28360,
+      "sha256": "ef4bec7f78e0e85b4766df01390e2b8be2a33ea4ff59af6b2e8a4f9468b4d514",
       "thumbnail": {
         "file": "thumbs/olifant_mk1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11344,
-        "sha256": "92fbfb3b1971384f085c5292782d228d92504028e3a6a6788e640ecb040ef700",
+        "bytes": 11328,
+        "sha256": "152a344d3c8c3b3dd5b15b2c8ea7f4497709eb35e667ede0b8a4b767073b7264",
         "frame": [24,115,225,249]
       }
     },
@@ -880,8 +880,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13164,
-      "sha256": "186b1a1810e46ce387b0e67187460d0d2584d3e566e1344ce569adaced10f92d"
+      "bytes": 13116,
+      "sha256": "d5118cebd9479436edc8517aaa70ea227080c6424315c91d801aba9b3346ef6a"
     },
     "topSilhouette": {
       "file": "olifant_mk1_top_silhouette.png",
@@ -904,24 +904,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30772,
-      "sha256": "9523a8e804bf99962e4ee7e71d59b8e250a09414307b4beb585da9b37f2e404a"
+      "bytes": 30740,
+      "sha256": "fba2f2eda4707c43f8bc015a5abcb5c7587eea4ae1046d3d6ad87519248768ae"
     },
     "modulesSide": {
       "file": "olifant_mk1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29562,
-      "sha256": "ec28254cc5af2b443ed1e2b76763421c1f0cf2c912cf0ca8db1fcc6d4b289fd5"
+      "bytes": 29630,
+      "sha256": "251b7c4327c22c18a47efc3933190b09715d4e2eb22bc510fcc0ab9bc25e636d"
     },
     "crewSide": {
       "file": "olifant_mk1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26972,
-      "sha256": "f2f4d9b06e647754dec0db6d6476f0dc3f793dfbbb5c9274f1a86f35c650734e"
+      "bytes": 27040,
+      "sha256": "92e0cae094c2c6515d70e0e0f66f769421b99754908d9a24a4340c96ebafc319"
     },
     "markings": {
       "file": "olifant_mk1_markings.png",

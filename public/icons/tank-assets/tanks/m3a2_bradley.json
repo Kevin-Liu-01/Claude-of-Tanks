@@ -587,8 +587,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.4662,-0.877,-0.3336],
-        "max": [-0.0068,-0.0977,0.3808],
+        "min": [-0.4662,-0.8878,-0.3358],
+        "max": [-0.0068,-0.0985,0.3808],
         "turretLocal": true
       },
       {
@@ -600,8 +600,8 @@
       }
     ]
   },
-  "geometryHash": "87c01ecb",
-  "metadataHash": "2d9bdc05",
+  "geometryHash": "4e223e00",
+  "metadataHash": "662a8ab3",
   "presentationAnchor": {
     "xM": -0.0056,
     "zM": -0.0158
@@ -661,15 +661,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26868,
-      "sha256": "ae1a2decdcb4c4ffcf4e973d43e7972b46eb6f3555d0e134374fb23b441e46dc",
+      "bytes": 26866,
+      "sha256": "20de557b18e6a76014c047acc37728bbf88618b0bd17cb6194abbd38d7c9b624",
       "thumbnail": {
         "file": "thumbs/m3a2_bradley_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10882,
-        "sha256": "63634a0f1c45da5c53404ab31466bca8678a3882c8074f1f175d9cebf62c71c6",
+        "bytes": 10868,
+        "sha256": "0d0c80dd59519d80966699be9c1f2ca07eea12c8747c31fba050de9c2375050e",
         "frame": [24,78,226,250]
       }
     },
@@ -686,8 +686,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16340,
-      "sha256": "95f0a4cd1108ead6d45a4f08c7a4b39e11066924551ce5ca16284a5fadf2af42"
+      "bytes": 16342,
+      "sha256": "b26662b2350c6a42535be687623059b3a5561af54eeb3911de51a37e873fe7e4"
     },
     "topSilhouette": {
       "file": "m3a2_bradley_top_silhouette.png",
@@ -702,32 +702,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5527,
-      "sha256": "87e2955d8e0d3b6c3ce02ef9155b99ad4216b5e76da67cc3502fc6d31f5b19ed"
+      "bytes": 5528,
+      "sha256": "13f357775d17555732b4aca1b3dea115b3d3831cf40fa613a6fa25f2ceae4a84"
     },
     "armorSide": {
       "file": "m3a2_bradley_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37066,
-      "sha256": "2cf1d081ef04a9d60702734e9fdc457ee22593afdbab31b1d97c037a1217dc35"
+      "bytes": 37078,
+      "sha256": "8f601b95f35b890615fabdb52941e31c0cdac64e374f469300ad468f65f71b43"
     },
     "modulesSide": {
       "file": "m3a2_bradley_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37360,
-      "sha256": "c8c59c3fc5a65d9b2c896472be8512b5f4e2ad5aabe42b7ac5565b05824e4b97"
+      "bytes": 37474,
+      "sha256": "1dc8dbae90e5d342f7875a047dc25f7c65a36a133970f19a9179ef415bea1ca5"
     },
     "crewSide": {
       "file": "m3a2_bradley_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34286,
-      "sha256": "29de74ea2089303d7e6ea39d5b709ac1c4e2470f5e688d78fe393f9fc26e0c29"
+      "bytes": 34352,
+      "sha256": "541acb9d918049575d146cc4d2ab02de14d96579eec8a5adfa374416cae8ba70"
     },
     "markings": {
       "file": "m3a2_bradley_markings.png",
@@ -741,7 +741,7 @@
       "file": "m3a2_bradley_technical.json",
       "mime": "application/json",
       "bytes": 5211,
-      "sha256": "e92da9bfa992838edfd0f806fe077b2e54eb2a98e03205b52167fc1bb5354c84"
+      "sha256": "98d025f27e1fea14e62b0ffe296ca5089ea385ab3b2e9242566ef23605986438"
     }
   }
 }

@@ -1500,15 +1500,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24332,
-      "sha256": "c16c046be099f8618e426db3c9fb1bec5fe5ec64c6dcf99b9fa8c6522f340eb6",
+      "bytes": 24314,
+      "sha256": "a0c49ccab1a1538a16dd6e3600c66119b756960c5e77008fae90d0a2cf41f1a5",
       "thumbnail": {
         "file": "thumbs/centurion5_avre_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10328,
-        "sha256": "b2c9997ac98f17cf5223f02f1a5cee578f925efcd95c2809f162c98756c7da77",
+        "bytes": 10206,
+        "sha256": "2f44130d81ba58f42cc139ee161d1e0e67bb297eaa1d6127222492341701fa3e",
         "frame": [26,113,225,248]
       }
     },
@@ -1525,8 +1525,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13002,
-      "sha256": "d926ebc111e3b34fbc1da9f0b40e8e635c140d37ccde220dca1aa2485e6a5355"
+      "bytes": 13014,
+      "sha256": "f0adf63e613868eed9b81ec59ec2e96ffca27d81678dc144de17d1bc92065603"
     },
     "topSilhouette": {
       "file": "centurion5_avre_top_silhouette.png",
@@ -1549,24 +1549,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34916,
-      "sha256": "f1d8c5d6e48bd0bb85f1ba9323842b1cb08439be5d318e8ec3688045172e3a62"
+      "bytes": 35008,
+      "sha256": "9dc9813bde575c575a507602a4fe4a0c2f5778250b96fb23e5b890af3e9ab7d6"
     },
     "modulesSide": {
       "file": "centurion5_avre_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30518,
-      "sha256": "834af1a5bdbd9370cb335680dc000c538db708ed63da87bb0e30ed1bc53924ec"
+      "bytes": 30630,
+      "sha256": "b3daaddbba4418cc19e26df78ac82890d77d5e0ff58c0d0aca0fef10fa7074d4"
     },
     "crewSide": {
       "file": "centurion5_avre_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27062,
-      "sha256": "dbbe9aa5756435ef175f4071bed375e07230e5d9412d0a4d7e42ad6e385840b0"
+      "bytes": 27250,
+      "sha256": "13d1924ce7b4244ef620ffc18ee1466c4c81f68287ce1e74918be645454b390e"
     },
     "markings": {
       "file": "centurion5_avre_markings.png",

@@ -541,17 +541,17 @@
       }
     ]
   },
-  "geometryHash": "51984c19",
+  "geometryHash": "3724e49e",
   "metadataHash": "240b796b",
   "presentationAnchor": {
-    "xM": 0.0026,
-    "zM": -0.095
+    "xM": 0.0025,
+    "zM": -0.0948
   },
-  "presentationHash": "7f47ba42",
+  "presentationHash": "9d7c1eae",
   "presentationProjection": {
     "centerYM": 2.0715,
-    "topHalfM": 6.3553,
-    "sideHalfM": 3.1776
+    "topHalfM": 6.3551,
+    "sideHalfM": 3.1775
   },
   "appearance": {
     "version": 1,
@@ -597,16 +597,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24136,
-      "sha256": "5e2721261ea5fe3cc306d5cfdf59c1436fb2b9003a04cbeef233d23f8c4203a6",
+      "bytes": 23704,
+      "sha256": "c2ecd67824a9c693edb8fb1aca34a96b1744197aa9d42e99b54340a61ffc87ae",
       "thumbnail": {
         "file": "thumbs/abramsx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10112,
-        "sha256": "ae3ef35ba9bc331e8459ae42675e98485cee0815eb64df559077676bd068c2c3",
-        "frame": [20,89,227,249]
+        "bytes": 9984,
+        "sha256": "8212e771e27c9d98fa85bec3fb3d3cdd36f23a7013c96560de62af3235ef1afb",
+        "frame": [20,108,227,249]
       }
     },
     "top": {
@@ -614,56 +614,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11798,
-      "sha256": "964bfe5fd815d3c02f4faf7c6231f2df2cec327a3de8684410bd7605a29611c3"
+      "bytes": 11810,
+      "sha256": "8126755f487c72f21ff2e588a8679b7e8db174ede118d2d3247e4b9fb7d308e8"
     },
     "side": {
       "file": "abramsx_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9286,
-      "sha256": "3fc1c2084ba225d40e956a12e3b342fa16b49809090ba74a31a051d552cff350"
+      "bytes": 9356,
+      "sha256": "fbb12ef542e3a4933fe544cab0eaf1ab4aa89351f6049910ce0c5043baf23f1e"
     },
     "topSilhouette": {
       "file": "abramsx_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1627,
-      "sha256": "80da9c8f28ee85244015e3dc480aa4b45254750bde66fe6de466c34625966af3"
+      "bytes": 1608,
+      "sha256": "0a6f6b680d6e8ee884c7db49087504a409a11df778777eb9f300ea26eb2a932d"
     },
     "sideSilhouette": {
       "file": "abramsx_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4735,
-      "sha256": "7995cbaeab23b90d7663844215d577861e85ab9583cc6e2be9f751a99e93d3d2"
+      "bytes": 4732,
+      "sha256": "fe73023d0b0b8257dcfbcf578ad9b97ef2e6dab87e160df24d0b56c6701e7c82"
     },
     "armorSide": {
       "file": "abramsx_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24162,
-      "sha256": "1663596cc6d3b2395d4a41c6ad3a817009f6e406517bd3102cd2b8f18ccc413c"
+      "bytes": 24126,
+      "sha256": "7b09298bd7ae4c7720c3cbf3c2712eadef2308477d5bd7a5b8e0025db9649d4a"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25812,
-      "sha256": "e433754d65ff37f39807223cadd29a3d7de9fc5d09aa1bddc11b55943431a82e"
+      "bytes": 25768,
+      "sha256": "2db193149901dd543348768f564483a40c9f8bc3b874d9e508b55b1244c35394"
     },
     "crewSide": {
       "file": "abramsx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20770,
-      "sha256": "39dcc7f77c9b15729df61e9dfc748c5ef1cdbb0aa0438589fd16841fad43d0af"
+      "bytes": 20772,
+      "sha256": "1e80adeae8a571ba87c988264bf0f76039a56565e382c36f5419532e64dbdff3"
     },
     "markings": {
       "file": "abramsx_markings.png",
@@ -677,7 +677,7 @@
       "file": "abramsx_technical.json",
       "mime": "application/json",
       "bytes": 4893,
-      "sha256": "75ace4bb691e0cbe6a3eb6ee5eb509f4c48221b1aab9b5fe4a59f3b91db750f2"
+      "sha256": "921496237d1850ebb7781e0e1d344f54bb1183433da9ab81834b5f439a892fcb"
     }
   }
 }

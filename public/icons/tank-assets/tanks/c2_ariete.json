@@ -10555,39 +10555,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27330,
-      "sha256": "9e5ebeaf51cd3af475c3d17ef5330c050da8721b20abee5a45a0ec646cbb6d68"
+      "bytes": 27348,
+      "sha256": "bf90b0adf1947a1e3015d7195b2a8389723a2cd5a35615b6377aab8f0f646bfc"
     },
     "modulesSide": {
       "file": "c2_ariete_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26698,
-      "sha256": "29a4e1dfff49cefcd4d833cf22193503dfa7f7267e1226d6280f06ad84632239"
+      "bytes": 26686,
+      "sha256": "94bf0bdb604504a4eff4bdabb8e7b8f1414f4d9d23a913932c3f0c1dc25d2c16"
     },
     "crewSide": {
       "file": "c2_ariete_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24392,
-      "sha256": "2dff4617fb243021748a295e281df7ec55772d8d68baaadb25c178d4b7b1f483"
+      "bytes": 24472,
+      "sha256": "a7c21d5fc839e731d2f58adc728a138b1bd40b61cf644d06459e18ae3e17ca48"
     },
     "angle": {
       "file": "c2_ariete_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25440,
-      "sha256": "03286ec1293c040b454f84e1c04be8f218eb4c105f679f2e149730d431c01965",
+      "bytes": 25402,
+      "sha256": "524bdc1d4849ee44e8733ca3b0394101751e5c9f417123d4ded7de32df776eba",
       "thumbnail": {
         "file": "thumbs/c2_ariete_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9904,
-        "sha256": "3d71bd756f2a6e0602ef782e90a49fcf68a5555cd516d867be8d2efff69b31a5",
+        "bytes": 9918,
+        "sha256": "90958472b6bcc5b51453831144582d037d36b86728c369e7514c1f0fa5c85dbe",
         "frame": [22,124,226,248]
       }
     },
@@ -10604,8 +10604,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10136,
-      "sha256": "2e6b1cdb106b2d64efe07681fc652729a7ca461884288fab46d89b578f701627"
+      "bytes": 10134,
+      "sha256": "ec8ca08791f714538c115e48925d5975a6d7c96b87a182ab4add16f8dfb879db"
     },
     "topSilhouette": {
       "file": "c2_ariete_top_silhouette.png",

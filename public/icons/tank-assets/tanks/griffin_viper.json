@@ -1183,39 +1183,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 51192,
-      "sha256": "a206672c22dea52bec33c22c729329e2094e7e7e6ef360b873855e4a77eda0a4"
+      "bytes": 51324,
+      "sha256": "2d1fa501b0cbdf5633b06b6c5e3dbcd40bd3eec19302dd915ec3a2dc421da7a7"
     },
     "modulesSide": {
       "file": "griffin_viper_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 50204,
-      "sha256": "b4e1df9df0b516a2a4bdbf69e9e2ac6495fab5c249cba369a8faa0a3ac887b6a"
+      "bytes": 50292,
+      "sha256": "7750d288eb5c11d2caac5cefcd4f83a813ed3f41002abc4549cf502dc7e549bd"
     },
     "crewSide": {
       "file": "griffin_viper_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47846,
-      "sha256": "9f21c1a5fbd6d5a167f38f2288ef22aba6609c83a51337ada1a998605b2f3797"
+      "bytes": 47892,
+      "sha256": "164788a0f703474a6ea46a27f52f98d048065b19d7b8ac3743678b2f7554b20f"
     },
     "angle": {
       "file": "griffin_viper_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35996,
-      "sha256": "8e1bcf72e1fbc7c612d2c42285e8354de71e2c0bfcf5d3db68ae3258d7375db4",
+      "bytes": 36000,
+      "sha256": "0c131363b3795b508d8f761a00e1139a6fcb17e2e9cbd24a8b32470cb70650c0",
       "thumbnail": {
         "file": "thumbs/griffin_viper_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13528,
-        "sha256": "a87b36873f339e6687ebf265024e5216eb9839af69c042b35c255832faf4853e"
+        "bytes": 13520,
+        "sha256": "c7f4f0164a759a7b597538c2e0a88a5445fbd3698641eed97d926fdd617b3b06"
       }
     },
     "top": {
@@ -1231,8 +1231,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20468,
-      "sha256": "7fbcd104f834825ae428198c2e4947098f7e610acdd9dd3f7499f38495bb58a0"
+      "bytes": 20472,
+      "sha256": "90af237403f7ca9a449c58835b7c756829150948c9344d9c6c57270ec355b7e9"
     },
     "topSilhouette": {
       "file": "griffin_viper_top_silhouette.png",

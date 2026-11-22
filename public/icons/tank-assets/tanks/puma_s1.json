@@ -870,7 +870,7 @@
       }
     ]
   },
-  "geometryHash": "af03b9ff",
+  "geometryHash": "4510f09e",
   "metadataHash": "0f781086",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -927,39 +927,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32100,
-      "sha256": "d7131b7d05393fc4473a193bf23a5a3a30ed14a929bf8d4755519e229cc1962d"
+      "bytes": 32468,
+      "sha256": "7ae956bebd3591b6049d54e06bf0407f7fe668b0c5120b0f96f26b348571f850"
     },
     "modulesSide": {
       "file": "puma_s1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34198,
-      "sha256": "07c66c109361a964399fbf5f49bdf9cc32f1404c47167dce3acf6fc696344cac"
+      "bytes": 34214,
+      "sha256": "f24d40c1f75b45586c9764808e9c82adc68235f5c3c11a05c56c409bc9f6ab74"
     },
     "crewSide": {
       "file": "puma_s1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30116,
-      "sha256": "9c21c867bfb234305010b3ad8645d3a2218dda734414df0913dcc5ce85cdbd74"
+      "bytes": 30126,
+      "sha256": "57165c80273dc7d43cbf1f036b97ee5e74a8c820febc121ce076e7e942e7f8c7"
     },
     "angle": {
       "file": "puma_s1_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26842,
-      "sha256": "df420a012c19f9756e48eb8438f8e642edab53a988f0f1eaba657df0c7ecd4fc",
+      "bytes": 26854,
+      "sha256": "e3b7777fc2072fcff295acacc56b5c76a3c66a9920498a2d1a71e1696a9b0040",
       "thumbnail": {
         "file": "thumbs/puma_s1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11142,
-        "sha256": "b8e38168622b29fb94b338be00967ffa6c1780be71d738dfe5ca3d84fd52ec73",
+        "bytes": 11148,
+        "sha256": "5487df8d9e503a9a44a0b05830a62ab75f48de29b886ff0ba101f5fb2ffd0993",
         "frame": [27,74,228,248]
       }
     },
@@ -968,16 +968,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18104,
-      "sha256": "55565ee099028e0ba8ad7d385e16b1119fcd2b1f2427621176a496cbc52a5b33"
+      "bytes": 18122,
+      "sha256": "597bf80a23b1fa5091f8742a56cfabbd0f11ef56501cbe4f5d1ef2fa59f71408"
     },
     "side": {
       "file": "puma_s1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13084,
-      "sha256": "adce25e23e784fb96fc3aa218bfc7e4a6986b9d2b4370a8b87b094812a9ab995"
+      "bytes": 13070,
+      "sha256": "0b2c8872c42dc385c3501b0eeadc9c82d1947a6bfd7db71c7ce42b68cd81f2aa"
     },
     "topSilhouette": {
       "file": "puma_s1_top_silhouette.png",
@@ -992,8 +992,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5267,
-      "sha256": "15b9d71c711ebfce662d3736d33433ce7cc026d22c0b7edc7c98fa2e0700839c"
+      "bytes": 5259,
+      "sha256": "a33e2c03ef9cfc6b37984a32f7582df9bdc01f65abc2696f2413fb29f152c492"
     },
     "markings": {
       "file": "puma_s1_markings.png",
@@ -1006,8 +1006,8 @@
     "technicalLabels": {
       "file": "puma_s1_technical.json",
       "mime": "application/json",
-      "bytes": 4832,
-      "sha256": "d019408f48da5b74f7fe91e6ea48ff1e893e26bcbc0deba4f9abe9450649da62"
+      "bytes": 4839,
+      "sha256": "4e138ecc590cc2bfaeb15e304a81b064d3d5202435e169f74cbd4e559023d8cc"
     }
   }
 }

@@ -757,15 +757,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25436,
-      "sha256": "2748f7034a6519e7c0080e8963b5027dc178c4a3df1c95269aa736454ecd402f",
+      "bytes": 25424,
+      "sha256": "107c0b987199f3ec27aa06bc0daeed966b5d76bd7cf399b13232ff56856fc0e0",
       "thumbnail": {
         "file": "thumbs/m41dk1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10590,
-        "sha256": "15625a85a230d80b80a8aab4dccf92432e3f712ea25f107227071e8644521d72",
+        "bytes": 10594,
+        "sha256": "36ecb3689dcb373a3a00bc36e31e7c85f68abed159260262d689e455fbd960d2",
         "frame": [24,119,225,249]
       }
     },
@@ -782,8 +782,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10104,
-      "sha256": "46348269821244f6a634cad95eb9fd7ba2b6844a4759ff4861d783e6f79c44ba"
+      "bytes": 10102,
+      "sha256": "03c7bb971e802642f032db6a3f3809e7abb812d8677bdf41f5b901540ff29bad"
     },
     "topSilhouette": {
       "file": "m41dk1_top_silhouette.png",
@@ -807,23 +807,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 23772,
-      "sha256": "60b537667617c9e8c14f0bff940e75eb530036c5a5d4cd635795a843a019b02a"
+      "sha256": "183fbba34495cecd3b7d95fd999961a77c60f0df60bdb9ec9bb79a381aa5c953"
     },
     "modulesSide": {
       "file": "m41dk1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23570,
-      "sha256": "c48524e4d1cf92a4fbdf8dd5ca22ea8000a1b69f59518c625aed1a2266f80ecf"
+      "bytes": 23608,
+      "sha256": "f1ded4c45037cb5c1b2ec0a0d688db41b2a61ed37d36bf5ccd7a2818e2ecc406"
     },
     "crewSide": {
       "file": "m41dk1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21932,
-      "sha256": "300c6f75e1f755d6750799903d6d1452c6fd41dd049c281550e1ae84478b91f1"
+      "bytes": 21938,
+      "sha256": "b45fcebbb26ba9fa56d59ea6e90d98c282803ff76a07aaab02986bad6ee42e9f"
     },
     "markings": {
       "file": "m41dk1_markings.png",

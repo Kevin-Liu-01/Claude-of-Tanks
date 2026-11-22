@@ -885,7 +885,7 @@
       }
     ]
   },
-  "geometryHash": "d12cc8a8",
+  "geometryHash": "d1c0251d",
   "metadataHash": "99a18f59",
   "presentationAnchor": {
     "xM": 0.0026,
@@ -940,39 +940,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32748,
-      "sha256": "786eed95f4ec2fb7d37d07e02ac0827a66828ed37c535cb095b51b112d3d5fd6"
+      "bytes": 32740,
+      "sha256": "d218a7e357ef3b8c880d1b2d74348aa319e4764d758538e551b00aa9d16bc1ba"
     },
     "modulesSide": {
       "file": "kurganets25_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33556,
-      "sha256": "77b51e918aed16dde7a2c2ea91211d2dbe369738906af1d41298bf8fc4278a54"
+      "bytes": 33742,
+      "sha256": "a6d2313ef1763d57e4760d7f31a08c13667dabc389e754f4bbc69dbcbd3456d0"
     },
     "crewSide": {
       "file": "kurganets25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29716,
-      "sha256": "2ed3ae3da7db207090b0d3b9623b90e71f53bffd75a0c63a86a2622762ddd9bb"
+      "bytes": 29808,
+      "sha256": "6515608f438e58d8613c2cae09d50ab4dcac6a4405d834e0b164116649948357"
     },
     "angle": {
       "file": "kurganets25_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30002,
-      "sha256": "28131423fdc3d6ddc3881dec4b0ac1bc9f3cbeba9edca4f3ce25d8cbcdc64eec",
+      "bytes": 30022,
+      "sha256": "4f0c58d3310f5e54da4d0a6d993ee305abc2877e2acb1c71e6bd3ddac0501af4",
       "thumbnail": {
         "file": "thumbs/kurganets25_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12204,
-        "sha256": "c1e940ef3ae742799c9d391a01dfc24bd5cbc7d07f14e19068b94aa4de9b22f4",
+        "bytes": 12208,
+        "sha256": "c3515f67df55c39d45dc29690d0ce60d57dd3c0f9672871724c5334131bd2b52",
         "frame": [25,69,227,250]
       }
     },
@@ -981,16 +981,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22658,
-      "sha256": "552b74290ce35499674d78049686c9dacdd65a4bf5633c18e2a94bb625c0226d"
+      "bytes": 22700,
+      "sha256": "c71285577ccf7a0f48a12a184cebe7445161221c5d17dce8bda5f35456e881b9"
     },
     "side": {
       "file": "kurganets25_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13568,
-      "sha256": "24d09798267e56ba006ae79fc0c4ee9a68db51edbf8f8b3a7edce6f6afa712da"
+      "bytes": 13588,
+      "sha256": "b1ccf08cafba82407a805b9a26018dd76020c17fe5230a386eb6cb5dbbbcfdb8"
     },
     "topSilhouette": {
       "file": "kurganets25_top_silhouette.png",
@@ -1005,8 +1005,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5552,
-      "sha256": "3e70f1094d713bb39a385dddad85dfee3514f8a8a4e546fb360a92f772041e25"
+      "bytes": 5557,
+      "sha256": "d8df97134bcc01e9c7ad1f55abacfe355ee5398232dd27497c8c018e5e737def"
     },
     "markings": {
       "file": "kurganets25_markings.png",
@@ -1020,7 +1020,7 @@
       "file": "kurganets25_technical.json",
       "mime": "application/json",
       "bytes": 4324,
-      "sha256": "a13a5f9f3c3df237d88bb89a4f3e4d6b8d8ee54ed042333e318e33ae3e65881f"
+      "sha256": "4852c34513f248454910eee8105fd14a8c8743b3975be2dbddea39b40faed81a"
     }
   }
 }

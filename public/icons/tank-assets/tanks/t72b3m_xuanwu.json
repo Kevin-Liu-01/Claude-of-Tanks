@@ -10258,17 +10258,17 @@
       }
     ]
   },
-  "geometryHash": "b06d091a",
+  "geometryHash": "5fe623da",
   "metadataHash": "5f244efc",
   "presentationAnchor": {
-    "xM": 0.0005,
-    "zM": -0.0066
+    "xM": 0.0001,
+    "zM": -0.0124
   },
-  "presentationHash": "e4899b65",
+  "presentationHash": "896b0f22",
   "presentationProjection": {
     "centerYM": 1.8239,
-    "topHalfM": 7.843,
-    "sideHalfM": 3.9215
+    "topHalfM": 7.8492,
+    "sideHalfM": 3.9246
   },
   "appearance": {
     "version": 1,
@@ -10288,7 +10288,7 @@
       "opticGlass": 2,
       "fittingPaint": 7,
       "wood": 2,
-      "unclassified": 17,
+      "unclassified": 18,
       "gearShadow": 2,
       "canvas": 2,
       "machineGun": 4
@@ -10318,16 +10318,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26758,
-      "sha256": "55aef04d95b2e43bd32a69f37de0b526c99144ac0191ea68b65f1c9d1aa71ce9",
+      "bytes": 26244,
+      "sha256": "5db2e6eb2291b40858b70250d9759570faf57769a12f0162682b983c61daf8dc",
       "thumbnail": {
         "file": "thumbs/t72b3m_xuanwu_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11032,
-        "sha256": "ee4195456e34f329cb99be4a40987212110b5ba097f0940d8720927003314c60",
-        "frame": [18,109,229,250]
+        "bytes": 10888,
+        "sha256": "6105995d829701059cedac3fc0e64fd0023ad60cf647c016953d3a1668340cde",
+        "frame": [19,119,228,250]
       }
     },
     "top": {
@@ -10335,56 +10335,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12236,
-      "sha256": "10d2dfa8690b86f92f895cc8e3f3de2acc9c25d41d1b025f94cd2890b76096ce"
+      "bytes": 12264,
+      "sha256": "f7c500f7fc88370b3d8869752d2e1ea1c429e45edaeb5e06ae68540b658f2aa4"
     },
     "side": {
       "file": "t72b3m_xuanwu_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9608,
-      "sha256": "ce83d3c3a56722108d334e472011a05ecf18b36ea5b33465e47d3eaf9863ef33"
+      "bytes": 8800,
+      "sha256": "c3f25a44b08e6881f9636af8955f6b78b7e7e8a09bdb1966230daf8e5eea6648"
     },
     "topSilhouette": {
       "file": "t72b3m_xuanwu_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1455,
-      "sha256": "de58df38791c8d936b05fffbda03faf8b19af7ec8db6ec841b5484cf02059341"
+      "bytes": 1449,
+      "sha256": "c61d49f4e7f336a369261780292b177478ea31578bb456717a39cc6e018e902c"
     },
     "sideSilhouette": {
       "file": "t72b3m_xuanwu_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4242,
-      "sha256": "75227461e65d08c1be9624a898ec50c53614b433861c7523ed001beb024e9273"
+      "bytes": 4340,
+      "sha256": "e4fde7e2de9eeddb1cc32c693e0d58b81519bfdf15ed254c6ad5616bd477720d"
     },
     "armorSide": {
       "file": "t72b3m_xuanwu_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23696,
-      "sha256": "0efecf1837f3c2c6d3d699ae56f4bd7370a6db6c95114ea516450cfa0d584e4c"
+      "bytes": 23670,
+      "sha256": "7b0298c6473eed666ffcbd44e98b63e280992a18f643c67aa2f84bfb242467d6"
     },
     "modulesSide": {
       "file": "t72b3m_xuanwu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21160,
-      "sha256": "e8f1df4b782818db2cc4af225e68316f35deae306a562f527bec0e090a5f1d07"
+      "bytes": 21154,
+      "sha256": "51479f9307e2bd98647629dff27dcc9c1ede76259719a7722d8defc32286c52c"
     },
     "crewSide": {
       "file": "t72b3m_xuanwu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18078,
-      "sha256": "fe37036948b2ace58a3b0cb6d41e8c779ac8ea0eb52e984513a08f6e4c0a8b5a"
+      "bytes": 18146,
+      "sha256": "dbe056936149d1300dbb108089e4997dcbe8ad7d22047f9cf708f92ddf2ccd6a"
     },
     "markings": {
       "file": "t72b3m_xuanwu_markings.png",
@@ -10397,8 +10397,8 @@
     "technicalLabels": {
       "file": "t72b3m_xuanwu_technical.json",
       "mime": "application/json",
-      "bytes": 5384,
-      "sha256": "e64cf3c55eefc32e4d1deabaafca4d849ba21629bef0cd175375a9758530495c"
+      "bytes": 5387,
+      "sha256": "c8b99cbad5aba85122342110e543e8d6cfe82bfa1781daae47f9bfe7042bddc4"
     }
   }
 }

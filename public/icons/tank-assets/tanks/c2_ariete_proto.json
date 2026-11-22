@@ -3485,15 +3485,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25778,
-      "sha256": "da4a1bec2f645fc41086d1a727487ff65013f2e468bc41e3e7d01224490928f3",
+      "bytes": 25878,
+      "sha256": "e7434e2e4654cd81f32e763b4a478a53baf5eeef511e412a5e52c518ab2b42f5",
       "thumbnail": {
         "file": "thumbs/c2_ariete_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10364,
-        "sha256": "046484ea561cfd4af10c23d4a468e6c1143f70d5293b82684f7dbf7d2df069cd",
+        "bytes": 10356,
+        "sha256": "8902efb33f760887ae04e6c8de4bb1db7a923c7bdac7697f198afefe6ef771ea",
         "frame": [24,99,226,249]
       }
     },
@@ -3510,8 +3510,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11410,
-      "sha256": "0b9b218211aa99d36fd9a3945d7a31852e4ea77ed67382bdf76fbd6f21cf31c4"
+      "bytes": 11412,
+      "sha256": "66c12bb16fcbe9cb5cbb26b09eb5075fd627e42cc1484d1a5e306f431d13571e"
     },
     "topSilhouette": {
       "file": "c2_ariete_proto_top_silhouette.png",
@@ -3534,24 +3534,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30764,
-      "sha256": "dec2b028d38598b0ed8f90113dcd9a8ec84dc2f221d5daa586bbdcc47bdfd081"
+      "bytes": 30762,
+      "sha256": "2cb0e702a0e50c3832b54e8a8f347be12916e763fb8889dfc1d73d5e0e30ca2f"
     },
     "modulesSide": {
       "file": "c2_ariete_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27820,
-      "sha256": "962ced4cfdd2f3dba9980020d7480d833f88cf845eb92ac4da27e6337a710966"
+      "bytes": 27864,
+      "sha256": "3395e09524a2f9a89be39cdc6792c25fb12d2ef5977760fcdd9f8a66ebcb37eb"
     },
     "crewSide": {
       "file": "c2_ariete_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24068,
-      "sha256": "2ce76bfd695254242b3fb645fb1cf492e65d5bceb5feb23a15ff23486678ec94"
+      "bytes": 24156,
+      "sha256": "fc93ede6522e6c2153efa9d19a5b45a6cdae73769a142bcccf764d22f052cc18"
     },
     "markings": {
       "file": "c2_ariete_proto_markings.png",

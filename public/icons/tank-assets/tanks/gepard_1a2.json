@@ -956,15 +956,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32128,
-      "sha256": "d43c8f6cb009b701aeb38c6abc01f3ed22515f93693540931165fc286badddd4",
+      "bytes": 32580,
+      "sha256": "771cb681fb86b6351261fa139534d9cad76ac4055ae9821b63ab9ac89007189c",
       "thumbnail": {
         "file": "thumbs/gepard_1a2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13316,
-        "sha256": "d94e2dc0975cd1ce82463c2224e532efffb06d1175cee3c536bde642e01aa640",
+        "bytes": 13312,
+        "sha256": "6764e106d717798f87dd1d0349592e2fc50e11490f5ff5e2b856a098d561afe9",
         "frame": [22,65,230,250]
       }
     },
@@ -981,8 +981,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13732,
-      "sha256": "e68ee27100432abf42bf163bdde1727c2412de179515e2e3aa53cdfefdc72ad1"
+      "bytes": 13770,
+      "sha256": "88bc0362a8f120f0b4e26f71e72768336a130475bd30350f9c7e96316d475ec2"
     },
     "topSilhouette": {
       "file": "gepard_1a2_top_silhouette.png",
@@ -1005,24 +1005,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29734,
-      "sha256": "b0e56584efa6bb6f76ad074b30b9b3d8fd367893f369af8a111dd2a7ee8f37f5"
+      "bytes": 29674,
+      "sha256": "8136a593a2abc7bdc2d523704d51a710dc05ce2fd5d79f78872ec292349b5a78"
     },
     "modulesSide": {
       "file": "gepard_1a2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30564,
-      "sha256": "0d5b9b55706e658196637b4cfa8d12ef38644d1acd93c0621e4fdaad1648ffea"
+      "bytes": 30612,
+      "sha256": "ae894a1205e086c545e3ca3e55aee45efb450290e8757cdb4ea3a89ac92c6e1a"
     },
     "crewSide": {
       "file": "gepard_1a2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28132,
-      "sha256": "54eb67f90c9ec9c0e7eb68793822ed02036c2eb4e5aee3c1df3203154ba2426f"
+      "bytes": 28210,
+      "sha256": "b4da4cc832cfb7373b0a393b1070bb0ab6e943203a03f5237f293ffbda437d37"
     },
     "markings": {
       "file": "gepard_1a2_markings.png",

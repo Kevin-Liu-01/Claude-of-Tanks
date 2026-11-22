@@ -714,7 +714,7 @@
       }
     ]
   },
-  "geometryHash": "1e95bd57",
+  "geometryHash": "6864cbef",
   "metadataHash": "664b4abd",
   "presentationAnchor": {
     "xM": 0.0016,
@@ -733,7 +733,7 @@
       "wheelTire": 2,
       "wheelDish": 6,
       "wheelInset": 1,
-      "suspensionLink": 1,
+      "suspensionLink": 2,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
@@ -773,15 +773,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22806,
-      "sha256": "0906bad865a7314a38e2ed7b79936e81149a6f56db6d1cbda8917462212466a1",
+      "bytes": 22702,
+      "sha256": "74325243337afc8c4c9407175af42da9cc9a706f45802af4b78058d45d2b329a",
       "thumbnail": {
         "file": "thumbs/challenger1_mk2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9778,
-        "sha256": "95f7fe45e1d6b6ac25bc0e1910f69418804ba6926ab02be334fc905c5c777dac",
+        "bytes": 9784,
+        "sha256": "5d1eb348127f77218d8c14cc348dd723db5b9f6704787530700716d1e21e95fe",
         "frame": [20,120,225,249]
       }
     },
@@ -798,8 +798,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9558,
-      "sha256": "88e785214f30c9baae4bb9c98a68f1d19981556131a47451aa6fd6ee9d8e7cc6"
+      "bytes": 9536,
+      "sha256": "7fe5a75cdfce3991dcb6f44d4a7a0a02ede93a7b7f0ff8fa366957121b844671"
     },
     "topSilhouette": {
       "file": "challenger1_mk2_top_silhouette.png",
@@ -822,24 +822,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22990,
-      "sha256": "7f58e516f663c6277c4367fa40a0c63d1f9043fd501625dabe5b6e6e900bc40e"
+      "bytes": 22974,
+      "sha256": "1d1f7e209b3525e561d386c5660e46fb03eb2ffe9fae8789110f7b59b7588262"
     },
     "modulesSide": {
       "file": "challenger1_mk2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21710,
-      "sha256": "042bbe220514868a2d7963b0705a54d3405c278cabb986d23200daf3eb689398"
+      "bytes": 21728,
+      "sha256": "d9fbffe2cfe996c9204be430b832b450a960aa1928d71f38708e2a38bd2705d1"
     },
     "crewSide": {
       "file": "challenger1_mk2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18604,
-      "sha256": "8578976abd475792c51a2583ab32b1624c74a1b3d46bcf34bd99bb278ceeba84"
+      "bytes": 18646,
+      "sha256": "b0a243d58d2251edf06a154c391499d5ddaa1a44b34263a28689eaf74b48abb6"
     },
     "markings": {
       "file": "challenger1_mk2_markings.png",

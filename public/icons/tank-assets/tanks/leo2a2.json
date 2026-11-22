@@ -886,7 +886,7 @@
       }
     ]
   },
-  "geometryHash": "43b3b771",
+  "geometryHash": "9269d85e",
   "metadataHash": "57dfdf6f",
   "presentationAnchor": {
     "xM": 0,
@@ -945,15 +945,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26454,
-      "sha256": "67fbe031c714d663f11c9ec0d2118e1303d6252c9e9a543866a2b4e652bbadce",
+      "bytes": 26486,
+      "sha256": "2c22729c0dc543fe297f390dfc9580b5df550a20c622a28eacdda396c64eccb9",
       "thumbnail": {
         "file": "thumbs/leo2a2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10740,
-        "sha256": "c20334107e206cc98f73bd8a052b7045485a914dec5d31921d13480a28666d65",
+        "sha256": "5f43912590faa59afa52d228c0cd01874077b7864659778edb38ee267dfce2ef",
         "frame": [24,115,224,250]
       }
     },
@@ -970,8 +970,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11582,
-      "sha256": "be32051f70483a385df4c16d27ec00c17707481fb9c5a4261c72966c470b3452"
+      "bytes": 11586,
+      "sha256": "782b5bde3cab25d847f17e31908ed926b700287e9f77ced5ca28e44d5bbfc211"
     },
     "topSilhouette": {
       "file": "leo2a2_top_silhouette.png",
@@ -994,24 +994,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26348,
-      "sha256": "ba3873ca3c1384e14f100f2dbe6398743a446a90f6b2d679c9ea0fdfe64468d5"
+      "bytes": 26344,
+      "sha256": "19b3c37b39bd085998f755c1c03f8877b679a917307452c9fb469fc702b0806e"
     },
     "modulesSide": {
       "file": "leo2a2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27200,
-      "sha256": "6d2fd12867a913d9eeba05e68cbd1256bd780097e0596ccd2ad6d90e4bb38517"
+      "bytes": 27190,
+      "sha256": "6d4fa4ad902745d82b00267d10fd684d137f7172a6615bdf9f1a732d36ddb77b"
     },
     "crewSide": {
       "file": "leo2a2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25382,
-      "sha256": "ede1ced45398a70f273917047bdbd85f2149c587d1df415bec4cdbddb94df656"
+      "bytes": 25400,
+      "sha256": "b4e43499d066513e24b2ecc45d73d927476bb621a37fa3067f111c1b8624d149"
     },
     "markings": {
       "file": "leo2a2_markings.png",
@@ -1024,8 +1024,8 @@
     "technicalLabels": {
       "file": "leo2a2_technical.json",
       "mime": "application/json",
-      "bytes": 5507,
-      "sha256": "eae20b1462229d80e28f4823edea9805f0b56044e6e86cffc019dfe2a03fcf58"
+      "bytes": 5493,
+      "sha256": "f77a1c46558a6062bdbf7e12c63b1230169ee8e90ec53c2312e90e4d3c82cd9a"
     }
   }
 }

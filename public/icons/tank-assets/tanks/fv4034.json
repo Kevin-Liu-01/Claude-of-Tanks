@@ -701,17 +701,17 @@
       }
     ]
   },
-  "geometryHash": "a37af6c8",
+  "geometryHash": "ffa94dc4",
   "metadataHash": "9e379bcd",
   "presentationAnchor": {
     "xM": 0,
-    "zM": 0.0771
+    "zM": 0.0758
   },
-  "presentationHash": "fda6ef14",
+  "presentationHash": "234c700b",
   "presentationProjection": {
     "centerYM": 2.1817,
-    "topHalfM": 8.6605,
-    "sideHalfM": 4.3303
+    "topHalfM": 8.6619,
+    "sideHalfM": 4.331
   },
   "appearance": {
     "version": 1,
@@ -720,7 +720,7 @@
       "wheelTire": 2,
       "wheelDish": 11,
       "wheelInset": 1,
-      "suspensionLink": 1,
+      "suspensionLink": 2,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
@@ -760,15 +760,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23370,
-      "sha256": "c877b450d6c111a57d543f9b0bbd113d719514e186f99801a9597318b4fa9580",
+      "bytes": 23438,
+      "sha256": "79b36e3866952b26b29ab41514eecf79ad2819708a935d5f64fb6e695cde0cd6",
       "thumbnail": {
         "file": "thumbs/fv4034_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9984,
-        "sha256": "c550d932c594a723386e4bf5483ec564951b8590e0fd2a463a33f7c17484fdee",
+        "bytes": 9922,
+        "sha256": "bd99f1275ae2ded0a5ec30ad87504d96111ad636e2808c973f2480f3ad763d3d",
         "frame": [12,96,227,248]
       }
     },
@@ -777,56 +777,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8070,
-      "sha256": "060a0fa33826bb768aceb3096348d7026ff31a297066fd9fddcdf179560ff1ee"
+      "bytes": 8010,
+      "sha256": "b409d740e33a25a970c15b691932b8813135105e056811d8d6448b604f219621"
     },
     "side": {
       "file": "fv4034_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8264,
-      "sha256": "8d954d952684d42201e7d8fd5836207fc6af8d809b3585ed9d69305e67f5e38e"
+      "bytes": 8190,
+      "sha256": "992c5fa9f30c5d2e718aadc97e01330d35d546ad367f98ab47e6d17f140ebd93"
     },
     "topSilhouette": {
       "file": "fv4034_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1174,
-      "sha256": "943c5f409f564cee004eb55cedcfab2fea432f5c331b23826d28feb28f117999"
+      "bytes": 1121,
+      "sha256": "22213ed80ff94ce36958c6779bb257681f673fb94b237b6eb1def925349dd5a0"
     },
     "sideSilhouette": {
       "file": "fv4034_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4151,
-      "sha256": "ffcad44bc08589cc8231e7e1612514297cf0e88147ffa4edae53fbefdbbd4e88"
+      "bytes": 4189,
+      "sha256": "aa0773131c5ea6b40694b4d902fe3375b9c91c5c699841bb75eaa798184ecf8f"
     },
     "armorSide": {
       "file": "fv4034_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21830,
-      "sha256": "05c9fc55478c0a8dbf09d491930f89e6790e99996ba509c03d5fbfe80c7b3c5c"
+      "bytes": 21922,
+      "sha256": "2a2e8f44ba827c6e863f1041319dbfff25ba110a7dcbfb6372c61c501b5b736d"
     },
     "modulesSide": {
       "file": "fv4034_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20068,
-      "sha256": "f8403cbe46edf78cff827ba53b1b670715c747ac8e1d5584ddde39a5ea53e6e9"
+      "bytes": 20120,
+      "sha256": "0463c41acfa60d456c156887d5d2c52f6d99e3dfb65129c6d9a47f1656d39d35"
     },
     "crewSide": {
       "file": "fv4034_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16410,
-      "sha256": "35fcf573fd1fafe036dab8dd745fe022113aea5c96dbe61521a7f50d14e6a31c"
+      "bytes": 16434,
+      "sha256": "f9cb80ec308c7eff46cf36a6eab61e8a09d6fef627c81b1c7fcb056e3ce0a941"
     },
     "markings": {
       "file": "fv4034_markings.png",
@@ -839,8 +839,8 @@
     "technicalLabels": {
       "file": "fv4034_technical.json",
       "mime": "application/json",
-      "bytes": 5027,
-      "sha256": "b46ec00f2804a8746b29ac89a17d8d6925afc9ee38d19b9c81cecb35ae01c95c"
+      "bytes": 5028,
+      "sha256": "8e02a43a8e3c9948c95c929bdcd515dd3374d30fb93cd2bcc838d519a5cac3cf"
     }
   }
 }

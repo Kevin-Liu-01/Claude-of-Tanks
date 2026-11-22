@@ -11129,15 +11129,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32132,
-      "sha256": "52cea2bc54958b7489bf75c1bde07b32f9656a36ab6f701d0c5ad8d8ce2f7337",
+      "bytes": 32120,
+      "sha256": "3fd35c657d67bae2a95ccad84b76074aec794a0ad57b277f17eba9bf98c61c9a",
       "thumbnail": {
         "file": "thumbs/t90m_proryv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12096,
-        "sha256": "771d1a44e081680383bfa4652fa9a5c00779af2555eeeacaec6f38cfe12e7d68",
+        "bytes": 12080,
+        "sha256": "cd25d8bb4c54116f2b81c919062964ea3b8256decab35323d3b38228bf19037d",
         "frame": [22,112,226,249]
       }
     },
@@ -11154,8 +11154,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10956,
-      "sha256": "38b3a07bd4fc47e71f5a1738fff3a2de2f02300af43c8ee35b766ed0dabd3b73"
+      "bytes": 10958,
+      "sha256": "9fbc8a91ba39b4547ee7ab4e41bf78434d2f83f44b9b4d283b21d40b597d65fa"
     },
     "topSilhouette": {
       "file": "t90m_proryv_top_silhouette.png",
@@ -11178,24 +11178,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28976,
-      "sha256": "d0cfd0cb2f0605e3de862c7feeda0033ed7cd89851d5adef83b3af879a53bf8c"
+      "bytes": 29006,
+      "sha256": "0718eafee60122abb8fd5ef69e3923bee0c51c7b7a3461257020b205185e96be"
     },
     "modulesSide": {
       "file": "t90m_proryv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25446,
-      "sha256": "273e734117096251ff6a41df012d775803f26628ab55ec1272280272a1848d3f"
+      "bytes": 25482,
+      "sha256": "8c848f28707258a13d642cbfd6f4220aa6ee3206fc62e284f579595347e2b386"
     },
     "crewSide": {
       "file": "t90m_proryv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22912,
-      "sha256": "923bd5fa67af50c7d1910e2fbcd624c29a0f42a6823528067a39b0032f27e9f1"
+      "bytes": 23018,
+      "sha256": "f5dd44e43a20fc19c62ea64bdbb4fb2a683bcf60e0b4210eb598d54a32b74211"
     },
     "markings": {
       "file": "t90m_proryv_markings.png",

@@ -788,10 +788,10 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [0.5541,0.7627,0.7183],
-          [0.4043,0.3649,1.6447],
-          [0.7314,0.1267,1.5953],
-          [0.8812,0.5245,0.6689]
+          [0.5539,0.7626,0.7182],
+          [0.4041,0.3648,1.6447],
+          [0.7308,0.1272,1.5955],
+          [0.8807,0.5249,0.669]
         ]
       },
       {
@@ -848,10 +848,10 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [-0.8667,0.5343,0.6658],
-          [-0.742,0.1234,1.5848],
-          [-0.4231,0.3543,1.6448],
-          [-0.5477,0.7652,0.7257]
+          [-0.8662,0.5347,0.6659],
+          [-0.7415,0.1238,1.5849],
+          [-0.423,0.3542,1.6447],
+          [-0.5476,0.7651,0.7257]
         ]
       },
       {
@@ -1073,10 +1073,10 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [1.64,0.1,0.46],
-          [1.637,0.1,-2.42],
+          [1.639,0.1,0.46],
+          [1.635,0.1,-2.42],
           [1.606,0.56,-2.42],
-          [1.609,0.56,0.46]
+          [1.61,0.56,0.46]
         ]
       },
       {
@@ -1088,10 +1088,10 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [-1.637,0.1,-2.42],
-          [-1.64,0.1,0.46],
-          [-1.609,0.56,0.46],
-          [-1.607,0.56,-2.42]
+          [-1.636,0.1,-2.42],
+          [-1.639,0.1,0.46],
+          [-1.61,0.56,0.46],
+          [-1.606,0.56,-2.42]
         ]
       },
       {
@@ -1298,15 +1298,15 @@
       }
     ]
   },
-  "geometryHash": "8f99c8df",
-  "metadataHash": "b4676820",
+  "geometryHash": "f4cc61d0",
+  "metadataHash": "4fb7aead",
   "presentationAnchor": {
     "xM": 0.0005,
     "zM": -0.4341
   },
   "presentationHash": "4f8bae1f",
   "presentationProjection": {
-    "centerYM": 1.8304,
+    "centerYM": 1.6298,
     "topHalfM": 7.9886,
     "sideHalfM": 3.9943
   },
@@ -1329,7 +1329,7 @@
       "canvas": 2,
       "wood": 2,
       "hullRubber": 1,
-      "unclassified": 20,
+      "unclassified": 19,
       "gearShadow": 2,
       "machineGun": 3
     }
@@ -1358,40 +1358,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22652,
-      "sha256": "9932bb09138b03042ff46d8d71f5921aab2fd4e5a22111b1f5efb13a03acf045"
+      "bytes": 22592,
+      "sha256": "c589cc724cb24c06e508892f8c8392ea7fc09b05be8776f6acda7421e4f85098"
     },
     "modulesSide": {
       "file": "ztz99a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21542,
-      "sha256": "741588b2e0ba35afdcf169b6c65e8dc542115b96b31246347773148d7d4435c3"
+      "bytes": 21508,
+      "sha256": "b7de7c50249170bbb8f011154a2e05d3a934efd691ed0d59ff8b15a1ea8cbc0d"
     },
     "crewSide": {
       "file": "ztz99a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18544,
-      "sha256": "aff7dbe3311e51240905b444d49ffd3abcbe1f675e629efe5891a63bcf4c203a"
+      "bytes": 18164,
+      "sha256": "f0fc2857bef677eabab02028fbc5fe13fd5bd123c8b2b22db94fed0db2990cd7"
     },
     "angle": {
       "file": "ztz99a_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25658,
-      "sha256": "9c1cff7fe8a6aec81d8c15c5a9e7af54ccaa984369eba132408e713bc129a32d",
+      "bytes": 25206,
+      "sha256": "a07017174246d79fc917c9781228e9dc093bfec730796ad33247a66b5135687d",
       "thumbnail": {
         "file": "thumbs/ztz99a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10466,
-        "sha256": "b6d244272b8e5b1ccb2d72ccf91ee7462a678a65f956c6b00424dc29922d28bb",
-        "frame": [19,110,222,249]
+        "bytes": 10284,
+        "sha256": "fac3b2f46accc3aa471e5389c6ce9a32c57209ef3c2f11aaa17be4bba6dbb8fe",
+        "frame": [19,123,222,248]
       }
     },
     "top": {
@@ -1399,16 +1399,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10918,
-      "sha256": "fc256355d63ad678d1cba796a817f6692892341bfc9e1a309f41c9a4a0e948b6"
+      "bytes": 10878,
+      "sha256": "dec0d9558b474e1dab5cce7fa218536b60ab1d60632dd3d8d839a7926eda6916"
     },
     "side": {
       "file": "ztz99a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9086,
-      "sha256": "5119981dcb76612f3db9ef2c3a0d48e9daad4ca9251aa42b182ed9d9e7cfd535"
+      "bytes": 9276,
+      "sha256": "82778c95126f3cc1b62d9bab1fcbf7ed47ae543ab73a9ef71c029955e389370f"
     },
     "topSilhouette": {
       "file": "ztz99a_top_silhouette.png",
@@ -1423,8 +1423,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3971,
-      "sha256": "8c8bdc9052743c5e7d8a474620b86fdfae884605a4042c8b80975ea8a0a35319"
+      "bytes": 3987,
+      "sha256": "4154677574a580b5261ff0b9bb4b26006e0ec18cc8249d5e0ac3c2f0715f8880"
     },
     "markings": {
       "file": "ztz99a_markings.png",
@@ -1437,8 +1437,8 @@
     "technicalLabels": {
       "file": "ztz99a_technical.json",
       "mime": "application/json",
-      "bytes": 5254,
-      "sha256": "0f07952b7d2edbb17049d4ed4c25d36f709595fe9d1ca8fd91c5eeace63a7f2b"
+      "bytes": 5247,
+      "sha256": "fa7ec46663b0961ed494c44ff939ce666d2710be85c46ecd57cc5d74a06c3fe2"
     }
   }
 }

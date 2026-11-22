@@ -1299,7 +1299,7 @@
       }
     ]
   },
-  "geometryHash": "5873dca2",
+  "geometryHash": "a700b267",
   "metadataHash": "2aacab13",
   "presentationAnchor": {
     "xM": -0.0002,
@@ -1307,9 +1307,9 @@
   },
   "presentationHash": "bd02d1d6",
   "presentationProjection": {
-    "centerYM": 1.8027,
+    "centerYM": 1.6329,
     "topHalfM": 3.7539,
-    "sideHalfM": 1.9289
+    "sideHalfM": 1.8769
   },
   "appearance": {
     "version": 1,
@@ -1328,7 +1328,7 @@
       "gunmetal": 13,
       "opticGlass": 3,
       "hullRubber": 1,
-      "unclassified": 21,
+      "unclassified": 20,
       "gearShadow": 3,
       "machineGun": 8,
       "fittingPaint": 4,
@@ -1360,40 +1360,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39402,
-      "sha256": "f1b97b0f9c26b71ba00b4877dbbb59aabd2327eaa5f29c93d8aafc55447b9936"
+      "bytes": 40200,
+      "sha256": "5cdfd756c5804d3eecc074103d0ea10324d8a68d3915addf9c89a9c2aec275da"
     },
     "modulesSide": {
       "file": "raiju_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38490,
-      "sha256": "1a5036d33421a607fd54552e6b0d024e5552fa90617f133b3391fc9552adb986"
+      "bytes": 40238,
+      "sha256": "4dc1f6c3823e4215d7bdba154085faacd0d03d6bb34b2776de90bc1268399d16"
     },
     "crewSide": {
       "file": "raiju_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33716,
-      "sha256": "2852c23294df6c25608a04bb897919838b4afa0503f168bf198b6bec9c16cd9d"
+      "bytes": 34242,
+      "sha256": "c3f12ebd0a6185ce9e8066ecbde198f20acd899b8962f470bf657ab5a4db38d1"
     },
     "angle": {
       "file": "raiju_ifv_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26212,
-      "sha256": "1a8d7487b19bfe1adcd6c8cf9ecc1d1e7c872f5f56b72e4e0dbc8a25669ab8c1",
+      "bytes": 25842,
+      "sha256": "213a0d434c1d2405d0abe74be6551c293bd9a773b146678ac1af8b9eaaf6bcd9",
       "thumbnail": {
         "file": "thumbs/raiju_ifv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10718,
-        "sha256": "7e08dfc66601ec9d849e3348987f745007938dd1327bc0fe691782b1619c28f3",
-        "frame": [22,80,227,250]
+        "bytes": 10454,
+        "sha256": "3c328dbd52c3980c6a2851742969fe4cefb3a2733ff3feff189d5ad9bd7aa2f8",
+        "frame": [22,103,227,250]
       }
     },
     "top": {
@@ -1401,16 +1401,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16910,
-      "sha256": "ca3c5fdc093b05e70cf5297714133a376da27fc703bc44ac5a5249725ab86d8d"
+      "bytes": 16866,
+      "sha256": "a32ae6033e1659b075a938eabafe5b6afca72b79a18d0f116948347f80900eba"
     },
     "side": {
       "file": "raiju_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17118,
-      "sha256": "c87ab39de1ccb72b5e73775dcc46fb7bf6cec7bc48cd5add519ed0a8c0d84c0b"
+      "bytes": 15588,
+      "sha256": "2789605a29f73576fe8a08b65d81257925148dfabc0d253a75e43fa13db51d7a"
     },
     "topSilhouette": {
       "file": "raiju_ifv_top_silhouette.png",
@@ -1425,8 +1425,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5982,
-      "sha256": "37b7fd9cc86c22397455b3ee476403068c35aeb03023f7face48c04664a89cf3"
+      "bytes": 6035,
+      "sha256": "5625724d140e1d6fddcdbbe584cbd89009d662d8cdc045e756163ed3b16b1111"
     },
     "markings": {
       "file": "raiju_ifv_markings.png",
@@ -1439,8 +1439,8 @@
     "technicalLabels": {
       "file": "raiju_ifv_technical.json",
       "mime": "application/json",
-      "bytes": 5012,
-      "sha256": "fdab3faaab609b3adb8ae487d0a6ed98587836647a81cc11415180b6aebcf06c"
+      "bytes": 5010,
+      "sha256": "726285b9fe944168559aed527d5e80050d5db780c18653ff7e5799374ffd7324"
     }
   }
 }

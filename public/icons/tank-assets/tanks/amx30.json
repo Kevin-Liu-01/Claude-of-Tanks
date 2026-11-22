@@ -477,7 +477,7 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.6922,-0.4212,-0.2152],
+        "min": [-0.6922,-0.4212,-0.2135],
         "max": [-0.2637,0.5566,0.3414],
         "turretLocal": true
       },
@@ -491,23 +491,23 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.2647,-0.3507,-0.2961],
-        "max": [0.7044,0.6309,0.3148],
+        "min": [0.2647,-0.3546,-0.2344],
+        "max": [0.7241,0.6271,0.2648],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "bb7614ba",
-  "metadataHash": "3dcdb8c1",
+  "geometryHash": "7b28200c",
+  "metadataHash": "e31af7b5",
   "presentationAnchor": {
-    "xM": -0.0037,
-    "zM": -0.0432
+    "xM": -0.0034,
+    "zM": -0.0429
   },
-  "presentationHash": "cef9dd96",
+  "presentationHash": "59778ba7",
   "presentationProjection": {
     "centerYM": 1.9989,
-    "topHalfM": 6.6958,
-    "sideHalfM": 3.3479
+    "topHalfM": 6.6955,
+    "sideHalfM": 3.3477
   },
   "appearance": {
     "version": 1,
@@ -559,15 +559,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25394,
-      "sha256": "8c81829eebe0bcced68a5efa136c616af677b4c67c48a71c523e9d0b5635baf6",
+      "bytes": 25370,
+      "sha256": "381c1741369e5db314b23cc96a7da9a53b5fd6ed0136d230dddd56932dd81c3c",
       "thumbnail": {
         "file": "thumbs/amx30_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10274,
-        "sha256": "2ed4b8f734cae72d3e649ccb8a2b01861a11dcc367635fd4e6cfe1fa52cd841d",
+        "bytes": 10272,
+        "sha256": "e353dcb41023729ac4f8da2852e08679743d56b76dec9957c2c719a689c32026",
         "frame": [14,83,224,248]
       }
     },
@@ -576,16 +576,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9452,
-      "sha256": "5488985e984165c81ba2072aeda8dc344a2b4e38d504365a7043c7e87658f86e"
+      "bytes": 9458,
+      "sha256": "af1e3bab3d3f7673d6fde7f3e62bb0dded304622614a3b6be83978cf2fae0d3b"
     },
     "side": {
       "file": "amx30_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9786,
-      "sha256": "7878430ad004d3bb04c4515c63c6c5f345583615a7fba6766453f169e1fce0f4"
+      "bytes": 9804,
+      "sha256": "a4be856b897df4d3623e32b30580fef97bc17e8baa1f249dbb2a09b06fed6820"
     },
     "topSilhouette": {
       "file": "amx30_top_silhouette.png",
@@ -593,39 +593,39 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 1259,
-      "sha256": "4dd93e3ecbf4b0bdf1a03731ef886963e52271a0efe8acfcdb7d74ea044dda7e"
+      "sha256": "425b0451da72dff9e225520598c5ca3577588e88513c323bda1a5f5f1192c6e2"
     },
     "sideSilhouette": {
       "file": "amx30_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4367,
-      "sha256": "a15ba66f0a52566cafb77a92156c60c42c2360808a65e95c9a20f00412b9c93d"
+      "bytes": 4386,
+      "sha256": "a164f04d370a0978cc6ca18840442b8bd7471abaaf884067f4981af067dcf558"
     },
     "armorSide": {
       "file": "amx30_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27052,
-      "sha256": "3594c38581d72e493f87c641baeab88eceed67da65b22cd5673686f249922d25"
+      "bytes": 27286,
+      "sha256": "cb564bfea51111bab91726bd72858de620c4ec7b006828477d2507916c3ac3d8"
     },
     "modulesSide": {
       "file": "amx30_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24044,
-      "sha256": "be1378edd08a19705524d4ad0a343b518ac23e82855bc255a1dc1bb481f0715a"
+      "bytes": 24178,
+      "sha256": "f880bb19aeb940312b9ebb7528fe19ca20c8a1836e73f55bbec69e8828633bd2"
     },
     "crewSide": {
       "file": "amx30_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21482,
-      "sha256": "7835aac42fd1f1d07335a9192e4791c5a849e59fae9e88a1e1f44ca841c919d0"
+      "bytes": 21616,
+      "sha256": "3bfef772c4a7a88a2aad3de3515e43b173fe5ae5551e8db94bb1a5a15bdfac62"
     },
     "markings": {
       "file": "amx30_markings.png",
@@ -639,7 +639,7 @@
       "file": "amx30_technical.json",
       "mime": "application/json",
       "bytes": 4288,
-      "sha256": "b8d285e1e3a320423ccf433be17b8a7a210611f6c1fd3893e0fed0fcf5259b88"
+      "sha256": "ec1dddb7e3c51a13685a66e0c22fba8ab859070a3d1f87d63542fc985cdcc2f9"
     }
   }
 }

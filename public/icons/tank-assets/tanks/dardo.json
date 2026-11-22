@@ -1289,39 +1289,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32386,
-      "sha256": "cd1b5d906f25917c8aa88a0181d59dd06d3a5b0f4463db6870aa43db4344c538"
+      "bytes": 32388,
+      "sha256": "6832c271cdcdb62be30e181db2f0c24ce66c428ab65d77a53d50f2f54dc22c3c"
     },
     "modulesSide": {
       "file": "dardo_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30394,
-      "sha256": "d9f00580a4cca110708615c55a95bf304ef61b79792fbb14ec9bacd8d4e2b3b4"
+      "bytes": 31036,
+      "sha256": "78f62e00fd23e92df537eafdafbb5d940f06630f49a06f8e8e129e44d01eea70"
     },
     "crewSide": {
       "file": "dardo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28508,
-      "sha256": "4ffc5f13f93fc9d4fc660e10535aaeedf560deeaf4b5072116afbf10686134e7"
+      "bytes": 28586,
+      "sha256": "3a407f9e7f2c49143c90e2659dca930e606610b40f8446a75a3a67b9928c12e2"
     },
     "angle": {
       "file": "dardo_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23926,
-      "sha256": "2ddf6b615f701f99843b0ec4ab3436a190f17b6f20c183bc61e3b3bc19229ed8",
+      "bytes": 23938,
+      "sha256": "cf49f7002c22a83f7572d3a7e86205c523e9b1e354b4f23087fb12b823393460",
       "thumbnail": {
         "file": "thumbs/dardo_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10086,
-        "sha256": "2af9e92100b5289001d6d8d2fcd63f59eeb650c829e620966ef42033d425688e",
+        "bytes": 10050,
+        "sha256": "c7cd4598874bc85c2d3e6154ae427ec1274dd1ce661d9ed0fa383880e7cac0ba",
         "frame": [23,85,223,249]
       }
     },
@@ -1330,16 +1330,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14804,
-      "sha256": "5212f5ff5f460315a7ab49578c2c8244bf4d06b530f7428ab97b7a1251eabcaa"
+      "bytes": 14784,
+      "sha256": "6793d39855be5702610edc752e04c3742654de87b376d52690e6ebd27701836a"
     },
     "side": {
       "file": "dardo_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11942,
-      "sha256": "f11447d6139179353c509b4618deb32a2df8a202c963fb37a1b83b88948b94be"
+      "bytes": 11988,
+      "sha256": "b21cd3206bc8bbf5e744da6b75648ce5f8e098cffed567c050518001670238a4"
     },
     "topSilhouette": {
       "file": "dardo_top_silhouette.png",

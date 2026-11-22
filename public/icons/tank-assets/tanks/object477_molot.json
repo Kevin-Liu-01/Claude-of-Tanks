@@ -558,15 +558,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23354,
-      "sha256": "0b8661dda2255492ba3d34a08d1b05e66196645670950f1c51792e10a66daf97",
+      "bytes": 23406,
+      "sha256": "c96cae287f0e7d1b7342c2ff902d402568d6532d01083cf98fae5379bd0f10bf",
       "thumbnail": {
         "file": "thumbs/object477_molot_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 9778,
-        "sha256": "aa1708d9b6ee3e130b4b8a78851239782f1783faf871ac8d8a7d6043f0ea21d7",
+        "sha256": "6d7121f816f46ebdeb318e3cd3ac56c3505eeaddc872be259e22891f881568aa",
         "frame": [17,128,225,248]
       }
     },
@@ -583,8 +583,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9794,
-      "sha256": "b774544d3efb844e067ae72b916671c794b707fbca2fd3399009c84ed137c349"
+      "bytes": 9790,
+      "sha256": "fad72a221e847f3257212e8c7e1369cc0721c60fa77f7941fc50fc15710a97f2"
     },
     "topSilhouette": {
       "file": "object477_molot_top_silhouette.png",
@@ -607,24 +607,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22464,
-      "sha256": "024ee0ad13f71c0451dcf577a69668a25b802fa2b2e15332476620837224a04c"
+      "bytes": 22584,
+      "sha256": "b2aea88d2612868db83d6e288792985ee11380699654590cbb785dd8763248b1"
     },
     "modulesSide": {
       "file": "object477_molot_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21592,
-      "sha256": "54ea1e3e084e566c8ea0720f7e79011db92b99aca2be756e5a9c34bd5a0d9512"
+      "bytes": 21558,
+      "sha256": "3e9b31738370d2ea1164de2e9b6a0e7853436cccc8cd27ea1db91eed135ec099"
     },
     "crewSide": {
       "file": "object477_molot_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19292,
-      "sha256": "d281164101f3f7818dcb3f690dd0117ddf857f7c23f1951b8c3fd97b774ac863"
+      "bytes": 19320,
+      "sha256": "833e18e665c8cd49615b64367a0c6466c7b1340c41a035c9447e7485d6a07635"
     },
     "markings": {
       "file": "object477_molot_markings.png",

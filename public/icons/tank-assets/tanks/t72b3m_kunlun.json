@@ -7732,39 +7732,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24384,
-      "sha256": "21551452b26585ff53658437fc432d4286b7f976ef19b0059b4ba1f1e15c9fcd"
+      "bytes": 24402,
+      "sha256": "2f8bf57e96af3ca3395e7849457c108b7a9aa3d46393cd928d4acbfc9abdf70d"
     },
     "modulesSide": {
       "file": "t72b3m_kunlun_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22434,
-      "sha256": "8ecb9ff64970edc96448b5222a78174fd61a51ab4bd1056925aa7c9fc29e7451"
+      "bytes": 22424,
+      "sha256": "160df80e902923c6b76757099ca542b1db75e2f1097ad4165371ded12fd8aaab"
     },
     "crewSide": {
       "file": "t72b3m_kunlun_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19978,
-      "sha256": "80e2ee53d68d45e77e72b62c796a34ca65477d4b48c0ed5ce4656f62525dd371"
+      "bytes": 20000,
+      "sha256": "6768e24ad5dc040409da57a01c5ce57a084a923221aa5ff593deeb00dcb50007"
     },
     "angle": {
       "file": "t72b3m_kunlun_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24400,
-      "sha256": "661b7f8576ef8f0d29b0ba9af165395129062dac3345db2391b8c49f90a62286",
+      "bytes": 24446,
+      "sha256": "9a671d43b0fe17e65741b05bbd5076799364e1d1df426b7f5d501847e49bfa26",
       "thumbnail": {
         "file": "thumbs/t72b3m_kunlun_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9900,
-        "sha256": "c6b946965cbea4ccde759434a53cc0519439fd39512a4c9c94a2b477ae3dd450",
+        "bytes": 9892,
+        "sha256": "24fcfddf0b7c0012e90e20dcb798383f011097b7116c0b0b41a9db8b1c338777",
         "frame": [25,128,227,249]
       }
     },
@@ -7774,15 +7774,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 11972,
-      "sha256": "fb0bcb56451694cb455cb5eb26ebb0bc43abf4e9595a20405352a9246a89d77e"
+      "sha256": "d8b62926ac50b8925991a1c7d58c77d168634090364ee11d748b907bb3a39201"
     },
     "side": {
       "file": "t72b3m_kunlun_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10484,
-      "sha256": "d555ca7934fbe8827435eb03d492d270d8adc0b157c77b89868c4987e3c74c4e"
+      "bytes": 10474,
+      "sha256": "4ff0ffc6862c2b3b60babce3394bfe560f0e74474a03f16028ea94037d3fb431"
     },
     "topSilhouette": {
       "file": "t72b3m_kunlun_top_silhouette.png",

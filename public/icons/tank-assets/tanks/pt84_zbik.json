@@ -3995,7 +3995,7 @@
       }
     ]
   },
-  "geometryHash": "f9b0620b",
+  "geometryHash": "19c46029",
   "metadataHash": "d46c5cee",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -4054,15 +4054,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28578,
-      "sha256": "341ad95ad1c651bf0476ed8f86cc30055f359c8a05ddb8744ef774a221dde84e",
+      "bytes": 28586,
+      "sha256": "86fb7ceb78ebd5d49f510471f08b788a469143bce3edb135f64f811a1fcf8448",
       "thumbnail": {
         "file": "thumbs/pt84_zbik_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11482,
-        "sha256": "4f595cf45ef1a3e21304e8697e9570d918ff37b0de736dfa442a30e59a0565b0",
+        "bytes": 11494,
+        "sha256": "ac34a76350228e8c06063d713708d3bb0097c516fb5b75db75f0faf2f722ff15",
         "frame": [26,108,227,249]
       }
     },
@@ -4079,8 +4079,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10474,
-      "sha256": "c66a163a480717c0fd535d0afbfe31f071ff12e65b4f02af811ea07412f8700d"
+      "bytes": 10460,
+      "sha256": "bc674e78f364ffbb5549934310a0074c8c272f01b750a37b70c971fc3322ab0c"
     },
     "topSilhouette": {
       "file": "pt84_zbik_top_silhouette.png",
@@ -4103,24 +4103,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26292,
-      "sha256": "35c78205e66e74ae29a8bbe09f75267e8037871fd35a351b367897e55e824943"
+      "bytes": 26298,
+      "sha256": "c30e5ab757d19c896fc0d31d9361e44e6258207b858c11bffd138f68213ec076"
     },
     "modulesSide": {
       "file": "pt84_zbik_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23390,
-      "sha256": "5e314e512e7c82f0a068a6a0e280dade9d8be3d99844fb36ae8daf4b802d1719"
+      "bytes": 23396,
+      "sha256": "52095695554d82e47c193076dbf0b185407dcdf0f76778c4824b6aef68f3efbe"
     },
     "crewSide": {
       "file": "pt84_zbik_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21294,
-      "sha256": "095c184ef13f23a18e7db6022987bd50344d937c7a619264577f9fe47deab434"
+      "bytes": 21336,
+      "sha256": "72a249cbb521d95ae72dba5cf85909861860209a75b973d5cd4dbc571e2244ec"
     },
     "markings": {
       "file": "pt84_zbik_markings.png",

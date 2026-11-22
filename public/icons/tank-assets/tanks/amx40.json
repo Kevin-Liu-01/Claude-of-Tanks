@@ -788,7 +788,7 @@
       }
     ]
   },
-  "geometryHash": "3eeac37c",
+  "geometryHash": "3c262ab4",
   "metadataHash": "5674068d",
   "presentationAnchor": {
     "xM": 0.0015,
@@ -846,39 +846,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22384,
-      "sha256": "536c91adb1a63c933aa6722812bd91c2e50f825455c3ecca9ef9f01183d7ff4e"
+      "bytes": 22410,
+      "sha256": "c73d01cfd832831fff1710b1dd6c60bc35fa8e0be14f2bf4534a00198de34132"
     },
     "modulesSide": {
       "file": "amx40_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22086,
-      "sha256": "43c595e16a167c46bc9aa56899703ba7fdfc26770a2bc21a7e812b3f5c524d50"
+      "bytes": 22130,
+      "sha256": "904c5705e80054c8bba25912d349555e44fdc23bac7b75d36d0ac40a9e17809f"
     },
     "crewSide": {
       "file": "amx40_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19164,
-      "sha256": "d80325e79de5ff0b95b9a85ec5038a74c134f0eef62d4bdb04cc55a1090c0092"
+      "bytes": 19250,
+      "sha256": "76220c07a5a06d8a5b577ccffec6c3438008887cfc505106fcce7da2040f524b"
     },
     "angle": {
       "file": "amx40_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26048,
-      "sha256": "2605e972364fbccac4507bbc6866954461a04a01ca96823a2107a81fe651adde",
+      "bytes": 26024,
+      "sha256": "b156011dcec7b469c2186db0f2646f05877087282d427278329df663eed8e4df",
       "thumbnail": {
         "file": "thumbs/amx40_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10830,
-        "sha256": "c98240b3109b6fca321d959d39c175f8f18ddf9d13886b1d4e16b3a49f3e56ac",
+        "bytes": 10854,
+        "sha256": "7f5cc0564bc9c0da8c9c207e16ddb3a4ab86cf3b11a17af1ccc56d807f27102b",
         "frame": [14,100,224,250]
       }
     },
@@ -887,16 +887,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8112,
-      "sha256": "32ef52d5fe438b7d3603fe6684a41b32c0e749072522493a5db9400db7ca5486"
+      "bytes": 8118,
+      "sha256": "aecfe1b954efd4a6c5829dc067c78ea65d2a87e45163e47d8478fe178bd04c02"
     },
     "side": {
       "file": "amx40_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8120,
-      "sha256": "bbed4578c19a29f213cc4c8ac2b0e08c0bcce9f0b9acd7097ddf0fc32b6532cf"
+      "bytes": 8152,
+      "sha256": "bb218f8ddd35a540bcfddaa78217515aa8c05313728e2bf27c9ce2ebef7545c8"
     },
     "topSilhouette": {
       "file": "amx40_top_silhouette.png",
@@ -911,8 +911,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4033,
-      "sha256": "a3b53463ea418182eb86e04746d4a946ed420c84939bc596f89cdf7ce9555765"
+      "bytes": 4032,
+      "sha256": "0c91edd4d15e408ce69c9f195f136b6a22c9ebafa3df727816194c9f7662579d"
     },
     "markings": {
       "file": "amx40_markings.png",
@@ -926,7 +926,7 @@
       "file": "amx40_technical.json",
       "mime": "application/json",
       "bytes": 6270,
-      "sha256": "2525712a488fe46cac90493101c4ca7e8c6377e32a190aa1fb810596df011e8e"
+      "sha256": "44ea3027ef2b2ba03064673c582cf93b04da59a820f0461ff5afaf4dfd20ac2d"
     }
   }
 }

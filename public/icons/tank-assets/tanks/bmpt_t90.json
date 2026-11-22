@@ -10105,15 +10105,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29012,
-      "sha256": "a8925d7e3853e2fd85829b11f4cb5bd7b8d7f4019fc2d5039e0c6a0dec8e4a65",
+      "bytes": 29050,
+      "sha256": "a505176956e167ea9409c5251968b9495fc0fdf741100435176925e1efa7298f",
       "thumbnail": {
         "file": "thumbs/bmpt_t90_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11308,
-        "sha256": "0a16b37679b21192cf2f0621b3bf30bf0153b84ad2ca7c31072caa0971fc0797",
+        "bytes": 11302,
+        "sha256": "4a7e42fe92683eba9bff8824892512f0b09079b6a673d24988eab763adadf49b",
         "frame": [23,101,225,249]
       }
     },
@@ -10130,8 +10130,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14224,
-      "sha256": "18ad757829dea347c637b4535bee2de062fcd5f3039099b0ec66025cabaf8365"
+      "bytes": 14212,
+      "sha256": "83d1dca22333cde05203d2d1cf9493fb90b8c7061cce15a73ce34eaa06040441"
     },
     "topSilhouette": {
       "file": "bmpt_t90_top_silhouette.png",
@@ -10154,24 +10154,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39442,
-      "sha256": "d0d798ece08368b4b4ca3285a36ea16b578772192870f3ee79ffe41a3204ebf0"
+      "bytes": 39568,
+      "sha256": "a0d951a7caace014396f32c768c9a02cda8965e20c603643ff2711e8008cfd73"
     },
     "modulesSide": {
       "file": "bmpt_t90_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33342,
-      "sha256": "c6f16c07239a5452e3e05926a8984c019517ec6554d976694558edbfe4e607bb"
+      "bytes": 33526,
+      "sha256": "b9727b07b9ee64f047982d9f822353761145cc73be5ec4506edc9e9fb0874e72"
     },
     "crewSide": {
       "file": "bmpt_t90_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31974,
-      "sha256": "d42c2b3bf8ea026d7ced67a6ab9d254155988275cf9bb226a55f6bc09e89ba3c"
+      "bytes": 32222,
+      "sha256": "c560333f38e8c770095dd3f9b874a4194ec23518a42288a805c03d552cb8080e"
     },
     "markings": {
       "file": "bmpt_t90_markings.png",

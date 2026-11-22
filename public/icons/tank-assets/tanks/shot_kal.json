@@ -851,15 +851,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30446,
-      "sha256": "ebd2926a3dc5dc56fda7848ca863ecdba4a36db9532007b574fd47e16eefa86f",
+      "bytes": 30404,
+      "sha256": "4f8a27396fabccf07ed98b91f765dcf935cfca08a21c32976384116008671802",
       "thumbnail": {
         "file": "thumbs/shot_kal_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12080,
-        "sha256": "9154eb0be5afd1a798f3eea78bec509d252c70b65bb158826cd4d44e4e9f45b9",
+        "bytes": 11968,
+        "sha256": "2327b15bd05a3339420f6ab988984b8c9971786a213863dd65b102f337656f57",
         "frame": [24,111,226,250]
       }
     },
@@ -876,8 +876,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13946,
-      "sha256": "76b99afb79e9e3fb345785cea42cc95d95f28215f4db2090907ff119a8672844"
+      "bytes": 13948,
+      "sha256": "dbbda8b0774ab2e28afe76b3240c36705270a88c3b1de1c1013ddc2d01221995"
     },
     "topSilhouette": {
       "file": "shot_kal_top_silhouette.png",
@@ -900,24 +900,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30932,
-      "sha256": "9319658abde029629b1a26b5d09b4c6aad0f360442854e924ee359a84872d007"
+      "bytes": 29842,
+      "sha256": "b43a3f10b043fa978d1f799a13bc465260e9924d2637a5e0a681480f0c6f80b6"
     },
     "modulesSide": {
       "file": "shot_kal_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28794,
-      "sha256": "3fa0dae7d229ca2f9833b177277521d6291d15e5c7c725edb74dedafe07f0dbb"
+      "bytes": 28806,
+      "sha256": "65029fb9149ffb5ad3eeefc92b06a0965be4c7da07aed4ca52d6e365a50fdb62"
     },
     "crewSide": {
       "file": "shot_kal_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28510,
-      "sha256": "c73f6e3fbe8c75de254362af69bcb33b398ef4d9fbd9f2b6dc84335be348265a"
+      "bytes": 28538,
+      "sha256": "76ff3df224082e2efebef23ab4294eafdc25d3f74e8abb10f32fac80cd335b9a"
     },
     "markings": {
       "file": "shot_kal_markings.png",

@@ -3670,7 +3670,7 @@
       }
     ]
   },
-  "geometryHash": "5ec49145",
+  "geometryHash": "484f12e0",
   "metadataHash": "0a5aa040",
   "presentationAnchor": {
     "xM": 0.003,
@@ -3686,7 +3686,7 @@
     "version": 1,
     "issues": [],
     "roles": {
-      "gunmetal": 7,
+      "gunmetal": 8,
       "fittingPaint": 2,
       "trackSteel": 1,
       "wheelTire": 2,
@@ -3731,14 +3731,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 31238,
-      "sha256": "6da89baaaf918e1e24c8a208f151de56c9bee8a64b616155115ae86deb1e426b",
+      "sha256": "73511a0ac2be1d0ae39d31289939f03cd6425f97cdee37b6fabb0ef8722fef19",
       "thumbnail": {
         "file": "thumbs/upior_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11982,
-        "sha256": "80510e7146f83b9e47947e92778cd5c8dc7918d48035c277995fc9ea51c252a3",
+        "bytes": 11788,
+        "sha256": "a0735f6643bffabfc39fabb79c575454fb5c8c996f20952f85ba1a9f0a29feb3",
         "frame": [25,106,229,249]
       }
     },
@@ -3747,16 +3747,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24372,
-      "sha256": "8ae1ce95e263bb13eaa51b1cca3a9c26db918a5a6d7f38453ee16e2ed98eb62f"
+      "bytes": 24368,
+      "sha256": "752f013a7cc685c6a3dd64c6b4dd92f2ecea7b78c50719139a75577fe5c5de0b"
     },
     "side": {
       "file": "upior_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17254,
-      "sha256": "e30c1e1e41798d14d7d5c4a83d3122c9668e267e9d1e9341b43928c507c6e8b7"
+      "bytes": 17260,
+      "sha256": "4a431d5260e7092ca581f80df7d84644a704e571dc5ad9b76d261b24bb56ca7a"
     },
     "topSilhouette": {
       "file": "upior_top_silhouette.png",
@@ -3771,32 +3771,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5145,
-      "sha256": "30858f4a3af466364dbb62f0531f208375b7513ba240b8f11d4c6ff4d6f41928"
+      "bytes": 5141,
+      "sha256": "9ca183d49ce6aa6390d242582010af784500f60463ac029cf375ce7f04ad8e8a"
     },
     "armorSide": {
       "file": "upior_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52938,
-      "sha256": "baa7adbb35ec5819969358bb08c1e360af2f13e73ab8df99624c65d6851a2ab6"
+      "bytes": 53572,
+      "sha256": "a96cab48f5f38ec38858a263f1f132e160dad9e228ae3120f35f434502ee0041"
     },
     "modulesSide": {
       "file": "upior_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42200,
-      "sha256": "aa11a8317913d90fc89537ca7805250df671b87f1b200782f93580c702f33b0f"
+      "bytes": 43262,
+      "sha256": "d33d11c4cb92e5ac88d26761a62e8a76fa9c15dc90fee8660e88259c5f6efe23"
     },
     "crewSide": {
       "file": "upior_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42280,
-      "sha256": "07ecfee0e5651f3cc2b55dba52194d162cac40abb027d3c4af74dd06cf414efe"
+      "bytes": 42496,
+      "sha256": "ba1047dcc34d036007d680a80fe50f5d7aecd4de0ad3a5acea466f3704566d60"
     },
     "markings": {
       "file": "upior_markings.png",

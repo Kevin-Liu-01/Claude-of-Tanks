@@ -1324,8 +1324,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -1337,17 +1337,17 @@
       }
     ]
   },
-  "geometryHash": "362a2f55",
-  "metadataHash": "f8649590",
+  "geometryHash": "b8bdb2f1",
+  "metadataHash": "d47e1005",
   "presentationAnchor": {
-    "xM": 0.0014,
-    "zM": -0.081
+    "xM": 0.0013,
+    "zM": -0.0827
   },
-  "presentationHash": "b13daf42",
+  "presentationHash": "c779f563",
   "presentationProjection": {
     "centerYM": 2.7014,
-    "topHalfM": 6.5096,
-    "sideHalfM": 3.2548
+    "topHalfM": 6.5114,
+    "sideHalfM": 3.2557
   },
   "appearance": {
     "version": 1,
@@ -1395,15 +1395,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27678,
-      "sha256": "88c6822be03651c5bc652f59ffa0b47ea0d95eb720fcc8ad5af9cc90505a81d3",
+      "bytes": 27898,
+      "sha256": "acb841c044c3036d72535f84c88b5ced9095e2207c262c7235f799dd58368c5b",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11192,
-        "sha256": "a6af7376640635b9ef6afb11f3a06e0178aa563147a3c261386c11a08da4aaa9",
+        "bytes": 11418,
+        "sha256": "2e89bbbaa5e8341e93db17182e76525793eeb6408af6ec39d527c18dc9b4a5c2",
         "frame": [21,85,226,247]
       }
     },
@@ -1412,56 +1412,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9936,
-      "sha256": "dda11498c7f3bd27f777e9c04348f12ecaefb1b79ebc3796fdb3c2cdcde8f628"
+      "bytes": 10654,
+      "sha256": "4562d633aea70a4a28b5cc833ab43bfa230f0c691fc1838896a0b2cd472049f1"
     },
     "side": {
       "file": "t80uk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10842,
-      "sha256": "2ffbba8a2d066745f99eedabe3f907a03a0bea8398894a42017f2deab80b3011"
+      "bytes": 10826,
+      "sha256": "480559c2f1852d64b8e6858c9e9773ca2bf90094bd42af0dbb5cf471c809618d"
     },
     "topSilhouette": {
       "file": "t80uk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1214,
-      "sha256": "a9c3c6a5d2f19bc6e05dbfcd19fe350a34bbea18a229472cdd48720aa1518caa"
+      "bytes": 1275,
+      "sha256": "0d6f9a02c8e1f66863fbc3512476c1ba6e551dfb60c8667ea2ce11fdad327e60"
     },
     "sideSilhouette": {
       "file": "t80uk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4883,
-      "sha256": "c9e07f83c28f8806cbbccefb2fd7f32b43b828c66ae7b12a88c40b84f591fdc7"
+      "bytes": 4870,
+      "sha256": "24dc7303206be58b17631bdc71ebfd7f1fbd603abad3acf40ec9baae1d8c4535"
     },
     "armorSide": {
       "file": "t80uk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24948,
-      "sha256": "7f7cfe141e25dbf3d5daec82a12769ddc6e8b1a0773e5081f24a3af34b1f2460"
+      "bytes": 26266,
+      "sha256": "62ebef7b26533f5e16c7197276d7325e69400dffc5e7fc978f348bb697c116c3"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23954,
-      "sha256": "6a450f9a8bea456ea685723a0950c0b92344793f6b3d90eed55aeb7c2e1dc4e9"
+      "bytes": 24146,
+      "sha256": "2fd0ce03cf5e08e61fd25f2fa306238241f772ff7be3a669d45ac0d7cd80b341"
     },
     "crewSide": {
       "file": "t80uk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21198,
-      "sha256": "076ca22c60c23fd51668a8a01cf763b40c5f71f3da12c7cdf1d8603a184de656"
+      "bytes": 20848,
+      "sha256": "372e4e8955c639c9ca8f0bdf210a5ef9757ffccf47bc3ad22c7e3d57adf7d7fd"
     },
     "markings": {
       "file": "t80uk_markings.png",
@@ -1474,8 +1474,8 @@
     "technicalLabels": {
       "file": "t80uk_technical.json",
       "mime": "application/json",
-      "bytes": 4692,
-      "sha256": "13b2aa8b5db36db8cc8380c7e4373e9ad96afbdc9ea0039c5e7c1baf79466b1e"
+      "bytes": 4685,
+      "sha256": "6c977ded3d4620e3b3619d5e91807d23443b48009538e5863c3788a2cafd4970"
     }
   }
 }

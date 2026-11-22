@@ -1015,15 +1015,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29586,
-      "sha256": "bc5d78a03ddf255515df26317e734a1d3850766267743c9a3684de90ee3c41b4",
+      "bytes": 29596,
+      "sha256": "1bfbe86edeea5fd0a7656d640f758a3e4bd89056db7691cabaca3cc480160037",
       "thumbnail": {
         "file": "thumbs/spz_wotan_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11086,
-        "sha256": "715e3c30460dd823d25a0b3c0a60d785db530f7806b1be5c0c1d02ef4e735c8f",
+        "bytes": 11154,
+        "sha256": "2aa2dbb2db5e673ae34759afac0d9a6bb092957302fe907d9eac0a5a71debf9e",
         "frame": [26,106,230,250]
       }
     },
@@ -1032,16 +1032,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32322,
-      "sha256": "3d10785fc9240891b04896f5e48e34a3441de3115e5c53756083663fefa79741"
+      "bytes": 32324,
+      "sha256": "7926216db6f55372488457e43b0e961abc3b9a0f0e99260e1900b6f7d6829c16"
     },
     "side": {
       "file": "spz_wotan_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 22176,
-      "sha256": "0ad1c618ee09c271a320808d58a35d08885466a22021e04e03606cbfd24f76b3"
+      "bytes": 22298,
+      "sha256": "a1931f1f56d3b0e689c71e9c34860c0af0d73c8575fb79df9d07064496884cf4"
     },
     "topSilhouette": {
       "file": "spz_wotan_top_silhouette.png",
@@ -1064,24 +1064,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 54290,
-      "sha256": "e84b1c7096b10194f1dbf87530afbde0bc84016b79d1056f0bb8e13dfe756a06"
+      "bytes": 54356,
+      "sha256": "b79223a0b893d6a04b821ecec73691c0dfc0799c2bd12630d7027732a6254bcd"
     },
     "modulesSide": {
       "file": "spz_wotan_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 56032,
-      "sha256": "d0bdc5279dfce829596e8728da751883c9041c44280ded4c0848feb999be05fc"
+      "bytes": 56306,
+      "sha256": "92478b560541ac750b409429f0b8c7b3afeb2a527246e21ddee82cbf2cd31dbb"
     },
     "crewSide": {
       "file": "spz_wotan_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 51436,
-      "sha256": "3b47cc261393a65fb6f1860ed18382bdb93269fb276edc0484393b360ffa17b8"
+      "bytes": 51760,
+      "sha256": "223a6a091bf5129c58c38398cc0fcb22cbab33faa307eed63fc8f50e75419c3b"
     },
     "markings": {
       "file": "spz_wotan_markings.png",

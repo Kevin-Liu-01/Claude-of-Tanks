@@ -1021,7 +1021,7 @@
       }
     ]
   },
-  "geometryHash": "362897d5",
+  "geometryHash": "cb34bd06",
   "metadataHash": "77bd3083",
   "presentationAnchor": {
     "xM": -0.0035,
@@ -1080,15 +1080,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28506,
-      "sha256": "b35fd9f52983ae5c4ce8958b32566a7b1d7032a59f2ebf4d39fe88b6593486ea",
+      "bytes": 28576,
+      "sha256": "858d1e32a7306bf5d6b1ee219cd824bfc62978c6992f252ec0c5acb904f5186a",
       "thumbnail": {
         "file": "thumbs/christian2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10968,
-        "sha256": "9fc3dc641f4d900375dc236df527cd9db6ccb400826f95148a7b85479549c0a1",
+        "bytes": 10972,
+        "sha256": "afb619d83cae70a1dccd6fd00aacb7662963a7dbce65c389cae9af077089c53a",
         "frame": [25,116,225,249]
       }
     },
@@ -1097,16 +1097,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19234,
-      "sha256": "6c788d2a6bdd0248a69cb0ff9f7f494e77620868ec32e5a24eff01a57dde4f58"
+      "bytes": 19200,
+      "sha256": "877427676298fded2577658ce9dc0f8cb70f05625fa3bff20041f1cd08b3bdf0"
     },
     "side": {
       "file": "christian2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14636,
-      "sha256": "82f12342fc9b0acc9234188b8da7d55f92ed7fb9e5c54213598ea0f910719503"
+      "bytes": 14642,
+      "sha256": "613f5258d70fb9cbcc287274058e0015a095455775df838cdf92d25776b72193"
     },
     "topSilhouette": {
       "file": "christian2_top_silhouette.png",
@@ -1121,32 +1121,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5187,
-      "sha256": "b6d190e3d8407ad0ebe5c3dd717d5163c4a5d395938b81cdffab3ffd52da1a5a"
+      "bytes": 5173,
+      "sha256": "0c18a2d9f344d222ec265d460af3a49990ed5a48bd41d47e87353b728f83ddb3"
     },
     "armorSide": {
       "file": "christian2_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35422,
-      "sha256": "e889bd7b243a17935a6d6ba3683b974fc38fca09f5570bafd900ef60eb7baa30"
+      "bytes": 35408,
+      "sha256": "8f839d7dbab3ed7c74440e99a7e7278e45c2e8d12e26c827f0ef8c8553ae134b"
     },
     "modulesSide": {
       "file": "christian2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34960,
-      "sha256": "657271080b28eb051b4698735e47c61b185966950c809d641fbd502ac13aed78"
+      "bytes": 34946,
+      "sha256": "ad3ae8ac1e1c2e7106a0853e3f656e976434eb3ae8789c584ac9b53e44b21148"
     },
     "crewSide": {
       "file": "christian2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32582,
-      "sha256": "0d7f830ade42b81c5032d505d0df70456914b82eebc4a90f9ec5caf1edac48e8"
+      "bytes": 32516,
+      "sha256": "ad0b61fcf1bb5d67a3f171055e78dfaf371d7a2e3925ea472e22f11badba171c"
     },
     "markings": {
       "file": "christian2_markings.png",

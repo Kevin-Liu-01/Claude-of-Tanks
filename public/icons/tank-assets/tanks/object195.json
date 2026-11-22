@@ -610,15 +610,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30464,
-      "sha256": "cea8204d5ebd35e7f1e30eb1185a84bf98fdc101b426d9482ce37b12ed000750",
+      "bytes": 30402,
+      "sha256": "977af628ea8815387cfe6ec918275318c07e2b40d32f93f5df2e4b3043154b46",
       "thumbnail": {
         "file": "thumbs/object195_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11904,
-        "sha256": "5e6f2ec1830f89a7042bdf47928fbd1b0f90d623fe5ba0850cb66cd954cad199",
+        "sha256": "677fb7b43075236361766a898a65f25c0babba27a9c9bbff94a2dbe95460a2a9",
         "frame": [20,98,228,249]
       }
     },
@@ -635,8 +635,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13258,
-      "sha256": "da1c57742d1e8d3d5d29113a851bf72c3934a1a8658a955afa2a3085080e80ae"
+      "bytes": 13208,
+      "sha256": "55333db3324d4723f7bf22a5deaceee61b3010365876f9cc231a286e49f6db05"
     },
     "topSilhouette": {
       "file": "object195_top_silhouette.png",
@@ -659,24 +659,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31350,
-      "sha256": "d5e798ea02e6db8cc82bd0f458fccb6f4a3a3e59df7927003e3effd025966141"
+      "bytes": 31348,
+      "sha256": "b731448b806977b39715527d629af55a8b0d4972d29766cfd3407e31c338f43d"
     },
     "modulesSide": {
       "file": "object195_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29694,
-      "sha256": "243d7a14ffb80e013016bcdb911b2a0526e351f47eeaf075101234550e61fb2d"
+      "bytes": 29654,
+      "sha256": "9919d7b6d965eceb8023f9e1a57f5c27c53b18fe8b5b94709d1755532e21e004"
     },
     "crewSide": {
       "file": "object195_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25870,
-      "sha256": "c89bf56c83c170830df38d5c2aa3a299dbc3610b663defb3f6279ac5a6feb343"
+      "bytes": 24806,
+      "sha256": "bb711f4edcf5639326a71dd941d63f1505ad3068f92e784567738398bb6c27c7"
     },
     "markings": {
       "file": "object195_markings.png",

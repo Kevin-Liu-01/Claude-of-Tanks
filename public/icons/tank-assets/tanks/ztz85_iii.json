@@ -1098,15 +1098,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25920,
-      "sha256": "cbf4ce8ab233d24ca9c750cf8f70fe9413af2ff4fdf38eeb8682fc33519adf38",
+      "bytes": 25754,
+      "sha256": "7d123e7a51076067f188c0fb7014942f65fa9db0bfa28d62d96c257d57dc2fe0",
       "thumbnail": {
         "file": "thumbs/ztz85_iii_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10444,
-        "sha256": "fbea6ff93ddc6b59c4ac2026b7ffc284d7a0f1b8b12cd1a6b0c5d3d92a53d897",
+        "bytes": 10458,
+        "sha256": "49d3d6f99d48f92dbc4ce21d3f1523b51e1cc3cdfb7a84cf0e04f762e2bee2a0",
         "frame": [2,120,224,249]
       }
     },
@@ -1123,8 +1123,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8408,
-      "sha256": "bf0d28f89fe9506ffc60e540984b9d32887079ab7e7986dd4ce60ef29c404e65"
+      "bytes": 8402,
+      "sha256": "38511d7c5eecbc555bc3a33bd5d1f29c671426b738b3045ae569480e2613fcd3"
     },
     "topSilhouette": {
       "file": "ztz85_iii_top_silhouette.png",
@@ -1147,24 +1147,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19062,
-      "sha256": "36b82581c2aca3cf213599e60c7d7b4ac5da5a71ee36000f1a09da51ca5695e6"
+      "bytes": 19060,
+      "sha256": "6ee35cd704b661eb8ef8ad7550c5cab59bfbb2c56891415dac7ab005f341855f"
     },
     "modulesSide": {
       "file": "ztz85_iii_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18776,
-      "sha256": "3bca44d2ea6e8587a4ca971a8650a926056dd0e81c1b2a2123678f4e0f370bec"
+      "bytes": 18756,
+      "sha256": "35d62fdf7301abd4fab0c75de231a4ae5c4c7bd70b1e30e03b905f1a9094339c"
     },
     "crewSide": {
       "file": "ztz85_iii_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17318,
-      "sha256": "511693dfaee6698b57061da3a59a49d54314dac7ac2a43b0fcd823d093c3daf5"
+      "bytes": 17344,
+      "sha256": "82166685b387214fef67e9e0304c2c9a7165810ae1d8c28d18fcd8fae0023258"
     },
     "markings": {
       "file": "ztz85_iii_markings.png",

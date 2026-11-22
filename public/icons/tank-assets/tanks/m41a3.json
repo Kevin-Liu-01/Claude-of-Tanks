@@ -753,15 +753,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30592,
-      "sha256": "c2dc847d052511b8b0196fb5656f324c07998c94e18e75fa3a4496b5041e7359",
+      "bytes": 30480,
+      "sha256": "060d77dd4612ae2c9a29795200f320cc785156a0e9f52f36405b3105f86b2a11",
       "thumbnail": {
         "file": "thumbs/m41a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12424,
-        "sha256": "31f5550162eb5f3ac0c46e820f6b13977e5fdde946872f05aa9fb80b51db645d",
+        "bytes": 12426,
+        "sha256": "ac02995508886b2f6e1901743384c02ec347f1278d0c6915b42b17e6944cc194",
         "frame": [23,112,226,249]
       }
     },
@@ -778,8 +778,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14588,
-      "sha256": "0be8159f0332d7da6d402a9fe7f5d560766d8194b9bc7f323e041d4e77e11d2d"
+      "bytes": 14602,
+      "sha256": "11ff9c5fb5b241def401ea8767e1b9f3e3c14e37509f58f22fd3b654b8788d6b"
     },
     "topSilhouette": {
       "file": "m41a3_top_silhouette.png",
@@ -802,24 +802,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30238,
-      "sha256": "50eafb2f83b607c8216ca12ecb78096b9ce36e1533b9e0ecb0ba8f05456b9278"
+      "bytes": 30318,
+      "sha256": "b5139a5f04ff63a0b596e54d2450a06d046bcc02bc3a4d526a6bc359dadf20ba"
     },
     "modulesSide": {
       "file": "m41a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30552,
-      "sha256": "dc23e8593dc51de39bbb03521674e2774d7da608d89160acd90bbf46112560b9"
+      "bytes": 30556,
+      "sha256": "81aa481ecfc83944a38ca160a9012efd48792b8191d8e82ef2db25308bcd5876"
     },
     "crewSide": {
       "file": "m41a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30244,
-      "sha256": "ac493faed9c4b9d775d61f7bb3e0c51c31d422eaa6188a0b786ff7cc21224ee5"
+      "bytes": 30278,
+      "sha256": "ec3bb684936a9a4a33079ed6a12578485811cc1be433c3f3ed6ebbd73756e9ea"
     },
     "markings": {
       "file": "m41a3_markings.png",

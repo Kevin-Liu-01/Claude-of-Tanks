@@ -1049,21 +1049,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7366,-0.8489,-0.3911],
-        "max": [-0.3569,0.5032,0.3889],
+        "min": [-0.6966,-0.7798,-0.4157],
+        "max": [-0.3069,0.5723,0.3616],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.2349,-0.8387,-0.5795],
-        "max": [0.5946,0.5491,0.2561],
+        "min": [0.2849,-0.8265,-0.4747],
+        "max": [0.6646,0.5612,0.3561],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "d9a4e091",
-  "metadataHash": "749dcdda",
+  "geometryHash": "112e2cea",
+  "metadataHash": "42964b06",
   "presentationAnchor": {
     "xM": 0.0002,
     "zM": -0.0585
@@ -1122,39 +1122,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52312,
-      "sha256": "439b2edcf23f421f670d4d176f201ee6d42d6c9346f7a836989d08cd5fe563f2"
+      "bytes": 52510,
+      "sha256": "d9c9a4a39e790d1bc8fa42e9d677c9fc843e4760b66666c05ba750a54c2ac210"
     },
     "modulesSide": {
       "file": "m6_linebacker_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 56138,
-      "sha256": "06f85b62c8bf016cc523c7d6aeacdd65482e18c3a454c3cb902a2f4fcdab31f6"
+      "bytes": 56366,
+      "sha256": "b3ea1a8a2aa1278bbfc295eed1249e5b7d7400ceeba992244a3222f2abb266cb"
     },
     "crewSide": {
       "file": "m6_linebacker_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 53172,
-      "sha256": "63362c29859aa52595aced1704f235bbe931878c92f6fb4460a9a2421d7293a9"
+      "bytes": 52736,
+      "sha256": "488e770c1ac77c1b9d59f89899c5141693335f9eca3929d6cff8bef6c59db674"
     },
     "angle": {
       "file": "m6_linebacker_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33650,
-      "sha256": "f862dcb64b8f5602d2dcdabc12461fac347ca17a9ac75bc7b89718ef24f26270",
+      "bytes": 33688,
+      "sha256": "b29bbb410358f37cdbd21b41351c4ccac18ef2d0c4adfc8d9512acaff9c97e3e",
       "thumbnail": {
         "file": "thumbs/m6_linebacker_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13318,
-        "sha256": "a5389eea89f9767802e211694c43d8776e9a4a4b30af8ec144c6edf5029b5aa4",
+        "bytes": 13330,
+        "sha256": "f504bc1a8c796c7814b7092fa9362b9875ca30c73514721b158c47c8381c8da5",
         "frame": [25,95,230,250]
       }
     },
@@ -1171,8 +1171,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 26020,
-      "sha256": "779d095e1a08665cbbe5e4460acb9a15aa296ca97ac34f23efd2837319f862f0"
+      "bytes": 26042,
+      "sha256": "56c9f1f76273ede6633e1545310a7bdff99f285b8aa4089044e702486ffb5488"
     },
     "topSilhouette": {
       "file": "m6_linebacker_top_silhouette.png",
@@ -1187,8 +1187,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 6282,
-      "sha256": "0709c422788ffae2dfff477398634ef8b3d15e5c59ab70cde44dfbf3976792f2"
+      "bytes": 6291,
+      "sha256": "c8b17184235828c788c728ee16b97c35c4ad7220f5964a4a16d58378f1d7d647"
     },
     "markings": {
       "file": "m6_linebacker_markings.png",
@@ -1202,7 +1202,7 @@
       "file": "m6_linebacker_technical.json",
       "mime": "application/json",
       "bytes": 5583,
-      "sha256": "8856e6d18d5825aa05381943409867208d5b365cf602a0530e011fd5665f1212"
+      "sha256": "fd588ff58fb638627b5435673cff123fef9d5246837b5244147b62323dcb8bf4"
     }
   }
 }

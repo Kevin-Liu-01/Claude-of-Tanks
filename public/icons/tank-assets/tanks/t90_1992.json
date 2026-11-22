@@ -7394,7 +7394,7 @@
       }
     ]
   },
-  "geometryHash": "307dee1d",
+  "geometryHash": "0b02c8f1",
   "metadataHash": "990695d1",
   "presentationAnchor": {
     "xM": 0.0074,
@@ -7452,15 +7452,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26866,
-      "sha256": "e5e173eb37bd2e9ce5d38cd5ea44c769744c7939c7eaecce21c3f3c92db4bdb4",
+      "bytes": 26858,
+      "sha256": "08af85b9767d45f151f9de6ed228fbc73683ed815ae68072577ad8c327fa60e9",
       "thumbnail": {
         "file": "thumbs/t90_1992_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10730,
-        "sha256": "feed699e9b58ebed101325466c141f228fff81342834368dba1a96a8f7dcbab1",
+        "bytes": 10726,
+        "sha256": "24fabb35b50746d52d930bb90f008b5dd5fd9ab38a30f5bd26f38a8cc18b2806",
         "frame": [24,117,225,250]
       }
     },
@@ -7477,8 +7477,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10436,
-      "sha256": "4a2d82094ae76174327b31d8742c9f73c3d1c5c4d6626b9b2f304878d6f66323"
+      "bytes": 10458,
+      "sha256": "e60f247fff1b1e682e5afb3b24cb5589dac54734aabb87d078fe5b393ff1e943"
     },
     "topSilhouette": {
       "file": "t90_1992_top_silhouette.png",
@@ -7501,24 +7501,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24580,
-      "sha256": "fb9780512d8c35bdaf7a89bf689ab0b5c50084d55fede444130e71350d1eb53a"
+      "bytes": 24600,
+      "sha256": "2615e445b21a40d2af6d589364a74d70c333f12d20f794f28428e903f900e2be"
     },
     "modulesSide": {
       "file": "t90_1992_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23338,
-      "sha256": "3824e5a6b1fc0a6138075e1d423704a3b96c5907383ad13759419248b395d04f"
+      "bytes": 23362,
+      "sha256": "40ab842b7314e44bf1e89d3571772f620a4b777a1ca20c5282d32397dd6f7973"
     },
     "crewSide": {
       "file": "t90_1992_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20540,
-      "sha256": "b167c4a0adc3f950af7f70433d6647d9ba6841f4e394da6d77bb96adbefc2a6a"
+      "bytes": 20560,
+      "sha256": "aa8bbaffbab0e8bdad17d40956894939a592fdfd2f028612ad79dabb9fa46bc9"
     },
     "markings": {
       "file": "t90_1992_markings.png",

@@ -550,15 +550,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26044,
-      "sha256": "b9c5c842347ee20f9e4e0d4bf9dfdfcf20080dc0c4d8ea1eb8c185322f568525",
+      "bytes": 26046,
+      "sha256": "327f8b6a411f587b98dec6e68c59ffd6016d48a48984269c4ea15f5628044a6b",
       "thumbnail": {
         "file": "thumbs/t95_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10824,
-        "sha256": "435ba6bf3d68063a7654bb28df59b74a9f0f05126970dcdcffad6228155e21fd",
+        "bytes": 10828,
+        "sha256": "4a40fa9fd52e604fa055122b69ef260b8fa4186ad23a618326326f1ef403a751",
         "frame": [25,133,225,246]
       }
     },
@@ -575,8 +575,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10404,
-      "sha256": "cdb145e3f1a6997f5ae5fa0d9ad365c962b5e8c18146cd196759ae2cd09b5b07"
+      "bytes": 10398,
+      "sha256": "593d530f03d64dcd1fc79c08dc3a0891f58dd5070b894308b09b4f8cc754bb20"
     },
     "topSilhouette": {
       "file": "t95_top_silhouette.png",
@@ -599,24 +599,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20194,
-      "sha256": "6e0baf20fb2a2aebf7cb51d54c51da20f6a56bd2387d94e5739328cf45d2268d"
+      "bytes": 20182,
+      "sha256": "87aa11a92caf66f76692a823fec8152e010a39e58e03a3143d40d3bc8843fcbd"
     },
     "modulesSide": {
       "file": "t95_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22432,
-      "sha256": "cb56e338a4715cff1a4985177166446a69170c10de4a61e6ae9ceeee258ad046"
+      "bytes": 22464,
+      "sha256": "27fe08308083dcb206f7bfc442501b2d3ab478733b917ba41f257f58f820833e"
     },
     "crewSide": {
       "file": "t95_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21352,
-      "sha256": "7e02770b996135d90babbddc6f893a965e9fe0e317ca85023513bbfb766f0c40"
+      "bytes": 21382,
+      "sha256": "0a21ac823d4552e8230135896822a6c13cf8622ea31f40ca8bb06515cb95faf2"
     },
     "markings": {
       "file": "t95_markings.png",

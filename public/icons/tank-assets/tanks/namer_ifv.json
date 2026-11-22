@@ -476,7 +476,7 @@
       }
     ]
   },
-  "geometryHash": "ed7b802a",
+  "geometryHash": "3d620e7b",
   "metadataHash": "345c1eef",
   "presentationAnchor": {
     "xM": 0.0016,
@@ -536,39 +536,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40646,
-      "sha256": "654696e121c76d86ebc7a96f48684acc2cf05f57dd8e713f06697379dfc1badd"
+      "bytes": 40636,
+      "sha256": "7ef754a2e82a67d7b4e35b07ea3a293c6f2bad987820c0948b79182e01d9b93c"
     },
     "modulesSide": {
       "file": "namer_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42040,
-      "sha256": "3550bc9c6b3a078240d18115e35be9012d3b766b44fc0cb73e8f22d0c3b71dd5"
+      "bytes": 42162,
+      "sha256": "494d1a9b5e454ac632317bee34b01cc9a7ea2268c9121380f2d2a1310726e59e"
     },
     "crewSide": {
       "file": "namer_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40472,
-      "sha256": "57ff549fb96fed44a8bf9977cb90131872b789527259df801655b2ca11a62125"
+      "bytes": 40686,
+      "sha256": "6a139334498a971b85d5be1ae7d5b9a1645948fbf4ec8c9686b9e50abb930244"
     },
     "angle": {
       "file": "namer_ifv_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27658,
-      "sha256": "167491bd95c69441a0be7418723dddb2dc8feb7eca319dbe409badf2dad7d070",
+      "bytes": 27662,
+      "sha256": "b6f9d30edda591a9f0e6650c5accae5a3f3169a0e821ccf731dc1955ba245ca8",
       "thumbnail": {
         "file": "thumbs/namer_ifv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11426,
-        "sha256": "16df65a880512a8abec959463eff1fc96b2331f8facceab56413ea12933d414d"
+        "bytes": 11402,
+        "sha256": "dedc3426ec94cc31aeda937217c155a9ef449f4ca25b87876041428c558bde4d"
       }
     },
     "top": {
@@ -576,16 +576,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17276,
-      "sha256": "65bfb6583fc9d4619a177c6e4d9c50cdc9d99fb064d5e5225630189fbde171ae"
+      "bytes": 17264,
+      "sha256": "f71cd8b18ba3f129acaddb7fe4690b3658addea6b62049581f8be562dc8da408"
     },
     "side": {
       "file": "namer_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17568,
-      "sha256": "1448cf800ece2dfab6734470a19cddb9128739cf7d2742d3dbf2badd0904121c"
+      "bytes": 17634,
+      "sha256": "e30715b814c69fb3fa88b06e16a618fe2a291333a082c98e313a3e9890b977f5"
     },
     "topSilhouette": {
       "file": "namer_ifv_top_silhouette.png",
@@ -600,8 +600,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5817,
-      "sha256": "f7d7139ff6e69ab7f367382134e00e7e350693cfc7fe3f45109ea066652546dd"
+      "bytes": 5810,
+      "sha256": "19d8b20f10019952f0e74212c066bdc27912785bb522e4d74744321348a917ad"
     },
     "markings": {
       "file": "namer_ifv_markings.png",

@@ -801,17 +801,17 @@
       }
     ]
   },
-  "geometryHash": "013d6b62",
+  "geometryHash": "6b2caa44",
   "metadataHash": "b8582099",
   "presentationAnchor": {
-    "xM": -0.0001,
-    "zM": -0.0399
+    "xM": 0.0001,
+    "zM": -0.0417
   },
-  "presentationHash": "d09c8471",
+  "presentationHash": "409c54d9",
   "presentationProjection": {
-    "centerYM": 1.9402,
-    "topHalfM": 6.3015,
-    "sideHalfM": 3.1507
+    "centerYM": 1.9627,
+    "topHalfM": 6.3034,
+    "sideHalfM": 3.1517
   },
   "appearance": {
     "version": 1,
@@ -833,7 +833,7 @@
       "gunmetal": 10,
       "opticGlass": 3,
       "wood": 2,
-      "unclassified": 20,
+      "unclassified": 16,
       "gearShadow": 2,
       "canvas": 2,
       "machineGun": 4
@@ -863,15 +863,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23584,
-      "sha256": "2a61e39338a082f7c7aaa419e0f2bfdd0942b5008a03f241bfc6d7cfc6cd4f77",
+      "bytes": 23938,
+      "sha256": "2ae034ec5bb9106f96c8845d30ee660edcafc413a590acda34015059b0561ace",
       "thumbnail": {
         "file": "thumbs/centurion5_2dk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9632,
-        "sha256": "333b087294d2abfc23cc09529231daee6d08008ec7e0e4007c538ae96d6254d8"
+        "bytes": 9776,
+        "sha256": "a4c70cdab6fe8c854dfdc89866668de6a1da97b83923942b9320b62238dfcfbb"
       }
     },
     "top": {
@@ -879,56 +879,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10058,
-      "sha256": "293df39656430c04b994633070efafdc4bfca072769b4b8b24bd87dc60253ded"
+      "bytes": 10216,
+      "sha256": "efc75a4e9c79b5f098b3be573095c2f115bdd5196b6e54fd66f563e270ce9e24"
     },
     "side": {
       "file": "centurion5_2dk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10476,
-      "sha256": "f06ceb941f8a255c9696418676f35268643b947563de58136378a499291b64f8"
+      "bytes": 10840,
+      "sha256": "e6d2340f994726266b01335b854a70197282bc5550b13528cbce1d451342dc56"
     },
     "topSilhouette": {
       "file": "centurion5_2dk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1151,
-      "sha256": "e947276df7514f471851915ba00f1105abc659e9a994e4503bcdd03b01702fd6"
+      "bytes": 1176,
+      "sha256": "aff4e736fc41149036d5eb1a709828ad8a1d9040a10d260894dab598a453f595"
     },
     "sideSilhouette": {
       "file": "centurion5_2dk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4934,
-      "sha256": "b6164f8e21a20cf70410f882b87a3384d1b7e6bb7484f347a23dd9be6690b448"
+      "bytes": 5086,
+      "sha256": "49776d41c5b219b74dc8b2185e38e1224e56f701eaf4b19858109b104578714e"
     },
     "armorSide": {
       "file": "centurion5_2dk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26000,
-      "sha256": "3d8c6afcf61b1156836bba95edaf274598ddea652a31f5acf5582478ece9e31a"
+      "bytes": 26354,
+      "sha256": "011fc64271f2dbba30f8058539ff70e6aab7bb905422368625dd5587435e8481"
     },
     "modulesSide": {
       "file": "centurion5_2dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25576,
-      "sha256": "3708958ac8df2020d362d6b2044d7693a949c70ab5ded4551ccde96e9e956a35"
+      "bytes": 25142,
+      "sha256": "495bc40ae3020504c563377274a8c21eb9a5e322264a32c4bd7971372037d5f3"
     },
     "crewSide": {
       "file": "centurion5_2dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21924,
-      "sha256": "bf91b36443a7ce1285059b0fa188e1ae8915c222615d64771b4160921ec1f222"
+      "bytes": 22302,
+      "sha256": "3e13e2a4cad7c998d5e573f6e9b278180f9081933a129f525cf92ecc0f1297d5"
     },
     "markings": {
       "file": "centurion5_2dk_markings.png",
@@ -941,8 +941,8 @@
     "technicalLabels": {
       "file": "centurion5_2dk_technical.json",
       "mime": "application/json",
-      "bytes": 5475,
-      "sha256": "94ea5e0d619deae3d521eafa078049cf9598307f559904bd5baefaecf78f4ef4"
+      "bytes": 5471,
+      "sha256": "b4319f82d8db4f723a731b7c43d9c0b57ab5c824e8870b4d5f288497651dfbc1"
     }
   }
 }

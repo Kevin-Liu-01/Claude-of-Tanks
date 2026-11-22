@@ -859,15 +859,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23050,
-      "sha256": "f30e1216431bff700be1022f1d14ab953d6d70c5a3a354c9fd83dd3d6db1d380",
+      "bytes": 23060,
+      "sha256": "f18b2f62893cba710739da927b693b5865420567ac7feea19cf2e89285986c22",
       "thumbnail": {
         "file": "thumbs/centurion5_2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9466,
-        "sha256": "1229016a5a6e140426be01bfbcd65d3b9e45ccb8e209409f67900a0a2d0e01e3"
+        "bytes": 9462,
+        "sha256": "16a81882944608069371efdefdbbd757a049389d0feefedaf16cc663a8be40b8"
       }
     },
     "top": {
@@ -883,8 +883,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9464,
-      "sha256": "69eafa1b6dd52f62dec26c53b160cdba8d5b5590d70c28923384ea24b3460a19"
+      "bytes": 9452,
+      "sha256": "b1fd72adfac36aac96eaecffb759bad4f21d8887a717666ed542729858d78e75"
     },
     "topSilhouette": {
       "file": "centurion5_2_top_silhouette.png",
@@ -907,24 +907,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25956,
-      "sha256": "6846a78e05016dd5c813dd38d8e1a734db54b8654503c2dca9eba9461a607cbc"
+      "bytes": 25922,
+      "sha256": "915b44f20cea8ea7315c070363345b0e088774821ff34738789ab91eb416a4d2"
     },
     "modulesSide": {
       "file": "centurion5_2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24958,
-      "sha256": "1d0946c43c5f2744cd3bbf5e7c1b0be9830cf6e41f3560ef0e91e6f0c273844b"
+      "bytes": 24922,
+      "sha256": "9f27c89e8d39b92ed01625fbd5c6af446d878238a672c9a87defa7be82d6fe89"
     },
     "crewSide": {
       "file": "centurion5_2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21254,
-      "sha256": "8e92dab04404ad3d55ef206530327bd30a33c2fb8cc628952daa73c83e9408f9"
+      "bytes": 21300,
+      "sha256": "22a04b5c01fd0bf44ebe1a7c6056c3bee0b1b2c54c9fdd7c71630731700fef15"
     },
     "markings": {
       "file": "centurion5_2_markings.png",

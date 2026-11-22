@@ -885,15 +885,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28972,
-      "sha256": "e5e91ccf856669b0acb09c73be8ef4eee1d8a7486c57796b15a1c2c6aa1b9616",
+      "bytes": 28966,
+      "sha256": "6cac50bea17aa0e296e4547ee3cf1072079b176feb70badad54238b726948049",
       "thumbnail": {
         "file": "thumbs/itpsv_leopard2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12078,
-        "sha256": "84bcd6cf5dff37af0015fc468b7d52cceaccdef8e480869e22d5b8342b5cbe26",
+        "bytes": 12020,
+        "sha256": "64ea05e8fc4c96e984c2e5b7e62b66ac8472d761d3b0b8b66a42d377fd542988",
         "frame": [12,99,226,250]
       }
     },
@@ -902,16 +902,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12892,
-      "sha256": "0c905e8bdce6a7d193f5848943e99e318ebef4c6c39beef98e0f9e14109aa3af"
+      "bytes": 12908,
+      "sha256": "b69aa5fd7351bb19083a11fb649a08919c23d3621589a4f15aa6a7b45256865c"
     },
     "side": {
       "file": "itpsv_leopard2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12346,
-      "sha256": "f303b0533642490e80d1fc3aff4d80e3075fd32eeaec085f334b1030f20feab5"
+      "bytes": 12364,
+      "sha256": "d7cca2bc9969131408ee903dc0b98513def27a75ca7f9604699ec0c0cc9584f1"
     },
     "topSilhouette": {
       "file": "itpsv_leopard2_top_silhouette.png",
@@ -934,24 +934,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27240,
-      "sha256": "3ca0fc82147b120243a29130a5e806291ea20213b325371d4570125e77267f67"
+      "bytes": 27252,
+      "sha256": "cf706b87d4ca18f81cb17406a965ecb4158b165db64790754e36d5a1c08f2b6b"
     },
     "modulesSide": {
       "file": "itpsv_leopard2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29114,
-      "sha256": "92ff586f29949b90c10a54cf8be2c767e1117ff89f8ac41c81e1b0aa1935a6f3"
+      "bytes": 29036,
+      "sha256": "9601d0b3b2411d98a7758bde774cebd6a79c34966b0497288574a7480d6e10b4"
     },
     "crewSide": {
       "file": "itpsv_leopard2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23694,
-      "sha256": "8553c2ecc1f82fd28eba6ea6c97816ae428ccce49e185d1a62be58186e4c4e34"
+      "bytes": 23718,
+      "sha256": "0d34cdb41a710d63ba125742071551ba4fe3826657c4afdbaa12651ddad7b0ca"
     },
     "markings": {
       "file": "itpsv_leopard2_markings.png",

@@ -559,15 +559,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24896,
-      "sha256": "42056a99f133d701b093617964dd03e930f0f30fc81d1705fb58b06e66def315",
+      "bytes": 24876,
+      "sha256": "b08d4c25715124597571d357cb2203a44365d5e10d3e762df2906239317a1a00",
       "thumbnail": {
         "file": "thumbs/m48a3_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10370,
-        "sha256": "1fdacff747be37b0552aac70186c0ed78cb36ac3cd30eae18c58426780e4a8b7",
+        "bytes": 10466,
+        "sha256": "607a27272434f2ffd8c0ff8299f4d37245af1820213724b99803b1e8d9fccdcd",
         "frame": [23,109,226,249]
       }
     },
@@ -577,15 +577,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 11062,
-      "sha256": "1fa2c144fb7a7e2ff58be5d985267a2cc61ba94e61f45296b11913a2bc8395cb"
+      "sha256": "b8c9b6fcec933d51d3a952c9a3df53392a009b5b560df67b5fbf1eadc0d8a81a"
     },
     "side": {
       "file": "m48a3_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12560,
-      "sha256": "0a6d32eee66471225bfbb8c4e8426530047911c6df41b0f044a8c269f8cbee79"
+      "bytes": 12570,
+      "sha256": "b79de047a3293d93d1526fecdbe767beaa357331cdc7a9c0a4eb612c5ef5f373"
     },
     "topSilhouette": {
       "file": "m48a3_patton_top_silhouette.png",
@@ -608,24 +608,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30164,
-      "sha256": "3ed08fb173e149c06221e73a6f28511e6c571d3710ab74841a3180d113139b8c"
+      "bytes": 30206,
+      "sha256": "35ff577ea153826de7c1be099fd5f6817e3c74d5a931651bda19efee16fe766a"
     },
     "modulesSide": {
       "file": "m48a3_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29596,
-      "sha256": "f992b1913a2f1341bd204de122640c888cac5560176adf227618687fafb25d83"
+      "bytes": 29684,
+      "sha256": "792004d22b423142056fb3d06af465a775ac3127df13225205afc3c3179e0fee"
     },
     "crewSide": {
       "file": "m48a3_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26892,
-      "sha256": "581055bbe09bd51fb7b015b22758f4f25ece0414a47248cc3190d46a92f5cb16"
+      "bytes": 27032,
+      "sha256": "413bc4e2d189e98539baa3cf01b6c90fc388a8a454cba058eed171592567e2c5"
     },
     "markings": {
       "file": "m48a3_patton_markings.png",

@@ -1586,17 +1586,17 @@
       }
     ]
   },
-  "geometryHash": "3443d465",
+  "geometryHash": "85d49ffc",
   "metadataHash": "3ae9c5a0",
   "presentationAnchor": {
-    "xM": 0,
-    "zM": 0.0574
+    "xM": 0.0005,
+    "zM": 0.0537
   },
-  "presentationHash": "0eb5c6ef",
+  "presentationHash": "bf0cf87d",
   "presentationProjection": {
-    "centerYM": 2.1316,
-    "topHalfM": 6.3907,
-    "sideHalfM": 3.1953
+    "centerYM": 2.0996,
+    "topHalfM": 6.3946,
+    "sideHalfM": 3.1973
   },
   "appearance": {
     "version": 1,
@@ -1616,7 +1616,7 @@
       "gearShadow": 3,
       "opticGlass": 3,
       "wood": 1,
-      "unclassified": 15,
+      "unclassified": 23,
       "machineGun": 9,
       "ammoBox": 1,
       "canvas": 1,
@@ -1647,15 +1647,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31116,
-      "sha256": "f986e5b2f143a4a80729b4cbb63bc8e24283ec4c1bc8cb35d6c56ea5aceb685a",
+      "bytes": 30738,
+      "sha256": "4856901911a5fa2e2020eb694d6c0fd544e03a43e94c7230f2a0b02f98bff7c4",
       "thumbnail": {
         "file": "thumbs/m1a1_abrams_aim_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12386,
-        "sha256": "39fe1a3c303c14db28091adbca488d6004456006933baa7ba16e51ad7d8413ee"
+        "bytes": 12332,
+        "sha256": "550b93a74f2308d779b58772d134a61ac7596f2ce5a2288419550831895426e9"
       }
     },
     "top": {
@@ -1663,56 +1663,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17042,
-      "sha256": "78b0ef5669b2e6a9af68aeec2c7e7d7ca84ad7d67be4a4bb468945ba2ac5bc71"
+      "bytes": 17296,
+      "sha256": "62b341402397d4cc52c680f22ab101574a38329b79cf7d26681bd20afaf941c0"
     },
     "side": {
       "file": "m1a1_abrams_aim_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14152,
-      "sha256": "066b42f8954a3b43c67a8d20a9baeb2b196d9b337f9240673fa9171f442b6cd8"
+      "bytes": 15118,
+      "sha256": "c7702810659a41ec42c3e1826cefc559b5e7449859ff201942f58753bb836d09"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_aim_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1379,
-      "sha256": "08f446c12f8117a03978ed84cf53285c380a8b195cfc7553cd4e9695928a27a0"
+      "bytes": 1394,
+      "sha256": "73c10a151ee96247c8f40c41a1b3993cfb5d64a6a20fc9e295e38df59228761d"
     },
     "sideSilhouette": {
       "file": "m1a1_abrams_aim_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4507,
-      "sha256": "f687de5215f1b3df33c55e2a04ab6db6cec8b1e47f1a7d03154eacf6518e0f86"
+      "bytes": 4628,
+      "sha256": "4360bd5e9fee1e393872fe819aebd9659d216813b2e8ea1b54729e5d76697a03"
     },
     "armorSide": {
       "file": "m1a1_abrams_aim_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30330,
-      "sha256": "81e54b79df4310a69338a470b18673020f10804878a788bc482e0a152b7dca52"
+      "bytes": 30934,
+      "sha256": "b6f3a50a62290f3dcb3f4bb890eb5ca55b2b5f8ccc8eb6d60b3616583c9d4f5d"
     },
     "modulesSide": {
       "file": "m1a1_abrams_aim_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31178,
-      "sha256": "f88c57d91d13023b8312835958b0a74fd5db87df0baf35a1c3923a3e571da455"
+      "bytes": 31556,
+      "sha256": "08f3318e0a863bc5ebd079154c9e343ce6af906ce20e2cfbc74f5557ae7a4f1a"
     },
     "crewSide": {
       "file": "m1a1_abrams_aim_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29258,
-      "sha256": "e760e4e037e6250dcdf785bbf80b16e3ca9f6b297363d28bdd692cc90bc37f85"
+      "bytes": 30434,
+      "sha256": "a8b3b1f1789d09226a8812ac0ed44cc46ef79870fc093328b507bf51efb47bbc"
     },
     "markings": {
       "file": "m1a1_abrams_aim_markings.png",
@@ -1725,8 +1725,8 @@
     "technicalLabels": {
       "file": "m1a1_abrams_aim_technical.json",
       "mime": "application/json",
-      "bytes": 5016,
-      "sha256": "f3f7318312adee31a01d928d85e36e73b6489af25661275c7a50d28af96b11eb"
+      "bytes": 5021,
+      "sha256": "7bd46486b76c49cf37c6bb6d5c63f31d446d71d754885b54eb90982931816762"
     }
   }
 }

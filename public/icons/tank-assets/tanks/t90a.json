@@ -6475,7 +6475,7 @@
       }
     ]
   },
-  "geometryHash": "ae67f645",
+  "geometryHash": "35e61e75",
   "metadataHash": "4a5cfa54",
   "presentationAnchor": {
     "xM": 0.0011,
@@ -6483,7 +6483,7 @@
   },
   "presentationHash": "90f2f401",
   "presentationProjection": {
-    "centerYM": 1.6917,
+    "centerYM": 1.71,
     "topHalfM": 6.8325,
     "sideHalfM": 3.4162
   },
@@ -6504,7 +6504,7 @@
       "hullRubber": 1,
       "gunmetal": 9,
       "opticGlass": 2,
-      "unclassified": 19,
+      "unclassified": 21,
       "gearShadow": 1
     }
   },
@@ -6532,39 +6532,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19060,
-      "sha256": "f12de12a7580f333ac40a3975ff995dd34687959fa3c8130316a252cc16b5e5c"
+      "bytes": 19232,
+      "sha256": "a94389ca18694ee528b2af0c1248c1b9f687c4077ea6996798d272635799f412"
     },
     "modulesSide": {
       "file": "t90a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17970,
-      "sha256": "c95b93d378b7f9b3dc59ad5ea678d6b63bc125afc509564d96cefe35fdc9512a"
+      "bytes": 17936,
+      "sha256": "2c44cc09f99500283ffe253f87aeeb18152107ed7b0e1745ae7e76b16dd7073c"
     },
     "crewSide": {
       "file": "t90a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15584,
-      "sha256": "a8636d1396ef7e8d786a40606210f3719e570b176ca16b35a0dbafed4ac52297"
+      "bytes": 15534,
+      "sha256": "d0cc47c2d8eab864e6f1b07141f98bf5fa94d236e65853edb1e33f6783a0d61d"
     },
     "angle": {
       "file": "t90a_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26248,
-      "sha256": "292f33562d551dfb06989f98fb82dbd0bd014b73243c9a035871696b81cbe298",
+      "bytes": 26240,
+      "sha256": "753c45648a393d42c42931577ca6c5bdbd67aa7a7ca2d23271481cbd75fe0a11",
       "thumbnail": {
         "file": "thumbs/t90a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10412,
-        "sha256": "e98a232192a47632d78d1d929e27af90e2dcc223973cbd3aa24ef2ef80714d67"
+        "bytes": 10428,
+        "sha256": "d59121c77788559e722dd9d75dc74a8e065e2c88d87112dadb0472f1287c7d78"
       }
     },
     "top": {
@@ -6572,16 +6572,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12202,
-      "sha256": "9e8e1b36a1678cc583c51f7fb0401c1b8c4703c599c6e5ae56e698e78622cd8e"
+      "bytes": 12012,
+      "sha256": "9b236a11ce1803d2cf16975f2e0a4f54a37c5bf5107cd3ebf5b2db2446b4d51a"
     },
     "side": {
       "file": "t90a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9772,
-      "sha256": "796e9b99524074f5b25e0032a4abfea80f1bb6266c700a114da7faa5b4af3047"
+      "bytes": 11030,
+      "sha256": "30480afd4b9cff7a84e0ec7519d4da3a5b5f59b91bf4e9df195e6ba525dff5fb"
     },
     "topSilhouette": {
       "file": "t90a_top_silhouette.png",
@@ -6596,8 +6596,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4249,
-      "sha256": "336a266c16f4d35cdd5c7d70158c85f869201472bb74ec3cdae2aeb15a6ce2fb"
+      "bytes": 4330,
+      "sha256": "a00877104bffdd8c55e341a2e5d98bc88514b1d38cfafde20cf380d42dd9dc09"
     },
     "markings": {
       "file": "t90a_markings.png",
@@ -6610,8 +6610,8 @@
     "technicalLabels": {
       "file": "t90a_technical.json",
       "mime": "application/json",
-      "bytes": 4320,
-      "sha256": "5685785bb1cb679888d35acee44480ec421e5d051fec6f82768b4cf319a5480d"
+      "bytes": 4341,
+      "sha256": "64c5d3fd7cd8b37618d1f6fe69493532f1e989a1be44d17d4b9336119c6df226"
     }
   }
 }

@@ -945,15 +945,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28264,
-      "sha256": "790409115ebb5ed6a25fadb936422d9139973dfd19c5b7dea07fec2130f2d5e1",
+      "bytes": 28260,
+      "sha256": "7b7e93a76e1df9b698d915a5003349ea194a7b1e0c9a47e33658b159a83ce308",
       "thumbnail": {
         "file": "thumbs/leo2a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11428,
-        "sha256": "f3f56b6683dc8019e2296464520856f96d5f3a5d398cf9b5bc8749c829d53001",
+        "bytes": 11418,
+        "sha256": "0eaf90d13944152a4afa47cd59e4e5a1ee595fb7fe19891214acc0a59d5c9d35",
         "frame": [24,114,224,250]
       }
     },
@@ -970,8 +970,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12702,
-      "sha256": "336de95e935ed0aa026ea4b2782bbff04d0401121d01c354b3544309f758bf5b"
+      "bytes": 12692,
+      "sha256": "3060876322e364748ff2f3cbd561640700b6d318da00439599e8ebca4ff7e1e9"
     },
     "topSilhouette": {
       "file": "leo2a3_top_silhouette.png",
@@ -994,24 +994,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26724,
-      "sha256": "3fcadeef0d97284431b6c37a273839f49cc9147652d33c7b3e00e30eba7738ed"
+      "bytes": 26774,
+      "sha256": "33f419fec608acbb4dc3748cc66eb467f1aae91ba36c887c62ab9f5e82a54856"
     },
     "modulesSide": {
       "file": "leo2a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27960,
-      "sha256": "7d8591cc556508b7cb7cc7b77caadbe3733532d1eadd1487488b98df2fb2a077"
+      "bytes": 27980,
+      "sha256": "126fb5110317950c5ba4e6d36a503dd3a6118f0ecc1ca06cc63ad38a65e67dc9"
     },
     "crewSide": {
       "file": "leo2a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26062,
-      "sha256": "a3c38c6dd88fbd34507b3a55002bd07e86edc7a9e1dc506805714e1ab1e9ba0e"
+      "bytes": 26068,
+      "sha256": "829dfbcf556e118878239daf7e1be9958d8123f6cfc4d75fa1535448739d36ff"
     },
     "markings": {
       "file": "leo2a3_markings.png",

@@ -4958,10 +4958,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [0.1701,0.0022,2.1314],
-          [1.5789,0.0022,1.0257],
-          [1.5789,0.8377,0.8585],
-          [0.1701,0.8377,1.9643]
+          [0.1701,0.0122,2.1314],
+          [1.5789,0.0122,1.0257],
+          [1.5789,0.8378,0.8585],
+          [0.1701,0.8378,1.9643]
         ]
       },
       {
@@ -4973,10 +4973,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-1.715,0.0022,1.0257],
-          [-0.3062,0.0022,2.1314],
-          [-0.3062,0.8377,1.9643],
-          [-1.715,0.8377,0.8585]
+          [-1.715,0.0122,1.0257],
+          [-0.3062,0.0122,2.1314],
+          [-0.3062,0.8378,1.9643],
+          [-1.715,0.8378,0.8585]
         ]
       },
       {
@@ -4988,10 +4988,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-0.3458,0.0513,2.1314],
-          [0.2097,0.0513,2.1314],
-          [0.2097,0.5133,2.0928],
-          [-0.3458,0.5133,2.0928]
+          [-0.3458,0.0608,2.1314],
+          [0.2097,0.0608,2.1314],
+          [0.2097,0.5173,2.0928],
+          [-0.3458,0.5173,2.0928]
         ]
       },
       {
@@ -5003,10 +5003,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [1.5789,0.0022,0.8457],
-          [1.5789,0.0022,-2.6773],
-          [1.5789,0.8377,-2.6773],
-          [1.5789,0.8377,0.8457]
+          [1.5789,0.0122,0.8457],
+          [1.5789,0.0122,-2.6773],
+          [1.5789,0.8378,-2.6773],
+          [1.5789,0.8378,0.8457]
         ]
       },
       {
@@ -5018,10 +5018,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-1.715,0.0022,-2.6773],
-          [-1.715,0.0022,0.8457],
-          [-1.715,0.8377,0.8457],
-          [-1.715,0.8377,-2.6773]
+          [-1.715,0.0122,-2.6773],
+          [-1.715,0.0122,0.8457],
+          [-1.715,0.8378,0.8457],
+          [-1.715,0.8378,-2.6773]
         ]
       },
       {
@@ -5033,10 +5033,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [1.5392,0.0022,-2.6773],
-          [-1.6753,0.0022,-2.6773],
-          [-1.6753,0.8377,-2.6773],
-          [1.5392,0.8377,-2.6773]
+          [1.5392,0.0122,-2.6773],
+          [-1.6753,0.0122,-2.6773],
+          [-1.6753,0.8378,-2.6773],
+          [1.5392,0.8378,-2.6773]
         ]
       },
       {
@@ -44299,8 +44299,8 @@
       {
         "volumeId": "M01",
         "name": "gun",
-        "min": [-0.2466,0.0513,0.0485],
-        "max": [0.1105,0.5428,1.6557],
+        "min": [-0.2466,0.0608,0.0485],
+        "max": [0.1105,0.5464,1.6557],
         "turretLocal": true
       },
       {
@@ -44334,15 +44334,15 @@
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.7753,0.1791,-2.5574],
-        "max": [0.9114,0.7394,-0.4658],
+        "min": [-0.7753,0.1288,-2.4379],
+        "max": [0.9114,0.7407,-0.4658],
         "turretLocal": true
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [0.1673,0.1005,-0.4015],
-        "max": [0.6633,0.4937,0.2413],
+        "min": [0.1673,0.1093,-0.4015],
+        "max": [0.6633,0.4978,0.2413],
         "turretLocal": true
       },
       {
@@ -44533,7 +44533,7 @@
         "volumeId": "C03",
         "name": "commander",
         "min": [-0.7821,-1.1871,-0.455],
-        "max": [-0.3227,0.0875,0.3877],
+        "max": [-0.3227,0.0972,0.3877],
         "turretLocal": true
       },
       {
@@ -44545,16 +44545,16 @@
       }
     ]
   },
-  "geometryHash": "85c503d4",
-  "metadataHash": "4310f93e",
+  "geometryHash": "e2419f75",
+  "metadataHash": "00caa609",
   "presentationAnchor": {
-    "xM": 0,
-    "zM": 0.0091
+    "xM": -0.0003,
+    "zM": 0.009
   },
-  "presentationHash": "76e2f4c5",
+  "presentationHash": "b3070a06",
   "presentationProjection": {
     "centerYM": 2.0619,
-    "topHalfM": 6.2063,
+    "topHalfM": 6.2065,
     "sideHalfM": 3.1032
   },
   "appearance": {
@@ -44601,39 +44601,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30044,
-      "sha256": "6e67f20a45421f803094c7fcbe34623172d365e929dc0d1fb837edb9705ba4ab"
+      "bytes": 30198,
+      "sha256": "8d6a8df0fc2a5af5478f9868f7422d1f41fa90a89751b4a755cd59fc35281a78"
     },
     "modulesSide": {
       "file": "m1a2_abrams_tusk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28264,
-      "sha256": "228c07ffe8eed9435a7603e1f8c2b6387621d29f3949b73d30cb0b2f9e3ee561"
+      "bytes": 28336,
+      "sha256": "265f07bdde63b79dace06f741c1d0f3da88aac78e1c25cc88f419f1fe13e9968"
     },
     "crewSide": {
       "file": "m1a2_abrams_tusk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26302,
-      "sha256": "ab22fcd79767dbf0d63ec3afda78b5f692b2231bff17923b4d031c22f14e136f"
+      "bytes": 26284,
+      "sha256": "32dd3b7a87d6293b68ae546d13b5318b70ef2aaacc2d29301ee28b6d10dc7f59"
     },
     "angle": {
       "file": "m1a2_abrams_tusk_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35346,
-      "sha256": "add5a2b85b64ac646065d0271fb5ee29ffd6aca09d7f6a1c287da59c7af83696",
+      "bytes": 35040,
+      "sha256": "fb722ade8fbad66a52447a0c477f7377a701686e2c752d789d442b8ec1525da2",
       "thumbnail": {
         "file": "thumbs/m1a2_abrams_tusk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13494,
-        "sha256": "c862f8badaa4e8c98b33f745725cafc1a26cea3e693310f2322183c2b00a8f4a",
+        "bytes": 13498,
+        "sha256": "7c1c776df86f3770f1d8ad25ad69cf564932866c2af2d7b4593cd75a0920b4b5",
         "frame": [23,111,227,249]
       }
     },
@@ -44642,32 +44642,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23346,
-      "sha256": "e86bcda1f81e87c108b7a9eb85c12f17568b8a7dd298ac398a79b94f07765c76"
+      "bytes": 23286,
+      "sha256": "bf0e1b19db1eab44002801d5c0f79b040d28ae90442afbde17e85e971a9ca592"
     },
     "side": {
       "file": "m1a2_abrams_tusk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17510,
-      "sha256": "8067534a96ed2cde693fd03b79401da5f85166599517e13b71c10c1069f4afcc"
+      "bytes": 17662,
+      "sha256": "1dde22ec6ef369e2f9171842ccf81f8931f1d29a871d203f29acae52c4cf9d96"
     },
     "topSilhouette": {
       "file": "m1a2_abrams_tusk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1416,
-      "sha256": "b79d551c8f4f5710375470a33c2c454ab1e38f73538ac1facc4f027413e43f81"
+      "bytes": 1428,
+      "sha256": "e902c631557e54f36a6e7b16b3cee6a12795f6b3632f5a12151ab9daa228f25f"
     },
     "sideSilhouette": {
       "file": "m1a2_abrams_tusk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5103,
-      "sha256": "30d7f5237dc989d81c0704d53b00723a8b37cddf71c743e57829daf27fb8fdaf"
+      "bytes": 5137,
+      "sha256": "a3fee97e3e618d914f4d3ecab3a782861275f44980a05a4933952007bcc9e4a4"
     },
     "markings": {
       "file": "m1a2_abrams_tusk_markings.png",
@@ -44680,8 +44680,8 @@
     "technicalLabels": {
       "file": "m1a2_abrams_tusk_technical.json",
       "mime": "application/json",
-      "bytes": 5711,
-      "sha256": "14706676d7cdf7dbb73854bcbc8475d01ad09e412d1de7366bdbda16614da148"
+      "bytes": 5738,
+      "sha256": "7442a39e597f26450aac326fa09e5977a627f03d2d7f7eb54ce9eac52a3e220f"
     }
   }
 }

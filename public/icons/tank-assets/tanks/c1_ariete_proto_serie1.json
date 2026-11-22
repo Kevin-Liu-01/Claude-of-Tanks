@@ -1497,15 +1497,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24994,
-      "sha256": "10ed8df5d6681bb3595b947c532474c398c31421ee9764db1c81a0384e215db1",
+      "bytes": 25010,
+      "sha256": "ee19ed04928488e0359eb5becff6bc89db99ef5ca50d096cfe6e382b91f813e5",
       "thumbnail": {
         "file": "thumbs/c1_ariete_proto_serie1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10238,
-        "sha256": "e90e5a6d838b985b40042f6c5034fca921a48af2e00db863c31792eb4fa10468",
+        "bytes": 10240,
+        "sha256": "95e79c9427a0ea2d76cd5f28158acb210e4db5f3213f46ed06bcb178108e7824",
         "frame": [25,104,225,249]
       }
     },
@@ -1522,8 +1522,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10880,
-      "sha256": "2cae1c4494a10910646e24cfd491cca36c3470901548973ec6dd89eea4589041"
+      "bytes": 10860,
+      "sha256": "68b69dfd91f70975ea304b2f557affb77e418d052dba5bc915b243a1892984cd"
     },
     "topSilhouette": {
       "file": "c1_ariete_proto_serie1_top_silhouette.png",
@@ -1546,24 +1546,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27036,
-      "sha256": "503db1a36bb7c8d6b90550ce1fdcfcecaa00be93ff85573c83dd54f626f51e90"
+      "bytes": 27032,
+      "sha256": "a2fc63cf1ef1a38c38e87990c62fd0e7d668d9435e432668e50d6dabde95cd28"
     },
     "modulesSide": {
       "file": "c1_ariete_proto_serie1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25194,
-      "sha256": "961139902b9b4bfb8c52a742a51e966f13e2024a983520ddd413d9ebc5020e3f"
+      "bytes": 25288,
+      "sha256": "4b00102481762e8c33c41d0011c024d60d132bdf2ca5c6d5b5a7a75217e36d58"
     },
     "crewSide": {
       "file": "c1_ariete_proto_serie1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22692,
-      "sha256": "52777ba336c4f314db9125825ca89de1b1b299000e8386fb56a03bbe3bb7b2e6"
+      "bytes": 22742,
+      "sha256": "71cf750e4b7021c257bfd060dc1049477cd2a885be03d9578d9caf9b20615ea0"
     },
     "markings": {
       "file": "c1_ariete_proto_serie1_markings.png",

@@ -606,7 +606,7 @@
         "volumeId": "M09",
         "name": "radio",
         "min": [0.11,0.0393,-0.8636],
-        "max": [0.66,0.2954,-0.5],
+        "max": [0.6311,0.2954,-0.5],
         "turretLocal": true
       },
       {
@@ -677,8 +677,8 @@
       }
     ]
   },
-  "geometryHash": "497d082a",
-  "metadataHash": "80689b25",
+  "geometryHash": "15e46605",
+  "metadataHash": "ae13c6e4",
   "presentationAnchor": {
     "xM": -0.0039,
     "zM": -0.116
@@ -737,15 +737,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25282,
-      "sha256": "b3131e45cf7c7b69e214e35c0f2a84329d28133b6d6998cdc9fc1b8dd633ba42",
+      "bytes": 25256,
+      "sha256": "823cefcefa7a0f03d0bd4a46bb2679a7b8fd7d360bff3c030b134fab133acd5e",
       "thumbnail": {
         "file": "thumbs/hayate_ifv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10446,
-        "sha256": "b6c9ef75c54ed58844683e0e7182b5f2a07cfe84ff3c5ebd898c594c8af81430",
+        "bytes": 10448,
+        "sha256": "1198700382238902a79f8bde6a304eb039f07515526aa1ba6e575c82100b5bc4",
         "frame": [26,89,226,247]
       }
     },
@@ -754,16 +754,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13854,
-      "sha256": "bbd75bce3d5cbd370339a4bbb1feec58eb602daa58b94fd416c5ec97b49c4971"
+      "bytes": 13924,
+      "sha256": "6a5b06fab2657c02dffbbae802ee1227cfdd4c63cbcf4cab7715001554a9a933"
     },
     "side": {
       "file": "hayate_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13802,
-      "sha256": "12db09a1f5d06964acd3196abc42ba195dcedd0fe8478d03e8cd1616ab008a74"
+      "bytes": 13870,
+      "sha256": "021071e6d5660dcee0ee9aa11249c228261487781b10638becffd931f3f88ca3"
     },
     "topSilhouette": {
       "file": "hayate_ifv_top_silhouette.png",
@@ -778,32 +778,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5891,
-      "sha256": "1c3db6237ac6135fefffb175f418bfa6de0bc0789bbeefa9663a7b444a088085"
+      "bytes": 5926,
+      "sha256": "186c2d380391920833bda82f6a20151918e223755872fe28097d88b7c4f3b24d"
     },
     "armorSide": {
       "file": "hayate_ifv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30744,
-      "sha256": "aa9a21acc190085cfb69b2ff6871dd694d8e59ee27657e43ee8526bf60ce88a7"
+      "bytes": 30810,
+      "sha256": "bc78820f2c8a700a040975b8dee8099638bd256981dae1ab3f81616c6b334882"
     },
     "modulesSide": {
       "file": "hayate_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33136,
-      "sha256": "6b333d2aacc1fe7429ccdbb564a82ed83047af5aa43b9522962fba1beed6bccc"
+      "bytes": 33650,
+      "sha256": "b9bd70ec9f9126b0c1337462c3b7b16a0c65a716b23f0908b0c83544ea5df764"
     },
     "crewSide": {
       "file": "hayate_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31358,
-      "sha256": "4b8b8c611b6a358704dd6509772ec039bcf0b6a8c5e23b26bb32f680b41246c3"
+      "bytes": 31408,
+      "sha256": "f142fb365a707b51e2a9d1e8cb3a80514066a09463df5122d85c05198277ac9f"
     },
     "markings": {
       "file": "hayate_ifv_markings.png",
@@ -817,7 +817,7 @@
       "file": "hayate_ifv_technical.json",
       "mime": "application/json",
       "bytes": 5642,
-      "sha256": "ae07a8f486dd69b42593f279a0680f14b124e52a88d50df59a0053c9c2b43443"
+      "sha256": "52e6ff334aed1004630c3e544d483466a1cef17b48c0a5637983f608704636b6"
     }
   }
 }

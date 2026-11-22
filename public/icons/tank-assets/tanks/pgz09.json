@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29302,
-      "sha256": "db607b6a45e794c8c1e20aa3396720c30f4b05fe49d44409dccdbf407d8b4d51",
+      "bytes": 29312,
+      "sha256": "95ef60937edb520b86d7155a00751c3d1a83742fcc2182bedce785cc1a69e2ed",
       "thumbnail": {
         "file": "thumbs/pgz09_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11816,
-        "sha256": "ce3efa3c6f84d9c26ee6f70e9b6866b162439e9e244b427d63572be676ddec66"
+        "bytes": 11840,
+        "sha256": "3de4ab219fea414ea2deeae1fcd184fa293c9a66cb54275cf3e40a49eb436ef9"
       }
     },
     "top": {
@@ -879,8 +879,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20230,
-      "sha256": "f5b27d50c92ff2960443099b88b5efd42388799ac9ba1b7a65953b06278e031a"
+      "bytes": 20196,
+      "sha256": "ebaa1a746abd42acbeca8e392055e556e05ac68b2e8adb4a922849647e06bb06"
     },
     "topSilhouette": {
       "file": "pgz09_top_silhouette.png",
@@ -903,24 +903,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46174,
-      "sha256": "f27c1ea087afa3c8efbc75c43377e455abca451c11f7bb16f301c7e68e9d68ba"
+      "bytes": 46114,
+      "sha256": "4ba2cfaa8d40449e8ca4898c25455cb18b95176cd99281daab8784812ac4d240"
     },
     "modulesSide": {
       "file": "pgz09_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44962,
-      "sha256": "f77ffcba705f96f18c43f7cef82f0e435ee79971ccc91b4722263b18e80d2b95"
+      "bytes": 45120,
+      "sha256": "8d010878ef160c3d63a0fd8be7bc8835448c3d59dc8562217982c6e9c800c433"
     },
     "crewSide": {
       "file": "pgz09_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42528,
-      "sha256": "38a1bdac7d79d2eaf743a3122cfc10ae582de7fb20599670494aece8bed75229"
+      "bytes": 42608,
+      "sha256": "0f01dd2e5a24ad3751c415ea9e0c52097536ebe750b5084f68b67e855a7e4aee"
     },
     "markings": {
       "file": "pgz09_markings.png",

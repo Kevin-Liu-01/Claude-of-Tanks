@@ -971,15 +971,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28262,
-      "sha256": "57ab2c2c5a5391491b14b035f8e8313cfd98daa490cfbcf282b4eeba13d99cc3",
+      "bytes": 28280,
+      "sha256": "3839dfc652286e6abb870bf5c48ec64dd96078b1a68f44addc2af25a39617a1d",
       "thumbnail": {
         "file": "thumbs/ua_cv9040c_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11454,
-        "sha256": "8f3062c28b5cd844af667dfbf241c34fa6c6f35b4ec7e1f830750e1298de5ac9",
+        "bytes": 11442,
+        "sha256": "d84b67e3c358422dde17108ad7d1011c5396e8658af4960f12fbdfed8f7703b0",
         "frame": [27,86,226,249]
       }
     },
@@ -996,8 +996,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18302,
-      "sha256": "9a9df9e6c42d04500d9d39afc9a84d1cf9553045bffd40998c7b74152a6dc27e"
+      "bytes": 18278,
+      "sha256": "7933bb79a0b2688677bdbd1ba6bd2596e79a731e23475ed6bf3aa59003020e3e"
     },
     "topSilhouette": {
       "file": "ua_cv9040c_top_silhouette.png",
@@ -1021,23 +1021,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 44392,
-      "sha256": "2c889dad543479f58f9af97c6f93d7bc3650820fea9d64dfa8167d5fb0b7dea8"
+      "sha256": "6e87c7795bb8b059ac5779f1194681f4306f518070ce030ca56c3090d915900c"
     },
     "modulesSide": {
       "file": "ua_cv9040c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41634,
-      "sha256": "808533942b1e7b9fe6e8c96197b5aad1ea0ab195297940713889206135738ac3"
+      "bytes": 41618,
+      "sha256": "b222d89a45dc4d2a9165568d15062afa62ec36d0889f7d8875fca65248107291"
     },
     "crewSide": {
       "file": "ua_cv9040c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39328,
-      "sha256": "fb36019dd6d49961c425e334b77ca5cb1c74e6ce068ecae8e40320faae1deed6"
+      "bytes": 39430,
+      "sha256": "d02e983549b3b4164403a5565c05399479bed0021a1d85b2d871d6f10bc4e53e"
     },
     "markings": {
       "file": "ua_cv9040c_markings.png",

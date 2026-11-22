@@ -16447,39 +16447,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 48470,
-      "sha256": "d486ed8306425b8a08cb39099ce9ca6cbea792967734baa94da2aea8b02e0d62"
+      "bytes": 49108,
+      "sha256": "e38262e380cb19425926370d36fde63fe1df7e2e5835e6411d7a5b1b973485f6"
     },
     "modulesSide": {
       "file": "tos1a_tagil_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42264,
-      "sha256": "7e24e16236943bd24c76844e17b266f9b47f74f0a7e65692752b5d79e14b41d0"
+      "bytes": 42842,
+      "sha256": "0b21e2685def7760600694c6dff86e8342476a32975cbf568696600bcbaea053"
     },
     "crewSide": {
       "file": "tos1a_tagil_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38240,
-      "sha256": "bb7862fabe3190caf49ac384e821c33d7b320c73e587580c1abb6560d01a5f6b"
+      "bytes": 38942,
+      "sha256": "66c2d47d159fba7f2ec718e70bf8a5d2a9cac8721a5a710a5de9b616d555d7df"
     },
     "angle": {
       "file": "tos1a_tagil_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35900,
-      "sha256": "d4f693b80650bf101fd8351dbf59cedf426feaee018cd21fbae86f4ecddce577",
+      "bytes": 36028,
+      "sha256": "9b343556cec44dd32b916d660503b9a6d8a6ee56973a491833eb09fbcfb9f318",
       "thumbnail": {
         "file": "thumbs/tos1a_tagil_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 14238,
-        "sha256": "c49c3476c58f5e93d916b59b63335f23bde8d76d5df3a115cd3ca28285bdcb11"
+        "bytes": 14242,
+        "sha256": "c9d91cb3b93237ed3eb3411d0ec2be93fd04bbb3d1de8bef1c8ab3e7e14588e4"
       }
     },
     "top": {
@@ -16495,8 +16495,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18300,
-      "sha256": "fd0b8200a4e9c2afa48462945e006817e8d5a560803f686deed1db9541b23b20"
+      "bytes": 18350,
+      "sha256": "caf9b68e522782f616a8cb2a0feb10e31517fa24f4fd2989351bfdaa88f1deca"
     },
     "topSilhouette": {
       "file": "tos1a_tagil_top_silhouette.png",

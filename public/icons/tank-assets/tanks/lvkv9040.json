@@ -975,15 +975,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26640,
-      "sha256": "2518b9929ed9a47677f407af4c80038772d6cdeafa755379e406c84c55cd7f5b",
+      "bytes": 26548,
+      "sha256": "0da4c70b6a3183913bc0f88ebfe3772a7f365b6daa182fcd2c8ca76b82c8af37",
       "thumbnail": {
         "file": "thumbs/lvkv9040_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10880,
-        "sha256": "3d776406bd1995f151f8c00b06847c94af2620caf123e011845d9a9cf42e52ab"
+        "bytes": 10868,
+        "sha256": "2d1dc297d7e4d477bc86db4eeef240d9110cb117bf34913c7867bf4f7d4bf008"
       }
     },
     "top": {
@@ -991,16 +991,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16416,
-      "sha256": "888299064f3205da60b13b959085ff8c7e9f3d18d029e9ff5289c90c5f0d2ed4"
+      "bytes": 16420,
+      "sha256": "2c4299733788bc5882c98e749cfae477bc6a3a5d9dbf9fa81ee9ae114d98fd6d"
     },
     "side": {
       "file": "lvkv9040_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16418,
-      "sha256": "430877e8a741030c7bd9f57786e20973e1f4b28146eb5dc615a4763d02eb682a"
+      "bytes": 16440,
+      "sha256": "d8cb1ff764475abbeb151c6f8e11614ef6c6f68d87850da1e284e35147d43352"
     },
     "topSilhouette": {
       "file": "lvkv9040_top_silhouette.png",
@@ -1023,24 +1023,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38544,
-      "sha256": "7ec2dcfe136d63d771d0391138292a48e5270c28ed10dd478d36b76222ba52bb"
+      "bytes": 38592,
+      "sha256": "833c4a0960a9751b1a9eb4b7556459abbf4cdc9a2d20ee99ed52e8fa0c1b0290"
     },
     "modulesSide": {
       "file": "lvkv9040_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39508,
-      "sha256": "3eb44bb2ff13d76cbeb40c0f86ae6ee45d2df5109da70d391810271816c244fa"
+      "bytes": 39612,
+      "sha256": "7d847ad78c42b905c4f3ac65ea0c405f6c10fe43f465f82e09c3c4c2a4f14032"
     },
     "crewSide": {
       "file": "lvkv9040_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36982,
-      "sha256": "82c13463fbe3571fd93d667dc285feb444c80510768d132c3cf1fbb5e2b9371e"
+      "bytes": 37050,
+      "sha256": "4ea0af1ab31ea583ba751d09b6dcfdd8456ee34395bafd034ec00e04c2da9370"
     },
     "markings": {
       "file": "lvkv9040_markings.png",

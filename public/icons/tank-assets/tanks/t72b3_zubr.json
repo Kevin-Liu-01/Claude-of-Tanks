@@ -27419,39 +27419,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30020,
-      "sha256": "baa464a1cfce646d05b3f585973a42b04914969f2d1e39675d541077e2204a79"
+      "bytes": 30070,
+      "sha256": "b2ae949ad986f7b4d32a495210c7447703c6f598515af50fda0417df66e66ff8"
     },
     "modulesSide": {
       "file": "t72b3_zubr_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24732,
-      "sha256": "fba9bdf63a881696e4192f4db06b870b5b1ecd069a674b1dc01df7f3cef6dece"
+      "bytes": 24762,
+      "sha256": "31ef3c84385b4c97ae94b493d1b2c41297e8ec1065797d686d6e62028d36d5db"
     },
     "crewSide": {
       "file": "t72b3_zubr_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21420,
-      "sha256": "ba8778f687d52f813f43d07ef632703176146ff3b0cc6d1d13d3d09d2dbe1e24"
+      "bytes": 21386,
+      "sha256": "702bc7ad2570dd2dd6457bb2862abf33121f46fc76b78156d4d4f066f19f522f"
     },
     "angle": {
       "file": "t72b3_zubr_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26984,
-      "sha256": "fb31c876c14732401853663003bd1ba79a5cdaa646cb0a91805ce67be6ad246d",
+      "bytes": 26970,
+      "sha256": "88958580a744fad95ebc3ceae392d2b9295d2f8b73e3bedb3104ba7d64225ffe",
       "thumbnail": {
         "file": "thumbs/t72b3_zubr_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10498,
-        "sha256": "f63834bb7a6bbd987bbdbef9e27000d4fbd1ced6d8dda5a9377873bbe6e871df",
+        "bytes": 10510,
+        "sha256": "e0f9dc215c16d128d28cf8d248cd3bb9ed2e095d003a4663d262d62262e5a51d",
         "frame": [24,120,228,249]
       }
     },
@@ -27460,16 +27460,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16038,
-      "sha256": "a7e20ab8d457cdffa969d01e424220ae4c00fdeba07e9e430c672e3d10f78676"
+      "bytes": 16036,
+      "sha256": "3c86dd68aac3bb7e6157262a7a655e22c6825eb9d668fb538be59c721e195c3a"
     },
     "side": {
       "file": "t72b3_zubr_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9548,
-      "sha256": "7efb48923d437d90f9cc1d30cee9316750989f06ca08a483536b77b7640898c6"
+      "bytes": 9572,
+      "sha256": "d8a0ccc916cc4cae69494aebf2d49ac3057624e2eea069ebb2d378158608c4fd"
     },
     "topSilhouette": {
       "file": "t72b3_zubr_top_silhouette.png",

@@ -716,7 +716,7 @@
       }
     ]
   },
-  "geometryHash": "c3d717e6",
+  "geometryHash": "f6c560ec",
   "metadataHash": "6ee8b887",
   "presentationAnchor": {
     "xM": 0.0006,
@@ -771,15 +771,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28326,
-      "sha256": "e27f978bc1b2d03ba511f14ce871e8944b633e93e88f8ec32aed31d5b718ed20",
+      "bytes": 28336,
+      "sha256": "b9a93fe8ac394ab61184181adf01c1cd783c45ca810966ea0fea0d4fa9e0b152",
       "thumbnail": {
         "file": "thumbs/ztz20_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11068,
-        "sha256": "a26e33f23bb7b49ff803aeb68a6750423c5739cb64dc80f3fa2d4e62073e268a"
+        "bytes": 11074,
+        "sha256": "e66a863741d8efe1745d721dba4052478c4ac81df6cca80f0ceb90e6b8c1f46a"
       }
     },
     "top": {
@@ -787,16 +787,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14656,
-      "sha256": "1ec0a99e2550c0184e929134bf32f832d69a7301209a357548c8607a52615c18"
+      "bytes": 14650,
+      "sha256": "c168a5b58d404277987f14dfbea5d9cedf3ce83dde4e5159ddf846a9100a3a63"
     },
     "side": {
       "file": "ztz20_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13166,
-      "sha256": "684b9b205a4c224384985ae236e853c3f7f215cf841bc4c5b01f0e354e539da0"
+      "bytes": 13170,
+      "sha256": "e6eabf7c68814316ef2519a6111db3f4bf8e1107cf154ad4d4539cfc2b267f2e"
     },
     "topSilhouette": {
       "file": "ztz20_top_silhouette.png",
@@ -811,32 +811,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4618,
-      "sha256": "ef36ee65a20d6a0efc931c16d8accf80ce81d921a1bbff00294016cf4d478326"
+      "bytes": 4624,
+      "sha256": "482d1374416816d48dfbfa32f2ac4d6c1a9b8f2b460150463878d89dc547ae32"
     },
     "armorSide": {
       "file": "ztz20_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31498,
-      "sha256": "ca9bf2e41a7beb31023af2e208250ee37d33cac0ff73808d81b619733b3a3a25"
+      "bytes": 31510,
+      "sha256": "976c78be82ac10f9bfdda4a3721ca2514a4116df4d697e94be2791f286c23d03"
     },
     "modulesSide": {
       "file": "ztz20_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28050,
-      "sha256": "8f1bcf854de2c708544e39a1a7de3c6094f2649647fa223f7b70f819a8afaf6a"
+      "bytes": 28082,
+      "sha256": "f339095f6c22fa003f59d61e7f451c5fe1b0fee26a59538641da08377d40054a"
     },
     "crewSide": {
       "file": "ztz20_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26062,
-      "sha256": "1cbf19f9959696ca08967f6001e8cb46be1bd1599f009e8dcf09eacce4da242c"
+      "bytes": 25896,
+      "sha256": "335c8cf8e5403b0b6732bfc4aa0c71d6613a2747665633bbac5f6396d64caa13"
     },
     "markings": {
       "file": "ztz20_markings.png",
@@ -850,7 +850,7 @@
       "file": "ztz20_technical.json",
       "mime": "application/json",
       "bytes": 4562,
-      "sha256": "593408a8a87297d555c3966c69dfc7ec3660a120590f886a6dc1389010133179"
+      "sha256": "43504345de6e32750b96fc3b0a5fe494529f9ab9a9df6f6bf672c239fb907d0f"
     }
   }
 }

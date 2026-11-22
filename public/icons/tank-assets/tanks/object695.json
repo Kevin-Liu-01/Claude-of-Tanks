@@ -1786,24 +1786,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36026,
-      "sha256": "1db035d9e606136295679ceda86405e4050ffbd046de53f36dbe36292958c2a6"
+      "bytes": 36048,
+      "sha256": "6ee31ff08c3c592e2b8d3ecd37787a1a5f2523a52e80bffa058f1c97f6b02d47"
     },
     "modulesSide": {
       "file": "object695_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39822,
-      "sha256": "fb4554076e0491b33b94bc983fecf14d7643e0c2c95cb348ab05c19c2a8615fa"
+      "bytes": 39928,
+      "sha256": "1282cfb4d5a3c596f217c25503655d0f0e8140a9ebfdb3295d774cbc2ef724e0"
     },
     "crewSide": {
       "file": "object695_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37042,
-      "sha256": "a17d1730c3ed7ae8db91438911616fbab20174b64dc415cbe19b02656945e683"
+      "bytes": 37036,
+      "sha256": "b3eebbe6a23e0b3d70c9604b5c0805f1df6fd2061d0e0199f45c413a2529b061"
     },
     "angle": {
       "file": "object695_angle.webp",
@@ -1811,14 +1811,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 30050,
-      "sha256": "39770f97a5af79a146b880f0ca2a357b1e29308efb8a2dc0e82a7ee16361ee71",
+      "sha256": "9f7a4726f42e8836f6cd1b48f2c58c3cacfac2e957956b05b2272c5bb00839ec",
       "thumbnail": {
         "file": "thumbs/object695_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12096,
-        "sha256": "67d0952984c918599da80a4f5965ab97860fcf896e7d663ce21bd6aaafb7f3d2"
+        "bytes": 12108,
+        "sha256": "c4fd5000f4580f9d83aa50b88f6775c65c89d6d5d2224184964bb2b5adc99e3f"
       }
     },
     "top": {
@@ -1834,8 +1834,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18040,
-      "sha256": "a15736f393eb2fdf42e1ffe2c17b4dd24df0186f6fc603aa58ec8c3b28c3621d"
+      "bytes": 18062,
+      "sha256": "df5744936ac623c382dfb63335d9bd6ed7e0233fe7e2a6d615f19b13093a4b10"
     },
     "topSilhouette": {
       "file": "object695_top_silhouette.png",

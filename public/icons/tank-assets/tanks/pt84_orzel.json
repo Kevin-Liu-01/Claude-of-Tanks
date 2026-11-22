@@ -7903,7 +7903,7 @@
       }
     ]
   },
-  "geometryHash": "dea45b1a",
+  "geometryHash": "484cc851",
   "metadataHash": "b5c91dd7",
   "presentationAnchor": {
     "xM": 0,
@@ -7962,15 +7962,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32922,
-      "sha256": "dfa7904dd4800fbf8630786734f15a80a635ae8604e527c82e958603956cda49",
+      "bytes": 32924,
+      "sha256": "2d70f44a3bcf56ec99dd5819b03cbccc67b5e5349c1d5e8325186e2cb4e284a6",
       "thumbnail": {
         "file": "thumbs/pt84_orzel_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12802,
-        "sha256": "534f5279724084a354dc0a2937edc39c77cfe2c8cde81e0173f809753d9c8e31",
+        "bytes": 12804,
+        "sha256": "a2d943709b32fd4fc13307e9ab83f92b2fe8d45225911de2d2ffc3e3405828bf",
         "frame": [21,109,230,249]
       }
     },
@@ -7987,8 +7987,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12228,
-      "sha256": "160bff76d4c0c9e7757a1a8a9abb20eb2ceb5b11e094d1f0af41a6cbcfd6bc15"
+      "bytes": 12214,
+      "sha256": "883040be75efdc44edcbecca165a1ea081189eb2daa5d7be938035e37514d58b"
     },
     "topSilhouette": {
       "file": "pt84_orzel_top_silhouette.png",
@@ -8012,23 +8012,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 28276,
-      "sha256": "f96184e49a3ada76302b38e8551bf9d2f6bb1e7614bb3b6b7e86d82679840f33"
+      "sha256": "d6429009d9bf8914ba102c26b2b8b074febb1034c12e59119e370cc579736e4a"
     },
     "modulesSide": {
       "file": "pt84_orzel_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27528,
-      "sha256": "a7a426c90a5ebd4e2685c9915af2c5388e9b9f3576285d732f0dfffc6c5cd50a"
+      "bytes": 27482,
+      "sha256": "82af99de56539747422536261e2c8499f8bf18cc2450c17a6f441ace4e37325e"
     },
     "crewSide": {
       "file": "pt84_orzel_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25314,
-      "sha256": "4994c097b51cde9fb8878a7165b79642ed4450266397827fdec483333dba1f0f"
+      "bytes": 25302,
+      "sha256": "7872f140f9ed93faebba26f28673af29f6708ddc650c90aae310b43bbd9139dd"
     },
     "markings": {
       "file": "pt84_orzel_markings.png",

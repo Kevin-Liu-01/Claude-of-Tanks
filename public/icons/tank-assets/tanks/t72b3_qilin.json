@@ -9648,39 +9648,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26030,
-      "sha256": "74c7dab999fdab271fc25fa7e2ead30fce418cb9da11521ddcb692b6e243553b"
+      "bytes": 26074,
+      "sha256": "2dd68f28358d64657e6026d7c52d6313bc8a522021705f9e984971d56b03f663"
     },
     "modulesSide": {
       "file": "t72b3_qilin_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22472,
-      "sha256": "2211d9a52b75e3fd596305f32d555d71c974e62ce8989799387dfc28ce124d1e"
+      "bytes": 22438,
+      "sha256": "ccd146fedb429258048d91e1e189848c9fc31ddb454b1aef8827d6bb2dcaa8a7"
     },
     "crewSide": {
       "file": "t72b3_qilin_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19952,
-      "sha256": "92c2cfe1b0798767df41df3ce5ef87662bb721dd8da9102e7ffc26657ede54e7"
+      "bytes": 19950,
+      "sha256": "47a970430539428f6a827eecdd32c7177f67ae1fc8c73277effebbc6b87754fe"
     },
     "angle": {
       "file": "t72b3_qilin_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25046,
-      "sha256": "997d6ea071b3a9e2016280e20fdf1fd125a793c6143a49d594a001b15239234f",
+      "bytes": 25064,
+      "sha256": "28ebcb4b6eca426651d9bc14077a43243e2c3bd3108301eb24c05d08a53b03b3",
       "thumbnail": {
         "file": "thumbs/t72b3_qilin_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 9756,
-        "sha256": "cb118c0b0826f2fc6cf7c880ea8c867181c6cca25836c47e51779341b6e816dc",
+        "sha256": "10b366152c927642c4a86996c347efc165e1fed2cc139bf1a5285c4c54477c63",
         "frame": [20,128,226,249]
       }
     },
@@ -9689,16 +9689,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10930,
-      "sha256": "08446f8b0d25f91a5dc1daacb1f72d2fcde68699ea6ae333a7eccc578ec9c4ef"
+      "bytes": 10932,
+      "sha256": "ff7aa7220660017ebbb5ef44ed2f64030a104ca72c3e742cfce9b9a079c90e73"
     },
     "side": {
       "file": "t72b3_qilin_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10234,
-      "sha256": "a3b34c00346013a69edfe04d4120e53915ecccbdebadb52aca50fb849121527f"
+      "bytes": 10244,
+      "sha256": "57e1e5c7c8653e60d0005821165783431d2f26e3d18ab53c8b6c78309140904e"
     },
     "topSilhouette": {
       "file": "t72b3_qilin_top_silhouette.png",

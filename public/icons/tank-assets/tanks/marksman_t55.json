@@ -856,15 +856,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30082,
-      "sha256": "6c2f473a1147c68ef19e64fe4dce812ddf97f19dc9fe68ebda31d58e92a92454",
+      "bytes": 30040,
+      "sha256": "6c556b0b31c606b693dd8e2b70b3dd57b77b42708204259a89004b1ef7a781ca",
       "thumbnail": {
         "file": "thumbs/marksman_t55_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12412,
-        "sha256": "321dccacc74bd6a1d4b8cca2db41f481b7de1ea1df2ee737e093b64ce7b51b25",
+        "bytes": 12406,
+        "sha256": "47e8b7737e349a84271643d5e9b9482ec6d18d1acf4e3625a8264760e3ce07f7",
         "frame": [2,91,226,250]
       }
     },
@@ -881,8 +881,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11186,
-      "sha256": "0b4e380ad244f57613b917a469dcfdc50f3ca87b6120200b3f2507ef8d614ee4"
+      "bytes": 11196,
+      "sha256": "995e49292b709b51336dd5c6b3ff2883652975b0b68fb07e7239b1d6b8ed00b5"
     },
     "topSilhouette": {
       "file": "marksman_t55_top_silhouette.png",
@@ -905,24 +905,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23590,
-      "sha256": "574df6da28cb3b892aee3b29a8249d348b1c09a1464ad00cb37596dec0ce1d9d"
+      "bytes": 23638,
+      "sha256": "d6cc07f0133261283bb454d1ba83ab2947c4835e115cfab0c670f01ef5d436db"
     },
     "modulesSide": {
       "file": "marksman_t55_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25888,
-      "sha256": "86f2f0598adc31edc90b011a573717e599c64ee1a456eb49f2302a618e39a395"
+      "bytes": 25942,
+      "sha256": "22cb6a19bc9c7ee4e95ef5933201f36607358baa9d405bbac3b709720bebb80f"
     },
     "crewSide": {
       "file": "marksman_t55_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21328,
-      "sha256": "6bd327314db0092c2fa30f7775e252fa95b2bdb611a178cc2a0022392c62d4cf"
+      "bytes": 21404,
+      "sha256": "5fd6a3501efbe35f13fb6c8a5f90eb273ef170b82aedad8ef128dff4dde7ef2a"
     },
     "markings": {
       "file": "marksman_t55_markings.png",

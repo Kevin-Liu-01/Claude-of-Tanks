@@ -9879,39 +9879,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32396,
-      "sha256": "c282431394590c1769af1a08bc105dd3bb718c51108f25f5b5ab974eca0f61b7"
+      "bytes": 32406,
+      "sha256": "38a73905ad63f84da6d6e2c02b6c575d8ddd5168a9c357c18f9d9c178b341433"
     },
     "modulesSide": {
       "file": "t80u_bars_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28654,
-      "sha256": "762748eb89142de743444fd42ff10fbe17833167e28ee0d702b680d1568dffc2"
+      "bytes": 28738,
+      "sha256": "8f63f6cd9f7f7983d87ea4aaf9fbb36b61614551504b949b92d149ad84ed68b4"
     },
     "crewSide": {
       "file": "t80u_bars_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25680,
-      "sha256": "5f13335e611295247c38541b47dd0ed41d674a9a4b1d21fd007a2561585e46fd"
+      "bytes": 25706,
+      "sha256": "c83827ff90d1b24006be982b12070110968d5a092b134fd8cf4fd673a060907d"
     },
     "angle": {
       "file": "t80u_bars_m_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27992,
-      "sha256": "a32c357006a29e7d070372ef9fc8a46747a43d0eb269d7889496cea2899817b4",
+      "bytes": 28004,
+      "sha256": "a00aa6a1dc09a8ba504d6e261a55bad2c8206b72d5b233febca2a57612a05650",
       "thumbnail": {
         "file": "thumbs/t80u_bars_m_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10618,
-        "sha256": "ea2ceecfcbce8bab6d3a1f039a12e8f1f6229845b6a93256e36db6ca8d7e527d",
+        "bytes": 10620,
+        "sha256": "43e542d3c823dceede3a8e2a97d6bb897efdf2a8a17064b7c150117f915f0ec8",
         "frame": [24,121,231,249]
       }
     },
@@ -9928,8 +9928,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10776,
-      "sha256": "30f8e560b41d857cdfb1fd38fb082229a395e67e5d98bcef14101fdbe7fe62e5"
+      "bytes": 10778,
+      "sha256": "bf185a6928a821e46cafea06448894db63e77a9b1d809858c3928a9e89633e0d"
     },
     "topSilhouette": {
       "file": "t80u_bars_m_top_silhouette.png",

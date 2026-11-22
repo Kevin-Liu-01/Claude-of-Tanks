@@ -863,7 +863,7 @@
       }
     ]
   },
-  "geometryHash": "5cb930ce",
+  "geometryHash": "90c0ae20",
   "metadataHash": "ba5adadf",
   "presentationAnchor": {
     "xM": 0.0023,
@@ -881,7 +881,7 @@
     "roles": {
       "wheelTire": 2,
       "wheelDish": 6,
-      "suspensionLink": 1,
+      "suspensionLink": 2,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
@@ -920,39 +920,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26272,
-      "sha256": "e4a36d5343b5b975c011674e68be67ba12bec14c6334dc0c25a47e1b07b4a208"
+      "bytes": 26294,
+      "sha256": "3d8e665d074e25debc5aaf8c65c577d731f516847661b3c7350d5293c0bf1c22"
     },
     "modulesSide": {
       "file": "type90_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26006,
-      "sha256": "8454a0968bb19a1469cebb33f7a39e809c6eee266048ba381a4a94288ad15583"
+      "bytes": 26044,
+      "sha256": "00d07c79f1e82f6c96cba2a4972f76035ef459b874db705adc88b0eb35c138b5"
     },
     "crewSide": {
       "file": "type90_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21976,
-      "sha256": "62a0fda342c5ad1ac96d8ca8d4a9b6b4fe5fd7af5874ac450fda747d4e2f390c"
+      "bytes": 22020,
+      "sha256": "7e555cf40add8b4096f4fa0a2b145d120a0a8b64c2319c72d7c1239b5198e398"
     },
     "angle": {
       "file": "type90_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23544,
-      "sha256": "9631fce58f1878ce62d8d0c09152e957d693d07d9c54527b4eddbb13abd3bd93",
+      "bytes": 23550,
+      "sha256": "ffcf8e3a254f2c33d22b4ca0328de07c7f1fcdf87c614d53bb27f6b8a722cb3c",
       "thumbnail": {
         "file": "thumbs/type90_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9810,
-        "sha256": "54325e38f286f8306d2efa2146fefc8a409d2790d1da8f850c5bd68b6ea33b8e",
+        "bytes": 9822,
+        "sha256": "bb3989ec4c580c3d3f27d71cf6201ac3641e07001ea9bb3fab2125ae5bb9f57e",
         "frame": [24,103,225,248]
       }
     },
@@ -961,16 +961,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10122,
-      "sha256": "eee5f6a8f6707a78ccea15e12861b0d0dd2fa9f9691e4153d4a0db1beb659f6a"
+      "bytes": 10134,
+      "sha256": "b82bfb0f164f5d080344b331d0c38394f178b3113c243c7cde5c29cd5675d83b"
     },
     "side": {
       "file": "type90_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12136,
-      "sha256": "f4983eedfe8799b0fc4beb8cbca6ed3498852c288d58b6565d243acd87b779a5"
+      "bytes": 12244,
+      "sha256": "0831cbf088b6596f2f08f0a61cc3eb51b0caf0997bcb9d58215aff6d80f62263"
     },
     "topSilhouette": {
       "file": "type90_top_silhouette.png",

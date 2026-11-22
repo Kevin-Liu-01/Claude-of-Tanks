@@ -584,17 +584,17 @@
       }
     ]
   },
-  "geometryHash": "ad21789c",
+  "geometryHash": "2cccc61f",
   "metadataHash": "3179d79d",
   "presentationAnchor": {
-    "xM": -0.0011,
-    "zM": 0.0455
+    "xM": -0.0017,
+    "zM": 0.0446
   },
-  "presentationHash": "14c29d28",
+  "presentationHash": "85a78c7e",
   "presentationProjection": {
     "centerYM": 1.5436,
-    "topHalfM": 6.4034,
-    "sideHalfM": 3.2017
+    "topHalfM": 6.4044,
+    "sideHalfM": 3.2022
   },
   "appearance": {
     "version": 1,
@@ -644,15 +644,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34428,
-      "sha256": "4725cc1ad05ed220cb98985bea115f79e0902d5cbdd98d56d212f4cd4106801c",
+      "bytes": 34382,
+      "sha256": "d6cd31f05f821df504b26b8290f91eba5df04dac51d6dbc67a5492b96dbbb7db",
       "thumbnail": {
         "file": "thumbs/m1a1_aim_sa_aus_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12772,
-        "sha256": "f2a30771abb1ba0c0e573dc84a43e31e504ab12a839e350e41fafd9867abfcbb"
+        "bytes": 12788,
+        "sha256": "9d3c9eb5a00a2a687270bfd42e83b155a00321e112cd0d4712d6dbf963c7f1a5"
       }
     },
     "top": {
@@ -660,56 +660,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21838,
-      "sha256": "19c8b90fb902561867c43fddb3888084c5e73b4bcd47ba74ff9c454482a5fd76"
+      "bytes": 21802,
+      "sha256": "790a7f300802319af5044d6ec8b6357f679def2017eaf48121b1c0f9f79491aa"
     },
     "side": {
       "file": "m1a1_aim_sa_aus_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15076,
-      "sha256": "0d00bd7810fbea6b708f8363165559885299b280a7c234e529bb82d337651691"
+      "bytes": 15066,
+      "sha256": "c2f424207a6954fb71eed462e9a39591c63016d914e68d16f729d373b1ce918b"
     },
     "topSilhouette": {
       "file": "m1a1_aim_sa_aus_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1312,
-      "sha256": "f08fb0f5e59d20b92215015e5ebebdf013a7febcc2e759d6dc54474dee886869"
+      "bytes": 1243,
+      "sha256": "a7c0aa141b50140c3d34741815aead558773c744fd22f0416929ecc8f3b15736"
     },
     "sideSilhouette": {
       "file": "m1a1_aim_sa_aus_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4683,
-      "sha256": "b870991fe2b45ab837db3824e5ecdc5a5073e5747cecd2812a298e949fc450d1"
+      "bytes": 4734,
+      "sha256": "6c76505b0c01d68522a7a46d8aa7b03ffff481d191bba9103e2177f0e4b86498"
     },
     "armorSide": {
       "file": "m1a1_aim_sa_aus_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37598,
-      "sha256": "0a8f551b4e95476abbf0b90cb1c0304918db881aef68acb34ee153689667c6e8"
+      "bytes": 37694,
+      "sha256": "5f35d5ae87af3b722051ccaf4c025f0bb5d7bcbcedf5cd21b2d145e60aa9655b"
     },
     "modulesSide": {
       "file": "m1a1_aim_sa_aus_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37486,
-      "sha256": "a204c29125390cf4559e394b5aafb4b2bf77d7fc9e3797fb1a672bb1f39ce8ff"
+      "bytes": 37688,
+      "sha256": "72f77622cd663bf3fa79a1755e5874740ffc8a8074d0acb63787951ba1afd855"
     },
     "crewSide": {
       "file": "m1a1_aim_sa_aus_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35552,
-      "sha256": "aaec96aa4ae32e57caa02940c89fbf719d04d14987433a44253007be1fdc0b4a"
+      "bytes": 35800,
+      "sha256": "ce9221009a2c247f5b915775524cad95dd5e65d1ba8e3a604580c8cbd2fabbbc"
     },
     "markings": {
       "file": "m1a1_aim_sa_aus_markings.png",
@@ -722,8 +722,8 @@
     "technicalLabels": {
       "file": "m1a1_aim_sa_aus_technical.json",
       "mime": "application/json",
-      "bytes": 4396,
-      "sha256": "f705a031e05712c00f45f0f650c0b058913cac267ff8c5a0a6c629429668701a"
+      "bytes": 4399,
+      "sha256": "0e67b1ebbda90c7ef94354c4a369c803b4a7415e64d2ca4078d05942e0a68a30"
     }
   }
 }

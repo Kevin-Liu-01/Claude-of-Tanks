@@ -744,14 +744,14 @@
         "volumeId": "C02",
         "name": "gunner",
         "min": [-0.7592,-0.86,-0.0411],
-        "max": [-0.2998,0.4921,0.7802],
+        "max": [-0.2998,0.4921,0.7075],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.7106,-0.6199,-0.843],
-        "max": [-0.3464,0.753,-0.0071],
+        "min": [-0.7206,-0.617,-0.7431],
+        "max": [-0.3464,0.7559,0.0929],
         "turretLocal": true
       },
       {
@@ -763,8 +763,8 @@
       }
     ]
   },
-  "geometryHash": "b5afa663",
-  "metadataHash": "251e064e",
+  "geometryHash": "d6ff3d7a",
+  "metadataHash": "fcf4d902",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0052
@@ -821,15 +821,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25592,
-      "sha256": "fd3eb7e3db5c6fb5ce0fe81b7b515db38722b8d001beb3c769578ffb6723d5d6",
+      "bytes": 25570,
+      "sha256": "35a7455c7e23cb6be4c5f2a168c5089bf97f5236215c25cd122520bd692288f7",
       "thumbnail": {
         "file": "thumbs/leopard2_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10620,
-        "sha256": "c3144bf0a2ba89f6728c9ebd9ec19f922a680da1a606b6b842535cc6c57e5c52",
+        "bytes": 10634,
+        "sha256": "78890f47846c64af2fd059c62c385b48c34f38a39c6149f2e6532d62722a0c4b",
         "frame": [24,117,226,249]
       }
     },
@@ -838,16 +838,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12108,
-      "sha256": "67ce988750abed93ebafc6d167bd27bef7d35ccb5a00475f53380b3c145f8bc4"
+      "bytes": 12090,
+      "sha256": "54e7d99bdd143d4e0e954520ffec841e5282347078eb6a37a05f05597281460d"
     },
     "side": {
       "file": "leopard2_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12546,
-      "sha256": "1850e611cdb22cef69e0752e825e0dd38b22aca42e2b205e57ad1cb44a9eca99"
+      "bytes": 12400,
+      "sha256": "a931f5006e22c73844c0c4ebbc7391b338d711834cfde27884c440ab89cb58f4"
     },
     "topSilhouette": {
       "file": "leopard2_proto_top_silhouette.png",
@@ -862,32 +862,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5057,
-      "sha256": "db0b781ef32d66339bbbfd8474db1b87eb08e5957741d262dff19e3eb909bcd3"
+      "bytes": 5060,
+      "sha256": "50ac85154115469ed242c02b216eacca99f43771a0086356a384a32534002e7e"
     },
     "armorSide": {
       "file": "leopard2_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24776,
-      "sha256": "bb599de8b4817b41077e5f341dfb3664e544fdd1cf6edd5ffa3d7daac7fc55ae"
+      "bytes": 24880,
+      "sha256": "d88aba0d569a56edb79d1a361456ac5d12e347ae06307c089f4622eb6694866f"
     },
     "modulesSide": {
       "file": "leopard2_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26658,
-      "sha256": "669671bc7a9df13bedc371c707a2ed35d83446579d3475126a61430a79cbd7a1"
+      "bytes": 26690,
+      "sha256": "c3f157ec318f4e4631253e054ccf48c992a3d22d8b0d64ecc9ebd84eb3345bd9"
     },
     "crewSide": {
       "file": "leopard2_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24144,
-      "sha256": "3ea7191adc3cdab7315951533c1b083cab702ee8c900c1e8094aafaa69b744a3"
+      "bytes": 24272,
+      "sha256": "0fc75d35a35920401b9b1e2ae714687c316a9f854353e17583c92010327017c0"
     },
     "markings": {
       "file": "leopard2_proto_markings.png",
@@ -900,8 +900,8 @@
     "technicalLabels": {
       "file": "leopard2_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5580,
-      "sha256": "0e05379dba1d0fd403bf1310fbe24ae7910254533db0c6faf0aed0d0edf5f66e"
+      "bytes": 5581,
+      "sha256": "e9e64e2608df00156a78f458abd792657fe07beb78143c279c6a5f0f04fb6cc6"
     }
   }
 }

@@ -3491,15 +3491,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34470,
-      "sha256": "2f6418c647c44386eae8b7b2a2de793b4db8fc0572f70d4e881eeed0bd15ae3a",
+      "bytes": 34466,
+      "sha256": "960e6a64fba9438893eb0f116005ec2660f5e170392bea9ce5500ea8fbbd2740",
       "thumbnail": {
         "file": "thumbs/leo2a6_ua_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12460,
-        "sha256": "eddc71e86d9e93f9db13b490113c0fe1371b966f33091fef0111deecb2b3af4d",
+        "bytes": 12474,
+        "sha256": "1077e433bb3b5b87c157e4acddb7d9f80948771b2262c742fafbcc4f3fa06342",
         "frame": [16,99,224,250]
       }
     },
@@ -3516,8 +3516,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11942,
-      "sha256": "d6aa5a671b360a6fe13f84a1d178760b0c32988d398e2e1e0a639f2d993c8588"
+      "bytes": 11874,
+      "sha256": "2814d14ff035023cf4317acd663c50f19028db9e035bf19951e30652a04e7ab1"
     },
     "topSilhouette": {
       "file": "leo2a6_ua_top_silhouette.png",
@@ -3540,8 +3540,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30750,
-      "sha256": "c41f2e100c865c50a54bdad7418c990e9409bb7418a9f4f3d2ad16a580a98f4d"
+      "bytes": 30780,
+      "sha256": "8f0ed34c9430d81db97e45e62ba7e6d8e43b890695f8a6dce8042f45bc2286fd"
     },
     "modulesSide": {
       "file": "leo2a6_ua_modules_side.webp",
@@ -3549,15 +3549,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26782,
-      "sha256": "5e7d025262ed5080e84e6aaffed50611453361d2080b039441e982469039b39d"
+      "sha256": "8987ca27787c227ebce231636733c6283559fd28cc746a41e3d487b2fa67ebc7"
     },
     "crewSide": {
       "file": "leo2a6_ua_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25646,
-      "sha256": "1fba7f779d20bc6708b7a8c8cebe2d4f66bde9c6ca1c8c34f72c26d441931c13"
+      "bytes": 25604,
+      "sha256": "d16252ab2cf4f3e57f4b7f698e0bd6fadbfde2b8589e92e05bf05853608648b8"
     },
     "markings": {
       "file": "leo2a6_ua_markings.png",

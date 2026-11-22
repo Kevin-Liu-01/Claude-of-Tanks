@@ -1308,15 +1308,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28416,
-      "sha256": "69cde9eef0dbba2facf5d7f0bd93213d1cc514719c32d05d882df1ed34b009ae",
+      "bytes": 28410,
+      "sha256": "f7b411b18708b9f1cfc530995eab9e742f581ec3a88145c338438c1838cfa3bb",
       "thumbnail": {
         "file": "thumbs/strv105_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11396,
-        "sha256": "8e9cad64d251eed9bd02b0c425773620062be54357d9cbe39534ed5941eaad9b",
+        "bytes": 11392,
+        "sha256": "36c26fbc18ecadfff9c5d881f5f829bc8fcfc81b4016af047e0988259a0d0b2d",
         "frame": [25,116,225,249]
       }
     },
@@ -1333,8 +1333,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11890,
-      "sha256": "92277c35790284756c7e3588a44e307869c19dd4014783d125b30ecdd2b199aa"
+      "bytes": 11888,
+      "sha256": "d4ef081d5afdd09b947cd906d680622dd9dff46b322582d7a7b9d62c8c4a9d65"
     },
     "topSilhouette": {
       "file": "strv105_top_silhouette.png",
@@ -1357,24 +1357,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30584,
-      "sha256": "c1275e22d301361944f7ea064a8487c795c8c2b58bbfec6aa822942308c6b22a"
+      "bytes": 30678,
+      "sha256": "9eeed5afee8fa046fe88785f3e0c586925d95a018cf16c86874e997f468e729a"
     },
     "modulesSide": {
       "file": "strv105_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27168,
-      "sha256": "e8f4e1f2a823baed194dd004ed1189ea734303e83f44eed39c76b42271ecae38"
+      "bytes": 27152,
+      "sha256": "53d8fee14f21ecf33ccebdd4c655ee61e55c416f0d57323d3085b466a6aaddd5"
     },
     "crewSide": {
       "file": "strv105_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25336,
-      "sha256": "81fb904c16466753c4581e249d0dcf4854987f14cb09d0b8172c3c617f3f7562"
+      "bytes": 25350,
+      "sha256": "402dd3437c95405ed8608da2c0562f9ea6596286812b96e85fbc10e8965fa177"
     },
     "markings": {
       "file": "strv105_markings.png",

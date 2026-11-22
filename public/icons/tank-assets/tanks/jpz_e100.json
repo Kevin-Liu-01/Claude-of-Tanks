@@ -416,39 +416,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25626,
-      "sha256": "e45c706fe2e8890a1135ea1485bfd967b7e6491918860cb94a0df89c25d1671f"
+      "bytes": 25616,
+      "sha256": "872865eb41a18c5a5ca52385daa66849b87f6ea1f67a5c4a96ef9c61af9cef90"
     },
     "modulesSide": {
       "file": "jpz_e100_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25398,
-      "sha256": "4ef4c902ec14dbae0de9462356d082ac248a53a1dc18208d0f73ced981d9def9"
+      "bytes": 25388,
+      "sha256": "c76671dc5b7db6a8212157ceb07bb60ed65c1f4befba768d680735fd2aaa3c02"
     },
     "crewSide": {
       "file": "jpz_e100_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23404,
-      "sha256": "b485b5020412bb8ffbda7ad30258aabbc2faac8ea9d8a413c16dadd0f28c8449"
+      "bytes": 23430,
+      "sha256": "901dd330ac75ed058d359fcb1912722ab12f53cd6dd57108e216add035ef8f66"
     },
     "angle": {
       "file": "jpz_e100_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24950,
-      "sha256": "6382100a5a8e2faf434006161b1c4f02aa4b655544220a3288d9bec16ac1136f",
+      "bytes": 24928,
+      "sha256": "9589c11a709b9471bf573907696ed6e6478eb724c4db86f97bbfa856708fbb09",
       "thumbnail": {
         "file": "thumbs/jpz_e100_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10282,
-        "sha256": "fa5cd10b189a0e79309d495c87ae0d76157b1261e4adfea3b67c75e80c3b76a8"
+        "bytes": 10290,
+        "sha256": "08d751cc04d334df7bfd70a0cdb127f44c02d3920f5bee58a978557e25525ea4"
       }
     },
     "top": {
@@ -464,8 +464,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9390,
-      "sha256": "43e9abfd0d9c1ae888d70af8473739cc6b10fce6719bc9327ff46d21ed422a2e"
+      "bytes": 9524,
+      "sha256": "4ce9bcaeda05029989176cfecd92ad9c015a3f1aab2dc7594ce6adb7810fca77"
     },
     "topSilhouette": {
       "file": "jpz_e100_top_silhouette.png",

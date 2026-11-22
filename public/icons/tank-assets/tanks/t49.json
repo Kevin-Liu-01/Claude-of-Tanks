@@ -842,14 +842,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 29902,
-      "sha256": "9bdeff67bbfc251864aa9dae595e89f9f8aa43f11e17d6790601a1348b082693",
+      "sha256": "f64abc2a24cff533b546a69185455775b5587915eb6db4574f8981c75e293695",
       "thumbnail": {
         "file": "thumbs/t49_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12318,
-        "sha256": "01d05ced4ca089dfbd6af7a3731f29fe6fe0ed0f434b2fb15e3e0d78c622d785",
+        "bytes": 12296,
+        "sha256": "6e3c5abcfc8123181227c2a5986a39f2511b38e07dd083bb3b7602af964c1ffb",
         "frame": [25,116,225,249]
       }
     },
@@ -866,8 +866,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17248,
-      "sha256": "f548b1c5691884395f0858f55663fb530b12becf2957f6a613d02e1448122f48"
+      "bytes": 17252,
+      "sha256": "8b28b813c87bf0ff7fb37b38608e76bb1676ac75dc7bb1fdda8595f1323d898b"
     },
     "topSilhouette": {
       "file": "t49_top_silhouette.png",
@@ -890,24 +890,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36720,
-      "sha256": "9a776b926d6524a3db484e2ce96fa1ea1bbced342dce5502f987c91cdcad4c00"
+      "bytes": 36716,
+      "sha256": "4173cfe974d7caacfe189c007ba8ae05688f112898505e3877765076e78d9247"
     },
     "modulesSide": {
       "file": "t49_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36822,
-      "sha256": "c91e21af7d497997c1a8b9bd99ac59189646b39b3b9c86a4847e8dc4bf1698ff"
+      "bytes": 36888,
+      "sha256": "567a2efb4b8ff7e6a70f03155285962a41091607f1f4466400e838f1dd834fa0"
     },
     "crewSide": {
       "file": "t49_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37062,
-      "sha256": "daec3ff776fb2bc3d0b5aaf0c11093e1456ed84ee3cd0a90faf33f49c7a9a0af"
+      "bytes": 37140,
+      "sha256": "45bc97e0dab480f731d8fc594f97a7fd7c4865ab0392f42b1e2c28877ace9a96"
     },
     "markings": {
       "file": "t49_markings.png",

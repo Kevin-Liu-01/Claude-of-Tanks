@@ -11207,24 +11207,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30398,
-      "sha256": "3ed9ffc3300dfb692adfa40f17087e2f105ef51f26702b0615e1528fe073f079"
+      "bytes": 30444,
+      "sha256": "610242667fa8524fc11a4982be183e900ab8559d4c1417231e95843a7e434fec"
     },
     "modulesSide": {
       "file": "t80u_yun_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25474,
-      "sha256": "f841a5cb0e1216aa368088223dbf0f6e02c8619d328470314175df35914690a4"
+      "bytes": 25496,
+      "sha256": "9ac1901788d8ff427d795a0205f0096da0b912ee6c37d43e2a4ae9d766ea92e0"
     },
     "crewSide": {
       "file": "t80u_yun_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23498,
-      "sha256": "4faa428b34b09fde23f77594cc8014aa6d8e00219e33b9e0f4446e0834930c03"
+      "bytes": 23512,
+      "sha256": "adb8b0184881ea9d8c630d4ce53ce60d2362ad5ec353853b1f5768157e325a1d"
     },
     "angle": {
       "file": "t80u_yun_angle.webp",
@@ -11232,14 +11232,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 27848,
-      "sha256": "ee46c5fed9fbe41bc98cda46bb3660ad4c5a250f831e940bb510c08f7704f6ff",
+      "sha256": "3e52de10c9be8720dca9f3a34062423556b65b3b986ca76fee07438b501605f8",
       "thumbnail": {
         "file": "thumbs/t80u_yun_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10448,
-        "sha256": "e9dd7a16a6cbedf001e3ce3873ca8e8c5198e089b4de5be86f1ee4a17d5f06a6",
+        "bytes": 10438,
+        "sha256": "7e90938bf781d521dfe8c9c6ce4bb2d6d5d9b81d2cc3bfabae84479842866924",
         "frame": [17,117,228,250]
       }
     },
@@ -11256,8 +11256,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10906,
-      "sha256": "8179f17062ec2dba0087b62b29d03fea5af9b409bdeab068358892319defb011"
+      "bytes": 10918,
+      "sha256": "5a14b4eaeb9916746357bf2cf7976dc9449374e07bbc721ccf9dfbc99a620f49"
     },
     "topSilhouette": {
       "file": "t80u_yun_top_silhouette.png",

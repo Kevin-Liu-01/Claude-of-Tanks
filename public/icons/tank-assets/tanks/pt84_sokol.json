@@ -6698,8 +6698,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-1.0455,0.0789,-1.2974],
-        "max": [-0.1743,0.3695,-1.1489],
+        "min": [-1.0455,0.1079,-1.3865],
+        "max": [-0.1743,0.2532,-1.1489],
         "turretLocal": true
       },
       {
@@ -6887,8 +6887,8 @@
       }
     ]
   },
-  "geometryHash": "183a5942",
-  "metadataHash": "9de32f1a",
+  "geometryHash": "60625cfc",
+  "metadataHash": "25fd81b4",
   "presentationAnchor": {
     "xM": 0.0022,
     "zM": 0.0474
@@ -6946,15 +6946,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26690,
-      "sha256": "e93346ec31c217cf906d18190e90d1a892edb3e960853426c952e2bd0846cd47",
+      "bytes": 26700,
+      "sha256": "6359b826feea639e6ea5d0afb71433583138dd60d8dfd0cbc886043bac57645d",
       "thumbnail": {
         "file": "thumbs/pt84_sokol_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10964,
-        "sha256": "e0e95117f009598d097cc821b7e52bdd08c8e949d8652f238925c4ea13ad0e1b",
+        "bytes": 10978,
+        "sha256": "2b5e1eb1d6c2d5ab2fecddcb6ba52d5a2095de2470117ee234849ae0ddb32532",
         "frame": [22,107,229,249]
       }
     },
@@ -6971,8 +6971,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10224,
-      "sha256": "280687ee9df61d0428cc22524b39e44349688a156ba14f6b45e2b2e1a8829fde"
+      "bytes": 10238,
+      "sha256": "fc5d5d879ece0f2b2e7f6172aa60b20286d2fa5b55bc24a8150cdce0da45ecbc"
     },
     "topSilhouette": {
       "file": "pt84_sokol_top_silhouette.png",
@@ -6987,32 +6987,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4513,
-      "sha256": "5bcb3f135d5649285ec31956fa6515da5e4f1d967b359115be701263ebaa095b"
+      "bytes": 4516,
+      "sha256": "e2573805dd3326a5f5aa16b6df9df1ad8531a9604ed640831ef0d80db243d365"
     },
     "armorSide": {
       "file": "pt84_sokol_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24592,
-      "sha256": "1ae32df6b6d1fcc977a4794e256e3a7f0db9279042e58fcfd82639bbfa6869ef"
+      "bytes": 24618,
+      "sha256": "25d11b3174b4118ec08a3f7468fcd611f4f0a2aa8d413cbb01b3a5953baa5a2b"
     },
     "modulesSide": {
       "file": "pt84_sokol_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22996,
-      "sha256": "fda916327841e0c1829d12a57e96f1f6d3adfdb1773107ee87a62efd37e54028"
+      "bytes": 22952,
+      "sha256": "33998cdc35d6aef4943dd655e333bdf6e6deb7c83611da34b97b76c3c838f92f"
     },
     "crewSide": {
       "file": "pt84_sokol_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20852,
-      "sha256": "9d3a5f7048ab48f421e57b1d8b331801ec639dad59e5519612dbd0c385d98ddf"
+      "bytes": 20892,
+      "sha256": "1dcfc63d2d25d77ab440e4c7d6b2a418a7376d148d6cc2ff8da2b09bb0a1caf6"
     },
     "markings": {
       "file": "pt84_sokol_markings.png",
@@ -7025,8 +7025,8 @@
     "technicalLabels": {
       "file": "pt84_sokol_technical.json",
       "mime": "application/json",
-      "bytes": 5450,
-      "sha256": "5d5b1aebd56413cf75a6cecd7a0572a14b6d587089066081bc70c0f2cb2b76be"
+      "bytes": 5449,
+      "sha256": "ae0c78376da2bc2d9024093c4a2aedcc8e7cd8c906d1f97e6ac680ec47392e8f"
     }
   }
 }

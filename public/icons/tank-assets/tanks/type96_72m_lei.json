@@ -13531,39 +13531,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26038,
-      "sha256": "85ac8ee2dcb803e71f83b9e7e06b0386c426585c08ae00fd8433d93be1875d83"
+      "bytes": 26034,
+      "sha256": "05a938ad94a511436f6cbf9ac44da80dda8a50c127115d2ee6bfc17feeb93599"
     },
     "modulesSide": {
       "file": "type96_72m_lei_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21612,
-      "sha256": "95602539afac06bf867afdf2400577c497b942be99bab844d1a3a87d4d20902e"
+      "bytes": 21656,
+      "sha256": "c048ee9628e3db87594bcdf0e6921650d99f1de63f44ec38da27996565c3eba5"
     },
     "crewSide": {
       "file": "type96_72m_lei_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20152,
-      "sha256": "12ee8c7ac8a0d5d4806d20ce44b74aa2d73a1f66eff35d2274f5e8fa4348114b"
+      "bytes": 20112,
+      "sha256": "1ee84ddd843c35478c9fa0ec1602ceaa2f4d18e7769aeee0b8ef960acc5ff622"
     },
     "angle": {
       "file": "type96_72m_lei_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25456,
-      "sha256": "b1dffbc886257ad6d5858c62f193ca1c2016f495be5b4e32c60abf924c2f48fe",
+      "bytes": 25482,
+      "sha256": "8007790558f0dfd441969acfe39caf845aedac4c55e19d3515a40810adab0325",
       "thumbnail": {
         "file": "thumbs/type96_72m_lei_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10372,
-        "sha256": "c563e0bd8d3ed66c528a31926834246e7602407e8bf0e56e8bdc06ba13146b8d",
+        "bytes": 10360,
+        "sha256": "70a066eaad3e8b8236b8e117f5fb112d1148c2a9618996e3f2ba914b7929a1fe",
         "frame": [25,111,226,249]
       }
     },
@@ -13572,16 +13572,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11446,
-      "sha256": "01ebd9d5aa87f8af59edcf8d2abaa83cc4ea91cfeefdb6fc37a7532352425e26"
+      "bytes": 11452,
+      "sha256": "ebff5c77a44c67d41ee1e8a261d5963253dbf3d67488410725fe1393e61d3ce8"
     },
     "side": {
       "file": "type96_72m_lei_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10446,
-      "sha256": "f461660d51f0ccd0ffa55f65e390d9178d5524af3a209abea34827baa52037c0"
+      "bytes": 10428,
+      "sha256": "411da92c5e620ef4fe969304752712feb92741ef855ef905bd45b7b69e07d10b"
     },
     "topSilhouette": {
       "file": "type96_72m_lei_top_silhouette.png",

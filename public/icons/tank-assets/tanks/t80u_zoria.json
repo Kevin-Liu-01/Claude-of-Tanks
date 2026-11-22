@@ -23665,39 +23665,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33706,
-      "sha256": "c5a72161c47313619f4da1239f83ac69f6c4ca3a27e5c8ff6681ec8ce2387f8d"
+      "bytes": 33712,
+      "sha256": "34a0417c7ff652c0024e6e9c66c31c7e243815b035aba0d43c5b473455c232fc"
     },
     "modulesSide": {
       "file": "t80u_zoria_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28162,
-      "sha256": "7186cbb6f5f8baef5e91e1bc237cf1f13dc85993d00224bc288aba613e70df2f"
+      "bytes": 28200,
+      "sha256": "9a2d8a133ba39352806b574fbbc6940d4ddcc509a8d6c6a44f2e201961753ebd"
     },
     "crewSide": {
       "file": "t80u_zoria_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25028,
-      "sha256": "119ef7d54bec36643c3c7f39085347b69d505ae516cf9b8071e553c7cc4ec9c3"
+      "bytes": 25060,
+      "sha256": "7d53189ba28e9376b439be3eea86a6eeaa92e0f60761c0e2d4070ef3a84fcee1"
     },
     "angle": {
       "file": "t80u_zoria_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30106,
-      "sha256": "3cb23735b08d0ca737ced049197e8d9b1db41645806975abf024b823549fcb33",
+      "bytes": 30116,
+      "sha256": "9a15c64604d0d500b792e32033b9140593142dc3772c217d6e8c862e11d5c26a",
       "thumbnail": {
         "file": "thumbs/t80u_zoria_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11438,
-        "sha256": "96a520b83ee64218f5761e84b1c2392816b899da3c5c9446d4cf9a7ec6a3bf28",
+        "bytes": 11430,
+        "sha256": "9a4eb89d3b6df25bb40426ab6bb617878ad8889e04ce7b01dfb8bf08a2d46673",
         "frame": [25,121,232,250]
       }
     },
@@ -23714,8 +23714,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10300,
-      "sha256": "fcd1172956d355ea025c8ddb6c5493d4d15764376bef741438f75224c5fbd5f1"
+      "bytes": 10326,
+      "sha256": "d1f41c07790281c60df876e81e06249a62999cb23134dfc7d3795d67f7c61d58"
     },
     "topSilhouette": {
       "file": "t80u_zoria_top_silhouette.png",

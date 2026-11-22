@@ -591,14 +591,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 28800,
-      "sha256": "07177d0f4ebe5c647d415a610810f193ead3968839bea7ff1000c8f85378b078",
+      "sha256": "c747633dd86b86b586aefb75afbde3b24f10f75452577bea32cee6d367cd621d",
       "thumbnail": {
         "file": "thumbs/m113a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11666,
-        "sha256": "e9f3542eb80b11c052ffdd7b0b2a7ef75e6e641ea97b7e0d87dcebc718cb765e",
+        "bytes": 11668,
+        "sha256": "aec82810f701f5413f6da47fd4711369fb160cab448c66d30f2173e096427a45",
         "frame": [28,103,225,250]
       }
     },
@@ -615,8 +615,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13792,
-      "sha256": "21e4f2a477b6eaf02457bc3c04906b4c78e4e884003b8e24292d91b5aaaaa7d6"
+      "bytes": 13932,
+      "sha256": "272a59654060999c4d325aa5694413dba0d0b256f68b1d422b34a452fc8dbb2a"
     },
     "topSilhouette": {
       "file": "m113a3_top_silhouette.png",
@@ -639,24 +639,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28532,
-      "sha256": "0857205256b48b76e9a036d1627e45f3dcb79f5d44a0a6834f75fdd083c1c16b"
+      "bytes": 28566,
+      "sha256": "8ca8d74fcae92c60514cb87f9e8d1c253fb00bc90e93b447f93f474a94def237"
     },
     "modulesSide": {
       "file": "m113a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28898,
-      "sha256": "7dea2e304d7fb3158568dcc5f48f56f8ad12becdd12bc48c55833954f144dd55"
+      "bytes": 27974,
+      "sha256": "d02284df0d5772a9b20d885077385006efad1d54fac8c5f373e23821653d2902"
     },
     "crewSide": {
       "file": "m113a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28070,
-      "sha256": "330afc34aff7cc3ffeaf2cadb0345863329f18ff68236631d6c5b8d166fb110b"
+      "bytes": 28152,
+      "sha256": "c4d597afcb954caa95f67cca995f0577705707d5a2148579f3939c285dd0a5ee"
     },
     "markings": {
       "file": "m113a3_markings.png",

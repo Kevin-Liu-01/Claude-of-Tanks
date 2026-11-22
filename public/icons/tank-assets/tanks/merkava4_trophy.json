@@ -647,39 +647,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41814,
-      "sha256": "4f2fe11c480d66a0b0b450f5acf373b5f13cfd9a38574d44851ef128c789f5d4"
+      "bytes": 39824,
+      "sha256": "f61a259ca98f405d8f2bf3f04d5ca2298c257e7734827def464908fd8e1abf93"
     },
     "modulesSide": {
       "file": "merkava4_trophy_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38072,
-      "sha256": "020a7e9f8cbdfd80a17dde2ac7d736ff5c007620379327c7818bc11faadaefb6"
+      "bytes": 37648,
+      "sha256": "07f63f0b7088ef61263fb5fee543911ca281673cbd3ef3d502f8acc8e1b7a8c5"
     },
     "crewSide": {
       "file": "merkava4_trophy_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38114,
-      "sha256": "80f9f6860a0eb6a79c03be2036a57147c234a7562db80bd0530e0d41615f1a88"
+      "bytes": 38132,
+      "sha256": "5e5580e2a11ac5963c2cb843ff0c11434edee5b61e067c5203654c829916790b"
     },
     "angle": {
       "file": "merkava4_trophy_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30604,
-      "sha256": "b3039ec84f843e9a2e42a6d3632e6242d410d3489c5f4c080702e602bea6d2ec",
+      "bytes": 30614,
+      "sha256": "76b6a578ce4343412c148630a48ec0da981dab5d470fab792d37e983ef511269",
       "thumbnail": {
         "file": "thumbs/merkava4_trophy_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12786,
-        "sha256": "15aff46ff0f115f125b7a6fae937515540ac887f4da33994976c7df1904b2003",
+        "bytes": 12784,
+        "sha256": "41c7edeaacc7ac8167845b2395b82f8a895d11c17356796058cb422deef6e6e9",
         "frame": [24,103,225,248]
       }
     },
@@ -696,8 +696,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20488,
-      "sha256": "759720fd89ba4b0d0f7ac1ea56fe327db3d2f9f66342742acaa88ca1221f6b67"
+      "bytes": 20474,
+      "sha256": "c8a81dc304086a8405604a3fc3546921c8fe758341256f782688ef9dfacecce6"
     },
     "topSilhouette": {
       "file": "merkava4_trophy_top_silhouette.png",

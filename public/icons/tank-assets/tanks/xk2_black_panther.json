@@ -625,7 +625,7 @@
       }
     ]
   },
-  "geometryHash": "dfe52411",
+  "geometryHash": "64008512",
   "metadataHash": "98676572",
   "presentationAnchor": {
     "xM": -0.0067,
@@ -643,7 +643,7 @@
     "roles": {
       "wheelTire": 1,
       "wheelDish": 14,
-      "suspensionLink": 1,
+      "suspensionLink": 2,
       "suspensionJoint": 1,
       "tireRubber": 1,
       "wheelPaint": 1,
@@ -688,14 +688,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26546,
-      "sha256": "6b4df6b125e0fbb26f076b6e27c34082595983329d84add4c9f8e5c64bccfcaa",
+      "sha256": "221326481cb93d7a46a9b48d9497d30e669129327d07436268b2169e5b86c88f",
       "thumbnail": {
         "file": "thumbs/xk2_black_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10824,
-        "sha256": "5e28508f9b66f6e0f366fddcedeb9f2292b914888a40eb976cf1bb9ab11fb742",
+        "bytes": 10836,
+        "sha256": "6648a5f544390d17d47aa61995d130a3f34030db707f55872c338ea82d340106",
         "frame": [21,82,225,250]
       }
     },
@@ -704,16 +704,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13180,
-      "sha256": "460cc5002f2cb4be2dabe58ef1f8f06f8376c05af4149f9a414962aa51aa9c9d"
+      "bytes": 13188,
+      "sha256": "8c977e9809b19ed62146a7c8d377738adbf3ce607690575ae2040a25af01da92"
     },
     "side": {
       "file": "xk2_black_panther_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13806,
-      "sha256": "49582b2ffe2d5b3fbbb85b47b115f8ab30d433e378a72db3fcb065e40add9c80"
+      "bytes": 13818,
+      "sha256": "ffcfd3d7270144c2c0697296d759e75314cf60649d4145617574dd352295f903"
     },
     "topSilhouette": {
       "file": "xk2_black_panther_top_silhouette.png",
@@ -736,24 +736,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28476,
-      "sha256": "f5105524b8be2c078ab759741ed594dbb24a12f328009d71bc22edd606d3ec62"
+      "bytes": 28446,
+      "sha256": "cd944ececf4e82f88c7911fbf8893634f0417e8d14a2279769c89ad96824dff9"
     },
     "modulesSide": {
       "file": "xk2_black_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29830,
-      "sha256": "b8314e8ecff55fef200d7f3efc5d0cfcd9710acc95d389296965cfb50917fbe5"
+      "bytes": 29878,
+      "sha256": "0dd227c10586dc31a19f7809ee66ebcc108fc2d2a2527c04fee53fa92a275782"
     },
     "crewSide": {
       "file": "xk2_black_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25836,
-      "sha256": "73f1d3d2523bb8eb26d5f2845e93ef302e11d7481b2c5ba9168ab7e536d917d1"
+      "bytes": 25910,
+      "sha256": "52044e09aaebcd9d806fd0514e209ca201cac0aa41c26a09c1feb1b0e11f6a7c"
     },
     "markings": {
       "file": "xk2_black_panther_markings.png",

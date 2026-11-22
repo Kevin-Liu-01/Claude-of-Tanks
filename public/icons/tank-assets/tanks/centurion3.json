@@ -829,15 +829,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22574,
-      "sha256": "2321a666493c320cfaaefe16437023e46109cc6b4a47f1dcdb878c4ad987e284",
+      "bytes": 22036,
+      "sha256": "f24855af3bd0aa9f9024a7c5c0761d54314631e14668da0d0de3cfa7495c3b13",
       "thumbnail": {
         "file": "thumbs/centurion3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9258,
-        "sha256": "e96821f7c2848cc2ae177e01bce021711acbdb8863f502a1c7758c976baa0cdc"
+        "bytes": 9262,
+        "sha256": "db8c7f28f3520513dbc63111272259151f5d03e6bfe0e7280ea61b503b73c023"
       }
     },
     "top": {
@@ -853,8 +853,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9258,
-      "sha256": "bfa2ba0e692935e35de470dc8aadc3604aede1b538c765d23aeab22415c4dd88"
+      "bytes": 9246,
+      "sha256": "b5909f90a1d4d1ed32dd64810e51564a0a7bc7a3ea31f03ce46e1d95a90c88dd"
     },
     "topSilhouette": {
       "file": "centurion3_top_silhouette.png",
@@ -877,24 +877,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24114,
-      "sha256": "4bbb3721c21e02843d651931cb189b2e94ed062c22403a228dc7e92da60a6906"
+      "bytes": 24104,
+      "sha256": "c4eac2c5d37d96ab96cb75e571344db63859dc16635c432997ed8587aa5b9839"
     },
     "modulesSide": {
       "file": "centurion3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22060,
-      "sha256": "61d8b11fb9188f6269c2dace448b55cefd06cd1e8e7407f9fb37c299663ccee6"
+      "bytes": 22128,
+      "sha256": "c9a0458b5cf77eec09a93effd932cb8cdfa681f2715cacaef92e5700dcb8315e"
     },
     "crewSide": {
       "file": "centurion3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19428,
-      "sha256": "e72b7c2b6999b1e0f3dfb731aa3b292280a713b30fce86f2da1bba133f5fa585"
+      "bytes": 19466,
+      "sha256": "9b0cbd29e62e381734cde31029e39415d643cf4d690d9a50c97c649b4a206294"
     },
     "markings": {
       "file": "centurion3_markings.png",

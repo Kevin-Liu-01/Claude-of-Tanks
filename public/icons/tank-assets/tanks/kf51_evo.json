@@ -2213,10 +2213,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-1.2752,-0.035,2.42],
-          [1.2752,-0.035,2.42],
-          [1.2752,0.7969,2.42],
-          [-1.2752,0.7969,2.42]
+          [-1.2752,-0.025,2.42],
+          [1.2752,-0.025,2.42],
+          [1.2752,0.7971,2.42],
+          [-1.2752,0.7971,2.42]
         ]
       },
       {
@@ -2228,10 +2228,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [1.594,-0.035,1.9839],
-          [1.594,-0.035,-3.3946],
-          [1.4665,0.7969,-3.3946],
-          [1.4665,0.7969,1.9839]
+          [1.594,-0.025,1.9839],
+          [1.594,-0.025,-3.3946],
+          [1.4665,0.7971,-3.3946],
+          [1.4665,0.7971,1.9839]
         ]
       },
       {
@@ -2243,10 +2243,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-1.594,-0.035,-3.3946],
-          [-1.594,-0.035,1.9839],
-          [-1.4665,0.7969,1.9839],
-          [-1.4665,0.7969,-3.3946]
+          [-1.594,-0.025,-3.3946],
+          [-1.594,-0.025,1.9839],
+          [-1.4665,0.7971,1.9839],
+          [-1.4665,0.7971,-3.3946]
         ]
       },
       {
@@ -2258,10 +2258,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [1.3549,-0.035,-3.3946],
-          [-1.3549,-0.035,-3.3946],
-          [-1.3549,0.7969,-3.54],
-          [1.3549,0.7969,-3.54]
+          [1.3549,-0.025,-3.3946],
+          [-1.3549,-0.025,-3.3946],
+          [-1.3549,0.7971,-3.54],
+          [1.3549,0.7971,-3.54]
         ]
       },
       {
@@ -2449,8 +2449,8 @@
       {
         "volumeId": "M01",
         "name": "gun",
-        "min": [-0.2705,-0.044,-1.6502],
-        "max": [0.2705,0.4081,2.42],
+        "min": [-0.2705,-0.0339,-1.6502],
+        "max": [0.2705,0.4129,2.42],
         "turretLocal": true
       },
       {
@@ -2613,23 +2613,23 @@
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-1.0267,-0.009,-1.4849],
-        "max": [-0.5673,0.781,-0.8396],
+        "min": [-1.0267,0.0016,-1.4776],
+        "max": [-0.5673,0.7816,-0.8396],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "dfa08159",
-  "metadataHash": "9afd197e",
+  "geometryHash": "e90f6bc9",
+  "metadataHash": "50aa5456",
   "presentationAnchor": {
     "xM": 0,
-    "zM": 0.0353
+    "zM": 0.032
   },
-  "presentationHash": "7b8eb0ec",
+  "presentationHash": "ac458c38",
   "presentationProjection": {
-    "centerYM": 2.1685,
-    "topHalfM": 7.4576,
-    "sideHalfM": 3.7288
+    "centerYM": 2.1249,
+    "topHalfM": 7.4611,
+    "sideHalfM": 3.7306
   },
   "appearance": {
     "version": 1,
@@ -2648,7 +2648,7 @@
       "armorPaint": 12,
       "hullRubber": 1,
       "opticGlass": 3,
-      "unclassified": 19,
+      "unclassified": 18,
       "gearShadow": 1,
       "machineGun": 5,
       "fittingPaint": 4
@@ -2678,16 +2678,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29540,
-      "sha256": "06ffe4124de65731104531b7a33af743a637245cba40cb7bee762607d98507d4",
+      "bytes": 29214,
+      "sha256": "2cecf6ca35b0b9f6dcafb9add6fe442d48743b9080227e34037586220334f65f",
       "thumbnail": {
         "file": "thumbs/kf51_evo_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11836,
-        "sha256": "73969251536ffc1cb557217d535f8772bc4b7deb8c0988b77d90f4592b84eb34",
-        "frame": [14,89,227,250]
+        "bytes": 11608,
+        "sha256": "f2a9717a9f157b19963c49e20a1cad138af5da6cb10fce9fd91fb104673a6080",
+        "frame": [13,101,228,250]
       }
     },
     "top": {
@@ -2695,56 +2695,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10458,
-      "sha256": "4bb116652ed533ac125be0c3f2ca8bd3d60e77e4259e50d5719857e6c40fa13f"
+      "bytes": 10420,
+      "sha256": "1a076db67eb7ad2e736c00724724887df3fcad308b4292734ef28a4c6d387c21"
     },
     "side": {
       "file": "kf51_evo_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11144,
-      "sha256": "c0b8e0fcc4b649afaedef00e6b933f4461140f9ac4596952ed2f5809bc85c022"
+      "bytes": 11584,
+      "sha256": "f3718e09e1aebc25fdb42ff77c669cea2c9a860bed30bc7331a194fc54bcfa52"
     },
     "topSilhouette": {
       "file": "kf51_evo_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1116,
-      "sha256": "3b59aeaa46f126d8d06d081a023739d78b796a7cd117324de00b5fd7851d7ccf"
+      "bytes": 1099,
+      "sha256": "5d3b6fcde562e0ee4c2f7c5e189da09d7b0e23eae36321b7e3a382d18239735f"
     },
     "sideSilhouette": {
       "file": "kf51_evo_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4664,
-      "sha256": "e8136c0843ba4776aa6461a605943c99393a0a149edf0a1412927075ea1d8aee"
+      "bytes": 4496,
+      "sha256": "0c7bb103602e046dd97fe019f0f2ae5cd209cf95a6df2663122af112bc7667c3"
     },
     "armorSide": {
       "file": "kf51_evo_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24296,
-      "sha256": "97423b95d615fd81f9e89424fdc32e7c96d35d905204261ea09c68ba48dc97e5"
+      "bytes": 24594,
+      "sha256": "7c9c6b6261dc73022c8eb8c56a0ac08d090ca85931ab30bdf18eabfc75e83c07"
     },
     "modulesSide": {
       "file": "kf51_evo_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26262,
-      "sha256": "7be22f5c992a36b65dc00cef0f18558fded473c827030321a7e6a1e95b84a06a"
+      "bytes": 25944,
+      "sha256": "8e333b08204d29635f56331571b1dc904e08431c853997517ccb7fcce4d47c38"
     },
     "crewSide": {
       "file": "kf51_evo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22286,
-      "sha256": "19e3325e734d26f5af6f0e1752847f5727056e49ddd12186d9cd5f2897bdf35d"
+      "bytes": 23250,
+      "sha256": "5c9f1ec1adc1bba6ae4621225ebaf18c3acc03c2ea4eaf78faaf2e871d48a29e"
     },
     "markings": {
       "file": "kf51_evo_markings.png",
@@ -2757,8 +2757,8 @@
     "technicalLabels": {
       "file": "kf51_evo_technical.json",
       "mime": "application/json",
-      "bytes": 5341,
-      "sha256": "88b8f0b9c8219928e9093a95d14934a93317786bd7beb313a8d9080ba091cbed"
+      "bytes": 5438,
+      "sha256": "d79180b2b91567ccc96f7939709c8a46e0a9749bb3207d71d28dcc814350e852"
     }
   }
 }

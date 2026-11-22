@@ -9696,7 +9696,7 @@
       }
     ]
   },
-  "geometryHash": "07a78a71",
+  "geometryHash": "aa8304be",
   "metadataHash": "bf347390",
   "presentationAnchor": {
     "xM": 0.0002,
@@ -9755,39 +9755,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28472,
-      "sha256": "c60fd0a955ac8e3bbb01aaf348b6656c43d3e05ebcc26c0506a6f2ef2d44ded2"
+      "bytes": 28452,
+      "sha256": "86ccd74416c784e50c7a53998eb9ab53c38151385f02b8708643cef0c59b6465"
     },
     "modulesSide": {
       "file": "t72b3_bastion_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24202,
-      "sha256": "2ffde896b1631ef51634b74618978d352e2a9466d25cd1bfe8b7e51759e2e1c6"
+      "bytes": 24080,
+      "sha256": "4f242c8b908e9f5532d176e3fc24b4f13b5f3e48e5e7336981e4fe95b1765c62"
     },
     "crewSide": {
       "file": "t72b3_bastion_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22122,
-      "sha256": "63d4da5a3a57d7a570f3d32bd8c8f3e2d6efefde97bcdd9bc99e88c1219f00f1"
+      "bytes": 22124,
+      "sha256": "04a03a680d708bac9c77e699842a10a75135b0f86e1d5b7557dedf9466810972"
     },
     "angle": {
       "file": "t72b3_bastion_m_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25946,
-      "sha256": "6540fcb72f44b46cabd6e9306d46b76cc3310229cda4167cde6e0373f1bf0e06",
+      "bytes": 25958,
+      "sha256": "41c530a63d2b393de0fe84a98a49b0e4160b1f967443cd7d8896c6334706c4ad",
       "thumbnail": {
         "file": "thumbs/t72b3_bastion_m_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10404,
-        "sha256": "8ff6a281bdf04e093a929400a168e48dae9885a35fb94add7d4d363893ebd73e",
+        "bytes": 10416,
+        "sha256": "b4440e1c7e7db10d19ddc7a649aa1ef752a962dd1facf3aa6a0b8ed425d4e274",
         "frame": [25,124,230,249]
       }
     },
@@ -9796,16 +9796,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13444,
-      "sha256": "f5b9badfe052304747bd563715d77617c6e98f3c2693d2ee66d746b1e4262656"
+      "bytes": 13446,
+      "sha256": "0d30cd8212327367c4b2c578531a98560f8547b372e31b0689d19ea1600d682f"
     },
     "side": {
       "file": "t72b3_bastion_m_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10672,
-      "sha256": "24f2f43f86e3fdc7df7f6bdf21459c74f967af78f3ea541ff214147778db8033"
+      "bytes": 10686,
+      "sha256": "5c914abb6a26af6ae7fde873d07aabb8abfc1f3cdaf2329b1f2b665d6a6d2855"
     },
     "topSilhouette": {
       "file": "t72b3_bastion_m_top_silhouette.png",
@@ -9820,8 +9820,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4144,
-      "sha256": "40702f55265d0bb34fbf8b5de82a4c087349a36b3a55e017355b79fa45a97d7f"
+      "bytes": 4151,
+      "sha256": "d8dc3f7e0ed46e8a80a6576dd115e9b8aa2dba5b44bf3338ded9a46a33f5d504"
     },
     "markings": {
       "file": "t72b3_bastion_m_markings.png",
