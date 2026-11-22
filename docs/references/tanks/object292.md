@@ -164,6 +164,8 @@
   - Gun assembly: a bolted cradle flange where the barrel enters the shield, the recoil housing (the old root drum's
     envelope, underside 0.175 m under the bore) with two clamp bands and a guide key, then the step and cone to the
     thermal sleeve. The published depression curve stays (a fresh sweep at 26 mm is at or deeper than it everywhere).
+- Camo (object292-cheeks-275, Kevin 2026-11-22: "russian woodland type camo suits obj 292 much better too"): stock in the shared Russian Woodland (paint_ru_t80u_modern, the T-80U Bars-M family's green, black and
+  brown); the 272 Kubinka three-tone (paint_object292) stays in the catalog and is the spec's Factory coat.
 
 ## Publication receipt (only if requested)
 
