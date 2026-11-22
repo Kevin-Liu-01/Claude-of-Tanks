@@ -21,6 +21,8 @@ interface MainBattleHudRuntimeOptions {
   engineContext: HudEngineContext;
   perfMeterEnabled(): boolean;
   directionalHitValuesEnabled(): boolean;
+  /** Other tanks' reload strips (Settings › Interface, reload-others-275). */
+  reloadIndicators(): { allyReload: boolean; enemyReload: boolean };
   queueMinimap(): void;
   access?: BattleHudAccess;
 }
@@ -55,6 +57,7 @@ export function createMainBattleHudRuntime(
     options.bus.emit('ui:directionalHitValues', {
       on: options.directionalHitValuesEnabled(),
     });
+    options.bus.emit('ui:reloadIndicators', options.reloadIndicators());
     options.queueMinimap();
     return runtime;
   };

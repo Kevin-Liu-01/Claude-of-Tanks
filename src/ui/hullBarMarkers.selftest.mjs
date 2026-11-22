@@ -11,6 +11,7 @@
 // old bar-versus-bar push (35782a9496, gauntlet r15) restored, which the same law must reject.
 import { created, WIDTH, HEIGHT } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
+import { setMaxListeners } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import * as THREE from 'three';
@@ -75,11 +76,12 @@ function tank(id, team, pos, extra = {}) {
 }
 
 /** One HUD (the real one or the control's), its player and the bars it makes, read by the tank each one names. */
-function createScene(init) {
+function createScene(init, onBus = null) {
   const from = created.length;
   const bus = createBus();
   const runtime = init(bus);
   runtime.setMode('battle');
+  onBus?.(bus);
   const player = tank('player', 'alpha', [0, 0, 0], {
     isPlayer: true,
     // (the gun laid wide right and low: the sight's ring stands clear of every staged tank's bar)
@@ -98,6 +100,7 @@ function createScene(init) {
     gunDistM: 0, gunTargetId: null, gunMarker: new THREE.Vector3(), blockedDistM: null, blockedLabel: false, penRatio: null };
   let timeS = 40;
   return {
+    bus,
     stage(list) { tanks = [player, ...list]; },
     frame() {
       controller.update(aim);
@@ -115,7 +118,10 @@ function createScene(init) {
         const id = el.querySelector('.nm span').textContent;
         out.set(id, { x: Number(move[1]), y: Number(move[2]), k: Number(move[3]), width: parseFloat(el.style.width),
           z: Number(el.style.zIndex), ally: el.classes.has('ally'), under: el.classes.has('under'),
-          pointerDx: parseFloat(el.style.getPropertyValue('--hpb-anch-dx')) || 0 });
+          pointerDx: parseFloat(el.style.getPropertyValue('--hpb-anch-dx')) || 0,
+          // (reload-others-275: the reload strip under the bar, as paintPlateReload wrote it; '' never painted)
+          reload: { off: el.querySelector('.rl').classes.has('off'), ld: el.querySelector('.rl').classes.has('ld'),
+            fill: el.querySelector('.rf').style.transform } });
       }
       return out;
     },
@@ -168,8 +174,8 @@ function proveFrame(scene, staged, label) {
 }
 
 /** Drives one HUD through every staging, each judged on its own: the failures by staging (empty where the law holds). */
-function proveLaw(init, label) {
-  const scene = createScene(init);
+function proveLaw(init, label, onBus = null) {
+  const scene = createScene(init, onBus);
   const failures = new Map();
   let frames = 0;
   const judge = (staging, run) => {
@@ -238,6 +244,41 @@ const faint = (bars) => [...bars.values()].filter((bar) => bar.under).length;
 // ---- the law on the real HUD ----
 const { scene, frames, failures } = proveLaw(initHud, 'hud');
 assert.deepEqual([...failures.values()], [], 'every hull bar sits on its own tank, unpushed');
+
+// (the Settings rows for other tanks' reload are off by default: no strip was painted through the whole law)
+assert.ok([...scene.bars().values()].every((bar) => bar.reload.fill === '' && !bar.reload.ld), 'no reload strip painted by default');
+
+// ---- reload-others-275 (owner 2026-11-22: "have an option to turn on reload indicators for allies/enemies in settings
+// too"): with both sides' strips on, the same law holds (the strip lengthens a bar, it moves none off its tank), and each
+// bar's strip reads its own tank's reload: part way, loaded, nothing for a dry gun; a side turned off stops painting ----
+{
+  const both = (bus) => bus.emit('ui:reloadIndicators', { allyReload: true, enemyReload: true });
+  // (a third HUD on the harness's one window and viewport: each adds its resize listeners, past Node's warning at 10)
+  setMaxListeners(20, window, window.visualViewport);
+  const withStrips = proveLaw(initHud, 'hud+reload', both);
+  assert.deepEqual([...withStrips.failures.values()], [], 'with the reload strips on, every hull bar sits on its own tank, unpushed');
+  const strips = withStrips.scene; // (its HUD reused: each HUD adds window listeners)
+  const loading = tank('enemy-loading', 'bravo', [-60, 0, 380]);
+  loading.combat.reload.t = 1.5; loading.combat.reload.totalS = 6; loading.combat.reload.kind = 'shell';
+  const loaded = tank('ally-loaded', 'alpha', [20, 0, 380]);
+  const dry = tank('enemy-dry', 'bravo', [-20, 0, 300]);
+  dry.combat.ammo.fill(0);
+  dry.combat.reload.t = 3; dry.combat.reload.totalS = 6;
+  strips.stage([loading, loaded, dry]);
+  for (let i = 0; i < 4; i++) strips.frame();
+  let bars = strips.bars();
+  assert.deepEqual(bars.get('enemy-loading').reload, { off: false, ld: false, fill: 'scaleX(0.750)' }, 'three quarters through its reload');
+  assert.deepEqual(bars.get('ally-loaded').reload, { off: false, ld: true, fill: 'scaleX(1.000)' }, 'loaded: full, the loaded ink');
+  assert.deepEqual(bars.get('enemy-dry').reload, { off: false, ld: false, fill: '' }, 'a dry gun: never painted (its markup hides it)');
+  // the enemy fires again and the allies' row goes off: the enemy's strip restarts, the ally's is left as it was
+  strips.bus.emit('ui:reloadIndicators', { allyReload: false, enemyReload: true });
+  loading.combat.reload.t = 6;
+  loaded.combat.reload.t = 3; loaded.combat.reload.totalS = 6;
+  for (let i = 0; i < 4; i++) strips.frame();
+  bars = strips.bars();
+  assert.equal(bars.get('enemy-loading').reload.fill, 'scaleX(0.000)', 'the enemy fired: its strip empties');
+  assert.equal(bars.get('ally-loaded').reload.fill, 'scaleX(1.000)', 'the allies\' row off: no ally strip painted');
+}
 
 // ---- kept (10-26 r20): whole on the window. A near ally at the left edge: its seat would leave the window, so the bar
 // slides back onto it whole, its tank's x inside the bar and its pointer moved back over the tank ----

@@ -399,6 +399,9 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery';
   timeS?: number;
   on?: boolean;
+  /** ui:reloadIndicators: other tanks' reload strips by side (Settings › Interface, reload-others-275). */
+  allyReload?: boolean;
+  enemyReload?: boolean;
   shells?: string[];
   consumables?: string[];
   specialAction?: string;
@@ -548,6 +551,12 @@ interface HpBar {
   /** How far its words reach either side of its axis, unscaled (measureHpBar: the silhouette hangs left of the name). */
   inkL: number;
   inkR: number;
+  /** Its reload strip (reload-others-275, shown where the Settings row for its side is on), the value it shows
+   *  (paintPlateReload), and the bar's foot under its words as measured (HP_BAR_FOOT, and the strip where it shows). */
+  reload: HTMLElement;
+  reloadFill: HTMLElement;
+  reloadShown: number;
+  foot: number;
 }
 interface SpotMemory {
   vis: boolean;
@@ -1060,6 +1069,43 @@ export function reloadHudFraction(reload: ReloadView | null | undefined, pending
   const remainingS = reload?.t ?? 0;
   if (!(totalS > 0) || !(remainingS > 0.001)) return 0;
   return Math.max(0, Math.min(1, remainingS / totalS));
+}
+
+/**
+ * Another tank's reload as its plate shows it (owner 2026-11-22: "have an option to turn on reload indicators for
+ * allies/enemies in settings too"): how far it is through the cycle its selected weapon's channel loads, 0 just fired to
+ * 1 loaded, or -1 where nothing honest shows (no channel; a dry weapon, as the reticle's own sweep shows none).
+ * The channel is the one the authority runs (sim/damage startPostShotReload: a shell, an autoloader's next round or its
+ * magazine, a launcher rail, a salvo's next missile or its group, each under that tank's crew, modules and equipment), and
+ * every client already holds it: solo play's own simulation, and in a network battle each tank's row (its RELOAD group
+ * and status word's kind, written into its combat state by mp/presentation updateCombat). The read is the reticle's own
+ * (reloadHudFraction), so the player's readout and these plates never disagree on what a reload is. The figure the
+ * reticle shows loaded (nextShotReloadS) stays the player's: another tank's crew, modules and equipment are not on the
+ * wire, so no plate guesses its next reload's length.
+ */
+export function reloadIndicatorProgress(combat: {
+  reload?: ReloadView | null;
+  shellSlot?: number;
+  ammo?: ArrayLike<number> | null;
+} | null | undefined): number {
+  const reload = combat?.reload;
+  if (!reload) return -1;
+  const count = combat.ammo?.[combat.shellSlot ?? 0];
+  if (typeof count === 'number' && Number.isFinite(count) && count <= 0) return -1;
+  return 1 - reloadHudFraction(reload);
+}
+
+/** A plate's reload strip written from reloadIndicatorProgress, in half-percent steps (down, so it reads loaded only once
+ *  the cycle ends) and only where it moved: hidden at -1 (.off, its room kept so the plate never re-measures), the loaded
+ *  ink at 1 (.ld). Returns the value shown. */
+export function paintPlateReload(track: { classList: { toggle(name: string, on: boolean): unknown } },
+  fill: { style: { transform: string } }, shown: number, progress: number): number {
+  const next = progress < 0 ? -1 : progress >= 1 ? 1 : Math.floor(progress * 200) / 200;
+  if (next === shown) return shown;
+  if ((next < 0) !== (shown < 0)) track.classList.toggle('off', next < 0);
+  if ((next >= 1) !== (shown >= 1)) track.classList.toggle('ld', next >= 1);
+  if (next >= 0) fill.style.transform = `scaleX(${next.toFixed(3)})`;
+  return next;
 }
 
 /** The reload readout's figure, the countdown and the loaded figure alike: one decimal under 10 s, whole seconds (up)
@@ -2185,7 +2231,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-aerial-readout[hidden]{display:none}
 /* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
 .range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
-.realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .tr{display:none!important}
+.realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .tr,.realistic-mode .cot-hpb .rl,.realistic-mode .cot-tgt .rl{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:var(--battle-fs-11)}
 .cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
@@ -2235,6 +2281,19 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb .tr{flex:none;height:6px;margin:2px 7px 0;}
 .cot-hpb .fl{height:100%;width:100%;transform-origin:0 50%;background:var(--hud-enemy);transition:transform var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
+/* other tanks' reload (reload-others-275, Settings: off by default, allies' and enemies' apart): a 3 px strip under the
+   hull bar, filling with the cycle in the reload's own amber (the reticle's sweep and countdown), the grey of the
+   reticle's loaded figure once loaded; no figure on any plate. Hidden it keeps its room (.off), so no plate re-measures */
+.cot-hpb .rl,.cot-tgt .rl{display:none;flex:none;height:3px;background:var(--hud-plate-strong);position:relative;overflow:hidden;
+  box-shadow:0 1px 2px oklch(from var(--surface-scene) l c h / .72);}
+.cot-hpbars.rl-ally .cot-hpb.ally .rl,.cot-hpbars.rl-enemy .cot-hpb:not(.ally) .rl,.cot-tgt.rl .rl{display:block;}
+.cot-hpb .rl{margin:2px 8px 0;}
+.cot-hpbars.short .cot-hpb .rl{margin-inline:6px;}
+.cot-tgt .rl{align-self:center;margin-top:2px;}
+.cot-hpb .rl.off,.cot-tgt .rl.off{visibility:hidden;}
+.cot-hpb .rf,.cot-tgt .rf{height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);background:var(--accent);}
+.cot-hpb .rl.ld .rf,.cot-tgt .rl.ld .rf{background:var(--ink-2);}
+.cot-hpb.under .rl{opacity:.6;}
 /* the side under the bar in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond,
    the target plate's, and the ally's chevron, each whole inside the bar's box (the 31 px box cut the old pointer) */
 /* (the enemy's diamond ringed as the target plate's, so it holds its shape over snow, its ring inside the painted box) */
@@ -2296,7 +2355,7 @@ html[data-cot-scoped] .cot-tgt .rng{display:none;}
 .cot-tgt.tightest.below .anch{margin-bottom:2px;}
 /* under a panel it sank beneath on a phone (positionTargetPlate) the vehicle line stands down, then the points, then the
    bar: the name stays */
-.cot-tgt.tight .mt,.cot-tgt.tighter .hp,.cot-tgt.tightest .tr{display:none;}
+.cot-tgt.tight .mt,.cot-tgt.tighter .hp,.cot-tgt.tightest .tr,.cot-tgt.tightest .rl{display:none;}
 /* a large window steps the plate up (.lg, resize: it keeps the phone's floor everywhere else) */
 .cot-tgt.lg .pl{font-size:var(--battle-fs-15);}
 .cot-tgt.lg .cg{width:32px;height:16px;margin:-8px 2px 0 0;}
@@ -2551,7 +2610,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // block's width, its points under the bar and the diamond; no part keeps a slot it does not fill)
   tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="cg"></span><b class="nick"></b></div>` +
     `<div class="mt"><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
-    `<div class="tr"><div class="fl"></div></div><div class="hp num"></div><div class="anch"></div></div>`;
+    `<div class="tr"><div class="fl"></div></div><div class="rl off"><div class="rf"></div></div><div class="hp num"></div>` +
+    `<div class="anch"></div></div>`;
   const tgtRefs = {
     rng: requireElement<HTMLElement>(tgtEl, '.rng'),
     nick: requireElement<HTMLElement>(tgtEl, '.nick'),
@@ -2564,7 +2624,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     bk: requireElement<HTMLElement>(tgtEl, '.bk'),
     pl: requireElement<HTMLElement>(tgtEl, '.pl'),
     mt: requireElement<HTMLElement>(tgtEl, '.mt'),
+    rl: requireElement<HTMLElement>(tgtEl, '.rl'),
+    rf: requireElement<HTMLElement>(tgtEl, '.rf'),
   };
+  let tgtReloadShown = -1; // the target plate's reload strip as shown (paintPlateReload)
   let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
   let tgtLastRangeM = -2; // the range shown, whole metres (-1: no player to range from)
   let tgtShown = false;
@@ -3527,6 +3590,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // --- internal state ---
   let mode: HudMode = 'hidden';
   let directionalHitValuesEnabled = false;
+  /** Other tanks' reload strips (Settings › Interface, reload-others-275): allies' and enemies', each off by default. */
+  let allyReloadShown = false, enemyReloadShown = false;
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 15 Hz, 30 Hz while the view turns; updateMinimapIfDue)
   let mmDirty = true; // force an immediate minimap paint on the next update()
   // The grid's coordinates show on a plate large enough for a cell to hold one at the HUD's 11 px floor (the coordinator,
@@ -6260,7 +6325,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (hidden until placed: a bar a blocked seat holds back showed unplaced at the window's corner, gauntlet r15)
     rootEl.style.display = 'none';
     rootEl.innerHTML = `<div class="nm"><b class="nw"><i class="si"></i><span></span></b></div><div class="vh"></div>`
-      + `<div class="tr"><div class="fl"></div></div>`;
+      + `<div class="tr"><div class="fl"></div></div><div class="rl off"><div class="rf"></div></div>`;
     if (tank.spec) {
       maskIcon(
         requireElement<HTMLElement>(rootEl, '.si'),
@@ -6297,6 +6362,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       inkR: 0,
       layoutH: HP_BAR_H,
       solo: false,
+      reload: requireElement<HTMLElement>(rootEl, '.rl'),
+      reloadFill: requireElement<HTMLElement>(rootEl, '.rf'),
+      reloadShown: -1,
+      foot: HP_BAR_FOOT,
     };
     hpPool.set(tank.id, bar);
     return bar;
@@ -6355,6 +6424,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     bar.inkR = Math.max(name, vehicle * 0.5);
     // (its height as its lines compose it, the zh floor's taller, read with the widths)
     bar.layoutH = Math.ceil(bar.root.offsetHeight) || hpBarRestH(bar);
+    // (the reload strip, where its side's row is on, lengthens the foot under the words: its height and its 2 px margin)
+    const strip = Math.ceil(bar.reload.offsetHeight);
+    bar.foot = HP_BAR_FOOT + (strip > 0 ? strip + 2 : 0);
   }
 
   function positionHpBar(bar: HpBar): void {
@@ -6409,6 +6481,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       bar.k = hpBarsShort ? 1 : 1 + HP_BAR_NEAR_SCALE * plateNear(_sDist);
       updateHpBarLabel(bar, t);
       updateHpBarFill(bar, t.combat);
+      if (bar.ally ? allyReloadShown : enemyReloadShown) {
+        bar.reloadShown = paintPlateReload(bar.reload, bar.reloadFill, bar.reloadShown, reloadIndicatorProgress(t.combat));
+      }
       // (the enemy's first, then the nearest: where two overlap, the first draws on top; an insertion into the frame's
       // short list, no sort allocation)
       let at = order.length;
@@ -6448,7 +6523,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       if (z !== bar.z) { bar.root.style.zIndex = String(z); bar.z = z; }
       const bx0 = x0 + bar.seatDx, by0 = y0 + bar.seatDy, bx1 = x1 + bar.seatDx, by1 = y1 + bar.seatDy;
       const axis = bar.sx + bar.seatDx;
-      const wx0 = axis - bar.inkL * bar.k, wx1 = axis + bar.inkR * bar.k, wy1 = by0 + Math.max(0, bar.layoutH - HP_BAR_FOOT) * bar.k;
+      const wx0 = axis - bar.inkL * bar.k, wx1 = axis + bar.inkR * bar.k, wy1 = by0 + Math.max(0, bar.layoutH - bar.foot) * bar.k;
       let under = false;
       for (let k = 0; k < stacked && !under; k++) {
         const above = hpBarStack[k];
@@ -6670,6 +6745,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     tgtEl.style.width = `${tgtPlateWidth}px`;
     // (the bar the text block's width, never under the plate's floor less its silhouette's room)
     tgtRefs.tr.style.width = `${Math.min(tgtPlateWidth, Math.max(TARGET_PLATE_MIN_W - 40, textWidth + 8))}px`;
+    tgtRefs.rl.style.width = tgtRefs.tr.style.width;
     // (its height as composed and the vehicle line's share, read with the widths on a new copy only, never per frame)
     tgtPlateHeight = Math.max(32, Math.ceil(tgtRefs.bk.offsetHeight) || TARGET_PLATE_H);
     tgtMetaHeight = Math.ceil((tgtRefs.mt.offsetHeight || 0) + metaMargin);
@@ -6901,6 +6977,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       tgtRefs.hp.textContent = `${formatNumber(hp)} / ${formatNumber(maxHp)}`;
       tgtLastHp = hp;
       tgtLastMaxHp = maxHp;
+    }
+    // (the target is an enemy; the proving ground's lanes never fire, so their plates keep the strip's room empty)
+    if (enemyReloadShown) {
+      tgtReloadShown = paintPlateReload(tgtRefs.rl, tgtRefs.rf, tgtReloadShown,
+        rangeActive ? -1 : reloadIndicatorProgress(target.combat));
     }
     showTargetPlate();
     const bar = hpPool.get(target.id);
@@ -8590,6 +8671,24 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   on('ui:directionalHitValues', (p) => {
     directionalHitValuesEnabled = !!(p && p.on);
   });
+  on('ui:reloadIndicators', (p) => {
+    setReloadIndicators(p?.allyReload === true, p?.enemyReload === true);
+  });
+  /** The Settings rows for other tanks' reload: the strips show by their side's class, and every plate whose height they
+   *  change is measured again (a shown bar with its next frame, a hidden one now; the target plate with its next copy). */
+  function setReloadIndicators(allies: boolean, enemies: boolean): void {
+    if (allies === allyReloadShown && enemies === enemyReloadShown) return;
+    allyReloadShown = allies;
+    enemyReloadShown = enemies;
+    hpLayer.classList.toggle('rl-ally', allies);
+    hpLayer.classList.toggle('rl-enemy', enemies);
+    tgtEl.classList.toggle('rl', enemies);
+    tgtMeasure = true;
+    for (const bar of hpPool.values()) {
+      bar.measure = true;
+      if (!bar.shown) measureHiddenHpBar(bar);
+    }
+  }
   // Live key caps (game/battleKeyCaps.ts, through the frame; owner 2026-10-28: "make sure to relabel if a person changes
   // it in settings"): the tray's shell digits and consumables, the minimap's and the gear's, written when the caps change
   // (a rebind, mid-battle from the pause menu too, or the layout turning pad or keyboard). The controls row's come in

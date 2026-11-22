@@ -1514,6 +1514,7 @@ battleHudRuntime = createMainBattleHudRuntime({
   engineContext: engineCtx,
   perfMeterEnabled: () => !!input.getSettings().showPerfMeter,
   directionalHitValuesEnabled: () => !!input.getSettings().showDirectionalHitValues,
+  reloadIndicators: () => ({ allyReload: !!input.getSettings().showAllyReload, enemyReload: !!input.getSettings().showEnemyReload }),
   queueMinimap: () => { worldRuntime.queueMinimap(); },
 });
 async function ensureBattleHud() {

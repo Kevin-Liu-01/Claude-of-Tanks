@@ -167,6 +167,8 @@ type BooleanSettingKey =
   | 'isometricView'
   | 'showDebugHud'
   | 'showDirectionalHitValues'
+  | 'showAllyReload'
+  | 'showEnemyReload'
   | 'armorAimOverlay'
   | 'showHints'
   | 'alarmHeartbeat'
@@ -1332,12 +1334,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       'showDirectionalHitValues',
       emitDirectionalHitValues,
     );
+    // (reload-others-275) other tanks' reload on their plates, allies' and enemies' apart, each off by default
+    onOffRow(iface, t('settings.interface.allyReload'), 'showAllyReload', emitReloadIndicators);
+    onOffRow(iface, t('settings.interface.enemyReload'), 'showEnemyReload', emitReloadIndicators);
     onOffRow(iface, t('settings.interface.debugHud'), 'showDebugHud',
       emitDebugHud);
     const armorNote = el('div', 'cot-set-note', iface);
     armorNote.textContent = t('settings.interface.armorNote');
     const hitValueNote = el('div', 'cot-set-note', iface);
     hitValueNote.textContent = t('settings.interface.hitValueNote');
+    const reloadNote = el('div', 'cot-set-note', iface);
+    reloadNote.textContent = t('settings.interface.reloadNote');
     const debugNote = el('div', 'cot-set-note', iface);
     debugNote.textContent = t('settings.interface.debugNote');
 
@@ -1379,6 +1386,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     emit('ui:directionalHitValues', {
       on: !!input.getSettings().showDirectionalHitValues,
     });
+  }
+
+  /** Other tanks' reload indicators (hud.ts) follow the two Interface rows live. */
+  function emitReloadIndicators() {
+    const s = input.getSettings();
+    emit('ui:reloadIndicators', { allyReload: !!s.showAllyReload, enemyReload: !!s.showEnemyReload });
   }
 
   /** Broadcast the whole mix so the audio graph re-levels its channel buses. */
@@ -2388,6 +2401,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   emitVolumes();
   emitPerfMeter(); // HUD net readout follows the persisted preference (default on)
   emitDirectionalHitValues(); // exact incoming values are persisted and default off
+  emitReloadIndicators(); // other tanks' reload strips are persisted and default off
 
   return api;
 }

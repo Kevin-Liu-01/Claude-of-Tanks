@@ -46,11 +46,13 @@ for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entr
 // is a row of its own (gauntlet 250)
 // (battle-camera-264) the chase camera's five settings join the gameplay tab
 // (mobile-hud-274) the first-use hints' switch joins the interface rows
+// (reload-others-275) the allies' and enemies' reload strips join them
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes',
   'cameraDistance', 'cameraFov', 'cameraFraming', 'cameraHeight', 'cameraShoulder', 'crewVoice',
   'foliageSeeThrough', 'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
-  'showDebugHud', 'showDirectionalHitValues', 'showHints', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
+  'showAllyReload', 'showDebugHud', 'showDirectionalHitValues', 'showEnemyReload', 'showHints', 'showPerfMeter',
+  'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
 

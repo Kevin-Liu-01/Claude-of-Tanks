@@ -152,6 +152,10 @@ export interface InputSettings {
   hideBattleUi: boolean;
   isometricView: boolean;
   showDirectionalHitValues: boolean;
+  /** Other tanks' reload on their plates (hud.ts reloadIndicatorProgress, reload-others-275): allies' and enemies', each
+   *  off by default. */
+  showAllyReload: boolean;
+  showEnemyReload: boolean;
   armorAimOverlay: boolean;
   /** The first-use hints (ui/firstUseHints.ts, mobile-hud-274): on by default; off, none shows. */
   showHints: boolean;
@@ -370,6 +374,9 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Keep blocked pre-mitigation roll details optional for new profiles;
   // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
+  // Owner 2026-11-22: "have an option to turn on reload indicators for allies/enemies in settings too" (off by default)
+  showAllyReload: false,
+  showEnemyReload: false,
   // Armour colours in the sight are on by default (273, Kevin 2026-11-12: "turn it on once for everyone with a one time
   // tip"); every profile saved before is turned on once at load (game/armourOverlayDefault.ts), and the H key and the
   // Interface row still turn them off, which then sticks.
@@ -723,6 +730,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (typeof storedSettings.showDirectionalHitValues === 'boolean') {
       settings.showDirectionalHitValues = storedSettings.showDirectionalHitValues;
     }
+    if (typeof storedSettings.showAllyReload === 'boolean') settings.showAllyReload = storedSettings.showAllyReload;
+    if (typeof storedSettings.showEnemyReload === 'boolean') settings.showEnemyReload = storedSettings.showEnemyReload;
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.showHints === 'boolean') settings.showHints = storedSettings.showHints;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
@@ -1464,6 +1473,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'isometricView') settings.isometricView = !!value;
       else if (key === 'showDebugHud') settings.showDebugHud = !!value;
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
+      else if (key === 'showAllyReload') settings.showAllyReload = !!value;
+      else if (key === 'showEnemyReload') settings.showEnemyReload = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'showHints') settings.showHints = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
