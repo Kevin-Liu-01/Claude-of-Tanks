@@ -20,8 +20,9 @@ export interface PreviewAircraft {
   readonly kind: 'aircraft';
   /** The airframe builder (src/game/<airframe>Airframe.ts). */
   readonly airframe: 'gunship';
-  /** Its display name's catalog key. */
+  /** Its display name's catalog key, and the English name the offline tools print. */
   readonly labelKey: string;
+  readonly label: string;
   /** The nation it flies under: its flag beside it, as a tank's spec nation gives. */
   readonly nation: string;
   /** Overall length and span (m): the render cameras frame it from these, as from a tank's dims. */
@@ -33,12 +34,17 @@ export interface PreviewAircraft {
 export const PREVIEW_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Object.freeze({
   // the AC-130 gunship (the ac130 mode's vehicle; Air Support's orbit call-in flies the same airframe)
   ac130: Object.freeze({
-    id: 'ac130', kind: 'aircraft', airframe: 'gunship', labelKey: 'flight.gunship', nation: 'USA',
+    id: 'ac130', kind: 'aircraft', airframe: 'gunship', labelKey: 'flight.gunship', label: 'AC-130', nation: 'USA',
     lengthM: 29.8, spanM: 40.4, heightM: 11.7,
   }),
 });
 
 export const PREVIEW_AIRCRAFT_IDS: readonly string[] = Object.freeze(Object.keys(PREVIEW_AIRCRAFT));
+
+/** The aircraft renders' manifest under public/icons (tools/genAircraftAssets.mjs), and the views an aircraft ships: the
+ *  tanks' portrait, side and top with their silhouettes (no armour, module, crew or marking diagram). */
+export const AIRCRAFT_ASSETS_FILE = 'aircraft-assets.json';
+export const AIRCRAFT_VIEWS = Object.freeze(['angle', 'top', 'side', 'topSilhouette', 'sideSilhouette'] as const);
 
 /** The aircraft each mode puts the player in (a mode whose ruleset flies the player's seat: matchRuleset `aerial`). */
 export const MODE_AIRCRAFT: Readonly<Record<string, string>> = Object.freeze({ ac130: 'ac130' });

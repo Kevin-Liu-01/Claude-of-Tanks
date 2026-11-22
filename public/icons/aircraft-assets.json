@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "generator": "tools/genAircraftAssets.mjs",
+  "views": [
+    "angle",
+    "top",
+    "side",
+    "topSilhouette",
+    "sideSilhouette"
+  ],
+  "aircraft": {
+    "ac130": {
+      "kind": "aircraft",
+      "airframe": "gunship",
+      "nation": "USA",
+      "geometryHash": "f3b8a5ea",
+      "dims": {
+        "lengthM": 30.4,
+        "spanM": 40.4,
+        "heightM": 11.71
+      },
+      "assets": {
+        "angle": {
+          "file": "ac130_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 25832,
+          "sha256": "ba4b9c4963ad553c8967f461d4574db6512d3a318e2fd8f7f8b3e199b4f8c7a7",
+          "thumbnail": {
+            "file": "thumbs/ac130_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 11956,
+            "sha256": "45b65c53bec0f6b947e3af425b68dac53016feac0881ae87e7f62df2b805935e"
+          }
+        },
+        "top": {
+          "file": "ac130_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 9006,
+          "sha256": "af7ed8e772dae0c949726763c20415979493b541b4f7bd84933acfbc3204d03c"
+        },
+        "side": {
+          "file": "ac130_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 5998,
+          "sha256": "b2aba3b2f0f2891e9e8e155f60f1ffffdb0d7128cf3857071667b405a880928b"
+        },
+        "topSilhouette": {
+          "file": "ac130_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 2109,
+          "sha256": "6b5d3b83bcd18e8e4908d8f45a92d4a881b7740e6f810bdca32ee8bd32d88c77"
+        },
+        "sideSilhouette": {
+          "file": "ac130_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 3392,
+          "sha256": "34af714651642379876c1aeee62e28b5598b6f6613466786b73d33860f2fb915"
+        }
+      }
+    }
+  }
+}

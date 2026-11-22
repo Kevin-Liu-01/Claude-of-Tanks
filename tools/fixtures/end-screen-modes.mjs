@@ -66,8 +66,9 @@ function hit(attacker, target, t, damage, { destroyed = false, source = null, gu
   const [shellName, shellType, caliberMm] = gun ?? GUN[specOf(attacker)] ?? GUN.t90am;
   const id = fire(attacker, t - 0.4);
   bus.emit('shell:hit', {
-    shellId: id, kind: blocked ? 'nopen' : kind, attackerId: attacker, attackerSpecId: specOf(attacker), attackerName: nameOf(attacker) ?? null,
-    attackerSource: source, targetId: target, targetSpecId: specOf(target), targetName: nameOf(target) ?? null, damage: blocked ? 0 : damage,
+    // (the drivers name both ends by their vehicles, state.ts's hit enrichment)
+    shellId: id, kind: blocked ? 'nopen' : kind, attackerId: attacker, attackerSpecId: specOf(attacker), attackerName: getSpec(specOf(attacker)).name,
+    attackerSource: source, targetId: target, targetSpecId: specOf(target), targetName: getSpec(specOf(target)).name, damage: blocked ? 0 : damage,
     shellType, shellName, caliberMm, flightDistM: distM, zone, timeS: t, destroyed, effectiveMm: 540, nominalMm: 600, impactAngleDeg: 24,
   });
   if (destroyed) {
@@ -95,15 +96,15 @@ const ended = { result: RESULT, reason: 'elimination', gameMode: MODE, map: MAPS
 const objective = (type, side, extra = {}) => bus.emit(type, { team: side, ...extra });
 switch (MODE) {
   case 'capture_the_flag':
-    objective('mode:flag_taken', 'alpha', { carrierId: 'me' }); objective('mode:flag_captured', 'alpha', { carrierId: 'me', timeS: 300 });
-    objective('mode:flag_captured', 'bravo', { timeS: 340 }); objective('mode:flag_captured', 'alpha', { carrierId: 'ally-0', timeS: 390 });
+    objective('mode:flag_taken', 'alpha', { by: 'me' }); objective('mode:flag_captured', 'alpha', { by: 'me', timeS: 300 });
+    objective('mode:flag_captured', 'bravo', { timeS: 340 }); objective('mode:flag_captured', 'alpha', { by: 'ally-0', timeS: 390 });
     Object.assign(ended, { reason: 'flag_limit' }); modeReport.score = { alpha: 3, bravo: 1 }; modeReport.target = 3; break;
   case 'zone_control': case 'mars': case 'air_support':
-    objective('mode:zone_captured', 'alpha', { zoneId: 'A', capturerIds: ['me'] }); objective('mode:zone_captured', 'bravo', { zoneId: 'C' });
-    objective('mode:zone_captured', 'alpha', { zoneId: 'B', capturerIds: ['me', 'ally-0'] });
+    objective('mode:zone_captured', 'alpha', { zoneId: 'zone-1' }); objective('mode:zone_captured', 'bravo', { zoneId: 'zone-3' });
+    objective('mode:zone_captured', 'alpha', { zoneId: 'zone-2' });
     Object.assign(ended, { reason: 'score_limit' }); modeReport.score = { alpha: 1000, bravo: 640 }; modeReport.target = 1000; break;
   case 'turbo_ball':
-    objective('mode:goal_scored', 'alpha', { scorerId: 'me' }); objective('mode:goal_scored', 'bravo', {}); objective('mode:goal_scored', 'alpha', { scorerId: 'ally-1' });
+    objective('mode:goal_scored', 'alpha', { by: 'me' }); objective('mode:goal_scored', 'bravo', {}); objective('mode:goal_scored', 'alpha', { by: 'ally-1' });
     Object.assign(ended, { reason: 'goal_limit' }); modeReport.score = { alpha: 5, bravo: 3 }; modeReport.target = 5; break;
   case 'endless_horde':
     Object.assign(ended, { result: 'defeat', reason: 'elimination', hordeWave: 7 }); modeReport.horde = { wave: 7 }; break;
@@ -118,7 +119,7 @@ switch (MODE) {
   case 'drone':
     hit('me', 'foe-6', 330, 1500, { destroyed: true, source: 'drone', gun: ['FPV shaped charge', 'HEAT', 90] }); break;
   case 'ac130':
-    Object.assign(ended, { reason: 'escort_extracted' }); modeReport.escort = { total: 6, rescued: 4, required: 3, alive: 4 }; break;
+    Object.assign(ended, { reason: 'escort_extracted' }); modeReport.escort = { total: 6, rescued: 4, required: 3, alive: 1 }; break;
   default: break;
 }
 if (MODE === 'air_support') {

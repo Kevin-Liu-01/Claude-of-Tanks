@@ -3100,6 +3100,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/endScreen.selftest.mjs',
     // (endscreen-modes-275) the end screen per mode: the descriptor, and battles through the real bookkeeper and report
     'src/ui/endScreenModes.selftest.mjs',
+    // (endscreen-modes-275) the preview vehicles by kind: the gunship modes preview the AC-130, its renders and hero card ship
+    'src/vehicles/previewVehicles.selftest.mjs',
     'src/ui/battleBeats.selftest.mjs',
     // (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highlighted
     'src/ui/watchBattleReport.selftest.mjs',

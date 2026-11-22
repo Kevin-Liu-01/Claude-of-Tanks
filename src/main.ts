@@ -1667,7 +1667,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   bus,
   onGameModeSelect: mode => {
     garagePreviewMode = mode;
-    if (['juggernaut', 'drone', 'capture_the_flag', 'infected'].includes(mode)) void garageModePreview.preload();
+    if (['juggernaut', 'drone', 'capture_the_flag', 'infected', 'ac130'].includes(mode)) void garageModePreview.preload();
     invalidateGaragePresentation();
   },
   onGameModeIntent: () => { void garageModePreview.preload(); },

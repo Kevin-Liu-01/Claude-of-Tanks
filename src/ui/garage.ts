@@ -94,7 +94,7 @@ import { isSupportedLocale, LOCALE_RECORDS, localeRecord } from './localePrefix.
 import { DEPLOY_MODE_ORDER, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isCouchMode, isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
+  GUNSHIP_WEAPONS, isCouchMode, isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -112,6 +112,7 @@ import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
 import { countryOfVehicle } from '../sim/countries.ts';
+import { modePreviewVehicle, previewAircraft } from '../vehicles/previewVehicles.ts';
 
 /** What the Garage's photo mode needs from the composition root (main.ts): the stage, its orbit and its capture. */
 interface GaragePhotoControl {
@@ -4280,6 +4281,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
     deployModes?.setValue(id);
     renderBattleOptions();
+    // (endscreen-modes-275) the vehicle card follows the mode (the AC-130's flies the aircraft)
+    if (battleMenu.classList.contains('open')) renderDeployTank();
   }
 
   // every return to the Garage (the head's back control, the tank card's change control) closes the screen
@@ -4609,6 +4612,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // whenever a room had not locked the tank, so outside a room it was always on, and in one it read the reverse of the
   // player's readiness (the room's own control says that).
   function renderDeployTank(): void {
+    // (endscreen-modes-275) a mode that flies the player (the AC-130's) shows its aircraft in the tank's place
+    const preview = modePreviewVehicle(battleGameMode, selectedId ?? '');
+    if (preview.kind === 'aircraft') { renderDeployAircraft(preview.id); return; }
     const spec = selectedId ? specById.get(selectedId) : null;
     const copy = selectedId ? heroCopy(selectedId) : null;
     if (!copy || !spec) { deployTank.replaceChildren(); return; }
@@ -4631,6 +4637,46 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b${datumAttr('tank-name')}>${flagIconHTML(spec.nation, 22, 16)}` +
       `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
       `</div><div class="load">${rounds}${fittings}</div></div>` +
+      `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
+      `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
+  }
+  /**
+   * (endscreen-modes-275; the owner: "when we select ac 130 game mode the tank previews should have a ac 130 presented like
+   * the tanks") The aircraft a mode flies the player in, as the tank card shows a tank: its hero render (the hero pipeline's
+   * aircraft row, vehicles/previewVehicles.ts), its angle portrait until that lands, its name beside its flag chip and its
+   * guns as the tank's rounds. The change control stays: the garage tank is the one the battle keeps under the gunship.
+   */
+  function renderDeployAircraft(id: string): void {
+    const aircraft = previewAircraft(id);
+    if (!aircraft) { deployTank.replaceChildren(); return; }
+    const thumb = document.createElement('div');
+    thumb.className = 'cot-deploy-thumb cot-deploy-aircraft';
+    thumb.setAttribute('aria-hidden', 'true');
+    const portrait = document.createElement('img');
+    portrait.className = 'ti';
+    portrait.src = tankThumbUrl(id);
+    portrait.alt = '';
+    portrait.decoding = 'async';
+    thumb.append(portrait);
+    deployTank.replaceChildren(thumb);
+    void heroCardChunk.load()
+      .then((hero) => hero.decorateHeroTile(thumb, id, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+      .then((decorated) => {
+        if (!decorated || !thumb.isConnected) return;
+        // the thumb is the vehicle (owner 2026-11-19): the nation is the chip beside its name, never the card's cloth
+        thumb.querySelector('img.hc-flag')?.closest('picture')?.remove();
+        portrait.remove();
+      })
+      .catch(() => { /* the portrait stays */ });
+    const mm = t('garage.unit.mm');
+    const rounds = GUNSHIP_WEAPONS.map((weapon) => {
+      const type = shellTypeLabel(weapon.type);
+      const pen = String(Math.round(weapon.pen100Mm));
+      return statChip({ icon: shellIconId(weapon.type), label: type, value: pen, unit: mm,
+        tip: t('garage.deploy.roundTip', { name: weapon.name || type, pen }) });
+    }).join('');
+    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b${datumAttr('tank-name')}>${flagIconHTML(aircraft.nation, 22, 16)}` +
+      `<span>${escapeHtmlAttribute(t(aircraft.labelKey))}</span></b></div><div class="load">${rounds}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
       `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }

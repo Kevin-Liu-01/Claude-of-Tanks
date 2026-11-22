@@ -83,6 +83,11 @@ for (const record of fleet.values()) {
   const [traverse, yaw, pitch] = row.pose || [];
   if (bow !== HERO_CAMERA.facing) fail(`${record.id}: the hull's bow points ${bow || '?'}, the policy ${HERO_CAMERA.facing}`);
   if (![traverse, yaw, pitch].every(Number.isFinite)) fail(`${record.id}: no recorded pose ${JSON.stringify(row.pose)}`);
+  // (endscreen-modes-275) a preview aircraft: no turret, its nose on the policy's side as a hull's bow
+  else if (record.kind === 'aircraft') {
+    if (row.mount !== 'aircraft') fail(`${record.id}: an aircraft's card records mount ${row.mount || '-'}, not aircraft`);
+    if (gunSide !== HERO_CAMERA.facing) fail(`${record.id}: the aircraft's nose points ${gunSide || '?'}, the policy ${HERO_CAMERA.facing}`);
+  } else if (row.mount === 'aircraft') fail(`${record.id}: a tank's card records an aircraft mount`);
   else if (!row.mount) {
     if (traverse !== HERO_POSE.turretTowardCameraDeg) fail(`${record.id}: turret traversed ${traverse} deg, the policy ${HERO_POSE.turretTowardCameraDeg}`);
     if (Math.abs(Math.abs(yaw) - traverse) > 0.5) fail(`${record.id}: turret yaw ${yaw} deg does not match its ${traverse} deg traverse`);

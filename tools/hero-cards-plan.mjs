@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { readTankAssets } from './tank-assets-store.mjs';
 import { flagIconCode } from '../src/ui/flagCodes.ts';
 import { tierNumeral } from '../src/techTree/tiers.ts';
+import { AIRCRAFT_ASSETS_FILE, PREVIEW_AIRCRAFT } from '../src/vehicles/previewVehicles.ts';
 import {
   HERO_CAMERA, HERO_ENCODE, HERO_FLAG, HERO_FLAG_FACING, HERO_FRAME, HERO_LIGHTS, HERO_MANIFEST_FILE,
   HERO_POLICY_VERSION, HERO_POSE, HERO_PUBLIC_DIR, HERO_RUNGS,
@@ -52,6 +53,18 @@ export function fleetRecords() {
       tierNumeral: tierNumeral(id),
       geometryHash: row.geometryHash || '',
       lookSha: String(row.assets?.angle?.sha256 || '').slice(0, 12),
+    }));
+  }
+  // (endscreen-modes-275) the preview aircraft (vehicles/previewVehicles.ts) are fleet vehicles of their own kind: a card
+  // each, keyed on their renders (tools/genAircraftAssets.mjs, public/icons/aircraft-assets.json) as a tank on its row
+  const aircraftPath = resolve(ICONS_DIR, AIRCRAFT_ASSETS_FILE);
+  const aircraft = existsSync(aircraftPath) ? JSON.parse(readFileSync(aircraftPath, 'utf8')).aircraft ?? {} : {};
+  for (const [id, row] of Object.entries(aircraft)) {
+    const known = PREVIEW_AIRCRAFT[id];
+    if (!known) continue;
+    records.set(id, Object.freeze({
+      id, kind: 'aircraft', name: known.label, shortName: known.label, nation: known.nation, flag: flagIconCode(known.nation),
+      tierNumeral: '', geometryHash: row.geometryHash || '', lookSha: String(row.assets?.angle?.sha256 || '').slice(0, 12),
     }));
   }
   return records;
