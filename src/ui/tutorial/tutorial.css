@@ -79,15 +79,18 @@
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
 .cot-tut-body{margin:0;font-size:var(--fs-14);line-height:1.5;color:var(--ink-2);}
 .cot-tut-body .cot-c-kbd{margin:0 1px;}
-/* the fit ladder: a type step smaller (1), a tighter one (2), the picture gone (3); never under the 12 px floor */
-.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3']){gap:var(--s2);padding:var(--s3);}
-.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3']) .cot-tut-title{font-size:var(--fs-16);}
-.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3']) .cot-tut-body{font-size:var(--fs-13);line-height:1.4;}
-.cot-tut-card:is([data-fit='2'],[data-fit='3']) .cot-tut-title{font-size:var(--fs-14);}
-.cot-tut-card:is([data-fit='2'],[data-fit='3']) .cot-tut-body{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.35;}
-.cot-tut-card:is([data-fit='2'],[data-fit='3']) .cot-tut-words{gap:var(--s1);}
-.cot-tut-card:is([data-fit='2'],[data-fit='3']) .cot-tut-checklist{margin-top:var(--s1);}
-.cot-tut-card[data-fit='3'] .cot-tut-media{display:none;}
+/* the fit ladder: a type step smaller (1), a tighter one (2), the picture gone (3), the card's spacing at its least (4);
+   never under the 12 px floor */
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']){gap:var(--s2);padding:var(--s3);}
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-title{font-size:var(--fs-16);}
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-body{font-size:var(--fs-13);line-height:1.4;}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-title{font-size:var(--fs-14);}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-body{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.35;}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-words{gap:var(--s1);}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-checklist{margin-top:var(--s1);}
+.cot-tut-card:is([data-fit='3'],[data-fit='4']) .cot-tut-media{display:none;}
+.cot-tut-card[data-fit='4']{gap:var(--s1);padding:var(--s2) var(--s3);}
+.cot-tut-card[data-fit='4'] .cot-tut-body{line-height:1.3;}
 /* a short landscape screen: the picture beside the words (the card wider, its rows fewer) */
 .cot-tut-card[data-layout='row']{width:min(40rem,calc(100vw - 2 * var(--tut-edge)));}
 .cot-tut-card[data-layout='row'] .cot-tut-content{flex-direction:row;align-items:flex-start;}

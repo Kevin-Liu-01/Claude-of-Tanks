@@ -270,7 +270,7 @@ const overlaySource = read('src/ui/tutorial/tutorialOverlay.ts');
 assert.match(overlaySource, /prefersReducedMotion\(\) \? STILL_BEAT_MS/, 'under reduced motion the beat\'s check holds still, unmoving');
 assert.ok(!/overflow:auto|overflow-y:auto/.test(css), 'the card never scrolls');
 assert.match(css, /\.cot-tut-card\{[^}]*overflow:hidden;/, 'and its max-height is a box it fits, not a scroll');
-assert.match(overlaySource, /const FIT_LEVELS = \['0', '1', '2', '3'\] as const;/, 'one fit ladder');
+assert.match(overlaySource, /const FIT_LEVELS = \['0', '1', '2', '3', '4'\] as const;/, 'one fit ladder');
 
 console.log(`tutorialSteps.selftest: ${TUTORIAL_STEPS.length} Garage and offer steps for ${INPUTS.length} kinds of hands; `
   + `every string in both locales, ${targets.size} targets on their owners, ${media.length} media files (${mediaBytes} bytes, lazy), `

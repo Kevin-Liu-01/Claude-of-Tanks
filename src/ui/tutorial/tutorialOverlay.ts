@@ -20,7 +20,8 @@
  * The card fits (274, Kevin: "the tutorial boxes have overflows and you need to scroll? no no none of that"): it never
  * scrolls and never clips. One pass (fit) measures its words against the box it may fill (its max-height: the screen
  * less the margins, or the battle plan's box) and, while they outgrow it, takes the next step of one ladder: the picture's
- * height shrinks (it keeps its proportions, narrower), a type step smaller, a tighter one, and last the picture goes; on a
+ * height shrinks (it keeps its proportions, narrower), a type step smaller, a tighter one, the picture goes, and last the
+ * card's own spacing tightens; on a
  * short landscape screen a card with a picture lays out in a row. The card's natural height (the full type, no fit) is
  * written to data-natural-h for the battle plan (battleHudLayout.ts), which sizes its box from it.
  *
@@ -100,8 +101,9 @@ const BLOCKED_EVENTS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'cli
 const RECHECK_MS = 400;
 /** The least height (px) the picture shrinks to before the type steps down. */
 const MEDIA_MIN_PX = 96;
-/** The fit ladder (tutorial.css data-fit): the full type, a step smaller, a tighter one, and the picture gone. */
-const FIT_LEVELS = ['0', '1', '2', '3'] as const;
+/** The fit ladder (tutorial.css data-fit): the full type, a step smaller, a tighter one, the picture gone, and the card's
+ *  own spacing at its least (a sight-mode box 4 px short of the tighter type, the fit walk of 2026-11-21). */
+const FIT_LEVELS = ['0', '1', '2', '3', '4'] as const;
 /** A token's duration (ms) as the page has it now (1 ms under reduced motion: tokens.css). */
 function tokenMs(name: string): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -262,11 +264,11 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
     const box = available();
     const fits = (): boolean => card.scrollHeight <= box + 0.5;
     for (const level of FIT_LEVELS) {
+      if (level === '3' && !hasMedia) continue; // no picture to give up
       card.dataset.fit = level;
-      if (level === '3' && !hasMedia) break;
       if (fits()) break;
       // the picture gives up height first, down to its least, keeping its proportions
-      if (hasMedia && level !== '3' && !row) {
+      if (hasMedia && level < '3' && !row) {
         const now = media.getBoundingClientRect().height;
         const over = card.scrollHeight - box;
         card.style.setProperty('--tut-media-h', `${Math.max(MEDIA_MIN_PX, Math.floor(now - over))}px`);
