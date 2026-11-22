@@ -115,6 +115,36 @@
   Three-Tone Woodland: a pale sand `#968f6b` base under grey-green `#66714f` and near-black `#2b2e2c` bands, `nato`,
   scale 0.45), the three-tone the surviving tank wore at Kubinka before its plain green repaint (the owner's Patriot Park
   photograph, image 7 of 2026-11-05); was `national_ru`, plain green.
+- Release 274, lane object292-275 (Kevin 2026-11-21: "we also need to update the object 292 a lot to look more realistic
+  and make its turret better and update its rubber sideskirts too", then "fix the turret cheeks and mantlet fully too";
+  his look OK on round 3, "Looks good"): a photo round against the five Kubinka photographs and close crops of them.
+  - Weight imitators: they are not a wall round the casting but plain welded steel boxes in place of the T-80BV's
+    turret Kontakt-1 rack. A wedge box on each front cheek has its big face sloped back about 45 degrees over a short
+    upright lip, and stands clear of the mantlet. Behind it, three shallow flat panels a side hang on the casting's
+    flank, following its curve and leaning in with it. Their tops sit 0.18 m under the crown, so the dome rises over
+    them. The joints between them are open, with the weld seams set back, and the panels carry bolt heads and a bottom
+    lip.
+  - Mantlet: the reworked casting's tall housing round the trunnions, standing proud of the nose between the cheek
+    boxes. It is an elliptic drum across the embrasure, 0.80 m wide, its section 0.28 m high and 0.22 m deep, centred
+    7 cm over the pitch axis. Its underside stays 0.21 m under the axis at every pitch, 2.5 cm over the highest deck
+    point it sweeps as the turret turns. It has bolted face plates and trunnion caps.
+  - Bustle box: its front is a raked wedge from the casting to the roof. The rear module is welded on behind a seam at
+    z -1.60: 3 cm wider each side and 3 cm taller, its floor a little lower, with two bolted blow-out panels on its
+    roof. The service hatch and the ventilator move onto the forward box. The whip is 3 cm shorter, so its tip holds
+    at 3.786 m.
+  - Skirts: the T-80 family's shared segmented rubber run (profiles/rubberSkirt.ts, t80-skirts-274) replaces this
+    build's own band and nine sheets, and the T-80U X base skirts are off. There are six even sheets and a short one
+    at the nose, black rubber, each hung from under the fender lip (x 1.700) to its foot (x 1.735 before the sheet's
+    own lean) at 0.50 m. The width over them is 3.65 m (packet 3.622, within 1%).
+  - Front flaps: lofted in nine stations across the fender, sagging between their corners with a wavy foot, and
+    shorter (foot 0.70 m, was 0.63 m).
+  - Gun: unchanged, a plain tube with clamp bands and no fume extractor (every photograph).
+  - Not done: the spare track links on the lower rear plate (Kuzmin's rear photograph). The plate is a 44 degree slope
+    with tow hooks across it.
+  - Blind critic on round 1 (read-only, six views X/Y, key sealed per view): the lane won the cheek blocks and the
+    skirts. The critic's front-rake and flap orders were taken. Round 3 then replaced the cheek wall entirely.
+  - russia152.selftest: the hull-width clause now lets Kubinka's own skirt run sit up to 8 cm inside the T-80U X's
+    leaning sheets or 3 cm outside them.
 
 ## Publication receipt (only if requested)
 
