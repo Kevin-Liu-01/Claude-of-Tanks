@@ -10,21 +10,29 @@ Earlier rounds below are historical evidence; their pending checks, profile
 hashes and costs must not be substituted for the final integrated results.
 
 
-## Cast mantlet — 2026-11-21 (cv90105-mantlet-275)
+## New TML-105 turret — 2026-11-21 (cv90105-mantlet-275)
 
-Owner: "make the cv90105 tml have a mantlet". Before this the sleeved 105 mm ran straight into the flat receiving
-panel between the sight hood and the right receiver. The prototype's photographs show a cast mantlet (about 35 mm,
-usually under a canvas dust cover) round the gun's root. `buildTmlCastMantlet` adds that block to the gun mount: its
-section is the turret front's own (top on the roof slope, underside parallel to the floor at the old assembly's
-lowest line, sides at the lower and upper cheek angles), tapering slightly forward with chamfered front edges, its
-back inside the receiving shell's nose so no gap opens at any elevation. The sleeve leaves through a 40 mm proud
-collar, its underside cut flat on the sleeve's own lowest line, with a dark seal. Nothing else on the tank moved.
+Owner: "make the cv90105 tml have a mantlet", then, on the mantlet stills, "it needs a fully new turret full stop",
+then "theres a whole full width mantlet in front of turret. also the thing to let of gun in before is cool".
+The turret is rebuilt from the 1994 prototype's photographs (Swedish trials and the Eurosatory display): a long, low
+welded body whose sides are one slab leaning in from a shadowed bottom edge to a broad flat roof, front corners cut
+back in plan, a rear plate sloping back at the foot, and two stacked pairs of smoke dischargers on each front corner.
+A full-width cast mantlet (about 35 mm, usually under a canvas dust cover) spans the turret front and rides the gun.
+Its section is the turret front's own: top on the roof slope, underside parallel to the floor at the old assembly's
+lowest line, sides leaning in at the front face's angle above a knee line at 1.96 and at the lower cheeks' below it.
+It carries the source study's sight hood right of the gun and the receiver on its face left of it, and the sleeve
+leaves through a collar with a dark seal. The turret ring, the trunnion, the gun, the underside the deck was seated
+against and the roof heights the roof fittings stand on are unchanged; the side stowage boxes lie on the new slab.
 
 | Check | Result |
 | --- | --- |
-| gun-depression-sweep | identical to base on every field (floors, curve, blocked-at-elevation, mount conflicts, parts); published curve unchanged |
+| gun-depression-sweep | 46 yaws deeper, none shallower; published curve unchanged |
 | gun-junction census | CLOSED, 5 poses; ledger PASS (unchanged) |
-| hitbox-fit census | 0 floating, 0 held, 0 cell bridges (as base) |
+| hitbox-fit census | 0 failing, also with --apply-fits |
+| turret-deck audit | 0 failing the gate |
+| europeGunOwnership / europeSourceDetail | repinned to the mantlet-carrying cradle's bounds, the receiver's new face depth and the collar seal; pass |
+
+The anatomy, hitbox cells, icon and hero regenerate at integration (changed-only, this id).
 
 ## Historical author checkpoint
 
