@@ -9424,7 +9424,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); pointers.clear(); return; }
-      pointers.update(frame);
+      // (the pointer layer spans the window: a couch battle's panes and its shared screen draw none)
+      if (!ownsFramePlayer && !couchView) pointers.update(frame); else pointers.clear();
       updateHudWorldPanels(frame, state.camera);
       updateAimPresentation(frame, state);
       updateMinimapIfDue(frame);
