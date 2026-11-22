@@ -4,7 +4,7 @@ import { Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { createTankState, resetTankVerticalState, SIM_DT, updateTank } from '../sim/movement.ts';
-import { captureMovementPredictionState, applyMovementPredictionState } from './movementPredictionState.ts';
+import { captureMovementPredictionState, applyMovementPredictionState, decodeAirSpin, encodeAirSpin } from './movementPredictionState.ts';
 
 await ensureTankBuilder('udes03');
 
@@ -35,8 +35,9 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   // the dive; (version 6, appended, round 3): + _sup.top, the top track contact beside the springs' seat; (version 7,
   // appended, round 5): + _hold and _holdSeat (pitch, roll and their rates), the posture held over the tracks on a grade
   // and its share seated with them off a whole-track seat; (version 8, appended, round 8): + _susp.c / cv, the share of
-  // the dive the bump stops took when the travel ran out under it
-  assert.equal(checkpoint.values.length, 63);
+  // the dive the bump stops took when the travel ran out under it; (version 10, appended, turbo-spin-275): + the air spin
+  // in progress, one value
+  assert.equal(checkpoint.values.length, 64);
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;
@@ -137,16 +138,43 @@ test('a version-8 checkpoint still decodes, resting on no body contact', () => {
   const source = entity();
   for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
   source.state._body.bodyRest = 3;
-  const v9 = captureMovementPredictionState(source.state);
-  assert.equal(v9.version, 9);
-  assert.equal(v9.flags >> 11 & 3, 3, 'version 9 carries the ends a hull rests on a body contact at as flag bits 11 and 12');
+  const v10 = captureMovementPredictionState(source.state);
+  assert.equal(v10.version, 10);
+  assert.equal(v10.flags >> 11 & 3, 3, 'version 9 on carries the ends a hull rests on a body contact at as flag bits 11 and 12');
   const full = entity().state;
-  assert.equal(applyMovementPredictionState(full, v9), true);
+  assert.equal(applyMovementPredictionState(full, v10), true);
   assert.equal(full._body.bodyRest, 3);
+  const values9 = v10.values.slice(0, 63);
   const target = entity().state;
   target._body.bodyRest = 3;
-  assert.equal(applyMovementPredictionState(target, { version: 8, values: v9.values, flags: v9.flags & 2047 }), true);
+  assert.equal(applyMovementPredictionState(target, { version: 8, values: values9, flags: v10.flags & 2047 }), true);
   assert.equal(target._body.bodyRest, 0);
+});
+
+test('a version-9 checkpoint still decodes, no air spin turning; version 10 carries one mid-flip', () => {
+  const source = entity();
+  for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
+  source.state._airSpinAxis = -2;
+  source.state._airSpinLeft = 2.5;
+  const v10 = captureMovementPredictionState(source.state);
+  assert.equal(v10.values.length, 64);
+  const carried = entity().state;
+  assert.equal(applyMovementPredictionState(carried, v10), true);
+  assert.equal(carried._airSpinAxis, -2, 'the roll to the right rides the checkpoint');
+  assert.ok(Math.abs(carried._airSpinLeft - 2.5) < 1e-12, 'with the turn it still owes');
+  const older = entity().state;
+  older._airSpinAxis = 1;
+  older._airSpinLeft = 1;
+  assert.equal(applyMovementPredictionState(older, { version: 9, values: v10.values.slice(0, 63), flags: v10.flags }), true);
+  assert.equal(older._airSpinAxis, 0, 'a version-9 checkpoint has no spin turning');
+  assert.equal(older._airSpinLeft, 0);
+  for (const axis of [-2, -1, 1, 2]) for (const left of [1e-6, 1, Math.PI, 2 * Math.PI]) {
+    assert.deepEqual(decodeAirSpin(encodeAirSpin(axis, left)), { axis, left: decodeAirSpin(encodeAirSpin(axis, left)).left });
+    assert.ok(Math.abs(decodeAirSpin(encodeAirSpin(axis, left)).left - left) < 1e-9, `axis ${axis} owing ${left} round-trips`);
+  }
+  assert.equal(encodeAirSpin(0, 3), 0, 'no axis is no spin');
+  assert.equal(decodeAirSpin(0), null);
+  for (const forged of [3 * 8 + 1, -3 * 8 + 1, 8 + 7, 0.5, NaN]) assert.equal(decodeAirSpin(forged), null, `${forged} names no spin a build writes`);
 });
 
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
@@ -156,7 +184,7 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
   const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
-    { ...good, version: 7 }, { ...good, version: 10 },
+    { ...good, version: 7 }, { ...good, version: 11 }, { ...good, version: 9 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
     { ...good, values: sparse }, ...[-1, 8192, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];

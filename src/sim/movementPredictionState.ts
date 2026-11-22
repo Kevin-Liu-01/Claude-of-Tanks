@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
 import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
+import { AIR_SPIN_RATE } from './movement.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a
@@ -43,14 +44,19 @@ const VERSION_7_COUNT = VERSION_6_COUNT + ROCK.length * 2;
 // (nothing in the bump stops): the share of the dive the bump stops took when the travel ran out under it (`_susp.c`,
 // `_susp.cv`), stored with the dive but neither the dive the travel holds nor what joins the rock off a whole-track seat
 const STOP_V8 = ['c', 'cv'] as const;
-const VALUE_COUNT = VERSION_7_COUNT + STOP_V8.length;
+const VERSION_9_COUNT = VERSION_7_COUNT + STOP_V8.length;
 // version 9 (physics, 268): the ends at which the last support solve stood the hull on a body contact (`_body.bodyRest`,
 // flag bits 11 and 12; the values are version 8's), which keep resting on one within a band; a version-8 checkpoint rests on none
+// version 10 (turbo-spin-275), appended after the version-9 layout so an older checkpoint still decodes (no spin turning):
+// the air spin in progress as one value, its axis times AIR_SPIN_CODE plus the turn it still owes (movement.ts
+// requestTankAirSpin), so a replay mid-flip keeps flipping as the authority does. It is the wire's 64th value.
+const AIR_SPIN_CODE = 8;
+const VALUE_COUNT = VERSION_9_COUNT + 1;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 8191;
 
 /** The layout's current version and length (the wire names them, src/mp/match/movementCheckpoint.ts: one codec). */
-export const MOVEMENT_PREDICTION_STATE_VERSION = 9;
+export const MOVEMENT_PREDICTION_STATE_VERSION = 10;
 export const MOVEMENT_PREDICTION_STATE_VALUES = VALUE_COUNT;
 
 interface MovementPredictionState {
@@ -104,6 +110,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._hold, ROCK);
   append(values, state._holdSeat, ROCK);
   append(values, state._susp, STOP_V8);
+  values.push(encodeAirSpin(state._airSpinAxis, state._airSpinLeft));
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -119,7 +126,8 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 9 || record.version === 8 ? VALUE_COUNT : record.version === 7 ? VERSION_7_COUNT
+  const count = record.version === 10 ? VALUE_COUNT : record.version === 9 || record.version === 8 ? VERSION_9_COUNT
+    : record.version === 7 ? VERSION_7_COUNT
     : record.version === 6 ? VERSION_6_COUNT : record.version === 5 ? VERSION_5_COUNT
       : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
@@ -155,7 +163,7 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
-  state._body.bodyRest = record.version === 9 ? (flags >> 11) & 3 : 0;
+  state._body.bodyRest = record.version === 9 || record.version === 10 ? (flags >> 11) & 3 : 0;
   if (count >= VERSION_5_COUNT) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
     offset = restore(state._susp, DIVE_V5, values, offset);
@@ -182,10 +190,42 @@ export function applyMovementPredictionState(
     }
   }
   // a checkpoint before version 8 has nothing in the bump stops
-  if (count === VALUE_COUNT) restore(state._susp, STOP_V8, values, offset);
+  if (count >= VERSION_9_COUNT) offset = restore(state._susp, STOP_V8, values, offset);
   else {
     state._susp.c = 0;
     state._susp.cv = 0;
   }
+  // a checkpoint before version 10 has no spin turning
+  const spin = count === VALUE_COUNT ? decodeAirSpin(values[offset]!) : null;
+  state._airSpinAxis = spin ? spin.axis : 0;
+  state._airSpinLeft = spin ? spin.left : 0;
   return true;
+}
+
+/** The air spin as one value (version 10): its axis (movement.ts AIR_SPIN_AXES, -2..2) times AIR_SPIN_CODE plus the turn
+ *  it owes (0..2π, under AIR_SPIN_CODE); 0 is no spin. Shared with the migration extras (src/mp/host/hostProtocol.ts). */
+export function encodeAirSpin(axis: number, left: number): number {
+  const a = Math.trunc(axis) || 0;
+  if (!a || !(left > 0)) return 0;
+  return a * AIR_SPIN_CODE + Math.min(left, 2 * Math.PI);
+}
+
+/**
+ * A migrated host's air spin (turbo-spin-275; MigrationEntityExtras.airSpin): the one the extras carried, less the turn the
+ * row it restored from already shows (`ageS` of flight at the spin's rate). The spin's step drives its axis from here.
+ */
+export function restoreAirSpin(state: Pick<TankState, '_airSpinAxis' | '_airSpinLeft'>, value: number, ageS: number): void {
+  const spin = decodeAirSpin(value);
+  const left = spin ? spin.left - AIR_SPIN_RATE * Math.max(0, Number.isFinite(ageS) ? ageS : 0) : 0;
+  state._airSpinAxis = spin && left > 1e-9 ? spin.axis : 0;
+  state._airSpinLeft = spin && left > 1e-9 ? left : 0;
+}
+
+/** The air spin a value names, or null for none or a value no build writes. */
+export function decodeAirSpin(value: number): { axis: number; left: number } | null {
+  if (!Number.isFinite(value) || value === 0) return null;
+  const axis = Math.floor(value / AIR_SPIN_CODE);
+  const left = value - axis * AIR_SPIN_CODE;
+  if (axis === 0 || Math.abs(axis) > 2 || !(left > 0) || left > 2 * Math.PI + 1e-9) return null;
+  return { axis, left };
 }

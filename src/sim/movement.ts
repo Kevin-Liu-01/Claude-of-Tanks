@@ -332,6 +332,8 @@ interface DriveStep {
   bounceMaxHeight: number;
   airAngularDrag: number;
   airAngularSpeedMax: number;
+  /** A launched hull's run-speed ceiling past the drivetrain's (RulesetPhysics.launchCeilingMps); 0: none. */
+  launchCeiling: number;
   /** The face under the tracks is steeper than they hold: no drive, no brake, the hull slides. */
   gripLost: boolean;
   traverseMax: number;
@@ -406,6 +408,10 @@ export interface TankState {
   _ride: RideState;
   _body: RigidBodyState;
   _rollover: { elapsedS: number; expired: boolean };
+  /** Air spin (turbo-spin-275): the flip or roll in progress, its axis (AIR_SPIN_AXES; 0 none) and the turn it still owes
+   * (rad). Part of the integrator: the prediction checkpoint (version 10) and a migrated host carry it. */
+  _airSpinAxis: number;
+  _airSpinLeft: number;
   _groundType: string;
   _debuff: MovementDebuffs;
   _sup: SupportCache;
@@ -1482,6 +1488,9 @@ export const IFV_AUTOCANNON_RECOIL_SCALE = 0.36;
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const LAUNCH_SPEED_CAP_MPS = 45; // ruleset launches never push the run speed past this
+/** How fast tracks on the ground take a launched hull's speed past their ceiling back down to it (m/s²; turbo-spin-275):
+ *  Turbo's leap at top speed lands at 1.3 × it and is back at the ceiling in about half a second. */
+const LAUNCH_OVERSPEED_BLEED_MPS2 = 14;
 const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation impulse (≈ knock × 0.29 m of displacement)
 /** The tracks' grip against a shove, as a friction coefficient (applyShellKnock): a step's worth of it is absorbed. */
 const KNOCK_GRIP_MU = 0.5;
@@ -1493,6 +1502,11 @@ const JUMP_AIRTIME_GRACE_S = 0.05;
 const JUMP_AIR_REPEAT_S = 0.35;
 /** The rocket's ceiling: an air boost carries the hull at most this many single-jump apexes above its ground. */
 const JUMP_CEILING_APEXES = 2;
+/** Air spin (turbo-spin-275): one flip or roll a press, a whole turn in this long. */
+const AIR_SPIN_TURN_S = 0.9;
+export const AIR_SPIN_RATE = 2 * Math.PI / AIR_SPIN_TURN_S;
+/** A stick or key past this share of its throw picks the spin's axis. */
+const AIR_SPIN_PICK = 0.3;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
 const RECOIL_KICK_MAX_DEGS = 15; // spring pitch-rate kick, heavy gun
 /** The share of the recoil kick an airborne hull takes as rotation (fireRecoil). */
@@ -1683,6 +1697,7 @@ const _driveStep: DriveStep = {
   bounceMaxHeight: Infinity,
   airAngularDrag: AIR_ANGULAR_DRAG_S,
   airAngularSpeedMax: Infinity,
+  launchCeiling: 0,
   gripLost: false,
   traverseMax: 0,
   gunArc: Infinity,
@@ -2174,6 +2189,8 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
       tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN, bodyRest: 0,
     },
     _rollover: { elapsedS: 0, expired: false },
+    _airSpinAxis: 0,
+    _airSpinLeft: 0,
     _groundType: 'medium',
     _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
       immobile: false,
@@ -2230,6 +2247,9 @@ export function resetTankVerticalState(
   // an upright hull on the ground is supported, its tumble and any righting with it (audit M8: the righting latch
   // outlived a reset that cleared only the tumble)
   if (grounded !== false) resetHullBodyMode(state);
+  // a reset pose owes no spin (a respawn mid-flip, a teleport)
+  state._airSpinAxis = 0;
+  state._airSpinLeft = 0;
 }
 
 function initializeRideState(state: TankState, supportY: number): RideState {
@@ -3558,8 +3578,11 @@ function updateRigidAttitude(
     groundedAtStart ? Infinity : drive.airAngularSpeedMax);
   spring.pitchV = clamp(spring.pitchV, -angularCap, angularCap);
   spring.rollV = clamp(spring.rollV, -angularCap, angularCap);
+  // a pressed flip or roll turns its axis at the spin's own rate, past the flight's cap (turbo-spin-275)
+  const spinDone = groundedAtStart ? false : driveAirSpin(state, spring, dt);
   spring.pitch = wrapAngle(spring.pitch + spring.pitchV * dt);
   spring.roll = wrapAngle(spring.roll + spring.rollV * dt);
+  if (spinDone) endAirSpin(state, spring);
   const upY = detMath.cos(spring.pitch) * detMath.cos(spring.roll);
   const relativeUpY = detMath.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
     detMath.cos(wrapAngle(spring.roll - state._terr.roll));
@@ -3656,6 +3679,8 @@ function updateHullAttitude(
     landingImpact,
     upYAtStart,
   );
+  // a flip or roll ends where the hull meets the ground: the landing takes the attitude it has (turbo-spin-275)
+  if (groundedAtStart) endAirSpin(state);
   if (!groundedAtStart || body.tumbling) {
     updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt, drive);
   } else {
@@ -5013,6 +5038,8 @@ function prepareImpactPhysics(drive: DriveStep, physics: RulesetPhysics): void {
     ? physics.airAngularDrag! : AIR_ANGULAR_DRAG_S;
   drive.airAngularSpeedMax = Number.isFinite(physics.airAngularSpeedMax) && physics.airAngularSpeedMax! > 0
     ? physics.airAngularSpeedMax! : Infinity;
+  drive.launchCeiling = Number.isFinite(physics.launchCeilingMps) && physics.launchCeilingMps! > 0
+    ? Math.min(physics.launchCeilingMps!, LAUNCH_SPEED_CAP_MPS) : 0;
 }
 
 function prepareDriveStep(
@@ -5399,8 +5426,17 @@ function updateLongitudinalSpeed(
   state.speed = clamp(
     state.speed,
     -reverseCap * OVERSPEED_CAP,
-    drive.topSpeed * OVERSPEED_CAP,
+    forwardCeiling(drive, speedBeforeAcceleration, dt),
   );
+}
+
+/** The step's forward speed ceiling: the drivetrain's, or past it a launch's (turbo-spin-275; RulesetPhysics
+ *  launchCeilingMps): held in flight, bled off on the ground from the speed the step began with. */
+function forwardCeiling(drive: DriveStep, speedAtStart: number, dt: number): number {
+  const geared = drive.topSpeed * OVERSPEED_CAP;
+  if (!(drive.launchCeiling > geared)) return geared;
+  if (!drive.grounded) return drive.launchCeiling;
+  return clamp(speedAtStart - LAUNCH_OVERSPEED_BLEED_MPS2 * dt, geared, drive.launchCeiling);
 }
 
 /**
@@ -5728,7 +5764,7 @@ export function requestTankJump(
   if (!state || !(jumpMps != null && jumpMps > 0)) return false;
   if (state.overturned === true) return false;
   const ride = state._ride;
-  const airborne = state.grounded === false || (ride ? (ride.airTime || 0) > JUMP_AIRTIME_GRACE_S : false);
+  const airborne = tankAirborne(state);
   if (airborne && ride && (ride.airTime || 0) < JUMP_AIR_REPEAT_S) return false;
   if (!airborne || !ride) {
     liftTankRide(state, jumpMps);
@@ -5743,6 +5779,96 @@ export function requestTankJump(
   const wanted = Math.min(rising + jumpMps, room > 0 ? Math.sqrt(2 * gravity * room) : 0);
   if (wanted <= rising + 1e-3) return false;
   liftTankRide(state, wanted - rising);
+  return true;
+}
+
+/** A hull in flight: off the ground, or its ride past the jump's grace (the one test the jump, the spin and the HUD read). */
+export function tankAirborne(state: LiftableState | null | undefined): boolean {
+  if (!state) return false;
+  return state.grounded === false || (state._ride ? (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S : false);
+}
+
+/**
+ * The air spin's axes (turbo-spin-275), signed as the attitude spring's rates: positive pitch is nose up (a back flip),
+ * positive roll lifts the right side (a roll to the left). 0 is no spin.
+ */
+export const AIR_SPIN_AXES = Object.freeze({ NONE: 0, BACK_FLIP: 1, FRONT_FLIP: -1, ROLL_LEFT: 2, ROLL_RIGHT: -2 } as const);
+
+interface AirSpinState extends LiftableState {
+  _airSpinAxis?: number;
+  _airSpinLeft?: number;
+  _body?: { autoRighting?: boolean };
+}
+
+/** The axis a press picks from the drive it was pressed with: A/D (steer, + is left) a roll, S a back flip, else a front flip. */
+export function airSpinAxisFor(throttle: number, steer: number): number {
+  const t = Number.isFinite(throttle) ? throttle : 0;
+  const s = Number.isFinite(steer) ? steer : 0;
+  if (Math.abs(s) >= AIR_SPIN_PICK && Math.abs(s) > Math.abs(t)) return s > 0 ? AIR_SPIN_AXES.ROLL_LEFT : AIR_SPIN_AXES.ROLL_RIGHT;
+  return t <= -AIR_SPIN_PICK ? AIR_SPIN_AXES.BACK_FLIP : AIR_SPIN_AXES.FRONT_FLIP;
+}
+
+/**
+ * Air spin (turbo-spin-275; owner 2026-11-22: "f should also be an official command so u can literally spin in air but only
+ * if ur in air (gray if ur not)"; he picked flips and rolls): a hull in flight turns one whole flip or roll about the axis
+ * its drive picks (airSpinAxisFor), at AIR_SPIN_RATE, then stops turning on that axis. Refused on the ground, while the
+ * righting torque holds the hull, and while a spin is still turning. The ground ends a spin where the hull meets it.
+ */
+export function requestTankAirSpin(state: AirSpinState | null | undefined, throttle: number, steer: number): boolean {
+  if (!state || !tankAirborne(state) || state._body?.autoRighting === true || state._airSpinAxis) return false;
+  state._airSpinAxis = airSpinAxisFor(throttle, steer);
+  state._airSpinLeft = 2 * Math.PI;
+  return true;
+}
+
+/** Whether a press would spin now (the HUD's lit state: the same test requestTankAirSpin makes, the axis aside). */
+export function canTankAirSpin(state: AirSpinState | null | undefined): boolean {
+  return !!state && tankAirborne(state) && state._body?.autoRighting !== true && !state._airSpinAxis;
+}
+
+/** The spin's turn this step on its axis's rate; true when this step completes the turn. */
+function driveAirSpin(state: TankState, spring: AttitudeSpringState, dt: number): boolean {
+  const axis = state._airSpinAxis;
+  if (!axis || !(dt > 0)) return false;
+  const step = Math.min(state._airSpinLeft, AIR_SPIN_RATE * dt);
+  const rate = Math.sign(axis) * step / dt;
+  if (Math.abs(axis) === 1) spring.pitchV = rate;
+  else spring.rollV = rate;
+  state._airSpinLeft = Math.max(0, state._airSpinLeft - step);
+  return state._airSpinLeft <= 1e-9;
+}
+
+/** Clear the spin; with the spring, a finished turn also stops its axis (the hull holds the attitude it came round to). */
+function endAirSpin(state: TankState, spring: AttitudeSpringState | null = null): void {
+  if (!state._airSpinAxis) return;
+  if (spring) {
+    if (Math.abs(state._airSpinAxis) === 1) spring.pitchV = 0;
+    else spring.rollV = 0;
+  }
+  state._airSpinAxis = 0;
+  state._airSpinLeft = 0;
+}
+
+/**
+ * Turbo (turbo-spin-275; owner 2026-11-22: "add another thing with going up called turbo - it makes you go launch forward
+ * for a short bit. cool to combine with a boost that sends you in air then go forward"): a forward leap along the hull's
+ * heading. The run speed gains `forwardMps` (never past LAUNCH_SPEED_CAP_MPS, the ruleset launches' bound) and the hull
+ * leaves the ground at `liftMps`, so on the ground it lunges a short hop forward instead of losing the speed to its tracks
+ * in a few ticks; in flight it stops the fall at `liftMps` up, so a jump then a turbo is an air dash. Refused for a hull
+ * on its roof or side on the ground (its tracks face the sky) and while the righting torque holds it. The cooldown is
+ * the caller's (sim/hullActions.ts).
+ */
+export function applyTankTurbo(state: TankState | null | undefined, forwardMps: number, liftMps: number): boolean {
+  if (!state || !(forwardMps > 0)) return false;
+  const airborne = tankAirborne(state);
+  if ((state.overturned === true && !airborne) || state._body.autoRighting === true) return false;
+  state.speed = clamp(state.speed + forwardMps, -LAUNCH_SPEED_CAP_MPS, LAUNCH_SPEED_CAP_MPS);
+  const lift = Math.max(0, liftMps || 0);
+  if (!airborne) liftTankRide(state, lift);
+  else if (lift > 0) {
+    state.verticalSpeed = Math.max(state.verticalSpeed || 0, lift);
+    state._ride.v = Math.max(state._ride.v || 0, lift);
+  }
   return true;
 }
 

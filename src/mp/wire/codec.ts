@@ -77,7 +77,7 @@ function writeControl(writer: ByteWriter, control: ControlFrame): void {
   writer.u16(control.fireSeq);
   writer.u16(control.actionSeq);
   // (wire 13, air-support-275: seventeen action bits, the sixth call-in's; a u32 for the bits to come)
-  if (!(control.actionBits >= 0 && control.actionBits <= ACTION_BIT_MASK)) throw new WireError('range', 'action bits exceed the action mask');
+  if (!actionBitsInMask(control.actionBits)) throw new WireError('range', 'action bits exceed the action mask');
   writer.u32(control.actionBits);
 }
 
@@ -426,8 +426,13 @@ function readControl(reader: ByteReader): ControlFrame {
   };
   if (control.flags > 7) throw new WireError('range', 'control flags exceed three bits');
   if (control.shellSlot > 2) throw new WireError('range', 'shell slot must be 0..2');
-  if (control.actionBits > ACTION_BIT_MASK) throw new WireError('range', 'action bits exceed the action mask');
+  if (!actionBitsInMask(control.actionBits)) throw new WireError('range', 'action bits exceed the action mask');
   return control;
+}
+
+/** Bits the action table names and no other (the mask has gaps where a bit is reserved: a range check let them through). */
+function actionBitsInMask(bits: number): boolean {
+  return Number.isInteger(bits) && bits >= 0 && bits <= 0xffffffff && (bits & ~ACTION_BIT_MASK) === 0;
 }
 
 function readInput(reader: ByteReader): InputMessage {

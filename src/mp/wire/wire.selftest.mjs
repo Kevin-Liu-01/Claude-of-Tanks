@@ -38,7 +38,7 @@ function randomControl() {
   return {
     throttle: int(-127, 127), steer: int(-127, 127), flags: int(0, 7),
     aimYaw: int(0, 65535), aimPitch: int(-32767, 32767), aimDistance: int(0, 65535),
-    shellSlot: int(0, 2), fireSeq: int(0, 65535), actionSeq: int(0, 65535), actionBits: int(0, ACTION_BIT_MASK),
+    shellSlot: int(0, 2), fireSeq: int(0, 65535), actionSeq: int(0, 65535), actionBits: int(0, ACTION_BIT_MASK) & ACTION_BIT_MASK, // (the mask has gaps where a bit is reserved: actionBitMask.selftest)
   };
 }
 
