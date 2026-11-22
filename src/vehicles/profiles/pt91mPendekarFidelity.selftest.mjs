@@ -50,6 +50,11 @@ for(const quality of['high','low']){
   // 274: the turret-deck seat fits each build to its own deck (turret-deck-gate-274b 0a971bb934), so pt91m's turret is the
   // donor's turret except where the seat moved it: same topology, x and z exact, y within 1 cm; normals and uvs follow the
   // moved vertices only; every other attribute byte-equal.
+  // The 1 cm is the ruled bound, not a seat clamp: turretSeatRace.ts has no drop clamp (its foot band only lifts, capped
+  // at SEAT_LIFT_MAX_M, 6 cm, unexported). At 274.0 pt91m's foot band seats 30 rear-underside corners on one plane,
+  // y 0.1119: 24 of them 7 mm under the donor's plane (0.1189) and 6 that the donor leaves unlifted (0.1019) 10 mm over.
+  // The 10 mm is that plane gap; SEAT_Y_EPS_M keeps float32 rounding at the bound from flaking.
+  const SEAT_Y_BOUND_M=.01,SEAT_Y_EPS_M=1e-6;
   {
    const a=donor.root.getObjectByName('turret').geometry,b=tank.root.getObjectByName('turret').geometry;
    assert.equal(b.attributes.position.count,a.attributes.position.count,'turret: donor vertex count');
@@ -60,7 +65,7 @@ for(const quality of['high','low']){
    for(let v=0;v<a.attributes.position.count;v++){
     assert.ok(pb[v*3]===pa[v*3]&&pb[v*3+2]===pa[v*3+2],`turret vertex ${v}: x/z exact (seat moves y only)`);
     const dy=Math.abs(pb[v*3+1]-pa[v*3+1]);if(dy>0){moved.add(v);maxDy=Math.max(maxDy,dy);}
-    assert.ok(dy<=.01,`turret vertex ${v}: seat y move ${dy.toFixed(4)} m within 1 cm`);
+    assert.ok(dy<=SEAT_Y_BOUND_M+SEAT_Y_EPS_M,`turret vertex ${v}: seat y move ${dy.toFixed(6)} m within 1 cm`);
    }
    // A seated vertex re-shades its whole triangle, so normals and uvs may follow on every corner of a triangle that holds one.
    const corner=(t,k)=>a.index?a.index.getX(t*3+k):t*3+k,follows=new Set();
