@@ -129,6 +129,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/vehicleControlOrder.selftest.mjs': lists('src/ui/*.css'),
   'src/vehicles/camouflageRuntime.selftest.mjs': lists('src/sim/*.ts'),
   'src/vehicles/combatAnatomyAudit.test-support.mjs': lists('src/vehicles/**/*.js'),
+  // 274.0: the plate-fit receipt reads every anatomy group's fitted pieces
+  'src/vehicles/plateFitPolygons.selftest.mjs': lists('src/vehicles/combatAnatomyGroups/*.generated.ts'),
   'src/vehicles/trackPatterns.selftest.mjs': lists('src/vehicles/**/*.js'),
   'src/vehicles/vehicleMaterialRawClone.selftest.mjs': lists('src/{app,engine,fx,game,mp,ui,vehicles,world}/**/*.ts'),
   'src/vehicles/weaponFinish.selftest.mjs': lists('src/vehicles/profiles/*.ts'),

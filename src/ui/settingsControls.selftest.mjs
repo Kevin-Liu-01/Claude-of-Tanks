@@ -107,9 +107,10 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   assert.match(source, /cot-c-btn--primary rz-go">\$\{t\('settings\.pauseResume'\)\}/, 'Resume is the veil\'s one primary');
   assert.doesNotMatch(source, /settings\.pauseSub/, 'the veil carries no instruction line');
   assert.equal(t('settings.pauseResume'), 'Resume');
-  // the first battles show the strip at the rollout, and only on a keyboard and mouse
-  assert.match(source, /bus\.on\('battle:rollout', \(\) => \{ if \(!open && takeFirstBattleHint\(\)\) showHints\(\); \}\);/,
-    'the rollout shows the first battles\' strip');
+  // the first battles show the strip at the rollout, and only on a keyboard and mouse; never over the first-game tutorial,
+  // which teaches the controls itself (272's tutorial clause, re-pinned at 274.0)
+  assert.match(source, /bus\.on\('battle:rollout', \(\) => \{ if \(!open && !document\.body\.classList\.contains\('cot-tutorial'\) && takeFirstBattleHint\(\)\) showHints\(\); \}\);/,
+    'the rollout shows the first battles\' strip, never over the tutorial');
   assert.match(source, /if \(input\.isTouchLayout\?\.\(\) \|\| input\.isPadConnected\(\)\) return false;/,
     'a touch layout and a pad show no keyboard caps');
   // (owner 2026-10-25: "only make it come up when its needed") the strip shows the groups still unused; each leaves as
