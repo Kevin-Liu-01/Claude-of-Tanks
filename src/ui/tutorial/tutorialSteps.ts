@@ -154,8 +154,9 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'garage.deploy', chapter: 'garage', target: ['.cot-battle', '[data-tabbar="deploy"]'],
     title: 'tutorial.garage.deploy.title', body: 'tutorial.garage.deploy.body', advance: { on: 'press', own: true } },
 
-  // ── The offer (274): a returning player's Garage, once (ui/tutorial/tutorialRecord.ts): Start launches the training
-  // battle, Not now puts the journey away ───────────────────────────────────────────────────────────────────────────────
+  // ── The offer (274): a returning player's Garage, once (ui/tutorial/tutorialRecord.ts): the tutorial, offered (Kevin:
+  // "the guided training battle IS the tutorial. there is only ONE tutorial"); Start goes straight to its training battle,
+  // Not now puts it away ────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'offer.training', chapter: 'offer', target: [], media: loop('angle'), title: 'tutorial.offer.title', body: 'tutorial.offer.body',
     nextLabel: 'tutorial.offer.start', skipLabel: 'tutorial.offer.later', advance: NEXT },
 ];
