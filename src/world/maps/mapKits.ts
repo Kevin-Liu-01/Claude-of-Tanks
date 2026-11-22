@@ -67,15 +67,15 @@ import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../rail
 import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
 import {
-  addArchedStoneBridge, addArchedStoneBridgeSteps, addRuinedRiverBridge, alignWidth, archedBridgeDraws, localRng,
-  type DressingBridgeDeck,
+  addArchedStoneBridge, addArchedStoneBridgeSteps, addRuinedRiverBridge, alignWidth, archedBridgeDraws, archedBridgeFootings,
+  localRng, type DressingBridgeDeck,
 } from './archedStoneBridge.ts';
 import {
   MILL_HOUSE_D, MILL_HOUSE_W, MILL_WHEEL_OFFSET, MILL_WHEEL_R, SLUICE_GATE_W, SLUICE_PIER_W,
   buildMillHouse, buildMillWheel, buildWeirSluice, mergeMillPlain,
 } from './regional/lorrainMill.ts';
 import type { RegionalParts } from './regional/geometry.ts';
-import { addSuzhouBridge } from './suzhouBridges.ts';
+import { addSuzhouBridge, suzhouBridgeFootings } from './suzhouBridges.ts';
 import { dressFrozenRiverBanks } from './frozenRiverBanks.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 // (props census #3, lane B 2026-10-14: the coal stockpile lives in coalStockpile.ts, the industrial yard's)
@@ -901,6 +901,36 @@ export interface DressingSlice { fine: true; progress: false; stage: string }
 // (260, the rooms census: the kits ran as one step of the props build, 118 ms on Cliffbridge) a checkpoint after each
 // kit and each bridge; the same pieces, draws and order
 const KIT_SLICE: DressingSlice = { fine: true, progress: false, stage: 'map-extras' };
+
+/** A bridge pier's footprint on the ground: its centre, its along-the-road axis (c, -s) and its half-sizes along and across. */
+export interface BridgeSupportFootprint { x: number; z: number; c: number; s: number; hw: number; hd: number }
+
+/**
+ * (bridge-footings-275) the piers the kits below stand on a map's bridge decks, as footprints on the ground (cutwaters and a
+ * gorge viaduct's battered foot included): the props' scatter leaves out what would stand inside one. Aegis Crossing's
+ * piers grew from 2 m to 9-13.5 m and swallowed a hedgehog and a cable spool on the gorge floor. Follows the bridges'
+ * dispatch in dressMapExtrasSteps; a deck no kit builds a bridge on keeps its ground.
+ */
+export function bridgeSupportFootprints(mapId: string, extraKits: readonly string[] | null,
+  riverLandings: readonly RiverLandingAnchor[] | null | undefined, heightField: DressingHeightField): BridgeSupportFootprint[] {
+  const decks = heightField.bridgeDecks ?? [];
+  if (!decks.length) return [];
+  const kits = extraKits || legacyDressingKits(mapId);
+  const arched = mapId === 'cliffbridge' || (kits.includes('river') && !riverLandings?.length && mapId === AMBERFORD);
+  const suzhou = kits.includes('shanghai');
+  if (!arched && !suzhou) return [];
+  const out: BridgeSupportFootprint[] = [];
+  for (const deck of decks) {
+    const { x: cx, z: cz, ux, uz } = deck, vx = -uz, vz = ux;
+    const list = suzhou ? suzhouBridgeFootings(deck, heightField).list : archedBridgeFootings(deck, heightField).list;
+    for (const f of list) {
+      if (!f.label.startsWith('pier')) continue;
+      const u = (f.x0 + f.x1) / 2, v = (f.z0 + f.z1) / 2;
+      out.push({ x: cx + ux * u + vx * v, z: cz + uz * u + vz * v, c: ux, s: -uz, hw: (f.x1 - f.x0) / 2, hd: (f.z1 - f.z0) / 2 });
+    }
+  }
+  return out;
+}
 
 /** dressMapExtras with a checkpoint after each kit, for the props build's pacing. */
 export function* dressMapExtrasSteps({

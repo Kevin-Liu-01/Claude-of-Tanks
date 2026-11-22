@@ -18,6 +18,7 @@ import { archedSlab, bar, extrude, moulding, revolve, type ArchHole } from './ki
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 import { bevelMember, bevelSpan } from '../maps/regional/millWorks.ts';
+import { Footings } from '../footings.ts';
 
 const STEEL_GREY = rgb(0x6f777b), STEEL_GREEN = rgb(0x4d5a4e), BAILEY_GREEN = rgb(0x4e5638), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const DECK_BOARD = rgb(0x7a6a55), IRON = rgb(0x2b2d2e), PAINT_WHITE = rgb(0xe6e3da), PAINT_BLACK = rgb(0x262624);
@@ -37,6 +38,11 @@ function deckProfile(ctx: LandmarkBuildContext, span: number, deck: number, hump
 
 /** The ground under a point (0 on flat ground: the base). */
 const groundAt = (ctx: LandmarkBuildContext, x: number, z: number) => (ctx.ground ? ctx.ground(x, z) : 0);
+/**
+ * (bridge-footings-275) The piece's footings: every pier, abutment, sill and plate on the lowest ground under its own
+ * rectangle (footings.ts); the builder returns their list as its `supports`.
+ */
+const footingsOf = (ctx: LandmarkBuildContext) => new Footings((x, z) => groundAt(ctx, x, z));
 
 /** The deck's movement parts: segments along the span, each a standable slab under the surface, and its edge walls. */
 function deckMovement(span: number, width: number, top: (z: number) => number, edge: number, edgeT: number, segment = 3): SimpleCollisionShape[] {
@@ -69,7 +75,13 @@ export const stoneArchBridge: LandmarkBuilder = (ctx) => {
   const pier = Math.max(1.6, span / n * 0.18), chord = (span - (n - 1) * pier) / n;
   const minTop = Math.min(top(-span / 2), top(0), top(span / 2));
   const bed = Math.min(0, ...Array.from({ length: 9 }, (_, i) => groundAt(ctx, 0, -span / 2 + span * i / 8)));
-  const footing = bed - 1.2;
+  // (bridge-footings-275) one masonry body: it stands on the deepest of its supports' footings (each pier with its
+  // cutwaters, each abutment, on the ground under it), so none hangs over a dip the centre line misses
+  const feet = footingsOf(ctx);
+  const pierAt = (i: number) => -span / 2 + (i + 1) * chord + i * pier + pier / 2;
+  const footing = Math.min(bed - 1.2,
+    ...Array.from({ length: n - 1 }, (_, i) => feet.under(`pier ${i}`, -W / 2 - pier * 0.75, W / 2 + pier * 0.75, pierAt(i) - pier / 2, pierAt(i) + pier / 2)),
+    ...[-1, 1].map((zs) => feet.under(`abutment ${zs}`, -W / 2, W / 2, zs * span / 2, zs * (span / 2 + 2))));
   const springY = Math.max(bed + 0.3, minTop - crownSlack - chord / 2);
   const holes: ArchHole[] = Array.from({ length: n }, (_, i) => ({ u: -span / 2 + chord / 2 + i * (chord + pier), w: chord, y0: footing,
     spring: springY, form: 'round' as const }));
@@ -94,7 +106,7 @@ export const stoneArchBridge: LandmarkBuilder = (ctx) => {
   }
   // the cutwaters on the piers, both faces, their noses up to the spring line
   for (let i = 0; i < n - 1; i++) {
-    const pz = -span / 2 + (i + 1) * chord + i * pier + pier / 2;
+    const pz = pierAt(i);
     for (const sx of [-1, 1]) {
       const x = sx * W / 2;
       extrude(sink, wall, [[x, footing, pz - pier / 2], [x + sx * pier * 0.75, footing, pz], [x, footing, pz + pier / 2]], [0, 1, 0], springY + 0.6 - footing);
@@ -115,13 +127,13 @@ export const stoneArchBridge: LandmarkBuilder = (ctx) => {
     // the piers and the abutments, from the footing to the crown line under the roadway
     const crown = springY + chord / 2;
     for (let i = 0; i < n - 1; i++) {
-      const pz = -span / 2 + (i + 1) * chord + i * pier + pier / 2;
+      const pz = pierAt(i);
       parts.push({ kind: 'obb', cx: 0, cz: pz, hw: W / 2 + pier * 0.5, hl: pier / 2, yaw: 0, y0: footing, y1: Math.min(crown, minTop - DECK_PART_M) });
     }
     for (const zs of [-1, 1]) parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1), hw: W / 2, hl: 1, yaw: 0, y0: footing, y1: top(zs * span / 2) - DECK_PART_M });
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: sink.finish(), movement, supports: feet.list };
 };
 
 // ---------------------------------------------------------------------------------------------------------- truss
@@ -139,6 +151,17 @@ export const trussBridge: LandmarkBuilder = (ctx) => {
   const steel = { colour: ctx.mapId === 'blackglass' || ctx.mapId === 'urban' ? STEEL_GREY : STEEL_GREEN };
   const bed = Math.min(0, ...Array.from({ length: 9 }, (_, i) => groundAt(ctx, 0, -span / 2 + span * i / 8)));
   const L = span / spans;
+  // (bridge-footings-275) each pier and abutment on the ground under it (its authored foot, 1.5 m under the bed, kept
+  // where that lies deeper)
+  const feet = footingsOf(ctx);
+  const pierFoot = Array.from({ length: spans - 1 }, (_, i) => {
+    const z = -span / 2 + L * (i + 1);
+    return feet.under(`pier ${i}`, -W / 2 - 1.2, W / 2 + 1.2, z - 1.6, z + 1.6, bed - 1.5);
+  });
+  const abutmentFoot = [-1, 1].map((zs) => {
+    const z = zs * (span / 2 + 1.5);
+    return feet.under(`abutment ${zs}`, -W / 2 - 1.5, W / 2 + 1.5, z - 1.8, z + 1.8, Math.min(bed, groundAt(ctx, 0, z)) - 1.5);
+  });
   for (let s = 0; s < spans; s++) {
     const z0 = -span / 2 + L * s, z1 = z0 + L, pl = L / panels;
     const camel = (t: number) => T * (0.82 + 0.18 * Math.sin(Math.PI * t));
@@ -189,23 +212,23 @@ export const trussBridge: LandmarkBuilder = (ctx) => {
     }
     // a pier at a shared end
     if (s > 0) {
-      sink.span('stone', -W / 2 - 1.2, bed - 1.5, z0 - 1.6, W / 2 + 1.2, top(z0) - 0.3, z0 + 1.6);
+      sink.span('stone', -W / 2 - 1.2, pierFoot[s - 1], z0 - 1.6, W / 2 + 1.2, top(z0) - 0.3, z0 + 1.6);
     }
   }
   // the abutments: dressed stone under each end, their wing walls
   for (const zs of [-1, 1]) {
     const z = zs * (span / 2 + 1.5), y = top(zs * span / 2);
-    sink.span('stone', -W / 2 - 1.5, Math.min(bed, groundAt(ctx, 0, z)) - 1.5, z - 1.8, W / 2 + 1.5, y - 0.25, z + 1.8);
+    sink.span('stone', -W / 2 - 1.5, abutmentFoot[(zs + 1) / 2], z - 1.8, W / 2 + 1.5, y - 0.25, z + 1.8);
     sink.placed(0, 0, 0, z, () => moulding(sink, 'stone', W + 3, 3.6, y - 0.55, 0.3, 0.1));
   }
   const movement = ctx.params.drivable === false ? undefined : (() => {
     const parts = deckMovement(span, W, top, 2.6, 0.5);
-    for (const zs of [-1, 1]) parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1.5), hw: W / 2 + 1.5, hl: 1.8, yaw: 0, y0: bed - 1.5, y1: top(zs * span / 2) - DECK_PART_M });
-    for (let s = 1; s < spans; s++) parts.push({ kind: 'obb', cx: 0, cz: -span / 2 + span * s / spans, hw: W / 2 + 1.2, hl: 1.6, yaw: 0, y0: bed - 1.5,
+    for (const zs of [-1, 1]) parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1.5), hw: W / 2 + 1.5, hl: 1.8, yaw: 0, y0: abutmentFoot[(zs + 1) / 2], y1: top(zs * span / 2) - DECK_PART_M });
+    for (let s = 1; s < spans; s++) parts.push({ kind: 'obb', cx: 0, cz: -span / 2 + span * s / spans, hw: W / 2 + 1.2, hl: 1.6, yaw: 0, y0: pierFoot[s - 1],
       y1: top(-span / 2 + span * s / spans) - DECK_PART_M });
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: sink.finish(), movement, supports: feet.list };
 };
 
 // ---------------------------------------------------------------------------------------------------------- trestle
@@ -220,8 +243,11 @@ export const trestleBridge: LandmarkBuilder = (ctx) => {
   const top = deckProfile(ctx, span, deck, 0);
   const bents = Math.max(2, Math.round(span / 4.2));
   const wood = { colour: TIMBER }, dark = { colour: TIMBER_DARK };
+  // (bridge-footings-275) each bent's sill 0.4 m into the lowest ground along it (it read the ground at its middle only)
+  const feet = footingsOf(ctx);
   for (let b = 0; b <= bents; b++) {
-    const z = -span / 2 + span * b / bents, y = top(z) - 0.55, g = Math.min(y - 0.5, groundAt(ctx, 0, z));
+    const z = -span / 2 + span * b / bents, y = top(z) - 0.55;
+    const g = feet.under(`bent ${b}`, -W / 2 - 1.0, W / 2 + 1.0, z - 0.25, z + 0.25, y - 0.9, 0.4) + 0.4;
     sink.span('structureWood', -W / 2 - 1.0, g - 0.4, z - 0.25, W / 2 + 1.0, g + 0.1, z + 0.25, dark);
     for (const x of [-W / 2 - 0.6, -W * 0.18, W * 0.18, W / 2 + 0.6]) {
       const lean = Math.abs(x) > W / 2 ? Math.sign(x) * -0.5 : 0;
@@ -251,7 +277,7 @@ export const trestleBridge: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureWood', [sx * (W / 2 - 0.08), top(-span / 2) + 1.05, -span / 2], [sx * (W / 2 - 0.08), top(span / 2) + 1.05, span / 2], 0.1, { ...wood, decor: true });
   }
   const movement = ctx.params.drivable === false ? undefined : deckMovement(span, W, top, 0.4, 0.25);
-  return { parts: sink.finish(), movement };
+  return { parts: sink.finish(), movement, supports: feet.list };
 };
 
 // ---------------------------------------------------------------------------------------------------------- bailey
@@ -295,15 +321,20 @@ export const baileyBridge: LandmarkBuilder = (ctx) => {
         [sx * (W / 2 - 0.25), top(z1), z1]], [sx, 0, 0], 0.25, { colour: TIMBER });
     }
   }
-  // the ramps down to the banks
+  // the ramps down to the banks; the base plates under the bridge's ends (bridge-footings-275: each 0.3 m into the
+  // lowest ground under it, where it read the ground at the ramp's toe 4.2 m on)
+  const feet = footingsOf(ctx);
   for (const zs of [-1, 1]) {
     const z = zs * span / 2, y = top(z), g = groundAt(ctx, 0, zs * (span / 2 + 4.2));
     extrude(sink, 'structureMetal', [[-W / 2, y - 0.3, z], [-W / 2, y, z], [-W / 2, g + 0.06, z + zs * 4.2], [-W / 2, g - 0.2, z + zs * 4.2]], [1, 0, 0], W,
       { colour: rgb(0x4a4c46) });
-    for (const sx of [-1, 1]) sink.span('structureMetal', sx * W / 2 - 0.4, g - 0.3, z - 0.3, sx * W / 2 + 0.8, Math.min(y - 0.3, g + 0.4), z + 0.3, { colour: IRON });
+    for (const sx of [-1, 1]) {
+      const x0 = sx * W / 2 - 0.4, x1 = sx * W / 2 + 0.8;
+      sink.span('structureMetal', x0, feet.under(`base plate ${zs} ${sx}`, x0, x1, z - 0.3, z + 0.3, g - 0.3, 0.3), z - 0.3, x1, Math.min(y - 0.3, g + 0.4), z + 0.3, { colour: IRON });
+    }
   }
   const movement = ctx.params.drivable === false ? undefined : deckMovement(span, W + 1.4, top, H, 0.5);
-  return { parts: sink.finish(), movement };
+  return { parts: sink.finish(), movement, supports: feet.list };
 };
 
 // ---------------------------------------------------------------------------------------------------------- viaduct
@@ -317,12 +348,19 @@ export const viaduct: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const n = Math.max(2, Math.round(Number(ctx.params.arches))), A = Math.max(5, Number(ctx.params.archSpan)), H = Math.max(8, Number(ctx.params.height));
   const W = Math.max(4, Number(ctx.params.width)), pier = Math.max(2.4, A * 0.24), L = n * (A + pier) + pier;
-  const footing = -1.2 - ctx.groundFall, spring = H - A / 2 - 1.6;
+  // (bridge-footings-275, the owner: "its supports need to have proper foundations going through bottom of land") one
+  // masonry body on the deepest of its piers' footings, each on the ground under it with its battered offsets; it stood
+  // 1.2 m under the base wherever the ground, read at the footprint's corners, edges and middle, fell between them
+  const feet = footingsOf(ctx);
+  const pierAt = (i: number) => -L / 2 + pier / 2 + i * (A + pier);
+  const footing = Math.min(-1.2 - ctx.groundFall,
+    ...Array.from({ length: n + 1 }, (_, i) => feet.under(`pier ${i}`, -W / 2 - 0.6, W / 2 + 0.6, pierAt(i) - pier / 2 - 0.3, pierAt(i) + pier / 2 + 0.3)));
+  const spring = H - A / 2 - 1.6;
   const holes: ArchHole[] = Array.from({ length: n }, (_, i) => ({ u: -L / 2 + pier + A / 2 + i * (A + pier), w: A, y0: footing, spring, form: 'round' as const }));
   sink.placed(-Math.PI / 2, 0, 0, 0, () => archedSlab(sink, 'stone', -L / 2, L / 2, footing, H, W, holes, { ends: true, top: true }));
   // the piers' offsets (battered skirts at the foot) and the imposts at the spring line, both faces
   for (let i = 0; i <= n; i++) {
-    const z = -L / 2 + pier / 2 + i * (A + pier);
+    const z = pierAt(i);
     for (const sx of [-1, 1]) {
       extrude(sink, 'stone', [[sx * W / 2, footing, z - pier / 2], [sx * (W / 2 + 0.6), footing, z - pier / 2 - 0.3], [sx * (W / 2 + 0.6), footing, z + pier / 2 + 0.3],
         [sx * W / 2, footing, z + pier / 2]], [0, 1, 0], Math.min(spring * 0.35, 6) - footing, { decor: true });
@@ -331,7 +369,7 @@ export const viaduct: LandmarkBuilder = (ctx) => {
   }
   moulding(sink, 'stone', W, L, H - 0.45, 0.25, 0.14);
   for (const sx of [-1, 1]) sink.span('stone', sx * W / 2 - (sx > 0 ? 0.45 : 0), H, -L / 2, sx * W / 2 + (sx > 0 ? 0 : 0.45), H + 1.1, L / 2);
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), supports: feet.list };
 };
 
 // ---------------------------------------------------------------------------------------------------------- lift bridge
@@ -556,9 +594,13 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
   if (approach > 0 || rise > 0) return liftBridgeLong(ctx, sink, span, W, approach, rise, Math.min(0.25, Math.max(0.05, Number(ctx.params.grade ?? 1 / 7))), postX, portalH);
   const top = deckProfile(ctx, span, deck, Math.min(0.25, span * 0.012));
   // ---- the abutments: brick blocks from below the bed to the deck's underside, a stone coping along the channel face
+  // (bridge-footings-275: each a metre under the lowest ground under it; it read three points on its channel face, and its
+  // record the middle one)
+  const feet = footingsOf(ctx);
+  const abutmentFoot = [-1, 1].map((zs) => feet.under(`abutment ${zs}`, -W / 2 - 0.9, W / 2 + 0.9, zs * span / 2, zs * (span / 2 + 3.2), Infinity, 1.0));
   for (const zs of [-1, 1]) {
     const face = zs * span / 2, back = zs * (span / 2 + 3.2), y = Math.min(top(face), top(zs * span / 2)) - 0.42;
-    const bed = Math.min(groundAt(ctx, 0, face), groundAt(ctx, -W / 2, face), groundAt(ctx, W / 2, face)) - 1.0;
+    const bed = abutmentFoot[(zs + 1) / 2];
     const z0 = Math.min(face, back), z1 = Math.max(face, back);
     sink.span('stone', -W / 2 - 0.9, bed, z0, W / 2 + 0.9, y, z1);
     abutmentPieces(sink, W / 2 + 0.9, face, zs, bed, y);
@@ -577,12 +619,12 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
     parts.push({ kind: 'obb', cx: hut.cx, cz: hut.cz, hw: hut.hw, hl: hut.hl, yaw: 0, y0: hut.y0, y1: hut.y1 });
     // the abutments from the bed to the deck's underside, and the portal posts
     for (const zs of [-1, 1]) {
-      parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1.6), hw: W / 2 + 0.9, hl: 1.6, yaw: 0, y0: groundAt(ctx, 0, zs * span / 2) - 1.0, y1: top(zs * span / 2) - DECK_PART_M });
+      parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1.6), hw: W / 2 + 0.9, hl: 1.6, yaw: 0, y0: abutmentFoot[(zs + 1) / 2], y1: top(zs * span / 2) - DECK_PART_M });
       for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * postX, cz: zs * (span / 2 + 0.55), hw: 0.17, hl: 0.17, yaw: 0, y0: top(zs * span / 2) - 0.45, y1: top(zs * span / 2) + portalH });
     }
     return parts;
   })();
-  return { parts: finishLandmark(sink), movement };
+  return { parts: finishLandmark(sink), movement, supports: feet.list };
 };
 
 /** kit.ts bar's member (a square section `t` centred on a to b) with its arrises eased: millWorks.ts bevelMember. */
@@ -642,16 +684,16 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
       bar(sink, 'structureWood', [x, top(z0) + 0.55, z0], [x, top(z1) + 0.55, z1], 0.06, { ...white, decor: true, fine: true });
     }
   };
-  const groundUnder = (z0: number, z1: number, halfW: number) => {
-    let g = Infinity;
-    for (const z of [z0, (z0 + z1) / 2, z1]) for (const x of [-halfW, 0, halfW]) g = Math.min(g, groundAt(ctx, x, z));
-    return g;
-  };
+  // (bridge-footings-275) the lift piers, the pile bents, the abutments and the ramps' bodies each on the lowest ground
+  // under its own rectangle (it read nine points of each; the records read the middle one)
+  const feet = footingsOf(ctx);
+  const liftPierFoot = new Map<number, number>(), abutmentFoot = new Map<number, number>();
   for (const zs of [-1, 1]) {
     // ---- the lift pier in the water (the long form with approach spans): brick from the bed to under the boards, stone
     // copings along both faces, the boards over it
     if (P > 0) {
-      const z0 = zs * s, z1 = zs * (s + P), bed = groundUnder(z0, z1, W / 2 + 0.9) - 1.0;
+      const z0 = zs * s, z1 = zs * (s + P), bed = feet.under(`lift pier ${zs}`, -W / 2 - 0.9, W / 2 + 0.9, z0, z1, Infinity, 1.0);
+      liftPierFoot.set(zs, bed);
       bevelSpan(sink, 'stone', -W / 2 - 0.9, bed, Math.min(z0, z1), W / 2 + 0.9, yD - 0.42, Math.max(z0, z1), 0.05, {});
       for (const z of [z0, z1]) bevelSpan(sink, 'stone', -W / 2 - 1.0, yD - 0.46, z - 0.18, W / 2 + 1.0, yD - 0.32, z + 0.18, 0.03, { decor: true });
       boards(z0, z1, 1);
@@ -663,7 +705,7 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
       for (const x of [-W * 0.38, 0, W * 0.38]) bevelBar(sink, 'structureWood', [x, yD - 0.3, zA], [x, yD - 0.3, zB], 0.4, dark);
       const bents = Math.max(1, Math.ceil(approach / LIFT_BENT_PITCH_M));
       for (let k = 1; k < bents; k++) {
-        const z = zA + (zB - zA) * k / bents, y = yD - 0.5, g = groundUnder(z - 0.2, z + 0.2, W / 2 + 0.25) - 0.8;
+        const z = zA + (zB - zA) * k / bents, y = yD - 0.5, g = feet.under(`bent ${zs} ${k}`, -W / 2 - 0.38, W / 2 + 0.38, z - 0.2, z + 0.2, Infinity, 0.8);
         bevelSpan(sink, 'structureWood', -W / 2 - 0.5, y - 0.3, z - 0.2, W / 2 + 0.5, y, z + 0.2, 0.03, dark);
         for (const x of [-W / 2 - 0.25, -W * 0.17, W * 0.17, W / 2 + 0.25]) bar(sink, 'structureWood', [x, g, z], [x, y - 0.3, z], 0.26, dark);
         if (y - g > 2.0) {
@@ -682,7 +724,8 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
     // ---- the bank abutment: brick from the bed to the roadway, paved on top, a stone coping on its channel face, the
     // wing walls along the bank, its white railing's last post where the brick parapet takes over
     const face = zs * E, back = zs * (E + AB);
-    const bed = groundUnder(face, back, W / 2 + 0.9) - 1.0;
+    const bed = feet.under(`abutment ${zs}`, -W / 2 - 0.9, W / 2 + 0.9, face, back, Infinity, 1.0);
+    abutmentFoot.set(zs, bed);
     bevelSpan(sink, 'stone', -W / 2 - 0.9, bed, Math.min(face, back), W / 2 + 0.9, yD, Math.max(face, back), 0.05, {});
     abutmentPieces(sink, W / 2 + 0.9, face, zs, bed, yD - 0.36);
     for (const sx of [-1, 1]) {
@@ -692,7 +735,7 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
     // ---- the ramp down to the ground: a brick body between its parapets, paved
     const R = ramp.get(zs) ?? 0, far = zs * (E + AB + R), yEnd = top(far);
     if (R > 0.2) {
-      const gLow = groundUnder(back, far, W / 2 + 0.9) - 0.4;
+      const gLow = feet.under(`ramp ${zs}`, -W / 2 - 0.9, W / 2 + 0.9, back, far, Infinity, 0.4);
       extrude(sink, 'stone', [[-W / 2 - 0.9, gLow, back], [-W / 2 - 0.9, yD, back], [-W / 2 - 0.9, yEnd, far], [-W / 2 - 0.9, gLow, far]], [1, 0, 0], W + 1.8);
     }
     // ---- the parapets: brick walls with a stone coping along the abutment and down the ramp
@@ -788,11 +831,11 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
           y1: hiPlate + (Le >= L1 ? 0.6 : 1.05) });
       }
       // the piers and the abutments from the bed to under the roadway's parts, and the portal posts
-      if (P > 0) parts.push({ kind: 'obb', cx: 0, cz: zs * (s + P / 2), hw: W / 2 + 0.9, hl: P / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (s + P / 2)) - 1.0, y1: yD - DECK_PART_M });
-      parts.push({ kind: 'obb', cx: 0, cz: zs * (E + AB / 2), hw: W / 2 + 0.9, hl: AB / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (E + AB / 2)) - 1.0, y1: yD - DECK_PART_M });
+      if (P > 0) parts.push({ kind: 'obb', cx: 0, cz: zs * (s + P / 2), hw: W / 2 + 0.9, hl: P / 2, yaw: 0, y0: liftPierFoot.get(zs)!, y1: yD - DECK_PART_M });
+      parts.push({ kind: 'obb', cx: 0, cz: zs * (E + AB / 2), hw: W / 2 + 0.9, hl: AB / 2, yaw: 0, y0: abutmentFoot.get(zs)!, y1: yD - DECK_PART_M });
       for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * postX, cz: zs * (s + 0.55), hw: 0.17, hl: 0.17, yaw: 0, y0: top(zs * s) - 0.45, y1: top(zs * s) + portalH });
     }
     return parts;
   })();
-  return { parts: finishLandmark(sink), movement };
+  return { parts: finishLandmark(sink), movement, supports: feet.list };
 }

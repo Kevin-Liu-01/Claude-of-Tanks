@@ -56,7 +56,7 @@ import {
 } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtrasSteps, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { bridgeSupportFootprints, dressMapExtrasSteps, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { contactReader, type BuildingGroundContact } from './buildingContacts.ts'; // buildings-271: the ground lane's contacts
@@ -4035,6 +4035,14 @@ function* propsBuildSteps(
   // (sim/matchPlacement.ts deploymentClearings). The seeded passes test the pads as before; the scatter a pass would
   // stand round a slot is left out AFTER its draws (addDestructible's veto, tryRock), so nothing else moves.
   const deploymentSlots = deploymentClearings(heightField);
+  // (bridge-footings-275) the bridges' piers (mapKits.ts bridgeSupportFootprints): a prop the scatter would stand inside
+  // one is left out after its draws, as a slot's clearing, so nothing else moves
+  const bridgePiers = bridgeSupportFootprints(mapId, P.extraKits ?? null, P.riverLandings, heightField);
+  const bridgePierVetoed: Record<string, number> = {};
+  const inBridgePier = (x: number, z: number, r: number): boolean => bridgePiers.some((p) => {
+    const dx = x - p.x, dz = z - p.z;
+    return Math.abs(dx * p.c - dz * p.s) < p.hw + r && Math.abs(dx * p.s + dz * p.c) < p.hd + r;
+  });
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
   registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
@@ -4956,6 +4964,7 @@ ${snowCap ? `
       const reach = DEPLOYMENT_CLEAR_M + meta.r * sc;
       for (const slot of deploymentSlots) if ((x - slot.x) ** 2 + (z - slot.z) ** 2 < reach * reach) return true;
     }
+    if (bridgePiers.length && inBridgePier(x, z, meta.r * sc)) return true;
     return false;
   }
   function addDestructible(
@@ -4997,6 +5006,13 @@ ${snowCap ? `
       for (const slot of deploymentSlots) {
         if ((x - slot.x) ** 2 + (z - slot.z) ** 2 >= reach * reach) continue;
         deploymentVetoed[kind] = (deploymentVetoed[kind] ?? 0) + 1;
+        return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+      }
+    }
+    if (bridgePiers.length) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc;
+      if (inBridgePier(x, z, r)) {
+        bridgePierVetoed[kind] = (bridgePierVetoed[kind] ?? 0) + 1;
         return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
       }
     }
@@ -8632,6 +8648,8 @@ ${snowCap ? `
       ];
       // (the maps lane, 228) one drawn into a civic area's room is taken, not made
       if (civicVetoes.length && civicGroundVetoAt(hx, hz, 'hedgehog')) { civicVetoed.hedgehog = (civicVetoed.hedgehog ?? 0) + 1; return true; }
+      // (bridge-footings-275) one drawn into a bridge's pier is taken, not made
+      if (bridgePiers.length && inBridgePier(hx, hz, 1.2 * scale)) { bridgePierVetoed.hedgehog = (bridgePierVetoed.hedgehog ?? 0) + 1; return true; }
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
@@ -11155,6 +11173,7 @@ ${snowCap ? `
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
   group.userData.deploymentClearance = { slots: deploymentSlots.length, vetoed: { ...deploymentVetoed } };
+  group.userData.bridgePierClearance = { piers: bridgePiers.length, vetoed: { ...bridgePierVetoed } };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.

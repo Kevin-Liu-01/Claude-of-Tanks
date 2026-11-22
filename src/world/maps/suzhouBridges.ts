@@ -18,6 +18,7 @@ import { bevelMember, bevelSpan } from './regional/millWorks.ts';
 import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } from '../collision.ts';
 import type { DressingBridgeDeck } from './archedStoneBridge.ts';
 import type { DressingBuckets, DressingHeightField, FocusedDressingContext } from './mapKits.ts';
+import { Footings, type SupportFooting } from '../footings.ts';
 
 type SuzhouBridgeForm = 'girder' | 'truss';
 
@@ -29,12 +30,33 @@ const DECK_PART_M = 1.0, PARAPET_H = 1.1, PARAPET_T = 0.4;
 /** The bucket a part lands in: Blackglass's regional ones. */
 const STONE = 'regionalStone' as const, METAL = 'structureMetal' as const, PLASTER = 'regionalPlaster3' as const;
 
+/** The pier's half-thickness along the road, and its cutwaters' reach out of each face. */
+const PIER_HALF_M = 0.9, CUTWATER_OUT_M = 1.6;
+
+/**
+ * (bridge-footings-275) a Suzhou bridge's supports on the ground under each (footings.ts): the abutments and, over a long
+ * span, the pier with its cutwaters. All three stood on the bed at the deck's centre less 0.6 m, and the creek's bed
+ * under a pier or a bank lay lower (Blackglass: every pier 11 cm over it, one abutment 36 cm). The frame is the bridge's
+ * own (x along the road, z across); a support footed deeper than its ground needs keeps that depth.
+ */
+export function suzhouBridgeFootings(deck: DressingBridgeDeck, heightField: DressingHeightField): {
+  abutments: readonly [number, number]; pier: number | null; list: readonly SupportFooting[];
+} {
+  const { x: cx, z: cz, ux, uz, halfLength, halfWidth: W, bedY } = deck, vx = -uz, vz = ux;
+  const authored = bedY - 0.6, bodyHalf = halfLength + 1.0, face = halfLength - 2.0;
+  const feet = new Footings((x, z) => heightField.getHeightAt(cx + ux * x + vx * z, cz + uz * x + vz * z));
+  const abutments = [feet.under('abutment -', -bodyHalf, -face, -W - 0.34, W + 0.34, authored),
+    feet.under('abutment +', face, bodyHalf, -W - 0.34, W + 0.34, authored)] as const;
+  const pier = face * 2 > 18 ? feet.under('pier', -PIER_HALF_M, PIER_HALF_M, -W - 0.2 - CUTWATER_OUT_M, W + 0.2 + CUTWATER_OUT_M, authored) : null;
+  return { abutments, pier, list: feet.list };
+}
+
 export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingHeightField, buckets: DressingBuckets,
   ctx: FocusedDressingContext, form: SuzhouBridgeForm): void {
-  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY } = deck;
+  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY } = deck;
   const sink = new PartSink([((cx * 0.37) % 5 + 5) % 5, ((cz * 0.29) % 5 + 5) % 5]);
   const bodyHalf = halfLength + 1.0;
-  const bottom = bedY - 0.6;
+  const feet = suzhouBridgeFootings(deck, heightField);
   const seat = deckY - (form === 'truss' ? 0.65 : 1.2); // the bearing level the girders or the truss's floor sit on
   const face = halfLength - 2.0; // the abutments' river faces
   const span = face * 2;
@@ -44,7 +66,7 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
   sink.placed(Math.atan2(-uz, ux), cx, 0, cz, () => {
     // the abutments: dressed granite from the footing to the seat, quoins at the river corners, a coping course
     for (const end of [-1, 1]) {
-      const x0 = end * face, x1 = end * bodyHalf;
+      const x0 = end * face, x1 = end * bodyHalf, bottom = feet.abutments[(end + 1) / 2];
       bevelSpan(sink, STONE, x0, bottom, -W - 0.3, x1, seat, W + 0.3, 0.04, { colour: GRANITE });
       bevelSpan(sink, STONE, x0 - end * 0.12, seat - 0.3, -W - 0.42, x1, seat, W + 0.42, 0.04, { colour: GRANITE_DARK, decor: true });
       for (const sz of [-1, 1]) for (let y = bottom + 0.3, k = 0; y < seat - 0.5; y += 0.55, k++) {
@@ -55,11 +77,11 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
     }
     // the pier over a long span: a granite shaft with pointed cutwaters both ways and a coping
     if (pier) {
-      const pw = 0.9;
+      const pw = PIER_HALF_M, bottom = feet.pier!;
       bevelSpan(sink, STONE, -pw, bottom, -W - 0.2, pw, seat, W + 0.2, 0.04, { colour: GRANITE });
       bevelSpan(sink, STONE, -pw - 0.12, seat - 0.3, -W - 0.32, pw + 0.12, seat, W + 0.32, 0.04, { colour: GRANITE_DARK, decor: true });
       for (const sz of [-1, 1]) {
-        const zf = sz * (W + 0.2), tip = zf + sz * 1.6, capTop = Math.min(seat - 0.4, deck.waterY + 1.2);
+        const zf = sz * (W + 0.2), tip = zf + sz * CUTWATER_OUT_M, capTop = Math.min(seat - 0.4, deck.waterY + 1.2);
         // (counter-clockwise seen from above: the nose's three corners)
         const pts: Vec3[] = sz > 0 ? [[0, bottom, tip], [pw, bottom, zf], [-pw, bottom, zf]] : [[0, bottom, tip], [-pw, bottom, zf], [pw, bottom, zf]];
         sink.prism(STONE, pts, [0, 1, 0], capTop - bottom, { colour: GRANITE });
@@ -88,15 +110,15 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
     const at = (from + to) / 2;
     recordParts.push({ kind: 'obb', cx: cx + ux * at, cz: cz + uz * at, hw, hl: (to - from) / 2, yaw, y0, y1 });
   };
-  solid(-bodyHalf, -face, W + 0.3, bottom, deckY - DECK_PART_M);
-  solid(face, bodyHalf, W + 0.3, bottom, deckY - DECK_PART_M);
-  if (pier) solid(-0.9, 0.9, W + 0.2, bottom, Math.min(seat, deckY - DECK_PART_M));
+  solid(-bodyHalf, -face, W + 0.3, feet.abutments[0], deckY - DECK_PART_M);
+  solid(face, bodyHalf, W + 0.3, feet.abutments[1], deckY - DECK_PART_M);
+  if (pier) solid(-PIER_HALF_M, PIER_HALF_M, W + 0.2, feet.pier!, Math.min(seat, deckY - DECK_PART_M));
   const sideAt = form === 'truss' ? W - 1.6 : W - PARAPET_T / 2;
   for (const side of balustradeRuns ? [] : [-1, 1]) {
     recordParts.push({ kind: 'obb', cx: cx + vx * sideAt * side, cz: cz + vz * sideAt * side, hw: PARAPET_T / 2, hl: form === 'truss' ? face : bodyHalf,
       yaw, y0: deckY, y1: deckY + PARAPET_H });
   }
-  const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + PARAPET_H, 0], kind: 'bridge' }, recordParts);
+  const record = setCompoundShape({ min: [0, Math.min(...feet.abutments, feet.pier ?? Infinity), 0], max: [0, deckY + PARAPET_H, 0], kind: 'bridge' }, recordParts);
   ctx.obstacles?.push(record);
   ctx.colliders?.push(cloneCollisionRecord(record));
   void heightField;

@@ -2923,6 +2923,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/railCoalStockpiles.selftest.mjs',
     'src/world/railBallast.selftest.mjs', // ground lane (2026-10-08, waves 234/278/285): the rail kit's ballast bed
     'src/world/maps/archedBridgeCollision.selftest.mjs',
+    // bridge-footings-275 (2026-11-21): every bridge support footed through the ground under its own footprint
+    'src/world/supportFootings.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
