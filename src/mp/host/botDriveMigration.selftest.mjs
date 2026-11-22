@@ -332,6 +332,9 @@ function downAtKeyframe(revivedInWindow, replay = false) {
   const fresh = makeRevive({ tick: state.tick, ...resumeClocksOf(state) });
   const applied = applyResumeState(fresh, state);
   const twin = fresh.authority.entityById.get('a-0');
+  // its last pushed route target (275's host block), as the keyframe had it and as the restore left it
+  const keyTarget = keyframe.modeCheckpoint.host?.targets.find(([id]) => id === 'a-0') ?? null;
+  const takenTarget = [twin._modeTargetX, twin._modeTargetZ];
   const taken = twin.aiCtl.captureDrive().streams;
   const built = makeRevive(null);
   const constructed = built.authority.entityById.get('a-0').aiCtl.captureDrive().streams;
@@ -354,7 +357,7 @@ function downAtKeyframe(revivedInWindow, replay = false) {
   }
   old.stop(); fresh.stop();
   return { sealed, atKeyframe, taken, constructed, downAtResume, apart, apartAt, together, told: told.get('a-0') ?? null, keyTick: keyframe.tick, brainsOnRise,
-    sealedBrain: !!sealed?.brain, firstTick, replayed: applied.replayed ?? null, atResume };
+    sealedBrain: !!sealed?.brain, firstTick, replayed: applied.replayed ?? null, atResume, keyTarget, takenTarget };
 }
 /** The fields two brain records hold apart, as `part[index] old/new` (game/ai.ts BotBrain's lists). */
 function brainApart(a, b) {
@@ -390,6 +393,11 @@ for (const [label, revivedInWindow, replay] of [['[7a] a raider down when the ke
     + `of both (controller ${run.taken[0]}, planner ${run.taken[1]}), not a fresh brain's`);
   // 275: 0.5 m revived in the window too (it was 4 m: the engine at rest; the spool is now the ramp's since the told revive)
   if (revivedInWindow && !replay) {
+    // 275's revive drops the bot's last pushed target (a revive clears it on the old host, matchModes.ts reviveAtSpawn), so
+    // its next route push is made; unpinned until 276
+    ok(!!run.keyTarget && !Number.isFinite(run.takenTarget[0]) && !Number.isFinite(run.takenTarget[1]), `the revived raider's last pushed target `
+      + `(${run.keyTarget ? `${run.keyTarget[1].toFixed(1)}, ${run.keyTarget[2].toFixed(1)}` : 'none'} at the keyframe) is dropped, as its revive dropped it `
+      + `(${JSON.stringify(run.takenTarget)})`);
     const { old: a, fresh: b } = run.firstTick;
     ok(Math.abs(b.progressRate - a.progressRate) < 3 && b.burstDamage === a.burstDamage, `the revived raider's brain, handed its hull after the record, reads `
       + `no spike on its first tick (progressRate ${b.progressRate} m/s against the old host's ${a.progressRate}, burstDamage ${b.burstDamage}/${a.burstDamage})`);

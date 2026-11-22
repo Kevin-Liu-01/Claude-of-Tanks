@@ -50,6 +50,16 @@ for (const change of [
   assert.ok(!(f.planner.update(f.entity, 10, f.context) & B.SMOKE), 'invalid, airborne, empty or misplaced smoke is refused');
 }
 {
+  // 275 (pinned at 276): the smoke kit's cooldown is on the hull's own clock (BotAbilityContext.hullS), the brain on the
+  // battle clock; a migrated authority's own clock restarts at 0 while the brain's goes on from the old host's 45 s, so a
+  // kit ready at 3.5 s on the hull's clock read against the brain's would screen at once
+  const f = fixture(); f.entity.combat.hp = f.entity.combat.maxHp * 0.3;
+  auxiliaryState(f.entity).smokeReadyAt = 3.5;
+  f.context.hitAtS = 45;
+  assert.ok(!(f.planner.update(f.entity, 45, { ...f.context, hullS: 0.5 }) & B.SMOKE), 'a kit cooling on the hull\'s clock holds a brain on the battle clock');
+  assert.ok(f.planner.update(f.entity, 45.3, { ...f.context, hullS: 3.6 }) & B.SMOKE, 'and it screens once the hull\'s clock reaches the kit');
+}
+{
   const f = fixture(); f.context.retreating = false;
   assert.ok(!(f.planner.update(f.entity, 10, f.context) & B.SMOKE), 'healthy offensive tank preserves its own firing lane');
 }
