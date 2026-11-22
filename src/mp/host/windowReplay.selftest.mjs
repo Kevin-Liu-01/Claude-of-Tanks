@@ -18,13 +18,20 @@
 // [4] a life the play took that the rows show alive (a fire the old host saw put out): the hull stands alive with the
 //     row's hp, and the mode adopts it on its first step (no respawn due).
 // [5] the mode as the seat's frame shows it: a flag the seat's hull lifted in the window, which the play never reached,
-//     is carried by it on the new host; a mode view that agrees leaves the play's own.
-// [6] what the seat was told of: a prop's fall (the fence crushed in the new world), a crater in the destruction log, a
-//     smoke screen the seat raised in the window: each once (one the play made, or the keyframe stood, is not doubled; a
-//     crater matched where it is, not by its number, which a seat's crater in the window shifts).
+//     is carried by it on the new host, at a carrier's pace; a mode view that agrees leaves the play's own.
+// [6] what the seat was told of: a prop's fall (the fence crushed in the new world), craters and holes in the destruction
+//     log, a smoke screen the seat raised in the window: each once (one the play made, or the keyframe stood, is not
+//     doubled). A deed is matched one for one where it is, not by its number, which a seat's deed in the window shifts, nor
+//     by a section alone; two craters on one spot are two. The seat's are laid down under this host's next numbers.
+//     [6b] (destructionMatch's own restore on verdant's structures) a hole the play did not make, beside one it did, opens
+//     in its section's next slot, and a late joiner from this host's log opens both.
 // [7] a seat's kill in a mode that scores it (Zone Control, Gun Game): the frame's view differs (the score) and is taken
 //     without rewriting a life or re-arming a gun (a fresh controller's restore stood the victim up at 0 hp and gave every
-//     Gun Game hull a loaded gun); the victim goes down on the first step with its respawn due; the score is exact.
+//     Gun Game hull a loaded gun); the victim goes down at the resume with its respawn due; the score is exact.
+// [8] the frame's view where another hand parted it from the play: a zone meter (Zone Control's; Frontline's, its line
+//     unmoved), now and 2 s on; a survivor infected (the frame alone shows the death: no conversion announced again, its
+//     respawn at most the window late; and one risen again among the infected inside a longer window, its faction the
+//     frame's); the ball struck, to the bit and 1 s on.
 // Also: a far tier's row is another seat's ([2]); a row that parts on the fire or the magazine alone ([3]); the play's own
 // events of the window go to no seat ([5]); a keyframe sealed in the countdown, with no mode checkpoint, or with its clocks
 // 2.5 ms apart is not replayed ([1]).
@@ -38,6 +45,10 @@ import { dequantizePosition, dequantizeReloadS } from '../wire/quantize.ts';
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { createDestructionMatch } from '../../sim/destructionMatch.ts';
+import { createTerrainDeformation } from '../../sim/terrainDeformation.ts';
+import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
+import { quantizeDestructionEntry } from '../wire/destructionLog.ts';
 
 let failures = 0;
 const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { failures++; console.error(`FAIL  ${label}`); } };
@@ -60,7 +71,7 @@ const makeWorld = () => {
     crushObstacle(obstacle) { if (obstacle.crushed) return false; obstacle.crushed = true; return true; },
   };
 };
-const makeFor = (mode) => (resume) => createMatchActor({ roomId: 'window-replay', mapId: 'verdant', mode, seed: 5, seats, bots, ruleset: matchRulesetFor(mode),
+const makeFor = (mode, ruleset = matchRulesetFor(mode)) => (resume) => createMatchActor({ roomId: 'window-replay', mapId: 'verdant', mode, seed: 5, seats, bots, ruleset,
   world: makeWorld(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
 const make = makeFor('capture_the_flag');
 const inputs = new Map();
@@ -85,8 +96,8 @@ const seal = (actor, tick, era) => decodeMigrationKeyframe(encodeMigrationKeyfra
  * A CTF match `t0` s in (the seat driving its weave from `driveFrom` s), `before` run on the old host just before the
  * keyframe, then `window` ticks on with `during(old, step)` before each; the seat's frame then (`rows` rewrites its rows).
  */
-function stage({ t0 = 20, window = 30, driveFrom = Infinity, driver = 'h0', mode = 'capture_the_flag', before = () => {}, during = () => {}, rows = (r) => r } = {}) {
-  const old = makeFor(mode)(null), sim = old.authority;
+function stage({ t0 = 20, window = 30, driveFrom = Infinity, driver = 'h0', mode = 'capture_the_flag', ruleset = matchRulesetFor(mode), before = () => {}, during = () => {}, rows = (r) => r } = {}) {
+  const old = makeFor(mode, ruleset)(null), sim = old.authority;
   sim.onMatchReady();
   let tick = 0;
   const told = [];
@@ -99,13 +110,13 @@ function stage({ t0 = 20, window = 30, driveFrom = Infinity, driver = 'h0', mode
   told.length = 0;
   for (let k = 1; k <= window; k++) { during(old, k); step(); }
   const latest = frameOf(old, tick, era, false, rows);
-  return { old, keyframe, latest, keyTick, tick, told: [...told], era, mode };
+  return { old, keyframe, latest, keyTick, tick, told: [...told], era, mode, ruleset };
 }
 /** The new host as matchHostCore.ts boots it: on resumeClocksOf's clocks, the state applied, the battle on (`pending`: the
  *  events left queued for its first broadcast). */
 function resumeOf(staged, { fallen = [] } = {}) {
   const { state } = resumeStateFromRetained(staged.keyframe, 0, staged.latest, 500, fallen, [], staged.told);
-  const fresh = makeFor(staged.mode)({ tick: state.tick, ...resumeClocksOf(state) });
+  const fresh = makeFor(staged.mode, staged.ruleset)({ tick: state.tick, ...resumeClocksOf(state) });
   const applied = applyResumeState(fresh, state);
   const pending = fresh.authority.pendingEventCount;
   fresh.authority.onMatchReady();
@@ -283,8 +294,10 @@ console.log('[4] a life the play took that the rows show alive');
 
 console.log('[5] the mode as the seat\'s frame shows it');
 {
-  // the seat's hull stood on the bravo flag by another hand until it lifts it (the play's hull never reached it)
-  const staged = stage({ window: 40, during: (old) => {
+  // the seat's hull stood on the bravo flag by another hand until it lifts it (the play's hull never reached it); the
+  // carrier at the standing pace (FLAG_CARRIER_SPEED_SCALE: CTF's own pitch keeps a carrier's full pace)
+  const ctf = matchRulesetFor('capture_the_flag');
+  const staged = stage({ window: 40, ruleset: { ...ctf, flagPitch: { ...ctf.flagPitch, carrierSpeedScale: undefined } }, during: (old) => {
     const flag = old.authority.modeController.state.flags.find((f) => f.team === 'bravo');
     if (flag.status !== 'carried') { const h0 = old.authority.entityById.get('h0'); h0.state.pos.set(flag.x, 0, flag.z); h0.state.speed = 0; }
   } });
@@ -294,6 +307,8 @@ console.log('[5] the mode as the seat\'s frame shows it');
   ok(flagOld.status === 'carried' && flagOld.carrierId === 'h0' && applied.replayed?.modeFromFrame === true && flagNew.status === 'carried' && flagNew.carrierId === 'h0',
     `the flag the seat lifted in the window is carried by it on the new host (${flagNew.status} by ${flagNew.carrierId}; the mode from the frame: `
     + `${applied.replayed?.modeFromFrame})`);
+  const paceOld = staged.old.authority.entityById.get('h0').modeSpeedMultiplier, paceNew = fresh.authority.entityById.get('h0').modeSpeedMultiplier;
+  ok(paceNew === paceOld && paceNew < 1, `and drives at a carrier's pace there, as on the old host (x${paceNew} against x${paceOld})`);
   // every seat heard the old host's events of the window (the lift among them): the play's own go to none
   ok(pending === 0, `and none of the play's own events waits for the new host's first broadcast (${pending} pending)`);
   staged.old.stop(); fresh.stop();
@@ -305,12 +320,17 @@ console.log('[6] what the seat was told of');
   // seat was told fell; a crater in the frame's log
   const smoke = (old) => { inputs.set('h0', seatInput({ throttle: 0, steer: 0, brake: true, actionBits: PLAYER_ACTION_BITS.SMOKE })); old.authority.step({ dt: 1 / 60, inputs }); old.authority.afterEventBroadcast(); inputs.delete('h0'); };
   const staged = stage({ before: (old) => { smoke(old); old.authority.entityById.get('h0').combat.auxiliary.smokeReadyAt = 0; }, during: (old, k) => { if (k === 4) { smoke(old); } } });
-  // a crater the keyframe's log holds (the frame's too, a log only grows) and one the seat was told of in the window
-  const crater = (craterId) => ({ kind: 'crater', craterId, x: 40 + craterId, z: 40, radiusM: 1.5, depthM: 0.3, rimM: 0.1, seed: 9 });
-  staged.keyframe.frame.destruction = [...(staged.keyframe.frame.destruction ?? []), crater(6)];
-  // (the frame names the keyframe's crater by another number, as a seat's crater in the window shifts the old host's: one
-  // deed, matched where it is)
-  staged.latest.destruction = [...(staged.latest.destruction ?? []), { ...crater(6), craterId: 9 }, crater(7)];
+  // a crater the play holds as its 6 (the keyframe's log stands in for the play's own deed: no shell digs this hard ground)
+  // and the frame's log: the seat's crater first (the old host's 6), the play's deed after it (the old host's 7), and the
+  // seat's second crater on the play's spot (8): matched one for one where each is, the seat's two laid down under this
+  // host's next numbers (before: the frame's numbers gave two craters the id 6 and the next one an id the seats held; and
+  // the second crater on one spot read as the play's and was lost)
+  const crater = (craterId, x) => ({ kind: 'crater', craterId, x, z: 40, radiusM: 1.5, depthM: 0.3, rimM: 0.1, seed: 9 });
+  // and two holes in one section of one structure: the play's (x 60) and the seat's before it (x 61): matched by where
+  // each is, not by the section alone (this world holds no structure: the log alone shows them)
+  const hole = (slot, x) => ({ kind: 'breach', structureId: 0, section: 0, hole: slot, x, y: 1, z: 40, radiusM: 0.5, sectionDown: false });
+  staged.keyframe.frame.destruction = [...(staged.keyframe.frame.destruction ?? []), crater(6, 46), hole(0, 60)];
+  staged.latest.destruction = [...(staged.latest.destruction ?? []), crater(6, 47), crater(7, 46), crater(8, 46), hole(0, 61), hole(1, 60)];
   const { fresh } = resumeOf(staged, { fallen: [5] });
   const screens = (actor) => actor.authority.snapshotMeta('h0').smokeScreens;
   const oldScreens = screens(staged.old), newScreens = screens(fresh);
@@ -322,12 +342,37 @@ console.log('[6] what the seat was told of');
     `and its smoke kit is its row's: ${kitNew.smokeCharges} charges, ${leftOf(kitNew, fresh).toFixed(3)} s to ready (the old host's ${kitOld.smokeCharges}, `
       + `${leftOf(kitOld, staged.old).toFixed(3)} s)`);
   const log = fresh.authority.snapshotMeta('h0').destructionLog;
-  const once = (x) => log.filter((entry) => entry.kind === 'crater' && entry.x === x).length;
-  ok(once(46) === 1 && once(47) === 1, `the keyframe's crater (renumbered in the frame) and the one the seat was told of are each in the log once `
-    + `(${once(46)}, ${once(47)}; ${log.length} entries)`);
+  const at = (x) => log.filter((entry) => entry.kind === 'crater' && entry.x === x).length;
+  const ids = log.filter((entry) => entry.kind === 'crater').map((entry) => entry.craterId);
+  ok(at(46) === 2 && at(47) === 1, `each crater once: the play's and the seat's second on one spot, the seat's first (${at(46)} at x 46, ${at(47)} at x 47)`);
+  ok(JSON.stringify(ids) === JSON.stringify([6, 7, 8]), `under this host's numbers, each its own and past every number the seats hold (${JSON.stringify(ids)})`);
+  const holes = log.filter((entry) => entry.kind === 'breach').map((entry) => entry.x).sort((a, b) => a - b);
+  ok(JSON.stringify(holes) === JSON.stringify([60, 61]), `each hole once, matched where it is (${JSON.stringify(holes)})`);
   const destroyed = fresh.authority.snapshotMeta('h0').destroyedObstacleIndices;
   ok(destroyed.includes(5) && fresh.authority.restoreDestroyedObstacles([5], 0).restored === 1, `the fence the seat was told fell is down on the new host (${JSON.stringify(destroyed)})`);
   staged.old.stop(); fresh.stop();
+}
+
+console.log('[6b] a hole the play did not make, beside one it did');
+{
+  // destructionMatch's own restore on verdant's sectioned structures (the replay lays the frame's missing deeds down so):
+  // the old host opened the seat's hole first (its slot 0) and a bot's after it (1); the play made the bot's alone, in its
+  // slot 0. Laid down under the frame's number the seat's hole was refused (its slot filled); under this host's next slot it
+  // opens, and a late joiner reading this host's log opens both
+  const rules = { ...matchRulesetFor('standard').destruction, craters: true, sections: true };
+  const host = () => { const world = createDedicatedWorldCollision('verdant');
+    return createDestructionMatch({ rules, obstacles: world.getObstacles(), colliders: world.getColliders(), ground: createTerrainDeformation(), groundTypeAt: () => 'medium' }); };
+  const old = host(), play = host(), late = host();
+  const target = play.structures.structures.find((structure) => structure.destructible && play.structures.sectionsOf(structure)?.count > 0);
+  const hole = (slot, x) => quantizeDestructionEntry({ kind: 'breach', structureId: target.id, section: 0, hole: slot, x, y: 1.25, z: -900, radiusM: 0.5, sectionDown: false });
+  const holes = (match) => JSON.stringify(Array.from(match.structures.sectionsOf(match.structures.structures.find((structure) => structure.id === target.id)).holeCount));
+  old.restore([hole(0, 900.25), hole(1, 901.5)]);
+  play.restore([hole(0, 901.5)]);
+  const applied = play.restore([hole(0, 900.25)], true);
+  ok(applied === 1 && holes(play) === holes(old) && play.log.at(-1).hole === 1, `the seat's hole opens in the section's next slot (${holes(play)} holes by section `
+    + `against the old host's ${holes(old)}; logged as slot ${play.log.at(-1).hole})`);
+  late.restore(play.log.map((entry) => ({ ...entry })));
+  ok(holes(late) === holes(old), `a late joiner from this host's log opens both (${holes(late)})`);
 }
 
 console.log('[7] a seat\'s kill in a mode that scores it');
@@ -351,7 +396,65 @@ for (const mode of ['zone_control', 'gun_game']) {
   stepBoth(staged.old, fresh);
   const respawn = (actor) => actor.authority.captureModeCheckpoint().mode.respawns.some(([id]) => id === victimId);
   ok(sim.entityById.get(victimId).modeLife === 'down' && old.entityById.get(victimId).modeLife === 'down' && respawn(fresh) === respawn(staged.old),
-    `${mode}: the mode takes the death on its first step, a respawn due as on the old host (${respawn(fresh)})`);
+    `${mode}: the mode takes the death at the resume, a respawn due as on the old host (${respawn(fresh)})`);
+  staged.old.stop(); fresh.stop();
+}
+
+console.log('[8] the frame\'s view where the play parts from it: a zone meter, a survivor infected, the ball');
+{
+  // another hand in the window: a zone meter moved (Zone Control's objectives; Frontline's line, its sector unmoved)
+  const zonesOf = (actor) => actor.authority.modeController.state.zones.map((zone) => `${zone.id} ${zone.control} ${zone.owner} ${zone.contested}`).join('; ');
+  for (const mode of ['zone_control', 'frontline_assault']) {
+    const staged = stage({ mode, t0: 30, during: (old, k) => {
+      if (k === 5) { const zone = old.authority.modeController.state.zones[0]; zone.control = Math.max(-1, Math.min(1, zone.control + 0.2)); }
+    } });
+    const { fresh, applied } = resumeOf(staged);
+    ok(applied.replayed?.modeFromFrame === true && zonesOf(fresh) === zonesOf(staged.old), `${mode}: the meter is the frame's (${zonesOf(fresh)})`);
+    for (let k = 0; k < 120; k++) stepBoth(staged.old, fresh);
+    ok(zonesOf(fresh) === zonesOf(staged.old), `${mode}: and runs on as the old host's (2 s on: ${zonesOf(fresh)})`);
+    staged.old.stop(); fresh.stop();
+  }
+}
+{
+  // Infected: a survivor killed by another hand 5 ticks into the window (the seat heard mode_infected then); the frame alone
+  // shows the death
+  const victimId = 'a-1';
+  const staged = stage({ mode: 'infected', during: (old, k) => { if (k === 5) { const victim = old.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; } } });
+  const { fresh } = resumeOf(staged);
+  const old = staged.old.authority, sim = fresh.authority;
+  const due = (authority) => authority.captureModeCheckpoint().mode.respawns.find(([id]) => id === victimId)?.[1].atS;
+  ok(sim.entityById.get(victimId).team === old.entityById.get(victimId).team && sim.entityById.get(victimId).modeLife === 'down',
+    `infected: the victim is the infected's at the resume, down, as on the old host (${sim.entityById.get(victimId).team})`);
+  const heard = [];
+  for (const actor of [staged.old, fresh]) { actor.authority.step({ dt: 1 / 60, inputs }); heard.push(actor.authority.eventsForViewer('h0').filter((ev) => ev.type === 'mode_infected').length); actor.authority.afterEventBroadcast(); }
+  const late = due(sim) - due(old);
+  ok(heard[1] === 0 && late >= 0 && late <= 30 / 60 + 1e-9, `infected: the new host announces no conversion (${heard[1]} mode_infected), and the respawn is due `
+    + `${late.toFixed(3)} s after the old host's (the death's moment is the frame's: at most the window late)`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // and a victim risen again among the infected inside a longer window (Infected respawns in 5 s): no row shows its death,
+  // the frame shows its faction
+  const victimId = 'a-1';
+  const staged = stage({ mode: 'infected', window: 400, during: (old, k) => { if (k === 5) { const victim = old.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; } } });
+  const { fresh } = resumeOf(staged);
+  const oldVictim = staged.old.authority.entityById.get(victimId), newVictim = fresh.authority.entityById.get(victimId);
+  ok(oldVictim.modeLife === 'alive' && oldVictim.team !== 'alpha' && newVictim.team === oldVictim.team && newVictim.modeLife === 'alive',
+    `infected: one risen again among the infected in the window is theirs at the resume (${newVictim.team}, ${newVictim.modeLife}; the old host's ${oldVictim.team})`);
+  const heard = [];
+  for (let k = 0; k < 60; k++) { stepBoth(staged.old); fresh.authority.step({ dt: 1 / 60, inputs }); heard.push(...fresh.authority.eventsForViewer('h0').filter((ev) => ev.type === 'mode_infected')); fresh.authority.afterEventBroadcast(); }
+  ok(heard.length === 0, `infected: and is converted no second time (${heard.length} mode_infected in 1 s)`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // Turbo Ball: the ball struck by another hand 5 ticks into the window (the play's ball flew on as it was)
+  const staged = stage({ mode: 'turbo_ball', during: (old, k) => { if (k === 5) { const ball = old.authority.modeController.state.ball; ball.vx += 4; ball.vz -= 3; } } });
+  const { fresh } = resumeOf(staged);
+  const ballOf = (actor) => { const { ball, ballActiveAtS } = actor.authority.captureModeCheckpoint().mode.objectives;
+    return JSON.stringify([ball.x, ball.y, ball.z, ball.vx, ball.vy, ball.vz, ball.lastTouchId, ballActiveAtS]); };
+  ok(ballOf(fresh) === ballOf(staged.old), `turbo_ball: the ball is the frame's to the bit (${ballOf(fresh)})`);
+  for (let k = 0; k < 60; k++) stepBoth(staged.old, fresh);
+  ok(ballOf(fresh) === ballOf(staged.old), `turbo_ball: and flies on as the old host's (1 s on)`);
   staged.old.stop(); fresh.stop();
 }
 

@@ -6,7 +6,8 @@
 // parted by tens of metres on them (migrationTwins [5]).
 // [1] the census: each number and flag of a hull's state (and its kit's and input's), set apart from the old host's own on
 //     a bot of a two-station roof kit, rides the keyframe to the new host, or is named here with the reason it need not
-//     (a mirror, a construction's constant, a step's own scratch). A field added to the state is in neither list and fails.
+//     (a mirror, a construction's constant). A field added to the state is in neither list and fails. The damage reading's
+//     multipliers ride exact below 0.5 too (a red transmission's 0.3 and 0.45: packed less 1 they came back an ulp off).
 // [2] from a newer row (the 275 reading of a window), the drive alone (the turn rate, the slew, the bloom, the spool), the
 //     held input, the roof guns' slew and the special action; the pose and the rest are the row's.
 // [3] the packing: a hull at rest is a few numbers; one of another layout, or short or long, is refused whole and the hull
@@ -103,6 +104,21 @@ console.log('[1] the census: every number and flag of a hull rides, or is named'
     else { failures++; console.error(`FAIL  ${name} does not ride the keyframe (${JSON.stringify(value)} on the old host, ${JSON.stringify(got)} on the new) and is named nowhere`); }
   }
   ok(carried.length > 100, `${carried.length} numbers and flags ride the keyframe exact (the pose, the checkpoint's, the step's, the kit's, the special action's, the input's)`);
+  // the damage reading's multipliers below 0.5 (a red transmission's 0.3 and 0.45, a red turret ring's 0.2), which the
+  // census's own value cannot show: packed less 1 they came back an ulp off (HULL_DEBUFF_RAW)
+  const low = [];
+  for (const key of ['powerMult', 'accelMult', 'traverseMult', 'turretMult', 'aimTimeMult', 'bloomMult']) {
+    const before = hull.state._debuff[key];
+    for (const value of [0.3, 0.45, 0.2]) {
+      hull.state._debuff[key] = value;
+      const fresh = migrate().resume();
+      const got = fresh.authority.entityById.get('a-0').state._debuff[key];
+      fresh.stop();
+      if (!Object.is(got, value)) low.push(`${key} ${value} -> ${got}`);
+    }
+    hull.state._debuff[key] = before;
+  }
+  ok(!low.length, `the damage reading's multipliers below 0.5 ride exact too (${low.join(', ') || '0.3, 0.45 and 0.2 on each of the six'})`);
   ok(left.length === NOT_CARRIED.size && !stale.length, `the ${left.length} named are left, each for its reason (${stale.length ? `but ride: ${stale.join(', ')}` : 'none rides'}):\n        `
     + [...NOT_CARRIED].map(([key, why]) => `${key}: ${why}`).join('\n        '));
 }
