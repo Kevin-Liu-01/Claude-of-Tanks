@@ -9,7 +9,7 @@ const AIR_SPIN_TURN_S = 0.9;
 export const AIR_SPIN_RATE = 2 * Math.PI / AIR_SPIN_TURN_S;
 
 /** Flight shorter than this after the ride leaves its support still counts as on the ground (a step's lift, a bump). */
-export const JUMP_AIRTIME_GRACE_S = 0.05;
+const JUMP_AIRTIME_GRACE_S = 0.05;
 
 /** The slice of a movement state the test reads (TankState and the client copies satisfy it). */
 export interface HullFlightState {
