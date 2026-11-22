@@ -47,6 +47,9 @@ const RING = Object.freeze({ y: 1.60, z: 0.40 });
 const T = Object.freeze({ hw: 1.145, roofY: 0.77, bevelY: 0.66, bevelX: 1.05, floorY: 0.02, frontZ: 1.00, rearZ: -2.38,
   recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.46, cheekNoseX: 0.56, cheekFootZ: 1.00, roofEdgeZ: 0.87 });
 const TRUNNION = Object.freeze({ y: 0.28, z: 0.85 });
+/** The EE-T3's and EE-T4's guns raised on their trunnions to the middle of their mantlets' faces (owner 2026-11-21: "for
+ * both, just move the guns up a lil so the guns are centered in the mantelts"; brazilSpecs.ts gunPivot follows). */
+const EE_GUN_RISE = Object.freeze({ t3: 0.125, t4: 0.155 });
 /** The EE-T3's and EE-T4's chevron wedges (osorioChevron.ts): the EE-T4's longer, broader and with the taller, blunter face. */
 const CHEVRONS: Readonly<Record<'t3' | 't4', OsorioChevron>> = Object.freeze({
   t3: { innerX: T.recessX + 0.025, roofY: T.roofY + 0.012, floorY: 0.05, turnZ: 1.22, shoulder: [1.10, 1.56], tip: [0.515, 1.98],
@@ -72,6 +75,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
   const { rng } = P;
   // (p2: the 120 mm turret, the P.2's and its fictional successors'; modern: the EE-T3 and EE-T4 kit; t4: the tier X's)
   const p2 = mark !== 'p1', modern = mark === 't3' || mark === 't4', t4 = mark === 't4';
+  /** This mark's trunnion: the EE pair's raised to their mantlets' middles. */
+  const TR = modern ? Object.freeze({ y: TRUNNION.y + EE_GUN_RISE[t4 ? 't4' : 't3'], z: TRUNNION.z }) : TRUNNION;
   // the EE-T3/T4's bolted nose module over the glacis: its rear and front edges and its thickness at each, thin at the rear
   // where the gun's depression is decided, deep at the nose (blind critic, round c1: the slab must read)
   // (the glacis falls 0.10 m a metre faster than a -10 degree gun line: a steeper deepening costs the front depression)
@@ -396,7 +401,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the mantlet's back face, so the gun line stays covered at every elevation and the mantlet, turning on the same axis,
     // never meets it: tools/gun-junction-census.mjs)
     if (modern) {
-      P.add('turret', cylX(EE_CRADLE_R, 2 * (CHEVRONS.t3.innerX - 0.013), 48), 0, TRUNNION.y, TRUNNION.z);
+      P.add('turret', cylX(EE_CRADLE_R, 2 * (CHEVRONS.t3.innerX - 0.013), 48), 0, TR.y, TR.z);
     }
     if (!modern) P.add('turret', slab(
       [-T.recessX, browY(1.28) - 0.04, 1.28], [T.recessX, browY(1.28) - 0.04, 1.28], [T.recessX, browY(T.frontZ) - 0.04, T.frontZ],
@@ -703,13 +708,13 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
    */
   const buildEeMantlet = (): void => {
     const c = CHEVRONS[t4 ? 't4' : 't3'], surf = osorioChevronSurfaces(c);
-    const hw = c.innerX - 0.013, nose = c.tip[1] - TRUNNION.z, back = EE_CRADLE_R + 0.0005;
-    const elev = 20 * Math.PI / 180, blockZ = T.frontZ + 0.02 - TRUNNION.z, roofCap = T.roofY + 0.012 - TRUNNION.y;
+    const hw = c.innerX - 0.013, nose = c.tip[1] - TR.z, back = EE_CRADLE_R + 0.0005;
+    const elev = 20 * Math.PI / 180, blockZ = T.frontZ + 0.02 - TR.z, roofCap = T.roofY + 0.012 - TR.y;
     /** The top at gun (x, z): the chevrons' top, under the roof, and its back clear of the front block at full elevation. */
-    const topAt = (x: number, z: number): number => Math.min(surf.top(x, z + TRUNNION.z) - TRUNNION.y, roofCap,
+    const topAt = (x: number, z: number): number => Math.min(surf.top(x, z + TR.z) - TR.y, roofCap,
       (z * Math.cos(elev) - blockZ) / Math.sin(elev));
-    /** The underside beside the gun at z: the chevrons' floor, no lower than the old plate's foot. */
-    const outAt = (z: number): number => Math.max(surf.floor(z + TRUNNION.z) - TRUNNION.y, -0.15);
+    /** The underside beside the gun at z: the chevrons' floor, no lower than the old plate's foot (on the turret). */
+    const outAt = (z: number): number => Math.max(surf.floor(z + TR.z) - TR.y, -0.15 - (TR.y - TRUNNION.y));
     // the chin under the gun traced on the old mount's underside, depth for depth: the old plate's foot, the root collar,
     // the canvas cover and its rings, the tube's own collar, then close round the tube
     const r0 = t4 ? 0.150 : 0.118, tubeLo = -(r0 + 0.002);
@@ -813,7 +818,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     }
   };
   const buildOsorioGun = (): void => {
-    P.gunG.position.set(0, TRUNNION.y, TRUNNION.z);
+    P.gunG.position.set(0, TR.y, TR.z);
     // the flat mantlet plate recessed between the cheeks, its bolted collar where the gun enters, the canvas dust cover;
     // the coaxial MG's port on the left of the gun, the auxiliary sight's on the right
     // (every part below the bore is held inside the -10 degree depression over the flat deck ahead of the turret: the
@@ -849,7 +854,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // collar, a muzzle reference sensor on top near the muzzle, a plain muzzle with its collar; the muzzle at hull z 6.895
       // and 7.85 (0.36 m and 1.315 m past the P.2's; the 130 mm the thicker its whole length and clearly the longer: blind
       // critics, rounds c1 and c3)
-      const len = OSORIO_MUZZLE_HULL_Z[mark] - (RING.z + TRUNNION.z), r0 = t4 ? 0.150 : 0.118, r1 = t4 ? 0.140 : 0.104;
+      const len = OSORIO_MUZZLE_HULL_Z[mark] - (RING.z + TR.z), r0 = t4 ? 0.150 : 0.118, r1 = t4 ? 0.140 : 0.104;
       const sleeveEnd = len - 0.30;
       P.add('gun', cylZ(r0 + 0.02, 0.12, seg, r0 + 0.014), 0, 0, 0.93);
       P.add('gun', cylZ(r1, sleeveEnd - 0.87, seg, r0), 0, 0, (0.87 + sleeveEnd) / 2);
@@ -864,7 +869,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // GIAT 120 mm G1 smoothbore: the fat segmented thermal sleeve (four joints) from a heavy root collar, no fume
       // extractor, the thick muzzle collar (the CIBld 2020 photograph); the muzzle 6.135 m from the ring (10.10 m over
       // the gun)
-      const len = 6.535 - (RING.z + TRUNNION.z), r0 = 0.116, r1 = 0.104, sleeveEnd = len - 0.34;
+      const len = 6.535 - (RING.z + TR.z), r0 = 0.116, r1 = 0.104, sleeveEnd = len - 0.34;
       P.add('gun', cylZ(0.13, 0.10, seg, 0.12), 0, 0, 0.92);
       P.add('gun', cylZ(r1, sleeveEnd - 0.86, seg, r0), 0, 0, (0.86 + sleeveEnd) / 2);
       for (const z of [1.90, 2.90, 3.90]) P.add('gunDark', cylZ(0.121, 0.035, seg), 0, 0, z);
@@ -879,7 +884,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // Royal Ordnance 105 mm L7A3: the thermal sleeve with its clamp bands, the fume extractor's thick section from the
       // boot out to about a third of the barrel (the 2015 and 2024 photographs; blind critic, round 4), a plain muzzle;
       // the muzzle 5.395 m from the ring (9.36 m over the gun)
-      const len = 5.795 - (RING.z + TRUNNION.z), r0 = 0.090, r1 = 0.080, ez = 1.40, el = 0.90, sleeveEnd = len - 0.16;
+      const len = 5.795 - (RING.z + TR.z), r0 = 0.090, r1 = 0.080, ez = 1.40, el = 0.90, sleeveEnd = len - 0.16;
       P.add('gun', cylZ(r1, sleeveEnd - 0.86, seg, r0), 0, 0, (0.86 + sleeveEnd) / 2);
       for (const z of [2.30, 3.05, 3.85]) P.add('gunDark', cylZ(0.094, 0.03, seg), 0, 0, z);
       P.add('gun', cylZ(0.122, el - 0.12, seg), 0, 0, ez);
@@ -907,6 +912,6 @@ export const buildOsorioT4 = steppedBuilder((P: TankBuilderPort) => buildOsorioS
 
 /** The datums a fixture holds the build to (docs/references/tanks/osorio_p2.md). */
 export const OSORIO_DATUMS = Object.freeze({
-  hull: H, roadWheelZs: Object.freeze([...ROAD_WHEEL_ZS]), ring: RING, turret: T, trunnion: TRUNNION,
+  hull: H, roadWheelZs: Object.freeze([...ROAD_WHEEL_ZS]), ring: RING, turret: T, trunnion: TRUNNION, eeGunRise: EE_GUN_RISE,
   muzzleHullZ: OSORIO_MUZZLE_HULL_Z,
 });
