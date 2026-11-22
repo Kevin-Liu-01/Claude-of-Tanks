@@ -221,7 +221,9 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top
    260 wide and never wider than the guidance's box (at 255 in a 246 px box it ran onto the ammunition at 390x844), about
    a third of the tip's old plate; where to turn it off is the picture's label. (notices-audit-275) The layout is every
    key-hint notice's, .cot-key-hint: the overturned tank's notice (hud.ts) wears it too, its diagram beside its key line */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
+/* (notices-audit-275) its own case and height over the aim chip's (.cot-aim-notice: upper case, and a 24 px row on a short
+   phone) when the overturned tank's notice wears it */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px;height:auto;white-space:normal;text-transform:none}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__glyph{display:none}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__body{gap:1px}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
