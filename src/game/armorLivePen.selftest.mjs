@@ -3,7 +3,9 @@
 // turn red or green to indicate penetration"): the scoped armour paint and the reticle never disagree. For real vehicles,
 // the target turned frontal, 30, 60 degrees and side on, the shooter moved, and the loaded shell switched, every panel the
 // overlay judged carries the verdict the reticle (game/aimController.ts, its real update) gives when laid on that panel's
-// centre from the same muzzle; and the colours turn with the angle and the shell, all three of them seen.
+// centre from the same muzzle; and the colours turn with the angle and the shell, all three of them seen. (274 fix) The
+// angle is the shooter's as much as the target's: with the target still, walking round it to 30 and 60 degrees turns
+// panels too (the battle's frame runtime hands the overlay that muzzle: battleHudFrameRuntime.selftest).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../vehicles/canvasFixture.test-support.mjs';
@@ -123,7 +125,9 @@ for (const id of ['t72b3', 'leo2a6']) {
   pose(Math.PI / 2);
   const side = check('side on', far(0), strongest);
   pose(0);
+  // (274 fix) the target still, only the shooter walks round it: 30, then 60 degrees off its nose
   const shooterMoved = check('the shooter moved 30 degrees round', far(30), strongest);
+  const shooterMoved60 = check('the shooter moved 60 degrees round', far(60), strongest);
   const again = check('frontal again', far(0), strongest);
   const weak = check(`the shell switched to ${shells[weakest].name}`, far(0), weakest);
   const changed = (a, b) => a.filter((v, k) => v && b[k] && v !== b[k]).length;
@@ -131,8 +135,10 @@ for (const id of ['t72b3', 'leo2a6']) {
   assert.ok(changed(front, side) > 10, `${id}: side on, panels turn colour (${changed(front, side)})`);
   assert.ok(changed(front, angled30) > 0, `${id}: turned 30 degrees, panels turn colour (${changed(front, angled30)})`);
   assert.ok(changed(front, shooterMoved) > 0, `${id}: the shooter moved, panels turn colour (${changed(front, shooterMoved)})`);
+  assert.ok(changed(shooterMoved, shooterMoved60) > 0 && changed(front, shooterMoved60) > 10,
+    `${id}: the shooter walked on to 60 degrees, more panels turn (${changed(shooterMoved, shooterMoved60)} from 30, ${changed(front, shooterMoved60)} from the nose)`);
   assert.ok(changed(front, weak) > 10, `${id}: the weaker shell turns panels (${changed(front, weak)})`);
   overlay.dispose();
 }
 assert.ok(seen.pen > 0 && seen.marginal > 0 && seen.nopen > 0, `all three colours are painted (${JSON.stringify(seen)})`);
-console.log(`armorLivePen.selftest: ${compared} panels painted with the reticle's own verdict at their centres (t72b3, leo2a6; frontal, 30, 60 degrees, side on, the shooter moved, the shell switched); colours turn with the angle and the shell, all three seen ${JSON.stringify(seen)}`);
+console.log(`armorLivePen.selftest: ${compared} panels painted with the reticle's own verdict at their centres (t72b3, leo2a6; frontal, 30, 60 degrees, side on, the shooter moved to 30 and 60 degrees, the shell switched); colours turn with the angle and the shell, all three seen ${JSON.stringify(seen)}`);

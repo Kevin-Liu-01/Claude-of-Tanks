@@ -409,7 +409,6 @@ const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 /** The camera's view for the night lamps (nightLightingAccess getCameraForward). */
 const _nightCameraForward = new THREE.Vector3();
-const _rayO = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.ts)
@@ -3945,7 +3944,6 @@ const battleHudFrame = createBattleHudFrameRuntime({
   aimController,
   armorAimOverlay,
   killcam,
-  muzzleScratch: _rayO,
   getHud: currentHud,
   getDamagePanel: currentDamagePanel,
   // A v2 round's measured round trip feeds the HUD's ping cell from the status model (no per-frame copy).
