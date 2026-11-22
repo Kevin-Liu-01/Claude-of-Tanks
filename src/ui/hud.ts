@@ -8,6 +8,7 @@ import { killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
+import { createBattlePointers } from './pointers/battlePointers.ts';
 import { createAirSupportHud } from './airSupportHud.ts';
 import type { AirSupportView } from '../sim/airSupport.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
@@ -296,6 +297,8 @@ export interface HudFrame {
   aim?: HudAimInput;
   spotting?: HudSpottingView | null;
   matchModeState?: HudMatchModeState | null;
+  /** The rounds in flight (sim/ballistics.ts ShellEntity): the pointers' incoming missiles (ui/pointers/battlePointers.ts). */
+  shells?: readonly unknown[];
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
@@ -3547,6 +3550,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   let forced: HudAimInput | null = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells: HudShellCard[] = DEFAULT_SHELLS;
   let heightFieldRef: HudHeightField | null = null; // for spotting line-of-sight tests
+  // (guidance-pointers-275) the battle's pointers: the way to follow on the ground, the warnings on the screen's rim
+  const pointers = createBattlePointers(() => (heightFieldRef ? (x, z) => heightFieldRef!.getHeightAt(x, z) : null));
   const nameById = new Map<string, string>();
   const teamById = new Map<string, string | undefined>();
   const specIdById = new Map<string, string>(); // entity id -> tank spec id (icon lookups)
@@ -9016,6 +9021,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   /** Everything the HUD raised for the battle leaves with it. */
   function endBattle(): void {
     vehicleStatus.clear();
+    pointers.clear();
     collapseRosters();
     preBattleOverlay.reset();
     setTouchAmmoOpen(false);
@@ -9417,7 +9423,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       // always advance timeS, so real frames still supersede immediately.
       if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
-      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); return; }
+      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); pointers.clear(); return; }
+      pointers.update(frame);
       updateHudWorldPanels(frame, state.camera);
       updateAimPresentation(frame, state);
       updateMinimapIfDue(frame);

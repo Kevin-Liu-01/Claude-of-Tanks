@@ -175,7 +175,8 @@ body[data-hud-guidance~=card-yields] .cot-tut[data-chapter=training] .cot-tut-ca
 :root[data-motion=reduce] .cot-tut-pulse.is-pulsing{animation:none;}
 }
 
-/* the guide (tutorialGuide.ts, 273): world pieces under the HUD, the edge pointer and the HUD chevron over it; neither
+/* the guide (tutorialGuide.ts, 273): world pieces under the HUD, the HUD chevron over it (the way there is the pointer
+ * layer's since 275, ui/pointers/pointers.css); neither
  * layer takes the pointer. Every colour is the tutorial's accent; motion is transform and opacity on the shared tokens,
  * a few beats when a control is shown (274: finite, so reduced motion's 1 ms never strobes), none under reduced motion. */
 @layer surfaces{
@@ -186,15 +187,11 @@ body[data-hud-guidance~=card-yields] .cot-tut[data-chapter=training] .cot-tut-ca
 .cot-tut-guide-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-tut-guide-ring{fill:var(--accent-wash);stroke:var(--accent);stroke-width:3;stroke-linejoin:round;}
 .cot-tut-guide-column{stroke:var(--accent);stroke-opacity:.5;stroke-width:8;stroke-linecap:round;}
-.cot-tut-guide-label,.cot-tut-guide-edge-label{font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);
+.cot-tut-guide-label{font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);
   fill:var(--accent);text-anchor:middle;paint-order:stroke;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:3px;}
 .cot-tut-guide-label--actor{font-size:var(--fs-14);}
-.cot-tut-guide-distance,.cot-tut-guide-edge-distance{font-family:var(--font-mono);font-size:max(var(--fs-floor-12),var(--fs-12));
+.cot-tut-guide-distance{font-family:var(--font-mono);font-size:max(var(--fs-floor-12),var(--fs-12));
   fill:var(--ink-1);text-anchor:middle;paint-order:stroke;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:3px;}
-.cot-tut-guide-edge-label{font-size:var(--fs-14);}
-.cot-tut-guide-chevron{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;
-  animation:cot-tut-guide-flow var(--dur-stage) var(--ease-move) 4;animation-delay:calc(var(--i,0) * var(--dur-fast));}
-@keyframes cot-tut-guide-flow{0%,100%{opacity:.35;}40%{opacity:1;}}
 .cot-tut-guide-bracket{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:square;}
 .cot-tut-guide-aim{fill:none;stroke:var(--accent-hi);stroke-width:2.5;stroke-dasharray:6 5;}
 /* (273, S9) the angling arc: each sector a hull heading, in the shooter's reticle ink for its round on the player's front
@@ -209,7 +206,6 @@ body[data-hud-guidance~=card-yields] .cot-tut[data-chapter=training] .cot-tut-ca
 .cot-tut-guide-reload-track{fill:var(--surface-scene);fill-opacity:.45;stroke:var(--line-2);stroke-width:4;}
 .cot-tut-guide-reload-fill{fill:none;stroke:var(--ink-1);stroke-width:4;stroke-linecap:round;}
 .cot-tut-guide-reload.is-ready .cot-tut-guide-reload-fill{stroke:var(--text-enemy);}
-.cot-tut-guide-edge-arrow{fill:var(--accent);stroke:var(--surface-scene);stroke-opacity:.5;stroke-width:1.5;}
 .cot-tut-guide-hud{position:absolute;left:0;top:0;width:22px;height:14px;margin-left:-11px;
   background:var(--accent);clip-path:polygon(0 0,50% 100%,100% 0,78% 0,50% 58%,22% 0);}
 .cot-tut-guide-hud[data-side='above']{margin-top:-14px;animation:cot-tut-guide-bob var(--dur-stage) var(--ease-move) 4;}
@@ -219,7 +215,6 @@ body[data-hud-guidance~=card-yields] .cot-tut[data-chapter=training] .cot-tut-ca
 @keyframes cot-tut-guide-bob-up{0%,100%{translate:0 0;}50%{translate:0 5px;}}
 .cot-tut-guide--world.is-escalated .cot-tut-guide-ring{stroke-width:4;}
 @media (prefers-reduced-motion: reduce){
-  .cot-tut-guide-chevron,.cot-tut-guide-hud{animation:none;}
-  .cot-tut-guide-chevron{opacity:.85;}
+  .cot-tut-guide-hud{animation:none;}
 }
 }
