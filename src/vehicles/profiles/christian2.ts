@@ -24,6 +24,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { CHRISTIAN2_CHEEK_FRONT, CHRISTIAN2_TURRET } from '../christian2Armor.ts';
+import { EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z } from '../leopard2a3B4Armor.ts';
 
 const T = CHRISTIAN2_TURRET;
 
@@ -220,8 +221,12 @@ function turret(P: TankBuilderPort): void {
 
 function buildChristian2(P: TankBuilderPort): void {
   // no splash board under the glacis's net (the Strv 121's ruling, leopard2Hull.ts): the net tented over its arm in four
-  // spikes (the R7 blind critic)
-  buildLeopard2Hull(P, { flapName: 'christian2-rear-flap', exhaust: 'louvre', splashBoard: false });
+  // spikes (the R7 blind critic). 274 (turret-deck-gate): the forward lifting eyes on the upper glacis, where every other
+  // Leopard 2 on this hull carries them (leopard2a3B4Armor.ts), not at z 1.30: there they stood 0.23 m outside the
+  // turret's foot and 6.7 cm over it, beside the cheeks (a concept: no photograph; the production Leopard 2's eyes
+  // stand forward on the glacis).
+  buildLeopard2Hull(P, { flapName: 'christian2-rear-flap', exhaust: 'louvre', splashBoard: false,
+    forwardLiftEyeZ: EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z });
   addLeopard2SternRackFloor(P);
   turret(P);
   P.topY = 1.24;

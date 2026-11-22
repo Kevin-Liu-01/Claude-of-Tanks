@@ -46,9 +46,11 @@ function deck(rows: readonly DeckRow[], side: number, crossfall = .064): ReturnT
 
 function sponsons(P: TankBuilderPort, side: number): void {
   const rear: readonly DeckRow[] = [
-    // (release 240: the step 9 cm aft, past the turret's lower body seated at 1.566 to 1.7 m off the ring's axis)
+    // (release 240: the step 9 cm aft, past the turret's lower body seated at 1.566 to 1.7 m off the ring's axis;
+    // 274 (turret-deck-gate): 5 cm further aft, where at -1.08..-1.13 its rising face stood 5.4 cm over the turret's foot
+    // beside the right rear, the real deck kit there sitting under the bustle's edge)
     [-3.31, .90, 1.423, 1.235, 1.677], [-2.67, .90, 1.425, 1.235, 1.674],
-    [-1.13, .90, 1.423, 1.241, 1.661], [-1.08, .90, 1.423, 1.241, 1.545], [-.96, .90, 1.423, 1.241, 1.543],
+    [-1.18, .90, 1.423, 1.241, 1.661], [-1.13, .90, 1.423, 1.241, 1.545], [-.96, .90, 1.423, 1.241, 1.543],
     [.27, .90, 1.423, 1.245, 1.536], [.95, .90, 1.344, 1.247, 1.533],
     [1.32, .90, 1.169, 1.249, 1.529],
   ];

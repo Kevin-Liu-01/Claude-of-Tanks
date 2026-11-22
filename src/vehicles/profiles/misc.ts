@@ -3536,10 +3536,11 @@ function* buildAMX30Steps(P: MiscBuilderPort, b2: boolean): TankProfileBuild {
       }
     }
     if (!b2) {
-      // French rear-fender jerrican pair (B; the B2 carries service bins there)
-      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.05, 0.10);           // FSP-06: solid fitting paint
-      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.42, -0.06);
-      P.add('hullDark', box(0.18, 0.02, 0.42), -1.42, 1.60, -2.23);              // can saddle strip
+      // French rear-fender jerrican pair (B; the B2 carries service bins there). 274 (turret-deck-gate): 18 cm aft, so the
+      // front can (28 cm over the bustle's foot) stands outside the 30 cm the turret's foot keeps clear round it
+      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.23, 0.10);           // FSP-06: solid fitting paint
+      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.60, -0.06);
+      P.add('hullDark', box(0.18, 0.02, 0.42), -1.42, 1.60, -2.41);              // can saddle strip
     }
     liftEye(P, 'hullDetail', -1.38, 1.585, 1.16);
     liftEye(P, 'hullDetail', 1.38, 1.585, 1.16);

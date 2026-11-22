@@ -54,8 +54,12 @@ function buildCrewHull(P: Port): void {
   // (release 240, the owner: "make sure all tank turrets are clear of hulls": the capsule's roof 9.5 cm lower, 1.765, its
   // bow 1.745, under the turret's APS banks (1.77 to 1.5 m off the ring's axis) and bustle (1.82-1.83 to 2.2 m) as they
   // turn over it; at 1.86 the roof and its hatches stood 5 cm into them. The hatch latches are 1.5 cm lower.)
+  // 274 (turret-deck-gate): the capsule's back end, the strip just ahead of the turret's front the turret leaves
+  // uncovered, 1.728-1.732 (it stood 2.8 cm over the turret's foot at 1.745): as the T-14 photographs show, the roof
+  // there stays under the turret's lower band and only the hatch rims stand proud. It climbs to 1.765 by the hatches.
   P.add('hull', sectionSolid([
-    armorSection(.70,1.24,1.64,1.745,1.06,.045),
+    armorSection(.70,1.24,1.64,1.728,1.06,.04),
+    armorSection(.80,1.24,1.64,1.732,1.06,.042),
     armorSection(1.15,1.24,1.64,1.765,1.06,.055),
     armorSection(2.05,1.24,1.64,1.765,1.06,.055),
     armorSection(2.43,1.12,1.64,1.71,.95,.025),

@@ -51,6 +51,10 @@ export const RING_ZONE_EXEMPT: Readonly<Record<string, { readonly reason: string
   bmp2: { reason: 'small roof fittings reach about the turret rim (bmp2 front three-quarter photo)', riseM: 0.046 },
   bmp3: { reason: 'the raised rear roof box stands above the turret edge (bmp3 rear three-quarter photo)', riseM: 0.047 },
   ua_cv9040c: { reason: 'the tarp over its frame is heaped to turret-roof height (ua_cv9040c side photo)', riseM: 0.203 },
+  pgz95: { reason: "the commander's raised block with its vision blocks stands tight against the turret front, over its low foot (twin-aa-268 pgz95 Beijing Museum photos)", riseM: 0.245 },
+  t64bm1m: { reason: "the shelf fuel tanks and SPTA boxes (0.19-0.21 m) are the T-64's own rear-quarter stop, kept by the 262 lane (docs/references/tanks/t64bm1m.md); no photo on disk", riseM: 0.144 },
+  pt64_tur: { reason: "the T-64 shelf fuel tanks and SPTA boxes, the rear-quarter stop kept by the 262 lane (docs/references/tanks/t64bm1m.md)", riseM: 0.092 },
+  t64b1v_2022: { reason: "the T-64 shelf boxes beside the mod. 2022 turret slat cage's low rail (docs/references/tanks/t64bm1m.md)", riseM: 0.073 },
   object195: { reason: "the hull's collar round the turret foot is built on purpose (as designed; no clear photo)", riseM: 0.04 },
 });
 

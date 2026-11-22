@@ -4469,7 +4469,11 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
     // Rear-deck grille pods: the 1.759 hump lives OUTBOARD (|x| 1.39..1.73 —
     // r6 front rows: pods reaching in to 1.15 painted the 1.14..1.43 bins the
     // ref keeps at its 1.709 deck line).
-    for (const side of [-1, 1]) {
+    // 274 (turret-deck-gate): none on the Ukrainian M1A1. Its bustle rack's foot reaches over them, and the pods stood
+    // 6.7 cm over that foot; the real tank's rear-deck corners under the rack are bare and flat (ua_m1a1 rear
+    // three-quarter photo), and the shoulder roof below closes the corner without them.
+    // (The Ukrainian M1A1 builds on the M1A1HA, so it names itself in m1a1BaseHost: donorBuild.ts.)
+    for (const side of P.hullG.userData.m1a1BaseHost === 'ua_m1a1' ? [] : [-1, 1]) {
       P.add('hull', box(0.34, 0.048, 0.26), side * 1.56, 1.735, -3.41);
       // (r5: pod grille tops mid-shade — the two ink-black bars on the rear
       // deck in view-top; the ref deck is fused with soft dark grilles)
@@ -8140,8 +8144,11 @@ function addM1E3HullFieldKit(P: AbramsBuilderPort): void {
       }
       P.addEquipment('hullDark', box(0.022, 0.035, 0.20), side * (M1E3_SKIRT_OUT_X + 0.010), 1.16, mid);
     }
-    // A service chest on each rear shoulder, under the bustle's swept floor.
-    const chest = fieldChestParts(0.34, 0.13, 0.56, { high: !!P.q, front: side > 0 ? 1 : -1 });
+    // A service chest on each rear shoulder, under the bustle's swept floor. 274 (turret-deck-gate): 8 cm tall, not 13,
+    // so its lid stays under the turret basket's foot beside it (a 13 cm chest stood 5.8 cm over the foot and hid it;
+    // the chests are the owner's lived-in kit, not a part the demonstrator photographs show), and the deck behind is
+    // the raised shoulder roof, so the chest cannot move back out of the foot's reach.
+    const chest = fieldChestParts(0.34, 0.08, 0.56, { high: !!P.q, front: side > 0 ? 1 : -1 });
     for (const g of chest.paint) P.addEquipment('hull', g, side * 1.40, 1.700, -2.86, 0, Math.PI / 2, 0);
     for (const g of chest.dark) P.addEquipment('hullDark', g, side * 1.40, 1.700, -2.86, 0, Math.PI / 2, 0);
   }
