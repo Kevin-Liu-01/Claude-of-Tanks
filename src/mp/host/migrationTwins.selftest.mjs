@@ -1,42 +1,40 @@
 // A host-migrated match plays on as the old host would have (275, the drift gaps 274 left: Kevin, 2026-11-18, "chase it
-// next"). Each case runs the old host on and a new host resumed from the old host's keyframe (and the seat's newest frame,
-// where the case has a window) side by side with the same inputs, and holds every bot's two hulls within a stated bound
-// of each other: the migrated twin against the unmigrated one. Where nothing a seat could not know happened in a window,
-// the bound is the floor the wire's rows set (a quantized twin: an unmigrated host whose hulls are snapped to the rows'
-// millimetre precision at the same moment; every migration restores the hulls from those rows), plus a few centimetres.
+// next"; 276, the window). Each case runs the old host on and a new host resumed from the old host's keyframe (and the
+// seat's newest frame, where the case has a window) side by side with the same inputs, and holds every bot's two hulls
+// together: the migrated twin against the unmigrated one.
 //
-// What parted the twins, and what carries it now (each pinned by the lane's mutants, served through a load hook):
-// - the brain (game/ai.ts BotBrain): its traffic with its allies (the deadlock, the escape, a committed passing path), its
-//   detour side, its settle and press windows, its timers' phases and the rest; a new brain began at its construction's.
-// - the brain's clock: the authority's restarts at 0 on a migrated host; the brain runs on the battle clock now (the
-//   authority's battleS, the old host's own float sum gone on), as do the route push and the spotting.
-// - the hull's integrator no row carries: the gun's dispersion bloom above all (a fresh gun read as settled).
-// - the authority's own: the spotting (it began empty: a Horde wave fielded on the new host parted 51 m), the combat
-//   stream, the route push's clocks and targets, the wreck grid's phase.
-// - a window's arrivals (a wave begun after the keyframe): their points' draws as the old host found them, their hunters'
-//   leads and the lead seed, the plans the old host made for them, read from the hulls where the rows have them (the
-//   restore read the construction's spawns), and the engine spool of a hull revived in the window (it drives from its
-//   revive on; one built at rest pulled away 0.3 s behind).
+// 275 carried what parted the twins from a keyframe alone (the brain, its battle clock, the gun's bloom, the authority's
+// spotting and streams, the director's clocks and deals) and took the window up from what the seat could read of it. That
+// left two floors (276):
+// - the keyframe's own: its rows round each hull's pose to the millimetre and carry no integrator flag; a fight parted
+//   on them by tens of metres within 10 s (the round 1 review's CTF staging: 23 m), the gun's limit flag the most of it
+//   (the bot's gun-limit nudge reads it). The keyframe now carries every live hull exact (MigrationEntityExtras.hull: the
+//   pose, the hp, the movement prediction checkpoint and the held input), and a down bot's brain waits for its revive's
+//   hand-back. From a keyframe alone the new host is the old one, to the bit.
+// - the window's: every bot's play between the keyframe and the seat's frame (its brain ticks, its stream draws, a hidden
+//   hull's moves, a wave's arrivals as they drove). The resume now replays it (migrationState.ts replayWindow): the match
+//   restored at the keyframe and stepped the old host's steps to the frame, the seat's rows correcting it where it parts
+//   from them. A window that holds nothing a seat could not know plays as the old host played it, to the bit.
 //
-// [1] Frontline attackers, the keyframe 30 ticks after the advance to the second sector (no window): within the quantized
-//     twin's gap plus 0.05 m, and 0.5 m, over 14 s; the defenders within 1.5 m. Gaps 274's head: 112.5 m (a-2), 1.7 m.
-// [2] Endless Horde, the keyframe in the lull 0.3 s before it ends (no window): the wave the new host begins itself keeps
-//     the old host's hulls within 0.05 m over 14 s. Gaps 274's head: 27 m.
-// [3] Endless Horde, the wave begun in the window (the seat's newest frame 2, 12 and 30 ticks into it: a mode event's
-//     keyframe follows within MODE_KEYFRAME_SPACING_MS), its arrivals seen or hidden from the seat: within 8 m seen, and
-//     2 m hidden 2 ticks in (6 m 12 ticks in, 12 m 30 ticks in: they rise on the new host's first step, the window late,
-//     as gaps 274's did), over 14 s. Gaps 274's head: 51-63 m seen.
-// [4] Frontline, the line advanced in the window (the seat's newest frame 30 ticks after it): the defenders within 1.5 m,
-//     the attackers within 35 m over 14 s (gaps 274's head: 86.4 m and 114.0 m). The attackers' traffic with each other
-//     (the ally deadlock, escape and passing path) went on in the window, which no keyframe records; the staging stacks
-//     them on the sector's centre each tick until it falls.
-//     What is left is the window's own play, which no keyframe or frame records: the risen bots' first moves and their
-//     brains' first ticks.
+// Each window case also runs the 275 reading of it (a resume that cannot replay: the replay dropped), and prints it.
+// [1] Frontline attackers, the keyframe 30 ticks after the advance to the second sector (no window): to the bit over 14 s
+//     (the rows alone, a quantized twin, part them 0.36 m; gaps 274's head: 112.5 m).
+// [2] Endless Horde, the keyframe in the lull 0.3 s before it ends (no window): the wave the new host begins, to the bit.
+// [3] Endless Horde, the wave begun in the window (the seat's newest frame 2, 12 and 30 ticks into it), its arrivals seen
+//     or hidden from the seat: to the bit (the 275 reading: 5.5-5.9 m and 0.07 m seen, 1-10 m hidden).
+// [4] Frontline, the line advanced in the window (the capture the attackers began before the keyframe ends in it, the
+//     defenders rise on the next sector, and the seat's frame is 30 ticks after): to the bit.
+// [5] a 4v4 CTF fight (the round 1 review's staging: 45 s in, a 30-tick window), on flat ground and on hills: to the bit
+//     (the 275 reading: 26 m in 10 s, 14 m, 1.8 m on hills).
+// [6] that fight with the seat's human driving and firing throughout, its inputs no replay has (in the play it holds the
+//     command it had at the keyframe, its trigger held; its row sets its hull right at the frame): every bot within 0.05 m
+//     over 10 s, and the human's own hull within 0.5 m (it braked through the play at first: 3.5 m). Its shots fall
+//     outside the window here; a shot still in flight at the frame is no keyframe's or replay's (docs/MULTIPLAYER-V2.md).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
 import { applyAuthorityRow } from '../match/authorityRow.ts';
-import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, resumeStateFromRetained } from './migrationState.ts';
+import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, resumeClocksOf, resumeStateFromRetained } from './migrationState.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
@@ -45,52 +43,75 @@ const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { fa
 const spec = 'm1a1_abrams_hc';
 await ensureAuthorityFleet([spec]);
 const seats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
-const world = { mapId: 'verdant', heightField: { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) }, getObstacles: () => [] };
+const flatWorld = { mapId: 'verdant', heightField: { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) }, getObstacles: () => [] };
+// the round 1 review's hills (review-correctness-r1 probe-window.mjs)
+const hillsAt = (x, z) => 4 * Math.sin(x / 37) + 3 * Math.cos(z / 53) + 1.5 * Math.sin((x + z) / 19);
+const hillyWorld = { mapId: 'verdant', heightField: { getHeightAt: hillsAt, getGroundType: () => 'hard', getNormalAt: (x, z) => {
+  const e = 0.5, hx = (hillsAt(x + e, z) - hillsAt(x - e, z)) / (2 * e), hz = (hillsAt(x, z + e) - hillsAt(x, z - e)) / (2 * e);
+  return new Vector3(-hx, 1, -hz).normalize();
+} }, getObstacles: () => [] };
+const world = flatWorld;
 const inputs = new Map();
 
-/** The actor's frame at `tick` in the host's shape; `hidden`: no bravo row (they rose out of the seat's sight). */
-function hostFrame(actor, tick, era, hidden = false) {
+/**
+ * The actor's frame at `tick` in the host's shape, the seat's (its viewer the seat's hull: the replay reads the mode view
+ * as served it) or, `sealed`, a keyframe's (no viewer); `hidden`: no bravo row (they rose out of the seat's sight).
+ */
+function hostFrame(actor, tick, era, hidden = false, sealed = false) {
   // the battle clock's milliseconds (a resumed host's frames carry the battle's, matchActor.ts metaOnBattleClock)
   const sim = actor.authority, battleTimeMs = Math.round(sim.battleS * 1000);
-  const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
+  const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'h0', ackInputSeq: null });
   return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
     meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [],
     entities: sim.entities.filter((e) => !hidden || e.team !== 'bravo').map((e) => captureEntityRow(e, actor.wireIdOf(e.id), era, tick)),
-    shells: [], viewer: null, modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
+    shells: [], viewer: sealed ? null : { entityId: actor.wireIdOf('h0') }, modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
 }
 /** The keyframe the old host seals at `tick`, as matchHostCore.ts buildKeyframe seals it (its battle clock exact). */
 const sealKeyframe = (actor, tick, era) => decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(actor.authority.battleS * 1000),
   timeS: actor.authority.timeS, battleS: actor.authority.battleS, phase: 'playing', modeCheckpoint: actor.authority.captureModeCheckpoint(),
-  entities: captureEntityExtras(actor), frame: hostFrame(actor, tick, era) }));
-/** A new host resumed as matchHostCore.ts does: its battle clock the resume state's. */
-function resume(make, keyframe, latest, told) {
+  entities: captureEntityExtras(actor), frame: hostFrame(actor, tick, era, false, true) }));
+/** A new host resumed as matchHostCore.ts does (its clocks resumeClocksOf's): the window replayed, or (`replay` false) read as 275 read it. */
+function resume(make, keyframe, latest, told, replay = true) {
   const { state } = resumeStateFromRetained(keyframe, 0, latest, latest ? 500 : null, [], [], [...told]);
-  const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs, ...(state.battleS !== undefined ? { battleS: state.battleS } : {}) });
-  applyResumeState(fresh, state);
-  return fresh;
+  if (!replay) delete state.replay;
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  const applied = applyResumeState(fresh, state);
+  fresh.authority.onMatchReady();
+  return { fresh, replayed: applied.replayed ?? null };
 }
-/** The quantization floor's twin: every live hull snapped to its row's precision, as a migration restores it. */
+/** The quantization floor's twin: every live hull snapped to its row's precision, as a resume from rows alone stands it. */
 function quantize(actor) {
   const era = createEraIndexer();
   for (const e of actor.authority.entities) if (!e.combat.destroyed) applyAuthorityRow(e.state, captureEntityRow(e, actor.wireIdOf(e.id), era, 0));
 }
-/** Both hosts on together `seconds`, `each` run on both before every step; the widest gap between one bot's two hulls, by side. */
-function together(old, other, seconds, each = () => {}) {
-  const widest = { alpha: 0, bravo: 0 }, at = { alpha: '', bravo: '' };
-  const step = (actor) => { each(actor); actor.authority.step({ dt: 1 / 60, inputs }); actor.authority.eventsForViewer('h0'); actor.authority.afterEventBroadcast(); };
+/**
+ * The old host and its twins on together `seconds`, `each` run on every host before every step (with the step's count),
+ * the same inputs to all; the widest gap between one bot's two hulls, by twin and side.
+ */
+function together(old, twins, seconds, each = () => {}) {
+  const out = twins.map(() => ({ widest: { alpha: 0, bravo: 0 }, at: { alpha: '', bravo: '' }, seat: 0 }));
+  const step = (actor, k) => { each(actor, k); actor.authority.step({ dt: 1 / 60, inputs }); actor.authority.eventsForViewer('h0'); actor.authority.afterEventBroadcast(); };
   for (let k = 1; k <= seconds * 60; k++) {
-    step(old); step(other);
-    for (const e of old.authority.entities) {
-      const t = other.authority.entityById.get(e.id);
-      if (!e.bot || e.combat.destroyed || t.combat.destroyed || e.modeActive === false || t.modeActive === false) continue;
-      const d = Math.hypot(e.state.pos.x - t.state.pos.x, e.state.pos.z - t.state.pos.z);
-      if (d > widest[e.team]) { widest[e.team] = d; at[e.team] = `${e.id} +${(k / 60).toFixed(2)} s`; }
-    }
+    step(old, k);
+    twins.forEach((twin, i) => {
+      step(twin, k);
+      for (const e of old.authority.entities) {
+        const t = twin.authority.entityById.get(e.id);
+        // the seat's own hull beside the bots
+        if (!e.bot && !e.combat.destroyed && !t.combat.destroyed) out[i].seat = Math.max(out[i].seat, Math.hypot(e.state.pos.x - t.state.pos.x, e.state.pos.z - t.state.pos.z));
+        if (!e.bot || e.combat.destroyed || t.combat.destroyed || e.modeActive === false || t.modeActive === false) continue;
+        const d = Math.hypot(e.state.pos.x - t.state.pos.x, e.state.pos.z - t.state.pos.z);
+        if (d > out[i].widest[e.team]) { out[i].widest[e.team] = d; out[i].at[e.team] = `${e.id} +${(k / 60).toFixed(2)} s`; }
+      }
+    });
   }
-  return { widest, at };
+  return out;
 }
+const apart = (run, side) => `${run.widest[side].toFixed(3)} m${run.at[side] ? ` (${run.at[side]})` : ''}`;
+const both = (run) => Math.max(run.widest.alpha, run.widest.bravo);
+const wider = (run) => apart(run, run.widest.alpha > run.widest.bravo ? 'alpha' : 'bravo');
 
-console.log('[1] Frontline attackers after the advance, the keyframe alone: the quantization floor');
+console.log('[1] Frontline attackers after the advance, the keyframe alone: to the bit');
 {
   const bots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -123,32 +144,24 @@ console.log('[1] Frontline attackers after the advance, the keyframe alone: the 
   old.authority.onMatchReady();
   const { ticks, pinSurvivor } = stage(old);
   const keyframe = sealKeyframe(old, ticks, createEraIndexer());
-  const fresh = resume(make, keyframe, null, []);
-  fresh.authority.onMatchReady();
+  const { fresh } = resume(make, keyframe, null, []);
   const floorTwin = make(null);
   floorTwin.authority.onMatchReady();
   stage(floorTwin);
   quantize(floorTwin);
-  // the old host and its two twins on together (the old host is stepped once a tick for both comparisons: a second copy of it)
-  const oldAgain = make(null);
-  oldAgain.authority.onMatchReady();
-  stage(oldAgain);
   ok(old.authority.modeController.state.line.index === 2 && keyframe.battleS === old.authority.battleS, `the case is built: the line has advanced to the `
     + `last sector and the keyframe (${keyframe.battleS.toFixed(3)} s) carries the battle clock exact`);
-  const migrated = together(old, fresh, 14, pinSurvivor);
-  const floor = together(oldAgain, floorTwin, 14, pinSurvivor);
-  ok(migrated.widest.alpha <= floor.widest.alpha + 0.05 && migrated.widest.alpha < 0.5, `the attackers keep the old host's tracks for 14 s: at most `
-    + `${migrated.widest.alpha.toFixed(2)} m apart (${migrated.at.alpha}) against the quantized twin's ${floor.widest.alpha.toFixed(2)} m (bound: it plus 0.05 m, `
-    + 'and 0.5 m; gaps 274\'s head 112.5 m)');
-  ok(migrated.widest.bravo < 1.5, `the defenders too: at most ${migrated.widest.bravo.toFixed(2)} m (${migrated.at.bravo}; the quantized twin's `
-    + `${floor.widest.bravo.toFixed(2)} m; bound 1.5 m)`);
-  for (const actor of [old, fresh, floorTwin, oldAgain]) actor.stop();
+  const [migrated, floor] = together(old, [fresh, floorTwin], 14, (a) => pinSurvivor(a));
+  ok(both(migrated) === 0, `every bot keeps the old host's track for 14 s, to the bit: the attackers ${apart(migrated, 'alpha')}, the defenders `
+    + `${apart(migrated, 'bravo')} apart (the rows alone, a quantized twin: ${apart(floor, 'alpha')} and ${apart(floor, 'bravo')}; gaps 274's head 112.5 m)`);
+  for (const actor of [old, fresh, floorTwin]) actor.stop();
 }
 
 /**
  * The Horde staging of waveStartMigration [1]/[2]: wave 1 played out, the keyframe sealed 0.3 s before the lull's end;
  * with `window` the old host runs that many ticks on (wave 2 begins 18 ticks in) and the seat's newest frame is then,
- * its hostiles `hidden` from it or not; without, the keyframe alone. Both hosts then run on 14 s.
+ * its hostiles `hidden` from it or not; without, the keyframe alone. Both hosts then run on 14 s: the replay's twin and
+ * the 275 reading's.
  */
 function hordeTwin(window, hidden) {
   const bots = Array.from({ length: 10 }, (_, i) => ({ playerId: `z-${i}`, name: `Z${i}`, team: 'bravo', specId: spec }));
@@ -168,30 +181,31 @@ function hordeTwin(window, hidden) {
   const keyframe = sealKeyframe(old, tick, era);
   told.clear();
   step(window);
-  const fresh = resume(make, keyframe, window ? hostFrame(old, tick, era, hidden) : null, told);
-  fresh.authority.onMatchReady();
-  const run = together(old, fresh, 14);
+  const latest = window ? hostFrame(old, tick, era, hidden) : null;
+  const replayed = resume(make, keyframe, latest, told);
+  const read = window ? resume(make, keyframe, latest, told, false) : null;
+  const twins = [replayed.fresh, ...(read ? [read.fresh] : [])];
+  const [run, run275] = together(old, twins, 14);
   const wave = (actor) => actor.authority.modeController.state.horde.wave;
-  const out = { gap: run.widest.bravo, at: run.at.bravo, waves: `${wave(old)}/${wave(fresh)}`, told: told.size };
-  old.stop(); fresh.stop();
+  const out = { gap: run.widest.bravo, at: run.at.bravo, gap275: run275?.widest.bravo ?? null, waves: twins.map((t) => `${wave(old)}/${wave(t)}`).join(' '), told: told.size,
+    replayed: replayed.replayed };
+  for (const actor of [old, ...twins]) actor.stop();
   return out;
 }
 
 console.log('[2] Endless Horde, the keyframe alone in the lull: the wave the new host begins keeps the old host\'s hulls');
 {
   const run = hordeTwin(0, false);
-  ok(run.waves === '2/2' && run.gap < 0.05, `the wave's hostiles keep the old host's tracks for 14 s: at most ${run.gap.toFixed(3)} m apart (${run.at || 'none'}; `
-    + `waves ${run.waves}; bound 0.05 m; gaps 274's head 27 m)`);
+  ok(run.waves === '2/2' && run.gap === 0, `the wave's hostiles keep the old host's tracks for 14 s, to the bit: ${run.gap.toFixed(3)} m apart${run.at ? ` (${run.at})` : ''} `
+    + `(waves ${run.waves}; gaps 274's head 27 m)`);
 }
 
 console.log('[3] Endless Horde, the wave begun in the window: its arrivals seen or hidden from the seat');
-// (gaps 274's head on this staging: 62.3, 63.0 and 51.0 m seen; 6.2, 4.5 and 10.0 m hidden, which 275 holds as it found
-// them 12 and 30 ticks in: a hidden arrival rises on the new host's first step, the window late)
-for (const [window, hidden, bound, note] of [[20, false, 8, 'gaps 274\'s head 62.3 m'], [30, false, 8, 'gaps 274\'s head 63.0 m'], [48, false, 8, 'gaps 274\'s head 51.0 m'],
-  [20, true, 2, 'gaps 274\'s head 6.2 m'], [30, true, 6, 'gaps 274\'s head 4.5 m: no gain'], [48, true, 12, 'gaps 274\'s head 10.0 m: no gain']]) {
+for (const [window, hidden] of [[20, false], [30, false], [48, false], [20, true], [30, true], [48, true]]) {
   const run = hordeTwin(window, hidden);
-  ok(run.told > 0 && run.waves === '2/2' && run.gap < bound, `the frame ${window - 18} ticks into wave 2, its arrivals ${hidden ? 'hidden from' : 'in'} the seat's `
-    + `frame (${run.told} told): at most ${run.gap.toFixed(2)} m apart over 14 s (${run.at}; bound ${bound} m; ${note})`);
+  ok(run.told > 0 && run.waves === '2/2 2/2' && run.replayed?.steps === window && run.gap === 0, `the frame ${window - 18} ticks into wave 2, its arrivals `
+    + `${hidden ? 'hidden from' : 'in'} the seat's frame (${run.told} told), the window replayed (${run.replayed?.steps} steps, ${run.replayed?.corrected} rows `
+    + `set it right): to the bit over 14 s (the 275 reading: ${run.gap275.toFixed(2)} m)`);
 }
 
 console.log('[4] Frontline, the line advanced in the window');
@@ -219,22 +233,86 @@ console.log('[4] Frontline, the line advanced in the window');
   let tick = 0;
   const told = new Map();
   const step = (fight) => { fight(old); sim.step({ dt: 1 / 60, inputs }); tick++; for (const ev of sim.eventsForViewer('h0')) if (ev.type === 'mode_respawn') told.set(ev.id, tick); sim.afterEventBroadcast(); };
-  const fight = (a) => (lineOf(a) < 2 ? takeSector(a) : pinSurvivor(a));
+  // the attack stood on sector 1's centre and its defenders down (the staging's hand) until the capture is near done;
+  // the keyframe then, and the window holds the play alone: the capture ends, the line advances, the defenders rise
   for (let guard = 0; guard < 30000 && !(lineOf(old) === 1 && zoneOf(old).control > 0.95); guard++) step(takeSector);
   const era = createEraIndexer();
   const keyframe = sealKeyframe(old, tick, era);
-  for (let guard = 0; guard < 600 && lineOf(old) < 2; guard++) step(fight);
-  for (let k = 0; k < 30; k++) step(fight);
-  const fresh = resume(make, keyframe, hostFrame(old, tick, era), told);
-  fresh.authority.onMatchReady();
-  ok(lineOf(old) === 2 && lineOf(fresh) === 2 && [...told.keys()].some((id) => id.startsWith('d-')), `the case is built: the old host advanced in the window `
-    + `(${[...told.keys()].join(', ')} told) and the new host took the advance up`);
-  const run = together(old, fresh, 14, pinSurvivor);
-  ok(run.widest.bravo < 1.5, `the defenders keep the old host's tracks: at most ${run.widest.bravo.toFixed(2)} m apart (${run.at.bravo}; bound 1.5 m; gaps 274's head 86.4 m)`);
-  ok(run.widest.alpha < 35, `the attackers within 35 m (${run.widest.alpha.toFixed(2)} m, ${run.at.alpha}; gaps 274's head 114.0 m): their traffic in the window is no `
-    + 'keyframe\'s');
-  old.stop(); fresh.stop();
+  told.clear();
+  const play = () => {};
+  for (let guard = 0; guard < 600 && lineOf(old) < 2; guard++) step(play);
+  for (let k = 0; k < 30; k++) step(play);
+  const latest = hostFrame(old, tick, era);
+  const replayed = resume(make, keyframe, latest, told), read = resume(make, keyframe, latest, told, false);
+  ok(lineOf(old) === 2 && lineOf(replayed.fresh) === 2 && lineOf(read.fresh) === 2 && [...told.keys()].some((id) => id.startsWith('d-')), `the case is built: the old `
+    + `host advanced in the window (${[...told.keys()].join(', ')} told; ${replayed.replayed?.steps} steps replayed) and both new hosts took the advance up`);
+  const [run, run275] = together(old, [replayed.fresh, read.fresh], 14, (a) => pinSurvivor(a));
+  ok(both(run) === 0, `every bot keeps the old host's track for 14 s, to the bit: the attackers ${apart(run, 'alpha')}, the defenders ${apart(run, 'bravo')} `
+    + `(the 275 reading: ${apart(run275, 'alpha')} and ${apart(run275, 'bravo')})`);
+  for (const actor of [old, replayed.fresh, read.fresh]) actor.stop();
+}
+
+/**
+ * The round 1 review's fight (review-correctness-r1 probe-window.mjs): a 4v4 CTF match with the seat's human, `t0` s in,
+ * the keyframe, the old host `window` ticks on, and the seat's frame; then the old host and both new hosts on 10 s.
+ * `human`: the seat drives a weave and fires at the nearest hostile every 2.5 s (75 ticks off the keyframe's beat), the
+ * same inputs on every host after the frame; in the window only the old host has them.
+ */
+function fightTwin({ seed, window = 30, t0 = 45, hilly = false, human = false }) {
+  const bots = [...[0, 1, 2, 3].map((i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
+    ...[0, 1, 2, 3].map((i) => ({ playerId: `b-${i}`, name: `B${i}`, team: 'bravo', specId: spec }))];
+  const make = (resumed) => createMatchActor({ roomId: 'twin-fight', mapId: 'verdant', mode: 'capture_the_flag', seed, seats, bots, ruleset: matchRulesetFor('capture_the_flag'),
+    world: hilly ? hillyWorld : flatWorld, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: resumed });
+  const drive = (sim, k) => {
+    if (!human) return;
+    const me = sim.entityById.get('h0');
+    if (!me || me.combat.destroyed) { inputs.delete('h0'); return; }
+    let near = null, nearM = Infinity;
+    for (const e of sim.entities) {
+      if (e.team !== 'bravo' || e.combat.destroyed || e.modeActive === false) continue;
+      const d = Math.hypot(e.state.pos.x - me.state.pos.x, e.state.pos.z - me.state.pos.z);
+      if (d < nearM) { nearM = d; near = e; }
+    }
+    const fire = k % 150 === 75 && !!near;
+    inputs.set('h0', { throttle: 1, steer: Math.sin(k / 70), brake: false, fire, fireIntentSeq: fire ? (k - 75) / 150 : null, aimLocked: false, shellSlot: 0, actionBits: 0,
+      aimYaw: near ? Math.atan2(near.state.pos.x - me.state.pos.x, near.state.pos.z - me.state.pos.z) : 0, aimPitch: 0, aimDistance: Math.min(400, nearM) });
+  };
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = () => { drive(sim, tick); sim.step({ dt: 1 / 60, inputs }); tick++; for (const ev of sim.eventsForViewer('h0')) if (ev.type === 'mode_respawn') told.set(ev.id, tick); sim.afterEventBroadcast(); };
+  for (let k = 0; k < t0 * 60; k++) step();
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era);
+  told.clear();
+  for (let k = 0; k < window; k++) step();
+  const latest = hostFrame(old, tick, era);
+  inputs.delete('h0');
+  const replayed = resume(make, keyframe, latest, told), read = resume(make, keyframe, latest, told, false);
+  // on together, the inputs read off the old host before its step and ridden to every host's (they stand in `inputs`)
+  const from = tick;
+  const [run, run275] = together(old, [replayed.fresh, read.fresh], 10, (actor, k) => { if (actor === old) drive(sim, from + k - 1); });
+  for (const actor of [old, replayed.fresh, read.fresh]) actor.stop();
+  inputs.delete('h0');
+  return { run, run275, replayed: replayed.replayed };
+}
+
+console.log('[5] a 4v4 CTF fight, a 30-tick window: to the bit');
+for (const [seed, hilly] of [[9, false], [5, false], [5, true]]) {
+  const { run, run275, replayed } = fightTwin({ seed, hilly });
+  ok(replayed?.steps === 30 && both(run) === 0, `seed ${seed}${hilly ? ', on hills' : ''}: every bot keeps the old host's track for 10 s, to the bit `
+    + `(${both(run).toFixed(3)} m; the 275 reading: ${wider(run275)})`);
+}
+
+console.log('[6] the fight with the seat\'s human driving and firing, its inputs no replay holds');
+for (const seed of [1, 2, 3]) {
+  const { run, run275, replayed } = fightTwin({ seed, human: true });
+  ok(replayed?.steps === 30 && replayed.corrected > 0 && both(run) < 0.05, `seed ${seed}: the human's row sets it right at the frame (${replayed?.corrected} rows), and `
+    + `every bot keeps within 0.05 m of the old host's for 10 s (${wider(run)}; the 275 reading: ${wider(run275)})`);
+  // the seat's hull drove the window on its last command (it braked through the play before: 3.5 m behind)
+  ok(run.seat < 0.5, `and the human's own hull within 0.5 m of the old host's (${run.seat.toFixed(3)} m; the 275 reading: ${run275.seat.toFixed(3)} m)`);
 }
 
 if (failures) { console.error(`migrationTwins.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('migrationTwins.selftest: a migrated host\'s bots keep the old host\'s tracks, to the rows\' precision where the window holds nothing, within a stated bound where it holds a wave\'s arrivals');
+console.log('migrationTwins.selftest: a migrated host plays on as the old host would have, to the bit from a keyframe alone and through a window it replays that holds nothing a seat could not know');

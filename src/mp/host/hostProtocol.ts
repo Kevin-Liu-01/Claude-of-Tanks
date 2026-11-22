@@ -71,18 +71,16 @@ export interface MigrationEntityExtras {
   consumables?: { readyIn?: number[]; charges: (number | null)[]; activeFor?: Record<string, number> };
   /** Lights, the roof gun's switch and rounds, the smoke kit's charges and cooldown left; absent while the kit is as a fresh host builds it. */
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
-  /** A live hull's drive as its integrator holds it and no row carries (gaps 274, G3): the engine's torque spool (0..1)
-   *  and the hull's turn rate (rad/s); absent at rest (both 0), as a fresh host builds it. */
-  motion?: [spool: number, yawRate: number];
   /**
-   * A live hull's integrator state no row carries (275), each part absent at rest as a fresh host builds it: the gun's
-   * dispersion bloom and the turret's slew rate that drives it, the speed it last stepped at, the rollover's clock and
-   * countdown, the posture held over its tracks (_hold) and seated off them (_holdSeat), the suspension rock (_susp) and
-   * the attitude spring (_spring). The bloom is the one that steers a fight: a migrated gun read as settled (a fresh
-   * bloom of 1 against the old host's 3), its bot laid and fired otherwise, and Frontline attackers parted 5 m in 14 s.
-   * Packed (migrationState.ts packIntegrator): base64url of a byte naming the parts present, then their doubles, exact.
+   * A live hull exact (276; migrationState.ts packHull): what its row rounds (the pose, the hp) or does not carry (the
+   * rollover's countdown, its held input, and the movement prediction checkpoint: movementPredictionState.ts, the one
+   * owner of the integrator state a pose cannot rebuild: the spool, the turn rate, the gun's bloom and limit flags, the
+   * spring, the ride, the support, the rock). base64url: the layout, the checkpoint's version and flags, the input's flags,
+   * a mask of the non-zero numbers and those numbers as Float64s, exact. It replaces gaps 274's spool and turn rate
+   * (`motion`) and 275's hand-picked integrator parts (`integrator`): a fight from a keyframe alone still parted by tens
+   * of metres on the rows' rounding and the gun's limit flag (the CTF probe: 23 m in 10 s; none now).
    */
-  integrator?: string;
+  hull?: string;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the
@@ -144,6 +142,26 @@ export interface HostResumeState {
    * of a hull that was alive (a Turbo Ball goal's kick-off) leaves both its rows alive.
    */
   respawnTicks?: [id: string, tick: number][];
+  /**
+   * The window between the keyframe and the seat's newest frame, to be played again (276; migrationState.ts
+   * replayWindow): present when a newer frame overlays the keyframe and the two can be stepped between. The actor is
+   * built on the keyframe's clocks (resumeClocksOf), restored from the keyframe's own frame, and stepped `steps` times;
+   * the state's frame (the keyframe's rows with the seat's newer rows over them) corrects the play.
+   */
+  replay?: HostResumeReplay;
+}
+
+/** What a replay reads beside the merged state (HostResumeState.replay; 276). */
+export interface HostResumeReplay {
+  /** The keyframe's own frame: its rows, meta, mode view, props and destruction at its tick. */
+  frame: SnapshotFrame;
+  /** The keyframe's battle clock (ms) and the old host's exact float clock (s) at its tick. */
+  battleTimeMs: number;
+  battleS: number;
+  /** The old host's steps from the keyframe to the seat's newest frame (by the two battle clocks). */
+  steps: number;
+  /** The seat's own hull (its frame's viewer, by wire id): the mode view the frame shows is the one served it. */
+  viewerEntityId: number | null;
 }
 
 export interface HostBootConfig {
