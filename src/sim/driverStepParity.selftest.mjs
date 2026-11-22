@@ -115,19 +115,19 @@ async function withWorlds(body) {
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
-async function run(ticks, perturb = null, { fourthShell = false, authoritySeed = SEED } = {}) {
+async function run(ticks, perturb = null, { fourthShell = false, authoritySeed = SEED, yellowGun = false } = {}) {
   // a fourth shell (the second's, stocked as it is) on the own hull's spec, which both sides read, before either seats it
   const ownShells = getSpec(OWN_SPEC).gun.shells;
   if (fourthShell) ownShells.push({ ...ownShells[1], name: `${ownShells[1].name} (fourth slot)` });
   const chosen = fourthShell ? 3 : 1;
   try {
-    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed));
+    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed, yellowGun));
   } finally {
     if (fourthShell) ownShells.pop();
   }
 }
 
-async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed) {
+async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed, yellowGun = false) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -167,6 +167,12 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
   // the own hull's third slot emptied on both sides: asking for it is refused
   own.combat.ammo[EMPTY_SLOT] = 0;
   authorityOf(own).combat.ammo[EMPTY_SLOT] = 0;
+  // (275) a damaged gun on both sides: its doubled dispersion (docs/MODULES.md, sim/damage.ts gunDispersionScale)
+  if (yellowGun) for (const combat of [own.combat, authorityOf(own).combat]) {
+    const gun = combat.modules.gun;
+    gun.hp = gun.maxHp * 0.5;
+    gun.state = 'yellow';
+  }
   // the page's combat stream is the authority's (a reseeded authority differs in its spotting stagger alone)
   game.combatRng = mulberry32(authoritySeed);
   const bus = createBus(() => {});
@@ -387,6 +393,14 @@ await section('a fourth shell fires as the fourth', async () => {
   assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
 });
 
+// ---- (275) a yellow gun's shots on both sides: the authority left out its doubled dispersion, so a damaged gun kept its
+// accuracy online (driverStepParity's Mars fight found it once its staging fought)
+await section('a yellow gun fires alike', async () => {
+  const yellow = await run(TICKS, null, { yellowGun: true });
+  assert.equal(yellow.divergence, null, `with a yellow gun the two steps part at ${JSON.stringify(yellow.divergence)}`);
+  assert.deepEqual(yellow.exercised.shots, [[90, 0], [540, 1]], `the yellow gun fired its first slot, then its second (${JSON.stringify(yellow.exercised.shots)})`);
+});
+
 // ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
 // 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
 const REAL_AI_TICKS = 3000;
@@ -449,6 +463,8 @@ await section('control: an authority seeded one off', async () => {
 // live round are compared as bytes. Found and fixed on the way: the page felled a blast's props before the world could (the
 // headless world then kept the tree's shell bands) and culled real hits on a steeply pitched hull (sim/shellHullReach.ts)
 const MODE_FOE_SPEC = 'm41a3';
+const HUNT_STOP_M = 60, HUNT_LINED_RAD = 0.4, HUNT_ON_TARGET_COS = Math.cos(0.01);
+const huntMuzzle = new Vector3(), huntBore = new Vector3(), huntAim = new Vector3();
 const bits = (value) => Buffer.from(new Float64Array([value]).buffer).toString('hex');
 async function runModeBattle(ticks, perturb = null) {
   return withWorlds((authorityWorld, pageWorld) => modeBattle(authorityWorld, pageWorld, ticks, perturb));
@@ -514,13 +530,31 @@ async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
     return { throttle: go ? 1 : 0, steer: go ? Math.max(-1, Math.min(1, error * 2)) : 0, brake: !go, fire, shellSlot: slot, actionBits: 0,
       aimLocked: false, ...encodeAimIntent(self.state.pos, { x: target.x, y: (target.y ?? self.state.pos.y) + aimY, z: target.z }) };
   };
+  // the fight (275): the hull turns on the spot until it faces the bot, closes to HUNT_STOP_M and fires only with its bore
+  // on the bot. Driven at full throttle like the errands above, it swung a 70 m circle away from the bot and fired at
+  // whatever the gun crossed every 40 ticks, so the bot never died (red since 268). Both drivers read their own hulls,
+  // which are byte-identical every tick, so both pull the trigger on the same tick.
+  const hunt = (self, other) => {
+    const target = other.state.pos;
+    const dx = target.x - self.state.pos.x, dz = target.z - self.state.pos.z;
+    let error = Math.atan2(dx, dz) - self.state.yaw;
+    error = Math.atan2(Math.sin(error), Math.cos(error));
+    const closing = Math.hypot(dx, dz) > HUNT_STOP_M, lined = Math.abs(error) < HUNT_LINED_RAD;
+    authorityGunPose(self, huntMuzzle, huntBore);
+    huntAim.set(target.x, target.y + 1.5, target.z).sub(huntMuzzle).normalize();
+    const onTarget = !other.combat.destroyed && huntBore.dot(huntAim) > HUNT_ON_TARGET_COS;
+    return { throttle: closing && lined ? 1 : 0, steer: closing ? (lined ? Math.max(-1, Math.min(1, error * 2)) : Math.sign(error)) : 0,
+      brake: !closing, fire: onTarget, shellSlot: 0, actionBits: 0, aimLocked: false,
+      ...encodeAimIntent(self.state.pos, { x: target.x, y: target.y + 1.5, z: target.z }) };
+  };
   let phase = 'cache';
   const script = (tick, self, other, pickups) => {
     if (phase === 'cache') return drive(self, pickups.find((pickup) => pickup.active) ?? zone);
     if (phase === 'shed') return drive(self, { x: shed.cx, z: shed.cz, y: shed.baseY }, { slot: 2, aimY: (shed.topY - shed.baseY) / 2 });
-    return drive(self, other.state.pos, { stopAt: 50, slot: 0, fire: tick % 40 === 0 });
+    return hunt(self, other);
   };
-  const exercised = { cachesDropped: 0, collectedAt: null, collapses: [], foeDeaths: 0, killedAt: null, turretIds: [], zoneOwners: new Set(), pulls: 0 };
+  const exercised = { cachesDropped: 0, collectedAt: null, collapses: [], foeDeaths: 0, killedAt: null, turretIds: [], respawnedAt: null,
+    killedAgainAt: null, zoneOwners: new Set(), pulls: 0, ticks: 0 };
   const seenCaches = new Set();
   let divergence = null, foeWasDestroyed = false;
   const authorityShells = [];
@@ -562,7 +596,12 @@ async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
     if (foe.combat.destroyed && !foeWasDestroyed) exercised.foeDeaths++;
     foeWasDestroyed = foe.combat.destroyed;
     if (phase === 'foe' && foe.combat.destroyed && exercised.killedAt === null) { exercised.killedAt = tick; exercised.turretIds = [...game._wreckTurrets.ids()]; }
-    if (exercised.killedAt !== null && tick - exercised.killedAt >= 240) break;
+    if (exercised.killedAt !== null && exercised.respawnedAt === null && !foe.combat.destroyed) exercised.respawnedAt = tick;
+    if (exercised.respawnedAt !== null && exercised.killedAgainAt === null && foe.combat.destroyed) exercised.killedAgainAt = tick;
+    exercised.ticks = tick + 1;
+    // the turret's flight and the respawn's second fight compared, then done (275: the old stop, 240 ticks after the first
+    // kill, fell before Mars's 6 s respawn, so the respawn could never be seen)
+    if (exercised.killedAgainAt !== null && tick - exercised.killedAgainAt >= 240) break;
   }
   exercised.zoneOwners = [...exercised.zoneOwners];
   return { divergence, exercised, shed: shed.id, foe: foe.id };
@@ -575,14 +614,14 @@ await section('control: Mars, the own heading a billionth off', async () => {
   return `caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`;
 });
 
-const MODE_TICKS = 6000;
+const MODE_TICKS = 12000;
 // the run, then each of its coverage assertions on its own, so a red one lists every miss beside it; the two red on 268
 // (the bot's death, its respawn: TESTS-OWED 2026-11-06) come last, so no other section runs behind them (round 6 V8)
 let mars = null;
 await section('Mars, byte-identical', async () => {
   mars = await runModeBattle(MODE_TICKS);
   assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
-  return `${MODE_TICKS} ticks`;
+  return `${mars.exercised.ticks} ticks`;
 });
 if (mars) {
   await section('Mars: the caches', () => {
@@ -601,6 +640,8 @@ if (mars) {
   });
   await section('Mars: the respawn', () => {
     assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
+    assert.ok(mars.exercised.respawnedAt !== null && mars.exercised.killedAgainAt > mars.exercised.respawnedAt,
+      `the bot came back at tick ${mars.exercised.respawnedAt} and was destroyed again at ${mars.exercised.killedAgainAt}`);
   });
 }
 

@@ -2642,6 +2642,22 @@ the search and lead the old host's revive started), `botDriveMigration` [7a] (a 
 one fix reverted, fail them (the lane's record). The match build's prediction digest moves (`movement.ts`), so a tab open on an
 older build is asked to refresh.
 
+**Two driver gaps a real Mars fight found (275, 2026-11-22).** `driverStepParity`'s Mars sections for the bot's death and
+respawn were red from 268 for want of a fight. The scripted M1A1 drove the errands' full-throttle steering at the bot, swung a
+70 m circle away from it, fired every 40 ticks at whatever its gun crossed, and the run stopped 240 ticks after a first kill,
+before Mars's 6 s respawn. It now turns on the spot to face the bot, closes to 60 m, fires with its bore on it and runs to a
+second kill. That fight parted the drivers twice:
+- The roof stations. The solo step fires every hull's main gun (`stepReloadAndFire`), then steps every roof station
+  (`stepAuxiliarySystems`). The authority stepped both hull by hull, so a station laid on a hull that fired that tick read it
+  before its recoil online and after it in a local battle, and the rounds could take their ids in another order: the M1A1's M2
+  parted after the M41's shot. The authority now runs the same two passes.
+- A yellow gun's doubled dispersion (`docs/MODULES.md`). The solo step applied it and the authority did not, so a damaged gun
+  kept its accuracy online. Both fire paths now scale σ by `damage.ts` `gunDispersionScale`; the solo step's arithmetic is
+  unchanged bit for bit.
+
+`driverStepParity` holds both: Mars is byte-identical for 10,128 ticks, and a new section fires a yellow gun on both drivers.
+Each fix reverted fails it, as does the old staging.
+
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
 **Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable
