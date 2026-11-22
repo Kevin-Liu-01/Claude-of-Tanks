@@ -45,9 +45,10 @@ export const UK_TREE: NationTree = Object.freeze({
     }),
     // release 262: the fictional FV4030/5 (the wide wedge turret and an applique kit on a hull rebuilt from the
     // Challenger 1's references) drawn off the Chieftain Mk 10 (the up-armoured line) so its connector runs clear of the
-    // Mk 3 and the Challenger 3 prototype, and the FV4030/6 beside it
+    // Mk 3 and the Challenger 3 prototype, and the FV4030/6 beside it (275, Kevin 2026-11-22: "the fv 4030/6 should be
+    // tier 7": at VII on lane 5, after the Marksman run's VI)
     node({ id: 'challenger_x', tier: 8, line: 'challenger', lane: 4, parents: ['chieftain_mk10'], slot: 'line' }),
-    node({ id: 'challenger_x_sleek', tier: 8, line: 'challenger', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
+    node({ id: 'challenger_x_sleek', tier: 7, line: 'challenger', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
     node({ id: 'challenger2', tier: 9, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
     node({ id: 'challenger2e', tier: 9, line: 'challenger', lane: 2, parents: ['challenger2'], slot: 'line' }),
     node({ id: 'challenger3_proto', tier: 8, line: 'challenger', lane: 3, parents: ['challenger1_mk3'], slot: 'line' }),
@@ -64,7 +65,7 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Marksman (269): the Marconi Marksman turret, trialled on the Chieftain and fielded by Finland on two hulls, the
     // ItPsv 90 (T-55) at V and the ItPsv Leopard 2 at VI after it, off the Chieftain Mk 10 on lane 5 (lane 4 carries the
-    // Mk 10's run to the FV4030/5; the FV4030/6 drops to lane 5 at VIII)
+    // Mk 10's run to the FV4030/5; the FV4030/6 drops to lane 5 at VII, after the ItPsv Leopard 2)
     node({ id: 'marksman_t55', tier: 5, line: 'air_defence', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
     node({ id: 'itpsv_leopard2', tier: 6, line: 'air_defence', lane: 5, parents: ['marksman_t55'], slot: 'line' }),
     // Special
