@@ -24,14 +24,17 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   STRIKE_STRAFE: 1 << 13,
   STRIKE_BOMB: 1 << 14,
   STRIKE_GUNSHIP: 1 << 15,
+  // air-support-275: the Maverick run, the first bit past the u16 (wire 13 carries the bits as a u32)
+  STRIKE_MISSILE: 1 << 16,
 } as const);
 
 /**
  * The call-in each bit names (matchRuleset.ts AIR_STRIKE_KINDS). The battery and the recon pass ride the two supply-drop
  * bits: the AC-130 mode's escort is the only mode that drops supplies and Air Support the only one that calls strikes, so
- * no mode reads both meanings (airSupport.selftest pins it); the sixteen bits are all taken.
+ * no mode reads both meanings (airSupport.selftest pins it). The Maverick run has a bit of its own (wire 13's u32).
  */
 export const AIR_STRIKE_BITS = Object.freeze({
   recon: PLAYER_ACTION_BITS.SUPPLY_HEAL, artillery: PLAYER_ACTION_BITS.SUPPLY_AMMO,
-  strafe: PLAYER_ACTION_BITS.STRIKE_STRAFE, bomb: PLAYER_ACTION_BITS.STRIKE_BOMB, gunship: PLAYER_ACTION_BITS.STRIKE_GUNSHIP,
+  strafe: PLAYER_ACTION_BITS.STRIKE_STRAFE, bomb: PLAYER_ACTION_BITS.STRIKE_BOMB, missile: PLAYER_ACTION_BITS.STRIKE_MISSILE,
+  gunship: PLAYER_ACTION_BITS.STRIKE_GUNSHIP,
 } as const);

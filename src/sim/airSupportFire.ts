@@ -1,6 +1,7 @@
 /**
- * Air Support's rounds (air-support-270): the strafing run's 30 mm walked down its lane, the precision bomb's release and the
- * AC-130 orbit's 30 mm and 152 mm on the enemies its side has spotted. Each leaves the aircraft where its run puts it
+ * Air Support's rounds (air-support-270): the strafing run's 30 mm walked down its lane (air-support-275: laid on the hulls
+ * in it), the precision bomb's release, the Maverick run's missiles (air-support-275) and the AC-130 orbit's 30 mm and
+ * 152 mm on the enemies its side has spotted. Each leaves the aircraft where its run puts it
  * (sim/strikeRuns.ts, air-support-runs-272): the GAU-8 under the strafing jet's nose, the bomb from the jet's pylon at its
  * release point with the jet's own velocity, the gunship's guns from its left side. Stepped by both authorities (game/state.ts, the solo
  * battle; sim/authoritativeMatch.ts, the network) on the fixed step, after the mode controller has taken the calls: every
@@ -13,12 +14,13 @@ import { createShell, type ShellEntity } from './ballistics.ts';
 import { AIR_STRIKE_WEAPONS, GUNSHIP_WEAPONS } from './matchRuleset.ts';
 import type { ShellSpec } from './shellSpec.ts';
 import { strikeDueTick, strikeRandom, strikeTick, type AirStrike, type AirSupport } from './airSupport.ts';
-import { bombReleaseOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
+import { bombReleaseOffsetS, missileLaunchOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
 import * as detMath from './detMath.ts';
 
 interface FireTarget {
   id: string; team: string;
-  state: { pos: { x: number; y: number; z: number } };
+  /** Its ground speed along its yaw (the Maverick leads a moving hull; tank forward is +Z: (sin yaw, cos yaw)). */
+  state: { pos: { x: number; y: number; z: number }; yaw?: number; speed?: number };
   combat: { destroyed: boolean };
   modeActive?: boolean;
 }
@@ -132,8 +134,20 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       // the burst's spread: across the lane and along it, seeded per round
       const across = (strikeRandom(support.seed, strike.id, k * 2) * 2 - 1) * s.spreadM;
       const jitter = (strikeRandom(support.seed, strike.id, k * 2 + 1) * 2 - 1) * s.spreadM * 0.5;
-      const ax = start.x + sinH * (along + jitter) + cosH * across, az = start.z + cosH * (along + jitter) - sinH * across;
-      fire(ctx, strike, AIR_STRIKE_WEAPONS.strafe, muzzle.x, muzzle.y, muzzle.z, ax, ctx.terrainHeight(ax, az), az);
+      let ax = start.x + sinH * (along + jitter) + cosH * across, az = start.z + cosH * (along + jitter) - sinH * across;
+      let ay = ctx.terrainHeight(ax, az);
+      // the gunsight walks onto hulls (air-support-275): an enemy hull in the lane within snapAlongM of this round's station
+      // takes the round, laid on its centre with the burst's own scatter
+      const hull = strafeHull(ctx, strike, start, along, s.snapAlongM, s.halfWidthM);
+      if (hull) {
+        // laid on the deck behind the turret (the pilot's pipper on the engine deck, a hull's thinnest top, not its tracks
+        // or its turret's faces), the burst's scatter halved on a hull
+        const back = -STRAFE_DECK_BACK_M, fx = detMath.sin(hull.state.yaw ?? 0), fz = detMath.cos(hull.state.yaw ?? 0);
+        ax = hull.state.pos.x + fx * back + (cosH * across + sinH * jitter) * 0.5;
+        az = hull.state.pos.z + fz * back + (-sinH * across + cosH * jitter) * 0.5;
+        ay = hull.state.pos.y + STRAFE_DECK_M;
+      }
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.strafe, muzzle.x, muzzle.y, muzzle.z, ax, ay, az);
     } else if (strike.kind === 'bomb') {
       const b = rules.bomb, releaseS = strike.landsS + bombReleaseOffsetS(rules);
       if (nextRound(releaseS, 1, 1, firedBy(strike.fired, releaseS, 1, 1, prevS), timeS) < 0) continue;
@@ -148,6 +162,33 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       const ay = ctx.terrainHeight(ax, az);
       // the bomb falls on a ballistic arc that meets the spot a little after the warning has run (never before it)
       fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, muzzle.x, muzzle.y, muzzle.z, ax, ay, az, strike.landsS + rules.fallMarginS - timeS);
+    } else if (strike.kind === 'missile') {
+      const m = rules.missile, start = strike.landsS + missileLaunchOffsetS(rules, 0);
+      const k = nextRound(start, m.everyS, m.missiles, firedBy(strike.fired, start, m.everyS, m.missiles, prevS), timeS);
+      if (k < 0) continue;
+      strike.fired = k + 1;
+      // missile k leaves its rail (port when even, starboard when odd) where the run puts the jet at its launch, onto the
+      // intercept of the k-th of its side's spotted enemies round the mark (in turn), else onto a seeded point near it
+      const launchS = start + k * m.everyS;
+      const muzzle = runMuzzle(runPose(rules, strike, launchS, _pose), 'missile', _muzzle, k);
+      const target = missileTarget(ctx, strike, k, m.radiusM);
+      const speed = AIR_STRIKE_WEAPONS.missile.velocityMps;
+      let ax: number, ay: number, az: number;
+      if (target) {
+        // lead the hull along its yaw at its speed for the missile's flight (two passes: the flight to the led point)
+        const vx = detMath.sin(target.state.yaw ?? 0) * (target.state.speed ?? 0), vz = detMath.cos(target.state.yaw ?? 0) * (target.state.speed ?? 0);
+        let leadS = 0;
+        ax = target.state.pos.x; az = target.state.pos.z; ay = target.state.pos.y + 1;
+        for (let pass = 0; pass < 2; pass++) {
+          leadS = detMath.hypot(ax - muzzle.x, ay - muzzle.y, az - muzzle.z) / speed;
+          ax = target.state.pos.x + vx * leadS; az = target.state.pos.z + vz * leadS;
+        }
+      } else {
+        const r = Math.sqrt(strikeRandom(support.seed, strike.id, k * 2)) * m.radiusM * 0.25;
+        const bearing = strikeRandom(support.seed, strike.id, k * 2 + 1) * Math.PI * 2;
+        ax = strike.x + detMath.sin(bearing) * r; az = strike.z + detMath.cos(bearing) * r; ay = ctx.terrainHeight(ax, az) + 0.5;
+      }
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.missile, muzzle.x, muzzle.y, muzzle.z, ax, ay, az);
     } else {
       const g = rules.gunship;
       const cannonRounds = Math.floor(g.orbitS / g.cannonEveryS), howitzerRounds = Math.floor(g.orbitS / g.howitzerEveryS);
@@ -175,6 +216,50 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       }
     }
   }
+}
+
+/** A strafing round laid on a hull aims this high over its hull's ground point: the deck of a tracked hull (1.6-2.1 m). */
+const STRAFE_DECK_M = 1.9;
+/** ... and this far behind its centre along its own heading: the engine deck of a rear-engined hull, the troop roof of an
+ *  IFV (the hull's top behind the turret ring). */
+const STRAFE_DECK_BACK_M = 1.8;
+
+/** The enemy hull the strafing gun walks onto at a round's station `along` the lane: inside the lane across, within
+ *  `snapM` of the station along it, the nearest to the station (entity order breaks a tie). */
+function strafeHull<Target extends FireTarget>(ctx: AirSupportFireContext<Target>, strike: AirStrike, start: { x: number; z: number },
+  along: number, snapM: number, halfWidthM: number): Target | null {
+  if (!(snapM > 0)) return null;
+  const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
+  let best: Target | null = null, bestD = snapM;
+  for (const entity of ctx.entities) {
+    if (entity.combat.destroyed || entity.modeActive === false || ctx.teamOf(entity) === strike.team) continue;
+    const dx = entity.state.pos.x - start.x, dz = entity.state.pos.z - start.z;
+    const a = dx * sinH + dz * cosH, c = dx * cosH - dz * sinH;
+    if (Math.abs(c) > halfWidthM) continue;
+    const d = Math.abs(a - along);
+    if (d < bestD) { bestD = d; best = entity; }
+  }
+  return best;
+}
+
+/** The Maverick's target for missile `k`: its side's spotted enemies within `reachM` of the mark, nearest the mark first,
+ *  taken in turn (missile k the (k mod n)-th); null with none in reach. */
+const _missileTargets: FireTarget[] = [];
+function missileTarget<Target extends FireTarget>(ctx: AirSupportFireContext<Target>, strike: AirStrike, k: number, reachM: number): Target | null {
+  _missileTargets.length = 0;
+  for (const entity of ctx.entities) {
+    if (entity.combat.destroyed || entity.modeActive === false || ctx.teamOf(entity) === strike.team) continue;
+    if (!ctx.isSpotted(entity.id, strike.team)) continue;
+    if ((entity.state.pos.x - strike.x) ** 2 + (entity.state.pos.z - strike.z) ** 2 > reachM * reachM) continue;
+    _missileTargets.push(entity);
+  }
+  if (!_missileTargets.length) return null;
+  const d2 = (e: FireTarget) => (e.state.pos.x - strike.x) ** 2 + (e.state.pos.z - strike.z) ** 2;
+  // a stable sort: equal ranges keep entity order
+  _missileTargets.sort((a, b) => d2(a) - d2(b));
+  const target = _missileTargets[k % _missileTargets.length] as Target;
+  _missileTargets.length = 0;
+  return target;
 }
 
 /** The AC-130's target: the spotted enemy nearest the orbit's mark within its reach (entity order breaks a tie). */

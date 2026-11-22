@@ -123,6 +123,10 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
         history.record(slot, tick, entity.state);
       }
     },
+    rewindS(shell: DamageShell) {
+      if (shell.roofStation) return 0;
+      return (rewindByShooter.get(shell.shooterId) ?? 0) * SIM_DT;
+    },
     begin(shell: DamageShell) {
       if (active || shell.roofStation) return;
       const rewind = rewindByShooter.get(shell.shooterId) ?? 0;

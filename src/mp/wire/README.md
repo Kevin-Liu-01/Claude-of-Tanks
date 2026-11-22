@@ -41,7 +41,7 @@ Client → server
 | Type | Layout |
 |---|---|
 | `HELLO` (1) | `u16 protocolVersion`, `u32 capabilities` (`HELLO_CAPABILITY` bits), `string token ≤ 1024`, `string clientBuild ≤ 64` |
-| `INPUT` (2) | `u32 clientTick` (tick of the newest control), `u32 snapshotAckTick` (newest assembled snapshot or `NO_TICK`), `u8 interpDelayMs` (the client's interpolation delay, used for lag compensation), `u8 count` (1..3), then `count` controls oldest first; control `i` is for tick `clientTick − count + 1 + i`. Control: `i8 throttle`, `i8 steer` (±127 = ±1), `u8 flags` (`CONTROL_FLAGS`: FIRE_HELD, BRAKE, AIM_LOCKED), `u16 aimYaw` (turn), `i16 aimPitch` (±32767 = ±π/2), `u16 aimDistance` (5 cm units), `u8 shellSlot` (0..2), `u16 fireSeq`, `u16 actionSeq`, `u16 actionBits` (`ACTION_BITS`, thirteen bits). 16 B per control; a full frame is 60 B (3.6 KB/s at 60 frames/s, 1.8 KB/s at 30). |
+| `INPUT` (2) | `u32 clientTick` (tick of the newest control), `u32 snapshotAckTick` (newest assembled snapshot or `NO_TICK`), `u8 interpDelayMs` (the client's interpolation delay, used for lag compensation), `u8 count` (1..3), then `count` controls oldest first; control `i` is for tick `clientTick − count + 1 + i`. Control: `i8 throttle`, `i8 steer` (±127 = ±1), `u8 flags` (`CONTROL_FLAGS`: FIRE_HELD, BRAKE, AIM_LOCKED), `u16 aimYaw` (turn), `i16 aimPitch` (±32767 = ±π/2), `u16 aimDistance` (5 cm units), `u8 shellSlot` (0..2), `u16 fireSeq`, `u16 actionSeq`, `u32 actionBits` (`ACTION_BITS`, seventeen bits since wire 13: Air Support's sixth call-in). 18 B per control; a full frame is 66 B (4.0 KB/s at 60 frames/s, 2.0 KB/s at 30). |
 | `SNAPSHOT_ACK` (3) | `u32 tick` — the newest assembled snapshot, or `NO_TICK` to drop the baseline and request a keyframe (for viewers that send no INPUT, and for any client recovering from a missing delta baseline). |
 | `PING` (4) | `u32 clientTimeMs`, `u32 snapshotAckTick` |
 | `CHAT` (5) | `string text ≤ 960 B` (≤ 240 chars after the server's normalization) |
@@ -258,7 +258,7 @@ never reach the `internal` code.
 
 ### Weapon-module snapshot revision (2026-10-01)
 
-Current `WIRE_VERSION` is 3 and `PROTOCOL_VERSION` is 4. Viewer module health
+Current `WIRE_VERSION` is 13 and `PROTOCOL_VERSION` is 15 (src/mp/wire/constants.ts is the record). Viewer module health
 uses a 32-bit word, preserving the first seven indices and appending missile
 rack, weapon feed, roof gun, autoloader, ammo rack, fuel, radio and optics.
 This adds two bytes per viewer record. Older peers fail the version check;

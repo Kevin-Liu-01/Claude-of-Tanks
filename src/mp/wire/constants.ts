@@ -40,7 +40,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // never empty); the meta's smoke text is written with its length plus one, 0 meaning the baseline's. No flag bit (bit 7
 // of SNAPSHOT_FLAGS stays free). Every mode but Standard sent its whole mode state to every viewer in every snapshot: in
 // Capture the Flag it was most of a viewer's snapshot bytes although it rarely changes (codec.ts KEEPS_BASELINE).
-export const WIRE_VERSION = 12;
+// 13 (air-support-275): a control's actionBits is a u32 (was u16): Air Support's sixth call-in (the Maverick run) needs a
+// seventeenth action bit (sim/playerActions.ts STRIKE_MISSILE). A control is 18 B (was 16).
+export const WIRE_VERSION = 13;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -77,7 +79,9 @@ export const WIRE_VERSION = 12;
 // and a 273 tab never share a match.
 // 14 (japan-274, 2026-11-20, SSOT 2.19): tank id schema 4, the STC-1 (type90_kyumaru) folded into the STC-2 (type90a):
 // a tab that still offers the STC-1 and one that resolves it never share a match.
-export const PROTOCOL_VERSION = 14; // wire 12 (a mode state or smoke text kept from the baseline)
+// 15 (air-support-275): wire 13, the u32 action bits and the Maverick run's call-in (a sixth AirStrikeKind in the mode
+// state, the checkpoint and the call events): a 274 tab and a 275 tab never share a match. The Rooms Worker ships first.
+export const PROTOCOL_VERSION = 15; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
 /**
@@ -242,12 +246,13 @@ export const CONTROL_FLAGS = Object.freeze({
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
 /**
- * Sixteen action bits, all taken (air-support-270): FPV launch/return, the supply drops, and Air Support's call-ins. Air
- * Support reads the two supply-drop bits as its artillery and recon (sim/playerActions.ts AIR_STRIKE_BITS): only the
- * AC-130's escort drops supplies and only Air Support calls strikes. A mode that wants either meaning beside the other
- * fails sim/airSupport.selftest.mjs's exclusivity check first; it needs a wire change, not another reuse.
+ * Seventeen action bits (air-support-275; the sixteen of a u16 were all taken by air-support-270): FPV launch/return, the
+ * supply drops, and Air Support's call-ins. Air Support reads the two supply-drop bits as its artillery and recon
+ * (sim/playerActions.ts AIR_STRIKE_BITS): only the AC-130's escort drops supplies and only Air Support calls strikes. A
+ * mode that wants either meaning beside the other fails sim/airSupport.selftest.mjs's exclusivity check first. The wire
+ * carries a u32 (wire 13): fifteen bits are spare for the next actions without another layout change.
  */
-export const ACTION_BIT_MASK = 0xffff;
+export const ACTION_BIT_MASK = 0x1ffff;
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);

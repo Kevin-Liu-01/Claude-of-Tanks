@@ -14,7 +14,7 @@ import {
   laneLetter, OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter, type ObjectiveSide,
 } from '../ui/objectiveGlyphs.ts';
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
-import { createAirSupportWorld } from './airSupportWorld.ts';
+import { createAirSupportWorld, type AircraftFxPort } from './airSupportWorld.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
@@ -123,6 +123,8 @@ interface MatchModeWorldPresentationOptions {
   releaseMaterial?: (material: THREE.Material) => void;
   /** (props lane A #28) the battlefield's id: a capture zone's post takes the map's form (objectivePosts.ts) */
   mapId?: () => string | null;
+  /** (air-support-275) a struck aircraft's smoke and a downed one's burst at the ground (airSupportWorld.ts) */
+  aircraftFx?: AircraftFxPort;
 }
 
 interface WorksPlacement { x: number; y: number; z: number; yaw: number }

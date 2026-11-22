@@ -36,6 +36,9 @@ import {
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
 const SNIPER_ZOOMS_FULL = [2, 4, 8, 16, 25]; // ×16/×25 behind rig._increasedZoom
+/** Air Support's binoculars (air-support-275; owner: "the binoculars are a special zoom that is contained to like minimum
+ *  scope mode"): the scope's widest step, held while they are up: no wheel, Shift or aim-hold leaves it. */
+const BINOCULAR_ZOOM = SNIPER_ZOOMS_BASE[0];
 const BASE_FOV_DEG = 60;
 const BASE_SENS = 0.0022; // rad per mouse px
 const PITCH_MIN = THREE.MathUtils.degToRad(-65); // looking down
@@ -1016,6 +1019,8 @@ export function createCameraRig(
   }
 
   function stepZoom(dir: number): void {
+    // the binoculars hold their one magnification (updateScopeActions)
+    if (strikeView.open && strikeViewHeld) return;
     if (rig.mode === 'ARCADE') {
       if (dir > 0 && step === ORBIT_STEPS.length - 1) rig.enterSniper();
       else step = THREE.MathUtils.clamp(step + dir, 0, ORBIT_STEPS.length - 1);
@@ -1071,14 +1076,32 @@ export function createCameraRig(
     return camInput.shiftPressed && cine === null;
   }
 
-  let prevStrikeView = false, strikeViewScoped = false;
+  let prevStrikeView = false, strikeViewScoped = false, strikeViewHeld = false, preBinocularZoom: number = BINOCULAR_ZOOM;
   function updateScopeActions(camInput: CameraInputFrame): void {
     // Air Support (air-support-270): the strike view's binoculars ride the scope's camera; going up it enters the scope
-    // (and owns that entry), coming down it leaves only a scope it entered itself
+    // (and owns that entry), coming down it leaves only a scope it entered itself. air-support-275: while they are up the
+    // scope is held at its widest step (BINOCULAR_ZOOM) and nothing leaves it for the chase view (the wheel, Shift and
+    // the aim-hold's release are the binoculars' own no-ops); coming down, a scope the crew had keeps its own zoom
     if (strikeView.open !== prevStrikeView) {
       prevStrikeView = strikeView.open;
-      if (strikeView.open && rig.mode === 'ARCADE') { strikeViewScoped = true; rig.enterSniper(); }
-      else if (!strikeView.open && strikeViewScoped) { strikeViewScoped = false; if (rig.mode === 'SNIPER') rig.exitSniper(true); }
+      if (strikeView.open) {
+        strikeViewScoped = rig.mode === 'ARCADE';
+        preBinocularZoom = rig.zoom;
+        rig.enterSniper();
+        strikeViewHeld = rig.mode === 'SNIPER';
+      } else {
+        strikeViewHeld = false;
+        if (strikeViewScoped) { strikeViewScoped = false; if (rig.mode === 'SNIPER') rig.exitSniper(true); }
+        rig.zoom = preBinocularZoom;
+      }
+    }
+    if (strikeView.open && strikeViewHeld) {
+      // a wreck never scopes (enterSniper refuses it): the HUD lowers the binoculars for a dead crew
+      if (rig.mode === 'ARCADE') rig.enterSniper();
+      rig.zoom = BINOCULAR_ZOOM;
+      prevShift = camInput.shiftPressed;
+      prevAimHold = !!camInput.aimHold;
+      return;
     }
     if (camInput.shiftPressed && !prevShift) {
       if (rig.mode === 'ARCADE') rig.enterSniper();

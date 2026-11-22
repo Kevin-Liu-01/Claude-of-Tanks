@@ -53,7 +53,7 @@ import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset
 import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
+  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, drawAircraftGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
@@ -7973,6 +7973,22 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
             marker.side, march, urgency, marker.status !== 'recon');
           if (marker.pulse) halo(7, 0.6);
           drawStrikeGlyph(mmCtx, x, y, 5.5, (marker.status ?? 'bomb') as StrikeGlyphKind, marker.side);
+          break;
+        }
+        case 'aircraft': {
+          // Air Support's aircraft (air-support-275): its silhouette where its run has it, its nose along its heading (two
+          // map points give the map's own turn); off the plate it rides the rim (the clamp above), so an inbound one's icon
+          // there is the bearing it comes from, and its approach is drawn to the mark it is coming for
+          const heading = marker.heading ?? 0;
+          const ahead = worldToMap(marker.x + Math.sin(heading), marker.z + Math.cos(heading));
+          const angle = Math.atan2(ahead[0] - point[0], -(ahead[1] - point[1]));
+          let inbound: { toX: number; toY: number; march: number } | null = null;
+          if (marker.toX != null && marker.toZ != null) {
+            const to = worldToMap(marker.toX, marker.toZ);
+            inbound = { toX: Math.max(7, Math.min(MM - 7, to[0])), toY: Math.max(7, Math.min(MM - 7, to[1])), march: (timeS * 1.6) % 1 };
+          }
+          if (marker.pulse) halo(6.5, 0.7);
+          drawAircraftGlyph(mmCtx, x, y, marker.status === 'gunship' ? 6.5 : 5.5, angle, marker.status === 'gunship', marker.side, inbound);
           break;
         }
         default:
