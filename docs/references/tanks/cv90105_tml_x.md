@@ -10,6 +10,22 @@ Earlier rounds below are historical evidence; their pending checks, profile
 hashes and costs must not be substituted for the final integrated results.
 
 
+## Cast mantlet — 2026-11-21 (cv90105-mantlet-275)
+
+Owner: "make the cv90105 tml have a mantlet". Before this the sleeved 105 mm ran straight into the flat receiving
+panel between the sight hood and the right receiver. The prototype's photographs show a cast mantlet (about 35 mm,
+usually under a canvas dust cover) round the gun's root. `buildTmlCastMantlet` adds that block to the gun mount: its
+section is the turret front's own (top on the roof slope, underside parallel to the floor at the old assembly's
+lowest line, sides at the lower and upper cheek angles), tapering slightly forward with chamfered front edges, its
+back inside the receiving shell's nose so no gap opens at any elevation. The sleeve leaves through a 40 mm proud
+collar, its underside cut flat on the sleeve's own lowest line, with a dark seal. Nothing else on the tank moved.
+
+| Check | Result |
+| --- | --- |
+| gun-depression-sweep | identical to base on every field (floors, curve, blocked-at-elevation, mount conflicts, parts); published curve unchanged |
+| gun-junction census | CLOSED, 5 poses; ledger PASS (unchanged) |
+| hitbox-fit census | 0 floating, 0 held, 0 cell bridges (as base) |
+
 ## Historical author checkpoint
 
 - Updated: 2026-09-18 (round20 actual postwrite-fill checkpoint; historical receipts retained).

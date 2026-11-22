@@ -128,6 +128,46 @@ function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void 
   antenna(P,-.58,2.248,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
 }
 
+// Turret faces the mantlet follows (world metres, from buildTmlTurretArmor's z0.72 front station): the roof falls
+// 0.1125 m per metre forward from 2.135; the floor rises 0.025 per metre to 1.64; below the knee (1.97) the lower cheeks
+// lean in 0.16 m over 0.33 m of height, and above it the upper cheeks 0.29 m over 0.165 m.
+const TML_ROOF_Y = (z: number) => 2.135 - (z - .72) * .1125;
+const TML_FLOOR_Y = (z: number) => 1.64 + (z - .72) * .025;
+const TML_LOWER_CHEEK = .16 / .33, TML_UPPER_CHEEK = .29 / .165;
+
+function buildTmlCastMantlet(P: TankBuilderPort): void {
+  // Owner 2026-11-21: "make the cv90105 tml have a mantlet". The TML-105's cast mantlet (about 35 mm, under a canvas
+  // dust cover in the prototype's photographs) is a block carried on the gun between the sight hood and the right
+  // receiver, the sleeved gun leaving through a round collar. Its section is the turret front's own: the top runs on
+  // the roof's slope 8 mm under it, the underside parallel to the floor 45 mm over it (the old gun assembly's lowest
+  // line, the sleeve's underside at 1.684, so the measured depression floors hold at every yaw), the sides lean in
+  // below the knee line at the lower cheeks' angle and the upper corners are cut at the upper cheeks' angle. It tapers
+  // slightly forward and its front edges are chamfered. Its back starts 50 mm behind the trunnion, inside the
+  // receiving shell's rounded nose at every height, so no gap opens at any elevation.
+  // Gun-local frame: gun axis at x 0 (world 0.016), trunnion at y 0 (world 1.878), z 0 (world 0.70).
+  const knee = 1.84 - 1.878, cut = .03;
+  const station = (zl: number, halfW: number, topInset: number, lift = 0) => {
+    const zw = zl + .70, top = TML_ROOF_Y(zw) - .008 - topInset - 1.878, bottom = TML_FLOOR_Y(zw) + .045 + lift - 1.878;
+    const footW = halfW - TML_LOWER_CHEEK * (knee - bottom), roofW = halfW - TML_UPPER_CHEEK * cut;
+    return { z: zl, ring: [
+      [-footW, bottom], [footW, bottom], [halfW, knee], [halfW, top - cut],
+      [roofW, top], [-roofW, top], [-halfW, top - cut], [-halfW, knee],
+    ] as [number, number][] };
+  };
+  // From 120 mm ahead of the trunnion back past the turret face the underside rises 20 mm, so the corners that drop as
+  // the gun elevates keep the old assembly's clearance over the rear deck.
+  P.add('gunMount', sectionSolid([station(-.05, .232, 0, .02), station(.12, .2298, 0), station(.20, .228, 0),
+    station(.245, .205, .022)]));
+  // Collar: a proud cast ring 40 mm deep round the sleeve; a dark seal closes it on the sleeve. Its underside is cut flat
+  // on the sleeve's own lowest line (186 mm under the axis), so nothing on the gun reaches lower than before.
+  const collar = new THREE.Shape(), lip = Math.sqrt(.192 ** 2 - .186 ** 2);
+  collar.absarc(0, 0, .192, Math.atan2(-.186, lip), Math.atan2(-.186, -lip), false); collar.closePath();
+  const bore = new THREE.Path(); bore.absarc(0, 0, .181, 0, Math.PI * 2, true); collar.holes.push(bore);
+  P.add('gunMount', new THREE.ExtrudeGeometry(collar, { depth: .04, bevelEnabled: false, curveSegments: P.q ? 32 : 16 }),
+    0, -.008, .245);
+  P.add('gunMountDark', new THREE.RingGeometry(.172, .1815, P.q ? 32 : 16), 0, -.008, .2852);
+}
+
 function buildTmlMantlet(P: TankBuilderPort): void {
   // Source mantlet is asymmetric: its left hood projects far beyond the
   // right optical face. Keep the receiving shell behind both actual apertures.
@@ -147,6 +187,7 @@ function buildTmlMantlet(P: TankBuilderPort): void {
   const boot=[{z:-.06,rx:.185,ry:.186},{z:.28,rx:.185,ry:.186},{z:.46,rx:.170,ry:.176},{z:.69,rx:.145,ry:.166},{z:.89,rx:.142,ry:.160},{z:1.215,rx:.125,ry:.137}];
   P.add('gunMount',sectionSolid(boot.map(({z,rx,ry})=>({z,ring:Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return [Math.cos(a)*rx,Math.sin(a)*ry-.008] as [number,number];})}))));
   for(const z of [.45,.68,.91])P.add('gunMount',cylZ(.148,.022,P.q?24:12).scale(1,1.10,1),0,-.005,z);
+  buildTmlCastMantlet(P);
   // The left armored hood surrounds a recessed circular optical receiver.
   // These are sparse source scalar dimensions, not duplicated source topology.
   const hood=new THREE.Shape();
