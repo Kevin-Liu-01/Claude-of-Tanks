@@ -59,6 +59,7 @@ import { shellHitsWater } from '../../sim/shellSurface.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
+import { modeEndReport } from '../../sim/modeEndReport.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -1255,6 +1256,8 @@ export function createBattlePresentation({
   function resultRoster(): Array<Record<string, RuntimeValue>> {
     return roster.map((actor) => ({
       id: actor.id, name: actor.displayName || actor.spec.name || actor.specId, vehicle: actor.displayName || actor.spec.name || actor.specId,
+      // (endscreen-modes-275) the player's room name apart from the vehicle: the report's callsign (bots take the HUD's)
+      ...(actor.displayName ? { displayName: actor.displayName } : {}),
       specId: actor.specId, team: actor.team === 'enemy' ? 'enemy' : 'ally', alive: !actor.combat.destroyed, isPlayer: actor.isPlayer,
       // (ac130-fx-228) a gunship pilot's row names the AC-130 (ui/killSourceIdentity.ts)
       ...(actor.aerial?.kind === 'gunship' ? { aircraft: true } : {}),
@@ -1299,6 +1302,8 @@ export function createBattlePresentation({
     bus.emit('battle:ended', {
       result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: true,
       gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
+      // (endscreen-modes-275) the mode's figures the HUD showed as the battle ended (sim/modeEndReport.ts)
+      modeReport: modeEndReport(game.matchModeState as Parameters<typeof modeEndReport>[0], ownActor()?.id ?? null),
     });
   }
 
