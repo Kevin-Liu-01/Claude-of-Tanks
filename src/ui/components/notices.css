@@ -33,6 +33,10 @@
 .cot-c-notice--banner{width:100%;border-radius:0}
 /* an inline notice belongs to the row above it: no frame, its glyph and text on the row's glyph and label columns */
 .cot-c-notice.cot-c-notice--inline{padding:0;background:none;box-shadow:none}
+/* a toast is one line (and a detail) beside its 36 px actions and close: glyph, text, actions and close share the row's
+   centreline, so a one-line message does not ride high beside its button (photo-mode-271 critic r13 line 2) */
+.cot-c-notice--toast{align-items:center}
+.cot-c-notice--toast .cot-c-notice__body{padding-top:0}
 .cot-c-notice--toast{box-shadow:var(--e3);
   transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter)}
 .cot-c-notice--toast[data-state]{opacity:0;transform:translateY(var(--s1))}

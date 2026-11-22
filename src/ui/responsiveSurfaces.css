@@ -225,6 +225,9 @@ body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0
 body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close) */
 body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+/* a battle's pause tag stands beside the close there: the tab row keeps clear of it too (photo-mode-271 critic, 844x390:
+   the tag sat on the Language tab) */
+body[data-cot-height='short'] .cot-settings.paused .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2 + 92px + var(--s3))}
 /* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - var(--s2) - 1px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}

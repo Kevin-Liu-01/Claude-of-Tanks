@@ -108,6 +108,8 @@ export const ACTION_DEFS = [
   { id: 'minimapZoom', label: 'action.minimapZoom', group: 'settings.group.interface' },
   { id: 'shotLog', label: 'action.shotLog', group: 'settings.group.interface' }, // SHOT-INFO (shotInfo.ts)
   { id: 'perfHud', label: 'action.perfHud', group: 'settings.group.interface' }, // FEEL r12 (perfHud.ts)
+  // photo-mode-271: a solo battle's photo mode (src/game/battlePhotoMode.ts; the Garage's P is its own)
+  { id: 'photoMode', label: 'action.photoMode', group: 'settings.group.interface' },
   // Multiplayer v2 status surface (multiplayerStatus.ts): the network panel and the two-press leave
   { id: 'networkPanel', label: 'action.networkPanel', group: 'settings.group.interface' },
   { id: 'leaveBattle', label: 'action.leaveBattle', group: 'settings.group.interface' },
@@ -302,6 +304,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   // FEEL r12: fps / frame-time / stall overlay. F9, a key nothing else takes: on F8 it toggled with the Studio's own key
   // (studio.ts, studioAccess.ts) and its Garage button (owner 2026-10-28: "battle diagnostics randomly appears")
   perfHud: 'F9',
+  photoMode: 'KeyP',
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
   rangeReset: 'KeyR', // proving ground: every hull back on its mark

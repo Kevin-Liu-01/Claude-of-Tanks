@@ -59,7 +59,7 @@ assert.match(garageSource, /class="cot-c-chip cot-compare-toggle" data-compare="
   'Compare is a chip that reads Clear once on, an action with no pressed state');
 const ltActs = garageSource.match(/<div class="cot-lt-acts">[\s\S]*?<\/div><\/div><\/section>/)?.[0] || '';
 assert.equal((ltActs.match(/class="cot-c-btn cot-lt-act"/g) || []).length, 4, 'the band has four acts');
-assert.equal((ltActs.match(/<span>\$\{t\('garage\.(?:act|photo)\.[a-zA-Z]+'\)\}<\/span><\/button>/g) || []).length, 4,
+assert.equal((ltActs.match(/<span>\$\{t\('(?:garage\.act|photo)\.[a-zA-Z]+'\)\}<\/span><\/button>/g) || []).length, 4,
   'each act carries a visible label');
 assert.match(garageSource, /<span class="plus" aria-hidden="true">\+<\/span><span class="sl">\$\{t\('garage\.equipment\.empty\.name'\)\}<\/span>/,
   'an empty slot is labelled');

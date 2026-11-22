@@ -191,6 +191,8 @@ export interface SettingsOptions {
   readonly isSpectating?: () => boolean;
   readonly canLeaveBattle?: () => boolean;
   readonly onLeaveBattle?: () => void;
+  /** A solo battle's photo mode (photo-mode-271): the footer's Photo, shown while it may open; the phone's way in. */
+  readonly photo?: { available(): boolean; open(): void };
   readonly gearVisible?: () => boolean;
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
@@ -668,6 +670,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button">${t('settings.reset')}</button>` +
     // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
+    `<button class="cot-set-btn photo cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button" hidden>${uiIconSVG('toolPhoto', 16)}<span>${t('photo.open')}</span></button>` +
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
@@ -677,6 +680,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.cot-c-notice__text');
   const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
+  const photoBtn = requiredElement<HTMLButtonElement>(root, '.photo');
 
   // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
   // .can-scroll pattern, split per edge so the top fade only appears once the
@@ -2050,6 +2054,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     renderTab();
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
     leaveBtn.hidden = !canLeave;
+    photoBtn.hidden = !opts.photo?.available();
     root.classList.add('open');
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
@@ -2097,6 +2102,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     relockOnClose = false;
     closePanel();
     onLeaveBattle();
+  });
+  photoBtn.addEventListener('click', () => {
+    if (!opts.photo?.available()) return;
+    // photo mode takes the stage and holds the battle paused; it gives the pointer back to the battle when it closes
+    closePanel({ noRelock: true });
+    opts.photo.open();
   });
   resetBtn.addEventListener('click', () => {
     cancelCapture();

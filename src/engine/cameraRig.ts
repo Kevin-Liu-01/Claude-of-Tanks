@@ -1859,7 +1859,9 @@ const SHOW_LATE_CHECK_S = 1;           // after them, a check a second: under lo
 const SHOW_LATE_UNTIL_S = 20;          // which framed the hero too close; a change found restarts the dense window
 const SHOW_POINTS_MAX = 4096;          // silhouette points (8 per drawn part); past it the hero frames its whole box
 const SHOW_FOV_SHORT_MAX_DEG = 58;     // a stage too short for the hero at the bay's reach opens the lens up to this
-const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// the reader's motion choice as Settings keeps it live (Settings, else the OS; ui/accessibilityPreferences.ts): no media
+// query per call, since the showroom orbit's follow reads it every frame
+const reducedMotion = (): boolean => A11Y.reduceMotion;
 
 /** Wrap an angle delta into [-π, π) — yaw springs take the short way home. */
 function wrapPi(a: number): number {
@@ -2625,7 +2627,8 @@ export function createShowroomOrbit(
     const previousYaw = yaw;
     const previousPitch = pitch;
     const previousZoom = zoom;
-    const follow = 1 - Math.exp(-dt / SHOW_FOLLOW_TAU_S);
+    // a framing chosen (photo mode's, a reset) lands at once for a reader who asked for reduced motion
+    const follow = reducedMotion() ? 1 : 1 - Math.exp(-dt / SHOW_FOLLOW_TAU_S);
     yaw += (tYaw - yaw) * follow;
     pitch += (tPitch - pitch) * follow;
     zoom += (tZoom - zoom) * follow;

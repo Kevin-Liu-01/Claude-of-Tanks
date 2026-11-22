@@ -63,6 +63,7 @@ const maintainedStandaloneTools = new Set([
   'tools/mp-room-census.mjs', // UI-LOCKDOWN E: the rooms flow's console census on a built dist (two browsers + a LAN host, run by hand)
   'tools/armor-zone-plates-report.mjs', // 263 (armor-highlight-262-zones): the zone plates' fleet report before a flip of the flag (CPU, run by hand)
   'tools/roof-pocket-census.mjs', // 263 (vehicles-leclerc-false-roofs-262): the turret roof-pocket census (--ids | --all, --gate; CPU, run by hand)
+  'tools/photo-mode-gauntlet.browser.mjs', // 271 (photo-mode-271): the photo mode's UI gauntlet captures, 8 sizes in en-US and zh-CN (browser, run by hand under the capture lock)
   'tools/gun-face-split-table.mjs', // 266 (gunface-span-265): the gun-face split's fleet table, frontal turret hits moved per id (CPU, run by hand)
   'tools/wreck-census.mjs', // wrecks-270: every map's placed hulks, their states, clearances and in-view repeats (Node, run by hand)
   'tools/armour-default.browser.mjs', // 273 (armour-default-273): armour colours on once for saved-off profiles, the first-battle tip, H sticks (headless Chrome, run by hand)

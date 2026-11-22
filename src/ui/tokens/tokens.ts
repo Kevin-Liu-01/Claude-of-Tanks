@@ -270,6 +270,7 @@ export const TOKENS = {
   'ring-2': 'inset 0 0 0 1px rgba(246,243,236,.13)',
   'ring-3': 'inset 0 0 0 1px rgba(246,243,236,.24)',
   'ring-accent': 'inset 0 0 0 1px #f0a030',
+  'focus-ring-checked': 'inset 0 0 0 1px #f0a030,0 0 0 2px #07090b,0 0 0 4px #f6f3ec',
   'btn-secondary-ring': 'inset 0 0 0 1px rgba(246,243,236,.38)',
   'btn-secondary-ring-hover': 'inset 0 0 0 1px #c9c5bb',
   'ring-ok': 'inset 0 0 0 1px #5bd69b',

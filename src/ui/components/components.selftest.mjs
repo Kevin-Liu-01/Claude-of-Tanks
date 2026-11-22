@@ -197,6 +197,9 @@ assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'u
   'the core kit imports no asset: the flags and silhouettes are identity.ts');
 
 /* 4. notifications ------------------------------------------------------------------------------------------- */
+// a toast's glyph, text, actions and close share one centreline (photo-mode-271 critic r13 line 2)
+assert.match(readFileSync(new URL('./notices.css', import.meta.url), 'utf8'), /\.cot-c-notice--toast\{align-items:center\}\n\.cot-c-notice--toast \.cot-c-notice__body\{padding-top:0\}/,
+  'a toast centres its row');
 const { notice, banner, NoticeQueue, toastDuration } = await import('./notice.ts');
 const inline = notice({ severity: 'error', text: 'Refused <colours>', detail: 'Below the floor', actions: [{ label: 'Fix', primary: true, attrs: { 'data-fix': true } }] });
 assert.match(inline, /^<div class="cot-c-notice" data-severity="error" role="alert"><span class="cot-c-notice__glyph"><svg [^>]*><use href="#i-alert"\/>/, 'an error is an alert with its stroke alert glyph (250 ruling: not the filled lamp)');
@@ -277,6 +280,11 @@ assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
         `${file.pathname.split('/src/')[1] ?? 'index.html'}: ${text.slice(Math.max(0, match.index - 60), match.index).split(/[}\n]/).pop()}:focus-visible outlines focus in the accent`);
     }
   }
+  // a group's focus rests on its checked option, whose edge would otherwise cover the ring (photo-mode-271 r8: a Tab into
+  // the tilt group looked exactly like no focus)
+  assert.match(rule('.cot-c-seg__opt:is([aria-checked=true],[aria-selected=true]):focus-visible'),
+    /box-shadow:var\(--focus-ring-checked\)/, 'a focused checked option wears the focus ring outside its edge');
+  assert.match(tokensCss, /--focus-ring-checked:var\(--ring-accent\),var\(--focus-ring\);/, 'the checked focus is the edge plus the ring');
 }
 
 console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); four tokens-only sheets in the components layer');

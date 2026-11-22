@@ -60,6 +60,10 @@ import {
 } from './app/mainBattleHudRuntime.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
+import { battlePhotoAvailable } from './game/battlePhotoAvailability.ts';
+import { keycap, segmented, wireRoving } from './ui/components/components.ts';
+import type { PhotoSubject } from './engine/photoCamera.ts';
+import { closeSurface, openSurface } from './ui/components/surfaceStack.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
 import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
@@ -2392,6 +2396,7 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
+  photo: { available: () => canOpenBattlePhoto(), open: () => openBattlePhoto() },
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -2447,11 +2452,81 @@ garage.attachSettingsControl(settings.gear);
 garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });
 // the Garage's photo mode (garage.ts attachPhoto): the stage, the showroom orbit held for framing, and the renderer, post
 // chain and lighting its lazy module draws a still with
-garage.attachPhoto({
-  stage: renderer.domElement,
-  showroom,
-  still: { renderer, camera, post, lighting, size: () => renderer.getSize(new THREE.Vector2()) },
-});
+const photoStill = { renderer, camera, post, lighting, size: () => renderer.getSize(new THREE.Vector2()) };
+garage.attachPhoto({ stage: renderer.domElement, view: showroom, still: photoStill });
+// a solo battle's photo mode (photo-mode-271; src/game/battlePhotoMode.ts): the same photo mode over a frozen battle, its
+// chunk loaded at the first open. Its open flag is the battle frame's second pause source (battleFrame below), beside
+// the pause menu; a room's battle never offers it (battlePhotoAvailability.ts).
+let battlePhotoOpen = false;
+const battlePhoto = createLazyRuntimeOwner(
+  () => import('./game/battlePhotoMode.ts'),
+  (module) => module.createBattlePhotoMode({
+    camera,
+    stage: renderer.domElement,
+    still: photoStill,
+    kit: { keycap, segmented, wireRoving, openSurface, closeSurface },
+    input,
+    groundAt: (x, z) => currentWorld()?.heightField.getHeightAt(x, z) ?? Number.NaN,
+    subject: battlePhotoSubject,
+    fileName: () => `claude-of-tanks_${game.mapId || 'battle'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
+    click: () => bus.emit('ui:click', {}),
+    onChange: (open) => { battlePhotoOpen = open; },
+    viewHeightPx: () => renderer.domElement.clientHeight || window.innerHeight,
+  }),
+);
+/** The tank a battle photo frames: the player's, or the one the camera follows once the player's is gone. */
+/** Photo mode's subject: the tank's box (its hull to its overall height) and its muzzle, as the points a framing holds,
+ *  their box's centre as the pivot. Built once per open. */
+function battlePhotoEntity() {
+  const focusId = watchOwner.current?.controller.focusId;
+  const entity = game.player ?? (focusId ? game.tankById.get(focusId) ?? null : null);
+  return entity?.state?.pos ? entity : null;
+}
+function battlePhotoSubject(): PhotoSubject | null {
+  const entity = battlePhotoEntity();
+  const state = entity?.state;
+  if (!entity || !state?.pos) return null;
+  const rect = entity.spec ? tankContactRect(entity.spec) : null;
+  const yaw = state.yaw ?? 0;
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  const hw = rect?.halfWidth ?? 1.8, hl = rect?.halfLength ?? 3.5, cx = rect?.centerX ?? 0, cz = rect?.centerZ ?? 0;
+  const top = Math.max(rect?.maxY ?? 2.4, entity.spec?.dims?.heightM ?? 0);
+  const points: { x: number; y: number; z: number }[] = [];
+  for (const lx of [cx - hw, cx + hw]) for (const lz of [cz - hl, cz + hl]) for (const ly of [rect?.minY ?? 0, top]) {
+    points.push({ x: state.pos.x + lx * cos + lz * sin, y: state.pos.y + ly, z: state.pos.z - lx * sin + lz * cos });
+  }
+  // the gun reaches past the hull: its muzzle stays in frame
+  const muzzle = new THREE.Vector3();
+  entity.visual?.gunMuzzleWorld?.(muzzle);
+  if (muzzle.lengthSq() > 0 && muzzle.distanceTo(state.pos as THREE.Vector3) < 30) points.push({ x: muzzle.x, y: muzzle.y, z: muzzle.z });
+  const box = new THREE.Box3().setFromPoints(points.map((p) => new THREE.Vector3(p.x, p.y, p.z)));
+  const centre = box.getCenter(new THREE.Vector3());
+  const radiusM = Math.max(2.5, ...points.map((p) => centre.distanceTo(p as THREE.Vector3)));
+  return { x: centre.x, y: centre.y, z: centre.z, yaw, radiusM, points };
+}
+function canOpenBattlePhoto(): boolean {
+  return battlePhotoAvailable({
+    phase: game.phase,
+    online: onlineMatchActive(),
+    couch: !!game.couch,
+    hasResult: !!game.result,
+    killcam: killcam.isActive(),
+    covered: battleLoad.covering === true,
+    studio: studio.active,
+    shotMode,
+    hasSubject: battlePhotoEntity() !== null,
+  });
+}
+function openBattlePhoto(): void {
+  if (battlePhotoOpen || !canOpenBattlePhoto()) return;
+  // the battle stands still from this frame, while the chunk (on a first open) and its sheet load
+  battlePhotoOpen = true;
+  if (settings.isOpen()) settings.close({ noRelock: true });
+  void battlePhoto.preload().then((runtime) => runtime.open())
+    .then((opened) => { if (!opened && !battlePhoto.current?.isOpen) battlePhotoOpen = false; })
+    .catch(() => { battlePhotoOpen = false; });
+}
+input.onAction('photoMode', openBattlePhoto);
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
@@ -3784,6 +3859,7 @@ bus.on('ui:battleStart', loadBattleEndGarageWarm);
 // (audit F1: the Studio and stills announce their phase now; only a battle needs the battle-end warm)
 bus.on('phase:change', (payload) => { if (Reflect.get(Object(payload), 'phase') === 'battle') loadBattleEndGarageWarm(); });
 const leaveBattleToGarage = (): Promise<void> => {
+  battlePhoto.current?.close();
   const v2 = onlineMatch.current;
   if (v2?.active && battleEntryLifecycle.pending) {
     // A round still loading: leaving the room ends the entry under its own covered restore.
@@ -4128,7 +4204,8 @@ let tutorialHold = false;
 const tutorialHolds = (): boolean => tutorialHold && game.phase === 'battle' && !onlineMatchActive();
 const battleFrame = createBattleFrameRuntime({
   game,
-  settings: { isOpen: () => settings.isOpen() || tutorialHolds() },
+  // the pause menu, a tutorial card that explains, and a solo battle's photo mode all hold the battle still
+  settings: { isOpen: () => settings.isOpen() || tutorialHolds() || battlePhotoOpen },
   killcam,
   input: playerFrameInput,
   network: {
@@ -4236,6 +4313,7 @@ const mainFrame = createMainFrameRuntime({
   rig,
   // Watch's cameras, else a couch battle's shared camera, own the frame (the chase rig then stands down)
   watchFrame: (dt) => (watchOwner.current?.frame(dt) ?? false) || (couchOwner.current?.frame(dt) ?? false),
+  photoFrame: (dt) => battlePhoto.current?.frame(dt) ?? false,
   // a couch battle's split screen draws one pane per seat (docs/COUCH-MODE.md phase 2)
   renderViews: (dt, wallDt) => couchOwner.current?.renderViews(dt, wallDt) ?? false,
   splitHud: () => !!couchOwner.current?.paneViews && game.result == null,
