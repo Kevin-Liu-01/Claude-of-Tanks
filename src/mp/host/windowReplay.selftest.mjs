@@ -18,7 +18,8 @@
 // [4] a life the play took that the rows show alive (a fire the old host saw put out): the hull stands alive with the
 //     row's hp, and the mode adopts it on its first step (no respawn due).
 // [5] the mode as the seat's frame shows it: a flag the seat's hull lifted in the window, which the play never reached,
-//     is carried by it on the new host, at a carrier's pace; a mode view that agrees leaves the play's own.
+//     is carried by it on the new host, at a carrier's pace; a mode view that agrees leaves the play's own. [5b] the old
+//     host's carrier scored in the window while the play's carries on: at the resume no carrier, at the old host's pace.
 // [6] what the seat was told of: a prop's fall (the fence crushed in the new world), craters and holes in the destruction
 //     log, a smoke screen the seat raised in the window: each once (one the play made, or the keyframe stood, is not
 //     doubled). A deed is matched one for one where it is, not by its number, which a seat's deed in the window shifts, nor
@@ -31,7 +32,8 @@
 // [8] the frame's view where another hand parted it from the play: a zone meter (Zone Control's; Frontline's, its line
 //     unmoved), now and 2 s on; a survivor infected (the frame alone shows the death: no conversion announced again, its
 //     respawn at most the window late; and one risen again among the infected inside a longer window, its faction the
-//     frame's); the ball struck, to the bit and 1 s on.
+//     frame's; each at the infected's pace); a survivor the play alone infected (a hand on the play's own steps), a
+//     survivor again; the ball struck, to the bit and 1 s on.
 // Also: a far tier's row is another seat's ([2]); a row that parts on the fire or the magazine alone ([3]); the play's own
 // events of the window go to no seat ([5]); a keyframe sealed in the countdown, with no mode checkpoint, or with its clocks
 // 2.5 ms apart is not replayed ([1]).
@@ -314,6 +316,35 @@ console.log('[5] the mode as the seat\'s frame shows it');
   staged.old.stop(); fresh.stop();
 }
 
+console.log('[5b] a flag the old host\'s carrier scored in the window, which the play\'s still carries');
+{
+  // h0 lifts the bravo flag before the keyframe; another hand puts the old host's h0 on its own flag 5 ticks into the window
+  // and it scores (the flag home, its pace given back); the play's h0 carries on. At the resume the carrier is no carrier,
+  // at the old host's pace
+  const ctf = matchRulesetFor('capture_the_flag');
+  const ruleset = { ...ctf, flagPitch: { ...ctf.flagPitch, carrierSpeedScale: undefined } };
+  const flagOf = (actor, team) => actor.authority.modeController.state.flags.find((f) => f.team === team);
+  const staged = stage({ ruleset, before: (old) => {
+    for (let k = 0; k < 120 && flagOf(old, 'bravo').status !== 'carried'; k++) {
+      const flag = flagOf(old, 'bravo'), h0 = old.authority.entityById.get('h0');
+      h0.state.pos.set(flag.x, 0, flag.z); h0.state.speed = 0;
+      old.authority.step({ dt: 1 / 60, inputs }); old.authority.afterEventBroadcast();
+    }
+  }, during: (old, k) => {
+    if (k !== 5) return;
+    const home = flagOf(old, 'alpha'), h0 = old.authority.entityById.get('h0');
+    h0.state.pos.set(home.x, 0, home.z); h0.state.speed = 0;
+  } });
+  const { fresh } = resumeOf(staged);
+  const paceOf = (actor) => actor.authority.entityById.get('h0').modeSpeedMultiplier;
+  const flagOld = flagOf(staged.old, 'bravo'), flagNew = flagOf(fresh, 'bravo');
+  ok(staged.keyframe.modeCheckpoint.mode.objectives.flags.find((f) => f.team === 'bravo').carrierId === 'h0' && flagOld.status !== 'carried'
+    && flagNew.status === flagOld.status && flagNew.carrierId === null && paceOf(fresh) === paceOf(staged.old) && paceOf(fresh) === 1,
+  `h0 carried the flag at the keyframe and scored it in the window; at the resume it carries nothing, at the old host's pace (x${paceOf(fresh)} against `
+    + `x${paceOf(staged.old)}; the flag ${flagNew.status})`);
+  staged.old.stop(); fresh.stop();
+}
+
 console.log('[6] what the seat was told of');
 {
   // the seat's smoke before the keyframe (the keyframe stands it) and in the window (the play never raised it); a fence the
@@ -423,8 +454,10 @@ console.log('[8] the frame\'s view where the play parts from it: a zone meter, a
   const { fresh } = resumeOf(staged);
   const old = staged.old.authority, sim = fresh.authority;
   const due = (authority) => authority.captureModeCheckpoint().mode.respawns.find(([id]) => id === victimId)?.[1].atS;
-  ok(sim.entityById.get(victimId).team === old.entityById.get(victimId).team && sim.entityById.get(victimId).modeLife === 'down',
-    `infected: the victim is the infected's at the resume, down, as on the old host (${sim.entityById.get(victimId).team})`);
+  ok(sim.entityById.get(victimId).team === old.entityById.get(victimId).team && sim.entityById.get(victimId).modeLife === 'down'
+    && sim.entityById.get(victimId).modeSpeedMultiplier === old.entityById.get(victimId).modeSpeedMultiplier,
+  `infected: the victim is the infected's at the resume, down, at their pace, as on the old host (${sim.entityById.get(victimId).team}, `
+    + `x${sim.entityById.get(victimId).modeSpeedMultiplier})`);
   const heard = [];
   for (const actor of [staged.old, fresh]) { actor.authority.step({ dt: 1 / 60, inputs }); heard.push(actor.authority.eventsForViewer('h0').filter((ev) => ev.type === 'mode_infected').length); actor.authority.afterEventBroadcast(); }
   const late = due(sim) - due(old);
@@ -439,11 +472,38 @@ console.log('[8] the frame\'s view where the play parts from it: a zone meter, a
   const staged = stage({ mode: 'infected', window: 400, during: (old, k) => { if (k === 5) { const victim = old.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; } } });
   const { fresh } = resumeOf(staged);
   const oldVictim = staged.old.authority.entityById.get(victimId), newVictim = fresh.authority.entityById.get(victimId);
-  ok(oldVictim.modeLife === 'alive' && oldVictim.team !== 'alpha' && newVictim.team === oldVictim.team && newVictim.modeLife === 'alive',
-    `infected: one risen again among the infected in the window is theirs at the resume (${newVictim.team}, ${newVictim.modeLife}; the old host's ${oldVictim.team})`);
+  ok(oldVictim.modeLife === 'alive' && oldVictim.team !== 'alpha' && newVictim.team === oldVictim.team && newVictim.modeLife === 'alive'
+    && newVictim.modeSpeedMultiplier === oldVictim.modeSpeedMultiplier, `infected: one risen again among the infected in the window is theirs at the `
+    + `resume, at their pace (${newVictim.team}, ${newVictim.modeLife}, x${newVictim.modeSpeedMultiplier}; the old host's ${oldVictim.team})`);
   const heard = [];
   for (let k = 0; k < 60; k++) { stepBoth(staged.old); fresh.authority.step({ dt: 1 / 60, inputs }); heard.push(...fresh.authority.eventsForViewer('h0').filter((ev) => ev.type === 'mode_infected')); fresh.authority.afterEventBroadcast(); }
   ok(heard.length === 0, `infected: and is converted no second time (${heard.length} mode_infected in 1 s)`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // and a survivor the play alone infected (its held hull took a round the seat's dodged: a hand on the play's own steps,
+  // never the old host's): the frame shows it a survivor, and so is it at the resume
+  const victimId = 'h1';
+  const staged = stage({ mode: 'infected' });
+  const { state } = resumeStateFromRetained(staged.keyframe, 0, staged.latest, 500, [], [], staged.told);
+  const fresh = makeFor(staged.mode, staged.ruleset)({ tick: state.tick, ...resumeClocksOf(state) });
+  const play = fresh.authority.step.bind(fresh.authority);
+  let played = 0;
+  fresh.authority.step = (input) => {
+    if (++played === 5) { const victim = fresh.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; }
+    return play(input);
+  };
+  applyResumeState(fresh, state);
+  fresh.authority.step = play;
+  fresh.authority.onMatchReady();
+  const oldVictim = staged.old.authority.entityById.get(victimId), newVictim = fresh.authority.entityById.get(victimId);
+  const counts = (actor) => JSON.stringify(actor.authority.modeController.state.infection);
+  ok(played > 5 && newVictim.team === oldVictim.team && oldVictim.team === 'alpha' && newVictim.modeLife === 'alive' && !newVictim.combat.destroyed
+    && newVictim.modeSpeedMultiplier === oldVictim.modeSpeedMultiplier, `infected: one the play alone infected is a survivor at the resume, alive, at a `
+      + `survivor's pace (${newVictim.team}, ${newVictim.modeLife}, x${newVictim.modeSpeedMultiplier}; the old host's ${oldVictim.team})`);
+  for (let k = 0; k < 60; k++) stepBoth(staged.old, fresh);
+  ok(counts(fresh) === counts(staged.old) && newVictim.team === 'alpha' && fresh.authority.result == null, `infected: and stays one, the counts the `
+    + `old host's 1 s on (${counts(fresh)})`);
   staged.old.stop(); fresh.stop();
 }
 {
