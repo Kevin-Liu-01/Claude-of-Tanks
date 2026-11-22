@@ -2738,9 +2738,10 @@ floors, both measured on the round 1 review's CTF fight (4v4 bots and the seat, 
   them an arrival the old host made that the play did not (a seat's kill let the Horde's trickle or ring, Frontline's
   reinforce trickle or Infected's ring bring one on: the hulls revived in the window, as the 275 reading finds them, less
   those the play's own mode stood up (its mode_respawn), named as checkpointAfterRevives names the keyframe's, through
-  takeHordeArrivals, takeReinforced and takeInfectedArrivals; one the seat killed again inside the window begins that life,
-  its arrival is taken and the death watch takes its death; before, a Horde queue held the arrival twice and its trickle
-  stood due, the review round 3's major). Before, a
+  takeHordeArrivals, takeReinforced and takeInfectedArrivals; a hull the old host revived that the seat killed again inside
+  the window lives that life through the arrivals and the moves, a begun wave or advance keeping it, and the death watch
+  takes its death after them; before, a Horde queue held the arrival twice and its trickle stood due, the review round 3's
+  major, and a begun wave or advance stood its own arrival up again). Before, a
   wave cleared by a death the play never saw was cleared again on the first step: every survivor repaired a second time
   (1960, 3430, then 4900 hp), a second cache, mode_wave_cleared and mode_pickup_spawned to every seat again, the lull
   0.5 s late (the review round 2's major). Then the props and destruction the seat was told of that the play did not
@@ -2775,16 +2776,16 @@ a held trigger, the fight and a life from the rows, the mode view: a flag at a c
 when the old host's carrier scored, a zone meter on Zone Control and on Frontline's line, the factions both ways at their
 pace, the ball; props, destruction matched deed for deed under this host's numbers, craters and holes, and smoke),
 `waveStartMigration.selftest` the director's moves and arrivals on a replayed window (a Horde clear by a death the play
-never saw; a trickle arrival a seat's kill set off, one killed again in the window, one the play made itself and lost;
-Frontline's reinforce trickle; an advance the play makes and one a hand it never saw made, on the old host's moment to the
-bit; a cache the seat took and one the play's held hull took), `migrationHull.selftest` the hull's census (every number and flag of a hull's
+never saw, and the next wave's arrival killed again; a trickle arrival a seat's kill set off, one killed again in the
+window, one the play made itself and lost; Frontline's reinforce trickle, its arrival killed again; an advance the play
+makes and one a hand it never saw made, on the old host's moment to the bit, its arrival killed again; a cache the seat
+took and one the play's held hull took), `migrationHull.selftest` the hull's census (every number and flag of a hull's
 state, kit, special action and input rides exact, or is named: a mirror or a construction's constant; the damage
 reading's multipliers below 0.5 too, which packed less 1 came back an ulp off), a newer row's drive and the packing. 275's two unpinned reads are
 pinned: a revived bot's last pushed target dropped (`botDriveMigration` [7b]) and the smoke kit on the hull's clock
 (`botAbilities`). `migrationTwins` [9] holds a turret thrown by a kill in the window, to the bit; `resumeHold` no keyframe
-in the hold. Seventy-eight mutants, each one fix reverted and served through a load hook (the lane's record): 76 fail a
-receipt; a stage deed matched by its structure alone parts nothing, and Infected's ring take after a replay is pinned by
-reading alone (both below).
+in the hold. Eighty-one mutants, each one fix reverted and served through a load hook (the lane's record): 80 fail a
+receipt; a stage deed matched by its structure alone parts nothing (below).
 
 Cost (the lane's size probe at the final head, the 275 head on the same staging in brackets): a hull packs to 251
 characters at rest (its damage reading rides with it) and about 500 in motion (CTF at 30 s: 10.1 KB for 20 hulls); a
@@ -2817,8 +2818,10 @@ every move they list as the old host made it):
   there: the rows put the victim down at their tick (the frame's, where no earlier row shows it) and the death watch takes
   it then, its respawn clock from that step (Infected: 0.42 s after the old host's for a death 5 ticks into a 30-tick
   window), and the kill credits nobody (the tallies, the Gun Game ladder, Air Support's points stay the play's); a Horde
-  hostile's rest clock (its recycle after the kill) starts there too, and the trickle brings its identity back that much
-  later. A director move it made is taken up as made (above); one the play made later than the old host, its rows telling
+  hostile's rest clock (its recycle after the kill) starts there too: in `waveStartMigration` [6r]'s staging the victim
+  came back a trickle beat (1.5 s) late, each arrival after it a beat late, and the wave cleared 1 s late (the review round
+  5's 15 s run). A survivor another seat killed out of the elected seat's sight (no row) turns infected where the play left
+  it, alive with the survivor's hp and no respawn due; the old host's lies down and rises on the ring 4.6 s on. A director move it made is taken up as made (above); one the play made later than the old host, its rows telling
   it late, keeps the play's moment (a lull that ends a few ticks late). A survivor risen again among the infected inside
   the window takes its faction from the frame and its hp from the row, its life's reload stamp staying the survivor's; a
   survivor the play alone infected that no row stands up (hidden from the elected seat) stays infected and rises as one.
@@ -2829,7 +2832,10 @@ every move they list as the old host made it):
   (the victim's search and the bots 45-157 m apart in 10 s, against 11 m without the take). A victim the play never saw
   die, risen again in a long window, keeps the play's hunt search (12.9 m apart in CTF, 27 m in Zone Control). The cause is
   not established: an arrival taken after the play rather than at its tick is one; the brain's hand-back and the dropped
-  target given to the arrival do not close it (the review round 4's probes).
+  target given to the arrival do not close it (the review round 4's probes). A window that holds a Horde clear the play
+  did not make and the next wave's start begins that wave on the frame's clock (the play holds no lull to date it from):
+  its trickle ran 59 ticks late (the review round 5's 540-tick window; a mode event's keyframe follows the clear, which
+  makes such a window rare).
 - What the play's held hull does to the world that the seat's did not: a prop it crushes or a structure it rams stays
   down on the new host and is served to every seat (the world's crush is not undone, and the frame's fallen list and the
   destruction it shows only add), and a director move the play makes that the old host did not (its held hull's ram
@@ -2840,10 +2846,10 @@ every move they list as the old host made it):
   each hull's restored reading for the resume hints after the play, and the gate that keeps a hull revived in the window,
   on the 275 reading, from the hull of the life it left (its newer row would take the drive alone, so no staging parts).
   A stage deed's stage term (sameDestructionDeed) parts nothing under the one-for-one match: a structure's stages are
-  logged once each, in order, so its play's stages pair with the frame's alike without it. After a replay, an Infected
-  ring arrival and a Horde ring arrival (a refused arrival due again) the play did not make are taken through the 275
-  reading's own writers (takeInfectedArrivals, takeHordeArrivals' ring) and pinned on that reading alone: the stagings that
-  reach them on a replay part the hulls (above), so no receipt holds them there.
+  logged once each, in order, so its play's stages pair with the frame's alike without it. After a replay, a Horde ring
+  arrival (a refused arrival due again) the play did not make is taken through the 275 reading's own writer
+  (takeHordeArrivals' ring), pinned on that reading alone: no staging reaches it on a replay. (Infected's ring take is
+  pinned by its count of arrivals, `windowReplay` [8], though the hulls part after it, above.)
 - A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
 - A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
   client's shell rows not checked.

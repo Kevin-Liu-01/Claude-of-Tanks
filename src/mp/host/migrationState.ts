@@ -1217,7 +1217,7 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
     try { view = recordOf(JSON.parse(shown)); } catch { view = null; }
     const shownScore = recordOf(view?.score);
     const score = { alpha: playScoreAtFrame(checkpoint.mode.score.alpha, shownScore?.alpha), bravo: playScoreAtFrame(checkpoint.mode.score.bravo, shownScore?.bravo) };
-    sim.modeController.takeView({ ...atFrame, score });
+    sim.modeController.takeView({ ...atFrame, score }, missed);
   }
   // the props the seat was told fell, and the destruction it was told of, that the play did not make (its own stand). An
   // entry is matched by what it did and where, one deed of the play's for one of the frame's (two craters dug on one spot
