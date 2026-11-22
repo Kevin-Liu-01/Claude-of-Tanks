@@ -11,7 +11,7 @@
 // once per locale and reused (no allocation per call).
 import { getLocale, t } from './i18n.ts';
 
-type StrikeSource = 'strafe' | 'bomb' | 'artillery';
+type StrikeSource = 'strafe' | 'bomb' | 'missile' | 'artillery';
 interface SourceIdentity {
   readonly source: 'ac130' | 'drone' | StrikeSource;
   /** the platform's name as the surfaces show it ("AC-130", "FPV drone", Air Support's "Strafing run") */
@@ -32,7 +32,7 @@ function identities(): void {
   identityLocale = locale;
   ac130 = Object.freeze({ source: 'ac130', label: t('flight.gunship'), icon: 'modeAc130' });
   drone = Object.freeze({ source: 'drone', label: t('hud.source.drone'), icon: 'modeDrone' });
-  for (const kind of ['strafe', 'bomb', 'artillery'] as const) {
+  for (const kind of ['strafe', 'bomb', 'missile', 'artillery'] as const) {
     strikes[kind] = Object.freeze({ source: kind, label: t(`airSupport.kind.${kind}`), icon: 'modeAirSupport' });
   }
 }
@@ -40,7 +40,7 @@ function identities(): void {
 /** The identity a kill or hit source shows, or null for the firing vehicle's own weapons. */
 export function killSourceIdentity(source: unknown): SourceIdentity | null {
   // the authority's sources (sim/aerialCombat.ts killSourceOf); any other wire value is the vehicle itself
-  if (source === 'strafe' || source === 'bomb' || source === 'artillery') { identities(); return strikes[source] ?? null; }
+  if (source === 'strafe' || source === 'bomb' || source === 'missile' || source === 'artillery') { identities(); return strikes[source] ?? null; }
   if (source !== 'ac130' && source !== 'drone') return null;
   identities();
   return source === 'ac130' ? ac130 : drone;

@@ -184,7 +184,7 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   cm.applyCtl(readPadCtl(JSON.stringify({ k: 'cmd', c: 'watchNext' })));
   cm.applyCtl(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick', n: 4 })));
   assert.deepEqual(commands, [['watchNext', undefined], ['strikePick', 4]], 'commands reach the command port');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick', n: 5 })), null, 'a call-in past the fifth is refused');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick', n: 6 })), null, 'a call-in past the sixth is refused');
   assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick' })), null, 'a pick names its call-in');
   assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'leaveBattle' })), null, 'an unknown command is refused');
   for (const c of PAD_COMMANDS) {

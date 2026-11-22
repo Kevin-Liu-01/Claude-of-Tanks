@@ -5990,7 +5990,7 @@
   "rules.line.airStrike.gunship": "AC-130 {cost} Pkt. · {warning} s Vorwarnzeit",
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "Luft",
-  "playMenu.matchMode.air_support.desc": "Halte die drei Sektoren und sammle im Kampf Unterstützungspunkte. Hebe dein Fernglas, um an einer markierten Position einen Aufklärungsflug, Artilleriebeschuss, einen Bordwaffenangriff, einen Präzisionsbombenabwurf oder einen AC-130-Kreisflug anzufordern. Vor jedem Angriff wird die betroffene Seite gewarnt.",
+  "playMenu.matchMode.air_support.desc": "Halte die drei Sektoren und sammle im Kampf Unterstützungspunkte. Hebe dein Fernglas, um an einer markierten Position einen Aufklärungsflug, Artilleriebeschuss, einen Bordwaffenangriff, einen Präzisionsbombenabwurf, einen Raketenangriff oder einen AC-130-Kreisflug anzufordern. Vor jedem Angriff wird die betroffene Seite gewarnt.",
   "docs.modes.win.air_support": "Wer zuerst {target} erreicht",
   "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine: M1A1 Abrams SA gegen T-72B3M obr. 2016",
   "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine: M1A2 Abrams SEPv3",

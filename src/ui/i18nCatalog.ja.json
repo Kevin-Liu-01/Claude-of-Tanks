@@ -5990,7 +5990,7 @@
   "rules.line.airStrike.gunship": "AC-130 {cost}ポイント · {warning}秒前に警告",
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "航空",
-  "playMenu.matchMode.air_support.desc": "3つのセクターを確保・維持し、戦闘で支援ポイントを獲得しましょう。双眼鏡を構えると、指定地点への偵察飛行、砲撃、機銃掃射、精密爆撃、AC-130旋回支援を要請できます。どの攻撃でも、標的となる陣営には事前に警告が出ます。",
+  "playMenu.matchMode.air_support.desc": "3つのセクターを確保・維持し、戦闘で支援ポイントを獲得しましょう。双眼鏡を構えると、指定地点への偵察飛行、砲撃、機銃掃射、精密爆撃、ミサイル攻撃、AC-130旋回支援を要請できます。どの攻撃でも、標的となる陣営には事前に警告が出ます。",
   "docs.modes.win.air_support": "先に{target}に到達",
   "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine：M1A1 Abrams SA 対 T-72B3M obr. 2016",
   "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine：M1A2 Abrams SEPv3",
