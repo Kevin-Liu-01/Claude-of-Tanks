@@ -23,6 +23,10 @@ export interface RubberSkirtShape {
   /** Armoured rubber-fabric panels (the T-80U's forward sections, under the T-84's Kontakt-5): stiff, so they barely lean,
    * twist or curl, and a block seated on the panel stays proud of it. */
   readonly stiff?:boolean;
+  /** The |x| no point of the run passes (the tank's published width; Main, 274: the sheets' kick took the T-80U X apron
+   * 8 cm a side past its 3.6 m). The whole run's kick shifts inboard by its worst overshoot, so the sheets keep their
+   * differences and their hang, and their feet tuck under the line instead of standing out from it. */
+  readonly outerLimit?:number;
 }
 
 /** One loft station: z and the cross-section as [|x|, y] points, counter-clockwise for the +x side. Points 0 and 5 are the
@@ -39,6 +43,18 @@ function hash(i:number,side:number,k:number):number{
 }
 
 export function rubberSkirtSheets(run:RubberSkirtShape,label='rubber skirt'):RubberSkirtSheet[]{
+  let sheets=lay(run,label,0);
+  if(run.outerLimit===undefined)return sheets;
+  // the kick's shift reaches the foot in full and the bead's top a little less, so settle it in a few passes
+  for(let off=0,pass=0;pass<4;pass++){
+    const over=Math.max(...sheets.flatMap(s=>s.stations.flatMap(st=>st.ring.map(p=>p[0]))))-run.outerLimit;
+    if(over<=1e-9)return sheets;
+    off+=over+1e-6;sheets=lay(run,label,off);
+  }
+  throw new RangeError(`${label}: the sheets cannot be kept inside |x| ${run.outerLimit}`);
+}
+
+function lay(run:RubberSkirtShape,label:string,off:number):RubberSkirtSheet[]{
   const {side,top,foot,x}=run,gap=run.gap??.028,t=run.thickness??.012;
   return run.sections.map(([za,zb],i)=>{
     const z0=za+gap/2,z1=zb-gap/2,len=z1-z0;
@@ -51,7 +67,7 @@ export function rubberSkirtSheets(run:RubberSkirtShape,label='rubber skirt'):Rub
     const edge=Math.min(.08,len/6),flareOut=run.stiff?.008:.018;
     const ring=(u:number):[number,number][]=>{
       const z=z0+len*u,d=Math.min(u,1-u)*len,flare=d<edge?flareOut*(1-d/edge)**2:0;
-      const yt=top(z),yb=foot(z)+drop+lift*(2*u-1)**2,kick=lean+twist*(u-.5)+belly*Math.sin(Math.PI*u)+flare;
+      const yt=top(z),yb=foot(z)+drop+lift*(2*u-1)**2,kick=lean+twist*(u-.5)+belly*Math.sin(Math.PI*u)+flare-off;
       // the inner face leaves the hang line square and swings out to the kicked foot (the kick grows with the square of the
       // depth, so a fitting on the sheet's upper band, such as a BV's Kontakt-1 row, stays on it); the bead stands proud
       const face=(y:number)=>x(z,y)+kick*((yt-y)/(yt-yb))**2,ybd=yb+BEAD_H;

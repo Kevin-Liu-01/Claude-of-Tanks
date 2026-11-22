@@ -66,14 +66,18 @@ function t72b1987(emit: Emit, side: number): void {
 // 274 (t80-skirts-274; Kevin, 2026-11-21: "fix these rubber sideskirts they look so bad"): the apron hangs as separate
 // leaning sheets with open joints (profiles/t80uXApron.ts), so the protection follows each sheet: per sheet and loft bay,
 // its bead face, the bead's shoulder and its outer face, from the same rings the builder lofts. The joints between the
-// sheets stay open air.
+// sheets stay open air. Every bay is the builder's own two triangles (sectionSolid's split), never a quad judged flat:
+// a small bead-shoulder bay can pass the emitter's planarity test and still sit microns off one plane.
 function t80(emit: Emit, side: number): void {
   for (const run of t80uXSkirtRuns(side)) rubberSkirtSheets(run,run.label).forEach((sheet,i)=>{
     const group=`t80-skirt-${side}-${run.label}-${i}`,at=(s: number,k: number): Point=>{
       const {z,ring}=sheet.stations[s];return [side*ring[k][0],ring[k][1],z];
     };
-    for (let s=1;s<sheet.stations.length;s++) for (const k of [1,2,3])
-      sideQuad(emit,side,at(s-1,k),at(s-1,k+1),at(s,k),at(s,k+1),group);
+    for (let s=1;s<sheet.stations.length;s++) for (const k of [1,2,3]) {
+      const lowA=at(s-1,k),topA=at(s-1,k+1),lowB=at(s,k),topB=at(s,k+1);
+      if (side>0) { emit([lowA,topA,topB],group); emit([lowA,topB,lowB],group); }
+      else { emit([lowB,topB,topA],group); emit([lowB,topA,lowA],group); }
+    }
   });
 }
 

@@ -26,7 +26,9 @@ export function t80uXApronX(z:number,y:number):number{
 /** The apron's two runs on one side: two loose rubber sheets aft, five stiff armoured panels forward (the T-84 seats its
  * Kontakt-5 on them). */
 export function t80uXSkirtRuns(side:number):readonly(RubberSkirtShape&{readonly label:string})[]{
-  const hang={side,top:(z:number)=>t80uXApronAt(z).top,foot:(z:number)=>t80uXApronAt(z).foot,x:t80uXApronX};
+  // the sheets stay inside the old apron's foot line, the tank's 3.6 m (Main, 274)
+  const hang={side,top:(z:number)=>t80uXApronAt(z).top,foot:(z:number)=>t80uXApronAt(z).foot,x:t80uXApronX,
+    outerLimit:T80U_X_APRON_X1};
   return [{...hang,label:'t80u-x-side-apron-rear',sections:skirtSections(-2.882,-1.22,2)},
     {...hang,label:'t80u-x-side-apron',sections:skirtSections(-1.22,2.886,5),stiff:true}];
 }
