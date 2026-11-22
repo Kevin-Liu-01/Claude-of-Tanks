@@ -53,7 +53,7 @@ Frame: hull metres, ground y 0, +Z forward, the hull's middle z 0.
 | 10 | Five upright blocks across the front: broad outer cheeks, narrower inner blocks with vent grids on their chamfer, the tall mantlet between them | 2A4 block cheeks either side of a slot | own five-block front |
 | 11 | Tall mantlet set back in its slot, the gun low in it in a thick collar | 2A4 mantlet | own mantlet |
 | 12 | GT3 L/51 in its thermal sleeve: thick root, fume extractor 0.86-1.55 m ahead of the face, slimmer fore sleeve, muzzle reference unit on top | 2A4's sleeved L/44 (10.06 m over the gun) | own GT3 tube (9.45 m over the gun) |
-| 13 | GS60 gunner's sight box at the roof's right front, round window forward, a smaller box outboard | 2A4's sight recess | own GS60 box |
+| 13 | GS60 gunner's sight box at the roof's right front, its broad rectangular window forward, a smaller box outboard | 2A4's sight recess | own GS60 box |
 | 14 | Commander's sunken cupola right of centre behind the sight, six periscopes, the CS60N head (the roof's tallest point, 2.80 m) | 2A4 cupola | own cupola and CS60N |
 | 15 | Loader's hatch left, two periscopes ahead of it, his FN MAG; the roof vent; the sensor mast behind the left inner block | 2A4 loader's station, MAG | own hatch, periscopes, mast; MAG kept |
 | 16 | Two banks of four 81 mm dischargers on the roof's side edges a third back from the face, behind their sheets | TTD kit on the 2A4 roof | the same kit on its own roof |
@@ -67,7 +67,7 @@ Frame: hull metres, ground y 0, +Z forward, the hull's middle z 0.
 - Dims: hull 7.72 → 7.78 m, over the gun 10.06 → 9.41 m, width 3.67 → 3.62 m, height 2.64 → 2.80 m (the CS60N head;
   TE's 2.99 m is reached by no photographed part).
 - Gun depression by yaw re-measured on the new hull (`tools/gun-depression-sweep.mjs`): -10 degrees over the front arc,
-  about -9 over the corner boxes and side louvres, about -1.7 over the raised engine deck astern.
+  about -9 over the corner boxes and side louvres, about -1.5 over the raised engine deck astern.
 - Unchanged: the gun record (105 mm, the Mk 2's rounds, reload, accuracy, aim time), tier III, hp 2,200, 58.3 t, mobility,
   and every plate's protection value.
 - The sim floor ledger (`docs/geometry-gate/sim-floors.json`) records the hull box's move: roof 1.80 → 1.92 m (the

@@ -149,13 +149,14 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   const onNose = (y: number): number => H.deck[6][0] + (H.deck[6][1] - y) / Math.tan(NOSE_SLOPE);
   for (const s of [-1, 1] as const) {
     const bx = s * (H.boxInnerX + H.skirtOutX) / 2, bw = H.skirtOutX - H.boxInnerX - 0.14;
-    // the corner box's louvre grille across the top of its face, its lamp under it (the parade photograph)
+    // the corner box's grille high on its face, about two-fifths of the face's width a little outboard of its middle,
+    // upright slats; its lamp under it (the parade and mobility photographs)
     const gy = H.deck[6][1] + H.boxRiseM - 0.10, gz = onNose(gy - H.boxRiseM) + 0.012;
-    P.add('hullDark', xform(box(bw, 0.012, 0.15), 0, 0, 0, NOSE_SLOPE, 0, 0), bx, gy, gz);
-    for (let k = 0; k < 6; k++) {
-      const f = (k - 2.5) * 0.024;
-      P.add('hullDetail', xform(box(bw - 0.02, 0.016, 0.012), 0, 0, 0, NOSE_SLOPE, 0, 0), bx, gy + f * Math.sin(NOSE_SLOPE) * -1 + 0.004,
-        gz + f * Math.cos(NOSE_SLOPE) + 0.004);
+    const gw = Math.min(0.34, bw * 0.55), gx = bx + s * 0.04;
+    P.add('hullDark', xform(box(gw, 0.012, 0.16), 0, 0, 0, NOSE_SLOPE, 0, 0), gx, gy, gz);
+    for (let k = 0; k < 8; k++) {
+      P.add('hullDetail', xform(box(0.016, 0.018, 0.15), 0, 0, 0, NOSE_SLOPE, 0, 0), gx + (k - 3.5) * (gw - 0.03) / 7,
+        gy + 0.004 * Math.cos(NOSE_SLOPE), gz + 0.004 * Math.sin(NOSE_SLOPE));
     }
     headlight(P, bx + s * 0.18, H.deck[7][1] + 0.02, H.noseZ + 0.02, 0, 0.045);
     // the towing lugs at the nose plate's foot
@@ -273,24 +274,24 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
 
   // ---------------------------------------------------------------- turret fittings --
   const roof = T.roofY;
-  // the GS60 gunner's sight in its box at the roof's right front, its round window forward under a hood, a smaller box
+  // the GS60 gunner's sight in its box at the roof's right front, its broad window forward under a hood, a smaller box
   // outboard of it (the head-on and three-quarter photographs)
   P.addEquipment('turret', box(0.44, 0.24, 0.40), -0.62, roof + 0.12, 0.56);
-  P.add('turretDark', cylZ(0.085, 0.02, seg), -0.62, roof + 0.13, 0.765);
-  P.add('turretGlass', cylZ(0.065, 0.012, seg), -0.62, roof + 0.13, 0.776);
+  P.add('turretDark', box(0.34, 0.15, 0.02), -0.62, roof + 0.13, 0.765);
+  P.add('turretGlass', box(0.30, 0.11, 0.012), -0.62, roof + 0.13, 0.776);
   P.add('turretDetail', box(0.46, 0.025, 0.12), -0.62, roof + 0.25, 0.73);
   P.addEquipment('turret', box(0.22, 0.17, 0.30), -0.98, roof + 0.085, 0.52);
   P.add('turretGlass', box(0.12, 0.06, 0.010), -0.98, roof + 0.10, 0.675);
   // the commander's sunken cupola behind it, six periscopes round it, the hatch on top; the CS60N's stabilised head on
   // the cupola's front, the roof's tallest point (the elevation's 2.80 m)
   const cx = -0.58, cz = -0.62, cr = 0.40;
-  P.addCupola('turret', cylY(cr, cr + 0.03, 0.06, P.q ? 28 : 18), cx, roof + 0.03, cz);
+  P.addCupola('turret', cylY(cr, cr + 0.04, 0.09, P.q ? 28 : 18), cx, roof + 0.045, cz);
   for (let k = 0; k < 6; k++) {
     const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
-    P.add('turretDetail', box(0.11, 0.07, 0.06), cx + Math.sin(a) * (cr - 0.02), roof + 0.085, cz + Math.cos(a) * (cr - 0.02), 0, a, 0);
-    P.add('turretGlass', box(0.08, 0.035, 0.010), cx + Math.sin(a) * (cr + 0.012), roof + 0.085, cz + Math.cos(a) * (cr + 0.012), 0, a, 0);
+    P.add('turretDetail', box(0.11, 0.07, 0.06), cx + Math.sin(a) * (cr - 0.02), roof + 0.125, cz + Math.cos(a) * (cr - 0.02), 0, a, 0);
+    P.add('turretGlass', box(0.08, 0.035, 0.010), cx + Math.sin(a) * (cr + 0.012), roof + 0.125, cz + Math.cos(a) * (cr + 0.012), 0, a, 0);
   }
-  P.addCupola('turret', cylY(cr - 0.08, cr - 0.06, 0.05, P.q ? 26 : 16), cx, roof + 0.085, cz);
+  P.addCupola('turret', cylY(cr - 0.08, cr - 0.06, 0.05, P.q ? 26 : 16), cx, roof + 0.10, cz);
   P.addEquipment('turret', cylY(0.11, 0.13, 0.08, P.q ? 18 : 12), cx, roof + 0.10, cz + 0.30);
   P.addEquipment('turret', box(0.30, 0.16, 0.32), cx, roof + 0.21, cz + 0.30);
   P.add('turretGlass', box(0.22, 0.09, 0.008), cx, roof + 0.22, cz + 0.30 + 0.162);
@@ -310,11 +311,11 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   mg.position.set(lx + 0.12, roof + 0.15, lz + 0.36);
   mg.rotation.y = -0.10;
   P.turretG.add(mg);
-  // the sensor mast behind the left inner block (the parade and mobility photographs), the ventilator astern
-  // its sensor head on top (the head reaches TE's 2.99 m)
-  P.add('turretDetail', cylY(0.032, 0.042, 0.34, 10), 0.34, roof + 0.17, 0.62);
-  P.add('turretDetail', cylY(0.075, 0.075, 0.09, 14), 0.34, roof + 0.385, 0.62);
-  P.add('turretDark', cylY(0.040, 0.075, 0.03, 14), 0.34, roof + 0.445, 0.62);
+  // the sensor mast behind the left inner block, its head about 0.6 m over the roof (the parade and mobility
+  // photographs); the ventilator astern
+  P.add('turretDetail', cylY(0.040, 0.050, 0.48, 10), 0.34, roof + 0.24, 0.62);
+  P.add('turretDetail', cylY(0.070, 0.070, 0.09, 14), 0.34, roof + 0.525, 0.62);
+  P.add('turretDark', cylY(0.040, 0.070, 0.03, 14), 0.34, roof + 0.585, 0.62);
   P.add('turret', cylY(0.10, 0.13, 0.05, 16), 0.12, roof + 0.02, -1.25);
   // the two banks of four 81 mm dischargers on the roof's side edges a third back from the face, mouths forward and
   // raised, splayed out, behind the armour sheet standing over each wall's top edge (TE: "two banks of four ... behind an
@@ -351,7 +352,7 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   P.addGunExtra(cylZ(0.165, 0.20, seg, 0.17), 0, 0, mFace + 0.08);
   // the 105 mm GT3: the thermal sleeve's thick root, the fume extractor, the slimmer fore sleeve with its bands, the muzzle
   // reference unit on top at the muzzle; the muzzle 4.02 m ahead of the trunnion
-  const len = T.barrelM, r0 = T.barrelRadiusM, ez0 = 1.38, ez1 = 2.07, r1 = 0.095;
+  const len = T.barrelM, r0 = T.barrelRadiusM, ez0 = 1.38, ez1 = 2.07, r1 = 0.104;
   P.add('gun', cylZ(r0, ez0 - mBack, seg), 0, 0, (ez0 + mBack) / 2);
   P.add('gunDark', cylZ(r0 + 0.004, 0.022, seg), 0, 0, 0.98);
   P.add('gun', cylZ(0.135, 0.06, seg, r0), 0, 0, ez0 + 0.03);
@@ -359,7 +360,7 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   P.add('gun', cylZ(r1 + 0.004, 0.06, seg, 0.135), 0, 0, ez1 - 0.03);
   P.add('gun', cylZ(r1 - 0.006, len - 0.14 - ez1, seg, r1), 0, 0, (ez1 + len - 0.14) / 2);
   for (const z of [2.75, 3.35]) P.add('gunDark', cylZ(r1 + 0.002, 0.02, seg), 0, 0, z);
-  P.add('gun', cylZ(0.088, 0.14, seg), 0, 0, len - 0.07);
+  P.add('gun', cylZ(0.096, 0.14, seg), 0, 0, len - 0.07);
   P.add('gun', box(0.06, 0.06, 0.10), 0, 0.12, len - 0.10);
   P.add('gunDark', cylZ(0.02, 0.012, 8), 0, 0.12, len - 0.045);
   muzzleBore(P, { z: len + 0.004, r: 0.0525 });
