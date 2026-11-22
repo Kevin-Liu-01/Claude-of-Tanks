@@ -99,10 +99,10 @@ export function createRespawnDial(mount: HTMLElement): RespawnDial {
 
 /**
  * Bottom centre: inside the kill cam's lower band (--kc-band) when a replay owns the screen, over the spectate bar while
- * a room's Horde wait follows an ally. Above the kill cam's layer (60) so its veil never hides it.
+ * a room's Horde wait follows an ally. Above the kill cam's layer (the shell's, over its 60) so its veil never hides it; under the menus.
  */
 const RESPAWN_DIAL_CSS = `
-.cot-respawn{position:fixed;z-index:61;left:50%;bottom:max(var(--s2),calc((var(--kc-band,8vh) - 40px) / 2));transform:translateX(-50%);
+.cot-respawn{position:fixed;z-index:var(--z-shell);left:50%;bottom:max(var(--s2),calc((var(--kc-band,8vh) - 40px) / 2));transform:translateX(-50%);
   display:flex;align-items:center;gap:var(--s2);height:40px;padding:0 var(--s3) 0 var(--s1);pointer-events:none;
   background:var(--hud-plate-strong);box-shadow:var(--ring-1);color:var(--ink-1);font-family:var(--font-ui);}
 .cot-respawn[hidden]{display:none;}
@@ -111,7 +111,7 @@ body:has(.cot-spec.show) .cot-respawn{bottom:calc(16px + 64px + var(--s2));}
 .cot-respawn .track{fill:none;stroke:var(--line-2);stroke-width:3;}
 .cot-respawn .arc{fill:none;stroke:var(--accent);stroke-width:3;}
 .cot-respawn[data-wait=wave] .arc{stroke:var(--ink-3);}
-.cot-respawn .k{font:700 var(--battle-fs-12)/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);}
+.cot-respawn .k{font:700 var(--battle-fs-12)/1 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-2);}
 .cot-respawn .n{min-width:1.2ch;font:700 var(--battle-fs-18)/1 var(--font-data);color:var(--accent-hi);text-align:right;}
 .cot-respawn .n[hidden]{display:none;}
 `;

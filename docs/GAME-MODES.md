@@ -16,12 +16,12 @@ rule the battle does not keep.
 
 | Mode | Objective | Ruleset (deviations from Standard) | Respawn | End condition |
 | --- | --- | --- | --- | --- |
-| Standard Battle | Destroy the opposing force | — | No | Elimination, or the 15:00 clock (draw) |
+| Standard Battle | Destroy the opposing force | — | No | Elimination (both sides wiped in one step: a draw), or the 15:00 clock (draw, solo and rooms alike) |
 | Capture the Flag | Carry the enemy flag to your own flag base, while your flag is home; the bases stand 320 m apart on the axis, in front of the spawns | flag carrier keeps full speed | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
-| Endless Horde | Survive rounds that grow every time, without a cap | +100 % hull for the humans, hostiles at 15 % of their own hull (+2 % a round to round 10, +6 % after) on bots one difficulty tier down that rush, unlimited rounds, four allied bots (co-op humans join alpha); round *w* fields round(6 + 3(*w* − 1) + 0.35(*w* − 1)²) hostiles — 6, 9, 13, 18, 24, 30, 37 …, more every round (every 5th a swarm, the law's total at 10 % hull trickling in twice as fast; every 4th a runner round, +25 % speed) — at most 16 alive at once (+1 a further human, cap 20) from a twenty-strong pool that trickles in every 1.5 s on a ring 320–440 m round the humans, never inside 150 m of one nor in a human's terrain sight; 8 s between rounds, 30 % repair for every survivor when a round is cleared, repair caches, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
-| Frontline Assault | Take three trench sectors in turn, then hold the last one | +35 % hull for the attack (the defenders field their own), unlimited rounds, three allied bots (back 30 s after a death), a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 3 / 4 / 5 defenders dug in on each sector's line from the start (out of the attack's reach and terrain sight) whose guns reload 1.35× slower, a two-tank counter-attack on a sector just taken, one more defender from the rear every 45 s while a sector is contested and its line short, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
+| Endless Horde | Survive rounds that grow every time, without a cap | +100 % hull for the humans, hostiles at 15 % of their own hull (+2 % a round to round 10, +6 % after) on bots one difficulty tier down that rush, unlimited rounds, four allied bots (co-op humans join alpha); round *w* fields round(6 + 3(*w* − 1) + 0.35(*w* − 1)²) hostiles — 6, 9, 13, 18, 24, 30, 37 …, more every round (every 5th a swarm, the law's total at 10 % hull trickling in twice as fast; every 4th a runner round, +25 % speed) — at most 16 alive at once (+1 a further human, cap 20) from a twenty-strong pool that trickles in every 1.5 s on a ring 320–440 m round the humans, never inside 150 m of one nor in a human's terrain sight; 8 s between rounds, 30 % repair for every survivor when a round is cleared, repair caches, no clock; the player arranges both sides | No (a room's fallen humans: the next wave) | The final human-controlled tank is destroyed (couch phone seats count as humans): the run's end, "Run over · wave N" |
+| Frontline Assault | Take three trench sectors in turn, then hold the last one | +35 % hull for the attack (the defenders field their own), unlimited rounds, three allied bots (back 30 s after a death), a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 3 / 4 / 5 defenders dug in on each sector's line from the start (out of the attack's reach and terrain sight) whose guns reload 1.35× slower, a two-tank counter-attack on a sector just taken, one more defender from the rear every 45 s while a sector is contested and its line short, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock (its own verdict, `assault_time`) |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock, unlimited rounds; repair caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed; unlimited rounds | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
 | Infected | Survive the outbreak, or convert every survivor | Survivors at 130 % hull; five initial infected at 20 % hull and 30 % more speed rise round the survivors (70–120 m out, out of sight where the ground allows) and rush them as a pack, gathering and firing on one survivor at a time; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 3:00 |
@@ -621,6 +621,34 @@ Regular-mode physics tightened with it (`sim/movement.ts`): a face steeper than 
 gravity against sliding friction instead of hovering on a zeroed drive; the yaw rate at speed is bounded by
 lateral grip (a ~46 m circle at 60 km/h, wider on soft ground and under low gravity); a parked hull holds its
 grade without the old few-cm/s creep; the landing contact is swept inside the step so nothing tunnels at 40 m/s.
+
+## Death, kill cam and respawn (death-flow-275, Kevin approved 2026-11-21)
+
+Every death goes death beat → kill cam → respawn, spectate or report, in one of three shapes picked by the time the
+mode gives back (`game/battleResultPresentationRuntime.ts deathShapeFor`):
+
+| Shape | Modes | What plays |
+| --- | --- | --- |
+| Full cam | no respawn: Standard, Realistic, Horde, Frontline, the Juggernaut's boss, AC-130 | a 2.15 s beat on the wreck, then the replay (approach, tracer, x-ray ≤ 5 s, the finale; 11 s at most), then the ally chase |
+| Quick cam | respawn ≥ 5 s: CTF, Zone, Mars, Drone, Air Support, Juggernaut hunters, Infected | a 1 s beat on the wreck, then the shot from the killer's firing pose, its flight and the hit, out by `min(respawn − 1.5, 5.5) s` |
+| Card only | respawn < 5 s: Turbo Ball, Gun Game, the range, training | the shot card over the live view of the wreck until the revive |
+
+- **The shot card** (`game/killcamShotCard.ts`): the killer's callsign (a room player's name) and flag, its tank and tier
+  or the call-in, the round as a weapon (`ui/hitEventFormat.ts weaponDisplayName`), the outcome and where it struck,
+  distance / armour / pen / damage (one damage figure, `hullPointsRemoved`), and the victim's silhouette with the hit.
+- **The respawn dial** (`ui/respawnDial.ts`): bottom centre, in the kill cam's lower band, reading the mode controller's
+  armed revive (`matchModes.ts respawnFor`, the viewer's mode state's `respawn` in a room) in whole seconds; "Back next
+  wave" for a room's Horde; "Infected · respawn in" once the outbreak took the player. Its own surface, not a notice.
+- **Leaving** a battle that keeps records before its verdict records a defeat (reason `left`); the Esc menu's Leave says
+  so. A room seat whose player left is driven by a bot after 30 s (`SEAT_BOT_GRACE_S`) and handed back on a rejoin.
+- **Scuttle**: hold Delete 3 s (`SCUTTLE_HOLD_S`) to destroy your own tank: the way out of a wedged or overturned hull or
+  an empty magazine. The kill is the enemy's that damaged it last within 15 s, else nobody's.
+- **Credit**: a fire's kill is the crew's that set it (a rack it cooks off is an ammo-rack kill); team and self kills never
+  count in any tally.
+- **Endings**: a verdict a kill decided (the Juggernaut down, the outbreak complete, the escort lost, the gun ladder, the
+  drone target) replays that kill under its own caption; a mode's own clock takes the time's-up beat. A room's battle
+  limit never pre-empts a mode that times itself nor clocks a mode without one (`rulesetClockLimitS`).
+  `src/game/deathFlowModes.selftest.mjs` holds every mode's row; `src/sim/deathRules.selftest.mjs` the rules.
 
 ## State machine
 
