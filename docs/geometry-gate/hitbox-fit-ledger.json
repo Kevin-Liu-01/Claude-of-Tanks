@@ -262,33 +262,6 @@
    "faces": 5,
    "deepestM": 0.442
   },
-  "strv103a": {
-   "faces": 6,
-   "deepestM": 0.339,
-   "accepted": {
-    "reason": "274 cross-head: geometry from strv103-x/vickers-mk1 predates the census; same class as the 417 ledgered cell bridges; follow-up owed to those lanes",
-    "by": "coordinator ruling, integrator 274.0",
-    "date": "2026-11-21"
-   }
-  },
-  "strv103e": {
-   "faces": 3,
-   "deepestM": 0.323,
-   "accepted": {
-    "reason": "274 cross-head: geometry from strv103-x/vickers-mk1 predates the census; same class as the 417 ledgered cell bridges; follow-up owed to those lanes",
-    "by": "coordinator ruling, integrator 274.0",
-    "date": "2026-11-21"
-   }
-  },
-  "strv152": {
-   "faces": 2,
-   "deepestM": 0.323,
-   "accepted": {
-    "reason": "274 cross-head: geometry from strv103-x/vickers-mk1 predates the census; same class as the 417 ledgered cell bridges; follow-up owed to those lanes",
-    "by": "coordinator ruling, integrator 274.0",
-    "date": "2026-11-21"
-   }
-  },
   "t64bv": {
    "faces": 0,
    "deepestM": 0,
@@ -557,15 +530,6 @@
   "ua_m2a3_bradley": {
    "faces": 1,
    "deepestM": 0.316
-  },
-  "udes03": {
-   "faces": 6,
-   "deepestM": 0.336,
-   "accepted": {
-    "reason": "274 cross-head: geometry from strv103-x/vickers-mk1 predates the census; same class as the 417 ledgered cell bridges; follow-up owed to those lanes",
-    "by": "coordinator ruling, integrator 274.0",
-    "date": "2026-11-21"
-   }
   },
   "upior": {
    "faces": 1,

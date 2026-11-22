@@ -44,11 +44,9 @@ const DATA_FIXES = Object.freeze({
 });
 
 /** Volumes outside their frame's armour envelope that are authored that way: data fixes, pinned. */
-const VOLUME_DATA_FIXES = Object.freeze({
-  'strv103a: gun': 'the casemate gun\'s box rises 0.51 m above the hull plates\' envelope',
-  'strv103b: gun': 'the casemate gun\'s box rises 0.44 m above the hull plates\' envelope',
-  'udes03: gun': 'the casemate gun\'s box rises 0.49 m above the hull plates\' envelope',
-});
+// (274: the S-tank family's casemate gun box, pinned here for the 103A, 103B and UDES 03, now lands on the drawn axis;
+// sweden.ts siegeArmor authors it in the pre-reconcile frame)
+const VOLUME_DATA_FIXES = Object.freeze({});
 /** module-visual-align-probe's TOL. */
 const VOLUME_TOL_M = 0.15;
 

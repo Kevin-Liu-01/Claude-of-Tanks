@@ -288,7 +288,9 @@ assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIAN
 // fender, none from the fleet cargo pools and none on the virtual turret rig.
 // (a stub spec: this receipt's module graph registers the base fleet only, and the 103A is a Swedish fleet row)
 const strvSpec = (id) => ({ id, nation: 'Sweden', era: 'cold-war', armor: { turretless: true } });
-for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs']], ['strv103b', ['camonet', 'jerry', 'bin', 'packs']]]) {
+// (274, owner 2026-11-20 "add all equipment and soldier stuf": the crew's cargo, the helmets, bedrolls and extinguisher)
+for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs', 'cargo', 'cargo', 'cargo']],
+  ['strv103b', ['tools', 'camonet', 'jerry', 'bin', 'packs', 'cargo', 'cargo']]]) {
   const manifest = decorManifestFor(strvSpec(id), () => 0.5);
   assert.deepEqual(manifest.map((row) => row.kit), kits, `${id}: its own field kit, in order`);
   assert.ok(manifest.every((row) => (row.p ?? 1) === 1 && (row.slot[0] === 'hullRoof' || row.slot[0] === 'fender')),

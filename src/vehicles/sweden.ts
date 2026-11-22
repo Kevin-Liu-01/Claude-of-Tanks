@@ -176,6 +176,12 @@ interface SiegeGunMount {
   axisY: number;
   muzzleZ: number;
   radiusM: number;
+  /** The drawn casemate (the anatomy receipt's hull box: its half-width, deck and length) the calibrated reconcile
+   * stretches this envelope's main plates onto; the interior boxes are authored in its frame (drawnBox). */
+  deckY: number;
+  halfW: number;
+  zMin: number;
+  zMax: number;
 }
 
 /** Combat envelope for the hull-aimed Swedish wedge. Every module remains in
@@ -197,6 +203,17 @@ function siegeArmor(
   // derived axis (0.73 of the roof height) sat ~0.5 m under it and the barrel ran 0.5-0.8 m past its mouth.
   const gunY = mount.axisY;
   const gunZ = hl * 0.54;
+  const toAuthoredY = (y: number): number => floor + (y - floor) * (roofY - floor) / (mount.deckY - floor);
+  // 274 (module-outside-share): the reconcile maps the main plates' box ([±bodyW, floor..roofY, -0.96 hl..bowZ]) onto
+  // the drawn casemate's, so an interior box drawn in the casemate's own frame is authored through the inverse map. The
+  // casemate is a T in section (profiles/strv103Hull.ts): the tub ±0.94 m from the 0.40 m belly to the 1.38 m seam, the
+  // body over the tracks out to ±1.68 m from the seam to the deck; the old full-width boxes from the 0.2 m floor hung
+  // 30-68 % into the track recesses.
+  const toAuthoredX = (x: number): number => x * bodyW / mount.halfW;
+  const toAuthoredZ = (z: number): number => -hl * 0.96 + (z - mount.zMin) * (bowZ + hl * 0.96) / (mount.zMax - mount.zMin);
+  const drawnBox = (name: Parameters<typeof moduleBox>[0], min: readonly [number, number, number], max: readonly [number, number, number]) =>
+    moduleBox(name, [toAuthoredX(min[0]), toAuthoredY(min[1]), toAuthoredZ(min[2])],
+      [toAuthoredX(max[0]), toAuthoredY(max[1]), toAuthoredZ(max[2])]);
   const plateRatings = (keMm: number, ceMm: number): PlateOptions => ({ keMm, ceMm });
   return {
     turretless: true,
@@ -235,18 +252,21 @@ function siegeArmor(
     ],
     turretPlates: [],
     modules: [
-      moduleBox('engine', [-bodyW * 0.92, floor, -hl * 0.93],
-        [bodyW * 0.92, roofY * 0.82, -hl * 0.48]),
-      moduleBox('fuelTank', [-bodyW * 0.90, floor, -hl * 0.45],
-        [bodyW * 0.90, roofY * 0.56, -hl * 0.18]),
-      moduleBox('ammoRack', [-bodyW * 0.86, floor, -hl * 0.14],
-        [bodyW * 0.86, roofY * 0.58, hl * 0.34]),
-      moduleBox('radio', [-bodyW * 0.82, roofY * 0.48, -hl * 0.13],
-        [-bodyW * 0.20, roofY * 0.87, hl * 0.30]),
+      // the twin front powerpack in the tub under the glacis, ahead of the crew (internalLayoutRegistry fixedAuto); the
+      // gun's magazine in the rear of the tub behind them, its ram loader derived from it; the fuel in the body over the
+      // magazine, sponson to sponson under the rear deck
+      drawnBox('engine', [-0.86, 0.56, 0.95], [0.86, 1.30, 2.15]),
+      drawnBox('fuelTank', [-1.56, 1.46, -2.30], [1.56, 1.80, -1.10]),
+      drawnBox('ammoRack', [-0.86, 0.90, -2.30], [0.86, 1.36, -1.10]),
+      // the radio sets in a sponson behind the crew, clear of the tub wall (finalize seats it on the layout's side)
+      drawnBox('radio', [-1.50, 1.42, -1.05], [-0.98, 1.80, -0.45]),
       moduleBox('optics', [bodyW * 0.18, roofY * 0.66, hl * 0.12],
         [bodyW * 0.78, roofY * 1.02, roofNoseZ]),
-      moduleBox('gun', [-0.22, gunY - 0.24, -hl * 0.08],
-        [0.22, gunY + 0.24, gunZ]),
+      // 274: the calibrated reconcile maps the hull frame from this envelope's roof (0.68 of the height) onto the drawn
+      // deck, so a box authored at the drawn axis rode 0.5-0.7 m up out of the hull (module-visual-align volume-out).
+      // The gun box is authored in the pre-stretch frame and lands on the drawn axis, 0.24 m either side.
+      moduleBox('gun', [-0.22, toAuthoredY(gunY - 0.24), -hl * 0.08],
+        [0.22, toAuthoredY(gunY + 0.24), gunZ]),
       moduleBox('trackL', [-hw, 0, -hl], [-bodyW * 0.86, trackTop, hl]),
       moduleBox('trackR', [bodyW * 0.86, 0, -hl], [hw, trackTop, hl]),
     ],
@@ -336,13 +356,13 @@ SWEDEN_SPECS.udes03.armor = siegeArmor(SWEDEN_SPECS.udes03.dims, {
   lowerPhysicalMm: 35, lowerKeMm: 65, lowerCeMm: 85,
   sideMm: 25, sideKeMm: 35, sideCeMm: 45,
   rearMm: 25, roofMm: 25, trackMm: 20,
-}, { axisY: 1.59, muzzleZ: 4.13, radiusM: 0.088 });
+}, { axisY: 1.59, muzzleZ: 4.13, radiusM: 0.088, deckY: 1.90, halfW: 1.80, zMin: -3.53, zMax: 3.52 });
 SWEDEN_SPECS.strv103a.armor = siegeArmor(SWEDEN_SPECS.strv103a.dims, {
   frontPhysicalMm: 65, frontKeMm: 180, frontCeMm: 240,
   lowerPhysicalMm: 55, lowerKeMm: 140, lowerCeMm: 180,
   sideMm: 40, sideKeMm: 55, sideCeMm: 70,
   rearMm: 35, roofMm: 35, trackMm: 25,
-}, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089 });
+}, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089, deckY: 1.90, halfW: 1.80, zMin: -3.502, zMax: 3.52 });
 enforceTurretlessArmor(SWEDEN_SPECS.udes03);
 enforceTurretlessArmor(SWEDEN_SPECS.strv103a);
 
@@ -372,7 +392,7 @@ if (strv103b) {
       sideMm: 50, sideKeMm: 65, sideCeMm: 90,
       rearMm: 40, roofMm: 40, trackMm: 30,
     // the shared family casemate (profiles/strv103Family.ts): the 103A's bore and muzzle
-    }, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089 }),
+    }, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089, deckY: 1.90, halfW: 1.815, zMin: -3.502, zMax: 3.52 }),
   });
   delete strv103b.community;
   strv103b.visual = {
@@ -417,7 +437,7 @@ strv103e.armor = siegeArmor(strv103e.dims, {
   lowerPhysicalMm: 120, lowerKeMm: 380, lowerCeMm: 520,
   sideMm: 80, sideKeMm: 120, sideCeMm: 200,
   rearMm: 40, roofMm: 45, trackMm: 30,
-}, { axisY: 1.59, muzzleZ: 5.70, radiusM: 0.092 });
+}, { axisY: 1.59, muzzleZ: 5.70, radiusM: 0.092, deckY: 1.90, halfW: 1.90, zMin: -3.502, zMax: 3.68 });
 strv103e.visual = {
   ...strv103e.visual,
   scheme: 'splinter', base: '#3b4a3a', weather: '#4f5a49',
@@ -463,7 +483,7 @@ strv152.armor = siegeArmor(strv152.dims, {
   lowerPhysicalMm: 130, lowerKeMm: 420, lowerCeMm: 560,
   sideMm: 85, sideKeMm: 130, sideCeMm: 210,
   rearMm: 45, roofMm: 45, trackMm: 30,
-}, { axisY: 1.70, muzzleZ: 6.30, radiusM: 0.118 });
+}, { axisY: 1.70, muzzleZ: 6.30, radiusM: 0.118, deckY: 1.98, halfW: 1.90, zMin: -4.13, zMax: 3.68 });
 strv152.visual = {
   ...strv152.visual,
   scheme: 'splinter', base: '#3a4838', weather: '#4e5847',
