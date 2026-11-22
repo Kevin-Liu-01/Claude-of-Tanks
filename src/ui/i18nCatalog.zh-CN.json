@@ -3877,6 +3877,8 @@
   "camoPattern.sig_vt4a1_baihu": "白虎沙漠数码迷彩",
   "camoPattern.sig_t72b3_zhuque": "朱雀赤土迷彩",
   "camoPattern.sig_t72b3m_xuanwu": "玄武夜间数码迷彩",
+  "camoPattern.sig_bm_oplot_m": "堡垒-M 乌克兰数码迷彩",
+  "camoPattern.sig_bm_oplot_t": "堡垒-T 乌克兰三色迷彩",
   "playMenu.brain.heading": "对手大脑",
   "playMenu.brain.sub": "单人战斗中由谁指挥机器人。所有模式共用。",
   "playMenu.brain.classic": "经典",
