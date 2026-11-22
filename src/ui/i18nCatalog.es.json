@@ -5982,6 +5982,7 @@
   "airSupport.incoming.missile": "Fijación de misil",
   "airSupport.incoming.gunship": "Avión artillado sobre la zona",
   "airSupport.incoming.now": "AHORA",
+  "airSupport.downed": "Aeronave derribada",
   "rules.line.airStrike.recon": "Reconocimiento {cost} pts · aviso con {warning} s de antelación",
   "rules.line.airStrike.artillery": "Artillería {cost} pts · aviso con {warning} s de antelación",
   "rules.line.airStrike.strafe": "Pasada de ametrallamiento {cost} pts · aviso con {warning} s de antelación",
