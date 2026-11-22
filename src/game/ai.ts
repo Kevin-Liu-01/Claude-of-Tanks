@@ -81,10 +81,12 @@ type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
 /** Who wrote a controller's waypoints (audit M7; see claimWaypoints). */
 type RouteOwner = 'none' | 'patrol' | 'route' | 'destination' | 'sector' | 'search' | 'level';
+const ROUTE_OWNERS: readonly unknown[] = ['none', 'patrol', 'route', 'destination', 'sector', 'search', 'level'];
 /**
  * A bot's way as a migrated host's brain takes it up (gaps 274, G3; migrationState.ts captureEntityExtras and
  * applyResumeState): the waypoints and their cursor with whose they are (a mission's destination, an integration's own
- * list or the patrol loop; a search, sector or level leg carries evidence of its own and is planned afresh), where the
+ * list, the patrol loop, a search, sector or level leg; 276: those three were planned afresh, and with no mission to send
+ * them on a match's bots parted by a hundred metres; a brain holding none holds none on the new host), where the
  * hull stood when they were read, the mission's destination and how long before its route was planned, and the progress
  * watchdog on the leg it drives (its goal, best distance and the seconds without progress). JSON-safe: a distance never
  * measured is null. A fresh brain planned afresh from the hull and re-planned 4 s of watchdog later than the old one
@@ -7526,7 +7528,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * part of its way, and every keyframe carries the list to every peer.
    */
   function captureDrive(): BotDrive {
-    const carried = routeOwner === 'destination' || routeOwner === 'route' || routeOwner === 'patrol';
+    // every owner's list (276: a search, sector or level leg too, which a new brain planned afresh and parted on)
+    const carried = routeOwner !== 'none';
     const start = !carried || loopWaypoints ? 0 : Math.min(wpIndex, Math.max(0, waypoints.length - 1));
     const st = entity.state;
     return {
@@ -7586,7 +7589,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     const way = Array.isArray(drive.way) ? drive.way : [];
     const owner = drive.owner;
-    if ((owner !== 'destination' && owner !== 'route' && owner !== 'patrol') || !way.length || !way.every((point) => finiteAll(point, 2))
+    // the mission's destination and the age of its route, whatever list the brain drives (276: a bot searching between
+    // pushes still holds its last mission's, and its next push to the same place keeps the route until the old host's
+    // re-plan would fall)
+    const mission = drive.mission;
+    const takeMission = (): void => {
+      if (!finiteAll(mission, 3)) return;
+      missionRouteX = mission![0]; missionRouteZ = mission![1]; missionRouteAtS = nowS - Math.max(0, mission![2]) - since;
+      missionRouteHasEnd = drive.end === true;
+    };
+    // a brain that held no list holds none here either (276: the new brain kept its construction's opening route, and in a
+    // match with no mission to send them on every bot drove it again)
+    if (owner === 'none' && !way.length) { claimWaypoints('none', false); takeMission(); return; }
+    if (!ROUTE_OWNERS.includes(owner) || owner === 'none' || !way.length || !way.every((point) => finiteAll(point, 2))
       || !finiteAll(drive.from, 4)) return;
     // the brain's own list, kept should the hull lie off the old host's
     const kept = { owner: routeOwner, loop: loopWaypoints, planned: waypointsPlanned, at: wpIndex, points: waypoints.map((point) => ({ x: point.x, z: point.z })) };
@@ -7597,12 +7612,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // where the hull stood at the capture is where its way starts (hullOnItsWay reads it as a park's start)
     [parkHullX, parkHullY, parkHullZ, parkHullYaw] = drive.from;
     if (hullOnItsWay()) {
-      // the mission's route is this list: a push to its destination keeps it until the old host's re-plan would fall
-      const mission = drive.mission;
-      if (owner === 'destination' && finiteAll(mission, 3)) {
-        missionRouteX = mission![0]; missionRouteZ = mission![1]; missionRouteAtS = nowS - Math.max(0, mission![2]) - since;
-        missionRouteHasEnd = drive.end === true;
-      }
+      // the mission's route (this list, for a destination): a push to its destination keeps it until the old host's
+      // re-plan would fall
+      takeMission();
       return;
     }
     claimWaypoints(kept.owner, kept.loop);

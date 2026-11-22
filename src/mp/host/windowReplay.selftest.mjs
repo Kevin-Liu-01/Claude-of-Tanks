@@ -11,9 +11,10 @@
 //     the seat's hull drives on from it on its held command (applied at the frame instead, it stood where the row was).
 //     [2b] the seat's held command holds its trigger off: a seat that pressed fire as the keyframe was sealed fires no
 //     round in the play.
-// [3] the fight from the rows: what another hand did in the window (a seat's shell the play never fired: a hull's hp cut,
-//     one destroyed; the seat's own shot) is the rows' on the new host: the hp, the life (the mode takes the death on its
-//     first step), the shooter's ammunition and reload.
+// [3] the fight from the rows: what another hand did in the window (a seat's shell the play never fired: a hull's hp cut
+//     and a reactive plate spent, one destroyed and its turret thrown; the seat's own shot) is the rows' on the new host:
+//     the hp, the plate, the life (the mode takes the death on its first step), the thrown turret, the shooter's
+//     ammunition and reload.
 // [4] a life the play took that the rows show alive (a fire the old host saw put out): the hull stands alive with the
 //     row's hp, and the mode adopts it on its first step (no respawn due).
 // [5] the mode as the seat's frame shows it: a flag the seat's hull lifted in the window, which the play never reached,
@@ -34,11 +35,12 @@ import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 let failures = 0;
 const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { failures++; console.error(`FAIL  ${label}`); } };
 const spec = 'm1a1_abrams_hc';
-await ensureAuthorityFleet([spec]);
+// (b-0 a T-90AM: reactive plates a row shows spent)
+await ensureAuthorityFleet([spec, 't90am']);
 const mode = 'capture_the_flag';
 const seats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
 const bots = [...[0, 1].map((i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
-  ...[0, 1, 2].map((i) => ({ playerId: `b-${i}`, name: `B${i}`, team: 'bravo', specId: spec }))];
+  ...[0, 1, 2].map((i) => ({ playerId: `b-${i}`, name: `B${i}`, team: 'bravo', specId: i === 0 ? 't90am' : spec }))];
 /** Flat ground and a row of crushable fences far off the field (migrationState.selftest's), one world per host. */
 const makeWorld = () => {
   const obstacles = Array.from({ length: 12 }, (_, index) => ({ min: [900 + index * 3, 0, 900], max: [901 + index * 3, 2, 901], crushable: true, kind: 'fence', crushed: false, shape2: null }));
@@ -171,7 +173,10 @@ console.log('[2b] a seat holding its trigger at the keyframe fires nothing in th
     // a step with the trigger held (its round leaves before the keyframe), so the hull's command holds it when sealed
     inputs.set('h0', seatInput({ throttle: 0, steer: 0, brake: true, fire: true, fireIntentSeq: 7 }));
     old.authority.step({ dt: 1 / 60, inputs }); old.authority.afterEventBroadcast();
-    triggerAtKey = old.authority.entityById.get('h0').input.fire === true;
+    const h0 = old.authority.entityById.get('h0');
+    triggerAtKey = h0.input.fire === true;
+    // its gun nearly loaded again: a trigger held through the play would fire within the window
+    h0.combat.reload.t = Math.min(h0.combat.reload.t, 0.1);
   }, during: (old, k) => { if (k === 1) inputs.set('h0', seatInput({ throttle: 0, steer: 0, brake: true })); } });
   inputs.delete('h0');
   const { fresh } = resumeOf(staged);
@@ -187,8 +192,15 @@ console.log('[3] the fight from the rows');
     const sim = old.authority;
     if (k === 2) inputs.set('h0', seatInput({ fire: true, fireIntentSeq: 1 }));
     if (k === 3) inputs.set('h0', seatInput());
-    // another hand's shell (a seat's the play never fired): one hull's hp cut, another destroyed
-    if (k === 5) { sim.entityById.get('b-0').combat.hp -= 300; const b1 = sim.entityById.get('b-1').combat; b1.hp = 0; b1.destroyed = true; }
+    // another hand's shell (a seat's the play never fired): one hull's hp cut and a reactive plate spent, another destroyed
+    // and its turret thrown
+    if (k === 5) {
+      const b0 = sim.entityById.get('b-0').combat;
+      b0.hp -= 300; (b0.eraSpent ??= new Set()).add('glacis_era_L');
+      const b1 = sim.entityById.get('b-1'); b1.combat.hp = 0; b1.combat.destroyed = true;
+      const p = b1.state.pos;
+      sim.restoreWreckTurret('b-1', { x: p.x + 2, y: p.y + 1.5, z: p.z, qx: 0, qy: 0, qz: 0, qw: 1, asleep: false });
+    }
   } });
   const { fresh, applied } = resumeOf(staged);
   const old = staged.old.authority, sim = fresh.authority;
@@ -198,6 +210,11 @@ console.log('[3] the fight from the rows');
   const h0 = sim.entityById.get('h0').combat, h0Row = rowOf('h0');
   ok(h0.ammo[0] === h0Row.ammo0 && h0Row.ammo0 < old.entityById.get('h0').combat.ammo[0] + 1 && Math.abs(h0.reload.t - dequantizeReloadS(h0Row.reload)) < 1e-9 && h0Row.reload > 0,
     `the seat's own shot: its ammunition (${h0.ammo[0]}) and its reload (${h0.reload.t.toFixed(3)} s left) are the row's`);
+  ok(sim.entityById.get('b-0').combat.eraSpent?.has('glacis_era_L') && rowOf('b-0').eraSpent.length > 0, `its reactive plate the row shows spent is spent `
+    + `(${[...sim.entityById.get('b-0').combat.eraSpent ?? []].join(', ')})`);
+  const thrown = rowOf('b-1').wreckBody, body = sim.entityById.get('b-1')._wreckTurret;
+  ok(!!thrown && !!body && Math.abs(body[0] - thrown.x / 1000) < 0.002, `and the hull it destroyed has its turret thrown where the row has it `
+    + `(${body ? body[0].toFixed(2) : 'none'} against ${thrown ? (thrown.x / 1000).toFixed(2) : 'none'})`);
   stepBoth(staged.old, fresh);
   const b1 = sim.entityById.get('b-1'), b1Old = old.entityById.get('b-1');
   ok(b1.combat.destroyed && b1.modeLife === 'down' && b1Old.modeLife === 'down', `the hull it destroyed is down, and the mode took the death on its first step `
