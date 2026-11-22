@@ -98,6 +98,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/strikeRuns.selftest.mjs',
     // 2026-11-21 (air-support-275): the strafing run bites: a light vehicle in the lane loses half its hull, an MBT its deck
     'src/sim/strafeEffect.selftest.mjs',
+    // 2026-11-21 (air-support-275): wire 13's u32 action bits carry the Maverick run's press from a guest to the host
+    'src/mp/host/strikeMissileWire.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',

@@ -5986,6 +5986,7 @@
   "airSupport.incoming.missile": "导弹锁定",
   "airSupport.incoming.gunship": "炮艇机临空",
   "airSupport.incoming.now": "现在",
+  "airSupport.downed": "击落敌机",
   "rules.line.airStrike.recon": "侦察 {cost} 点 · 预警 {warning} 秒",
   "rules.line.airStrike.artillery": "炮火 {cost} 点 · 预警 {warning} 秒",
   "rules.line.airStrike.strafe": "扫射 {cost} 点 · 预警 {warning} 秒",

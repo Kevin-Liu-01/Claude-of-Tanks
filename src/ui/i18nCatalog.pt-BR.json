@@ -5968,6 +5968,7 @@
   "airSupport.incoming.missile": "Travamento de míssil",
   "airSupport.incoming.gunship": "Aeronave de ataque sobre a área",
   "airSupport.incoming.now": "AGORA",
+  "airSupport.downed": "Aeronave abatida",
   "rules.line.airStrike.recon": "Reconhecimento {cost} pts · aviso com {warning} s de antecedência",
   "rules.line.airStrike.artillery": "Artilharia {cost} pts · aviso com {warning} s de antecedência",
   "rules.line.airStrike.strafe": "Ataque de metralhamento {cost} pts · aviso com {warning} s de antecedência",

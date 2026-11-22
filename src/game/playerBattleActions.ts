@@ -234,7 +234,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const blocker = strikes.blocker(airView(), kind, markRangeM(player));
     const pressed = strikeView.order.press(game.timeS, kind, blocker);
     if (pressed === 'busy') return;
-    if (pressed === 'denied') { bus.emit('ui:strikeDenied', { kind, reason: blocker }); return; }
+    if (pressed === 'denied') {
+      bus.emit('ui:strikeDenied', { kind, reason: blocker });
+      // (air-support-275) the refusal's notice: the event lane's P1, your action answered (airSupportHud.ts)
+      bus.emit('ui:strikeRefusal', { kind, reason: blocker });
+      return;
+    }
     if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
     else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | strikes.bit(kind);
   });
@@ -250,6 +255,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = game.player;
     if (!player || refusal?.id !== player.id || !strikes.kinds.includes(refusal.kind as AirStrikeKind)) return;
     strikeView.order.refused(game.timeS, refusal.kind as AirStrikeKind, String(refusal.reason) as StrikeRefusal);
+    bus.emit('ui:strikeRefusal', { kind: refusal.kind, reason: refusal.reason });
+  });
+  // (air-support-275) an aircraft our crew brought down: the event lane's P1 notice (airSupportHud.ts)
+  listen('mode:aircraft_down', (payload) => {
+    const down = payload as { by?: RuntimeValue; kind?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || down?.by !== player.id || !strikes.kinds.includes(down.kind as AirStrikeKind)) return;
+    bus.emit('ui:aircraftDowned', { kind: down.kind });
   });
   onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));
   onAction('fire', () => { if (strikeView.open) bus.emit('ui:strikeCall', {}); });

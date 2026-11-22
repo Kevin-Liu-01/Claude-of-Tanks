@@ -5968,6 +5968,7 @@
   "airSupport.incoming.missile": "ミサイルロック",
   "airSupport.incoming.gunship": "上空にガンシップ",
   "airSupport.incoming.now": "今すぐ",
+  "airSupport.downed": "敵機撃墜",
   "rules.line.airStrike.recon": "偵察 {cost}ポイント · {warning}秒前に警告",
   "rules.line.airStrike.artillery": "砲撃 {cost}ポイント · {warning}秒前に警告",
   "rules.line.airStrike.strafe": "機銃掃射 {cost}ポイント · {warning}秒前に警告",

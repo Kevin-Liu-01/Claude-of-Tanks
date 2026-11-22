@@ -5968,6 +5968,7 @@
   "airSupport.incoming.missile": "Захват ракетой",
   "airSupport.incoming.gunship": "Самолёт огневой поддержки над вами",
   "airSupport.incoming.now": "СЕЙЧАС",
+  "airSupport.downed": "Самолёт сбит",
   "rules.line.airStrike.recon": "Разведка: {cost} очк. · предупреждение за {warning} с",
   "rules.line.airStrike.artillery": "Артиллерия: {cost} очк. · предупреждение за {warning} с",
   "rules.line.airStrike.strafe": "Штурмовой заход: {cost} очк. · предупреждение за {warning} с",

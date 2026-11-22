@@ -5968,6 +5968,7 @@
   "airSupport.incoming.missile": "Raketenerfassung",
   "airSupport.incoming.gunship": "Bodenkampfflugzeug über uns",
   "airSupport.incoming.now": "JETZT",
+  "airSupport.downed": "Flugzeug abgeschossen",
   "rules.line.airStrike.recon": "Aufklärung {cost} Pkt. · {warning} s Vorwarnzeit",
   "rules.line.airStrike.artillery": "Artillerie {cost} Pkt. · {warning} s Vorwarnzeit",
   "rules.line.airStrike.strafe": "Bordwaffenangriff {cost} Pkt. · {warning} s Vorwarnzeit",
