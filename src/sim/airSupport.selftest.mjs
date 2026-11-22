@@ -124,7 +124,7 @@ function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, s
       // improve-271 plan 007: a host change in the middle of the run fires every round exactly once across the seam,
       // from a checkpoint with the round counts and from one an older host sealed without them
       const strike = air.strikes.find((s) => s.kind === kind);
-      while (!(strike.fired > 0 && strike.fired < R[kind].rounds)) tick(1);
+      while (!(strike.fired > 0 && strike.fired < (R[kind].rounds ?? R[kind].missiles))) tick(1);
       const before = log.filter((e) => e.type === 'mode_strike_round' && e.strikeId === strike.id).length;
       const checkpoint = JSON.parse(JSON.stringify(sim.captureModeCheckpoint()));
       const legacy = JSON.parse(JSON.stringify(checkpoint));
@@ -248,6 +248,12 @@ run({ migrateAt: 'bomb' });
 {
   const { seam } = run({ splitAt: 'strafe' });
   assert.deepEqual(seam, [R.strafe.rounds, R.strafe.rounds], `a strafing run split by a host change fires ${R.strafe.rounds} rounds (${seam})`);
+}
+// (air-support-275) a Maverick run carries across a host change, and one split mid-ripple fires each missile once
+run({ migrateAt: 'missile' });
+{
+  const { seam } = run({ splitAt: 'missile' });
+  assert.deepEqual(seam, [R.missile.missiles, R.missile.missiles], `a Maverick run split by a host change fires ${R.missile.missiles} missiles (${seam})`);
 }
 
 // bots: an enemy bot with points calls on the caller it spots, and a bot inside a bomb's footprint evades

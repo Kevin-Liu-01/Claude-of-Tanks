@@ -5982,6 +5982,7 @@
   "airSupport.incoming.missile": "Missile lock",
   "airSupport.incoming.gunship": "Gunship overhead",
   "airSupport.incoming.now": "NOW",
+  "airSupport.downed": "Aircraft down",
   "rules.line.airStrike.recon": "Recon {cost} pts · {warning} s warning",
   "rules.line.airStrike.artillery": "Artillery {cost} pts · {warning} s warning",
   "rules.line.airStrike.strafe": "Strafing run {cost} pts · {warning} s warning",

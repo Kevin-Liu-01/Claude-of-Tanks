@@ -172,6 +172,23 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
       durationMs: null, dismissible: false, priority: 3, className: 'cot-air-incoming' });
   }
 
+  // ---- the events (notices-audit-275's ladder: P1, your action answered; 2.4 s, repeats coalesce): a refused call-in
+  // (sound-only before) and an aircraft our crew brought down
+  const isKind = (kind: unknown): kind is AirStrikeKind => AIR_STRIKE_KINDS.includes(kind as AirStrikeKind);
+  bus.on('ui:strikeRefusal', (payload) => {
+    const { kind, reason } = (payload ?? {}) as { kind?: unknown; reason?: unknown };
+    if (!isKind(kind)) return;
+    const plate = PLATE_STATE[String(reason) as StrikeOrderRefusal] ?? 'denied';
+    notices.show({ severity: 'warning', text: t(`airSupport.state.${plate}`), detail: t(`airSupport.kind.${kind}`),
+      durationMs: 2400, priority: 1, dedupeKey: `cot-air-refused-${plate}`, className: 'cot-air-refused' });
+  });
+  bus.on('ui:aircraftDowned', (payload) => {
+    const kind = (payload as { kind?: unknown } | null)?.kind;
+    if (!isKind(kind)) return;
+    notices.show({ severity: 'success', text: t('airSupport.downed'), detail: t(`airSupport.kind.${kind}`),
+      durationMs: 2400, priority: 1, dedupeKey: 'cot-air-downed', className: 'cot-air-downed' });
+  });
+
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
   bus.on('ui:strikeView', (payload) => {
     const open = !!(payload as { open?: boolean } | null)?.open;
