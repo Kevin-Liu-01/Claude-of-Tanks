@@ -33,7 +33,7 @@ export const GEAR_LOD_RETURN_M = 81;
 export const FAR_LOD_PARKED_LAYER = 27;
 /** The far hull's clustering cell (m): a quarter of a pixel at FAR_LOD_ENTER_M on a 900-line, 55-degree view; a 9 cm cell
  * collapsed thin strips (a Merkava's skirt rubber) that still draw a line of pixels there. */
-const FAR_HULL_CELL_M = 0.05;
+export const FAR_HULL_CELL_M = 0.05;
 /** (perf-256) A long, thin part (a barrel, a rail, an aerial mast: its longest side at least this many cells) clusters
  * on its own at a cell an eighth of its cross-section, so its section keeps its roundness and its shading along the
  * length (a 5 cm cell turned a T-90M's 12 cm barrel into a few-vertex prism, banding its camouflage); its triangles are
@@ -120,7 +120,7 @@ export function clusterGeometry(source: THREE.BufferGeometry, cellM: number): TH
 
 /** The cell a long, thin part clusters at on its own (an eighth of its cross-section, its middle extent), or null for
  * every other part, which clusters with its group at FAR_HULL_CELL_M. */
-function thinPartCell(mesh: THREE.Mesh): number | null {
+export function thinPartCell(mesh: THREE.Mesh): number | null {
   const geometry = mesh.geometry;
   if (!geometry.boundingBox) geometry.computeBoundingBox();
   const box = geometry.boundingBox!;
@@ -168,7 +168,7 @@ function layoutOf(geometry: THREE.BufferGeometry): string | null {
  * on the level each LOD above it shows at FAR_LOD_RETURN_M (the LODs switch at render time, so a build's levels all
  * stand visible: the 150 m greeble tier would otherwise join the far hull and stand out again).
  */
-function drawnUnder(object: THREE.Object3D, root: THREE.Object3D): boolean {
+export function drawnUnder(object: THREE.Object3D, root: THREE.Object3D): boolean {
   if (!object.layers.isEnabled(0)) return false;
   for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     // (250) the vehicle's own visibility (setVisible: spotting) is not its far detail's: an unspotted enemy prepares its
