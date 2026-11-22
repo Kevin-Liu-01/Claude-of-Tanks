@@ -1351,6 +1351,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     speed: spec.topSpeedKmh, hpt: spec.enginePowerHp / spec.weightTons, hp: spec.hp,
     turret: spec.turretTraverseDegS * turretMult,
   });
+  /**
+   * The rounds a type's tile carries (owner 2026-11-22: "in stats overview, needs to show number of ammunition per ammo
+   * type in the rows"): shellAmmunitionCapacity, the count the battle HUD's slot starts each life with (sim/damage
+   * createAmmunitionState) and the dossier's carried line reads, missiles and clip-fed rounds included. A rack glyph and
+   * the figure on the tile's head, its words in the hover tip, so a four-type gun still fits a phone row.
+   */
+  const ammoCount = (shell: GarageShellSpec): string => {
+    const rounds = shellAmmunitionCapacity(shell);
+    return `<span class="ct" data-tip="${escapeHtmlAttribute(t('garage.dossier.shell.carried', { n: rounds }))}">` +
+      `${uiIconSVG('ammoRack', 14)}<span class="num">${rounds}</span></span>`;
+  };
   function overviewSection(spec: GarageTankSpec, eqM: ReturnType<typeof computeEquipMults>,
     shells: readonly GarageShellSpec[]): string {
     const group = statGroupOf(spec);
@@ -1391,7 +1402,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       row('engine', t('garage.dossier.stat.hpt'), 'hpt', 'hp/t', 1) +
       row('shield', t('garage.dossier.stat.hp'), 'hp', 'hp', 0) +
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
-      `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
+      `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">` +
+        `<span class="hd">${shellIconSVG(shell.type, 28)}${ammoCount(shell)}</span>` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
         `<span class="num" data-tip="${t('garage.dossier.stat.damage')}">${shell.dmg}<small>hp</small></span></span></div>`).join('')}</div>` +
       // a folded layout shows three of the rows; this opens the whole dossier
@@ -3309,11 +3321,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const reload = hasOwnReload
         ? t('garage.hotspot.reload', { value: shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0) ?? '' })
         : '';
-      const inventory = t('garage.dossier.shell.carried', { n: shellAmmunitionCapacity(shell) });
-      const detail = [inventory, reload].filter(Boolean).join(' &middot; ');
+      // the rounds it carries (owner 2026-11-22: "number of ammunition per ammo type in the rows"): a column of their own
+      // where the readout docks (a tight readout hides the small line); the phone's sheet has no width for a fifth column,
+      // so there the count stays on the small line, which it never hides (garage.css)
+      const rounds = shellAmmunitionCapacity(shell);
+      const detail = `<span class="cr">${t('garage.dossier.shell.carried', { n: rounds })}</span>` +
+        (reload ? `<span class="rl">${reload}</span>` : '');
       return `<div class="shellrow" style="--shell-color:${color}">` +
         `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shellTypeLabel(shell.type)}</span></span>` +
         `<span class="nm">${shell.name}<small>${detail}</small></span>` +
+        `<span class="shellmetric shellcount" data-tip="${escapeHtmlAttribute(t('garage.dossier.shell.carried', { n: rounds }))}">` +
+        `<b class="num">${rounds}</b></span>` +
         `<span class="shellmetric"><b class="num">${penetration}</b>mm</span>` +
         `<span class="shellmetric"><b class="num">${shell.dmg}</b>hp</span></div>`;
     }).join('');
@@ -3719,7 +3737,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       `</div></section>` +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), t('garage.dossier.ammunition.types', { count: shells.length }), 'Ammunition')}` +
-      `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
+      `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span>` +
+      `<span class="shellcount" role="img" aria-label="${escapeHtmlAttribute(t('garage.deploy.rule.ammo'))}" data-tip="${escapeHtmlAttribute(t('garage.deploy.rule.ammo'))}">` +
+      `${uiIconSVG('ammoRack', 14)}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +

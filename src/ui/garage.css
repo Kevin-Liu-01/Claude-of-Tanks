@@ -323,11 +323,14 @@ body[data-cot-panels='persistent'] .cot-garage .srow .sicon svg{width:13px;heigh
 body[data-cot-panels='persistent'] .cot-garage .srow .lr{display:contents}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr>span{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.15;color:var(--ink-3)}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-top:2px;font-size:max(14px,var(--fs-14));line-height:1.1;white-space:normal;overflow:visible}
-.cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 92px 60px;
+.cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 38px 92px 60px;
   gap:7px;padding:0 7px 5px;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;}
-.cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
-.cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 92px 60px;
+.cot-garage .shellhead span:nth-last-child(-n+3){text-align:right;}
+/* the rounds column: its head is the rack glyph (the column's name in its tip), its figures right on the column edge */
+.cot-garage .shellhead .shellcount{display:flex;justify-content:flex-end;align-items:center;}
+.cot-garage .shellhead .shellcount svg{width:14px;height:14px;}
+.cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 38px 92px 60px;
   gap:7px;align-items:center;min-height:46px;margin-top:5px;padding:6px 7px;
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);}
 .cot-garage .shellkind{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
@@ -336,6 +339,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellrow .ty{font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;}
 .cot-garage .shellrow .nm{min-width:0;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;}
+/* the count has its own column here: the small line carries a round's own reload alone, and goes when it has none */
+.cot-garage .shellrow .nm small .cr{display:none;}
+.cot-garage .shellrow .nm small:not(:has(.rl)){display:none;}
 .cot-garage .shellrow .nm small{display:block;margin-top:2px;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .shellmetric{text-align:right;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
@@ -1605,7 +1611,14 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .srow
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link,.stats .cot-technical-expand-label){min-height:44px;height:auto;padding:10px;font-size:max(var(--fs-floor-11),var(--fs-11));white-space:normal}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.eqslot .sl){font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b){font-size:max(13px,var(--fs-13))}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 54px 48px;gap:5px;padding-inline:5px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 88px 48px;gap:5px;padding-inline:5px}
+/* the phone's sheet: four columns, the count on the small line under the round (its column's width went to the
+   penetration figure, which "806 / 733 mm" overran into the damage at 54 px); Chinese keeps its wider figure columns */
+html[lang^='zh'] body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 96px 58px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats .shellcount{display:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats .shellrow .nm small{display:block}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats .shellrow .nm small .cr{display:inline}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats .shellrow .nm small .cr+.rl::before{content:' \00b7 '}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellrow .nm small){white-space:normal;overflow-wrap:anywhere}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;align-items:center;justify-content:center;
   position:absolute;top:var(--s1);right:calc(44px + var(--s2))}
