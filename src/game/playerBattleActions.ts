@@ -196,7 +196,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
   };
 
-  // ---- Air Support's strike view (air-support-270): X raises the binoculars; 1-5 pick the call-in; the trigger calls it
+  // ---- Air Support's strike view (air-support-270): X raises the binoculars; 1-6 pick the call-in; the trigger calls it
   // at the reticle (the crew's aim point: the action bit, sim/playerActions.ts AIR_STRIKE_BITS); X, the right button
   // or Esc lowers them. A call locks the reticle a moment, then the binoculars come down.
   const strikeMode = (): boolean => !!game.ruleset?.airSupport;

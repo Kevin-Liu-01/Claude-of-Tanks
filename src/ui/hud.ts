@@ -400,7 +400,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   vehicle?: string;
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
   /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
-  source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery';
+  source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'missile' | 'artillery';
   timeS?: number;
   on?: boolean;
   shells?: string[];

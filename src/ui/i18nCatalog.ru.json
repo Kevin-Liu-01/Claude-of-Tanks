@@ -5976,7 +5976,7 @@
   "rules.line.airStrike.gunship": "AC-130: {cost} очк. · предупреждение за {warning} с",
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "Авиация",
-  "playMenu.matchMode.air_support.desc": "Удерживайте три сектора и зарабатывайте очки поддержки в бою. Поднимите бинокль и отметьте цель, чтобы вызвать разведывательный пролёт, артудар, штурмовой заход, сброс высокоточной бомбы или барражирование AC-130. Перед каждым ударом атакуемая сторона получает предупреждение.",
+  "playMenu.matchMode.air_support.desc": "Удерживайте три сектора и зарабатывайте очки поддержки в бою. Поднимите бинокль и отметьте цель, чтобы вызвать разведывательный пролёт, артудар, штурмовой заход, сброс высокоточной бомбы, ракетный удар или барражирование AC-130. Перед каждым ударом атакуемая сторона получает предупреждение.",
   "docs.modes.win.air_support": "Кто первым наберёт {target}",
   "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine: M1A1 Abrams SA против T-72B3M obr. 2016",
   "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine: M1A2 Abrams SEPv3",

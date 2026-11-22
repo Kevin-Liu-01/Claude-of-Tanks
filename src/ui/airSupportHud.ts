@@ -7,7 +7,8 @@
  * - At rest, one slot (owner 2026-11-06, of a row of seven down the left: "theres gotta be a better way than presenting
  *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count (no fill meter: gauntlet
  *   g9 read it as an outline edge), at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
- * - The call-ins come up only with the binoculars: the five (1-5: recon, barrage, strafing run, precision bomb, AC-130)
+ * - The call-ins come up only with the binoculars: the six (1-6: recon, barrage, strafing run, precision bomb, the Maverick
+ *   run, AC-130)
  *   in a row centred over the tray, each a slot of the tray's own kind (the ammunition and consumable slots: the key top
  *   left, the price top right, the sprite glyph, the short name along the floor, the consumables' conic cooldown shade,
  *   the tray's one selected state); its hover tip names it in full.
@@ -148,7 +149,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     return cap;
   };
   hintKey(t('input.mouse.left'), t('airSupport.hint.call'));
-  hintKey('1–5', t('airSupport.hint.pick'));
+  hintKey(`1–${AIR_STRIKE_KINDS.length}`, t('airSupport.hint.pick'));
   const lowerKey = hintKey('', t('airSupport.hint.lower'));
   const call = node('button', 'binocular-call cot-c-btn cot-c-btn--primary cot-c-btn--56', binoculars);
   call.type = 'button';
@@ -168,7 +169,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     warningShown = key;
     if (!text) { notices.dismiss(INCOMING_NOTICE); return; }
     notices.show({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
-      durationMs: null, dismissible: false, priority: 2, className: 'cot-air-incoming' });
+      durationMs: null, dismissible: false, priority: 3, className: 'cot-air-incoming' });
   }
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;

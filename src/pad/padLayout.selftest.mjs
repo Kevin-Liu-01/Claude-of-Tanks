@@ -61,7 +61,7 @@ for (const mode of ['gunship', 'strike', 'drone']) {
 // Watch reads its climb, descend and boost with isDown: they are holds, never taps
 const watchHolds = PAD_LAYOUTS.watch.left.map((control) => control.send.hold);
 assert.deepEqual(watchHolds, ['handbrake', 'reloadMagazine', 'sniperToggle'], 'Watch\'s climb, descend and boost are holds');
-// the binoculars' five call-ins, by number
+// the binoculars' six call-ins, by number
 assert.deepEqual(PAD_LAYOUTS.strike.deck.map((control) => control.send.n), [...Array(PAD_STRIKE_PICKS).keys()]);
 // the drone has no gun: FIRE stands down
 assert.equal(PAD_LAYOUTS.drone.thumbs.fire, null);

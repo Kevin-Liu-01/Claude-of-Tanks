@@ -5976,7 +5976,7 @@
   "rules.line.airStrike.gunship": "AC-130 {cost} pts · aviso con {warning} s de antelación",
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "Aéreo",
-  "playMenu.matchMode.air_support.desc": "Mantén el control de los tres sectores y gana puntos de apoyo en combate. Levanta los prismáticos para solicitar una pasada de reconocimiento, fuego de artillería, una pasada de ametrallamiento, una bomba de precisión o un AC-130 en órbita sobre un punto marcado. El bando atacado recibe un aviso antes de cada ataque.",
+  "playMenu.matchMode.air_support.desc": "Mantén el control de los tres sectores y gana puntos de apoyo en combate. Levanta los prismáticos para solicitar una pasada de reconocimiento, fuego de artillería, una pasada de ametrallamiento, una bomba de precisión, un ataque con misiles o un AC-130 en órbita sobre un punto marcado. El bando atacado recibe un aviso antes de cada ataque.",
   "docs.modes.win.air_support": "El primero en llegar a {target}",
   "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine: M1A1 Abrams SA contra T-72B3M obr. 2016",
   "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine: M1A2 Abrams SEPv3",

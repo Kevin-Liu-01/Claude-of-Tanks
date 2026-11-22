@@ -5994,7 +5994,7 @@
   "rules.line.airStrike.gunship": "AC-130 {cost} pts · {warning} s warning",
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "Air",
-  "playMenu.matchMode.air_support.desc": "Hold the three sectors and earn support points from combat. Raise your binoculars to call a recon pass, artillery, a strafing run, a precision bomb or an AC-130 orbit onto a mark. Every strike warns the side it targets.",
+  "playMenu.matchMode.air_support.desc": "Hold the three sectors and earn support points from combat. Raise your binoculars to call a recon pass, artillery, a strafing run, a precision bomb, a missile run or an AC-130 orbit onto a mark. Every strike warns the side it targets.",
   "docs.modes.win.air_support": "First to {target}",
   "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine: M1A1 Abrams SA v T-72B3M obr. 2016",
   "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine: M1A2 Abrams SEPv3",
