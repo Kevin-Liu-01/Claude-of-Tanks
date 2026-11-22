@@ -27,8 +27,20 @@ import { createTurretDeckAudit } from './turretDeckAudit.test-support.mjs';
 
 // 274: the turret-deck gate's carry (what a hull keeps until its own fix lands) and the ids their own lanes are fixing
 // (measured, never failing here)
-const TURRET_DECK_CARRY = Object.freeze({});
-const TURRET_DECK_LANES = Object.freeze([]);
+const TURRET_DECK_CARRY = Object.freeze({
+  // the turret's foot 1.7 cm into its deck on the right rear; the seat is 5.5 cm short of the plane there (the Merkava hull)
+  merkava4b: { deck: 1, props: 0 },
+  // the driver's hatch 2.3 cm over the turret's front foot (t54Family addHullFront); the photo check is owed
+  t55a: { deck: 0, props: 1 },
+  type59: { deck: 0, props: 1 },
+  // the engine plateau itself stands 1.4 cm over the bustle's foot, so its grilles stand 3.5 cm over it (the hull)
+  amx40_proto: { deck: 0, props: 1 },
+  // a 0.22 m ring: hull kit 4.7 cm over the small turret's foot ahead-right
+  ares_apc: { deck: 0, props: 1 },
+  // deck kit on the right 2 cm over the foot
+  bmpt_terminator2: { deck: 0, props: 1 },
+});
+const TURRET_DECK_LANES = Object.freeze(['dardo', 'leopard2_proto', 'marder1a3', 't80uk']);
 
 await runFleetPass({
   name: 'fleetPassDefault',

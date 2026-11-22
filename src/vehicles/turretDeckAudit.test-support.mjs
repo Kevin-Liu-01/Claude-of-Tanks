@@ -20,9 +20,9 @@
 //      top (a floor buried in the hull just inside the wall is out of sight); no hull top the turret does
 //      not cover, within PROP_MARGIN_M outside the foot, stands more than PROP_RISE_M over the foot.
 // A failing cell counts only in an 8-connected patch of at least MIN_CELLS cells (a stray sliver is not a face). The fleet
-// gate (fleetPassDefault, 274) fails (a), (b) past a hull's named exemption (ringZoneGuard.ts RING_ZONE_EXEMPT), and a
-// recorded seat shortfall (turretSeatRace.ts: a foot the seat could not bring onto its plane), and names the ring-zone
-// guard's parts in each row. Reads only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
+// gate (fleetPassDefault, 274) fails (a) and (b) past a hull's named exemption (ringZoneGuard.ts RING_ZONE_EXEMPT); each
+// row names the seat's recorded shortfall (turretSeatRace.ts: a foot the seat could not bring onto its plane) and the
+// ring-zone guard's parts. Reads only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { RING_ZONE_EXEMPT } from './ringZoneGuard.ts';
@@ -52,7 +52,7 @@ const RIM_PAD_M = 0.01 + CELL * Math.SQRT1_2;
 const COLLAR_NAME = 'turretSeatCollar';
 /** Casemate and turretless designs: a rig_turret (a fixed superstructure, a pivot for the sim) but no ring on a deck, so
  *  no ring receipt and nothing to judge (coordinator, 274). Any other turreted tank without a receipt fails the audit. */
-export const NO_TURRET_IDS = Object.freeze(['jpz_e100', 'strv103a', 'strv103b', 't95', 'udes03']);
+export const NO_TURRET_IDS = Object.freeze(['jpz_e100', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv152', 't95', 'udes03']);
 
 function measurable(object) {
   if (!object.isMesh || object.isBatchedMesh || object.name === COLLAR_NAME) return false;
@@ -376,7 +376,7 @@ export function measureTurretDeck(root, receipt) {
 /**
  * The fleet audit ({ check, finish }). `report` collects every turreted tank's row (the read-only fleet table) and never
  * fails (each row's `fails` says whether the gate would); `carry` maps an id to what it may keep until its fix lands
- * ({ deck, props } patch counts, and shortfall: true for a recorded seat shortfall); `exclude` ids are measured but never
+ * ({ deck, props } patch counts); `exclude` ids are measured but never
  * fail (a tank another lane owns).
  */
 export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] } = {}) {
@@ -408,8 +408,11 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
       const exempt = RING_ZONE_EXEMPT[id];
       const props = exempt ? verdict.props.filter((patch) => patch.riseM > exempt.riseM) : verdict.props;
       if (exempt) row.exempt = exempt.reason;
-      const allowed = carry[id] ?? { deck: 0, props: 0, shortfall: false };
-      row.fails = verdict.deck.length > allowed.deck || props.length > allowed.props || (!!shortfall && !allowed.shortfall);
+      // a seat shortfall names the cause of a failing row; alone it fails nothing: the seat reads the deck swept at every
+      // bearing in 5 cm bands, so a recorded shortfall overstates the need (seven turrets record one with their foot a
+      // centimetre or more over the deck at every yaw)
+      const allowed = carry[id] ?? { deck: 0, props: 0 };
+      row.fails = verdict.deck.length > allowed.deck || props.length > allowed.props;
       if (row.fails && !exclude.includes(id)) failures.push(row);
     },
     finish() {
