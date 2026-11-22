@@ -1841,9 +1841,11 @@ const PLATE_FIT_MATCH_M = 0.002;
  * listed (their frames' cells are hulled from the drawn shell).
  */
 /**
- * A fitted piece's outline as one planar convex polygon (274.0): adjacent duplicate corners dropped, then every corner
- * projected onto the plane through the corners' centroid along their Newell normal (the generator writes millimetres,
- * which leaves a five- or six-corner piece up to 0.56 mm off its plane).
+ * A fitted piece's outline as one planar convex polygon (274.0): adjacent duplicate corners dropped, then corners that
+ * lie on the line through their neighbours (the outline is the same without them), then every corner projected onto the
+ * plane through the corners' centroid along their Newell normal (the generator writes millimetres, which leaves a five-
+ * or six-corner piece up to 0.56 mm off its plane, and can leave a sliver's first three corners on one line: the trace
+ * takes its normal from those three, so it read none and the sliver was never struck; t80u_yun skirt_L, 274.0).
  */
 function planarOutline(piece: readonly (readonly number[])[]): Vec3[] {
   const corners = piece.map((point) => [point[0], point[1], point[2]] as Vec3)
@@ -1851,6 +1853,16 @@ function planarOutline(piece: readonly (readonly number[])[]): Vec3[] {
       const prev = all[(index + all.length - 1) % all.length];
       return Math.hypot(point[0] - prev[0], point[1] - prev[1], point[2] - prev[2]) > 1e-6;
     });
+  for (let index = 0; corners.length > 3 && index < corners.length;) {
+    const prev = corners[(index + corners.length - 1) % corners.length], point = corners[index];
+    const next = corners[(index + 1) % corners.length];
+    const a: Vec3 = [point[0] - prev[0], point[1] - prev[1], point[2] - prev[2]];
+    const b: Vec3 = [next[0] - point[0], next[1] - point[1], next[2] - point[2]];
+    const cross = Math.hypot(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]);
+    // collinear within a microradian: the corner adds no area; drop it and look again from its predecessor
+    if (cross <= 1e-6 * Math.hypot(...a) * Math.hypot(...b)) { corners.splice(index, 1); index = Math.max(0, index - 1); }
+    else index++;
+  }
   const normal: Vec3 = [0, 0, 0], centre: Vec3 = [0, 0, 0];
   corners.forEach((a, index) => {
     const b = corners[(index + 1) % corners.length];
