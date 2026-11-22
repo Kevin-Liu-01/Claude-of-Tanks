@@ -348,7 +348,7 @@ function noticeMeasure(){
     // (its second line is a screen reader's alone: shown is wider than the 1 px it keeps)
     if(k==='d'){n.clip=clipped(e.querySelector('.lb'),e,12);
       const sub=e.querySelector('.sub');n.sub=!!sub&&sub.getBoundingClientRect().width>1&&getComputedStyle(sub).display!=='none';}
-    if(k==='a'){const copy=e.querySelector('.cot-alert-copy');n.clip=clipped(copy,e,12);n.font=parseFloat(getComputedStyle(e).fontSize);
+    if(k==='a'){const copy=e.querySelector('.cot-c-notice__body');n.clip=clipped(copy,e,12);n.font=parseFloat(getComputedStyle(e).fontSize);
       n.clamp=getComputedStyle(copy).webkitLineClamp;}
     if(k==='m')n.clip=Math.max(...['strong','small','.ey'].map(q=>clipped(e.querySelector(q),e,14)));
     out.notices[k]=n;

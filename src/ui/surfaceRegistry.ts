@@ -189,7 +189,7 @@ export const SURFACE_REGISTRY = Object.freeze({
   },
   notices: {
     places: [
-      { screen: 'battle', owner: HUD, surface: '.cot-alert' },
+      { screen: 'battle', owner: 'src/ui/battleNoticeEvents.ts', surface: '.cot-alert' },
       { screen: 'rooms', owner: ROOMS, surface: '.status' },
       { screen: 'settings', owner: 'src/ui/settings.ts', surface: '.cot-set-conflict' },
       { screen: 'boot', owner: BOOT, surface: '#cot-boot-notice' },

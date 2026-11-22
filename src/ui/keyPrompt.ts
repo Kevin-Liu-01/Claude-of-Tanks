@@ -67,10 +67,7 @@ export type Prompt =
 
 /** The one resolver. */
 export function promptFor(input: PromptInput, action: ActionId, device: InputDevice = inputDevice(input)): Prompt {
-  if (device === 'touch') {
-    const tile = TOUCH_TILES[action];
-    return tile ? { kind: 'tile', selector: tile.selector, icon: tile.icon } : { kind: 'none' };
-  }
+  if (device === 'touch') return tilePrompt(action);
   const label = keyCapFor(input as unknown as KeyCapInput, action as CapAction, device === 'pad');
   return !label || label === '—' ? { kind: 'none' } : { kind: device === 'pad' ? 'pad' : 'key', label };
 }
@@ -115,18 +112,29 @@ export function formatPrompt(input: PromptInput, key: string, actions: Readonly<
 export function formatKeyLine(input: PromptInput, key: string, actions: Readonly<Record<string, ActionId>>,
   vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
   const device = inputDevice(input);
+  return formatKeyLineWith((action) => promptFor(input, action, device), key, actions, vars, root);
+}
+
+/** formatKeyLine with the prompts from another resolver: the HUD's event lane, which reads the frame's key caps
+ *  (game/battleKeyCaps.ts, the same caps promptFor reads) and the layout's touch flag, has no input of its own. */
+export function formatKeyLineWith(resolve: (action: ActionId) => Prompt, key: string, actions: Readonly<Record<string, ActionId>>,
+  vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
   const keys: string[] = [];
   const words = fill(key, actions, vars, (action) => {
     // (an action with nothing to press on this device, a pad button left unbound, keeps its tile's icon in the column: a
     // line never loses the thing it names)
-    const tile = TOUCH_TILES[action];
-    const html = promptHtml(promptFor(input, action, device), root)
-      || (tile ? promptHtml({ kind: 'tile', selector: tile.selector, icon: tile.icon }, root) : '');
+    const html = promptHtml(resolve(action), root) || promptHtml(tilePrompt(action), root);
     if (html) keys.push(html);
     return ' ';
   }).replace(/\s+/g, ' ').trim();
   const text = `<span class="cot-key-line__text">${words}</span>`;
   return keys.length ? `<span class="cot-key-line"><span class="cot-key-line__keys">${keys.join('')}</span>${text}</span>` : text;
+}
+
+/** An action's HUD tile as a prompt (a touch layout's), or none where no tile does it. */
+export function tilePrompt(action: ActionId): Prompt {
+  const tile = TOUCH_TILES[action];
+  return tile ? { kind: 'tile', selector: tile.selector, icon: tile.icon } : { kind: 'none' };
 }
 
 /** The catalog line, escaped, each action's placeholder replaced by `draw(action)`. */

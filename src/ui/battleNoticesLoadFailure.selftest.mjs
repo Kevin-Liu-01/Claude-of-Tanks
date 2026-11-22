@@ -19,6 +19,7 @@ const KIT = `data:text/javascript,${encodeURIComponent(`
   export function noticeRegion(name, options) { stub.regions.push(name); }
   export function notify(options) { stub.notified.push(options); return { dismiss() {} }; }
   export function dismissNotice(id) { stub.dismissed.push(id); }
+  export function pauseNotices() {}
 `)}`;
 const failing = new Set();
 const asked = [];
@@ -41,13 +42,13 @@ const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((reso
 const { battleNotices } = await import('./battleNotices.ts');
 {
   failing.add('./components/notice.ts');
-  battleNotices.show({ id: 'cot-aim-warning', text: 'parked' });
+  battleNotices.condition({ id: 'cot-aim-warning', text: 'parked' });
   await settle();
   assert.deepEqual(notified, [], 'the kit did not arrive: that notice is lost');
   battleNotices.dismiss('cot-aim-warning');
   await settle();
   assert.equal(asked.filter((specifier) => specifier === './components/notice.ts').length, 1, 'a dismiss never fetches');
-  battleNotices.show({ id: 'cot-aim-warning', text: 'parked again' });
+  battleNotices.condition({ id: 'cot-aim-warning', text: 'parked again' });
   await settle();
   assert.deepEqual(notified.map((options) => [options.id, options.text, options.region]), [['cot-aim-warning', 'parked again', 'battle']],
     'the next notice asks the kit again and shows (it was dropped for the document)');

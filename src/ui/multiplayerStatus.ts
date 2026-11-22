@@ -432,7 +432,7 @@ export function createMultiplayerStatusSurface({
     const key = `${severity} ${leaving ? 1 : 0} ${text}`;
     if (key === noticeKey) return;
     noticeKey = key;
-    notices.show({
+    notices.condition({
       id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false, priority: 1,
       actions: leaving ? [{ label: t('mpStatus.leave'), keep: true, run: leaveNow }] : [],
     });
