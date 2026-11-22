@@ -222,7 +222,7 @@ function commanderSearchlight(P:TankBuilderPort):void{
   const ax=-.300,ay=2.434;
   const lamp=[[0,.232],[.050,.232],[.072,.240],[.080,.252],[.080,.368],[.086,.371],[.086,.397],[.072,.397],[.070,.389],[0,.389]] as const;
   equipment(P,'turretDetail',new THREE.LatheGeometry(lamp.map(([r,z])=>new THREE.Vector2(r,z)),28).rotateX(Math.PI/2),ax,ay,0);
-  equipment(P,'turretDark',cylZ(.0705,.004,28),ax,ay,.3905);
+  equipment(P,'turretDark',markVehicleNightLens(cylZ(.0705,.004,28),'headlight',{searchlight:true}),ax,ay,.3905); // its dark lens lit at night (274)
   // the arm: an outline in (z, y), 24 mm thick across x -0.413..-0.389 (its inner face 3 mm off the housing)
   const arm:[number,number][]=[[.150,2.2365],[.215,2.2365],[.215,2.250],[.352,2.405],[.352,2.462],[.318,2.478],[.282,2.462],[.170,2.300],[.150,2.290]];
   const ring=arm.map(([z,y])=>[z,y] as const);

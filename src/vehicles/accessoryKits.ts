@@ -15,6 +15,7 @@ import {
   withBoxUV, type AccessoryDetail, type FabricSpec, type XY,
 } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer, foliageCardPoints, type FoliageCard } from './vehicleFoliage.ts';
+import { markVehicleNightLens } from './vehicleNightLighting.ts';
 
 export type RGB = readonly [number, number, number];
 
@@ -1631,7 +1632,10 @@ export function buildSearchlight(P: AccessoryPainter, v: string, tone: number): 
   // drum: domed rear cap, body and the front bezel, one lathe along the beam
   P.kit(place(latheZ([[R * 0.55, 0], [R * 0.86, D * 0.06], [R, D * 0.18], [R, D * 0.94], [R * 1.05, D * 0.95], [R * 1.05, D], [R * 0.95, D * 1.01]], seg),
     0, axleY, -D * 0.68), tone);
-  P.lens(place(latheZ([[0.0005, 0], [R * 0.93, 0], [R * 0.93, 0.008], [0.0005, 0.014]], seg), 0, axleY, D * 0.32));  // glass
+  // glass: (274, the owner: "for floodlights or whatever lights these are ... they have to turn on when you press N!") a
+  // searchlight at night, its slightly domed face the aperture
+  P.lens(place(markVehicleNightLens(latheZ([[0.0005, 0], [R * 0.93, 0], [R * 0.93, 0.008], [0.0005, 0.014]], seg), 'headlight',
+    { curvedAperture: true, searchlight: true }), 0, axleY, D * 0.32));
   if (!near(P)) return;
   for (const s of [-1, 1]) P.steel(bossX(0.028, 0.022, s * (R + 0.01), axleY, 0), 0.5);                  // trunnions
   if (v === 'ir_large') {

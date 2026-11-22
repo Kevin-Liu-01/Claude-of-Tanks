@@ -95,7 +95,7 @@ function buildToucan(P: TankBuilderPort): void {
   P.addGunExtra(box(.25,.23,.52),0,0,-.03);
   P.addGunExtra(cylX(.12,.46,20),0,0,-.11);
   P.addGunExtra(box(.22,.27,.29),.22,.02,.05);
-  P.addGunExtraDark(cylZ(.068,.023,18),.22,.02,.208);
+  P.addGunExtraDark(markVehicleNightLens(cylZ(.068,.023,18),'headlight',{searchlight:true}),.22,.02,.208); // the searchlight's dark lens lit at night (274)
   P.addGunExtraDark(cylZ(.018,.43,12),-.16,-.05,.17);
   P.add('gun',cylZ(.034,1.58,24),0,0,1.06);
   P.add('gun',cylZ(.065,.40,20),0,0,.27);

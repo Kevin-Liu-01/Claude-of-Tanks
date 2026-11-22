@@ -42,7 +42,7 @@ function commanderSearchlight(P:TankBuilderPort):void{
   const face=-.230,y=2.57913,z=.05237,r=.105,len=.21,x=face+.014+r,front=z+len/2;
   top(P,'turretDetail',cylZ(r,len,24),x,y,z);
   top(P,'turretDark',torus(r-.004,.011,24,8).rotateX(Math.PI/2),x,y,front);
-  top(P,'turretGlass',markVehicleNightLens(cylZ(r-.012,.006,24),'headlight',{tint:'red'}),x,y,front-.001);
+  top(P,'turretGlass',markVehicleNightLens(cylZ(r-.012,.006,24),'headlight',{tint:'red',searchlight:true}),x,y,front-.001);
   top(P,'turretDetail',cylZ(.072,.036,20,.082),x,y,z-len/2-.017);
   top(P,'turretDark',cylZ(.014,.03,10),x,y-.02,z-len/2-.045);
   // clamp band, side plate on the boss face and the pin through both

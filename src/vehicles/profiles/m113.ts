@@ -29,6 +29,7 @@
 // front left, the engine at the front right.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addM113Fittings } from './m113Fittings.ts';
 import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
@@ -413,7 +414,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     P.addEquipment('turret', box(0.24, 0.16, 0.30), -0.36, 0.56, 0.12);
     P.add('turretGlass', box(0.16, 0.06, 0.012), -0.36, 0.58, 0.272);
     P.addEquipment('turret', box(0.30, 0.24, 0.24), 0.40, 0.62, 0.30);
-    P.add('turretGlass', box(0.24, 0.16, 0.012), 0.40, 0.62, 0.425);
+    P.add('turretGlass', markVehicleNightLens(box(0.24, 0.16, 0.012), 'headlight', { searchlight: true }), 0.40, 0.62, 0.425);
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.80, elev: 0.06, shield: false, ammo: true,
       seed: 1133, feed: 'left', working: true, ridingCradle: true });
     mg.name = 'm113a1_mrv_cupola_machine_gun';

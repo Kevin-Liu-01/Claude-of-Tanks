@@ -18,6 +18,7 @@
 // -X. Every triangle is first-party procedural geometry. Authorship: Kevin B. Liu (NOTICE.md).
 
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
@@ -496,7 +497,7 @@ function addCommanderCupola(P: TankBuilderPort): void {
   P.add('turretDetail', box(0.05, 0.10, 0.05), x - 0.10, base + 0.21, z + 0.30);
   P.add('turretDetail', cylZ(0.085, 0.14, 16), x - 0.10, base + 0.30, z + 0.32);
   P.add('turretDark', cylZ(0.090, 0.012, 16), x - 0.10, base + 0.30, z + 0.395);
-  P.add('turretGlass', cylZ(0.070, 0.006, 16), x - 0.10, base + 0.30, z + 0.402);
+  P.add('turretGlass', markVehicleNightLens(cylZ(0.070, 0.006, 16), 'headlight', { searchlight: true }), x - 0.10, base + 0.30, z + 0.402);
 }
 
 /** The loader's hatch on the right with the DShKM ring mount. */
@@ -648,7 +649,7 @@ function addSearchlight(P: TankBuilderPort, v: T62Variant): void {
   P.add('gunMountLamp', box(0.06, 0.12, 0.10), x, y - r - 0.03, z - 0.02);
   P.add('gunMountLamp', cylZ(r, 0.28, P.q ? 20 : 12), x, y, z);
   P.add('gunMountDark', cylZ(r + 0.008, 0.025, P.q ? 20 : 12), x, y, z + 0.145);
-  P.add('gunMountGlass', cylZ(r - 0.02, 0.008, P.q ? 20 : 12), x, y, z + 0.16);
+  P.add('gunMountGlass', markVehicleNightLens(cylZ(r - 0.02, 0.008, P.q ? 20 : 12), 'headlight', { searchlight: true }), x, y, z + 0.16);
   P.add('gunMountDark', cylZ(r * 0.72, 0.03, 12), x, y, z - 0.155);
 }
 

@@ -4571,7 +4571,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
       // visible beside the tube from frontal and left-quarter views.
       P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.07, 0.70);
       P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.07, 0.820);
-      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.07, 0.843);
+      P.add('gunMountGlass', markVehicleNightLens(box(0.245, 0.215, 0.016), 'headlight', { searchlight: true }), -0.48, 0.07, 0.843);
       P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.07, 0.685,
         0, 0, -0.12);
       P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.07, 0.685,

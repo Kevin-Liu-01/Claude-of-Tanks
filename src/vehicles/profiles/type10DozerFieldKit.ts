@@ -261,6 +261,8 @@ function workLamp(P: TankBuilderPort, x: number, y: number, z: number, back = fa
 // the face on a yoke whose arms run back to pads bolted on the face, a cross brace below and a stay to the cheek's top:
 // a 0.54 m drum, its inner edge 0.38 m off the mantlet and its top under the commander's sight line.
 const FLOOD = { side: -1, x: .83, y: .44, z: 2.53, r: .27, len: .34 } as const;
+/** The floodlight's beam half-angle (radians): 11.5 degrees, between a searchlight's pencil and a driving lamp's cone. */
+const FLOOD_CONE_RAD = .2;
 
 function floodlight(P: TankBuilderPort): void {
   const F = FLOOD, S = F.side, X = S * F.x, seg = P.q ? 40 : 24;
@@ -269,8 +271,12 @@ function floodlight(P: TankBuilderPort): void {
   const front = F.z + F.len / 2;
   add('turretDetail', cylZ(F.r, F.len, seg), X, F.y, F.z);                                         // drum
   add('turretDark', cylZ(F.r + .016, .04, seg), X, F.y, front + .01);                               // bezel
-  add('turretGlass', markVehicleNightLens(cylZ(F.r - .03, .012, seg), 'headlight', { tint: 'cool' }), X, F.y, front + .019);
-  for (const rz of [Math.PI / 4, -Math.PI / 4]) add('turretDark', box(2 * F.r - .02, .012, .012), X, F.y, front + .036, 0, 0, rz); // guard
+  // (274, the owner: "there should actually be lights there") the lens's face 10 mm proud of the bezel's (at front + 0.019 it
+  // stood 5 mm inside the solid bezel and glowed unseen) and the guard ahead of the glass; a floodlight's broad beam, a
+  // searchlight in the night pool's terms (FLOOD_CONE_RAD)
+  add('turretGlass', markVehicleNightLens(cylZ(F.r - .03, .012, seg), 'headlight', { tint: 'cool', searchlight: true, coneRad: FLOOD_CONE_RAD }),
+    X, F.y, front + .034);
+  for (const rz of [Math.PI / 4, -Math.PI / 4]) add('turretDark', box(2 * F.r - .02, .012, .012), X, F.y, front + .052, 0, 0, rz); // guard
   add('turretDetail', cylZ(F.r - .02, .08, seg, F.r - .09), X, F.y, F.z - F.len / 2 - .04);         // rear cap
   if (P.q) for (const dz of [-.10, -.06, -.02]) add('turretDark', cylZ(F.r + .006, .008, seg), X, F.y, F.z + dz); // fins
   // armoured doors swung open to the sides

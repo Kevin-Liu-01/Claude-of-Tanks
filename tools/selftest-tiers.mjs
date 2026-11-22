@@ -616,6 +616,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
+    'src/vehicles/searchlightCoverage.selftest.mjs',
     'src/vehicles/searchlightOwnGunMask.selftest.mjs',
     'src/vehicles/sourceXAuxArmorOptimization.selftest.mjs',
     'src/vehicles/sourceXEra.selftest.mjs',

@@ -172,6 +172,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // own-gun mask (its beam never lights its own barrel)
     'src/vehicles/nationalStationYoke.selftest.mjs',
     'src/vehicles/searchlightOwnGunMask.selftest.mjs',
+    // 2026-11-21 (release 274, owner: "for those lights they have to turn on when you press N!"): every drawn searchlight
+    // registers, lit at rest and seen from ahead; the decor drum's lens
+    'src/vehicles/searchlightCoverage.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',

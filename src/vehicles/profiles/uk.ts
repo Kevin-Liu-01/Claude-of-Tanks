@@ -1,4 +1,5 @@
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { buildVickersMk1Turret, centurionFamilySteps, type CenturionMark } from './centurionFamily.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // British family procedural profiles — FROM-SCRATCH rebuild (2026-07-31).
@@ -1347,7 +1348,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
   fv510PhotoBuildRunningGearStage1();
   yield 'fv510PhotoBuildRunningGearStage1';
   const fv510PhotoBuildTurretStage1 = (): void => {
-    P.add('turretGlass', cylZ(0.052, 0.012, 16), -0.52, 0.46, 0.528, -0.12, 0, 0);
+    P.add('turretGlass', markVehicleNightLens(cylZ(0.052, 0.012, 16), 'headlight', { searchlight: true }), -0.52, 0.46, 0.528, -0.12, 0, 0);
     P.add('turretDetail', box(0.20, 0.020, 0.16), -0.52, 0.545, 0.455, -0.12, 0, 0);
     P.add('turretDetail', box(0.020, 0.18, 0.16), -0.63, 0.455, 0.455, -0.12, 0, 0);
     P.add('turretDetail', box(0.020, 0.18, 0.16), -0.41, 0.455, 0.455, -0.12, 0, 0);

@@ -1,7 +1,7 @@
 // The decoration's plan across a realm (UI-LOCKDOWN E, stage 2b pass 1, 2026-10-25). The page asks for a tank's plan
 // with a replica of its graph (tankGraphWire.ts), its spec and its options; the planner (the decor worker,
 // vehiclePassWorker.ts, or the proof's own realm) plans over the replica (decorations.ts planTankDecorationsSteps) and
-// replies with each family's merged geometry, its smoke sockets, the seated loads, the summary and the spare-track
+// replies with each family's merged geometry, its smoke sockets and lamp seats, the seated loads, the summary and the spare-track
 // receipts the plan wrote; the page rebuilds that plan and attaches it (attachDecorationPlanSteps) exactly as the
 // in-line pass attaches its own. Each side's functions are pure: the proof runs both in one process.
 import * as THREE from 'three';
@@ -85,7 +85,7 @@ export function planDecorRequest(request: DecorPlanRequest): DecorPlanReply | nu
   const after = root.userData.spareTrack as unknown[] | undefined;
   return {
     buckets: plan.buckets.map((bucket) => ({ frame: bucket.frame, functional: bucket.functional,
-      families: bucket.families.map((family) => ({ matKey: family.matKey, smokeSockets: family.smokeSockets,
+      families: bucket.families.map((family) => ({ matKey: family.matKey, smokeSockets: family.smokeSockets, nightLamps: family.nightLamps,
         near: family.near && geometryWire(family.near, userData(`${bucket.frame}/${family.matKey}#near`)),
         coarse: family.coarse && geometryWire(family.coarse, userData(`${bucket.frame}/${family.matKey}#coarse`)) })) })),
     seatedLoads: {

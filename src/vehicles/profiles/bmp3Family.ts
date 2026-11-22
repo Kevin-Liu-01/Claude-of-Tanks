@@ -15,6 +15,7 @@
 // (1)-(5); Mike1979 Engineering Technologies 2012 01-04; the ROK Army 3rd Armoured Brigade photograph.
 // Frame: +x is the vehicle's LEFT, +z forward, y up; turret parts in the turret frame (ring plane y 0 at world 1.85).
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
 import { mount } from './fittingMount.ts';
@@ -121,7 +122,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     H.add('detail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
     H.add('detail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
     H.add('detail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
-    H.add('glass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
+    H.add('glass', markVehicleNightLens(cylZ(0.050, 0.012, 14), 'headlight', { searchlight: true }), 0.475, sTop + 0.10, 0.248);
   });
 
   // ---- commander (-x, the vehicle's right): cupola with vision blocks, the TKN-3 head ahead, OU-3GA2 searchlight ----
@@ -150,7 +151,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     H.add('detail', box(0.08, 0.04, 0.22), lx, ly - 0.115, lz);
     H.add('hull', cylZ(0.105, 0.20, 18, 0.09), lx, ly, lz);
     H.add('dark', xform(torus(0.098, 0.012, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
-    H.add('glass', cylZ(0.090, 0.012, 18), lx, ly, lz + 0.098);
+    H.add('glass', markVehicleNightLens(cylZ(0.090, 0.012, 18), 'headlight', { searchlight: true }), lx, ly, lz + 0.098);
     H.add('detail', box(0.36, 0.025, 0.03), (lx + cx) / 2 + 0.02, ly - 0.10, lz + 0.05);
   });
 

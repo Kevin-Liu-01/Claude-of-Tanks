@@ -1,4 +1,5 @@
 import { buildT80UK } from './t80ukRenewal.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { antennaPart } from './antennaPart.ts';
@@ -4005,7 +4006,7 @@ function* buildAMX30Steps(P: MiscBuilderPort, b2: boolean): TankProfileBuild {
     P.addGunExtra(box(0.46, 0.40, 0.26), -0.76, 0.16, 0.42);
     P.addGunExtraDark(box(0.40, 0.34, 0.028), -0.76, 0.16, 0.555);               // lens frame
     P.addGunExtra(geometryXform(torus(0.155, 0.020, 18), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.578); // pale bezel ring
-    P.addGunExtraDark(cylZ(0.138, 0.042, 16), -0.76, 0.18, 0.578);               // recessed lens well
+    P.addGunExtraDark(markVehicleNightLens(cylZ(0.138, 0.042, 16), 'headlight', { searchlight: true }), -0.76, 0.18, 0.578); // recessed lens well, lit at night (274)
     P.addGunExtra(geometryXform(cylY(0.055, 0.055, 0.016, 12), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.602); // iris hub disc
     P.addGunExtra(box(0.14, 0.40, 0.05), -0.48, 0.16, 0.40);                     // inboard carrier arm into the rotor (2026-10-19 owner float sweep: it stopped 83 mm short of the cheek bulge)
     P.addGunExtraDark(box(0.015, 0.34, 0.02), -0.90, 0.16, 0.565);               // guard bars

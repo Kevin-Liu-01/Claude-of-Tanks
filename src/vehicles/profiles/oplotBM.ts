@@ -1251,7 +1251,7 @@ function searchlight(P: TankBuilderPort, x: number, base: number, z: number): vo
   P.addEquipment('turretDetail', cylY(0.025, 0.03, 0.08, 12), x, base + 0.07, z);
   P.addEquipment('turretDetail', cylZ(0.10, 0.17, P.q ? 24 : 16), x, y, z + 0.02);
   P.addEquipment('turretDark', cylZ(0.11, 0.025, P.q ? 24 : 16), x, y, z + 0.11);
-  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.088, 0.012, P.q ? 24 : 16), 'headlight', { tint: 'warm' }), x, y, z + 0.124);
+  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.088, 0.012, P.q ? 24 : 16), 'headlight', { tint: 'warm', searchlight: true }), x, y, z + 0.124);
   for (const dy of [-0.05, 0, 0.05]) P.addEquipment('turretDark', box(0.20, 0.012, 0.012), x, y + dy, z + 0.15);
 }
 /** The Oplot-T's tropical searchlight: the 30 cm lamp on its swivel post, glass forward, unguarded (the Thai order's
@@ -1262,7 +1262,7 @@ function tropicalSearchlight(P: TankBuilderPort, x: number, base: number, z: num
   P.addEquipment('turretDetail', cylY(0.03, 0.035, 0.10, 12), x, base + 0.08, z);
   P.addEquipment('turretDetail', cylZ(0.15, 0.22, P.q ? 28 : 18), x, y, z + 0.02);
   P.addEquipment('turretDark', cylZ(0.162, 0.03, P.q ? 28 : 18), x, y, z + 0.14);
-  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.13, 0.012, P.q ? 28 : 18), 'headlight', { tint: 'warm' }), x, y, z + 0.157);
+  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.13, 0.012, P.q ? 28 : 18), 'headlight', { tint: 'warm', searchlight: true }), x, y, z + 0.157);
 }
 
 /** A ZM Tarnów ZSMU-1276 remote station: a low square slewing base, the upright arm on its right carrying the cradle's

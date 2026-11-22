@@ -18,6 +18,7 @@
 // geometry. Authorship: Kevin B. Liu (NOTICE.md).
 
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { tubeGun } from './russia.ts';
@@ -464,7 +465,7 @@ function addCommanderCupola(P: TankBuilderPort): void {
   // OU-3 IR spot on the ring's front-left
   P.add('turretDetail', box(0.05, 0.08, 0.05), x + 0.20, base + 0.20, z + 0.20);
   P.add('turretDetail', cylZ(0.07, 0.11, 14), x + 0.20, base + 0.27, z + 0.22);
-  P.add('turretDark', cylZ(0.058, 0.008, 14), x + 0.20, base + 0.27, z + 0.28);
+  P.add('turretDark', markVehicleNightLens(cylZ(0.058, 0.008, 14), 'headlight', { searchlight: true }), x + 0.20, base + 0.27, z + 0.28); // its dark lens lit at night (274)
 }
 
 function addLoaderHatch(P: TankBuilderPort): { x: number; z: number; top: number } {
@@ -586,7 +587,7 @@ function addSearchlight(P: TankBuilderPort, v: T54Variant): void {
   P.add('gunMountLamp', box(0.06, 0.12, 0.10), x, y - r - 0.03, z - 0.02);       // stirrup
   P.add('gunMountLamp', cylZ(r, 0.26, P.q ? 20 : 12), x, y, z);
   P.add('gunMountDark', cylZ(r + 0.008, 0.025, P.q ? 20 : 12), x, y, z + 0.135);   // bezel
-  P.add('gunMountGlass', cylZ(r - 0.02, 0.008, P.q ? 20 : 12), x, y, z + 0.15);
+  P.add('gunMountGlass', markVehicleNightLens(cylZ(r - 0.02, 0.008, P.q ? 20 : 12), 'headlight', { searchlight: true }), x, y, z + 0.15);
   P.add('gunMountDark', cylZ(r * 0.72, 0.03, 12), x, y, z - 0.145);              // rear cap
 }
 

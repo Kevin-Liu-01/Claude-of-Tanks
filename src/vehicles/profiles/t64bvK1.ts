@@ -9,6 +9,7 @@
 // searchlight left of the gun and the self-entrenching blade on the lower nose plate. The mod. 2017 carries the Donbas
 // field kit and cover; the Russian T-64BV1 its sensor, turret cage and pack, and the OPVT snorkel on the bustle box.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {beamBetween,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
@@ -142,7 +143,7 @@ function searchlight(P:TankBuilderPort):void {
   P.addEquipment('turretDetail',cylZ(.165,.20,28),...at(0,0,0));
   P.addEquipment('turretDetail',cylZ(.12,.05,20),...at(0,0,-.125));
   P.addEquipment('turretDark',torus(.160,.016,24,6),...at(0,0,.10));
-  P.addModuleVisual('optics','turretGlass',cylZ(.148,.012,28),...at(0,0,.102));
+  P.addModuleVisual('optics','turretGlass',markVehicleNightLens(cylZ(.148,.012,28),'headlight',{searchlight:true}),...at(0,0,.102));
   const from=face(y)-.02,to=z-.14;
   P.addEquipment('turretDetail',box(.10,.10,to-from),...at(0,0,(from+to)/2-z));
   const low=1.56;
