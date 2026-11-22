@@ -427,16 +427,18 @@ function oplotMSkirt(P: TankBuilderPort, s: number, bottomAt: (z: number) => num
       P.addExternalArmor('hull', markEraHitFaces(geo, [side(s, 1), 0, 0], 0.35));
       // the lids: two courses on the upright face, split at mid-height, and one on the raked top
       const zc = Z((za + zb) / 2), len = Z(zb - za) - 0.05, b = Math.max(bot(za), bot(zb)), mid = (b + 0.04 + KNEE) / 2;
-      for (const [y0, y1] of [[b + 0.05, mid - 0.012], [mid + 0.012, KNEE - 0.01]] as const) {
-        P.addExternalArmor('hull', markEraFurniture(box(0.012, y1 - y0, len)), side(s, OUT + 0.006), (y0 + y1) / 2, zc);
+      // (each lid 3 cm proud and 3 cm in from the module's edges, so the box reads in relief: the blind critic read
+      // flush 12 mm lids as flat seamed plates)
+      for (const [y0, y1] of [[b + 0.06, mid - 0.02], [mid + 0.02, KNEE - 0.02]] as const) {
+        P.addExternalArmor('hull', markEraFurniture(box(0.03, y1 - y0, len - 0.06)), side(s, OUT + 0.015), (y0 + y1) / 2, zc);
         for (const y of [y0 + 0.04, y1 - 0.04]) for (const dz of [-0.40, 0, 0.40]) {
-          P.add('hullDark', cylX(0.014, 0.016, 8), side(s, OUT + 0.014), y, zc + dz * len);
+          P.add('hullDark', cylX(0.016, 0.016, 8), side(s, OUT + 0.032), y, zc + dz * (len - 0.06));
         }
       }
       const t = Math.min(top(za), top(zb)), x0 = OUT, x1 = faceX(t) + 0.11, tilt = Math.atan2(x0 - x1, t - KNEE);
       const slant = Math.hypot(x0 - x1, t - KNEE) - 0.04;
-      P.addExternalArmor('hull', markEraFurniture(box(0.012, slant, len)), side(s, (x0 + x1) / 2 + 0.006 * Math.cos(tilt)),
-        (KNEE + t) / 2 + 0.006 * Math.sin(tilt), zc, 0, 0, side(s, tilt));
+      P.addExternalArmor('hull', markEraFurniture(box(0.024, slant - 0.03, len - 0.06)),
+        side(s, (x0 + x1) / 2 + 0.012 * Math.cos(tilt)), (KNEE + t) / 2 + 0.012 * Math.sin(tilt), zc, 0, 0, side(s, tilt));
     });
     // the seam between two modules, dark, on the box face behind it
     P.add('hullDark', box(0.10, KNEE - 0.55, 0.012), side(s, outerX + 0.06), (0.55 + KNEE) / 2, Z(za - 0.01));
@@ -713,9 +715,10 @@ function buildMantlet(P: TankBuilderPort): void {
 
 /** The PNK-6 panoramic sight: pedestal, tapered tower and the twin-window head facing forward, ahead of the cupola. */
 /** 275 (Kevin 2026-11-21: "the big light tower in front of the machine gun should be no longer blocking that machine gun
- * for the oplots"): the tower stands 12 cm lower on its pedestal (head, windows and visor unchanged, top 0.63 m over the
- * roof for the print's 0.75), and the commander's 12.7 rides a riser whose bore clears it (M_STATIONS, T_STATIONS). */
-const PNK6_SINK = 0.12;
+ * for the oplots"): the tower stands 16 cm lower on its pedestal (head, windows and visor unchanged, top 0.59 m over the
+ * roof for the print's 0.75), and the commander's 12.7 rides a riser whose bore clears it by 9-10 cm (M_STATIONS,
+ * T_STATIONS; the blind critic read 6 cm as touching from the roof). */
+const PNK6_SINK = 0.16;
 function buildPnk6(P: TankBuilderPort): void {
   // (the print's head stands at turret z 0.02..0.37, r12's overlay: 0.15 m behind the first build and shallower)
   const t = ROOF_Y - PNK6_SINK;
@@ -1119,7 +1122,7 @@ function lightBar(P: TankBuilderPort, x: number, y: number, z: number): void {
   }
 }
 
-// (275: each commander's 12.7 on a riser, its bore 6 cm over the sunk PNK-6's cap, so the tower no longer blocks it)
+// (275: each commander's 12.7 on a riser, its bore 9-10 cm over the sunk PNK-6's cap, so the tower no longer blocks it)
 const M_STATIONS = Object.freeze({
   kt127: { name: 'oplotMKt127', caliber: 12.7, gun: 'nsvt', x: -0.98, z: -0.98, rise: 0.20 },
   kt762: { name: 'oplotMKt762', caliber: 7.62, gun: 'mag', x: 0.82, z: -1.06 },
@@ -1159,11 +1162,12 @@ function stationLimits(root: THREE.Group, yawArc: [number, number] | null, depre
 
 function buildOplotMKit(P: TankBuilderPort): void {
   // 275: on its riser the KT-12.7 clears the full circle (the sunk PNK-6 under its bore, the tall whip on the bustle, no
-  // decor whip or roof cargo; decorations.ts), laid level over the PNK-6 ahead of it (3-31 degrees); the KT-7.62, no
+  // decor whip or roof cargo; decorations.ts), held up over the PNK-6 ahead of it (3-31 degrees, 2-6 degrees of depression); the KT-7.62, no
   // longer blocked by the KT-12.7's box, clears the full circle at full depression
   stationLimits(cradleStation(P, M_STATIONS.kt127), null,
-    [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.043], [0.0698, 0.029], [0.0873, 0.004], [0.4538, 0.004], [0.4712, 0.006],
-      [0.4887, 0.006], [0.5061, 0.018], [0.5236, 0.035], [0.5411, 0.085], [0.5585, 0.18], [3.1416, 0.18]]);
+    [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.074], [0.0698, 0.06], [0.0873, 0.035], [0.4189, 0.035], [0.4363, 0.037],
+      [0.4538, 0.037], [0.4712, 0.04], [0.4887, 0.043], [0.5061, 0.054], [0.5236, 0.071], [0.5411, 0.122], [0.5585, 0.18],
+      [3.1416, 0.18]]);
   stationLimits(enclosedStation(P, M_STATIONS.kt762, false, true), null);
   // (275: the lower Duplet course on the rubber is gone; the deep skirt modules of oplotMSkirt are the side armour)
   // lights: LED bars on the stacks' tops at the front corners, a work lamp astern on the bustle
@@ -1181,9 +1185,9 @@ function buildOplotTKit(P: TankBuilderPort): void {
   // clears the full circle, laid level over the sunk PNK-6 ahead of it (3-31 degrees); the 7.62 clears the full circle at
   // full depression (its -105..-71 limit was decor cargo on the roof's left rear, now kept off the roof)
   stationLimits(enclosedStation(P, T_STATIONS.m2, true), null,
-    [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.063], [0.0698, 0.046], [0.0873, 0.018], [0.192, 0.018], [0.2094, 0.015],
-      [0.4189, 0.015], [0.4363, 0.018], [0.4538, 0.018], [0.4712, 0.02], [0.4887, 0.023], [0.5061, 0.035], [0.5236, 0.057],
-      [0.5411, 0.122], [0.5585, 0.18], [3.1416, 0.18]]);
+    [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.102], [0.0698, 0.085], [0.0873, 0.054], [0.2269, 0.054], [0.2443, 0.051],
+      [0.4189, 0.051], [0.4363, 0.057], [0.4538, 0.06], [0.4712, 0.063], [0.4887, 0.065], [0.5061, 0.082], [0.5236, 0.102],
+      [0.5411, 0.167], [0.5585, 0.18], [3.1416, 0.18]]);
   stationLens(P, T_STATIONS.m2);
   stationLimits(cradleStation(P, T_STATIONS.m240), null);
   // bolted steel appliqué where the Thai tank carries no Duplet: two courses of 9 cm blocks on each of the six rear skirt
