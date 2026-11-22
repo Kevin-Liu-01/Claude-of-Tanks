@@ -169,11 +169,12 @@ try {
     'src/ui/technicalDrawing.ts': 'panning the technical drawing (a drag; drawings-overhaul-259)',
     'src/game/watchController.ts': 'a tap on the field rides the tank under it (watch-mode-243; the drone\'s climb, descend and boost are the handbrake, reloadMagazine and sniperToggle actions)',
     'src/ui/tutorial/tutorialRunner.ts': 'the first-game tutorial\'s input guard (272, 9c670553f5): a key the Garage card swallowed on its way down is swallowed on its way up too, so the Garage never sees half a press; no action is held',
+    'src/ui/couchBriefing.ts': 'the couch briefing\'s Enter/Space step (pad-controls-274, 0b0296add3): the key\'s release is swallowed so a step acts once; no action is held',
   };
   const files = ['src/ui/hud.ts', 'src/ui/touchControls.ts', 'src/ui/settings.ts', 'src/ui/hudEditor.ts', 'src/ui/garage.ts',
     'src/ui/customCamoStudio.ts', 'src/game/garageShowroomRuntime.ts', 'src/game/input.ts', 'src/game/studio.ts', 'src/ui/studioPanel.ts',
     'src/game/watchController.ts', 'src/ui/components/hoverTip.ts', 'src/ui/techTree.ts', 'src/ui/technicalDrawing.ts',
-    'src/ui/tutorial/tutorialRunner.ts'];
+    'src/ui/tutorial/tutorialRunner.ts', 'src/ui/couchBriefing.ts'];
   const { execFileSync } = await import('node:child_process');
   const found = execFileSync('git', ['grep', '-l', '-I', '-E', "addEventListener\\('(keyup|pointerup|mouseup|touchend)'|onpointerup=", '--', 'src/ui', 'src/game', 'src/app', 'src/main.ts'],
     { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter((f) => f && !/\.selftest\.|\.test\./.test(f)).sort();
