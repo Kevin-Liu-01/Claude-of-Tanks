@@ -240,15 +240,15 @@ const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
 /** The guidance's classes (guidancePlan.ts, 274): the instruments it keeps off, the controls it never covers, and what it
  *  keeps clear where the screen has room. guidancePlan.selftest.mjs classes the recorded HUD the same way. */
-const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-drive,.cot-dp,.cot-vehicle-status,.cot-net,'
+export const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-drive,.cot-dp,.cot-vehicle-status,.cot-net,'
   + '.cot-mp-status.battle,.cot-spec.show,.cot-si-cardhost:not(:empty),.cot-si-log.open,.cot-medal-toasts:not(:empty),'
   + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat])';
-const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
+export const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
   + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
   + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
 const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-toasthost';
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
-const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
+export const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
 const GUIDANCE_CARD_W = 480;
 /** The caption line's natural width (notices-audit-275, ui/captionLine.ts): a subtitle's measure. */
 const GUIDANCE_CAPTION_W = 560;

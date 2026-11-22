@@ -1198,9 +1198,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/camoPicker.selftest.mjs',
     // 272: the first-game tutorial's steps, strings, media and claims (every tip held to the simulation), and its record
     'src/ui/tutorial/tutorialSteps.selftest.mjs',
-    // 273: the tutorial's guide (marker, path, bracket, edge pointer, HUD chevron, aim ghost): its geometry, and that it
-    // never takes the pointer and goes with its run
+    // 273: the tutorial's guide (marker, bracket, HUD chevron, aim ghost): its geometry, and that it never takes the pointer
+    // and goes with its run (its way there is the pointer layer's since 275)
     'src/ui/tutorial/tutorialGuide.selftest.mjs',
+    // guidance-pointers-275 (Kevin: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the
+    // ui"): the one pointer primitive: the follow trail and turn arrow, the warnings' ranked, merged, capped rim bubbles, and
+    // their sources (tanks with a gun on the player, air runs, missiles, the objective that matters now)
+    'src/ui/pointers/pointerPlan.selftest.mjs',
     // 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them
     'src/ui/tutorial/tutorialTour.selftest.mjs',
     // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):
