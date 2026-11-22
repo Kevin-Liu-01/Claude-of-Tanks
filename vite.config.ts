@@ -504,7 +504,12 @@ export default defineConfig({
             // 2026-11-11 (fire-fx-debounce-272): the fast guns' presentation cadence (game/shotCadence.ts, 1.5 KB, DOM-free, no
             // imports) that the solo step, the camera feedback, the audio, the effects and the phone's buzz all read; alone it
             // would be one more request.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats|shotCadence)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-21 (tutorial-lazy-274, owed by integrator 274.0's re-pin): the hull field predicate (sim/hullField.ts, 0.1 KB,
+            // no imports: main's guide and the lazy HUD, aim and presentation read it each frame) and the training ground's
+            // rules (sim/trainingGround.ts, 1.8 KB br, type imports only: the boot's match ruleset row and roster state, the
+            // lazy solo runtime and tutorial) load at boot on exactly the game and cn; alone they were two more boot requests
+            // on both. Neither was in the entry chunk.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats|shotCadence)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions|hullField|trainingGround)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
