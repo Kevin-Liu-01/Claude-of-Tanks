@@ -35,6 +35,9 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // Round 3 (blind A/Bs k21turretr269/r269b): round 1's turret (roof 0.646 over the ring) with its mantlet a third
 // larger (cradle housing, coaxial box, jacket and collar) so it reads at overview scale: k21's gunMount box is
 // re-measured as the current build / factor.
+// 2026-11-22 (274, turret-deck-gate-274b 0a971bb934 and fix3): the seat's foot band stands each turret's foot over its
+// own hull's swept tops, so the turret's lowest corner rises: type100 and ares_apc's turret min y are re-measured as the
+// current build / factor (type100 0.052 -> 0.068 m, ares_apc 0 -> 0.090 m); every other pinned extent is unchanged.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];
