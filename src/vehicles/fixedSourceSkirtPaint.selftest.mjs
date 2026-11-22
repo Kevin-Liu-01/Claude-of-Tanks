@@ -55,4 +55,4 @@ try{for(const id of Object.keys(FIXED_SOURCE_SKIRTS)){
     }finally{before.dispose();after.dispose();}
   }
 }}finally{restore();}
-console.log(`fixedSourceSkirtPaint: three fixed-skirt profiles, ${checks} posed/depleted whole-model differentials PASS; native visual review remains separate`);
+console.log(`fixedSourceSkirtPaint: two fixed-skirt profiles, ${checks} posed/depleted whole-model differentials PASS; native visual review remains separate`);

@@ -5,7 +5,6 @@ import {T80UK_X_GUN_PITCH_BY_YAW_DEG} from './t80uXArmor.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
 import {applyT64PhysicalFrame,T64_DATUMS} from './t64Armor.ts';
-import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 
 /** Release 227: each Type 96 concept's mechanical gun clearance (absolute turret yaw, minimum pitch, degrees;
@@ -93,46 +92,27 @@ export function synchronizeFleetRenewalMetadata():void{
   TANK_SPECS.t80uk.gunPitchByYawDeg=T80UK_X_GUN_PITCH_BY_YAW_DEG;
   TANK_SPECS.t72b3m_2022.name='T-72B3M obr. 2022';
   TANK_SPECS.t72b3m_2016.name='T-72B3M obr. 2016';
-  // Owner-directed turret transplants keep hull-local damage owners and use
-  // the complete donor turret's plates, gun, crew and turret-local modules.
-  const transplant=(id:string,upperId:string,pivot:[number,number,number])=>{
-    const target=TANK_SPECS[id],upper=donors[upperId],lower=structuredClone(target);
-    target.armor=structuredClone(upper.armor);
-    target.armor.hullPlates=lower.armor.hullPlates;
-    target.armor.modules=hybridModules(lower,upper);
-    target.armor.crew=[...lower.armor.crew.filter(c=>!c.turretLocal),...target.armor.crew.filter(c=>c.turretLocal)];
-    target.armor.turretPivot=pivot;target.gun=structuredClone(upper.gun);
-    target.gunElevationDeg=upper.gunElevationDeg;target.gunDepressionDeg=upper.gunDepressionDeg;
-    target.dims.heightM=upper.dims.heightM-upper.armor.turretPivot[1]+pivot[1];
-    target.dims.overallLengthM=lower.dims.hullLengthM/2+pivot[2]+target.armor.gunPivot[2]+target.armor.gunBarrel.lengthM;
-  };
   // 266 (the owner, 2026-10-30: "also completley redesign the t72b3 (2022)"): the T-72B3M obr. 2022 is the T-72B3M's
   // own build with its 2022 package (t72b3m2022Kit.ts), no longer the T-90SM turret transplant. It keeps the 2016's
   // physical frame copied above (its cast turret, crew, modules and pivots) and its own step on the line: the 2022 gun
   // (Svinets-2 and the faster fire control) it carried before.
   TANK_SPECS.t72b3m_2022.gun=structuredClone(donors.t90sm.gun);
-  // 247: the transplanted turret sits on the T-62's deck (t62Modernization.ts), 90 mm over the T-62 dome's own seat
-  transplant('t62mv1','t72b_1987',[0,1.570,.676]);
-  // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
-  // It keeps its balance peer's fire control: the copied 1987 dispersion and aim
-  // time (a modern-era floor, 0.62x its cold-war tier-7 peers) were a side effect
-  // of copying the gun, not part of the transplant (fleetBalance.selftest).
+  // t62-275 (the owner, 2026-11-21: "update the t62mv-1 and t62 obr 1975 to actually look like their historical
+  // counterparts"): the T-62MV is the T-62's own cast turret with its 1985 Kontakt-1 package (profiles/t62Family.ts), no
+  // longer the T-72B 1987 turret transplant. It keeps the T-62 frame copied above (turret plates, crew of four, manual
+  // loading, modules) and its own step on the line: the gun record it fought with (the transplant's ballistics, with its
+  // balance peer's fire control) and its elevation limits, so the tier's balance does not move with the looks.
+  TANK_SPECS.t62mv1.gun=structuredClone(donors.t72b_1987.gun);
   Object.assign(TANK_SPECS.t62mv1.gun,{baseAccuracy:donors.t62_1975.gun.baseAccuracy,aimTimeS:donors.t62_1975.gun.aimTimeS});
-  TANK_SPECS.t62mv1.armor.turretPivot=[0,1.570,.676];
+  TANK_SPECS.t62mv1.gunElevationDeg=donors.t72b_1987.gunElevationDeg;
+  TANK_SPECS.t62mv1.gunDepressionDeg=donors.t72b_1987.gunDepressionDeg;
+  // Kontakt-1 fields on the glacis, both turret cheeks and the top of each rubber skirt's front, each zone one removable
+  // cluster in the build; the seeds are replaced by the cassettes' marked faces in anatomy generation
   const t62Era=createT62MV1XArmorZones();
-  // The 1975 chassis has an exposed five-wheel course: the donor record's
-  // spaced rubber-skirt planes (x +-1.83, from the superseded MV-era model)
-  // stand in open air beside the wheels, so the rebuild drops them.
-  TANK_SPECS.t62mv1.armor.hullPlates=TANK_SPECS.t62mv1.armor.hullPlates
-    .filter(p=>!(p.kind==='spaced'&&!p.era&&/^skirt(?:_rubber)?_[LR]$/.test(p.name)));
+  TANK_SPECS.t62mv1.armor.hullPlates=TANK_SPECS.t62mv1.armor.hullPlates.filter(p=>p.kind!=='era');
   TANK_SPECS.t62mv1.armor.hullPlates.push(...t62Era.hullPlates);
-  // The rebuilt MV-1 adds two independently removable side fields beyond
-  // the former four-zone package; gameplay must cover those new cassettes.
-  const sideEra={kind:'era',era:{...t62Era.hullPlates[0].era!}};
-  TANK_SPECS.t62mv1.armor.hullPlates.push(
-    leftSidePlate('skirt_era_L',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
-    rightSidePlate('skirt_era_R',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
-  );
+  TANK_SPECS.t62mv1.armor.turretPlates=TANK_SPECS.t62mv1.armor.turretPlates.filter(p=>p.kind!=='era');
+  TANK_SPECS.t62mv1.armor.turretPlates.push(...t62Era.turretPlates);
   for(const id of ['amx30','amx30b2']) {
     TANK_SPECS[id].armor.turretPivot=[0,1.60,-.05];
     TANK_SPECS[id].armor.gunPivot=[0,.33,1.30];

@@ -64,7 +64,8 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = {
   k1a1: { hullLengthM: 7.627, overallLengthM: 9.72264, widthM: 3.6758, heightM: 2.20756,
     silhouetteHeightM: 2.738168, silhouetteHullLengthM: 7.547909, silhouetteWidthM: 3.599614 },
   amx30b: { hullLengthM: 6.30289, overallLengthM: 9.54869, widthM: 3.11322, heightM: 2.284, silhouetteHeightM: 2.991, silhouetteHullLengthM: 6.662 },
-  t62mv1: { hullLengthM: 6.363553662, overallLengthM: 9.510790337, widthM: 3.30, heightM: 2.082969, silhouetteHeightM: 2.558, silhouetteHullLengthM: 6.742 },
+  // t62-275: the T-62 family's published frame (profiles/t62Family.ts); renewal copies the obr. 1975's over it
+  t62mv1: { hullLengthM: 6.63, overallLengthM: 9.33, widthM: 3.30, heightM: 2.40 },
   t72b_1987: { hullLengthM: 6.737070506, overallLengthM: 9.703027867, widthM: 3.59, heightM: 2.105640266, silhouetteHeightM: 2.531, silhouetteHullLengthM: 7.243 },
   // release 231: the structural roof rises with the T-80U X ring (t80uXArmor.ts T80U_X_RING_RAISE_M); the silhouette fields stay the oracle's
   t80u: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481 + T80U_X_RING_RAISE_M, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
@@ -104,7 +105,7 @@ const frames: Readonly<Record<string, SourceFrame>> = {
   leo2a6: { turret: [.000005, 2.14836, 1.047795], gun: [.000005, 1.97054, 1.419495], muzzleZ: 7.139555 },
   k1a1: { turret: [0, 1.49566, .42564], gun: [.0352, 1.81797, 1.57716], muzzleZ: 5.9052399 },
   amx30b: { turret: [0, 1.584, .285], gun: [-.011, 1.87565, 1.60], muzzleZ: 5.99439 },
-  t62mv1: { turret: [0, 1.446436, .3041853764], gun: [0, 1.6650417561, 1.5303753764], muzzleZ: 5.920914939 },
+  t62mv1: { turret: [0, 1.47, .16], gun: [0, 1.80, .94], muzzleZ: 6.03 },
   t72b_1987: { turret: [-.0000548974, 1.4040902854, -.0343498434], gun: [-.0000548633, 1.6208176016, 1.2669569241], muzzleZ: 5.766827075 },
   // release 231: the ring and the trunnion over it raised by T80U_X_RING_RAISE_M (the gun's own frame is unchanged)
   t80u: { turret: [0, 1.55158 + T80U_X_RING_RAISE_M, .0718698169], gun: [0, 1.7564274071 + T80U_X_RING_RAISE_M, 1.4199398169], muzzleZ: 6.002754533 },

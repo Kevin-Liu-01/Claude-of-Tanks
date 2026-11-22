@@ -665,7 +665,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/sourceXSecondWaveLazy.selftest.mjs',
     'src/vehicles/sourceXSecondWaveMarkings.selftest.mjs',
     'src/vehicles/sourceXSecondWaveOptics.selftest.mjs',
-    'src/vehicles/profiles/t62mv1XSight.selftest.mjs',
+    'src/vehicles/profiles/t62Family.selftest.mjs',
     'src/vehicles/profiles/k1a1X.selftest.mjs',
     'src/vehicles/profiles/leopardA6X.selftest.mjs',
     'src/vehicles/profiles/leclercX.selftest.mjs',

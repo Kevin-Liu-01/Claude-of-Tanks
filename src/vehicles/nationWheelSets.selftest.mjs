@@ -99,7 +99,7 @@ expect('amx30', 'amx40_proto'); expect('amx40_proto', 'amx40_proto'); expect('am
 expect('chieftain3', 'challenger2e'); expect('challenger1_mk3', 'challenger2e'); expect('centurion3', 'challenger2e');
 expect('challenger3', 'challenger3_proto', 'donor'); expect('ua_challenger2', 'challenger2e', 'donor');
 expect('fv510', 'warrior_tes_h'); expect('ajax', 'warrior_tes_h'); expect('ares_apc', 'warrior_tes_h');
-expect('t62_1975', 't90_1992'); expect('t55a', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); // 262: the T-54/T-55 starfish exception while the switch holds expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
+expect('t62_1975', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); expect('t62mv1', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); expect('t55a', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); // 262: the T-54/T-55 starfish exception while the switch holds expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
 expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
 expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('bmpt_terminator', 't90am'); expect('tos1a_tagil', 't90am');
 // 268: the GM-352 pair takes Russia's IFV wheel; the PLA air defence rolls on the ZTZ-100's solid dished wheel (photos);
