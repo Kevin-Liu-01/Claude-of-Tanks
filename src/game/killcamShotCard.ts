@@ -69,6 +69,9 @@ export interface ShotCardModel {
   readonly vehicle: string;
   /** The platform's icon where a call-in, the gunship or a drone made the kill. */
   readonly sourceIcon: string | null;
+  /** The killer's vehicle, whose render stands at the card's right (Kevin 2026-11-22: "in the right of the enemy stat
+   *  readout show their tank card since theres extra space there"); null for a platform. */
+  readonly vehicleSpecId: string | null;
   /** The round as a weapon ("120 mm DM53 APFSDS"); '' for a ram or a fire. */
   readonly weapon: string;
   readonly outcome: { readonly tone: ShotOutcomeTone; readonly label: string };
@@ -147,14 +150,16 @@ export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): S
   const stats: ShotCardStat[] = [];
   if (collision) {
     stats.push({ id: 'closing', label: t('killcam.stat.closingSpeed'), value: `${round((ev.closingMps || 0) * 3.6)} km/h` });
-  } else if (!fire) {
-    stats.push({ id: 'distance', label: t('killcam.stat.distance'), value: `${round(ev.flightDistM).toLocaleString()} m` });
+  }
+  const damage: ShotCardStat = { id: 'damage', label: t('killcam.stat.damage'), value: `−${round(hullPointsRemoved(ev))}` };
+  if (!collision && !fire) {
+    // the short figures share the first row (distance, damage); armour and pen take a row each
+    stats.push({ id: 'distance', label: t('killcam.stat.distance'), value: `${round(ev.flightDistM).toLocaleString()} m` }, damage);
     stats.push({ id: 'armor', label: t('killcam.stat.armor'), value: armorText(ev) });
     const nominal = nominalPenFor(ev);
     const roll = round(ev.penRollMm);
     stats.push({ id: 'pen', label: t('killcam.stat.pen'), value: roll > 0 ? `${roll}${nominal > 0 ? ` / ${nominal}` : ''} mm` : '—' });
-  }
-  stats.push({ id: 'damage', label: t('killcam.stat.damage'), value: `−${round(hullPointsRemoved(ev))}` });
+  } else stats.push(damage);
   return {
     view,
     heading: view === 'death' ? t('killcam.destroyedByHeading') : view === 'kill' ? t('killcam.card.yourKill') : t('killcam.card.finalBlow'),
@@ -162,6 +167,7 @@ export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): S
     flagNation: specId ? lookups.specNation(specId) : null,
     vehicle,
     sourceIcon: source?.icon ?? null,
+    vehicleSpecId: specId,
     weapon: collision || fire ? '' : weaponDisplayName(ev),
     outcome: outcomeOf(input),
     location: collision || fire ? '' : (ev.zone ? zoneLabel(ev.zone) : ''),
@@ -188,6 +194,7 @@ export interface ShotCardDom {
   readonly stats: HTMLElement;
   readonly sil: HTMLElement;
   readonly dot: HTMLElement;
+  readonly art: HTMLElement;
 }
 
 /** The card's markup, built once per killcam (its words are written per replay, so a locale change reads at once). */
@@ -207,13 +214,16 @@ export function buildShotCard(parent: HTMLElement, make: (tag: string, className
   const stats = make('dl', 'st', root);
   const sil = make('div', 'sil', root);
   const dot = make('span', 'dot', sil);
-  return { root, heading, flag, who, vehicle, weapon, outcome, location, target, stats, sil, dot };
+  const art = make('div', 'art', root);
+  art.setAttribute('aria-hidden', 'true');
+  return { root, heading, flag, who, vehicle, weapon, outcome, location, target, stats, sil, dot, art };
 }
 
 export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
   flagHtml(nation: string): string;
   iconHtml(icon: string): string;
   silhouetteUrl(specId: string): string;
+  vehicleUrl(specId: string): string;
 }): void {
   card.root.dataset.view = model.view;
   card.root.dataset.tone = model.outcome.tone;
@@ -241,6 +251,9 @@ export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
     row.append(dt, dd);
     card.stats.append(row);
   }
+  card.art.hidden = !model.vehicleSpecId;
+  card.root.toggleAttribute('data-art', !!model.vehicleSpecId);
+  if (model.vehicleSpecId) card.art.style.backgroundImage = `url(${art.vehicleUrl(model.vehicleSpecId)})`;
   card.sil.hidden = !model.silhouette;
   if (model.silhouette) {
     card.sil.style.backgroundImage = `url(${art.silhouetteUrl(model.silhouette.specId)})`;
@@ -254,12 +267,19 @@ export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
  * the data face. Colours are tokens only. Motion is the shared vocabulary (cot-m-rise on the card, cot-m-beat on the chip).
  */
 export const SHOT_CARD_CSS = `
-.cot-kc-card{position:absolute;z-index:calc(var(--z-hud-sight) + var(--z-lift));left:var(--kc-gutter,28px);bottom:calc(var(--kc-band,8vh) + var(--s3));width:min(320px,calc(100vw - 2 * var(--kc-gutter,28px)));
-  display:grid;gap:3px;padding:var(--s2) var(--s3) var(--s3);
+.cot-kc-card{position:absolute;z-index:calc(var(--z-hud-sight) + var(--z-lift));left:var(--kc-gutter,28px);bottom:calc(var(--kc-band,8vh) + var(--s3));width:min(340px,calc(100vw - 2 * var(--kc-gutter,28px)));
+  display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--s2);row-gap:3px;padding:var(--s2) var(--s3) var(--s3);
   background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate) 70%,var(--hud-plate-strong));
-  border:1px solid var(--line-3);border-left:3px solid var(--kc-tone,var(--accent));
+  border:1px solid var(--line-3);
   box-shadow:var(--battle-plate-shadow);color:var(--ink-1);pointer-events:none;}
 .cot-kc-card[hidden]{display:none;}
+/* (the text in the first column; the killer's tank render in the second, beside its name, vehicle, weapon and outcome:
+   the room the figures leave there; the figures, the target line and the silhouette span both) */
+.cot-kc-card>*{grid-column:1;}
+.cot-kc-card>:is(.st,.tg,.sil){grid-column:1/-1;}
+.cot-kc-card .art{grid-column:2;grid-row:1/span 5;align-self:center;width:112px;height:76px;
+  background-position:center;background-size:contain;background-repeat:no-repeat;}
+.cot-kc-card .art[hidden]{display:none;}
 .cot-kc-card[data-tone=pen],.cot-kc-card[data-tone=rack],.cot-kc-card[data-tone=fire]{--kc-tone:var(--team-enemy);}
 .cot-kc-card[data-tone=glance]{--kc-tone:var(--warn);}
 .cot-kc-card[data-tone=ram]{--kc-tone:var(--accent);}

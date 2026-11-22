@@ -1462,7 +1462,7 @@ export function createKillCam(deps: KillcamDeps) {
     tier: (specId) => { try { return tierNumeral(specId); } catch (_) { return ''; } },
     hullSize: (specId) => {
       const dims = specOrNull(specId)?.dims;
-      const lengthM = Number(dims?.lengthM), heightM = Number(dims?.heightM);
+      const lengthM = Number(dims?.hullLengthM), heightM = Number(dims?.heightM);
       return lengthM > 0 && heightM > 0 ? { lengthM, heightM } : null;
     },
   };
@@ -1474,6 +1474,7 @@ export function createKillCam(deps: KillcamDeps) {
     flagHtml: (nation: string) => flagHtml?.(nation, 22, 16) ?? '',
     iconHtml: (icon: string) => uiIconSVG(icon, 18),
     silhouetteUrl: (specId: string) => iconUrl(specId, 'side_silhouette'),
+    vehicleUrl: (specId: string) => iconUrl(specId, 'angle'),
   };
   /** A hull's name as the rosters, the feed and the plates show it: a named hull's own (a room player, a couch seat), the
    *  player's callsign, a bot's (botCallsigns.ts, the same walk over the battle's tanks in their order). */
