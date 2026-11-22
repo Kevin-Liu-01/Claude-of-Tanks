@@ -1966,14 +1966,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   /**
-   * A survivor joins the infected (Infected), its one writer: the death watch's conversion, and a migrated host's replay
-   * taking the faction the seat's frame shows (takeView, 276): its side, its spawn, its pace. Its life is left as it is.
+   * A hull's faction (Infected), its one writer: the death watch's conversion of a survivor, and a migrated host's replay
+   * taking the faction the seat's frame shows (takeView, 276, either way): its side, its spawn, its pace. Its life is
+   * left as it is.
    */
-  const infect = (entity: Entity): void => {
-    teams.alpha.splice(teams.alpha.indexOf(entity), 1);
-    entity.team = entities.some(other => other.team === 'enemy') ? 'enemy' : 'bravo';
-    teams.bravo.push(entity);
-    spawns.set(entity.id, { ...centers.bravo });
+  const setFaction = (entity: Entity, side: ObjectiveTeam): void => {
+    const from = teamOf(entity);
+    if (from === side) return;
+    teams[from].splice(teams[from].indexOf(entity), 1);
+    entity.team = side === 'bravo' && entities.some(other => other.team === 'enemy') ? 'enemy' : side;
+    teams[side].push(entity);
+    spawns.set(entity.id, { ...centers[side] });
     stampPhysics(entity);
   };
 
@@ -1988,7 +1991,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     dropCarriedFlags(entity, timeS);
     if (entity === boss) return;
     if (ruleset.infection && teamOf(entity) === 'alpha') {
-      infect(entity);
+      setFaction(entity, 'bravo');
       emit('mode_infected', { id: entity.id, team: 'bravo' });
     }
     if (ruleset.respawnS != null && respawns(entity)) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
@@ -3210,22 +3213,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       hordeArrivalDue.clear();
       for (const [key, x, z, yaw, seed] of saved.horde.due ?? []) if ([x, z, yaw].every(finite) && Number.isInteger(seed)) hordeArrivalDue.set(key, [x, z, yaw, seed]);
       pickups.length = 0; pickups.push(...saved.horde.pickups.map((p) => ({ ...p }))); pickupSequence = saved.horde.sequence;
-      // the trickle's arrivals the old host made after the keyframe, their revives replayed (fix-up r1): taken up as made,
-      // in their order (out of the queue, the clock run from the last), so the new host's first step brings none twice
-      // with them, in told order, a refused arrival due again that the old host's retry stood up (275: its point's draws
-      // and its hunter's lead), each on its own clock (its search, the stall rule and the hunter's search read it)
-      const arrivals = [...(saved.horde.trickled ?? []).map(([key, atS]) => [key, atS, true] as const),
-        ...ringRisen.map(([key, atS]) => [key, atS, false] as const)].sort((a, b) => a[1] - b[1]);
-      for (const [key, atS, trickled] of arrivals) {
-        const risen = entityById.get(key);
-        if (!risen || risen.modeLife !== 'alive' || !finite(atS) || (!trickled && !hordeEnemies.includes(risen))) continue;
-        const clock = placementTimeS;
-        placementTimeS = atS;
-        if (trickled) trickleHorde(atS, 0, risen);
-        else { takeArrival(risen, hostileArrival(risen, false)); arrivalStalledAtS = null; }
-        replanForRisen();
-        placementTimeS = clock;
-      }
+      takeHordeArrivals(saved.horde.trickled ?? [], ringRisen);
       takeHordeMove(saved.horde);
     }
     if (saved.line) {
@@ -3256,14 +3244,53 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (!finite(plan?.x) || !finite(plan?.z)) continue;
         attackPlan.set(key, { x: plan.x, z: plan.z, stagedAtS: finite(plan.stagedAtS) ? plan.stagedAtS : Infinity, pushing: plan.pushing === true });
       }
-      // the reinforce trickle's arrivals the old host made after the keyframe (fix-up r2), before any advance there: taken
-      // up as made, in their order (the trickle's clock from the last, each one's rear slot draw)
-      const zone = liveLine();
-      for (const [key, atS] of saved.line.reinforced ?? []) {
-        const risen = entityById.get(key);
-        if (zone && risen && risen.modeLife === 'alive' && finite(atS)) stepReinforceTrickle(zone, atS, risen);
-      }
+      takeReinforced(saved.line.reinforced ?? []);
       takeLineAdvance(saved.line.begun);
+    }
+  }
+  /**
+   * The Horde's arrivals the old host made in the window that this controller has not, their hulls already standing (a
+   * migrated host's rows): the trickle's (`trickled`, fix-up r1) out of the queue with the trickle's clock run from the
+   * last, and with them, in told order, a refused arrival due again that the old host's retry stood up (`ringRisen`, 275:
+   * its point's draws and its hunter's lead), each on its own clock (its search, the stall rule and the hunter's search
+   * read it). At a keyframe's restore (restoreWaves) and after a replay of the window (takeView, 276: a seat's kill in the
+   * window let the old host's trickle bring one on that the play's full field held back; before, the new host's queue
+   * held it twice and its trickle clock stood due).
+   */
+  function takeHordeArrivals(trickled: readonly (readonly [string, number])[], ringRisen: readonly (readonly [string, number])[]): void {
+    const arrivals = [...trickled.map(([key, atS]) => [key, atS, true] as const),
+      ...ringRisen.map(([key, atS]) => [key, atS, false] as const)].sort((a, b) => a[1] - b[1]);
+    for (const [key, atS, made] of arrivals) {
+      const risen = entityById.get(key);
+      if (!risen || risen.modeLife !== 'alive' || !finite(atS) || (!made && !hordeEnemies.includes(risen))) continue;
+      const clock = placementTimeS;
+      placementTimeS = atS;
+      if (made) trickleHorde(atS, 0, risen);
+      else { takeArrival(risen, hostileArrival(risen, false)); arrivalStalledAtS = null; }
+      replanForRisen();
+      placementTimeS = clock;
+    }
+  }
+  /** Frontline's reinforce trickle arrivals the old host made in the window, before any advance there (fix-up r2): taken
+   *  up as made, in their order (the trickle's clock from the last, each one's rear slot draw); restoreWaves and takeView. */
+  function takeReinforced(reinforced: readonly (readonly [string, number])[]): void {
+    const zone = liveLine();
+    for (const [key, atS] of reinforced) {
+      const risen = entityById.get(key);
+      if (zone && risen && risen.modeLife === 'alive' && finite(atS)) stepReinforceTrickle(zone, atS, risen);
+    }
+  }
+  /** An Infected arrival the old host stood up in the window (275): its ring's draws and its hunter's lead, on its clock;
+   *  restoreCheckpoint and takeView. */
+  function takeInfectedArrivals(ringRisen: readonly (readonly [string, number])[]): void {
+    if (!infectionArrival) return;
+    for (const [key, atS] of ringRisen) {
+      const risen = entityById.get(key);
+      if (!risen || risen.modeLife !== 'alive' || teamOf(risen) !== 'bravo' || !finite(atS)) continue;
+      const clock = placementTimeS;
+      placementTimeS = atS;
+      takeArrival(risen, infectedArrival(risen));
+      placementTimeS = clock;
     }
   }
   /** A zone meter as a checkpoint or a frame has it, onto the live zone of its id (none of another id is touched). */
@@ -3531,17 +3558,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       // and lead seed back over what the replay took
       if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
       if (checkpoint.waves) restoreWaves(checkpoint.waves, checkpoint.ringRisen ?? []);
-      // an Infected arrival the old host stood up in the window (275): its ring's draws and its hunter's lead, on its clock
-      if (infectionArrival) {
-        for (const [key, atS] of checkpoint.ringRisen ?? []) {
-          const risen = entityById.get(key);
-          if (!risen || risen.modeLife !== 'alive' || teamOf(risen) !== 'bravo' || !finite(atS)) continue;
-          const clock = placementTimeS;
-          placementTimeS = atS;
-          takeArrival(risen, infectedArrival(risen));
-          placementTimeS = clock;
-        }
-      }
+      takeInfectedArrivals(checkpoint.ringRisen ?? []);
       if (air && checkpoint.air) air.restore(checkpoint.air);
       if (checkpoint.objectives) {
         const saved = checkpoint.objectives;
@@ -3581,11 +3598,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         observeEntityDeath(entity, placementTimeS);
       }
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
-      // the factions (Infected): a survivor the view shows infected whose death no row showed (a victim risen again in the
-      // window, or one whose death the frame alone shows) joins the infected, its life as the rows left it
+      // the factions (Infected), both ways, each life as the rows left it: a survivor the view shows infected whose death
+      // no row showed (a victim risen again in the window, or one whose death the frame alone shows) joins the infected;
+      // one the play alone infected (its held hull took a round the seat's dodged: the row stands it up) is a survivor
       if (ruleset.infection) {
         const shown = new Map(checkpoint.teams);
-        for (const entity of [...teams.alpha]) if (shown.get(entity.id) === 'bravo') infect(entity);
+        for (const entity of entities) {
+          const side = shown.get(entity.id);
+          if ((side === 'alpha' || side === 'bravo') && side !== teamOf(entity)) setFaction(entity, side);
+        }
       }
       // the caches as the view lists them, both ways: one the view no longer lists was taken (its hull's row carries the
       // repair or rounds); one it lists that the play took was the play's alone (a seat's hull on its held command drove
@@ -3611,13 +3632,20 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         ballActiveAtS = saved.ballActiveAtS;
       }
       // the director's moves the view shows that the play did not make, as a keyframe's restore takes them (made: nothing
-      // repaired, revived or announced again), and the line's zones (Frontline keeps them with its line)
+      // repaired, revived or announced again), and the line's zones (Frontline keeps them with its line). First the
+      // arrivals the old host made that the play did not (a seat's kill let its trickle or ring bring one on: the rows
+      // stood it up, the death watch above took its life), then the waves' moves, as restoreWaves orders them
       const waves = checkpoint.waves;
-      if (waves?.horde && ruleset.horde) takeHordeMove(waves.horde);
+      if (waves?.horde && ruleset.horde) {
+        takeHordeArrivals(waves.horde.trickled ?? [], checkpoint.ringRisen ?? []);
+        takeHordeMove(waves.horde);
+      }
       if (waves?.line && ruleset.assault) {
         takeZones(waves.line.zones);
+        takeReinforced(waves.line.reinforced ?? []);
         if (waves.line.begun) takeLineAdvance(waves.line.begun);
       }
+      takeInfectedArrivals(checkpoint.ringRisen ?? []);
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);

@@ -2730,11 +2730,16 @@ floors, both measured on the round 1 review's CTF fight (4v4 bots and the seat, 
   round 1's two majors). First the lives the last step's rows changed, through the death watch on that step (the frame's),
   and a benched hull a row stood up (a draw the old host made: a benched hull's combat stands destroyed on every host, so
   a live one is a row's revive). Then the score (the play's own, exact, with the whole points it missed), the Infected
-  factions (a survivor the frame shows infected), the caches both ways (one the seat took; one the play's held hull took
+  factions both ways (a survivor the frame shows infected; one the play alone infected, a survivor again), the caches both ways (one the seat took; one the play's held hull took
   that the seat never reached lies there again), the flags with their carriers' pace, the zones (Frontline's with its
   line: before, its meter stayed the play's), the ball, and a director move the frame shows that the play did not make,
   taken up as made through the writers a keyframe's restore uses (restoreWaves' takeHordeMove and takeLineAdvance: a Horde
-  wave cleared or begun, a Frontline advance, on the advance's moment from the revives the seat was told of). Before, a
+  wave cleared or begun, a Frontline advance, on the advance's moment from the revives the seat was told of), and before
+  them an arrival the old host made that the play did not (a seat's kill let the Horde's trickle or ring, Frontline's
+  reinforce trickle or Infected's ring bring one on: the hulls revived in the window, as the 275 reading finds them, less
+  those the play holds alive, named as checkpointAfterRevives names the keyframe's, through takeHordeArrivals,
+  takeReinforced and takeInfectedArrivals; before, a Horde queue held the arrival twice and its trickle stood due, the
+  review round 3's major). Before, a
   wave cleared by a death the play never saw was cleared again on the first step: every survivor repaired a second time
   (1960, 3430, then 4900 hp), a second cache, mode_wave_cleared and mode_pickup_spawned to every seat again, the lull
   0.5 s late (the review round 2's major). Then the props and destruction the seat was told of that the play did not
@@ -2774,8 +2779,9 @@ state, kit, special action and input rides exact, or is named: a mirror or a con
 reading's multipliers below 0.5 too, which packed less 1 came back an ulp off), a newer row's drive and the packing. 275's two unpinned reads are
 pinned: a revived bot's last pushed target dropped (`botDriveMigration` [7b]) and the smoke kit on the hull's clock
 (`botAbilities`). `migrationTwins` [9] holds a turret thrown by a kill in the window, to the bit; `resumeHold` no keyframe
-in the hold. Forty-eight mutants, each one fix reverted and served through a load hook, each fail a receipt (the lane's
-record).
+in the hold. Seventy-four mutants, each one fix reverted and served through a load hook (the lane's record): 71 fail a
+receipt; a stage deed matched by its structure alone parts nothing (below), and two takes after a replay are pinned by
+reading alone (below).
 
 Cost (the lane's size probe at the final head, the 275 head on the same staging in brackets): a hull packs to 251
 characters at rest (its damage reading rides with it) and about 500 in motion (CTF at 30 s: 10.1 KB for 20 hulls); a
@@ -2785,10 +2791,11 @@ sealed keyframe grows 2.5-6.4 KB (CTF at 60 s 56.3 KB against 50.8, 24 of the 64
 kbit/s more to each seat (its whole keyframe stream 206-225 kbit/s at CTF's), and each mode event's keyframe carries it
 too. A full field (42 tanks, CTF) seals at 123.3 KB at 60 s (112.0 KB), 52 of the 64 chunks, and levels at 130.6 KB, 55
 chunks, at 120-180 s; nothing sheds (`encodeMigrationKeyframeWithin` sheds the brains, then the hulls, then the spotting
-past the cap). The replay costs the boot its steps: at a full field in Node, on a quiet machine, 70-106 ms for a 30-step
-window (its first steps warm the code), 139-168 ms for 120 steps (a 2 s keyframe interval) and 566-766 ms at
-`MAX_REPLAY_STEPS`; under a load average of 45 (other lanes' receipts and a VM), 177-224, 368-444 and 1349-2139 ms, the
-round 1 head's sources alike beside it (round 2 adds nothing per step); a resume read as 275 read it, 2-5 ms.
+past the cap). The replay costs the boot its steps: at a full field in Node, on a quiet machine, 70-77 ms for a 30-step
+window (its first steps warm the code), 139-151 ms for 120 steps (a 2 s keyframe interval) and 624-766 ms at
+`MAX_REPLAY_STEPS` (the round 1 and 2 reviews' runs); under a load average of 45 (other lanes' receipts and a VM), 177-224,
+368-444 and 1349-2139 ms, the round 1 head's sources alike beside it (round 2 adds nothing per step); a resume read as
+275 read it, 2-5 ms.
 
 Not taken up by 276 (275's and 274's lists above hold where a resume cannot replay; where it replays, the play makes
 every move they list as the old host made it):
@@ -2813,12 +2820,18 @@ every move they list as the old host made it):
 - What the play's held hull does to the world that the seat's did not: a prop it crushes or a structure it rams stays
   down on the new host and is served to every seat (the world's crush is not undone, and the frame's fallen list and the
   destruction it shows only add), and a director move the play makes that the old host did not (its held hull's ram
-  killing a hostile) stands. A cache it takes is set back (above).
+  killing a hostile) stands. A cache it takes is set back (above); the hull keeps the repair or rounds where no newer row
+  of it sets them back (a seat hidden from the elected seat, or whose held row is older than the take: the cache lies
+  there again and the gift is had twice).
 - Unpinned by a receipt (by reading): the body bits in the row compare, a drone pilot's held aim decoded from its drone,
   each hull's restored reading for the resume hints after the play, and the gate that keeps a hull revived in the window,
   on the 275 reading, from the hull of the life it left (its newer row would take the drive alone, so no staging parts).
   A stage deed's stage term (sameDestructionDeed) parts nothing under the one-for-one match: a structure's stages are
-  logged once each, in order, so its play's stages pair with the frame's alike without it.
+  logged once each, in order, so its play's stages pair with the frame's alike without it. After a replay, a Frontline
+  reinforce trickle arrival and an Infected ring arrival the play did not make are taken through the 275 reading's own
+  writers (takeReinforced, takeInfectedArrivals, pinned there by `waveStartMigration` [9] and the Infected receipts),
+  but no staging reaches them on a replay: the reinforce trickle's clock runs past a 30-tick window, and the play holds
+  an infected victim down past the old host's revive only when an earlier row than the frame's showed its death.
 - A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
 - A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
   client's shell rows not checked.
