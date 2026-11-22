@@ -2522,7 +2522,7 @@ at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, a
 every 500 ms) carries it too. It stays far under the `MIGRATION_MAX_CHUNKS` cap. A down bot adds two integers. Whether
 to trim the way (millimetre rounding, or no way a fresh brain would plan alike) is open.
 
-Not taken up at 274 and still open after 275 (below; 275 took up the rest: the brain, the integrator, the authority's
+Not taken up at 274 and still open after 275 (276 below plays every window move listed here where a resume can replay; below; 275 took up the rest: the brain, the integrator, the authority's
 own state, the mode clock, the director's tracker and deals, the lead seed, the window's ring arrivals and their draws, a
 resume hold's due arrivals, and the Frontline attackers' drift). Each still needs an owner; the figures are from Node
 probes of the receipts' staging:
@@ -2620,7 +2620,7 @@ Float64s, 10.7 characters a number against JSON's 18-20). A full field (42 hulls
 the `MIGRATION_MAX_CHUNKS` 64 (gaps 274's head: 55 KB, 23); past the cap a keyframe would be none at all, so
 `encodeMigrationKeyframeWithin` sheds the brains, then the integrators, then the spotting, and logs it (matchHostCore.ts).
 
-Not taken up by 275 (beside the 274 list above):
+Not taken up by 275 (beside the 274 list above; 276, below, replays the window and carries each hull exact: it takes up the first and third where a resume can replay and the second everywhere, and pins the last one's first two reads):
 - A bot's play inside the window: every bot's brain ticks and stream draws between the keyframe and the seat's frame,
   which no keyframe records. Fighting bots part by tens of metres in 10 s after a 30-tick window (a 4v4 CTF fight: 26-43
   m, against 0.1-0.24 m with no window; the brain record still helps there: 21-66 m without it, the round 1 correctness
@@ -2641,6 +2641,100 @@ the search and lead the old host's revive started), `botDriveMigration` [7a] (a 
 `ai.reviveResume` [2] (the hand-back on the battle clock), `migrationExtrasSize` (the shedding). Twenty-seven mutants, each
 one fix reverted, fail them (the lane's record). The match build's prediction digest moves (`movement.ts`), so a tab open on an
 older build is asked to refresh.
+
+**The window replayed 276 (2026-11-21, the window 275 left).** A migrated host plays the window between the keyframe and
+the seat's newest frame as the old host played it, and from a keyframe alone it is the old host to the bit. 275 left two
+floors, both measured on the round 1 review's CTF fight (4v4 bots and the seat, 45 s in, a 30-tick window, 10 s on):
+
+- The keyframe's own. Its rows round a hull's pose to the millimetre and carry none of what the last step left for the
+  next, and a fight parted on that by tens of metres (23 m in 10 s from a keyframe sealed at the frame itself). The gun's
+  limit flag was most of it: the bot's gun-limit nudge reads the last step's (23 m to 0.008 m alone), the rows' rounding
+  the rest. The keyframe now carries every live hull exact (`MigrationEntityExtras.hull`, migrationState.ts packHull):
+  its pose, its hp (a row's is whole: a brain read 0.156 hp as damage), the movement prediction checkpoint whole
+  (movementPredictionState.ts, the owner of the integrator state a pose cannot rebuild, which the client's predictor
+  already restores: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the
+  rock), what the last step left that neither holds (the rollover's countdown, the slope block and the contact a bot's
+  brain reads, the fall ledger and a landing's bounces), the roof guns' slew, the special action's toggle, and the held
+  input (a bot's last command: the gun-limit nudge reads its aim point before the brain writes a new one). It replaces
+  gaps 274's spool and turn rate (`motion`) and 275's hand-picked integrator parts (`integrator`). From a row newer
+  than the keyframe (the 275 reading of a window) only the drive (the turn rate, the slew, the bloom, the spool), the
+  input, the roof guns and the special action; the rest belongs with the pose the row seats. A down bot's brain waits for
+  its revive's hand-back: 275's restore gave it at once, so until its revive a down bot's brain was not the old host's (the
+  revive's own hand-back then reset what the first had; `botDriveMigration` [7a] holds it field for field before the
+  revive).
+- The bots' ways in matches with no mission to send them on. A sweep of the 13 modes (the CTF probe's staging, 30 s in)
+  found eight that parted from a keyframe alone by 40-230 m (standard 185 m, Gun Game 229 m, Juggernaut 172 m, Mars
+  148 m, Zone Control 114 m, Drone 113 m, Air Support 91 m, realistic 40 m; CTF, Horde, Frontline, Infected and Turbo
+  Ball held): their bots drive search, sector and level legs, which gaps 274's way (`game/ai.ts` BotDrive) left to be
+  planned afresh, and a mission's record rode only with a destination's list (a bot searching between Zone Control's
+  pushes held its last). The way now carries every owner's list, the mission's record with any, and a brain that held no
+  list holds none (takeDrive). All 13 modes are then to the bit on that staging (seed 5, 4v4 and the seat, 10 s on),
+  from a keyframe alone and through a 30-tick window.
+- The window's: every bot's play between the keyframe and the frame (its brain ticks and stream draws, a hidden hull's
+  moves, a wave's arrivals as they drove), which no keyframe records. Carrying the brains, ways, integrators and the
+  authority's block from the frame itself did worse (50 m): per-bot state without the world's at the same moment. The
+  resume now replays the window (replayWindow): the new host is built on the keyframe's clocks (`resumeClocksOf`; an
+  actor on the frame's is refused), restored at the keyframe, and stepped the old host's steps to the frame (the two
+  battle clocks' count: a tick the old host's loop dropped took no step), every seat's hull on the command it held at the
+  keyframe with its trigger off (the play never heard a seat; braked instead, a seat's hull pulled away 3.5 m behind its
+  row). After each step each row the seat holds of that step (a far tier's held row is older than the frame) corrects the
+  play where the play reads otherwise (rowOverReplay: the pose rounded as captureEntityRow rounds it and the body bits;
+  the life, hp, ammunition, shell, both reload channels and fire; the auxiliary kit): a seat's own moves and shots, a hull
+  a seat's shell turned. The mode's death watch takes a life a row changed on the next step (a hull the play killed that
+  the row shows alive is adopted, no respawn due). Last, the mode as the seat's frame shows it where the play's view
+  differs (checkpointAtNewestFrame on the play's own checkpoint, compared as served to the seat: a flag a seat lifted), the
+  props and destruction the seat was told of that the play did not make, and the smoke it did not raise, each once. A
+  shadow actor was ruled out: the authority crushes obstacles on the world object both would share. The replay runs in
+  the boot, before any seat is welcomed against the still world; the host reports 'playing' through its resume hold.
+  `MAX_REPLAY_STEPS` 600 (10 s): a longer window, a keyframe that names no battle clock, a phase other than playing at
+  either end or a frame that shows a verdict take 275's reading, which stays as it was.
+
+Twins (`migrationTwins.selftest`: the old host run on beside the migrated one, the same inputs; the 275 head on the same
+staging in brackets, its files served through a load hook; the receipt prints the window read as 275 read it beside each
+replay): from a keyframe alone, Frontline attackers and defenders to the bit over 14 s (0.36 and 1.1 m, the rows' floor),
+a Horde wave begun from the lull to the bit (0.002 m); a wave begun in the window, its arrivals seen or hidden, 2, 12 and 30 ticks in, to the bit (5.5, 5.9 and 0.07 m
+seen; 1.0, 4.2 and 10.0 m hidden); a Frontline advance in the window to the bit (21.2 m; 275 staged it with the attack
+stood on the sector each tick of the window, a hand no seat could know); the CTF fight to the bit on seeds 9 and 5 and
+on hills (25.8, 14.0 and 1.8 m); with the seat driving and firing through it, every bot within 0.011 m (36.9, 28.3 and
+11.5 m) and the seat's own hull 0.26 m (0.35 m); Turbo Ball through a window, the ball and every bot to the bit (bots
+98.9 m, the ball 13.9 m); from a keyframe alone Turbo Ball's bots to the bit too (0.6-0.8 m: `modeWindowMigration` [5]);
+standard, Zone Control and realistic matches, to the bit from a keyframe alone (184.4, 107.1 and 39.3 m) and through a
+window (189.3, 114.4 and 39.5 m).
+`windowReplay.selftest` holds the parts (which resumes replay and on what clocks, dropped ticks, rows at their own ticks,
+a held trigger, the fight and a life from the rows, the mode, props, destruction and smoke), `migrationHull.selftest` the
+hull's census (every number and flag of a hull's state, kit, special action and input rides exact, or is named: a mirror,
+a construction's constant, a step's own scratch), a newer row's drive and the packing. 275's two unpinned reads are
+pinned: a revived bot's last pushed target dropped (`botDriveMigration` [7b]) and the smoke kit on the hull's clock
+(`botAbilities`). Thirty-seven mutants, each one fix reverted and served through a load hook, each fail a receipt (the
+lane's record).
+
+Cost (the lane's size probe, the 275 head on the same staging in brackets): a hull packs to 224 characters at rest and up
+to 544 in motion, about 500 a moving hull. At 19 bots (20 tanks, seed 9, 5-60 s) the hulls are 3.9-9.8 KB of a keyframe's
+extras against 275's integrator and motion's 1.3-3.6 KB, and the way's search legs add up to 0.7 KB: the sealed keyframe
+grows 2.4-6.1 KB (CTF at 60 s 56.0 KB against 50.8, 24 of the 64 chunks), at the 2 s cadence 10-24 kbit/s more to each
+seat (its whole keyframe stream 205-224 kbit/s at CTF's), and each mode event's keyframe carries it too. A full field (42
+tanks, CTF) seals at 122.8 KB at 60 s (112.0 KB), 52 of the 64 chunks, and levels at 130 KB, 55 chunks, at 120-180 s;
+nothing sheds (`encodeMigrationKeyframeWithin` sheds the brains, then the hulls, then the spotting past the cap). The
+replay costs the boot its steps: at a full field in Node 106 ms for a 30-step window (its first steps warm the code), 168
+ms for 120 steps (a 2 s keyframe interval), 566 ms at `MAX_REPLAY_STEPS`; a resume read as 275 read it, 2-5 ms.
+
+Not taken up by 276 (275's and 274's lists above hold where a resume cannot replay; where it replays, the play makes
+every move they list as the old host made it):
+- A shell in flight: neither the keyframe nor the restore carries one (0 to 3 in flight at a keyframe in the CTF fight;
+  none hit anything over 10 s in 12 sampled keyframes), and a seat's shot fired in the window and still in flight at the
+  frame is lost (the CTF probe, seed 6: the bots 32 m apart in 10 s; with the shot off the window, none).
+- A seat's moves in the window beyond what its rows show: the play holds each seat's keyframe command, its rows correct
+  it at their own ticks; a seat hidden from the elected seat drives its held command to the frame. What no row carries
+  of a seat's window stays the keyframe's on the new host, as at 275: a consumable it used (the charge comes back), a
+  repair or extinguisher it ran, its modules and crew (the elected seat's own frame names its own, unread).
+- A play that reaches a verdict the frame does not show (only by a seat's move it never heard) ends the match.
+- A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
+- A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
+  client's shell rows not checked.
+- The 13 modes are to the bit on one staging each (the CTF probe's, 30 s in); the receipts hold CTF, Horde, Frontline,
+  Turbo Ball, standard, Zone Control and realistic, and the other six rest on the lane's sweep (logs/modes-sweep.2.txt).
+  A seat's own hull, driving through the window, stands 0.26 m off the old host's 10 s on (its held command against its
+  real one, its row correcting it at the frame).
 
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 

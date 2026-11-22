@@ -73,10 +73,12 @@ export interface MigrationEntityExtras {
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
   /**
    * A live hull exact (276; migrationState.ts packHull): what its row rounds (the pose, the hp) or does not carry (the
-   * rollover's countdown, its held input, and the movement prediction checkpoint: movementPredictionState.ts, the one
-   * owner of the integrator state a pose cannot rebuild: the spool, the turn rate, the gun's bloom and limit flags, the
-   * spring, the ride, the support, the rock). base64url: the layout, the checkpoint's version and flags, the input's flags,
-   * a mask of the non-zero numbers and those numbers as Float64s, exact. It replaces gaps 274's spool and turn rate
+   * movement prediction checkpoint: movementPredictionState.ts, the one owner of the integrator state a pose cannot
+   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the rock; what
+   * the last step left beside it: the rollover's countdown, the contact and slope block a bot's brain reads, the fall
+   * ledger and a landing's bounces; the roof guns' slew, the special action's toggle and the held input). base64url: the
+   * layout, the checkpoint's version and flags, the flags, the further roof stations' count, a mask of the non-zero
+   * numbers and those numbers as Float64s, exact (migrationHull.selftest's census). It replaces gaps 274's spool and turn rate
    * (`motion`) and 275's hand-picked integrator parts (`integrator`): a fight from a keyframe alone still parted by tens
    * of metres on the rows' rounding and the gun's limit flag (the CTF probe: 23 m in 10 s; none now).
    */

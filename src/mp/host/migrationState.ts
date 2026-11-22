@@ -1139,7 +1139,8 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
     if (entity.bot || entity.combat.destroyed || entity.modeActive === false) continue;
     const input = entity.input;
     held.set(entity.id, { throttle: input.throttle, steer: input.steer, brake: input.brake, fire: false, fireIntentSeq: null, aimLocked: input.aimLocked,
-      shellSlot: input.shellSlot, actionBits: 0, ...encodeAimIntent(entity.state.pos, input.aimPoint) });
+      // (its aim from where playerInputStage.ts decodes it: a drone a seat flies, else its hull)
+      shellSlot: input.shellSlot, actionBits: 0, ...encodeAimIntent(entity.aerial?.active ? entity.aerial : entity.state.pos, input.aimPoint) });
   }
   const dt = TICK_MS / 1000;
   let corrected = 0;
@@ -1153,7 +1154,7 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
       if (!entity) continue;
       // the old host's authority clock at this step: its own at the keyframe and the steps since
       const oldClockS = typeof state.timeS === 'number' ? state.timeS + sim.timeS : null;
-      if (rowOverReplay(entity, row, oldClockS, sim.timeS)) corrected++;
+      if (rowOverReplay(actor, entity, row, oldClockS, sim.timeS)) corrected++;
       newest.set(row.entityId, row.tick);
     }
   }
@@ -1206,11 +1207,11 @@ type ReplayEntity = ReturnType<MatchActor['entityForWireId']> & object;
 
 /**
  * A row the seat holds, over the replay's hull at the row's step (276): where the play reads as the row does (its pose
- * rounded as captureEntityRow rounds it, its body bits, life, hp, ammunition, shell, both reload channels, fire and
- * auxiliary kit), nothing; else the row's, as the 275 reading took a newer row (the pose through applyAuthorityRow, the
- * fight through the restore's own writers). Returns whether it corrected anything.
+ * rounded as captureEntityRow rounds it, its body bits, life, hp, ammunition, shell, both reload channels, fire, auxiliary
+ * kit, spent reactive plates and a wreck's thrown turret), nothing; else the row's, as the 275 reading took a newer row
+ * (the pose through applyAuthorityRow, the fight through the restore's own writers). Returns whether it corrected anything.
  */
-function rowOverReplay(entity: ReplayEntity, row: EntityRow, oldClockS: number | null, timeS: number): boolean {
+function rowOverReplay(actor: MatchActor, entity: ReplayEntity, row: EntityRow, oldClockS: number | null, timeS: number): boolean {
   const state = entity.state, combat = entity.combat;
   const pose = row.x === quantizePosition(state.pos.x) && row.y === quantizePosition(state.pos.y) && row.z === quantizePosition(state.pos.z)
     && row.yaw === quantizeAngle(state.yaw) && row.speed === quantizeVelocity(state.speed) && row.verticalSpeed === quantizeVelocity(state.verticalSpeed)
@@ -1226,7 +1227,13 @@ function rowOverReplay(entity: ReplayEntity, row: EntityRow, oldClockS: number |
     && ((row.flags & ENTITY_FLAGS.BURNING) !== 0) === !!combat.fire?.burning;
   const fromRow = oldClockS !== null && combat.auxiliary ? rowAuxiliary(row.auxiliaryJson, oldClockS) : null;
   const kit = !fromRow || sameAuxiliary(fromRow, combat.auxiliary!, timeS);
-  if (pose && fight && kit) return false;
+  // the reactive plates the row shows spent that the play's hull still holds (spent plates only grow), and a wreck's turret
+  // body the row has thrown that the play's wreck does not (a death the play never dealt launched none)
+  const plates = row.eraSpent.length ? eraPlateIndices(entity.spec.armor as Parameters<typeof eraPlateIndices>[0]) : null;
+  const unspent = plates ? [...plates].filter(([name, index]) => row.eraSpent.includes(index) && !combat.eraSpent?.has(name)).map(([name]) => name) : [];
+  const body = isDestroyedRow(row) && row.wreckBody && !entity._wreckTurret ? row.wreckBody : null;
+  if (pose && fight && kit && !unspent.length && !body) return false;
+  if (unspent.length) { combat.eraSpent ??= new Set(); for (const name of unspent) combat.eraSpent.add(name); }
   if (!pose) applyAuthorityRow(state, row);
   if (!fight) {
     combat.hp = row.hp;
@@ -1252,6 +1259,10 @@ function rowOverReplay(entity: ReplayEntity, row: EntityRow, oldClockS: number |
     }
   }
   if (!kit && fromRow) writeAuxiliary(combat.auxiliary!, fromRow, timeS, 0);
+  if (body) {
+    actor.authority.restoreWreckTurret(entity.id, { x: dequantizePosition(body.x), y: dequantizePosition(body.y), z: dequantizePosition(body.z),
+      qx: dequantizeUnitComponent(body.qx), qy: dequantizeUnitComponent(body.qy), qz: dequantizeUnitComponent(body.qz), qw: dequantizeUnitComponent(body.qw), asleep: body.asleep });
+  }
   return true;
 }
 
