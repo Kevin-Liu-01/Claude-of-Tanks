@@ -24,6 +24,9 @@ const { getSpec } = await import('./specs.ts');
 const { createTankState } = await import('../sim/movement.ts');
 const { FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, FAR_LOD_PARKED_LAYER, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, claimFarLodBuild, clusterGeometry,
   noteFarLodBuild } = await import('./farLod.ts');
+// (far-hull-273) the far LOD's own draws, as they are under ?farHullDraw=0: the one far hull draw that stands in for them
+// is farHullDraw.selftest's
+(await import('./farHullDraw.ts')).setFarHullDrawEnabled(false);
 /** The full far LOD's own sign: its hull stand-ins show (the gear stand-in also shows in the gear stage). */
 const farHullShown = (visual) => { let shown = false; visual.root.traverse((o) => { if (o.name === 'farLodHull' && o.visible) shown = true; }); return shown; };
 

@@ -49,6 +49,7 @@ export const MUST_KEEP = Object.freeze({
   'src/vehicles/decorPlanWire.selftest.mjs': 'the decor plan over the Worker wire (vehicle core)',
   'src/vehicles/decorationsStaging.selftest.mjs': 'staged decorations (vehicle core)',
   'src/vehicles/equipmentDamage.selftest.mjs': 'equipment damage on real builds (must-keep: damage sample)',
+  'src/vehicles/farHullDraw.selftest.mjs': 'one draw per far hull (vehicle core)',
   'src/vehicles/farLod.selftest.mjs': 'the far LOD swap (vehicle core)',
   'src/vehicles/fleetParity.selftest.mjs': 'one fleet on every load path (must-keep: loader boundary)',
   'src/vehicles/jagdpanzerE100XArmor.selftest.mjs': 'Jagdpanzer E100 armour (must-keep: armour sample)',
