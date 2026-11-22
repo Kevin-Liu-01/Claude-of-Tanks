@@ -237,7 +237,9 @@ export function hitPrimitives(armor) {
       if (kind === 'external' && hasTrackShape(plate.moduleLink)) continue;
       if (!Array.isArray(plate.verts) || plate.verts.length < 3) continue;
       // a gun-follow plate is authored in turret coordinates at rest (sim/armor.ts frame 2 at gunPitch 0)
-      out.push({ type: 'plate', frame: plate.gunFollow ? 'gun' : frame, name: plate.name, kind, verts: place(plate.verts, frame) });
+      // (274.0: a hull-owned one, a casemate's mantlet, is placed in turret coordinates too, not the hull's)
+      out.push({ type: 'plate', frame: plate.gunFollow ? 'gun' : frame, name: plate.name, kind,
+        verts: place(plate.verts, plate.gunFollow ? 'turret' : frame) });
     }
   }
   for (const frame of ['hull', 'turret']) {
@@ -554,6 +556,10 @@ export function plateFitReceipts(armor, T) {
     for (const plate of plates || []) {
       const kind = plate.kind || 'main';
       if (kind === 'main') continue; // a frame's main plates are its shell (its cells, hulled from the drawn shell)
+      // (274.0) a gun-follow plate swings with the gun (sim/armor.ts traces it in the gun frame): the build at rest is not its
+      // support, and a hull-owned one (jpz_e100's 420 mm casemate mantlet) read in hull coordinates sat 2.3 m low and was
+      // dropped as notDrawn. The fit leaves it as authored.
+      if (plate.gunFollow) continue;
       if (kind === 'external' && hasTrackShape(plate.moduleLink)) continue;
       if (!Array.isArray(plate.verts) || plate.verts.length < 3) continue;
       const placed = plate.verts.map((p) => [p[0] + offset[0], p[1] + offset[1], p[2] + offset[2]]);
