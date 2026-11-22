@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1813 | 414.6 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 667 | 1177.7 |
+| MANUAL | 668 | 1177.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2481 | 1592.7 | 265.7 |
+| Before: every receipt (npm test without the tiers) | 2482 | 1592.7 | 265.7 |
 | After: the default tier | 1813 | 414.6 | 68.3 |
 
 Default tier: 26.0 % of the whole registry's CPU; 45.3 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.5 min pool, 18.6 min browser receipts.
@@ -37,7 +37,7 @@ Default tier: 26.0 % of the whole registry's CPU; 45.3 % of the 916 CPU-min the 
 | `sims` | 12 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 61 | 281.6 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4`, `node tools/hitbox-fit-census.mjs --all --ledger=docs/geometry-gate/hitbox-fit-ledger.json --check` |
-| `tanks` | 412 | 314.8 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `tanks` | 413 | 314.8 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 9 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 3 | 23.1 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -144,7 +144,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (667)
+## MANUAL (668)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -808,6 +808,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/sim/teammateRam.selftest.mjs` | n/a | MANUAL (sims) | sims: drone, missile, escort and counter-drone scenario runs, n/a s: 2026-11-06 round 5 S2 (audit M6 ram rule after the 268 merge): a teammate ram deals nothing on the solo step o | test:heavy -- sims; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/t62Family.selftest.mjs` | n/a | MANUAL (tanks) | per-tank pin (t62_1975, t62mv1), n/a s: t62-275 (the owner, 2026-11-21: "update the t62mv-1 and t62 obr 1975 to actually look like their historical co | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/roofStationKeepOutLive.selftest.mjs` | n/a | MANUAL (tanks) | per-tank pin (object148_proto, leo2_improved, leo2a4_otco, t72b3m_xuanwu, ...), n/a s: No decor inside a roof station's traverse (275, lane roof-station-keepout-275; the owner on the Oplots: the "l | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/searchlightCoverage.selftest.mjs` | n/a | MANUAL (tanks) | per-tank pin (type10_dozer), n/a s: 2026-11-21 (release 274, owner: "for those lights they have to turn on when you press N!"): every drawn search | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/camo-sheet-layout.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-11-11 (camo-picker-layout-272): the Garage's paint sheet opens on whole rows that fill it, with every nam | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/couch-open.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby an | test:heavy -- ui; test:recommend flags it when its inputs change |
