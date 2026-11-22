@@ -259,7 +259,14 @@ function run({ shooter, context }, seconds = 12, each = () => {}) {
   assert.ok(after > 0, 'fires again once the launch is over');
   const { missionAttachmentMotionClear } = await import('./missionAttachment.ts');
   const { MISSION_ATTACHMENT_SEATS } = await import('./missionAttachmentSeats.generated.ts');
-  for (const id of ['t62_1975', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
+  // 274 (t62-275 8e790e4a84, Kevin 2026-11-21 "Full MG, no kit mount"): the rebuilt T-62s carry no drone stand, so their
+  // DShKM keeps its full circle; they are dock-exempt and the seat generator writes them no seat
+  const { DRONE_DOCK_EXEMPT } = await import('./droneDockExempt.ts');
+  for (const id of ['t62_1975', 't62mv1']) {
+    assert.ok(Object.hasOwn(DRONE_DOCK_EXEMPT, id), `${id}: dock-exempt (no mission mount by design)`);
+    assert.equal(MISSION_ATTACHMENT_SEATS[id], undefined, `${id}: no drone stand seat`);
+  }
+  for (const id of ['type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
     `${id}: the drone stand clears its DShK (whole sweep docked, at rest launching)`);
 }
 // 10. VH.14 hold fire, the stations' side of it (lane 235, 2026-10-22: this receipt passed in full on the module before
