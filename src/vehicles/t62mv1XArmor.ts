@@ -6,6 +6,9 @@ import {plate,type ArmorPlate} from './specHelpers.ts';
 
 // Gameplay convention, NOT a protection measurement: the fleet's first-generation Kontakt-1 balance preset.
 const T62MV1_X_ERA_CONTACT={keReduction:.05,ceFlatMm:280} as const;
+/** The turret fields keep the values the MV fought with on its former turret (release 274 rebuild: the looks change, the
+ *  tier's balance does not; sourceXSecondWaveEra.selftest.mjs pins both presets). */
+const T62MV1_X_TURRET_ERA={keReduction:.2,ceFlatMm:450} as const;
 
 /** The T-62 family's turret ring centre (t62Family.ts TURRET_PIVOT): turret seeds are turret-local. */
 const RING:[number,number,number]=[0,1.47,.16];
@@ -20,9 +23,10 @@ export function createT62MV1XArmorZones():{hullPlates:ArmorPlate[];turretPlates:
     plate('skirt_era_R',15,[1.73,.48,2.72],[1.73,.48,1.00],[1.73,1.10,2.72],options),
   ];
   const [, y, z]=RING;
+  const turret={kind:'era',era:{...T62MV1_X_TURRET_ERA}};
   const turretPlates=[
-    plate('turret_era_L',15,[-1.30,1.62-y,1.00-z],[-.30,1.62-y,1.62-z],[-1.10,2.02-y,.80-z],options),
-    plate('turret_era_R',15,[.30,1.62-y,1.62-z],[1.30,1.62-y,1.00-z],[.30,2.02-y,1.40-z],options),
+    plate('turret_era_L',15,[-1.30,1.62-y,1.00-z],[-.30,1.62-y,1.62-z],[-1.10,2.02-y,.80-z],turret),
+    plate('turret_era_R',15,[.30,1.62-y,1.62-z],[1.30,1.62-y,1.00-z],[.30,2.02-y,1.40-z],turret),
   ];
   return {hullPlates,turretPlates};
 }

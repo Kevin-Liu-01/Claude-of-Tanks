@@ -27,8 +27,15 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
   const options={quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242};
   const tank=createTank(id,null,options),donor=createTank(donorId,null,options);
   try {
-    assert.deepEqual(stock(tank.root.getObjectByName('hull')),stock(donor.root.getObjectByName('hull')),
-      `${id}/${quality}: retains the complete requested donor hull`);
+    const hull=stock(tank.root.getObjectByName('hull')),donorHull=stock(donor.root.getObjectByName('hull'));
+    if(id==='t62mv1') {
+      // 274 (lane t62-275): one family builder draws both T-62 marks; the MV's splash board (the hull's last box, 36
+      // vertices) sits lower on the upper plate, under its Kontakt-1 field, and every other hull vertex is the obr. 1975's
+      const box=36*3;
+      assert.equal(hull.length,donorHull.length,`${id}/${quality}: the obr. 1975 hull's vertex count`);
+      assert.deepEqual(hull.slice(0,-box),donorHull.slice(0,-box),`${id}/${quality}: retains the obr. 1975 hull`);
+      for(let i=hull.length-box;i<hull.length;i+=3)assert.equal(hull[i],donorHull[i],`${id}/${quality}: the splash board only slides down the plate`);
+    } else assert.deepEqual(hull,donorHull,`${id}/${quality}: retains the complete requested donor hull`);
     assert.equal(tank.root.getObjectByName('gearRoadWheelDiscs').count,
       donor.root.getObjectByName('gearRoadWheelDiscs').count,`${id}: complete donor wheel course`);
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');

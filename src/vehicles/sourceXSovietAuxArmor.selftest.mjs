@@ -153,10 +153,10 @@ function liveProtection(spec){
 }
 
 
-// 2026-10-01: the owner's rebuild puts the T-62MV-1 on the T-62 obr. 1975 chassis (4c34b3e8b, cdbfe54dc), whose
-// five-wheel course is exposed: no spaced skirt exists, so the source-study skirt recipe left SOVIET_AUX_IDS and the
-// donor record's skirt planes (x +-1.83, superseded MV-era model) are dropped. Prove the rebuild registers no spaced
-// skirt and that the former ghost plane, outside the side ERA fields, receives no protection from any plate.
+// The T-62MV runs the T-62 obr. 1975's five-wheel course (274, lane t62-275): its only side screen covers the front run
+// and that screen's armour is its Kontakt-1 field (skirt_era); the rear run is bare. The source-study skirt recipe is
+// not in SOVIET_AUX_IDS and the donor record's full-length skirt planes are dropped (fleetRenewalSpecs.ts). Prove the
+// rebuild registers no spaced skirt and that the former ghost plane, outside the side ERA fields, receives no protection.
 {
   const t62=getSpec('t62mv1');
   assert.ok(!SOVIET_AUX_IDS.includes('t62mv1'),'t62mv1: no source-study skirt recipe on the rebuilt chassis');

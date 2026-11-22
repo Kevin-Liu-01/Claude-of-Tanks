@@ -47,8 +47,8 @@
       "concealers": 5992
     },
     "steppe": {
-      "bytes": 1163870,
-      "sha256": "d11c3eba92ebb492d744a0fd673cdf0c3a4ae3da948e706266955855139e89b3",
+      "bytes": 1163866,
+      "sha256": "bffcdf2cb7a67cbbd0efbba96e7081079de9520a1edfb26540c8a0ad0cbb1658",
       "obstacles": 2257,
       "colliders": 2323,
       "concealers": 1210
@@ -83,7 +83,7 @@
     },
     "badlands": {
       "bytes": 1990115,
-      "sha256": "2a015e9f4201a73a9e44adc86ac6e2a2f963fd6b4577e9b4cb650357643eaec0",
+      "sha256": "352a33fada04d9b727220ca302a4355f2234d296edce73f2dabd49c040149bda",
       "obstacles": 2304,
       "colliders": 2320,
       "concealers": 221
@@ -166,8 +166,8 @@
       "concealers": 3872
     },
     "oasis": {
-      "bytes": 1281000,
-      "sha256": "be63d58bad144a698dce281ad550e83370d753d655f0812c96e1fb6ef402692e",
+      "bytes": 1280982,
+      "sha256": "5ce168eeb060a3ca2ccd102cd66d25e1d31a2b0eb7b3427edf2fc4cce511c95d",
       "obstacles": 1682,
       "colliders": 1943,
       "concealers": 874
@@ -181,7 +181,7 @@
     },
     "orchard": {
       "bytes": 1385969,
-      "sha256": "015e4e67ea16badf322686376db029ca3cbc79d206b9015075a3717e6919d138",
+      "sha256": "cb2ed18611da9501dfc9337910c05d25103ef1194b209b83e6ee9d781d2eccaf",
       "obstacles": 4537,
       "colliders": 4669,
       "concealers": 4807
@@ -281,8 +281,8 @@
         "concealers": 5431
       },
       "steppe": {
-        "bytes": 1249028,
-        "sha256": "f0376b665ac7ffea0e45618ff8d066ee9bea695fb940e7c4437f904d79f8338f",
+        "bytes": 1249031,
+        "sha256": "b48a2d0d2ca8ff929779d0b02b35353fcb8ac2a7852f110c2e43f4f3d0b0d2bc",
         "obstacles": 2445,
         "colliders": 2388,
         "concealers": 1210
@@ -317,7 +317,7 @@
       },
       "badlands": {
         "bytes": 2210389,
-        "sha256": "afbd5b53cbaf38eae7a884b6a146a5a14409a25b455141cc23a9d01330bce928",
+        "sha256": "16816e8bfde0dd02861c604014e009f26f28b6011a18a0eb34dc023f5a66826e",
         "obstacles": 2432,
         "colliders": 2356,
         "concealers": 221
@@ -400,8 +400,8 @@
         "concealers": 3872
       },
       "oasis": {
-        "bytes": 1554719,
-        "sha256": "10596b71ffd012890efd8542e08195a48f41aec7f0225af56e54d64f396db55e",
+        "bytes": 1554704,
+        "sha256": "2f07b3742fb26fbf7c949ff2d945124dd0263d6d57b5073384e9a023d2624c92",
         "obstacles": 1840,
         "colliders": 2006,
         "concealers": 878
@@ -414,8 +414,8 @@
         "concealers": 0
       },
       "orchard": {
-        "bytes": 1391429,
-        "sha256": "cb4c081ee489476a45f4fd69f42bc673f37355bbc029ae2dfb608c6e64b8a49b",
+        "bytes": 1391434,
+        "sha256": "ad811add679fe91d587396b76bc10d73f225837c8d4e9d7a0838dd01f73327d8",
         "obstacles": 4604,
         "colliders": 4651,
         "concealers": 4705

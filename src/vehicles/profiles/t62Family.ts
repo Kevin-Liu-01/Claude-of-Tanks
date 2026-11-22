@@ -294,13 +294,17 @@ function addHullFront(P: TankBuilderPort, v: T62Variant): void {
   // driver's hatch at the front left of the roof, opening to the left, two periscopes ahead of it
   {
     const x = 0.55, z = 1.86;
-    P.add('hullDetail', cylY(0.27, 0.28, 0.03, P.q ? 24 : 14), x, ROOF_Y + 0.01, z);
-    P.addHatch('hull', cylY(0.235, 0.24, 0.045, P.q ? 24 : 14), x, ROOF_Y + 0.045, z);
+    // a low dished plate on a thin ring, near flush: the dome's front edge passes over it (the turret seat reads the
+    // deck under its sweep, and a proud lid lifted the whole turret off the roof)
+    P.add('hullDetail', cylY(0.27, 0.28, 0.012, P.q ? 24 : 14), x, ROOF_Y + 0.004, z);
+    P.addHatch('hull', cylY(0.235, 0.24, 0.016, P.q ? 24 : 14), x, ROOF_Y + 0.010, z);
     P.add('hullDark', box(0.10, 0.04, 0.12), x + 0.25, ROOF_Y + 0.04, z);
-    KIT.periscope(P, 'hullDetail', x - 0.08, ROOF_Y + 0.04, z + 0.27);
-    KIT.periscope(P, 'hullDetail', x + 0.10, ROOF_Y + 0.04, z + 0.27);
+    // the periscope heads stand low in the roof: the gun passes 3 cm over them at its 6-degree front depression
+    KIT.periscope(P, 'hullDetail', x - 0.08, ROOF_Y + 0.015, z + 0.27);
+    KIT.periscope(P, 'hullDetail', x + 0.10, ROOF_Y + 0.015, z + 0.27);
   }
-  for (const x of [-0.95, 0.95]) KIT.liftEye(P, 'hullDetail', x, ROOF_Y + 0.015, 1.98);
+  // the front lift eyes sunk to a low loop under the gun's sweep (as the rear pair, t54Family.ts)
+  for (const x of [-0.95, 0.95]) KIT.liftEye(P, 'hullDetail', x, ROOF_Y - 0.045, 1.98);
 }
 
 /** Fender stowage: three flat external fuel tanks and the oil tank on the right fender joined by a pipe; on the left,
@@ -410,12 +414,13 @@ function kontaktBlock(P: TankBuilderPort, owner: 'hull' | 'turret', zone: string
  * down in front of the lower plate. Each side is one removable field. */
 function addGlacisKontakt(P: TankBuilderPort): void {
   const tilt = -Math.atan(UPPER_GLACIS_TAN), tip = 0.22;
-  const [w, h, d] = [0.25, 0.075, 0.18];
+  const [w, h, d] = [0.23, 0.075, 0.18];
   // the rear edge rests on the plate, the front edge stands d * sin(tip) proud of it
   const lift = (h / 2) / Math.cos(tip) + (d / 2) * Math.sin(tip);
   // six rows from the headlights down to the nose rail
   const rows = [2.32, 2.49, 2.66, 2.83, 3.00, 3.17];
-  const cols = [0.14, 0.41, 0.68, 0.95];
+  // the outer column ends 0.985 m out, inside the tracks' inner edge (1.03) where they climb the idlers under the nose
+  const cols = [0.13, 0.38, 0.63, 0.87];
   for (const side of [-1, 1]) {
     const zone = `glacis_era_${side < 0 ? 'L' : 'R'}`;
     // the headlights at the plate's top corners (addHullFront): the right side carries two lamps, the left one

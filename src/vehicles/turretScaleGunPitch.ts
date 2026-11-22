@@ -102,11 +102,18 @@ merkava3_baz: [
 merkava4b: [
   [0, -7.6], [15, -7], [18, -7], [19, -7.3], [20, 2.7], [21, 3.2], [23, 3.2], [24, 3.1], [25, 2.4], [26, -5.9],
   [28, -5.4], [31, -5.4], [34, -7], [37, -8], [180, -8]],
-  // depression 6, elevation 14; mountConflicts []
+  // 274 (lane t62-275, branch t62-274-fix): both T-62s on the family build (profiles/t62Family.ts), measured on the
+  // rebuilt hulls once the front lift eyes and the driver's periscopes sat low under the gun's sweep: the real T-62's
+  // 6-degree front depression clears the whole front arc; the rear arc stops over the engine deck's drums and snorkel.
+  // depression 9, elevation 20; mountConflicts [] (replaces the Leopard 1A5's curve the obr. 1975 inherited)
+t62_1975: [
+  [0, -6.3], [56, -6.3], [60, -6.7], [63, -8], [65, -9], [115, -9], [117, -8], [120, -6.7], [125, -6.3],
+  [148, -6.3], [151, -5.2], [152, -5], [158, -4.8], [160, -3.6], [161, -2.7], [162, -0.5], [163, 0.4], [164, 0.7],
+  [168, 0.8], [169, 1.2], [172, 1.2], [176, 0.6], [179, 0.7], [180, 0.3]],
+  // depression 6, elevation 14; mountConflicts [] (replaces the T-72B 1987 turret's curve)
 t62mv1: [
-  [0, -6], [24, -6], [35, -4.3], [37, -4.3], [38, -4.6], [39, -5.7], [40, -6], [131, -6], [136, -5], [138, -4.3],
-  [140, -1.7], [141, -1.1], [148, -0.9], [154, -0.9], [155, -1], [157, -2.6], [158, -2.7], [159, -0.5],
-  [160, 4.7], [161, 6.3], [162, 6.8], [172, 7.1], [180, 7.2]],
+  [0, -6], [149, -6], [151, -5.2], [152, -5], [157, -4.7], [161, -2.7], [162, -0.5], [163, 0.4], [164, 0.7],
+  [168, 0.7], [169, 1.1], [172, 1.1], [177, 0.7], [179, 0.7], [180, 0.3]],
 });
 
 /** Publish the measured curves on the registry's specs (after every spec pack has registered). */
