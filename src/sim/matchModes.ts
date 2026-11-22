@@ -3600,12 +3600,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
       // the factions (Infected), both ways, each life as the rows left it: a survivor the view shows infected whose death
       // no row showed (a victim risen again in the window, or one whose death the frame alone shows) joins the infected;
-      // one the play alone infected (its held hull took a round the seat's dodged: the row stands it up) is a survivor
+      // one the play alone infected that a row stood up (its held hull took a round the seat's dodged) is a survivor. One
+      // no row stood up stays the play's (the infected never rise as survivors)
       if (ruleset.infection) {
         const shown = new Map(checkpoint.teams);
         for (const entity of entities) {
           const side = shown.get(entity.id);
-          if ((side === 'alpha' || side === 'bravo') && side !== teamOf(entity)) setFaction(entity, side);
+          if (side === 'bravo' && teamOf(entity) === 'alpha') setFaction(entity, side);
+          else if (side === 'alpha' && teamOf(entity) === 'bravo' && entity.modeLife === 'alive') setFaction(entity, side);
         }
       }
       // the caches as the view lists them, both ways: one the view no longer lists was taken (its hull's row carries the
@@ -3636,16 +3638,24 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       // arrivals the old host made that the play did not (a seat's kill let its trickle or ring bring one on: the rows
       // stood it up, the death watch above took its life), then the waves' moves, as restoreWaves orders them
       const waves = checkpoint.waves;
-      if (waves?.horde && ruleset.horde) {
-        takeHordeArrivals(waves.horde.trickled ?? [], checkpoint.ringRisen ?? []);
-        takeHordeMove(waves.horde);
+      // an arrival the old host made that a seat's kill put down again before the frame (its row shows the wreck): it
+      // begins the life the old host gave it, its arrival is taken, and the death watch takes its death after (round 4:
+      // skipped as not alive, its arrival stood in the queue twice)
+      const fellAgain: Entity[] = [];
+      const ringTaken = ruleset.horde || infectionArrival ? checkpoint.ringRisen ?? [] : [];
+      for (const [key] of [...waves?.horde?.trickled ?? [], ...ringTaken, ...waves?.line?.reinforced ?? []]) {
+        const entity = entityById.get(key);
+        if (entity && (entity.modeLife === 'down' || entity.modeLife === 'benched') && entity.combat.destroyed) { adoptLiveCombat(entity); fellAgain.push(entity); }
       }
+      if (waves?.horde && ruleset.horde) takeHordeArrivals(waves.horde.trickled ?? [], checkpoint.ringRisen ?? []);
       if (waves?.line && ruleset.assault) {
         takeZones(waves.line.zones);
         takeReinforced(waves.line.reinforced ?? []);
-        if (waves.line.begun) takeLineAdvance(waves.line.begun);
       }
       takeInfectedArrivals(checkpoint.ringRisen ?? []);
+      for (const entity of fellAgain) observeEntityDeath(entity, placementTimeS);
+      if (waves?.horde && ruleset.horde) takeHordeMove(waves.horde);
+      if (waves?.line?.begun && ruleset.assault) takeLineAdvance(waves.line.begun);
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);

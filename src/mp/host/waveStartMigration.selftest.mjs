@@ -41,7 +41,9 @@
 // makes itself (its arrivals and the ally's revive the old host's); [4h] and [5h] the sector taken by a hand the play
 // never saw (sealed halfway through it), arrivals the rows stood up kept on the field; [8r] a cache the seat took in the
 // window; [8h] one the play's held hull drove onto that the seat never reached, on the ground at the resume; [6r] a seat's
-// kill that let the old host's trickle bring one on that the play's full field held back (its queue held it twice).
+// kill that let the old host's trickle bring one on that the play's full field held back (its queue held it twice), [6r2]
+// that arrival killed again in the window, [6r3] an arrival the play made itself and then lost (not taken again); [9r] the
+// same for Frontline's reinforce trickle.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -481,10 +483,13 @@ console.log('[6] a Horde trickle arrival after the keyframe: taken up as made, n
   old.stop(); fresh.stop();
 }
 
-console.log('[6r] (276) a seat\'s kill in a replayed window lets the old host\'s trickle bring one on that the play\'s full field held back: taken up as made');
-{
-  // wave 1 opens with the field full and the rest queued, its trickle due and held back by the full field; the seat's
-  // kill (the play never fires it) falls in the window's first tick, and the old host's trickle brings one on at once
+/**
+ * [6r] (276): wave 1 opens with the field full and the rest queued, its trickle due and held back by the full field; the
+ * seat's kill (the play never fires it) falls in the window's first tick, and the old host's trickle brings one on at
+ * once. `killAgain`: the seat kills that arrival again 10 ticks on. The elected seat resumes from a keyframe naming its
+ * battle clock (the window replayed).
+ */
+function trickleWindow(killAgain) {
   const old = make(null), sim = old.authority;
   sim.onMatchReady();
   let tick = 0;
@@ -503,20 +508,34 @@ console.log('[6r] (276) a seat\'s kill in a replayed window lets the old host\'s
   const sealed = keyframe.modeCheckpoint.mode.waves.horde;
   const victim = sim.entityById.get(fielded(old)[0]);
   victim.combat.hp = 0; victim.combat.destroyed = true;
-  step(old, 30, (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const hear = (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); };
+  step(old, 10, hear);
+  if (killAgain) for (const id of told.keys()) { const e = sim.entityById.get(id); e.combat.hp = 0; e.combat.destroyed = true; }
+  step(old, 20, hear);
   const frame = hostFrame(old, tick, era, false);
-  ok(sealed.queued > 1 && sealed.nextTrickleAtS < keyframe.modeCheckpoint.mode.elapsedS && told.size === 1 && hordeOf(old).queued === sealed.queued - 1
-    && fielded(old).length === 6, `the case is built: the keyframe holds the field full, ${sealed.queued} queued and the trickle due; the seat kills `
-      + `${victim.id} and the old host's trickle brings ${[...told.keys()].join(', ')} on (${hordeOf(old).queued} queued)`);
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
   const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
   const applied = applyResumeState(fresh, state);
+  return { old, fresh, sim, step, sealed, keyframe, victim, told, applied };
+}
+const hordeShown = (actor) => { const h = actor.authority.snapshotMeta('h0').modeState.horde; return `alive ${h.alive} queued ${h.queued} remaining ${h.remaining}`; };
+for (const [label, killAgain] of [['[6r] (276) a seat\'s kill in a replayed window lets the old host\'s trickle bring one on that the play\'s full field held back: taken up as made', false],
+  ['[6r2] (276) and the seat kills that arrival again inside the window: its arrival taken, then its death', true]]) {
+  console.log(label);
+  const { old, fresh, sim, step, sealed, keyframe, victim, told, applied } = trickleWindow(killAgain);
+  const arrival = [...told.keys()][0];
+  ok(sealed.queued > 1 && sealed.nextTrickleAtS < keyframe.modeCheckpoint.mode.elapsedS && told.size === 1 && hordeOf(old).queued === sealed.queued - 1
+    && fielded(old).length === (killAgain ? 5 : 6), `the case is built: the keyframe holds the field full, ${sealed.queued} queued and the trickle due; the seat `
+      + `kills ${victim.id} and the old host's trickle brings ${arrival} on (${hordeOf(old).queued} queued)${killAgain ? `, which the seat kills again` : ''}`);
   const a = hordeOf(old), b = hordeOf(fresh);
-  const shown = (actor) => { const h = actor.authority.snapshotMeta('h0').modeState.horde; return `alive ${h.alive} queued ${h.queued} remaining ${h.remaining}`; };
-  ok(applied.replayed?.steps === 30 && a.queued === b.queued && Math.abs(a.nextTrickleAtS - b.nextTrickleAtS) <= 1e-9 && shown(fresh) === shown(old)
+  ok(applied.replayed?.steps === 30 && a.queued === b.queued && Math.abs(a.nextTrickleAtS - b.nextTrickleAtS) <= 1e-9 && hordeShown(fresh) === hordeShown(old)
     && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `the queue, the trickle's clock and the field are the old host's (queued ${b.queued} `
-      + `against ${a.queued}; next at ${b.nextTrickleAtS.toFixed(3)} against ${a.nextTrickleAtS.toFixed(3)}; ${shown(fresh)}; before, the queue held the `
+      + `against ${a.queued}; next at ${b.nextTrickleAtS.toFixed(3)} against ${a.nextTrickleAtS.toFixed(3)}; ${hordeShown(fresh)}; before, the queue held the `
       + `arrival twice and the trickle stood due)`);
+  if (killAgain) {
+    const e = fresh.authority.entityById.get(arrival), o = sim.entityById.get(arrival);
+    ok(e.modeLife === 'down' && e.modeLives === o.modeLives, `the arrival is down at the resume, its life counted as the old host's (${e.modeLife}, lives ${e.modeLives} against ${o.modeLives})`);
+  }
   fresh.authority.onMatchReady();
   // the same hand on both: every fielded hostile falls each second; each host's arrivals, tick by tick
   const oldArrivals = [], newArrivals = [];
@@ -525,8 +544,52 @@ console.log('[6r] (276) a seat\'s kill in a replayed window lets the old host\'s
     step(fresh, 1, (ev) => { if (ev.type === 'mode_respawn') newArrivals.push(k); });
     step(old, 1, (ev) => { if (ev.type === 'mode_respawn') oldArrivals.push(k); });
   }
-  ok(oldArrivals.length > 0 && JSON.stringify(newArrivals) === JSON.stringify(oldArrivals), `over the next 4 s, every hostile felled each second, the new `
-    + `host brings hostiles on when the old host does (ticks ${newArrivals.join(', ')} against ${oldArrivals.join(', ')})`);
+  ok(oldArrivals.length > 0 && newArrivals.length === oldArrivals.length, `over the next 4 s, every hostile felled each second, the new host brings as many `
+    + `hostiles on as the old host (ticks ${newArrivals.join(', ')} against ${oldArrivals.join(', ')})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[6r3] (276) a trickle arrival both hosts made in a replayed window that the play alone then loses: its arrival not taken again');
+{
+  // waveStartMigration [6]'s staging (the field short by two, the trickle due 0.2 s on), sealed with its battle clock; both
+  // hosts' trickles bring one on in the window, and a hand on the play's own steps kills it there (a round the seat's real
+  // hull blocked); the frame's row stands it alive
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = (actor, n, heard) => {
+    for (let k = 0; k < n; k++) {
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  step(old, 1);
+  for (const id of fielded(old).slice(0, 2)) { const e = sim.entityById.get(id); e.combat.hp = 0; e.combat.destroyed = true; }
+  step(old, 1);
+  for (let guard = 0; guard < 600 && hordeOf(old).nextTrickleAtS - sim.timeS > 0.2; guard++) step(old, 1);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), true);
+  const keyTick = tick;
+  step(old, 30, (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const frame = hostFrame(old, tick, era, false);
+  const [arrival, arrivedAt] = [...told][0] ?? [];
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  const play = fresh.authority.step.bind(fresh.authority);
+  let played = 0;
+  fresh.authority.step = (input) => {
+    if (++played === arrivedAt - keyTick + 3) { const e = fresh.authority.entityById.get(arrival); e.combat.hp = 0; e.combat.destroyed = true; }
+    return play(input);
+  };
+  applyResumeState(fresh, state);
+  fresh.authority.step = play;
+  const a = hordeOf(old), b = hordeOf(fresh), ra = old.authority.captureModeCheckpoint().mode, rb = fresh.authority.captureModeCheckpoint().mode;
+  ok(told.size === 1 && played === 30 && a.queued === b.queued && ra.rng[1] === rb.rng[1] && hordeShown(fresh) === hordeShown(old)
+    && fresh.authority.entityById.get(arrival).modeLife === 'alive', `${arrival}, the play's own arrival, stands as the row shows it, its arrival taken once: `
+      + `the queue and the arrival points' stream the old host's (queued ${b.queued} against ${a.queued}; ${hordeShown(fresh)})`);
   old.stop(); fresh.stop();
 }
 
@@ -850,6 +913,49 @@ console.log('[9] a Frontline reinforce trickle arrival after the keyframe: taken
   }
   ok(heardNew.length === 0 && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `over the next 3 s the new host brings no defender on `
     + `(${heardNew.join(', ') || 'none'}): it fields the old host's (${fielded(fresh).join(', ')} against ${fielded(old).join(', ')})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[9r] (276) a seat\'s kill in a replayed window lets the old host\'s reinforce trickle bring one on that the play\'s full line held back: taken up as made');
+{
+  // the attack contests the live sector from inside its contest reach, every hull kept whole (the line stays full); sealed
+  // 0.3 s before the trickle's tick with its battle clock; the seat's kill falls in the window's first tick
+  const old = makeFront(null, 'reinforce-replay'), sim = old.authority, run = stepper(old);
+  sim.onMatchReady();
+  const zoneOf = (actor) => { const st = actor.authority.modeController.state; return st.zones[Math.min(st.line.index, st.zones.length - 1)]; };
+  const zones = sim.modeController.state.zones;
+  const ax = zones.at(-1).x - zones[0].x, az = zones.at(-1).z - zones[0].z, al = Math.hypot(ax, az) || 1;
+  const reach = matchRulesetFor('frontline_assault').assault.contestReachM;
+  const hand = (actor) => {
+    const zone = zoneOf(actor);
+    for (const e of actor.authority.entities) {
+      if (e.modeActive === false || e.combat.destroyed) continue;
+      e.combat.hp = e.combat.maxHp;
+      if (e.team !== 'alpha') continue;
+      const back = 30 + reach * 0.5 + (e.id === 'h0' ? 0 : 3);
+      e.state.pos.x = zone.x - ax / al * back; e.state.pos.z = zone.z - az / al * back; e.state.speed = 0;
+    }
+  };
+  run.step(old, 60, null, hand);
+  for (let guard = 0; guard < 6000 && !Number.isFinite(lineCheckpoint(old).waves.line.nextReinforceAtS ?? NaN); guard++) run.step(old, 1, null, hand);
+  const dueAt = lineCheckpoint(old).waves.line.nextReinforceAtS;
+  for (let guard = 0; guard < 6000 && lineCheckpoint(old).elapsedS < dueAt - 0.3; guard++) run.step(old, 1, null, hand);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, run.tick, era, hostFrame(old, run.tick, era, false), true);
+  const victim = sim.entityById.get(fielded(old)[0]);
+  victim.combat.hp = 0; victim.combat.destroyed = true;
+  const told = new Map(), heardOld = [];
+  run.step(old, 30, (ev) => { heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); });
+  const frame = hostFrame(old, run.tick, era, false);
+  ok(count(heardOld, 'mode_line_reinforced') === 1 && told.size === 1, `the case is built: the line full at the keyframe, the trickle due at ${dueAt.toFixed(3)}; `
+    + `the seat kills ${victim.id} and the old host's trickle brings ${[...told.keys()].join(', ')} on`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = makeFront({ tick: state.tick, ...resumeClocksOf(state) }, 'reinforce-replay');
+  const applied = applyResumeState(fresh, state);
+  const la = lineCheckpoint(old), lb = lineCheckpoint(fresh);
+  ok(applied.replayed?.steps === 30 && la.waves.line.nextReinforceAtS === lb.waves.line.nextReinforceAtS && la.rng.join() === lb.rng.join()
+    && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `the trickle's clock, both streams (the arrival's rear slot draw taken) and the field are `
+      + `the old host's (next at ${lb.waves.line.nextReinforceAtS?.toFixed(3)} against ${la.waves.line.nextReinforceAtS?.toFixed(3)}; [${lb.rng.join(', ')}])`);
   old.stop(); fresh.stop();
 }
 
