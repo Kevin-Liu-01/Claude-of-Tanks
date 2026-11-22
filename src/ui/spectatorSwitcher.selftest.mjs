@@ -14,8 +14,11 @@ assert.match(markup, /class="portrait"/);
 assert.doesNotMatch(markup, /cursor-hint/, 'no how-to line: the bar says what it is (INTERACTION-REDESIGN C)');
 assert.match(markup, /class="spec-status"/);
 assert.match(markup, /class="idx"[^>]* hidden/);
-assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">Q<\/kbd>/);
-assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd aria-hidden="true">E<\/kbd>/);
+assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">A<\/kbd><kbd aria-hidden="true">Q<\/kbd>/);
+assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd aria-hidden="true">E<\/kbd><kbd aria-hidden="true">D<\/kbd>/);
+// (death-flow-275) A / Q back, D / E on: both pairs are named to assistive technology
+assert.match(markup, /class="cycle prev"[^>]*aria-keyshortcuts="A Q"/);
+assert.match(markup, /class="cycle next"[^>]*aria-keyshortcuts="D E"/);
 assert.ok(markup.indexOf('>Q</kbd>') < markup.indexOf('>E</kbd>'), 'Q and E, Watch\'s keys, share one horizontal control row');
 assert.match(markup, /aria-label="Return to garage"/);
 assert.match(markup, /<svg[^>]*aria-hidden="true"/);

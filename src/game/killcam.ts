@@ -756,6 +756,7 @@ const FINALE_XRAY_FLOOR_S = 3.6; // x-ray floor while a finale still has to play
 const QUICK_FLIGHT_MIN_S = 1.2;
 const QUICK_FLIGHT_MAX_S = 2.0;
 const QUICK_IMPACT_S = 1.1;
+const PAD_POLL_MS = 50;        // (death-flow-275) a pad's spectate steps, read while spectating
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
@@ -6058,6 +6059,24 @@ export function createKillCam(deps: KillcamDeps) {
       const g = gameRef();
       return g && g.tankById ? g.tankById.get(id) || null : null;
     };
+    /**
+     * (death-flow-275; Kevin 2026-11-22: "be able to land on yoursel (your dead tank) lol") The player's own wreck is a
+     * stop of the cycle, its first: the view after the kill cam opens on it, and A / D or Q / E step on to the living
+     * allies and back round to it. Never an observer's (no tank of its own), never the gunship's (no hull on the ground).
+     */
+    const ownWreck = (): KillcamEntity | null => {
+      if (observerAllTeams) return null;
+      const player = getPlayer() as KillcamEntity | null;
+      if (!player || !player.combat?.destroyed || !player.state || !player.visual) return null;
+      return (player as { aerial?: { kind?: string } | null }).aerial?.kind === 'gunship' ? null : player;
+    };
+    /** Who may be watched, in the stepping order: the player's own wreck first, then the living allies. With no ally
+     *  alive there is nothing to step to: the death orbit holds the wreck (rig.startDeathCam), as it did. */
+    const targets = (): KillcamEntity[] => {
+      const allies = livingAllies();
+      const wreck = allies.length ? ownWreck() : null;
+      return wreck ? [wreck, ...allies] : allies;
+    };
     function announce(kind: 'begin' | 'change', ent: KillcamEntity, list: KillcamEntity[]): void {
       if (!busRef || !ent) return;
       busRef.emit(`spectate:${kind}`, {
@@ -6080,7 +6099,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     function cycle(dir = 1): void {
       if (!on || isBattleEntryCovered()) return;
-      const list = livingAllies();
+      const list = targets();
       if (!list.length) { stop(true); return; }
       let i = list.findIndex((t) => t.id === curId);
       if (i < 0) i = 0; // current target died — dir picks the neighbour
@@ -6090,15 +6109,35 @@ export function createKillCam(deps: KillcamDeps) {
     /** Watch the ally `id` (the bar's picker of allies); nothing when it has left the living list. */
     function select(id: string): void {
       if (!on || isBattleEntryCovered() || id === curId) return;
-      const list = livingAllies();
+      const list = targets();
       const ent = list.find((t) => t.id === id);
       if (ent) retarget(ent, list, false);
     }
     function onKey(e: KeyboardEvent): void {
       if (!on || e.repeat) return;
-      // (Q and E step through the allies as they do in Watch; A and D were this view's alone, INTERACTION-REDESIGN C)
-      if (e.code === 'ArrowRight' || e.code === 'KeyE') cycle(1);
-      else if (e.code === 'ArrowLeft' || e.code === 'KeyQ') cycle(-1);
+      // (death-flow-275; Kevin 2026-11-22: "use a and d and q and e") A / Q step back and D / E on, through the one list
+      // (the own wreck, then the living allies), as Watch's Q / E step; the arrows too. A dead crew drives nothing, so the
+      // movement keys are free here.
+      if (e.code === 'ArrowRight' || e.code === 'KeyE' || e.code === 'KeyD') cycle(1);
+      else if (e.code === 'ArrowLeft' || e.code === 'KeyQ' || e.code === 'KeyA') cycle(-1);
+    }
+    /** A pad's shoulders and d-pad step the same list (LB / left back, RB / right on), on the press's edge: read every
+     *  PAD_POLL_MS while spectating (the killcam's frame runs only through a replay). */
+    let padHeld = 0;
+    let padPoll: ReturnType<typeof setInterval> | null = null;
+    function pollPad(): void {
+      if (!on) { padHeld = 0; return; }
+      const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : null;
+      let held = 0;
+      if (pads) for (const pad of pads) {
+        if (!pad) continue;
+        if (pad.buttons[4]?.pressed || pad.buttons[14]?.pressed) held |= 1;
+        if (pad.buttons[5]?.pressed || pad.buttons[15]?.pressed) held |= 2;
+      }
+      const pressed = held & ~padHeld;
+      padHeld = held;
+      if (pressed & 1) cycle(-1);
+      else if (pressed & 2) cycle(1);
     }
     // FREE CURSOR ORBIT (killcam r2, owner: "when were spectating be able to
     // look around tanks using cursor"): moving the mouse orbits the camera
@@ -6145,7 +6184,9 @@ export function createKillCam(deps: KillcamDeps) {
     function watchTarget(): void {
       if (!on) return;
       const cur = curId != null ? entById(curId) : null;
-      const dead = !cur || !cur.combat || cur.combat.destroyed;
+      // the player's own wreck is watched as a wreck: the view stays on it until a key steps on
+      const ownStop = !!cur && cur === ownWreck();
+      const dead = !ownStop && (!cur || !cur.combat || cur.combat.destroyed);
       if (dead && advanceTimer === null) {
         // let the ally's death read for a beat, then glide to the next
         advanceTimer = setTimeout(() => {
@@ -6155,7 +6196,7 @@ export function createKillCam(deps: KillcamDeps) {
       }
     }
     function start(): boolean {
-      const list = livingAllies();
+      const list = targets();
       if (!list.length) return false;
       on = true;
       lastX = lastY = null;
@@ -6164,6 +6205,7 @@ export function createKillCam(deps: KillcamDeps) {
       window.addEventListener('mousemove', onMove, true);
       window.addEventListener('wheel', onWheel, { passive: true, capture: true });
       pollId = setInterval(watchTarget, 400);
+      padPoll = setInterval(pollPad, PAD_POLL_MS);
       return true;
     }
     function stop(emitEnd = false): void {
@@ -6176,11 +6218,13 @@ export function createKillCam(deps: KillcamDeps) {
       window.removeEventListener('wheel', onWheel, { capture: true });
       if (pollId !== null) { clearInterval(pollId); pollId = null; }
       if (advanceTimer !== null) { clearTimeout(advanceTimer); advanceTimer = null; }
+      padHeld = 0;
+      if (padPoll !== null) { clearInterval(padPoll); padPoll = null; }
       if (rig.stopSpectate) rig.stopSpectate();
       if (emitEnd && busRef) busRef.emit('spectate:end', {});
     }
     return {
-      /** Enter spectate iff dead player + live battle + living allies. */
+      /** Enter spectate iff dead player + live battle (the own wreck is always a stop; the living allies after it). */
       maybeStart() {
         if (on) return false;
         observerAllTeams = false;

@@ -44,15 +44,16 @@ export function spectatorSwitcherMarkup(): string {
     '</div>' +
     `<span class="open" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</span></button>` +
     '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
-      // (Q and E, Watch's keys: A and D here were a second pair for the same step, INTERACTION-REDESIGN C)
-      '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="Q" aria-label="' + t('spectator.cyclePrevAria') + '">' +
+      // (death-flow-275; Kevin 2026-11-22: "use a and d and q and e") A and Q step back, D and E on (Watch's Q and E, and the
+      // driving hand's A and D, which a dead crew no longer drives with); a pad's shoulders and d-pad too (killcam.ts)
+      '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="A Q" aria-label="' + t('spectator.cyclePrevAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
-        '<kbd aria-hidden="true">Q</kbd>' +
+        '<kbd aria-hidden="true">A</kbd><kbd aria-hidden="true">Q</kbd>' +
       '</button>' +
       `<b class="idx" aria-label="${t('spectator.idxAria')}" hidden></b>` +
-      '<button type="button" class="cycle next" data-tip aria-keyshortcuts="E" aria-label="' + t('spectator.cycleNextAria') + '">' +
+      '<button type="button" class="cycle next" data-tip aria-keyshortcuts="D E" aria-label="' + t('spectator.cycleNextAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
-        '<kbd aria-hidden="true">E</kbd>' +
+        '<kbd aria-hidden="true">E</kbd><kbd aria-hidden="true">D</kbd>' +
       '</button>' +
     '</div>' +
     `<button type="button" class="gar" aria-label="${t('spectator.garageAria')}">` +

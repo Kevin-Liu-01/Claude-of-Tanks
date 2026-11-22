@@ -2455,6 +2455,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEnding.selftest.mjs',
     // (death-flow-275) every mode's death -> after-death -> end: the death's shape, the respawn dial, each verdict's beat and caption
     'src/game/deathFlowModes.selftest.mjs',
+    // (death-flow-275) the dead player's spectate list: the own wreck first, A/Q and D/E, the pad, the wreck a stop
+    'src/game/spectateCycle.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',
     'src/game/killcamGround.selftest.mjs',
