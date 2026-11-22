@@ -114,6 +114,8 @@ export function installNightEmissionMask(
   const previous = material.onBeforeCompile, previousKey = material.customProgramCacheKey;
   material.onBeforeCompile = function (shader, renderer) {
     previous.call(this, shader, renderer);
+    // a copy that carries its lenses another way says so (vehicles/farHullDraw.ts: a far hull's emission slots)
+    if (this.userData.nightEmissionMask === false) return;
     Object.assign(shader.uniforms, {
       nightEmissionBase: { value: base }, nightEmissionWarm: { value: headlight }, nightEmissionRed: { value: shtora }, nightEmissionCool: { value: led },
       nightEmissionRedLevel: { value: NIGHT_RED_DISPLAY_LEVEL }, nightEmissionFloorExposure: { value: NIGHT_RED_FLOOR_EXPOSURE },

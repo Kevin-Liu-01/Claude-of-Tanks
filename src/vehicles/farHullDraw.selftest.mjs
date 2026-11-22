@@ -5,6 +5,7 @@
 // - the switch (?farHullDraw=0, window.__FAR_HULL_DEBUG): off, the far LOD draws exactly as it did; on again, the one draw;
 // - a live piece's edit is copied in (the merged vertices are the piece's own in its owner's frame), a hidden piece is
 //   flagged in its record, and every owner index fits the uniform array;
+// - (274) a paint that is a night lens (a searchlight in its mesh) still carries; its copy skips the mask;
 // - the program: the far material's whole compile chain then the patch run over three's physical sources without a
 //   miss, the vertex stage reads the owner's frame for every model matrix, the vehicle switches become branches, the
 //   records drive the paint, roughness, metalness, normal scale, sky light and armour-paint mode;
@@ -52,7 +53,8 @@ const settleFar = async (visual, state, dist = 200) => {
 };
 
 const rows = [];
-for (const id of ['m1a2_abrams_sepv3', 't90m']) {
+// (274) t80u: its paint carries a searchlight lens (the night mask), and still carries the draw
+for (const id of ['m1a2_abrams_sepv3', 't90m', 't80u']) {
   noteFarLodBuild(0, 0);
   await ensureTankBuilder(id);
   const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
@@ -132,6 +134,14 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
     const opened = (raw.match(/\{/g) ?? []).length, closed = (raw.match(/\}/g) ?? []).length;
     assert.equal(opened, closed, `${id}: the fragment's braces balance`);
     assert.equal((raw.match(/#if/g) ?? []).length, (raw.match(/#endif/g) ?? []).length, `${id}: every #if closes`);
+    // a night lens that carries: its copy skips the mask (the lens lights in an emission slot), so no second night block
+    assert.equal(mesh.material.userData.nightEmissionMask === true, false, `${id}: the copy is not a night-mask material`);
+    assert.ok(!/attribute float nightEmissionMask/.test(shader.vertexShader), `${id}: the program declares no night mask attribute`);
+    assert.equal((fs.match(/uniform vec3 nightEmissionWarm/g) ?? []).length, 1, `${id}: the night uniforms declared once`);
+    if (id === 't80u') {
+      assert.equal(mesh.material.name, 'cot:armor-paint', `${id}: the armour paint carries though it is a night lens`);
+      assert.equal(mesh.material.userData.nightEmissionMask, false, `${id}: its copy skips the mask`);
+    }
   }
   // the articulation: turn the turret's rig and the draw's owner matrix for it follows (the uniform the program reads)
   {
