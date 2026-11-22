@@ -25,6 +25,7 @@
  },
  "tanks": {
   "abramsx": {"flag":"us","in":["3724e49e","c2ecd67824a9"],"b":[0.54,0.7,0.3662,0.5375,0.0482,0.9905],"face":["left","left"],"pose":[30,30,0],"sha":["d08f93c64d2c","37062c73f52d","50ca5a1ccde3"],"bytes":[6705,14125,17650],"fill":1,"whips":true,"audit":["3724e49e","bfdfd5bb"]},
+  "ac130": {"flag":"us","in":["f3b8a5ea","ba4b9c4963ad"],"b":[0.4611,0.6901,0.3474,0.5375,0.0038,0.9962],"face":["left","left"],"pose":[0,0,0],"mount":"aircraft","sha":["5dcc4f478690","c964514eb5c0","835c75364843"],"bytes":[4526,7611,10208],"fill":0.9858,"audit":["f3b8a5ea","060b6f7f"]},
   "aft10": {"flag":"cn","in":["3fa00b08","3ef22ddd6357"],"b":[0.54,0.6731,0.4125,0.5375,0.0607,0.9676],"face":["left","left"],"pose":[30,30,0],"sha":["4eb62a38d5a0","5272a26434d9","cd2c75b3d415"],"bytes":[8479,18010,20690],"fill":1,"whips":true,"audit":["3fa00b08","c526ef21"]},
   "ajax": {"flag":"gb","in":["3a69af85","b3d35a1876d7"],"b":[0.5203,0.7,0.3659,0.5375,0.0563,0.9962],"face":["left","left"],"pose":[30,30,0],"sha":["d42f2952f0c5","335c05cb5fe4","9fbcdad62bd9"],"bytes":[6698,13772,17000],"fill":1,"whips":true,"audit":["3a69af85","472fd243"]},
   "amx10p": {"flag":"fr","in":["eef22aba","1ce4aa23db89"],"b":[0.54,0.7,0.361,0.5375,0.0871,0.9661],"face":["left","left"],"pose":[30,30,0],"sha":["4de4907d3395","9275115ca747","d8bae6b94bd4"],"bytes":[8069,17171,19382],"fill":1,"whips":true,"audit":["eef22aba","da13b081"]},

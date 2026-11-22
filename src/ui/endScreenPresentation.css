@@ -130,6 +130,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:0;box-
 body[data-cot-width] .cot-es.cot-es--record:has(.es-report>.personal) .es-view-tabs{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);gap:var(--s3);overflow:hidden;background:none;box-shadow:none;margin-top:var(--s4)}
+/* (endscreen-modes-275) a room's round: the rematch panel takes its own row over the two columns (it was squeezed into the
+   columns' one row, its Ready button and meter laid over the rosters) */
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal):has(>.es-rematch){grid-template-rows:auto minmax(0,1fr)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>:is(.es-debrief,.es-debrief[hidden]){display:block;min-height:0;
   height:auto;overflow:auto;scrollbar-width:thin;border-radius:var(--r1);box-shadow:var(--e2)}
 /* (the tallies keep their names beside their glyphs on the wide windows too, gauntlet r1: a glyph over "0" or "900"

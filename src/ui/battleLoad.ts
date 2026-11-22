@@ -12,6 +12,7 @@
  * public/icons/<id>_side_silhouette.png (tools/genIcons.mjs).
  */
 
+import { previewAircraft } from '../vehicles/previewVehicles.ts';
 import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -839,17 +840,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
     const sil = document.createElement('div');
     sil.className = 'sil';
-    // (ac130-fx-228) an aircraft row: the AC-130's one identity (its name and icon), as every kill surface shows it
+    // (ac130-fx-228) an aircraft row: the AC-130's one identity (its name), as every kill surface shows it;
+    // (endscreen-modes-275) and its own renders, flag and hero card as a tank row's (vehicles/previewVehicles.ts: the row's
+    // id is the aircraft's preview id, its renders the tanks' file names)
     const aircraft = r.kind === 'aircraft' ? killSourceIdentity('ac130') : null;
-    if (aircraft) {
-      sil.innerHTML = uiIconSVG(aircraft.icon, 25);
-      sil.style.display = 'grid'; sil.style.placeItems = 'center';
-    } else {
-      // a sheet row shows the vehicle's own side render, a card its silhouette until the hero layers land; only the
-      // one the layout draws is fetched (a box the CSS never paints loads no background)
-      sil.style.setProperty('--side-img', `url(${iconUrl(r.id, 'side')})`);
-      sil.style.setProperty('--sil-img', `url(${iconUrl(r.id, 'side_silhouette')})`);
-    }
+    // a sheet row shows the vehicle's own side render, a card its silhouette until the hero layers land; only the
+    // one the layout draws is fetched (a box the CSS never paints loads no background)
+    sil.style.setProperty('--side-img', `url(${iconUrl(r.id, 'side')})`);
+    sil.style.setProperty('--sil-img', `url(${iconUrl(r.id, 'side_silhouette')})`);
     const nm = document.createElement('div');
     nm.className = 'nm';
     nm.textContent = aircraft?.label || r.name || r.id;
@@ -857,7 +855,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     // every vehicle with its flag (owner UI rules): a sheet row's beside its render (a wide card's is its hero layer)
     const flag = document.createElement('span');
     flag.className = 'fl';
-    if (r.nation && !aircraft) flag.dataset.nation = r.nation;
+    const nation = aircraft ? previewAircraft(r.id)?.nation : r.nation;
+    if (nation) flag.dataset.nation = nation;
     el.append(tier, flag, sil, nm);
     // who drives it: a card names its driver under the vehicle (the direction's 10-battle-load .cs), a row at its end
     const callsign = r.isPlayer ? t('hud.feed.you') : r.callsign;
@@ -910,7 +909,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       if (old && old.dataset.key === rowKey(r, cards)) { next.push(old); return; }
       const el = rosterRow(r, cards);
       next.push(el);
-      if (cards && r.kind !== 'aircraft') decorated.push([el, r.id]);
+      if (cards) decorated.push([el, r.id]);
     });
     const slotClass = 'row slot' + (cards ? ' card' : '');
     for (let slot = 0; slot < open; slot += 1) {

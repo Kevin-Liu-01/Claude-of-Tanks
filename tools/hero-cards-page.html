@@ -13,6 +13,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+// (endscreen-modes-275) a preview aircraft (vehicles/previewVehicles.ts) from its real airframe, as a tank from its builder
+import { buildPreviewAircraft } from '/src/game/previewAircraftBuild.ts';
+import { previewVehicleKind } from '/src/vehicles/previewVehicles.ts';
 import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
 import { exteriorFingerprint } from '/src/vehicles/tankAssets.ts';
@@ -252,6 +255,19 @@ function measureSides(root, visual, cam, sw, sh) {
   };
 }
 
+/** An aircraft's sides by the same projection: its nose (+Z) is both its bow and, for the framing, its gun. */
+function measureNoseSides(root, cam, sw, sh) {
+  const project = (world) => {
+    const p = world.clone().project(cam);
+    return { x: (p.x + 1) / 2 * sw, y: (1 - p.y) / 2 * sh };
+  };
+  const box = new THREE.Box3().setFromObject(root);
+  const pivot = project(box.getCenter(new THREE.Vector3()));
+  const nose = project(root.localToWorld(new THREE.Vector3(0, 0, box.max.z)));
+  const side = nose.x >= pivot.x ? 'right' : 'left';
+  return { bowSide: side, gunSide: side, pivot, muzzle: nose };
+}
+
 /**
  * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_POSE / HERO_LIGHTS /
  * HERO_FRAME (sample boards only; the shipped renderer passes none).
@@ -261,9 +277,11 @@ function renderHero(id, overrides = {}) {
   const pose = { ...HERO_POSE, ...(overrides.pose || {}) };
   const rig = { ...HERO_LIGHTS, ...(overrides.lights || {}) };
   const frame = { ...HERO_FRAME, ...(overrides.frame || {}) };
-  const shadows = overrides.shadows !== false;
-  const spec = getSpec(id);
-  const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+  // an aircraft flies over its card: no turret to turn and no contact shadow under a level airframe
+  const aircraft = previewVehicleKind(id) === 'aircraft';
+  const shadows = !aircraft && overrides.shadows !== false;
+  const spec = aircraft ? null : getSpec(id);
+  const visual = aircraft ? buildPreviewAircraft(id) : createTank(id, null, { camoSeed: 4100, quality: 'high' });
   const root = visual.root;
   scene.add(root);
   try {
@@ -275,7 +293,9 @@ function renderHero(id, overrides = {}) {
     const el = deg(camera.elevationDeg);
     // Unit vector from the vehicle toward the lens (the hull's front three-quarter on the facing's flank).
     const dir = new THREE.Vector3(Math.sin(az) * mirror * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-    const posed = applyHeroPose(root, spec, pose, dir);
+    const posed = aircraft
+      ? { turretYawDeg: 0, restYawDeg: 0, gunPitchDeg: 0, traverseDeg: 0, turret: false, turretless: false, aircraft: true }
+      : applyHeroPose(root, spec, pose, dir);
     root.traverse((object) => {
       if (object.isMesh) { object.castShadow = shadows; object.receiveShadow = shadows; }
     });
@@ -343,7 +363,7 @@ function renderHero(id, overrides = {}) {
     );
     const scale = Math.min(coreScale, fullScale);
     // The gun's screen side, by projection through this lens, sets which side the framing leaves open.
-    const sides = measureSides(root, visual, cam, sw, sh);
+    const sides = aircraft ? measureNoseSides(root, cam, sw, sh) : measureSides(root, visual, cam, sw, sh);
     const centerX = heroCenterX(frame.centerXRatio, sides.gunSide);
     let dx = frame.width * centerX - core.centerX * scale;
     // Slide (never scale) the silhouette back inside the layer when the gun or the rear overhangs an edge.
@@ -408,8 +428,9 @@ function renderHero(id, overrides = {}) {
 }
 
 window.__HERO_WARM = async (ids) => {
-  await ensureInteriorFills(ids);
-  for (const id of ids) createTank(id, null, { camoSeed: 4100, quality: 'high', staticPreview: true }).dispose();
+  const tanks = ids.filter((id) => previewVehicleKind(id) !== 'aircraft');
+  await ensureInteriorFills(tanks);
+  for (const id of tanks) createTank(id, null, { camoSeed: 4100, quality: 'high', staticPreview: true }).dispose();
   return true;
 };
 
