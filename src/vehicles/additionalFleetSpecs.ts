@@ -489,20 +489,10 @@ const SPECS: FleetTankSpec[] = [
         })),
       },
       dims: {
-        // widthM 3.30 -> 3.63 (§5.304 OWNER ORDER 2026-08-17, verbatim:
-        // "update our t62 obr 1975 10% wider ..."): owner-decreed spec
-        // change landed WITH the build widen (profiles/russia.ts
-        // buildT62MV1 — every lateral station ×1.10). The offline obr-1975
-        // oracle print now reads ~9.1% narrow vs this row by decree —
-        // adjudicated FALSE-class divergence (never chase the print back).
-        hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.63, heightM: 2.40,
-        // The supplied Obr. 1975 art source includes its full fender/drum
-        // envelope and DShK-height convention.  Preserve published vehicle
-        // dimensions for gameplay/UI while the geometry gate compares the
-        // actual registered source silhouette measured from that file.
-        silhouetteHullLengthM: 7.06,
-        silhouetteOverallLengthM: 9.96,
-        silhouetteHeightM: 2.74,
+        // t62-275 (the owner, 2026-11-21: "actually look like their historical counterparts"): the published T-62
+        // frame the family build (profiles/t62Family.ts) is authored to: 6.63 m hull, 9.33 m gun forward, 3.30 m over
+        // the fenders (the 2026-08-17 widening to 3.63 m is withdrawn with it), 2.40 m to the turret roof.
+        hullLengthM: 6.63, overallLengthM: 9.33, widthM: 3.30, heightM: 2.40,
       } }),
   make('t72b3', 't64bv1', 'T-64BV1', 'USSR/Russia',
     { hp: 1850, weightTons: 42.4, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.4 },

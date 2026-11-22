@@ -682,10 +682,10 @@ const IDS_BY_LAYOUT = Object.freeze({
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
     'merkava4', 'merkava3d', 'merkava4_trophy', 'merkava4_barak',
   ],
-  sovietManual: ['t62_1975', 't55a'],
+  sovietManual: ['t62_1975', 't62mv1', 't55a'],
   nationalSmDiesel: [...NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model!==0).map(c=>c.id),...NATIONAL_LEGACY_IDS],
   nationalSmTurbine: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model===0).map(c=>c.id),
-  conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1','t64bv_donbas'],
+  conceptAzHybrid: ['type96_72_long','type96_72m_lei','t64bv_donbas'],
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   // release 263: the rebuilt ZTZ-85-III carries the 85-IIM's T-72-derived carousel autoloader and a crew of three
   // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader

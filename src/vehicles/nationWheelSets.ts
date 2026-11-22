@@ -314,6 +314,10 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   ...(T54_STARFISH_WHEELS ? {
     type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
     t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },
+    // t62-275 (the owner, 2026-11-21: "actually look like their historical counterparts"): the T-62 rolls on the
+    // T-55's starfish road wheel, on both marks
+    t62_1975: { donor: 'type59', reason: 't62-275: the T-62 obr. 1975 rolls on the T-55\'s period starfish wheel' },
+    t62mv1: { donor: 'type59', reason: 't62-275: the T-62MV keeps the T-62\'s period starfish wheel' },
   } : {}),
   // release 262 (the owner: the new Sho't "with proper equipment geometries"): the IDF kept the Centurion's running gear
   shot_kal: { donor: 'challenger2e', reason: 'release 262: the Sho\'t Kal is a Centurion hull on its own Horstmann bogies -> the UK wheel the Mk 3 and Mk 5/2 draw, not the Merkava\'s' },

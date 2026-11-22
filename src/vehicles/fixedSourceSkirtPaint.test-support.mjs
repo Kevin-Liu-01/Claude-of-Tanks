@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildT90AWX} from './profiles/t90AwX.ts';
 import {buildT72BUX} from './profiles/t72buX.ts';
-import {buildT62MV1X} from './profiles/t62mv1X.ts';
 
 // The declared fixed sheets each profile paints as bodywork; withHistoricalFixedSkirtFinish builds the CURRENT profile
 // with only those sheets routed back to rubber (a live counterfactual). 2026-10-01 (frozen pins retired): the pinned
@@ -10,7 +9,6 @@ import {buildT62MV1X} from './profiles/t62mv1X.ts';
 export const FIXED_SOURCE_SKIRTS=Object.freeze({
   t90:{build:buildT90AWX,label:'t90-aw-x-fixed-skirt',count:8},
   t72bu:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12},
-  t62mv1:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20},
 });
 
 export function withHistoricalFixedSkirtFinish(id,build,wrapBuilder=builder=>builder){
