@@ -249,7 +249,7 @@ function sideScreens(P:TankBuilderPort,m:T80Mark):void{
     // seven separate rubber-fabric sheets (profiles/rubberSkirt.ts; Kevin, 2026-11-21: "fix these rubber sideskirts"), each
     // under its own clamp strip and bolt row, except where the Ukrainian BV's Kontakt-1 row runs along the top
     rubberSkirtRun(P,{label:'t80b-rubber-skirt',bucket:'hullRubber',side:s,sections:skirtSections(Z0,Z1,7),
-      top:(z)=>apronAt(z).top,foot:(z)=>apronAt(z).foot,x:screenX,clamp:skirtBricks(m)?(_z0,z1)=>z1<skirtBrickRowEnd(m):undefined});
+      top:(z)=>apronAt(z).top,foot:(z)=>apronAt(z).foot,x:screenX,outerLimit:SCREEN_X1,clamp:skirtBricks(m)?(_z0,z1)=>z1<skirtBrickRowEnd(m):undefined});
     // the nose flap: clamped on the fender's top, round its nose and flaring forward and down in front of the track
     // (the T-80U X fender's nose falls from y 1.226 at z 3.20 to .939 at 3.36: the flap lies on it 1 cm proud, then hangs
     // from its edge and flares forward over the track)
