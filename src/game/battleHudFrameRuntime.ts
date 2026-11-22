@@ -113,7 +113,6 @@ interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
   aimController: AimController;
   armorAimOverlay: ArmorAimOverlayRuntime;
   killcam: KillcamView;
-  muzzleScratch: Vector3;
   getHud(): HudUpdateRuntime | null;
   getDamagePanel(): DamagePanelRuntime | null;
   now?: () => number;
@@ -144,7 +143,6 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   aimController,
   armorAimOverlay,
   killcam,
-  muzzleScratch,
   getHud,
   getDamagePanel,
   now = () => performance.now(),
@@ -303,8 +301,16 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     }
   };
 
+  // (274 fix; Kevin, 2026-11-22: "the armour shading actually changes depending on how you angle right rn not working")
+  // The paint judges each panel along the line from the reticle's own muzzle, filled here each frame from the gun-centre
+  // ray the reticle reads (aimController.gunCenterRay: the gun's muzzle, a launcher's own, a gunship's sight). It was
+  // handed a scratch nothing wrote, so every line ran from the world origin: the shooter's place and angle never counted.
+  const aimsAGun = (entity: TEntity): entity is TEntity & Parameters<AimController['gunCenterRay']>[0] => !!entity.spec?.gun;
+  const armorMuzzle = new Vector3();
+  const armorBore = new Vector3();
+  const armorGunTarget = new Vector3();
   const updateArmorOverlay = (localPlayer: TEntity | null): void => {
-    if (!localPlayer) {
+    if (!localPlayer || !aimsAGun(localPlayer) || (!localPlayer.visual && !localPlayer.aerial?.active)) {
       armorAimOverlay.hide();
       return;
     }
@@ -312,12 +318,13 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     const armorScoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
     collectArmorTargets(localPlayer, armorEnabled && armorScoped);
     const shellSlot = localPlayer.combat?.shellSlot ?? 0;
+    if (armorEnabled && armorScoped) aimController.gunCenterRay(localPlayer, frameInfo.aim.point, armorMuzzle, armorBore, armorGunTarget);
     armorAimOverlay.update({
       enabled: armorEnabled,
       scoped: armorScoped,
       targets: armorTargets,
       shellSpec: localPlayer.spec?.gun?.shells?.[shellSlot],
-      muzzle: muzzleScratch,
+      muzzle: armorMuzzle,
       nowMs: now(),
     });
   };

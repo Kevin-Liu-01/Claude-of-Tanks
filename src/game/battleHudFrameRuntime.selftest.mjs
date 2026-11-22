@@ -9,7 +9,10 @@ const player = {
   combat: { shellSlot: 1 },
   visual: { root: { visible: true } },
   spec: { gun: { shells: ['ap', 'heat'] } },
+  // where this fixture's gun-centre ray starts (the stub below reads it, as the real one reads the gun's muzzle)
+  muzzleAt: new Vector3(5, 2, 7),
 };
+const rayCalls = [];
 const enemy = {
   id: 'enemy', team: 'bravo', state: {}, combat: { destroyed: false },
   visual: { root: { visible: true } },
@@ -60,7 +63,7 @@ const runtime = createBattleHudFrameRuntime({
   aimController: {
     update: () => { aimUpdates += 1; },
     raycast: () => null,
-    gunCenterRay: () => 0,
+    gunCenterRay: (tank, aimPoint, outOrigin) => { rayCalls.push({ tank, aimPoint }); outOrigin.copy(tank.muzzleAt); return 1; },
     muzzlePathBlockDist: () => null,
   },
   armorAimOverlay: {
@@ -68,7 +71,6 @@ const runtime = createBattleHudFrameRuntime({
     hide: () => { overlayHides += 1; },
   },
   killcam,
-  muzzleScratch: new Vector3(1, 2, 3),
   pingMs: () => 73,
   getHud: () => ({ update: (frame) => hudFrames.push(frame) }),
   getDamagePanel: () => ({ update: (combat) => damageFrames.push(combat) }),
@@ -94,6 +96,23 @@ assert.equal(damageFrames[0], player.combat);
 assert.deepEqual(overlayFrames[0].targets, [enemy], 'only visible opponents reach armor inspection');
 assert.equal(overlayFrames[0].shellSpec, 'heat');
 assert.equal(overlayFrames[0].nowMs, 400);
+// (274 fix; Kevin: "the armour shading actually changes depending on how you angle right rn not working") the paint judges
+// from the reticle's own muzzle: the gun-centre ray's origin for the local player, laid on the frame's aim point. It was
+// handed a scratch nothing wrote, so every line ran from the world origin and the shooter's place never counted
+assert.equal(rayCalls.at(-1).tank, player, 'the paint\'s muzzle comes from the local player\'s gun-centre ray');
+assert.equal(rayCalls.at(-1).aimPoint, runtime.frameInfo.aim.point, 'laid on the reticle\'s aim point');
+assert.deepEqual(overlayFrames[0].muzzle.toArray(), [5, 2, 7], 'the overlay judges from the player\'s muzzle, not the origin');
+player.muzzleAt.set(-40, 3, 120);
+runtime.update(true, false);
+assert.deepEqual(overlayFrames.at(-1).muzzle.toArray(), [-40, 3, 120], 'and follows the player as they move round the target');
+camera.userData.scoped = false;
+const raysWhenScoped = rayCalls.length;
+runtime.update(true, false);
+assert.equal(rayCalls.length, raysWhenScoped, 'out of scope the paint traces nothing (it is hidden)');
+camera.userData.scoped = true;
+player.muzzleAt.set(5, 2, 7);
+hudFrames.length = 1;
+aimUpdates = 1;
 
 runtime.redrawFrozen();
 assert.equal(hudFrames.length, 2, 'capture mode can redraw the retained frame');
