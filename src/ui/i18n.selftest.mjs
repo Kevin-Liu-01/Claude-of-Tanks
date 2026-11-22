@@ -248,3 +248,11 @@ console.log(`i18n.selftest.mjs: ${en.size} keys verified across en-US and ${PREF
     assert.deepEqual(dashed, [], `${file}: em dashes in ${dashed.join(', ')}`);
   }
 }
+
+// (274) a tutorial act card's copy fits two lines in every locale: each act card body carries its character budget into
+// the translation context (the en-US metadata the gt CLI reads), and no translation runs past it (tools/i18n-card-budget.mjs)
+{
+  const { repositoryCardBudgetFailures } = await import('../../tools/i18n-card-budget.mjs');
+  const failures = await repositoryCardBudgetFailures();
+  assert.deepEqual(failures, [], `act card budget:\n  ${failures.join('\n  ')}`);
+}
