@@ -3,6 +3,8 @@
 // topology or new visual geometry. Nominal protection remains donor balance.
 import type {FleetTankSpec} from './specContracts.ts';
 import type {ArmorPlate, Vec3Tuple} from './specHelpers.ts';
+import {rubberSkirtSheets} from './profiles/rubberSkirtSheets.ts';
+import {t80uXSkirtRuns} from './profiles/t80uXApron.ts';
 
 type Point = Vec3Tuple;
 type Course = readonly [z: number, low: number, top: number];
@@ -61,14 +63,18 @@ function t72b1987(emit: Emit, side: number): void {
     [3.01,.874,1.195],[3.36,.899,.946]],`t72b1987-skirt-${side}`);
 }
 
+// 274 (t80-skirts-274; Kevin, 2026-11-21: "fix these rubber sideskirts they look so bad"): the apron hangs as separate
+// leaning sheets with open joints (profiles/t80uXApron.ts), so the protection follows each sheet: per sheet and loft bay,
+// its bead face, the bead's shoulder and its outer face, from the same rings the builder lofts. The joints between the
+// sheets stay open air.
 function t80(emit: Emit, side: number): void {
-  const rows: readonly Course[]=[[-2.882,.886,1.414],[-2.45,.815,1.458],
-    [-1.22,.782,1.504],[1.75,.762,1.449],[2.886,.782,1.418]];
-  for(let i=1;i<rows.length;i++) {
-    const [a,al,at]=rows[i-1],[b,bl,bt]=rows[i];
-    sideQuad(emit,side,[side*1.8,al,a],[side*1.685,at,a],
-      [side*1.8,bl,b],[side*1.685,bt,b],`t80-skirt-${side}`);
-  }
+  for (const run of t80uXSkirtRuns(side)) rubberSkirtSheets(run,run.label).forEach((sheet,i)=>{
+    const group=`t80-skirt-${side}-${run.label}-${i}`,at=(s: number,k: number): Point=>{
+      const {z,ring}=sheet.stations[s];return [side*ring[k][0],ring[k][1],z];
+    };
+    for (let s=1;s<sheet.stations.length;s++) for (const k of [1,2,3])
+      sideQuad(emit,side,at(s-1,k),at(s-1,k+1),at(s,k),at(s,k+1),group);
+  });
 }
 
 function t72b3(emit: Emit, side: number): void {

@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {rubberSkirtRun,skirtSections} from './rubberSkirt.ts';
+import {rubberSkirtRun} from './rubberSkirt.ts';
+import {t80uXSkirtRuns} from './t80uXApron.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import { libraryRoofMg } from './libraryRoofMg.ts';
@@ -72,34 +73,13 @@ function fenderReinforcements(P:TankBuilderPort,side:number):void {
   for(const z of [-1.834,-1.270,-.705,-.141,.424,.988,1.552])P.addEquipment('hullDetail',box(.028,.045,.561),side*1.709,1.484,z);
 }
 
-/** The side apron's hang line under the fender lip ([z, top, foot]); its inner face leans out from x 1.685 at the top to
- * 1.80 at the foot. The T-80 marks hang their screens and skirts on the same line (profiles/t80Marks.ts). */
-export const T80U_X_APRON:readonly(readonly[number,number,number])[]=[[-2.882,1.414,.886],[-2.45,1.458,.815],[-1.22,1.504,.782],[1.75,1.449,.762],[2.886,1.418,.782]];
-export function t80uXApronAt(z:number):{top:number;foot:number}{
-  const APRON=T80U_X_APRON;
-  for(let i=1;i<APRON.length;i++){
-    const a=APRON[i-1],b=APRON[i];
-    if(z<=b[0]||i===APRON.length-1){const t=Math.max(0,Math.min(1,(z-a[0])/(b[0]-a[0])));return {top:a[1]+(b[1]-a[1])*t,foot:a[2]+(b[2]-a[2])*t};}
-  }
-  return {top:APRON[0][1],foot:APRON[0][2]};
-}
-export const T80U_X_APRON_X0=1.685,T80U_X_APRON_X1=1.80;
-/** The apron's inner face |x| at (z, y). */
-export function t80uXApronX(z:number,y:number):number{
-  const {top,foot}=t80uXApronAt(z);
-  return T80U_X_APRON_X0+(T80U_X_APRON_X1-T80U_X_APRON_X0)*(top-y)/(top-foot);
-}
-
 function skirt(P:TankBuilderPort,side:number):void {
   // Kevin, 2026-11-21 (t80-skirts-274: "fix these rubber sideskirts they look so bad"): the apron hangs as separate
   // rubber-fabric sections (profiles/rubberSkirt.ts), five stiff armoured panels forward (the T-84 seats its Kontakt-5
   // on them) and two loose rubber sheets aft, each under its own clamp strip, in place of two continuous slabs. Forward armored sections under the Kontakt-5 bank carry paint;
   // the rear rubber-fabric apron is painted in the vehicle scheme too (fleet paint standard 2026-09-11), so only the bow
   // apron and mud flaps stay black.
-  const hang={side,top:(z:number)=>t80uXApronAt(z).top,foot:(z:number)=>t80uXApronAt(z).foot,x:t80uXApronX,
-    bucket:'hullFixedPaintedBodywork'} as const;
-  rubberSkirtRun(P,{...hang,label:'t80u-x-side-apron-rear',sections:skirtSections(-2.882,-1.22,2)});
-  rubberSkirtRun(P,{...hang,label:'t80u-x-side-apron',sections:skirtSections(-1.22,2.886,5),stiff:true});
+  for(const run of t80uXSkirtRuns(side))rubberSkirtRun(P,{...run,bucket:'hullFixedPaintedBodywork'});
 }
 
 function runningGear(P:TankBuilderPort):void {

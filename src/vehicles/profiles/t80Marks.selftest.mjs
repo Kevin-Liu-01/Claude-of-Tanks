@@ -13,8 +13,9 @@ import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import { eraPlateNames } from './eraAgreement.test-support.mjs';
-import { rubberSkirtRun, skirtSections } from './rubberSkirt.ts';
-import { t80uXApronAt, t80uXApronX } from './t80uX.ts';
+import { rubberSkirtRun } from './rubberSkirt.ts';
+import { skirtSections } from './rubberSkirtSheets.ts';
+import { t80uXApronAt, t80uXApronX } from './t80uXApron.ts';
 
 const MARKS = ['t80', 't80b', 't80bv', 'ua_t80bv'];
 const receipts = {};
