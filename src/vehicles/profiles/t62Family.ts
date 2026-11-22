@@ -64,10 +64,11 @@ const TRACK_TOP_Y = 0.92;
 // ---------------------------------------------------------------------------
 /** The ring centre over the third road wheel (photos t62_1975/02, t62mv/01). */
 const TURRET_PIVOT: Vec3 = [0, ROOF_Y, 0.25];
-/** The cast dome: near round in plan, 2.44 m wide and 2.58 m long, rising 0.70 m as a low superellipse, its crown 60 % of
+/** The cast dome: near round in plan, 2.44 m wide and 2.58 m long, rising 0.76 m as a low superellipse (fuller toward
+ * the gun, rounding softly down over the rear: blind critic, photos t62_1975/02, /05, /07), its crown 60 % of
  * the way back so the front runs long and gentle to the gun and the rear drops over the fourth road wheel (photos
  * t62_1975/02, /08; the T-55's dome is taller and egg-shaped). */
-const DOME = Object.freeze({ H: 0.70, cz: -0.16, side: 1.22, front: 1.54, rear: 1.04, nFront: 1.9, nRear: 2.3, vExp: 2.4, sink: 0.03 });
+const DOME = Object.freeze({ H: 0.76, cz: -0.16, side: 1.22, front: 1.54, rear: 1.04, nFront: 2.3, nRear: 2.3, vFront: 2.4, vRear: 1.8, sink: 0.03 });
 /** Bore axis 1.80 m over the ground: the trunnion 0.33 m over the ring, 0.78 m ahead of its centre. */
 const TRUNNION: Vec3 = [0, 1.80 - ROOF_Y, 0.78];
 /** Muzzle 5.00 m ahead of the trunnion: 6.03 m hull frame, 9.33 m overall with the gun forward. */
@@ -94,16 +95,22 @@ function domePlanR(t: number): number {
   return (Math.pow(s / DOME.side, n) + Math.pow(Math.abs(c) / b, n)) ** (-1 / n);
 }
 /** The dome's plan scale at height h (1 at the base, 0 at the apex). */
-const domeScale = (h: number): number => (h <= 0 ? 1 : (1 - Math.min(1, h / DOME.H) ** DOME.vExp) ** (1 / DOME.vExp));
+/** The profile exponent toward plan angle t: the full front band, the softer rounded rear. */
+const vExpAt = (t: number): number => DOME.vRear + (DOME.vFront - DOME.vRear) * (Math.cos(t) + 1) / 2;
+const domeScale = (h: number, t = 0): number => {
+  const v = vExpAt(t);
+  return h <= 0 ? 1 : (1 - Math.min(1, h / DOME.H) ** v) ** (1 / v);
+};
 /** A point on the dome skin at plan angle t and height h. */
 function domePoint(t: number, h: number): THREE.Vector3 {
-  const r = domePlanR(t) * domeScale(h);
+  const r = domePlanR(t) * domeScale(h, t);
   return new THREE.Vector3(Math.sin(t) * r, h, DOME.cz + Math.cos(t) * r);
 }
 /** Dome height over the plan point (x, z); 0 outside the dome. */
 function domeHeightAt(x: number, z: number): number {
   const dz = z - DOME.cz, t = Math.atan2(x, dz), rho = Math.hypot(x, dz) / domePlanR(t);
-  return rho >= 1 ? 0 : DOME.H * (1 - rho ** DOME.vExp) ** (1 / DOME.vExp);
+  const v = vExpAt(t);
+  return rho >= 1 ? 0 : DOME.H * (1 - rho ** v) ** (1 / v);
 }
 /** Outward skin normal at angle t, height h (finite differences on the closed form). */
 function domeNormal(t: number, h: number): THREE.Vector3 {
@@ -225,8 +232,9 @@ function addFenders(P: TankBuilderPort): void {
     const x0 = HULL_HALF_W - 0.01, x1 = FENDER_OUT;
     P.add('hullFixedPaintedBodywork', box(x1 - x0, 0.03, shelfZ1 - shelfZ0), side * (x0 + x1) / 2, FENDER_Y, (shelfZ0 + shelfZ1) / 2);
   }
-  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [3.00, FENDER_Y + 0.005], [3.13, FENDER_Y - 0.035],
-    [3.23, FENDER_Y - 0.10], [3.30, FENDER_Y - 0.19], [3.33, FENDER_Y - 0.27]];
+  // the deep rounded mudguard hoods over the idlers, crowned over the fender line (photos t62_1975/01, t62mv/01)
+  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.95, FENDER_Y + 0.06], [3.08, FENDER_Y + 0.07],
+    [3.20, FENDER_Y + 0.03], [3.29, FENDER_Y - 0.06], [3.35, FENDER_Y - 0.18], [3.37, FENDER_Y - 0.28]];
   for (const side of [-1, 1]) {
     const x0 = side > 0 ? HULL_HALF_W - 0.01 : -FENDER_OUT, x1 = side > 0 ? FENDER_OUT : -(HULL_HALF_W - 0.01);
     const s0 = side > 0 ? TUB_HALF_W - 0.01 : -FENDER_OUT, s1 = side > 0 ? FENDER_OUT : -(TUB_HALF_W - 0.01);
@@ -234,7 +242,7 @@ function addFenders(P: TankBuilderPort): void {
     const upperEnd = GLACIS_TOP_Z + (ROOF_Y - (TUB_TOP_Y + 0.04)) / UPPER_GLACIS_TAN, cornerZ0 = upperEnd - 0.005;
     P.add('hull', box(HULL_HALF_W - TUB_HALF_W, 0.028, scoop[0][0] - cornerZ0), side * (TUB_HALF_W + HULL_HALF_W - 0.02) / 2,
       FENDER_Y + 0.001, (cornerZ0 + scoop[0][0]) / 2);
-    P.add('hullFixedPaintedBodywork', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
+    P.add('hullFixedPaintedBodywork', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.08, 0.12, 0.15, 0.15, 0.13, 0.10]));
     P.addMudguard('t62-rear-flap', 'hullFixedPaintedBodywork', bentPlateX([[-3.31, FENDER_Y - 0.13], [-3.28, FENDER_Y - 0.02], [shelfZ0 + 0.02, FENDER_Y + 0.015]],
       x0 + side * 0.02, x1, 0.026));
     P.add('hullFixedPaintedBodywork', box(0.012, 0.06, shelfZ1 - shelfZ0), side * (FENDER_OUT - 0.006), FENDER_Y - 0.035, (shelfZ0 + shelfZ1) / 2);
@@ -395,15 +403,18 @@ function kontaktBlock(P: TankBuilderPort, owner: 'hull' | 'turret', zone: string
  * along the nose. Each side is one removable field. */
 function addGlacisKontakt(P: TankBuilderPort): void {
   const tilt = -Math.atan(UPPER_GLACIS_TAN);
-  const rows = [2.27, 2.45, 2.63, 2.81, 2.99];
+  const rows = [2.24, 2.41, 2.58, 2.75, 2.92];
   const cols = [0.15, 0.42, 0.69, 0.96];
   for (const side of [-1, 1]) {
     const zone = `glacis_era_${side < 0 ? 'L' : 'R'}`;
-    for (const z of rows) {
-      for (const c of cols) kontaktBlock(P, 'hull', zone, [side * c, glacisY(z) + 0.06, z], [tilt + 0.22, 0, 0], [0.25, 0.075, 0.18]);
-      // the mounting rail under the row
-      P.add('hullDark', KIT.box(1.10, 0.02, 0.035), side * 0.56, glacisY(z - 0.08) + 0.012, z - 0.08, tilt, 0, 0);
-    }
+    rows.forEach((z0, r) => {
+      // the rows fall toward the sides in a V, alternate rows staggered half a block (photo t62mv/01)
+      for (const c0 of cols) {
+        const c = c0 + (r % 2 ? 0.07 : 0), z = z0 + c * 0.16;
+        if (c > 1.06) continue;
+        kontaktBlock(P, 'hull', zone, [side * c, glacisY(z) + 0.06, z], [tilt + 0.22, 0, 0], [0.25, 0.075, 0.18]);
+      }
+    });
     // the upright row along the nose: six a side standing on the nose's edge strip
     for (let k = 0; k < 6; k++) {
       const x = side * (0.09 + k * 0.17), z = NOSE_Z - 0.06;
@@ -413,25 +424,27 @@ function addGlacisKontakt(P: TankBuilderPort): void {
   }
 }
 
-/** Rubber side skirts hung from the fender lip over the top of the wheels in bolted sections, the front two thirds of
- * each carrying a grid of Kontakt-1 blocks four rows deep (photo t62mv/01). */
+/** Side screens over the front of each track run carrying a Kontakt-1 grid five rows deep (photo t62mv/01). */
 function addRubberSkirts(P: TankBuilderPort): void {
-  const z0 = -3.00, z1 = 2.72, sections = 8, seam = 0.012, top = FENDER_Y - 0.01, foot = 0.60, t = 0.016;
+  // the side screen covers the front of the run only, to wheel 2, hanging to hub height; the rear wheels stand bare
+  // (photo t62mv/01)
+  const z0 = 1.02, z1 = 2.74, sections = 3, seam = 0.012, top = FENDER_Y - 0.01, foot = 0.50, t = 0.016;
   for (const side of [-1, 1]) {
     const x = side * (FENDER_OUT + t / 2 + 0.002);
     const step = (z1 - z0 + seam) / sections;
     for (let k = 0; k < sections; k++) {
       const a = z0 + k * step, b = a + step - seam;
-      // painted rubber, as the exhibit's (photo t62mv/01): the hull's camouflage, not black rubber
+      // painted rubber, as the exhibit's: the hull's camouflage, not black rubber
       P.addMudguard('t62mv-skirt', 'hullFixedPaintedBodywork', KIT.box(t, top - foot, b - a), x, (top + foot) / 2, (a + b) / 2);
       P.addEquipment('hullDark', KIT.box(t + 0.008, 0.035, b - a - 0.02), x, top - 0.03, (a + b) / 2);
     }
     const zone = `skirt_era_${side < 0 ? 'L' : 'R'}`;
-    const outX = side * (FENDER_OUT + t + 0.038);
-    for (const [y, n] of [[1.04, 10], [0.91, 9], [0.78, 8], [0.66, 7]] as const) {
-      for (let k = 0; k < n; k++) {
-        const z = 2.52 - k * 0.30;
-        kontaktBlock(P, 'hull', zone, [outX, y, z], [0, 0, side * 0.06], [0.07, 0.12, 0.28], [side, 0, 0]);
+    const outX = side * (FENDER_OUT + t + 0.040);
+    // five rows deep, six blocks a row
+    for (const y of [1.04, 0.915, 0.79, 0.665, 0.54]) {
+      for (let k = 0; k < 6; k++) {
+        const z = 2.58 - k * 0.29;
+        kontaktBlock(P, 'hull', zone, [outX, y, z], [0, 0, side * 0.06], [0.075, 0.12, 0.27], [side, 0, 0]);
       }
     }
   }
@@ -551,7 +564,7 @@ function addTurretRoof(P: TankBuilderPort, v: T62Variant): void {
     const z = DOME.cz - DOME.rear - 0.08, y = 0.30, len = v.mv ? 1.70 : 1.90;
     P.addEquipment('turretDetail', KIT.cylX(0.105, len, P.q ? 18 : 10), 0, y, z);
     for (const s of [-1, 1]) {
-      const bx = s * len * 0.34, bz = DOME.cz - DOME.rear * domeScale(y) * 0.98;
+      const bx = s * len * 0.34, bz = DOME.cz - DOME.rear * domeScale(y, Math.PI) * 0.98;
       P.addEquipment('turretDark', box(0.06, 0.05, z - bz - 0.02 + 0.13), bx, y - 0.05, (z + bz) / 2 - 0.02);
       P.addEquipment('turretDark', KIT.torus(0.11, 0.012, P.q ? 18 : 10).rotateY(Math.PI / 2), bx, y, z);
     }
@@ -565,8 +578,9 @@ function addTurretRoof(P: TankBuilderPort, v: T62Variant): void {
 /** The canvas-covered mantlet slot: a pleated canvas bag over the gun's slot through the casting (gun frame). */
 function addMantletCover(P: TankBuilderPort): void {
   const { cylZ } = KIT;
-  const stations: [number, number, number][] = [[0.04, 0.56, 0.56], [0.50, 0.52, 0.50], [0.68, 0.40, 0.38],
-    [0.86, 0.29, 0.29], [1.02, 0.235, 0.235]];
+  // a short bulbous boot (photo t62_1975/08; blind critic: the long cone read sharp)
+  const stations: [number, number, number][] = [[0.04, 0.56, 0.56], [0.44, 0.58, 0.56], [0.60, 0.48, 0.46],
+    [0.74, 0.32, 0.31], [0.84, 0.235, 0.235]];
   const n = P.q ? 20 : 12;
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2;
@@ -577,7 +591,7 @@ function addMantletCover(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(2, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.122, 0.035, n), 0, 0, 1.005);
+  P.addGunExtraDark(cylZ(0.122, 0.035, n), 0, 0, 0.825);
   P.add('gunMount', cylZ(0.13, 0.20, n), 0, 0, 0.18);
   // the coaxial PKT's port in the cover, right of the gun
   P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.19, -0.03, 0.56);
@@ -654,7 +668,7 @@ function addTurretKontakt(P: TankBuilderPort): void {
     return { at: p.addScaledVector(skin, off), rot: [e.x, e.y, e.z] };
   };
   // tiers: skin height, lean from upright toward the skin (0 upright, 1 on the skin), block height, stand-off
-  const tiers = [[0.20, 0.15, 0.26, 0.07], [0.44, 0.55, 0.24, 0.06]] as const;
+  const tiers = [[0.20, 0.15, 0.27, 0.10], [0.45, 0.55, 0.25, 0.085]] as const;
   for (const side of [-1, 1]) {
     const zone = `turret_era_${side < 0 ? 'L' : 'R'}`;
     // the left cheek (+X, the commander's side) is clear from the gun slot; the right starts outboard of the searchlight
@@ -663,7 +677,7 @@ function addTurretKontakt(P: TankBuilderPort): void {
       let t = a0 * D2R;
       for (let k = 0; k < cols; k++) {
         const { at, rot } = seat(side * t, h, lean, off);
-        kontaktBlock(P, 'turret', zone, [at.x, at.y, at.z], rot, [W, 0.085, bh], [0, 1, 0]);
+        kontaktBlock(P, 'turret', zone, [at.x, at.y, at.z], rot, [W, 0.11, bh], [0, 1, 0]);
         const step = domePoint(t, h).distanceTo(domePoint(t + 0.01, h)) / 0.01;
         t += (W + GAP) / step;
       }
