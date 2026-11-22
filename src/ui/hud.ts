@@ -886,9 +886,8 @@ const RING_STROKE_REACH = 1.5;
 const RACK_CONTOUR = 1.5;
 const RACK_TURN_X = 1.1;
 const RACK_TURN_Y = 0.4;
-/** The countdown's numeral: 18 px (owner 2026-11-20: 16 was too hard to spot), its digits 0.74 of that above the baseline
- *  and 0.08 below (the capture's text box). */
-const COUNTDOWN_SIZE = 18;
+/** The countdown's numeral: 16 px, its digits 0.74 of that above the baseline and 0.08 below (the capture's text box). */
+const COUNTDOWN_SIZE = 16;
 const COUNTDOWN_ASCENT = COUNTDOWN_SIZE * 0.74;
 const COUNTDOWN_DESCENT = COUNTDOWN_SIZE * 0.08;
 /** The least gap between the countdown and the rack above it (critic r6: the digits' tops touched the clip's shells). */
@@ -927,19 +926,11 @@ const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, bo
   ['rowAbove', false, true, false], ['rowAbove', true, true, true], ['stack', false, true, false], ['stack', true, true, true],
 ];
 /** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
-// (its figures tick in place: IBM Plex Sans SemiBold, whose figures are all one width (600 units) with no feature to turn
-// on, so 7.4 and 0.9 keep one width and the loaded figure the countdown's; heavier than the .num face's Plex Mono Medium,
-// which read too thin over the ground. SWITCHING, a word, keeps the label face)
-const FONT_COUNTDOWN = `600 ${COUNTDOWN_SIZE}px ${TYPE_STACK.body}`;
-const FONT_COUNTDOWN_WORD = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
-/** The readout's box: three tabular figures wide (reloadHudFigure), each figure set right in it, so 12, 7.4 and 0.9 end
- *  in one place and the unit after them never moves. */
+// (owner 2026-11-21: the readout keeps the reticle's own label face, no outline, the loaded figure and the countdown alike)
+const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
+/** The readout's box: three figures wide (reloadHudFigure), each figure set right in it, so 12, 7.4 and 0.9 end in one
+ *  place and the unit after them never moves. */
 const READOUT_BOX = '0.0';
-/** The readout's dark halo (owner 2026-11-20: the grey figure faded into dry grass and muzzle smoke): a 4 px stroke under
- *  the glyphs, 2 px of it past their edges, inside the 3 px every mark keeps from the ring, the rack and the furniture;
- *  the reticle's dark contour ink. */
-const READOUT_HALO_W = 4;
-const READOUT_HALO = 'rgba(5,8,11,0.88)';
 const FONT_COUNTDOWN_UNIT = `500 11px ${FONT_COND}`;
 const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
 const FONT_SCOPE_COUNT = `700 13.5px ${FONT_COND}`;
@@ -1331,7 +1322,6 @@ const RET_CEIL_FRAC = 0.15;
 // Shared type system (see src/ui/fonts.ts): FONT_COND drives the numeral/label
 // hierarchy (weight floor 500); readouts that tick in place take the .num class.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { TYPE_STACK } from './typeFaces.ts';
 import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import type { IconId } from './icons/icon.ts';
@@ -5387,17 +5377,17 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   }
 
   function paintReloadCountdown(view: HudAimView, draw: ReticleDrawState): void {
-    // Owner 2026-11-20: the slot holds a figure all battle, in one place and one width. While the gun or a whole rack
-    // reloads, the seconds left in the reload ink; loaded, the reload the next shot starts (sim nextShotReloadS) in the
-    // muted ink. A clip's cycle shows on the rack itself (its next shell fills), so the slot reads loaded through it. A dry
-    // weapon keeps its struck round (paintDryRound) and no figure.
-    const counting = draw.reloading && !draw.magazine?.intraClip;
+    // Owner 2026-11-20/21: the slot holds a figure all battle, in one place. While the selected weapon's channel loads,
+    // whatever its cycle (a gun's shell, a clip's next round, a magazine, a launcher's rail, a salvo's next missile or its
+    // group), the seconds left in the reload ink; loaded, the reload the next shot starts (sim nextShotReloadS, the same
+    // branches startPostShotReload takes) in the muted ink. A dry weapon keeps its struck round (paintDryRound), no figure.
+    const counting = draw.reloading;
     const readyFigure = counting || draw.dry ? '' : reloadHudReadyFigure(view.reload);
     if (!counting && !readyFigure) return;
     const word = counting && view.ammoSelectionPending;
     const text = counting ? reloadHudCountdown(view.reload, view.ammoSelectionPending) : readyFigure;
     ctx.fillStyle = counting ? RELOAD_ACCENT : readyInk();
-    ctx.font = word ? FONT_COUNTDOWN_WORD : FONT_COUNTDOWN;
+    ctx.font = FONT_COUNTDOWN;
     const figureW = ctx.measureText(text).width;
     const textW = word ? figureW : Math.max(figureW, ctx.measureText(READOUT_BOX).width);
     ctx.font = FONT_COUNTDOWN_UNIT;
@@ -5466,11 +5456,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     draw.countdownRightX = x + textW + unitW;
     noteSightInk(x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT);
     ctx.textAlign = 'left';
-    ctx.font = word ? FONT_COUNTDOWN_WORD : FONT_COUNTDOWN;
-    ctx.strokeStyle = READOUT_HALO;
-    sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x + textW - figureW, y, ctx, READOUT_HALO_W);
+    ctx.font = FONT_COUNTDOWN;
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x + textW - figureW, y, ctx);
     ctx.font = FONT_COUNTDOWN_UNIT;
-    sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx, READOUT_HALO_W);
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx);
     ctx.textAlign = 'center';
   }
 

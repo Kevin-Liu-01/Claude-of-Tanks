@@ -20,6 +20,7 @@ import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.
 import { createAimController } from '../game/aimController.ts';
 import { createBus } from '../game/stateCore.ts';
 import { aimWarningState, initHud, RETICLE_AMMO_INK as INK } from './hud.ts';
+import { FONT_COND } from './fonts.ts';
 import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture, sightNotice } from './sightFurniture.ts';
 
 // --- a minimal DOM: elements remember classes, attributes, styles and their queried children; canvases record ---
@@ -348,11 +349,15 @@ const DRY_RING = 16;
 }
 
 // 1b. Owner 2026-11-20: "when we shoot we should [show] seconds left reloading but when done we can just have a number
-// there that shows the reload time of a shot in like gray". The slot under the marker holds a figure all battle: the
-// seconds left in the reload ink while reloading, the reload the next shot starts (sim nextShotReloadS, after crew,
-// module and equipment effects) in the muted ink while loaded; one place, one tabular face, one fixed decimal.
+// there that shows the reload time of a shot in like gray"; 2026-11-21: "remove the outline from the reload text. just
+// make it look like how it did before and make it reload between shots for autoloads and address those kinds of edge
+// cases like for missiles". The slot under the marker holds a figure all battle, in the reticle's label face with no
+// outline: the seconds left in the reload ink whenever the selected weapon's channel loads, whatever its cycle; the
+// reload the next shot starts (sim nextShotReloadS, after crew, module and equipment effects) in the muted ink while
+// loaded. One case per loading model: a single-shell gun, an autoloader's clip and magazine, a launcher with its own
+// rail, a guided salvo rack, a dead loader, a damaged rack, and an ammo switch mid-reload.
 {
-  const run = () => hud.sightText.placed().find((record) => /^\d+\.\d$/.test(record.text));
+  const run = () => hud.sightText.placed().find((record) => /^\d+(\.\d)?$/.test(record.text));
   const countdownRun = hud.sightText.run(10); // SIGHT_TEXT_COUNTDOWN
   // (a nudge of the ring's target forces a repaint: a settled sight that matches the last one is reused, not repainted)
   const readout = (tank) => { dispersionM += 0.5; const view = frame(tank); dispersionM -= 0.5; return view; };
@@ -360,9 +365,11 @@ const DRY_RING = 16;
   // (the readout's figure: one decimal under 10 s, whole seconds up from there, hud reloadHudFigure)
   const figure = (seconds) => (seconds >= 9.95 ? String(Math.ceil(seconds)) : seconds.toFixed(1));
   const left = (combat) => combat.reload.t; // (the selected round's channel: the one the aim frame carries)
+  const counts = (view, tank) => view.countdown === `${figure(left(tank.combat))} s` && view.ready === null;
+  const halo = (element) => element.style.getPropertyValue('-webkit-text-stroke');
   assert.notEqual(INK.ready, INK.reload, 'the loaded figure has its own ink');
 
-  // a conventional gun: loaded, its 6 s reload grey; fired, the countdown in the same place, face and width
+  // a single-shell gun: loaded, its 6 s reload grey; fired, the countdown in the same place and face
   const tank = tankOf('m1a1_abrams_hc');
   let view = readout(tank);
   assert.equal(view.ready, `${(6 * reloadMult(tank.combat)).toFixed(1)} s`, 'loaded: the gun\'s reload time, grey');
@@ -370,23 +377,31 @@ const DRY_RING = 16;
   // (read at the settled ring: the readout under a small ring sits under its stroke)
   let loadedRun = { ...run() };
   for (let guard = 0; frame(tank).painted && guard < 600; guard++) loadedRun = { ...run() };
-  // (Plex Sans SemiBold: one width for every figure, heavier than the .num face's mono, which read too thin)
-  assert.match(loadedRun.font, /^600 18px 'IBM Plex Sans'/, 'the figure in the one-width SemiBold, 18 px');
-  assert.ok(!countdownRun.classes.has('num'), 'not the .num face (its !important mono would replace it)');
-  // (a dark halo under it, so the grey reads over dry grass and muzzle smoke, as the countdown does; the unit too)
-  const halo = (element) => element.style.getPropertyValue('-webkit-text-stroke');
-  assert.match(halo(countdownRun), /^4px rgba\(5,8,11,0\.88\)$/, 'the loaded figure carries the dark halo');
-  assert.equal(halo(hud.sightText.run(11)), halo(countdownRun), 'and its unit');
+  // (the pre-274 face: the reticle's 700 16 px label face, no outline on the figure or its unit)
+  assert.equal(loadedRun.font, `700 16px ${FONT_COND}`, 'the figure in the reticle\'s label face, 16 px, as before 274');
+  assert.equal(halo(countdownRun), '', 'no outline on the figure');
+  assert.equal(halo(hud.sightText.run(11)), '', 'nor on its unit');
   assert.ok(fire(tank));
   view = frame(tank, { advance: 6 * reloadMult(tank.combat) - 3.2 });
   assert.match(view.countdown, /^3\.\d s$/, 'fired: the seconds left, in the reload ink');
-  assert.match(halo(countdownRun), /^4px /, 'the countdown keeps the same halo');
+  assert.equal(halo(countdownRun), '', 'the countdown has no outline either');
   assert.equal(view.ready, null, 'fired: no grey figure beside the countdown');
   const countingRun = run();
-  assert.deepEqual([countingRun.x, countingRun.y, countingRun.font], [loadedRun.x, loadedRun.y, loadedRun.font],
-    'the countdown runs where the loaded figure sat, in its face (no reflow between the two)');
+  assert.deepEqual([countingRun.y, countingRun.font], [loadedRun.y, loadedRun.font],
+    'the countdown runs where the loaded figure sat, in its face');
   settle(tank.combat);
-  assert.equal(frame(tank).ready, view.ready ?? `${(6 * reloadMult(tank.combat)).toFixed(1)} s`, 'reloaded: grey again');
+  assert.equal(frame(tank).ready, `${(6 * reloadMult(tank.combat)).toFixed(1)} s`, 'reloaded: grey again');
+  // an ammo switch mid-reload: the gun's one channel keeps running (the countdown carries on), and the round now
+  // selected sets the grey figure once loaded (the same 6 s here: one gun, one cycle)
+  assert.ok(fire(tank));
+  tickReload(tank.combat, 1);
+  const before = left(tank.combat);
+  assert.ok(selectShell(tank.combat, 1, tank.spec));
+  view = frame(tank);
+  assert.equal(left(tank.combat), before, 'the switch keeps the running reload');
+  assert.ok(counts(view, tank), 'and its countdown carries on');
+  settle(tank.combat);
+  assert.equal(readout(tank).ready, `${figure(nextShotReloadS(tank.combat, tank.spec))} s`, 'loaded: the new round\'s reload');
   // the loader killed: the figure follows the crew (×1.5, sim reloadMultiplier) and repaints a sight at rest
   assert.ok('loader' in tank.combat.crew);
   settledFrame(tank);
@@ -394,47 +409,71 @@ const DRY_RING = 16;
   view = frame(tank);
   assert.equal(view.painted, true, 'a reload-time change alone repaints the reused reticle');
   assert.equal(view.ready, `${(9 * reloadMult(tank.combat)).toFixed(1)} s`, 'a dead loader: 9.0 s');
+  // ... and the countdown it starts is that stretched cycle
+  assert.ok(fire(tank));
+  view = frame(tank, { advance: 0.5 });
+  assert.ok(counts(view, tank) && tank.combat.reload.totalS === 9 * reloadMult(tank.combat), 'a dead loader counts 9 s down');
+  // a damaged ammo rack stretches it again (×1.5, sim AMMORACK_RELOAD_MULT)
+  settle(tank.combat);
+  tank.combat.modules.ammoRack.state = 'yellow';
+  assert.equal(readout(tank).ready, `${figure(13.5 * reloadMult(tank.combat))} s`, 'a dead loader and a damaged rack: 13.5 s');
 
-  // an autoloader (M1A3: 2.5 s intra-clip, 21 s magazine): the next shell's cycle loaded and through a clip's cycle,
-  // the magazine's load on the last round, and its countdown while the clip refills
+  // an autoloader (M1A3: 2.5 s intra-clip, 21 s magazine): the next shell's cycle grey, then counting down between
+  // shots; the magazine's load grey on the last round and counting down while the clip refills
   const rack = tankOf('m1a3');
   const m = reloadMult(rack.combat);
   assert.equal(readout(rack).ready, '2.5 s', 'a full clip: the next shell\'s 2.5 s cycle');
   assert.ok(fire(rack));
   view = frame(rack, { advance: 0.5 });
-  assert.deepEqual([view.ready, view.countdown], ['2.5 s', null], 'mid-clip: the rack fills the chambered shell, the slot stays grey');
+  assert.equal(rack.combat.reload.kind, 'intraClip');
+  assert.ok(counts(view, rack), 'between the clip\'s shots: the next round\'s cycle counts down');
+  assert.match(view.countdown, /^(1\.9|2\.0) s$/, '2.5 s less the half second gone');
+  settle(rack.combat);
+  assert.equal(readout(rack).ready, '2.5 s', 'the next round chambered: grey again');
   fire(rack); fire(rack);
   assert.equal(rack.combat.magazine.rounds, 1);
   settle(rack.combat);
   assert.equal(readout(rack).ready, `${figure(21 * m)} s`, 'the last round: the magazine\'s 21 s load comes next');
   assert.ok(fire(rack));
   view = frame(rack, { advance: 1 });
-  assert.equal(view.countdown, `${figure(left(rack.combat))} s`, 'the clip refilling: its countdown in the reload ink');
+  assert.equal(rack.combat.reload.kind, 'magazine');
+  assert.ok(counts(view, rack), 'the clip refilling: its countdown in the reload ink');
   assert.ok(left(rack.combat) > 19 && left(rack.combat) < 21 * m);
-  assert.equal(view.ready, null);
-  // ammo switching: the reload of the selected round (its guided round's 3 s launcher cycle)
-  settle(rack.combat);
+  // a launcher with its own rail on the same tank (the guided round's 3 s channel): selected mid-refill, the rail is
+  // loaded, so its own reload shows grey; the cannon's refill counts on, and shows again once the cannon is selected
   assert.ok(selectShell(rack.combat, 1, rack.spec));
-  assert.equal(readout(rack).ready, `${figure(3 * m)} s`, 'the guided round selected: its own reload');
+  view = readout(rack);
+  assert.deepEqual([view.ready, view.countdown], [`${figure(3 * m)} s`, null], 'the launcher selected: its own reload, grey');
+  // (fired without settling: fire() would finish the cannon's refill first)
+  assert.ok(consumeAmmunition(rack.combat, 1));
+  startPostShotReload(rack.combat, rack.spec);
+  view = frame(rack, { advance: 1 });
+  assert.ok(counts(view, rack) && left(rack.combat) < 3 * m, 'the missile fired: the rail\'s cycle counts down');
+  assert.ok(selectShell(rack.combat, 0, rack.spec));
+  view = frame(rack);
+  assert.ok(counts(view, rack) && rack.combat.reload.kind === 'magazine', 'the cannon again: its refill still counting');
 
-  // a guided rack salvo (ZTZ-100: two missiles, 0.35 s apart, 12 s group reload): the group reload loaded and between
-  // the group's shots; its countdown once the group is spent
+  // a guided salvo rack (ZTZ-100: two missiles 0.35 s apart, 12 s group reload): the next shot's cycle grey, the
+  // interval between the group's shots counting down, then the group reload grey and counting down once spent
   const salvo = tankOf('ztz100_prototype');
   const s = reloadMult(salvo.combat);
-  assert.equal(readout(salvo).ready, `${figure(12 * s)} s`, 'a salvo rack: its group reload');
+  assert.equal(readout(salvo).ready, `${figure(0.35 * s)} s`, 'a full salvo rack: the interval to the group\'s next missile');
   assert.ok(fire(salvo));
   view = frame(salvo, { advance: 0.1 });
-  assert.deepEqual([view.ready, view.countdown], [`${figure(12 * s)} s`, null], 'between the group\'s shots: grey');
+  assert.equal(salvo.combat.reload.kind, 'intraClip');
+  assert.ok(counts(view, salvo), 'between the group\'s shots: the interval counts down');
+  settle(salvo.combat);
+  assert.equal(readout(salvo).ready, `${figure(12 * s)} s`, 'the group\'s last missile: its group reload comes next');
   assert.ok(fire(salvo));
   view = frame(salvo, { advance: 0.5 });
-  assert.equal(view.countdown, `${figure(left(salvo.combat))} s`, 'the group spent: the group reload counts down');
-  assert.ok(left(salvo.combat) > 11);
+  assert.ok(counts(view, salvo) && left(salvo.combat) > 11, 'the group spent: the group reload counts down');
   // ... and its cannon round selected: the belt's 0.3 s
   settle(salvo.combat);
   assert.ok(selectShell(salvo.combat, 2, salvo.spec));
   assert.equal(readout(salvo).ready, `${figure(0.3 * s)} s`, 'the autocannon selected: its own reload');
 
-  // the figure is the sim's own: nextShotReloadS is the duration the next shot starts, across the fleet and its damage
+  // the figure is the sim's own: nextShotReloadS is the duration the next shot starts, on every hull's every weapon,
+  // through a clip and a salvo, under each damage
   for (const id of ['m1a1_abrams_hc', 'm1a3', 'type90', 'ztz100_prototype', 'bwp1', 'object695', 'mbt70']) {
     for (const damage of ['none', 'loader', 'rack', 'feed']) {
       const subject = tankOf(id);
@@ -445,18 +484,13 @@ const DRY_RING = 16;
       }
       for (let slot = 0; slot < spec.gun.shells.length; slot++) {
         if (!selectShell(combat, slot, spec)) continue;
-        for (let shot = 0; shot < 5; shot++) {
+        for (let shot = 0; shot < 6; shot++) {
           settle(combat);
-          const salvoRounds = spec.gun.shells[slot].guided ? spec.gun.launcherSalvo?.rounds ?? 0 : 0;
-          // (between a salvo's shots the next shot starts the group's short interval; the figure is its group reload)
-          const midSalvo = salvoRounds > 1 && ((combat.launcherSalvoShots ?? 0) + 1) % salvoRounds !== 0;
           const expected = nextShotReloadS(combat, spec);
           if (!consumeAmmunition(combat, slot)) break;
           startPostShotReload(combat, spec);
-          if (midSalvo) continue;
-          const started = [combat.reload, combat.gunReload].filter((channel) => channel && channel.t > 0 && channel.t === channel.totalS);
-          assert.ok(started.some((channel) => Math.abs(channel.totalS - expected) < 1e-9),
-            `${id}, ${damage}, slot ${slot}, shot ${shot}: the figure ${expected} is the cycle the shot started (${started.map((c) => c.totalS)})`);
+          assert.ok(Math.abs(combat.reload.totalS - expected) < 1e-9 && combat.reload.t === combat.reload.totalS,
+            `${id}, ${damage}, slot ${slot}, shot ${shot}: the figure ${expected} is the cycle the shot started (${combat.reload.totalS})`);
         }
       }
     }
@@ -663,8 +697,9 @@ const fills = (ops, style) => ops.filter((op) => op.op === 'fillRect' && op.styl
 
 // 13. Between two rounds of a clip the rack shows the cycle itself: the round being chambered (the next to fire, the
 // last ready slot) fills from its base, the slot of the round just fired stays empty, and nothing vanishes when the
-// cycle ends (critic r3: the fired slot filled back in, then emptied). No numeral under the rack. The same holds for
-// the guided salvo racks between two missiles: the ZTZ-100 prototype's pair and Object 695's four.
+// cycle ends (critic r3: the fired slot filled back in, then emptied). The cycle's seconds left count down under the
+// rack too (owner 2026-11-21: "make it reload between shots for autoloads"). The same holds for the guided salvo racks
+// between two missiles: the ZTZ-100 prototype's pair and Object 695's four.
 /** The rack's fills in one ink by slot, left to right: the shells' 1 px outlines give the slot centres. */
 function rackFills(ops, style) {
   const centre = (box) => (box.x0 + box.x1) / 2;
@@ -686,7 +721,7 @@ for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['
   const totalS = tank.combat.reload.totalS;
   tank.combat.reload.t = totalS / 2;
   let view = frame(tank);
-  assert.equal(view.countdown, null, `${id}: no countdown under the rack while the group cycles`);
+  assert.equal(view.countdown, `${(totalS / 2).toFixed(1)} s`, `${id}: the cycle counts down under the rack`);
   assert.equal(view.sweep, true, `${id}: the ring still sweeps the cycle`);
   const half = rackFills(ctx.ops, INK.cycling);
   assert.equal(half.length, slots, `${id}: ${slots} rack slots`);
