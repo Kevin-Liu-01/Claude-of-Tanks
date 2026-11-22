@@ -1924,7 +1924,10 @@ export function createAudio({
   // ----------------------------------------------------------------- reload ---
 
   function reloadCue(cue: ReloadCue): void {
-    play(cue.asset, hullOptions({ rate: cue.rate, gainDb: cue.gainDb }));
+    // a stroke's layers carry their own delay, the slide its body (cutoff) and its length (reload-sfx-275)
+    play(cue.asset, hullOptions({
+      rate: cue.rate, gainDb: cue.gainDb, delayS: cue.delayS, lowpassHz: cue.lowpassHz, maxDurS: cue.maxDurS, offsetS: cue.offsetS,
+    }));
   }
 
   /** The mount our crew is loading: the selected round's (a missile's launcher, a secondary gun, the main gun). */
