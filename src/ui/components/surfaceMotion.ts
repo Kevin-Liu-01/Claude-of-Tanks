@@ -35,10 +35,13 @@ const leaving = new WeakMap<Element, Leaving>();
  */
 export function leaveThen(element: HTMLElement, done: () => void): void {
   if (leaving.has(element)) return;
+  // (a Node stand-in with no layout, or an element that no longer shows: nothing to play)
+  if (typeof element.getClientRects !== 'function' || !element.getClientRects().length) { done(); return; }
+  // the exit's own timing (the vocabulary's [data-leaving] state runs the shorter exit band) decides the wait
   element.dataset.leaving = '';
+  const ms = exitMs(element);
+  if (ms <= 1) { delete element.dataset.leaving; done(); return; }
   element.inert = true;
-  const ms = element.getClientRects().length ? exitMs(element) : 0;
-  if (ms <= 1) { finishLeave(element); done(); return; }
   const finish = (): void => {
     if (!leaving.has(element)) return;
     finishLeave(element);

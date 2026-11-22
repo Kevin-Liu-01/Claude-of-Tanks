@@ -98,7 +98,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   let open = false;
 
   const panel = document.createElement('div');
-  panel.className = 'cot-facet-panel';
+  panel.className = 'cot-facet-panel cot-m-drop'; // (ui-motion-275) drops into place under its toggle and back (components/surfaceMotion.css)
   panel.id = 'cot-garage-facets';
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', t('fleet.filter.panelAria'));

@@ -664,7 +664,8 @@ function dotLine(text: string): string {
 export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
   ensureFonts();
   ensureStyle('cot-es-style', ES_CSS, 'surfaces');
-  host.classList.add('cot-es');
+  // (ui-motion-275) the report fades out as .show goes (components/surfaceMotion.css); its parts keep their staggered entry
+  host.classList.add('cot-es', 'cot-m-fade', 'cot-m-by-show');
   // the report's presentation sheet is its own CSS chunk, off the game's boot CSS: it loads with the screen (the battle
   // HUD's start, minutes before a report); a report that beats it stays hidden until it lands, never unstyled
   let sheetLoaded = false;
@@ -1408,7 +1409,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     result: EndScreenResult,
     sum: EndScreenSummary,
   ): void {
-    const personal = el('section', 'es-debrief personal', report);
+    const personal = el('section', 'es-debrief personal cot-m-swap', report);
     personal.setAttribute('aria-label', t('endScreen.personal.aria'));
     const heading = el('div', 'es-dh', personal);
     heading.innerHTML = `<span class="titleline">${uiIconSVG('battleRecord', 18)}` +
@@ -1460,7 +1461,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   const enemyTitle = (): string => watchedView ? sideName('bravo') : t('endScreen.team.enemy');
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
-    const teams = el('section', 'es-debrief teams', report);
+    const teams = el('section', 'es-debrief teams cot-m-swap', report);
     teams.setAttribute('aria-label', t('endScreen.team.aria'));
     const allyStats = summarizeTeam(sum.allies);
     const enemyStats = summarizeTeam(sum.enemies);

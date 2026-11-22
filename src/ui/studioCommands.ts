@@ -44,10 +44,10 @@ function rank(command: StudioCommand, words: readonly string[], query: string): 
 
 export function createCommandPalette(commands: () => readonly StudioCommand[]): StudioCommandPalette {
   const root = document.createElement('div');
-  root.className = 'st-cmd';
+  root.className = 'st-cmd cot-m-fade';
   root.hidden = true;
   const box = document.createElement('div');
-  box.className = 'st-cmd-box';
+  box.className = 'st-cmd-box cot-m-pop'; // (ui-motion-275) pops in as its root shows (components/surfaceMotion.css)
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-label', t('studio.ws.commands'));

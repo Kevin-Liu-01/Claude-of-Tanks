@@ -1209,6 +1209,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/surfaceStack.selftest.mjs',
     // 2026-11-02 audit F5: a hidden page takes its surfaces with it; the stack is the one "a modal is open" truth
     'src/ui/components/surfaceStackOwnership.selftest.mjs',
+    // 2026-11-21 ui-motion-275 (Kevin: "need ui transitions and animations in general"): every transient surface enters and
+    // leaves through the one motion vocabulary on the compositor, and reduced motion makes all of it instant
+    'src/ui/components/surfaceMotion.selftest.mjs',
     // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
     'src/ui/garageOpenState.selftest.mjs',
     // 2026-11-02 audit Q11/U24 (round 2): the ready wait rides the boot latch's edge; a read runs no waiter (the callouts once)

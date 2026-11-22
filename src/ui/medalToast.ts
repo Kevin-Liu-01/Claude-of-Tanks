@@ -27,10 +27,12 @@ body.cot-battle-ui-hidden .cot-medal-toasts,body.cot-si-report .cot-medal-toasts
   --medal-fill:linear-gradient(100deg,var(--hud-plate-strong),var(--hud-plate-strong));--medal-edge:oklch(from var(--ink-3) .59 c h);
   position:relative;isolation:isolate;background:var(--medal-edge);border:0;
   clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);
-  box-shadow:0 10px 28px oklch(from var(--surface-scene) l c h / .5);opacity:0;transition:opacity var(--dur-base) ease-out;}
+  box-shadow:0 10px 28px oklch(from var(--surface-scene) l c h / .5);opacity:0;translate:0 calc(-1 * var(--motion-nudge,4px));
+  transition:opacity var(--dur-base) var(--motion-ease-emphasis,ease-out),translate var(--dur-base) var(--motion-ease-emphasis,ease-out);}
 .cot-medal-toast::before{content:'';position:absolute;inset:1px;z-index:-1;background:var(--medal-fill);clip-path:inherit;}
-.cot-medal-toast.show{opacity:1;}
-.cot-medal-toast.leave{opacity:0;transition:opacity var(--dur-base) ease-in;}
+/* (ui-motion-275) a medal is a success beat: it lands on the emphasis curve a nudge down, and leaves softer on the exit curve */
+.cot-medal-toast.show{opacity:1;translate:none;}
+.cot-medal-toast.leave{opacity:0;translate:0 calc(var(--motion-nudge,4px) / 2);transition-timing-function:var(--ease-exit);}
 .cot-medal-toast.signature{--medal-edge:var(--accent-lo);
   --medal-fill:radial-gradient(120% 140% at 0 50%,oklch(from var(--accent) l c h / .24),var(--hud-plate-strong) 62%);
   box-shadow:0 10px 30px oklch(from var(--surface-scene) l c h / .5),0 0 24px oklch(from var(--accent) l c h / .25);}

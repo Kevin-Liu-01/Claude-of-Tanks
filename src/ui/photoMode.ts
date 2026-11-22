@@ -6,6 +6,7 @@
 // of their own; the kit's keycap and the live stage come through the host (an entry module imported here would be split
 // off the entry). Its sheet, photoMode.css, loads beside it at the boundary (garage.ts), like every lazy surface's.
 import type { PerspectiveCamera, WebGLRenderer } from 'three';
+import { leaveThen } from './components/surfaceMotion.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 
@@ -87,7 +88,9 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
   host.showroom.reset();
 
   const bar = document.createElement('div');
-  bar.className = 'cot-photo-bar';
+  // (ui-motion-275) the bar rises in and leaves the same way (components/surfaceMotion.css); closing hands the Garage back
+  // at once, only the bar's removal waits for its exit
+  bar.className = 'cot-photo-bar cot-m-rise';
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('garage.photo.toolbar'));
   // the framings are the kit's segmented control: one is checked, the arrows move it (a drag or a dolly leaves them all)
@@ -150,7 +153,7 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
     host.stage.removeEventListener('pointerdown', leaveViews);
     host.stage.removeEventListener('wheel', leaveViews);
     unwireViews();
-    bar.remove();
+    leaveThen(bar, () => bar.remove());
     document.body.classList.remove('cot-photo-on');
     host.showroom.hold(false);
     host.showroom.reset();

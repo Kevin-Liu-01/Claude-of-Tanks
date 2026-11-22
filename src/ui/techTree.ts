@@ -182,7 +182,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   };
 
   const root = document.createElement('div');
-  root.className = 'cot-tt';
+  root.className = 'cot-tt cot-m-fade'; // (ui-motion-275) fades in over the Garage and out (components/surfaceMotion.css)
   root.hidden = true;
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');

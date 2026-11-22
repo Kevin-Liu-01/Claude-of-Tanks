@@ -35,7 +35,11 @@
 .cot-c-notice.cot-c-notice--inline{padding:0;background:none;box-shadow:none}
 .cot-c-notice--toast{box-shadow:var(--e3);
   transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter)}
-.cot-c-notice--toast[data-state]{opacity:0;transform:translateY(4px)}
+.cot-c-notice--toast[data-state]{opacity:0;transform:translateY(var(--s1))}
+/* (ui-motion-275) a toast travels the vocabulary's nudge (--motion-nudge is --s1; the kit reads tokens.css alone): at the top
+   it comes down from the edge it hangs from and goes back up; a leaving one takes no press */
+.cot-c-notices[data-placement^=top] .cot-c-notice--toast[data-state]{transform:translateY(calc(-1 * var(--s1)))}
+.cot-c-notice--toast[data-state=exit]{pointer-events:none;transition-timing-function:var(--ease-exit)}
 .cot-c-notice--toast:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media (prefers-reduced-motion:reduce){.cot-c-notice--toast[data-state]{transform:none}}
 
