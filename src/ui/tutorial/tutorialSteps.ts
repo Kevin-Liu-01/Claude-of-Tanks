@@ -7,9 +7,9 @@
  * optional input condition (a keyboard-and-mouse, touch or gamepad player sees the variant written for their hands).
  * tutorialRunner.ts plays a chapter's steps through tutorialOverlay.ts; no step has code of its own.
  *
- * Every claim in the battle steps and the tips is checked against the simulation (tutorialSteps.selftest.mjs names the
- * source of each): the ricochet angles and slope exponents (sim/damage.ts), spotting, bushes and the fire bloom
- * (sim/spotting.ts), the fixed reload (no crew skills), the radio's spot sharing, and Standard's elimination goal.
+ * Every claim in the training steps is checked against the simulation (tutorialSteps.selftest.mjs names the source of
+ * each): the ricochet angles and slope exponents (sim/damage.ts), spotting and bushes (sim/spotting.ts), the training
+ * ground's scenes (sim/trainingGround.ts).
  */
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
@@ -23,8 +23,9 @@ type ModuleState = 'ok' | 'yellow' | 'red';
 
 export type TutorialAdvance =
   | { readonly on: 'next' }
-  /** A press on the lit control itself (the Garage's Deploy). */
-  | { readonly on: 'press' }
+  /** A press on the lit control itself. `own`: the press is the tutorial's, and the control's own action never runs (274:
+   *  the Garage chapter's Deploy launches the training battle, not the battle the Garage has picked). */
+  | { readonly on: 'press'; readonly own?: boolean }
   /** The player's tank has driven this far from where the step began. */
   | { readonly on: 'drive'; readonly metres: number }
   /** The player fired. */
@@ -130,16 +131,18 @@ export interface TutorialStep {
   readonly checklist?: 'trainingLessons';
   /** The Next button's words (a catalog key) where the step's own fit better ("Show me around"). */
   readonly nextLabel?: string;
+  /** The Skip button's words (a catalog key) where the step's own fit better (274: the offer's "Not now"). */
+  readonly skipLabel?: string;
 }
 
-const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });
 /** An in-engine loop the Studio filmed for the tutorial (tools/tutorial-media.mjs; public/media/tutorial-r1). */
 const loop = (id: string): TutorialMedia => ({ src: `/media/tutorial-r1/${id}.webm`, kind: 'video', poster: `/media/tutorial-r1/${id}.webp` });
 const NEXT = { on: 'next' } as const;
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   // ── The Garage, on the first visit (Kevin, 2026-11-20: "shorter and fewer"): the tank and its nation on one card, the
-  // rounds, Deploy; the kit and the camouflage are met where they are used ─────────────────────────────────────────────
+  // rounds, Deploy; the kit and the camouflage are met where they are used. Deploy's press is the tutorial's: it launches
+  // the training battle (274, Kevin: "Deploy launches the training battle"), which replaces 272's first-battle chapter ──
   { id: 'garage.tank', chapter: 'garage', target: ['.cot-carousel', '[data-tabbar="garage"]'],
     title: 'tutorial.garage.tank.title', body: 'tutorial.garage.tank.body', advance: NEXT },
   { id: 'garage.ammo', chapter: 'garage', when: ['keyboard', 'pad'], target: ['.cot-ammo-tiles'],
@@ -149,50 +152,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'garage.ammoTouch', chapter: 'garage', when: 'touch', target: ['.cot-ammo-tiles', '.cot-overview-section'],
     title: 'tutorial.garage.ammo.title', body: 'tutorial.garage.ammo.bodyTouch', advance: NEXT },
   { id: 'garage.deploy', chapter: 'garage', target: ['.cot-battle', '[data-tabbar="deploy"]'],
-    title: 'tutorial.garage.deploy.title', body: 'tutorial.garage.deploy.body', advance: { on: 'press' } },
+    title: 'tutorial.garage.deploy.title', body: 'tutorial.garage.deploy.body', advance: { on: 'press', own: true } },
 
-  // ── The first battle: each card a move, the armour colours on the fire card ──────────────────────────────────────────
-  { id: 'battle.drive', chapter: 'battle', when: 'keyboard', target: ['[data-drive-speed]'], dim: false, card: 'upper',
-    title: 'tutorial.battle.drive.title', body: 'tutorial.battle.drive.body', advance: { on: 'drive', metres: 20 },
-    keys: { forward: 'forward', left: 'left', back: 'back', right: 'right' } },
-  { id: 'battle.driveTouch', chapter: 'battle', when: 'touch', target: ['.cot-touch .joy'], dim: false, card: 'upper',
-    title: 'tutorial.battle.drive.title', body: 'tutorial.battle.drive.bodyTouch', advance: { on: 'drive', metres: 20 } },
-  { id: 'battle.drivePad', chapter: 'battle', when: 'pad', target: ['[data-drive-speed]'], dim: false, card: 'upper',
-    title: 'tutorial.battle.drive.title', body: 'tutorial.battle.drive.bodyPad', advance: { on: 'drive', metres: 20 } },
-  // the armour colours (274): the tutorial teaches them in the battle that would otherwise show their one-time tip over it
-  // (Kevin, 2026-11-18: "there should be one unified thing for this"), on the card that asks for the first shot
-  { id: 'battle.fire', chapter: 'battle', when: 'keyboard', target: [], dim: false, card: 'upper', teaches: 'armourColours',
-    title: 'tutorial.battle.fire.title', body: 'tutorial.battle.fire.body', advance: { on: 'fire' },
-    keys: { fire: 'fire', sight: 'sniperToggle' } },
-  { id: 'battle.fireTouch', chapter: 'battle', when: 'touch', target: ['.cot-touch .round.fire'], dim: false, card: 'upper', teaches: 'armourColours',
-    title: 'tutorial.battle.fire.title', body: 'tutorial.battle.fire.bodyTouch', advance: { on: 'fire' } },
-  { id: 'battle.firePad', chapter: 'battle', when: 'pad', target: [], dim: false, card: 'upper', teaches: 'armourColours',
-    title: 'tutorial.battle.fire.title', body: 'tutorial.battle.fire.bodyPad', advance: { on: 'fire' },
-    keys: { fire: 'fire', sight: 'sniperToggle' } },
-  { id: 'battle.ammo', chapter: 'battle', when: 'keyboard', target: ['.cot-shells'], dim: false, card: 'upper',
-    title: 'tutorial.battle.ammo.title', body: 'tutorial.battle.ammo.body', advance: { on: 'shell' },
-    keys: { shell2: 'shell2', shell3: 'shell3' } },
-  { id: 'battle.ammoTouch', chapter: 'battle', when: 'touch', target: ['.cot-shells'], dim: false, card: 'upper',
-    title: 'tutorial.battle.ammo.title', body: 'tutorial.battle.ammo.bodyTouch', advance: { on: 'shell' } },
-  { id: 'battle.ammoPad', chapter: 'battle', when: 'pad', target: ['.cot-shells'], dim: false, card: 'upper',
-    title: 'tutorial.battle.ammo.title', body: 'tutorial.battle.ammo.body', advance: { on: 'shell' },
-    keys: { shell2: 'shell2', shell3: 'shell3' } },
-  { id: 'battle.spotting', chapter: 'battle', target: [], media: still('combat-spotting'),
-    title: 'tutorial.battle.spotting.title', body: 'tutorial.battle.spotting.body', advance: NEXT },
-  // (no picture: the end screen's VICTORY read as "you have already won" in the blind check, round 1)
-  { id: 'battle.win', chapter: 'battle', target: ['.cot-top'],
-    title: 'tutorial.battle.win.title', body: 'tutorial.battle.win.body', advance: NEXT },
-
-  // ── Strategy, on the Garage after the first battle: what the training battle drills, for a player who skipped it ────
-  { id: 'tips.angle', chapter: 'tips', target: [], media: loop('angle'),
-    title: 'tutorial.tips.angle.title', body: 'tutorial.tips.angle.body', advance: NEXT },
-  { id: 'tips.hullDown', chapter: 'tips', target: [], media: loop('hullDown'), title: 'tutorial.tips.hullDown.title', body: 'tutorial.tips.hullDown.body', advance: NEXT },
-  { id: 'tips.flank', chapter: 'tips', target: [], media: loop('flank'), title: 'tutorial.tips.flank.title', body: 'tutorial.tips.flank.body', advance: NEXT },
-  { id: 'tips.reveal', chapter: 'tips', target: [], title: 'tutorial.tips.reveal.title', body: 'tutorial.tips.reveal.body', advance: NEXT },
-  { id: 'tips.team', chapter: 'tips', target: [], title: 'tutorial.tips.team.title', body: 'tutorial.tips.team.body', advance: NEXT },
-  // the close: the blind check read the last card as "press Done" whatever it said (round 2), so the last card is the
-  // close itself, and it says where Replay lives
-  { id: 'tips.done', chapter: 'tips', target: [], title: 'tutorial.tips.done.title', body: 'tutorial.tips.done.body', advance: NEXT },
+  // ── The offer (274): a returning player's Garage, once (ui/tutorial/tutorialRecord.ts): Start launches the training
+  // battle, Not now puts the journey away ───────────────────────────────────────────────────────────────────────────────
+  { id: 'offer.training', chapter: 'offer', target: [], media: loop('angle'), title: 'tutorial.offer.title', body: 'tutorial.offer.body',
+    nextLabel: 'tutorial.offer.start', skipLabel: 'tutorial.offer.later', advance: NEXT },
 ];
 
 // ── The training battle (273): scenes S1 to S4 (storyboard §2.4) ────────────────────────────────────────────────────

@@ -86,7 +86,8 @@ function readSeen(): Set<string> {
   return seen;
 }
 function tutorialBattleDone(): boolean {
-  try { return (JSON.parse(localStorage.getItem('cot.tutorial.v1') || '{}') as { battle?: string }).battle === 'done'; }
+  // (274) the journey's training battle (ui/tutorial/tutorialRecord.ts): its lessons teach what the first hints would
+  try { return (JSON.parse(localStorage.getItem('cot.tutorial.v1') || '{}') as { training?: string }).training === 'done'; }
   catch { return false; }
 }
 

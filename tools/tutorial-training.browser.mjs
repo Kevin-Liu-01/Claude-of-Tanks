@@ -19,6 +19,7 @@
 //
 //   node tools/tutorial-training.browser.mjs --view=desktop --locale=en --clip
 //   node tools/tutorial-training.browser.mjs --view=phone --locale=cn
+//   node tools/tutorial-training.browser.mjs --view=desktop --locale=en --from-garage   (274: a new player's whole journey)
 //
 // Holds the shared capture lock (render class) for one batch, and launches its browser through launchGuardedBrowser.
 import assert from 'node:assert/strict';
@@ -40,7 +41,7 @@ const VIEWS = {
   phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 };
 assert.ok(VIEWS[VIEW] && (LOCALE === 'en' || LOCALE === 'cn'), 'usage: --view=desktop|phone --locale=en|cn');
-const OUT = resolve(arg('out', resolve(process.cwd(), `../tutorial-journey-272-evidence/training-${VIEW}-${LOCALE}`)));
+const OUT = resolve(arg('out', resolve(process.cwd(), `../tutorial-fit-274-evidence/training-${VIEW}-${LOCALE}`)));
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const touch = VIEW === 'phone';
@@ -54,6 +55,9 @@ const { ANGLE_WINDOW, chapterSteps } = await import('../src/ui/tutorial/tutorial
 const allSteps = [...chapterSteps('training', touch ? 'touch' : 'keyboard'), ...chapterSteps('debrief', touch ? 'touch' : 'keyboard'),
   ...chapterSteps('tour', touch ? 'touch' : 'keyboard')];
 const THROUGH = arg('through', null);
+/** (274) --from-garage: a new player's whole journey: no record, the Garage chapter walked to its Deploy, whose press
+ *  launches the training battle (the tutorial's own launch), and at the end the journey's record read back. */
+const FROM_GARAGE = flag('from-garage');
 const stepsFor = THROUGH ? allSteps.slice(0, allSteps.findIndex((step) => step.id === THROUGH) + 1) : allSteps;
 assert.ok(stepsFor.length, `--through names a step of this walk's chapter (${THROUGH})`);
 
@@ -76,20 +80,45 @@ try {
   }
   page.on('pageerror', (error) => report.errors.push(`pageerror: ${String(error?.message ?? error).slice(0, 300)}`));
   page.on('console', (message) => { if (message.type() === 'error') report.errors.push(`console: ${message.text().slice(0, 300)}`); });
-  await page.evaluateOnNewDocument(() => {
+  await page.evaluateOnNewDocument((fresh) => {
     Document.prototype.hasFocus = () => true;
     try {
+      if (sessionStorage.getItem('seeded')) return;
+      sessionStorage.setItem('seeded', '1');
       localStorage.setItem('cot.telemetry', 'off');
-      localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
+      // a new player (--from-garage), or the journey finished with its offer answered (tutorialRecord.ts
+      // TUTORIAL_FINISHED_RECORD): the walk launches the training battle itself
+      if (!fresh) localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}');
     } catch { /* none */ }
-  });
+  }, FROM_GARAGE);
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}${LOCALE === 'cn' ? '/cn' : ''}/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`,
     { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 600_000, polling: 500 });
-  // the tutorial's launch: the loaner on the training ground's battlefield, the training mode
-  await page.evaluate((specId, mapId) => window.__DEBUG.beginSoloBattle({ specId, mapId, gameMode: 'training' }),
-    TRAINING_RULES.loanerSpecId, TRAINING_RULES.mapId);
+  if (FROM_GARAGE) {
+    // the Garage chapter by itself, Next to its Deploy card, then the lit control pressed (the tutorial's own launch)
+    const garageStep = () => page.evaluate(() => document.querySelector('.cot-tut.is-open')?.dataset.step ?? null);
+    const until = Date.now() + 120_000;
+    report.garage = [];
+    for (let step = null; Date.now() < until;) {
+      const now = await garageStep();
+      if (now && now !== step) { step = now; report.garage.push(now); await page.screenshot({ path: resolve(OUT, `garage-${now}.png`) }); }
+      if (now === 'garage.deploy') break;
+      if (now) { const next = await page.$('.cot-tut.is-open .cot-tut-next'); if (touch) await next?.tap(); else await next?.click(); }
+      await sleep(900);
+    }
+    assert.equal(report.garage.at(-1), 'garage.deploy', `the Garage chapter reaches Deploy (${report.garage.join(', ')})`);
+    const lit = await page.evaluate(() => {
+      const r = document.querySelector('.cot-tut.is-open .cot-tut-spot')?.getBoundingClientRect();
+      return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+    });
+    assert.ok(lit, 'the Deploy card lights Deploy');
+    if (touch) await page.touchscreen.tap(lit.x, lit.y); else await page.mouse.click(lit.x, lit.y);
+  } else {
+    // the tutorial's launch: the loaner on the training ground's battlefield, the training mode
+    await page.evaluate((specId, mapId) => window.__DEBUG.beginSoloBattle({ specId, mapId, gameMode: 'training' }),
+      TRAINING_RULES.loanerSpecId, TRAINING_RULES.mapId);
+  }
   await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
   report.battle = await page.evaluate(() => {
     const g = window.__DEBUG.game;
@@ -449,7 +478,10 @@ try {
       const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
       if (Math.abs(err) > gunTol) { await sleep(300); continue; } // the turret still traversing behind the view
       await sleep(settleMs); // the aim settles
-      if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), tolPx))) continue;
+      // (a target destroyed or parked while the aim settled has no pose: the next pass decides)
+      const settled = await actorPose(actorId);
+      if (!settled) return false;
+      if (!(await layOn(actorPoint(settled, local.along, local.up, local.across), tolPx))) continue;
       if (touch) await tapSel('.cot-touch .round.fire'); else { await page.mouse.down(); await sleep(60); await page.mouse.up(); }
       const me = await pose();
       const shotOf = (report.shots ??= []).filter((x) => x.step === stepId).length;
@@ -683,11 +715,16 @@ try {
   // the chapter ended on its last step, and the battle goes on (the card is gone, nothing over the field)
   report.chapterEnded = report.steps.at(-1)?.step === stepsFor.at(-1)?.id && (THROUGH ? report.steps.at(-1)?.advanced === true : report.steps.at(-1)?.ended === true);
   report.hits = await page.evaluate(() => window.__walkHits ?? []).catch(() => []);
+  // (274: a won chapter's card leaves with its completion beat, about a second, then is gone)
+  if (!THROUGH) await page.waitForFunction(() => !document.querySelector('.cot-tut, .cot-tut-guide'), { timeout: 5000, polling: 200 }).catch(() => {});
   report.leftOver = THROUGH ? 0 : await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
   const expected = stepsFor.map((s) => s.id);
+  // (274) the journey's record, read back: every chapter done
+  report.record = await page.evaluate(() => JSON.parse(localStorage.getItem('cot.tutorial.v1') || 'null')).catch(() => null);
+  const journeyDone = !FROM_GARAGE || THROUGH || ['garage', 'training', 'debrief', 'tour'].every((chapter) => report.record?.[chapter] === 'done');
   report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id)) && report.chapterEnded
-    && report.leftOver === 0;
+    && report.leftOver === 0 && journeyDone;
   assert.ok(report.ok, `every step moved on through the game's input: ${JSON.stringify(report.steps.map((s) => [s.step, s.advanced]))}`);
 } catch (error) {
   report.ok = false;

@@ -19,6 +19,12 @@
  * resumes there, and app/tutorialAccess.ts advances by rule when the place was Deploy. On the Garage the keyboard is
  * inert too: a key the card does not take (and Enter on a press step, which belongs to the lit control) never reaches
  * the Garage's hotkeys; Tab stays inside the card.
+ *
+ * (274) A step the player completes by doing the thing (every step but a Next card's) moves on with a success beat: the
+ * next step is armed at once, and the overlay plays the check before it shows the next words (tutorialOverlay.ts), so
+ * the beat never holds the game or misses a deed. A chapter that ends won (the training battle's last fight, the tour's
+ * close) leaves with the larger beat. A press the step owns (`own`: the Garage chapter's Deploy) is the tutorial's: the
+ * lit control's own action never runs, and the chapter ends done (app/tutorialAccess.ts launches the training battle).
  */
 import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
@@ -150,6 +156,18 @@ const PAD_KEYS = {
 } as const;
 const PAD_CAPS: Readonly<Record<number, string>> = { 0: 'A', 1: 'B', 8: 'BACK', 10: 'LS', 11: 'RS' };
 
+/** How a step moves on (274): a step the player completes by doing the thing plays the success beat; a Next card's words
+ *  cross-fade into the next (a check for reading a card would be noise). */
+export function stepMotion(step: TutorialStep): 'beat' | 'crossfade' {
+  return step.advance.on === 'next' ? 'crossfade' : 'beat';
+}
+
+/** The words a chapter's won end confirms with its larger beat (274), or null for a chapter that just closes (the Garage's
+ *  Deploy loads a battle; the offer's Start the same; the debrief hands on to the tour). */
+export function completionWord(chapter: TutorialChapter): string | null {
+  return chapter === 'training' ? t('tutorial.complete.training') : chapter === 'tour' ? t('tutorial.complete.tour') : null;
+}
+
 /** The least ground distance from point `p` to the segment a→b (m). */
 function segmentDistance(a: { x: number; z: number }, b: { x: number; z: number }, p: { x: number; z: number }): number {
   const dx = b.x - a.x, dz = b.z - a.z;
@@ -184,7 +202,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
   // the training battle's chapter takes a battle's keys and caps (its keys drive the tank, its pointer aims)
-  const battle = chapter === 'battle' || chapter === 'training';
+  const battle = chapter === 'training';
   // the Garage's Deploy names Enter in the player's language; the card's caps match it
   const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : port.codeLabel(code));
   let index = Math.max(0, Math.min(startAt, Math.max(0, chapterSteps(chapter, input).length - 1)));
@@ -229,7 +247,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     clearStep();
     port.hold?.(false);
     for (const off of runOff.splice(0)) off();
-    overlay.destroy();
+    overlay.destroy({ complete: outcome === 'done' ? completionWord(chapter) ?? undefined : undefined });
     guide?.destroy();
     guide = null;
     if (outcome) onEnd(outcome);
@@ -243,7 +261,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     let met = false;
     const go = (): void => {
       met = true;
-      if (arrived && !ended && steps[index] === step) api.next();
+      if (arrived && !ended && steps[index] === step) moveOn(stepMotion(step) === 'beat');
     };
     /** A condition read every DRIVE_POLL_MS (the port's state has no event of its own). */
     const poll = (holds: () => boolean): void => {
@@ -280,7 +298,11 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     if (advance.on === 'press') {
       const onPress = (event: Event): void => {
         const lit = resolver(step)?.();
-        if (lit && event.target instanceof Node && lit.contains(event.target)) go();
+        if (!lit || !(event.target instanceof Node) || !lit.contains(event.target)) return;
+        // a press the step owns is the tutorial's alone: the control's own action never runs (274: Deploy launches the
+        // training battle through the chapter's end, not the battle the Garage has picked)
+        if (advance.own) { event.preventDefault(); event.stopImmediatePropagation(); }
+        go();
       };
       document.addEventListener('click', onPress, true);
       stepOff.push(() => document.removeEventListener('click', onPress, true));
@@ -414,7 +436,15 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     }
   }
 
-  function render(): void {
+  /** Move on: by the player's deed (a success beat), or by Next (the words cross-fade). The next step is armed at once. */
+  function moveOn(byDeed: boolean): void {
+    if (ended) return;
+    if (index >= steps.length - 1) { end('done'); return; }
+    index += 1;
+    render(byDeed);
+  }
+
+  function render(beat = false): void {
     clearStep();
     const step = steps[index]!;
     overlay.root.dataset.step = step.id;
@@ -427,10 +457,11 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     const keys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
     const cap = (keyboard: string, padButton: number): string => (pad ? PAD_CAPS[padButton] ?? '' : input === 'touch' ? '' : keyboard);
     const view: OverlayView = {
+      step: step.id,
       mode: acting ? 'act' : 'read',
       label: t('tutorial.label'),
       chapter: t(`tutorial.chapter.${chapter}`),
-      progress: t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }),
+      progress: steps.length > 1 ? t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }) : '',
       fraction: (index + 1) / steps.length,
       title: t(step.title),
       bodyHtml: bodyHtml(step, port),
@@ -440,10 +471,11 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
       place: step.card ?? 'middle',
       nextLabel: t(step.nextLabel ?? (last ? 'tutorial.done' : 'tutorial.next')),
       backLabel: t('tutorial.back'),
-      skipLabel: t('tutorial.skip'),
+      skipLabel: t(step.skipLabel ?? 'tutorial.skip'),
       canBack: index > 0,
       canNext: step.advance.on !== 'press',
       actionHint: acting ? t('tutorial.doIt') : null,
+      beatWord: t('tutorial.beat.done'),
       caps: battle
         ? { next: cap(codeCap('Enter'), keys.next), back: '', skip: cap(codeCap('Backspace'), keys.skip) }
         : step.advance.on === 'press'
@@ -451,7 +483,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
         : { next: cap(codeCap('Enter'), keys.next), back: cap(codeCap('ArrowLeft'), PAD_KEYS.menu.back), skip: cap(codeCap('Escape'), keys.skip) },
       focus: !battle && input !== 'touch',
     };
-    overlay.show(view);
+    overlay.show(view, { beat });
     const layer = guideFor(step);
     layer?.show(step.guide ?? null, {
       marker: step.guide?.marker ? t(step.guide.marker.label) : '',
@@ -489,7 +521,10 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     let handled = true;
     if (event.code === 'Enter' || event.code === 'NumpadEnter') {
       // a step that waits for a press on its control lets Enter reach it (the Garage's Deploy answers to Enter)
-      if (steps[index]?.advance.on === 'press') handled = false;
+      // (an owned press takes Enter as the press itself: the control's own Enter never runs)
+      const press = steps[index]?.advance;
+      if (press?.on === 'press' && press.own) moveOn(true);
+      else if (press?.on === 'press') handled = false;
       else if (battle || !(event.target instanceof HTMLButtonElement) || !overlay.root.contains(event.target)) api.next();
       else handled = false; // a focused card button presses itself
     } else if (battle && event.code === 'Backspace') api.skip();
@@ -582,12 +617,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     get stepId() { return ended ? null : steps[index]?.id ?? null; },
     overlay,
     stop: () => end(null),
-    next(): void {
-      if (ended) return;
-      if (index >= steps.length - 1) { end('done'); return; }
-      index += 1;
-      render();
-    },
+    next: () => moveOn(false),
     back(): void {
       if (ended || index === 0) return;
       index -= 1;

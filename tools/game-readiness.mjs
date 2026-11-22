@@ -9,6 +9,8 @@
 // (`assertAutomationPath`). docs/AUTOMATION-PATHS.md lists which tools take which path and how they enter a battle;
 // src/app/automationPath.selftest.mjs and tools/game-readiness.selftest.mjs keep that page true.
 
+import { TUTORIAL_FINISHED_RECORD } from '../src/ui/tutorial/tutorialRecord.ts';
+
 /** The paths the game understands (src/app/automationPath.ts AutomationPath). */
 export const AUTOMATION_PATHS = Object.freeze(['player', 'harness']);
 
@@ -42,10 +44,11 @@ export const HARNESS_DEFAULT_SCRIPT = 'if (window.__COT_AUTOMATION === undefined
  * rooms entry (`.cot-battle-mode`), and every rooms browser tool stopped on "Control blocked" before it tested anything.
  * The record is written skipped only when the profile has none and the address asks for no replay (`?tutorial=`); a tool's
  * own record, written by its init script after this one, wins. The tutorial's own tools launch with `{ tutorial: 'keep' }`
- * (keepTutorial) and see a new player.
+ * (keepTutorial) and see a new player. (274) The record is the journey's, finished with its offer answered
+ * (tutorialRecord.ts TUTORIAL_FINISHED_RECORD): a record from before the journey would bring the offer card.
  */
 export const TUTORIAL_SKIP_SCRIPT = "try { if (!/[?&]tutorial=/.test(location.search) && localStorage.getItem('cot.tutorial.v1') === null) "
-  + "localStorage.setItem('cot.tutorial.v1', '{\"garage\":\"skipped\",\"battle\":\"skipped\",\"tips\":\"skipped\"}'); } "
+  + `localStorage.setItem('cot.tutorial.v1', ${JSON.stringify(TUTORIAL_FINISHED_RECORD)}); } `
   + 'catch { /* a page with no storage */ }';
 
 /** In-page: the path the page took ('player' | 'harness'; null on a build before src/app/automationPath.ts). */

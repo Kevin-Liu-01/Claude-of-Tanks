@@ -59,7 +59,7 @@ try {
       if (sessionStorage.getItem('seeded')) return;
       sessionStorage.setItem('seeded', '1');
       localStorage.setItem('cot.telemetry', 'off');
-      localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
+      localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}'); // the journey finished, its offer answered (tutorialRecord.ts TUTORIAL_FINISHED_RECORD)
       localStorage.setItem('cot.settings.v1', JSON.stringify({ armorAimOverlay: false, sensitivity: 1.4, revision: 2 }));
       localStorage.removeItem('cot.armourOverlayDefault.v1');
     } catch { /* none */ }

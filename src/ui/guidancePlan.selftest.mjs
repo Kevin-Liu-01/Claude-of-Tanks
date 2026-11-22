@@ -50,7 +50,7 @@ const box = ([, x0, y0, x1, y1]) => ({ x0, y0, x1, y1 });
 const wordsAt = (card, place) => Math.ceil(card.h * (place.fit === 'compact' ? GUIDANCE_COMPACT_H : 1) * (card.w / (place.x1 - place.x0)));
 /** 9. A card's box holds its words, or scrolls (under the affordance) only because no place holds them. */
 const holdsWords = (card, place, label) => {
-  if (place.fit === 'scroll') assert.ok(place.y1 - place.y0 < wordsAt(card, { ...place, fit: 'full' }), `${label}: a card marked scroll is shorter than its words`);
+  if (place.fit === 'tight') assert.ok(place.y1 - place.y0 < wordsAt(card, { ...place, fit: 'full' }), `${label}: a card marked tight is shorter than its words`);
   else assert.ok(place.y1 - place.y0 >= wordsAt(card, place) - 1,
     `${label}: the card's box (${Math.round(place.y1 - place.y0)} px) is shorter than its words at its width (${wordsAt(card, place)} px), fit ${place.fit}`);
 };
@@ -129,7 +129,7 @@ for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
     if (withCard) assert.ok(plan.card, `${key} ${state}: the card always has a place`);
     if (plan.card) {
       holdsWords(card, plan.card, `${key} ${state}`);
-      if (plan.card.fit === 'scroll') scrolls.push(`${key} ${state}`);
+      if (plan.card.fit === 'tight') scrolls.push(`${key} ${state}`);
       if (plan.card.fit === 'compact') compacts.push(`${key} ${state}`);
     }
     // 3. the named sizes clear everything
@@ -185,17 +185,17 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
 // size is held for its step, so a pass that reads the card at the narrower place the plan gave it plans the same place.
 {
   const natural = 358;
-  let held = cardNaturalSize(null, { step: 'battle.driveTouch', width: 358, scrollHeight: 270 }, natural);
-  assert.deepEqual(held, { step: 'battle.driveTouch', size: { w: 358, h: 270 }, exact: true });
+  let held = cardNaturalSize(null, { step: 'training.driveTouch', width: 358, scrollHeight: 270 }, natural);
+  assert.deepEqual(held, { step: 'training.driveTouch', size: { w: 358, h: 270 }, exact: true });
   // read again at the narrower place (its words wrapped: taller): the exact size stands
-  assert.deepEqual(cardNaturalSize(held, { step: 'battle.driveTouch', width: 245, scrollHeight: 360 }, natural), held, 'a narrow read keeps the exact size');
+  assert.deepEqual(cardNaturalSize(held, { step: 'training.driveTouch', width: 245, scrollHeight: 360 }, natural), held, 'a narrow read keeps the exact size');
   // a step first read at a narrow place: one estimate, then held whatever later narrow reads say
-  let narrow = cardNaturalSize(null, { step: 'battle.fireTouch', width: 245, scrollHeight: 360 }, natural);
+  let narrow = cardNaturalSize(null, { step: 'training.firePenTouch', width: 245, scrollHeight: 360 }, natural);
   assert.equal(narrow.exact, false);
-  assert.deepEqual(cardNaturalSize(narrow, { step: 'battle.fireTouch', width: 300, scrollHeight: 320 }, natural), narrow, 'an estimate is held for its step');
+  assert.deepEqual(cardNaturalSize(narrow, { step: 'training.firePenTouch', width: 300, scrollHeight: 320 }, natural), narrow, 'an estimate is held for its step');
   // an exact read replaces an estimate; a new step reads anew; nothing read keeps what is held
-  assert.equal(cardNaturalSize(narrow, { step: 'battle.fireTouch', width: 358, scrollHeight: 290 }, natural).size.h, 290);
-  assert.equal(cardNaturalSize(held, { step: 'battle.ammoTouch', width: 358, scrollHeight: 200 }, natural).size.h, 200);
+  assert.equal(cardNaturalSize(narrow, { step: 'training.firePenTouch', width: 358, scrollHeight: 290 }, natural).size.h, 290);
+  assert.equal(cardNaturalSize(held, { step: 'training.fireHETouch', width: 358, scrollHeight: 200 }, natural).size.h, 200);
   assert.equal(cardNaturalSize(held, null, natural), held);
   // and the plan from the held size is the same pass after pass at the recorded phone and desktop sizes
   for (const key of ['390x844t', '1440x900']) {
@@ -229,7 +229,7 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     let held = null, natural$ = null, shownWidth = natural;
     const places = [];
     for (let pass = 0; pass < 6; pass++) {
-      const reading = { step: 'battle.drive', width: shownWidth, scrollHeight: wrap(shownWidth) };
+      const reading = { step: 'training.drive', width: shownWidth, scrollHeight: wrap(shownWidth) };
       let size;
       if (rule === 'held') { natural$ = cardNaturalSize(natural$, reading, natural); size = natural$.size; }
       else size = oldEstimate(natural, reading);
@@ -260,13 +260,13 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   const natural = 358;
   const widths = [358, 246, 300, 220, 358, 246, 280, 200, 358];
   let held = null;
-  const heldSizes = widths.map((width) => (held = cardNaturalSize(held, { step: 'battle.driveTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
+  const heldSizes = widths.map((width) => (held = cardNaturalSize(held, { step: 'training.driveTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
   assert.equal(new Set(heldSizes).size, 1, `the held size never moves after its exact read, whatever width the plan gives (${heldSizes.join(',')})`);
   const oldSizes = widths.map((width) => oldEstimate(natural, { width, scrollHeight: wrap(width) }).h);
   assert.ok(new Set(oldSizes).size > 1, `the old estimate's size follows the plan's width (${oldSizes.join(',')}): the input a cycle needs`);
   // first read narrowed (a step whose card first shows at a place the last step's plan gave it): one estimate, then held
   held = null;
-  const narrowFirst = [246, 300, 220, 280].map((width) => (held = cardNaturalSize(held, { step: 'battle.fireTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
+  const narrowFirst = [246, 300, 220, 280].map((width) => (held = cardNaturalSize(held, { step: 'training.firePenTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
   assert.equal(new Set(narrowFirst).size, 1, `a narrowed first read is estimated once and held (${narrowFirst.join(',')})`);
 }
 
@@ -304,9 +304,9 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   const frameCard = { w: natural, h: words(natural) };
   const plan = planTouchGuidance({ ...base, card: frameCard }, centre).plan;
   holdsWords(frameCard, plan.card, '390x844 battle sight, the frame\'s card');
-  assert.notEqual(plan.card.fit, 'scroll', `the frame's card fits whole or a step smaller (${JSON.stringify(plan.card)})`);
+  assert.notEqual(plan.card.fit, 'tight', `the frame's card fits whole or a step smaller (${JSON.stringify(plan.card)})`);
   // every natural height a card may have on that HUD
-  const fits = { full: 0, compact: 0, scroll: 0 };
+  const fits = { full: 0, compact: 0, tight: 0 };
   for (let h = 120; h <= 420; h += 4) {
     const card = { w: natural, h };
     const { plan: at, notices } = planTouchGuidance({ ...base, card }, centre);
@@ -316,19 +316,20 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     fits[at.card.fit]++;
   }
   assert.ok(fits.full > 0 && fits.compact > 0, `the sweep meets whole and compact cards (${JSON.stringify(fits)})`);
-  // the live loop on that HUD, iterated (as §8): each pass reads the card at the width and type the last plan gave it; the
-  // places settle after the first pass, and each pass's box holds the words the model says it shows there
-  let held = null, size = null, shown = { w: natural, compact: false };
+  // the live loop on that HUD, iterated (as §8): each pass reads the card's natural height (the full type) at the width the
+  // last plan gave it; the places settle after the first pass, and each pass's box holds the words the model says it shows
+  // there (a compact box at the compact type: the card's own fit steps its type down)
+  let held = null, size = null, shown = { w: natural };
   const places = [];
   for (let pass = 0; pass < 6; pass++) {
-    const reading = { step: 'battle.driveTouch', width: shown.w, scrollHeight: words(shown.w, shown.compact), compact: shown.compact };
+    const reading = { step: 'training.driveTouch', width: shown.w, scrollHeight: words(shown.w) };
     held = cardNaturalSize(held, reading, natural);
     size = heldCardSize(size, true, held.size);
     const at = planTouchGuidance({ ...base, card: size }, centre).plan.card;
     const tall = at.y1 - at.y0, need = words(at.x1 - at.x0, at.fit === 'compact');
-    if (at.fit !== 'scroll') assert.ok(tall >= need, `pass ${pass}: the box (${tall} px) holds the words it shows (${need} px)`);
+    if (at.fit !== 'tight') assert.ok(tall >= need, `pass ${pass}: the box (${tall} px) holds the words it shows (${need} px)`);
     places.push(JSON.stringify([at.x0, at.y0, at.x1, at.y1, at.fit]));
-    shown = { w: at.x1 - at.x0, compact: at.fit === 'compact' };
+    shown = { w: at.x1 - at.x0 };
   }
   assert.ok(places.slice(1).every((p) => p === places[1]), `the live loop settles after one pass (${places.join(' | ')})`);
   console.log(`guidancePlan §9: the 273.2 frame's card now ${places[1]}; ${JSON.stringify(fits)} over natural heights 120 to 420 px`);
@@ -354,18 +355,18 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     'the toasts stand where the plan puts them');
   assert.match(css, /\[data-hud-guidance~=toasts-wait\]/, 'and wait where it says');
   const tutorial = read('src/ui/tutorial/tutorial.css');
-  assert.match(tutorial, /\[data-hud-guidance~=card\] \.cot-tut:is\(\[data-chapter=battle\],\[data-chapter=training\]\) \.cot-tut-card\{\s*left:var\(--hud-guidance-card-left\);top:var\(--hud-guidance-card-top\)/,
-    'a battle chapter\'s card stands where the plan puts it');
+  assert.match(tutorial, /\[data-hud-guidance~=card\] \.cot-tut\[data-chapter=training\] \.cot-tut-card\{\s*left:var\(--hud-guidance-card-left\);top:var\(--hud-guidance-card-top\)/,
+    'a training card stands where the plan puts it');
   assert.match(tutorial, /\[data-hud-guidance~=card-yields\]/, 'and gives way where it says');
   assert.match(layout, /const card = guidanceCardSize = heldCardSize\(guidanceCardSize, !!cardNode, measured\);/, 'the layout holds the card\'s size through a swap');
   assert.match(layout, /guidanceCardNatural = cardNaturalSize\(guidanceCardNatural,/, 'the layout holds the card\'s natural size for its step');
-  // 9. the fit reaches the card: its type step and its affordance (data-more) where its words run on
-  assert.match(layout, /if \(card\.fit !== 'full'\) flags\.push\(`card-\$\{card\.fit\}`\);/, 'the layout writes the fit of the card');
-  assert.match(layout, /scrollHeight: cardNode\.scrollHeight, compact \}/, 'a read at the compact type says so');
-  assert.match(layout, /markCardMore\(cardNode\);/, 'the layout marks a card whose words run on');
-  assert.match(tutorial, /\[data-hud-guidance~=card-compact\] [^{]+\.cot-tut-body\{font-size:var\(--fs-13\);\}/, 'the compact type step');
-  assert.match(tutorial, /\.cot-tut-card\[data-more\]::after\{content:'\\25BE';position:sticky;bottom:0;/, 'the affordance over the foot of the card');
+  // 9. (274) the card fits the plan's box itself and never scrolls: the plan reads its natural height (the full type,
+  // before any fit step), the box is its max-height, and nothing scrolls or marks a scroll
+  assert.match(layout, /Number\(cardNode\?\.dataset\.naturalH\)/, 'the layout reads the card\'s natural height');
+  assert.ok(!/markCardMore|data-more'|card-\$\{card\.fit\}/.test(layout), 'no scroll marker and no fit flag: the card\'s own fit is the one mechanism');
+  assert.match(tutorial, /max-height:var\(--hud-guidance-card-max-h\)/, 'the plan\'s box is the card\'s max-height');
+  assert.ok(!/overflow:auto|overflow-y:auto|\[data-more\]/.test(tutorial), 'the card never scrolls');
   const overlay = read('src/ui/tutorial/tutorialOverlay.ts');
   assert.equal((overlay.match(/askLayout\(\);/g) ?? []).length, 3, 'the card asks the layout to re-plan when it shows, hides and goes');
 }
-console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''}; the card's words whole or a type step smaller wherever a place holds them${compacts.length ? `, a type step smaller at ${compacts.length}` : ''}${scrolls.length ? `, scrolling at ${scrolls.length}: ${scrolls.slice(0, 6).join(', ')}` : ''})`);
+console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''}; the card's words whole or a type step smaller wherever a place holds them${compacts.length ? `, a type step smaller at ${compacts.length}` : ''}${scrolls.length ? `, tight (the card fits its words itself) at ${scrolls.length}: ${scrolls.slice(0, 6).join(', ')}` : ''})`);

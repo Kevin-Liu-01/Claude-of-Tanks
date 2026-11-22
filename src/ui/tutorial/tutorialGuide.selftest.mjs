@@ -163,7 +163,7 @@ const guide = read('src/ui/tutorial/tutorialGuide.ts');
 assert.doesNotMatch(guide, /from 'three'|THREE\./, 'the guide draws in screen space: no Three.js, nothing added to the scene');
 assert.match(guide, /root\.setAttribute\('aria-hidden', 'true'\)/, 'its layers are hidden from assistive tech (the card speaks)');
 const runner = read('src/ui/tutorial/tutorialRunner.ts');
-assert.match(runner, /overlay\.destroy\(\);\s*guide\?\.destroy\(\);/, 'the guide goes with its run, wherever the run ends (done, skip, screen gone)');
+assert.match(runner, /overlay\.destroy\(\{[^}]*\}\);\s*guide\?\.destroy\(\);/, 'the guide goes with its run, wherever the run ends (done, skip, screen gone)');
 const hides = runner.match(/overlay\.setHidden\(hiddenByPause \|\| covered\);\s*guide\?\.setHidden\(hiddenByPause \|\| covered\);/g) ?? [];
 assert.equal(hides.length, 2, 'the guide hides with the card on a pause and under a covering surface');
 

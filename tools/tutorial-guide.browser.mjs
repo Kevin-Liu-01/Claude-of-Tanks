@@ -61,7 +61,7 @@ try {
     try {
       localStorage.setItem('cot.telemetry', 'off');
       localStorage.setItem('cot.battle.times.v2', JSON.stringify(['day']));
-      localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
+      localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}'); // the journey finished, its offer answered (tutorialRecord.ts TUTORIAL_FINISHED_RECORD)
     } catch { /* none */ }
   });
   const port = server.httpServer.address().port;

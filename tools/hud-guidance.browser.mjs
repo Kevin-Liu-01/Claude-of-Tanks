@@ -4,8 +4,8 @@
 //
 // Kevin, 2026-11-18: "for the tutorial, the armor shader hexagon and the tutorial squares at top overlap". One capture
 // hold, one browser: for each tree (--before=<a checkout of main>, and this checkout) and each view (desktop 1440x900, a
-// phone 390x844), a profile in the tutorial's battle chapter with the armour colours' one-time tip still due (the
-// owner's case), a Standard battle, and one more battle toast raised through the battle's notice region (the pointer
+// phone 390x844), a profile with the armour colours' one-time tip still due (the owner's case), the tutorial's training
+// battle (274: its chapter is the tutorial's only battle chapter) with its first card up, and one more battle toast raised through the battle's notice region (the pointer
 // lock's kind). Each frame is shot, and the card's, the toasts', the detection's and the alert's boxes are measured with
 // every shell, kit and other control. This checkout's frames must show no surface on another or on a control.
 //
@@ -21,6 +21,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 import { nativeBrowserLaunchOptions } from './native-browser-launch.mjs';
+import { TRAINING_RULES } from '../src/sim/trainingGround.ts';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const BEFORE = arg('before', null);
@@ -57,22 +58,23 @@ try {
         try { await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }, { name: 'hover', value: 'none' }]); } catch { /* older engine */ }
       }
       page.on('pageerror', (error) => report.errors.push(`${tree} ${view}: ${String(error?.message ?? error).slice(0, 200)}`));
-      // the owner's case: the Garage chapter done, the battle chapter due, the armour colours' tip due (no flip marker)
+      // the owner's case: the armour colours' tip due (no flip marker); the training battle's chapter runs on its rollout
       await page.evaluateOnNewDocument(() => {
         Document.prototype.hasFocus = () => true;
         try {
           localStorage.setItem('cot.telemetry', 'off');
           localStorage.setItem('cot.battle.times.v2', JSON.stringify(['day']));
-          localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done' }));
+          localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}');
           localStorage.removeItem('cot.armourOverlayDefault.v1');
         } catch { /* none */ }
       });
       await page.goto(`http://127.0.0.1:${port}/?nosplash=1&telemetry=off&tier=${viewport.hasTouch ? 'mobile' : 'desktop'}`,
         { waitUntil: 'domcontentloaded', timeout: 300_000 });
       await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 600_000, polling: 500 });
-      await page.evaluate(() => window.__DEBUG.beginSoloBattle({ gameMode: 'standard' }));
+      await page.evaluate((specId, mapId) => window.__DEBUG.beginSoloBattle({ specId, mapId, gameMode: 'training' }),
+        TRAINING_RULES.loanerSpecId, TRAINING_RULES.mapId);
       await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
-      await page.waitForFunction(() => !!document.querySelector('.cot-tut.is-open[data-chapter=battle]'), { timeout: 60_000, polling: 250 }).catch(() => {});
+      await page.waitForFunction(() => !!document.querySelector('.cot-tut.is-open[data-chapter=training]'), { timeout: 60_000, polling: 250 }).catch(() => {});
       // one more battle toast, the pointer lock's kind, through the region every battle notice uses (the same module)
       await page.evaluate(async () => {
         const { battleNotices } = await import('/src/ui/battleNotices.ts');
@@ -113,7 +115,7 @@ try {
     }
   }
   for (const frame of report.frames.filter((f) => f.tree === 'after')) {
-    assert.ok(frame.surfaces.includes('card'), `${frame.view}: the tutorial's battle card shows`);
+    assert.ok(frame.surfaces.includes('card'), `${frame.view}: the tutorial's training card shows`);
     assert.deepEqual(frame.overlaps, [], `${frame.view}: no guidance surface on another or on a control`);
   }
   report.ok = true;
