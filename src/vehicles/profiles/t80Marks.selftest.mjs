@@ -122,7 +122,7 @@ twinTank.dispose();
     assert.ok(k1.turret_k1_L + k1.turret_k1_R >= 18, `${id}: the roof and cheek containers (${k1.turret_k1_L + k1.turret_k1_R})`);
     // two working roof guns, neither an NSVT nor a Kord: the commander's M2 on the NSVT's pintle and riser, the gunner's
     // M240-class gun on its post
-    assert.equal(turret.getObjectByName('t80uCommanderNsvtStation'), undefined, `${id}: no NSVT`);
+    assert.equal(!!turret.getObjectByName('t80uCommanderNsvtStation'), false, `${id}: no NSVT`);
     const m2 = turret.getObjectByName('t80uKurskCommanderM2Station'), m240 = turret.getObjectByName('t80uKurskGunnerM240');
     assert.ok(m2 && m2.parent === turret && m240 && m240.parent === turret, `${id}: both roof guns ride the turret`);
     // drawn ERA = spec both ways: the T-80U's Kontakt-5 sectors and the field Kontakt-1's
@@ -170,7 +170,7 @@ twinTank.dispose();
     assert.deepEqual({ ...tank.root.getObjectByName('rig_turret').userData.t84Receipt }, { turret: 'welded-478du2', deck: '6td-2',
       era: 'kontakt-5', shtora: true, smokeTubes: 12, roofGun: 'kt-12.7', rearRack: true, sternDrums: true });
     assert.ok(tank.root.getObjectByName('t84CommanderKt127'), `${id}: the KT-12.7 station`);
-    assert.equal(tank.root.getObjectByName('t80uCommanderNsvtStation'), undefined, `${id}: not the T-80U's NSVT`);
+    assert.equal(!!tank.root.getObjectByName('t80uCommanderNsvtStation'), false, `${id}: not the T-80U's NSVT`);
     assert.deepEqual([...(tank.root.userData.eraClusterNames ?? [])].sort(), eraPlateNames(TANK_SPECS[id]), `${id}: drawn ERA = spec`);
   } finally { tank.dispose(); }
   const spec = TANK_SPECS[id], twin = TANK_SPECS.t80u;

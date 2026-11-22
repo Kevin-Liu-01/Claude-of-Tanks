@@ -18,7 +18,7 @@ assert.equal(hull.userData.fixedGunPort?.axisY, 1.59, 'the gun leaves through th
 const bore = visual.root.getObjectByName('muzzleBoreShadowDisc').getWorldPosition(new THREE.Vector3());
 assert.ok(Math.abs(bore.x) < 1e-6 && Math.abs(bore.y - 1.59) < 0.01, 'the fixed gun rides the A bore');
 assert.ok(bore.z > 4.12 && bore.z < 4.15, 'the shorter trials tube ends at the published 7.65 overall');
-assert.equal(visual.root.getObjectByName('strv103_side_tow_rope'), undefined, 'bare fenders: no production bins or rope');
+assert.equal(!!visual.root.getObjectByName('strv103_side_tow_rope'), false, 'bare fenders: no production bins or rope');
 let turretMeshes = 0;
 visual.root.getObjectByName('rig_turret')?.traverse((o) => { if (o.isMesh) turretMeshes++; });
 assert.equal(turretMeshes, 0, 'fixed mount: the virtual turret rig stays empty');
