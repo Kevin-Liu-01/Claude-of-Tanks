@@ -154,9 +154,14 @@
     its end at z 1.108, narrowing and dropping to a rounded nose at z 1.48, the inner walls at x 0.44 either side of the
     mantlet, the foot rising 3 cm off the deck the turret sweeps. A CPU ray probe sees 0.112 m2 of the old flat backs
     and none after. The welded wedge boxes stay on the noses.
-  - Sensors: a Shtora-1-style jammer (TShU-1-7 pattern: armoured box, the IR lamp's round window in a framed face, fins
-    behind) on a two-leg bolted bracket on each nose ahead of the wedge box, with a laser-warning head on its outboard
-    rear corner. The Kubinka tank carried no Shtora: this is Kevin's ask, not the photographs.
+  - Sensors: the fleet's shared Shtora-1 OTShU jammer pair (profiles/shtora.ts, the T-84's: armoured box, red lens
+    in its rim, lid), each on a two-leg bolted bracket on its nose ahead of the wedge box, with a laser-warning head on
+    its outboard rear corner. The Kubinka tank carried no Shtora: this is Kevin's ask, not the photographs.
+  - Smoke: the T-80BV's eight 902B Tucha tubes, four a side on the casting's upper flank behind the wedge boxes
+    (z 0.40-0.64), raked up and out on brackets over a rail and marked as smoke sockets, so the salvo is the eight
+    drawn (it was the decor's generic pair of eight; the fleet's drawn-smoke rule, decorations.ts drawsOwnSmoke, keeps
+    the pair off a build with marked tubes). The Kubinka photographs show none (the
+    launchers are off, as on most museum pieces); the smoke-salvo lane asked for the BV's.
   - Mantlet: a cast shield whose face is a cylinder (r 0.31 m) about the trunnion axis, 0.82 m wide with chamfered
     ends, so it keeps an even gap to the noses at every pitch; trunnion caps with bolt rings, the centre insert's weld
     seams, a brow lip, the coax port to the gun's right and the auxiliary sight aperture under a hood to its left. Its
