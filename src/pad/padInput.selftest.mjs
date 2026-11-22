@@ -1,15 +1,12 @@
-// The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the wheel angle from deviceorientation in
-// every landscape and lean, the steering curve, the lever, and the desktop mapper that turns frames into the input
-// layer's virtual controls — newest frame only, aim from wrapping totals, holds reconciled across the two channels,
-// taps, pause and the stale fail-safe. Every action the phone names is a real input action.
+// The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the floating drive stick, the frame's quarter
+// turn on a portrait page, the sight's speed curve, and the desktop mapper that turns frames into the input layer's
+// virtual controls — newest frame only, aim from wrapping totals, holds reconciled across the two channels, taps,
+// commands, pause and the stale fail-safe. Every action the phone names is a real input action.
 import assert from 'node:assert/strict';
 import { ACTION_DEFS } from '../game/input.ts';
-import {
-  AIM_CURVE, DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
-  wheelAngleDeg, wrapDeg,
-} from './padInput.ts';
+import { AIM_CURVE, DRIVE_STICK, aimGain, aimSpeed, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
 import { PAD_AIM_GAIN, createPadInputMapper, decodePadAxes } from './padDesk.ts';
-import { PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, encodePadAxes } from './padProtocol.ts';
+import { PAD_COMMANDS, PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, encodePadAxes, readPadCtl } from './padProtocol.ts';
 
 const near = (a, b, eps, label) => assert.ok(Math.abs(a - b) <= eps, `${label}: ${a} vs ${b}`);
 const DEG = Math.PI / 180;
@@ -18,72 +15,50 @@ const DEG = Math.PI / 180;
 const ids = new Set(ACTION_DEFS.map((def) => def.id));
 for (const action of [...PAD_HOLD_ACTIONS, ...PAD_TAP_ACTIONS]) assert.ok(ids.has(action), `${action} is an input action`);
 assert.ok(!PAD_TAP_ACTIONS.includes('settingsMenu') && !PAD_TAP_ACTIONS.includes('leaveBattle'), 'the phone cannot leave a battle by itself');
+assert.ok(PAD_HOLD_ACTIONS.length <= 32, 'every hold has a bit in the axes frame');
+assert.deepEqual(PAD_HOLD_ACTIONS.slice(0, 3), ['fire', 'handbrake', 'freeLook'], 'the first holds keep their bits');
 
-/** deviceorientation (β, γ) for a phone in a screen rotation, turned like a wheel by θ (clockwise +) and leaned back by λ. */
-function orientationFor(screenDeg, wheelDeg, leanDeg) {
-  const t = wheelDeg * DEG, l = leanDeg * DEG, a = screenDeg * DEG;
-  const right = -Math.sin(t) * Math.cos(l);
-  const up = Math.cos(t) * Math.cos(l);
-  const normal = Math.sin(l);
-  const ux = right * Math.cos(a) + up * Math.sin(a);
-  const uy = -right * Math.sin(a) + up * Math.cos(a);
-  return { beta: Math.asin(uy) / DEG, gamma: Math.atan2(-ux, normal) / DEG };
+// The drive stick (owner 2026-11-20: "use joysticks"): a push past a small dead zone, curved, full at the ring and held
+// there; its direction kept, so a diagonal stays a diagonal; forward is the screen's up
+const R = DRIVE_STICK.radiusPx;
+assert.deepEqual(stickValue(0, 0), [0, 0], 'a centred stick is still');
+assert.deepEqual(stickValue(R * DRIVE_STICK.deadzone * 0.9, 0), [0, 0], 'a resting thumb\'s wobble moves nothing');
+near(stickValue(0, -R)[1], 1, 1e-9, 'pushed up to the ring is full forward');
+near(stickValue(0, R * 3)[1], -1, 1e-9, 'past the ring is still full (reverse)');
+near(stickValue(R, 0)[0], 1, 1e-9, 'pushed right is full right');
+{
+  const [x, y] = stickValue(R, -R);
+  near(x, y, 1e-9, 'a diagonal stays a diagonal');
+  near(Math.hypot(x, y), 1, 1e-9, 'and its length is the push\'s, never past 1');
+  const halfway = stickValue(0, -R * (DRIVE_STICK.deadzone + (1 - DRIVE_STICK.deadzone) / 2))[1];
+  near(halfway, 0.5 ** DRIVE_STICK.curve, 1e-9, 'half travel is finer than linear');
+}
+assert.deepEqual(stickKnob(10, 0, R), [10, 0], 'the knob follows the thumb inside the ring');
+{
+  const [kx, ky] = stickKnob(3 * R, 4 * R, R);
+  near(Math.hypot(kx, ky), R, 1e-9, 'and stops at the ring');
+  near(kx / ky, 0.75, 1e-9, 'along the thumb\'s direction');
 }
 
-for (const screen of [90, 270, 0]) {
-  for (const lean of [5, 30, 60]) {
-    for (const wheel of [-60, -25, -4, 0, 4, 25, 60]) {
-      const { beta, gamma } = orientationFor(screen, wheel, lean);
-      near(wheelAngleDeg(beta, gamma, screen), wheel, 0.01, `screen ${screen} lean ${lean} wheel ${wheel}`);
-    }
-  }
+// The frame: always landscape; a page the system keeps portrait (an iPhone with rotation lock on, held sideways) turns
+// it a quarter, the top to the left, or the other way with Flip; a finger's movement reads in the frame's own axes, and
+// the island and the home bar land on the frame's own sides
+assert.equal(frameTurnFor(true), 0, 'a landscape page is not turned');
+assert.equal(frameTurnFor(true, true), 0, 'Flip turns only a portrait page');
+assert.equal(frameTurnFor(false), 90, 'a portrait page: the top to the left');
+assert.equal(frameTurnFor(false, true), 270, 'or to the right');
+for (const turn of [0, 90, 180, 270]) {
+  // CSS rotate(turn) carries the frame's axes onto the viewport; frameDelta brings a movement there back
+  const t = turn * DEG, fx = 3, fy = -7;
+  const [bx, by] = frameDelta(turn, fx * Math.cos(t) - fy * Math.sin(t), fx * Math.sin(t) + fy * Math.cos(t));
+  near(bx, fx, 1e-9, `turn ${turn} x`);
+  near(by, fy, 1e-9, `turn ${turn} y`);
 }
-// The locked frame (owner 2026-10-30: "make it so it must be horizontal and just stays that way"): the controller locks to
-// the landscape it starts in, or the quarter turn from portrait, and from then on the frame turns back whatever the
-// system does, so it never moves on the phone, a finger's movement reads in the frame's own axes, and the island and the
-// home bar land on the frame's own sides.
-assert.equal(lockAngle(90, true), 90);
-assert.equal(lockAngle(-90, true), 270, 'window.orientation reads -90 for 270');
-assert.equal(lockAngle(0, false), 90, 'started in portrait: the top to the left');
-for (const lock of [0, 90, 270]) {
-  for (const screen of [0, 90, 180, 270]) {
-    const turn = frameTurn(lock, screen);
-    assert.equal((screen + turn) % 360, lock, `lock ${lock}, system ${screen}: the frame sits where it was on the phone`);
-    // CSS rotate(turn) carries the frame's axes onto the viewport; frameDelta brings a movement there back
-    const t = turn * DEG, fx = 3, fy = -7;
-    const [bx, by] = frameDelta(turn, fx * Math.cos(t) - fy * Math.sin(t), fx * Math.sin(t) + fy * Math.cos(t));
-    near(bx, fx, 1e-9, `turn ${turn} x`);
-    near(by, fy, 1e-9, `turn ${turn} y`);
-  }
-}
-// locked at 90 while the system shows portrait (Safari: top 59 is the island, bottom 34 the home bar): the frame's left is
-// the island's side and its right the home bar's
-assert.deepEqual(frameInsets(frameTurn(90, 0), [59, 0, 34, 0]), [0, 34, 0, 59]);
-assert.deepEqual(frameInsets(frameTurn(90, 90), [0, 59, 20, 59]), [0, 59, 20, 59]);
-// The wheel reads the device's own axes in the locked frame, so the system's rotation never reaches the steering. Read
-// through the system's angle instead (the controller before this), the same hold swung a quarter turn when iOS turned
-// the page to portrait: a 20° turn read as -70°, full left lock.
-for (const lock of [90, 270]) {
-  const pose = orientationFor(lock, 20, 30);
-  near(wheelAngleDeg(pose.beta, pose.gamma, lock), 20, 0.01, `locked at ${lock}`);
-  near(Math.abs(wrapDeg(wheelAngleDeg(pose.beta, pose.gamma, (lock + 270) % 360) - 20)), 90, 0.01, `read through portrait at ${lock}`);
-}
+// turned 90 on Safari's portrait (top 59 is the island, bottom 34 the home bar): the frame's left is the island's side
+// and its right the home bar's
+assert.deepEqual(frameInsets(90, [59, 0, 34, 0]), [0, 34, 0, 59]);
+assert.deepEqual(frameInsets(0, [0, 59, 20, 59]), [0, 59, 20, 59]);
 
-const flat = orientationFor(90, 20, 85);
-assert.equal(wheelAngleDeg(flat.beta, flat.gamma, 90), null, 'a phone lying flat is no wheel');
-assert.equal(wheelAngleDeg(NaN, 0, 90), null, 'no sensor reading, no angle');
-
-// the curve: a dead zone, finer near centre, full lock at maxAngle, around any centre (wrapping)
-assert.equal(steerFromAngle(2, 0), 0, 'inside the dead zone');
-assert.equal(steerFromAngle(-2.9, 0), -0, 'inside the dead zone (left)');
-assert.equal(steerFromAngle(35, 0), 1, 'full lock right');
-assert.equal(steerFromAngle(-90, 0), -1, 'past full lock clamps');
-const half = steerFromAngle(DEFAULT_STEERING.deadzoneDeg + (DEFAULT_STEERING.maxAngleDeg - DEFAULT_STEERING.deadzoneDeg) / 2, 0);
-near(half, 0.5 ** DEFAULT_STEERING.curve, 1e-9, 'half travel is finer than linear');
-near(steerFromAngle(175, -170), -steerFromAngle(15, 0), 1e-9, 'the centre wraps through ±180 (175° is 15° left of −170°)');
-assert.ok(steerFromAngle(10, 20) < 0, 'left of a re-centred wheel steers left');
-assert.equal(wrapDeg(190), -170);
-assert.equal(wrapDeg(-180), 180);
 // the sight's drag: slow is 1:1, a swipe a few times as far, a flick the most; the scope caps it lower
 assert.equal(aimGain(0), 1, 'a finger at rest keeps the mouse precision');
 assert.equal(aimGain(AIM_CURVE.slowPxPerMs), 1, 'and a slow drag');
@@ -100,10 +75,6 @@ assert.equal(aimGain(Number.NaN), 1);
 assert.equal(aimSpeed(0, 10, 10), 0.5, 'speed is distance over time, smoothed');
 assert.equal(aimSpeed(1, 0, 16), 0.5, 'a still move halves it');
 assert.equal(aimSpeed(0, 8, 0), 1, 'two moves in one millisecond read as 4 ms apart, never infinite');
-assert.equal(leverValue(0.03, 1), 0, 'the lever has a small dead zone');
-assert.equal(leverValue(2, 1), 1);
-assert.equal(leverValue(-1, 1), -1);
-assert.equal(leverValue(1, 0), 0);
 
 // --- the mapper -------------------------------------------------------------------------------------------------
 function port() {
@@ -173,6 +144,30 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   mapper.applyCtl({ k: 'pause' });
   assert.equal(paused, 1, 'pause goes to the host port, not an input action');
 
+  // Watch's descend and boost are holds (it reads them with isDown): the axes bits carry them like the brake
+  const DESCEND = 1 << PAD_HOLD_ACTIONS.indexOf('reloadMagazine');
+  const watch = port();
+  const wm2 = createPadInputMapper(watch);
+  wm2.applyAxes(frame(1, { held: DESCEND }), 0);
+  assert.ok(watch.held.has('reloadMagazine'), 'a later hold presses from its bit');
+  wm2.applyAxes(frame(2), 16);
+  assert.ok(!watch.held.has('reloadMagazine'), 'and lets go with it');
+
+  // commands: what no input action names goes to the desktop's own calls, never the input layer
+  const commands = [];
+  const cm = createPadInputMapper(port(), undefined, (c, n) => commands.push([c, n]));
+  cm.applyCtl(readPadCtl(JSON.stringify({ k: 'cmd', c: 'watchNext' })));
+  cm.applyCtl(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick', n: 4 })));
+  assert.deepEqual(commands, [['watchNext', undefined], ['strikePick', 4]], 'commands reach the command port');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick', n: 5 })), null, 'a call-in past the fifth is refused');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'strikePick' })), null, 'a pick names its call-in');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'cmd', c: 'leaveBattle' })), null, 'an unknown command is refused');
+  for (const c of PAD_COMMANDS) {
+    const message = readPadCtl(JSON.stringify(c === 'strikePick' ? { k: 'cmd', c, n: 0 } : { k: 'cmd', c }));
+    assert.equal(message?.c, c, `${c} reads`);
+  }
+  assert.doesNotThrow(() => createPadInputMapper(port()).applyCtl({ k: 'cmd', c: 'watchNext' }), 'a seat without the port drops commands');
+
   // the fail-safe: a phone that went quiet centres the stick and releases its holds
   mapper.applyCtl({ k: 'down', a: 'fire', s: 19 });
   mapper.applyAxes(frame(19, { steer: 1, throttle: 1, held: FIRE, aimX: 130, aimY: 46 }), 2000);
@@ -218,4 +213,4 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   assert.equal(idle.calls.filter((c) => c[0] === 'move').length, 1, 'a centred, idle phone is not re-zeroed every frame');
 }
 
-console.log('padInput: PASS — wheel angle in every landscape and lean, the locked frame, steering curve, the sight\'s speed curve, lever, mapper (frames, aim, holds, taps, pause, fail-safe, throttled heartbeat)');
+console.log('padInput: PASS — the drive stick, the portrait turn, the sight\'s speed curve, mapper (frames, aim, holds, taps, commands, pause, fail-safe, throttled heartbeat)');

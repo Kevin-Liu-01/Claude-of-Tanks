@@ -6,13 +6,15 @@
  */
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState } from './padLink.ts';
-import { PAD_STALE_MS, createPadInputMapper, decodePadAxes, decodePadTour } from './padDesk.ts';
-import type { PadInputPort } from './padDesk.ts';
+import { PAD_STALE_MS, createPadInputMapper, decodePadAxes, decodePadTour, padActsMask } from './padDesk.ts';
+import type { PadCommandPort, PadInputPort } from './padDesk.ts';
 import { PAD_TOUR_MS } from './padProtocol.ts';
-import type { PadAxes, PadStatus, PadTourLayout } from './padProtocol.ts';
+import type { PadAxes, PadMode, PadStatus, PadTourLayout } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { showPadTour } from './padTourScreen.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
+import { GARAGE_AUXILIARY_SUMMARY } from '../ui/garageAuxiliarySummary.generated.ts';
+import { availableVehicleActions, vehicleAction } from '../game/vehicleActions.ts';
 import { createShotCadence } from '../game/shotCadence.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
@@ -20,7 +22,8 @@ interface PadPlayer {
   /** The battle entity's id: the bus names the tank each event is about by it (padCues.ts). */
   id?: string;
   combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
-  spec: { id?: string; topSpeedKmh?: number; gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
+  spec: { id?: string; topSpeedKmh?: number; hydropneumaticAim?: unknown;
+    gun: { autoloader?: unknown; shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
   state?: { turretYaw: number; speed?: number } | null;
 }
 
@@ -35,13 +38,83 @@ export interface PadStatusSource {
   shellCode(type: string): string;
   /** The sight can lock on (the autoAim tap): the page's own player; a couch seat's sight is its own bearing. */
   lockable?: boolean;
+  /** What the player's input drives now (padLayout.ts lays the phone out for it); absent: a tank, or dead once it is
+   *  destroyed. Watch and a destroyed player's killcam need no player. */
+  mode?: PadMode;
+  /** What decides the optional controls this player has in that mode (padGrants): the battle's grants and where the
+   *  player stands in Watch and after death. */
+  facts?: PadModeFacts;
+}
+
+/** The facts the phone's optional controls follow (padLayout.ts PAD_ACTS). */
+export interface PadModeFacts {
+  /** The battle's mode grants a jump, the drone, Air Support, consumables, the Proving Ground's range keys. */
+  jump?: boolean;
+  drone?: boolean;
+  airSupport?: boolean;
+  consumables?: boolean;
+  range?: boolean;
+  /** Watch: riding a tank (the drone key flies off it); a seat to take, or the one taken to leave. */
+  watchRiding?: boolean;
+  watchSeat?: boolean;
+  /** Destroyed: a killcam replay to skip, a spectator's camera to step. */
+  killcam?: boolean;
+  spectating?: boolean;
+  /** A couch seat: only what its seat controls honour (src/game/couchSeats.ts). */
+  couch?: boolean;
+}
+
+/** What a couch seat's controls honour beyond the drive, aim, fire, brake, look, rounds and scope (couchSeats.ts
+ *  TAP_BITS), and its camera's zoom. */
+const COUCH_GRANTS = new Set(['consumable1', 'consumable2', 'consumable3', 'smoke', 'selfRight', 'specialAction', 'reloadMagazine',
+  'zoomIn', 'zoomOut']);
+
+/** The optional controls a player has in a mode, as padLayout.ts PAD_ACTS ids: the vehicle's own kit by the table the HUD
+ *  and the Garage read (game/vehicleActions.ts, the fitted kit from the Garage's light summary), the mode's grants, and
+ *  Watch's and death's keys. */
+export function padGrants(mode: PadMode, source: PadStatusSource): string[] {
+  const facts = source.facts ?? {};
+  const out: string[] = [];
+  if (mode === 'tank') {
+    if (facts.consumables !== false) out.push('consumable1', 'consumable2', 'consumable3');
+    const spec = source.player?.spec;
+    const [smoke = 0, lights = 0, guns = 0] = (spec?.id && GARAGE_AUXILIARY_SUMMARY[spec.id]) || [];
+    for (const id of availableVehicleActions(spec, { smoke, lights: lights === 1, guns }, { jump: facts.jump, drone: facts.drone })) {
+      out.push(vehicleAction(id).binding);
+    }
+    if (source.lockable) out.push('autoAim');
+    if (facts.airSupport) out.push('strikeView');
+    out.push('hitboxOverlay');
+    if (facts.range) out.push('rangeReset', 'rangeMoving');
+    if (facts.watchSeat) out.push('watchSeat');
+    if (source.sniper || facts.couch) out.push('zoomIn', 'zoomOut');
+    return facts.couch ? out.filter((id) => COUCH_GRANTS.has(id)) : out;
+  }
+  if (mode === 'gunship') out.push('supplyAmmo', 'supplyHeal');
+  if (mode === 'watch') {
+    if (facts.watchRiding) out.push('watchDrone');
+    if (facts.watchSeat) out.push('watchSeat');
+  }
+  if (mode === 'dead') {
+    if (facts.killcam && !facts.couch) out.push('killcamSkip');
+    if (facts.spectating && !facts.couch) out.push('spectatePrev', 'spectateNext');
+  }
+  return out;
 }
 
 /** The phone's readout of the local player: ammunition (code, glyph, rounds), the slot, reload, scope, pause. */
 export function padStatusOf(source: PadStatusSource | null, locked = false): PadStatus | null {
-  const player = source?.player;
+  if (!source?.battle) return null;
+  const player = source.player;
   const combat = player?.combat;
-  if (!source?.battle || !player || !combat) return null;
+  const mode: PadMode = source.mode ?? (combat?.destroyed ? 'dead' : 'tank');
+  const grants = { m: mode, a: padActsMask(padGrants(mode, source)) };
+  // Watch's camera and a destroyed player's killcam drive no tank of their own: the mode and its keys are the readout
+  if (!player || !combat) {
+    if (mode !== 'watch' && mode !== 'dead') return null;
+    return { battle: true, alive: mode === 'watch', paused: source.paused, sniper: false, slot: 0, shells: [], reloadS: 0,
+      reloadTotalS: 0, ...(source.lockable ? { lock: locked } : {}), ...grants };
+  }
   return {
     battle: true,
     alive: !combat.destroyed,
@@ -61,6 +134,7 @@ export function padStatusOf(source: PadStatusSource | null, locked = false): Pad
     ...(player.state && Number.isFinite(player.state.speed) ? { kmh: Math.round(player.state.speed! * 3.6) } : {}),
     ...(Number.isFinite(player.spec.topSpeedKmh) ? { topKmh: Math.round(player.spec.topSpeedKmh!) } : {}),
     ...(source.lockable ? { lock: locked } : {}),
+    ...grants,
   };
 }
 
@@ -70,6 +144,16 @@ export interface PadReceiverPorts {
   source(): PadStatusSource | null;
   /** The phone's pause button: the same Settings toggle as Escape. */
   togglePause(): void;
+  /** What no input action names (Watch's tank picks, the call-ins, the killcam's skip): the desktop's own calls. A seat
+   *  without it (a couch seat) is never offered those keys. */
+  command?: PadCommandPort;
+  /** Couch mode's briefing as this seat's phone shows it (the status's `b`), while the big screen shows it. */
+  brief?(): PadStatus['b'];
+  /** This seat's Ready (or Skip) on that briefing. */
+  ready?(skip: boolean): void;
+  /** False for a couch seat: the phone's controls guide stays on the phone (the room's briefing is the big screen's), so
+   *  no phone's guide is mirrored over the couch lobby. */
+  mirrorTour?: boolean;
   /** The battle's event bus (its `on`), for the cues the phone feels (padCues.ts); without it the phone feels only its
    *  own presses. */
   listen?(type: string, listener: (payload: unknown) => void): () => void;
@@ -143,7 +227,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   const remember = options.remember !== false;
   const listeners = new Set<(view: PadReceiverView) => void>();
   let view: PadReceiverView = { state: { kind: 'connecting' }, rttMs: null };
-  const mapper = createPadInputMapper(ports.input, ports.togglePause);
+  const mapper = createPadInputMapper(ports.input, ports.togglePause, ports.command);
   const axes: PadAxes = { flags: 0, seq: 0, t: 0, steer: 0, throttle: 0, aimX: 0, aimY: 0, held: 0 };
   let lastStatus = '';
   let lastStatusAt = -Infinity;
@@ -213,7 +297,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     onCtl(message) {
       if (message.k === 'ping') link.sendCtl({ k: 'pong', t: message.t, d: performance.now(), apply: Math.round(applyMs * 10) / 10 });
       else if (message.k === 'pong') publish({ rttMs: Math.max(0, performance.now() - message.t) });
+      // the briefing's Ready comes between battles, so it is heard whether or not the seat drives
+      else if (message.k === 'ready') ports.ready?.(message.skip === true);
       else if (message.k === 'tour') {
+        if (ports.mirrorTour === false) return;
         // the phone's guide opens here too, battle or not; Skip here ends it on the phone
         const layout = message.on && message.l ? decodePadTour(message.l) : null;
         // a picture that does not decode is refused whole (the reader checked only its shape)
@@ -270,7 +357,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     driving = nowDriving;
     if (view.state.kind !== 'live') return;
     // the phone's readout: on change, at most 5 a second (one on the billed relay), and a heartbeat every 2 s
-    const status = JSON.stringify(padStatusOf(source && hidden ? { ...source, paused: true } : source, locked) ?? IDLE_STATUS);
+    const base = padStatusOf(source && hidden ? { ...source, paused: true } : source, locked) ?? IDLE_STATUS;
+    // a couch seat's briefing rides its status between battles (never over one)
+    const brief = base.battle ? undefined : ports.brief?.();
+    const status = JSON.stringify(brief ? { ...base, b: brief } : base);
     const gap = now - lastStatusAt;
     if ((status !== lastStatus && gap >= (relay ? 1000 : 200)) || gap >= 2000) {
       if (link.sendCtl({ k: 'status', s: JSON.parse(status) as PadStatus })) { lastStatus = status; lastStatusAt = now; }

@@ -1,76 +1,55 @@
 /**
  * The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"), pure and Node-runnable.
  *
- * The phone's side: the wheel angle from `deviceorientation` (β, γ) and the screen's rotation, the steering curve
- * (centre, dead zone, power curve, full lock), the aim's speed curve, and the lever and stick shapes. The desktop's
- * mapper that applies what the phone sends is padDesk.ts.
+ * The phone's side: the two thumbs. The left is a floating stick (it lands where the thumb does; its push is the drive's
+ * throttle and steer), the right an aim area (a drag aims at the speed curve's gain, so a slow drag is precise and a
+ * flick swings the gun round). The frame's quarter turn for a page the system keeps portrait, and the safe areas on the
+ * frame's own sides. The desktop's mapper that applies what the phone sends is padDesk.ts.
  */
-const DEG = Math.PI / 180;
 
-export interface SteeringCurve {
-  /** Wheel angle (degrees from centre) at full lock. */
-  maxAngleDeg: number;
-  /** Degrees around centre that steer nothing (hand tremor). */
-  deadzoneDeg: number;
-  /** Power on the normalized angle past the dead zone: > 1 is finer near centre. */
+// ---- the sticks (phone side) -------------------------------------------------------------------------------------
+
+/** A stick's travel: its push past a small dead zone, to the ring and no further, as -1..1 on each axis (y up). */
+export interface StickCurve {
+  /** The ring's radius: a push this far is full travel. */
+  radiusPx: number;
+  /** The share of the radius that moves nothing (a resting thumb's wobble). */
+  deadzone: number;
+  /** Power on the push past the dead zone: > 1 is finer near the centre. */
   curve: number;
 }
 
-export const DEFAULT_STEERING: SteeringCurve = Object.freeze({ maxAngleDeg: 35, deadzoneDeg: 3, curve: 1.6 });
-/** Below this share of gravity in the screen's plane the phone lies too flat to read as a wheel. */
-const MIN_SCREEN_PLANE_UP = 0.3;
+export const DRIVE_STICK: StickCurve = Object.freeze({ radiusPx: 64, deadzone: 0.12, curve: 1.3 });
 
-/** Wrap degrees to (-180, 180]. */
-export function wrapDeg(deg: number): number {
-  let d = ((deg + 180) % 360 + 360) % 360 - 180;
-  if (d === -180) d = 180;
-  return d;
+/** The stick's value from the thumb's offset (dx right, dy down, in px) from where it landed: x right, y forward. The
+ *  push keeps its direction; only its length is curved, so a diagonal stays a diagonal. */
+export function stickValue(dx: number, dy: number, curve: StickCurve = DRIVE_STICK): [number, number] {
+  const length = Math.hypot(dx, dy);
+  if (!(curve.radiusPx > 0) || length === 0) return [0, 0];
+  const push = Math.min(1, length / curve.radiusPx);
+  const past = Math.max(0, push - curve.deadzone) / (1 - curve.deadzone);
+  const scaled = past ** curve.curve;
+  // (0 - dy, not -dy: a still axis reads 0, never -0)
+  return [(scaled * dx) / length, (scaled * (0 - dy)) / length];
 }
 
-/**
- * The wheel angle in degrees, positive when the phone is turned clockwise (a right turn) as its user sees it; null when
- * the phone lies too flat. β and γ are `deviceorientation`'s; `screenAngleDeg` is `screen.orientation.angle` (90 when the
- * phone is turned counter-clockwise into landscape). The world's up vector in the device frame is
- * (−sin γ cos β, sin β, cos γ cos β); its angle in the screen's plane is the wheel's, whatever the phone's lean.
- */
-export function wheelAngleDeg(betaDeg: number, gammaDeg: number, screenAngleDeg: number): number | null {
-  if (!Number.isFinite(betaDeg) || !Number.isFinite(gammaDeg)) return null;
-  const b = betaDeg * DEG;
-  const g = gammaDeg * DEG;
-  const ux = -Math.sin(g) * Math.cos(b);
-  const uy = Math.sin(b);
-  const a = (Number(screenAngleDeg) || 0) * DEG;
-  const right = ux * Math.cos(a) - uy * Math.sin(a);
-  const up = ux * Math.sin(a) + uy * Math.cos(a);
-  if (Math.hypot(right, up) < MIN_SCREEN_PLANE_UP) return null;
-  // world up leaning toward the screen's left is a clockwise turn of the phone
-  return -Math.atan2(right, up) / DEG;
+/** Where the stick's knob sits: the offset, held inside the ring. */
+export function stickKnob(dx: number, dy: number, radiusPx: number): [number, number] {
+  const length = Math.hypot(dx, dy);
+  if (length <= radiusPx || length === 0) return [dx, dy];
+  return [dx * radiusPx / length, dy * radiusPx / length];
 }
 
-/** Steering −1 (left) .. 1 (right) from a wheel angle, the centre the player set and the curve. */
-export function steerFromAngle(angleDeg: number, centreDeg: number, curve: SteeringCurve = DEFAULT_STEERING): number {
-  const d = wrapDeg(angleDeg - centreDeg);
-  const span = Math.max(1, curve.maxAngleDeg - curve.deadzoneDeg);
-  const past = Math.max(0, Math.abs(d) - curve.deadzoneDeg) / span;
-  return Math.sign(d) * Math.min(1, past) ** curve.curve;
-}
-
-// ---- the locked frame (phone side) -------------------------------------------------------------------------
-// The controller is laid out once in the landscape the phone is held in and glued to the phone from then on: when the
-// system turns the page, the frame turns back by the same angle (padPage.ts). Angles are screen.orientation's, degrees
-// from the device's natural orientation; a frame's turn is CSS rotate(), clockwise on the viewport.
+// ---- the frame (phone side) -------------------------------------------------------------------------------
+// The controller is always laid out landscape. A page the system shows landscape is not turned; a page it keeps portrait
+// (an iPhone with rotation lock on, held sideways) is turned a quarter: the phone's top to the left, the way most hands
+// turn one, or the other way with Flip (padPage.ts). A frame's turn is CSS rotate(), clockwise on the viewport.
 
 const quarter = (deg: number): number => ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
 
-/** The angle a controller locks to: the system's own when it shows landscape, else the quarter turn from portrait most
- *  phones are turned into (the top to the left). */
-export function lockAngle(screenDeg: number, wide: boolean): number {
-  return quarter(wide ? screenDeg : screenDeg + 90);
-}
-
-/** How far the frame turns on the viewport to stay where it was on the phone: the system's turn, undone. */
-export function frameTurn(lockDeg: number, screenDeg: number): number {
-  return quarter(lockDeg - screenDeg);
+/** How far the frame turns on the viewport: none when the page is landscape, a quarter when it is portrait. */
+export function frameTurnFor(wide: boolean, flipped = false): number {
+  return wide ? 0 : flipped ? 270 : 90;
 }
 
 /** A movement on the viewport (dx, dy) in the axes of a frame turned by `turnDeg`. */
@@ -88,14 +67,6 @@ export function frameDelta(turnDeg: number, dx: number, dy: number): [number, nu
 export function frameInsets(turnDeg: number, insets: readonly number[]): number[] {
   const k = quarter(turnDeg) / 90;
   return [0, 1, 2, 3].map((side) => insets[(side + k) % 4] ?? 0);
-}
-
-/** A spring lever or stick axis: −1..1 from an offset and the travel, with a small dead zone. */
-export function leverValue(offset: number, travel: number, deadzone = 0.06): number {
-  if (!(travel > 0)) return 0;
-  const v = Math.max(-1, Math.min(1, offset / travel));
-  const past = Math.max(0, Math.abs(v) - deadzone) / (1 - deadzone);
-  return Math.sign(v) * past;
 }
 
 // ---- the sight's drag (phone side) -------------------------------------------------------------------------------

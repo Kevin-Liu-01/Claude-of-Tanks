@@ -1961,6 +1961,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
+    'src/pad/padLayout.selftest.mjs', // pad-controls-274: every mode's keys, every keyboard action reachable, grants by kit and mode
     'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
     'src/pad/padReadyBuzz.selftest.mjs', // round 8 Y5 s3-06: no loaded buzz through a pause or after the link leaves live; the seat is the link's
     'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
@@ -1969,6 +1970,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while away lands (app-couch's Start, s3-09), the roll call lets go of a seat that left, an ICE ask a closed socket dropped is asked again, couchLobby's paint while away is pinned, the setOpen queue sends a waiting ask with the first code, the newest ask wins, a sent ask (a Reopen that met a closing socket) is never sent again and a window that lapsed while away stays closed
     'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
+    'src/game/couchBriefing.selftest.mjs', // pad-controls-274: the room's briefing on Start (steps, Ready, Skip, GO once)
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     'src/game/couchPanes.selftest.mjs', // couch-panes-272: the split screen's grids, equal panes, the HUD scale and its priority tiers
     'src/engine/chaseStart.selftest.mjs', // couch-panes-272: the chase camera's first look follows the hull's pitch (no GUN TRAVEL LIMIT at a slope spawn)

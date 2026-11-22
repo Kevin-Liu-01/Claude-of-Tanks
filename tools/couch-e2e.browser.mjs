@@ -3,7 +3,8 @@
 //
 // The desktop boots to the Garage and asks the pairing service nothing until the Deploy screen's Couch button opens the
 // lobby; each phone opens the lobby's link and joins with one Start tap (the time from the link to a live controller is
-// the join time); the lobby's Start deploys the seats; each phone's wheel steers its own tank and no other; the latency
+// the join time); the lobby's Start opens the room's briefing and every phone's Ready deploys the seats; each phone's stick steers its own
+// tank and no other; the latency
 // from a phone's event to its tank's input in a desktop frame is measured with every phone linked; a phone that
 // vanishes with its throttle held stops its tank. Run alone (one capture ticket, under 20 minutes):
 //   node tools/couch-e2e.browser.mjs [--phones=8] [--joinPhones=4] [--samples=40] [--port=5297] [--out=.qa-dev/couch-e2e]
@@ -40,12 +41,20 @@ const pct = (values, p) => {
   return sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] * 10) / 10 : null;
 };
 // deviceorientation (β, γ) for a phone held in landscape (screen angle 90), turned like a wheel by θ, leaned back 30°
-function orientation(wheelDeg, leanDeg = 30, screenDeg = 90) {
-  const D = Math.PI / 180;
-  const t = wheelDeg * D, l = leanDeg * D, a = screenDeg * D;
-  const right = -Math.sin(t) * Math.cos(l), up = Math.cos(t) * Math.cos(l), normal = Math.sin(l);
-  const ux = right * Math.cos(a) + up * Math.sin(a), uy = -right * Math.sin(a) + up * Math.cos(a);
-  return { beta: Math.asin(uy) / D, gamma: Math.atan2(-ux, normal) / D };
+// a thumb on a phone's drive stick, dispatched in the page so the event's own time is the sample's start (one pointer id,
+// 77, throughout; a synthetic pointer has no capture, which the stick tolerates)
+function stickPush(dx, dy = 0) {
+  const zone = document.querySelector('.pad-stick');
+  const b = zone.getBoundingClientRect();
+  const x = b.x + b.width / 2, y = b.y + b.height / 2;
+  const at = (cx, cy) => ({ pointerId: 77, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: cx, clientY: cy });
+  zone.dispatchEvent(new PointerEvent('pointerdown', at(x, y)));
+  const sentAt = performance.timeOrigin + performance.now();
+  zone.dispatchEvent(new PointerEvent('pointermove', at(x + dx, y + dy)));
+  return sentAt;
+}
+function stickLift() {
+  document.querySelector('.pad-stick').dispatchEvent(new PointerEvent('pointerup', { pointerId: 77, pointerType: 'touch', bubbles: true }));
 }
 
 const padServer = http.createServer();
@@ -114,7 +123,6 @@ try {
     await page.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${code}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await page.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
     await page.tap('.pad-form button[type="submit"]');
-    await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
     await page.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 60_000 }, PAD_PHONE_STATE.live);
     report.joinMs.push(Date.now() - opened);
     const seat = Number(/(\d+)/.exec(await page.$eval('.pad-link', (el) => el.textContent))?.[1] ?? 0);
@@ -132,6 +140,17 @@ try {
   report.step = 'battle';
   if (phones > 4) await desktop.evaluate(() => document.querySelector('.cot-couch-sides [data-value="teams"]')?.click());
   await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
+  // Start opens the room's briefing, centred over the screen (docs/COUCH-MODE.md "The briefing"); every phone's Ready
+  // deploys the seats
+  await desktop.waitForSelector('.cot-couch-brief', { timeout: 15_000 });
+  check('Start opens the room\'s briefing; no phone\'s guide is mirrored over it', await desktop.evaluate(() => !document.querySelector('.cot-pad-tour.is-open')));
+  // (a background tab runs no frames, so each phone comes to the front for its tap)
+  for (const { page } of pages) {
+    await page.bringToFront();
+    await page.waitForFunction(() => !document.querySelector('.pad-brief')?.hidden, { timeout: 10_000 });
+    await page.tap('.pad-brief-ready');
+  }
+  await desktop.bringToFront();
   // the countdown over in the couch battle (controlsReleased: the lifecycle's own state, not the phase and the countdown)
   await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`,
     { timeout: 300_000, polling: 250 });
@@ -151,13 +170,13 @@ try {
   let isolated = true;
   const crossTalk = [];
   for (const { page, seat } of pages) {
-    await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(30));
+    await page.evaluate(stickPush, 80);
     await desktop.waitForFunction((n) => Math.abs(window.__DEBUG.game.couch.seats.find((s) => s.seat === n)?.entity.input.steer ?? 0) > 0.2, { timeout: 5000 }, seat).catch(() => {});
     const steer = await steerOf();
     for (const [other, value] of Object.entries(steer)) {
       if (Number(other) === seat ? Math.abs(value) <= 0.2 : Math.abs(value) > 0.05) { isolated = false; crossTalk.push(`${seat}->${other}:${value.toFixed(2)}`); }
     }
-    await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
+    await page.evaluate(stickLift);
     await desktop.waitForFunction((n) => Math.abs(window.__DEBUG.game.couch.seats.find((s) => s.seat === n)?.entity.input.steer ?? 1) < 0.05, { timeout: 5000 }, seat).catch(() => {});
   }
   check('each phone steers its own tank and no other', isolated, crossTalk.join(' ') || `${pages.length} phones`);
@@ -183,11 +202,8 @@ try {
     const { page, seat } = pages[i % pages.length];
     const right = Math.floor(i / pages.length) % 2 === 0;
     await desktop.evaluate((s, target) => { window.__couchWatch = { seat: s, target, hit: null }; }, seat, right ? -0.5 : 0.5);
-    const sentAt = await page.evaluate((o) => {
-      const at = performance.timeOrigin + performance.now();
-      window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma }));
-      return at;
-    }, orientation(right ? 30 : -30));
+    // a push right steers right (a seat's steer is the stick's x negated: couchSeats.ts)
+    const sentAt = await page.evaluate(stickPush, right ? 80 : -80);
     const hit = await desktop.waitForFunction(() => window.__couchWatch.hit, { timeout: 5000, polling: 'raf' }).then((h) => h.jsonValue()).catch(() => null);
     if (hit) {
       values.push(hit - sentAt);
@@ -195,7 +211,7 @@ try {
       const entry = await desktop.evaluate((s, from) => (window.__COT_PAD_SEATS?.[s]?.trace ?? []).find(([t]) => ((t - from) >>> 0) < 60_000) ?? null, seat, sent32);
       if (entry) { parts.send.push((entry[0] - sent32) | 0); parts.link.push((entry[1] - entry[0]) | 0); }
     }
-    await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
+    await page.evaluate(stickLift);
     await sleep(80 + Math.floor(Math.random() * 120));
   }
   const share = parts.send.map((value, index) => value + (parts.link[index] ?? 0));
@@ -209,12 +225,8 @@ try {
   // ---- a phone that vanishes with its throttle held stops its tank ----------------------------------------------------
   report.step = 'vanish';
   const leaving = pages[pages.length - 1];
-  const lever = await leaving.page.$('.pad-lever');
-  const box = lever ? await lever.boundingBox() : null;
-  if (box) {
-    await leaving.page.touchscreen.touchStart(box.x + box.width / 2, box.y + box.height / 2);
-    await leaving.page.touchscreen.touchMove(box.x + box.width / 2, box.y + box.height / 2 - 140);
-  }
+  // the drive stick pushed full ahead, and held
+  await leaving.page.evaluate(stickPush, 0, -80);
   const held = await desktop.waitForFunction((n) => (window.__DEBUG.game.couch.seats.find((s) => s.seat === n)?.entity.input.throttle ?? 0) > 0.3, { timeout: 5000 }, leaving.seat).then(() => true).catch(() => false);
   const closedAt = Date.now();
   await leaving.page.close();

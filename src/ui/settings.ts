@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { PadStatusSource } from '../pad/padReceiver.ts';
+import type { PadCommand } from '../pad/padProtocol.ts';
 import { togglePhonePause } from './phonePause.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
@@ -200,6 +201,9 @@ export interface SettingsOptions {
   readonly phoneSource?: () => PadStatusSource | null;
   /** The battle's event bus (its `on`), for what a paired phone feels (src/pad/padCues.ts). */
   readonly phoneEvents?: (type: string, listener: (payload: unknown) => void) => () => void;
+  /** What a paired phone asks that no input action names (src/pad/padProtocol.ts PAD_COMMANDS): Watch's picks, the
+   *  call-ins, the killcam's skip. */
+  readonly phoneCommand?: (command: PadCommand, n?: number) => void;
 }
 
 export interface SettingsRuntime {
@@ -972,6 +976,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     input,
     source: () => opts.phoneSource?.() ?? null,
     ...(opts.phoneEvents ? { listen: opts.phoneEvents } : {}),
+    ...(opts.phoneCommand ? { command: opts.phoneCommand } : {}),
     // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture (the
     // one phone pause rule, src/ui/phonePause.ts; the couch seats' port in main.ts runs it too)
     togglePause: () => togglePhonePause({ isOpen: () => open, open: openPanel, close: closePanel }, isBattleActive),

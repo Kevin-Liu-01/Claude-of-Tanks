@@ -2,9 +2,8 @@
 //
 // The phone controller end to end (docs/PHONE-CONTROLLER.md "Proof"), in headless Chrome on this checkout's dev server
 // and an in-process pairing service (server/rooms/localPadService.ts, the LAN helper's): a desktop page and a phone
-// page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic
-// deviceorientation and touch events drive a tank in a solo battle — steer, throttle, aim, scope, ammunition, fire,
-// pause — and the stale fail-safe stops the tank when the phone vanishes; the first pairing's controls guide shows over
+// page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic touch
+// events drive a tank in a solo battle — the drive stick, aim, scope, ammunition, fire, pause — and the stale fail-safe stops the tank when the phone vanishes; the controls guide waits for the first battle's panel, shows over
 // the live panel and on the game screen together, and leaves both by itself or on either side's Skip; a thumb on fire
 // drags to aim, and the battle's cues reach the phone as buzzes (a shot felt once, the gun loaded). It records:
 //   - the network log: no request reaches the pad service, and no pad module loads, before Connect Phone is pressed;
@@ -43,13 +42,20 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-// deviceorientation (β, γ) for a phone held in landscape (screen angle 90), turned like a wheel by θ, leaned back 30°
-function orientation(wheelDeg, leanDeg = 30, screenDeg = 90) {
-  const D = Math.PI / 180;
-  const t = wheelDeg * D, l = leanDeg * D, a = screenDeg * D;
-  const right = -Math.sin(t) * Math.cos(l), up = Math.cos(t) * Math.cos(l), normal = Math.sin(l);
-  const ux = right * Math.cos(a) + up * Math.sin(a), uy = -right * Math.sin(a) + up * Math.cos(a);
-  return { beta: Math.asin(uy) / D, gamma: Math.atan2(-ux, normal) / D };
+// a thumb on the drive stick, dispatched in the page so the event's own time is the sample's start (pointer events: the
+// stick listens to them; a synthetic pointer has no capture, which the stick tolerates; one pointer id, 77, throughout)
+function stickPush(dx, dy = 0) {
+  const zone = document.querySelector('.pad-stick');
+  const b = zone.getBoundingClientRect();
+  const x = b.x + b.width / 2, y = b.y + b.height / 2;
+  const at = (cx, cy) => ({ pointerId: 77, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: cx, clientY: cy });
+  zone.dispatchEvent(new PointerEvent('pointerdown', at(x, y)));
+  const sentAt = performance.timeOrigin + performance.now();
+  zone.dispatchEvent(new PointerEvent('pointermove', at(x + dx, y + dy)));
+  return sentAt;
+}
+function stickLift() {
+  document.querySelector('.pad-stick').dispatchEvent(new PointerEvent('pointerup', { pointerId: 77, pointerType: 'touch', bubbles: true }));
 }
 const pct = (values, p) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -176,32 +182,62 @@ try {
   await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
   const startLabel = await phone.$eval('.pad-form .pad-go', (el) => el.textContent);
   await phone.tap('.pad-form button[type="submit"]');
-  // the first reading centres the wheel: hold the phone level, then wait for the data channel
-  await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
+  // then wait for the data channel
   await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live);
   await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
     PAD_LINK_STATE.live, PAD_LINK_PATH.direct);
   check('the phone pairs from the QR link with one Start tap; the data channel is live on both sides', true, `button "${startLabel}"`);
+  // the guide waits for a panel with controls: Settings' idle panel has none, so none shows here on either screen
+  await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 5000 }, PAD_PHONE_STATE.live);
+  await sleep(1500);
+  check('the guide waits for the battle: none over the idle panel in Settings, on either screen',
+    await phone.evaluate((hidden) => window.__COT_PAD_PHONE.tour === hidden && document.querySelector('.pad-tour').hidden, PAD_TOUR_STATE.hidden)
+    && await desktop.evaluate(() => !document.querySelector('.cot-pad-tour')?.classList.contains('is-open')));
+  report.network.phonePageRequests = phoneRequests.length;
+  report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
+  check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
+  report.step = 'desktop chip';
+  await desktop.bringToFront();
+  await desktop.waitForFunction(() => /\d+ ms/.test(document.querySelector('[data-datum="phone-link"]')?.textContent ?? ''), { timeout: 10_000 });
+  report.desktopChip = await desktop.$eval('[data-datum="phone-link"]', (el) => el.textContent);
+  await (await desktop.$('.cot-settings.open .cot-set-card:has(.cot-pad-card)'))?.screenshot({ path: resolve(outDir, 'desktop-card-live.png') });
+
+  report.step = 'battle';
+  // ---- a solo battle --------------------------------------------------------------------------------------------------
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 10_000 });
+  await desktop.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc', 'verdant'));
+  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG.game.player`,
+    { timeout: 300_000, polling: 250 });
+  check('a solo battle never becomes a multiplayer session', await desktop.evaluate(() => !document.querySelector('.cot-mp-strip, .cot-net-strip')
+    && !performance.getEntriesByType('resource').some((entry) => /\/rooms\//.test(entry.name))));
+  await phone.waitForFunction(() => document.querySelector('.pad-shell[aria-pressed="true"]'), { timeout: 10_000 });
+  check('the phone shows the battle\'s ammunition with the current slot', true,
+    await phone.$$eval('.pad-shell:not([hidden])', (buttons) => buttons.map((b) => `${b.getAttribute('aria-label')}${b.getAttribute('aria-pressed') === 'true' ? ' (current)' : ''}`).join('; ')));
+  await phone.waitForFunction(() => !!document.querySelector('[data-id="autoAim"]'), { timeout: 5000 }).catch(() => {});
+  check('the sight\'s lock key is on the phone in a solo battle', await phone.evaluate(() => !!document.querySelector('[data-id="autoAim"]')));
   report.step = 'guide';
-  // the first pairing names the controls over the live panel, and the thumbs work through it
+  // the first battle names the controls over the live panel, and the thumbs work through it
+  await phone.bringToFront();
   await phone.waitForFunction((shown) => window.__COT_PAD_PHONE?.tour === shown, { timeout: 10_000 }, PAD_TOUR_STATE.shown).catch(() => {});
   const guideShownAt = Date.now();
   const guide = await phone.evaluate(() => {
-    const lever = document.querySelector('.pad-lever').getBoundingClientRect();
+    const lever = document.querySelector('.pad-stick').getBoundingClientRect();
     const under = document.elementFromPoint(lever.x + lever.width / 2, lever.y + lever.height / 2);
     return { shown: !document.querySelector('.pad-tour').hidden, marks: document.querySelectorAll('.pad-tour-mark').length,
-      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-lever'),
+      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-stick'),
       // Skip stands where the status line is: the line gives way while the guide shows
       lineAway: getComputedStyle(document.querySelector('.pad-msg')).visibility === 'hidden' };
   });
   await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
-  check('the first pairing shows the controls\' guide over the live panel, and a thumb works through it',
+  check('the first battle shows the controls\' guide over the live panel, and a thumb works through it',
     guide.shown && guide.marks >= 4 && guide.through && guide.lineAway, `${guide.marks} marks: ${guide.names.join(' · ')}`);
-  // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over Settings
+  // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over the battle
+  await desktop.bringToFront();
   const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
-  // when it leaves, timed from here (the first sight of it), with the page's long tasks meanwhile: the battle below starts
-  // inside the guide's ten seconds, and a page busy loading it runs no timer and no message until it is free
+  // when it leaves, timed from here (the first sight of it), with the page's long tasks meanwhile: the battle's first
+  // seconds load inside the guide's ten, and a page busy loading runs no timer and no message until it is free
   await desktop.evaluate(() => {
     const root = document.querySelector('.cot-pad-tour');
     const seenAt = performance.now();
@@ -224,31 +260,8 @@ try {
       names: [...(root?.querySelectorAll('.cot-pad-tour-name') ?? [])].map((name) => name.textContent) };
   });
   await desktop.screenshot({ path: resolve(outDir, 'desktop-guide.png') });
-  check('the game screen shows the same guide at the same time, over Settings', screenGuide.open && screenGuide.top
+  check('the game screen shows the same guide at the same time, over the battle', screenGuide.open && screenGuide.top
     && screenGuide.rings === guide.marks && screenGuide.parts >= 10, `${screenGuide.parts} controls, ${screenGuide.rings} rings: ${screenGuide.names.join(' · ')}`);
-  report.network.phonePageRequests = phoneRequests.length;
-  report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
-  check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
-  report.step = 'desktop chip';
-  await desktop.bringToFront();
-  await desktop.waitForFunction(() => /\d+ ms/.test(document.querySelector('[data-datum="phone-link"]')?.textContent ?? ''), { timeout: 10_000 });
-  report.desktopChip = await desktop.$eval('[data-datum="phone-link"]', (el) => el.textContent);
-  await (await desktop.$('.cot-settings.open .cot-set-card:has(.cot-pad-card)'))?.screenshot({ path: resolve(outDir, 'desktop-card-live.png') });
-
-  report.step = 'battle';
-  // ---- a solo battle --------------------------------------------------------------------------------------------------
-  await desktop.keyboard.press('Escape');
-  await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 10_000 });
-  await desktop.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc', 'verdant'));
-  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG.game.player`,
-    { timeout: 300_000, polling: 250 });
-  check('a solo battle never becomes a multiplayer session', await desktop.evaluate(() => !document.querySelector('.cot-mp-strip, .cot-net-strip')
-    && !performance.getEntriesByType('resource').some((entry) => /\/rooms\//.test(entry.name))));
-  await phone.waitForFunction(() => document.querySelector('.pad-shell[aria-pressed="true"]'), { timeout: 10_000 });
-  check('the phone shows the battle\'s ammunition with the current slot', true,
-    await phone.$$eval('.pad-shell:not([hidden])', (buttons) => buttons.map((b) => `${b.getAttribute('aria-label')}${b.getAttribute('aria-pressed') === 'true' ? ' (current)' : ''}`).join('; ')));
-  await phone.waitForFunction(() => !document.querySelector('.pad-lock')?.hidden, { timeout: 5000 }).catch(() => {});
-  check('the sight\'s lock key is on the phone in a solo battle', await phone.$eval('.pad-lock', (el) => !el.hidden));
   // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
   await phone.waitForFunction((timeout) => window.__COT_PAD_PHONE?.tour === timeout, { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) },
     PAD_TOUR_STATE.timeout).catch(() => {});
@@ -325,11 +338,8 @@ try {
       deadline();
       const right = i % 2 === 0;
       await desktop.evaluate((target) => { window.__padWatch = { target, hit: null, armed: true }; }, right ? -0.5 : 0.5);
-      const sentAt = await phone.evaluate((o) => {
-        const at = performance.timeOrigin + performance.now();
-        window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma }));
-        return at;
-      }, orientation(right ? 30 : -30));
+      // a push right steers right (negative hull yaw input)
+      const sentAt = await phone.evaluate(stickPush, right ? 80 : -80);
       const hit = await desktop.waitForFunction(() => window.__padWatch.hit, { timeout: 5000, polling: 'raf' }).then((h) => h.jsonValue()).catch(() => null);
       if (hit) {
         values.push(hit - sentAt);
@@ -343,7 +353,7 @@ try {
           parts.apply.push(hit - (sentAt + ((receipt - sent32) | 0)));
         }
       }
-      await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
+      await phone.evaluate(stickLift);
       await desktop.waitForFunction(() => Math.abs(window.__DEBUG.game.player?.input?.steer ?? 0) < 0.05, { timeout: 5000 }).catch(() => {});
       await sleep(60 + Math.floor(Math.random() * 180));
     }
@@ -372,18 +382,18 @@ try {
     + `with the desktop's receipt to frame ${direct.split.apply.p95} ms p95 at a ${direct.desktopFrameMs.p50} ms frame`);
   report.latency.webrtc.endToEndMeetsBarHere = direct.p95 < 60;
   const steerSign = await (async () => {
-    await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(30));
+    await phone.evaluate(stickPush, 80);
     await sleep(200);
     const s = await player('p.input.steer');
-    await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
+    await phone.evaluate(stickLift);
     return s;
   })();
-  check('a clockwise wheel turns right (negative hull yaw input)', steerSign < -0.5, `steer ${steerSign.toFixed(3)}`);
+  check('a push right on the stick turns right (negative hull yaw input)', steerSign < -0.5, `steer ${steerSign.toFixed(3)}`);
 
   report.step = 'throttle';
-  // throttle: the lever forward, held; the hull moves; the keyboard is untouched
+  // the stick pushed forward, held; the hull moves; the keyboard is untouched
   const pos0 = await player('{ x: p.state.pos.x, z: p.state.pos.z }');
-  const releaseLever = await touchDrag('.pad-lever', 0, -140, 0);
+  const releaseLever = await touchDrag('.pad-stick', 0, -140, 0);
   await sleep(300);
   const throttle = await player('p.input.throttle');
   await phone.screenshot({ path: resolve(outDir, 'phone-live-driving.png') });
@@ -393,8 +403,8 @@ try {
   await releaseLever();
   await sleep(300);
   const moved = Math.hypot(pos1.x - pos0.x, pos1.z - pos0.z);
-  check('throttle lever drives the tank', throttle > 0.5 && moved > 2, `throttle ${throttle.toFixed(2)}, moved ${moved.toFixed(1)} m in 2.5 s`);
-  check('releasing the lever centres the throttle', Math.abs(await player('p.input.throttle')) < 0.01);
+  check('the drive stick drives the tank', throttle > 0.5 && moved > 2, `throttle ${throttle.toFixed(2)}, moved ${moved.toFixed(1)} m in 2.5 s`);
+  check('releasing the stick centres it', Math.abs(await player('p.input.throttle')) < 0.01);
 
   report.step = 'aim';
   // aim: a drag on the aim pad turns the turret
@@ -415,13 +425,13 @@ try {
   check('ammunition switches from the phone and the phone shows the current slot', slot === 1 && shown === 'true', `slot ${slot}`);
 
   report.step = 'scope';
-  // scope: the sight from the phone, the zoom buttons appear
-  await phone.tap('.pad-scope');
+  // scope: the sight from the phone, the zoom keys appear
+  await phone.tap('[data-id="sniperToggle"]');
   await desktop.waitForFunction(() => window.__DEBUG.rig.mode === 'SNIPER', { timeout: 5000 }).catch(() => {});
   const mode = await desktop.evaluate(() => window.__DEBUG.rig.mode);
-  await phone.waitForFunction(() => !document.querySelector('.pad-zoom')?.hidden, { timeout: 5000 }).catch(() => {});
-  check('scope enters the sight; the phone offers zoom', mode === 'SNIPER' && await phone.$eval('.pad-zoom', (el) => !el.hidden), `rig ${mode}`);
-  await phone.tap('.pad-zoom [data-tap="zoomIn"]');
+  await phone.waitForFunction(() => !!document.querySelector('[data-id="zoomIn"]'), { timeout: 5000 }).catch(() => {});
+  check('scope enters the sight; the phone offers zoom', mode === 'SNIPER' && await phone.evaluate(() => !!document.querySelector('[data-id="zoomIn"]')), `rig ${mode}`);
+  await phone.tap('[data-id="zoomIn"]');
   await sleep(300);
   await phone.screenshot({ path: resolve(outDir, 'phone-live-scoped.png') });
   await desktop.screenshot({ path: resolve(outDir, 'desktop-scoped.png') });
@@ -470,7 +480,7 @@ try {
   await phone.tap('[data-pause]');
   await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 5000 }).catch(() => {});
   check('pause from the phone opens and closes the menu', pausedOpen && await desktop.evaluate(() => !document.querySelector('.cot-settings.open')), `phone says "${phonePaused}"`);
-  await phone.tap('.pad-scope');
+  await phone.tap('[data-id="sniperToggle"]');
 
   // keyboard still works beside the phone
   await desktop.keyboard.down('KeyW');
@@ -489,8 +499,8 @@ try {
   const touches = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id]) => ({ x, y, id, radiusX: 6, radiusY: 6, force: 1 })) });
   const centre = async (selector) => { const b = await box(selector); return [b.x + b.width / 2, b.y + b.height / 2]; };
   const inputHeld = (action) => desktop.evaluate((a) => !!window.__DEBUG.input.getState()[a], action);
-  const [lx, ly] = await centre('.pad-lever');
-  const [sx, sy] = await centre('.pad-scope');
+  const [lx, ly] = await centre('.pad-stick');
+  const [sx, sy] = await centre('[data-id="sniperToggle"]');
   const [fx, fy] = await centre('.pad-fire');
   const aimBox = await box('.pad-aim');
   await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.reload.t <= 0, { timeout: 20_000 }).catch(() => {});
@@ -535,7 +545,7 @@ try {
   const noneLeft = { phone: await phone.evaluate(() => document.querySelector('.pad-fire').classList.contains('is-down')), desktop: await inputHeld('fire') };
   check('two fingers on fire: one lifting keeps it held, the last lets go', oneLeft.phone && oneLeft.desktop && !noneLeft.phone && !noneLeft.desktop,
     `one left ${JSON.stringify(oneLeft)}, none ${JSON.stringify(noneLeft)}`);
-  if (await desktop.evaluate(() => window.__DEBUG.rig.mode === 'SNIPER')) await phone.tap('.pad-scope');
+  if (await desktop.evaluate(() => window.__DEBUG.rig.mode === 'SNIPER')) await phone.tap('[data-id="sniperToggle"]');
   check('no tap, double tap or drag zooms the page', await phone.evaluate(() => (window.visualViewport?.scale ?? 1) === 1));
 
   // the signaling socket while live: no input frames over it
@@ -577,7 +587,6 @@ try {
   await phone.goto(`${origin}/pad?padService=${encodeURIComponent(padService)}#${relayCode}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
   await phone.tap('.pad-form button[type="submit"]');
-  await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
   await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live);
   await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
     PAD_LINK_STATE.live, PAD_LINK_PATH.relay);

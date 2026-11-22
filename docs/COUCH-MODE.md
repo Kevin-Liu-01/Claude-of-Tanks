@@ -71,6 +71,28 @@ second service.
 - Offline LAN parties: the LAN helper (`server/rooms/serve.ts`) already hosts the same actor, so the lobby works on a
   network with no internet once the game is loaded.
 
+## The briefing: Start, a few things, GO
+
+Kevin 2026-11-20: "the tutorial popup that happens in couch mode is terrible. have it be centered in screen when i press
+start and go through a couple things then go!". Before, each phone's own controls guide (its first pairing, ten seconds)
+was mirrored at the foot of the big screen, a phone outline over the couch lobby, and every newly joined phone replaced
+it. Now (pad-controls-274):
+
+- No phone's guide is mirrored over the couch: a lobby seat's receiver takes no `tour` (`mirrorTour: false`), and a phone
+  in a lobby seat leaves its own first-pairing guide to the room's briefing.
+- The lobby's Start closes the join window and opens one briefing, centred over the whole screen (a modal on the surface
+  stack, `couch-briefing`; never inside a pane): who's who (the split screen's own plan, `game/couchPanes.ts`
+  `couchScreenPlan`, each pane named by its seat; or the seats on one shared camera), the phone's five zones (the
+  controller's layout, `src/pad/padLayout.ts`), and the sides (Together, or Alpha and Bravo by the lobby's rule).
+- Enter or Space moves it on; Back steps back; Escape goes back to the lobby. A lamp per seat lights when its phone is
+  ready. The state is `game/couchBriefing.ts` (pure): GO deploys once, as does every seat being ready.
+- Each seated phone shows its step and two big keys over its panel while the briefing is up: Ready (its lamp lit once
+  the screen heard it) and Skip (ready too, and the screen goes to the last step). The briefing rides the seat's status
+  (`b`: the step, how many, this seat's Ready); the phone answers with the ctl `ready` (`skip` when it skipped). Both stay
+  between the phone and the desktop: the rooms Worker relays them unread.
+- It never shows over a battle: GO closes it before the seats deploy, a battle that begins some other way takes it down
+  (`couchRuntime.ts` on `phase:change`), and a battle's status carries no `b`.
+
 ## The couch session on the page
 
 `src/app/couchRuntime.ts` is the session's one page owner (its chunk loads with the lobby; nothing of it is on the boot

@@ -17,8 +17,8 @@ import { prefersReducedMotion } from '../ui/accessibilityPreferences.ts';
 const PHONE_MAX_PX = 720;
 const PHONE_MAX_SHARE = 0.84;
 const NAMES: Readonly<Record<PadTourStop, string>> = {
-  tilt: 'pad.tour.tilt', throttle: 'pad.tour.throttle', stick: 'pad.tour.stick', aim: 'pad.tour.aim', fire: 'pad.tour.fire',
-  scope: 'pad.scope', lock: 'pad.lock',
+  stick: 'pad.tour.stick', aim: 'pad.tour.aim', fire: 'pad.tour.fire', deck: 'pad.tour.deck', left: 'pad.tour.left',
+  right: 'pad.tour.right',
 };
 
 const CSS = `
@@ -31,7 +31,7 @@ const CSS = `
 .cot-pad-tour-screen{position:relative;overflow:hidden;border-radius:18px;background:var(--surface-plate);}
 .cot-pad-tour-part,.cot-pad-tour-ring,.cot-pad-tour-name,.cot-pad-tour-ghost{position:absolute;left:0;top:0;box-sizing:border-box;}
 .cot-pad-tour-part{border-radius:var(--r2);border:1px solid var(--line-2);}
-.cot-pad-tour-part[data-kind='round'],.cot-pad-tour-part[data-kind='dial'],.cot-pad-tour-part[data-kind='fire']{border-radius:50%;}
+.cot-pad-tour-part[data-kind='round'],.cot-pad-tour-part[data-kind='stick'],.cot-pad-tour-part[data-kind='fire']{border-radius:50%;}
 .cot-pad-tour-part[data-kind='fire']{border:2px solid var(--danger);}
 .cot-pad-tour-part[data-kind='sight']{background:var(--surface-scene);}
 .cot-pad-tour-part[data-kind='chip']{border:0;}

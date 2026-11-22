@@ -28,6 +28,10 @@ const until = async (test, label, ms = 8000) => {
 /** Each seat's input port records what its phone did; its status source is a tank in battle. */
 const calls = new Map();
 const gone = [];
+/** Couch mode's briefing by seat (pad-controls-274), and the Readies the seats heard; `inBattle` is the seats' phase. */
+const briefs = new Map();
+const readies = [];
+let inBattle = true;
 const portsFor = (seat) => {
   const log = [];
   calls.set(seat, log);
@@ -40,7 +44,7 @@ const portsFor = (seat) => {
       tapVirtual: (a) => log.push(['tap', a]),
     },
     source: () => ({
-      battle: true, paused: false, sniper: false, shellCode: (type) => type,
+      battle: inBattle, paused: false, sniper: false, shellCode: (type) => type,
       player: {
         combat: { destroyed: false, shellSlot: seat - 1, ammo: [30, 20, 10], reload: { t: 0, totalS: 6 } },
         spec: { id: 'm1a1_abrams_hc', topSpeedKmh: 67, gun: { shells: [{ type: 'APFSDS' }, { type: 'HEAT' }, { type: 'HE' }] } },
@@ -48,6 +52,9 @@ const portsFor = (seat) => {
       },
     }),
     togglePause: () => {},
+    mirrorTour: false,
+    brief: () => briefs.get(seat),
+    ready: (skip) => readies.push([seat, skip]),
   };
 };
 const lobby = startPadLobby(serviceUrl, { seat: portsFor, seatGone: (seat) => gone.push(seat) });
@@ -93,6 +100,19 @@ await until(() => phones.every((p) => p.statuses.length), 'every phone has a sta
 for (const p of phones) assert.equal(p.statuses.at(-1).slot, p.seat - 1, `phone ${p.seat} reads its own seat`);
 assert.equal(iceGrants, phones.length + 1, 'each phone asks for its grant, and the desktop asks once for every seat');
 
+// the room's briefing between battles: each phone sees its own seat's step and Ready, a Ready reaches its own seat only,
+// and the briefing is never on a battle's status
+inBattle = false;
+for (const seat of [1, 2, 3]) briefs.set(seat, { s: 1, n: 3, r: seat === 1 });
+await until(() => phones.every((p) => p.statuses.at(-1)?.b), 'every phone sees the briefing');
+for (const p of phones) assert.deepEqual(p.statuses.at(-1).b, { s: 1, n: 3, r: p.seat === 1 }, `phone ${p.seat} sees its own seat's Ready`);
+phones.find((p) => p.seat === 2).link.sendCtl({ k: 'ready', skip: true });
+await until(() => readies.length, 'a phone\'s Skip reaches the desktop');
+assert.deepEqual(readies, [[2, true]], 'seat 2\'s Skip, heard by seat 2 alone');
+inBattle = true;
+await until(() => phones.every((p) => p.statuses.at(-1)?.battle && !p.statuses.at(-1).b), 'the battle\'s status carries no briefing');
+briefs.clear();
+
 // the host lets seat 3 go: its phone reads Removed, its controls let go, the game hears it
 const removed = phones.find((p) => p.seat === 3);
 lobby.remove(3);
@@ -124,5 +144,5 @@ assert.deepEqual(lobby.view.seats, []);
 
 await pads.close();
 await new Promise((resolve) => server.close(resolve));
-console.log('padLobby: PASS — one lobby, three seats each on its own receiver, no cross-talk, own status, one ICE grant, remove, leave and rejoin, close, end');
+console.log('padLobby: PASS — one lobby, three seats each on its own receiver, no cross-talk, own status, each seat\'s briefing and Ready, one ICE grant, remove, leave and rejoin, close, end');
 process.exit(0);

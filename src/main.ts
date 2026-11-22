@@ -2396,10 +2396,49 @@ const settings = createSettingsAccess({
   // overlay keeps the old non-paused Esc behavior).
   isGamePaused: battlePhase.isPauseEligible,
   // a paired phone's readout (docs/PHONE-CONTROLLER.md): the raw facts; the lazy receiver maps them
-  phoneSource: () => ({ battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
-    shellCode: shellTypeCode, lockable: true }),
+  phoneSource: () => phoneSource(),
   phoneEvents: (type, listener) => bus.on(type, listener),
+  phoneCommand: (command, n) => phoneCommand(command, n),
 });
+// A paired phone lays itself out for what the player drives (docs/PHONE-CONTROLLER.md "Modes", pad-controls-274): the
+// strike view and a killcam replay are heard on the bus, the flight and Watch read where they live.
+let phoneStrikeView = false;
+let phoneKillcam = false;
+bus.on('ui:strikeView', (payload) => { phoneStrikeView = !!(payload as { open?: boolean } | null)?.open; });
+bus.on('killcam:begin', () => { phoneKillcam = true; });
+bus.on('killcam:done', () => { phoneKillcam = false; });
+function phoneMode(): 'tank' | 'strike' | 'drone' | 'gunship' | 'watch' | 'dead' {
+  const watch = watchOwner.current?.controller;
+  if (watch?.active && watch.view !== 'drive') return 'watch';
+  const player = game.player;
+  if (!player?.combat || player.combat.destroyed || phoneKillcam) return 'dead';
+  const flight = player.aerial;
+  if (flight?.active) return flight.kind === 'drone' ? 'drone' : 'gunship';
+  return phoneStrikeView ? 'strike' : 'tank';
+}
+function phoneSource() {
+  const watch = watchOwner.current?.controller;
+  const ruleset = game.ruleset;
+  return { battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
+    shellCode: shellTypeCode, lockable: true, mode: phoneMode(),
+    facts: { jump: ruleset?.jumpMps != null, drone: game.player?.aerial?.kind === 'drone', airSupport: !!ruleset?.airSupport,
+      consumables: ruleset?.consumables !== false, range: !!ruleset?.provingGround,
+      watchRiding: watch?.active === true && watch.view === 'ride',
+      watchSeat: watch?.active === true && (watch.view === 'drive' || watch.canTake),
+      killcam: phoneKillcam, spectating: !!killcam.spectate?.active } };
+}
+/** What a phone asks that no input action names: the touch bar's and the binoculars' own calls. */
+function phoneCommand(command: string, n?: number): void {
+  const watch = watchOwner.current?.controller;
+  if (command === 'watchPrev' || command === 'watchNext') watch?.cycle(command === 'watchPrev' ? -1 : 1);
+  else if (command === 'watchRide') watch?.rideAt(0, 0);
+  else if (command === 'watchDrone') watch?.drone();
+  else if (command === 'watchSeat') watch?.toggleSeat();
+  else if (command === 'strikePick') { const kind = AIR_STRIKE_KINDS[n ?? 0]; if (kind) bus.emit('ui:strikePick', { kind }); }
+  else if (command === 'strikeClose') bus.emit('ui:strikeViewClose', {});
+  else if (command === 'killcamSkip') bus.emit('killcam:skip', {});
+  else if (command === 'spectatePrev' || command === 'spectateNext') bus.emit('spectate:cycle', { direction: command === 'spectatePrev' ? -1 : 1 });
+}
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
 garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });

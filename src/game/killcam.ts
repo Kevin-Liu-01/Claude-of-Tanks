@@ -1787,6 +1787,12 @@ export function createKillCam(deps: KillcamDeps) {
       // (IR15) `active` is the one "a replay owns the screen" fact: the input owner, the audio overlay and the phase
       // policy read it (killcamScreen.ts), so a lost or repeated begin/done edge cannot make them disagree
       publishKillcamScreen(bus, () => active);
+      // a paired phone's Skip (docs/PHONE-CONTROLLER.md, pad-controls-274): the replay leaves in one press, as Esc does
+      bus.on('killcam:skip', () => {
+        if (!active || !pb || staged) return;
+        pb.finalePending = false;
+        beginExit();
+      });
       bus.on('shell:fired', (payload) => {
         const p = payload as ShellFiredPayload;
         if (traj.size >= TRAJ_KEEP) {

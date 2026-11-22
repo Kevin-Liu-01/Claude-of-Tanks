@@ -29,6 +29,8 @@ import type { CouchPoint } from '../game/couchCamera.ts';
 import type { CouchRules } from '../sim/matchRuleset.ts';
 import { applyPlayerInput } from '../sim/playerInputStage.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { couchBriefSeatView } from '../game/couchBriefing.ts';
+import type { CouchBriefing } from '../game/couchBriefing.ts';
 
 /** A battle tank as the runtime reads it: the phone's readout facts and the hull's pose. */
 export interface CouchEntity {
@@ -48,7 +50,7 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   game: {
     readonly phase: string;
     readonly couch?: CouchSession<E> | null;
-    readonly ruleset: { readonly couch?: CouchRules };
+    readonly ruleset: { readonly couch?: CouchRules; readonly consumables?: boolean };
   };
   camera: {
     readonly fov: number;
@@ -92,6 +94,11 @@ export interface CouchRuntime {
    * refused; the window stays closed after a refused launch (the lobby's Reopen lets phones in again).
    */
   startBattle(launch: (seats: readonly number[]) => boolean, view?: CouchView): boolean;
+  /**
+   * The room's briefing (src/ui/couchBriefing.ts) between Start and GO, or null: each seat's phone shows its step and
+   * its Ready (the status's `b`), and a phone's Ready or Skip reaches `ready`. Never during a battle.
+   */
+  setBriefing(briefing: { readonly briefing: CouchBriefing; ready(seat: number, skip: boolean): void; close(): void } | null): void;
   /** The frame's camera slot: true while a couch battle owns the camera. */
   frame(dtSeconds: number): boolean;
   /** The frame's draw slot: true when the split screen drew the frame (one pane per seat), false to draw as usual. */
@@ -181,7 +188,9 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
   const source = (seat: number): PadStatusSource | null => {
     const entity = seatEntity(seat);
     const battle = ports.game.phase === 'battle' && !!ports.game.ruleset.couch && !!entity;
-    return { battle, paused: ports.paused(), sniper: false, player: battle ? entity : null, shellCode: ports.shellCode };
+    // a seat drives its tank or waits out its respawn; its controls are couchSeats.ts's few (facts.couch)
+    return { battle, paused: ports.paused(), sniper: false, player: battle ? entity : null, shellCode: ports.shellCode,
+      mode: entity?.combat?.destroyed ? 'dead' as const : 'tank' as const, facts: { couch: true, consumables: ports.game.ruleset.consumables !== false } };
   };
 
   /** A new couch battle: each seat's sight starts along its own gun, and the camera along seat 1's side's facing. */
@@ -196,19 +205,28 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
 
   // the couch view never outlives its battle: a phase away from the battle drops it (no couch frame runs there)
   ports.on('phase:change', () => {
-    if (ports.game.phase === 'battle') return;
+    // the briefing never stands over a battle (a battle that began some other way takes it down)
+    if (ports.game.phase === 'battle') { briefing?.close(); briefing = null; return; }
     ports.setSpectating(false);
     // the panes and the couch tier are the battle's: the Garage gets the page's one view and the player's own preset
     dropPanes();
     if (ports.game.phase === 'garage') setCouchTier(false);
   });
 
+  /** The room's briefing while the big screen shows it (Start to GO). */
+  let briefing: { readonly briefing: CouchBriefing; ready(seat: number, skip: boolean): void; close(): void } | null = null;
+
   const runtime: CouchRuntime = {
     get lobby() { return lobby; },
+    setBriefing(next) { briefing = next; },
     open() {
       if (lobby && lobbyView?.state !== 'ended') return lobby;
       const started = startLobby({
-        seat: (seat) => ({ input: controlsOf(seat), source: () => source(seat), togglePause: ports.togglePause, listen: ports.on, ownsPlayer: false }),
+        seat: (seat) => ({ input: controlsOf(seat), source: () => source(seat), togglePause: ports.togglePause, listen: ports.on, ownsPlayer: false,
+          // the room's briefing is the big screen's, between battles; no phone's own guide is mirrored over the lobby
+          mirrorTour: false,
+          brief: () => (ports.game.phase === 'battle' ? undefined : couchBriefSeatView(briefing?.briefing ?? null, seat)),
+          ready: (skip) => { if (ports.game.phase !== 'battle') briefing?.ready(seat, skip); } }),
         seatGone: (seat) => { controls.get(seat)?.release(); controls.delete(seat); },
       });
       if (!started) return null;
@@ -220,6 +238,8 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       return (lobbyView?.seats ?? []).filter((seat) => seat.presence === 'here').map((seat) => seat.seat);
     },
     close() {
+      briefing?.close();
+      briefing = null;
       lobby?.end();
       lobby = null;
       for (const seatControls of controls.values()) seatControls.release();

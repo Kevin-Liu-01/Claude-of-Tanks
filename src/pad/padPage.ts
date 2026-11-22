@@ -1,38 +1,36 @@
 /**
- * The phone controller's page (/pad, docs/PHONE-CONTROLLER.md "Controls"): pair with a code, then drive. The controller
- * is a tank's control panel held sideways like a wheel: the tilt steers (deviceorientation, padInput.ts's wheel angle),
- * the left thumb works the throttle quadrant (a stick that also steers when there is no tilt), the right thumb drags in
- * the gunner's sight and presses the fire button; the top row is the ammunition selector and the guarded consumable
- * switches. Every control becomes an axes frame or a ctl message on the link; the desktop maps them onto its input
- * actions. The page asks for motion access, the wake lock and full screen from the Start tap (iOS wants a gesture), and
- * keeps its resume token in sessionStorage so a reload or a sleeping phone comes back.
+ * The phone controller's page (/pad, docs/PHONE-CONTROLLER.md "Controls"): pair with a code, then play. The controller
+ * is a tank's control panel held in two hands (owner 2026-11-20: "use joysticks buttons in specific areas, big buttons and
+ * surface areas for all capabilities, special sections from left and right for the special abilities"): five zones, the
+ * same in every mode (padLayout.ts). The left thumb has a floating stick and its hold key; the right thumb has the
+ * gunner's sight to drag in, the fire button in its collar and the keys over it; the centre deck holds the rounds (or
+ * Air Support's call-ins); a special column runs down each edge. The desktop's status says which mode the player is in
+ * (tank, binoculars, drone, AC-130, Watch, destroyed) and which keys this player has, and the panel lays out that
+ * mode's controls. Every control becomes an axes frame or a ctl message on the link; the desktop maps them onto its
+ * input actions. The page asks for the wake lock and full screen from the Start tap (iOS wants a gesture), and keeps its
+ * resume token in sessionStorage so a reload or a sleeping phone comes back.
  *
  * The phone is felt as well as seen (owner 2026-11-03: "it should buzz and vibrate"): every press ticks, and the battle's
  * cues (padCues.ts: the gun firing, hits given and taken, modules, fire, crashes, kills, death, the sight's lock) each
  * play their own buzz the moment the desktop sends them. A thumb on the fire button drags to aim, so one thumb aims and
- * shoots, and the sight's gain follows the finger's speed. The first pairing on a phone shows the controls' names over
- * the live panel for ten seconds, or until Skip.
+ * shoots, and the sight's gain follows the finger's speed. A phone's first battle panel (its first pairing's) shows the
+ * zones' names over the live panel for ten seconds, or until Skip.
  *
- * The panel is glued to the phone (owner 2026-10-30: "it must be horizontal and just stays that way"). iOS Safari has no
- * orientation lock, so the page locks itself: from the Start tap the controller is laid out once in the landscape the
- * phone is held in, and when the system turns the page (the phone tipped past its threshold, as a wheel turned hard
- * does) the frame turns back by the same angle and scales to fit, a transform only. The wheel angle reads the device's
- * own axes in that locked frame, so the system's rotation never reaches the steering.
+ * The panel is always laid out landscape. A page the system shows portrait (an iPhone with rotation lock on, held
+ * sideways) turns the panel a quarter, the top to the left (Options' Flip turns it the other way): a transform only.
  */
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState, PadPhoneState } from './padLink.ts';
-import {
-  DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
-} from './padInput.ts';
+import { DRIVE_STICK, aimGain, aimSpeed, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
+import { PAD_LAYOUTS, padVisible } from './padLayout.ts';
+import type { PadControl, PadModeLayout } from './padLayout.ts';
 import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
 import { createPadReadyBuzz, padGunState } from './padReadyBuzz.ts';
 import type { PadGunState } from './padReadyBuzz.ts';
 import type { PadBuzz } from './padBuzz.ts';
-import {
-  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, PAD_TOUR_MS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
-} from './padProtocol.ts';
+import { PAD_HOLD_ACTIONS, PAD_TOUR_MS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode } from './padProtocol.ts';
 import type {
-  PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourEnd, PadTourLayout, PadTourPart, PadTourState, PadTourStop,
+  PadAxes, PadCue, PadHoldAction, PadMode, PadStatus, PadTapAction, PadTourEnd, PadTourLayout, PadTourPart, PadTourState, PadTourStop,
 } from './padProtocol.ts';
 import { padServiceUrl } from './padEndpoint.ts';
 import { t } from '../ui/i18n.ts';
@@ -42,26 +40,25 @@ import { prefersReducedMotion } from '../ui/accessibilityPreferences.ts';
 import { datumAttr } from '../ui/dom.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
-const SETTINGS_KEY = 'cot.pad.v1';
+const SETTINGS_KEY = 'cot.pad.v2';
 const RESUME_KEY = 'cot.pad.resume';
 /** Set once this phone has seen the controls' guide (its first pairing). */
-const TOUR_KEY = 'cot.pad.tour';
+const TOUR_KEY = 'cot.pad.tour.v2';
 const TOUR_MS = PAD_TOUR_MS;
-const NO_TILT_MS = 1500;
 const HEARTBEAT_MS = 100;
 /** A thumb that lands on the fire button aims once it has moved this far (a press's wobble never nudges the gun). */
 const FIRE_AIM_DEADZONE_PX = 10;
 
-interface PadSettings { tilt: boolean; lockDeg: number; aim: number; hand: 'right' | 'left'; buzz: boolean }
-const LOCKS = [25, 35, 45, 60];
+interface PadSettings { aim: number; hand: 'right' | 'left'; buzz: boolean; flip: boolean }
 const AIMS = [0.5, 1, 1.5, 2];
 
 function loadSettings(): PadSettings {
+  const fallback: PadSettings = { aim: 1, hand: 'right', buzz: true, flip: false };
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as Partial<PadSettings>;
-    return { tilt: raw.tilt !== false, lockDeg: LOCKS.includes(Number(raw.lockDeg)) ? Number(raw.lockDeg) : DEFAULT_STEERING.maxAngleDeg,
-      aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1, hand: raw.hand === 'left' ? 'left' : 'right', buzz: raw.buzz !== false };
-  } catch { return { tilt: true, lockDeg: DEFAULT_STEERING.maxAngleDeg, aim: 1, hand: 'right', buzz: true }; }
+    return { aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1, hand: raw.hand === 'left' ? 'left' : 'right',
+      buzz: raw.buzz !== false, flip: raw.flip === true };
+  } catch { return fallback; }
 }
 const settings = loadSettings();
 const saveSettings = (): void => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* private mode */ } };
@@ -78,16 +75,6 @@ const html = (markup: string): HTMLElement => {
 const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 /** A motion token's length in ms (1 under reduced motion, as the tokens collapse). */
 const tokenMs = (name: string): number => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
-
-/** Tick marks around a dial (degrees clockwise from 12 o'clock), every `step`, the `major`th one longer. */
-function ticks(from: number, to: number, step: number, major: number, r: number): string {
-  let d = '';
-  for (let i = 0, a = from; a <= to + 1e-6; i++, a += step) {
-    const x = Math.sin(a * Math.PI / 180), y = -Math.cos(a * Math.PI / 180), inner = r - (i % major ? 4 : 8);
-    d += `M${(x * inner).toFixed(1)} ${(y * inner).toFixed(1)}L${(x * r).toFixed(1)} ${(y * r).toFixed(1)}`;
-  }
-  return d;
-}
 
 // ---- screens ---------------------------------------------------------------------------------------------------
 const join = html(`<section class="pad-join">
@@ -106,76 +93,72 @@ const submitLabel = join.querySelector('.pad-go') as HTMLElement;
 const hint = join.querySelector('.pad-hint') as HTMLElement;
 const error = join.querySelector('.pad-error') as HTMLElement;
 
-const shellKeys = [0, 1, 2].map((slot) => `<button class="pad-key pad-shell" type="button" data-slot="${slot}" aria-pressed="false" hidden></button>`).join('');
-const consumableGlyphs = ['repair', 'medkit', 'extinguisher'] as const;
-// a consumable is a guarded switch: the press lifts the red cover and throws the switch under it
-const guards = consumableGlyphs.map((glyph, i) => `<button class="pad-guard" type="button" data-tap="consumable${i + 1}" aria-label="${esc(t('pad.consumable', { n: i + 1 }))}">`
-  + `<i class="pad-bat" aria-hidden="true"></i><span class="pad-cover" aria-hidden="true">${icon(glyph, { size: 18 })}</span></button>`).join('');
-// The controller is a tank's control panel in the hand. The ammunition keys light for the loaded shell and count its
-// rounds; the throttle is a T-handle in its gate; the repeater shows the tank on the field, its hull turning as the
-// phone turns (a tap re-centres the wheel) and the gun's bearing on its rim; the speedometer reads the hull's speed; the
-// sight is the gunner's, and the ring around the fire button fills as the gun loads. Every glyph is the game's own;
-// every control is named for assistive tech.
-const ctl = html(`<section class="pad-ctl" hidden>
+/** Each mode's name on the top strip. */
+const MODE_NAMES: Readonly<Record<PadMode, string>> = {
+  idle: 'pad.mode.idle', tank: 'pad.mode.tank', strike: 'pad.mode.strike', drone: 'pad.mode.drone', gunship: 'pad.mode.gunship',
+  watch: 'pad.mode.watch', dead: 'pad.mode.dead',
+};
+// The panel. The zones stay put in every mode; their keys are padLayout.ts's for the mode (renderLayout). The stick's
+// well and the sight are the panel's own glass; the fire button sits in its turned collar, the ring around it filling as
+// the gun loads; the rounds are illuminated keys with a counter drum.
+const ctl = html(`<section class="pad-ctl" hidden data-mode="idle">
   <header class="pad-top">
     <span class="pad-link num" ${datumAttr('phone-link')} role="status" aria-live="polite"></span>
-    <div class="pad-ammo" role="group">${shellKeys}</div>
-    <div class="pad-cons" role="group">${guards}</div>
-    <button class="pad-key pad-sq" type="button" data-pause aria-label="${esc(t('pad.pause'))}">${icon('pause', { size: 20 })}</button>
-    <button class="pad-key pad-sq" type="button" data-menu aria-label="${esc(t('pad.menu'))}">${icon('settings', { size: 20 })}</button>
-  </header>
-  <div class="pad-drive">
-    <div class="pad-lever" role="slider" aria-label="${esc(t('pad.throttle'))}" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0">
-      <span class="pad-gate" aria-hidden="true"></span>
-      <span class="pad-knob" aria-hidden="true"></span>
-    </div>
-    <button class="pad-key pad-brake" type="button" data-hold="handbrake" aria-label="${esc(t('pad.brake'))}">${icon('handbrake', { size: 24 })}</button>
-  </div>
-  <div class="pad-mid">
-    <div class="pad-cell"><div class="pad-gauge pad-speedo" aria-hidden="true">
-      <svg class="pad-face" viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="${ticks(-120, 120, 20, 3, 44)}"/></svg>
-      <span class="pad-readout"><b class="pad-kmh num">0</b><span>${esc(t('pad.kmh'))}</span></span>
-      <span class="pad-needle"></span>
-    </div></div>
-    <div class="pad-cell"><button class="pad-gauge pad-tank" type="button" data-centre aria-label="${esc(t('pad.centre'))}">
-      <svg class="pad-face" viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="${ticks(0, 350, 10, 3, 44)}"/></svg>
-      <span class="pad-hull" aria-hidden="true"><img class="pad-plan" alt="" decoding="async" draggable="false" hidden><span class="pad-plan-glyph">${icon('vehicle', { size: 72 })}</span></span>
-      <span class="pad-bearing" aria-hidden="true"><svg viewBox="-50 -50 100 100"><path d="M0 -38 5 -48H-5Z"/></svg></span>
-    </button></div>
+    <span class="pad-mode"></span>
+    <span class="pad-kmh num" aria-hidden="true"></span>
     <p class="pad-msg" role="status"></p>
+    <button class="pad-key pad-sq" type="button" data-pause aria-label="${esc(t('pad.pause'))}">${icon('pause', { size: 22 })}</button>
+    <button class="pad-key pad-sq" type="button" data-menu aria-label="${esc(t('pad.menu'))}">${icon('settings', { size: 22 })}</button>
+  </header>
+  <div class="pad-col pad-col-l" role="group"></div>
+  <div class="pad-drive">
+    <div class="pad-stick" role="application">
+      <span class="pad-stick-name" aria-hidden="true"></span>
+      <span class="pad-well" aria-hidden="true"><span class="pad-knob"></span></span>
+    </div>
+    <div class="pad-stick-keys" role="group"></div>
   </div>
-  <div class="pad-right">
-    <div class="pad-aim" aria-label="${esc(t('pad.aimPad'))}">
+  <div class="pad-deck" role="group"></div>
+  <div class="pad-gun">
+    <div class="pad-aim">
+      <span class="pad-aim-name" aria-hidden="true"></span>
       <span class="pad-reticle" aria-hidden="true"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M-6 7 0 1 6 7M-46 0H-14M14 0H46M-38-4V4M-30-2.5V2.5M-22-2.5V2.5M22-2.5V2.5M30-2.5V2.5M38-4V4M0 14V42M-3 22H3M-3 30H3M-5 38H5"/></svg></span>
     </div>
-    <button class="pad-key pad-look" type="button" data-hold="freeLook" aria-label="${esc(t('pad.look'))}">${icon('freeLook', { size: 22 })}</button>
-    <div class="pad-zoom" role="group" hidden>
-      <button class="pad-key" type="button" data-tap="zoomOut" aria-label="${esc(t('pad.zoomOut'))}">${icon('zoomOut', { size: 20 })}</button>
-      <button class="pad-key" type="button" data-tap="zoomIn" aria-label="${esc(t('pad.zoomIn'))}">${icon('zoomIn', { size: 20 })}</button>
-    </div>
-    <button class="pad-key pad-scope" type="button" data-tap="sniperToggle" aria-pressed="false" aria-label="${esc(t('pad.scope'))}">${icon('scope', { size: 22 })}</button>
-    <button class="pad-key pad-lock" type="button" data-tap="autoAim" aria-pressed="false" aria-label="${esc(t('pad.lock'))}" hidden>${icon('autoAim', { size: 22 })}</button>
+    <div class="pad-fire-keys" role="group"></div>
     <div class="pad-trigger">
       <span class="pad-ring" aria-hidden="true"><span class="pad-ring-half"><i></i></span><span class="pad-ring-half"><i></i></span></span>
-      <button class="pad-fire" type="button" data-hold="fire" aria-label="${esc(t('pad.fire'))}">${icon('fireGun', { size: 36 })}</button>
+      <button class="pad-fire" type="button" aria-label="${esc(t('pad.fire'))}"></button>
     </div>
   </div>
+  <div class="pad-col pad-col-r" role="group"></div>
   <dialog class="pad-opts">
-    <div class="row"><span>${esc(t('pad.opt.tilt'))}</span><button class="pad-key" type="button" data-tilt aria-pressed="true"></button></div>
     <div class="row"><span>${esc(t('pad.opt.hand'))}</span><button class="pad-key" type="button" data-hand></button></div>
     <div class="row"><span>${esc(t('pad.opt.buzz'))}</span><button class="pad-key" type="button" data-buzz aria-pressed="true"></button></div>
+    <div class="row"><span>${esc(t('pad.opt.flip'))}</span><button class="pad-key" type="button" data-flip aria-pressed="false"></button></div>
     <div class="row"><span>${esc(t('pad.opt.tour'))}</span><button class="pad-key" type="button" data-tour>${esc(t('pad.opt.show'))}</button></div>
-    ${['lockDeg', 'aim'].map((name) => `<div class="row"><span id="pad-opt-${name}">${esc(t(name === 'aim' ? 'pad.opt.aim' : 'pad.opt.lock'))}</span>`
-      + `<span class="pad-step" role="group" aria-labelledby="pad-opt-${name}">`
-      + `<button class="pad-key" type="button" data-step="${name}" data-dir="-1" aria-label="${esc(t('pad.opt.lower'))}">${icon('chevronLeft', { size: 18 })}</button>`
-      + `<b class="num" data-value="${name}" aria-live="polite"></b>`
-      + `<button class="pad-key" type="button" data-step="${name}" data-dir="1" aria-label="${esc(t('pad.opt.raise'))}">${icon('chevronRight', { size: 18 })}</button>`
-      + '</span></div>').join('')}
+    <div class="row"><span id="pad-opt-aim">${esc(t('pad.opt.aim'))}</span><span class="pad-step" role="group" aria-labelledby="pad-opt-aim">`
+      + `<button class="pad-key" type="button" data-step="aim" data-dir="-1" aria-label="${esc(t('pad.opt.lower'))}">${icon('chevronLeft', { size: 18 })}</button>`
+      + `<b class="num" data-value="aim" aria-live="polite"></b>`
+      + `<button class="pad-key" type="button" data-step="aim" data-dir="1" aria-label="${esc(t('pad.opt.raise'))}">${icon('chevronRight', { size: 18 })}</button>`
+    + `</span></div>
+    <div class="row pad-screen"><span>${esc(t('pad.opt.screen'))}</span><span class="pad-step">
+      <button class="pad-key" type="button" data-screen="minimapZoom" aria-label="${esc(t('action.minimapZoom'))}">${icon('map', { size: 20 })}</button>
+      <button class="pad-key" type="button" data-screen="shotLog" aria-label="${esc(t('action.shotLog'))}">${icon('penetration', { size: 20 })}</button>
+      <button class="pad-key" type="button" data-screen="networkPanel" aria-label="${esc(t('action.networkPanel'))}">${icon('telemetry', { size: 20 })}</button>
+    </span></div>
     <div class="end">
       <button class="pad-key pad-stop" type="button" data-disconnect>${esc(t('pad.opt.disconnect'))}</button>
       <button class="pad-key" type="button" data-close>${esc(t('pad.opt.close'))}</button>
     </div>
   </dialog>
+  <div class="pad-brief" hidden role="group">
+    <p class="pad-brief-step num" aria-live="polite"></p>
+    <p class="pad-brief-note">${esc(t('pad.brief.note'))}</p>
+    <div class="pad-brief-keys">
+      <button class="pad-key pad-brief-ready" type="button" data-brief="ready" aria-pressed="false"><i class="pad-lamp" aria-hidden="true"></i>${icon('check', { size: 28 })}<span class="pad-word">${esc(t('pad.brief.ready'))}</span></button>
+      <button class="pad-key pad-brief-skip" type="button" data-brief="skip">${icon('chevronRight', { size: 28 })}<span class="pad-word">${esc(t('pad.brief.skip'))}</span></button>
+    </div>
+  </div>
   <div class="pad-tour" hidden><button class="pad-key pad-tour-skip" type="button">${esc(t('pad.tour.skip'))}<i class="pad-tour-clock" aria-hidden="true"></i></button></div>
 </section>`);
 const end = html(`<section class="pad-end" hidden>
@@ -189,24 +172,29 @@ root.append(join, ctl, end, probe);
 
 const $ = <T extends Element>(selector: string, host: ParentNode = ctl): T => host.querySelector(selector) as T;
 const linkChip = $<HTMLElement>('.pad-link');
-const lever = $<HTMLElement>('.pad-lever');
-const knob = $<HTMLElement>('.pad-knob');
-const hull = $<HTMLElement>('.pad-hull');
-const plan = $<HTMLImageElement>('.pad-plan');
-const planGlyph = $<HTMLElement>('.pad-plan-glyph');
-const bearing = $<HTMLElement>('.pad-bearing');
-const needle = $<HTMLElement>('.pad-needle');
+const modeName = $<HTMLElement>('.pad-mode');
 const kmhReadout = $<HTMLElement>('.pad-kmh');
-const reticle = $<HTMLElement>('.pad-reticle');
 const message = $<HTMLElement>('.pad-msg');
-const ringHalves = [...ctl.querySelectorAll<HTMLElement>('.pad-ring-half i')];
-const zoom = $<HTMLElement>('.pad-zoom');
-const scope = $<HTMLButtonElement>('.pad-scope');
+const leftColumn = $<HTMLElement>('.pad-col-l');
+const rightColumn = $<HTMLElement>('.pad-col-r');
+const stickZone = $<HTMLElement>('.pad-stick');
+const stickName = $<HTMLElement>('.pad-stick-name');
+const well = $<HTMLElement>('.pad-well');
+const knob = $<HTMLElement>('.pad-knob');
+const stickKeys = $<HTMLElement>('.pad-stick-keys');
+const deck = $<HTMLElement>('.pad-deck');
 const aimPad = $<HTMLElement>('.pad-aim');
+const aimName = $<HTMLElement>('.pad-aim-name');
+const reticle = $<HTMLElement>('.pad-reticle');
+const fireKeys = $<HTMLElement>('.pad-fire-keys');
+const trigger = $<HTMLElement>('.pad-trigger');
 const fireButton = $<HTMLButtonElement>('.pad-fire');
-const lockKey = $<HTMLButtonElement>('.pad-lock');
+const ringHalves = [...ctl.querySelectorAll<HTMLElement>('.pad-ring-half i')];
 const tour = $<HTMLElement>('.pad-tour');
 const options = $<HTMLDialogElement>('.pad-opts');
+const briefOverlay = $<HTMLElement>('.pad-brief');
+const briefStep = $<HTMLElement>('.pad-brief-step');
+const briefReady = $<HTMLButtonElement>('.pad-brief-ready');
 ctl.dataset.hand = settings.hand;
 
 function show(screen: 'join' | 'controller' | 'ended'): void {
@@ -217,79 +205,45 @@ function show(screen: 'join' | 'controller' | 'ended'): void {
   if (screen === 'join') unlockFrame();
 }
 
-// ---- the frame: landscape, glued to the phone ------------------------------------------------------------------------
-/** `lock`: the screen angle (screen.orientation's, from the device's natural orientation) the controller is laid out
- *  for; `turn`: how far the frame is turned on the viewport now; `settled` once that landscape was the system's own. */
-const frame = { lock: 0, turn: 0, scale: 1, w: 0, h: 0, angle: 0, seen: '', settled: false };
-const screenAngle = (): number =>
-  ((((screen.orientation?.angle ?? Number((window as { orientation?: number }).orientation)) || 0) % 360) + 360) % 360;
+// ---- the frame: landscape, turned a quarter on a portrait page --------------------------------------------------------
+/** `turn`: how far the frame is turned on the viewport; `w`, `h`: its own size; `seen`: the viewport it was laid out for. */
+const frame = { turn: 0, w: 0, h: 0, seen: '' };
 const isWide = (): boolean => innerWidth >= innerHeight;
-const viewportKey = (): string => `${screenAngle()}|${innerWidth}|${innerHeight}`;
+const viewportKey = (): string => `${innerWidth}|${innerHeight}|${settings.flip ? 1 : 0}`;
 
-/** Lay the controller out for the landscape the phone is held in: the system's own when it is in landscape, else the
- *  quarter turn from portrait most phones are turned (the top to the left), until the system first shows a landscape. */
-function lockFrame(): void {
-  frame.settled = isWide();
-  frame.lock = lockAngle(screenAngle(), frame.settled);
-  root.dataset.lock = '';
-  layoutFrame();
-}
-
-/** The one layout: the frame's size and its padding clear of the island and the home bar, both in the frame's own
- *  axes. */
+/** The one layout: landscape as the system shows it, or turned a quarter on a portrait page; its padding clear of the
+ *  island and the home bar on the frame's own sides. */
 function layoutFrame(): void {
-  const turn = frameTurn(frame.lock, screenAngle());
-  const across = turn % 180 !== 0;
+  if (ctl.hidden) return;
+  frame.turn = frameTurnFor(isWide(), settings.flip);
+  frame.seen = viewportKey();
+  const across = frame.turn % 180 !== 0;
   frame.w = across ? innerHeight : innerWidth;
   frame.h = across ? innerWidth : innerHeight;
   const style = getComputedStyle(probe);
-  const [top, right, bottom, left] = frameInsets(turn, [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]
+  const [top, right, bottom, left] = frameInsets(frame.turn, [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]
     .map((v) => parseFloat(v) || 0)) as [number, number, number, number];
+  root.dataset.frame = '';
   root.style.setProperty('--pad-w', `${frame.w}px`);
   root.style.setProperty('--pad-h', `${frame.h}px`);
-  root.style.setProperty('--pad-px', `${Math.max(16, right, left)}px`);
+  root.style.setProperty('--pad-pl', `${Math.max(12, left)}px`);
+  root.style.setProperty('--pad-pr', `${Math.max(12, right)}px`);
   root.style.setProperty('--pad-pt', `${Math.max(8, top)}px`);
-  root.style.setProperty('--pad-pb', `${Math.max(12, bottom)}px`);
-  turnFrame();
+  root.style.setProperty('--pad-pb', `${Math.max(10, bottom)}px`);
+  root.style.setProperty('--pad-turn', `${frame.turn}deg`);
+  if (debug) debug.frame = { turn: frame.turn, w: frame.w, h: frame.h };
   if (!tour.hidden) placeTour();
 }
 
-/** After every system rotation: turn the frame back onto the phone and fit it, a transform and nothing else. The first
- *  landscape the system shows settles the layout, and a resize that is no rotation (the keyboard leaving, Safari's bars
- *  in landscape) lays it out again. */
-function turnFrame(): void {
-  if (root.dataset.lock === undefined) return;
-  const angle = screenAngle();
-  const wide = isWide();
-  if (!frame.settled && wide) {
-    frame.settled = true;
-    frame.lock = angle;
-    layoutFrame();
-    return;
-  }
-  if (angle === frame.angle && frame.turn % 180 === 0 && wide && (innerWidth !== frame.w || innerHeight !== frame.h)) {
-    layoutFrame();
-    return;
-  }
-  frame.angle = angle;
-  frame.seen = viewportKey();
-  frame.turn = frameTurn(frame.lock, angle);
-  const across = frame.turn % 180 !== 0;
-  frame.scale = Math.min(1, (across ? innerHeight : innerWidth) / frame.w, (across ? innerWidth : innerHeight) / frame.h);
-  root.style.setProperty('--pad-turn', `${frame.turn}deg`);
-  root.style.setProperty('--pad-scale', String(Math.round(frame.scale * 1000) / 1000));
-  if (debug) debug.frame = { lock: frame.lock, turn: frame.turn, scale: frame.scale, w: frame.w, h: frame.h };
-}
-
 function unlockFrame(): void {
-  delete root.dataset.lock;
-  for (const name of ['--pad-w', '--pad-h', '--pad-px', '--pad-pt', '--pad-pb', '--pad-turn', '--pad-scale']) root.style.removeProperty(name);
+  delete root.dataset.frame;
+  for (const name of ['--pad-w', '--pad-h', '--pad-pl', '--pad-pr', '--pad-pt', '--pad-pb', '--pad-turn']) root.style.removeProperty(name);
 }
-// iOS fires no event when it flips one landscape straight to the other, nor a resize when the keyboard leaves, so the
-// heartbeat also looks
-screen.orientation?.addEventListener('change', turnFrame);
-window.addEventListener('orientationchange', turnFrame);
-window.addEventListener('resize', turnFrame);
+// a rotation, Safari's bars, the keyboard leaving: lay it out again (iOS fires no event for some, so the heartbeat
+// looks too); a held stick or sight keeps its finger, its moves read in the new frame's axes
+screen.orientation?.addEventListener('change', layoutFrame);
+window.addEventListener('orientationchange', layoutFrame);
+window.addEventListener('resize', layoutFrame);
 
 /** A finger's movement on the viewport in the frame's own axes (the frame is laid out unturned, then turned). */
 const inFrame = (dx: number, dy: number): [number, number] => frameDelta(frame.turn, dx, dy);
@@ -298,10 +252,6 @@ const inFrame = (dx: number, dy: number): [number, number] => frameDelta(frame.t
 const axes: PadAxes = { flags: 0, seq: 0, t: 0, steer: 0, throttle: 0, aimX: 0, aimY: 0, held: 0 };
 const bytes = new Uint8Array(24);
 let link: PadLink | null = null;
-let tiltSeen = false;
-let tiltAngle: number | null = null;
-let tiltCentre = 0;
-let stickX = 0;
 let lastSentKey = '';
 let lastSendAt = -Infinity;
 let rttMs: number | null = null;
@@ -309,28 +259,21 @@ let ringAnimations: Animation[] = [];
 let reloadKey = '';
 /** Diagnostics for the pad e2e and the owner's real-device check. */
 interface PhoneDebug {
-  sent: number; held: number; throttle: number; released: number; rttMs: number | null; applyMs: number; tilt: boolean; state: PadPhoneState;
-  frame: object | null;
+  sent: number; held: number; throttle: number; steer: number; released: number; rttMs: number | null; applyMs: number; state: PadPhoneState;
+  frame: object | null; mode: PadMode; keys: string[];
   /** The buzzes played, by name, the guide's last state (shown, skipped, timed out) and how long it last stayed open. */
   buzz: Record<string, number>; tour: PadTourState; tourMs: number;
+  /** Lay the panel out for a status with no desktop (the evidence stills of every mode; a live link's next status wins). */
+  preview?: (status: PadStatus) => void;
 }
 const debug: PhoneDebug | null = import.meta.env.DEV || /[?&]padDebug\b/.test(location.search)
-  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: 'hidden', tourMs: 0 }) : null;
+  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, steer: 0, released: 0, rttMs: null,
+    applyMs: 0, state: 'join', frame: null, mode: 'idle', keys: [], buzz: {}, tour: 'hidden', tourMs: 0 }) : null;
 
-const steering = (): number => {
-  if (settings.tilt && tiltSeen) {
-    if (tiltAngle === null) return 0;
-    return steerFromAngle(tiltAngle, tiltCentre, { ...DEFAULT_STEERING, maxAngleDeg: settings.lockDeg });
-  }
-  return stickX;
-};
-
-/** Send the current frame now when it changed: every sensor and touch event goes at once (the data channel is free; a
- *  wait for the next animation frame cost up to one phone frame of latency), the relay keeps its own rate cap. */
+/** Send the current frame now when it changed: every touch event goes at once (the data channel is free; a wait for the
+ *  next animation frame cost up to one phone frame of latency), the relay keeps its own rate cap. */
 function send(force = false): void {
   if (!link) return;
-  axes.steer = steering();
-  axes.flags = settings.tilt && tiltSeen ? PAD_FLAG_TILT : 0;
   const key = `${axes.steer.toFixed(3)}|${axes.throttle.toFixed(3)}|${axes.aimX}|${axes.aimY}|${axes.held}`;
   const changed = key !== lastSentKey;
   const now = performance.now();
@@ -340,54 +283,16 @@ function send(force = false): void {
   link.sendAxes(encodePadAxes(axes, bytes), changed);
   lastSentKey = key;
   lastSendAt = now;
-  if (debug) { debug.sent++; debug.held = axes.held; debug.throttle = axes.throttle; }
+  if (debug) { debug.sent++; debug.held = axes.held; debug.throttle = axes.throttle; debug.steer = axes.steer; }
 }
 setInterval(() => {
-  if (root.dataset.lock !== undefined && viewportKey() !== frame.seen) turnFrame();
+  if (root.dataset.frame !== undefined && viewportKey() !== frame.seen) layoutFrame();
   send();
 }, HEARTBEAT_MS);
 
-/** The hull turns with the wheel: the repeater is the steering's readout (written on input events, transform only). */
-function paintWheel(): void {
-  const turn = Math.round(steering() * 30 * 2) / 2;
-  hull.style.transform = `rotate(${turn}deg)`;
-}
-
-// ---- tilt ------------------------------------------------------------------------------------------------------
-/** The wheel angle in the locked frame: β and γ are the device's own axes, so the system turning the page changes
- *  nothing. Level is the centre; a tap on the repeater makes the current angle the centre. */
-function onOrientation(event: DeviceOrientationEvent): void {
-  if (event.beta === null || event.gamma === null) return;
-  tiltSeen = true;
-  tiltAngle = wheelAngleDeg(event.beta, event.gamma, frame.lock);
-  if (debug) debug.tilt = true;
-  applyMode();
-  paintWheel();
-  send();
-}
-
-async function startTilt(): Promise<void> {
-  const request = (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }).requestPermission;
-  if (typeof request === 'function') {
-    try {
-      if (await request() !== 'granted') { message.textContent = t('pad.tiltDenied'); settings.tilt = false; applyMode(); return; }
-    } catch { message.textContent = t('pad.tiltDenied'); settings.tilt = false; applyMode(); return; }
-  }
-  window.addEventListener('deviceorientation', onOrientation);
-  setTimeout(() => { if (!tiltSeen && settings.tilt) { message.textContent = t('pad.noTilt'); applyMode(); } }, NO_TILT_MS);
-}
-
-/** Tilt steers when it is on and the phone has a sensor; otherwise the lever is a stick that also steers. */
-function applyMode(): void {
-  const tilt = settings.tilt && tiltSeen;
-  lever.classList.toggle('is-stick', !tilt);
-  lever.setAttribute('aria-label', tilt ? t('pad.throttle') : t('pad.stick'));
-  hull.classList.toggle('is-stick', !tilt);
-}
-
 // ---- presses -------------------------------------------------------------------------------------------------------
 // Every control acts on its own finger's press, never on a click: iOS sends no click for a touch while another finger
-// is down, and the throttle thumb is always down. The finger is captured, so sliding it off keeps a hold and presses
+// is down, and the stick's thumb is always down. The finger is captured, so sliding it off keeps a hold and presses
 // nothing else; a lost capture lets go. iOS's own gestures never get a finger: the controller cancels their default
 // (double-tap zoom, the callout, selection, the page's rubber band), and touch-action is none on the whole page.
 //
@@ -427,11 +332,11 @@ function buzz(kind: PadBuzz, strength?: number): void {
   } catch { /* unsupported */ }
 }
 
-/** Each control's way to let go of every finger on it (releaseControls). */
-const letGo: Array<() => void> = [];
+/** Each control's way to let go of every finger on it (releaseControls); a key a layout swap removes takes its own out. */
+const letGo = new Set<() => void>();
 /** A press: the first finger down presses (and is felt: a tick, or the buzz `feel` names), and the control lets go when
  *  the last finger on it lifts. */
-function press(control: HTMLElement, down: () => void, up?: () => void, feel: () => PadBuzz = () => 'press'): void {
+function press(control: HTMLElement, down: () => void, up?: () => void, feel: () => PadBuzz = () => 'press'): () => void {
   const pointers = new Set<number>();
   control.addEventListener('pointerdown', (event) => {
     event.preventDefault();
@@ -451,7 +356,8 @@ function press(control: HTMLElement, down: () => void, up?: () => void, feel: ()
     if (!pointers.delete(event.pointerId) || pointers.size) return;
     lift();
   };
-  letGo.push(() => { if (!pointers.size) return; pointers.clear(); lift(); });
+  const release_ = (): void => { if (!pointers.size) return; pointers.clear(); lift(); };
+  letGo.add(release_);
   control.addEventListener('pointerup', release);
   control.addEventListener('pointercancel', release);
   control.addEventListener('lostpointercapture', release);
@@ -461,6 +367,8 @@ function press(control: HTMLElement, down: () => void, up?: () => void, feel: ()
     down();
     if (up) setTimeout(up, 120);
   });
+  // a key that leaves the layout lets go first, then forgets its hold
+  return () => { release_(); letGo.delete(release_); };
 }
 ctl.addEventListener('touchstart', (event) => { if (!(event.target as Element).closest('dialog')) event.preventDefault(); }, { passive: false });
 ctl.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -477,64 +385,59 @@ document.addEventListener('touchend', (event) => {
   lastTouchEnd = now;
 }, { passive: false });
 
-// ---- the throttle / stick ---------------------------------------------------------------------------------------
-let leverPointer: number | null = null;
-let leverOrigin = { x: 0, y: 0 };
-function leverMove(event: PointerEvent): void {
-  if (event.pointerId !== leverPointer) return;
-  // the gate's own size and the finger's travel in the frame's axes, in the frame's pixels
-  const travelY = Math.max(24, lever.offsetHeight / 2 - 26);
-  const travelX = Math.max(24, lever.offsetWidth / 2 - 26);
-  const [fx, fy] = inFrame(event.clientX - leverOrigin.x, event.clientY - leverOrigin.y);
-  const dy = Math.max(-travelY, Math.min(travelY, fy / frame.scale));
-  const stick = lever.classList.contains('is-stick');
-  const dx = stick ? Math.max(-travelX, Math.min(travelX, fx / frame.scale)) : 0;
-  axes.throttle = leverValue(-dy, travelY);
-  stickX = stick ? leverValue(dx, travelX) : 0;
-  knob.style.transform = `translate(${Math.round(dx)}px,${Math.round(dy)}px)`;
-  lever.setAttribute('aria-valuenow', String(Math.round(axes.throttle * 100)));
-  paintWheel();
+
+// ---- the left stick -----------------------------------------------------------------------------------------------
+// A floating stick: the well comes to where the thumb lands anywhere in the zone, so a thumb never hunts for it, and the
+// knob follows the push to the ring. Its push is the drive (forward is up, steer is sideways), the drone's flight or
+// Watch's camera, whatever the mode makes it; it springs back to the centre on the lift.
+let stickPointer: number | null = null;
+let stickOrigin = { x: 0, y: 0 };
+function stickMove(event: PointerEvent): void {
+  if (event.pointerId !== stickPointer) return;
+  const [dx, dy] = inFrame(event.clientX - stickOrigin.x, event.clientY - stickOrigin.y);
+  const [x, y] = stickValue(dx, dy, DRIVE_STICK);
+  axes.steer = x;
+  axes.throttle = y;
+  const [kx, ky] = stickKnob(dx, dy, DRIVE_STICK.radiusPx);
+  knob.style.transform = `translate(${Math.round(kx)}px,${Math.round(ky)}px)`;
   send();
 }
-function leverEnd(event: PointerEvent): void {
-  if (event.pointerId !== leverPointer) return;
-  leverPointer = null;
-  axes.throttle = 0; stickX = 0;
-  knob.style.transform = 'translate(0px,0px)';
-  lever.setAttribute('aria-valuenow', '0');
-  paintWheel();
+function stickEnd(event: PointerEvent): void {
+  if (event.pointerId !== stickPointer) return;
+  stickPointer = null;
+  centreStick();
   send(true);
 }
-lever.addEventListener('pointerdown', (event) => {
-  if (leverPointer !== null) return;
+function centreStick(): void {
+  axes.steer = 0;
+  axes.throttle = 0;
+  knob.style.transform = 'translate(0px,0px)';
+  well.style.transform = '';
+  stickZone.classList.remove('is-down');
+}
+stickZone.addEventListener('pointerdown', (event) => {
+  if (stickPointer !== null || ctl.dataset.stick === 'off') return;
   event.preventDefault();
-  leverPointer = event.pointerId;
-  try { lever.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
-  // the stick is where the thumb lands (no jump); the throttle's rest is the gate's centre
-  const box = lever.getBoundingClientRect();
-  leverOrigin = lever.classList.contains('is-stick') ? { x: event.clientX, y: event.clientY } : { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  leverMove(event);
+  stickPointer = event.pointerId;
+  try { stickZone.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
+  // the well comes to the thumb: its centre is where the thumb landed, in the zone's own (frame) axes
+  const box = stickZone.getBoundingClientRect();
+  const [ox, oy] = inFrame(event.clientX - (box.left + box.width / 2), event.clientY - (box.top + box.height / 2));
+  well.style.transform = `translate(${Math.round(ox)}px,${Math.round(oy)}px)`;
+  stickOrigin = { x: event.clientX, y: event.clientY };
+  stickZone.classList.add('is-down');
+  stickMove(event);
 });
-lever.addEventListener('pointermove', leverMove);
-lever.addEventListener('pointerup', leverEnd);
-lever.addEventListener('pointercancel', leverEnd);
-lever.addEventListener('lostpointercapture', leverEnd);
-// keyboard and assistive tech: the slider's arrows step the throttle (a centred lever is neutral)
-lever.tabIndex = 0;
-lever.addEventListener('keydown', (event) => {
-  const step = event.key === 'ArrowUp' ? 0.25 : event.key === 'ArrowDown' ? -0.25 : event.key === 'Home' ? -axes.throttle : 0;
-  if (!step) return;
-  event.preventDefault();
-  axes.throttle = Math.max(-1, Math.min(1, axes.throttle + step));
-  lever.setAttribute('aria-valuenow', String(Math.round(axes.throttle * 100)));
-  send(true);
-});
+stickZone.addEventListener('pointermove', stickMove);
+stickZone.addEventListener('pointerup', stickEnd);
+stickZone.addEventListener('pointercancel', stickEnd);
+stickZone.addEventListener('lostpointercapture', stickEnd);
 
 // ---- the sight -------------------------------------------------------------------------------------------------------
 // One finger aims at a time: the sight's, or the trigger's. A thumb on the fire button drags to aim once it has moved
 // past a press's wobble, so one thumb aims and shoots (held, the gun fires again the moment it loads); a finger that
 // lands on the sight takes the aim from it. The gain follows the finger's speed (padInput.ts aimGain): a slow drag is
-// precise, a flick swings the gun round.
+// precise, a flick swings the gun round (in the drone and Watch, the camera).
 let aimPointer: number | null = null;
 let aimLast = { x: 0, y: 0, t: 0 };
 let aimOrigin = { x: 0, y: 0 };
@@ -551,10 +454,11 @@ const leanReticle = (dx: number, dy: number): void => {
   const scale = reach > 40 ? 40 / reach : 1;
   reticle.style.transform = `translate(${Math.round((dx / 3) * scale)}px,${Math.round((dy / 3) * scale)}px)`;
 };
-function aimBegin(event: PointerEvent, deadzone: number, trigger: boolean): void {
-  if (aimPointer !== null && !(aimByTrigger && !trigger)) return;
+function aimBegin(event: PointerEvent, deadzone: number, byTrigger: boolean): void {
+  if (ctl.dataset.aim === 'off') return;
+  if (aimPointer !== null && !(aimByTrigger && !byTrigger)) return;
   aimPointer = event.pointerId;
-  aimByTrigger = trigger;
+  aimByTrigger = byTrigger;
   aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
   aimOrigin = { x: event.clientX, y: event.clientY };
   aimSpeedNow = 0;
@@ -565,7 +469,7 @@ function aimMove(event: PointerEvent): void {
   const [lx, ly] = inFrame(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
   if (aimDeadzone) {
     // still inside the press's wobble: nothing moves, and the aim starts from here, without a jump
-    if (Math.hypot(lx, ly) / frame.scale < aimDeadzone) return;
+    if (Math.hypot(lx, ly) < aimDeadzone) return;
     aimDeadzone = 0;
     aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
     return;
@@ -602,25 +506,21 @@ for (const host of [aimPad, fireButton]) {
 
 // ---- letting go -------------------------------------------------------------------------------------------------------
 /** Every control lets go at once when the link drops or the page is hidden or loses focus (a call, the lock button, the
- *  app switcher): no trigger or throttle survives a drop, and the thumbs press again to drive. */
+ *  app switcher): no trigger or stick survives a drop, and the thumbs press again to play. */
 function releaseControls(): void {
   if (debug) debug.released++;
-  for (const release of letGo) release();
-  leverPointer = null;
+  for (const release of [...letGo]) release();
+  stickPointer = null;
   aimPointer = null;
-  axes.throttle = 0;
   axes.held = 0;
-  stickX = 0;
-  knob.style.transform = 'translate(0px,0px)';
-  lever.setAttribute('aria-valuenow', '0');
+  centreStick();
   leanReticle(0, 0);
-  paintWheel();
   send(true);
 }
 window.addEventListener('blur', releaseControls);
 window.addEventListener('pagehide', releaseControls);
 
-// ---- holds and taps -----------------------------------------------------------------------------------------------
+// ---- holds, taps and commands ---------------------------------------------------------------------------------------
 const holdBit = (action: PadHoldAction): number => 1 << PAD_HOLD_ACTIONS.indexOf(action);
 function hold(action: PadHoldAction, down: boolean): void {
   const bit = holdBit(action);
@@ -635,60 +535,132 @@ const tap = (action: PadTapAction): void => { link?.sendCtl({ k: 'tap', a: actio
  *  a refusal while it loads, a plain tick outside a battle. */
 const triggerFeel = (): PadBuzz => {
   const gun = ctl.dataset.state as PadGunState | undefined;
+  if (ctl.dataset.mode !== 'tank' && ctl.dataset.mode !== 'gunship') return 'press';
   if (gun === 'ready') { shotFeltAt = performance.now(); return 'shot'; }
   return gun === 'loading' ? 'unready' : 'press';
 };
-for (const button of ctl.querySelectorAll<HTMLElement>('[data-hold]')) {
-  const action = button.dataset.hold as PadHoldAction;
-  press(button, () => hold(action, true), () => hold(action, false), action === 'fire' ? triggerFeel : undefined);
-}
-for (const button of ctl.querySelectorAll<HTMLElement>('.pad-top [data-tap], .pad-right [data-tap]')) {
-  press(button, () => tap(button.dataset.tap as PadTapAction));
-}
-for (const button of ctl.querySelectorAll<HTMLButtonElement>('.pad-shell')) {
-  press(button, () => tap(`shell${Number(button.dataset.slot) + 1}` as PadTapAction));
-}
+// FIRE is the trigger in every mode that has one (the binoculars' CALL too: the desktop's fire calls the strike)
+press(fireButton, () => hold('fire', true), () => hold('fire', false), triggerFeel);
 press($<HTMLElement>('[data-pause]'), () => link?.sendCtl({ k: 'pause' }));
-press($<HTMLElement>('[data-centre]'), () => {
-  if (tiltAngle !== null) tiltCentre = tiltAngle;
-  paintWheel();
-  send(true);
+// couch mode's briefing (the big screen's, between Start and GO): this seat's Ready, or Skip (ready, and the screen goes
+// to the briefing's last step)
+press(briefReady, () => link?.sendCtl({ k: 'ready' }));
+press($<HTMLElement>('.pad-brief-skip'), () => link?.sendCtl({ k: 'ready', skip: true }));
+
+/** A key of the layout: its glyph over its word, a lamp when it lights, and what it sends while a thumb is on it. */
+function keyFor(control: PadControl, kind: 'col' | 'deck' | 'thumb'): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `pad-key pad-${kind}-key`;
+  button.dataset.id = control.id;
+  if (control.lit) { button.dataset.lit = control.lit; button.setAttribute('aria-pressed', 'false'); }
+  if ('hold' in control.send) button.dataset.holds = '';
+  // the consumables are guarded switches: the red cover lifts while the thumb is on it
+  if (/^consumable\d$/.test(control.id)) button.dataset.guard = '';
+  button.setAttribute('aria-label', t(control.label));
+  button.innerHTML = `${control.lit ? '<i class="pad-lamp" aria-hidden="true"></i>' : ''}${icon(control.glyph as IconId, { size: kind === 'thumb' ? 22 : 24 })}`
+    + `<span class="pad-word">${esc(t(control.short ?? control.label))}</span>`;
+  return button;
+}
+
+/** The layout drawn now: its mode and grants, the keys' let-go, and what is shown. */
+let drawn = { key: '', mode: 'idle' as PadMode, layout: PAD_LAYOUTS.idle as PadModeLayout, mask: 0 };
+const keyDisposers: Array<() => void> = [];
+/** Lay the mode's controls into the zones (only those this player has): the columns, the stick's keys, the fire keys,
+ *  the deck's call-ins. A hold whose key leaves lets go first; the stick and the sight keep their fingers when the new
+ *  mode has them too (the binoculars come up while the tank drives on). */
+function renderLayout(mode: PadMode, mask: number): void {
+  const key = `${mode}|${mask}`;
+  if (key === drawn.key) return;
+  const layout = PAD_LAYOUTS[mode];
+  for (const dispose of keyDisposers.splice(0)) dispose();
+  drawn = { key, mode, layout, mask };
+  ctl.dataset.mode = mode;
+  modeName.textContent = t(MODE_NAMES[mode]);
+  const fill = (host: HTMLElement, controls: readonly PadControl[], kind: 'col' | 'deck' | 'thumb'): void => {
+    host.replaceChildren();
+    for (const control of padVisible(controls, mask)) {
+      const button = keyFor(control, kind);
+      host.append(button);
+      const send_ = control.send;
+      if ('hold' in send_) keyDisposers.push(press(button, () => hold(send_.hold, true), () => hold(send_.hold, false)));
+      else if ('tap' in send_) keyDisposers.push(press(button, () => tap(send_.tap)));
+      else keyDisposers.push(press(button, () => link?.sendCtl(send_.n === undefined ? { k: 'cmd', c: send_.cmd } : { k: 'cmd', c: send_.cmd, n: send_.n })));
+    }
+    host.dataset.count = String(host.childElementCount);
+  };
+  fill(leftColumn, layout.left, 'col');
+  fill(rightColumn, layout.right, 'col');
+  fill(stickKeys, layout.stickKeys, 'thumb');
+  fill(fireKeys, layout.fireKeys, 'thumb');
+  if (layout.deck === 'shells') { deck.replaceChildren(...shellKeys); deck.dataset.count = '3'; }
+  else fill(deck, layout.deck ?? [], 'deck');
+  deck.dataset.kind = layout.deck === 'shells' ? 'shells' : 'keys';
+  // the thumbs: a mode without a stick or a sight lets the finger on it go, and the zone stands down
+  const { stick, aim, fire } = layout.thumbs;
+  ctl.dataset.stick = stick ? 'on' : 'off';
+  ctl.dataset.aim = aim ? 'on' : 'off';
+  ctl.dataset.fire = fire ? 'on' : 'off';
+  if (!stick && stickPointer !== null) { stickPointer = null; centreStick(); }
+  if (!aim && aimPointer !== null) { aimPointer = null; leanReticle(0, 0); }
+  // every hold the new layout does not show lets go (FIRE's, the brake's, Watch's climb)
+  const shown = new Set<string>([...ctl.querySelectorAll<HTMLElement>('[data-holds]')].map((element) => element.dataset.id!));
+  for (const action of PAD_HOLD_ACTIONS) {
+    if (action === 'fire' ? !fire : !shown.has(action)) hold(action, false);
+  }
+  stickName.textContent = stick ? t(stick) : '';
+  stickZone.setAttribute('aria-label', stick ? t(stick) : '');
+  aimName.textContent = aim ? t(aim) : '';
+  aimPad.setAttribute('aria-label', aim ? t(aim) : '');
+  fireButton.innerHTML = fire ? icon(fire.glyph as IconId, { size: 36 }) : '';
+  fireButton.setAttribute('aria-label', fire ? t(fire.label) : '');
+  if (debug) { debug.mode = mode; debug.keys = [...ctl.querySelectorAll<HTMLElement>('[data-id]')].map((element) => element.dataset.id!); }
+  if (!tour.hidden) placeTour();
+}
+
+// the rounds: three illuminated keys, the loaded shell's lamp lit, its rounds on a counter drum (the deck's in a tank
+// and the AC-130's guns)
+const shellKeys = [0, 1, 2].map((slot) => {
+  const button = html(`<button class="pad-key pad-shell" type="button" data-slot="${slot}" aria-pressed="false" hidden></button>`) as HTMLButtonElement;
+  press(button, () => tap(`shell${slot + 1}` as PadTapAction));
+  return button;
 });
 
 // ---- options ----------------------------------------------------------------------------------------------------
-// tilt on or off (a toggle), the steering lock and the aim speed (steppers over their few values), in a native modal on
-// the surface stack; the modal sits in the top layer, outside the frame, so it turns with the frame's own variables
-const tiltToggle = options.querySelector('[data-tilt]') as HTMLButtonElement;
+// the fire hand (a mirror), vibration, the portrait turn and the aim speed, and the game screen's own keys (the minimap's
+// zoom, the shot log, the network panel), in a native modal on the surface stack; the modal sits in the top layer,
+// outside the frame, so it turns with the frame's own variables
 const handToggle = options.querySelector('[data-hand]') as HTMLButtonElement;
 const buzzToggle = options.querySelector('[data-buzz]') as HTMLButtonElement;
+const flipToggle = options.querySelector('[data-flip]') as HTMLButtonElement;
 function paintOptions(): void {
-  tiltToggle.setAttribute('aria-pressed', String(settings.tilt));
-  tiltToggle.textContent = t(settings.tilt ? 'pad.opt.on' : 'pad.opt.off');
   buzzToggle.setAttribute('aria-pressed', String(settings.buzz));
   buzzToggle.textContent = t(settings.buzz ? 'pad.opt.on' : 'pad.opt.off');
+  flipToggle.setAttribute('aria-pressed', String(settings.flip));
+  flipToggle.textContent = t(settings.flip ? 'pad.opt.flipRight' : 'pad.opt.flipLeft');
   handToggle.textContent = t(settings.hand === 'left' ? 'pad.opt.left' : 'pad.opt.right');
   ctl.dataset.hand = settings.hand;
-  (options.querySelector('[data-value="lockDeg"]') as HTMLElement).textContent = t('pad.opt.lockValue', { deg: settings.lockDeg });
   (options.querySelector('[data-value="aim"]') as HTMLElement).textContent = t('pad.opt.aimValue', { n: settings.aim });
 }
 function changed(): void {
   saveSettings();
-  applyMode();
   paintOptions();
+  layoutFrame();
   send(true);
 }
-tiltToggle.addEventListener('click', () => { settings.tilt = !settings.tilt; changed(); });
 handToggle.addEventListener('click', () => { settings.hand = settings.hand === 'left' ? 'right' : 'left'; changed(); });
 buzzToggle.addEventListener('click', () => { settings.buzz = !settings.buzz; changed(); buzz('press'); });
+flipToggle.addEventListener('click', () => { settings.flip = !settings.flip; changed(); });
 (options.querySelector('[data-tour]') as HTMLButtonElement).addEventListener('click', () => { options.close(); showTour(); });
 for (const button of options.querySelectorAll<HTMLButtonElement>('[data-step]')) {
   button.addEventListener('click', () => {
-    const name = button.dataset.step as 'lockDeg' | 'aim';
-    const values = name === 'aim' ? AIMS : LOCKS;
-    const at = Math.max(0, Math.min(values.length - 1, values.indexOf(settings[name]) + Number(button.dataset.dir)));
-    settings[name] = values[at]!;
+    const at = Math.max(0, Math.min(AIMS.length - 1, AIMS.indexOf(settings.aim) + Number(button.dataset.dir)));
+    settings.aim = AIMS[at]!;
     changed();
   });
+}
+for (const button of options.querySelectorAll<HTMLButtonElement>('[data-screen]')) {
+  button.addEventListener('click', () => { tap(button.dataset.screen as PadTapAction); buzz('press'); });
 }
 dialogSurface(options, 'pad-options');
 press($<HTMLElement>('[data-menu]'), () => { paintOptions(); options.showModal(); });
@@ -700,15 +672,16 @@ $<HTMLButtonElement>('[data-disconnect]').addEventListener('click', () => {
 });
 
 // ---- the controls' guide ------------------------------------------------------------------------------------------
-// The first pairing on a phone names its controls where they are (owner 2026-11-03: "a tutorial should show up on first
-// phone pairing mode that u can skip and also disappears after like 10 seconds"): a ring on each control and its name
-// beside it, over the live panel, which the thumbs work through; Skip or ten seconds ends it, and Options shows it
-// again. The marks live in the frame, so they turn with it; their places are the controls' layout boxes in the frame.
-// The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
-// the phone"): the phone sends its picture (every control's box, the stops and where their names sit) with the guide,
-// and Skip on either side, or the ten seconds, ends it on both.
-/** A control the guide names: its ring (none for the sight, a surface the others sit on), its ghost stroke, and the
- *  sides its name may take in order (`over` is on the control itself, `inside` along its top edge). */
+// The first pairing on a phone names its zones where they are (owner 2026-11-03: "a tutorial should show up on first
+// phone pairing mode that u can skip and also disappears after like 10 seconds"): a ring on each zone and its name
+// beside it, over the live panel, which the thumbs work through; Skip or ten seconds ends it, and Options shows it again.
+// It waits for a panel with thumbs (a pairing in Settings is idle, so it shows in the first battle). The marks live in
+// the frame, so they turn with it; their places are the zones' layout boxes in the frame. The game
+// screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and the
+// phone"): the phone sends its picture (every control's box, the stops and where their names sit) with the guide, and
+// Skip on either side, or the ten seconds, ends it on both.
+/** A zone the guide names: its ring (none for a surface the others sit on), its ghost stroke, and the sides its name may
+ *  take in order (`over` is on the zone itself, `inside` along its top edge). */
 interface TourStop {
   id: PadTourStop; selector: string; words: string; ring?: 'round' | 'none'; move?: 'x' | 'y';
   sides: ReadonlyArray<'above' | 'below' | 'left' | 'right' | 'inside' | 'over'>;
@@ -731,36 +704,40 @@ function frameBox(element: HTMLElement): { x: number; y: number; w: number; h: n
 }
 
 function tourStops(): TourStop[] {
-  const tilt = settings.tilt;
+  const left = settings.hand === 'left';
+  const { thumbs } = drawn.layout;
   return [
-    ...(tilt ? [{ id: 'tilt', selector: '.pad-tank', words: t('pad.tour.tilt'), ring: 'round', sides: ['over'] } as const] : []),
-    { id: tilt ? 'throttle' : 'stick', selector: '.pad-lever', words: t(tilt ? 'pad.tour.throttle' : 'pad.tour.stick'), move: 'y',
-      sides: settings.hand === 'left' ? ['left', 'over'] : ['right', 'over'] },
+    { id: 'stick', selector: '.pad-stick', words: t(thumbs.stick ?? 'pad.tour.stick'), ring: 'none', move: 'y', sides: ['inside'] },
     { id: 'aim', selector: '.pad-aim', words: t('pad.tour.aim'), ring: 'none', move: 'x', sides: ['inside'] },
-    { id: 'fire', selector: '.pad-trigger', words: t('pad.tour.fire'), ring: 'round', sides: ['over'] },
-    { id: 'scope', selector: '.pad-scope', words: t('pad.scope'), ring: 'round', sides: ['over', 'above'] },
-    { id: 'lock', selector: '.pad-lock', words: t('pad.lock'), ring: 'round', sides: ['over', 'left'] },
+    { id: 'fire', selector: '.pad-trigger', words: t('pad.tour.fire'), ring: 'round', sides: ['above', 'over'] },
+    { id: 'deck', selector: '.pad-deck', words: t(drawn.mode === 'strike' ? 'pad.tour.callins' : 'pad.tour.deck'), sides: ['below', 'over'] },
+    // a tank's columns are its repairs and its systems; another mode's are that mode's own keys
+    { id: 'left', selector: '.pad-col-l', words: t(drawn.mode !== 'tank' ? 'pad.tour.modeKeys' : 'pad.tour.left'), sides: [left ? 'left' : 'right', 'over'] },
+    { id: 'right', selector: '.pad-col-r', words: t(drawn.mode !== 'tank' ? 'pad.tour.modeKeys' : 'pad.tour.right'), sides: [left ? 'right' : 'left', 'over'] },
   ];
 }
 
-/** Every control the game screen's picture of the phone draws, and its kind there. */
+/** Every control the game screen's picture of the phone draws, and its kind there: the zones first, so a full panel's
+ *  last keys are the ones a long picture drops (padProtocol.ts PAD_TOUR_MAX_PARTS). */
 const TOUR_PARTS: ReadonlyArray<readonly [string, PadTourPart]> = [
-  ['.pad-link', 'chip'], ['.pad-shell', 'key'], ['.pad-guard', 'key'], ['[data-pause]', 'key'], ['[data-menu]', 'key'],
-  ['.pad-lever', 'lever'], ['.pad-brake', 'key'], ['.pad-speedo', 'dial'], ['.pad-tank', 'dial'], ['.pad-aim', 'sight'],
-  ['.pad-look', 'key'], ['.pad-zoom', 'key'], ['.pad-scope', 'round'], ['.pad-lock', 'round'], ['.pad-trigger', 'fire'],
+  ['.pad-link', 'chip'], ['.pad-stick', 'stick'], ['.pad-aim', 'sight'], ['.pad-trigger', 'fire'], ['[data-pause]', 'key'],
+  ['[data-menu]', 'key'], ['.pad-deck .pad-key', 'key'], ['.pad-stick-keys .pad-key', 'key'], ['.pad-fire-keys .pad-key', 'round'],
+  ['.pad-col .pad-key', 'key'],
 ];
 const shown = (element: HTMLElement): boolean => element.offsetWidth > 0 && !element.closest('[hidden]');
 /** The guide's picture as the game screen draws it (placeTour writes it). */
 let tourLayout: PadTourLayout | null = null;
 
-/** Lay the marks on their controls and each name on the first side with room (inside the frame, clear of every other
- *  control in the guide and of the names already placed), and Skip over the instruments' message line. */
+/** Lay the marks on their zones and each name on the first side with room (inside the frame, clear of every other zone
+ *  in the guide and of the names already placed), and Skip over the top strip's message. */
 function placeTour(): void {
   for (const old of tour.querySelectorAll('.pad-tour-mark,.pad-tour-tip')) old.remove();
   const width = ctl.clientWidth;
   const height = ctl.clientHeight;
   const stops = tourStops().map((stop) => ({ stop, target: ctl.querySelector<HTMLElement>(stop.selector) }))
-    .filter((entry): entry is { stop: TourStop; target: HTMLElement } => !!entry.target && shown(entry.target));
+    .filter((entry): entry is { stop: TourStop; target: HTMLElement } => !!entry.target && shown(entry.target)
+      && (entry.stop.id !== 'stick' || ctl.dataset.stick === 'on') && (entry.stop.id !== 'aim' || ctl.dataset.aim === 'on')
+      && (entry.stop.id !== 'fire' || ctl.dataset.fire === 'on') && (!/^(?:left|right|deck)$/.test(entry.stop.id) || entry.target.childElementCount > 0));
   const px = Math.round;
   const layout: PadTourLayout = { w: px(width), h: px(height), parts: [], stops: [] };
   tourLayout = layout;
@@ -773,13 +750,12 @@ function placeTour(): void {
   }
   const boxes = stops.map(({ target }) => frameBox(target));
   type Box = { x: number; y: number; w: number; h: number };
-  const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-  // a surface a control sits on (the sight under the fire button) is no obstacle to that control's name
+  // a surface a control sits on (the sight around the fire button) is no obstacle to that control's name
   const encloses = (outer: Box, inner: Box): boolean =>
     outer.x <= inner.x && outer.y <= inner.y && outer.x + outer.w >= inner.x + inner.w && outer.y + outer.h >= inner.y + inner.h;
   const skip = $<HTMLElement>('.pad-tour-skip', tour);
-  const mid = frameBox($<HTMLElement>('.pad-mid'));
-  const skipBox = { x: Math.round(mid.x + mid.w / 2 - skip.offsetWidth / 2), y: Math.round(mid.y + mid.h - skip.offsetHeight), w: skip.offsetWidth, h: skip.offsetHeight };
+  const top = frameBox($<HTMLElement>('.pad-top'));
+  const skipBox = { x: Math.round(top.x + top.w / 2 - skip.offsetWidth / 2), y: Math.round(top.y + top.h / 2 - skip.offsetHeight / 2), w: skip.offsetWidth, h: skip.offsetHeight };
   skip.style.transform = `translate(${skipBox.x}px,${skipBox.y}px)`;
   const taken: Box[] = [skipBox];
   stops.forEach(({ stop }, i) => {
@@ -803,18 +779,22 @@ function placeTour(): void {
         default: return { x: cx, y: box.y + 12, w, h };
       }
     };
-    const fits = (place: Box): boolean => place.x >= 0 && place.y >= 0 && place.x + w <= width && place.y + h <= height
-      && boxes.every((other, j) => j === i || encloses(other, box) || !overlaps(place, other))
-      && taken.every((other) => !overlaps(place, other));
-    const place = stop.sides.map(at).find(fits) ?? at(stop.sides[0]!);
-    const x = Math.max(0, Math.min(width - w, place.x));
-    const y = Math.max(0, Math.min(height - h, place.y));
+    // each side's place kept inside the frame; the first clear of every other zone and name, else the one covering the
+    // least of the names (then of the zones): a name wider than its column sits on it, never over another name
+    const inside = (place: Box): Box => ({ x: Math.max(0, Math.min(width - w, place.x)), y: Math.max(0, Math.min(height - h, place.y)), w, h });
+    const area = (a: Box, b: Box): number =>
+      Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    const cost = (place: Box): number => taken.reduce((sum, other) => sum + area(place, other), 0) * 1000
+      + boxes.reduce((sum, other, j) => sum + (j === i || encloses(other, box) ? 0 : area(place, other)), 0);
+    const places = stop.sides.map((side) => inside(at(side)));
+    const { x, y } = places.find((place) => cost(place) === 0)
+      ?? places.reduce((best, place) => (cost(place) < cost(best) ? place : best));
     taken.push({ x, y, w, h });
     tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
     layout.stops.push([stop.id, px(box.x), px(box.y), px(box.w), px(box.h), px(x + w / 2), px(y + h / 2),
       stop.ring === 'round' ? 1 : stop.ring === 'none' ? 2 : 0, stop.move === 'x' ? 1 : stop.move === 'y' ? 2 : 0]);
   });
-  // a ghost thumb strokes the throttle and the sight (none under reduced motion)
+  // a ghost thumb strokes the stick and the sight (none under reduced motion)
   for (const animation of ghostAnimations.splice(0)) animation.cancel();
   if (prefersReducedMotion()) return;
   const stroke = tokenMs('--dur-stage') * 2;
@@ -856,7 +836,6 @@ function endTour(how: PadTourEnd): void {
 }
 press($<HTMLElement>('.pad-tour-skip', tour), () => endTour('skipped'));
 
-// ---- status from the desktop -------------------------------------------------------------------------------------
 /** The reload ring: two half rings turn into view, the right half over the first half of the load and the left over the
  *  second (transform only, one linear sweep over the time left); reduced motion steps with each status. */
 function paintReload(done: number, leftS: number): void {
@@ -899,14 +878,18 @@ function feelCue(cue: PadCue, strength?: number): void {
 function paintStatus(next: PadStatus): void {
   // the loaded buzz hears every status first: no paint below and no early return can keep one from it
   readyBuzz.status(next);
-  const buttons = ctl.querySelectorAll<HTMLButtonElement>('.pad-shell');
-  buttons.forEach((button, slot) => {
+  // the mode the desktop is in lays the panel out (padLayout.ts); a swap ticks the hands once
+  const mode: PadMode = next.battle ? next.m ?? (next.alive ? 'tank' : 'dead') : 'idle';
+  const before = drawn.key;
+  renderLayout(mode, next.a ?? 0);
+  if (before && drawn.key !== before && drawn.mode !== mode) buzz('press');
+  shellKeys.forEach((button, slot) => {
     const shell = next.shells[slot];
     button.hidden = !shell;
     if (!shell) return;
     const code = shell.type;
     const count = shell.unlimited ? '∞' : String(shell.count);
-    const markup = `<i class="pad-lamp" aria-hidden="true"></i>${icon(shell.icon as IconId, { size: 18 })}<span class="pad-type">${esc(code)}</span><b class="pad-count num">${esc(count)}</b>`;
+    const markup = `<i class="pad-lamp" aria-hidden="true"></i>${icon(shell.icon as IconId, { size: 22 })}<span class="pad-type">${esc(code)}</span><b class="pad-count num">${esc(count)}</b>`;
     if (button.dataset.markup !== markup) {
       const rolled = button.dataset.count !== undefined && button.dataset.count !== count;
       button.innerHTML = markup;
@@ -922,35 +905,30 @@ function paintStatus(next: PadStatus): void {
     button.setAttribute('aria-label', t('pad.shell', { n: slot + 1, type: code, count }));
     if (!shell.unlimited && shell.count <= 0) button.dataset.empty = ''; else delete button.dataset.empty;
   });
-  zoom.hidden = !next.sniper;
-  scope.setAttribute('aria-pressed', String(next.sniper));
   scoped = next.sniper;
-  // the sight's lock: a key only where there is one to have (a couch seat's sight is its own bearing)
-  lockKey.hidden = next.lock === undefined;
-  lockKey.setAttribute('aria-pressed', String(!!next.lock));
-  // the tank in the hand is the one on the field: its plan view, and the gun's bearing on the rim (+ is to the left)
-  if (next.spec && plan.dataset.spec !== next.spec) {
-    plan.dataset.spec = next.spec;
-    plan.hidden = true;
-    planGlyph.hidden = false;
-    plan.onload = () => { plan.hidden = false; planGlyph.hidden = true; };
-    plan.onerror = () => { plan.hidden = true; planGlyph.hidden = false; };
-    plan.src = `/icons/${next.spec}_top.webp`;
+  // the room's briefing stands over the panel while the big screen shows it (never in a battle: the desktop sends none)
+  briefOverlay.hidden = !next.b || next.battle;
+  if (next.b && !next.battle) {
+    briefStep.textContent = t('pad.brief.step', { n: next.b.s + 1, total: next.b.n });
+    briefReady.setAttribute('aria-pressed', String(next.b.r));
   }
-  if (next.turret !== undefined) bearing.style.transform = `rotate(${Math.round(-next.turret * 573) / 10}deg)`;
-  // the speedometer: 0 at the needle's stop, the top speed at its far end (a 240° sweep)
-  const kmh = Math.abs(next.kmh ?? 0);
-  const share = next.topKmh ? Math.min(1, kmh / next.topKmh) : 0;
-  needle.style.transform = `rotate(${Math.round(-1200 + share * 2400) / 10}deg)`;
-  if (kmhReadout.textContent !== String(kmh)) kmhReadout.textContent = String(kmh);
+  // the keys that light: the scope while it is in, the lock while it holds a target
+  for (const key of ctl.querySelectorAll<HTMLElement>('[data-lit]')) {
+    key.setAttribute('aria-pressed', String(key.dataset.lit === 'sniper' ? next.sniper : !!next.lock));
+  }
+  // the speed, on the top strip's counter while a hull drives
+  const kmh = mode === 'tank' || mode === 'strike' ? String(Math.abs(next.kmh ?? 0)) : '';
+  const words = kmh ? `${kmh} ${t('pad.kmh')}` : '';
+  if (kmhReadout.textContent !== words) kmhReadout.textContent = words;
   ctl.dataset.state = padGunState(next);
-  message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
-    : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';
+  message.textContent = !next.battle ? t(drawn.layout.note ?? 'pad.waitingBattle') : next.paused ? t('pad.paused') : '';
   const key = `${next.reloadS > 0 ? Math.round(next.reloadTotalS * 10) : 0}|${Math.round((next.reloadTotalS - next.reloadS) * 2)}`;
   if (key === reloadKey) return;
   reloadKey = key;
   paintReload(next.reloadTotalS > 0 && next.reloadS > 0 ? 1 - next.reloadS / next.reloadTotalS : 1, next.reloadS);
 }
+
+if (debug) debug.preview = (status) => { show('controller'); layoutFrame(); paintStatus(status); };
 
 function paintLink(state: PadLinkState): void {
   let words = '';
@@ -1000,9 +978,8 @@ const ENDED_WORDS: Record<string, string> = {
 function connect(route: { code: string } | { resume: { code: string; token: string } }): void {
   const serviceUrl = padServiceUrl();
   if (!serviceUrl) { error.textContent = t('pad.ended.unreachable'); return; }
-  lockFrame();
   show('controller');
-  applyMode();
+  layoutFrame();
   paintLink({ kind: 'connecting' });
   let pinged: ReturnType<typeof setInterval> | null = null;
   link = createPadLink({
@@ -1037,7 +1014,13 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     onCtl(message) {
       if (message.k === 'cue') feelCue(message.c, message.m);
       else if (message.k === 'tour') { if (!message.on) endTour('screen'); }
-      else if (message.k === 'status') { paintStatus(message.s); if (!toured()) showTour(); }
+      // the guide waits for a panel with thumbs to point at (a pairing in Settings is idle: it shows in the first battle);
+      // a couch seat's phone (a lobby seat) leaves its guide to the room's briefing on the big screen
+      else if (message.k === 'status') {
+        paintStatus(message.s);
+        const { thumbs } = drawn.layout;
+        if (!toured() && !link?.seat && (thumbs.stick || thumbs.aim || thumbs.fire)) showTour();
+      }
       else if (message.k === 'pong') {
         rttMs = Math.max(0, performance.now() - message.t);
         if (debug) { debug.rttMs = rttMs; debug.applyMs = message.apply; }
@@ -1047,11 +1030,10 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
   });
 }
 
-/** The Start tap: motion access, the wake lock and full screen want a gesture (iOS), then the link. Where full screen
- *  is offered (Android), the system's own orientation lock holds the landscape the phone is in. */
+/** The Start tap: the wake lock and full screen want a gesture (iOS), then the link. Where full screen is offered
+ *  (Android), the system's own orientation lock holds the landscape the phone is in. */
 function start(route: { code: string } | { resume: { code: string; token: string } }): void {
   codeInput.blur();
-  void startTilt();
   void keepAwake();
   try {
     if (matchMedia('(pointer: coarse)').matches) {
