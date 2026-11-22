@@ -20,6 +20,9 @@ import { reserveDecorVolume } from './fieldChest.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { rubberSkirtRun } from './rubberSkirt.ts';
+import { addShtoraEyes } from './shtora.ts';
+import { blindTube } from './measuredPrimitives.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { skirtSections } from './rubberSkirtSheets.ts';
 import { buildT80UXCasting, buildT80UXHullBase, commanderSightHead, machineGun, T80U_X_CAST_ROWS, T80U_X_TRUNNION, T80U_X_YAW } from './t80uX.ts';
 import { GUN_LP83, build152Gun } from './gun152.ts';
@@ -287,43 +290,56 @@ function addCastCheeks(P: TankBuilderPort): void {
 
 /** Shtora-style electro-optical jammers ahead of the weight-imitator boxes (object292-cheeks-275, Kevin 2026-11-22: "put
  * tech like shtora or some other sensors in front of them"; his look pick: a jammer each side with a laser-warning head
- * on it). Each is the TShU-1-7 pattern: an armoured box with the IR lamp's big round window in a framed face, cooling fins
- * behind, a lid lip, on a bolted bracket of two legs and a foot plate seated on the cast nose's top ahead of the box; on
- * its outboard rear corner a laser-warning head (a squat drum with its dark sensor band) on a short post. Turret frame. */
-const JAMMER: { x: number; z: number; w: number; h: number; d: number; yaw: number; lift: number } = { x: .74, z: 1.31, w: .30, h: .22, d: .20, yaw: .10, lift: .025 };
+ * on it). The jammers are the fleet's shared Shtora-1 OTShU pair (profiles/shtora.ts, as the T-84's: the armoured box,
+ * the red lens in its rim and the lid), each on a bolted bracket of two legs, a cross plate and foot plates seated on the
+ * cast nose's top ahead of the box; on each jammer's outboard rear corner a laser-warning head (a squat drum with its
+ * dark sensor band) on a short post. Turret frame. */
+const JAMMER = { x: .74, z: 1.31, w: .24, h: .27, d: .22, lift: .03 } as const;
 function addJammers(P: TankBuilderPort): void {
-  const seg = P.q ? 24 : 14, { w, h, d, lift } = JAMMER;
+  const seg = P.q ? 24 : 14, { x, z, w, h, d, lift } = JAMMER;
+  // the seat: the nose's top under the bracket's legs on both sides, the pair level and clear over the highest
+  const legX = [-.08, .08], seat = Math.max(...[-1, 1].flatMap((s) => legX.map((dx) => noseTopAt(s, s * x + dx, z))));
+  const y0 = seat + lift, top = y0 + h + .04;
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG, disposables: P.disposables,
+    add: (slot, geometry, gx, gy, gz) => P.addEquipment(slot, geometry, gx, gy, gz) },
+  { x, y: y0 + h / 2, z, scale: 1, round: true, kit: false });
   for (const s of [-1, 1]) {
-    const x = s * JAMMER.x, z = JAMMER.z, yaw = s * JAMMER.yaw;
-    const at = (dx: number, dz: number): [number, number] => [x + dx * Math.cos(yaw) + dz * Math.sin(yaw), z - dx * Math.sin(yaw) + dz * Math.cos(yaw)];
-    // the seat: the nose's top under the bracket's two legs (inboard and outboard), the box clear over the higher one
-    const legs = [-.10, .10].map((dx) => { const [lx, lz] = at(dx, 0); return { lx, lz, y: noseTopAt(s, lx, lz) }; });
-    const y0 = Math.max(...legs.map((l) => l.y)) + lift, yc = y0 + h / 2;
-    for (const { lx, lz, y } of legs) {
-      P.addEquipment('turretDetail', box(.05, .012, .16), lx, y + .004, lz, 0, yaw, 0);                    // the foot plate
-      P.addEquipment('turretDetail', box(.032, y0 - y + .01, .10), lx, (y + y0) / 2, lz, 0, yaw, 0);        // the leg
-      for (const dz of [-.055, .055]) { const [bx, bz] = [lx + dz * Math.sin(yaw), lz + dz * Math.cos(yaw)]; P.addEquipment('turretDark', cylY(.011, .012, .012, 6), bx, y + .014, bz); }
+    for (const dx of legX) {
+      const lx = s * x + dx, y = noseTopAt(s, lx, z);
+      P.addEquipment('turretDetail', box(.05, .012, .16), lx, y + .004, z);                                // the foot plate
+      P.addEquipment('turretDetail', box(.032, y0 - y + .01, .10), lx, (y + y0) / 2, z);                   // the leg
+      for (const dz of [-.055, .055]) P.addEquipment('turretDark', cylY(.011, .012, .012, 6), lx, y + .014, z + dz);
     }
-    P.addEquipment('turretDetail', box(w - .02, .018, d * .8), x, y0 + .004, z, 0, yaw, 0);                   // the cross plate
-    // the box, its lid lip and the fins behind
-    P.addEquipment('turretDetail', box(w, h, d), x, yc, z, 0, yaw, 0);
-    P.addEquipment('turretDetail', box(w + .02, .016, d + .02), x, y0 + h + .008, z, 0, yaw, 0);
-    for (let k = 0; k < 5; k++) { const [fx, fz] = at(-w / 2 + .04 + k * (w - .08) / 4, -d / 2 - .02); P.addEquipment('turretDark', box(.008, h - .05, .04), fx, yc, fz, 0, yaw, 0); }
-    // the face: a raised frame round the lamp's round window, the lens dark behind its rim
-    const [fx, fz] = at(0, d / 2);
-    P.addEquipment('turretDetail', box(w - .03, h - .03, .016), fx, yc, fz + .004 * Math.cos(yaw), 0, yaw, 0);
-    P.addEquipment('turretDark', cylZ(.098, .022, seg), fx, yc, fz + .010, 0, yaw, 0);
-    P.addEquipment('turretGlass', cylZ(.082, .012, seg), fx, yc, fz + .020, 0, yaw, 0);
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      const [bx, bz] = at(dx * (w / 2 - .035), d / 2 + .014);
-      P.addEquipment('turretDark', cylZ(.010, .008, 6), bx, yc + dy * (h / 2 - .035), bz, 0, yaw, 0);
-    }
-    // the laser-warning head on the outboard rear corner
-    const [hx, hz] = at(s * (w / 2 - .05), -d / 2 + .05), top = y0 + h + .016;
+    P.addEquipment('turretDetail', box(w - .02, .018, d * .8), s * x, y0 + .004, z);                        // the cross plate
+    // the laser-warning head on the outboard rear corner, on the lid
+    const hx = s * (x + w / 2 - .045), hz = z - d / 2 + .05;
     P.addEquipment('turretDetail', cylY(.016, .018, .022, 8), hx, top + .011, hz);
     P.addEquipment('turretDetail', cylY(.038, .042, .04, seg), hx, top + .042, hz);
     P.addEquipment('turretDark', cylY(.043, .043, .014, seg), hx, top + .042, hz);
     P.addEquipment('turretDetail', KIT.sph(.038, seg, Math.PI / 2).scale(1, .35, 1), hx, top + .062, hz);
+  }
+}
+
+/** The 902B Tucha smoke grenade launchers (object292-cheeks-275, from the smoke-salvo lane: the T-80BV the 292 is built
+ * from carries eight; the Kubinka tank shows none, its launchers off as museum pieces mostly are): four a side on the
+ * casting's upper flank behind the weight-imitator box, inboard of the flank panels' tops, raked up and out, each on its
+ * bracket over a rail; marked as smoke sockets (vehicleAuxiliaryGeometry markSmokeTube, as the T-84's twelve), so the
+ * fleet rule fires the eight that are drawn. The right bank sits ahead of the commander's NSVT riser. Turret frame. */
+const SMOKE_Z = [.40, .48, .56, .64] as const, SMOKE_X = .76, SMOKE_TILT = -.60, SMOKE_YAW = .30;
+function addSmoke(P: TankBuilderPort): void {
+  const shellTop = (s: number, ax: number, z: number) => {
+    const [l, r, t, sh] = shellAt(z), w = s > 0 ? r : l;
+    return sh + (t - sh) * Math.sin(Math.acos(Math.min(1, ax / w))) ** .56;
+  };
+  for (const s of [-1, 1]) {
+    const seats = SMOKE_Z.map((z) => { const [l, r] = shellAt(z), ax = SMOKE_X * (s > 0 ? r : l); return { z, ax, y: shellTop(s, ax, z) }; });
+    for (const { z, ax, y } of seats) {
+      P.addEquipment('turretDetail', box(.07, .05, .07), s * ax, y + .02, z);                                // the bracket
+      P.addEquipment('turretDark', markSmokeTube(blindTube(.044, .033, .24, .15, 16), [0, 0, 1], true), s * ax, y + .085, z, SMOKE_TILT, s * SMOKE_YAW, 0);
+    }
+    // the rail the brackets stand on, along the bank
+    const a = seats[0], c = seats[seats.length - 1], len = Math.hypot(c.ax - a.ax, c.z - a.z) + .10;
+    P.addEquipment('turretDetail', box(.05, .025, len), s * (a.ax + c.ax) / 2, Math.min(a.y, c.y) + .006, (a.z + c.z) / 2, 0, s * Math.atan2(c.ax - a.ax, c.z - a.z), 0);
   }
 }
 
@@ -571,6 +587,7 @@ function buildObject292X(P: TankBuilderPort): void {
   addCastCheeks(P);
   addCheekBlocks(P);
   addJammers(P);
+  addSmoke(P);
   addBox(P);
   addRoof(P);
   for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .26, [s * (BOX_W + .006), .45, -1.32], s * Math.PI / 2);
