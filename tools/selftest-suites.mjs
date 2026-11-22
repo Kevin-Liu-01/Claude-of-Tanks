@@ -100,6 +100,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/strafeEffect.selftest.mjs',
     // 2026-11-21 (air-support-275): wire 13's u32 action bits carry the Maverick run's press from a guest to the host
     'src/mp/host/strikeMissileWire.selftest.mjs',
+    // 2026-11-22 (turbo-spin-275): Turbo and the air spin in Turbo Ball and Gravity, the shared action step and the movement
+    'src/sim/turboSpin.selftest.mjs',
+    // 2026-11-22 (turbo-spin-275): a host migration mid-flip and mid-turbo; the flip finishes, the cooldown runs on
+    'src/mp/host/turboSpinMigration.selftest.mjs',
+    // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
+    'src/mp/wire/actionBitMask.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',

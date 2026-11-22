@@ -52,17 +52,23 @@ assert.match(access, /if \(!input\.isTouchLayout\(\)\) return autoAim \? Promise
 
 // The equal-size controls row owns the desktop and touch jump action.
 assert.match(hud, /jumpHint.innerHTML = `[^`]*uiIconSVG\('rocket', 18\)[^`]*system-status/, 'jump has its rocket, keycap and status');
-assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\)\)/, 'only jump rulesets expose the control');
-assert.match(hud, /function setControlsJumpMode\(on:boolean\):void\{\n\s*jumpHint\.classList\.toggle\('on',on\);/, 'the jump flag shows the control');
+assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin\}\)/, 'only jump rulesets expose the control (turbo-spin-275: and their Turbo and air spin)');
+assert.match(hud, /function setControlsJumpMode\(on:boolean,moves:[^)]*\):void\{\n\s*jumpHint\.classList\.toggle\('on',on\);/, 'the jump flag shows the control');
 // the shared control fires the real jump edge through the HUD's one binder (bindControl: a mouse press acts on its
 // pointerdown, a touch tap on its release inside the slop; raw hold handlers trip the a11y census)
 assert.match(hud, /bindControl\(jumpHint, \(\) => bus\.emit\('ui:selfRight', \{\}\)\)/, 'the shared control fires the real jump edge');
 assert.match(hud, /const bindControl = \(button: HTMLButtonElement, act: \(\) => void\): void => \{[\s\S]*?button\.addEventListener\('pointerdown', \(event\) => \{[\s\S]*?if \(event\.pointerType === 'mouse'\) \{ act\(\); return; \}/,
   'a mouse press on the control acts on its pointerdown, the same edge as the F key');
-assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy touch button stays hidden to avoid duplicate controls');
+// turbo-spin-275: one of each. A phone's row stands its jump tile down for the touch kit's round button (mobile-hud-274,
+// battleHudLayout.css), which the HUD kept hidden in every ruleset, so a phone had no jump; the round buttons now show in
+// jump rulesets and stand down wherever the row shows its tiles
+assert.match(hud, /bus\.emit\('ui:jumpAvailable', \{ on: isJumpMode\(ruleset\), turbo: !!ruleset\?\.turbo, airSpin: !!ruleset\?\.airSpin \}\)/, 'the touch kit\'s jump shows in jump rulesets');
+const layoutCss = read('../ui/battleHudLayout.css');
+assert.match(layoutCss, /\.cot-touch-layout:is\(\[data-cot-width='phone'\],\[data-cot-height='short'\]\) \.cot-vehicle-controls>\.cot-jump\{display:none\}/, 'a phone\'s row stands its jump tiles down');
+assert.match(layoutCss, /\.cot-touch-layout:not\(\[data-cot-width='phone'\]\):not\(\[data-cot-height='short'\]\) \.cot-touch \.round:is\(\.jump,\.turbo,\.air-spin\)\{display:none\}/, 'elsewhere the round buttons stand down for the row\'s tiles: one of each');
 const touch = read('../ui/touchControls.ts');
 assert.match(touch, /<button class="round jump" type="button" aria-label="\$\{t\('touch\.jumpAria'\)\}" hidden>\$\{ROCKET\}/, 'a hidden rocket button waits in the touch layer');
-assert.match(touch, /bus\.on\('ui:jumpAvailable', \(payload\) => \{\n\s*const \{ on \} = payload as \{ on\?: boolean \};\n\s*jumpButton\.hidden = !on;/, 'it appears in rulesets with a jump');
+assert.match(touch, /bus\.on\('ui:jumpAvailable', \(payload\) => \{\n\s*const \{ on, turbo, airSpin \} = payload as \{ on\?: boolean; turbo\?: boolean; airSpin\?: boolean \};\n\s*jumpButton\.hidden = !on;/, 'it appears in rulesets with a jump');
 assert.match(touch, /const selfRight = \(\): void => \{ bus\.emit\('ui:selfRight', \{\}\);/, 'the jump is the F key\'s edge: jump upright, flip when overturned');
 assert.match(touch, /jumpButton\.addEventListener\('pointerdown', \(e\) => \{\n\s*e\.preventDefault\(\); e\.stopPropagation\(\);\n\s*selfRight\(\);/, 'a press is the same edge as the F key: jump upright, flip when overturned');
 assert.match(touch, /\.cot-touch \.jump\{right:134px;bottom:124px;width:84px;height:84px;/, 'the rocket button is as big as the fire button family, above the scope');

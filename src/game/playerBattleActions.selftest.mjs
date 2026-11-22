@@ -146,6 +146,23 @@ const rules = {
     localCalls.push('jump');
     return true;
   },
+  // turbo-spin-275: F's meaning by the hull's state (sim/modeMoves.ts pressSelfRight), Turbo and the air spin's own press
+  pressSelfRight(entity) {
+    if (entity.modeAirSpin && entity.state.grounded === false) { localCalls.push('spin'); return 'spin'; }
+    if (rules.requestTankSelfRight(entity.state)) return 'right';
+    return entity.modeJumpMps != null && rules.requestTankJump(entity.state, entity.modeJumpMps) ? 'jump' : null;
+  },
+  requestHullTurbo(entity, timeS) {
+    if (!entity.modeTurbo || (entity.turboReadyS ?? -Infinity) > timeS) return false;
+    entity.turboReadyS = timeS + entity.modeTurbo.cooldownS;
+    localCalls.push('turbo');
+    return true;
+  },
+  requestTankAirSpin(state, throttle, steer) {
+    if (state.grounded !== false) return false;
+    localCalls.push(`spin:${throttle}:${steer}`);
+    return true;
+  },
 };
 
 const actions = createPlayerBattleActions({
@@ -256,6 +273,34 @@ assert.equal(localCalls.at(-1), 'jump', 'an upright hull jumps in a jumping rule
 assert(events.some(({ event }) => event === 'tank:jump'));
 player.modeJumpMps = null;
 player.state.overturned = overturnedBefore;
+// turbo-spin-275 (owner 2026-11-22): in a mode with the air spin, F in flight flips or rolls; Turbo (Z) leaps and cools
+{
+  const groundedBefore = player.state.grounded;
+  player.modeJumpMps = 13; player.modeAirSpin = true; player.modeTurbo = { forwardMps: 12, liftMps: 2.5, cooldownS: 3 };
+  player.state.overturned = false; player.state.grounded = false;
+  input.press('selfRight');
+  assert.equal(localCalls.at(-1), 'spin', 'F in flight spins, never the rocket re-boost');
+  assert(events.some(({ event }) => event === 'tank:airSpin'), 'and is heard');
+  player.input.throttle = -1; player.input.steer = 0;
+  bus.emit('ui:airSpin', {});
+  assert.equal(localCalls.at(-1), 'spin:-1:0', 'the air spin\'s tile spins on the axis the drive picks');
+  player.state.grounded = true;
+  const before = localCalls.length;
+  bus.emit('ui:airSpin', {});
+  assert.equal(localCalls.length, before, 'on the ground the air spin\'s own press does nothing (never a jump)');
+  const turboEvents = () => events.filter(({ event }) => event === 'tank:turbo');
+  const heard = turboEvents().length;
+  input.press('turbo');
+  assert.equal(localCalls.at(-1), 'turbo', 'Z leaps');
+  assert.equal(turboEvents().length, heard + 1, 'the leap is heard');
+  assert.deepEqual(turboEvents().at(-1).payload, { id: player.id, readyS: 3 }, 'with the cooldown it starts, for the HUD and the phone');
+  input.press('turbo');
+  assert.equal(turboEvents().length, heard + 1, 'a press while it cools is refused, unheard');
+  player.turboReadyS = -Infinity;
+  player.modeJumpMps = null; player.modeAirSpin = false; player.modeTurbo = null;
+  player.state.grounded = groundedBefore;
+  player.input.throttle = 0;
+}
 
 networkActive = true;
 player.combat.damagedModule = 'trackL';
@@ -264,6 +309,11 @@ bus.emit('ui:magazineReload', {});
 bus.emit('ui:specialAction', { pad: true });
 bus.emit('ui:selfRight', {});
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight']);
+// (turbo-spin-275) a room's Turbo and air spin are the host's: queued as their action bits
+player.modeTurbo = { forwardMps: 12, liftMps: 2.5, cooldownS: 3 }; player.modeAirSpin = true;
+bus.emit('ui:turbo', {}); bus.emit('ui:airSpin', {});
+assert.deepEqual(networkCalls.splice(4), ['turbo', 'airSpin'], 'a room queues Turbo and the air spin for the host');
+player.modeTurbo = null; player.modeAirSpin = false;
 assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns state mutation');
 
 spec.guidedAction = true;

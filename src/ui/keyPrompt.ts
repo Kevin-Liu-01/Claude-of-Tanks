@@ -47,6 +47,11 @@ const TOUCH_TILES: Partial<Record<ActionId, TouchTile>> = {
   shell2: { selector: '.cot-shell:has([data-key-cap="shell2"])', icon: 'shell' },
   shell3: { selector: '.cot-shell:has([data-key-cap="shell3"])', icon: 'shell' },
   smoke: { selector: ROW('smoke'), icon: 'smoke' },
+  // a jump mode's moves (turbo-spin-275): the row's tile, or on a phone the touch kit's round button, each drawn with
+  // the same glyph; the flip notice names selfRight, so a touch player sees the jump button there too (notices-audit-275)
+  selfRight: { selector: `${ROW('selfRight')}, .cot-touch.on .round.jump`, icon: 'rocket' },
+  turbo: { selector: `${ROW('turbo')}, .cot-touch.on .round.turbo`, icon: 'turbo' },
+  airSpin: { selector: `${ROW('airSpin')}, .cot-touch.on .round.air-spin`, icon: 'airSpin' },
   lights: { selector: ROW('lights'), icon: 'lightbulb' },
   roofGun: { selector: ROW('roofGun'), icon: 'roofGun' },
   drone: { selector: ROW('drone'), icon: 'controller' },

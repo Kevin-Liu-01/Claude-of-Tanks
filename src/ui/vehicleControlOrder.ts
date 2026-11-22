@@ -12,12 +12,14 @@ import { VEHICLE_ACTIONS, type VehicleActionId } from '../game/vehicleActions.ts
 
 type VehicleControlId = VehicleActionId;
 
+/** A jump mode's own moves, left to right (turbo-spin-275: Turbo and the air spin follow the jump). */
+const MODE_MOVES: readonly VehicleControlId[] = Object.freeze(['jump', 'turbo', 'airSpin']);
 /** The loadout's own order (the table's): suspension, the ATGM, the reload, the drone, smoke, lights, the roof gun. */
-const LOADOUT_ORDER: readonly VehicleControlId[] = Object.freeze(VEHICLE_ACTIONS.map((def) => def.id).filter((id) => id !== 'jump'));
-/** A jump mode leads with the jump. */
-const JUMP_MODE_ORDER: readonly VehicleControlId[] = Object.freeze(['jump', ...LOADOUT_ORDER]);
-/** Elsewhere the hidden jump waits at the far end, so nothing in front of the loadout moves. */
-const PLAIN_MODE_ORDER: readonly VehicleControlId[] = Object.freeze([...LOADOUT_ORDER, 'jump']);
+const LOADOUT_ORDER: readonly VehicleControlId[] = Object.freeze(VEHICLE_ACTIONS.map((def) => def.id).filter((id) => !MODE_MOVES.includes(id)));
+/** A jump mode leads with the jump, then Turbo and the air spin. */
+const JUMP_MODE_ORDER: readonly VehicleControlId[] = Object.freeze([...MODE_MOVES, ...LOADOUT_ORDER]);
+/** Elsewhere the hidden moves wait at the far end, so nothing in front of the loadout moves. */
+const PLAIN_MODE_ORDER: readonly VehicleControlId[] = Object.freeze([...LOADOUT_ORDER, ...MODE_MOVES]);
 
 export function isJumpMode(ruleset: Pick<MatchRuleset, 'jumpMps'> | null | undefined): boolean {
   return ruleset?.jumpMps != null;
@@ -28,9 +30,10 @@ export function vehicleControlOrder(jumpMode: boolean): readonly VehicleControlI
   return jumpMode ? JUMP_MODE_ORDER : PLAIN_MODE_ORDER;
 }
 
-/** The items a loadout shows, left to right: the jump exactly when the mode has one, the rest when the vehicle does. */
+/** The items a loadout shows, left to right: the jump exactly when the mode has one, Turbo and the air spin when the
+ *  mode grants them (only jump modes do), the rest when the vehicle does. */
 export function visibleVehicleControls(shown: ReadonlySet<VehicleControlId>, jumpMode: boolean): VehicleControlId[] {
-  return vehicleControlOrder(jumpMode).filter((id) => (id === 'jump' ? jumpMode : shown.has(id)));
+  return vehicleControlOrder(jumpMode).filter((id) => (id === 'jump' ? jumpMode : MODE_MOVES.includes(id) ? jumpMode && shown.has(id) : shown.has(id)));
 }
 
 interface RowNode { readonly nextSibling: RowNode | null }

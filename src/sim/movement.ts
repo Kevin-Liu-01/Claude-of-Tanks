@@ -23,6 +23,7 @@ import { floorShotShare, type GunAutoloader } from './fireCycleFloor.ts';
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
+import { AIR_SPIN_RATE, canTankAirSpin, tankAirborne } from './hullFlight.ts';
 import { HULL_STEP_UP_M } from '../world/collision.ts';
 import { CLIFF_GRADE,
   DRIVE_ACCEL_PER_HPT as K_ACCEL,
@@ -1496,15 +1497,11 @@ const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation imp
 const KNOCK_GRIP_MU = 0.5;
 /** The smallest calibre share a shove is reckoned at (shellKnockMps): a 5 mm round's; a 12.7 mm round knocks with its own. */
 const KNOCK_CALIBRE_FLOOR = 0.05;
-const JUMP_AIRTIME_GRACE_S = 0.05;
 // round 30 (owner 2026-09-20: the jump should "be a lot more powerful, and work even when you're not on ground"):
 // an airborne hull may fire its jump again once this much flight has passed since the last lift — a rocket boost
 const JUMP_AIR_REPEAT_S = 0.35;
 /** The rocket's ceiling: an air boost carries the hull at most this many single-jump apexes above its ground. */
 const JUMP_CEILING_APEXES = 2;
-/** Air spin (turbo-spin-275): one flip or roll a press, a whole turn in this long. */
-const AIR_SPIN_TURN_S = 0.9;
-export const AIR_SPIN_RATE = 2 * Math.PI / AIR_SPIN_TURN_S;
 /** A stick or key past this share of its throw picks the spin's axis. */
 const AIR_SPIN_PICK = 0.3;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
@@ -5782,16 +5779,12 @@ export function requestTankJump(
   return true;
 }
 
-/** A hull in flight: off the ground, or its ride past the jump's grace (the one test the jump, the spin and the HUD read). */
-export function tankAirborne(state: LiftableState | null | undefined): boolean {
-  if (!state) return false;
-  return state.grounded === false || (state._ride ? (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S : false);
-}
 
 /**
  * The air spin's axes (turbo-spin-275), signed as the attitude spring's rates: positive pitch is nose up (a back flip),
  * positive roll lifts the right side (a roll to the left). 0 is no spin.
  */
+export { canTankAirSpin, tankAirborne } from './hullFlight.ts';
 export const AIR_SPIN_AXES = Object.freeze({ NONE: 0, BACK_FLIP: 1, FRONT_FLIP: -1, ROLL_LEFT: 2, ROLL_RIGHT: -2 } as const);
 
 interface AirSpinState extends LiftableState {
@@ -5815,16 +5808,12 @@ export function airSpinAxisFor(throttle: number, steer: number): number {
  * righting torque holds the hull, and while a spin is still turning. The ground ends a spin where the hull meets it.
  */
 export function requestTankAirSpin(state: AirSpinState | null | undefined, throttle: number, steer: number): boolean {
-  if (!state || !tankAirborne(state) || state._body?.autoRighting === true || state._airSpinAxis) return false;
+  if (!state || !canTankAirSpin(state)) return false;
   state._airSpinAxis = airSpinAxisFor(throttle, steer);
   state._airSpinLeft = 2 * Math.PI;
   return true;
 }
 
-/** Whether a press would spin now (the HUD's lit state: the same test requestTankAirSpin makes, the axis aside). */
-export function canTankAirSpin(state: AirSpinState | null | undefined): boolean {
-  return !!state && tankAirborne(state) && state._body?.autoRighting !== true && !state._airSpinAxis;
-}
 
 /** The spin's turn this step on its axis's rate; true when this step completes the turn. */
 function driveAirSpin(state: TankState, spring: AttitudeSpringState, dt: number): boolean {

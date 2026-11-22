@@ -22,7 +22,7 @@
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState, PadPhoneState } from './padLink.ts';
 import { AIM_STICK, DRIVE_STICK, TRIGGER_AIM_STICK, aimStickStep, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
-import { PAD_LAYOUTS, padVisible } from './padLayout.ts';
+import { PAD_LAYOUTS, padActGranted, padVisible } from './padLayout.ts';
 import type { PadControl, PadModeLayout } from './padLayout.ts';
 import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
 import { createPadReadyBuzz, padGunState } from './padReadyBuzz.ts';
@@ -927,6 +927,12 @@ function paintStatus(next: PadStatus): void {
   // the keys that light: the scope while it is in, the lock while it holds a target
   for (const key of ctl.querySelectorAll<HTMLElement>('[data-lit]')) {
     key.setAttribute('aria-pressed', String(key.dataset.lit === 'sniper' ? next.sniper : !!next.lock));
+  }
+  // the keys the desktop has unavailable now grey out (turbo-spin-275: the air spin on the ground, Turbo while it cools)
+  for (const key of ctl.querySelectorAll<HTMLElement>('.pad-key[data-id]')) {
+    const off = padActGranted(next.u ?? 0, key.dataset.id!);
+    key.toggleAttribute('data-unavailable', off);
+    if (off) key.setAttribute('aria-disabled', 'true'); else key.removeAttribute('aria-disabled');
   }
   // the speed, on the top strip's counter while a hull drives
   const kmh = mode === 'tank' || mode === 'strike' ? String(Math.abs(next.kmh ?? 0)) : '';

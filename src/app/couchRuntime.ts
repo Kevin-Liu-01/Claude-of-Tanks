@@ -17,6 +17,8 @@
 import { startPadLobby } from '../pad/padLobby.ts';
 import type { PadLobby, PadLobbyPorts, PadLobbyView } from '../pad/padLobby.ts';
 import type { PadStatusSource } from '../pad/padReceiver.ts';
+import { modeMovesUnavailable } from '../game/turboCooldown.ts';
+import type { HullFlightState } from '../sim/hullFlight.ts';
 import { padServiceUrl } from '../pad/padEndpoint.ts';
 import { createCouchSeatControls } from '../game/couchSeats.ts';
 import type { CouchSeatControls, CouchSeatInput, CouchSession, CouchView } from '../game/couchSeats.ts';
@@ -50,7 +52,10 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   game: {
     readonly phase: string;
     readonly couch?: CouchSession<E> | null;
-    readonly ruleset: { readonly couch?: CouchRules; readonly consumables?: boolean };
+    readonly ruleset: { readonly couch?: CouchRules; readonly consumables?: boolean; readonly jumpMps?: number | null;
+      readonly turbo?: object | null; readonly airSpin?: boolean };
+    /** The battle's clock (s): a seat's Turbo cooldown counts on it (turbo-spin-275). */
+    readonly timeS?: number;
   };
   camera: {
     readonly fov: number;
@@ -190,7 +195,11 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
     const battle = ports.game.phase === 'battle' && !!ports.game.ruleset.couch && !!entity;
     // a seat drives its tank or waits out its respawn; its controls are couchSeats.ts's few (facts.couch)
     return { battle, paused: ports.paused(), sniper: false, player: battle ? entity : null, shellCode: ports.shellCode,
-      mode: entity?.combat?.destroyed ? 'dead' as const : 'tank' as const, facts: { couch: true, consumables: ports.game.ruleset.consumables !== false } };
+      mode: entity?.combat?.destroyed ? 'dead' as const : 'tank' as const,
+      // a jump mode's moves on a seat's phone too (turbo-spin-275; the jump had none there): the seat hull's own cooldown
+      facts: { couch: true, consumables: ports.game.ruleset.consumables !== false, jump: ports.game.ruleset.jumpMps != null,
+        turbo: !!ports.game.ruleset.turbo, airSpin: !!ports.game.ruleset.airSpin },
+      unavailable: modeMovesUnavailable(entity?.state as HullFlightState | null | undefined, Math.max(0, ((entity as { turboReadyS?: number } | null)?.turboReadyS ?? -Infinity) - (ports.game.timeS ?? 0))) };
   };
 
   /** A new couch battle: each seat's sight starts along its own gun, and the camera along seat 1's side's facing. */

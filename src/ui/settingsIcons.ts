@@ -15,6 +15,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   right: { id: 'steerRight' },
   handbrake: { id: 'handbrake', tone: 'amber' },
   selfRight: { id: 'reload', tone: 'amber' },
+  turbo: { id: 'turbo', tone: 'amber' },
+  airSpin: { id: 'airSpin', tone: 'amber' },
   fire: { id: 'fireGun', tone: 'red' },
   sniperToggle: { id: 'scope', tone: 'cyan' },
   shell1: { id: 'shell', tone: 'amber' },

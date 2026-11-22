@@ -1476,27 +1476,43 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // 390x844 (hud-self-measure, 274b))
       if (items) {
         let smokeLeft: number, smokeTop: number, jumpLeft: number, jumpTop: number;
+        // turbo-spin-275: Turbo and the air spin take the jump's next cells (up the short landscape's column; the
+        // portrait grid's next free cells over the items)
+        let turboLeft: number, turboTop: number, spinLeft: number, spinTop: number;
         if (short) {
-          smokeLeft = jumpLeft = items.right + gap;
+          smokeLeft = jumpLeft = turboLeft = spinLeft = items.right + gap;
           smokeTop = items.bottom - tile;
           jumpTop = smokeShown ? smokeTop - gap - tile : smokeTop;
+          turboTop = jumpTop - gap - tile;
+          spinTop = turboTop - gap - tile;
         } else {
           const itemsNode = hudQuery<HTMLElement>('.cot-cons');
           let itemCount = 0;
           for (const node of itemsNode?.children ?? []) if ((node as HTMLElement).checkVisibility?.()) itemCount++;
           const over = items.top - gap - tile, second = items.left + tile + gap;
           // (the free cells in order: beside the last item where its row has room, then over the items, left to right)
-          const cells: [number, number][] = itemCount % 2 ? [[second, items.bottom - tile], [items.left, over]]
-            : [[items.left, over], [second, over]];
+          const over2 = over - gap - tile;
+          const cells: [number, number][] = itemCount % 2
+            ? [[second, items.bottom - tile], [items.left, over], [second, over], [items.left, over2]]
+            : [[items.left, over], [second, over], [items.left, over2], [second, over2]];
           [smokeLeft, smokeTop] = cells[0];
-          [jumpLeft, jumpTop] = cells[smokeShown ? 1 : 0];
+          const first = smokeShown ? 1 : 0;
+          [jumpLeft, jumpTop] = cells[first];
+          [turboLeft, turboTop] = cells[first + 1];
+          [spinLeft, spinTop] = cells[first + 2];
         }
         setBodyVar('--hud-smoke-left', `${Math.round(smokeLeft)}px`);
         setBodyVar('--hud-smoke-top', `${Math.round(smokeTop)}px`);
         setBodyVar('--hud-jump-left', `${Math.round(jumpLeft)}px`);
         setBodyVar('--hud-jump-top', `${Math.round(jumpTop)}px`);
+        setBodyVar('--hud-turbo-left', `${Math.round(turboLeft)}px`);
+        setBodyVar('--hud-turbo-top', `${Math.round(turboTop)}px`);
+        setBodyVar('--hud-spin-left', `${Math.round(spinLeft)}px`);
+        setBodyVar('--hud-spin-top', `${Math.round(spinTop)}px`);
         const jump = read('.cot-touch.on .jump');
-        survivalTop = Math.min(items.top, smokeShown ? smokeTop : height, jump ? jumpTop : height);
+        const turbo = read('.cot-touch.on .turbo'), spin = read('.cot-touch.on .air-spin');
+        survivalTop = Math.min(items.top, smokeShown ? smokeTop : height, jump ? jumpTop : height, turbo ? turboTop : height,
+          spin ? spinTop : height);
         if (short) { leftInset = Math.ceil((smokeShown || jump ? smokeLeft + tile : items.right) + 8); survivalTop = height; }
       }
       let shown = 0;

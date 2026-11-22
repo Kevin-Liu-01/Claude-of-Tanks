@@ -33,6 +33,9 @@ type ActionRules = Pick<BattleClientAccess,
   | 'useSoloConsumable'
   | 'requestTankSelfRight'
   | 'requestTankJump'
+  | 'pressSelfRight'
+  | 'requestHullTurbo'
+  | 'requestTankAirSpin'
   | 'rulesetUnlimitedFor'
 >;
 type ActionCombat = Parameters<ActionRules['selectShell']>[0];
@@ -56,9 +59,13 @@ interface BattleActionEntity extends Omit<
   spec: BattleActionSpec;
   combat: ActionCombat | null;
   state: ActionState | null;
-  input: { shellSlot: number; auxiliaryBits?: number };
+  input: { shellSlot: number; auxiliaryBits?: number; throttle?: number; steer?: number };
   /** Ruleset jump launch stamped by the mode controller (Turbo Ball); null elsewhere. */
   modeJumpMps?: number | null;
+  /** Turbo and the air spin (turbo-spin-275; sim/modeMoves.ts TurboHull), stamped with the jump. */
+  modeTurbo?: Parameters<ActionRules['requestHullTurbo']>[0]['modeTurbo'];
+  modeAirSpin?: boolean;
+  turboReadyS?: number;
   /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
   modeGravityScale?: number;
   /** Drone and AC-130 modes: the gunship this entity is (sim/aerialCombat); unlimited rounds are the gunship's only. */
@@ -89,7 +96,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'turbo' | 'airSpin' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -334,6 +341,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     if (!battleInputAllowed()) return;
     bus.emit('ui:selfRight', {});
   });
+  // turbo-spin-275: Turbo (Z) and the air spin's own key (unbound by default: F spins in flight)
+  onAction('turbo', () => { if (battleInputAllowed()) bus.emit('ui:turbo', {}); });
+  onAction('airSpin', () => { if (battleInputAllowed()) bus.emit('ui:airSpin', {}); });
 
   // Round 30 (owner 2026-09-20: "make auto aim a keybind in desktop mode and keybind turning on hitboxes too"):
   // T asks the auto-aim runtime to lock (or release) the enemy nearest the reticle; H flips the armour overlay.
@@ -515,16 +525,26 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:click', {});
       return;
     }
-    if (!rules.requestTankSelfRight(player.state, player.modeGravityScale ?? 1)) {
-      // Owner (2026-09-16, Turbo Ball): the same key jumps an upright hull when the ruleset allows it.
-      if (player.modeJumpMps != null && rules.requestTankJump(player.state, player.modeJumpMps, player.modeGravityScale ?? 1)) {
-        bus.emit('tank:jump', { id: player.id });
-        bus.emit('ui:click', {});
-      }
-      return;
-    }
-    bus.emit('tank:selfRight', { id: player.id });
+    // the action step's own rule (sim/modeMoves.ts pressSelfRight): in a mode with the air spin a hull in flight flips or
+    // rolls (turbo-spin-275); else the self-right, and where the ruleset allows it the jump (owner 2026-09-16, Turbo Ball)
+    const did = rules.pressSelfRight(player as Parameters<ActionRules['pressSelfRight']>[0]);
+    if (!did) return;
+    bus.emit(did === 'spin' ? 'tank:airSpin' : did === 'jump' ? 'tank:jump' : 'tank:selfRight', { id: player.id });
     bus.emit('ui:click', {});
+  });
+  listen('ui:turbo', () => {
+    const player = battleInputAllowed() ? livePlayer() : null;
+    if (!player?.modeTurbo || !player.state) return;
+    if (network.isActive()) { network.queueAction('turbo'); return; }
+    if (!rules.requestHullTurbo(player as unknown as Parameters<ActionRules['requestHullTurbo']>[0], game.timeS)) return;
+    bus.emit('tank:turbo', { id: player.id, readyS: player.modeTurbo.cooldownS });
+  });
+  listen('ui:airSpin', () => {
+    const player = battleInputAllowed() ? livePlayer() : null;
+    if (!player?.modeAirSpin || !player.state) return;
+    if (network.isActive()) { network.queueAction('airSpin'); return; }
+    if (!rules.requestTankAirSpin(player.state as Parameters<ActionRules['requestTankAirSpin']>[0], player.input.throttle ?? 0, player.input.steer ?? 0)) return;
+    bus.emit('tank:airSpin', { id: player.id });
   });
 
   listen('shell:fired', (payload) => {

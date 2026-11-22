@@ -117,6 +117,12 @@ html[data-cot-scoped] .cot-touch .round.scope{border-color:var(--accent);backgro
   background:radial-gradient(circle at 50% 42%,oklch(from var(--accent) l c h / .22),transparent 40%),
     radial-gradient(circle at 38% 27%,rgba(96,78,48,.9),rgba(34,28,18,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .jump[hidden]{display:none!important;}
+/* turbo-spin-275: Turbo and the air spin, the jump's kind on a phone's survival edge (battleHudLayout.ts --hud-turbo-*,
+   --hud-spin-*); the air spin greys out whole on the ground, Turbo while it cools */
+.cot-touch .round.turbo,.cot-touch .round.air-spin{width:58px;height:58px;color:var(--accent-hi);border-color:oklch(from var(--accent-hi) l c h / .5);}
+.cot-touch .round.turbo[hidden],.cot-touch .round.air-spin[hidden]{display:none!important;}
+.cot-touch .round.turbo svg,.cot-touch .round.air-spin svg{width:28px;height:28px;}
+.cot-touch .round[data-unavailable]{opacity:.38;filter:grayscale(1);}
 .cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
 .cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
@@ -288,6 +294,8 @@ const SHELL = uiIconSVG('shell', 34);
 const SCOPE = uiIconSVG('scope', 34);
 const AUTO_AIM = uiIconSVG('autoAim', 30);
 const ROCKET = uiIconSVG('rocket', 30);
+const TURBO = uiIconSVG('turbo', 28);
+const AIR_SPIN = uiIconSVG('airSpin', 28);
 const SOUND = uiIconSVG('sound', 20);
 const SOUND_OFF = uiIconSVG('soundOff', 20);
 const GRAPHICS = uiIconSVG('graphics', 20);
@@ -464,6 +472,9 @@ export function createTouchControls({
     // round 30 (owner 2026-09-20): a big rocket button for the jump in rulesets that have one — the same edge
     // flips an overturned hull, which touch players had no way to do before
     `<button class="round jump" type="button" aria-label="${t('touch.jumpAria')}" hidden>${ROCKET}<span class="lb">${t('touch.jump')}</span></button>` +
+    // turbo-spin-275 (owner 2026-11-22, Turbo Ball and Gravity): Turbo's leap and the air spin beside the jump
+    `<button class="round turbo" type="button" aria-label="${t('vehicleActions.turbo.help')}" hidden>${TURBO}<span class="lb">${t('hud.turbo')}</span></button>` +
+    `<button class="round air-spin" type="button" aria-label="${t('vehicleActions.airSpin.help')}" hidden>${AIR_SPIN}<span class="lb">${t('hud.airSpin')}</span></button>` +
     `<div class="fire-cancel" aria-hidden="true"><b>&times;</b></div>`;
   document.body.appendChild(aimLayer);
   document.body.appendChild(root);
@@ -750,9 +761,24 @@ export function createTouchControls({
     selfRight();
   });
   onKeyClick(jumpButton, selfRight);
+  // turbo-spin-275: Turbo and the air spin, pressed as the jump is (pointerdown); greyed by the HUD's ui:modeMoves
+  const turboButton = root.querySelector<HTMLButtonElement>('.turbo')!;
+  const spinButton = root.querySelector<HTMLButtonElement>('.air-spin')!;
+  for (const [button, event] of [[turboButton, 'ui:turbo'], [spinButton, 'ui:airSpin']] as const) {
+    const act = (): void => { if (button.hasAttribute('data-unavailable')) return; bus.emit(event, {}); bus.emit('ui:click', {}); };
+    button.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); act(); });
+    onKeyClick(button, act);
+  }
   bus.on('ui:jumpAvailable', (payload) => {
-    const { on } = payload as { on?: boolean };
+    const { on, turbo, airSpin } = payload as { on?: boolean; turbo?: boolean; airSpin?: boolean };
     jumpButton.hidden = !on;
+    turboButton.hidden = !(on && turbo);
+    spinButton.hidden = !(on && airSpin);
+  });
+  bus.on('ui:modeMoves', (payload) => {
+    const { turboReady, spinReady } = payload as { turboReady?: boolean; spinReady?: boolean };
+    turboButton.toggleAttribute('data-unavailable', !turboReady);
+    spinButton.toggleAttribute('data-unavailable', !spinReady);
   });
   const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
   const toggleAutoAim = (): void => { bus.emit('ui:autoAimToggle', {}); bus.emit('ui:click', {}); };

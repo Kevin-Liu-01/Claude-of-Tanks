@@ -15,9 +15,11 @@ import { VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
 // The table's order: jump, suspension, ATGM, reload, drone, smoke, lights, roof gun. The HUD builds its buttons in
 // another order (suspension, jump, drone, ATGM, reload, smoke, lights, roof gun), so the arrangement is exercised.
 const TABLE_ORDER = VEHICLE_ACTIONS.map((def) => def.id);
-assert.deepEqual(TABLE_ORDER, ['jump', 'suspension', 'atgm', 'reload', 'drone', 'smoke', 'lights', 'roofGun'], 'the table\'s order');
-const BUILD_ORDER = ['suspension', 'jump', 'drone', 'atgm', 'reload', 'smoke', 'lights', 'roofGun'];
-const LOADOUT = TABLE_ORDER.filter((id) => id !== 'jump');
+assert.deepEqual(TABLE_ORDER, ['jump', 'turbo', 'airSpin', 'suspension', 'atgm', 'reload', 'drone', 'smoke', 'lights', 'roofGun'], 'the table\'s order');
+const BUILD_ORDER = ['suspension', 'jump', 'turbo', 'airSpin', 'drone', 'atgm', 'reload', 'smoke', 'lights', 'roofGun'];
+// turbo-spin-275: a jump mode's moves, the jump then Turbo and the air spin, lead the row together
+const MOVES = ['jump', 'turbo', 'airSpin'];
+const LOADOUT = TABLE_ORDER.filter((id) => !MOVES.includes(id));
 
 // --- every ruleset the HUD can be handed: each mode, and Mars in every gravity world and cache cadence ---
 const rulesets = GAME_MODE_IDS.map((mode) => ({ name: mode, ruleset: matchRulesetFor(mode) }));
@@ -41,16 +43,19 @@ let combinations = 0;
 for (const { name, ruleset } of rulesets) {
   const jump = isJumpMode(ruleset);
   assert.deepEqual([...vehicleControlOrder(jump)].sort(), [...BUILD_ORDER].sort(), `${name}: the order names every row item once`);
+  const moves = MOVES.filter((id) => id === 'jump' || !!ruleset[id]);
+  assert.deepEqual(moves, jump ? MOVES : ['jump'], `${name}: Turbo and the air spin come with the jump and only with it`);
   for (const shown of loadouts) {
     // the mode alone decides the jump: offering it in the shown set neither adds it to a plain mode nor moves it
     for (const withJumpInLoadout of [false, true]) {
       const offered = new Set(shown);
       if (withJumpInLoadout) offered.add('jump');
+      for (const id of moves) if (id !== 'jump') offered.add(id);
       const row = visibleVehicleControls(offered, jump);
       const loadoutOrder = LOADOUT.filter((id) => shown.has(id));
       if (jump) {
-        assert.equal(row[0], 'jump', `${name} [${[...shown]}]: the jump leads the row`);
-        assert.deepEqual(row.slice(1), loadoutOrder, `${name} [${[...shown]}]: the loadout follows in its own order`);
+        assert.deepEqual(row.slice(0, 3), MOVES, `${name} [${[...shown]}]: the jump, Turbo and the air spin lead the row`);
+        assert.deepEqual(row.slice(3), loadoutOrder, `${name} [${[...shown]}]: the loadout follows in its own order`);
       } else {
         assert.deepEqual(row, loadoutOrder, `${name} [${[...shown]}]: a mode without a jump keeps the row's order and shows no jump`);
       }
@@ -83,10 +88,10 @@ function fakeRow(ids) {
 {
   const { row, nodes } = fakeRow(BUILD_ORDER);
   assert.ok(arrangeVehicleControls(row, nodes, false) > 0);
-  assert.deepEqual(row.order(), [...LOADOUT, 'jump'], 'outside a jump mode the hidden jump waits at the far end');
+  assert.deepEqual(row.order(), [...LOADOUT, ...MOVES], 'outside a jump mode the hidden moves wait at the far end');
   assert.equal(arrangeVehicleControls(row, nodes, false), 0, 'a repeat call moves nothing');
   assert.ok(arrangeVehicleControls(row, nodes, true) > 0);
-  assert.deepEqual(row.order(), ['jump', ...LOADOUT], 'a jump mode moves the jump farthest left');
+  assert.deepEqual(row.order(), [...MOVES, ...LOADOUT], 'a jump mode moves the jump farthest left, Turbo and the air spin after it');
   assert.equal(arrangeVehicleControls(row, nodes, true), 0, 'a repeat call moves nothing');
   // a session that hops through every mode, each with every loadout and cooldown state, always shows the pure order
   let arranged = 0;
@@ -98,7 +103,9 @@ function fakeRow(ids) {
       for (const cooling of [false, true]) {
         for (const id of LOADOUT) { nodes[id].hidden = !shown.has(id); nodes[id].disabled = cooling; }
         nodes.jump.disabled = cooling;
-        assert.deepEqual(row.visible(jump), visibleVehicleControls(shown, jump), `${name} [${[...shown]}] cooling=${cooling}: the row shows the ordering`);
+        for (const id of ['turbo', 'airSpin']) { nodes[id].hidden = !(jump && ruleset[id]); nodes[id].disabled = cooling; }
+        const granted = new Set([...shown, ...['turbo', 'airSpin'].filter((id) => ruleset[id])]);
+        assert.deepEqual(row.visible(jump), visibleVehicleControls(granted, jump), `${name} [${[...shown]}] cooling=${cooling}: the row shows the ordering`);
       }
     }
   }
@@ -108,18 +115,21 @@ function fakeRow(ids) {
 // --- the HUD wiring: one row, every item mapped, one arrangement call, the jump flag in one place ---
 const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 const rowChildren = [...hud.matchAll(/el\(\s*'button'\s*,\s*'([^']+)'\s*,\s*controlsRow\s*\)/g)].map((m) => m[1]);
-assert.deepEqual(rowChildren, ['cot-special', 'cot-jump', 'cot-auxiliary cot-drone-control', 'cot-auxiliary', 'cot-auxiliary cot-reload-control', 'cot-auxiliary', 'cot-systems-more'],
+assert.deepEqual(rowChildren, ['cot-special', 'cot-jump cot-m-rise cot-m-by-on', 'cot-auxiliary cot-drone-control', 'cot-auxiliary', 'cot-auxiliary cot-reload-control', 'cot-auxiliary', 'cot-systems-more'],
   'the row holds the suspension, the jump, the drone, the ATGM, the reload, the three auxiliary buttons (smoke, lights, '
   + 'roof gun) and, created after them all and never arranged, the touch row\'s More tile (UI-06), so it stays last');
 assert.match(hud, /const auxiliaryButtons = \(\['smoke','lights','roofGun'\] as const\)\.map/, 'the auxiliary trio is smoke, lights, roof gun');
-assert.match(hud, /const vehicleControls=\{jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,\n\s*smoke:auxiliaryButton\('smoke'\),lights:auxiliaryButton\('lights'\),roofGun:auxiliaryButton\('roofGun'\)\};/,
+// (turbo-spin-275) Turbo and the air spin are the jump's kind, built right after it by one helper
+assert.match(hud, /const modeMoveTile = \(id: 'turbo' \| 'airSpin'[\s\S]*?el\('button', `cot-jump cot-mode-move [^`]*`, controlsRow\)/, 'Turbo and the air spin are tiles of the jump\'s kind in the same row');
+assert.match(hud, /const turboTile = modeMoveTile\('turbo'[^\n]*\n\s*const spinTile = modeMoveTile\('airSpin'/, 'built in the table\'s order after the jump');
+assert.match(hud, /const vehicleControls=\{jump:jumpHint,turbo:turboTile\.button,airSpin:spinTile\.button,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,\n\s*smoke:auxiliaryButton\('smoke'\),lights:auxiliaryButton\('lights'\),roofGun:auxiliaryButton\('roofGun'\)\};/,
   'every row button is handed to the ordering by its table id');
 assert.equal(hud.match(/arrangeVehicleControls\(/g)?.length, 1, 'the HUD arranges the row in exactly one place');
 assert.match(hud, /if\(controlsJumpMode===on\)return;\n\s*controlsJumpMode=on;\n\s*arrangeVehicleControls\(controlsRow,vehicleControls,on\);/,
   'the row is rearranged only when the jump flag changes, never per frame');
 assert.equal(hud.match(/jumpHint\.classList\.toggle\(/g)?.length, 1, 'the jump flag is set in one place, beside the arrangement');
-assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\)\);/, 'the pre-battle rules set the flag');
-assert.match(hud, /if\(frame\.matchModeState\?\.id\)setControlsJumpMode\(isJumpMode\(/, 'the live mode state sets the flag');
+assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin\}\);/, 'the pre-battle rules set the flag (and the mode\'s Turbo and air spin)');
+assert.match(hud, /if\(frame\.matchModeState\?\.id\)\{\n\s*const modeRules=[^\n]*\n\s*setControlsJumpMode\(isJumpMode\(modeRules\)/, 'the live mode state sets the flag');
 assert.doesNotMatch(hud, /controlsRow\.(append|prepend|appendChild|insertBefore|replaceChildren)\(/, 'nothing else reorders the row');
 
 // --- no style reorders the row visually (order, row-reverse, rtl) on desktop or touch ---
