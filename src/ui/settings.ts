@@ -1733,7 +1733,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     langNote.textContent = t('settings.language.note');
   }
 
+  // (ui-motion-275) a tab change swaps its page in (cot-m-swap, components/surfaceMotion.css); a redraw of the same tab (a
+  // reset, a setting that reshapes the page) and the panel's own opening never do
+  let renderedTab = '';
   function renderTab() {
+    const swapped = renderedTab !== activeTab && root.classList.contains('open');
+    renderedTab = activeTab;
     for (const menu of tabMenus.splice(0)) menu.dispose();
     cancelCapture();
     clearConflict();
@@ -1754,6 +1759,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
+    if (swapped) for (const page of body.children) page.classList.add('cot-m-swap');
     scheduleScrollFades(); // fades follow the fresh content's real overflow
   }
 
