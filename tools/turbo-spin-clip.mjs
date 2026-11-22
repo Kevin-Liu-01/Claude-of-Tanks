@@ -44,12 +44,20 @@ const hullNow = () => {
     turboReadyIn: Math.max(0, +(((p.turboReadyS ?? -Infinity) - D.game.timeS)).toFixed(2)) };
 };
 
-/** The pause panel a thawed page can come back under (its visibility changed): resumed before filming. */
-const resume = (page) => page.evaluate(() => {
-  const button = [...document.querySelectorAll('button')].find((b) => /^\s*resume\s*$/i.test(b.textContent ?? '') && b.offsetParent);
-  button?.click();
-  return !!button;
-});
+/** The battle's menus off the film: a headless page never holds the pointer lock, so the battle raises its click-to-resume
+ *  veil, and the veil's Resume, refused the lock again, opens Settings, which takes every key (the second clip). Settings
+ *  closes through the debug surface; the veil is hidden on this page only (the keys reach the battle under it). */
+const clearMenus = () => {
+  const D = window.__DEBUG;
+  if (D.settings?.isOpen?.()) D.settings.close();
+  if (!document.getElementById('turbo-spin-clip-veil')) {
+    const style = document.createElement('style');
+    style.id = 'turbo-spin-clip-veil';
+    style.textContent = '.cot-resume{display:none!important}';
+    document.head.append(style);
+  }
+  return !D.settings?.isOpen?.();
+};
 
 /** The player alone on open ground: the bots parked far off, the hull upright, at rest, facing the open pitch. */
 const stage = () => {
@@ -71,6 +79,7 @@ const rowBox = (page) => page.evaluate(() => {
 });
 
 async function press(page, code, label, holdMs = 60) {
+  await page.evaluate(clearMenus);
   const before = await page.evaluate(hullNow);
   await page.keyboard.down(code);
   await sleep(holdMs);
@@ -103,10 +112,10 @@ const follow = () => {
 async function filmDesktop(page, signal) {
   // (no click to focus the page: a headless page never holds the pointer lock, and the click's lost lock paused the battle
   // over every frame of the first clip; the keys reach the page without it)
-  if (await resume(page)) await sleep(300);
+  await page.evaluate(clearMenus);
   await page.evaluate(stage);
   await sleep(800);
-  if (await resume(page)) await sleep(300);
+  await page.evaluate(clearMenus);
   const row = await rowBox(page);
   if (row) { await page.screenshot({ path: path.join(out, 'desktop-row-ground.png'), clip: row }); receipt.shots.push('desktop-row-ground'); }
   await page.screenshot({ path: path.join(out, 'desktop-ground.png') });
@@ -122,7 +131,6 @@ async function filmDesktop(page, signal) {
     await sleep(1800);
     await press(page, 'KeyF', 'jump');
     await sleep(380);
-    if (await resume(page)) await sleep(100);
     if (row) { await page.screenshot({ path: path.join(out, 'desktop-row-air.png'), clip: row }); receipt.shots.push('desktop-row-air'); }
     await press(page, 'KeyZ', 'turbo in the air');
     await untilGrounded(page);
@@ -161,7 +169,7 @@ async function filmDesktop(page, signal) {
 }
 
 async function shootPhone(page) {
-  if (await resume(page)) await sleep(300);
+  await page.evaluate(clearMenus);
   await page.evaluate(stage);
   await sleep(1200);
   await page.screenshot({ path: path.join(out, 'phone-ground.png') });
