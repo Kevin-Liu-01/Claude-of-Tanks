@@ -392,8 +392,12 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   plate fits in the anatomy data. home +457, docs +681, notFound +485: the shared tokens and components CSS (the
   //   ready control, the training mode tone). gallery +1 request. Follow-up owed to the tutorial lane: trainingGround and
   //   hullField behind the tutorial's dynamic import (target: the +2 requests and most of the +872 B entry back).
-  game: { brotliBytes: 1256205, requests: 151, entryBrotliBytes: 252459 },
-  cn: { brotliBytes: 1302928, requests: 152, entryBrotliBytes: 252459 },
+  // 2026-11-21 (tutorial-lazy-274, the follow-up owed above; coordinator ruling): sim/hullField.ts and sim/trainingGround.ts
+  //   ride in the vehicleActions boot group (vite.config.ts) instead of two chunks of their own: game and cn requests -2,
+  //   re-pinned down at the lane's build. Neither module was in the entry chunk; its bytes and the page totals stay pinned
+  //   (measured game 1,255,705 / cn 1,302,428 / entry 252,199 brotli; home, docs and notFound byte-identical).
+  game: { brotliBytes: 1256205, requests: 149, entryBrotliBytes: 252459 },
+  cn: { brotliBytes: 1302928, requests: 150, entryBrotliBytes: 252459 },
   gallery: { brotliBytes: 790344, requests: 84 },
   home: { brotliBytes: 29390, requests: 8 },
   docs: { brotliBytes: 37931, requests: 12 },
