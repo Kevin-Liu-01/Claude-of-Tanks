@@ -286,7 +286,8 @@ const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 const _fa = new THREE.Vector3(), _fb = new THREE.Vector3();
 /** Per seated turret, the plane each corner the foot band lifted came up to, by its built position (rig_hull frame),
  *  and each lifted corner's built height, by its seated position. */
-const FOOT_BAND_LIFTS = new WeakMap<THREE.Object3D, { readonly to: Map<string, number>; readonly from: Map<string, number[]> }>();
+const FOOT_BAND_LIFTS = new WeakMap<THREE.Object3D, { readonly to: Map<string, number>; readonly from: Map<string, number[]>;
+  readonly rigid: ReadonlySet<string> }>();
 
 /** Where the foot band laid a turret corner, by its built position in the rig_hull frame (undefined: the band left it
  *  to the rise-limited seat). Receipts that rebuild a seated surface from its source read it. */
@@ -364,6 +365,7 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
       }
     }
   }
+  const rigid = rideFootPartsWhole(meshes, targets, lifts, liveTop, holdR, cx, cz);
   const to = new Map<string, number>(), from = new Map<string, number[]>();
   for (const [key, y] of lifts) {
     if (!(y > (targets.get(key) ?? -Infinity))) continue;
@@ -373,8 +375,67 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
     const seatedKey = positionKey(_fa.set(kx / 1e4, y, kz / 1e4));
     from.set(seatedKey, [...(from.get(seatedKey) ?? []), ky / 1e4]);
   }
-  FOOT_BAND_LIFTS.set(turretG, { to, from });
+  FOOT_BAND_LIFTS.set(turretG, { to, from, rigid });
   return worst;
+}
+
+/**
+ * 274 fix3: a part lying wholly in the foot zone (every corner under the seat's highest plane) whose corners the band
+ * reaches rides up whole, by its largest lift, instead of each corner taking the plane along its own triangles' edges: the
+ * Merkava 3 Baz's 2 cm plate under the turret front came up 2.7-5.9 cm corner by corner and turned over beside the gun
+ * (the gun-junction census's three openings). A part reaching over the zone (a shell, a wall) keeps the per-corner lift;
+ * a part with a corner under a builder's keep radius stays as the band leaves it. The built-position keys of the parts
+ * moved whole: such a part stands on the deck as built, so the seat's buried-fitting collapse passes it.
+ */
+function rideFootPartsWhole(meshes: readonly THREE.Mesh[], targets: ReadonlyMap<string, number>, lifts: Map<string, number>,
+  liveTop: number, holdR: number, cx: number, cz: number): Set<string> {
+  const rigid = new Set<string>();
+  if (!lifts.size) return rigid;
+  for (const mesh of meshes) {
+    const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+    const count = index ? index.count : position.count;
+    _toHull.multiplyMatrices(_hullInverse, mesh.matrixWorld);
+    const keys: string[] = new Array(position.count), ys = new Float64Array(position.count), rs = new Float64Array(position.count);
+    const parent = new Int32Array(position.count);
+    for (let i = 0; i < parent.length; i++) parent[i] = i;
+    const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const join = (a: number, b: number): void => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+    const byPosition = new Map<string, number>();
+    let touched = false;
+    for (let i = 0; i < position.count; i++) {
+      _v.fromBufferAttribute(position, i).applyMatrix4(_toHull);
+      const key = positionKey(_v);
+      keys[i] = key;
+      ys[i] = Math.max(_v.y, targets.get(key) ?? -Infinity);
+      rs[i] = Math.hypot(_v.x - cx, _v.z - cz);
+      touched ||= lifts.has(key);
+      const first = byPosition.get(key);
+      if (first === undefined) byPosition.set(key, i); else join(first, i);
+    }
+    if (!touched) continue;
+    for (let k = 0; k + 2 < count; k += 3) {
+      const a = index ? index.getX(k) : k;
+      join(a, index ? index.getX(k + 1) : k + 1);
+      join(a, index ? index.getX(k + 2) : k + 2);
+    }
+    // per part: its highest corner, its largest lift, and whether a corner is held
+    const top = new Map<number, number>(), lift = new Map<number, number>(), held = new Set<number>();
+    for (let i = 0; i < position.count; i++) {
+      const root = find(i);
+      top.set(root, Math.max(top.get(root) ?? -Infinity, ys[i]));
+      const to = lifts.get(keys[i]);
+      if (to !== undefined && to > ys[i]) lift.set(root, Math.max(lift.get(root) ?? 0, to - ys[i]));
+      if (rs[i] <= holdR) held.add(root);
+    }
+    for (let i = 0; i < position.count; i++) {
+      const root = find(i), by = lift.get(root);
+      if (by === undefined || held.has(root) || !((top.get(root) ?? Infinity) < liveTop)) continue;
+      const was = lifts.get(keys[i]);
+      if (was === undefined || ys[i] + by > was) lifts.set(keys[i], ys[i] + by);
+      rigid.add(keys[i]);
+    }
+  }
+  return rigid;
 }
 
 /** Seat the turret's surfaces over the deck round its ring (see the header); the count of meshes moved. */
@@ -433,6 +494,7 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
   // 3. each mesh holding such a corner: this build's own copy (a fitting's geometry can be shared between meshes and
   // tanks), every vertex at a seated position set on its plane, and the moved vertices' normals from the faces round them
   let moved = 0;
+  const rigid = FOOT_BAND_LIFTS.get(turretG)?.rigid;
   for (const mesh of meshes) {
     const source = mesh.geometry, position = source.getAttribute('position');
     _toHull.multiplyMatrices(_hullInverse, mesh.matrixWorld);
@@ -456,7 +518,13 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
       out.setXYZ(i, _v.x, _v.y, _v.z);
       movedVertex[i] = 1;
     }
-    collapseWhollySeated(source, out, movedVertex);
+    // a part the foot band carried up whole stood on the deck as built: not a buried fitting to collapse
+    let buriedMoved = movedVertex;
+    if (rigid?.size) {
+      buriedMoved = movedVertex.slice();
+      for (let i = 0; i < out.count; i++) if (buriedMoved[i] && rigid.has(positionKey(_v.fromBufferAttribute(position, i).applyMatrix4(_toHull)))) buriedMoved[i] = 0;
+    }
+    collapseWhollySeated(source, out, buriedMoved);
     const normal = seated.getAttribute('normal') as THREE.BufferAttribute | undefined;
     if (normal) {
       // (unmoved vertices keep their authored, possibly smooth, normals)

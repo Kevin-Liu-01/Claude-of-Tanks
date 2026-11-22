@@ -162,10 +162,33 @@ const planes = (cell) => {
 };
 const outside = (A, B) => Math.max(0, ...A.vertices.map((v) => Math.max(...planes(B).map(([n, k]) => dot(n, v) + k))));
 assert.equal(otcoAnatomy.collision.length, a3Anatomy.collision.length, 'the OTCO\'s turret cells are the 2A3\'s');
+// 274 (turret-deck seat v2, fix3): the seat fits each build's turret foot to its own hull's swept tops, so the two shells
+// are one shell but for the seat: same topology, x and z exact, y apart by the seat alone, at most 1 cm (pt91m's bound).
+// The cells are cut from those shells, so a twin cell stands within the 15 mm cut tolerance plus the seat's measured
+// per-build delta: the shells' delta is measured here, never a looser constant.
+let seatDelta = 0;
+{
+  const otco = createTank('leo2a3', null, { ...options, quality: 'high' }), a3 = createTank('leo2a3_b4', null, { ...options, quality: 'high' });
+  try {
+    const a = otco.root.getObjectByName('turret').geometry.getAttribute('position'), b = a3.root.getObjectByName('turret').geometry.getAttribute('position');
+    assert.equal(a.count, b.count, 'the OTCO\'s turret shell is the 2A3\'s (vertex count)');
+    for (let v = 0; v < a.count; v++) {
+      assert.ok(a.getX(v) === b.getX(v) && a.getZ(v) === b.getZ(v), `turret shell vertex ${v}: x and z exact (the seat moves y only)`);
+      seatDelta = Math.max(seatDelta, Math.abs(a.getY(v) - b.getY(v)));
+    }
+    assert.ok(seatDelta <= 0.01, `the two shells part by the seat alone, at most 1 cm (${(seatDelta * 1000).toFixed(2)} mm)`);
+  } finally {
+    otco.dispose();
+    a3.dispose();
+  }
+}
 otcoAnatomy.collision.forEach((cell, i) => {
   const twin = a3Anatomy.collision[i], d = Math.max(outside(cell, twin), outside(twin, cell));
-  assert.ok(d <= 0.015, `the OTCO's turret cell ${i} is the 2A3's (${(d * 1000).toFixed(1)} mm apart)`);
+  assert.ok(d <= 0.015 + seatDelta, `the OTCO's turret cell ${i} is the 2A3's (${(d * 1000).toFixed(1)} mm apart; 15 mm `
+    + `and the seat's ${(seatDelta * 1000).toFixed(1)} mm per-build delta)`);
 });
+console.log(`leopard2a3B4: the OTCO's ${otcoAnatomy.collision.length} turret cells are the 2A3's within 15 mm and the seat's `
+  + `${(seatDelta * 1000).toFixed(1)} mm per-build delta`);
 {
   const tank = createTank('leo2a3', null, { ...options, quality: 'high' });
   try {
