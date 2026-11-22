@@ -42,7 +42,8 @@ import { KIT, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { loftHull, tubeGun, ruSaddle, ruBoot } from './russia.ts';
 import { eraCassette, glacisEraCassette } from './modernizationFittings.ts';
-import { markEraHitFaces } from './eraHitFaces.ts';
+import { markEraFurniture, markEraHitFaces } from './eraHitFaces.ts';
+import { rubberSkirtRun, skirtSections } from './rubberSkirt.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun } from './libraryRoofMg.ts';
 import type { MgClassKey } from '../machineGunGeometry.ts';
@@ -325,9 +326,10 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
       box5(3.30, skirtTop(3.30), bottomY, outerX), ...cowl,
     ];
     P.add('hull', sectionSolid(stations.map(({ z, ring }) => ({ z, ring: sided(ring, s) }))));
-    // panel seams on the face
+    // panel seams on the face (the Oplot-M's: aft of its skirt modules only)
     for (let i = 1; i < 10; i++) {
       const zp = -2.96 + i * (6.26 / 10), z = Z(zp);
+      if (variant === 'm' && zp > OPLOT_M_MODULES_FROM - 0.02) continue;
       const top = skirtTop(zp);
       P.add('hullDark', orientedSlab(
         [side(s, 2.078), 0.97, z - 0.008], [side(s, 2.088), 0.97, z - 0.008], [side(s, 2.088), 0.97, z + 0.008], [side(s, 2.078), 0.97, z + 0.008],
@@ -338,6 +340,10 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
     const rubberZ = [-2.96, -2.34, -1.72, -1.10, -0.48, 0.14, 0.76, 1.38, 2.00, 2.62, 3.24];
     const bottomAt = (z: number): number => (z < -1.55 ? 0.22 + (-1.55 - z) * 0.40 : z > 2.60 ? 0.22 + (z - 2.60) * 0.45 : 0.22);
     const fit = polishFit(variant), framedFrom = fit ? -2.92 + fit.skirtFrom * (6.20 / 9) : -Infinity;
+    if (variant === 'm') {
+      oplotMSkirt(P, s, bottomAt);
+      continue;
+    }
     for (let i = 0; i < rubberZ.length - 1; i++) {
       // (the Sokół: only under its framed panels; its road wheels and return rollers open behind them)
       if (fit?.openRunningGear && rubberZ[i + 1] <= framedFrom + 0.2) continue;
@@ -390,6 +396,55 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
       eraCassette(P, 'hull', sector, [side(s, xc), yc, z], [k5 ? 0.055 : 0.026, h, Z(z1 - z0)], [0, 0, side(s, tilt)]);
     }
   }
+}
+
+/** The Oplot-M's skirt modules start at this print station (authored z): the forward six of the box's nine panels. */
+const OPLOT_M_MODULES_FROM = -2.92 + 3 * (6.20 / 9);
+/** 275 (Kevin 2026-11-21: "the oplot m should have significantly different sideskirts"): the Oplot-M's side as the
+ * serial tanks': over the forward two thirds, deep Duplet skirt modules, one a box panel, hung on the flared box from the
+ * deck edge down over the road wheels' tops, 12 cm proud of the box, each under a lid in two courses with its bolt rows
+ * and a third lid on its raked top (the skirt sector's ERA: their outward faces are its hit faces); aft of them, three
+ * hinged rubber sheets in the vehicle's paint under the box (profiles/rubberSkirt.ts, the T-80 family's piece). The
+ * Oplot-T keeps the box's own Duplet on its three forward panels and the full rubber run. */
+function oplotMSkirt(P: TankBuilderPort, s: number, bottomAt: (z: number) => number): void {
+  const { bottomY, outerX, innerX } = SKIRT_FACE;
+  const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
+  // the box's flared face: |x| at height y, from (innerX + 0.06, DECK_Y) to (outerX, bottomY + 0.05)
+  const faceX = (y: number): number => innerX + 0.06 + (DECK_Y - y) * ((outerX - innerX - 0.06) / (DECK_Y - bottomY - 0.05));
+  const OUT = outerX + 0.12, KNEE = 1.10, BOT = 0.52, PANEL = 6.20 / 9;
+  for (let i = 3; i < 9; i++) {
+    const za = -2.92 + i * PANEL + 0.01, zb = za + PANEL - 0.02;
+    const top = (z: number): number => Math.min(DECK_Y, skirtTop(z)) - 0.03;
+    // the forward module's foot rakes up with the bow over the idler, as the rubber did
+    const bot = (z: number): number => Math.max(BOT, bottomAt(z) + 0.30);
+    const ring = (z: number): Ring => {
+      const t = top(z), b = bot(z);
+      return [[outerX - 0.005, b], [OUT - 0.03, b], [OUT, b + 0.04], [OUT, KNEE], [faceX(t) + 0.11, t], [faceX(t) + 0.005, t],
+        [outerX + 0.005, bottomY + 0.05], [outerX - 0.005, bottomY]];
+    };
+    const geo = sectionSolid([{ z: Z(za), ring: sided(ring(za), s) }, { z: Z(zb), ring: sided(ring(zb), s) }]);
+    P.destructibleCluster(sector, () => {
+      P.addExternalArmor('hull', markEraHitFaces(geo, [side(s, 1), 0, 0], 0.35));
+      // the lids: two courses on the upright face, split at mid-height, and one on the raked top
+      const zc = Z((za + zb) / 2), len = Z(zb - za) - 0.05, b = Math.max(bot(za), bot(zb)), mid = (b + 0.04 + KNEE) / 2;
+      for (const [y0, y1] of [[b + 0.05, mid - 0.012], [mid + 0.012, KNEE - 0.01]] as const) {
+        P.addExternalArmor('hull', markEraFurniture(box(0.012, y1 - y0, len)), side(s, OUT + 0.006), (y0 + y1) / 2, zc);
+        for (const y of [y0 + 0.04, y1 - 0.04]) for (const dz of [-0.40, 0, 0.40]) {
+          P.add('hullDark', cylX(0.014, 0.016, 8), side(s, OUT + 0.014), y, zc + dz * len);
+        }
+      }
+      const t = Math.min(top(za), top(zb)), x0 = OUT, x1 = faceX(t) + 0.11, tilt = Math.atan2(x0 - x1, t - KNEE);
+      const slant = Math.hypot(x0 - x1, t - KNEE) - 0.04;
+      P.addExternalArmor('hull', markEraFurniture(box(0.012, slant, len)), side(s, (x0 + x1) / 2 + 0.006 * Math.cos(tilt)),
+        (KNEE + t) / 2 + 0.006 * Math.sin(tilt), zc, 0, 0, side(s, tilt));
+    });
+    // the seam between two modules, dark, on the box face behind it
+    P.add('hullDark', box(0.10, KNEE - 0.55, 0.012), side(s, outerX + 0.06), (0.55 + KNEE) / 2, Z(za - 0.01));
+  }
+  // aft: three rubber sheets in the vehicle's paint, under the box from the stern to the first module
+  rubberSkirtRun(P, { label: `oplot-m-skirt-${s > 0 ? 'l' : 'r'}`, bucket: 'hullFixedPaintedBodywork', side: s,
+    sections: skirtSections(Z(-2.96), Z(OPLOT_M_MODULES_FROM - 0.01), 3),
+    top: () => bottomY, foot: (z) => bottomAt(z * (4.194 / 4.0)), x: () => 2.052 });
 }
 
 /** A bolted cover plate closing a framed field (the Sokół's slab armour): 16 mm over the frame's face, a bolt at each
@@ -1112,15 +1167,7 @@ function buildOplotMKit(P: TankBuilderPort): void {
   stationLimits(enclosedStation(P, M_STATIONS.kt762, false, true), null,
     [[-3.1416, 0.18], [-2.1817, 0.18], [-2.1642, 0.158], [-2.1468, 0.153], [-2.0769, 0.153], [-2.0595, 0.161],
       [-2.042, 0.167], [-2.0246, 0.18], [3.1416, 0.18]]);
-  // a lower Duplet course bolted along each rubber skirt (the owner's extra side armour), seven blocks a side
-  for (const s of [-1, 1]) {
-    const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
-    for (let i = 0; i < 7; i++) {
-      const z = Z(-1.70 + i * 0.66);
-      eraCassette(P, 'hull', sector, [side(s, 2.1025), 0.64, z], [0.065, 0.38, Z(0.54)]);
-      for (const y of [0.47, 0.81]) P.add('hullDark', box(0.03, 0.03, Z(0.56)), side(s, 2.075), y, z);
-    }
-  }
+  // (275: the lower Duplet course on the rubber is gone; the deep skirt modules of oplotMSkirt are the side armour)
   // lights: LED bars on the stacks' tops at the front corners, a work lamp astern on the bustle
   ownerKitGroup(P, 'turret', 'oplotMKitLights', () => {
     for (const s of [-1, 1]) lightBar(P, side(s, 0.80), ERA_Y1 + 0.05, eraFront(0.80) - 0.10);
