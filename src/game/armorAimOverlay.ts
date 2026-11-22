@@ -454,6 +454,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   const entries = new Map<string, ArmorOverlayEntry>();
   const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
+  let originWarned = false;
   /** Bakes under way, oldest first. */
   const bakes: Array<{ root: THREE.Object3D; stats: PanelBakeStats; work: Generator<void, PanelBakeStats, void> }> = [];
   /**
@@ -825,6 +826,12 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
 
     collectScopedTargets(targets, target);
     if (!visibleEntries.length) return;
+    // (274 fix) a muzzle at exactly the world origin is a muzzle nobody filled (the frame runtime's was, for months): say so
+    // once, loudly, instead of painting every panel from the map's corner
+    if (muzzle && muzzle.x === 0 && muzzle.y === 0 && muzzle.z === 0 && !originWarned) {
+      originWarned = true;
+      console.warn('[armorAimOverlay] scoped with the muzzle at the world origin: the paint judges from nowhere (is the muzzle filled?)');
+    }
 
     const sampleNowMs = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : 0;
     prepareScopedSamples(shellSpec, muzzle, sampleNowMs);
