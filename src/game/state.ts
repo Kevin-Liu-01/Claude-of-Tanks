@@ -89,7 +89,7 @@ import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../si
 import {
   createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  selectedWeaponModuleState, mainWeaponModuleState,
+  selectedWeaponModuleState, gunDispersionScale,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import * as detMath from '../sim/detMath.ts';
@@ -2105,8 +2105,7 @@ function tryFire(
   if (!botShotClear(entity, entity.input.aimPoint, shellSpec, game.tanks)) return;
   const muzzleIndex = prepareMuzzleDirection(entity, shellSpec);
   if (muzzleIndex == null) return;
-  let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
-  if (mainWeaponModuleState(entity.combat) === 'yellow') dispersion *= 2;
+  const dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200 * gunDispersionScale(entity.combat);
   applyDispersion(_dir, dispersion, game.combatRng);
   const firedSlot = entity.combat.shellSlot;
   if (!consumeAmmunition(entity.combat, firedSlot)) return;

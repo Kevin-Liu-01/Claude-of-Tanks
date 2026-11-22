@@ -54,6 +54,7 @@ import { tankPoseFromState, traceTank } from './armor.ts';
 import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
+  gunDispersionScale,
   isHeClass,
   resolveHeBurst,
   resolveShellHit,
@@ -1859,7 +1860,8 @@ export function createAuthoritativeMatch({
     const gun = gunWorldPose(entity, shellSpec, cannonMuzzle);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
-    const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
+    // a yellow gun's doubled σ, the solo step's rule (sim/damage.ts gunDispersionScale; 275: left out here before)
+    const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200 * gunDispersionScale(combat);
     applyDispersion(_gunDir, sigma, rng);
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
@@ -2525,6 +2527,12 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       tickReload(entity.combat, dt);
       tryFire(entity);
+    }
+    // the roof stations once every main gun has fired, as the solo step runs stepAuxiliarySystems after stepReloadAndFire
+    // (275, driverStepParity's Mars fight): a station laid on a hull that fired this tick reads it after its recoil on both
+    // drivers, and the rounds take their ids in the same order (interleaved here, the M41's shot parted the M1A1's M2)
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
       if (!result && stepRoofGun(entity,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
       // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
       if (!result) for (let station=1,stations=roofStationCount(entity.spec);station<stations;station++)

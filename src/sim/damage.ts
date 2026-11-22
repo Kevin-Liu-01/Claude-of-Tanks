@@ -197,6 +197,13 @@ export function mainWeaponModuleState(
   return state;
 }
 
+/** A shot's dispersion multiplier from the main weapon's state (docs/MODULES.md: a yellow gun or gun mount doubles σ; a red
+ *  one cannot fire). Both drivers' fire paths scale their σ by it (275: the authority left it out, so a damaged gun kept its
+ *  accuracy online; driverStepParity's Mars fight found it). */
+export function gunDispersionScale(combat: Pick<CombatState, 'modules'> | null | undefined): number {
+  return mainWeaponModuleState(combat) === 'yellow' ? 2 : 1;
+}
+
 /** Damage follows the selected physical weapon. An independent launcher is
  * usable while the main barrel is broken, and vice versa. */
 export function selectedWeaponModuleState(combat: Pick<CombatState, 'modules'>,
