@@ -644,6 +644,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/missionAttachmentReceiver.selftest.mjs',
     'tools/mission-attachment-support.selftest.mjs',
     'tools/mission-attachment-seat-trials.selftest.mjs',
+    'tools/mission-attachment-seat-seeds.selftest.mjs',
     'src/vehicles/profiles/weldedShellSurfaces.selftest.mjs',
     'src/vehicles/profiles/baseShellResidualRepairs.selftest.mjs',
     'tools/base-shell-integrity.selftest.mjs',

@@ -1695,6 +1695,7 @@
     "tools/media-r5/wire-model.selftest.mjs": 1000,
     "tools/media-r5/world-model.selftest.mjs": 1000,
     "tools/middleware-diet.selftest.mjs": 1000,
+    "tools/mission-attachment-seat-seeds.selftest.mjs": 20000,
     "tools/mission-attachment-seat-trials.selftest.mjs": 1000,
     "tools/mission-attachment-support.selftest.mjs": 156000,
     "tools/moving-clearance-air.selftest.mjs": 41000,
