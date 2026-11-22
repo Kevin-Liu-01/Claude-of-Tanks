@@ -57,22 +57,34 @@ function dozerBlade(P: TankBuilderPort): void {
     P.add('hullDark', xform(cylZ(0.028, 0.24, 10), 0, 0, 0, -0.55, 0, 0), s * 0.55, 0.94, 2.98);
   }
 }
-/** 103B: the blade, the flotation screen boxed round the deck edge (its trough sets the 3.63 m width), the 30 mm
- * anti-HEAT rod fence on the beak's front edge, shrouded headlamps, the rear stowage rack. */
-export function kitB(P: TankBuilderPort): void {
+/** The anti-HEAT bar grilles across the nose (owner 2026-11-20, with the photographs; 2026-11-21: on the 103E and the
+ * Strv 152 too): two tall panels either side of the gun on the beak, each a frame of three rails and three posts with
+ * 30 mm bars at 8.3 cm, raked back with the glacis. `feet` seats the posts on a nose module's top face. */
+function noseGrilles(P: TankBuilderPort, o: { posts: readonly [number, number, number]; railX: number; railW: number;
+  bars: number; feet?: boolean }): void {
   const { box, cylZ } = KIT;
-  dozerBlade(P);
-  // the anti-HEAT bar grilles across the nose (owner 2026-11-20, with the photographs): two tall panels either side of the
-  // gun on the beak, each a frame of three rails and end posts with fourteen 30 mm bars, raked back with the glacis
   const RAKE = 0.25;
   for (const s of [-1, 1]) {
     for (const [y, z] of [[1.49, 3.43], [1.72, 3.375], [1.95, 3.32]] as const) {
-      P.add('hullDetail', box(1.20, 0.035, 0.04), s * 0.86, y, z);
+      P.add('hullDetail', box(o.railW, 0.035, 0.04), s * o.railX, y, z);
     }
-    for (const x of [0.26, 0.86, 1.46]) P.add('hullDetail', box(0.04, 0.50, 0.04), s * x, 1.72, 3.375, RAKE, 0, 0);
-    for (let k = 0; k < 14; k++) {
-      P.add('hullDetail', cylZ(0.015, 0.47, 8), s * (0.31 + k * 0.083), 1.72, 3.375, -Math.PI / 2 + RAKE, 0, 0);
+    for (const x of o.posts) {
+      P.add('hullDetail', box(0.04, 0.50, 0.04), s * x, 1.72, 3.375, RAKE, 0, 0);
+      // the module's top face falls from 1.52 at z 3.00 to 1.36 at z 3.68; the post's foot is at y 1.478, z 3.437
+      if (o.feet) P.add('hullDark', box(0.07, 0.09, 0.07), s * x, 1.445, 3.437);
     }
+    for (let k = 0; k < o.bars; k++) {
+      P.add('hullDetail', cylZ(0.015, 0.47, 8), s * (o.posts[0] + 0.05 + k * 0.083), 1.72, 3.375, -Math.PI / 2 + RAKE, 0, 0);
+    }
+  }
+}
+/** 103B: the blade, the flotation screen boxed round the deck edge (its trough sets the 3.63 m width), the 30 mm
+ * anti-HEAT rod fence on the beak's front edge, shrouded headlamps, the rear stowage rack. */
+export function kitB(P: TankBuilderPort): void {
+  const { box } = KIT;
+  dozerBlade(P);
+  noseGrilles(P, { posts: [0.26, 0.86, 1.46], railX: 0.86, railW: 1.20, bars: 14 });
+  for (const s of [-1, 1]) {
     // the big tow hooks on the beak under the grilles: a block and a closed shackle under it (an open ring read as a hole
     // from above in the contiguity check)
     P.add('hullDetail', box(0.12, 0.10, 0.08), s * 0.95, 1.30, 3.48);
@@ -131,6 +143,10 @@ export function kitE(P: TankBuilderPort, plateZ: number, cageTailZ?: number): vo
   const TAIL_Z = cageTailZ ?? plateZ, cage = cageTailZ !== undefined;
   const { box, cylY, cylZ, sph, xform } = KIT;
   dozerBlade(P);
+  // the 103B's nose grilles stand on the module (inside its 1.40 m edge); the 152's wider tube and travel lock push the
+  // inner post out to 0.36
+  if (cage) noseGrilles(P, { posts: [0.36, 0.87, 1.38], railX: 0.87, railW: 1.06, bars: 12, feet: true });
+  else noseGrilles(P, { posts: [0.26, 0.82, 1.38], railX: 0.82, railW: 1.16, bars: 13, feet: true });
   // the nose module: two wedges on the beak either side of the tube (z 3.00..3.68), their faces raked with the glacis
   for (const s of [-1, 1]) {
     P.add('hull', orientedSlab(

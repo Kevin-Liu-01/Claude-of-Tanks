@@ -402,7 +402,18 @@ const PRIMARY_BUCKETS = { hull: ['hull'], turret: ['turret'] };
 // Release 265 (Main: the Leopard 1A2A1's turret crew): the 1A2A1's old hull carries its 1.43 m sponson shoulders 35 cm
 // either side of the 1.70-1.75 m deck and ring race, and a slice's one convex cell kept one side's deck edge, leaning the
 // roof under the ring to 1.43 m on the other side; cut at the deck's edges (|x| 1.28), the deck is level in its own band.
+// 274 (hitbox-fit census, the S-tank family): the Strv 103 casemate is a T in section, the tub ±0.94 m from the 0.40 m
+// belly to the 1.38 m seam under a body running out to ±1.68 m over the tracks (profiles/strv103Hull.ts tubRing,
+// bodyRing), and a slice's one convex cell closed the 0.3 m recess under each sponson. Cut 1 cm outside the tub walls,
+// the tub and each sponson are their own cells.
+const STRV103_TUB_CUTS = Object.freeze([-0.95, 0.95]);
 const HULL_LATERAL_CUTS = Object.freeze({
+  udes03: STRV103_TUB_CUTS,
+  strv103a: STRV103_TUB_CUTS,
+  strv103b: STRV103_TUB_CUTS,
+  strv103b_net: STRV103_TUB_CUTS,
+  strv103e: STRV103_TUB_CUTS,
+  strv152: STRV103_TUB_CUTS,
   leo1a2a1: [-1.27, 1.27],
   t72b3m_hetman_ii: [-1.125, -.995, .995, 1.125],
   t72b3_zubr: [-1.104, 1.104],
