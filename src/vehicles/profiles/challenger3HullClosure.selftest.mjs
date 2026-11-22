@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
 // Kevin's surface markup (2026-11-22, faces 215/220/200): the lower-cheek wedges ahead of the turret face
-// (turret-local x .40..1.40, z 1.22..1.70) stay on the prototype and are gone from the production Challenger 3,
-// along with the cheek ERA courses laid into them. The throat under the gun (|x| <= .78) remains on both.
+// (turret-local x .40..1.40, z 1.22..1.70) are gone from the prototype and the production Challenger 3 (Kevin's
+// look check: "Remove on Prototype too"), along with the X package's cheek ERA courses laid into them. The throat
+// under the gun (|x| <= .78) remains on both.
 const lowerCheekWedgeVertices = (built) => {
   const turretRig = built.root.getObjectByName('rig_turret');
   const vertices = [];
@@ -92,7 +93,7 @@ try {
       && side * x < 1.70 && y > 1.28 && y < 1.50 && z > -0.75 && z < 2.80),
     `${side < 0 ? 'left' : 'right'} skirt hangers remain discrete and hull-attached`);
   }
-  assert.ok(lowerCheekWedgeVertices(tank) > 0, 'the Challenger 3 prototype keeps its lower-cheek wedges');
+  assert.equal(lowerCheekWedgeVertices(tank), 0, 'the Challenger 3 prototype has no lower-cheek wedges ahead of its turret face');
 } finally {
   tank.dispose();
 }
