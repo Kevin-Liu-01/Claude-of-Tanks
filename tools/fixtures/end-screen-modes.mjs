@@ -15,6 +15,8 @@ import { createShotInfo } from '../../src/ui/shotInfo.ts';
 import { createEndOverlayRuntime } from '../../src/ui/endOverlayRuntime.ts';
 import { setLocale } from '../../src/ui/i18n.ts';
 import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
+// the fleet as the game registers it (fleetFactory.ts and the tools' facade import the one registration)
+import '../../src/vehicles/fleetRegistration.ts';
 import { getSpec } from '../../src/vehicles/specs.ts';
 
 const q = new URLSearchParams(location.search);
@@ -54,7 +56,7 @@ ALLY_SPECS.slice(1).forEach((spec, i) => add(`ally-${i}`, spec, 'player', VARIAN
 ENEMY_SPECS.forEach((spec, i) => add(`foe-${i}`, spec, 'enemy', VARIANT === 'room' && i < 3 ? { name: ['Vostok', 'Ironclad', 'Sable'][i] } : {}));
 if (VARIANT === 'couch') { players[1].name = 'Player 2'; players[1].couchSeat = 2; }
 shot.setTeamResolver((id) => team.get(id));
-shot.setPlayer('me', 0, 'me');
+shot.setPlayer('me', 0, 'alpha');
 
 let shellId = 0;
 const nameOf = (id) => players.find((p) => p.id === id)?.name;
