@@ -444,8 +444,9 @@ export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number): void {
   ctx.restore();
 }
 
-/** Air Support's call-ins (air-support-270): recon, artillery, strafe, bomb, gunship. */
-export type StrikeGlyphKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunship';
+/** Air Support's call-ins (air-support-270; the Maverick run, air-support-275): recon, artillery, strafe, bomb, missile,
+ *  gunship. */
+export type StrikeGlyphKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'missile' | 'gunship';
 
 /**
  * A call-in's footprint on the ground (air-support-270): a circle (artillery, the bomb, the AC-130's ring) or a lane
@@ -549,6 +550,20 @@ export function drawStrikeGlyph(ctx: Ctx, x: number, y: number, r: number, kind:
     ctx.lineTo(x, y - s * 0.4);
     ctx.closePath();
     ctx.fill();
+  } else if (kind === 'missile') {
+    // two missiles side by side, noses up, their tail fins
+    for (const dx of [-s * 0.42, s * 0.42]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx, y - s * 0.95);
+      ctx.lineTo(x + dx + s * 0.2, y - s * 0.55);
+      ctx.lineTo(x + dx + s * 0.2, y + s * 0.55);
+      ctx.lineTo(x + dx + s * 0.42, y + s * 0.92);
+      ctx.lineTo(x + dx - s * 0.42, y + s * 0.92);
+      ctx.lineTo(x + dx - s * 0.2, y + s * 0.55);
+      ctx.lineTo(x + dx - s * 0.2, y - s * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
   } else {
     // the gunship: a high-winged four-engine silhouette over its orbit ring
     ctx.beginPath();
@@ -560,5 +575,58 @@ export function drawStrikeGlyph(ctx: Ctx, x: number, y: number, r: number, kind:
     ctx.fillRect(x - s * 0.72, y - s * 0.22, s * 1.44, s * 0.2);
     ctx.fillRect(x - s * 0.32, y + s * 0.42, s * 0.64, s * 0.14);
   }
+  ctx.restore();
+}
+
+/**
+ * An aircraft on the minimap (air-support-275): its silhouette turned to its nose (`angle`, the canvas rotation of its
+ * heading, as the footprint's lane), the side's colour under the map's keyline: a jet's swept arrow, the AC-130's straight
+ * high wing. `inbound` (an enemy's on its way in): the approach line drawn first, from it to the mark at (`toX`, `toY`),
+ * dashed in the side's colour, marching toward the mark (`march` 0..1).
+ */
+export function drawAircraftGlyph(ctx: Ctx, x: number, y: number, r: number, angle: number, gunship: boolean, side: ObjectiveSide,
+  inbound: { toX: number; toY: number; march: number } | null): void {
+  const color = sideColor(side);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (inbound) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(inbound.toX, inbound.toY);
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+    ctx.stroke();
+    ctx.setLineDash([4, 3]);
+    ctx.lineDashOffset = -inbound.march * 7;
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  if (gunship) {
+    // fuselage, the long straight wing and the tailplane, nose up the canvas before the turn
+    ctx.rect(-r * 0.16, -r, r * 0.32, r * 2);
+    ctx.rect(-r * 1.05, -r * 0.38, r * 2.1, r * 0.3);
+    ctx.rect(-r * 0.45, r * 0.68, r * 0.9, r * 0.2);
+  } else {
+    // a jet's swept arrow: the nose, the wing's sweep to its tips, the notch of the tail
+    ctx.moveTo(0, -r * 1.1);
+    ctx.lineTo(r * 0.85, r * 0.55);
+    ctx.lineTo(r * 0.28, r * 0.42);
+    ctx.lineTo(r * 0.36, r * 0.95);
+    ctx.lineTo(-r * 0.36, r * 0.95);
+    ctx.lineTo(-r * 0.28, r * 0.42);
+    ctx.lineTo(-r * 0.85, r * 0.55);
+    ctx.closePath();
+  }
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.fill();
   ctx.restore();
 }

@@ -89,7 +89,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -118,7 +118,7 @@ export interface PlayerBattleActions {
 const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
 /** The multiplayer command lane's name for each call-in (mp/presentation/controlSampler.ts NAMED_ACTION_BITS). */
 const STRIKE_ACTION_NAMES = Object.freeze({
-  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'strikeGunship',
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'strikeMissile', gunship: 'strikeGunship',
 } as const satisfies Record<AirStrikeKind, string>);
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 

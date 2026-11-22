@@ -15,9 +15,9 @@
  *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
  *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
- * - The warning: a strike whose footprint covers the crew raises an INCOMING plate (the HUD alert's form: the alert
- *   glyph in the danger tone, never a coloured edge) with its countdown; every strike's footprint is also on the minimap
- *   and the ground.
+ * - The warning: a strike whose footprint covers the crew raises the battle's one notice (battleNotices.ts, the queue
+ *   2026-11-21: the bespoke INCOMING plate folded into it) with its countdown, updated in place and taken down when its
+ *   danger has passed; every strike's footprint is also on the minimap and the ground, and its aircraft on the minimap.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { EventBus } from '../game/stateCore.ts';
@@ -33,12 +33,13 @@ import { markDatum } from './dom.ts';
 import { t } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
+import { battleNotices, type BattleNoticePort } from './battleNotices.ts';
 
 interface Point { x: number; y: number; z: number }
 
 /** Each call-in's glyph in the sprite (the AC-130's is its mode's). */
 const STRIKE_ICON: Readonly<Record<AirStrikeKind, IconId>> = {
-  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'modeAc130',
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'rocket', gunship: 'modeAc130',
 };
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement): HTMLElementTagNameMap[K] {
@@ -61,7 +62,10 @@ const PLATE_STATE: Readonly<Record<StrikeOrderRefusal, PlateState>> = {
   DESTROYED: 'denied', MARK: 'denied', LOST: 'denied',
 };
 
-export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
+/** The INCOMING notice's id in the battle's region (one at a time: the nearest-landing strike's). */
+const INCOMING_NOTICE = 'cot-air-incoming';
+
+export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices: BattleNoticePort = battleNotices) {
   // the rest slot: Support (the binoculars) with the points; it joins the battle tray on a desktop (update() re-seats it
   // when the layout turns touch or back), and stands by itself beside the action row on a phone
   const dock = node('div', 'cot-strike-dock', parent);
@@ -156,13 +160,16 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   close.innerHTML = icon('close', { size: 20 });
   close.addEventListener('click', () => bus.emit('ui:strikeViewClose', {}));
 
-  // ---- the warning ----
-  const warning = node('div', 'cot-strike-warning', parent);
-  warning.hidden = true;
-  warning.setAttribute('role', 'alert');
-  node('span', 'glyph', warning).innerHTML = icon('alert', { size: 16 });
-  const warningTitle = node('strong', '', warning);
-  const warningTime = node('span', 'num', warning);
+  // ---- the warning: the battle's notice, shown only when what it says changes (its whole seconds) ----
+  let warningShown = '';
+  function setWarning(text: string | null, detail: string, side: 'own' | 'enemy'): void {
+    const key = text ? `${text}|${detail}|${side}` : '';
+    if (key === warningShown) return;
+    warningShown = key;
+    if (!text) { notices.dismiss(INCOMING_NOTICE); return; }
+    notices.show({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
+      durationMs: null, dismissible: false, priority: 2, className: 'cot-air-incoming' });
+  }
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
   bus.on('ui:strikeView', (payload) => {
@@ -186,7 +193,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     setHidden(rack, !shown || !strikeView.open);
     if (!air || !shown) {
       if (strikeView.open) bus.emit('ui:strikeViewClose', {});
-      setHidden(binoculars, true); setHidden(warning, true);
+      setHidden(binoculars, true); setWarning(null, '', 'enemy');
       if (scopedFlag) { scopedFlag = false; document.documentElement.toggleAttribute('data-cot-strike-view', false); }
       strikeView.blend = 0;
       return;
@@ -256,12 +263,11 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
         if (!threat || strike.landsS < threat.landsS) threat = strike;
       }
     }
-    setHidden(warning, !threat);
-    if (threat) {
-      setData(warning, 'side', threat.team === team ? 'own' : 'enemy');
-      setText(warningTitle, t(`airSupport.incoming.${threat.kind}`));
+    if (!threat) setWarning(null, '', 'enemy');
+    else {
       const left = threat.landsS - air.nowS;
-      setText(warningTime, left > 0 ? `${left.toFixed(1)} s` : t('airSupport.incoming.now'));
+      setWarning(t(`airSupport.incoming.${threat.kind}`), left > 0 ? `${Math.ceil(left)} s` : t('airSupport.incoming.now'),
+        threat.team === team ? 'own' : 'enemy');
     }
   }
 

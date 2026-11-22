@@ -96,6 +96,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/strikeOrder.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
     'src/sim/strikeRuns.selftest.mjs',
+    // 2026-11-21 (air-support-275): the strafing run bites: a light vehicle in the lane loses half its hull, an MBT its deck
+    'src/sim/strafeEffect.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
