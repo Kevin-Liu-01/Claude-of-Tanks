@@ -120,6 +120,9 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'spectate-ally': { screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', box: '.cot-spec-pick', open: {} },
   // the touch layout's ammunition rack, opened from its slot
   'hud-ammo-rack': { screen: 'battle', owner: 'src/ui/hud.ts', box: '.cot-shells.touch-open', open: {} },
+  // photo mode (photo-mode-271): one module, a modal sheet over the battle or the Garage; Escape is the stack's
+  'photo-battle': { screen: 'battle', owner: 'src/ui/photoMode.ts', box: '.cot-photo-bar', modal: true, open: {} },
+  'photo-garage': { screen: 'garage', owner: 'src/ui/photoMode.ts', box: '.cot-photo-bar', modal: true, open: {} },
 
   // ---- Rooms (the panel and its pickers over the Garage)
   'rooms-tank': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.vehicle-pick', on: 'rooms', open: {} },

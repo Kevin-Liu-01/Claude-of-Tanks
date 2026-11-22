@@ -113,6 +113,9 @@ export const INTERACTION_SITES = Object.freeze({
   // (261) the technical drawing's views and kinds (the guides' steps are the kit's tabs, navigation, no mark)
   'guide-drawing': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/technicalDrawing.ts', build: 'segmented', marks: ['segmented:.cot-td__views', 'segmented:.cot-td__kinds'], lane: 'premiere-gallery-studio' },
   'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'segmented', marks: ['segmented:.cot-photo-views'], lane: 'premiere-gallery-studio' },
+  // photo-mode-271: a solo battle's photo mode adds the lens and the roll to the same bar (src/game/battlePhotoMode.ts)
+  'photo-lens': { chooses: 'view', options: 5, screen: 'battle', owner: 'src/ui/photoMode.ts', build: 'segmented', marks: ['segmented:.cot-photo-lens'], lane: 'premiere-battle' },
+  'photo-tilt': { chooses: 'view', options: 5, screen: 'battle', owner: 'src/ui/photoMode.ts', build: 'segmented', marks: ['segmented:.cot-photo-tilt'], lane: 'premiere-battle' },
   'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], lane: 'premiere-gallery-studio' },
 
   // ---- Deploy (premiere-site)

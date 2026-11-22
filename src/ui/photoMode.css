@@ -1,11 +1,37 @@
-/* The Garage's photo mode (photoMode.ts): the Garage's interface steps away and one bar of framings, Save and Exit
-   floats over the stage, on the kit. Copyright © 2026 Kevin B. Liu. */
+/* Photo mode (photoMode.ts), in the Garage and in a solo battle: the surface's whole interface steps away and one bar of
+   framings (a battle's lens and roll beside them), Save and Exit floats over the stage, on the kit.
+   Copyright © 2026 Kevin B. Liu. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-body.cot-photo-on .cot-garage{visibility:hidden;}
+/* everything on the page but the stage (#app holds the renderer's canvas) and the bar steps away: the HUD, its touch
+   controls, the Garage, notices (but photo mode's own: a failed save), the settings gear */
+body.cot-photo-on > :not(#app,.cot-photo-bar,.cot-photo-notices,script,style,link){visibility:hidden;}
+body.cot-photo-on #app > :not(canvas){visibility:hidden;}
+body[data-cot-photo='battle'] #app > canvas{cursor:grab;touch-action:none;}
+body[data-cot-photo='battle'] #app > canvas:active{cursor:grabbing;}
 .cot-photo-bar{position:fixed;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 12px));z-index:var(--z-menu);transform:translateX(-50%);
-  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--s3);max-width:calc(100vw - 32px);padding:var(--s2);
+  display:grid;grid-auto-flow:column;align-items:center;gap:var(--s3);box-sizing:border-box;width:max-content;padding:var(--s2);
   border-radius:var(--control-radius);background:var(--glyph-plate);box-shadow:var(--ring-2);}
 .cot-photo-bar[hidden]{display:none;}
-/* the framings are the kit's segmented control (components.css .cot-c-seg): its look, its checked state, its focus */
+/* the framings, the lens and the roll are the kit's segmented control (components.css .cot-c-seg): its look, its checked
+   state, its focus; Save and Exit are the kit's buttons, one pair */
+.cot-photo-actions{display:flex;gap:var(--s2);align-self:stretch;}
+/* Save and Exit stand as tall as the segmented groups beside them (their padding outside the options), so a row's
+   edges line up */
+.cot-photo-actions > .cot-c-btn{height:auto;min-height:var(--h);}
+/* the lens and the roll are numbers: the data face, every figure one width */
+:is(.cot-photo-lens,.cot-photo-tilt) .cot-c-seg__opt{font-family:var(--font-data);}
+/* where one row does not fit (photoMode.ts fit): two columns, every cell stretched to its column, so both rows share
+   their edges; on a narrow screen one column across it */
+.cot-photo-bar:is([data-layout='grid'],[data-layout='stack']){grid-auto-flow:row;}
+.cot-photo-bar[data-layout='grid']{grid-template-columns:repeat(2,auto);}
+.cot-photo-bar[data-layout='stack']{grid-template-columns:minmax(0,1fr);width:calc(100vw - 32px);}
+.cot-photo-bar:is([data-layout='grid'],[data-layout='stack']) > .cot-c-seg{display:flex;}
+.cot-photo-bar:is([data-layout='grid'],[data-layout='stack']) > .cot-c-seg > .cot-c-seg__opt{flex:1 1 0;}
+.cot-photo-bar:is([data-layout='grid'],[data-layout='stack']) .cot-photo-actions > .cot-c-btn{flex:1 1 0;justify-content:center;}
+/* a finger's targets: 44 px */
+@media (pointer:coarse){
+  .cot-photo-bar .cot-c-seg__opt{height:44px;}
+  .cot-photo-bar .cot-c-btn{min-height:44px;}
+}
 }

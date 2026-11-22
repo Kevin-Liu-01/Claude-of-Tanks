@@ -86,7 +86,7 @@
   --chip-fill:rgba(246,243,236,.03);--chip-edge:var(--line-control);--chip-fill-on:var(--accent-wash);--chip-edge-on:var(--accent);
   --selected-edge:2px;
   --ring-1:inset 0 0 0 1px var(--line-1);--ring-2:inset 0 0 0 1px var(--line-2);--ring-3:inset 0 0 0 1px var(--line-3);
-  --ring-accent:inset 0 0 0 1px var(--accent);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
+  --ring-accent:inset 0 0 0 1px var(--accent);--focus-ring-checked:var(--ring-accent),var(--focus-ring);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
   --btn-secondary-ring-hover:inset 0 0 0 1px var(--ink-2);--ring-ok:inset 0 0 0 1px var(--ok);--ring-warn:inset 0 0 0 1px var(--warn);
   --ring-danger:inset 0 0 0 1px var(--danger);--ring-hot:0 0 0 2px var(--ink-1);--z-lift:1;--z-under:-1;
   --fill-faint:rgba(246,243,236,.03);--fill-quiet:rgba(246,243,236,.04);--fill-soft:rgba(246,243,236,.05);

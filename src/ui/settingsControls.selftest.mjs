@@ -36,8 +36,8 @@ for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTIN
 // the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
 // flight action wears the table's glyph, as the HUD's controls row and the Garage do
 // Air Support (air-support-270): the strike view's binoculars (X) join them
-// (death-flow-275) the scuttle (hold Delete) joins them; turbo-spin-275: Turbo (Z) and the air spin
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 42,
+// (death-flow-275) the scuttle (hold Delete) joins them; turbo-spin-275: Turbo (Z) and the air spin; photo mode (P, photo-mode-271) joins them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 43,
   'every remappable action has a settings icon');
 for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);

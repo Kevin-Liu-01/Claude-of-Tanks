@@ -129,6 +129,9 @@ const MOTION = {
   settings: vocab('src/ui/settings.ts', 'cot-set-panel', 'rise'),
   'settings-quality': own('pickers'), 'settings-colour-preset': own('pickers'), 'settings-crew-voice': own('pickers'),
   'hud-editor': own('modal'),
+  // photo mode's one bar, in the Garage and in a solo battle (photo-mode-271): it rises in and leaves before its removal
+  'photo-battle': vocab('src/ui/photoMode.ts', 'cot-photo-bar', 'rise'),
+  'photo-garage': vocab('src/ui/photoMode.ts', 'cot-photo-bar', 'rise'),
   'gallery-rival': own('pickers'), 'gallery-sort': own('pickers'), 'gallery-camera-view': own('pickers'), 'markup-primitive': own('pickers'),
   'gallery-drawing': SITE, 'public-nav-menu': SITE, 'home-trailer': SITE, 'docs-archive': SITE, 'docs-fleet-filter': own('pickers'),
   'media-library': SITE, 'pad-options': SITE, 'media-archive': SITE,
