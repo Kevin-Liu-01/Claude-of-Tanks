@@ -740,19 +740,24 @@ body[data-cot-width='compact'] .cot-kc-title .t,
 body[data-cot-width='phone'] .cot-kc-title .t{font-size:var(--battle-fs-13);letter-spacing:.34em}
 body[data-cot-width='compact'] .cot-kc-title .s,
 body[data-cot-width='phone'] .cot-kc-title .s{font-size:var(--battle-fs-11)}
-/* a phone held upright: the card at the top at full width, two lines of who and what (the figures and the silhouette
-   give way), under the title; the dial and the Skip keep the foot */
+/* a phone held upright: the card at the top at full width, two lines of who and what (the figures give way), under the
+   title; the dial and the Skip keep the foot. The card alone (no title over it) rises to the top edge and keeps its
+   "Destroyed by" */
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-card,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-card{
   top:max(58px,calc(env(safe-area-inset-top) + 50px));bottom:auto;width:calc(100vw - (var(--cot-edge) * 2));
 }
-body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-card :is(.st,.sil,.hd),
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-card :is(.st,.sil,.hd){display:none}
-/* a short window (a phone on its side): thinner bands, a narrower card without its armour figure and silhouette */
+body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-card :is(.st,.hd),
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-card :is(.st,.hd){display:none}
+body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc.card .cot-kc-card,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc.card .cot-kc-card{top:max(var(--cot-edge),env(safe-area-inset-top))}
+body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc.card .cot-kc-card .hd,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc.card .cot-kc-card .hd{display:block}
+/* a short window (a phone on its side): thinner bands, a narrower card without its armour figure */
 body[data-cot-height='short'] .cot-kc{--kc-band:6vh}
 body[data-cot-height='short'] .cot-kc-title{top:4px;min-width:280px;padding-block:5px 6px}
 body[data-cot-height='short'] .cot-kc-card{width:min(260px,40vw);padding:var(--s1) var(--s2) var(--s2);gap:2px}
-body[data-cot-height='short'] .cot-kc-card :is(.sil,[data-stat=armor]){display:none}
+body[data-cot-height='short'] .cot-kc-card [data-stat=armor]{display:none}
 body[data-cot-height='short'] .cot-kc-card .who{font-size:var(--battle-fs-15)}
 body[data-cot-height='short'] .cot-kc-card .art{width:76px;height:50px}
 body[data-cot-width='compact'] .cot-kc-label,

@@ -207,8 +207,8 @@ await runWarmHold({
   },
   shoot: async ({ byTag, signal }) => {
     for (const [tag, page] of Object.entries(byTag)) {
-      // the phone pages take the shapes that read differently there: the full cam's x-ray and the quick cam
-      const list = tag === 'desktop' ? cases : cases.filter((c) => c === 'full' || c === 'quick');
+      // the phone pages take the shapes that read differently there: the full cam's x-ray, the quick cam, the card alone
+      const list = tag === 'desktop' ? cases : cases.filter((c) => c !== 'strike');
       for (const which of list) {
         if (signal.aborted) return;
         await beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: MODES[which], settleMs: 3000, timeoutMs: 900_000 });
