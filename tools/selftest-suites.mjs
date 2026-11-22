@@ -3147,6 +3147,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
     'src/ui/hudNotices.selftest.mjs',
+    // (notices-audit-275, Kevin 2026-11-21) the battle notices' event lane: the ladder, repeats, cooldown, staleness, scope
+    'src/ui/battleNoticeEvents.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',

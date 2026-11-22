@@ -42,8 +42,7 @@
 .flight-weapon.reloading small{color:var(--accent)}
 .flight-weapon:focus-visible,.cot-drone-return:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .flight-weapon:active,.cot-drone-return:active{filter:brightness(1.25)}
-.flight-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.flight-hint{font-size:var(--battle-fs-11);color:var(--ink-2);line-height:1.4;max-width:350px}
+.flight-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px}
 .cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:var(--battle-fs-11)}
 .cot-drone-return .flight-icon svg{width:17px;height:17px}
 /* Owner 2026-10-14: no recall until the pilot is in the drone's feed; the control stands dimmed and inert until then. */
@@ -88,7 +87,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
  .flight-identity strong{font-size:var(--battle-fs-11)}.flight-feed{font-size:var(--battle-fs-11)}.flight-instrument{font-size:var(--battle-fs-11)}.cot-flight-hud .flight-telemetry{gap:var(--s2)}
  .cot-flight-hud .flight-telemetry{flex:1 0 auto}.flight-instrument .flight-icon svg{width:12px;height:12px}
  .cot-flight-hud .flight-battery{height:3px;margin:var(--s1) 0}.flight-battery::-webkit-meter-bar{height:3px}
- .flight-hint{display:none}.flight-actions{justify-content:flex-end}.cot-drone-return{min-height:44px;padding:var(--s1) 7px;font-size:var(--battle-fs-11)}
+ .cot-drone-return{min-height:44px;padding:var(--s1) 7px;font-size:var(--battle-fs-11)}
  .flight-weapon{min-height:57px;padding:5px 3px;flex-direction:column;gap:3px;justify-content:center;text-align:center}
  .flight-weapon-icon{flex-basis:auto}.flight-weapon-icon svg{width:20px;height:21px}
  .flight-weapon-copy{gap:3px}.flight-weapon-copy strong{font-size:var(--battle-fs-11)}.flight-weapon small{font-size:var(--battle-fs-11)}.cot-flight-hud .flight-weapons{margin-bottom:0;gap:var(--s1)}
@@ -203,7 +202,6 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 /* (the kit's cap in every console: a filled grey cap here and in the gunship's beside the ringed caps elsewhere read as
    three styles, gauntlet r3) */
 .cot-flight-hud[data-kind=drone] .flight-key{min-width:19px;height:20px}
-.cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:var(--battle-fs-11);line-height:1.5;color:var(--ink-2)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .41 c h / .961),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--ink-1))}
@@ -230,7 +228,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=drone] .flight-optic-icon svg{width:16px;height:16px}
  .cot-flight-hud[data-kind=drone] .flight-feed{font-size:var(--battle-fs-11);letter-spacing:0}
  .cot-flight-hud[data-kind=drone] .flight-view-track{gap:3px}
- .cot-flight-hud[data-kind=drone] .flight-hint,.cot-flight-hud[data-kind=drone] .flight-key{display:none}
+ .cot-flight-hud[data-kind=drone] .flight-key{display:none}
 }
 /* (on the portrait gutter of 12 px, as the map, the lanes and the toolbar over it: 16 px stood it off them, gauntlet r15) */
 @media(orientation:portrait){.cot-flight-hud[data-kind=drone] .flight-console{width:min(400px,calc(100% - 24px));bottom:max(175px,calc(env(safe-area-inset-bottom) + 150px))}}
@@ -308,7 +306,6 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-view-switch{position:relative}
 .cot-flight-hud[data-kind=gunship] .flight-view-switch .flight-key{position:absolute;top:5px;right:14px;font-size:var(--battle-fs-11)}
 .cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
-.cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:var(--battle-fs-11);color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:oklch(from var(--surface-hover) .38 c h / .933)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--ink-1))}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::before{background:var(--ink-1)}
@@ -347,7 +344,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  /* (on one line in its card, its capitals untracked: "152 MM HE" broke onto two lines at 320x568, gauntlet r8) */
  .cot-flight-hud[data-kind=gunship] .flight-weapon-copy .flight-weapon-compact{display:block;white-space:nowrap;letter-spacing:0}
  .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
- .cot-flight-hud[data-kind=gunship] :is(.flight-key,.flight-hint){display:none}
+ .cot-flight-hud[data-kind=gunship] .flight-key{display:none}
  .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-template-columns:15px minmax(0,1fr);gap:var(--s1)}
  .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:15px;height:15px}
  .cot-flight-hud[data-kind=gunship] .flight-feed{font-size:var(--battle-fs-11)}

@@ -91,7 +91,7 @@ import {
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
-import { TUTORIAL_ON } from './tutorial/tutorialRecord.ts';
+import { TUTORIAL_ON, readTutorialRecord } from './tutorial/tutorialRecord.ts';
 import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
 import { battleKeycap, promptFor } from './keyPrompt.ts';
 
@@ -169,6 +169,7 @@ type BooleanSettingKey =
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
   | 'showHints'
+  | 'crewCaptions'
   | 'alarmHeartbeat'
   | 'audioConcussion';
 type ActionDefinition = InputLayer['actionDefs'][number];
@@ -1430,6 +1431,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
+    // (notices-audit-275) the crew's radio as subtitles over the battle (ui/captionLine.ts); off by default
+    onOffRow(crew, t('settings.crew.captions'), 'crewCaptions');
     const alarms = groupCard(body, t('settings.alarms.title'));
     onOffRow(alarms, t('settings.alarms.heartbeat'), 'alarmHeartbeat', emitVolumes);
     onOffRow(alarms, t('settings.alarms.concussion'), 'audioConcussion', emitVolumes);
@@ -2321,6 +2324,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
   function takeFirstBattleHint(): boolean {
     if (input.isTouchLayout?.() || input.isPadConnected()) return false;
+    // (notices-audit-275, Kevin 2026-11-21: one tutorial teaches these) a player who finished its training battle has
+    // learned the strip's keys
+    if (readTutorialRecord()?.training === 'done') return false;
     const record = hintsRecord();
     if (record.battles >= HINT_BATTLES || HINT_GROUP_IDS.every((id) => record.learned.has(id))) return false;
     record.battles += 1;

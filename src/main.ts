@@ -1172,6 +1172,11 @@ const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts')
   watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
   airSupportMode: () => game.ruleset?.mode === 'air_support',
 })));
+// (notices-audit-275) the crew radio's captions (ui/captionLine.ts): loaded at the first rollout, shown when the setting is on
+const captionLineChunk = createLazyChunk(() => import('./ui/captionLine.ts').then(({ createCaptionLine }) => createCaptionLine({
+  root: document.body, doc: document, bus, enabled: () => !!input.getSettings().crewCaptions,
+})));
+bus.on('battle:rollout', () => { void captionLineChunk.load().catch(() => { /* a failed chunk loses the captions, never the battle */ }); });
 // 273: armour colours on for everyone, once (game/armourOverlayDefault.ts): the first rollout the player drives after the
 // flip offers its one-time tip, now the first-use hints' armourShading (its prompt the player's own key, or on a pad or a
 // touch layout the colours' meaning). A watched or couch battle leaves it for the next; colours turned off again before

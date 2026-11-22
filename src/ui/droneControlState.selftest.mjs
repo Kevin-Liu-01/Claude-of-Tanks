@@ -24,7 +24,7 @@ for (const [flight, canControl, phase, disabled] of cases) {
   assert.equal(dronePhase(flight), phase);
   assert.deepEqual({ ...droneControl(flight, canControl) }, { phase, disabled }, JSON.stringify({ flight, canControl }));
 }
-for (const key of ['flight.return.locked', 'flight.hint.recallLocked']) assert.notEqual(t(key), key, `${key} is in the catalog`);
+for (const key of ['flight.return.locked']) assert.notEqual(t(key), key, `${key} is in the catalog`);
 
 // The feed: a recall the authority accepted closes it without the signal-loss static; a loss still breaks it.
 for (const [recalled, expected] of [[true, 0], [false, 1]]) {
