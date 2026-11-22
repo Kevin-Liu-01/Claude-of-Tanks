@@ -71,20 +71,25 @@ export function pickFollow(pointers: readonly FollowPointer[], player: GroundPoi
 
 /** The trail: a chevron every TRAIL_STEP_M from TRAIL_FIRST_M ahead of the tank, at most TRAIL_COUNT, none inside the
  *  destination, and none once the tank is within TRAIL_HIDE_WITHIN_M of its edge (the destination is in plain view). */
-export const TRAIL_FIRST_M = 6;
-export const TRAIL_STEP_M = 5;
+export const TRAIL_FIRST_M = 8;
+export const TRAIL_STEP_M = 6;
 export const TRAIL_COUNT = 7;
 export const TRAIL_HIDE_WITHIN_M = 4;
-/** A chevron's outline in its own frame (m): `along` its way (+ ahead) and `across` it; 2.6 m wide, 1.7 m long. */
+/** A chevron's outline in its own frame (m): `along` its way (+ ahead) and `across` it; 4 m wide, 2.6 m long, broad
+ *  enough to stay a chevron where the chase camera's low look flattens the ground ahead. */
 const CHEVRON_OUTLINE: ReadonlyArray<readonly [number, number]> = Object.freeze([
-  [0.8, 0], [-0.5, 1.3], [-0.9, 1.0], [0.15, 0], [-0.9, -1.0], [-0.5, -1.3],
+  [1.3, 0], [-0.8, 2.0], [-1.3, 1.5], [0.25, 0], [-1.3, -1.5], [-0.8, -2.0],
 ] as const);
+/** Half a chevron's length along its way (m). */
+export const CHEVRON_HALF_M = 1.3;
 
 interface TrailChevron {
   /** Its outline on the ground, closed by the drawer. */
   readonly outline: readonly GroundPoint[];
   /** 0 nearest the tank. */
   readonly index: number;
+  /** Its centre's distance from the tank along the way (m). */
+  readonly alongM: number;
 }
 
 /** The chevrons from the tank toward a destination of radius `radiusM`, each laid flat along the way. */
@@ -101,7 +106,7 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
     const along = TRAIL_FIRST_M + i * TRAIL_STEP_M;
     if (along > last) break;
     const cx = from.x + fx * along, cz = from.z + fz * along;
-    out.push({ index: i, outline: CHEVRON_OUTLINE.map(([a, c]) => ({ x: cx + fx * a + rx * c, z: cz + fz * a + rz * c })) });
+    out.push({ index: i, alongM: along, outline: CHEVRON_OUTLINE.map(([a, c]) => ({ x: cx + fx * a + rx * c, z: cz + fz * a + rz * c })) });
   }
   return out;
 }
@@ -110,7 +115,7 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
 export const TURN_FROM_DEG = 55;
 /** Its band round the tank (m), and the most of a turn it sweeps (deg). */
 export const TURN_RADII_M = Object.freeze({ inner: 5.6, outer: 7.0 });
-const TURN_SWEEP_MAX_DEG = 150;
+export const TURN_SWEEP_MAX_DEG = 150;
 const TURN_START_DEG = 20;
 const TURN_SEGMENTS = 14;
 const TURN_HEAD_DEG = 16;
@@ -137,14 +142,15 @@ export function bearing(from: GroundPoint, to: GroundPoint): number {
 /**
  * The curved arrow round the tank toward a destination out of view (null while it is within TURN_FROM_DEG of the camera's
  * heading `viewYaw`): a band from just off the view's heading, the way to turn, toward the destination's bearing, at most
- * TURN_SWEEP_MAX_DEG of it, ending in an arrowhead.
+ * `maxSweepDeg` of it (TURN_SWEEP_MAX_DEG; the drawer shortens it where the head would leave the screen or meet the HUD),
+ * ending in an arrowhead.
  */
-export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint): TurnArrow | null {
+export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, maxSweepDeg = TURN_SWEEP_MAX_DEG): TurnArrow | null {
   const off = turnFrom(viewYaw, bearing(tank, to));
   if (Math.abs(off) <= (TURN_FROM_DEG * Math.PI) / 180) return null;
   const turn: 1 | -1 = off >= 0 ? 1 : -1;
   const start = viewYaw + turn * (TURN_START_DEG * Math.PI) / 180;
-  const sweep = Math.min(Math.abs(off) - (TURN_START_DEG * Math.PI) / 180, (TURN_SWEEP_MAX_DEG * Math.PI) / 180);
+  const sweep = Math.min(Math.abs(off) - (TURN_START_DEG * Math.PI) / 180, (maxSweepDeg * Math.PI) / 180);
   const head = (TURN_HEAD_DEG * Math.PI) / 180;
   const bodyEnd = Math.max(0, sweep - head);
   const at = (yaw: number, r: number): GroundPoint => ({ x: tank.x + Math.sin(yaw) * r, z: tank.z + Math.cos(yaw) * r });

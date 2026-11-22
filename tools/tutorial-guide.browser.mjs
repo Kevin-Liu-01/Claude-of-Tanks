@@ -143,6 +143,10 @@ try {
   const aside = await show('aside', { marker: { ...at(0, 90), radiusM: 6, label: 'C' }, path: true });
   assert.ok(aside.turn, 'aside: the turn arrow');
   report.cases.aside.side = aside.turn.x > vp.width / 2 ? 'right' : 'left';
+  for (const [name, read] of [['behind', behind], ['aside', aside]]) {
+    assert.ok(read.turn.x >= 0 && read.turn.x <= vp.width && read.turn.y >= 0 && read.turn.y <= vp.height,
+      `${name}: the turn arrow's head stands on the screen`);
+  }
 
   // the warnings: one enemy on the flank, its gun laid on the tank, one close behind
   const staged = await page.evaluate(() => {
