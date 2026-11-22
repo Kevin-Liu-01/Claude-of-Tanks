@@ -42,8 +42,9 @@
 // never saw (sealed halfway through it), arrivals the rows stood up kept on the field; [8r] a cache the seat took in the
 // window; [8h] one the play's held hull drove onto that the seat never reached, on the ground at the resume; [6r] a seat's
 // kill that let the old host's trickle bring one on that the play's full field held back (its queue held it twice), [6r2]
-// that arrival killed again in the window, [6r3] an arrival the play made itself and then lost (not taken again); [9r] the
-// same for Frontline's reinforce trickle.
+// that arrival killed again in the window, [6r3] an arrival the play made itself and then lost (not taken again); [9r] and
+// [9r2] the same for Frontline's reinforce trickle; [4k] an advance's own arrival and [7k] a begun wave's killed again
+// inside the window, down at the resume, never stood up again.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -240,7 +241,7 @@ console.log('[3] an ally down when the lull ends, its row in the seat\'s newest 
  * sight) and the respawns it was told. `holdAttack` (fix-up r2): the attack stands still where it took sector 2, through
  * the window and on both hosts after it, so the line guard reads it where it stood at the advance.
  */
-function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = false) {
+function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = false, killAt = 0) {
   const lineSeats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
   const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -292,9 +293,14 @@ function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = fa
   const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), replayed);
   const allyLives = ally.modeLives;
   const told = new Map(), heard = [], rose = new Map();
-  let windowStep = 0;
+  let windowStep = 0, killed = null;
   const fight = (actor) => {
     if (hand && ++windowStep === 5) Object.assign(zones[1], { control: 1, owner: 'alpha', contested: false });
+    // (`killAt`: a seat kills the advance's first arrival again that many steps into the window)
+    if (killAt && windowStep === killAt && actor === old) {
+      killed = [...told.keys()].filter((id) => id.startsWith('d-')).sort()[0] ?? null;
+      if (killed) { const e = sim.entityById.get(killed); e.combat.hp = 0; e.combat.destroyed = true; }
+    }
     return lineOf(actor) < 2 ? takeSector(actor) : hold(actor);
   };
   const listen = (ev) => {
@@ -312,7 +318,7 @@ function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = fa
   const serial = fresh.authority.modeEventSerial;
   const applied = applyResumeState(fresh, state);
   // (replayed, the play's own mode events count on the serial and go to no seat: none is left pending)
-  return { old, fresh, sim, step, tick, keyframe, frame, told, rose, heard, pinSurvivor, hold, SURVIVOR, lineOf, replayedSteps: applied.replayed?.steps ?? 0,
+  return { old, fresh, sim, step, tick, keyframe, frame, told, rose, heard, pinSurvivor, hold, SURVIVOR, lineOf, replayedSteps: applied.replayed?.steps ?? 0, killed: () => killed,
     announced: replayed ? fresh.authority.pendingEventCount : fresh.authority.modeEventSerial - serial,
     pendingAfter: fresh.authority.pendingEventCount, ally: { lives: allyLives, held: heldAlly, oldLives: ally.modeLives, freshLives: fresh.authority.entityById.get('a-2').modeLives } };
 }
@@ -323,7 +329,7 @@ const lineDirector = (actor) => {
     counter: line.counter, regroup: line.regroup, reinforceAt: line.nextReinforceAtS, rng: mode.rng };
 };
 const count = (list, type) => list.filter((t) => t === type).length;
-for (const [label, hidden, replayed, hand] of [['[4] Frontline: the line advanced after the keyframe, every arrival in the seat\'s newest frame', false, false, false],
+for (const [label, hidden, replayed, hand, killAt = 0] of [['[4] Frontline: the line advanced after the keyframe, every arrival in the seat\'s newest frame', false, false, false],
   ['[5] Frontline: the line advanced after the keyframe, the arrivals hidden from the seat', true, false, false],
   // (276) the keyframe naming its battle clock: the window replayed. As built, the play takes the sector itself (the attack
   // stood in it at the keyframe): the advance, its arrivals and the ally's revive are the play's, the old host's
@@ -331,12 +337,19 @@ for (const [label, hidden, replayed, hand] of [['[4] Frontline: the line advance
   ['[5r] [5] replayed: the play makes the advance', true, true, false],
   // and the sector taken by a hand the play never sees (sealed halfway through it): the new host takes the advance up as made
   ['[4h] [4] replayed, the sector taken by a hand the play never saw', false, true, true],
-  ['[5h] [5] replayed, the sector taken by a hand the play never saw', true, true, true]]) {
+  ['[5h] [5] replayed, the sector taken by a hand the play never saw', true, true, true],
+  // (round 5) and one of the advance's arrivals a seat kills again inside the window: down at the resume, never risen again
+  ['[4k] [4h] with an arrival killed again in the window', false, true, true, 20]]) {
   // the play made the advance itself (its revives the old host's, nothing left to rise on the first step)
   const played = replayed && !hand;
   console.log(label);
-  const run = frontlineWindow(hidden, false, replayed, hand);
+  const run = frontlineWindow(hidden, false, replayed, hand, killAt);
   ok(replayed === (run.replayedSteps === 30), replayed ? `the window is replayed (${run.replayedSteps} steps)` : 'the 275 reading (no battle clock)');
+  if (killAt) {
+    const id = run.killed(), e = run.fresh.authority.entityById.get(id), o = run.old.authority.entityById.get(id);
+    ok(!!id && e.modeLife === 'down' && o.modeLife === 'down' && e.modeLives === o.modeLives, `${id}, the advance's arrival killed again, is down at the `
+      + `resume as on the old host, its life counted alike (${e.modeLife}, lives ${e.modeLives} against ${o.modeLives}; round 5: benched, it rose again)`);
+  }
   const { old, fresh, step } = run;
   const sealed = run.keyframe.modeCheckpoint.mode;
   const arrivals = [...run.told.keys()].filter((id) => id.startsWith('d-')).sort();
@@ -544,8 +557,9 @@ for (const [label, killAgain] of [['[6r] (276) a seat\'s kill in a replayed wind
     step(fresh, 1, (ev) => { if (ev.type === 'mode_respawn') newArrivals.push(k); });
     step(old, 1, (ev) => { if (ev.type === 'mode_respawn') oldArrivals.push(k); });
   }
-  ok(oldArrivals.length > 0 && newArrivals.length === oldArrivals.length, `over the next 4 s, every hostile felled each second, the new host brings as many `
-    + `hostiles on as the old host (ticks ${newArrivals.join(', ')} against ${oldArrivals.join(', ')})`);
+  ok(oldArrivals.length > 0 && JSON.stringify(newArrivals) === JSON.stringify(oldArrivals), `over the next 4 s, every hostile felled each second, the new `
+    + `host brings hostiles on when the old host does (ticks ${newArrivals.join(', ')} against ${oldArrivals.join(', ')}; the seat's victim, its rest clock `
+    + `from the frame, comes back a trickle beat later, past these 4 s)`);
   old.stop(); fresh.stop();
 }
 
@@ -655,6 +669,54 @@ for (const [label, windowTicks, replayed] of [['[7] a Horde wave cleared after t
   ok(fh0.combat.hp === h0.combat.hp, `h0 is patched up once (${fh0.combat.hp} hp on the new host against ${h0.combat.hp} on the old)`);
   ok(Math.abs(hordeOf(old).nextWaveAtS - hordeOf(fresh).nextWaveAtS) <= 1 / 60 + 1e-9 && hordeOf(fresh).nextWaveAtS !== null,
     `and the lull still ends when the old host's does (${hordeOf(fresh).nextWaveAtS?.toFixed(3)} against ${hordeOf(old).nextWaveAtS?.toFixed(3)})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[7k] (276) a Horde clear and the next wave begun in one replayed window, the play seeing neither, one of the wave\'s arrivals killed again');
+{
+  // [7]'s staging: wave 1's last hostile falls to the seat in the window's first tick, so the play never clears it; the
+  // window (540 ticks) holds the old host's clear and its next wave's start, and the seat kills one of that wave's
+  // arrivals again 25 ticks before the frame. The begun wave keeps it, down: never stood up again
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0, k = 0, victim = null;
+  const told = new Map();
+  const step = (actor, n, heard, each) => {
+    for (let j = 0; j < n; j++) {
+      each?.(actor);
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  const living = (actor) => actor.authority.entities.filter((e) => e.team === 'bravo' && e.modeActive !== false && !e.combat.destroyed);
+  const fellAllButOne = (actor) => { for (const e of living(actor).sort((p, q) => (p.id < q.id ? -1 : 1)).slice(1)) { e.combat.hp = 0; e.combat.destroyed = true; } };
+  for (let guard = 0; guard < 2000 && !(hordeOf(old).queued === 0 && living(old).length === 1); guard++) step(old, 15, null, fellAllButOne);
+  step(old, 2);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), true);
+  const last = living(old)[0];
+  last.combat.hp = 0; last.combat.destroyed = true;
+  step(old, 540, (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); }, () => {
+    if (++k !== 515) return;
+    victim = [...told.keys()].filter((id) => id.startsWith('z-')).sort()[0] ?? null;
+    if (victim) { const e = sim.entityById.get(victim); e.combat.hp = 0; e.combat.destroyed = true; }
+  });
+  const frame = hostFrame(old, tick, era, false);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  const applied = applyResumeState(fresh, state);
+  const waveOf = (actor) => actor.authority.captureModeCheckpoint().mode.waves.wave;
+  ok(applied.replayed?.steps === 540 && waveOf(old) === 2 && waveOf(fresh) === 2 && !!victim, `the case is built: the old host cleared wave 1 and began `
+    + `wave 2 in the window, the play neither; the seat killed ${victim} again`);
+  const e = fresh.authority.entityById.get(victim), o = sim.entityById.get(victim);
+  ok(e.modeLife === 'down' && o.modeLife === 'down' && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `${victim} is down at the resume as on `
+    + `the old host, the field alike (${fielded(fresh).join(', ')}; round 5: benched, it rose again)`);
+  fresh.authority.onMatchReady();
+  const rose = [];
+  step(fresh, 60, (ev) => { if (ev.type === 'mode_respawn' && ev.id === victim) rose.push(ev.id); });
+  ok(rose.length === 0 && fresh.authority.entityById.get(victim).modeLife === 'down', `and it does not rise again on the new host's first second (${rose.length})`);
   old.stop(); fresh.stop();
 }
 
@@ -916,8 +978,9 @@ console.log('[9] a Frontline reinforce trickle arrival after the keyframe: taken
   old.stop(); fresh.stop();
 }
 
-console.log('[9r] (276) a seat\'s kill in a replayed window lets the old host\'s reinforce trickle bring one on that the play\'s full line held back: taken up as made');
-{
+for (const again of [false, true]) {
+console.log(again ? '[9r2] (276) [9r] with the reinforcement killed again in the window: its arrival taken, then its death'
+  : '[9r] (276) a seat\'s kill in a replayed window lets the old host\'s reinforce trickle bring one on that the play\'s full line held back: taken up as made');
   // the attack contests the live sector from inside its contest reach, every hull kept whole (the line stays full); sealed
   // 0.3 s before the trickle's tick with its battle clock; the seat's kill falls in the window's first tick
   const old = makeFront(null, 'reinforce-replay'), sim = old.authority, run = stepper(old);
@@ -945,9 +1008,17 @@ console.log('[9r] (276) a seat\'s kill in a replayed window lets the old host\'s
   const victim = sim.entityById.get(fielded(old)[0]);
   victim.combat.hp = 0; victim.combat.destroyed = true;
   const told = new Map(), heardOld = [];
-  run.step(old, 30, (ev) => { heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); });
+  const hear = (ev) => { heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); };
+  let killed = null;
+  for (let k = 0; k < 30; k++) {
+    run.step(old, 1, hear);
+    // (`again`: the seat kills the reinforcement 5 ticks after it comes on)
+    if (again && killed === null && told.size === 1 && run.tick - [...told.values()][0] === 5) {
+      killed = [...told.keys()][0]; const e = sim.entityById.get(killed); e.combat.hp = 0; e.combat.destroyed = true;
+    }
+  }
   const frame = hostFrame(old, run.tick, era, false);
-  ok(count(heardOld, 'mode_line_reinforced') === 1 && told.size === 1, `the case is built: the line full at the keyframe, the trickle due at ${dueAt.toFixed(3)}; `
+  ok(count(heardOld, 'mode_line_reinforced') === 1 && told.size === 1 && (!again || killed), `the case is built: the line full at the keyframe, the trickle due at ${dueAt.toFixed(3)}; `
     + `the seat kills ${victim.id} and the old host's trickle brings ${[...told.keys()].join(', ')} on`);
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
   const fresh = makeFront({ tick: state.tick, ...resumeClocksOf(state) }, 'reinforce-replay');
@@ -956,6 +1027,11 @@ console.log('[9r] (276) a seat\'s kill in a replayed window lets the old host\'s
   ok(applied.replayed?.steps === 30 && la.waves.line.nextReinforceAtS === lb.waves.line.nextReinforceAtS && la.rng.join() === lb.rng.join()
     && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `the trickle's clock, both streams (the arrival's rear slot draw taken) and the field are `
       + `the old host's (next at ${lb.waves.line.nextReinforceAtS?.toFixed(3)} against ${la.waves.line.nextReinforceAtS?.toFixed(3)}; [${lb.rng.join(', ')}])`);
+  if (again) {
+    const e = fresh.authority.entityById.get(killed), o = sim.entityById.get(killed);
+    ok(e.modeLife === 'down' && o.modeLife === 'down' && e.modeLives === o.modeLives, `${killed} is down at the resume as on the old host, its life counted `
+      + `alike (${e.modeLife}, lives ${e.modeLives} against ${o.modeLives})`);
+  }
   old.stop(); fresh.stop();
 }
 
