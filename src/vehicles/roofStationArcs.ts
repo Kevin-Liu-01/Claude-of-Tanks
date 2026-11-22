@@ -2,10 +2,9 @@
 // the ruling made working stations swept a full circle through the stand's seat on these hulls (the seat generator
 // found no clear roof, tools/gen-mission-attachment-seats.mjs). Each arc is station-local yaw in radians round the rest
 // bearing, measured against the stand's seat by tools/roof-station-arcs.mjs --dock (2 degrees of margin each side).
-// The T-62MV's and Type 59's DShK stand 0.8 m from their stands on small round roofs: with the launch interlock
-// (coordinator ruling 2026-10-15: the guns park while their own drone launches) each keeps 210 or 260 degrees round its
-// bow and the side away from the stand, and the stand sits in the gap (the T-62's to the gun's left rear, the Type 59's
-// to its right rear). An arc authored on
+// The Type 59's DShK stands 0.8 m from its stand on a small round roof: with the launch interlock (coordinator ruling
+// 2026-10-15: the guns park while their own drone launches) it keeps 260 degrees round its bow and the side away from
+// the stand, and the stand sits in the gap to its right rear. An arc authored on
 // the station itself (userData.yawArc: the M551A1 TTS, the MBT-70, the ZTZ-99A2) takes precedence. tools/vehicle-controls-inventory.mjs
 // writes these into the inventory the authority, the presentation and the stand seats read. The ZTZ-99A2's QJC-88 left
 // this table on 2026-10-20: its own arc stops short of the commander's sight and ends at the stand's
@@ -14,7 +13,8 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   merkava1b: { merkavaRoofMag1: [-1.7802, 1.8326] },
   merkava2b: { merkavaRoofMag1: [-2.1118, 2.1642], merkavaRoofMag2: [-1.85, 1.885] },
   merkava4b: { merkavaRoofMag1: [-3.4034, 1.9897] },
-  t62_1975: { fitting_browningDerived_dshk: [-2.618, 1.0472] },
+  // (t62_1975's row left in 274: the rebuilt T-62s' loader DShKM, station t62RoofDShKM, turns the full circle; both carry
+  // no drone stand, src/sim/droneDockExempt.ts)
   // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the T-72BU's and
   // the PT-91M's NSVT moved onto their cupola's rim and their roof; each arc re-measured against its stand (--dock)
   t72bu_1989: { fitting_browningDerived_nsvt: [-4.1888, 1.117] },

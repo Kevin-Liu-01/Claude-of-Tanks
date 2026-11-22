@@ -11,4 +11,8 @@ export const DRONE_DOCK_EXEMPT: Readonly<Record<string, string>> = Object.freeze
   // Release 262 (Main's ruling, 2026-10-28): the rebuilt Mk 4B's measured roof is its removable armour modules (never
   // dock support) and the measured roof MAGs' sweeps; the follow-up is a MISSION_RECEIVER_SEATS bearer.
   merkava4b: 'measured roof: removable armour modules and roof MAG sweeps, no clear support; follow-up: a receiver bearer',
+  // Release 274 (Kevin, 2026-11-21, on lane t62-275's rebuilt T-62s: "Full MG, no kit mount"): the cast dome's one clear
+  // patch, behind the commander's cupola, held a stand only if the loader's DShKM gave up three quarters of its traverse.
+  t62_1975: "small dome roof: the DShKM's full traverse sweeps every clear patch; no mission mount by design (Kevin 2026-11-21)",
+  t62mv1: "small dome roof: the DShKM's full traverse sweeps every clear patch; no mission mount by design (Kevin 2026-11-21)",
 });
