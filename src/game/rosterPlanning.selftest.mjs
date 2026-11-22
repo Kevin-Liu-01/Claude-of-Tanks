@@ -5,6 +5,8 @@ import {
 } from './rosterState.ts';
 import { botCamoRoll } from '../sim/camoPaint.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
+import { tankTier } from '../vehicles/tier.ts';
+import { MATCH_TIER_SPREAD } from '../sim/countries.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 
 const game = createGameState();
@@ -83,19 +85,25 @@ game.battleCount++;
 const second = planBattleParticipantIds(game, 'm1a1_abrams_hc', true);
 assert.notDeepEqual(second, first, 'the next battle ordinal produces a new seeded roster');
 
+// rotation inside the tier band (roster-mirror-fix, 2026-11-22): for a player of every era and tier, the seeded
+// shuffle reaches every same-era vehicle of its tier band, and those rank before any vehicle outside the band
 const catalogByEra = Map.groupBy(PRODUCTION_TANK_IDS, (id) => getSpec(id).era);
 for (const [era, ids] of catalogByEra) {
-  const playerId = ids.find((id) => getSpec(id).roster?.productionVisible) || ids[0];
-  const sameEraCatalog = ids.filter((id) => id !== playerId);
-  const seenSameEraBots = new Set();
-  for (let ordinal = 0; ordinal < 1024; ordinal++) {
-    game.battleCount = ordinal;
-    for (const id of planBattleParticipantIds(game, playerId, true).slice(1)) {
-      if (getSpec(id).era === era) seenSameEraBots.add(id);
+  for (const tier of new Set(ids.map(tankTier))) {
+    const playerId = ids.find((id) => tankTier(id) === tier);
+    const bandCatalog = ids.filter((id) => id !== playerId && Math.abs(tankTier(id) - tier) <= MATCH_TIER_SPREAD);
+    const seen = new Set();
+    for (let ordinal = 0; ordinal < 256; ordinal++) {
+      game.battleCount = ordinal;
+      const bots = planBattleParticipantIds(game, playerId, true).slice(1);
+      for (const id of bots) seen.add(id);
+      if (bandCatalog.length >= bots.length) {
+        assert.ok(bots.every((id) => bandCatalog.includes(id)), `${era} tier ${tier} (${playerId}) ordinal ${ordinal}: every bot of its era and tier band (${bots})`);
+      }
     }
+    const missed = bandCatalog.filter((id) => !seen.has(id));
+    assert.deepEqual(missed, [], `${era} tier ${tier} (${playerId}): random battles rotate through its era's tier band`);
   }
-  assert.deepEqual(seenSameEraBots, new Set(sameEraCatalog),
-    `${era}: ordinary solo random battles rotate through the production era catalog`);
 }
 
 // matchmaking diversity (owner 2026-09-17): the previous battle's bots rotate to the back of their era band

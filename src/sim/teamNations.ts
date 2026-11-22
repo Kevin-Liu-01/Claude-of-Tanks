@@ -12,12 +12,12 @@
  */
 
 import {
-  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, ERAS_WITHOUT_ALLY_FILL, countryBloc, countryNation, type CountryId,
+  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryNation, inMatchTierBand, type CountryId,
 } from './countries.ts';
 
 export {
-  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, campaignOperationCountry, countryBloc, countryFlag, countryOfNation,
-  countryOfVehicle, isCountryId, CAMPAIGN_OPERATION_COUNTRY, type CountryId,
+  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, MATCH_TIER_SPREAD, campaignOperationCountry, countryBloc, countryFlag,
+  countryOfNation, countryOfVehicle, inMatchTierBand, isCountryId, CAMPAIGN_OPERATION_COUNTRY, type CountryId,
 } from './countries.ts';
 
 /** One vehicle the planner may seat: its id, country, era and tier. */
@@ -33,7 +33,8 @@ export interface NationNote {
   readonly side: 'alpha' | 'bravo';
   readonly country: CountryId | null;
   readonly count: number;
-  /** ally: a closest-ally fill; repeat: a vehicle fielded twice; far-era: outside the era band; clash: the allied bots
+  /** ally: a closest-ally fill; repeat: a vehicle fielded twice, only once no distinct vehicle is left; far-era: outside
+   * the era band or the side's country chain, still before any repeat; clash: the allied bots
    * gave way to the operation's country; humans: both sides' humans share a country (their picks are kept); budget:
    * the multiplayer profile budget repeats a side's vehicles. */
   readonly reason: 'ally' | 'repeat' | 'far-era' | 'clash' | 'humans' | 'budget';
@@ -73,6 +74,9 @@ interface NationalSidesInput {
   readonly distinctPerSide?: number | null;
   /** The AUTO enemy must fill its seats from contemporaries alone where some country can. */
   readonly autoNeedsContemporaries?: boolean;
+  /** A side's country outranks the tier band (the wave modes' same-nation waves, owner 2026-09-17); otherwise the band
+   * outranks the country, so a small nation's side fills from its allies in the band before its own far tiers. */
+  readonly nationFirst?: boolean;
 }
 
 function seededUnit(seed: number): () => number {
@@ -117,7 +121,11 @@ export function majorityCountry(humans: readonly NationRow[]): CountryId | null 
  *    countries that are not A nor among A's fills and can fill the enemy seats from contemporaries, the rival bloc
  *    weighted `rivalBlocWeight`;
  * 3. each side fills from its own country's contemporaries (the era band, own era first), then its closest allies'
- *    (COUNTRY_ALLIES, never a country the other side uses), then repeats of its own contemporaries, far eras last;
+ *    (COUNTRY_ALLIES, never a country the other side uses), the whole chain in the humans' tier band (MATCH_TIER_SPREAD)
+ *    before its nearest tiers outside it (the wave modes, `nationFirst`: each country's band, then its other tiers,
+ *    before the next country); then any other vehicle, far eras included; a vehicle repeats only
+ *    when no distinct one is left (owner 2026-11-22, roster-mirror-fix: a WW2 T95 fielded seven T95s against seven
+ *    KV-2s while 300 distinct hulls sat unused);
  * 4. every enemy seat takes the candidate whose tier is nearest the matching allied seat's (the humans' included);
  * 5. the humans keep their picks; each fill is a note.
  */
@@ -127,9 +135,14 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
   const enemyHumans = input.enemyHumans ?? [];
   const leadEra = humans.find((h) => h.era)?.era ?? enemyHumans.find((h) => h.era)?.era ?? 'modern';
   const band = ERA_NEIGHBOURS[leadEra] ?? [leadEra];
+  // the battle's tier band: both sides' humans' mean tier (no humans: no band)
+  const humanTiers = [...humans, ...enemyHumans].map((h) => h.tier).filter((t) => Number.isFinite(t) && t > 0);
+  const anchor = humanTiers.length ? Math.round(humanTiers.reduce((a, b) => a + b, 0) / humanTiers.length) : null;
+  const inBand = (row: NationRow): boolean => inMatchTierBand(row.tier, anchor);
   const rank = new Map<string, number>();
   input.rows.forEach((row, index) => { if (!rank.has(row.id)) rank.set(row.id, index); });
   const unique = input.rows.filter((row, index) => rank.get(row.id) === index);
+  const rowById = new Map(unique.map((row) => [row.id, row]));
   const contemporaries = (c: CountryId): NationRow[] => {
     const own = unique.filter((row) => row.country === c && row.era === leadEra);
     const near = unique.filter((row) => row.country === c && row.era !== leadEra && band.includes(row.era ?? ''));
@@ -142,7 +155,11 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
   // 1. the allied country
   let allied: CountryId | null = majorityCountry(humans);
   const autoCountry = (exclude: ReadonlySet<CountryId>, seats: number, rival: CountryId | null): CountryId | null => {
-    const eligible = COUNTRIES.filter((c) => !exclude.has(c.id) && (!input.autoNeedsContemporaries || contemporaries(c.id).length >= seats));
+    // a country that fills the seats from contemporaries in the battle's tier band (the wave modes: any tier, so their
+    // armies rotate), else from contemporaries at all
+    const open = COUNTRIES.filter((c) => !exclude.has(c.id));
+    const banded = input.autoNeedsContemporaries && !input.nationFirst ? open.filter((c) => contemporaries(c.id).filter(inBand).length >= seats) : [];
+    const eligible = banded.length ? banded : open.filter((c) => !input.autoNeedsContemporaries || contemporaries(c.id).length >= seats);
     const pool = eligible.length ? eligible : COUNTRIES.filter((c) => !exclude.has(c.id))
       .sort((a, b) => contemporaries(b.id).length - contemporaries(a.id).length).slice(0, 1);
     if (!pool.length) return null;
@@ -153,7 +170,7 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
   };
   // the fills a side would need: its own contemporaries short of its seats, the closest allies in order
   const plannedFills = (c: CountryId | null, seats: number, skip: ReadonlySet<CountryId>): CountryId[] => {
-    if (!c || ERAS_WITHOUT_ALLY_FILL.has(leadEra)) return [];
+    if (!c) return [];
     let short = seats - contemporaries(c).length;
     const fills: CountryId[] = [];
     for (const ally of COUNTRY_ALLIES[c]) {
@@ -214,47 +231,55 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
     const out: NationalSeat[] = [];
     if (seats <= 0) return out;
     if (c) used[side].add(c);
-    const own = c ? contemporaries(c) : [];
-    const groups: { rows: NationRow[]; country: CountryId | null; reason: NationNote['reason'] | null }[] = [{ rows: own, country: c, reason: null }];
-    if (c && !ERAS_WITHOUT_ALLY_FILL.has(leadEra)) for (const ally of COUNTRY_ALLIES[c]) if (!other.has(ally) && ally !== c) groups.push({ rows: contemporaries(ally), country: ally, reason: 'ally' });
-    const pickFrom = (rows: NationRow[], k: number): NationRow | null => {
-      let best: NationRow | null = null, bestScore = Infinity;
-      const target = targetTiers && targetTiers.length ? targetTiers[k % targetTiers.length]! : null;
-      for (const row of rows) {
-        if (taken.has(row.id)) continue;
-        const score = target == null ? rank.get(row.id)! : Math.abs(row.tier - target) * 1e6 + rank.get(row.id)!;
-        if (score < bestScore) { bestScore = score; best = row; }
-      }
+    // a group of candidate rows, its country (null: each row's own) and the note its seats leave
+    type Group = { rows: readonly NationRow[]; country: CountryId | null; reason: NationNote['reason'] | null };
+    const groups: Group[] = [{ rows: c ? contemporaries(c) : [], country: c, reason: null }];
+    if (c) for (const ally of COUNTRY_ALLIES[c]) if (!other.has(ally) && ally !== c) groups.push({ rows: contemporaries(ally), country: ally, reason: 'ally' });
+    // a seat's tier target: the matching allied seat's (the enemy side), else the band's anchor once outside the band
+    const targetOf = (k: number, outside: boolean): number | null =>
+      targetTiers && targetTiers.length ? targetTiers[k % targetTiers.length]! : outside ? anchor : null;
+    // the best untaken row of these groups for seat k: the nearest tier to its target first, then the earlier group (the
+    // closer country), then the seeded rank
+    const pickAcross = (list: readonly Group[], k: number, banded: boolean): { row: NationRow; group: Group } | null => {
+      let best: { row: NationRow; group: Group } | null = null, bestScore = Infinity;
+      const target = targetOf(k, !banded);
+      list.forEach((group, gi) => {
+        for (const row of group.rows) {
+          if (taken.has(row.id) || inBand(row) !== banded) continue;
+          const score = (target == null ? 0 : Math.abs(row.tier - target) * 1e9) + gi * 1e6 + rank.get(row.id)!;
+          if (score < bestScore) { bestScore = score; best = { row, group }; }
+        }
+      });
       return best;
     };
-    for (const group of groups) {
+    const fillFrom = (list: readonly Group[], banded: boolean): void => {
       while (out.length < seats) {
-        const row = pickFrom(group.rows, out.length);
-        if (!row) break;
-        taken.add(row.id);
-        out.push({ id: row.id, repeat: false });
-        if (group.reason) { note(side, group.country, group.reason); if (group.country) used[side].add(group.country); }
+        const pick = pickAcross(list, out.length, banded);
+        if (!pick) return;
+        taken.add(pick.row.id);
+        out.push({ id: pick.row.id, repeat: false });
+        const country = pick.group.country ?? pick.row.country;
+        const reason = pick.group.reason;
+        if (reason) { note(side, country, reason); if (country) used[side].add(country); }
       }
-      if (out.length >= seats) break;
+    };
+    // the widening ladder: the side's country, its closest allies in order, then any other vehicle not on the other
+    // side's countries (the side's own country first, far eras included); the tier band before the nearest tiers outside
+    // it, the band outranking the country unless `nationFirst` (the wave modes) fills each country before the next
+    const far: Group[] = [{ rows: unique.filter((row) => row.country === c || !c), country: null, reason: 'far-era' },
+      { rows: unique.filter((row) => row.country !== c && !other.has(row.country as CountryId)), country: null, reason: 'far-era' }];
+    for (const list of [groups, far]) {
+      if (input.nationFirst) for (const group of list) { fillFrom([group], true); fillFrom([group], false); }
+      else { fillFrom(list, true); fillFrom(list, false); }
     }
-    // repeats of the side's own contemporaries — the side's own humans' vehicles when the country has no other (a lone
-    // WW2 hull's allies are its own type, not a far era) — then its allies' contemporaries, far eras last
+    // no distinct vehicle left: the side repeats what it fields (its humans' vehicles when it fields none)
     const sideHumans = (side === 'alpha' ? humans : enemyHumans).filter((h) => !c || h.country === c);
-    const repeatSource = own.length ? own : sideHumans.length ? sideHumans : groups.flatMap((g) => g.rows);
+    const fielded = out.map((seat) => rowById.get(seat.id)!);
+    const repeatSource = fielded.length ? fielded : sideHumans;
     for (let k = 0; out.length < seats && repeatSource.length; k++) {
-      out.push({ id: repeatSource[k % repeatSource.length]!.id, repeat: true });
-      note(side, repeatSource[k % repeatSource.length]!.country, 'repeat');
-    }
-    if (out.length < seats) {
-      const far = unique.filter((row) => !taken.has(row.id) && (row.country === c || !c))
-        .concat(unique.filter((row) => !taken.has(row.id) && row.country !== c && !other.has(row.country as CountryId)));
-      for (const row of far) {
-        if (out.length >= seats) break;
-        if (taken.has(row.id)) continue;
-        taken.add(row.id);
-        out.push({ id: row.id, repeat: false });
-        note(side, row.country, 'far-era');
-      }
+      const row = repeatSource[k % repeatSource.length]!;
+      out.push({ id: row.id, repeat: true });
+      note(side, row.country, 'repeat');
     }
     return out;
   };
@@ -265,7 +290,7 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
   for (const human of humans) if (human.country) used.alpha.add(human.country);
   const allies = fill('alpha', allied, alliedSeats, null, enemyOnly);
   // 4. tier pairing: enemy seat k matches allied seat k (the humans first)
-  const alliedTiers = [...humans.map((h) => h.tier), ...allies.map((s) => unique[rank.get(s.id)!]?.tier ?? 0)];
+  const alliedTiers = [...humans.map((h) => h.tier), ...allies.map((s) => rowById.get(s.id)?.tier ?? 0)];
   let enemies = fill('bravo', enemy, enemySeats, alliedTiers.length ? alliedTiers : null, used.alpha);
   let alliedOut = allies;
   // the multiplayer profile budget: beyond `distinctPerSide` distinct vehicles a side repeats the ones it fields
@@ -277,7 +302,7 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
         if (distinct.includes(seat.id)) return seat;
         if (distinct.length < budget) { distinct.push(seat.id); return seat; }
         const again = distinct[seats.indexOf(seat) % distinct.length]!;
-        note(side, unique[rank.get(again)!]?.country ?? null, 'budget');
+        note(side, rowById.get(again)?.country ?? null, 'budget');
         return { id: again, repeat: true };
       });
     };

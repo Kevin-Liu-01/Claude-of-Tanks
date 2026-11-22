@@ -6,7 +6,7 @@
 // reads (the closest-ally order is pinned: a change here changes every fill).
 import assert from 'node:assert/strict';
 import { NATION_INDEX } from './nationIndex.generated.ts';
-import { COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryFlag, countryOfNation, countryOfVehicle, majorityCountry,
+import { COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, MATCH_TIER_SPREAD, countryBloc, countryFlag, countryOfNation, countryOfVehicle, majorityCountry,
   pickNationalSides, teamNationsFlags, teamNationsSeed } from './teamNations.ts';
 import { TEAM_NATIONS_RULES } from './matchRuleset.ts';
 import { sideFlags } from './countries.ts';
@@ -157,19 +157,23 @@ assert.ok(cases >= 248, `${cases} country x era x shape cases`);
   const gap = plan.enemies.reduce((sum, s, k) => sum + Math.abs(tierOf(s.id) - allied[k % allied.length]), 0) / plan.enemies.length;
   assert.ok(gap <= 1, `cold-war Germany vs Russia: enemy tiers pair the allied ones (mean gap ${gap.toFixed(2)})`);
 }
-// a lone WW2 hull: its allies are its own type again, never a modern hull
-{
-  const ww2 = rows.find((row) => row.era === 'ww2' && row.country === 'germany');
-  const plan = pickNationalSides({ rows, alliedHumans: [ww2], alliedSeats: 6, enemySeats: 7, seed: 3, rivalBlocWeight: 3 });
-  assert.ok(plan.allies.every((s) => s.id === ww2.id && s.repeat), 'six clones of the player\'s own type');
-}
-// WW2 takes no ally fill (271 ruling, countries.ts ERAS_WITHOUT_ALLY_FILL): a lone US WW2 hull gets no German allies either
-{
-  const us = rows.find((row) => row.era === 'ww2' && row.country === 'usa');
-  assert.ok(us, 'a US WW2 hull is in the index');
-  const plan = pickNationalSides({ rows, alliedHumans: [us], alliedSeats: 6, enemySeats: 7, seed: 3, rivalBlocWeight: 3 });
-  const country = (id) => rows.find((row) => row.id === id).country;
-  assert.ok(plan.allies.every((s) => country(s.id) === 'usa'), `a lone US WW2 hull's allies are US hulls (${plan.allies.map((s) => s.id)})`);
+// a WW2 pick (owner 2026-11-22, roster-mirror-fix): the fleet's three WW2 hulls are one a nation, so its band reaches
+// into the early Cold War (ERA_NEIGHBOURS.ww2) and its sides take ally fills like any era: distinct vehicles, never a
+// clone of the player's own hull, both sides in the player's tier band and never a modern or next-generation hull
+assert.deepEqual(ERA_NEIGHBOURS.ww2, ['ww2', 'cold-war']);
+for (const ww2 of rows.filter((row) => row.era === 'ww2')) {
+  const plan = pickNationalSides({ rows, alliedHumans: [ww2], alliedSeats: 6, enemySeats: 7, seed: 3, rivalBlocWeight: 3,
+    autoNeedsContemporaries: true });
+  const row = (id) => rows.find((r) => r.id === id);
+  const seats = [...plan.allies, ...plan.enemies];
+  assert.ok(seats.every((s) => !s.repeat), `${ww2.id}: no repeat while distinct vehicles remain (${seats.map((s) => s.id)})`);
+  assert.equal(new Set(seats.map((s) => s.id)).size, seats.length, `${ww2.id}: thirteen distinct bots`);
+  assert.ok(!seats.some((s) => s.id === ww2.id), `${ww2.id}: the player's hull is never cloned`);
+  const fills = new Set([ww2.country, ...plan.notes.filter((n) => n.side === 'alpha').map((n) => n.country)]);
+  assert.ok(plan.allies.every((s) => fills.has(row(s.id).country)), `${ww2.id}: the allies are its own country's or a listed fill (${plan.allies.map((s) => s.id)})`);
+  assert.ok(plan.allies.filter((s) => row(s.id).country === ww2.country).length >= 4, `${ww2.id}: its own country leads the allies`);
+  assert.ok(seats.every((s) => ['ww2', 'cold-war'].includes(row(s.id).era)), `${ww2.id}: WW2 and early Cold War only`);
+  assert.ok(seats.every((s) => Math.abs(row(s.id).tier - ww2.tier) <= MATCH_TIER_SPREAD), `${ww2.id}: every seat in its tier band (${seats.map((s) => `${s.id}:${row(s.id).tier}`)})`);
 }
 // the flags the loading screen draws
 assert.deepEqual(teamNationsFlags({ teamNations: 'mono', allied: 'usa', enemy: 'russia', notes: [{ side: 'alpha', country: 'uk', count: 2, reason: 'ally' }] }),

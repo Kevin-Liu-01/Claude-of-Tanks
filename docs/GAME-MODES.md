@@ -455,7 +455,9 @@ the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
   matchmaking rotates too: the bots of the last two battles rank behind every fresh vehicle of
   the player's era AND of its contemporary eras (`matchmaking.ERA_NEIGHBOURS`; the eighteen other
   next-generation hulls alone cannot fill thirteen seats twice), so a vehicle only repeats once
-  both catalogs are used up and WW2 still never meets modern (`game.recentBotSpecIds` /
+  both catalogs are used up and WW2 still never meets modern (WW2's band reaches the early Cold War, owner 2026-11-22:
+  the fleet's three WW2 hulls are one a nation), each band's vehicles in the player's tier band first
+  (`game.recentBotSpecIds` /
   `previousBotSpecIds`, `rosterState.rememberBattleBots`, `matchmaking.rankMatchCandidates`),
   and the seeded roster shuffle's battle ordinal starts
   from the profile's lifetime match count (`profile.battleOrdinalBase`), so a fresh page load
@@ -763,9 +765,14 @@ MONO-NATION seats:
 2. The enemy side is one country that is not the allies': the campaign operation's, else the arranged country (the enemy
    select, where the player's own country is disabled), else AUTO, a seeded draw among the countries that field
    contemporaries of the player's era, a rival bloc weighted three to one.
-3. A side that runs short fills from its country's closest allies in a fixed order (`COUNTRY_ALLIES`), then repeats its
-   own contemporaries (or its humans' vehicles); a far era comes last. Every fill, repeat and clash is a note on the plan
-   (`notes`), which the receipts and the census read.
+3. A side fills from its country's contemporaries, then its closest allies' in a fixed order (`COUNTRY_ALLIES`), the
+   whole chain in the humans' tier band (`MATCH_TIER_SPREAD`, ±1) before its nearest tiers outside it, then any other
+   vehicle not on the other side's countries, far eras included; a vehicle repeats only when no distinct one is left
+   (owner 2026-11-22: a WW2 T95 fielded seven T95s against seven KV-2s). The wave modes keep each country's seats before
+   the band (`nationFirst`, same-nation waves). Every enemy seat takes the tier nearest its matching allied seat's, and
+   AUTO prefers an enemy country that fills its seats inside the band. Every fill, repeat and clash is a note on the plan
+   (`notes`), which the receipts and the census read; `game/battleRosterCensus.selftest.mjs` walks the whole fleet
+   registry (every vehicle drawable in its band, unless rosterPolicy's `BATTLE_EXCLUDED_TANK_IDS` names it with a reason).
 4. No country sits on both sides. When a room's two sides' humans share a country, bravo's bots take another and the plan
    notes it. AUTO never draws a country any allied human drives, the majority's or not (round 3, the critic's E-R2-5: a
    room of two American humans and one Russian drew an all-Russian enemy in 74 of 400 seeds); an arranged enemy that is

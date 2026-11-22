@@ -109,8 +109,12 @@ try {
   const visual=()=>({root:{},setVisible(){},syncFromState(){},dispose(){}});
   for(const entity of reused.allTanks)entity.visual=visual();
   const options={gameMode:'standard',random:true,deferVisuals:true,deferCamoRepaint:true,deferOpeningRoutes:true};
-  // a lone WW2 hull has no contemporaries of its own country: its allies are its own type again (clones), not a far era
+  // a vehicle repeats only when no distinct one is left (roster-mirror-fix, 2026-11-22): a pool of the three WW2 hulls
+  // cannot field 13 distinct bots, so its repeats are clone identities (the whole fleet never repeats, rosterVariety)
+  const fullPool=reused.allTanks;
+  reused.allTanks=fullPool.filter(entity=>['jpz_e100','kv2','t95'].includes(entity.specId));
   setupBattle(reused,'jpz_e100',world,{...options,arrangement:{allies:6,enemies:7}});
+  reused.allTanks=[...fullPool,...reused.allTanks.filter(entity=>entity.matchReinforcement)];
   const extra=reused.tanks.filter(entity=>entity.id!==entity.specId);
   assert.ok(extra.length>0);
   assert.ok(extra.every(entity=>reused.tankById.get(entity.id)===entity));

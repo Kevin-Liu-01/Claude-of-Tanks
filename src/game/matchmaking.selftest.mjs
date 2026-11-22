@@ -45,7 +45,7 @@ const exhausted = rankMatchCandidates([
 ], nextGen, new Set(['kf51_evo', 'object148_proto', 'leo2_improved']));
 assert.deepEqual(exhausted.map((e) => e.specId), ['kf51_evo', 'object148_proto', 'leo2_improved', 'kv2'],
   'with both catalogs used up the recent own-era vehicles return before recent contemporaries; WW2 still trails');
-assert.deepEqual(ERA_NEIGHBOURS.ww2, ['ww2'], 'a WW2 player has no contemporaries: modern hulls stay the far fallback');
+assert.deepEqual(ERA_NEIGHBOURS.ww2, ['ww2', 'cold-war'], 'a WW2 player\'s contemporaries reach the early Cold War (owner 2026-11-22): modern hulls stay the far fallback');
 const ww2 = rankMatchCandidates([ent('jpz_e100', 'ww2'), ent('m1a1_abrams_hc', 'modern')], ent('kv2', 'ww2'), new Set(['jpz_e100']));
 assert.deepEqual(ww2.map((e) => e.specId), ['jpz_e100', 'm1a1_abrams_hc'], 'a recent same-era vehicle still beats a far-era one');
 

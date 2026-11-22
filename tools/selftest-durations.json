@@ -377,6 +377,7 @@
     "src/game/profile.selftest.mjs": 1000,
     "src/game/replayPose.selftest.mjs": 1000,
     "src/game/rosterPlanning.selftest.mjs": 25000,
+    "src/game/battleRosterCensus.selftest.mjs": 8000,
     "src/game/rosterPresentation.selftest.mjs": 1000,
     "src/game/rosterRotationMemory.selftest.mjs": 17000,
     "src/game/rosterVisualStaging.selftest.mjs": 10000,

@@ -111,6 +111,7 @@ function fillRoomBots(
     campaignEnemy: campaign, arrangedEnemy: isCountryId(arranged) ? arranged : null, seed,
     rivalBlocWeight: TEAM_NATIONS_RULES.rivalBlocWeight, distinctPerSide: TEAM_NATIONS_RULES.mpDistinctBotSpecsPerSide,
     autoNeedsContemporaries: TEAM_NATIONS_RULES.autoEnemyNeedsContemporaries,
+    nationFirst: isWaveMode(normalizeGameMode(settings.gameMode)),
   });
   return {
     alpha: plan.allies.map((s) => s.id), bravo: plan.enemies.map((s) => s.id),

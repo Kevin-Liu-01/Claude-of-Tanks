@@ -18,6 +18,16 @@ export const DEV_FLEET_LABEL = 'DEV';
 // any future production exclusion here so UI surfaces cannot quietly diverge.
 export const PRODUCTION_HIDDEN_TANK_IDS = new Set<string>([]);
 
+// Production vehicles that never take a bot seat, each with its reason (owner 2026-11-22: "make sure all our tanks
+// including new ones are eligible to be in battles"). The one exclusion list: matchmaking.isBotTankId and the nation
+// index honour it, and game/battleRosterCensus.selftest.mjs fails, naming the id, for any other production vehicle no
+// roster pool can draw. Empty: every production vehicle fights.
+export const BATTLE_EXCLUDED_TANK_IDS: Readonly<Record<string, string>> = Object.freeze({});
+
+export function isBattleExcludedTankId(id: RuntimeValue): boolean {
+  return typeof id === 'string' && Object.prototype.hasOwnProperty.call(BATTLE_EXCLUDED_TANK_IDS, id);
+}
+
 // Generic externally-authored placeholders (the Mophs recon tank and the
 // Quaternius heavy) retired with the hidden fleet on 2026-09-23.
 export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set<string>([]);
