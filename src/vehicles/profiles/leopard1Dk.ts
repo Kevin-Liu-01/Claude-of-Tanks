@@ -167,7 +167,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
         // (r10 Opus: the covers about an eighth of the turret's length; the Aalborg and RAMTA discs nearer a sixth)
         P.addEquipment('turretDetail', cylX(0.245, 0.03, P.q ? 24 : 16), s * (x + 0.11), K.rangefinderY, K.rangefinderZ);
         P.addEquipment('turret', cylX(0.20, 0.02, P.q ? 24 : 16), s * (x + 0.125), K.rangefinderY, K.rangefinderZ);
-        P.decal('turret', 'flag', 'leo1-rangefinder-blank', 0.40, [s * (x + 0.138), K.rangefinderY, K.rangefinderZ], s * Math.PI / 2, 0, 0);
+        // (274 sealed: the quad's corners stay over the 0.245 m flange; at 0.40 m they stood past it, over the side
+        // plate's leaning faces, and the sky showed through them from low and high bearings)
+        P.decal('turret', 'flag', 'leo1-rangefinder-blank', 0.34, [s * (x + 0.138), K.rangefinderY, K.rangefinderZ], s * Math.PI / 2, 0, 0);
       }
     }
     // Commander's cupola (right, -x: a +Z hull's right) at the German station, with its PERI R12 ahead of it, raised on
@@ -336,7 +338,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       for (const s of [-1, 1] as const) for (let k = 0; k < 4; k++) {
         P.addEquipment('turretFittingPaint', box(0.025, 0.03, sd * 2 - 0.10), s * (sw + 0.008), lid + 0.10 + k * 0.08, zc);
       }
-      P.decal('turret', 'stencil', 'UN', 0.50, [0, (lid + bin.floorY) / 2 + 0.02, z1 - 0.012], Math.PI);
+      // (274 sealed: centred on the housing's rear face and under its lid; at 0.50 m and 0.02 m up its top stood over the
+      // lid and showed the sky)
+      P.decal('turret', 'stencil', 'UN', 0.46, [0, (lid + bin.floorY) / 2, z1 - 0.012], Math.PI);
       // the GPS antenna: a grey mushroom dome on a short post (r13 Sonnet: the white dome in a dark puck read as a hole in
       // the lid from above, and as no GPS at all)
       P.addEquipment('turretDark', cylY(0.018, 0.022, 0.12, 8), 0.62, lid + 0.06, zc);
@@ -388,8 +392,13 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     for (const s of [-1, 1] as const) {
       P.decal('turret', 'number', P.spec.visual.number || '21', 0.20, [s * (upperFaceX(-1.50, 0.52) + 0.01), 0.52, -1.50],
         s * Math.PI / 2, 0, s * 0.70);
-      if (mark === 'a5dk1') P.decal('turret', 'stencil', 'UN', 0.34, [s * (outerX(-0.53, K.stencilY) + 0.004), K.stencilY, -0.53],
-        s * Math.PI / 2);
+      // (274 sealed: laid on the side plate's upper face, 36 degrees in from the vertical like the bolt row's; upright, its
+      // top stood 0.12 m off the leaning face and the sky showed through it)
+      if (mark === 'a5dk1') {
+        const lean = Math.atan2(0.32, 0.44);
+        P.decal('turret', 'stencil', 'UN', 0.34, [s * (outerX(-0.53, K.stencilY) + 0.004 * Math.cos(lean)),
+          K.stencilY + 0.004 * Math.sin(lean), -0.53], s * Math.PI / 2, 0, s * lean);
+      }
     }
   };
   buildLeo1DkTurretRear();
