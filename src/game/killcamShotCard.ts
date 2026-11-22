@@ -234,7 +234,6 @@ export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
     card.stats.append(row);
   }
   card.art.hidden = !model.vehicleSpecId;
-  card.root.toggleAttribute('data-art', !!model.vehicleSpecId);
   if (model.vehicleSpecId) card.art.style.backgroundImage = `url(${art.vehicleUrl(model.vehicleSpecId)})`;
 }
 
