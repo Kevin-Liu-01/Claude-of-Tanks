@@ -410,7 +410,9 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       scored: mode.scored.filter((id) => !revived.has(id)),
       ...(ringRisen.length ? { ringRisen } : {}),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
-        ...(line && (line.attack || reinforced.length) ? { line: { ...line, ...(line.attack ? { attack: line.attack.filter(([id]) => !revived.has(id)) } : {}),
+        ...(line ? { line: { ...line, ...(line.attack ? { attack: line.attack.filter(([id]) => !revived.has(id)) } : {}),
+          // a revived ally's down clock was its dead life's (276 round 6: killed again, it stood up early)
+          allyDownAt: line.allyDownAt.filter(([id]) => !revived.has(id)),
           ...(reinforced.length ? { reinforced } : {}) } } : {}),
         ...(horde && trickled.length ? { horde: { ...horde, trickled } } : {}) } } : {}),
       ...(hunt ? { hunt: { ...hunt, searches: hunt.searches.filter(([id]) => !revived.has(id)) } } : {}),

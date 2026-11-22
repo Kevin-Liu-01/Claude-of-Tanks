@@ -1937,6 +1937,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     respawnAt.delete(entity.id);
     scoredDeaths.delete(entity.id);
     restedAt.delete(entity.id);
+    // (276 round 6) a Frontline ally's down clock was its dead life's: killed again, it counts from its new death
+    allyDownAt.delete(entity.id);
     entity.modeLives = (entity.modeLives ?? 0) + 1;
     setLife(entity, 'alive');
   };
@@ -3616,12 +3618,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       takeInfectedArrivals(checkpoint.ringRisen ?? []);
       if (waves?.horde && ruleset.horde) takeHordeMove(waves.horde);
       if (waves?.line?.begun && ruleset.assault) takeLineAdvance(waves.line.begun);
-      if (fellAgain.length) {
-        for (const entity of fellAgain) observeEntityDeath(entity, placementTimeS);
-        // the field as the seats are shown it, its second deaths counted
-        if (ruleset.horde) publishHorde();
-        else if (ruleset.assault && state.horde) state.horde.alive = livingHordeEnemyCount();
-      }
+      for (const entity of fellAgain) observeEntityDeath(entity, placementTimeS);
+      // the field as the seats are shown it, every life and move above counted (a taken advance's arrivals, a second
+      // death: round 6 found Frontline's count stale until the first step)
+      if (ruleset.horde) publishHorde();
+      else if (ruleset.assault && state.horde) state.horde.alive = livingHordeEnemyCount();
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);
