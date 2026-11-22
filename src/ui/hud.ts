@@ -3491,12 +3491,12 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
    * edge flicker with the notice): while our own tank burns, a threat condition says so, scoped or not (the sight's edge
    * burns beside it, vehicleStatus.ts), with the key of the fire kit that puts it out while one has a use left. Raised on
    * the fire and on a change of kit, taken down with the fire, at a death and when the battle's presentation resets.
-   * Only the page's own HUD raises it: the condition lane's one region is the page's, and a couch pane must not show its
-   * seat's fire on the shared screen (its own edge and fire chip are in its own document).
+   * Only the page's own HUD raises it, as every condition (notices-audit-275: the condition lane is the page's; a couch
+   * pane's HUD raises none): a pane's seat burning keeps its own edge and fire chip, in its own document.
    */
   let fireNoticeKey = '';
   function syncFireNotice(burningNow: boolean): void {
-    const burning = burningNow && !view;
+    const burning = burningNow && !ownsFramePlayer;
     let slot = -1;
     if (burning) {
       for (let i = 0; i < conItems.length; i++) {
