@@ -8,20 +8,24 @@
 import puppeteer from 'puppeteer';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { waitForReady } from './game-readiness.mjs';
 
 const arg = (key, fallback) => process.argv.find((v) => v.startsWith(`--${key}=`))?.slice(key.length + 3) || fallback;
 const out = resolve(arg('out', '.qa-dev/aircraft-previews'));
 const only = arg('only', 'deploy,load,garage').split(',');
+// --dist=<dir>: the Garage from a built output (vite preview), the boot proof a chunk change needs; the fixtures need the dev server
+const dist = arg('dist', '');
 await mkdir(out, { recursive: true });
-const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false }, logLevel: 'error' });
+const server = dist
+  ? await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: false }, build: { outDir: resolve(dist) }, logLevel: 'error' })
+  : await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false }, logLevel: 'error' });
 let browser;
 const failures = [];
 const settle = (page, ms) => page.evaluate((wait) => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), wait)), ms);
 try {
-  await server.listen();
+  if (!dist) await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await launchGuardedBrowser(puppeteer, {
     headless: true, protocolTimeout: 10 * 60 * 1000,
@@ -81,7 +85,7 @@ try {
   }
 } finally {
   await browser?.close();
-  await server.close();
+  if (dist) await new Promise((done) => server.httpServer.close(done)); else await server.close();
 }
 console.log(`aircraft-previews: ${only.join(', ')} -> ${out}${failures.length ? `; failed: ${failures.join(', ')}` : ''}`);
 if (failures.length) process.exitCode = 1;
