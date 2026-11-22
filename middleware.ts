@@ -57,26 +57,34 @@ export const config = {
   // response before the browser begins parsing modulepreload links.
   matcher: [
     '/', '/index.html', '/studio', '/studio/', '/gallery', '/gallery/', '/gallery.html',
-    '/cn', '/cn/:path*',
+    '/cn', '/cn/:path*', '/es', '/es/:path*', '/ja', '/ja/:path*', '/de', '/de/:path*', '/pt', '/pt/:path*',
+    '/ru', '/ru/:path*',
   ],
 };
 
+/** The locale URL prefixes (src/ui/localeRouting.ts LOCALE_RECORDS; the matcher above must stay a literal, and
+ *  this module imports no locale code for a plain request). src/ui/localeRouting.selftest.mjs pins the two. */
+export const LOCALE_PREFIXES: readonly string[] = ['cn', 'es', 'ja', 'de', 'pt', 'ru'];
+const localePrefixOf = (path: string): string | null =>
+  LOCALE_PREFIXES.find((prefix) => path === `/${prefix}` || path.startsWith(`/${prefix}/`)) ?? null;
+
 /**
  * The requests that may need the metadata and localization modules (INFRA-P13 / FE-P26, 2026-10-01): a room link on the
- * game document, the studio, and every `/cn` document (its metadata and the localized 404). Everything else the
+ * game document, the studio, and every locale document (`/cn`, `/es`, ...: its metadata and the localized 404). Everything else the
  * matcher sends here — the plain game document, the gallery — only needs the deployment pin, so those modules (and the
  * i18n catalogs they import) are never loaded for it: a cold instance answering `/` skips them entirely.
  */
 export function needsDocumentRewrite(url: URL): boolean {
   const path = url.pathname;
   if (galleryTankId(url)) return true;
-  if (path === '/cn' || path.startsWith('/cn/')) return true;
+  if (localePrefixOf(path)) return true;
   if (path === '/studio' || path === '/studio/') return true;
   return (path === '/' || path === '/index.html') && url.searchParams.has('room');
 }
 
-const GALLERY_PATHS = new Set(['/gallery', '/gallery/', '/gallery.html', '/cn/gallery', '/cn/gallery/', '/cn/gallery.html']);
-/** The tank a Gallery link names (`/gallery?id=<id>` or its /cn twin), else null. */
+const GALLERY_PATHS = new Set(['', ...LOCALE_PREFIXES.map((prefix) => `/${prefix}`)]
+  .flatMap((prefix) => [`${prefix}/gallery`, `${prefix}/gallery/`, `${prefix}/gallery.html`]));
+/** The tank a Gallery link names (`/gallery?id=<id>` or a locale's twin, `/cn/gallery?id=<id>`), else null. */
 function galleryTankId(url: URL): string | null {
   return GALLERY_PATHS.has(url.pathname) ? url.searchParams.get('id') || null : null;
 }
@@ -130,25 +138,26 @@ async function tankShareResponse(request: Request, requestUrl: URL, id: string, 
   const { tankShareFor, withTankShare } = await import('./src/presentation/tankShareMeta.ts');
   const share = tankShareFor(id);
   if (!share) return null;
-  const shellUrl = new URL(requestUrl.pathname.startsWith('/cn/') ? '/cn/gallery' : '/gallery', requestUrl.origin);
+  const prefix = localePrefixOf(requestUrl.pathname);
+  const shellUrl = new URL(prefix ? `/${prefix}/gallery` : '/gallery', requestUrl.origin);
   shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
   const shell = await fetch(shellUrl, { headers: { accept: 'text/html', cookie: request.headers.get('cookie') || '' } });
   if (!shell.ok) return null;
   return new Response(withTankShare(await shell.text(), share, requestUrl), { status: shell.status, headers: rewrittenHeaders(shell, cookie) });
 }
 
-/** Tank links, room-link and studio metadata, and the localized `/cn` 404; null when the request passes through unchanged. */
+/** Tank links, room-link and studio metadata, and the localized 404s; null when the request passes through unchanged. */
 async function documentResponse(request: Request, requestUrl: URL, cookie: string | null): Promise<Response | null> {
   const tankId = galleryTankId(requestUrl);
   if (tankId) return tankShareResponse(request, requestUrl, tankId, cookie);
-  // The route table alone (no imports) settles most `/cn` requests: a static localized page that is neither the studio
+  // The route table alone (no imports) settles most locale requests: a static localized page that is neither the studio
   // nor a room link passes through without the catalogs (2026-10-22, nav-perf-240: every /cn page view loaded both).
   const { PUBLIC_ROUTE_RECORDS, resolveLocalePath } = await import('./src/ui/localeRouting.ts');
   const localePath = resolveLocalePath(requestUrl.pathname);
   const staticLocalized = localePath.route && localePath.pathname !== '/studio'
     && !((localePath.pathname === '/' || localePath.pathname === '/index.html') && requestUrl.searchParams.has('room'));
   if (staticLocalized) return null;
-  // Both catalogs, resident before the metadata helpers resolve zh-CN text (perf/boot-weight made zh-CN a lazy chunk).
+  // Every catalog, resident before the metadata helpers resolve a locale's text (perf/boot-weight made them lazy chunks).
   await import('./src/ui/i18nCatalog.ts');
   const [
     { localizeHtmlDocument },
@@ -196,9 +205,9 @@ async function documentResponse(request: Request, requestUrl: URL, cookie: strin
   }
 
   // Vercel's generic static fallback cannot select a locale-specific 404.
-  // Intercept unknown `/cn/...` documents so both the status and copy remain
+  // Intercept unknown locale documents (`/cn/...`, `/es/...`) so both the status and copy remain
   // truthful without a catch-all rewrite that would accidentally return 200.
-  if (localePath.locale === 'zh-CN' && !localePath.route &&
+  if (localePath.locale && !localePath.route &&
       request.headers.get('accept')?.includes('text/html')) {
     const shellUrl = new URL('/404.html', requestUrl.origin);
     shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');

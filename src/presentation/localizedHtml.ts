@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
-import { DEFAULT_LOCALE, type SupportedLocale } from '../ui/localePrefix.ts';
+import { DEFAULT_LOCALE, isSupportedLocale, localeRecord, type SupportedLocale } from '../ui/localePrefix.ts';
 import {
   hrefForLocale,
+  localeAlternates,
   publicRouteForEntry,
   resolveLocalePath,
   type PublicRouteRecord,
@@ -10,6 +11,7 @@ import {
 import { renderProductStats } from '../productStats.ts';
 import { SITE_ORIGIN, shareVideoForRoute, socialCardUrl } from './siteMetadata.ts';
 import { zhTypeFloorStyle } from '../ui/zhTypeFloor.ts';
+import { jaTypeStyle } from '../ui/typeFaces.ts';
 
 function escapeAttribute(value: string): string {
   return value.replace(/[&<>"]/g, (character) => ({
@@ -81,13 +83,8 @@ function localizedHas(key: string): boolean {
 
 function addLocaleLinks(html: string, route: PublicRouteRecord): string {
   if (!route.indexable) return html;
-  const english = `${SITE_ORIGIN}${route.pathname}`;
-  const chinese = `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'zh-CN')}`;
-  const alternates = [
-    `<link rel="alternate" hreflang="en-US" href="${english}">`,
-    `<link rel="alternate" hreflang="zh-CN" href="${chinese}">`,
-    `<link rel="alternate" hreflang="x-default" href="${english}">`,
-  ].join('');
+  const alternates = localeAlternates(route.pathname)
+    .map(([hreflang, path]) => `<link rel="alternate" hreflang="${hreflang}" href="${SITE_ORIGIN}${path}">`).join('');
   const withoutOld = html.replace(/<link\b[^>]*\brel=["']alternate["'][^>]*\bhreflang=["'][^"']+["'][^>]*>\s*/gi, '');
   return withoutOld.replace(
     /(<link\b[^>]*\brel=["']canonical["'][^>]*>)/i,
@@ -185,14 +182,15 @@ function localizeStructuredData(
   );
 }
 
-/** Meta naming a page's zh-CN catalog chunk; the Vite build adds one to every page (tools/viteI18nPageCatalogs.ts). */
+/** Meta naming a page's catalog chunk for one locale other than English; the Vite build adds one per locale to every page
+ *  (tools/viteI18nPageCatalogs.ts). */
 export const LOCALE_CATALOG_META = 'cot-locale-catalog';
 
 /**
- * A Chinese document preloads its catalog beside the module entry: the i18n
- * runtime awaits it before the page's UI evaluates, so fetching it with the
- * boot graph keeps that await off the critical path. English documents keep
- * the meta inert and never download the chunk.
+ * A document in a locale other than English preloads its catalog beside the
+ * module entry: the i18n runtime awaits it before the page's UI evaluates, so
+ * fetching it with the boot graph keeps that await off the critical path. Other
+ * locales' metas stay inert and their chunks are never downloaded.
  */
 function addLocaleCatalogPreload(html: string, locale: SupportedLocale): string {
   if (locale === DEFAULT_LOCALE) return html;
@@ -218,6 +216,17 @@ function addLocaleCatalogPreload(html: string, locale: SupportedLocale): string 
 function addZhTypeFloor(html: string, route: PublicRouteRecord): string {
   if (html.includes('id="cot-zh-type"')) return html;
   const style = zhTypeFloorStyle(route.id);
+  const head = html.indexOf('<style id="cot-font-faces">');
+  const end = head >= 0 ? html.indexOf('</style>', head) : -1;
+  return end >= 0
+    ? `${html.slice(0, end + 8)}${style}${html.slice(end + 8)}`
+    : html.replace(/<\/head>/i, `${style}\n</head>`);
+}
+
+/** A Japanese document's type block (typeFaces.ts jaTypeStyle) right after its type head, once. */
+function addJaType(html: string): string {
+  if (html.includes('id="cot-ja-type"')) return html;
+  const style = jaTypeStyle();
   const head = html.indexOf('<style id="cot-font-faces">');
   const end = head >= 0 ? html.indexOf('</style>', head) : -1;
   return end >= 0
@@ -315,16 +324,28 @@ export function localizeBodyHtml(html: string, locale: SupportedLocale): string 
  * Produce a crawl-time locale document: discovery metadata, the canonical alternate-language graph, and (for a
  * non-default locale) the body copy itself (localizeBodyHtml).
  */
-/** The Field Manual's chapters prerendered in Chinese (tools/docs-prerender.mjs writes them beside the English ones). */
-let zhChapters: Record<string, string> | null = null;
+/** The Field Manual's chapters prerendered in each locale other than English (tools/docs-prerender.mjs writes them beside
+ *  the English ones); a locale without a file renders its chapters in the page. */
+const localeChapters = new Map<SupportedLocale, Record<string, string> | null>();
+function chaptersFor(locale: SupportedLocale): Record<string, string> | null {
+  if (!localeChapters.has(locale)) {
+    let chapters: Record<string, string> | null = null;
+    try {
+      chapters = JSON.parse(readFileSync(new URL(`../docs/topicPrerender.${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
+    } catch (_) {
+      chapters = null;
+    }
+    localeChapters.set(locale, chapters);
+  }
+  return localeChapters.get(locale) ?? null;
+}
 const PRERENDERED_CHAPTER = /<main id="topicRoot" data-prerendered="([a-z]+)" data-prerendered-locale="en-US">[\s\S]*?<\/main>/;
 
-/** A prerendered chapter in the page's own locale; one without Chinese markup renders in the page (topics.ts) instead of
- *  showing English. */
+/** A prerendered chapter in the page's own locale; one without that locale's markup renders in the page (topics.ts)
+ *  instead of showing English. */
 function localizeChapter(html: string, locale: SupportedLocale): string {
   return html.replace(PRERENDERED_CHAPTER, (_whole, slug: string) => {
-    zhChapters ??= JSON.parse(readFileSync(new URL('../docs/topicPrerender.zh-CN.json', import.meta.url), 'utf8')) as Record<string, string>;
-    const markup = locale === 'zh-CN' ? zhChapters[slug] : undefined;
+    const markup = locale === DEFAULT_LOCALE ? undefined : chaptersFor(locale)?.[slug];
     return markup
       ? `<main id="topicRoot" data-prerendered="${slug}" data-prerendered-locale="${locale}">${renderProductStats(markup)}</main>`
       : '<main id="topicRoot"></main>';
@@ -379,7 +400,7 @@ export function localizeHtmlDocument(
   output = output.replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/i,
     (tag) => replaceAttribute(tag, 'href', canonical));
   output = replaceMeta(output, 'property', 'og:url', canonical);
-  output = replaceMeta(output, 'property', 'og:locale', locale.replace('-', '_'));
+  output = replaceMeta(output, 'property', 'og:locale', localeRecord(locale).og);
   output = addShareVideo(output, route);
   output = addLocaleLinks(output, route);
   output = addLocaleCatalogPreload(output, locale);
@@ -388,12 +409,14 @@ export function localizeHtmlDocument(
   if (locale !== DEFAULT_LOCALE) output = localizeLinks(output, locale);
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
+  if (locale === 'ja') output = addJaType(output);
   return localizeStructuredData(output, route, locale);
 }
 
 /**
  * The document an HTML entry becomes (vite.config.ts cot-locale-documents, on the dev server and in `vite build`). On
- * the dev server the request names the route (/studio serves index.html, /cn/gallery serves gallery.html in Chinese);
+ * the dev server the request names the route (/studio serves index.html, /cn/gallery serves gallery.html in Chinese,
+ * /es/gallery in Spanish);
  * a build has no request, so the entry file names its own route, and an entry no public route owns (the manual's topic
  * fallback, the HUD preview) stays as written. Until 265 the build read its missing request as `/`, the game's route,
  * and shipped /home, /gallery, /docs and every chapter with the site root as canonical, og:url and hreflang links.
@@ -403,8 +426,7 @@ export function localizeEntryDocument(html: string, entryFile: string, requestUr
   const localePath = request ? resolveLocalePath(request.pathname) : null;
   const route = localePath?.route ?? publicRouteForEntry(entryFile.split('/').at(-1) || '');
   if (!route) return html;
-  const locale = request?.searchParams.get('_cot_locale') === 'zh-CN' || localePath?.locale === 'zh-CN'
-    ? 'zh-CN'
-    : DEFAULT_LOCALE;
+  const requested = request?.searchParams.get('_cot_locale');
+  const locale = (isSupportedLocale(requested) ? requested : null) ?? localePath?.locale ?? DEFAULT_LOCALE;
   return localizeHtmlDocument(html, route, locale);
 }

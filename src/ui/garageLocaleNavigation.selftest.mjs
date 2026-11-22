@@ -27,8 +27,8 @@ assert.match(garage,
   /data-mobile-nav="locale"[^>]*aria-label="\$\{localeSwitchLabel\}"[\s\S]*?<strong>\$\{t\('settings\.language\.title'\)\}<\/strong>/,
   'compact Garage navigation must keep the locale switcher available without crowding the header');
 assert.match(garage,
-  /setLocale\(nextLocale\);[\s\S]*window\.location\.assign\(currentLocationHrefForLocale\(window\.location, nextLocale\)\)/,
-  'Garage locale switching must persist the selection and preserve its route, query, and hash');
+  /id: 'garage-language'[\s\S]*?items: LOCALE_RECORDS\.map[\s\S]*?setLocale\(item\.id\);\s*window\.location\.assign\(currentLocationHrefForLocale\(window\.location, item\.id\)\)/,
+  'Garage locale switching (the language picker over every locale) must persist the selection and preserve its route, query, and hash');
 assert.match(css,
   /body\[data-cot-width='laptop'\] \.cot-header-nav \.cot-locale-options\{display:none\}/,
   'laptop Garage headers must collapse the locale label while retaining the globe control');

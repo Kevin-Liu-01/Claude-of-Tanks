@@ -10,12 +10,13 @@
  */
 import { localeDictionary, registerLocaleDictionary, type CatalogLocale } from './i18nDictionaries.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import { SUPPORTED_LOCALES } from './localePrefix.ts';
 
 type Slice = Readonly<Record<string, string>>;
 type SliceLoader = (locale: CatalogLocale) => Promise<{ default: Slice }>;
 type SliceModules = Readonly<Record<CatalogLocale, () => Promise<{ default: Slice }>>>;
 
-const LOCALES: readonly CatalogLocale[] = ['en-US', 'zh-CN'];
+const LOCALES: readonly CatalogLocale[] = SUPPORTED_LOCALES;
 
 /** Merge each resident locale's slice into its dictionary; nothing merges unless every slice loaded. */
 export async function extendResidentDictionaries(load: SliceLoader): Promise<void> {

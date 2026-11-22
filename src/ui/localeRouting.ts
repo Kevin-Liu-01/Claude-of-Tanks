@@ -1,9 +1,9 @@
 /**
  * Public-route ownership for the vanilla Vite runtime: every public page's route, and links kept inside a locale. The
- * locale codes and the `/cn` prefix are localePrefix.ts's (274: the i18n runtime loads them without this table).
+ * locale table and its URL prefixes are localePrefix.ts's (274: the i18n runtime loads them without this table).
  */
 
-import { DEFAULT_LOCALE, splitLocalePrefix, type SupportedLocale } from './localePrefix.ts';
+import { DEFAULT_LOCALE, LOCALE_RECORDS, localePrefix, splitLocalePrefix, type SupportedLocale } from './localePrefix.ts';
 
 type PublicRouteId =
   | 'game'
@@ -80,8 +80,9 @@ export function publicRouteForEntry(sourceHtml: string): PublicRouteRecord | nul
 
 export function pathForLocale(pathname: string, locale: SupportedLocale): string {
   const basePath = resolveLocalePath(pathname).pathname;
-  if (locale === DEFAULT_LOCALE) return basePath;
-  return basePath === '/' ? '/cn/' : `/cn${basePath}`;
+  const prefix = localePrefix(locale);
+  if (!prefix) return basePath;
+  return basePath === '/' ? `${prefix}/` : `${prefix}${basePath}`;
 }
 
 export function hrefForLocale(href: string, locale: SupportedLocale): string {
@@ -112,10 +113,16 @@ export function synchronizeLocaleRoute(
   location: Pick<Location, 'pathname' | 'search' | 'hash' | 'replace'> = window.location,
 ): boolean {
   const routeLocale = resolveLocalePath(location.pathname).locale;
-  if ((locale === 'zh-CN' && routeLocale === 'zh-CN') ||
-      (locale === DEFAULT_LOCALE && routeLocale === null)) return false;
+  if ((routeLocale ?? DEFAULT_LOCALE) === locale) return false;
   location.replace(currentLocationHrefForLocale(location, locale));
   return true;
+}
+
+/** A route's alternate-language graph: every locale's path (hreflang order: the table's) and `x-default`, the English one. */
+export function localeAlternates(pathname: string): readonly (readonly [string, string])[] {
+  const base = resolveLocalePath(pathname).pathname;
+  return [...LOCALE_RECORDS.map(({ locale }) => [locale, pathForLocale(base, locale)] as const),
+    ['x-default', pathForLocale(base, DEFAULT_LOCALE)] as const];
 }
 
 /** Keep static and late-rendered public anchors inside the selected locale. */

@@ -90,6 +90,7 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
+import { isSupportedLocale, LOCALE_RECORDS, localeRecord } from './localePrefix.ts';
 import { DEPLOY_MODE_ORDER, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
@@ -681,10 +682,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const technicalViews = garageTechnicalViews();
   const technicalViewById = new Map(technicalViews.map((view) => [view.id, view]));
   const currentLocale = getLocale();
-  const nextLocale = currentLocale === 'zh-CN' ? 'en-US' : 'zh-CN';
-  const localeSwitchLabel = t(nextLocale === 'zh-CN'
-    ? 'publicNav.language.switchToChinese'
-    : 'publicNav.language.switchToEnglish');
+  const localeSwitchLabel = t('settings.language.label');
   ensureFonts();
   // the screen's one open-state owner (2026-11-02 audit F5): its epoch is what every lazy opener checks after its load.
   // (round 8 Y4 residual fix-up r1) main's battle-loader gate (setDecorativeWorkGate: battleLoad.covering) is a cover over
@@ -725,8 +723,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 15, 'currentColor', 'nvi')}` +
     `<span class="cot-locale-options" aria-hidden="true">` +
-    `<span${currentLocale === 'en-US' ? ' class="is-current"' : ''}>EN</span><i>/</i>` +
-    `<span${currentLocale === 'zh-CN' ? ' class="is-current"' : ''}>中文</span></span></button>` +
+    `<span class="is-current" lang="${currentLocale}">${localeRecord(currentLocale).mark}</span></span></button>` +
+    `<div class="cot-locale-menu-host" hidden></div>` +
     `<a class="cot-locale-credit" href="https://generaltranslation.com/" target="_blank" rel="noreferrer" ` +
     `aria-label="${t('publicNav.language.creditEyebrow')} ${t('publicNav.language.creditName')}">` +
     `${gtSymbolSvg(30, 'cot-gt-symbol')}` +
@@ -761,7 +759,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong>${t('garage.nav.docs')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
+    `<strong>${t('settings.language.title')}</strong><small lang="${currentLocale}">${localeRecord(currentLocale).name}</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.record')}</strong></span></button>` +
@@ -4920,10 +4918,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     window.location.href = hrefForLocale('/home', getLocale());
   };
-  const switchLocale = () => {
+  // the language menu (the kit's picker menu, opened from the bar's globe or the phone menu's item): every locale named in
+  // its own language; a choice reloads into that locale's route, since screens own translated DOM
+  let localeMenu: PickerMenu | null = null;
+  const switchLocale = (from: HTMLElement) => {
     emit('ui:click', {});
-    setLocale(nextLocale);
-    window.location.assign(currentLocationHrefForLocale(window.location, nextLocale));
+    localeMenu ??= createPickerMenu(requiredElement<HTMLElement>(root, '.cot-locale-menu-host'), {
+      id: 'garage-language', label: localeSwitchLabel, value: currentLocale, layout: 'list', text: pickerText(),
+      items: LOCALE_RECORDS.map(({ locale, name }) => ({ id: locale, name })),
+      onChoose: (item) => {
+        if (!isSupportedLocale(item.id) || item.id === currentLocale) return;
+        setLocale(item.id);
+        window.location.assign(currentLocationHrefForLocale(window.location, item.id));
+      },
+    });
+    localeMenu.open(from);
   };
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
@@ -4937,7 +4946,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     else if (tab === 'record') recordTrigger.click();
     else if (tab === 'more') mobileNavTrigger.click();
   });
-  requiredElement<HTMLElement>(root, '[data-nav="locale"]').addEventListener('click', switchLocale);
+  const localeButton = requiredElement<HTMLElement>(root, '[data-nav="locale"]');
+  localeButton.addEventListener('click', () => switchLocale(localeButton));
   requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
   requiredElement<HTMLElement>(root, '[data-nav="deploy"]').addEventListener('click', () => { emit('ui:click', {}); openBattleMenu(); });
   requiredElement<HTMLElement>(root, '[data-lt-anatomy]').addEventListener('click', () => { emit('ui:click', {}); openSelectedInGallery('armor'); });
@@ -5038,7 +5048,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else if (destination === 'gallery') openSelectedInGallery();
       else if (destination === 'techTree') void openTechTree(mobileNavTrigger);
       else if (destination === 'docs') openDocs();
-      else if (destination === 'locale') switchLocale();
+      else if (destination === 'locale') switchLocale(mobileNavTrigger);
       else if (destination === 'record') {
         emit('ui:click', {});
         openServiceRecord();

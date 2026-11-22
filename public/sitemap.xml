@@ -5,6 +5,11 @@
     <loc>https://cot.kevinliu.studio/</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -12,6 +17,71 @@
     <loc>https://cot.kevinliu.studio/cn/</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -19,6 +89,11 @@
     <loc>https://cot.kevinliu.studio/home</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -26,6 +101,71 @@
     <loc>https://cot.kevinliu.studio/cn/home</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/home</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/home</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/home</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/home</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/home</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/home" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/home" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/home" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/home" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/home" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/home" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/home" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/home" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -33,6 +173,11 @@
     <loc>https://cot.kevinliu.studio/gallery</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -40,6 +185,71 @@
     <loc>https://cot.kevinliu.studio/cn/gallery</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/gallery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/gallery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/gallery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/gallery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/gallery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/gallery" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/gallery" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/gallery" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/gallery" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/gallery" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -47,6 +257,11 @@
     <loc>https://cot.kevinliu.studio/studio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -54,6 +269,71 @@
     <loc>https://cot.kevinliu.studio/cn/studio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/studio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/studio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -61,6 +341,11 @@
     <loc>https://cot.kevinliu.studio/docs</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -68,6 +353,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -75,6 +425,11 @@
     <loc>https://cot.kevinliu.studio/docs/build</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -82,6 +437,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/build</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/build</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/build</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/build</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/build</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/build</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/build" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/build" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/build" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/build" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/build" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/build" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/build" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -89,6 +509,11 @@
     <loc>https://cot.kevinliu.studio/docs/models</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -96,6 +521,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/models</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/models</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/models</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/models</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/models</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/models</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/models" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/models" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/models" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/models" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/models" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/models" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/models" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -103,6 +593,11 @@
     <loc>https://cot.kevinliu.studio/docs/simulation</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -110,6 +605,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/simulation</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/simulation</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/simulation</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/simulation</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/simulation</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/simulation</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/simulation" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/simulation" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/simulation" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -117,6 +677,11 @@
     <loc>https://cot.kevinliu.studio/docs/rendering</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -124,6 +689,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/rendering</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/rendering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/rendering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/rendering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/rendering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/rendering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/rendering" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/rendering" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/rendering" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -131,6 +761,11 @@
     <loc>https://cot.kevinliu.studio/docs/ai</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -138,6 +773,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/ai</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/ai" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/ai" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/ai" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -145,6 +845,11 @@
     <loc>https://cot.kevinliu.studio/docs/multiplayer</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -152,6 +857,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/multiplayer</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/multiplayer</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/multiplayer</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/multiplayer</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/multiplayer</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/multiplayer</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/multiplayer" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/multiplayer" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/multiplayer" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -159,6 +929,11 @@
     <loc>https://cot.kevinliu.studio/docs/audio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -166,6 +941,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/audio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/audio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/audio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/audio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/audio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/audio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/audio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/audio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/audio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -173,6 +1013,11 @@
     <loc>https://cot.kevinliu.studio/docs/studio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -180,6 +1025,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/studio</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/studio" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/studio" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -187,6 +1097,11 @@
     <loc>https://cot.kevinliu.studio/docs/filming</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -194,6 +1109,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/filming</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/filming" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -201,6 +1181,11 @@
     <loc>https://cot.kevinliu.studio/docs/modes</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -208,6 +1193,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/modes</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/modes</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/modes</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/modes</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/modes</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/modes</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/modes" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/modes" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/modes" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -215,6 +1265,11 @@
     <loc>https://cot.kevinliu.studio/docs/battlefields</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -222,6 +1277,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/battlefields</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/battlefields</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/battlefields</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/battlefields</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/battlefields</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/battlefields</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/battlefields" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/battlefields" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/battlefields" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -229,6 +1349,11 @@
     <loc>https://cot.kevinliu.studio/docs/combat</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -236,6 +1361,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/combat</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/combat</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/combat</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/combat</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/combat</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/combat</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/combat" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/combat" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/combat" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -243,6 +1433,11 @@
     <loc>https://cot.kevinliu.studio/docs/tanks</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -250,6 +1445,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/tanks</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/tanks</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/tanks</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/tanks</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/tanks</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/tanks</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/tanks" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/tanks" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/tanks" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -257,6 +1517,11 @@
     <loc>https://cot.kevinliu.studio/docs/start</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -264,6 +1529,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/start</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/start</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/start</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/start</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/start</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/start</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/start" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/start" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/start" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/start" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/start" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/start" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/start" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -271,6 +1601,11 @@
     <loc>https://cot.kevinliu.studio/docs/controls</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -278,6 +1613,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/controls</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/controls</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/controls</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/controls</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/controls</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/controls</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/controls" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/controls" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/controls" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -285,6 +1685,11 @@
     <loc>https://cot.kevinliu.studio/docs/fleet</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -292,6 +1697,71 @@
     <loc>https://cot.kevinliu.studio/cn/docs/fleet</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/docs/fleet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/docs/fleet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/docs/fleet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/docs/fleet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/docs/fleet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/docs/fleet" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/docs/fleet" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/fleet" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -299,6 +1769,11 @@
     <loc>https://cot.kevinliu.studio/brand</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
     <lastmod>2026-09-08</lastmod>
   </url>
@@ -306,6 +1781,71 @@
     <loc>https://cot.kevinliu.studio/cn/brand</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/es/brand</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ja/brand</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/de/brand</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/pt/brand</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/ru/brand</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/brand" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/brand" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cot.kevinliu.studio/es/brand" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cot.kevinliu.studio/ja/brand" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cot.kevinliu.studio/de/brand" />
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://cot.kevinliu.studio/pt/brand" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cot.kevinliu.studio/ru/brand" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/brand" />
     <lastmod>2026-09-08</lastmod>
   </url>

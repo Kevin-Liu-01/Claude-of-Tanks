@@ -5,8 +5,8 @@
 //
 // The markup is src/docs/topics.ts's topicPageMarkup(), with its icons filled (docsIcons.ts fillDocsIcons):
 //   - English goes into site/docs-<topic>.html, as <main id="topicRoot" data-prerendered=… data-prerendered-locale=…>;
-//   - Chinese goes into src/docs/topicPrerender.zh-CN.json, which src/presentation/localizedHtml.ts puts in the /cn
-//     page (the build's generate-localized-pages step and the dev server's /cn routes);
+//   - every other locale goes into src/docs/topicPrerender.<locale>.json, which src/presentation/localizedHtml.ts puts in
+//     that locale's page (the build's generate-localized-pages step and the dev server's /cn, /es, ... routes);
 //   - the search index per locale goes into src/docs/searchIndex.<locale>.json (src/docs/searchIndex.ts builds it).
 // The data-built chapters (src/docs/chapters) run here only: no page imports their builders.
 // topics.ts keeps the markup it finds and only wires the behaviour. Run `node tools/public-shell.mjs --write` after a
@@ -19,10 +19,12 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { heroLqip } from './hero-lqip.mjs';
+import { PREFIXED_LOCALES, SUPPORTED_LOCALES } from '../src/ui/localePrefix.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SELF = fileURLToPath(import.meta.url);
-export const ZH_FRAGMENTS = 'src/docs/topicPrerender.zh-CN.json';
+/** A locale's prerendered chapters (every locale but English, whose markup lives in the pages). */
+export const localeFragments = (locale) => `src/docs/topicPrerender.${locale}.json`;
 const ROOT_ELEMENT = /<main id="topicRoot"[^>]*>[\s\S]*?<\/main>/;
 
 const emit = process.argv.find((arg) => arg.startsWith('--emit='))?.slice('--emit='.length);
@@ -84,7 +86,7 @@ function chapterMap(html, groups) {
 /** Bring every chapter page and the zh fragments to the current markup (`write`), or list the stale ones. */
 function prerender(write) {
   const { pages: en, index: enIndex, groups } = render('en-US');
-  const { pages: zh, index: zhIndex } = render('zh-CN');
+  const others = Object.fromEntries(PREFIXED_LOCALES.map((locale) => [locale, render(locale)]));
   const stale = [];
   // a generated file: written when it changed, or listed as stale
   const keep = (path, text) => {
@@ -102,10 +104,10 @@ function prerender(write) {
     if (write) writeFileSync(path, next); else stale.push(`site/docs-${slug}.html`);
   }
   keep('site/docs.html', indexPreviews(chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups)));
-  keep(ZH_FRAGMENTS, `${JSON.stringify(zh, null, 1)}\n`);
+  for (const [locale, { pages }] of Object.entries(others)) keep(localeFragments(locale), `${JSON.stringify(pages, null, 1)}\n`);
   // the search index per locale (src/docs/docsSearch.ts loads the reader's with the field's first use)
   keep('src/docs/searchIndex.en-US.json', `${JSON.stringify(enIndex, null, 1)}\n`);
-  keep('src/docs/searchIndex.zh-CN.json', `${JSON.stringify(zhIndex, null, 1)}\n`);
+  for (const [locale, { index }] of Object.entries(others)) keep(`src/docs/searchIndex.${locale}.json`, `${JSON.stringify(index, null, 1)}\n`);
   return { chapters: Object.keys(en).length, stale };
 }
 
@@ -119,5 +121,5 @@ if (!emit && process.argv[1] === SELF) {
     console.error(`docs-prerender: stale ${stale.join(', ')} (node tools/docs-prerender.mjs --write)`);
     process.exit(1);
   }
-  console.log(`docs-prerender: ${chapters} chapters ${write ? 'written' : 'current'} in en-US and zh-CN`);
+  console.log(`docs-prerender: ${chapters} chapters ${write ? 'written' : 'current'} in ${SUPPORTED_LOCALES.join(', ')}`);
 }

@@ -12,4 +12,9 @@ import { residentSlice } from './i18nSlices.ts';
 export const ensureTechTreeStrings = residentSlice({
   'en-US': () => import('virtual:cot-i18n-techTree/en-US'),
   'zh-CN': () => import('virtual:cot-i18n-techTree/zh-CN'),
+  es: () => import('virtual:cot-i18n-techTree/es'),
+  ja: () => import('virtual:cot-i18n-techTree/ja'),
+  de: () => import('virtual:cot-i18n-techTree/de'),
+  'pt-BR': () => import('virtual:cot-i18n-techTree/pt-BR'),
+  ru: () => import('virtual:cot-i18n-techTree/ru'),
 });

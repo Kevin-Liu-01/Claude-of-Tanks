@@ -2,11 +2,11 @@
 // i18n.selftest.mjs — Node-runnable integrity check for the i18n catalog.
 //
 // Validates that:
-//   - both locale tables share identical key sets
+//   - every locale table (localeRouting.ts LOCALE_RECORDS) shares the English key set
 //   - every translation is a non-empty string
 //   - placeholder references in templates are valid identifiers
 //   - sampled keys diverge between locales (catches accidental copy-paste)
-//   - placeholders that appear in English appear in the Chinese peer
+//   - placeholders that appear in English appear in every locale's peer
 //
 // Registered through tools/selftest-suites.mjs and run by `npm test`.
 
@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { messageArguments, parseMessage } from '../../tools/i18n-catalog-shape.mjs';
+import { PREFIXED_LOCALES } from './localePrefix.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,10 +23,7 @@ const REPO = path.resolve(HERE, '..', '..');
 
 // JSON is the source format consumed by both the runtime and General
 // Translation. The integrity gate deliberately parses the shipping files.
-const LOCALE_FILES = {
-  enUS: path.join(HERE, 'i18nCatalog.en-US.json'),
-  zhCN: path.join(HERE, 'i18nCatalog.zh-CN.json'),
-};
+const localeFile = (locale) => path.join(HERE, `i18nCatalog.${locale}.json`);
 
 function readLocale(file) {
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -33,26 +31,17 @@ function readLocale(file) {
   return new Map(Object.entries(parsed));
 }
 
-const en = readLocale(LOCALE_FILES.enUS);
-const zh = readLocale(LOCALE_FILES.zhCN);
-
-if (en.size !== zh.size) {
-  const diff = [];
-  for (const k of en.keys()) if (!zh.has(k)) diff.push('en-only:' + k);
-  for (const k of zh.keys()) if (!en.has(k)) diff.push('zh-only:' + k);
-  console.error('key diff:', diff.join('\n'));
-}
-assert.equal(en.size, zh.size, 'en-US has ' + en.size + ' keys, zh-CN has ' + zh.size + ' keys');
+const en = readLocale(localeFile('en-US'));
 assert.ok(en.size > 0, 'catalog is empty');
-
 const enKeys = new Set(en.keys());
-const zhKeys = new Set(zh.keys());
+/** Every translated catalog, by locale. */
+const translations = new Map(PREFIXED_LOCALES.map((locale) => [locale, readLocale(localeFile(locale))]));
 
-for (const key of enKeys) {
-  assert.ok(zhKeys.has(key), 'zh-CN missing key: ' + key);
-}
-for (const key of zhKeys) {
-  assert.ok(enKeys.has(key), 'en-US missing key: ' + key);
+for (const [locale, table] of translations) {
+  const missing = [...enKeys].filter((key) => !table.has(key));
+  const extra = [...table.keys()].filter((key) => !enKeys.has(key));
+  assert.deepEqual(missing, [], `${locale} missing ${missing.length} key(s): ${missing.slice(0, 20).join(', ')}`);
+  assert.deepEqual(extra, [], `${locale} has ${extra.length} key(s) en-US lacks: ${extra.slice(0, 20).join(', ')}`);
 }
 
 // Arguments are read ICU-aware (tools/i18n-catalog-shape.mjs): `{count}` and `{count, plural, one {…} other {…}}` name
@@ -71,10 +60,10 @@ function checkPlaceholders(table, label) {
 }
 
 checkPlaceholders(en, 'en-US');
-checkPlaceholders(zh, 'zh-CN');
+for (const [locale, table] of translations) checkPlaceholders(table, locale);
 
 // Sample check: a handful of high-traffic keys must produce a non-empty string
-// in BOTH locales and the fallback behaviour must return a string.
+// in every locale, and differ from English (catches an untranslated copy).
 const SAMPLE_KEYS = [
   'garage.battle',
   'settings.title',
@@ -84,28 +73,31 @@ const SAMPLE_KEYS = [
 ];
 for (const k of SAMPLE_KEYS) {
   assert.ok(en.has(k), 'sample key missing from en-US: ' + k);
-  assert.ok(zh.has(k), 'sample key missing from zh-CN: ' + k);
-  assert.notEqual(en.get(k), zh.get(k),
-    'translation is identical for ' + k + ' (likely a copy-paste oversight)');
+  for (const [locale, table] of translations) {
+    assert.ok(table.has(k), `sample key missing from ${locale}: ${k}`);
+    assert.notEqual(en.get(k), table.get(k), `translation is identical for ${k} in ${locale} (likely an untranslated copy)`);
+  }
 }
 
-// Placeholder smoke test: every argument an English message names (plain or ICU) appears in its Chinese peer.
-for (const [key, value] of en) {
-  const args = messageArguments(value);
-  if (!args.size) continue;
-  const peer = zh.get(key);
-  assert.ok(peer, 'zh-CN missing key ' + key + ' (placeholder sync check)');
-  const peerArgs = messageArguments(peer);
-  for (const ph of args) {
-    assert.ok(peerArgs.has(ph),
-      'placeholder {' + ph + '} in en-US:' + key + ' missing from zh-CN peer');
+// Placeholder parity: every argument an English message names (plain or ICU) appears in each locale's peer, and a peer
+// names no argument English lacks.
+for (const [locale, table] of translations) {
+  for (const [key, value] of en) {
+    const args = messageArguments(value);
+    const peerArgs = messageArguments(table.get(key) ?? '');
+    for (const ph of args) {
+      assert.ok(peerArgs.has(ph), `placeholder {${ph}} in en-US:${key} missing from the ${locale} peer`);
+    }
+    for (const ph of peerArgs) {
+      assert.ok(args.has(ph), `placeholder {${ph}} in ${locale}:${key} is not in en-US`);
+    }
   }
 }
 
 // HTML tag parity check: if en-US value embeds any inline tags (e.g. <b>,
-// <span>, <a href>), the zh-CN value must embed the SAME tag set (order may
-// differ because of Chinese reordering, but every opening/closing tag in en
-// must also appear in zh). Catches translations that drop an opening or
+// <span>, <a href>), each locale's value must embed the SAME tag set (order may
+// differ because of reordering, but every opening/closing tag in en must also
+// appear in the translation). Catches translations that drop an opening or
 // closing tag while paraphrasing.
 const tagRegex = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*?)?>/g;
 function tagMultiset(value) {
@@ -121,28 +113,28 @@ function tagMultiset(value) {
   }
   return out;
 }
-for (const [key, enVal] of en) {
-  const zhVal = zh.get(key);
-  if (!zhVal) continue;
-  const enTags = tagMultiset(enVal);
-  const zhTags = tagMultiset(zhVal);
-  const missing = [];
-  for (const [tag, n] of enTags) {
-    if ((zhTags.get(tag) || 0) < n) missing.push('<' + tag + '>×' + n);
+for (const [locale, table] of translations) {
+  for (const [key, enVal] of en) {
+    const val = table.get(key);
+    if (!val) continue;
+    const enTags = tagMultiset(enVal);
+    const tags = tagMultiset(val);
+    const missing = [];
+    for (const [tag, n] of enTags) {
+      if ((tags.get(tag) || 0) < n) missing.push('<' + tag + '>×' + n);
+    }
+    const extra = [];
+    for (const [tag, n] of tags) {
+      if ((enTags.get(tag) || 0) < n) extra.push('<' + tag + '>×' + n);
+    }
+    assert.ok(missing.length === 0 && extra.length === 0,
+      `HTML tag mismatch at ${key} (${locale}) | missing: [${missing.join(', ')}] | extra: [${extra.join(', ')}]`);
   }
-  const extra = [];
-  for (const [tag, n] of zhTags) {
-    if ((enTags.get(tag) || 0) < n) extra.push('<' + tag + '>×' + n);
-  }
-  assert.ok(missing.length === 0 && extra.length === 0,
-    'HTML tag mismatch at ' + key +
-    ' | missing in zh: [' + missing.join(', ') + ']' +
-    ' | extra in zh: [' + extra.join(', ') + ']');
 }
 
-// Attributes too (security audit 2026-10-22): the zh-CN catalog comes back from the translation service and
-// reaches innerHTML and the /cn <title>, and the name-only parity above skips `<img/src=x/onerror=…>` and ignores
-// attributes. Every markup `<` in a zh-CN value must open a tag this check can read, and each such tag must repeat
+// Attributes too (security audit 2026-10-22): a translated catalog comes back from the translation service and
+// reaches innerHTML and the localized <title>, and the name-only parity above skips `<img/src=x/onerror=…>` and ignores
+// attributes. Every markup `<` in a translated value must open a tag this check can read, and each such tag must repeat
 // an en-US tag of the same key exactly (name and attributes; <br>/<wbr> free).
 const fullTagRegex = /<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*?)?\/?>/g;
 function fullTagMultiset(value) {
@@ -154,30 +146,32 @@ function fullTagMultiset(value) {
   }
   return out;
 }
-/** What the zh-CN value adds over the en-US value that HTML would read as markup; empty when nothing. */
-function zhMarkupProblems(enVal, zhVal) {
+/** What a translated value adds over the en-US value that HTML would read as markup; empty when nothing. */
+function markupProblems(enVal, val) {
   const problems = [];
   // a `<` that HTML would read as markup (a letter, `/`, `!` or `?` after it); `< 80 mm` stays text
-  if (/<[a-zA-Z/!?]/.test(zhVal.replace(fullTagRegex, ''))) problems.push('unreadable markup');
+  if (/<[a-zA-Z/!?]/.test(val.replace(fullTagRegex, ''))) problems.push('unreadable markup');
   const enTags = fullTagMultiset(enVal);
-  for (const [tag, n] of fullTagMultiset(zhVal)) {
+  for (const [tag, n] of fullTagMultiset(val)) {
     if ((enTags.get(tag) || 0) < n) problems.push('tag not in en-US: ' + tag);
   }
   return problems;
 }
-for (const [key, zhVal] of zh) {
-  const problems = zhMarkupProblems(en.get(key) ?? '', zhVal);
-  assert.deepEqual(problems, [], 'zh-CN markup at ' + key + ': ' + problems.join('; '));
+for (const [locale, table] of translations) {
+  for (const [key, val] of table) {
+    const problems = markupProblems(en.get(key) ?? '', val);
+    assert.deepEqual(problems, [], `${locale} markup at ${key}: ${problems.join('; ')}`);
+  }
 }
 // the four forms the name-only parity let through, and the text it must keep allowing
 const docsLink = 'See <a href="/docs#studio">the Studio guide</a>.';
-assert.ok(zhMarkupProblems('Made by Kevin', '作者 Kevin<img/src="x"/onerror="alert(1)">').length);
-assert.ok(zhMarkupProblems(docsLink, '见 <a href="javascript:alert(1)">工作室指南</a>。').length);
-assert.ok(zhMarkupProblems('Local only.', '仅本地。<img src="x" onerror="alert(1)">').length);
-assert.ok(zhMarkupProblems('Claude of Tanks', '坦克</title/><img/src="x"/onerror="alert(1)">').length);
-assert.deepEqual(zhMarkupProblems(docsLink, '见<a href="/docs#studio">工作室指南</a>。'), []);
-assert.deepEqual(zhMarkupProblems('Armor < 80 mm', '装甲 < 80 mm'), []);
-assert.deepEqual(zhMarkupProblems('One<br>two', '一<br/>二'), []);
+assert.ok(markupProblems('Made by Kevin', '作者 Kevin<img/src="x"/onerror="alert(1)">').length);
+assert.ok(markupProblems(docsLink, '见 <a href="javascript:alert(1)">工作室指南</a>。').length);
+assert.ok(markupProblems('Local only.', '仅本地。<img src="x" onerror="alert(1)">').length);
+assert.ok(markupProblems('Claude of Tanks', '坦克</title/><img/src="x"/onerror="alert(1)">').length);
+assert.deepEqual(markupProblems(docsLink, '见<a href="/docs#studio">工作室指南</a>。'), []);
+assert.deepEqual(markupProblems('Armor < 80 mm', '装甲 < 80 mm'), []);
+assert.deepEqual(markupProblems('One<br>two', '一<br/>二'), []);
 
 // Plain text translation hosts must not own nested markup. textContent would
 // erase links, emphasis, output values, or other controls on first apply.
@@ -239,16 +233,16 @@ const mapIds = [...mapIdsBlock[1].matchAll(/'([^']+)'/g)].map((match) => match[1
 assert.ok(mapIds.length > 0, 'src/world/maps/mapIds.ts: MAP_IDS is empty');
 for (const id of mapIds) {
   assert.ok(en.has(`map.${id}`), `en-US missing registered battlefield map.${id}`);
-  assert.ok(zh.has(`map.${id}`), `zh-CN missing registered battlefield map.${id}`);
+  for (const [locale, table] of translations) assert.ok(table.has(`map.${id}`), `${locale} missing registered battlefield map.${id}`);
 }
 
-console.log('i18n.selftest.mjs: ' + en.size + ' keys verified across en-US and zh-CN');
+console.log(`i18n.selftest.mjs: ${en.size} keys verified across en-US and ${PREFIXED_LOCALES.join(', ')}`);
 
 // (gauntlet 250, the coordinator's copy rule) no player-facing string in either catalog carries an em dash, typed or as an
 // entity: a pause is a colon, a full stop, a comma, parentheses or the " · " separator
 {
   const { readFileSync: readCatalog } = await import('node:fs');
-  for (const file of ['i18nCatalog.en-US.json', 'i18nCatalog.zh-CN.json']) {
+  for (const file of ['en-US', ...PREFIXED_LOCALES].map((locale) => `i18nCatalog.${locale}.json`)) {
     const catalog = JSON.parse(readCatalog(new URL(`./${file}`, import.meta.url), 'utf8'));
     const dashed = Object.entries(catalog).filter(([, text]) => typeof text === 'string' && /—|&mdash;|&#8212;|&#x2014;/i.test(text)).map(([key]) => key);
     assert.deepEqual(dashed, [], `${file}: em dashes in ${dashed.join(', ')}`);

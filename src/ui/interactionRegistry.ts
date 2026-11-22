@@ -93,6 +93,7 @@ const BATTLEFIELDS = 34;
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
+  'garage-language': { chooses: 'language', options: 7, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-language'], lane: 'premiere-site' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   // the consumable catalog (2026-10-26): each slot opens the kit picker over the thirteen items (garageConsumables.ts)
   'garage-consumables': { chooses: 'consumable', options: 13, screen: 'garage', owner: 'src/ui/garageConsumables.ts', build: 'picker', marks: ['picker:garage-consumables'], lane: 'premiere-gallery-studio' },
@@ -140,7 +141,8 @@ export const INTERACTION_SITES = Object.freeze({
   'settings-colour-preset': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'picker', marks: ['picker:settings-colour-preset'], lane: 'premiere-site' },
   // every On/Off setting (the alarms, the HUD, the allies' brain, the telemetry)
   'settings-on-off': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-onoff'], lane: 'premiere-site' },
-  'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-lang'], lane: 'premiere-site' },
+  // the seven locales (localeRouting.ts LOCALE_RECORDS) on the picker menu, here and from the Garage bar's globe
+  'settings-language': { chooses: 'language', options: 7, screen: 'settings', owner: SETTINGS, build: 'picker', marks: ['picker:settings-language'], lane: 'premiere-site' },
   // battle-camera-264: the chase camera's shoulder (left, centre, right) beside its sliders
   'settings-camera-shoulder': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-shoulder'], lane: 'premiere-site' },
   // the parts on the picker's list; the preview's own parts select by a press or a drag (direct manipulation)

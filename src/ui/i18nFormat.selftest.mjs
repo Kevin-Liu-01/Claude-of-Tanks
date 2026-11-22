@@ -93,7 +93,7 @@ for (const [key, value] of Object.entries(pseudoCatalog)) {
 }
 
 // --- catalog-shape check: each rule fires ------------------------------------------------------------------------------
-const fail = (enTable, zhTable) => catalogFailures(enTable, zhTable);
+const fail = (enTable, zhTable) => catalogFailures(enTable, { 'zh-CN': zhTable });
 assert.match(fail({ a: '{n, plural, one {# x}}' }, { a: '{n, plural, other {#}}' }).join('\n'), /no "other" branch/);
 assert.match(fail({ a: '{n, rhyme}' }, { a: '{n, rhyme}' }).join('\n'), /unknown argument type/);
 assert.match(fail({ a: '{n} {n} vehicles' }, { a: '{n} 辆' }).join('\n'), /prints \{n\} twice in a row/, 'the "220 220" shape');

@@ -403,17 +403,19 @@ assert.equal(pageCatalogUrl('en-US'), null, 'a throwing stand-in document loads 
 delete globalThis.document;
 
 // --- the build plugin ---------------------------------------------------------------------------
-const files = { 'en-US': '/assets/i18n.home.en-US-a1.js', 'zh-CN': '/assets/i18n.home.zh-CN-b2.js' };
-const lazyFiles = { 'en-US': '/assets/i18n.home~lazy.en-US-c3.js', 'zh-CN': '/assets/i18n.home~lazy.zh-CN-d4.js' };
+// every locale's chunk is named, in the locale table's order (src/ui/localePrefix.ts)
+const { SUPPORTED_LOCALES } = await import('../src/ui/localePrefix.ts');
+const files = Object.fromEntries(SUPPORTED_LOCALES.map((locale) => [locale, `/assets/i18n.home.${locale}-a1.js`]));
+const lazyFiles = Object.fromEntries(SUPPORTED_LOCALES.map((locale) => [locale, `/assets/i18n.home~lazy.${locale}-c3.js`]));
+const named = SUPPORTED_LOCALES.map((locale) => ` data-${locale.toLowerCase()}="/assets/i18n.home.${locale}-a1.js"`).join('');
+const namedLazy = SUPPORTED_LOCALES.map((locale) => ` data-${locale.toLowerCase()}-lazy="/assets/i18n.home~lazy.${locale}-c3.js"`).join('');
+assert.ok(named.includes(' data-zh-cn="/assets/i18n.home.zh-CN-a1.js"') && named.includes(' data-pt-br="'), 'each locale names its chunk');
 assert.equal(nameCatalogChunks('<meta name="cot-i18n-catalog" content="home">', files, lazyFiles),
-  '<meta name="cot-i18n-catalog" content="home" data-en-us="/assets/i18n.home.en-US-a1.js" '
-  + 'data-zh-cn="/assets/i18n.home.zh-CN-b2.js" data-en-us-lazy="/assets/i18n.home~lazy.en-US-c3.js" '
-  + 'data-zh-cn-lazy="/assets/i18n.home~lazy.zh-CN-d4.js">');
+  `<meta name="cot-i18n-catalog" content="home"${named}${namedLazy}>`);
 assert.equal(nameCatalogChunks('<head><meta name="cot-i18n-catalog" content="home"></head>', files),
-  '<head><meta name="cot-i18n-catalog" content="home" data-en-us="/assets/i18n.home.en-US-a1.js" '
-  + 'data-zh-cn="/assets/i18n.home.zh-CN-b2.js"></head>');
+  `<head><meta name="cot-i18n-catalog" content="home"${named}></head>`);
 assert.equal(nameCatalogChunks('<meta name="cot-i18n-catalog" content="home" />', files),
-  '<meta name="cot-i18n-catalog" content="home" data-en-us="/assets/i18n.home.en-US-a1.js" data-zh-cn="/assets/i18n.home.zh-CN-b2.js" />');
+  `<meta name="cot-i18n-catalog" content="home"${named} />`);
 assert.throws(() => nameCatalogChunks('<head></head>', files), /no <meta name="cot-i18n-catalog">/);
 // an import() of a lazy boundary loads the lazy chunk first; the offsets are UTF-16 (text before the site is not ASCII)
 const once = rewriteLazyImports("void import('./x.ts');", 'src/a.ts', new Set(['./x.ts']));
@@ -434,39 +436,39 @@ assert.equal(insertModulePreload('<head></head>', '/assets/en.js'),
 
 const chunk = (fileName, extra = {}) => ({ type: 'chunk', fileName, moduleIds: [], imports: [], dynamicImports: [], code: '',
   isEntry: false, facadeModuleId: null, ...extra });
+// one full-catalog wrapper and one page chunk (and lazy chunk) per locale, as the build emits them
+const WRAPPERS = { 'en-US': 'EnUS', 'zh-CN': 'ZhCN', es: 'Es', ja: 'Ja', de: 'De', 'pt-BR': 'PtBR', ru: 'Ru' };
+assert.deepEqual(Object.keys(WRAPPERS), [...SUPPORTED_LOCALES], 'every locale has a wrapper module');
+const fullFile = (locale) => `assets/i18nCatalog${WRAPPERS[locale]}-f1.js`;
 const bundle = {
   'assets/i18n-r1.js': chunk('assets/i18n-r1.js', {
     moduleIds: ['\0vite/modulepreload-polyfill.js', '/p/src/ui/localeRouting.ts', '/p/src/ui/i18nChunkImport.browser.ts',
       '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/i18n.ts', '/p/src/presentation/staticI18n.ts', '/p/src/ui/responsiveLayout.ts'],
     imports: ['assets/preload-helper-p1.js'],
-    dynamicImports: ['assets/i18nCatalogEnUS-e1.js', 'assets/i18nCatalogZhCN-z1.js'],
-    code: 'import("./i18nCatalogEnUS-e1.js");import("./i18nCatalogZhCN-z1.js")',
+    dynamicImports: SUPPORTED_LOCALES.map(fullFile),
+    code: SUPPORTED_LOCALES.map((locale) => `import("./${fullFile(locale).slice('assets/'.length)}");`).join(''),
   }),
   'assets/preload-helper-p1.js': chunk('assets/preload-helper-p1.js', { moduleIds: ['\0vite/preload-helper.js'] }),
-  'assets/i18nCatalogEnUS-e1.js': chunk('assets/i18nCatalogEnUS-e1.js', {
-    moduleIds: ['/p/src/ui/i18nCatalog.en-US.json', '/p/src/ui/i18nCatalogEnUS.ts'] }),
-  'assets/i18nCatalogZhCN-z1.js': chunk('assets/i18nCatalogZhCN-z1.js', {
-    moduleIds: ['/p/src/ui/i18nCatalog.zh-CN.json', '/p/src/ui/i18nCatalogZhCN.ts'] }),
-  'assets/i18n.home.en-US-h1.js': chunk('assets/i18n.home.en-US-h1.js', { isEntry: true, facadeModuleId: '\0cot-i18n:home.en-US' }),
-  'assets/i18n.home.zh-CN-h2.js': chunk('assets/i18n.home.zh-CN-h2.js', { isEntry: true, facadeModuleId: '\0cot-i18n:home.zh-CN' }),
-  'assets/i18n.home~lazy.en-US-l1.js': chunk('assets/i18n.home~lazy.en-US-l1.js', {
-    isEntry: true, facadeModuleId: '\0cot-i18n:home~lazy.en-US' }),
-  'assets/i18n.home~lazy.zh-CN-l2.js': chunk('assets/i18n.home~lazy.zh-CN-l2.js', {
-    isEntry: true, facadeModuleId: '\0cot-i18n:home~lazy.zh-CN' }),
+  ...Object.fromEntries(SUPPORTED_LOCALES.flatMap((locale) => [
+    [fullFile(locale), chunk(fullFile(locale), {
+      moduleIds: [`/p/src/ui/i18nCatalog.${locale}.json`, `/p/src/ui/i18nCatalog${WRAPPERS[locale]}.ts`] })],
+    [`assets/i18n.home.${locale}-h1.js`, chunk(`assets/i18n.home.${locale}-h1.js`, { isEntry: true, facadeModuleId: `\0cot-i18n:home.${locale}` })],
+    [`assets/i18n.home~lazy.${locale}-l1.js`, chunk(`assets/i18n.home~lazy.${locale}-l1.js`, {
+      isEntry: true, facadeModuleId: `\0cot-i18n:home~lazy.${locale}` })],
+  ])),
   'assets/main-m1.js': chunk('assets/main-m1.js', { isEntry: true, facadeModuleId: '/p/index.html', imports: ['assets/i18n-r1.js'] }),
   'assets/wreckBakeWorker-w1.js': chunk('assets/wreckBakeWorker-w1.js', {
     isEntry: true, facadeModuleId: '/p/src/world/wreckBakeWorker.ts', imports: ['assets/preload-helper-p1.js'] }),
 };
-assert.deepEqual(catalogChunkFiles(bundle, 'home'),
-  { 'en-US': '/assets/i18n.home.en-US-h1.js', 'zh-CN': '/assets/i18n.home.zh-CN-h2.js' });
-assert.deepEqual(catalogChunkFiles(bundle, FULL_CATALOG),
-  { 'en-US': '/assets/i18nCatalogEnUS-e1.js', 'zh-CN': '/assets/i18nCatalogZhCN-z1.js' });
-assert.deepEqual(catalogChunkFiles(bundle, 'home', true),
-  { 'en-US': '/assets/i18n.home~lazy.en-US-l1.js', 'zh-CN': '/assets/i18n.home~lazy.zh-CN-l2.js' }, 'the lazy chunks apart');
+const byLocale = (path) => Object.fromEntries(SUPPORTED_LOCALES.map((locale) => [locale, path(locale)]));
+assert.deepEqual(catalogChunkFiles(bundle, 'home'), byLocale((locale) => `/assets/i18n.home.${locale}-h1.js`));
+assert.deepEqual(catalogChunkFiles(bundle, FULL_CATALOG), byLocale((locale) => `/${fullFile(locale)}`));
+assert.deepEqual(catalogChunkFiles(bundle, 'home', true), byLocale((locale) => `/assets/i18n.home~lazy.${locale}-l1.js`),
+  'the lazy chunks apart');
 assert.throws(() => catalogChunkFiles(bundle, 'docs'), /the docs en-US catalog chunk is missing/);
 assert.throws(() => catalogChunkFiles(bundle, 'docs', true), /the docs lazy en-US catalog chunk is missing/);
 assert.throws(() => catalogChunkFiles({ ...bundle, 'assets/i18n-r1.js': { ...bundle['assets/i18n-r1.js'], code: 'import("./x.js")' } },
-  FULL_CATALOG), /no chunk imports assets\/i18nCatalogEnUS-e1\.js by its emitted name/);
+  FULL_CATALOG), /no chunk imports assets\/i18nCatalogEnUS-f1\.js by its emitted name/);
 assert.deepEqual(bootChunkProblems(bundle), [], 'a sound bundle: the boot chunk holds the boot runtime and no worker loads it');
 const polluted = { ...bundle, 'assets/i18n-r1.js': { ...bundle['assets/i18n-r1.js'],
   moduleIds: [...bundle['assets/i18n-r1.js'].moduleIds, '\0vite/preload-helper.js'] } };
@@ -499,7 +501,8 @@ assert.deepEqual(JSON.parse(served.replace(/^export default /, '').replace(/;\n$
 assert.throws(() => plugin.load('\0cot-i18n:nowhere.en-US'), /no page declares the page catalog "nowhere"/);
 assert.equal(plugin.load('/src/ui/i18n.ts'), null);
 const devHtml = plugin.transformIndexHtml.handler(readFileSync(resolve(ROOT, '404.html'), 'utf8'), {});
-assert.match(devHtml, /<meta name="cot-i18n-catalog" content="notFound" data-en-us="\/@cot-i18n\/notFound\.en-US\.js" data-zh-cn="\/@cot-i18n\/notFound\.zh-CN\.js">/);
+assert.ok(devHtml.includes(`<meta name="cot-i18n-catalog" content="notFound"${SUPPORTED_LOCALES
+  .map((locale) => ` data-${locale.toLowerCase()}="/@cot-i18n/notFound.${locale}.js"`).join('')}>`), 'the dev page names every locale\'s subset');
 const homeHtml = plugin.transformIndexHtml.handler(readFileSync(resolve(ROOT, real.catalogs.home.pages[0]), 'utf8'), {});
 assert.match(homeHtml, /data-en-us="\/@cot-i18n\/home\.en-US\.js"/);
 assert.doesNotMatch(homeHtml, /-lazy=/, 'the dev server names no lazy chunk: its page subset holds the lazy keys');

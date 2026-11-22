@@ -86,13 +86,13 @@ const AD_HOC_PLURALS = [
 ];
 
 /**
- * Catalog failures (rules 1-4 on the catalogs themselves).
+ * Catalog failures (rules 1-4 on the catalogs themselves), for the English source and every translation.
  * @param {Record<string, string>} en
- * @param {Record<string, string>} zh
+ * @param {Record<string, Record<string, string>>} translations  locale -> catalog
  */
-export function catalogFailures(en, zh) {
+export function catalogFailures(en, translations) {
   const failures = [];
-  for (const [locale, table] of [['en-US', en], ['zh-CN', zh]]) {
+  for (const [locale, table] of [['en-US', en], ...Object.entries(translations)]) {
     for (const [key, value] of Object.entries(table)) {
       const { errors, sequence } = parseMessage(value);
       for (const error of errors) failures.push(`${key} (${locale}): ${error}`);
@@ -101,12 +101,14 @@ export function catalogFailures(en, zh) {
       }
     }
   }
-  for (const [key, value] of Object.entries(en)) {
-    if (!Object.hasOwn(zh, key)) continue;
-    const want = messageArguments(value);
-    const got = messageArguments(zh[key]);
-    for (const name of want) if (!got.has(name)) failures.push(`${key} (zh-CN): drops the argument {${name}}`);
-    for (const name of got) if (!want.has(name)) failures.push(`${key} (zh-CN): invents the argument {${name}}`);
+  for (const [locale, table] of Object.entries(translations)) {
+    for (const [key, value] of Object.entries(en)) {
+      if (!Object.hasOwn(table, key)) continue;
+      const want = messageArguments(value);
+      const got = messageArguments(table[key]);
+      for (const name of want) if (!got.has(name)) failures.push(`${key} (${locale}): drops the argument {${name}}`);
+      for (const name of got) if (!want.has(name)) failures.push(`${key} (${locale}): invents the argument {${name}}`);
+    }
   }
   for (const key of Object.keys(en)) {
     for (const [pattern, other] of AD_HOC_PLURALS) {
@@ -179,11 +181,10 @@ function walkFiles(dir, accept, out = []) {
 
 /** Every failure across the repository's catalogs, static pages and sources. */
 export async function repositoryShapeFailures() {
-  const en = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
-  const zh = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
-  const { catalogText } = await import('../src/ui/i18nCatalog.ts');
+  const { catalogText, CATALOG } = await import('../src/ui/i18nCatalog.ts');
   const { renderProductStats } = await import('../src/productStats.ts');
-  const failures = catalogFailures(en, zh);
+  const { 'en-US': en, ...translations } = CATALOG;
+  const failures = catalogFailures(en, translations);
   const pages = [
     ...readdirSync(ROOT).filter((name) => name.endsWith('.html')).map((name) => join(ROOT, name)),
     ...walkFiles(join(ROOT, 'site'), (name) => name.endsWith('.html')),
