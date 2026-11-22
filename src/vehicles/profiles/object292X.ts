@@ -20,7 +20,6 @@ import { reserveDecorVolume } from './fieldChest.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { rubberSkirtRun } from './rubberSkirt.ts';
-import { addShtoraEyes } from './shtora.ts';
 import { blindTube } from './measuredPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { skirtSections } from './rubberSkirtSheets.ts';
@@ -288,35 +287,42 @@ function addCastCheeks(P: TankBuilderPort): void {
   P.add('turretDark', box(2 * NOSE_XI - .01, .40, .01), 0, .20, SHELL_END_Z + .006);
 }
 
-/** Shtora-style electro-optical jammers ahead of the weight-imitator boxes (object292-cheeks-275, Kevin 2026-11-22: "put
- * tech like shtora or some other sensors in front of them"; his look pick: a jammer each side with a laser-warning head
- * on it). The jammers are the fleet's shared Shtora-1 OTShU pair (profiles/shtora.ts, as the T-84's: the armoured box,
- * the red lens in its rim and the lid), each on a bolted bracket of two legs, a cross plate and foot plates seated on the
- * cast nose's top ahead of the box; on each jammer's outboard rear corner a laser-warning head (a squat drum with its
- * dark sensor band) on a short post. Turret frame. */
-const JAMMER = { x: .74, z: 1.31, w: .24, h: .27, d: .22, lift: .03 } as const;
-function addJammers(P: TankBuilderPort): void {
-  const seg = P.q ? 24 : 14, { x, z, w, h, d, lift } = JAMMER;
-  // the seat: the nose's top under the bracket's legs on both sides, the pair level and clear over the highest
-  const legX = [-.08, .08], seat = Math.max(...[-1, 1].flatMap((s) => legX.map((dx) => noseTopAt(s, s * x + dx, z))));
-  const y0 = seat + lift, top = y0 + h + .04;
-  addShtoraEyes({ mats: P.mats, turretG: P.turretG, disposables: P.disposables,
-    add: (slot, geometry, gx, gy, gz) => P.addEquipment(slot, geometry, gx, gy, gz) },
-  { x, y: y0 + h / 2, z, scale: 1, round: true, kit: false });
+/** The sensor pods ahead of the weight-imitator boxes (object292-cheeks-275, Kevin 2026-11-22: "put tech like shtora or
+ * some other sensors in front of them", then on the stills, "the shtora looks ugly make them custom sensors instead").
+ * Each is a low armoured housing in the turret's own paint: flat-topped, its front raked back over a short upright lip,
+ * its edges chamfered; a tinted wide-angle window in a dark frame across the raked face and a small round lens beside
+ * it; a laser-warning dome on its outboard rear corner. It sits on a solid plinth seated into the cast nose (no legs),
+ * the plinth's bolted foot flange round it. Turret frame. */
+const SENSOR = { x: .74, z: 1.31, w: .26, h: .15, d: .24, lift: .02, rake: .09, lip: .03 } as const;
+/** The pod's section (z, y) over its floor, drawn in by `inset` (its chamfered ends). */
+function sensorRing(inset: number): V2[] {
+  const { h, d, rake, lip } = SENSOR, i = inset;
+  return [[-d / 2 + i, i], [d / 2 - .02 - i, i], [d / 2 - i, lip], [d / 2 - rake - i * .6, h - i], [-d / 2 + .015 + i, h - i], [-d / 2 + i, h - .015 - i]];
+}
+function addSensors(P: TankBuilderPort): void {
+  const seg = P.q ? 24 : 14, { x, z, w, h, d, lift, rake, lip } = SENSOR, C = .012;
+  const faceA = Math.atan2(rake, h - lip), n: [number, number] = [Math.sin(faceA), Math.cos(faceA)];   // the raked face's normal (y, z)
   for (const s of [-1, 1]) {
-    for (const dx of legX) {
-      const lx = s * x + dx, y = noseTopAt(s, lx, z);
-      P.addEquipment('turretDetail', box(.05, .012, .16), lx, y + .004, z);                                // the foot plate
-      P.addEquipment('turretDetail', box(.032, y0 - y + .01, .10), lx, (y + y0) / 2, z);                   // the leg
-      for (const dz of [-.055, .055]) P.addEquipment('turretDark', cylY(.011, .012, .012, 6), lx, y + .014, z + dz);
-    }
-    P.addEquipment('turretDetail', box(w - .02, .018, d * .8), s * x, y0 + .004, z);                        // the cross plate
-    // the laser-warning head on the outboard rear corner, on the lid
-    const hx = s * (x + w / 2 - .045), hz = z - d / 2 + .05;
-    P.addEquipment('turretDetail', cylY(.016, .018, .022, 8), hx, top + .011, hz);
-    P.addEquipment('turretDetail', cylY(.038, .042, .04, seg), hx, top + .042, hz);
-    P.addEquipment('turretDark', cylY(.043, .043, .014, seg), hx, top + .042, hz);
-    P.addEquipment('turretDetail', KIT.sph(.038, seg, Math.PI / 2).scale(1, .35, 1), hx, top + .062, hz);
+    const cx = s * x, seats = [-.10, 0, .10].flatMap((dx) => [-.08, .08].map((dz) => noseTopAt(s, cx + dx, z + dz)));
+    const y0 = Math.max(...seats) + lift, foot = Math.min(...seats) - .02;
+    // the plinth, sunk into the nose, and its foot flange
+    P.addEquipment('turretDetail', box(w - .04, y0 - foot, d - .05), cx, (y0 + foot) / 2, z - .01);
+    P.addEquipment('turretDetail', box(w + .01, .016, d - .01), cx, Math.min(...seats) + .004, z - .01);
+    for (const dx of [-.11, .11]) for (const dz of [-.09, .07]) P.addEquipment('turretDark', cylY(.011, .012, .012, 6), cx + dx, noseTopAt(s, cx + dx, z + dz) + .012, z + dz);
+    // the housing
+    P.addEquipment('turretDetail', loftX([{ x: -w / 2, ring: sensorRing(C) }, { x: C - w / 2, ring: sensorRing(0) },
+      { x: w / 2 - C, ring: sensorRing(0) }, { x: w / 2, ring: sensorRing(C) }]), cx, y0, z);
+    // the window across the raked face, in its frame, and the small lens outboard of it
+    const fy = y0 + (lip + h) / 2, fz = z + d / 2 - rake / 2;
+    P.addEquipment('turretDark', box(w - .05, (h - lip) / Math.cos(faceA) - .025, .008), cx, fy + n[0] * .003, fz + n[1] * .003, -faceA, 0, 0);
+    P.addEquipment('turretGlass', box(w - .085, (h - lip) / Math.cos(faceA) - .055, .006), cx - s * .012, fy + n[0] * .007, fz + n[1] * .007, -faceA, 0, 0);
+    const lx = cx + s * (w / 2 - .028);
+    P.addEquipment('turretGlass', cylZ(.016, .01, seg).rotateX(-faceA), lx, fy + n[0] * .006, fz + n[1] * .006);
+    // the laser-warning dome on the outboard rear corner of its roof
+    const hx = cx + s * (w / 2 - .045), hz = z - d / 2 + .05, top = y0 + h;
+    P.addEquipment('turretDetail', cylY(.034, .038, .025, seg), hx, top + .012, hz);
+    P.addEquipment('turretDark', cylY(.039, .039, .010, seg), hx, top + .022, hz);
+    P.addEquipment('turretDetail', KIT.sph(.033, seg, Math.PI / 2).scale(1, .45, 1), hx, top + .027, hz);
   }
 }
 
@@ -586,7 +592,7 @@ function buildObject292X(P: TankBuilderPort): void {
   buildT80UXCasting(P, { cheekNoses: false });
   addCastCheeks(P);
   addCheekBlocks(P);
-  addJammers(P);
+  addSensors(P);
   addSmoke(P);
   addBox(P);
   addRoof(P);
