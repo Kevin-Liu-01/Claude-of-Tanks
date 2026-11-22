@@ -5801,7 +5801,7 @@
   "endScreen.outcome.juggernaut_survived.defeat": "El Coloso sobrevivió a la cacería.",
   "endScreen.outcome.weapon_ladder_complete.victory": "Tu equipo completó primero la progresión de armas.",
   "endScreen.outcome.weapon_ladder_complete.defeat": "El enemigo completó primero la progresión de armas.",
-  "endScreen.outcome.escort_extracted.victory": "Suficientes tropas terrestres llegaron al punto de extracción.",
+  "endScreen.outcome.escort_extracted.victory": "Han llegado suficientes tropas terrestres al punto de extracción.",
   "endScreen.outcome.escort_lost.defeat": "Se perdieron demasiadas tropas terrestres.",
   "endScreen.outcome.escort_time_expired.defeat": "Se agotó el tiempo antes de que las tropas llegaran al punto de extracción.",
   "studio.director.ui.card": "Tarjeta 1.91:1",
