@@ -38,8 +38,8 @@ interface PointerLockFeedbackRuntime {
 // dismiss never fetches
 const regionPort = createLazyChunk(() => import('../ui/battleNotices.ts').then((module) => module.battleNotices));
 const lazyBattleNotices: BattleNoticePort = {
-  show(options) {
-    void regionPort.load().then((port) => { port.show(options); }, () => {});
+  condition(options) {
+    void regionPort.load().then((port) => { port.condition(options); }, () => {});
   },
   dismiss(id) {
     if (regionPort.state === 'ready' || regionPort.state === 'loading') void regionPort.load().then((port) => { port.dismiss(id); }, () => {});
@@ -82,7 +82,7 @@ export function createPointerLockFeedbackRuntime({
   // top over the network's banner, UI-LOCKDOWN B14)
   const showToast = (): void => {
     if (disposed || !toastShown) return;
-    notices.show({
+    notices.condition({
       id: TOAST_ID, className: 'cot-lock-notice', severity: 'warning', text: t('pointerLock.toast.unavailable'),
       durationMs: 5900, dismissible: false,
     });

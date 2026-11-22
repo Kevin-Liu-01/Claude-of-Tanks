@@ -16,7 +16,7 @@ class FakeElement {
 // (the battle's notice region, ui/battleNotices.ts: the notice is the kit's, so the receipt reads what it was handed)
 const shown = [];
 const dismissed = [];
-const notices = { show: (options) => shown.push(options), dismiss: (id) => dismissed.push(id) };
+const notices = { condition: (options) => shown.push(options), dismiss: (id) => dismissed.push(id) };
 
 {
   const canvas = new FakeElement();

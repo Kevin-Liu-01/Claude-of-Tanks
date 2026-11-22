@@ -93,7 +93,7 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
     // (the alert's place width, and its lines)
     alertW: parseFloat(document.body.style.getPropertyValue('--hud-touch-alert-w')) || null,
     alertLines: (() => {
-      const copy = document.querySelector('.cot-alert.show .cot-alert-copy');
+      const copy = document.querySelector('.cot-alert.show .cot-c-notice__body');
       if (!copy) return 0;
       const range = document.createRange();
       range.selectNodeContents(copy);

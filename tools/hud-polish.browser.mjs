@@ -104,7 +104,7 @@ try {
         for (let i = 0; i < 30; i++) { f.frame.timeS += 1 / 60; f.hud.update(f.frame); }
         for (let i = 0; i < 6; i++) await new Promise(requestAnimationFrame);
         await new Promise((done) => setTimeout(done, 400));
-        return lineEnds('.cot-alert.show .cot-alert-copy', true);
+        return lineEnds('.cot-alert.show .cot-c-notice__body', true);
       }, lineEnds.toString());
       if (!report.alert) failures.push(`${size}: no alert shown`);
       else for (const [index, words] of report.alert.entries()) {

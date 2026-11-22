@@ -179,7 +179,7 @@ const live = (patch = {}) => ({
   let notice = null;
   let raised = 0;
   const notices = {
-    show: (options) => { raised++; notice = { ...options }; },
+    condition: (options) => { raised++; notice = { ...options }; },
     dismiss: (id) => { assert.equal(id, 'cot-mp-banner'); notice = null; },
   };
   const surface = createMultiplayerStatusSurface({ host: 'battle', onLeave: () => { leaves++; }, storage, now: () => at, leaveConfirmMs: 2000, notices });
@@ -254,7 +254,8 @@ const live = (patch = {}) => ({
   surface.togglePanel(false);
   assert.ok(notice, 'and closing it puts it back');
   assert.equal(strip.className, 'cot-mp-strip bad');
-  assert.equal(panel.className, 'cot-mp-panel bad');
+  // (275 motion vocabulary: the panel drops in, components/surfaceMotion.css)
+  assert.equal(panel.className, 'cot-mp-panel cot-m-drop bad');
   assert.equal(rows.children.filter((row) => !row.hidden)[0].children[1].textContent, 'Reconnecting · attempt 2');
   // degraded: the banner explains, the leave stays out of the way
   surface.set(live({ rttMs: 210, health: 'degraded', healthReason: 'rtt' }), { kind: 'degraded', reason: 'rtt' }, at);
@@ -355,7 +356,7 @@ console.log('multiplayerStatus.selftest: strip, banner, panel rows, leave arming
   assert.equal(formatBanner({ kind: 'migrating', host: 'Me', self: true }), 'You are the new host · resuming the match…');
   // the real surface: the badge cell appears with the role and goes with it; the migration banner is not a leave banner
   let notice = null;
-  const notices = { show: (options) => { notice = options; }, dismiss: () => { notice = null; } };
+  const notices = { condition: (options) => { notice = options; }, dismiss: () => { notice = null; } };
   const root = createMultiplayerStatusSurface({ host: 'battle', now: () => 1000, onLeave: () => {}, notices });
   const badge = root.root.find((node) => node.className === 'unit host');
   assert.ok(badge && badge.hidden, 'the badge cell exists, hidden');
