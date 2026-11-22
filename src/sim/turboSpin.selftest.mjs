@@ -18,7 +18,8 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState, updateTank, SIM_DT, AIR_SPIN_AXES, airSpinAxisFor, canTankAirSpin } from './movement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
-import { applyHullActions, turboReadyIn } from './hullActions.ts';
+import { applyHullActions } from './hullActions.ts';
+import { turboReadyIn } from './modeMoves.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { applyMovementPredictionState, captureMovementPredictionState } from './movementPredictionState.ts';
 
