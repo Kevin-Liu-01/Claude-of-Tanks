@@ -25,7 +25,10 @@ for (const quality of ['high', 'low']) {
   tank.root.updateMatrixWorld(true);
   const hullSize = size(hull);
   near(hullSize.x, 3.662000, `${quality}: narrower frontal envelope`);
-  near(hullSize.y, 2.067000, `${quality}: hull height retained`);
+  // 274 (turret-deck-gate): the APU housings beside the turret's bustle came down 10 cm (14.5 cm tall on 2 cm feet, top
+  // 1.96 m, were 2.06 m: they stood 9.4 cm over the turret's foot; leopard2ImprovedKit.ts apuHousings), so the hull's
+  // top is now the deck kit's 1.9775, not the housings' 2.067
+  near(hullSize.y, 1.977500, `${quality}: hull height (the APU housings lowered in 274)`);
   near(hullSize.z, 7.912000, `${quality}: hull length retained`);
   near(size(turret).x, 2.905157, `${quality}: turret retains its width`);
   near(size(gun.getObjectByName('gunMount')).x, 0.443400, `${quality}: mantlet retains its width`);

@@ -39,6 +39,8 @@ const TURRET_DECK_CARRY = Object.freeze({
   ares_apc: { deck: 0, props: 1 },
   // deck kit on the right 2 cm over the foot
   bmpt_terminator2: { deck: 0, props: 1 },
+  // the classic turret opts out of the foot band (modern3.ts buildM2A2Bradley): its foot 2.1 cm into the hull kit ahead-left
+  m2a2_bradley: { deck: 1, props: 0 },
 });
 const TURRET_DECK_LANES = Object.freeze(['dardo', 'leopard2_proto', 'marder1a3', 't80uk']);
 

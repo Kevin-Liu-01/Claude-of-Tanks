@@ -396,7 +396,7 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
       // the builder's own seat knobs (turretSeatRace.ts), so a row names the setting that left a surface low
       const own = root.getObjectByName('rig_turret').userData;
       const knobs = Object.fromEntries(['turretSeatKeepR', 'turretSeatRiseM', 'turretSeatReadM', 'turretSeatMinY',
-        'turretSeatCollar'].filter((key) => own[key] !== undefined).map((key) => [key, own[key]]));
+        'turretSeatCollar', 'turretSeatFootBand'].filter((key) => own[key] !== undefined).map((key) => [key, own[key]]));
       // what the seat could not lift (turretSeatRace.ts seatFootBand) and the hull parts the ring-zone guard caught
       // (ringZoneGuard.ts), so a failing row names its cause
       const shortfall = own.turretSeatShortfall ?? null;
