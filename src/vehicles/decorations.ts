@@ -2747,14 +2747,17 @@ const brazilShackles: DecorManifestRow = { kit: 'shackles', p: 1, v: { v: 'shack
 // turretRear seat is the roof) and never the deck's stern corners, which the decoration board's full-depression bore sweep
 // crosses: the rear rack, the turret's flank and the aft fender come before the deck beside the turret; brazil-kit-274's
 // Node census)
-const brazilAft = (side: 1 | -1, x = 0.12): Array<[string, DecorSlotArgs]> => [
+const brazilAft = (side: 1 | -1, x = 0.12, deck = true): Array<[string, DecorSlotArgs]> => [
   ['hullRearRack', { x: side * x }],
   ['turretSide', { side, rear: true }],
   ['fender', { side, zFrac: -0.30, small: true }],
-  ['rearDeck', { corner: side }],
+  ...(deck ? [['rearDeck', { corner: side }] as [string, DecorSlotArgs]] : []),
 ];
 const brazilLoad = (kit: string, v: Omit<DecorKitArgs, 'rng'>, side: 1 | -1, x = 0.12): DecorManifestRow =>
   ({ kit, p: 1, v, slot: ['fleetCargo', { routes: brazilAft(side, x) }] });
+/** The EE pair's loads: off the engine deck's corners, where the raised guns' full depression passes over the drums. */
+const eeLoad = (kit: string, v: Omit<DecorKitArgs, 'rng'>, side: 1 | -1, x = 0.12): DecorManifestRow =>
+  ({ kit, p: 1, v, slot: ['fleetCargo', { routes: brazilAft(side, x, false) }] });
 const brazilCable = (len: number, side: 1 | -1): DecorManifestRow =>
   ({ kit: 'cable', p: 1, v: { len }, slot: ['fleetCargo', { routes: [['hullSideCable', { side }], ['hullSideTop', { side }],
     ['hullSideCable', { side: -side }], ['hullSideTop', { side: -side }]] }] });
@@ -2799,15 +2802,15 @@ const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Obj
   ],
   ee_t3_osorio: (): DecorManifestRow[] => [
     brazilShackles,
-    brazilLoad('cargo', { v: 'large-rucksack' }, -1), brazilLoad('cargo', { v: 'camo-net-bag' }, 1),
-    brazilLoad('cargo', { v: 'blue-water-can' }, 1, 0.4), brazilLoad('cargo', { v: 'fifty-cal-ammo-can' }, -1, 0.4),
-    brazilLoad('cargo', { v: 'ration-case' }, 1, 0.6),
+    eeLoad('cargo', { v: 'large-rucksack' }, -1), eeLoad('cargo', { v: 'camo-net-bag' }, 1),
+    eeLoad('cargo', { v: 'blue-water-can' }, 1, 0.4), eeLoad('cargo', { v: 'fifty-cal-ammo-can' }, -1, 0.4),
+    eeLoad('cargo', { v: 'ration-case' }, 1, 0.6),
   ],
   ee_t4_osorio: (): DecorManifestRow[] => [
     brazilShackles,
-    brazilLoad('cargo', { v: 'large-rucksack' }, 1), brazilLoad('cargo', { v: 'bedroll-pair' }, -1),
-    brazilLoad('cargo', { v: 'spare-optics-case' }, 1, 0.4), brazilLoad('cargo', { v: 'medical-case' }, -1, 0.4),
-    brazilLoad('cargo', { v: 'blue-water-can' }, 1, 0.6),
+    eeLoad('cargo', { v: 'large-rucksack' }, 1), eeLoad('cargo', { v: 'bedroll-pair' }, -1),
+    eeLoad('cargo', { v: 'spare-optics-case' }, 1, 0.4), eeLoad('cargo', { v: 'medical-case' }, -1, 0.4),
+    eeLoad('cargo', { v: 'blue-water-can' }, 1, 0.6),
   ],
 });
 // Release 269 (the owner 2026-11-05: "make the m113s have a lot more personal equipment annd decorations and tank
