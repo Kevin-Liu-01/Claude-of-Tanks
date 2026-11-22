@@ -12,6 +12,9 @@
 //   briefly, in the planners' alert seat on the centre line. Its own module, so the HUD (which has the kit already) owns
 //   it per instance and a boot module that raises a condition gains a few bytes here, never the kit.
 // The kit loads on the first condition; the killcam's veil hides the region (battleHudLayout.css body.cot-kc-live).
+// The condition lane is the page's (one region, on the page's document): on a couch split screen only the page's own HUD
+// raises conditions (its player's tank, the network, the pointer lock), never a pane's HUD, whose seat's state stays on its
+// own surfaces (its reticle's chip, its own event lane). Per-pane regions are 275.1's.
 // The game's pause holds both lanes' time (pause, from the HUD's ui:pause).
 import { createLazyChunk } from '../app/lazyChunk.ts';
 import type { ToastOptions } from './components/notice.ts';
