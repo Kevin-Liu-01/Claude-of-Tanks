@@ -2,8 +2,8 @@
  * The phone controller's page (/pad, docs/PHONE-CONTROLLER.md "Controls"): pair with a code, then play. The controller
  * is a tank's control panel held in two hands (owner 2026-11-20: "use joysticks buttons in specific areas, big buttons and
  * surface areas for all capabilities, special sections from left and right for the special abilities"): five zones, the
- * same in every mode (padLayout.ts). The left thumb has a floating stick and its hold key; the right thumb has the
- * gunner's sight to drag in, the fire button in its collar and the keys over it; the centre deck holds the rounds (or
+ * same in every mode (padLayout.ts). The left thumb has a floating stick and its hold key; the right thumb has a
+ * floating aim stick on the gunner's sight, the fire button in its collar and the keys over it; the centre deck holds the rounds (or
  * Air Support's call-ins); a special column runs down each edge. The desktop's status says which mode the player is in
  * (tank, binoculars, drone, AC-130, Watch, destroyed) and which keys this player has, and the panel lays out that
  * mode's controls. Every control becomes an axes frame or a ctl message on the link; the desktop maps them onto its
@@ -12,8 +12,8 @@
  *
  * The phone is felt as well as seen (owner 2026-11-03: "it should buzz and vibrate"): every press ticks, and the battle's
  * cues (padCues.ts: the gun firing, hits given and taken, modules, fire, crashes, kills, death, the sight's lock) each
- * play their own buzz the moment the desktop sends them. A thumb on the fire button drags to aim, so one thumb aims and
- * shoots, and the sight's gain follows the finger's speed. A phone's first battle panel (its first pairing's) shows the
+ * play their own buzz the moment the desktop sends them. The aim stick's push is how fast the gun turns, a gamepad's right
+ * stick; a thumb on the fire button is an aim stick too, so one thumb aims and shoots. A phone's first battle panel (its first pairing's) shows the
  * zones' names over the live panel for ten seconds, or until Skip.
  *
  * The panel is always laid out landscape. A page the system shows portrait (an iPhone with rotation lock on, held
@@ -21,7 +21,7 @@
  */
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState, PadPhoneState } from './padLink.ts';
-import { DRIVE_STICK, aimGain, aimSpeed, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
+import { AIM_STICK, DRIVE_STICK, TRIGGER_AIM_STICK, aimStickStep, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
 import { PAD_LAYOUTS, padVisible } from './padLayout.ts';
 import type { PadControl, PadModeLayout } from './padLayout.ts';
 import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
@@ -46,8 +46,6 @@ const RESUME_KEY = 'cot.pad.resume';
 const TOUR_KEY = 'cot.pad.tour.v2';
 const TOUR_MS = PAD_TOUR_MS;
 const HEARTBEAT_MS = 100;
-/** A thumb that lands on the fire button aims once it has moved this far (a press's wobble never nudges the gun). */
-const FIRE_AIM_DEADZONE_PX = 10;
 
 interface PadSettings { aim: number; hand: 'right' | 'left'; buzz: boolean; flip: boolean }
 const AIMS = [0.5, 1, 1.5, 2];
@@ -122,7 +120,7 @@ const ctl = html(`<section class="pad-ctl" hidden data-mode="idle">
   <div class="pad-gun">
     <div class="pad-aim">
       <span class="pad-aim-name" aria-hidden="true"></span>
-      <span class="pad-reticle" aria-hidden="true"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M-6 7 0 1 6 7M-46 0H-14M14 0H46M-38-4V4M-30-2.5V2.5M-22-2.5V2.5M22-2.5V2.5M30-2.5V2.5M38-4V4M0 14V42M-3 22H3M-3 30H3M-5 38H5"/></svg></span>
+      <span class="pad-well" aria-hidden="true"><span class="pad-reticle"><svg viewBox="-50 -50 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M-6 7 0 1 6 7M-46 0H-14M14 0H46M-38-4V4M-30-2.5V2.5M-22-2.5V2.5M22-2.5V2.5M30-2.5V2.5M38-4V4M0 14V42M-3 22H3M-3 30H3M-5 38H5"/></svg></span><span class="pad-knob"></span></span>
     </div>
     <div class="pad-fire-keys" role="group"></div>
     <div class="pad-trigger">
@@ -179,13 +177,14 @@ const leftColumn = $<HTMLElement>('.pad-col-l');
 const rightColumn = $<HTMLElement>('.pad-col-r');
 const stickZone = $<HTMLElement>('.pad-stick');
 const stickName = $<HTMLElement>('.pad-stick-name');
-const well = $<HTMLElement>('.pad-well');
-const knob = $<HTMLElement>('.pad-knob');
+const well = $<HTMLElement>('.pad-well', stickZone);
+const knob = $<HTMLElement>('.pad-knob', stickZone);
 const stickKeys = $<HTMLElement>('.pad-stick-keys');
 const deck = $<HTMLElement>('.pad-deck');
 const aimPad = $<HTMLElement>('.pad-aim');
 const aimName = $<HTMLElement>('.pad-aim-name');
-const reticle = $<HTMLElement>('.pad-reticle');
+const aimWell = $<HTMLElement>('.pad-well', aimPad);
+const aimKnob = $<HTMLElement>('.pad-knob', aimPad);
 const fireKeys = $<HTMLElement>('.pad-fire-keys');
 const trigger = $<HTMLElement>('.pad-trigger');
 const fireButton = $<HTMLButtonElement>('.pad-fire');
@@ -259,7 +258,7 @@ let ringAnimations: Animation[] = [];
 let reloadKey = '';
 /** Diagnostics for the pad e2e and the owner's real-device check. */
 interface PhoneDebug {
-  sent: number; held: number; throttle: number; steer: number; released: number; rttMs: number | null; applyMs: number; state: PadPhoneState;
+  sent: number; held: number; throttle: number; steer: number; aimX: number; released: number; rttMs: number | null; applyMs: number; state: PadPhoneState;
   frame: object | null; mode: PadMode; keys: string[];
   /** The buzzes played, by name, the guide's last state (shown, skipped, timed out) and how long it last stayed open. */
   buzz: Record<string, number>; tour: PadTourState; tourMs: number;
@@ -267,7 +266,7 @@ interface PhoneDebug {
   preview?: (status: PadStatus) => void;
 }
 const debug: PhoneDebug | null = import.meta.env.DEV || /[?&]padDebug\b/.test(location.search)
-  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, steer: 0, released: 0, rttMs: null,
+  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, steer: 0, aimX: 0, released: 0, rttMs: null,
     applyMs: 0, state: 'join', frame: null, mode: 'idle', keys: [], buzz: {}, tour: 'hidden', tourMs: 0 }) : null;
 
 /** Send the current frame now when it changed: every touch event goes at once (the data channel is free; a wait for the
@@ -283,7 +282,7 @@ function send(force = false): void {
   link.sendAxes(encodePadAxes(axes, bytes), changed);
   lastSentKey = key;
   lastSendAt = now;
-  if (debug) { debug.sent++; debug.held = axes.held; debug.throttle = axes.throttle; debug.steer = axes.steer; }
+  if (debug) { debug.sent++; debug.held = axes.held; debug.throttle = axes.throttle; debug.steer = axes.steer; debug.aimX = axes.aimX; }
 }
 setInterval(() => {
   if (root.dataset.frame !== undefined && viewportKey() !== frame.seen) layoutFrame();
@@ -433,70 +432,84 @@ stickZone.addEventListener('pointerup', stickEnd);
 stickZone.addEventListener('pointercancel', stickEnd);
 stickZone.addEventListener('lostpointercapture', stickEnd);
 
-// ---- the sight -------------------------------------------------------------------------------------------------------
-// One finger aims at a time: the sight's, or the trigger's. A thumb on the fire button drags to aim once it has moved
-// past a press's wobble, so one thumb aims and shoots (held, the gun fires again the moment it loads); a finger that
-// lands on the sight takes the aim from it. The gain follows the finger's speed (padInput.ts aimGain): a slow drag is
-// precise, a flick swings the gun round (in the drone and Watch, the camera).
+// ---- the aim stick ---------------------------------------------------------------------------------------------------
+// The right thumb's stick (owner 2026-11-21: "it should be a joystick too. its just more intuitive"): a floating stick
+// like the drive's, on the gunner's sight. Its push is how fast the gun turns (padInput.ts aimStickStep, a gamepad's
+// right stick), as long as the thumb holds it, and held at the rim the turn speeds up; in the drone and Watch it turns
+// the camera. One finger aims at a time: the sight's, or the trigger's. A thumb on the fire button is an aim stick from
+// where it pressed, past a press's wobble, so one thumb aims and shoots (held, the gun fires again the moment it loads);
+// a finger that lands on the sight takes the aim from it.
 let aimPointer: number | null = null;
-let aimLast = { x: 0, y: 0, t: 0 };
 let aimOrigin = { x: 0, y: 0 };
-let aimSpeedNow = 0;
-/** The finger must move this far (frame px) before it aims: 0 on the sight, a press's wobble on the trigger. */
-let aimDeadzone = 0;
+let aimCurve = AIM_STICK;
 /** The aiming finger is the trigger's (a finger on the sight takes over from it). */
 let aimByTrigger = false;
-/** The scope is in: the gain stays lower, so a flick never throws the sight off a target. */
+let aimPush: [number, number] = [0, 0];
+let aimRimMs = 0;
+let aimLastT = 0;
+let aimFrame = 0;
+/** The scope is in: a push held at the rim never speeds up, so it never throws the sight off a target. */
 let scoped = false;
-/** The reticle leans toward the drag (a third of it, at most 40 px) and settles back on release. */
-const leanReticle = (dx: number, dy: number): void => {
-  const reach = Math.hypot(dx, dy) / 3;
-  const scale = reach > 40 ? 40 / reach : 1;
-  reticle.style.transform = `translate(${Math.round((dx / 3) * scale)}px,${Math.round((dy / 3) * scale)}px)`;
-};
-function aimBegin(event: PointerEvent, deadzone: number, byTrigger: boolean): void {
+/** Each frame the thumb holds the stick, the push turns the gun by its rate over the frame (the axes frame's totals). */
+function aimTick(now: number): void {
+  aimFrame = 0;
+  if (aimPointer === null) return;
+  const step = aimStickStep(aimPush[0], aimPush[1], now - aimLastT, aimRimMs, settings.aim, scoped);
+  aimLastT = now;
+  aimRimMs = step.rimMs;
+  if (step.dx !== 0 || step.dy !== 0) {
+    axes.aimX += step.dx;
+    axes.aimY += step.dy;
+    send();
+  }
+  aimFrame = requestAnimationFrame(aimTick);
+}
+function centreAim(): void {
+  aimPointer = null;
+  aimPush = [0, 0];
+  aimRimMs = 0;
+  if (aimFrame) { cancelAnimationFrame(aimFrame); aimFrame = 0; }
+  aimKnob.style.transform = 'translate(0px,0px)';
+  aimWell.style.transform = '';
+  aimPad.classList.remove('is-down');
+}
+function aimBegin(event: PointerEvent, byTrigger: boolean): void {
   if (ctl.dataset.aim === 'off') return;
   if (aimPointer !== null && !(aimByTrigger && !byTrigger)) return;
+  centreAim();
   aimPointer = event.pointerId;
   aimByTrigger = byTrigger;
-  aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
+  aimCurve = byTrigger ? TRIGGER_AIM_STICK : AIM_STICK;
   aimOrigin = { x: event.clientX, y: event.clientY };
-  aimSpeedNow = 0;
-  aimDeadzone = deadzone;
+  if (!byTrigger) {
+    // the well comes to the thumb, as the drive's does; the trigger's thumb moves the knob in the well where it rests
+    const rest = aimWell.getBoundingClientRect();
+    const [ox, oy] = inFrame(event.clientX - (rest.left + rest.width / 2), event.clientY - (rest.top + rest.height / 2));
+    aimWell.style.transform = `translate(${Math.round(ox)}px,${Math.round(oy)}px)`;
+  }
+  aimPad.classList.add('is-down');
+  aimLastT = performance.now();
+  aimFrame = requestAnimationFrame(aimTick);
 }
 function aimMove(event: PointerEvent): void {
   if (event.pointerId !== aimPointer) return;
-  const [lx, ly] = inFrame(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
-  if (aimDeadzone) {
-    // still inside the press's wobble: nothing moves, and the aim starts from here, without a jump
-    if (Math.hypot(lx, ly) < aimDeadzone) return;
-    aimDeadzone = 0;
-    aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
-    return;
-  }
-  // totals, not deltas: a lost frame loses no aim (padProtocol's axes frame); the finger's own distance, in the frame's axes
-  const [dx, dy] = inFrame(event.clientX - aimLast.x, event.clientY - aimLast.y);
-  aimSpeedNow = aimSpeed(aimSpeedNow, Math.hypot(dx, dy), event.timeStamp - aimLast.t);
-  const gain = settings.aim * aimGain(aimSpeedNow, scoped);
-  axes.aimX += dx * gain;
-  axes.aimY += dy * gain;
-  aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
-  leanReticle(lx, ly);
-  send();
+  const [dx, dy] = inFrame(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
+  aimPush = stickValue(dx, dy, aimCurve);
+  const [kx, ky] = stickKnob(dx, dy, aimCurve.radiusPx);
+  aimKnob.style.transform = `translate(${Math.round(kx)}px,${Math.round(ky)}px)`;
 }
 function aimEnd(event: PointerEvent): void {
   if (event.pointerId !== aimPointer) return;
-  aimPointer = null;
-  leanReticle(0, 0);
+  centreAim();
 }
 aimPad.addEventListener('pointerdown', (event) => {
   if (aimPointer !== null && !aimByTrigger) return;
   event.preventDefault();
   try { aimPad.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
-  aimBegin(event, 0, false);
+  aimBegin(event, false);
 });
-// the trigger's press (and its capture) is press()'s; the same finger's drag aims
-fireButton.addEventListener('pointerdown', (event) => aimBegin(event, FIRE_AIM_DEADZONE_PX, true));
+// the trigger's press (and its capture) is press()'s; the same finger's push aims
+fireButton.addEventListener('pointerdown', (event) => aimBegin(event, true));
 for (const host of [aimPad, fireButton]) {
   host.addEventListener('pointermove', aimMove);
   host.addEventListener('pointerup', aimEnd);
@@ -511,10 +524,9 @@ function releaseControls(): void {
   if (debug) debug.released++;
   for (const release of [...letGo]) release();
   stickPointer = null;
-  aimPointer = null;
   axes.held = 0;
   centreStick();
-  leanReticle(0, 0);
+  centreAim();
   send(true);
 }
 window.addEventListener('blur', releaseControls);
@@ -602,7 +614,7 @@ function renderLayout(mode: PadMode, mask: number): void {
   ctl.dataset.aim = aim ? 'on' : 'off';
   ctl.dataset.fire = fire ? 'on' : 'off';
   if (!stick && stickPointer !== null) { stickPointer = null; centreStick(); }
-  if (!aim && aimPointer !== null) { aimPointer = null; leanReticle(0, 0); }
+  if (!aim && aimPointer !== null) centreAim();
   // every hold the new layout does not show lets go (FIRE's, the brake's, Watch's climb)
   const shown = new Set<string>([...ctl.querySelectorAll<HTMLElement>('[data-holds]')].map((element) => element.dataset.id!));
   for (const action of PAD_HOLD_ACTIONS) {

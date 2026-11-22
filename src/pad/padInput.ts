@@ -2,9 +2,9 @@
  * The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"), pure and Node-runnable.
  *
  * The phone's side: the two thumbs. The left is a floating stick (it lands where the thumb does; its push is the drive's
- * throttle and steer), the right an aim area (a drag aims at the speed curve's gain, so a slow drag is precise and a
- * flick swings the gun round). The frame's quarter turn for a page the system keeps portrait, and the safe areas on the
- * frame's own sides. The desktop's mapper that applies what the phone sends is padDesk.ts.
+ * throttle and steer), the right a floating aim stick (its push is how fast the gun turns, a gamepad's right stick).
+ * The frame's quarter turn for a page the system keeps portrait, and the safe areas on the frame's own sides. The
+ * desktop's mapper that applies what the phone sends is padDesk.ts.
  */
 
 // ---- the sticks (phone side) -------------------------------------------------------------------------------------
@@ -69,31 +69,36 @@ export function frameInsets(turnDeg: number, insets: readonly number[]): number[
   return [0, 1, 2, 3].map((side) => insets[(side + k) % 4] ?? 0);
 }
 
-// ---- the sight's drag (phone side) -------------------------------------------------------------------------------
+// ---- the aim stick (phone side) ----------------------------------------------------------------------------------
 
-/** The sight's gain by the finger's speed (owner 2026-11-03: looking around "needs to be a lot more intuitive"): a
- *  slow drag keeps the mouse's precision (1×), a swipe turns a few times as far and a flick swings the gun round, so a
- *  turn to the rear is one or two flicks rather than six drags across the sight. Speeds in px per ms, smoothed. */
-export interface AimCurve {
-  /** Below this speed the drag is 1:1. */
-  slowPxPerMs: number;
-  /** The gain added per px/ms above it. */
-  perPxPerMs: number;
-  /** The most it multiplies, unscoped and in the scope (where a flick must not throw the sight off the target). */
-  max: number;
-  maxScoped: number;
+/** The right stick (owner 2026-11-21: "it should be a joystick too. its just more intuitive"): the push is how fast the
+ *  gun turns, held as long as the thumb holds it, like a gamepad's right stick. Finer near the centre than the drive's,
+ *  so a small push lays the gun; a thumb that lands on the fire button pushes it past a press's wobble. */
+export const AIM_STICK: StickCurve = Object.freeze({ radiusPx: 56, deadzone: 0.1, curve: 1.8 });
+export const TRIGGER_AIM_STICK: StickCurve = Object.freeze({ radiusPx: 56, deadzone: 0.2, curve: 1.8 });
+
+/** Full push, in phone px per second of aim: the gamepad's right stick (input.ts PAD_AIM_RATE, 760 mouse px a second)
+ *  over the desktop's PAD_AIM_GAIN (1.25), so both sticks turn the gun alike: about 96° a second at the mouse's 0.0022
+ *  rad per px. */
+export const AIM_STICK_RATE = 608;
+
+/** Held at the rim, the turn speeds up (a turn to the rear without waiting): after `afterMs` at `push` or more it ramps to
+ *  `max` over `rampMs`. Never in the scope, where a held push must not throw the sight off a target. */
+export const AIM_RIM = Object.freeze({ push: 0.9, afterMs: 250, rampMs: 400, max: 1.8 });
+
+export function aimRimBoost(rimMs: number, scoped = false): number {
+  if (scoped) return 1;
+  const ramp = Math.max(0, Math.min(1, (rimMs - AIM_RIM.afterMs) / AIM_RIM.rampMs));
+  return 1 + (AIM_RIM.max - 1) * ramp;
 }
 
-export const AIM_CURVE: AimCurve = Object.freeze({ slowPxPerMs: 0.1, perPxPerMs: 4, max: 5, maxScoped: 2 });
-
-export function aimGain(speedPxPerMs: number, scoped = false, curve: AimCurve = AIM_CURVE): number {
-  const speed = Math.max(0, Number(speedPxPerMs) || 0);
-  return Math.min(scoped ? curve.maxScoped : curve.max, 1 + curve.perPxPerMs * Math.max(0, speed - curve.slowPxPerMs));
-}
-
-/** The finger's speed from one move: its distance over the time since the last, smoothed with the speed before (a
- *  move or two of jitter neither starts nor stops a flick). */
-export function aimSpeed(previousPxPerMs: number, distancePx: number, elapsedMs: number): number {
-  const instant = Math.max(0, distancePx) / Math.max(4, elapsedMs);
-  return previousPxPerMs * 0.5 + instant * 0.5;
+/** One step of the aim stick: the aim it adds over `dtMs` (dx right, dy down, phone px, the axes frame's totals) for a
+ *  push (x right, y up, -1..1) at the player's speed `scale`, and the time held at the rim after it. */
+export function aimStickStep(x: number, y: number, dtMs: number, rimMs: number, scale = 1, scoped = false): { dx: number; dy: number; rimMs: number } {
+  const dt = Math.max(0, Math.min(100, Number(dtMs) || 0));
+  const push = Math.hypot(x, y);
+  const rim = push >= AIM_RIM.push ? rimMs + dt : 0;
+  const k = AIM_STICK_RATE * scale * aimRimBoost(rim, scoped) * dt / 1000;
+  // (0 - y: a stick pushed up looks up, a screen move up; a still axis reads 0, never -0)
+  return { dx: x * k, dy: (0 - y) * k, rimMs: rim };
 }
