@@ -21,8 +21,8 @@
   "nation": "Sweden",
   "countryCode": "se",
   "era": "modern",
-  "tier": 9,
-  "tierNumeral": "IX",
+  "tier": 10,
+  "tierNumeral": "X",
   "dimensionsM": {
     "hullLength": 7.72,
     "overallLength": 9.97,
@@ -876,7 +876,7 @@
     ]
   },
   "geometryHash": "24b64aa9",
-  "metadataHash": "e2029462",
+  "metadataHash": "e384ed4f",
   "presentationAnchor": {
     "xM": -0.0046,
     "zM": -0.2028

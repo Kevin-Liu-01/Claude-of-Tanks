@@ -1080,15 +1080,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28576,
-      "sha256": "858d1e32a7306bf5d6b1ee219cd824bfc62978c6992f252ec0c5acb904f5186a",
+      "bytes": 28572,
+      "sha256": "0de4c01160f3c7ee1b384feebb2d3c4647c74198056c89dfdcb664e44a1bf4ed",
       "thumbnail": {
         "file": "thumbs/christian2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10972,
-        "sha256": "afb619d83cae70a1dccd6fd00aacb7662963a7dbce65c389cae9af077089c53a",
+        "bytes": 10984,
+        "sha256": "3d235eb33e87de4225a9d5a87de78d259583e5440de65334ad3a55fe33a8f26e",
         "frame": [25,116,225,249]
       }
     },
@@ -1105,8 +1105,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14642,
-      "sha256": "613f5258d70fb9cbcc287274058e0015a095455775df838cdf92d25776b72193"
+      "bytes": 14650,
+      "sha256": "b578ee2e5883c4ab0288ed3d3d2b54768e3da2eae5cadea980fcb1f214626997"
     },
     "topSilhouette": {
       "file": "christian2_top_silhouette.png",
@@ -1129,24 +1129,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35408,
-      "sha256": "8f839d7dbab3ed7c74440e99a7e7278e45c2e8d12e26c827f0ef8c8553ae134b"
+      "bytes": 35388,
+      "sha256": "adc53655e0fcc215cb59152af86e62d9698fb1e26a558550c54c6e853abe9b44"
     },
     "modulesSide": {
       "file": "christian2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34946,
-      "sha256": "ad3ae8ac1e1c2e7106a0853e3f656e976434eb3ae8789c584ac9b53e44b21148"
+      "bytes": 34942,
+      "sha256": "8b6c500b624ec399a3f26ee43be66e9fcaafe1d4dfa15842ab0e4f2d5916a363"
     },
     "crewSide": {
       "file": "christian2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32516,
-      "sha256": "ad0b61fcf1bb5d67a3f171055e78dfaf371d7a2e3925ea472e22f11badba171c"
+      "bytes": 32520,
+      "sha256": "0da3f3125568a97429e0983dd0913308a4974370d0640914041bfe3afe440475"
     },
     "markings": {
       "file": "christian2_markings.png",
