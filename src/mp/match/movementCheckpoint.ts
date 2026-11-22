@@ -39,8 +39,11 @@
  * plane the authority fitted only with it. A version-8 checkpoint still decodes, resting on no body contact; a build that
  * decodes only version 8 never meets a version-9 host, whose prediction digest refuses it at join
  * (src/mp/wire/matchBuild.ts).
- * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 9 uses 63, so a version
- * adding more than one value widens that limit first.
+ * Version 10 (turbo-spin-275) appends the air spin in progress as one value (movement.ts `_airSpinAxis`, `_airSpinLeft`;
+ * movementPredictionState.ts encodeAirSpin): a replay mid-flip turns at the spin's rate past the flight's angular cap, as the
+ * authority does, and stops where it stops. A version-9 checkpoint still decodes, no spin turning.
+ * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 10 uses all 64, so the next
+ * version that adds a value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 import {

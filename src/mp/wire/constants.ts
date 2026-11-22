@@ -81,6 +81,10 @@ export const WIRE_VERSION = 13;
 // a tab that still offers the STC-1 and one that resolves it never share a match.
 // 15 (air-support-275): wire 13, the u32 action bits and the Maverick run's call-in (a sixth AirStrikeKind in the mode
 // state, the checkpoint and the call events): a 274 tab and a 275 tab never share a match. The Rooms Worker ships first.
+// turbo-spin-275, unreleased with it (no further bump): Turbo and the air spin (action bits 18 and 19, the mask derived
+// from the action table), F's airborne meaning (a flip or roll, not the rocket's re-boost), the movement checkpoint's
+// version 10 (the spin in progress, its 64th value), the migration extras' turboReadyIn and airSpin, and the
+// tank_turbo and tank_air_spin events.
 export const PROTOCOL_VERSION = 15; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
@@ -246,13 +250,14 @@ export const CONTROL_FLAGS = Object.freeze({
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
 /**
- * Seventeen action bits (air-support-275; the sixteen of a u16 were all taken by air-support-270): FPV launch/return, the
- * supply drops, and Air Support's call-ins. Air Support reads the two supply-drop bits as its artillery and recon
- * (sim/playerActions.ts AIR_STRIKE_BITS): only the AC-130's escort drops supplies and only Air Support calls strikes. A
- * mode that wants either meaning beside the other fails sim/airSupport.selftest.mjs's exclusivity check first. The wire
- * carries a u32 (wire 13): fifteen bits are spare for the next actions without another layout change.
+ * Every action bit the table defines (turbo-spin-275, at the coordinator's ask: three 275 lanes add bits, so the mask is
+ * derived, never written by hand): the OR of PLAYER_ACTION_BITS, so a new row is on the wire with no second edit, and a
+ * bit no row names is refused both ways (codec.ts). Bits 0-15 are the u16's (FPV launch/return, the supply drops, Air
+ * Support's call-ins: Air Support reads the two supply-drop bits as its artillery and recon, sim/playerActions.ts
+ * AIR_STRIKE_BITS; sim/airSupport.selftest.mjs checks no mode reads both); 16 the Maverick run (wire 13's u32); 18 and 19
+ * Turbo and the air spin. src/mp/wire/actionBitMask.selftest.mjs pins the derivation.
  */
-export const ACTION_BIT_MASK = 0x1ffff;
+export const ACTION_BIT_MASK = Object.values(PLAYER_ACTION_BITS).reduce((mask, bit) => (mask | bit) >>> 0, 0);
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);
@@ -358,5 +363,7 @@ export const EVENT_KIND_NAMES = Object.freeze([
   'chat', 'roster', 'admin',
   // destruction (2026-10-07, wire 4): world state every viewer receives (docs/DESTRUCTION.md §8.1)
   'structure_stage', 'structure_breach', 'terrain_crater',
+  // turbo-spin-275 (protocol 15): Turbo's leap and the air spin, the seat's own HUD and sound
+  'tank_turbo', 'tank_air_spin',
 ] as const);
 export const EVENT_KIND_OTHER = 255;

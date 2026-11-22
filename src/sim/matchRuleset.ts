@@ -1189,6 +1189,11 @@ export interface RulesetPhysics {
   /** Optional arcade spin damping (per second) and per-axis angular speed limit (rad/s). */
   readonly airAngularDrag?: number;
   readonly airAngularSpeedMax?: number;
+  /** Optional run-speed ceiling for a launched hull (m/s; turbo-spin-275): past the drivetrain's own (1.2 × its top speed)
+   * a hull in flight keeps its speed up to this, and one on the ground bleeds the excess off (movement.ts
+   * LAUNCH_OVERSPEED_BLEED_MPS2) instead of losing it in a tick. Only the Turbo modes set it: Turbo's leap at top speed
+   * was clipped to a fifth over it. */
+  readonly launchCeilingMps?: number;
   /** Landing speed against the ground where fall damage begins (m/s; 6 m/s is a 1.8 m drop at 1 g). */
   readonly fallMinMps: number;
   /** Hull hit points per kilojoule of landing energy above the threshold. */
@@ -1216,16 +1221,32 @@ export const STANDARD_PHYSICS: RulesetPhysics = Object.freeze({
   restitution: 0.15, bounceMinMps: 1.2, fallMinMps: 6, fallHpPerKj: 0.25,
   impactMinMps: 4, impactHpPerKj: 0.16, ramScale: 1, ramRestitution: 0.2,
 });
+/**
+ * A mode's turbo (turbo-spin-275): the run speed it adds (m/s), the lift it leaves the ground at or stops a fall at (m/s)
+ * and the seconds before the next (owner 2026-11-22: a 3 s cooldown). Tuned on a 65 km/h, 50 t fixture at each mode's
+ * gravity and speed, with the launch ceiling (RulesetPhysics.launchCeilingMps): at Turbo Ball's top speed (32 m/s) the
+ * leap reaches 44 m/s, holds the hull 0.75 s off the ground and carries it 16 m past a full-throttle run in the next 3 s
+ * (26 m from 14 m/s); after a jump it carries the flight 36 m further. Mars at 0.38 g: 23 -> 32 m/s, 1.1 s up, 15 m, and
+ * 27 m in flight. A short lunge, never a teleport.
+ */
+export interface TurboRules {
+  readonly forwardMps: number;
+  readonly liftMps: number;
+  readonly cooldownS: number;
+}
+const TURBO_BALL_TURBO: TurboRules = Object.freeze({ forwardMps: 12, liftMps: 2.5, cooldownS: 3 });
+const MARS_TURBO: TurboRules = Object.freeze({ forwardMps: 9, liftMps: 2.2, cooldownS: 3 });
+
 /** Turbo Ball: arcade rebounds at 0.6 g, a single 13 m/s jump lands free, walls at 1.85× speed cost less per kJ. */
 const TURBO_PHYSICS: RulesetPhysics = Object.freeze({
   restitution: 0.28, bounceMinMps: 1.5, bounceMaxHeightM: LANDING_HOP_MAX_M, airAngularDrag: 0.9, airAngularSpeedMax: 1.4,
-  fallMinMps: 15, fallHpPerKj: 0.12,
+  launchCeilingMps: 45, fallMinMps: 15, fallHpPerKj: 0.12,
   impactMinMps: 9, impactHpPerKj: 0.05, ramScale: 1, ramRestitution: 0.5,
 });
 /** Mars: a small, bounded landing rebound; the full 9.5 m/s rocket jump still lands free. */
 const MARS_PHYSICS: RulesetPhysics = Object.freeze({
   restitution: 0.30, bounceMinMps: 1.2, bounceMaxHeightM: LANDING_HOP_MAX_M, airAngularDrag: 0.8, airAngularSpeedMax: 1.2,
-  fallMinMps: 10.5, fallHpPerKj: 0.16,
+  launchCeilingMps: 45, fallMinMps: 10.5, fallHpPerKj: 0.16,
   impactMinMps: 5, impactHpPerKj: 0.12, ramScale: 1, ramRestitution: 0.35,
 });
 
@@ -1275,6 +1296,13 @@ export interface MatchRuleset {
   /** Upward launch (m/s) the F key gives a grounded, upright hull, or null when the mode has no jump (owner
    * 2026-09-16, Turbo Ball: "make an f button that just adds an upward vector so you go flying"). */
   readonly jumpMps: number | null;
+  /** Turbo (turbo-spin-275; owner 2026-11-22: "add another thing with going up called turbo - it makes you go launch
+   * forward for a short bit"): the Z key's forward leap (movement.ts applyTankTurbo) and its cooldown, or null when the
+   * mode has none. */
+  readonly turbo: TurboRules | null;
+  /** Air spin (turbo-spin-275): F in flight flips or rolls the hull one whole turn (movement.ts requestTankAirSpin); the
+   * jump's mid-air re-boost gives way to it. Only a jump mode has it. */
+  readonly airSpin: boolean;
   /** Multiplies the hull's firing recoil into a real launch opposite the muzzle (owner: "aim behind you and launch
    * yourself and use it as a speed boost"); 1 keeps the ordinary hull kick. */
   readonly recoilLaunchScale: number;
@@ -1544,7 +1572,7 @@ const DESTRUCTION_OFF: DestructionRules = Object.freeze({
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
-  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
+  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, turbo: null, airSpin: false, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, respawnSafeM: 75, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
   destruction: DESTRUCTION_ON, terrainVariant: null, records: true, routePush: true,
@@ -1634,7 +1662,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, jumpMps: 13, turbo: TURBO_BALL_TURBO, airSpin: true, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
     // the goals and the kick-off spot stand inside the arena
     objectiveFootprint: Object.freeze({ radiusM: 18, arena: true }),
@@ -1728,7 +1756,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // rounds and a twelve-minute clock; the boost caches (repairs, under unlimited rounds) are the mode controller's.
   mars: Object.freeze({
     ...STANDARD, mode: 'mars', scoresKills: true, mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
-    reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+    reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, turbo: MARS_TURBO, airSpin: true, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
   juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', scoresKills: true, ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
@@ -2301,6 +2329,8 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (!ruleset.consumables) line('noConsumables');
   if (!ruleset.criticalDamage) line('noCriticalDamage');
   if (ruleset.jumpMps != null) line('jump', { value: String(ruleset.jumpMps) });
+  if (ruleset.turbo) line('turbo', { value: String(ruleset.turbo.cooldownS) });
+  if (ruleset.airSpin) line('airSpin');
   if (ruleset.recoilLaunchScale !== 1) line('recoilLaunch', { value: `×${Math.round(ruleset.recoilLaunchScale * 10) / 10}` });
   if (ruleset.mars) {
     if (ruleset.mars.cacheIntervalS > 0) line('marsCaches', { value: String(ruleset.mars.cacheIntervalS) });

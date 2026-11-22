@@ -49,7 +49,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
   rulesetObjectiveAxisM, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TurboRules, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -309,6 +309,10 @@ type SoloPooledEntity = Omit<RosterEntity,
     modeSpeedMultiplier?: number;
     modeGravityScale?: number;
     modeJumpMps?: number | null;
+    /** Turbo and the air spin (turbo-spin-275; sim/hullActions.ts TurboHull), stamped with the jump. */
+    modeTurbo?: TurboRules | null;
+    modeAirSpin?: boolean;
+    turboReadyS?: number;
     modeRecoilLaunchScale?: number;
     modeShellKnockScale?: number;
     modePhysics?: RulesetPhysics | null;
@@ -2597,6 +2601,9 @@ function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): 
       moduleRepaired: (entity, module) => ref.bus.emit('module:state', { id: entity.id, module, state: 'ok', source: 'repair-kit' }),
       fireOut: (entity) => ref.bus.emit('tank:fire', { id: entity.id, burning: false }),
       engineStrained: (entity) => ref.bus.emit('module:state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' }),
+      // a couch seat's Turbo and air spin (turbo-spin-275): its HUD and sound, as the player's press emits them
+      turboed: (entity) => ref.bus.emit('tank:turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0 }),
+      airSpun: (entity) => ref.bus.emit('tank:airSpin', { id: entity.id, axis: entity.state._airSpinAxis }),
     };
     entry = { host, ref };
     soloActionHosts.set(game, entry);

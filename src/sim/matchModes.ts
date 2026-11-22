@@ -21,7 +21,7 @@ import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjecti
 import {
   FLAG_CARRIER_SPEED_SCALE, HUNT_RULES, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
   assaultWaveHealthScale, cacheHealChance, hordeMaxAlive, hordeWaveHealthScale, hordeWaveSpecial, hordeWaveSpeedScale,
-  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, rulesetSeatHullScale, type ArrivalRules, type RulesetPhysics,
+  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, rulesetSeatHullScale, type ArrivalRules, type RulesetPhysics, type TurboRules,
 } from './matchRuleset.ts';
 
 /** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
@@ -142,6 +142,9 @@ export interface MatchModeEntity {
   modeGravityScale?: number;
   /** Ruleset jump launch, recoil launch and impact-knock scales (matchRuleset.ts) the sims read. */
   modeJumpMps?: number | null;
+  /** Turbo and the air spin (turbo-spin-275), stamped with the jump. */
+  modeTurbo?: TurboRules | null;
+  modeAirSpin?: boolean;
   modeRecoilLaunchScale?: number;
   modeShellKnockScale?: number;
   /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
@@ -691,6 +694,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       * (ruleset.juggernaut && teamOf(entity) === ruleset.juggernaut.team ? ruleset.juggernaut.speedScale : 1);
     entity.modeGravityScale = ruleset.gravityScale;
     entity.modeJumpMps = ruleset.jumpMps;
+    entity.modeTurbo = ruleset.turbo;
+    entity.modeAirSpin = ruleset.airSpin;
     entity.modeRecoilLaunchScale = ruleset.recoilLaunchScale;
     entity.modeShellKnockScale = ruleset.shellKnockScale;
     entity.modePhysics = ruleset.physics;
