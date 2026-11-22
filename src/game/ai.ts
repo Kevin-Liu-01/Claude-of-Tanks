@@ -7523,9 +7523,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return typeof state === 'number' && Number.isInteger(state) ? state : null;
   };
   /**
-   * The bot's way for a migration keyframe (BotDrive; gaps 274, G3). A search, sector or level leg is not carried. A
-   * one-way list is carried from its cursor on (its last waypoint once used up): the waypoints behind the hull are no
-   * part of its way, and every keyframe carries the list to every peer.
+   * The bot's way for a migration keyframe (BotDrive; gaps 274, G3): every owner's list (276: a search, sector or level
+   * leg too). A one-way list is carried from its cursor on (its last waypoint once used up): the waypoints behind the hull
+   * are no part of its way, and every keyframe carries the list to every peer.
    */
   function captureDrive(): BotDrive {
     // every owner's list (276: a search, sector or level leg too, which a new brain planned afresh and parted on)
