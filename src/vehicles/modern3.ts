@@ -2103,6 +2103,10 @@ function buildM2A2Bradley(P: TankBuilderPort): void {
   buildBradleyHull(P);
   bradleyFlankDressing(P, { turretSeat: false });
   buildBradleyClassicTurret(P, { deckY: BRADLEY_TURRET_RING.deckY - P.spec.armor.turretPivot[1] });
+  // 274: the classic turret keeps the rise-limited seat. The foot band's lift (turretSeatRace.ts) opened its lower edge
+  // to the inside (sealed: 7 of 33 views) and the TOW pod beside the gun (gun-junction); its foot stays 2.1 cm into the
+  // hull kit ahead-left at two yaws, carried in fleetPassDefault's turret-deck gate
+  P.turretG.userData.turretSeatFootBand = false;
 }
 
 /** The shared hull under the source-measured turret, its flank dressing and the crew bags: the M3A2 (269). */

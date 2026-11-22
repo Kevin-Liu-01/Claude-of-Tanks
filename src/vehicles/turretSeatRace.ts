@@ -380,8 +380,10 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
       }
     }
   }
-  // 2. the foot band (274), from where step 1 leaves each corner
-  const shortfall = seatFootBand(meshes, receipt, seat, hullG, targets);
+  // 2. the foot band (274), from where step 1 leaves each corner; a turret whose own build the band would break opts out
+  // (turretG.userData.turretSeatFootBand === false: the M2A2 Bradley's classic turret, whose lower edge and TOW pod
+  // opened to the inside and beside the gun when lifted, release 274 check)
+  const shortfall = turretG.userData.turretSeatFootBand === false ? null : seatFootBand(meshes, receipt, seat, hullG, targets);
   if (shortfall) turretG.userData.turretSeatShortfall = shortfall;
   else delete turretG.userData.turretSeatShortfall;
   if (!targets.size) {
