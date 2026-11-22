@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1793 | 414.5 |
+| KEEP | 1795 | 414.5 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 665 | 1178.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2459 | 1592.9 | 265.7 |
-| After: the default tier | 1793 | 414.5 | 68.3 |
+| Before: every receipt (npm test without the tiers) | 2461 | 1592.9 | 265.7 |
+| After: the default tier | 1795 | 414.5 | 68.3 |
 
 Default tier: 26.0 % of the whole registry's CPU; 45.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.5 min pool, 18.6 min browser receipts.
 
@@ -813,7 +813,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1793)
+## KEEP (1795)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2596,13 +2596,15 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/combat-anatomy-parts.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/armourOverlayDefault.selftest.mjs` | 0.0 | KEEP | game flow, 0.0 s: 273: armour colours on for everyone, once, and the one-time tip (Kevin 2026-11-12) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cameraViewRoundTrip.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never le | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.brainRecord.selftest.mjs` | n/a | KEEP | game flow, n/a s: 275 (migration drift): every createAI field is carried by the brain record or named with its reason; the recor | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/game/armourOverlayDefault.selftest.mjs` | n/a | KEEP | game flow, n/a s: 273: armour colours on for everyone, once, and the one-time tip (Kevin 2026-11-12) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/botDriveMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: gaps 274 (G3): a migrated bot keeps its spool, its way (route, cursor, mission, watchdog) and its seeded strea | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/mp/host/migrationTwins.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 275 (migration drift): a migrated host's bots keep the old host's tracks: Frontline attackers within the rows' | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/mp/host/modeWindowMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 275: the battle clock exact from the keyframe or a newer frame (trickles on the old host's ticks), the hunt's | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/migrationHull.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 276: every number and flag of a live hull (pose, integrator, the step's contact, the roof kit's slew, the spec | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/migrationTwins.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 275 (migration drift), 276 (the window): a migrated host plays on as the old host would have, to the bit from | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/modeWindowMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 275: the window read as 275 reads it (276 replays it where it can): the battle clock exact from the keyframe o | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/waveStartMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: gaps 274 (G2): a Horde wave begun or cleared, a cache taken (Horde, Mars and AC-130 lists), a Frontline advanc | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/windowReplay.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 276: a resume replays its window on the keyframe's clocks to the old host's (or reads it as 275 did past MAX_R | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/fallenStages.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: gaps 274 (G4, Kevin 2026-11-18; G5): a fallen raider's stage and a fallen attacker's plan go at its death (set | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/modeStreamMigration.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: gaps 274 (G1): the mode's two seeded streams ride the mode checkpoint, so a migrated host fields the old host' | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/strikeRuns.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run | default tier (npm test, the release gate; lane mode by its closure) |

@@ -333,11 +333,11 @@ for (const mode of ['capture_the_flag', 'turbo_ball', 'zone_control']) {
   ok(!!sealed?.[part] && Number.isFinite(sealed[part].atS), `${mode}: the case is built: the keyframe carries the ${part} deal (dealt at ${sealed?.[part]?.atS?.toFixed(3)})`);
   ok(JSON.stringify(deals(fresh)) === JSON.stringify(sealed), `${mode}: the new host holds the old host's deal and its clock before its first step`);
   fresh.authority.onMatchReady();
-  // each bot's errand as the mode deals it (botTarget, read on both hosts alike each step): its mission, and where for CTF
-  // and Zone Control (Turbo Ball's spots track the ball, which the rows' millimetres move)
+  // each bot's errand as the mode deals it (botTarget, read on both hosts alike each step): its mission and where (Turbo
+  // Ball's spots track the ball: 276, the ball goes as the old host's)
   const errands = (actor) => actor.authority.entities.filter((e) => e.bot).map((e) => {
     const target = actor.authority.modeController.botTarget(e);
-    return `${e.id} ${target?.mission ?? '-'}${mode === 'turbo_ball' || !target ? '' : ` ${Math.round(target.x)},${Math.round(target.z)}`}`;
+    return `${e.id} ${target?.mission ?? '-'}${!target ? '' : ` ${Math.round(target.x)},${Math.round(target.z)}`}`;
   }).join('; ');
   let same = 0, apart = null, widest = 0, targets = 0, dealsAlike = 0, dealsApart = null;
   for (let k = 1; k <= 60 * 8; k++) {
@@ -356,9 +356,10 @@ for (const mode of ['capture_the_flag', 'turbo_ball', 'zone_control']) {
   }
   ok(same === 480, `${mode}: over 8 s both hosts send every bot on the same errand on the same steps (${same} of 480 steps alike${apart ? `; first apart ${apart}` : ''})`);
   ok(dealsAlike === 480, `${mode}: and deal the same roles on the same steps, a striker's commit with them (${dealsAlike} of 480 steps alike${dealsApart ? `; first apart ${dealsApart}` : ''})`);
-  // (Turbo Ball's bots meet the ball, whose contacts carry the rows' millimetres on: its hulls part 0.6-0.8 m whatever the deal)
-  if (mode !== 'turbo_ball') ok(targets === 0 && widest < 0.05, `${mode}: and send their bots to the same places: every route push alike (${targets} apart), the hulls `
-    + `within ${widest.toFixed(3)} m (bound 0.05 m)`);
+  // (276: Turbo Ball too. Its bots meet the ball, whose contacts carried the rows' millimetres on: its hulls parted 0.6-0.8 m
+  // whatever the deal until each hull rode the keyframe exact)
+  ok(targets === 0 && widest === 0, `${mode}: and send their bots to the same places: every route push alike (${targets} apart), the hulls `
+    + `to the bit (${widest.toFixed(3)} m)`);
   old.stop(); fresh.stop();
 }
 

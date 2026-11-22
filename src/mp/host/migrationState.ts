@@ -1139,8 +1139,7 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
     if (entity.bot || entity.combat.destroyed || entity.modeActive === false) continue;
     const input = entity.input;
     held.set(entity.id, { throttle: input.throttle, steer: input.steer, brake: input.brake, fire: false, fireIntentSeq: null, aimLocked: input.aimLocked,
-      shellSlot: input.shellSlot, actionBits: 0, ...(typeof input.auxiliaryBits === 'number' ? { auxiliaryBits: input.auxiliaryBits } : {}),
-      ...encodeAimIntent(entity.state.pos, input.aimPoint) });
+      shellSlot: input.shellSlot, actionBits: 0, ...encodeAimIntent(entity.state.pos, input.aimPoint) });
   }
   const dt = TICK_MS / 1000;
   let corrected = 0;
@@ -1362,77 +1361,93 @@ function unpackBrain(packed: MigrationBrain | null | undefined): BotBrain | null
 }
 // ---- the hull exact (276; MigrationEntityExtras.hull): what a row rounds or does not carry, one packing for every live hull
 /**
- * The hull's numbers a row rounds (its pose, millimetres and angle units), the rollover's countdown no row or checkpoint
- * holds, its hp (a row's is whole), and its held input (a bot's last command, which the next tick reads before the brain
- * writes a new one: the gun-limit nudge reads its aim point), in their packed order; then the movement prediction
- * checkpoint's values (movementPredictionState.ts, the owner of the integrator state a pose cannot rebuild).
+ * A live hull's numbers a row rounds or does not carry, in their packed order: its pose (millimetres and angle units on a
+ * row), what the last step left that the next one reads and neither a row nor the checkpoint holds (the rollover's
+ * countdown, the contact the hull took: a bot's brain reads it as the ground it lost; the fall the ledger owes and the
+ * bounces of a landing), its hp (a row's is whole), its roof gun's slew (the first station's), the shell slot its special
+ * action hands back, and its held input (a bot's last command, which the next tick reads before the brain writes a new
+ * one: the gun-limit nudge reads its aim point); then the movement prediction checkpoint's values (movementPredictionState.ts,
+ * the owner of the integrator state a pose cannot rebuild), then each further roof station's slew. ai.ts reads the last
+ * step's atGunLimit and slopeBlocked the same way: the first is the checkpoint's, the second a flag below.
  */
-const HULL_NUMBERS = ['x', 'y', 'z', 'yaw', 'speed', 'verticalSpeed', 'visualPitch', 'visualRoll', 'turretYaw', 'gunPitch', 'rolloverCountdownS', 'hp',
-  'throttle', 'steer', 'shellSlot', 'actionBits', 'auxiliaryBits', 'fireIntentSeq', 'aimX', 'aimY', 'aimZ'] as const;
-/** The input's flags (a byte): brake, fire, aimLocked, and an absent fire intent sequence and auxiliary bits. */
+const HULL_NUMBERS = ['x', 'y', 'z', 'yaw', 'speed', 'verticalSpeed', 'visualPitch', 'visualRoll', 'turretYaw', 'gunPitch',
+  'rolloverCountdownS', 'impactMps', 'impactSource', 'impactNx', 'impactNz', 'fallImpactMps', 'solverLift', 'bounces', 'hp', 'roofYaw', 'roofPitch',
+  'previousShellSlot', 'throttle', 'steer', 'shellSlot', 'actionBits', 'auxiliaryBits', 'fireIntentSeq', 'aimX', 'aimY', 'aimZ'] as const;
+type HullNumber = typeof HULL_NUMBERS[number];
+/** The flags (a byte): the input's brake, fire and aimLocked, an absent fire intent sequence and auxiliary bits, the last
+ *  step's slope block, the special action's toggle. */
 const HULL_INPUT_BITS = ['brake', 'fire', 'aimLocked'] as const;
-const HULL_NO_FIRE_INTENT = 8, HULL_NO_AUXILIARY = 16;
+const HULL_NO_FIRE_INTENT = 8, HULL_NO_AUXILIARY = 16, HULL_SLOPE_BLOCKED = 32, HULL_SPECIAL_ACTIVE = 64;
 /** The hull packing's layout (byte 0): a hull of another layout is refused, and the restore stands on the row alone. */
 const HULL_LAYOUT = 1;
-const HULL_HEAD_BYTES = 5;
-const HULL_VALUE_COUNT = HULL_NUMBERS.length + MOVEMENT_PREDICTION_STATE_VALUES;
-const HULL_MASK_BYTES = Math.ceil(HULL_VALUE_COUNT / 8);
+/** The layout, the checkpoint's version and flags (two bytes), the flags above, the further roof stations' count. */
+const HULL_HEAD_BYTES = 6;
+const HULL_FIXED_VALUES = HULL_NUMBERS.length + MOVEMENT_PREDICTION_STATE_VALUES;
 
-/** The hull's state and held input as a keyframe reads them (TankState, the authority's entity input). */
+/** The hull's state, held input and the kit a step reads as a keyframe reads them (TankState, the authority's entity). */
 interface HullHolder {
   state: TankState;
-  combat: { hp: number };
+  combat: { hp: number; auxiliary?: { gunYaw: number; gunPitch: number; stations?: { gunYaw: number; gunPitch: number }[] } | null };
+  specialAction?: { active: boolean; previousShellSlot: number } | null;
   input: { throttle: number; steer: number; brake: boolean; fire: boolean; aimLocked: boolean; shellSlot: number; actionBits: number;
     auxiliaryBits?: number; fireIntentSeq?: number | null; aimPoint: { x: number; y: number; z: number; set(x: number, y: number, z: number): unknown } };
 }
-/** A live hull exact (MigrationEntityExtras.hull): its layout, the checkpoint's version and flags, the input's flags, a mask
- *  of the non-zero numbers, then those numbers (Float64, exact); null where the checkpoint cannot be taken (a non-finite
- *  integrator, which the client's predictor refuses as well). */
+/** A live hull exact (MigrationEntityExtras.hull): the head (HULL_HEAD_BYTES), a mask of the non-zero numbers, then those
+ *  numbers (Float64, exact); null where the checkpoint cannot be taken (a non-finite integrator, which the client's
+ *  predictor refuses as well). */
 function packHull(entity: HullHolder): string | null {
-  const checkpoint = captureMovementPredictionState(entity.state);
+  const state = entity.state, input = entity.input, checkpoint = captureMovementPredictionState(state);
   if (!checkpoint) return null;
-  const { state, input } = entity;
+  const aux = entity.combat.auxiliary, stations = aux?.stations ?? [], special = entity.specialAction;
   const numbers = [state.pos.x, state.pos.y, state.pos.z, state.yaw, state.speed, state.verticalSpeed, state.visualPitch, state.visualRoll,
-    state.turretYaw, state.gunPitch, state.rolloverCountdownS, entity.combat.hp, input.throttle, input.steer, input.shellSlot, input.actionBits,
-    typeof input.auxiliaryBits === 'number' ? input.auxiliaryBits : 0, typeof input.fireIntentSeq === 'number' ? input.fireIntentSeq : 0,
-    input.aimPoint.x, input.aimPoint.y, input.aimPoint.z, ...checkpoint.values];
-  if (!numbers.every((value) => typeof value === 'number' && Number.isFinite(value))) return null;
-  let bits = 0;
-  HULL_INPUT_BITS.forEach((key, bit) => { if (input[key]) bits |= 1 << bit; });
-  if (typeof input.fireIntentSeq !== 'number') bits |= HULL_NO_FIRE_INTENT;
-  if (typeof input.auxiliaryBits !== 'number') bits |= HULL_NO_AUXILIARY;
-  const head = new Array<number>(HULL_HEAD_BYTES + HULL_MASK_BYTES).fill(0);
-  head[0] = HULL_LAYOUT; head[1] = checkpoint.version; head[2] = checkpoint.flags & 0xff; head[3] = checkpoint.flags >> 8; head[4] = bits;
+    state.turretYaw, state.gunPitch, state.rolloverCountdownS, state.impactMps, state.impactSource, state.impactNx, state.impactNz, state.fallImpactMps,
+    state._ride.solverLift, state._ride.bounces, entity.combat.hp, aux?.gunYaw ?? 0, aux?.gunPitch ?? 0, special?.previousShellSlot ?? 0,
+    input.throttle, input.steer, input.shellSlot, input.actionBits, typeof input.auxiliaryBits === 'number' ? input.auxiliaryBits : 0,
+    typeof input.fireIntentSeq === 'number' ? input.fireIntentSeq : 0, input.aimPoint.x, input.aimPoint.y, input.aimPoint.z, ...checkpoint.values,
+    ...stations.flatMap((station) => [station.gunYaw, station.gunPitch])];
+  if (stations.length > 255 || !numbers.every((value) => typeof value === 'number' && Number.isFinite(value))) return null;
+  let flags = 0;
+  HULL_INPUT_BITS.forEach((key, bit) => { if (input[key]) flags |= 1 << bit; });
+  if (typeof input.fireIntentSeq !== 'number') flags |= HULL_NO_FIRE_INTENT;
+  if (typeof input.auxiliaryBits !== 'number') flags |= HULL_NO_AUXILIARY;
+  if (state.slopeBlocked) flags |= HULL_SLOPE_BLOCKED;
+  if (special?.active) flags |= HULL_SPECIAL_ACTIVE;
+  const head = new Array<number>(HULL_HEAD_BYTES + Math.ceil(numbers.length / 8)).fill(0);
+  head[0] = HULL_LAYOUT; head[1] = checkpoint.version; head[2] = checkpoint.flags & 0xff; head[3] = checkpoint.flags >> 8; head[4] = flags; head[5] = stations.length;
   const present: number[] = [];
   numbers.forEach((value, index) => { if (!Object.is(value, 0)) { head[HULL_HEAD_BYTES + (index >> 3)]! |= 1 << (index & 7); present.push(value); } });
   return packDoubles(present, head);
 }
 interface HullReading {
   numbers: number[];
-  bits: number;
+  flags: number;
   checkpoint: { version: number; values: number[]; flags: number };
+  /** Each further roof station's slew: [gunYaw, gunPitch]. */
+  stations: [number, number][];
 }
 /** The packed hull, or null for a packing that is not one (another layout, a short or long body). */
 function unpackHull(text: unknown): HullReading | null {
   const bytes = unpackBytes(text);
-  if (!bytes || bytes.length < HULL_HEAD_BYTES + HULL_MASK_BYTES || bytes[0] !== HULL_LAYOUT) return null;
-  const present = doublesOf(bytes, HULL_HEAD_BYTES + HULL_MASK_BYTES);
+  if (!bytes || bytes.length < HULL_HEAD_BYTES || bytes[0] !== HULL_LAYOUT) return null;
+  const count = HULL_FIXED_VALUES + 2 * bytes[5]!, maskBytes = Math.ceil(count / 8);
+  const present = bytes.length >= HULL_HEAD_BYTES + maskBytes ? doublesOf(bytes, HULL_HEAD_BYTES + maskBytes) : null;
   if (!present) return null;
   const all: number[] = [];
   let next = 0;
-  for (let index = 0; index < HULL_VALUE_COUNT; index++) {
+  for (let index = 0; index < count; index++) {
     if (!(bytes[HULL_HEAD_BYTES + (index >> 3)]! & (1 << (index & 7)))) { all.push(0); continue; }
     if (next >= present.length) return null;
     all.push(present[next++]!);
   }
   if (next !== present.length) return null;
-  return { numbers: all.slice(0, HULL_NUMBERS.length), bits: bytes[4]!,
-    checkpoint: { version: bytes[1]!, flags: bytes[2]! | (bytes[3]! << 8), values: all.slice(HULL_NUMBERS.length) } };
+  const stations = Array.from({ length: bytes[5]! }, (_, i): [number, number] => [all[HULL_FIXED_VALUES + 2 * i]!, all[HULL_FIXED_VALUES + 2 * i + 1]!]);
+  return { numbers: all.slice(0, HULL_NUMBERS.length), flags: bytes[4]!, stations,
+    checkpoint: { version: bytes[1]!, flags: bytes[2]! | (bytes[3]! << 8), values: all.slice(HULL_NUMBERS.length, HULL_FIXED_VALUES) } };
 }
-const hullNumber = (reading: HullReading, key: typeof HULL_NUMBERS[number]): number => reading.numbers[HULL_NUMBERS.indexOf(key)]!;
+const hullNumber = (reading: HullReading, key: HullNumber): number => reading.numbers[HULL_NUMBERS.indexOf(key)]!;
 /** Whether a row is the hull's own reading rounded (every pose field the row carries, as captureEntityRow rounds it). */
 function rowReadsHull(row: EntityRow, reading: HullReading): boolean {
-  const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+  const n = (key: HullNumber): number => hullNumber(reading, key);
   return row.x === quantizePosition(n('x')) && row.y === quantizePosition(n('y')) && row.z === quantizePosition(n('z'))
     && row.yaw === quantizeAngle(n('yaw')) && row.speed === quantizeVelocity(n('speed')) && row.verticalSpeed === quantizeVelocity(n('verticalSpeed'))
     && row.pitch === quantizeAngle(n('visualPitch')) && row.roll === quantizeAngle(n('visualRoll'))
@@ -1443,30 +1458,44 @@ function rowReadsHull(row: EntityRow, reading: HullReading): boolean {
 const HULL_DRIVE_SCALARS = (['yawRate', 'turretYawRate', 'bloomF', '_spool'] as const).map((key) => [key, MOVEMENT_PREDICTION_SCALARS.indexOf(key)] as const);
 /**
  * A live hull taken up exact (276). Where the row is the hull's own reading rounded (the keyframe's own row, or a replay's
- * row: rowReadsHull), the pose exact, the checkpoint whole, the hp exact where the row's rounds it, and the held input:
- * the old host's hull to the bit (a fight from a keyframe alone parted by tens of metres on the rows' rounding and on the
- * gun's limit flag, which no row carried: the CTF probe's 23 m in 10 s, now none). From a newer row (a reading of its own),
- * the drive alone (the turn rate, the slew, the bloom, the spool) and the input; the rest belongs with the pose the row seats.
+ * row: rowReadsHull), the pose exact, the checkpoint whole, what the last step left, the hp exact where the row's rounds
+ * it: the old host's hull to the bit (a fight from a keyframe alone parted by tens of metres on the rows' rounding and on
+ * the gun's limit flag, which no row carried: the CTF probe's 23 m in 10 s, now none). From a newer row (a reading of its
+ * own), the drive alone (the turn rate, the slew, the bloom, the spool); the rest belongs with the pose the row seats.
+ * Either way the held input, the roof guns' slew and the special action's toggle, which no pose seats.
  */
 function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading): void {
   const state = entity.state, input = entity.input;
-  const own = rowReadsHull(row, reading);
-  if (own) {
-    const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+  const n = (key: HullNumber): number => hullNumber(reading, key);
+  if (rowReadsHull(row, reading)) {
     state.pos.set(n('x'), n('y'), n('z'));
     state.yaw = n('yaw'); state.speed = n('speed'); state.verticalSpeed = n('verticalSpeed');
     state.visualPitch = n('visualPitch'); state.visualRoll = n('visualRoll'); state.turretYaw = n('turretYaw'); state.gunPitch = n('gunPitch');
-    state.rolloverCountdownS = n('rolloverCountdownS');
     if (!applyMovementPredictionState(state, reading.checkpoint, state._sup.cg)) return;
+    state.rolloverCountdownS = n('rolloverCountdownS');
+    state.impactMps = n('impactMps'); state.impactSource = n('impactSource'); state.impactNx = n('impactNx'); state.impactNz = n('impactNz');
+    state.fallImpactMps = n('fallImpactMps'); state._ride.solverLift = n('solverLift'); state._ride.bounces = n('bounces');
+    state.slopeBlocked = (reading.flags & HULL_SLOPE_BLOCKED) !== 0;
     if (Math.round(n('hp')) === row.hp) entity.combat.hp = n('hp');
   } else if (reading.checkpoint.values.length === MOVEMENT_PREDICTION_STATE_VALUES) {
     for (const [key, index] of HULL_DRIVE_SCALARS) (state as unknown as Record<string, number>)[key] = reading.checkpoint.values[index]!;
   }
-  const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+  const aux = entity.combat.auxiliary;
+  if (aux) {
+    aux.gunYaw = n('roofYaw'); aux.gunPitch = n('roofPitch');
+    reading.stations.forEach(([yaw, pitch], index) => { const station = aux.stations?.[index]; if (station) { station.gunYaw = yaw; station.gunPitch = pitch; } });
+    // the pose's copy the armour reads (auxiliarySystems.ts stepRoofGun writes it from the kit at each step's start)
+    const pose = state as TankState & { roofGunYaw?: number; roofGunPitch?: number };
+    pose.roofGunYaw = aux.gunYaw; pose.roofGunPitch = aux.gunPitch;
+  }
+  if (entity.specialAction) {
+    entity.specialAction.active = (reading.flags & HULL_SPECIAL_ACTIVE) !== 0;
+    entity.specialAction.previousShellSlot = n('previousShellSlot');
+  }
   input.throttle = n('throttle'); input.steer = n('steer'); input.shellSlot = n('shellSlot'); input.actionBits = n('actionBits');
-  if (!(reading.bits & HULL_NO_AUXILIARY)) input.auxiliaryBits = n('auxiliaryBits');
-  input.fireIntentSeq = reading.bits & HULL_NO_FIRE_INTENT ? null : n('fireIntentSeq');
-  HULL_INPUT_BITS.forEach((key, bit) => { input[key] = (reading.bits & (1 << bit)) !== 0; });
+  if (!(reading.flags & HULL_NO_AUXILIARY)) input.auxiliaryBits = n('auxiliaryBits');
+  input.fireIntentSeq = reading.flags & HULL_NO_FIRE_INTENT ? null : n('fireIntentSeq');
+  HULL_INPUT_BITS.forEach((key, bit) => { input[key] = (reading.flags & (1 << bit)) !== 0; });
   input.aimPoint.set(n('aimX'), n('aimY'), n('aimZ'));
 }
 
