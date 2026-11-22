@@ -152,6 +152,36 @@ head of an arm that runs back over the horseshoe into the casting. The body and 
 (`shtora.ts`), so the night pass lights them as every Shtora; each arm is seated by a ray on the casting, not on a
 reactive container. Drawn only: no gameplay reads Shtora.
 
+## Segmented rubber skirts and the rubber's tile (2026-11-21, lane `t80-skirts-274`)
+
+Kevin, from a garage screenshot: "for the t80s fix these rubber sideskirts they look so bad and the texture repeating is
+too jarring." There were two causes:
+- **The shapes.** Each skirt was one flat slab, or seven nearly coplanar sheets, laid along the apron line.
+- **The texture.** The fleet rubber's detail maps (`rubberSurface.ts`) are one 0.4 m tile, so its grime blotches repeated
+  about fourteen times down a skirt.
+
+The fix has two parts:
+- **Separate sheets.** `profiles/rubberSkirt.ts` hangs a run of separate sheets on a caller's hang line. Each sheet
+  has a gap to its neighbour, its own steel clamp strip and bolt row under the fender lip, a foot that kicks out and
+  twists along its length, lower corners that curl up and a beaded hem. Every variation is a fixed hash of the sheet,
+  so no two neighbours catch the light alike. The T-80U X apron (`t80uX.ts`, painted) takes five armoured panels
+  forward and two rubber sheets aft, on the T-80U and everything built on its hull. The B marks take seven black
+  sheets a side; on the Ukrainian BV the sheets under its Kontakt-1 row carry no clamp of their own. The forward panels
+  are stiff (small lean and flare), so the T-84's Kontakt-5 blocks stay proud of them, and the two rear sheets hang
+  loose. The marks now hang them on the T-80U X's own apron line (`t80uXApronAt`, `t80uXApronX`), not a copy of it. The
+  Object 292 no longer draws the T-80U X apron: its own rubber skirt always covered it, and the leaning sheets poked
+  through.
+- **The T-80BV's skirt Kontakt-1.** Kevin, on the stills: "remove the goofy squares on top o the sideskirts". The
+  T-80BV's row of ten containers a side is gone, and with it the `skirt_era_L/R` gameplay plates (`t80MarkFrames.ts`),
+  so the drawn ERA still equals the spec. The Ukrainian BV keeps its row of fifteen.
+- **The tile.** The rubber material carries `COT_RUBBER_TILES`, and `materials.ts` `RUBBER_TILES_GLSL` samples each
+  map a second time on UVs turned 35° and scaled 0.731. It blends the two samples by a 0.9 m value noise and rescales
+  about the map's mean, so the grain keeps its contrast. This applies fleet-wide to tyres, flaps, mats and skirts. It
+  adds three samples per map on rubber fragments and compiles no new program variant.
+
+Per-sheet UV offsets cannot come from a profile: `tankFactoryCore` `applyRubberSurfaceUVs` re-projects every rubber
+part from its merged hull-frame positions.
+
 ## Blind critic (2026-11-20)
 
 Bar: the photo class and a blind critic, as the leo2a4 precedent (Main 2026-11-20: the prints stay registered and their

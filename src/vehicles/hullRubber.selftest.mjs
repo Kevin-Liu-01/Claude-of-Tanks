@@ -25,6 +25,12 @@ const rubberDraws = (root) => {
   });
   return draws;
 };
+const compiled = (material) => {
+  const shader = { uniforms: {}, defines: material.defines, vertexShader: THREE.ShaderLib.standard.vertexShader,
+    fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+  material.onBeforeCompile(shader, {});
+  return shader.fragmentShader;
+};
 const paintMode = (material) => {
   const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
   material.onBeforeCompile(shader, {});
@@ -56,6 +62,34 @@ try {
     assert.equal(skirt.customProgramCacheKey(), tyre.customProgramCacheKey(), `${id}: one program for both`);
     assert.equal(paintMode(skirt), 4, `${id}: the armour paint colours the hull rubber by where it sits, its grain flat`);
     assert.equal(paintMode(tyre), 0, `${id}: and leaves the tyres bare`);
+    // 274 (t80-skirts-274): the rubber's tile broken up (materials.ts RUBBER_TILES_GLSL) on the tyres and the hull rubber
+    // alike, each map's chunk between the sampler swap and its restore, the chunks' include lines kept for the burn and
+    // paint hooks (the paint's roughness flattening still lands after its chunk)
+    for (const [name, material] of [['hull rubber', skirt], ['tyres', tyre]]) {
+      assert.equal(material.defines.COT_RUBBER_TILES, 1, `${id}: the ${name} break up the tile`);
+      const fragment = compiled(material);
+      assert.ok(fragment.includes('vec4 cotRubberTexture( sampler2D t, vec2 uv )'), `${id}: the ${name} sample through cotRubberTexture`);
+      for (const chunk of ['map_fragment', 'roughnessmap_fragment', 'normal_fragment_maps']) {
+        const at = fragment.indexOf(`#include <${chunk}>`);
+        assert.ok(at > 0, `${id}: the ${name} keep the ${chunk} include`);
+        assert.ok(fragment.lastIndexOf('#define texture2D cotRubberTexture', at) > fragment.lastIndexOf('#define texture2D texture\n', at),
+          `${id}: the ${name}' ${chunk} samples through cotRubberTexture`);
+        assert.ok(fragment.indexOf('#define texture2D texture\n', at) > at, `${id}: and the swap ends after it`);
+      }
+      assert.ok(fragment.includes('roughnessFactor = mix( roughnessFactor, 0.85, apFlat );'), `${id}: the ${name} keep the paint's flattening`);
+    }
+    visual.dispose();
+  }
+  // a painted plate compiles without the rubber's tile (only COT_RUBBER_TILES takes it)
+  {
+    await ensureTankBuilder('t72b3');
+    const visual = createTank('t72b3', null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low' });
+    let plate = null;
+    visual.root.traverse((object) => {
+      if (!plate && object.isMesh && !Array.isArray(object.material) && object.material.userData?.appearanceRole === 'armorPaint') plate = object.material;
+    });
+    assert.ok(plate && !('COT_RUBBER_TILES' in (plate.defines ?? {})), 't72b3: the armour paint has no rubber tile switch');
+    assert.ok(!compiled(plate).includes('cotRubberTexture'), 't72b3: and its program no rubber tile text');
     visual.dispose();
   }
   // a geometry receipt keeps the one rubber
@@ -68,4 +102,4 @@ try {
 } finally {
   restoreCanvas();
 }
-console.log('hullRubber.selftest: the hull rubber is its own material, the tyres\' finish and program, painted by place; the tyres bare');
+console.log('hullRubber.selftest: the hull rubber is its own material, the tyres\' finish and program, painted by place; the tyres bare; both rubbers break up their tile, nothing else does');

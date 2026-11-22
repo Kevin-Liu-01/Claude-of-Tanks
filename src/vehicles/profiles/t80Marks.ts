@@ -33,7 +33,8 @@ import {machinedRing} from '../machineGunGeometry.ts';
 import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {stowagePart} from './stowagePart.ts';
 import {jerrycanParts} from '../accessoryKits.ts';
-import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION} from './t80uX.ts';
+import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION,T80U_X_APRON,T80U_X_APRON_X0,T80U_X_APRON_X1,t80uXApronAt,t80uXApronX} from './t80uX.ts';
+import {rubberSkirtRun,skirtSections} from './rubberSkirt.ts';
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -216,18 +217,14 @@ function tailCans(P:TankBuilderPort,s:number):void{
 
 /** The side screens under the T-80U X fender lip ([z, top, foot] of its apron; the face leans out from x 1.685 at the lip to
  * 1.80 at the foot): the T-80's narrow painted steel screen, a 30 cm band in five plates with a rolled lower edge, wheels
- * bare beneath; the B marks' full-depth black rubber skirts, seven overlapping sheets a side. And the fender noses: the
+ * bare beneath; the B marks' full-depth black rubber skirts, seven separate sheets a side (profiles/rubberSkirt.ts). And the fender noses: the
  * T-80's bare steel ends with a short steel splash plate, the B marks' wide rubber flaps flaring forward over the tracks. */
-const APRON:readonly(readonly[number,number,number])[]=[[-2.882,1.414,.886],[-2.45,1.458,.815],[-1.22,1.504,.782],[1.75,1.449,.762],[2.886,1.418,.782]];
-function apronAt(z:number):{top:number;foot:number}{
-  for(let i=1;i<APRON.length;i++){
-    const a=APRON[i-1],b=APRON[i];
-    if(z<=b[0]||i===APRON.length-1){const t=Math.max(0,Math.min(1,(z-a[0])/(b[0]-a[0])));return {top:a[1]+(b[1]-a[1])*t,foot:a[2]+(b[2]-a[2])*t};}
-  }
-  return {top:APRON[0][1],foot:APRON[0][2]};
-}
-const SCREEN_X0=1.685,SCREEN_X1=1.80;
-function screenX(z:number,y:number):number{const {top,foot}=apronAt(z);return SCREEN_X0+(SCREEN_X1-SCREEN_X0)*(top-y)/(top-foot);}
+const APRON=T80U_X_APRON,apronAt=t80uXApronAt,screenX=t80uXApronX,SCREEN_X0=T80U_X_APRON_X0,SCREEN_X1=T80U_X_APRON_X1;
+/** A BV mark's skirt row of Kontakt-1 containers (hullK1): from z 2.66 aft at .37 m; the sheets under it carry no clamp strip
+ * of their own, the row's rear end. */
+const SKIRT_BRICK_Z0=2.66,SKIRT_BRICK_PITCH=.37;
+const skirtBricks=(m:T80Mark)=>m==='ua_t80bv'?15:0; // (274: the T-80BV's ten a side came off, Kevin: "remove the goofy squares")
+const skirtBrickRowEnd=(m:T80Mark)=>SKIRT_BRICK_Z0-(skirtBricks(m)-1)*SKIRT_BRICK_PITCH-.13;
 function sidePanel(P:TankBuilderPort,label:string,bucket:string,side:number,z0:number,z1:number,depth:(z:number)=>number,out=0):void{
   const ring=(z:number):[number,number][]=>{
     const {top}=apronAt(z),bottom=top-depth(z),xi=screenX(z,top)+out,xo=screenX(z,bottom)+out,t=.010;
@@ -247,9 +244,10 @@ function sideScreens(P:TankBuilderPort,m:T80Mark):void{
       P.add('hull',box(.62,.24,.014),s*1.38,1.06,3.37,-.12,0,0);
       continue;
     }
-    const n=7,len=(Z1-Z0)/n;
-    for(let i=0;i<n;i++)sidePanel(P,'t80b-rubber-skirt','hullRubber',s,Z0+i*len-(i%2?.03:0),Z0+(i+1)*len+(i%2?.03:0),(z)=>apronAt(z).top-apronAt(z).foot,i%2?.012:0);
-    for(let i=0;i<n;i++){const z=Z0+i*len,y=apronAt(z).top-.05;P.addEquipment('hullDetail',cylX(.014,.016,8),s*(screenX(z,y)+.02),y,z+.10);}
+    // seven separate rubber-fabric sheets (profiles/rubberSkirt.ts; Kevin, 2026-11-21: "fix these rubber sideskirts"), each
+    // under its own clamp strip and bolt row, except where the Ukrainian BV's Kontakt-1 row runs along the top
+    rubberSkirtRun(P,{label:'t80b-rubber-skirt',bucket:'hullRubber',side:s,sections:skirtSections(Z0,Z1,7),
+      top:(z)=>apronAt(z).top,foot:(z)=>apronAt(z).foot,x:screenX,clamp:skirtBricks(m)?(_z0,z1)=>z1<skirtBrickRowEnd(m):undefined});
     // the nose flap: clamped on the fender's top, round its nose and flaring forward and down in front of the track
     // (the T-80U X fender's nose falls from y 1.226 at z 3.20 to .939 at 3.36: the flap lies on it 1 cm proud, then hangs
     // from its edge and flares forward over the track)
@@ -431,8 +429,8 @@ function turretK1(P:TankBuilderPort):void{
 }
 
 /** The BV's glacis field: five chevron courses under the V splash board, tapering from eleven containers to four at the nose, each
- * container's long side down the slope, clear of the lamps and the tow hooks; and one row along the top of each skirt's
- * front two-thirds. Hull frame. */
+ * container's long side down the slope, clear of the lamps and the tow hooks; and on the Ukrainian BV one row along the top
+ * of each skirt (the T-80BV's came off in 274). Hull frame. */
 function hullK1(P:TankBuilderPort,m:T80Mark):void{
   const counts=[11,10,8,6,4];
   counts.forEach((n,row)=>{
@@ -443,9 +441,8 @@ function hullK1(P:TankBuilderPort,m:T80Mark):void{
       k1(P,`glacis_era_${x>=0?'R':'L'}`,'hull',[x,y,z],0,Math.PI/2-tilt,Math.PI/2);
     }
   });
-  const skirtBricks=m==='ua_t80bv'?15:10;
-  for(const s of [-1,1])for(let k=0;k<skirtBricks;k++){
-    const z=2.66-k*.37,{top}=apronAt(z),y=top-.10,x=s*(screenX(z,y)+.012),lean=Math.atan2(SCREEN_X1-SCREEN_X0,top-apronAt(z).foot);
+  for(const s of [-1,1])for(let k=0;k<skirtBricks(m);k++){
+    const z=SKIRT_BRICK_Z0-k*SKIRT_BRICK_PITCH,{top}=apronAt(z),y=top-.10,x=s*(screenX(z,y)+.012),lean=Math.atan2(SCREEN_X1-SCREEN_X0,top-apronAt(z).foot);
     k1(P,`skirt_era_${s>0?'R':'L'}`,'hull',[x,y,z],s*Math.PI/2,-lean);
   }
 }

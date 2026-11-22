@@ -399,7 +399,7 @@ function buildObject292X(P: TankBuilderPort): void {
   P.turretG.position.set(T80U_X_YAW[0], F.ringY, F.ringZ);
   P.addEquipment('hullDetail', machinedRing(.90, 1.01, F.ringY - .030 - 1.522, .004, P.q ? 32 : 20), T80U_X_YAW[0], 1.522, F.ringZ);
   P.gunG.position.set(T80U_X_TRUNNION[0] - T80U_X_YAW[0], F.trunnionY - F.ringY, F.trunnionZ - F.ringZ);
-  buildT80UXHullBase(P);
+  buildT80UXHullBase(P, { skirts: false });
   addGlacis(P);
   addRubberSkirts(P);
   addFrontFenders(P);

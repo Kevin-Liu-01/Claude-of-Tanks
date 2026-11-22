@@ -3,8 +3,8 @@
 // dimensions, each mark's own armour fitted to them (its plates, protection values and balance stay its own), the twin's
 // yaw, trunnion and barrel, and the gun depression measured over each one's own engine deck and stern stowage. Then each mark's gameplay
 // ERA is the ERA its build draws (eraSeating.selftest.mjs, "armour and visuals agree in both directions"): the T-80 and
-// T-80B carry none; the turret, glacis and skirt plates of the T-80BV and of the Ukrainian T-80BV (the same tank in its
-// 2015-24 service fit) are Kontakt-1 (the fleet's KONTAKT1_ERA, as on the Leopard 2A4 V), not the T-80UK's Kontakt-5
+// T-80B carry none; the turret and glacis plates of the T-80BV, and those and the skirt plates of the Ukrainian T-80BV (the
+// same tank in its 2015-24 service fit), are Kontakt-1 (the fleet's KONTAKT1_ERA, as on the Leopard 2A4 V), not the T-80UK's Kontakt-5
 // values their records were copied from. The T-80U Kursk (profiles/t80uKursk.ts) draws the T-80U X build whole, so it
 // takes the twin's armour record whole (plates, modules, crew, collision shells and contacts) at its own 1.04 protection
 // factor, in place of the plates measured on its retired print-fitted loft, and its field Kontakt-1's six plates. Runs with the T-90 marks' pass, after
@@ -25,8 +25,11 @@ export const T80U_KURSK_ARMOR_FACTOR = 1.04;
 /** The Kursk's field Kontakt-1 clusters (profiles/t80uKursk.ts), one gameplay plate each. */
 export const T80U_KURSK_K1_PLATES = Object.freeze(['glacis_k1_L', 'glacis_k1_R', 'skirt_era_L', 'skirt_era_R',
   'turret_k1_L', 'turret_k1_R'] as const);
-/** The BV's drawn Kontakt-1 clusters (profiles/t80Marks.ts), one gameplay plate each. */
-export const T80BV_KONTAKT1_PLATES = Object.freeze(['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R',
+/** The BV marks' drawn Kontakt-1 clusters (profiles/t80Marks.ts), one gameplay plate each. The T-80BV's skirts carry none
+ * (274, t80-skirts-274; Kevin, 2026-11-21: "remove the goofy squares on top o the sideskirts"); the Ukrainian BV keeps its
+ * full-length skirt row. */
+export const T80BV_KONTAKT1_PLATES = Object.freeze(['glacis_era_L', 'glacis_era_R', 'turret_era_L', 'turret_era_R'] as const);
+export const UA_T80BV_KONTAKT1_PLATES = Object.freeze(['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R',
   'turret_era_L', 'turret_era_R'] as const);
 
 /** The gun's depression by turret yaw over each build with its stern stowage on (tools/gun-depression-sweep.mjs, keep 26 mm,
@@ -65,9 +68,11 @@ export function applyT80MarkSourceFrames(specs: Record<string, FleetTankSpec>): 
       if (plates.some((plate) => plate.kind === 'era')) throw new Error(`${id}: the early marks draw no ERA, so carry none`);
       continue;
     }
-    const era = plates.filter((plate) => plate.kind === 'era');
+    // the T-80BV draws no skirt Kontakt-1, so its record (copied from the T-80UK's) carries no skirt ERA plates either
+    if (id === 't80bv') spec.armor.hullPlates = spec.armor.hullPlates.filter((plate) => !(plate.kind === 'era' && plate.name.startsWith('skirt_era_')));
+    const era = [...spec.armor.hullPlates, ...spec.armor.turretPlates].filter((plate) => plate.kind === 'era');
     const names = era.map((plate) => plate.name).sort();
-    if (names.join() !== [...T80BV_KONTAKT1_PLATES].join())
+    if (names.join() !== [...(id === 't80bv' ? T80BV_KONTAKT1_PLATES : UA_T80BV_KONTAKT1_PLATES)].join())
       throw new Error(`${id}: ERA plates ${names.join()} do not match its drawn Kontakt-1 clusters`);
     for (const plate of era) plate.era = { ...KONTAKT1_ERA };
   }
