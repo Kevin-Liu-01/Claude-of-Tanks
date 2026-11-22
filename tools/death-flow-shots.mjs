@@ -60,7 +60,9 @@ const stageFoe = () => {
     if (t === p) continue;
     t.aiCtl = null; t.input.fire = false; t.input.throttle = 0; t.input.steer = 0; t.state.speed = 0;
   }
-  const yaw = p.state.yaw, x = p.state.pos.x + Math.sin(yaw) * 120, z = p.state.pos.z + Math.cos(yaw) * 120;
+  // the card case's guns are the gun ladder's autocannon, which glances off a front: it fires into the flank
+  const yaw = p.state.yaw + (window.__dfFlank ? Math.PI / 2 : 0);
+  const x = p.state.pos.x + Math.sin(yaw) * 120, z = p.state.pos.z + Math.cos(yaw) * 120;
   foe.state.pos.set(x, hf.getHeightAt(x, z), z);
   foe.state.yaw = Math.atan2(p.state.pos.x - x, p.state.pos.z - z);
   foe.state.turretYaw = 0;
@@ -124,6 +126,7 @@ async function beats(page, key, marks, burstSpan = null) {
 
 async function runCase(page, tag, which) {
   const key = `${tag}-${which}`;
+  await page.evaluate((flank) => { window.__dfFlank = flank; }, which === 'card');
   const foeId = await page.evaluate(stageFoe);
   if (!foeId) { receipt.deaths[key] = [{ error: 'no foe' }]; return; }
   await sleep(1500);

@@ -152,9 +152,13 @@ export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): S
     stats.push({ id: 'closing', label: t('killcam.stat.closingSpeed'), value: `${round((ev.closingMps || 0) * 3.6)} km/h` });
   }
   const damage: ShotCardStat = { id: 'damage', label: t('killcam.stat.damage'), value: `−${round(hullPointsRemoved(ev))}` };
+  // a blast's splash tests no plate (armour against pen means nothing there): distance and damage only
+  const splash = ev.kind === 'he_splash';
   if (!collision && !fire) {
     // the short figures share the first row (distance, damage); armour and pen take a row each
     stats.push({ id: 'distance', label: t('killcam.stat.distance'), value: `${round(ev.flightDistM).toLocaleString()} m` }, damage);
+  }
+  if (!collision && !fire && !splash) {
     stats.push({ id: 'armor', label: t('killcam.stat.armor'), value: armorText(ev) });
     const nominal = nominalPenFor(ev);
     const roll = round(ev.penRollMm);

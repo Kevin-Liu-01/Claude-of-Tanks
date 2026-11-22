@@ -754,6 +754,7 @@ body[data-cot-height='short'] .cot-kc-title{top:4px;min-width:280px;padding-bloc
 body[data-cot-height='short'] .cot-kc-card{width:min(260px,40vw);padding:var(--s1) var(--s2) var(--s2);gap:2px}
 body[data-cot-height='short'] .cot-kc-card :is(.sil,[data-stat=armor]){display:none}
 body[data-cot-height='short'] .cot-kc-card .who{font-size:var(--battle-fs-15)}
+body[data-cot-height='short'] .cot-kc-card .art{width:76px;height:50px}
 body[data-cot-width='compact'] .cot-kc-label,
 body[data-cot-width='phone'] .cot-kc-label{font-size:var(--battle-fs-11);padding:3px 6px var(--s1)}
 body[data-cot-width='compact'] .cot-kc-label .s,
