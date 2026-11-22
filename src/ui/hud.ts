@@ -73,6 +73,7 @@ import type { ShotInfoRuntime } from './shotInfo.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
 import { BATTLE_EVENT, createBattleEventLane, type BattleEvent } from './battleNoticeEvents.ts';
 import { formatKeyLineWith, tilePrompt } from './keyPrompt.ts';
+import { flipPicture } from './noticeDiagrams.ts';
 import type { ActionId } from '../game/input.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
@@ -5958,11 +5959,15 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (an overturned tank says so, its key on the key line: notices-audit-275; the seated chip by the reticle keeps its one
     // short line)
     const rollover = warning.kind === 'rollover';
+    // (Kevin 2026-11-21: "with icon diagrams") the overturned tank wears the key-hint layout: its diagram (noticeDiagrams.ts
+    // flipPicture, the one pose diagram) beside its line and its key's, the key the live binding of the self-right command
     battleNotices.condition({
-      id: AIM_NOTICE_ID, className: 'cot-aim-notice', severity: warning.kind === 'blocked' ? 'error' : 'warning',
+      id: AIM_NOTICE_ID, className: rollover ? 'cot-aim-notice cot-key-hint' : 'cot-aim-notice',
+      severity: warning.kind === 'blocked' ? 'error' : 'warning',
       icon: rollover ? 'rematch' : warning.kind === 'blocked' ? 'alert' : 'turretRing',
       text: rollover ? t('hud.aimWarning.flipTitle') : text,
       detailHtml: rollover ? keyLine('hud.aimWarning.flipLine', { key: 'selfRight' }) : undefined,
+      media: rollover ? { svg: flipPicture(), label: t('hud.aimWarning.flipTitle') } : undefined,
       durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
     });
   }

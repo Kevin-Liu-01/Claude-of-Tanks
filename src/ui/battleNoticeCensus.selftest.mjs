@@ -122,7 +122,19 @@ for (const file of files) {
   }
 }
 
+// the key-hint notices' pictures are one family (Kevin 2026-11-21: "flip alert ... with icon diagrams"): an action that moves
+// the tank is drawn by the one pose diagram, and the overturned tank's notice wears the key-hint layout with its diagram
+const diagrams = read('src/ui/noticeDiagrams.ts');
+for (const name of ['suspensionPicture', 'flipPicture']) {
+  assert.match(diagrams, new RegExp(`export function ${name}\\(\\): string \\{\\n\\s+return poseDiagram\\(`), `${name} is the one pose diagram`);
+}
+assert.match(hud, /className: rollover \? 'cot-aim-notice cot-key-hint'/, 'the overturned tank\'s notice wears the key-hint layout');
+assert.match(hud, /media: rollover \? \{ svg: flipPicture\(\)/, 'with its diagram');
+assert.match(hud, /keyLine\('hud\.aimWarning\.flipLine', \{ key: 'selfRight' \}\)/, 'and its key the self-right command\'s live binding');
+assert.match(read('src/ui/firstUseHints.ts'), /className: `cot-key-hint cot-first-hint/, 'the first-use hints wear the same layout');
+
 const counts = { notices: 0, battle: 0, menu: 0 };
 for (const key of found.keys()) counts[SURFACES[key].kind]++;
 console.log(`battleNoticeCensus.selftest: PASS (${found.size} announcing surfaces: ${counts.notices} the battle notices, `
-  + `${counts.battle} battle surfaces named with their reason, ${counts.menu} outside the battle; the HUD keeps no band of its own)`);
+  + `${counts.battle} battle surfaces named with their reason, ${counts.menu} outside the battle; the HUD keeps no band of its own; `
+  + 'the key-hint notices share one layout and one pose diagram)');

@@ -217,16 +217,17 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 /* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
    notification part maybe on right that shows what it is") every first-use hint (firstUseHints.ts, the armour tip the
-   first of them): its one line and its key's line beside its picture (firstUseHintPictures.ts), no glyph, 56 px tall and at most
+   first of them): its one line and its key's line beside its picture (noticeDiagrams.ts), no glyph, 56 px tall and at most
    260 wide and never wider than the guidance's box (at 255 in a 246 px box it ran onto the ammunition at 390x844), about
-   a third of the tip's old plate; where to turn it off is the picture's label */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__glyph{display:none}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__body{gap:1px}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
+   a third of the tip's old plate; where to turn it off is the picture's label. (notices-audit-275) The layout is every
+   key-hint notice's, .cot-key-hint: the overturned tank's notice (hud.ts) wears it too, its diagram beside its key line */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__glyph{display:none}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__body{gap:1px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__media{width:64px;height:48px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__media{width:64px;height:48px}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
