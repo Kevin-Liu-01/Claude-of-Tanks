@@ -112,11 +112,15 @@ const MOTION = {
   // scrim under it fades in and out
   'garage-dossier': vocab('src/ui/garage.ts', 'cot-garage-panel-scrim', 'fade'),
   'garage-rival': own('pickers'), 'garage-staging': own('pickers'), 'garage-quick-mode': own('pickers'), 'garage-quick-battlefield': own('pickers'),
+  // the language menus are the picker's popover (the registry's box: .cot-c-menu__pop), in the Garage and in Settings
+  'garage-language': own('pickers'), 'settings-language': own('pickers'),
   'garage-filters': vocab('src/ui/garageFacetPanel.ts', 'cot-facet-panel', 'drop'),
   'garage-mobile-nav': vocab('src/ui/garage.ts', 'cot-mobile-nav-menu', 'drop'),
   'tech-tree': vocab('src/ui/techTree.ts', 'cot-tt', 'fade'),
   'garage-technical': own('modal'), 'garage-return-failure': own('modal'), 'battle-entry-failure': own('modal'),
   'service-record': own('modal'), 'camo-studio': own('modal'), 'context-info': own('modal'), 'couch-lobby': own('modal'), modal: own('modal'),
+  // the couch briefing (pad-controls-274) opens through the shared modal (couchBriefing.ts createModal)
+  'couch-briefing': own('modal'),
   rooms: vocab('src/ui/playMenu.ts', 'panel', 'rise'),
   // Deploy's closed state moves it out of its fixed full-screen place: it enters with the swap and leaves at once
   deploy: vocab('src/ui/garage.ts', 'cot-battle-menu', 'swap'),
