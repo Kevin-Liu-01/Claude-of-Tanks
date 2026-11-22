@@ -24,7 +24,7 @@ console.warn = () => {};
 installCanvasFixture();
 
 // the integ/274.0 pass's worst stations
-const SAMPLE = ['object148_proto', 'leo2_improved', 'leo2a4_otco', 't72b3m_xuanwu', 'bm_oplot_t'];
+const SAMPLE = ['object148_proto', 'leo2_improved', 'leo2a4_otco', 't72b3m_xuanwu', 't84'];
 await ensureInteriorFills(SAMPLE);
 /** Build `id` with its decor; `hide` plans it with the stations hidden from the decor, then shows them again. */
 function survey(id, hide = false) {
