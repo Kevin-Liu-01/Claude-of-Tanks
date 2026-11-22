@@ -26,9 +26,10 @@ const ids=arg?arg.slice(6).split(','):SECOND_WAVE_X_IDS;
 assert.equal(SECOND_WAVE_X_IDS.length,23,'complete requested fleet census');
 for(const id of ids)assert.ok(SECOND_WAVE_X_IDS.includes(id),`known second-wave ID ${id}`);
 
-// 2026-10-01: the owner's rebuild of the T-62MV-1 (4c34b3e8b: T-62 obr. 1975 chassis with "two independently
-// removable side fields beyond the former four-zone package"; cdbfe54dc: complete T-72B 1987 upper assembly) gives it
-// six zones: its first-generation hull glacis and side fields, and the transplanted turret's own 1987 modules.
+// The T-62MV (274, lane t62-275: the T-62's own cast turret under its 1985 Kontakt-1, profiles/t62Family.ts) has six
+// zones: the glacis, the front side screens and the two turret cheeks. The hull fields carry the first-generation
+// preset; the turret fields keep the values the MV fought with on its former T-72B 1987 turret (t62mv1XArmor.ts), so
+// the rebuild moves its looks, not its balance.
 function expectedZones(id){
   if(!ERA_IDS.includes(id))return[];
   const names=['hull/glacis_era_L','hull/glacis_era_R','turret/turret_era_L','turret/turret_era_R'];

@@ -109,7 +109,10 @@ export function synchronizeFleetRenewalMetadata():void{
   // Kontakt-1 fields on the glacis, both turret cheeks and the top of each rubber skirt's front, each zone one removable
   // cluster in the build; the seeds are replaced by the cassettes' marked faces in anatomy generation
   const t62Era=createT62MV1XArmorZones();
-  TANK_SPECS.t62mv1.armor.hullPlates=TANK_SPECS.t62mv1.armor.hullPlates.filter(p=>p.kind!=='era');
+  // The donor record's spaced 8 mm skirt planes (x +-1.66, the hull's full length) stand in open air beside the bare
+  // rear run: the MV's only side screen covers the front run, and its armour is that screen's Kontakt field (skirt_era)
+  TANK_SPECS.t62mv1.armor.hullPlates=TANK_SPECS.t62mv1.armor.hullPlates
+    .filter(p=>p.kind!=='era'&&!(p.kind==='spaced'&&/^skirt(?:_rubber)?_[LR]$/.test(p.name)));
   TANK_SPECS.t62mv1.armor.hullPlates.push(...t62Era.hullPlates);
   TANK_SPECS.t62mv1.armor.turretPlates=TANK_SPECS.t62mv1.armor.turretPlates.filter(p=>p.kind!=='era');
   TANK_SPECS.t62mv1.armor.turretPlates.push(...t62Era.turretPlates);

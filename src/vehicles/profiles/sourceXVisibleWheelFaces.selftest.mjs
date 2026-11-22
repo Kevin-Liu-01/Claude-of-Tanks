@@ -32,13 +32,6 @@ const CASES = {
     xLeft:1.437, xRight:1.437,
     zsLeft:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     zsRight:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706]},
-  // 2026-10-01: the owner's rebuild (4c34b3e8b, fleet-renewal-publication-20260930.md) puts the T-62MV-1 on the
-  // T-62 obr. 1975 chassis; the supplied fused-FBX witnesses (r .391615, x 1.199465, five source stations) left
-  // with the source build. The rebuild runs its chassis donor's five-wheel course (proved equal to the live
-  // t62_1975 below) under the same Russia nation face.
-  t62mv1: {radius:.42, standard:'t90_1992', y:.491,
-    xLeft:1.397, xRight:1.397,
-    zs:[-1.933,-.791,.293,1.297,2.235]},
 };
 const near = (a,b,label) => assert.ok(Number.isFinite(a) && Math.abs(a-b)<1e-6,
   `${label}: ${a}, expected ${b}`);
@@ -138,4 +131,24 @@ for(const quality of ['high','low']) {
       return{matrices:Array.from(mesh.instanceMatrix.array.subarray(0,mesh.count*16)),
         positions:Array.from(mesh.geometry.attributes.position.array)};}finally{tank.dispose();}};
   assert.deepEqual(tires('t62mv1'),tires('t62_1975'),`t62mv1/${quality}: the rebuild runs the T-62 obr. 1975 donor's own road wheels`);
+  // 274 (lane t62-275): the T-62 family draws the T-55's period starfish wheel (the owner's period-wheel exception,
+  // 2026-10-28, extended to the T-62), not the T-90 pressed face above: five 0.81 m wheels a side at the T-62's own
+  // stations (gaps 0.92, 0.93, 1.06, 1.08 m)
+  const tank=createTank('t62mv1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  try {
+    tank.root.updateMatrixWorld(true);
+    const receipt=tank.root.getObjectByName('rig_hull').userData.wheelPatternReceipts[0];
+    assert.equal(receipt.construction,'nation:t54-starfish-spoke',`t62mv1/${quality}: the period starfish wheel`);
+    assert.equal(receipt.nationStandard?.donor,'type59',`t62mv1/${quality}: the T-54/T-55 family's wheel donor`);
+    const mesh=tank.root.getObjectByName('gearRoadWheelTires'),matrix=new THREE.Matrix4(),point=new THREE.Vector3();
+    assert.equal(mesh.count,10,'five road wheels a side');
+    const zs=[2.10,1.18,.25,-.81,-1.89];
+    for(let i=0;i<mesh.count;i++) {
+      mesh.getMatrixAt(i,matrix);matrix.premultiply(mesh.matrixWorld);point.setFromMatrixPosition(matrix);
+      near(Math.abs(point.x),1.32,'T-62 axle track');near(point.y,.476,'T-62 axle height');
+      assert.ok(zs.some(z=>Math.abs(z-point.z)<1e-6),`T-62 station ${point.z}`);
+    }
+    const p=mesh.geometry.attributes.position;
+    near(Math.max(...Array.from({length:p.count},(_,i)=>Math.hypot(p.getY(i),p.getZ(i)))),.405,'0.81 m road wheel');
+  } finally {tank.dispose();}
 }
