@@ -3,12 +3,14 @@
 // without knowing where the stations swing: the fleet cargo's turretRoof route stood an insulated chest 0.5 m from the
 // Oplot-T's M240 at its bore height, and a read-only fleet pass (integ/274.0) found 50 stations on 48 tanks with decor
 // inside their authored traverse (object148_proto 88 degrees, leo2_improved 74, leo2a4_otco 58 ...). One keep-out now
-// serves them all: a station's barrel and moving stock, swept round its yaw axis over its authored arc from level to full
-// elevation, is a floor over each radius from the axis; a decor piece whose top stands above that floor anywhere in its
+// serves them all: a station's barrel and moving stock, swept round its yaw axis over its authored arc from the deepest
+// depression it may take to full elevation, is a floor over each radius from the axis (a load the barrel cannot depress
+// over blocks the gun as surely as one it traverses into: with the Oplots' per-id roof rule cut over, a crate stood
+// between their stations under the barrels' level sweep); a decor piece whose top stands above that floor anywhere in its
 // footprint is in the sweep, and decorations.ts turns it away (it takes its next station or route, or drops), as it turns
 // away loads from a launcher's or a drone dock's volume. The fleet receipt (tools/vehicle-controls-inventory.mjs writes
 // decorInStationArcs.generated.ts; roofStationKeepOut.selftest.mjs fails on any entry) measures the built decor against
-// the barrel lines tools/roof-station-arcs.mjs sweeps.
+// the barrel lines tools/roof-station-arcs.mjs sweeps, at every pose the authority lets the station take.
 import * as THREE from 'three';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { ROOF_STATION_ARCS } from './roofStationArcs.ts';
@@ -36,6 +38,8 @@ export function stationYawArc(vehicleId: string, station: THREE.Object3D): reado
 const BIN_M = 0.02;
 const CLEAR_M = 0.02;
 const POSE_STEP_RAD = 0.05;
+/** A stamped triangle's longest edge (m): longer ones are split first. */
+const SPLIT_M = 0.1;
 /** A partial arc's samples are grouped by rest bearing in bins this wide; nearer the axis than AXIS_M a sample has no
  *  useful bearing and joins the bin that sweeps the full circle. */
 const BEARING_BIN_RAD = Math.PI / 12;
@@ -132,9 +136,20 @@ function bearingSpan(xs: ArrayLike<number>, zs: ArrayLike<number>, count = xs.le
   return [lo, hi];
 }
 
+/** The deepest depression a station may take at any yaw (radians): the weapon's, capped by the mount's table where it
+ *  has one (src/sim/auxiliarySystems.ts depressionAt holds the smaller of the weapon's and the table's). */
+export function stationDepressionLimit(station: THREE.Object3D, weaponRad: number): number {
+  const table = station.userData.depressionByYaw as readonly (readonly [number, number])[] | undefined;
+  if (!table?.length) return Math.max(0, weaponRad);
+  // a yaw outside the table's span takes the weapon's own depression
+  const spansCircle = table[0][0] <= -Math.PI + 1e-3 && table[table.length - 1][0] >= Math.PI - 1e-3;
+  const deepest = Math.max(...table.map(([, d]) => d));
+  return Math.max(0, Math.min(weaponRad, spansCircle ? deepest : weaponRad));
+}
+
 /**
- * The swept volume of one station, station-local: each triangle of its moving stock (the pitch group posed from level
- * to full elevation every POSE_STEP_RAD, each step's two poses stamped together so the chord between them is covered;
+ * The swept volume of one station, station-local: each triangle of its moving stock (the pitch group posed from its
+ * deepest depression (stationDepressionLimit) to full elevation every POSE_STEP_RAD, each step's two poses stamped together so the chord between them is covered;
  * the yaw stage at rest) stamps its lowest point over the radii it spans, and the barrel lines tools/roof-station-arcs.mjs
  * sweeps (the axis from STATION_MIN_REACH_M to the muzzle, barrelSweepRadius round it) stamp theirs, so a piece the keep-out
  * passes is one the receipt passes. Pure over the built station: its pitch group is posed and put back.
@@ -142,9 +157,9 @@ function bearingSpan(xs: ArrayLike<number>, zs: ArrayLike<number>, count = xs.le
 function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: SweepBin[]; reach: number; bottom: number } | null {
   const u = station.userData;
   const profile = auxiliaryWeaponProfile(Number(u.caliberMm) || 12.7, vehicleId);
-  const elevation = Math.max(0, profile.elevationRad);
+  const elevation = Math.max(0, profile.elevationRad), depression = stationDepressionLimit(station, profile.depressionRad);
   const poses: number[] = [];
-  for (let p = 0; p < elevation; p += POSE_STEP_RAD) poses.push(p);
+  for (let p = -depression; p < elevation; p += POSE_STEP_RAD) poses.push(p);
   poses.push(elevation);
   const pivot = new THREE.Vector3(...(u.auxiliaryPivot as [number, number, number]));
   const muzzle = new THREE.Vector3(...((u.auxiliaryMuzzle as [number, number, number] | undefined) ?? [0, u.barrelAxisLocalY ?? 0, u.muzzleLocalZ]));
@@ -184,21 +199,48 @@ function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: Sweep
     }
   };
   // each triangle stamps its lowest corner over the radii it spans; with `b`, the band between that pose and the last
-  const stampTriangles = (mesh: THREE.Mesh, a: Float64Array, b: Float64Array | null): void => {
-    const index = mesh.geometry.getIndex(), n = index ? index.count : a.length / 3;
-    const corners = b ? 6 : 3;
-    for (let k = 0; k + 2 < n; k += 3) {
-      let y = Infinity, rMax = 0, rLo = Infinity, edge = 0, step = 0;
+  // One triangle's stamp, its corners (x, y, z) at this pose and, with `two`, at the last: 18 numbers on a stack. A
+  // triangle that spans more than SPLIT_M in plan and drops more than SPLIT_M in height across it is split at its edges'
+  // midpoints first (exact under a rigid pose): a barrel's side faces run its whole length, and stamped whole a depressed
+  // one would pull its muzzle's low point under every radius it spans. Flat or small triangles stamp as they are.
+  const STACK = new Float64Array(18 * 32);
+  const MID: ReadonlyArray<readonly [number, number]> = [[0, 1], [1, 2], [2, 0]];
+  const KIDS: ReadonlyArray<readonly [number, number, number]> = [[0, 3, 5], [3, 1, 4], [5, 4, 2], [3, 4, 5]];
+  const six = new Float64Array(36); // the three corners and three midpoints of both poses
+  const stampStack = (two: boolean): void => {
+    let top = 1;
+    while (top > 0) {
+      const o = --top * 18;
+      let y = Infinity, yHi = -Infinity, rMax = 0, rLo = Infinity, edge = 0, step = 0;
+      const corners = two ? 6 : 3;
       for (let c = 0; c < 3; c++) {
-        const i = (index ? index.getX(k + c) : k + c) * 3;
-        xs[c] = a[i]; zs[c] = a[i + 2]; y = Math.min(y, a[i + 1]);
-        if (b) { xs[c + 3] = b[i]; zs[c + 3] = b[i + 2]; y = Math.min(y, b[i + 1]); const sx = xs[c + 3] - xs[c], sz = zs[c + 3] - zs[c]; step = Math.max(step, sx * sx + sz * sz); }
+        xs[c] = STACK[o + c * 3]; zs[c] = STACK[o + c * 3 + 2];
+        const yc = STACK[o + c * 3 + 1]; y = Math.min(y, yc); yHi = Math.max(yHi, yc);
+        if (two) {
+          xs[c + 3] = STACK[o + 9 + c * 3]; zs[c + 3] = STACK[o + 9 + c * 3 + 2];
+          const yb = STACK[o + 9 + c * 3 + 1]; y = Math.min(y, yb); yHi = Math.max(yHi, yb);
+          const sx = xs[c + 3] - xs[c], sz = zs[c + 3] - zs[c]; step = Math.max(step, sx * sx + sz * sz);
+        }
       }
       for (let c = 0; c < corners; c++) { const r = Math.sqrt(xs[c] * xs[c] + zs[c] * zs[c]); rMax = Math.max(rMax, r); rLo = Math.min(rLo, r); }
       for (let c = 0; c < 3; c++) { const ex = xs[(c + 1) % 3] - xs[c], ez = zs[(c + 1) % 3] - zs[c]; edge = Math.max(edge, ex * ex + ez * ez); }
       edge = Math.sqrt(edge); step = Math.sqrt(step);
+      if (edge > SPLIT_M && yHi - y > SPLIT_M && top + 4 <= 32) {
+        for (let pose = 0; pose < (two ? 2 : 1); pose++) {
+          const b = o + pose * 9, d = pose * 18;
+          for (let c = 0; c < 9; c++) six[d + c] = STACK[b + c];
+          for (let m = 0; m < 3; m++) for (let q = 0; q < 3; q++) six[d + 9 + m * 3 + q] = (STACK[b + MID[m][0] * 3 + q] + STACK[b + MID[m][1] * 3 + q]) / 2;
+        }
+        for (const kid of KIDS) {
+          const k = top++ * 18;
+          for (let pose = 0; pose < (two ? 2 : 1); pose++) for (let c = 0; c < 3; c++) for (let q = 0; q < 3; q++) {
+            STACK[k + pose * 9 + c * 3 + q] = six[pose * 18 + kid[c] * 3 + q];
+          }
+        }
+        continue;
+      }
       // the nearest radius: within a bin of the corners for a small triangle (no point of it is farther than its longest
-      // edge from a corner), measured for a large one. With `b`, every point of the band between the poses lies within
+      // edge from a corner), measured for a large one. With `two`, every point of the band between the poses lies within
       // its corners' largest step of the first pose's triangle (a rotation's step is linear in the point; the arc's bulge
       // over a 0.05 rad step is under a millimetre).
       let rMin = edge <= BIN_M ? rLo - edge : planTriangleDistance(xs[0], zs[0], xs[1], zs[1], xs[2], zs[2]);
@@ -207,6 +249,17 @@ function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: Sweep
         const [a0, a1] = bearingSpan(xs, zs, corners);
         bins.stamp(rMin, rMax, y, a0, a1);
       } else bins.stamp(rMin, rMax, y, 0, 0);
+    }
+  };
+  const stampTriangles = (mesh: THREE.Mesh, a: Float64Array, b: Float64Array | null): void => {
+    const index = mesh.geometry.getIndex(), n = index ? index.count : a.length / 3;
+    for (let k = 0; k + 2 < n; k += 3) {
+      for (let c = 0; c < 3; c++) {
+        const i = (index ? index.getX(k + c) : k + c) * 3;
+        STACK[c * 3] = a[i]; STACK[c * 3 + 1] = a[i + 1]; STACK[c * 3 + 2] = a[i + 2];
+        if (b) { STACK[9 + c * 3] = b[i]; STACK[9 + c * 3 + 1] = b[i + 1]; STACK[9 + c * 3 + 2] = b[i + 2]; }
+      }
+      stampStack(!!b);
     }
   };
   const scratch = new Map<THREE.Mesh, Float64Array>();
@@ -223,7 +276,8 @@ function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: Sweep
     posed(mesh, a);
     stampTriangles(mesh, a, null);
   }
-  // the pitch group, posed level to full elevation (as the presentation and ghillieSuit.ts roofWeaponFloor pose it)
+  // the pitch group, posed from its deepest depression to full elevation (as the presentation and ghillieSuit.ts
+  // roofWeaponFloor pose it)
   const pitchMeshes = meshes.filter((mesh) => pitched.has(mesh));
   if (pitchNode && pitchMeshes.length) {
     // posed as the presentation poses it (fx/auxiliaryPresentation.ts: rotation.x = -pitch, rest level), through the

@@ -5,10 +5,12 @@
 //
 // 1. The fleet: tools/vehicle-controls-inventory.mjs measures every tank it builds (tools/roof-station-probe.mjs
 //    decorInStationArcs: each station's barrel lines swept against the decor alone, whole degrees inside its arc) and
-//    writes decorInStationArcs.generated.ts. Any entry fails here.
+//    writes decorInStationArcs.generated.ts, level to full elevation and down to the depression the authority allows).
+//    Any entry fails here.
 // 2. The keep-out's volume, on a made station (a 12.7 on a pitch group, a 1.1 m barrel): it holds what the barrel sweeps
-//    level to full elevation round the whole circle, leaves the deck under the barrel and the air beyond its reach, keeps
-//    to an authored arc, and puts the pitch group back as it stood. The live builds (the integ/274.0 pass's worst
+//    from its deepest depression (the weapon's, or its mount's table) to full elevation round the whole circle, leaves the
+//    deck under the depressed barrel and the air beyond its reach, keeps to an authored arc, and puts the pitch group back
+//    as it stood. The live builds (the integ/274.0 pass's worst
 //    stations, with a negative control) are roofStationKeepOutLive.selftest's, in the tanks suite.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -64,11 +66,20 @@ assert.ok(met(boxAt(1.05, 1.0, 0.25, 0.35, 0.03)), 'a can at bore height under t
 assert.ok(met(boxAt(0.5, -1.2, 0.0, 1.8, 0.01)), 'a whip 0.5 m from the axis reaches through the sweep');
 // above the barrel, where it elevates (heavy profile: 0.75 rad): 0.4 m out and 0.3 m over the bore
 assert.ok(met(boxAt(0.4, 0.3, 0.55, 0.62)), 'a load the barrel meets as it elevates is in the sweep');
-// the deck under the barrel and the air beyond its reach stay free
-assert.ok(!met(boxAt(0.7, 0.5, 0.0, 0.2)), 'a low load under the barrel 0.7 m out is clear (its top 6 cm under the bore floor)');
+// the barrel depresses (heavy profile: 0.18 rad, 13 cm down 0.7 m out) into a load under its level line
+assert.ok(met(boxAt(0.7, 0.5, 0.0, 0.2)), 'a load the barrel meets as it depresses is in the sweep');
+// the deck under the depressed barrel and the air beyond its reach stay free
+assert.ok(!met(boxAt(0.7, 0.5, 0.0, 0.05)), 'a low load under the depressed barrel 0.7 m out is clear');
 assert.ok(!met(boxAt(1.4, 0.5, 0.2, 0.4)), 'a chest at bore height past the muzzle\'s reach is clear');
 // the receiver's swing: behind the trunnion at its height
 assert.ok(met(boxAt(0.28, Math.PI, 0.22, 0.3, 0.05)), 'the receiver swings through a load just behind the trunnion');
+
+// a mount whose table holds the barrel level all round (src/sim/auxiliarySystems.ts depressionAt) leaves that load be
+const level = madeStation();
+level.station.userData.depressionByYaw = [[-Math.PI, 0], [Math.PI, 0]];
+const levelSweeps = stationSweepKeepOut(level.frame, [level.frame], 'made_vehicle');
+assert.ok(!stationSweepMet(levelSweeps, boxAt(0.7, 0.5, 0.0, 0.2)), 'held level by its table, the barrel clears the load');
+assert.ok(stationSweepMet(levelSweeps, boxAt(0.7, 0.5, 0.2, 0.4)), 'and still meets one at bore height');
 
 // an authored arc keeps the sweep to it: +-0.5 rad round the rest bearing
 const arced = madeStation([-0.5, 0.5]);
@@ -88,4 +99,4 @@ assert.equal(stationSweepKeepOut(hull, [hull, turret], 'made_vehicle').length, 0
 assert.equal(stationSweepKeepOut(turret, [hull, turret], 'made_vehicle').length, 1, 'it is reserved in the turret frame');
 
 console.log(`roofStationKeepOut: no tank carries decor inside a roof station's traverse (${Object.keys(DECOR_IN_STATION_ARCS).length} `
-  + 'entries); the made station\'s sweep holds the circle, the elevation and the receiver, frees the deck and the air, keeps its arc');
+  + 'entries); the made station\'s sweep holds the circle, the depression, the elevation and the receiver, frees the deck and the air, keeps its arc');

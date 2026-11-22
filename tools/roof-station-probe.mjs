@@ -124,12 +124,21 @@ export function stationSweep(root, station, limits, { stepDeg = 1, only = null }
   return { name: station.name, blocked, arc: full ? null : [lo, hi], restBlocked: false, radius, length };
 }
 
+/** The deepest depression the authority lets a station take at `yaw` (src/sim/auxiliarySystems.ts depressionAt). */
+function depressionAt(station, yaw, weapon) {
+  const table = station.userData.depressionByYaw;
+  if (!table?.length || yaw < table[0][0] || yaw > table[table.length - 1][0]) return weapon;
+  for (let i = 1; i < table.length; i++) if (yaw <= table[i][0]) return Math.min(weapon, table[i - 1][1], table[i][1]);
+  return Math.min(weapon, table[table.length - 1][1]);
+}
+
 /**
  * Release 275 (lane roof-station-keepout-275): the decor inside each roof station's traverse on a tank built with its
- * decor. Each station's barrel lines are swept against the decor's triangles alone, every whole degree, level to full
- * elevation (stationSweep), and the blocked degrees inside the arc it traverses (stationYawArc: its own, else the
- * drone-stand table's) are reported as runs: [{ station, blockedDeg: [[from, to], ...] }], empty when the decor keeps
- * clear. tools/vehicle-controls-inventory.mjs writes it for every tank (src/vehicles/decorInStationArcs.generated.ts) and
+ * decor. Each station's barrel lines are swept against the decor's triangles alone, every whole degree, from level to full
+ * elevation (stationSweep) and down to the depression the authority allows it there (depressionAt: the weapon's, or its
+ * mount's table), and the blocked degrees inside the arc it traverses (stationYawArc: its own, else the drone-stand
+ * table's) are reported as runs: [{ station, blockedDeg: [[from, to], ...] }], empty when the decor keeps clear.
+ * tools/vehicle-controls-inventory.mjs writes it for every tank (src/vehicles/decorInStationArcs.generated.ts) and
  * src/vehicles/roofStationKeepOut.selftest.mjs fails on any entry; decorations.ts keeps the decor out by construction
  * (src/vehicles/stationSweepKeepOut.ts).
  */
@@ -138,9 +147,16 @@ export function decorInStationArcs(root, vehicleId) {
   for (const station of stationsOf(root).stations) {
     const profile = auxiliaryWeaponProfile(station.userData.caliberMm || 12.7, vehicleId);
     const { blocked } = stationSweep(root, station, profile, { stepDeg: 1, only: isDecorMesh });
+    const { probe } = stationProbe(root, station, isDecorMesh);
+    const hit = new Set(blocked);
+    for (let deg = -180; deg < 180; deg++) {
+      if (hit.has(deg)) continue;
+      const yaw = deg * Math.PI / 180, d = depressionAt(station, yaw, profile.depressionRad);
+      if (d > 0 && [d, d / 2].some((p) => probe(yaw, -p))) hit.add(deg);
+    }
     const arc = stationYawArc(vehicleId, station);
     const lo = arc ? arc[0] * 180 / Math.PI : -Infinity, hi = arc ? arc[1] * 180 / Math.PI : Infinity;
-    const inArc = blocked.filter((d) => !arc || [-720, -360, 0, 360, 720].some((k) => d + k >= lo && d + k <= hi));
+    const inArc = [...hit].sort((a, b) => a - b).filter((d) => !arc || [-720, -360, 0, 360, 720].some((k) => d + k >= lo && d + k <= hi));
     if (!inArc.length) continue;
     const runs = [];
     for (const d of inArc) { const last = runs.at(-1); if (last && d - last[1] <= 1) last[1] = d; else runs.push([d, d]); }

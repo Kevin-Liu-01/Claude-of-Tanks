@@ -3916,9 +3916,13 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
   // frames now, which a hung load crossed.)
   // Release 275: the T-84BM Oplot-M and Oplot-T carry their own two whips (profiles/oplotBM.ts); a decor whip would double
-  // them. (Their roof cargo, which stood 0.5 m from the Oplot-T's M240 at its bore height, is the fleet's station keep-out's
-  // since roof-station-keepout-275: stationSweepKeepOut.ts.)
-  if (spec.id === 'bm_oplot_m' || spec.id === 'bm_oplot_t') return manifest.filter((row) => row.kit !== 'antenna');
+  // them. Their roofs stay bare between the stations, as the owner approved them (oplot-275): the fleet cargo keeps its other
+  // routes. (A load in a station's way, as the chest 0.5 m from the Oplot-T's M240 at its bore height was, is the fleet's
+  // station keep-out's since roof-station-keepout-275, stationSweepKeepOut.ts; under their raised guns the keep-out would
+  // still seat a bag between the stations, clear of every sweep.)
+  if (spec.id === 'bm_oplot_m' || spec.id === 'bm_oplot_t') {
+    return manifest.filter((row) => row.kit !== 'antenna').map((row) => m1a1CargoRoutes(row, ['turretRoof']));
+  }
   if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
     return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
   }
