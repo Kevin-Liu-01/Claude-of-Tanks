@@ -955,6 +955,41 @@ The destructible props' batches (one `BatchedMesh` per shared material, another 
 (item/world-pools-272): they add per-render work (the members' streams mirrored, the instances culled and ordered), so
 they ship only where their main-thread cost is shown below the submission cost they save.
 
+## Destructible-prop batches (world-pools-272b, for 275)
+
+The draw census put the destructible props at 36 to 51 color-pass draws a frame on every map it read: one InstancedMesh
+per kind (a crate, a drum, a fence plank), in 11 or 12 materials. Pools of different geometry can share a call only as a
+multi-draw: `src/world/instancedDrawBatch.ts` draws every group of two or more intact pools of one material and vertex
+layout as one `BatchedMesh` (`WEBGL_multi_draw` only; three would otherwise submit a draw per instance). The pools stay
+what every owner reads and writes (crush, topple, toss, hide, tint); the batch mirrors their matrices, colours, counts
+and visibility when their streams' versions move (in its `onBeforeRender`, before its draw), and the pools move to the
+shadow-only layer, so the cascades, the r8 caster proxies and the static shadow cache see the same casters. A pool whose
+geometry is swapped leaves its batch. The material is the pools' own; its batched program reads the instance through
+`batchShaderSource` (an instancing hook's `instanceMatrix` / `instanceColor` read the batching matrix and colour,
+fetched at the top of `main`, because the clutter tint reads the instance before three's `batching_vertex`; an inlined
+`color_vertex`, the vehicle livery's, keeps its masked instancing branch and drops the second multiply). The members draw
+in the order three's painter sort gave the pools (their depth, then their id), so a depth tie between two kinds resolves
+as before. Pools with an instanced attribute of their own (the night fixtures' buildings), transparent or hidden ones
+(the set pieces), and a kind alone in its material keep their own draw. `?propBatch=0` builds without batches;
+`window.__DRAW_BATCH_DEBUG.set(false)` switches them off in a live page.
+
+Rendered proof (2026-11-12, `tools/world-pools-truth.mjs`, the same scene state drawn with the batches on and off in one
+task, four poses on Verdant, Monsoon and Autumn): 0 px over 8/255 at 11 of 12 poses, 1 px (13/255) at Autumn's overview on
+a monument shaft's silhouette edge (ruled an edge by Main, 2026-11-13). Draws: 41 to 51 fewer a frame on desktop, 29 to 36
+on the phone tier; the batches' vertex and index copies cost 5 to 6 MB a map.
+
+The gate (Main, 2026-11-13): the batches add per-render work (the mirror, the per-instance cull, the member order), so
+they ship only where that main-thread cost is shown below the submission cost they save. A wall-clock frame time cannot
+resolve it on the shared Mac, so `tools/frame-thread-cpu.mjs` sums the page renderer main thread's top-level task thread
+time (`tdur`, the thread clock) per frame over a Chrome trace, with the frame-budget probe's staging, a fresh browser per
+slot, in A B C C B A with the base, the batches and the same build at `?propBatch=0`. The rule is pre-registered (Δ =
+batches − `propBatch=0` below 0 ms on desktop chase on Verdant, Monsoon and Autumn, at most +0.1 ms on the phone tier;
+inside the within-arm spread: re-run once, a second inconclusive reading drops them). For 273 desktop Monsoon read
+inconclusive twice (+0.51, then +1.34 ms, inside 0.89 and 2.14 ms of spread), Verdant −0.42 ms, and desktop Autumn's
+batched slot tripped the browser guard, so the batches stayed out and the impostor merge shipped alone.
+
+Result for 275: pending, measured by the same tool and rule in a heavy slot after 274 ships.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
