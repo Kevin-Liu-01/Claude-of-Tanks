@@ -839,8 +839,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:i
   width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump .lb{display:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{flex-direction:column!important;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;
-  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 69px)!important}
+/* (a portrait phone's items two abreast, standing 8 px on the speedometer's scaled dial (its foot 166 px up, 78 px tall):
+   one column of them and the smoke reached the screen's middle and took a hull bar's last seat, markers 274b) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{display:grid!important;
+  grid-template-columns:repeat(2,52px);grid-auto-rows:52px;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 86px)!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column!important;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}

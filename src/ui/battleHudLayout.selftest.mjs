@@ -509,7 +509,7 @@ try {
     'setTimeout','clearTimeout']
     .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
-  function solvePortrait(width, height, rects, rowWidth, { dataset = {}, controls = 0 } = {}) {
+  function solvePortrait(width, height, rects, rowWidth, { dataset = {}, controls = 0, items = 0, smoke = false } = {}) {
     const props = new Map(); let frame = null;
     const element = (rect, extra={}) => ({ getClientRects: () => [rect], getBoundingClientRect: () => rect, children: [],
       childElementCount: 0, dataset: {}, getAttribute: () => null, hasAttribute: () => false, toggleAttribute() {}, ...extra });
@@ -518,8 +518,13 @@ try {
     const nodes = Object.fromEntries(Object.entries(rects).map(([selector, rect]) => [selector, element(rect)]));
     const tiles = Array.from({ length: controls }, () => ({ classList: { contains: () => false }, checkVisibility: () => true,
       hasAttribute: () => false, removeAttribute() {}, setAttribute() {}, dataset: {}, style: { getPropertyValue: () => '', setProperty() {} } }));
+    if (smoke && tiles.length) tiles[0].dataset = { control: 'smoke' };
     nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2, children: tiles,
       childElementCount: tiles.length});
+    if (rects['.cot-cons']) {
+      const cells = Array.from({ length: items }, () => ({ checkVisibility: () => true }));
+      nodes['.cot-cons'] = element(rects['.cot-cons'], { children: cells, childElementCount: cells.length });
+    }
     const kills = {'.cot-kill-lane.l': lane(box(0,84,0,171)), '.cot-kill-lane.r': lane(box(0,84,219,390))};
     const body = { dataset: { ...dataset }, classList: { contains: (name) => name === 'cot-touch-layout' },
       style: { getPropertyValue: (key) => props.get(key) ?? '', setProperty: (key, value) => props.set(key, value),
@@ -592,16 +597,35 @@ try {
     const edge = solvePortrait(390, 844, {
       '.cot-top': box(0,62,23,367), '.cot-mode-status.show': box(62,103,56,334), '.cot-minimap': box(111,203,8,100),
       '.cot-touch.on .mobile-chrome': box(111,155,336,380), '.cot-shells': box(468,520,328,380),
-      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(593.76,678,14,98.24), '.cot-cons': box(437,609,8,60),
+      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(600,678,14,92), '.cot-cons': box(480,592,8,120),
       '.cot-touch.on .joy': box(702,820,14,132), '.cot-dp': box(797,836,136.5,253.5),
-    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5 });
+    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5, items: 3 });
     assert.deepEqual([edge.px('systems-left'), edge.px('systems-width')], [380 - 52, 52], '390x844 phone: one column on the right edge');
     assert.equal(edge.px('systems-top'), 468 - 8 - (5 * 52 + 4 * 8), '390x844 phone: the column stands on the rack');
     // (a five-system column reaches the top band: the global feed's lane gives way to it, the personal lane keeps four rows)
     assert.equal(edge.px('kill-right-height'), 0, '390x844 phone: no global feed row over the column');
     assert.equal(edge.px('kill-left-height'), 4 * 29 - 3, '390x844 phone: the personal lane keeps four rows');
-    assert.ok(edge.px('kill-left-top') + edge.px('kill-left-height') <= 437 - 8, '390x844 phone: the left lane ends over the items');
-    assert.deepEqual([edge.px('smoke-left'), edge.px('smoke-top')], [8, 437 - 8 - 52], '390x844 phone: the smoke over the items');
+    assert.ok(edge.px('kill-left-top') + edge.px('kill-left-height') <= 480 - 8, '390x844 phone: the left lane ends over the items');
+    // (274b: the three items two abreast on the speedometer, the smoke in the cell the third leaves, so the section stands
+    // no higher than 480 - 8 - 52 with the jump over the first: a column four tall reached 377 and took the hull bar's
+    // last seat beside the target plate, hud-self-measure's markers at 390x844. This kit has no smoke tile, so the jump
+    // takes the smoke's cell)
+    assert.deepEqual([edge.px('smoke-left'), edge.px('smoke-top')], [8 + 52 + 8, 592 - 52], '390x844 phone: the smoke beside the third item');
+    assert.deepEqual([edge.px('jump-left'), edge.px('jump-top')], [8 + 52 + 8, 592 - 52], '390x844 phone: no smoke, the jump in its cell');
+    const smoked = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-minimap': box(111,203,8,100), '.cot-touch.on .mobile-chrome': box(111,155,336,380),
+      '.cot-shells': box(468,520,328,380), '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(600,678,14,92),
+      '.cot-cons': box(480,592,8,120), '.cot-touch.on .joy': box(702,820,14,132),
+    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5, items: 3, smoke: true });
+    assert.deepEqual([smoked.px('smoke-left'), smoked.px('smoke-top'), smoked.px('jump-left'), smoked.px('jump-top')],
+      [8 + 52 + 8, 592 - 52, 8, 480 - 8 - 52], '390x844 phone: the smoke beside the third item, the jump over the first');
+    const even = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-minimap': box(111,203,8,100), '.cot-touch.on .mobile-chrome': box(111,155,336,380),
+      '.cot-shells': box(468,520,328,380), '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(600,678,14,92),
+      '.cot-cons': box(480,592,8,120), '.cot-touch.on .joy': box(702,820,14,132),
+    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5, items: 4 });
+    assert.deepEqual([even.px('smoke-left'), even.px('smoke-top'), even.px('jump-left'), even.px('jump-top')],
+      [8, 480 - 8 - 52, 8, 480 - 8 - 52], '390x844 phone: four items fill their rows, the smoke (and here the jump) over the first');
     // an 844x390 landscape phone: two 44 px rows between the menu and the rack hold the five in three columns, growing
     // inward, never paged; the side lanes stand beside the sections, inset by their widths
     const short = solvePortrait(844, 390, {
