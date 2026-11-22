@@ -809,6 +809,14 @@
    "name": "Stridsvagn 103B",
    "card": "/brand/og-r2/tanks/strv103b-card.jpg"
   },
+  "strv103b_net": {
+   "name": "Stridsvagn 103B (Netted)",
+   "card": null
+  },
+  "strv103e": {
+   "name": "Stridsvagn 103E",
+   "card": null
+  },
   "strv105": {
    "name": "Strv 105",
    "card": null
@@ -820,6 +828,10 @@
   "strv122": {
    "name": "Stridsvagn 122",
    "card": "/brand/og-r2/tanks/strv122-card.jpg"
+  },
+  "strv152": {
+   "name": "Stridsvagn 152",
+   "card": null
   },
   "strv81": {
    "name": "Stridsvagn 81",
