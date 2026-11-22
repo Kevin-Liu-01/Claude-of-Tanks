@@ -5,7 +5,8 @@
  *
  * Each hint shows once per player, at the moment it first matters: the armour colours (273's tip), a module knocked out
  * (the repair kit's key), the first reload after the first shot (the readout's grey figure), auto-aim's first lock, and,
- * in a battle whose HUD shows them, the suspension, the roof gun, the drone, Air Support and the rack's rounds. When one
+ * in a battle whose HUD shows them, the suspension, the roof gun, the drone, Air Support, Turbo, the air spin and the
+ * rack's rounds. When one
  * may show is firstUseHintPolicy.ts's (one at a time, combat first, none early, none behind a gate, none twice); where,
  * the battle's notice region's (battleNotices.ts, placed by the guidance plan clear of the controls, the edge sections,
  * the centre notices, the reticle and the kill lanes), at a priority under every other notice there. Its keys are
@@ -23,7 +24,7 @@ import {
 } from './noticeDiagrams.ts';
 
 type HintId = 'armourShading' | 'moduleRepair' | 'reload' | 'autoAim' | 'suspension' | 'airSupport' | 'drone' | 'roofGun' | 'ammoTypes'
-  | 'droneFlight' | 'gunshipFlight';
+  | 'droneFlight' | 'gunshipFlight' | 'turbo' | 'airSpin';
 
 interface HintDef {
   /** Lower shows first. */
@@ -59,6 +60,11 @@ const HINTS: Readonly<Record<HintId, HintDef>> = {
     actions: { tilt: 'specialAction' }, picture: suspensionPicture },
   airSupport: { urgency: 4, durationMs: 8_000, title: 'hud.hint.airSupport.title', line: 'hud.hint.airSupport.line',
     actions: { strike: 'strikeView' }, picture: () => abilityPicture('modeAirSupport') },
+  // turbo-spin-275 (owner 2026-11-22, Turbo Ball and Gravity): Turbo's leap, then the air spin F does in flight
+  turbo: { urgency: 4, durationMs: 8_000, title: 'hud.hint.turbo.title', line: 'hud.hint.turbo.line',
+    actions: { turbo: 'turbo' }, picture: () => abilityPicture('turbo') },
+  airSpin: { urgency: 5, durationMs: 8_000, title: 'hud.hint.airSpin.title', line: 'hud.hint.airSpin.line',
+    actions: { spin: 'airSpin' }, picture: () => abilityPicture('airSpin') },
   drone: { urgency: 5, durationMs: 8_000, title: 'hud.hint.drone.title', line: 'hud.hint.drone.line',
     actions: { drone: 'drone' }, picture: () => abilityPicture('modeDrone') },
   roofGun: { urgency: 5, durationMs: 8_000, title: 'hud.hint.roofGun.title', line: 'hud.hint.roofGun.line',
@@ -187,6 +193,9 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     if (visible('.cot-strike-dock') || host.airSupportMode()) offer('airSupport');
     if (visible('.cot-vehicle-controls>[data-control="drone"]')) offer('drone');
     if (visible('.cot-vehicle-controls>[data-control="roofGun"]')) offer('roofGun');
+    // (a phone shows the touch kit's round buttons where a wider screen shows the row's tiles)
+    if (visible('.cot-vehicle-controls>[data-control="turbo"]') || visible('.cot-touch.on .round.turbo')) offer('turbo');
+    if (visible('.cot-vehicle-controls>[data-control="airSpin"]') || visible('.cot-touch.on .round.air-spin')) offer('airSpin');
     if ([...document.querySelectorAll<HTMLElement>('.cot-shell')].filter((shell) => shell.checkVisibility?.()).length >= 2) offer('ammoTypes');
   }
 

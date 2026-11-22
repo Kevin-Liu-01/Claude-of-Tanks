@@ -20,9 +20,12 @@ const caps = createBattleKeyCaps(view);
 
 // keyboard: each cap is labelFor of its binding
 const first = caps.read();
-for (const action of CAP_ACTIONS) {
-  assert.equal(first[action], input.labelFor(input.getBinding(action, 0) ?? input.getBinding(action, 1)), `${action}: its keyboard key`);
-}
+// (turbo-spin-275) the air spin rides F in flight: with no key of its own (its default) its cap is the self-right's
+const ownKey = (action) => input.getBinding(action, 0) || input.getBinding(action, 1) || null;
+const keyOf = (action) => input.labelFor(action === 'airSpin' && !ownKey('airSpin') ? ownKey('selfRight') : (input.getBinding(action, 0) ?? input.getBinding(action, 1)));
+for (const action of CAP_ACTIONS) assert.equal(first[action], keyOf(action), `${action}: its keyboard key`);
+assert.equal(first.turbo, 'Z', 'Turbo: Z');
+assert.equal(first.airSpin, 'F', 'the air spin: F, the key that spins in flight');
 assert.equal(first.atgm, 'Q');
 assert.equal(first.specialAction, 'E');
 assert.equal(caps.read(), first, 'no change, the same caps (no work in a frame)');
@@ -33,16 +36,19 @@ for (const action of CAP_ACTIONS) {
   input.setBinding(action, 'KeyP', 0);
   assert.equal(caps.read()[action], 'P', `${action}: the rebound key`);
   input.setBinding(action, before, 0);
-  assert.equal(caps.read()[action], input.labelFor(before), `${action}: back to its key`);
+  assert.equal(caps.read()[action], keyOf(action), `${action}: back to its key`);
 }
 
 // a pad layout: each cap is padLabelFor of its pad binding; the hull's system shows LB where its action has no button
 pad = true;
 const padCaps = caps.read();
 for (const action of CAP_ACTIONS) {
-  const index = input.getPadBinding(action);
+  const index = input.getPadBinding(action === 'airSpin' && input.getPadBinding('airSpin') == null ? 'selfRight' : action);
   assert.equal(padCaps[action], index == null ? '' : input.padLabelFor(index), `${action}: its pad button`);
 }
+assert.equal(padCaps.turbo, 'LS', 'Turbo: the left stick\'s click');
+assert.equal(padCaps.selfRight, 'RS', 'the jump, the flip and the air spin: the right stick\'s click');
+assert.equal(padCaps.airSpin, 'RS');
 assert.equal(DEFAULT_PAD_BINDINGS.atgm, undefined, 'the ATGM has no pad button of its own');
 assert.equal(padCaps.atgm, '', 'a hull whose LB is its suspension shows no pad cap for the ATGM');
 assert.equal(caps.read('atgm').atgm, input.padLabelFor(input.getPadBinding('specialAction')), 'a launcher without suspension: the ATGM is LB');

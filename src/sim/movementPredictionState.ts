@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
 import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
-import { AIR_SPIN_RATE } from './movement.ts';
+import { AIR_SPIN_RATE } from './hullFlight.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a

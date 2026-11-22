@@ -252,6 +252,13 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
    alone beside the slot's full frame, one coloured edge) */
 .cot-vehicle-controls>button.active{--hud-tile-on-edge:var(--accent);--hud-tile-on-mark:var(--ring-accent);color:var(--accent-hi);border-color:var(--hud-tile-on-edge);background:var(--accent-wash);box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
+/* turbo-spin-275: the air spin on the ground greys out whole (it acts only in flight); the jump dims in flight, where F
+   spins; Turbo cooling keeps its ink muted and refills an accent edge along its foot (--refill, 0..1) */
+.cot-vehicle-controls>button.cot-air-spin[data-grounded]{opacity:.38;filter:grayscale(1);}
+.cot-vehicle-controls>button.cot-jump[data-airborne]{opacity:.64;}
+.cot-vehicle-controls>button.cot-turbo{position:relative;}
+.cot-vehicle-controls>button.cot-turbo[data-cooling]{opacity:1;color:var(--hud-muted);}
+.cot-vehicle-controls>button.cot-turbo[data-cooling]::after{content:'';position:absolute;left:0;bottom:-1px;height:2px;width:calc(var(--refill,1) * 100%);background:var(--accent);pointer-events:none;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text.
    A roof gun switched on but silenced by its red module (round 2 U9) keeps its lit tile and strikes its icon the same way. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
@@ -853,11 +860,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed;
   left:var(--hud-smoke-left);top:var(--hud-smoke-top);--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);min-width:0;min-height:0;margin:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none}
-/* (phone-jump-274) a wider touch layout shows the row's jump tile, so its touch kit shows no round jump: one of each */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:not([data-cot-width='phone']):not([data-cot-height='short']) .cot-touch .round.jump{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump{left:var(--hud-jump-left);top:var(--hud-jump-top);right:auto;bottom:auto;
   width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}
+/* turbo-spin-275: Turbo and the air spin take the jump's next cells on a phone's survival edge (battleHudLayout.ts); a
+   wider touch layout's row shows their tiles, so its touch kit shows none of the three round buttons (phone-jump-274's
+   one of each, widened from the jump) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round:is(.turbo,.air-spin){right:auto;bottom:auto;
+  width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.turbo{left:var(--hud-turbo-left);top:var(--hud-turbo-top)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.air-spin{left:var(--hud-spin-left);top:var(--hud-spin-top)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round:is(.turbo,.air-spin) .lb{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:not([data-cot-width='phone']):not([data-cot-height='short']) .cot-touch .round:is(.jump,.turbo,.air-spin){display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump .lb{display:none}
 /* (a portrait phone's items two abreast, standing 8 px on the speedometer's scaled dial (its foot 166 px up, 78 px tall):
    one column of them and the smoke reached the screen's middle and took a hull bar's last seat, markers 274b) */

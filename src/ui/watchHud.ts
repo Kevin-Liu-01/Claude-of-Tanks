@@ -104,7 +104,7 @@ html:not([data-watch=drone]) .cot-watch-rail{display:none}
 .cot-watch-rail .wb.on,.cot-watch .wb.lock.on{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);
  box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
-html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none}
+html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.turbo,.round.air-spin,.round.autoaim,.fire-cancel){display:none}
 html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 @media(max-width:600px){

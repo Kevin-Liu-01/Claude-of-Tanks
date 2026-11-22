@@ -18,18 +18,18 @@
 import type { UiIconId } from '../ui/uiIcons.ts';
 
 /** The row's actions, in display order. */
-export type VehicleActionId = 'jump' | 'suspension' | 'atgm' | 'reload' | 'drone' | 'smoke' | 'lights' | 'roofGun';
+export type VehicleActionId = 'jump' | 'turbo' | 'airSpin' | 'suspension' | 'atgm' | 'reload' | 'drone' | 'smoke' | 'lights' | 'roofGun';
 /** A flight's actions (the drone and the AC-130's console). */
 export type FlightActionId = 'vision' | 'supplyAmmo' | 'supplyHeal';
 /** The input action each one is bound to (src/game/input.ts ACTION_DEFS). */
-export type VehicleActionBinding = 'selfRight' | 'specialAction' | 'atgm' | 'reloadMagazine' | 'drone' | 'smoke' | 'lights'
+export type VehicleActionBinding = 'selfRight' | 'turbo' | 'airSpin' | 'specialAction' | 'atgm' | 'reloadMagazine' | 'drone' | 'smoke' | 'lights'
   | 'roofGun' | 'aerialVision' | 'supplyAmmo' | 'supplyHeal';
 
 export interface VehicleActionDef<Id extends string = VehicleActionId> {
   readonly id: Id;
   /** The rebindable input action that triggers it. */
   readonly binding: VehicleActionBinding;
-  /** Its default key (a KeyboardEvent.code), the same on every vehicle. */
+  /** Its default key (a KeyboardEvent.code), the same on every vehicle; '' for none of its own (the air spin rides F). */
   readonly key: string;
   /** Its glyph (src/ui/uiIcons.ts). */
   readonly glyph: UiIconId;
@@ -43,6 +43,10 @@ export interface VehicleActionDef<Id extends string = VehicleActionId> {
 /** Every row action, left to right. A jump mode leads with the jump (owner 2026-10-14); elsewhere it is not shown. */
 export const VEHICLE_ACTIONS: readonly VehicleActionDef[] = Object.freeze([
   { id: 'jump', binding: 'selfRight', key: 'KeyF', glyph: 'rocket', label: 'hud.jump', help: 'vehicleActions.jump.help', source: 'mode' },
+  // turbo-spin-275 (owner 2026-11-22; Turbo Ball and Gravity): Turbo's leap on Z, and the air spin, which F does in flight
+  // (its own action, unbound by default, for the HUD tile, the phone pad and the touch button; it never jumps)
+  { id: 'turbo', binding: 'turbo', key: 'KeyZ', glyph: 'turbo', label: 'hud.turbo', help: 'vehicleActions.turbo.help', source: 'mode' },
+  { id: 'airSpin', binding: 'airSpin', key: '', glyph: 'airSpin', label: 'hud.airSpin', help: 'vehicleActions.airSpin.help', source: 'mode' },
   { id: 'suspension', binding: 'specialAction', key: 'KeyE', glyph: 'track', label: 'vehicleActions.suspension', help: 'vehicleActions.suspension.help', source: 'vehicle' },
   { id: 'atgm', binding: 'atgm', key: 'KeyQ', glyph: 'missileRack', label: 'systems.atgm', help: 'systems.atgm.help', source: 'vehicle' },
   { id: 'reload', binding: 'reloadMagazine', key: 'KeyC', glyph: 'autoloader', label: 'vehicleActions.reload', help: 'vehicleActions.reload.help', source: 'vehicle' },
@@ -86,6 +90,8 @@ export interface VehicleActionKit {
 /** What the battle's mode grants every vehicle. */
 export interface VehicleActionMode {
   readonly jump?: boolean;
+  readonly turbo?: boolean;
+  readonly airSpin?: boolean;
   readonly drone?: boolean;
 }
 
@@ -99,6 +105,8 @@ export function availableVehicleActions(spec: VehicleActionSpec | null | undefin
   const shells = spec?.gun?.shells ?? [];
   const has: Record<VehicleActionId, boolean> = {
     jump: !!mode.jump,
+    turbo: !!mode.turbo,
+    airSpin: !!mode.airSpin,
     suspension: !!spec?.hydropneumaticAim,
     atgm: shells.some((shell) => shell?.guided === true) && shells.some((shell) => shell?.guided !== true),
     reload: !!spec?.gun?.autoloader,

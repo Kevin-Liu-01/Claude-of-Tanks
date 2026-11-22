@@ -87,6 +87,10 @@ export const ACTION_DEFS = [
   { id: 'strikeView', label: 'airSupport.view', group: 'settings.group.combat' },
   // The vehicle's actions, in the vehicle-action table's order with its names (src/game/vehicleActions.ts; owner
   // 2026-10-25: "consistent which keys do what and their order with each other"); the table's jump is selfRight's.
+  // turbo-spin-275 (Turbo Ball and Gravity): Turbo's leap (Z), and the air spin, which F does in flight (unbound: its own
+  // key is optional; the phone pad, the touch button and the HUD tile press it)
+  { id: 'turbo', label: 'hud.turbo', group: 'settings.group.vehicle' },
+  { id: 'airSpin', label: 'hud.airSpin', group: 'settings.group.vehicle' },
   { id: 'specialAction', label: 'vehicleActions.suspension', group: 'settings.group.vehicle' },
   { id: 'atgm', label: 'systems.atgm', group: 'settings.group.vehicle' },
   { id: 'reloadMagazine', label: 'vehicleActions.reload', group: 'settings.group.vehicle' },
@@ -339,6 +343,9 @@ export const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
   shell2: 14, // D-LEFT
   shell3: 15, // D-RIGHT
   specialAction: 4, // LB
+  // turbo-spin-275: the stick clicks, which nothing held: LS Turbo (the usual sprint), RS jump / air spin / flip
+  turbo: 10, // LS
+  selfRight: 11, // RS
   reloadMagazine: 13, // D-DOWN
   consumable1: 2, // X
   consumable2: 3, // Y

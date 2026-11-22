@@ -82,6 +82,9 @@ const SURVIVAL: PadControl[] = [
   tap('consumable3', 'extinguisher', 'action.consumable3', { optional: true, short: 'pad.key.extinguisher' }),
   tap('smoke', 'smoke', 'systems.smoke', { optional: true }),
   tap('selfRight', 'rocket', 'hud.jump', { optional: true }),
+  // turbo-spin-275 (Turbo Ball and Gravity): Turbo, and the air spin, greyed while the desktop says they are unavailable
+  tap('turbo', 'turbo', 'hud.turbo', { optional: true }),
+  tap('airSpin', 'airSpin', 'hud.airSpin', { optional: true }),
 ];
 const SYSTEMS: PadControl[] = [
   tap('autoAim', 'autoAim', 'pad.lock', { optional: true, lit: 'lock' }),
@@ -200,7 +203,7 @@ export const PAD_LAYOUTS: Readonly<Record<PadMode, PadModeLayout>> = Object.free
 export const PAD_ACTS = [
   'consumable1', 'consumable2', 'consumable3', 'smoke', 'selfRight', 'autoAim', 'strikeView', 'drone', 'atgm', 'roofGun',
   'specialAction', 'reloadMagazine', 'lights', 'hitboxOverlay', 'rangeReset', 'rangeMoving', 'watchSeat', 'zoomOut',
-  'zoomIn', 'supplyAmmo', 'supplyHeal', 'watchDrone', 'killcamSkip', 'spectatePrev', 'spectateNext',
+  'zoomIn', 'supplyAmmo', 'supplyHeal', 'watchDrone', 'killcamSkip', 'spectatePrev', 'spectateNext', 'turbo', 'airSpin',
 ] as const;
 
 export const padActBit = (id: string): number => {
