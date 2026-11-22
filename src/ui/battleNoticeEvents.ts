@@ -27,6 +27,10 @@ import type { IconId } from './icons/icon.ts';
 
 type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 
+/** The bus event a module outside the HUD raises an event with (its payload a BattleEvent): every HUD hears it on its own
+ *  bus (a couch pane's seat bus too) and raises it on its lane. */
+export const BATTLE_EVENT = 'ui:battleEvent';
+
 export interface BattleEvent {
   /** The words (catalog text); "A · B" shows B as the detail line. */
   readonly text: string;
