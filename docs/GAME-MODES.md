@@ -655,7 +655,7 @@ mode gives back (`game/battleResultPresentationRuntime.ts deathShapeFor`):
   limit never pre-empts a mode that times itself nor clocks a mode without one (`rulesetClockLimitS`).
   `src/game/deathFlowModes.selftest.mjs` holds every mode's row; `src/sim/deathRules.selftest.mjs` the rules.
   `tools/death-flow-shots.mjs` films each shape (full, quick, card, an air strike) on desktop and phones under the render
-  lock: stills at fixed beats, or `--burst` for a 10 fps clip.
+  lock: stills at fixed beats, or `--cast` for a real-time screencast (per-frame times and the playback ratio in its receipt).
 
 ## State machine
 
