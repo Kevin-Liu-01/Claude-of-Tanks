@@ -134,8 +134,9 @@ function withGlobals(values, fn) {
   assert.match(read('tools/tutorial.browser.mjs'), /label: 'tutorial-browser', tutorial: 'keep' \}/, 'the tutorial walk keeps it');
 }
 
-// (mp-one-map-274) The launcher's tutorial request: a fresh tool profile reads as a returning player's (every chapter
-// skipped, the tutorial's own record format), a profile with a record and a replay address are left alone.
+// (mp-one-map-274) The launcher's tutorial request: a fresh tool profile reads as a player who finished the journey (every
+// chapter skipped and the offer answered, the journey's record format, 274), a profile with a record and a replay address
+// are left alone.
 {
   const run = (stored, search = '?nosplash=1') => {
     const store = new Map(stored === undefined ? [] : [[TUTORIAL_STORAGE_KEY, stored]]);
@@ -144,9 +145,9 @@ function withGlobals(values, fn) {
     return { raw: store.get(TUTORIAL_STORAGE_KEY) ?? null, storage: localStorage };
   };
   const fresh = run(undefined);
-  assert.deepEqual(readTutorialRecord(fresh.storage), Object.fromEntries(TUTORIAL_CHAPTERS.map((chapter) => [chapter, 'skipped'])),
-    'a fresh tool profile: every chapter skipped, in the record the game reads');
-  assert.equal(run('{"garage":"done"}').raw, '{"garage":"done"}', "a tool's own record stays (hud-guidance: the battle chapter due)");
+  assert.deepEqual(readTutorialRecord(fresh.storage), { ...Object.fromEntries(TUTORIAL_CHAPTERS.map((chapter) => [chapter, 'skipped'])), offer: 'later' },
+    'a fresh tool profile: the journey skipped and its offer answered, in the record the game reads (274: no offer card over a tool)');
+  assert.equal(run('{"garage":"done"}').raw, '{"garage":"done"}', "a tool's own record stays");
   assert.equal(run('{}').raw, '{}', 'a replayed (empty) record stays');
   assert.equal(run(undefined, '?nosplash=1&tutorial=1').raw, null, 'a replay address is left to the game');
   assert.doesNotThrow(() => new Function('localStorage', 'location', TUTORIAL_SKIP_SCRIPT)(

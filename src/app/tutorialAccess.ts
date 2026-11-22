@@ -1,23 +1,27 @@
 /**
- * tutorialAccess.ts — when the first-game tutorial runs, and its chunk's one owner (272). Copyright © 2026 Kevin B. Liu.
+ * tutorialAccess.ts — when the first-game tutorial runs, and its chunk's one owner (272; the journey, 274).
+ * Copyright © 2026 Kevin B. Liu.
  *
  * The boot holds only ui/tutorial/tutorialRecord.ts: main.ts loads this module only while a chapter could still run (or
- * on a replay), so a player who has finished or skipped the tutorial, or who played before it existed, asks for nothing
- * (no request, no byte beyond the record's check). A chapter that is due loads the overlay, its stylesheet and its
- * strings as a second lazy chunk, then runs:
+ * on a replay), so a player who has finished or skipped the tutorial asks for nothing (no request, no byte beyond the
+ * record's check). A chapter that is due loads the overlay, its stylesheet and its strings as a second lazy chunk, then
+ * runs. The tutorial is one journey (274, Kevin: "Deploy launches the training battle"):
  *
- * - garage: the Garage's first showing for a new player (main.ts after the entry gate), or a replay;
- * - battle: the rollout of a local Standard battle (never a room's, Watch, the Proving Ground, a couch battle or a
- *   campaign operation) once the Garage chapter has passed;
- * - tips: the Garage's next showing after that battle.
+ * - garage: the Garage's first showing for a new player (main.ts after the entry gate), or a replay; its last card lights
+ *   Deploy, and that press is the tutorial's: it launches the training battle (the loaner on Verdant Fields);
+ * - training: every rollout of the training battle; its last step won ends the battle and brings the Garage back;
+ * - debrief: that Garage's showing; its "Show me around" brings the tour;
+ * - tour: the five stops and the close;
+ * - offer: a returning player's (or 272's record's) Garage, once: Start launches the training battle, Not now puts the
+ *   journey away; either answer is recorded.
  *
  * Skip at any step records every chapter skipped. Replay (Settings, or `/?tutorial=1` from the Field Manual's
- * first-battle page) clears the record and runs the Garage chapter at once when the Garage is showing. While the battle
+ * first-battle page) clears the record and runs the Garage chapter at once when the Garage is showing. While the training
  * chapter runs, body.cot-tutorial is raised, and the first-battle key strip (ui/settings.ts) stands down for it.
  */
 import type { ActionId } from '../game/input.ts';
 import { setBodyFlag } from '../ui/bodyFlags.ts';
-import type { TutorialChapter, TutorialOutcome, TutorialRecord } from '../ui/tutorial/tutorialRecord.ts';
+import type { TutorialChapter, TutorialOfferAnswer, TutorialOutcome, TutorialRecord } from '../ui/tutorial/tutorialRecord.ts';
 import { createLazyChunk, importAll } from './lazyChunk.ts';
 
 /** The boot's record (ui/tutorial/tutorialRecord.ts), handed in so this chunk imports none of it: a runtime import from
@@ -25,8 +29,10 @@ import { createLazyChunk, importAll } from './lazyChunk.ts';
 export interface TutorialRecordPort {
   readonly read: () => TutorialRecord | null;
   readonly due: (chapter: TutorialChapter) => boolean;
-  readonly mark: (chapter: TutorialChapter | 'all', outcome: TutorialOutcome) => void;
+  readonly mark: (chapter: Exclude<TutorialChapter, 'offer'> | 'all', outcome: TutorialOutcome) => void;
   readonly reset: () => void;
+  /** 274: the offer's answer, recorded so it never shows again. */
+  readonly answerOffer: (answer: TutorialOfferAnswer) => void;
 }
 
 export interface TutorialAccessDeps {
@@ -41,10 +47,10 @@ export interface TutorialAccessDeps {
   /** A chapter's screen: live, covered by a surface the step did not open (the card hides), or gone (the run closes,
    *  keeping its place). See ui/tutorial/tutorialRunner.ts. */
   readonly screen: (chapter: TutorialChapter) => 'live' | 'covered' | 'gone';
-  /** This rollout is a local Standard battle the player drives (see the module comment). */
-  readonly isTutorialBattle: () => boolean;
   /** 273: this rollout is the training battle (the tutorial's own mode, sim/trainingGround.ts). */
   readonly isTrainingBattle: () => boolean;
+  /** 274: launch the training battle (the Garage chapter's Deploy, the offer's Start): its rollout runs its chapter. */
+  readonly launchTraining: () => void;
   /** A new player's first battle is a gentle one: easy bots (the Deploy screen shows the choice). */
   readonly preferEasyBots: () => void;
   /** 273: what the battle's guide reads (ui/tutorial/tutorialGuide.ts), and the battle state camera, armour and hit
@@ -84,7 +90,7 @@ export interface TutorialAccess {
 const BODY_FLAG = 'cot-tutorial';
 
 export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
-  const { read: readTutorialRecord, due: tutorialChapterDue, mark: markTutorialChapter, reset: resetTutorialRecord } = deps.record;
+  const { read: readTutorialRecord, due: tutorialChapterDue, mark: markTutorialChapter, reset: resetTutorialRecord, answerOffer } = deps.record;
   const chunk = createLazyChunk(() => importAll([
     import('../ui/tutorial/tutorialRunner.ts'),
     import('../ui/tutorial/tutorial.css'),
@@ -94,8 +100,6 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   let starting: TutorialChapter | null = null;
   /** Where a chapter whose screen went away stood: it resumes there (272, the owner: "closes and keeps its progress"). */
   const resumeAt: Partial<Record<TutorialChapter, number>> = {};
-  /** The Garage closed on its Deploy step: the battle that follows decides (a tutorial battle is Deploy pressed). */
-  let closedOnDeploy = false;
   /** 273: the training battle's run as the debrief reads it (the one running, or the last finished), and whether its
    *  debrief waits for the Garage. */
   let training: { startedAt: number; endedAt: number | null; shots: number; pens: number; held: number; destroyed: number;
@@ -124,13 +128,14 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   /** Diagnostics' guide (debugGuide), apart from any run. */
   let debugLayer: import('../ui/tutorial/tutorialGuide.ts').TutorialGuideLayer | null = null;
 
-  function start(chapter: TutorialChapter, stillWanted: () => boolean): void {
+  /** Run a chapter once its chunk is in, if it is still wanted and still due (`force`: diagnostics open it regardless). */
+  function start(chapter: TutorialChapter, stillWanted: () => boolean, force = false): void {
     if (run || starting) return;
     starting = chapter;
-    if (chapter === 'battle' || chapter === 'training') setBodyFlag(BODY_FLAG, 'battle', true);
+    if (chapter === 'training') setBodyFlag(BODY_FLAG, 'battle', true);
     chunk.load().then((runner) => {
       starting = null;
-      if (run || !stillWanted() || !tutorialChapterDue(chapter)) { setBodyFlag(BODY_FLAG, 'battle', false); return; }
+      if (run || !stillWanted() || (!force && !tutorialChapterDue(chapter))) { setBodyFlag(BODY_FLAG, 'battle', false); return; }
       run = runner.runTutorialChapter({
         chapter,
         startAt: resumeAt[chapter] ?? 0,
@@ -138,32 +143,35 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
           screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue,
           checkpoint: deps.checkpoint, trainingRun, hold: deps.hold },
         onStep: (stepId) => { if (chapter === 'training') training?.shown.push(stepId); },
-        onClose: (index, stepId) => {
+        onClose: (index) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);
           resumeAt[chapter] = index;
-          closedOnDeploy = chapter === 'garage' && stepId === 'garage.deploy';
         },
         onEnd: (outcome) => {
           run = null;
           delete resumeAt[chapter];
           setBodyFlag(BODY_FLAG, 'battle', false);
-          // the training battle keeps no record yet (tutorialRecord.ts TutorialChapter): its Skip ends its own run only;
-          // its last card ends the battle and brings the Garage back
-          if (chapter === 'training') {
-            if (outcome !== 'skipped' && training) {
-              training.complete = true;
-              training.endedAt = performance.now();
-              debriefDue = true;
-              deps.trainingComplete();
-            }
+          // the offer (274): Start launches the training battle, Not now puts the journey away; either is recorded
+          if (chapter === 'offer') {
+            answerOffer(outcome === 'done' ? 'start' : 'later');
+            if (outcome === 'done') deps.launchTraining();
             return;
           }
-          // the debrief's "Show me around" brings the tour (Skip ends both)
-          if (chapter === 'debrief') { debriefDue = false; if (outcome !== 'skipped') start('tour', deps.onGarage); return; }
-          if (chapter === 'tour') return;
-          if (outcome === 'skipped') markTutorialChapter('all', 'skipped');
-          else markTutorialChapter(chapter, 'done');
+          // Skip anywhere ends the whole journey
+          if (outcome === 'skipped') { markTutorialChapter('all', 'skipped'); debriefDue = false; return; }
+          markTutorialChapter(chapter, 'done');
+          // the Garage chapter's last card was Deploy: its press launches the training battle (274)
+          if (chapter === 'garage') deps.launchTraining();
+          // the training battle won: the battle ends and the Garage brings the debrief
+          else if (chapter === 'training' && training) {
+            training.complete = true;
+            training.endedAt = performance.now();
+            debriefDue = true;
+            deps.trainingComplete();
+          }
+          // the debrief's "Show me around" brings the tour
+          else if (chapter === 'debrief') { debriefDue = false; start('tour', deps.onGarage); }
         },
       });
     }).catch((error) => {
@@ -181,35 +189,21 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
     setBodyFlag(BODY_FLAG, 'battle', false);
   }
 
-  // A battle's rollout: the battle chapter, or (a Garage chapter cut short by Deploy) the Garage chapter recorded done.
-  // A battle the tutorial does not teach (a room, the Proving Ground, Watch) only puts a Garage chapter away for later.
-  /** The training battle is the tutorial's own: its chapter runs on every rollout of it (273). */
+  /** The training battle is the tutorial's own: its chapter runs on every rollout of it (273). A battle the tutorial does
+   *  not teach (Test Drive, a room, Watch) closes a Garage chapter where it stood: it resumes on the Garage's next showing. */
   function runTraining(): void {
     if (run) stopRun();
-    closedOnDeploy = false;
     delete resumeAt.training;
     training = { startedAt: performance.now(), endedAt: null, shots: 0, pens: 0, held: 0, destroyed: 0, shown: [], complete: false };
     debriefDue = false;
     start('training', deps.isTrainingBattle);
   }
   deps.on('battle:rollout', () => {
-    if (deps.isTrainingBattle()) { runTraining(); return; }
-    const teaching = deps.isTutorialBattle();
-    if (run && run.chapter !== 'battle') stopRun();
-    // the Garage closed on Deploy (Enter, or the press itself): a tutorial battle is that Deploy, so the chapter is done;
-    // any other battle (Test Drive, a room, Watch) leaves it to resume on Deploy
-    if (closedOnDeploy && teaching) { markTutorialChapter('garage', 'done'); delete resumeAt.garage; }
-    closedOnDeploy = false;
-    if (!teaching || tutorialChapterDue('garage') || !tutorialChapterDue('battle')) return;
-    start('battle', () => true);
+    if (deps.isTrainingBattle()) runTraining();
+    else if (run) stopRun();
   });
-  // the battle's end ends its chapter: the player has fought it; the tips follow on the Garage
-  deps.on('battle:ended', () => {
-    if (run?.chapter === 'training') { stopRun(); return; }
-    if (run?.chapter !== 'battle') return;
-    stopRun();
-    markTutorialChapter('battle', 'done');
-  });
+  // a training battle that ends before its last step (Leave, a loss) ends its chapter, recording nothing
+  deps.on('battle:ended', () => { if (run?.chapter === 'training') stopRun(); });
 
   return {
     trainingRolledOut(): void {
@@ -222,31 +216,24 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
       if (tutorialChapterDue('garage')) {
         if (readTutorialRecord() === null) deps.preferEasyBots();
         start('garage', deps.onGarage);
-      } else if (!tutorialChapterDue('battle') && tutorialChapterDue('tips')) {
-        start('tips', deps.onGarage);
+      } else if (tutorialChapterDue('offer')) {
+        start('offer', deps.onGarage);
       }
     },
     replay(): void {
       stopRun();
-      for (const chapter of ['garage', 'battle', 'tips'] as const) delete resumeAt[chapter];
-      closedOnDeploy = false;
+      for (const chapter of Object.keys(resumeAt) as TutorialChapter[]) delete resumeAt[chapter];
+      debriefDue = false;
       resetTutorialRecord();
       if (deps.onGarage()) start('garage', deps.onGarage);
     },
     debugStart(chapter: TutorialChapter, atStep?: number): void {
       stopRun();
       // (atStep: the chapter opened at that step, the capture tools' stills of one card; diagnostics only)
-      const at = (): void => { if (atStep != null && atStep > 0) resumeAt[chapter] = atStep; else delete resumeAt[chapter]; };
-      if (chapter === 'training') { at(); start('training', () => true); return; }
-      for (const name of ['garage', 'battle', 'tips'] as const) delete resumeAt[name];
-      closedOnDeploy = false;
-      resetTutorialRecord();
-      for (const earlier of ['garage', 'battle', 'tips'] as const) {
-        if (earlier === chapter) break;
-        markTutorialChapter(earlier, 'done');
-      }
-      at();
-      start(chapter, () => true);
+      for (const name of Object.keys(resumeAt) as TutorialChapter[]) delete resumeAt[name];
+      if (atStep != null && atStep > 0) resumeAt[chapter] = atStep;
+      if (chapter === 'garage') resetTutorialRecord();
+      start(chapter, () => true, true);
     },
     current: () => (run ? { chapter: run.chapter, step: run.stepId } : starting ? { chapter: starting, step: null } : null),
     debugGuide: (spec) => chunk.load().then((runner) => {

@@ -129,7 +129,6 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/tutorial-cards.browser.mjs`
 - `tools/tutorial-guide.browser.mjs`
 - `tools/tutorial-training.browser.mjs`
-- `tools/tutorial.browser.mjs`
 - `tools/water-palette-probe.mjs`
 <!-- /census -->
 
@@ -255,7 +254,6 @@ Waits and polls built by hand:
 - `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
 - `tools/solo-kernels-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase alone confirms the battle
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
-- `tools/tutorial.browser.mjs`: release 272's file: the loading screen is part of its subject: it waits for the loader's `on` class (or the battle phase) to check that no tutorial card sits on the loading screen; its Garage and battle waits are the probe's `readinessExpression`
 <!-- /census -->
 
 Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value). No
@@ -290,6 +288,7 @@ census cannot tell it from a loop guard, so the row's reason says what each loop
 - `tools/solo-cold-import-cover.mjs`: the cold-cover observer and its receipt checks (the cover is its subject)
 - `tools/sourced-texture-readiness.mjs`: an observer's sample: the first uncovered battle frame
 - `tools/studio-selftest.mjs`: receipt checks: the Studio phase, and the Garage after it
+- `tools/tutorial-training.browser.mjs`: a receipt field: the fight's enemies left while the battle still runs (the walk's loop guard, never a wait)
 - `tools/water-palette-probe.mjs`: a precondition: the battle entered
 <!-- /census -->
 

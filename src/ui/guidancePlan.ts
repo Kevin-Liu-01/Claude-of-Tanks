@@ -22,9 +22,9 @@
  * words reflow). The card's box is never shorter than its words at the box's width (Main, 2026-11-18, after 273.2's phone
  * frame cut the last line of battle.driveTouch's card in half: a box 148 px tall over 241 px of words). It tries, in
  * order, each surface at full height clear of all, then of the hard boxes alone; then, for the card, one type step smaller
- * (`compact`) clear of all, then of the hard alone; then shrunk with its words scrolling under a visible affordance
- * (`scroll`; a toast never shrinks). Where nothing clears (the smallest screens) it may lie on an instrument, never on a
- * shell or kit button or another notice (`never`), marked not cleared, in the same order of fits; a surface no centred
+ * (`compact`) clear of all, then of the hard alone; then shrunk below its words (`tight`: the card fits its words into the
+ * box itself, tutorialOverlay.ts fit, and never scrolls; a toast never shrinks). Where nothing clears (the smallest
+ * screens) it may lie on an instrument, never on a shell or kit button or another notice (`never`), marked not cleared, in the same order of fits; a surface no centred
  * band holds at all stands off the line in the first free box (offCentre). (Before 274 a shrunk card clear of the sight
  * came before a full one over it, and the card's own overflow scrolled with nothing to show it.)
  * The toasts take their place after the card's; where none keeps them off the controls, the card and the centre notices
@@ -39,22 +39,23 @@ export interface GuidanceSize { readonly w: number; readonly h: number }
 
 /** Space kept between a guidance surface and anything else (px). */
 const GUIDANCE_GAP = 6;
-/** The narrowest a card or a toast may be laid out (px), and the least a card may shrink to (it scrolls below that). */
+/** The narrowest a card or a toast may be laid out (px), and the least a card may shrink to (its fit takes the rest). */
 const GUIDANCE_CARD_MIN_W = 200;
 const GUIDANCE_TOAST_MIN_W = 200;
 const GUIDANCE_CARD_MIN_H = 96;
-/** The card's least of all, on the smallest phones only (568 x 290): its words wrap and it scrolls. */
+/** The card's least of all, on the smallest phones only (568 x 290): its words wrap and its fit tightens them. */
 const GUIDANCE_CARD_LEAST = { w: 150, h: 72 } as const;
 /** The search step down the screen (px). */
 const STEP = 2;
 /** The card's height at its compact type step over its height at the full one, at the same width (ui/tutorial/
  *  tutorial.css: the title from --fs-20 to --fs-16, the body from --fs-14 to --fs-13; the head, the bar and the buttons
- *  keep theirs). An estimate: a card whose words still overflow shows the scroll affordance (data-overflows). */
+ *  keep theirs). An estimate: the card's own fit (tutorialOverlay.ts) takes whatever it leaves over. */
 export const GUIDANCE_COMPACT_H = 0.85;
 
-/** How a card's words fit its box: all of them at the full type, all of them a type step smaller, or scrolling under a
- *  visible affordance in a box shorter than they are. A toast is always `full`. */
-export type GuidanceFit = 'full' | 'compact' | 'scroll';
+/** How a card's words fit its box: all of them at the full type, all of them a type step smaller, or tight: a box shorter
+ *  than they are, which the card fits them into itself (tutorialOverlay.ts fit; it never scrolls). A toast is always
+ *  `full`. */
+export type GuidanceFit = 'full' | 'compact' | 'tight';
 
 export interface GuidanceInput {
   readonly width: number;
@@ -77,7 +78,7 @@ export interface GuidanceInput {
 interface GuidancePlace extends GuidanceBox {
   /** The tier it cleared: 0 all, 1 the hard boxes alone, 2 only the never-covered boxes (it lies on an instrument). */
   readonly tier: 0 | 1 | 2;
-  /** How its words fit the box (a box shorter than its words is `scroll`, never anything else). */
+  /** How its words fit the box (a box shorter than its words is `tight`, never anything else). */
   readonly fit: GuidanceFit;
   /** Off the centre line: the last resort where no centred band holds it (the smallest windows). */
   readonly offCentre: boolean;
@@ -111,7 +112,7 @@ function freeHalf(boxes: readonly GuidanceBox[], cx: number, y0: number, y1: num
 }
 
 /** The first place from `from` down for a surface of natural `size` (its height reflowing as it narrows), at `fit`: its
- *  whole height at the full type or the compact one, or (scroll) the tallest band at least `minH` the width keeps clear. */
+ *  whole height at the full type or the compact one, or (tight) the tallest band at least `minH` the width keeps clear. */
 function seek(size: GuidanceSize, minW: number, minH: number, fit: GuidanceFit, input: GuidanceInput, boxes: readonly GuidanceBox[],
   from: number): { box: GuidanceBox; fit: GuidanceFit } | null {
   const cx = input.width / 2;
@@ -119,24 +120,24 @@ function seek(size: GuidanceSize, minW: number, minH: number, fit: GuidanceFit, 
   const wanted = Math.min(size.w, input.width - GUIDANCE_GAP * 4);
   const scale = fit === 'compact' ? GUIDANCE_COMPACT_H : 1;
   const tall = Math.ceil(size.h * scale);
-  for (let y = Math.ceil(from); y + (fit === 'scroll' ? minH : tall) <= bottom; y += STEP) {
+  for (let y = Math.ceil(from); y + (fit === 'tight' ? minH : tall) <= bottom; y += STEP) {
     // the width the band allows at the natural height, and the height the words take at that width
     let w = Math.min(wanted, 2 * freeHalf(boxes, cx, y, y + tall, input.width));
     if (w < minW) {
-      if (fit !== 'scroll') continue;
+      if (fit !== 'tight') continue;
       w = Math.min(wanted, 2 * freeHalf(boxes, cx, y, y + minH, input.width));
       if (w < minW) continue;
     }
     const h = Math.ceil(size.h * scale * (size.w / Math.max(1, w)));
-    if (fit !== 'scroll') {
+    if (fit !== 'tight') {
       if (y + h > bottom || 2 * freeHalf(boxes, cx, y, y + h, input.width) < w) continue;
       return { box: { x0: cx - w / 2, y0: y, x1: cx + w / 2, y1: y + h }, fit };
     }
-    // scroll: the tallest band from y the width keeps clear, at least minH
+    // tight: the tallest band from y the width keeps clear, at least minH
     let reach = y + minH;
     while (reach + STEP <= Math.min(bottom, y + h) && 2 * freeHalf(boxes, cx, y, reach + STEP, input.width) >= w) reach += STEP;
     if (2 * freeHalf(boxes, cx, y, reach, input.width) < w) continue;
-    return { box: { x0: cx - w / 2, y0: y, x1: cx + w / 2, y1: reach }, fit: reach < y + h ? 'scroll' : 'full' };
+    return { box: { x0: cx - w / 2, y0: y, x1: cx + w / 2, y1: reach }, fit: reach < y + h ? 'tight' : 'full' };
   }
   return null;
 }
@@ -150,24 +151,24 @@ function seekAnywhere(size: GuidanceSize, minW: number, minH: number, fit: Guida
   const w = Math.max(minW, Math.min(size.w, input.width - edge * 2));
   for (let width = w; width >= minW; width -= 20) {
     const h = Math.ceil(size.h * scale * (size.w / width));
-    const least = fit === 'scroll' ? minH : h;
+    const least = fit === 'tight' ? minH : h;
     for (let y = Math.ceil(from); y + least <= input.height - edge; y += STEP * 2) {
       for (let x = edge; x + width <= input.width - edge; x += STEP * 4) {
         const at = { x0: x, y0: y, x1: x + width, y1: y + least };
         if (boxes.some((box) => crosses(at, box, GUIDANCE_GAP))) continue;
-        if (fit !== 'scroll') return { box: at, fit };
+        if (fit !== 'tight') return { box: at, fit };
         let reach = y + minH;
         while (reach + STEP <= Math.min(input.height - edge, y + h)
           && !boxes.some((box) => crosses({ ...at, y1: reach + STEP }, box, GUIDANCE_GAP))) reach += STEP;
-        return { box: { ...at, y1: reach }, fit: reach < y + h ? 'scroll' : 'full' };
+        return { box: { ...at, y1: reach }, fit: reach < y + h ? 'tight' : 'full' };
       }
     }
   }
   return null;
 }
 
-/** The fits a surface tries, best first: a card's whole words, then a type step smaller, then scrolling; a toast's whole. */
-const fitsFor = (card: boolean): readonly GuidanceFit[] => (card ? ['full', 'compact', 'scroll'] : ['full']);
+/** The fits a surface tries, best first: a card's whole words, then a type step smaller, then tight; a toast's whole. */
+const fitsFor = (card: boolean): readonly GuidanceFit[] => (card ? ['full', 'compact', 'tight'] : ['full']);
 
 function place(size: GuidanceSize, minW: number, minH: number | null, input: GuidanceInput, placed: readonly GuidanceBox[],
   from: number): GuidancePlace | null {
@@ -177,7 +178,7 @@ function place(size: GuidanceSize, minW: number, minH: number | null, input: Gui
   const fits = fitsFor(minH != null);
   const least = minH ?? size.h;
   // every fit clear of the instruments before any on one: whole words clear of all, then of the hard alone, then a type
-  // step smaller (all, hard), then scrolling (all, hard); where nothing clears the instruments it may lie on one, never on
+  // step smaller (all, hard), then tight (all, hard); where nothing clears the instruments it may lie on one, never on
   // a shell or kit button or another notice, in the same order of fits
   const tries: Array<[readonly GuidanceBox[], 0 | 1 | 2, GuidanceFit]> = [];
   for (const fit of fits) tries.push([all, 0, fit], [hard, 1, fit]);
@@ -191,14 +192,14 @@ function place(size: GuidanceSize, minW: number, minH: number | null, input: Gui
   // is an upper bound for a column of one-line notices, which never scroll)
   for (const [boxes, tier] of [[hard, 1], [never, 2]] as const) {
     for (const fit of fits) {
-      const found = minH == null ? seekAnywhere(size, minW, size.h, 'scroll', input, boxes, from)
+      const found = minH == null ? seekAnywhere(size, minW, size.h, 'tight', input, boxes, from)
         : seekAnywhere(size, minW, least, fit, input, boxes, from);
       if (found) return { ...found.box, tier, fit: minH == null ? 'full' : found.fit, offCentre: true };
     }
   }
-  // the smallest phones (568 x 290): the card at its least, wrapped and scrolling, still off every control
+  // the smallest phones (568 x 290): the card at its least, wrapped and tight, still off every control
   if (minH != null) {
-    const found = seekAnywhere(size, GUIDANCE_CARD_LEAST.w, GUIDANCE_CARD_LEAST.h, 'scroll', input, never, from);
+    const found = seekAnywhere(size, GUIDANCE_CARD_LEAST.w, GUIDANCE_CARD_LEAST.h, 'tight', input, never, from);
     if (found) return { ...found.box, tier: 2, fit: found.fit, offCentre: true };
   }
   return null;
@@ -256,24 +257,22 @@ export function heldCardSize(last: GuidanceSize | null, open: boolean, measured:
   return measured && measured.w > 0 && measured.h > 0 ? measured : last;
 }
 
-/** The card's natural size as one pass reads it: its step, the width it shows at, its content's height there, and whether
- *  it shows at the compact type step (the last plan's fit). */
-export interface CardReading { readonly step: string; readonly width: number; readonly scrollHeight: number; readonly compact?: boolean }
+/** The card's natural size as one pass reads it: its step, the width it shows at, and its content's height there at the
+ *  full type (274: the card writes it before its fit takes a step, tutorialOverlay.ts data-natural-h). */
+export interface CardReading { readonly step: string; readonly width: number; readonly scrollHeight: number }
 
 /**
  * The card's natural size, held for its step (the plan's input must not follow the plan's output): read at the card's
  * natural width it is exact; read at a narrower place the plan gave it, the words wrapped there, an estimate from it once
  * per step, then held. Re-estimated every pass, a phone's card flipped between two places (the estimate at one width put
- * it at the other), the browser check at 390x844. A read at the compact type is taken back to the full type's height
- * (GUIDANCE_COMPACT_H) and is never exact.
+ * it at the other), the browser check at 390x844.
  */
 export function cardNaturalSize(held: { readonly step: string; readonly size: GuidanceSize; readonly exact: boolean } | null,
   reading: CardReading | null, naturalWidth: number): { readonly step: string; readonly size: GuidanceSize; readonly exact: boolean } | null {
   if (!reading || reading.width <= 0 || reading.scrollHeight <= 0) return held;
-  const exact = Math.abs(reading.width - naturalWidth) <= 1 && !reading.compact;
+  const exact = Math.abs(reading.width - naturalWidth) <= 1;
   if (held && held.step === reading.step && (held.exact || !exact)) return held;
-  const full = reading.scrollHeight / (reading.compact ? GUIDANCE_COMPACT_H : 1);
-  const h = Math.ceil(exact ? full : full * Math.min(1, reading.width / naturalWidth));
+  const h = Math.ceil(exact ? reading.scrollHeight : reading.scrollHeight * Math.min(1, reading.width / naturalWidth));
   return { step: reading.step, size: { w: naturalWidth, h }, exact };
 }
 

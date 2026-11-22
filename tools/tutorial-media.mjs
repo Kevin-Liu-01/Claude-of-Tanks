@@ -144,7 +144,7 @@ try {
   page.on('pageerror', (error) => report.errors.push(String(error?.message ?? error).slice(0, 300)));
   await page.evaluateOnNewDocument(() => {
     Document.prototype.hasFocus = () => true;
-    try { localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.tutorial.v1', '{"garage":"done","battle":"done","tips":"done"}'); } catch { /* none */ }
+    try { localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}'); } catch { /* none */ }
   });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?studio=1&map=${MAP}&nogate=1&telemetry=off`, { waitUntil: 'domcontentloaded', timeout: 300_000 });

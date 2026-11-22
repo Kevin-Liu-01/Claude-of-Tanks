@@ -37,7 +37,7 @@ try {
   await page.evaluateOnNewDocument(() => {
     try {
       localStorage.setItem('cot.telemetry', 'off');
-      localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
+      localStorage.setItem('cot.tutorial.v1', '{"v":2,"garage":"skipped","training":"skipped","debrief":"skipped","tour":"skipped","offer":"later"}'); // the journey finished, its offer answered (tutorialRecord.ts TUTORIAL_FINISHED_RECORD)
     } catch { /* none */ }
   });
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/?nosplash=1&telemetry=off`, { waitUntil: 'domcontentloaded', timeout: 300_000 });

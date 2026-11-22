@@ -8,7 +8,7 @@
 @layer surfaces{
 .cot-tut{position:fixed;inset:0;z-index:var(--z-toast);width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;
   border:0;background:none;overflow:visible;color:var(--ink-1);pointer-events:none;display:none;}
-.cot-tut.is-open{display:block;}
+.cot-tut:is(.is-open,.is-leaving){display:block;}
 .cot-tut-scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;transition:opacity var(--dur-base) var(--ease-enter);}
 .cot-tut[data-dim='full'] .cot-tut-scrim{opacity:1;}
 .cot-tut-spot{position:fixed;left:0;top:0;width:0;height:0;border-radius:var(--r2);box-shadow:var(--tutorial-spot);opacity:0;
@@ -25,18 +25,31 @@
 /* (Kevin, 2026-11-20: translucent, not solid black) the card's own backgrounds, a scrim the field shows through, blurred a
    little; light ink on them holds AA over open sky (the worst case, white sky: 12:1 for the body, 4.6:1 for the header's ink-3).
    Local to the card: the shared HUD and surface tokens belong to the HUD lane (mobile-hud-274). */
-.cot-tut{--tut-card-bg:color-mix(in srgb,var(--surface-menu) 90%,transparent);
-  --tut-card-bg-battle:color-mix(in srgb,var(--hud-plate-strong) 90%,transparent);}
-@supports not (backdrop-filter:blur(1px)){.cot-tut{--tut-card-bg:var(--surface-menu);--tut-card-bg-battle:var(--hud-plate-strong);}}
-.cot-tut-card{position:fixed;left:50%;top:50%;box-sizing:border-box;width:min(30rem,calc(100vw - 2 * var(--s4)));
-  max-height:calc(100dvh - 2 * var(--s4));overflow:auto;display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);
-  border-radius:var(--r2);background:var(--tut-card-bg);box-shadow:var(--e3);pointer-events:auto;transform:translate(-50%,-50%);
+.cot-tut{--tut-card-bg:var(--surface-menu);--tut-card-bg-battle:var(--hud-plate-strong);--tut-card-alpha:.9;
+  /* the card's margin from the screen's edges, and the box it may fill there */
+  --tut-edge:var(--s4);}
+@supports not (backdrop-filter:blur(1px)){.cot-tut{--tut-card-alpha:1;}}
+/* (274, Kevin: "the tutorial boxes have overflows and you need to scroll? no no none of that") the card never scrolls and
+   never clips: its max-height is the box it may fill, and tutorialOverlay.ts fit takes the ladder below (data-fit) until its
+   words need no more room than that */
+.cot-tut-card{position:fixed;left:50%;top:50%;box-sizing:border-box;width:min(30rem,calc(100vw - 2 * var(--tut-edge)));
+  max-height:calc(100dvh - 2 * var(--tut-edge));overflow:hidden;display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);
+  border-radius:var(--r2);background:none;box-shadow:var(--e3);pointer-events:auto;transform:translate(-50%,-50%);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-  transition:transform var(--dur-base) var(--ease-move),opacity var(--dur-base) var(--ease-enter);}
-.cot-tut-card[data-place='upper']{top:calc(var(--s5) + env(safe-area-inset-top));transform:translate(-50%,0);}
+  transition:transform var(--dur-base) var(--ease-move);}
+/* the card's ground: its plate at --tut-card-alpha (translucent over the blur), a layer under its words (the plate's tone
+   is a token; only its opacity is the card's) */
+.cot-tut-card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:var(--tut-card-bg);
+  opacity:var(--tut-card-alpha);pointer-events:none;}
+/* (the card's parts positioned after it in the same stacking order: they paint over the plate, no z-index) */
+.cot-tut-card>:not(.cot-tut-beat){position:relative;}
+.cot-tut-card[data-place='upper']{top:calc(var(--s5) + env(safe-area-inset-top));transform:translate(-50%,0);
+  max-height:calc(100dvh - var(--s5) - env(safe-area-inset-top) - var(--tut-edge));}
+.cot-tut-card[data-place='lower']{top:auto;bottom:calc(var(--s5) + env(safe-area-inset-bottom));transform:translate(-50%,0);
+  max-height:calc(100dvh - var(--s5) - env(safe-area-inset-bottom) - var(--tut-edge));}
 /* (Kevin, 2026-11-20: "the boxes are quite intrusive") a battle step the player does: a compact card, the task and the one
    line under it, its buttons quiet; the header, the hint and Back belong to the cards that explain */
-.cot-tut[data-mode='act'] .cot-tut-card{width:min(22rem,calc(100vw - 2 * var(--s4)));gap:var(--s2);padding:var(--s3);}
+.cot-tut[data-mode='act'] .cot-tut-card{width:min(22rem,calc(100vw - 2 * var(--tut-edge)));gap:var(--s2);padding:var(--s3);}
 /* a card the player acts through lets the battle have the touch, its own buttons apart: on a phone it can stand over the
    aim pad, and a swipe that landed on it aimed nothing (the touch-aim probe of 2026-11-20 at 390x844: the card under the
    finger, no aim delta, the turret still) */
@@ -45,102 +58,156 @@
 .cot-tut[data-mode='act'] .cot-tut-head,.cot-tut[data-mode='act'] .cot-tut-hint,.cot-tut[data-mode='act'] .cot-tut-back{display:none;}
 .cot-tut[data-mode='act'] .cot-tut-title{font-size:var(--fs-16);}
 .cot-tut[data-mode='act'] .cot-tut-body{font-size:var(--fs-13);line-height:1.45;}
-.cot-tut-card[data-place='lower']{top:auto;bottom:calc(var(--s5) + env(safe-area-inset-bottom));transform:translate(-50%,0);}
 .cot-tut-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
   font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:var(--fw-semibold);color:var(--ink-3);}
+.cot-tut-head [hidden],.cot-tut-bar[hidden]{display:none;}
 .cot-tut-chapter{color:var(--text-accent);}
-.cot-tut-bar{height:2px;border-radius:1px;background:var(--line-2);overflow:hidden;}
+.cot-tut-bar{flex:none;height:2px;border-radius:1px;background:var(--line-2);overflow:hidden;}
 .cot-tut-bar i{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transition:transform var(--dur-base) var(--ease-move);}
-/* (Kevin, 2026-11-20: "pictures in it need to be full height and show") the figure never gives up its height to a short
-   card: a flex item with overflow hidden has no minimum height, so a card held to a planned height squashed it; it keeps
-   its 16:9 and the card scrolls under its fade instead */
-.cot-tut-media{flex:none;margin:0;border-radius:var(--r1);overflow:hidden;background:var(--surface-scene);aspect-ratio:16 / 9;}
+/* the step's words and picture, one block (a step's change cross-fades it) */
+/* (it never shrinks: a card's words that outgrow its box must show in the card's height, where the fit reads them; a
+   shrinking block let them run under the buttons, the first fit walk's training.armour at 1440x900) */
+.cot-tut-content{flex:none;display:flex;flex-direction:column;gap:inherit;}
+.cot-tut-words{display:flex;flex-direction:column;gap:var(--s2);min-width:0;}
+/* (Kevin, 2026-11-20: "pictures in it need to be full height and show") the picture is never cropped: it keeps its 16:9,
+   and where the card needs its room it gives up height (--tut-media-h, fit), narrower, centred */
+.cot-tut-media{flex:none;align-self:center;margin:0;width:100%;max-width:100%;height:auto;border-radius:var(--r1);overflow:hidden;
+  background:var(--surface-scene);aspect-ratio:16 / 9;}
+.cot-tut-card[style*='--tut-media-h'] .cot-tut-media{width:auto;height:var(--tut-media-h);}
 .cot-tut-media[hidden]{display:none;}
 .cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
 .cot-tut-body{margin:0;font-size:var(--fs-14);line-height:1.5;color:var(--ink-2);}
 .cot-tut-body .cot-c-kbd{margin:0 1px;}
+/* the fit ladder: a type step smaller (1), a tighter one (2), the picture gone (3), the card's spacing at its least (4);
+   never under the 12 px floor */
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']){gap:var(--s2);padding:var(--s3);}
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-title{font-size:var(--fs-16);}
+.cot-tut-card:is([data-fit='1'],[data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-body{font-size:var(--fs-13);line-height:1.4;}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-title{font-size:var(--fs-14);}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-body{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.35;}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-words{gap:var(--s1);}
+.cot-tut-card:is([data-fit='2'],[data-fit='3'],[data-fit='4']) .cot-tut-checklist{margin-top:var(--s1);}
+.cot-tut-card:is([data-fit='3'],[data-fit='4']) .cot-tut-media{display:none;}
+.cot-tut-card[data-fit='4']{gap:var(--s1);padding:var(--s2) var(--s3);}
+.cot-tut-card[data-fit='4'] .cot-tut-body{line-height:1.3;}
+/* a short landscape screen: the picture beside the words (the card wider, its rows fewer) */
+.cot-tut-card[data-layout='row']{width:min(40rem,calc(100vw - 2 * var(--tut-edge)));}
+.cot-tut-card[data-layout='row'] .cot-tut-content{flex-direction:row;align-items:flex-start;}
+.cot-tut-card[data-layout='row'] .cot-tut-media{width:40%;height:auto;align-self:flex-start;}
+.cot-tut-card[data-layout='row'] .cot-tut-words{flex:1;}
 /* (273) the debrief's checklist: the training battle's lessons, a tick where the player got past one, a hollow one where not */
 .cot-tut-checklist{margin:var(--s2) 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px var(--s3);}
 .cot-tut-checklist li{display:flex;align-items:center;gap:var(--s2);font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3);}
 .cot-tut-checklist li[data-done]{color:var(--ink-1);}
-.cot-tut-tick{flex:none;width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--line-2);}
-.cot-tut-checklist li[data-done] .cot-tut-tick{background:var(--accent);box-shadow:none;}
-.cot-tut-foot{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;}
+.cot-tut-tick{flex:none;width:10px;height:10px;border-radius:50%;box-shadow:var(--ring-2);}
+.cot-tut-checklist li[data-done] .cot-tut-tick{background:var(--ok);box-shadow:var(--e0);}
+.cot-tut-foot{flex:none;display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;}
 .cot-tut-foot .cot-tut-skip{margin-right:auto;}
 /* the kit's buttons set their own display: a hidden one (Back on a first step, Next on a press step) stays hidden */
 .cot-tut-foot .cot-c-btn[hidden]{display:none;}
-.cot-tut-hint{font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--text-accent);}
+.cot-tut-hint{margin:0;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--text-accent);}
 .cot-tut-hint[hidden]{display:none;}
 .cot-tut-cap{margin-left:var(--s1);opacity:.7;}
 .cot-tut-cap:empty{display:none;}
-/* (274) a battle chapter's card is the battle's guidance (guidancePlan.ts): it stands where the battle's one plan puts it
-   (battleHudLayout.ts writeGuidance: off the centre notices, the toasts and every control, scrolling where the band is
-   short), gives way while a centre notice shows where nothing keeps them apart, and wears the HUD's notice plate (the
-   strong plate, its hairline ring, the angled corners) as the toasts and the alerts do */
-body[data-hud-guidance~=card] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{
+
+/* (274) motion: the card rises in, a step's words cross-fade, the card fades out; transform and opacity only, on the
+   individual translate and scale properties (the card's transform is its placement). Entry and cross-fade fill backwards
+   only, so nothing they leave behind overrides the beat's fade of the words */
+/* the tutorial's one motion vocabulary, on the shared tokens read directly (every --dur-* is 1 ms under reduced motion,
+   tokens.css; each animation finite): entry and cross-fade --dur-base, exit --dur-fast, the beat --dur-screen, the
+   chapter's end --dur-stage */
+.cot-tut-card.is-entering{animation:cot-tut-enter var(--dur-base) var(--ease-enter) backwards;}
+.cot-tut-content.is-swapping{animation:cot-tut-swap var(--dur-base) var(--ease-enter) backwards;}
+.cot-tut.is-leaving .cot-tut-card{pointer-events:none;}
+.cot-tut.is-leaving .cot-tut-scrim{opacity:0;}
+.cot-tut-card.is-exiting{animation:cot-tut-exit var(--dur-fast) var(--ease-exit) both;}
+@keyframes cot-tut-enter{from{opacity:0;translate:0 8px;}to{opacity:1;translate:0 0;}}
+@keyframes cot-tut-swap{from{opacity:0;translate:0 4px;}to{opacity:1;translate:0 0;}}
+@keyframes cot-tut-exit{to{opacity:0;translate:0 6px;}}
+/* the success beat (Kevin: "green checkmark coming in"): over the card's words, taking no room, the check comes in with a
+   slight settle in the game's success green (its ring scaling out, its tick after it), the step confirmed beside it;
+   transform and opacity only (a stroke drawn by its dash offset repaints: tools/motion-lint.mjs) */
+.cot-tut-beat{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:var(--s2);
+  border-radius:inherit;opacity:0;pointer-events:none;
+  font-family:var(--font-display);font-size:var(--fs-16);font-weight:var(--fw-bold);color:var(--ok);}
+.cot-tut-card{isolation:isolate;}
+.cot-tut-content{transition:opacity var(--dur-fast) var(--ease-exit);}
+.cot-tut-card:has(.cot-tut-beat.is-on) .cot-tut-content{opacity:0;}
+.cot-tut-check{width:28px;height:28px;flex:none;fill:none;stroke:var(--ok);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;}
+.cot-tut-check circle{stroke-width:2.5;opacity:.55;}
+.cot-tut-check :is(circle,path){transform-box:fill-box;transform-origin:50% 50%;}
+.cot-tut-beat.is-on{animation:cot-tut-beat-in var(--dur-screen) var(--ease-enter) both;}
+.cot-tut-beat.is-on .cot-tut-check{animation:cot-tut-settle var(--dur-screen) var(--ease-enter) both;}
+.cot-tut-beat.is-on .cot-tut-check circle{animation:cot-tut-ring var(--dur-screen) var(--ease-enter) both;}
+.cot-tut-beat.is-on .cot-tut-check path{animation:cot-tut-tick var(--dur-screen) var(--ease-enter) calc(var(--dur-fast) * .5) both;}
+@keyframes cot-tut-beat-in{from{opacity:0;}30%,to{opacity:1;}}
+@keyframes cot-tut-settle{from{scale:.82;}70%{scale:1.04;}to{scale:1;}}
+@keyframes cot-tut-ring{from{opacity:0;scale:.6;}to{opacity:.55;scale:1;}}
+@keyframes cot-tut-tick{from{opacity:0;scale:.4;}60%{opacity:1;scale:1.12;}to{opacity:1;scale:1;}}
+/* the chapter's end (the training battle won, the tour's close): the larger beat, still restrained, then the card leaves */
+.cot-tut-card.is-complete .cot-tut-beat{flex-direction:column;font-size:var(--fs-20);}
+.cot-tut-card.is-complete .cot-tut-check{width:44px;height:44px;}
+.cot-tut-card.is-completing{animation:cot-tut-complete var(--dur-stage) var(--ease-enter) both;}
+@keyframes cot-tut-complete{from{scale:1;}12%{scale:1.03;}24%{scale:1;}80%{opacity:1;translate:0 0;}to{opacity:0;translate:0 -6px;}}
+/* (274) a training card is the battle's guidance (guidancePlan.ts): it stands where the battle's one plan puts it
+   (battleHudLayout.ts writeGuidance: off the centre notices, the toasts and every control), gives way while a centre
+   notice shows where nothing keeps them apart, and wears the HUD's notice plate (the strong plate, its hairline ring, the
+   angled corners) as the toasts and the alerts do. The plan's box is its max-height: the card fits inside it (fit) */
+body[data-hud-guidance~=card] .cot-tut[data-chapter=training] .cot-tut-card{
   left:var(--hud-guidance-card-left);top:var(--hud-guidance-card-top);bottom:auto;width:var(--hud-guidance-card-width);
   max-height:var(--hud-guidance-card-max-h);transform:none;}
-body[data-hud-guidance~=card-yields] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{visibility:hidden;}
-/* (274) the card's words never cut: a type step smaller where the plan found no room for them whole (card-compact); where
-   they still outgrow the box (card-scroll, or an estimate short of them) they scroll inside it, and while more lies below
-   (data-more, battleHudLayout.ts) a fade over the last line and a chevron, held to the card's foot, say so. The fade
-   takes no room (its height and the gap before it cancelled), so the card's measured height never moves with it */
-body[data-hud-guidance~=card-compact] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-title{font-size:var(--fs-16);}
-body[data-hud-guidance~=card-compact] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-body{font-size:var(--fs-13);}
-.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{overscroll-behavior:contain;scrollbar-width:thin;
-  scrollbar-color:var(--line-2) transparent;}
-.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card[data-more]::after{content:'\25BE';position:sticky;bottom:0;flex:none;
-  display:flex;align-items:flex-end;justify-content:center;height:28px;margin:calc(-28px - var(--s3)) calc(-1 * var(--s4)) 0;
-  padding-bottom:2px;font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1;color:var(--ink-2);pointer-events:none;
-  background:linear-gradient(to bottom,transparent,var(--tut-card-bg-battle) 65%);}
-.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{border-radius:0;background:var(--tut-card-bg-battle);
-  box-shadow:inset 0 0 0 1px var(--line-2),var(--e3);
+body[data-hud-guidance~=card-yields] .cot-tut[data-chapter=training] .cot-tut-card{visibility:hidden;}
+.cot-tut[data-chapter=training] .cot-tut-card{border-radius:0;--tut-card-bg:var(--tut-card-bg-battle);
+  --tut-plate-shadow:var(--ring-2),var(--e3);box-shadow:var(--tut-plate-shadow);
   clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px);}
+/* reduced motion: every --dur-* is 1 ms (tokens.css), so each animation lands at its end at once; the beat's check stays
+   drawn while it shows (tutorialOverlay.ts holds it, still) */
 @media (prefers-reduced-motion: reduce){
   .cot-tut-pulse.is-pulsing{animation:none;}
 }
+:root[data-motion=reduce] .cot-tut-pulse.is-pulsing{animation:none;}
 }
 
 /* the guide (tutorialGuide.ts, 273): world pieces under the HUD, the edge pointer and the HUD chevron over it; neither
- * layer takes the pointer. Every colour is the tutorial's accent; motion is transform and opacity, none under reduced
- * motion. */
+ * layer takes the pointer. Every colour is the tutorial's accent; motion is transform and opacity on the shared tokens,
+ * a few beats when a control is shown (274: finite, so reduced motion's 1 ms never strobes), none under reduced motion. */
 @layer surfaces{
 .cot-tut-guide{position:fixed;inset:0;pointer-events:none;display:none;contain:strict;}
 .cot-tut-guide.is-on{display:block;}
 .cot-tut-guide--world{z-index:var(--z-hud-world);}
 .cot-tut-guide--over{z-index:var(--z-hud-score);}
 .cot-tut-guide-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
-.cot-tut-guide-ring{fill:oklch(from var(--accent) l c h / .14);stroke:var(--accent);stroke-width:3;stroke-linejoin:round;}
-.cot-tut-guide-column{stroke:oklch(from var(--accent) l c h / .5);stroke-width:8;stroke-linecap:round;}
+.cot-tut-guide-ring{fill:var(--accent-wash);stroke:var(--accent);stroke-width:3;stroke-linejoin:round;}
+.cot-tut-guide-column{stroke:var(--accent);stroke-opacity:.5;stroke-width:8;stroke-linecap:round;}
 .cot-tut-guide-label,.cot-tut-guide-edge-label{font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);
-  fill:var(--accent);text-anchor:middle;paint-order:stroke;stroke:oklch(0 0 0 / .55);stroke-width:3px;}
+  fill:var(--accent);text-anchor:middle;paint-order:stroke;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:3px;}
 .cot-tut-guide-label--actor{font-size:var(--fs-14);}
 .cot-tut-guide-distance,.cot-tut-guide-edge-distance{font-family:var(--font-mono);font-size:max(var(--fs-floor-12),var(--fs-12));
-  fill:var(--ink-1);text-anchor:middle;paint-order:stroke;stroke:oklch(0 0 0 / .55);stroke-width:3px;}
+  fill:var(--ink-1);text-anchor:middle;paint-order:stroke;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:3px;}
 .cot-tut-guide-edge-label{font-size:var(--fs-14);}
 .cot-tut-guide-chevron{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;
-  animation:cot-tut-guide-flow 1.4s var(--ease-move) infinite;animation-delay:calc(var(--i,0) * .14s);}
+  animation:cot-tut-guide-flow var(--dur-stage) var(--ease-move) 4;animation-delay:calc(var(--i,0) * var(--dur-fast));}
 @keyframes cot-tut-guide-flow{0%,100%{opacity:.35;}40%{opacity:1;}}
 .cot-tut-guide-bracket{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:square;}
 .cot-tut-guide-aim{fill:none;stroke:var(--accent-hi);stroke-width:2.5;stroke-dasharray:6 5;}
 /* (273, S9) the angling arc: each sector a hull heading, in the shooter's reticle ink for its round on the player's front
    plate (ui/penInk.ts); the needle the hull's heading now, in its ink */
-.cot-tut-guide-arc{fill:oklch(from var(--arc-ink) l c h / .42);stroke:var(--arc-ink);stroke-width:1;stroke-linejoin:round;}
+.cot-tut-guide-arc{fill:var(--arc-ink);fill-opacity:.42;stroke:var(--arc-ink);stroke-width:1;stroke-linejoin:round;}
 .cot-tut-guide-needle{stroke:var(--arc-ink);stroke-width:4;stroke-linecap:round;}
 /* (273, S10) the exposure shape over the player's tank: its hull and turret, each lit in the enemy's colour while the
    watching tank sees it, a hairline outline while hidden */
-.cot-tut-guide-exposure rect{fill:oklch(from var(--surface-scene) l c h / .55);stroke:var(--ink-2);stroke-width:1.5;}
-.cot-tut-guide-exposure rect.is-seen{fill:var(--text-enemy);stroke:var(--text-enemy);}
+.cot-tut-guide-exposure rect{fill:var(--surface-scene);fill-opacity:.55;stroke:var(--ink-2);stroke-width:1.5;}
+.cot-tut-guide-exposure rect.is-seen{fill:var(--text-enemy);fill-opacity:1;stroke:var(--text-enemy);}
 /* (273, S11) an actor's reload ring: a track, and its fill as the gun loads; full, it can fire (the enemy's colour) */
-.cot-tut-guide-reload-track{fill:oklch(from var(--surface-scene) l c h / .45);stroke:var(--line-2);stroke-width:4;}
+.cot-tut-guide-reload-track{fill:var(--surface-scene);fill-opacity:.45;stroke:var(--line-2);stroke-width:4;}
 .cot-tut-guide-reload-fill{fill:none;stroke:var(--ink-1);stroke-width:4;stroke-linecap:round;}
 .cot-tut-guide-reload.is-ready .cot-tut-guide-reload-fill{stroke:var(--text-enemy);}
-.cot-tut-guide-edge-arrow{fill:var(--accent);stroke:oklch(0 0 0 / .5);stroke-width:1.5;}
+.cot-tut-guide-edge-arrow{fill:var(--accent);stroke:var(--surface-scene);stroke-opacity:.5;stroke-width:1.5;}
 .cot-tut-guide-hud{position:absolute;left:0;top:0;width:22px;height:14px;margin-left:-11px;
   background:var(--accent);clip-path:polygon(0 0,50% 100%,100% 0,78% 0,50% 58%,22% 0);}
-.cot-tut-guide-hud[data-side='above']{margin-top:-14px;animation:cot-tut-guide-bob 1.1s var(--ease-move) infinite;}
-.cot-tut-guide-hud[data-side='below']{rotate:180deg;animation:cot-tut-guide-bob-up 1.1s var(--ease-move) infinite;}
+.cot-tut-guide-hud[data-side='above']{margin-top:-14px;animation:cot-tut-guide-bob var(--dur-stage) var(--ease-move) 4;}
+.cot-tut-guide-hud[data-side='below']{rotate:180deg;animation:cot-tut-guide-bob-up var(--dur-stage) var(--ease-move) 4;}
 .cot-tut-guide-hud[hidden]{display:none;}
 @keyframes cot-tut-guide-bob{0%,100%{translate:0 0;}50%{translate:0 -5px;}}
 @keyframes cot-tut-guide-bob-up{0%,100%{translate:0 0;}50%{translate:0 5px;}}

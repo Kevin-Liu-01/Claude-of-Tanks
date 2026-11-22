@@ -268,7 +268,8 @@ import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, Gar
 import { bootReadiness } from './app/bootReadiness.ts';
 import { openSurfaceIds } from './ui/components/surfaceStack.ts';
 import {
-  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun, TUTORIAL_ON,
+  answerTutorialOffer, markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
+  TUTORIAL_ON,
 } from './ui/tutorial/tutorialRecord.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -4851,6 +4852,7 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   record: {
     read: () => readTutorialRecord(), due: (chapter) => tutorialChapterDue(chapter),
     mark: (chapter, outcome) => markTutorialChapter(chapter, outcome), reset: () => resetTutorialRecord(),
+    answerOffer: (answer) => answerTutorialOffer(answer),
   },
   on: (event, listener) => bus.on(event, listener),
   inputKind: () => (input.isTouchLayout() ? 'touch' : input.isPadConnected() ? 'pad' : 'keyboard'),
@@ -4866,14 +4868,17 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   // when its phase ends; Settings or any transient surface the step did not open covers either
   screen: (chapter) => {
     const covered = settings.isOpen() || openSurfaceIds().length > 0;
-    if (chapter === 'battle' || chapter === 'training') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
+    if (chapter === 'training') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
     const garageLive = tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending
       && !document.querySelector('.cot-bl.on');
     return !garageLive ? 'gone' : covered ? 'covered' : 'live';
   },
-  isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
-    && !game.ruleset?.provingGround,
   isTrainingBattle: () => game.phase === 'battle' && !onlineMatchActive() && !!game.ruleset?.training && !game.watch && !game.couch,
+  // 274: the Garage chapter's Deploy and the offer's Start: the loaner on the training ground's battlefield, the training mode
+  launchTraining: () => {
+    const rules = matchRulesetFor('training').training;
+    if (rules) beginLocalBattle({ specId: rules.loanerSpecId, mapId: rules.mapId, gameMode: 'training' });
+  },
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
   // 273: the battle's guide projects world points through the battle camera; the tutorial's steps read the view, the
   // player's id and the armour colours
@@ -4954,7 +4959,7 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
   if (diagnosticsRequested) {
     Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
-      value: (chapter: 'garage' | 'battle' | 'tips' | 'training', atStep?: number) => withTutorial((access) => access.debugStart(chapter, atStep)) });
+      value: (chapter: import('./ui/tutorial/tutorialRecord.ts').TutorialChapter, atStep?: number) => withTutorial((access) => access.debugStart(chapter, atStep)) });
     // 273: the guide alone over the battle showing (tools/tutorial-guide.browser.mjs); resolves to its snapshot reader
     Object.defineProperty(window, '__TUTORIAL_GUIDE', { configurable: true,
       value: (spec: import('./ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null) => tutorialAccess.load().then((access) => access.debugGuide(spec)) });

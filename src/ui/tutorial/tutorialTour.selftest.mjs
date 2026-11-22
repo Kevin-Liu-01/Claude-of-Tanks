@@ -10,9 +10,9 @@
 //     lines (tells, shows, lets);
 //  3. the lessons: twelve, each proved by a training step; a run that finished ticks all, one that stopped ticks those it
 //     got past, none without a run;
-//  4. the chapters: neither is in the record yet (each runs when the journey brings it), and the access chains them: the
-//     training battle complete, its debrief on the Garage, the tour from "Show me around", the stats counted only while
-//     the training battle runs.
+//  4. the chapters: each runs when the journey brings it, and its outcome is recorded (274, the journey's record); the
+//     access chains them: the training battle complete, its debrief on the Garage, the tour from "Show me around", Skip
+//     ending the journey, the stats counted only while the training battle runs.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AFTER_TRAINING_STEPS, TRAINING_LESSONS, TRAINING_STEPS, chapterSteps } from './tutorialSteps.ts';
@@ -83,13 +83,16 @@ assert.equal(tutorialChapterDue('debrief', store), true);
 assert.equal(tutorialChapterDue('tour', store), true);
 markTutorialChapter('debrief', 'done', store);
 markTutorialChapter('tour', 'done', store);
-assert.equal(readTutorialRecord(store), null, 'neither is in the record yet');
+assert.deepEqual(readTutorialRecord(store), { debrief: 'done', tour: 'done' }, 'each is recorded');
+assert.equal(tutorialChapterDue('tour', store), true, 'and still runs when the journey brings it (a replay)');
 const access = read('src/app/tutorialAccess.ts');
 assert.match(access, /training\.complete = true;\s*training\.endedAt = performance\.now\(\);\s*debriefDue = true;\s*deps\.trainingComplete\(\);/,
   'the training battle complete: its debrief due, the battle ended');
 assert.match(access, /if \(debriefDue\) \{ start\('debrief', deps\.onGarage\); return; \}/, 'the debrief on the Garage');
-assert.match(access, /if \(chapter === 'debrief'\) \{ debriefDue = false; if \(outcome !== 'skipped'\) start\('tour', deps\.onGarage\); return; \}/,
-  'Show me around brings the tour; Skip ends both');
+assert.match(access, /else if \(chapter === 'debrief'\) \{ debriefDue = false; start\('tour', deps\.onGarage\); \}/,
+  'Show me around brings the tour');
+assert.match(access, /if \(outcome === 'skipped'\) \{ markTutorialChapter\('all', 'skipped'\); debriefDue = false; return; \}/,
+  'Skip anywhere ends the journey');
 assert.match(access, /const counting = \(\): boolean => !!training && run\?\.chapter === 'training';/, 'stats counted only while the training battle runs');
 const runner = read('src/ui/tutorial/tutorialRunner.ts');
 assert.match(runner, /nextLabel: t\(step\.nextLabel \?\? \(last \? 'tutorial\.done' : 'tutorial\.next'\)\),/, 'a step\'s own Next words');
