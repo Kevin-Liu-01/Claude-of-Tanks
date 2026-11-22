@@ -52,7 +52,10 @@ for (const [id, expected] of Object.entries(cases)) {
   const donor = TANK_SPECS[{ leo2a6: 'leo2a4', strv122: 'strv121', c1_ariete: 'c1_ariete_proto_serie1', challenger1_mk3: 'challenger1_mk2' }[id]].armor;
   for (const plate of auxiliary(armor)) {
     assertConvexArmorOutline(plate.verts, `${id}/${plate.surfaceGroup}`);
-    const original = [...donor.hullPlates, ...donor.turretPlates].find(p => p.name === plate.name);
+    // 274: by name, or, where the donor's plate fit dropped that course as buried in its shell (strv121's chevron
+    // lower_1, combatAnatomy.ts applyPlateFits), by the same family's other course (one protection per family)
+    const donorPlates = [...donor.hullPlates, ...donor.turretPlates], family = name => name.replace(/_\d+$/, '');
+    const original = donorPlates.find(p => p.name === plate.name) ?? donorPlates.find(p => family(p.name) === family(plate.name));
     assert.ok(original, `${id}: each replacement uses its actual donor protection family`);
     assert.deepEqual([plate.physicalMm, plate.keMm, plate.ceMm], [original.physicalMm, original.keMm, original.ceMm]);
   }

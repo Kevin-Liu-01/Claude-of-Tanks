@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
 import { getSpec } from '../specs.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { tankTier } from '../tier.ts';
 import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 import { LEOPARD_A6_X_DATUMS } from './leopardA6X.ts';
@@ -54,7 +55,19 @@ assert.ok(spec.armor.turretPlates.every((plate) => plate.kind === 'main' || plat
   const wedges = (s) => s.armor.turretPlates.filter((p) => p.kind === 'spaced')
     .map((p) => [p.name, p.keMm, p.ceMm, p.verts.map((v) => v.map((x) => Math.round(x * 1e6)))]);
   assert.ok(wedges(spec).length > 0, 'the wedges carry spaced plates where they are drawn');
-  assert.deepEqual(wedges(spec), wedges(a6), 'the wedge plates are the 2A6\'s, fitted on its drawn cheeks');
+  // 274: the plate fit (hitbox-fit-274) fits a wedge plate standing off its drawn cheek onto that cheek on each tank's
+  // own build. The UA's cheeks carry its Kontakt-1, so a fitted piece's outline is its own (the 2A6's keeps a fifth
+  // corner, the UA's four); every other wedge plate is the 2A6's, and every fitted one is fitted from the same 2A6 plate
+  const fits = (id) => (combatAnatomyCalibration(id)?.plateFits ?? []).filter((fit) => /^turret_wedge_[LR]$/.test(fit.name))
+    .map((fit) => [fit.name, fit.action === 'crop' || fit.action === 'fit' ? 'fitted' : fit.action, fit.at.map((x) => Math.round(x * 1e3))]);
+  assert.deepEqual(fits(id), fits('leo2a6'), 'the UA fits the same 2A6 wedge plates');
+  const key = (plate) => JSON.stringify(plate), mine = new Set(wedges(spec).map(key)), theirs = new Set(wedges(a6).map(key));
+  const own = (list, other) => list.filter((plate) => !other.has(key(plate)));
+  const fittedPieces = (list) => list.length;
+  assert.equal(fittedPieces(own(wedges(spec), theirs)) > 0, fits(id).some((fit) => fit[1] === 'fitted'), 'the UA\'s own wedge outlines are its fitted pieces');
+  assert.ok(own(wedges(spec), theirs).every(([name]) => fits(id).some((fit) => fit[0] === name && fit[1] === 'fitted'))
+    && own(wedges(a6), mine).every(([name]) => fits('leo2a6').some((fit) => fit[0] === name && fit[1] === 'fitted')),
+  'the wedge plates are the 2A6\'s, fitted on its drawn cheeks');
 }
 assert.deepEqual({ ...LEOPARD_A6_UA_SHELL_DIMS }, { hullLengthM: D.dims.hullLengthM, overallLengthM: D.dims.overallLengthM,
   widthM: D.dims.widthM, heightM: D.dims.heightM }, 'the kit\'s layout names the 2A6\'s dimensions');

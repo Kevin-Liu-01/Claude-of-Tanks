@@ -230,11 +230,16 @@ function eachFootSample(meshes: readonly THREE.Mesh[], hullInverse: THREE.Matrix
 
 /** The turret's foot round the ring (rig_hull frame; the turret at the yaw it stands at). */
 export function measureTurretFootline(meshes: readonly THREE.Mesh[], hullG: THREE.Object3D,
-  receipt: TurretSeatRaceReceipt, withHeight: boolean): TurretFootline {
+  receipt: TurretSeatRaceReceipt, withHeight: boolean, turretG?: THREE.Object3D): TurretFootline {
   const cx = receipt.seat[0], cz = receipt.seat[2], highY = receipt.deckY + FOOT_HIGH_M;
   hullG.updateWorldMatrix(true, false);
   const hullInverse = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
-  const shown = meshes.filter(footSurface);
+  // a build that names it (turretG.userData.turretSeatFootShell) reads its foot off the structural shell alone (the mesh
+  // named 'turret'): 274 fix2, the 2A6 and its UA, whose Kontakt-1 rails in its turretDark moved the band out past the
+  // 2A6's own shell, which then seated otherwise than the 2A6's (a kit adds, it never edits)
+  const fromShell = turretG?.userData.turretSeatFootShell === true;
+  const shell = fromShell ? meshes.filter((mesh) => mesh.name === 'turret' && footSurface(mesh)) : [];
+  const shown = shell.length ? shell : meshes.filter(footSurface);
   const footR = new Float64Array(FOOT_BINS);
   eachFootSample(shown, hullInverse, highY, (x, y, z) => {
     if (y > highY) return;
@@ -301,7 +306,7 @@ export function footBandBuiltYs(turretG: THREE.Object3D, seatedInHull: THREE.Vec
  */
 function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceReceipt, seat: TurretSeatPlane,
   hullG: THREE.Object3D, turretG: THREE.Object3D, targets: Map<string, number>): TurretSeatShortfall | null {
-  const footline = measureTurretFootline(meshes, hullG, receipt, false);
+  const footline = measureTurretFootline(meshes, hullG, receipt, false, turretG);
   // a builder's own keep radius (turretSeatKeepR) still holds: the Abrams keep their relieved floor tucked under the
   // bearing's face inside it (abramsTurretLift.selftest; 274 fix2); the default rim band does not exempt the foot
   const ownKeepR = (turretG.userData as TurretSeatLimits).turretSeatKeepR;
