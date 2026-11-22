@@ -58,7 +58,7 @@ import { DOCK_KEEP_OUT_CLEAR, LIVED_IN_RACKS, M1A1_BUSTLE_RACK, missionDockKeepO
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DecorReservedBox } from './profiles/fieldChest.ts';
-import { stationSweepKeepOut, stationSweepMet, type StationSweep } from './stationSweepKeepOut.ts';
+import { stationSweepBlocks, stationSweepKeepOut, stationSweepMet, type StationSweep } from './stationSweepKeepOut.ts';
 import {
   vehicleAmbientFloorHook, registerVehicleMaterial, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
@@ -6050,9 +6050,9 @@ function* decorationSteps(
     // out of every decor piece's placed box but the smoke banks', so a load turned away takes its next route or drops
     // (the Viper's pods carried a soft bag and two cases)
     const launcherVolumes = launcherKeepOutVolumes(hullG, turretG, spec);
-    // Release 275 (lane roof-station-keepout-275, the owner's Oplot ask): every roof station's swept volume, its barrel and
-    // moving stock round its yaw axis over its authored arc from level to full elevation (stationSweepKeepOut.ts), out of
-    // every decor piece's placed parts, so a load, whip or lamp in a station's way takes its next station or route, or
+    // Release 275 (lane roof-station-keepout-275, the owner's Oplot ask; "only real blockers"): every roof station's barrel
+    // sweep, its barrel lines turned over its authored arc from level to full elevation (stationSweepKeepOut.ts), out of
+    // every decor piece's placed geometry, so a load, whip or lamp in a barrel's way takes its next station or route, or
     // drops (the Oplot-T's turretRoof chest stood 0.5 m from its M240 at bore height; 50 stations on 48 tanks had decor
     // inside their traverse)
     const stationSweeps: Record<DecorFrame, StationSweep[]> = {
@@ -6427,10 +6427,6 @@ function* decorationSteps(
       if (!LAUNCHER_KEEP_OUT_EXEMPT.has(name) && launcherVolumes[frame].some((box) => box.intersectsBox(bb))) {
         return rejectCommit(name, parts, 'launcher');
       }
-      if (stationSweeps[frame].length && stationSweepMet(stationSweeps[frame], bb)
-        && placedPartBoxes(parts, pos, rot).some((box) => stationSweepMet(stationSweeps[frame], box))) {
-        return rejectCommit(name, parts, 'station-sweep');
-      }
       if (name !== 'tracks' && !parts.meta?.drape) {
         const runMet = spareRuns[frame].filter((box) => box.intersectsBox(bb));
         if (runMet.length && placedPartsEnter(parts, pos, rot, runMet)) return rejectCommit(name, parts, 'spare-track');
@@ -6440,6 +6436,14 @@ function* decorationSteps(
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
+      }
+      // 275 (the owner: only real blockers move): last, so a placement turned away for anything else keeps that reason (and a
+      // load turned away by a keep-out disc keeps its step-away retry); only one that would stand is tested here
+      if (stationSweeps[frame].length && stationSweepMet(stationSweeps[frame], bb)
+        && placedPartBoxes(parts, pos, rot).some((box) => stationSweepMet(stationSweeps[frame], box))
+        && stationSweepBlocks(stationSweeps[frame], parts.map((part) => part.geo),
+          new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1)))) {
+        return rejectCommit(name, parts, 'station-sweep');
       }
       pruneTies(parts, !!secure, rings, resources.releaseGeometry);
       pruneTies(parts.coarse, !!secure, rings, resources.releaseGeometry);

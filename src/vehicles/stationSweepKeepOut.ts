@@ -1,24 +1,24 @@
 // Release 275 (lane roof-station-keepout-275, from the owner's Oplot ask: the "light tower" must stop blocking the
-// machine gun): every roof station's swept volume is reserved from the decor. The decor seated its loads, whips and lamps
-// without knowing where the stations swing: the fleet cargo's turretRoof route stood an insulated chest 0.5 m from the
-// Oplot-T's M240 at its bore height, and a read-only fleet pass (integ/274.0) found 50 stations on 48 tanks with decor
-// inside their authored traverse (object148_proto 88 degrees, leo2_improved 74, leo2a4_otco 58 ...). One keep-out now
-// serves them all: a station's barrel and moving stock, swept round its yaw axis over its authored arc from the deepest
-// depression it may take to full elevation, is a floor over each radius from the axis (a load the barrel cannot depress
-// over blocks the gun as surely as one it traverses into: with the Oplots' per-id roof rule cut over, a crate stood
-// between their stations under the barrels' level sweep); a decor piece whose top stands above that floor anywhere in its
-// footprint is in the sweep, and decorations.ts turns it away (it takes its next station or route, or drops), as it turns
-// away loads from a launcher's or a drone dock's volume. The fleet receipt (tools/vehicle-controls-inventory.mjs writes
+// machine gun): no decor stands where a roof station's barrel turns. The decor seated its loads, whips and lamps without
+// knowing where the stations swing: the fleet cargo's turretRoof route stood an insulated chest 0.5 m from the Oplot-T's
+// M240 at its bore height, and a read-only fleet pass (integ/274.0) found 50 stations on 48 tanks with decor inside their
+// authored traverse (object148_proto 88 degrees, leo2_improved 74, leo2a4_otco 58 ...). One keep-out serves them all, and
+// reserves only what the barrel truly sweeps (the owner: only real blockers move; the fleet's dressing otherwise stays as
+// it is): the barrel lines tools/roof-station-arcs.mjs sweeps (its axis from STATION_MIN_REACH_M to the muzzle,
+// barrelSweepRadius round it), turned over the station's authored arc from level to full elevation, give the band of
+// heights the barrel passes through over each radius from the yaw axis; a decor piece with a point in that band, inside
+// the arc, is in the barrel's way, and decorations.ts turns it away (it takes its next station or route, or drops), as it turns away loads
+// from a launcher's or a drone dock's volume. The fleet receipt (tools/vehicle-controls-inventory.mjs writes
 // decorInStationArcs.generated.ts; roofStationKeepOut.selftest.mjs fails on any entry) measures the built decor against
-// the barrel lines tools/roof-station-arcs.mjs sweeps, at every pose the authority lets the station take.
+// the same barrel lines.
 import * as THREE from 'three';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { ROOF_STATION_ARCS } from './roofStationArcs.ts';
 
 /** The barrel starts ahead of the trunnion block it is seated in (m). */
-export const STATION_MIN_REACH_M = 0.12;
+const STATION_MIN_REACH_M = 0.12;
 /** The station's barrel radius for the sweep: a little over the calibre's tube, never under 3 cm. */
-export function barrelSweepRadius(caliberMm: number): number { return Math.max(0.03, caliberMm / 1000 * 1.6); }
+function barrelSweepRadius(caliberMm: number): number { return Math.max(0.03, caliberMm / 1000 * 1.6); }
 
 /** A working roof station: a remote-controlled, +Z-firing auxiliary weapon with a pivot and a muzzle. */
 export function isRoofStation(o: THREE.Object3D): boolean {
@@ -34,12 +34,12 @@ export function stationYawArc(vehicleId: string, station: THREE.Object3D): reado
   return arc && Number.isFinite(arc[0]) && Number.isFinite(arc[1]) && arc[1] - arc[0] < 2 * Math.PI - 1e-6 ? arc : null;
 }
 
-/** Radial bin of a sweep's floor, the decor's clearance off the swept surface, and the elevation step between poses. */
-const BIN_M = 0.02;
-const CLEAR_M = 0.02;
+/** Radial bin of a sweep's floor (fine: a bin's width is over-reach), the spacing of samples along a barrel or an edge,
+ *  the decor's clearance under the barrel lines, and the elevation step between poses. */
+const BIN_M = 0.005;
+const SAMPLE_M = 0.02;
+const CLEAR_M = 0.005;
 const POSE_STEP_RAD = 0.05;
-/** A stamped triangle's longest edge (m): longer ones are split first. */
-const SPLIT_M = 0.1;
 /** A partial arc's samples are grouped by rest bearing in bins this wide; nearer the axis than AXIS_M a sample has no
  *  useful bearing and joins the bin that sweeps the full circle. */
 const BEARING_BIN_RAD = Math.PI / 12;
@@ -49,8 +49,10 @@ interface SweepBin {
   /** rest bearings (station-local, radians) the bin's samples span; -Infinity..Infinity for the full circle */
   a0: number;
   a1: number;
-  /** the lowest swept point (station-local y) over each radial bin from the yaw axis; +Infinity where nothing sweeps */
+  /** the lowest and highest swept points (station-local y) over each radial bin from the yaw axis; +Infinity and
+   *  -Infinity where nothing sweeps */
   floor: Float32Array;
+  ceiling: Float32Array;
 }
 /** One station's reserved volume, read in its decor frame. */
 export interface StationSweep {
@@ -59,9 +61,12 @@ export interface StationSweep {
   readonly toStation: THREE.Matrix4;
   readonly arc: readonly [number, number] | null;
   readonly bins: readonly SweepBin[];
-  /** the sweep's outer radius and lowest floor (station-local), for a quick miss */
+  /** the sweep's outer radius and lowest point (station-local), for a quick miss */
   readonly reach: number;
   readonly bottom: number;
+  /** the station, and the pitches (radians) the receipt tests it at */
+  readonly station: THREE.Object3D;
+  readonly pitches: readonly number[];
 }
 
 /** The decor frame a station turns with: its nearest ancestor among `frames`. */
@@ -70,26 +75,7 @@ function frameOf(station: THREE.Object3D, frames: readonly THREE.Object3D[]): TH
   return null;
 }
 
-/** The meshes of a station's moving stock that a sweep reads: drawn, not shadow stand-ins or markings. */
-function stockMeshes(station: THREE.Object3D): THREE.Mesh[] {
-  const out: THREE.Mesh[] = [];
-  station.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh || mesh.userData.shadowOnly || /Shadow/.test(mesh.name) || /^vehicleMarking/.test(mesh.name)) return;
-    for (let p: THREE.Object3D | null = mesh; p && p !== station.parent; p = p.parent) if (p.visible === false) return;
-    if (!mesh.geometry?.getAttribute('position')) return;
-    out.push(mesh);
-  });
-  return out;
-}
-
-/** The nearest distance from the yaw axis (the origin) to the triangle (ax, az), (bx, bz), (cx, cz) in plan. */
-function planTriangleDistance(ax: number, az: number, bx: number, bz: number, cx: number, cz: number): number {
-  const d1 = (bx - ax) * (0 - az) - (bz - az) * (0 - ax), d2 = (cx - bx) * (0 - bz) - (cz - bz) * (0 - bx);
-  const d3 = (ax - cx) * (0 - cz) - (az - cz) * (0 - cx);
-  if ((d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0)) return 0;
-  return Math.min(segmentDistance(ax, az, bx, bz), segmentDistance(bx, bz, cx, cz), segmentDistance(cx, cz, ax, az));
-}
+/** The plan distance from the origin to the segment (ax, az)-(bx, bz). */
 function segmentDistance(ax: number, az: number, bx: number, bz: number): number {
   const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
   const t = l2 > 1e-12 ? Math.max(0, Math.min(1, -(ax * dx + az * dz) / l2)) : 0;
@@ -106,20 +92,21 @@ class FloorBins {
   constructor(size: number, partial: boolean) {
     this.size = size;
     this.partial = partial;
-    this.full = { a0: -Infinity, a1: Infinity, floor: new Float32Array(size).fill(Infinity) };
+    this.full = { a0: -Infinity, a1: Infinity, floor: new Float32Array(size).fill(Infinity), ceiling: new Float32Array(size).fill(-Infinity) };
   }
-  /** The floor `y` over radii rMin..rMax for samples at rest bearings a0..a1 (unwrapped, a1 - a0 < pi). */
-  stamp(rMin: number, rMax: number, y: number, a0: number, a1: number): void {
+  /** The swept band yLo..yHi over radii rMin..rMax for samples at rest bearings a0..a1 (unwrapped, a1 - a0 < pi). */
+  stamp(rMin: number, rMax: number, yLo: number, yHi: number, a0: number, a1: number): void {
     let bin = this.full;
     if (this.partial && rMin > AXIS_M) {
       const key = Math.floor(((a0 + a1) / 2) / BEARING_BIN_RAD);
-      bin = this.byBearing.get(key) ?? { a0: Infinity, a1: -Infinity, floor: new Float32Array(this.size).fill(Infinity) };
+      bin = this.byBearing.get(key)
+        ?? { a0: Infinity, a1: -Infinity, floor: new Float32Array(this.size).fill(Infinity), ceiling: new Float32Array(this.size).fill(-Infinity) };
       this.byBearing.set(key, bin);
       bin.a0 = Math.min(bin.a0, a0); bin.a1 = Math.max(bin.a1, a1);
     }
-    const i0 = Math.max(0, Math.floor((rMin - CLEAR_M) / BIN_M)), i1 = Math.min(this.size - 1, Math.floor((rMax + CLEAR_M) / BIN_M));
-    const f = y - CLEAR_M;
-    for (let i = i0; i <= i1; i++) if (f < bin.floor[i]) bin.floor[i] = f;
+    const i0 = Math.max(0, Math.floor(rMin / BIN_M)), i1 = Math.min(this.size - 1, Math.floor(rMax / BIN_M));
+    const f = yLo - CLEAR_M, c = yHi + CLEAR_M;
+    for (let i = i0; i <= i1; i++) { if (f < bin.floor[i]) bin.floor[i] = f; if (c > bin.ceiling[i]) bin.ceiling[i] = c; }
   }
 }
 
@@ -136,175 +123,28 @@ function bearingSpan(xs: ArrayLike<number>, zs: ArrayLike<number>, count = xs.le
   return [lo, hi];
 }
 
-/** The deepest depression a station may take at any yaw (radians): the weapon's, capped by the mount's table where it
- *  has one (src/sim/auxiliarySystems.ts depressionAt holds the smaller of the weapon's and the table's). */
-export function stationDepressionLimit(station: THREE.Object3D, weaponRad: number): number {
-  const table = station.userData.depressionByYaw as readonly (readonly [number, number])[] | undefined;
-  if (!table?.length) return Math.max(0, weaponRad);
-  // a yaw outside the table's span takes the weapon's own depression
-  const spansCircle = table[0][0] <= -Math.PI + 1e-3 && table[table.length - 1][0] >= Math.PI - 1e-3;
-  const deepest = Math.max(...table.map(([, d]) => d));
-  return Math.max(0, Math.min(weaponRad, spansCircle ? deepest : weaponRad));
-}
-
 /**
- * The swept volume of one station, station-local: each triangle of its moving stock (the pitch group posed from its
- * deepest depression (stationDepressionLimit) to full elevation every POSE_STEP_RAD, each step's two poses stamped together so the chord between them is covered;
- * the yaw stage at rest) stamps its lowest point over the radii it spans, and the barrel lines tools/roof-station-arcs.mjs
- * sweeps (the axis from STATION_MIN_REACH_M to the muzzle, barrelSweepRadius round it) stamp theirs, so a piece the keep-out
- * passes is one the receipt passes. Pure over the built station: its pitch group is posed and put back.
+ * The barrel's sweep of one station, station-local: the axis from STATION_MIN_REACH_M to the muzzle, barrelSweepRadius
+ * round it (tools/roof-station-arcs.mjs stationProbe's lines), posed from level to full elevation every POSE_STEP_RAD
+ * (each pose and the next stamped, so the chord between them is covered), stamps its lowest point over the radii it
+ * reaches, so a piece the keep-out passes is one the receipt passes.
  */
 function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: SweepBin[]; reach: number; bottom: number } | null {
   const u = station.userData;
   const profile = auxiliaryWeaponProfile(Number(u.caliberMm) || 12.7, vehicleId);
-  const elevation = Math.max(0, profile.elevationRad), depression = stationDepressionLimit(station, profile.depressionRad);
+  const elevation = Math.max(0, profile.elevationRad);
   const poses: number[] = [];
-  for (let p = -depression; p < elevation; p += POSE_STEP_RAD) poses.push(p);
+  for (let p = 0; p < elevation; p += POSE_STEP_RAD) poses.push(p);
   poses.push(elevation);
   const pivot = new THREE.Vector3(...(u.auxiliaryPivot as [number, number, number]));
   const muzzle = new THREE.Vector3(...((u.auxiliaryMuzzle as [number, number, number] | undefined) ?? [0, u.barrelAxisLocalY ?? 0, u.muzzleLocalZ]));
   const radius = barrelSweepRadius(Number(u.caliberMm) || 12.7);
   const reachVec = muzzle.clone().sub(pivot), length = reachVec.length();
   if (!(length > STATION_MIN_REACH_M)) return null;
-  const meshes = stockMeshes(station);
-  const pitchNode = station.getObjectByName('auxiliaryWeaponPitch');
-  const pitched = new Set<THREE.Mesh>();
-  pitchNode?.traverse((o) => { if ((o as THREE.Mesh).isMesh) pitched.add(o as THREE.Mesh); });
-  station.updateWorldMatrix(true, true);
-  const toStation = new THREE.Matrix4().copy(station.matrixWorld).invert();
-  // the farthest any stock or barrel point reaches from the axis (an upper bound: the floor's length)
-  const pivotR = Math.hypot(pivot.x, pivot.z);
-  let reachMax = pivotR + length + radius;
-  const v = new THREE.Vector3(), m = new THREE.Matrix4();
-  for (const mesh of meshes) {
-    const pos = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-    m.multiplyMatrices(toStation, mesh.matrixWorld);
-    const fromPivot = pitched.has(mesh);
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i).applyMatrix4(m);
-      reachMax = Math.max(reachMax, fromPivot ? pivotR + v.distanceTo(pivot) : Math.sqrt(v.x * v.x + v.z * v.z));
-    }
-  }
-  const partial = !!stationYawArc(vehicleId, station);
-  const bins = new FloorBins(Math.ceil((reachMax + 2 * CLEAR_M) / BIN_M) + 1, partial);
-  const xs = [0, 0, 0, 0, 0, 0], zs = [0, 0, 0, 0, 0, 0];
-  const point = new THREE.Vector3();
-  // a mesh's vertices at one pose, station-local, into a scratch array
-  const posed = (mesh: THREE.Mesh, out: Float64Array): void => {
-    const pos = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-    m.multiplyMatrices(toStation, mesh.matrixWorld);
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i).applyMatrix4(m);
-      out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z;
-    }
-  };
-  // each triangle stamps its lowest corner over the radii it spans; with `b`, the band between that pose and the last
-  // One triangle's stamp, its corners (x, y, z) at this pose and, with `two`, at the last: 18 numbers on a stack. A
-  // triangle that spans more than SPLIT_M in plan and drops more than SPLIT_M in height across it is split at its edges'
-  // midpoints first (exact under a rigid pose): a barrel's side faces run its whole length, and stamped whole a depressed
-  // one would pull its muzzle's low point under every radius it spans. Flat or small triangles stamp as they are.
-  const STACK = new Float64Array(18 * 32);
-  const MID: ReadonlyArray<readonly [number, number]> = [[0, 1], [1, 2], [2, 0]];
-  const KIDS: ReadonlyArray<readonly [number, number, number]> = [[0, 3, 5], [3, 1, 4], [5, 4, 2], [3, 4, 5]];
-  const six = new Float64Array(36); // the three corners and three midpoints of both poses
-  const stampStack = (two: boolean): void => {
-    let top = 1;
-    while (top > 0) {
-      const o = --top * 18;
-      let y = Infinity, yHi = -Infinity, rMax = 0, rLo = Infinity, edge = 0, step = 0;
-      const corners = two ? 6 : 3;
-      for (let c = 0; c < 3; c++) {
-        xs[c] = STACK[o + c * 3]; zs[c] = STACK[o + c * 3 + 2];
-        const yc = STACK[o + c * 3 + 1]; y = Math.min(y, yc); yHi = Math.max(yHi, yc);
-        if (two) {
-          xs[c + 3] = STACK[o + 9 + c * 3]; zs[c + 3] = STACK[o + 9 + c * 3 + 2];
-          const yb = STACK[o + 9 + c * 3 + 1]; y = Math.min(y, yb); yHi = Math.max(yHi, yb);
-          const sx = xs[c + 3] - xs[c], sz = zs[c + 3] - zs[c]; step = Math.max(step, sx * sx + sz * sz);
-        }
-      }
-      for (let c = 0; c < corners; c++) { const r = Math.sqrt(xs[c] * xs[c] + zs[c] * zs[c]); rMax = Math.max(rMax, r); rLo = Math.min(rLo, r); }
-      for (let c = 0; c < 3; c++) { const ex = xs[(c + 1) % 3] - xs[c], ez = zs[(c + 1) % 3] - zs[c]; edge = Math.max(edge, ex * ex + ez * ez); }
-      edge = Math.sqrt(edge); step = Math.sqrt(step);
-      if (edge > SPLIT_M && yHi - y > SPLIT_M && top + 4 <= 32) {
-        for (let pose = 0; pose < (two ? 2 : 1); pose++) {
-          const b = o + pose * 9, d = pose * 18;
-          for (let c = 0; c < 9; c++) six[d + c] = STACK[b + c];
-          for (let m = 0; m < 3; m++) for (let q = 0; q < 3; q++) six[d + 9 + m * 3 + q] = (STACK[b + MID[m][0] * 3 + q] + STACK[b + MID[m][1] * 3 + q]) / 2;
-        }
-        for (const kid of KIDS) {
-          const k = top++ * 18;
-          for (let pose = 0; pose < (two ? 2 : 1); pose++) for (let c = 0; c < 3; c++) for (let q = 0; q < 3; q++) {
-            STACK[k + pose * 9 + c * 3 + q] = six[pose * 18 + kid[c] * 3 + q];
-          }
-        }
-        continue;
-      }
-      // the nearest radius: within a bin of the corners for a small triangle (no point of it is farther than its longest
-      // edge from a corner), measured for a large one. With `two`, every point of the band between the poses lies within
-      // its corners' largest step of the first pose's triangle (a rotation's step is linear in the point; the arc's bulge
-      // over a 0.05 rad step is under a millimetre).
-      let rMin = edge <= BIN_M ? rLo - edge : planTriangleDistance(xs[0], zs[0], xs[1], zs[1], xs[2], zs[2]);
-      rMin = Math.max(0, rMin - step);
-      if (partial && rMin > AXIS_M) {
-        const [a0, a1] = bearingSpan(xs, zs, corners);
-        bins.stamp(rMin, rMax, y, a0, a1);
-      } else bins.stamp(rMin, rMax, y, 0, 0);
-    }
-  };
-  const stampTriangles = (mesh: THREE.Mesh, a: Float64Array, b: Float64Array | null): void => {
-    const index = mesh.geometry.getIndex(), n = index ? index.count : a.length / 3;
-    for (let k = 0; k + 2 < n; k += 3) {
-      for (let c = 0; c < 3; c++) {
-        const i = (index ? index.getX(k + c) : k + c) * 3;
-        STACK[c * 3] = a[i]; STACK[c * 3 + 1] = a[i + 1]; STACK[c * 3 + 2] = a[i + 2];
-        if (b) { STACK[9 + c * 3] = b[i]; STACK[9 + c * 3 + 1] = b[i + 1]; STACK[9 + c * 3 + 2] = b[i + 2]; }
-      }
-      stampStack(!!b);
-    }
-  };
-  const scratch = new Map<THREE.Mesh, Float64Array>();
-  const buffer = (mesh: THREE.Mesh, slot: number): Float64Array => {
-    const n = (mesh.geometry.getAttribute('position') as THREE.BufferAttribute).count * 3;
-    let arr = scratch.get(mesh);
-    if (!arr) { arr = new Float64Array(n * 2); scratch.set(mesh, arr); }
-    return arr.subarray(slot * n, slot * n + n);
-  };
-  // the yaw stage, at rest
-  for (const mesh of meshes) {
-    if (pitched.has(mesh)) continue;
-    const a = buffer(mesh, 0);
-    posed(mesh, a);
-    stampTriangles(mesh, a, null);
-  }
-  // the pitch group, posed from its deepest depression to full elevation (as the presentation and ghillieSuit.ts
-  // roofWeaponFloor pose it)
-  const pitchMeshes = meshes.filter((mesh) => pitched.has(mesh));
-  if (pitchNode && pitchMeshes.length) {
-    // posed as the presentation poses it (fx/auxiliaryPresentation.ts: rotation.x = -pitch, rest level), through the
-    // node's local matrix so a node whose matrix is not auto-updated poses too; put back exactly as it stood
-    const savedMatrix = pitchNode.matrix.clone(), savedAuto = pitchNode.matrixAutoUpdate;
-    const euler = pitchNode.rotation.clone(), q = new THREE.Quaternion();
-    try {
-      pitchNode.matrixAutoUpdate = false;
-      for (let p = 0; p < poses.length; p++) {
-        euler.x = -poses[p];
-        pitchNode.matrix.compose(pitchNode.position, q.setFromEuler(euler), pitchNode.scale);
-        pitchNode.updateWorldMatrix(false, true);
-        for (const mesh of pitchMeshes) {
-          const cur = buffer(mesh, p & 1), prev = buffer(mesh, (p + 1) & 1);
-          posed(mesh, cur);
-          stampTriangles(mesh, cur, p ? prev : null);
-        }
-      }
-    } finally {
-      pitchNode.matrix.copy(savedMatrix);
-      pitchNode.matrixAutoUpdate = savedAuto;
-      pitchNode.updateWorldMatrix(false, true);
-    }
-  }
-  // the barrel lines (tools/roof-station-arcs.mjs stationProbe): the axis, the radius round it, each pose and the next
-  const dir = new THREE.Vector3(), xAxis = new THREE.Vector3(1, 0, 0);
-  const steps = Math.max(1, Math.ceil((length - STATION_MIN_REACH_M) / BIN_M));
+  const reachMax = Math.hypot(pivot.x, pivot.z) + length + radius;
+  const bins = new FloorBins(Math.ceil(reachMax / BIN_M) + 2, !!stationYawArc(vehicleId, station));
+  const dir = new THREE.Vector3(), point = new THREE.Vector3(), xAxis = new THREE.Vector3(1, 0, 0);
+  const steps = Math.max(1, Math.ceil((length - STATION_MIN_REACH_M) / SAMPLE_M));
   for (let p = 0; p < poses.length; p++) {
     for (const pose of p ? [poses[p - 1], poses[p]] : [poses[p]]) {
       dir.copy(reachVec).applyAxisAngle(xAxis, -pose).normalize();
@@ -312,8 +152,10 @@ function sweepStation(station: THREE.Object3D, vehicleId: string): { bins: Sweep
         const t = STATION_MIN_REACH_M + (length - STATION_MIN_REACH_M) * s / steps;
         point.copy(pivot).addScaledVector(dir, t);
         const r = Math.hypot(point.x, point.z);
+        // the lines a barrel radius off the axis reach no farther out than the axis point beside them (no end cap past the
+        // muzzle: the receipt's barrel is its lines), and as near as a radius in
         const a = Math.atan2(point.x, point.z), w = r > radius ? Math.asin(radius / r) : Math.PI;
-        bins.stamp(Math.max(0, r - radius), r + radius, point.y - radius, a - w, a + w);
+        bins.stamp(Math.max(0, r - radius), Math.hypot(r, radius), point.y - radius, point.y + radius, a - w, a + w);
       }
     }
   }
@@ -337,23 +179,24 @@ export function stationSweepKeepOut(frame: THREE.Object3D, frames: readonly THRE
     const swept = sweepStation(station, vehicleId);
     if (!swept || !swept.bins.length) continue;
     const toStation = new THREE.Matrix4().copy(station.matrixWorld).invert().multiply(frame.matrixWorld);
-    out.push({ name: station.name, toStation, arc: stationYawArc(vehicleId, station), ...swept });
+    const profile = auxiliaryWeaponProfile(Number(station.userData.caliberMm) || 12.7, vehicleId);
+    out.push({ name: station.name, toStation, arc: stationYawArc(vehicleId, station), ...swept, station, pitches: receiptPitches(profile.elevationRad) });
   }
   return out;
 }
 
 const corner = new THREE.Vector3();
 const PX = new Float64Array(8), PY = new Float64Array(8), PZ = new Float64Array(8);
-/** The station whose swept volume a frame-local box enters (its top over the sweep's floor anywhere in its plan within
- *  the authored arc), or null. */
+/** The station whose barrel sweep a frame-local box may enter (its height range meets the swept band anywhere in its
+ *  plan within the authored arc), or null: a coarse test, which stationSweepMetGeometry settles point by point. */
 export function stationSweepMet(sweeps: readonly StationSweep[], box: THREE.Box3): StationSweep | null {
   if (box.isEmpty()) return null;
   for (const sweep of sweeps) {
-    let top = -Infinity;
+    let top = -Infinity, low = Infinity;
     for (let k = 0; k < 8; k++) {
       corner.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).applyMatrix4(sweep.toStation);
       PX[k] = corner.x; PY[k] = corner.y; PZ[k] = corner.z;
-      top = Math.max(top, corner.y);
+      top = Math.max(top, corner.y); low = Math.min(low, corner.y);
     }
     if (top < sweep.bottom) continue;
     // the box's plan, as the hull of its eight corners: its nearest and farthest radius and its bearing span
@@ -371,10 +214,123 @@ export function stationSweepMet(sweeps: readonly StationSweep[], box: THREE.Box3
         const lo = bin.a0 + sweep.arc[0] - w, hi = bin.a1 + sweep.arc[1] + w;
         if (!bearingsOverlap(lo, hi, span[0], span[1])) continue;
       }
-      for (let i = i0; i <= i1 && i < bin.floor.length; i++) if (top >= bin.floor[i]) return sweep;
+      for (let i = i0; i <= i1 && i < bin.floor.length; i++) if (top >= bin.floor[i] && low <= bin.ceiling[i]) return sweep;
     }
   }
   return null;
+}
+
+/** The pitches the receipt sweeps a station at (tools/roof-station-probe.mjs stationSweep): level to full elevation every
+ *  0.05 rad, and full elevation. */
+export function receiptPitches(elevationRad: number): number[] {
+  const out: number[] = [];
+  for (let p = 0; p < elevationRad; p += 0.05) out.push(p);
+  out.push(elevationRad);
+  return out;
+}
+
+/** Möller–Trumbore: does the segment o + t·d, t in [0, len], cross triangle i of `tris`? */
+function segmentHits(tris: Float64Array, i: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number,
+  len: number): boolean {
+  const ax = tris[i], ay = tris[i + 1], az = tris[i + 2];
+  const e1x = tris[i + 3] - ax, e1y = tris[i + 4] - ay, e1z = tris[i + 5] - az, e2x = tris[i + 6] - ax, e2y = tris[i + 7] - ay, e2z = tris[i + 8] - az;
+  const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz;
+  if (Math.abs(det) < 1e-12) return false;
+  const inv = 1 / det, tx = ox - ax, ty = oy - ay, tz = oz - az, u = (tx * px + ty * py + tz * pz) * inv;
+  if (u < 0 || u > 1) return false;
+  const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv;
+  if (v < 0 || u + v > 1) return false;
+  const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+  return t >= 0 && t <= len;
+}
+
+/**
+ * The barrel's lines for one station against station-local triangles (VH.02; one owner since 275, read by
+ * tools/roof-station-probe.mjs and the decor keep-out alike): probe(yaw, pitch) is true when the barrel at that pose (its
+ * axis from STATION_MIN_REACH_M to the muzzle and four lines barrelSweepRadius off it) crosses a triangle.
+ */
+export function barrelLinesProbe(station: THREE.Object3D, tris: Float64Array):
+  { probe: (yaw: number, pitch: number) => boolean; radius: number; length: number } {
+  const u = station.userData;
+  const pivot = new THREE.Vector3(...(u.auxiliaryPivot as [number, number, number]));
+  const muzzle = new THREE.Vector3(...((u.auxiliaryMuzzle as [number, number, number] | undefined) ?? [0, u.barrelAxisLocalY, u.muzzleLocalZ]));
+  const radius = barrelSweepRadius(Number(u.caliberMm) || 12.7);
+  const reach = muzzle.clone().sub(pivot), length = reach.length();
+  // only triangles the barrel can reach: within its swept sphere round the trunnion
+  const near: number[] = [];
+  for (let i = 0; i < tris.length; i += 9) {
+    let close = false;
+    for (let k = 0; k < 9 && !close; k += 3) close = Math.hypot(tris[i + k] - pivot.x, tris[i + k + 1] - pivot.y, tris[i + k + 2] - pivot.z) <= length + radius + 0.05;
+    if (close) near.push(i);
+  }
+  const offsets = [[0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius]];
+  const dir = new THREE.Vector3(), side = new THREE.Vector3(), up = new THREE.Vector3(), start = new THREE.Vector3();
+  const yAxis = new THREE.Vector3(0, 1, 0), xAxis = new THREE.Vector3(1, 0, 0);
+  const probe = (yaw: number, pitch: number): boolean => {
+    if (!near.length) return false;
+    // the station's own construction: pitch about the trunnion (x), then yaw about the ring (y)
+    dir.copy(reach).applyAxisAngle(xAxis, -pitch).normalize();
+    start.copy(pivot).addScaledVector(dir, STATION_MIN_REACH_M).applyAxisAngle(yAxis, yaw);
+    dir.applyAxisAngle(yAxis, yaw);
+    side.crossVectors(dir, yAxis).normalize(); up.crossVectors(side, dir).normalize();
+    for (const [sx, sy] of offsets) {
+      const ox = start.x + side.x * sx + up.x * sy, oy = start.y + side.y * sx + up.y * sy, oz = start.z + side.z * sx + up.z * sy;
+      for (const i of near) if (segmentHits(tris, i, ox, oy, oz, dir.x, dir.y, dir.z, length - STATION_MIN_REACH_M)) return true;
+    }
+    return false;
+  };
+  return { probe, radius, length };
+}
+
+/** Whether whole degree `deg` lies inside `arc` (radians; null for the full circle), as the receipt reads it. */
+export function degreeInArc(deg: number, arc: readonly [number, number] | null): boolean {
+  if (!arc) return true;
+  const lo = arc[0] * 180 / Math.PI, hi = arc[1] * 180 / Math.PI;
+  return [-720, -360, 0, 360, 720].some((k) => deg + k >= lo && deg + k <= hi);
+}
+
+/**
+ * Whether placed geometry (each geometry under `matrix`, frame-local) stands in a station's barrel's way exactly as the
+ * receipt judges it: the station's barrel lines (barrelLinesProbe) at every whole degree inside its arc and every receipt
+ * pitch, against the geometry's triangles. The band test (stationSweepMet) only picks the placements worth this.
+ */
+export function stationSweepBlocks(sweeps: readonly StationSweep[], geos: readonly THREE.BufferGeometry[], matrix: THREE.Matrix4): boolean {
+  const m = new THREE.Matrix4(), v = new THREE.Vector3();
+  for (const sweep of sweeps) {
+    m.multiplyMatrices(sweep.toStation, matrix);
+    const tris: number[] = [];
+    let lo = Infinity, hi = -Infinity, rMin = Infinity, ref = NaN;
+    for (const geo of geos) {
+      const pos = geo.getAttribute('position') as THREE.BufferAttribute | undefined;
+      if (!pos) continue;
+      const index = geo.getIndex(), n = index ? index.count : pos.count;
+      for (let k = 0; k + 2 < n; k += 3) for (let c = 0; c < 3; c++) {
+        v.fromBufferAttribute(pos, index ? index.getX(k + c) : k + c).applyMatrix4(m);
+        tris.push(v.x, v.y, v.z);
+        // the bearings the geometry spans round the yaw axis, unwrapped about its first point
+        const r = Math.hypot(v.x, v.z);
+        rMin = Math.min(rMin, r);
+        let a = Math.atan2(v.x, v.z);
+        if (Number.isNaN(ref)) ref = a;
+        while (a - ref > Math.PI) a -= 2 * Math.PI;
+        while (a - ref < -Math.PI) a += 2 * Math.PI;
+        lo = Math.min(lo, a); hi = Math.max(hi, a);
+      }
+    }
+    if (!tris.length) continue;
+    const { probe, radius } = barrelLinesProbe(sweep.station, Float64Array.from(tris));
+    // yaws whose barrel can reach the geometry's bearings: their span, widened by the barrel's radius and the trunnion's
+    // offset from the axis at the geometry's nearest radius (every yaw when it comes near the axis)
+    const pivot = sweep.station.userData.auxiliaryPivot as [number, number, number];
+    const wide = rMin > 0.2 ? Math.asin(Math.min(1, (radius + Math.hypot(pivot[0], pivot[2]) + 0.05) / rMin)) + Math.PI / 90 : Math.PI;
+    for (let deg = -180; deg < 180; deg++) {
+      if (!degreeInArc(deg, sweep.arc)) continue;
+      const yaw = deg * Math.PI / 180;
+      if (wide < Math.PI && !bearingsOverlap(lo - wide, hi + wide, yaw, yaw)) continue;
+      if (sweep.pitches.some((p) => probe(yaw, p))) return true;
+    }
+  }
+  return false;
 }
 
 /** Whether bearing intervals [a0, a1] and [b0, b1] (radians, each shorter than a turn or a whole turn) share a bearing. */
