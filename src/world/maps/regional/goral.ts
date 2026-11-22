@@ -13,16 +13,18 @@ import {
 } from './geometry.ts';
 import { bulb } from './domes.ts';
 import {
-  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
-  type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
+  buildHouse, closeGables, emitRoof, holedBox, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
+  type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { woodpile } from './dressing.ts';
+import { mound, roofLadder, woodpile } from './dressing.ts';
 import { openShed } from './outbuildings.ts';
 import { dressOf, type ArchitectureStyle, type RegionalBuildContext, type RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
 const CHAR = rgb(0x2a2420), BELL = rgb(0x6a5a3a);
+/** The hay in a barn's loft (dome-detail-275). */
+const HAY = rgb(0x9c8550);
 /** The carved window surrounds, as the Podhale photos show them (buildings-270): pale pine or the brown of the logs' carving. */
 const SURROUNDS: Readonly<Record<string, Rgb>> = { pale: PALE, brown: rgb(0x633c24) };
 /** Window frames: white, the odd blue or green painted ones. */
@@ -405,8 +407,11 @@ const willa: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: [{ h: 2.7, wall: 'wood' }],
       roof: gont(54, 0.65, 0.7), gableBucket: 'wood', openings, gutters: null, verge: null, reveal: 0.24, spall: null,
-      chimneys: [{ x: -W * 0.2, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' },
-        { x: W * 0.2, z: D * 0.18, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' }],
+      // (dome-detail-275) the stacks under their little shingled hoods on corner piers, as the Podhale stacks stand; the
+      // rafters' feet under the deep eaves
+      chimneys: [{ x: -W * 0.2, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'tile' },
+        { x: W * 0.2, z: D * 0.18, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'tile' }],
+      rafters: LOG_DARK,
     }, {
       ...dialect(st),
       // (props census #15, Lane C 2026-10-16: the attic's gable windows were a white frame and a dark plate on the
@@ -414,7 +419,6 @@ const willa: RegionalBuilder = (ctx) => {
       gableOpenings: (_face, poly) => (Math.max(...poly.map(([, y]) => y)) - poly[0][1] > 1.6
         ? [-0.9, 0.9].map((u) => ({ u0: u - 0.26, u1: u + 0.26, y0: poly[0][1] + 0.62, y1: poly[0][1] + 1.28 })) : []),
     });
-    if (ctx.snowCap) roofSnow(sink, frame);
     logWork(sink, frame, [0], look, st.window, st.mobile);
     const f = frame.faces.front;
     const attic: Array<[number, number]> = [[-1.25, -0.55], [0.55, 1.25]];
@@ -438,6 +442,26 @@ const willa: RegionalBuilder = (ctx) => {
       if (Math.abs(u) < 0.8) continue;
       faceBox(sink, 'structureWood', f, u, vy + 0.4, vd - 0.18, 0.1, 0.8, 0.1, { ...c, decor: true });
     }
+    // (dome-detail-275, wave 2: "the large roof is a smooth slab with no shingle courses") the gables' pale bargeboards and
+    // the carved teeth under the half hips, the pazdur finial turned at each hip's peak with its iron spike
+    const rg = frame.roof;
+    for (const g of [f, frame.faces.back]) rakes(sink, g, frame, PALE, 0, true);
+    for (const end of [1, -1]) {
+      const pz = end * rg.ridgeHalf, py = rg.ridgeTopY - 0.08;
+      sink.cylinder('structureWood', [0, py, pz], 'y', 0.55, 0.08, 8, { colour: PALE, decor: true }, 0.05);
+      sink.cylinder('structureWood', [0, py + 0.55, pz], 'y', 0.16, 0.1, 8, { colour: PALE, decor: true }, 0.03);
+      sink.span('structureMetal', -0.015, py + 0.7, pz - 0.015, 0.015, py + 1.05, pz + 0.015, { colour: IRON, decor: true, fine: true });
+    }
+    // the sweep's ladder up the slope to the stack (bare roofs: January's snow buries it), the snow drifted against the
+    // walls
+    if (!ctx.snowCap) sink.dressing(st.mobile, () => roofLadder(sink, frame, 1, D * 0.18, 1 - (W * 0.2 + 0.5) / rg.s, LOG_DARK));
+    else {
+      for (const name of ['right', 'back', 'left'] as const) {
+        const fc = frame.faces[name];
+        drift(sink, fc, -fc.width / 2 - 0.3, fc.width / 2 + (name === 'left' ? -0.2 : 0.3), 0.6, 0.3 + look() * 0.3, 0.45 + look() * 0.2);
+      }
+    }
+    roofCover(sink, rg, frame.spec.roof, look, { snow: ctx.snowCap, mobile: st.mobile, course: 0.36 });
   });
   return sink.finish();
 };
@@ -480,7 +504,7 @@ const szkola: RegionalBuilder = (ctx) => {
 };
 
 /** A prism of `pts` (one plane) extruded `depth` along `dir`, wound whichever way the points run (dome-detail-275). */
-function prismAuto(sink: PartSink, bucket: 'roof' | 'plaster' | 'wood' | 'stone', pts: readonly Vec3[], dir: Vec3, depth: number, opts: { decor?: boolean } = {}): void {
+function prismAuto(sink: PartSink, bucket: 'roof' | 'plaster' | 'wood' | 'stone', pts: readonly Vec3[], dir: Vec3, depth: number, opts: Parameters<PartSink['prism']>[4] = {}): void {
   const [a, b, c] = pts;
   const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
     (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
@@ -617,7 +641,8 @@ const kosciol: RegionalBuilder = (ctx) => {
       sink.span('structureWood', sx * 0.38 - 0.06, ry + 0.65, tzz + sz * 0.38 - 0.06, sx * 0.38 + 0.06, ry + 1.35, tzz + sz * 0.38 + 0.06, { colour: LOG });
     }
     sink.cylinder('structureMetal', [0, ry + 0.75, tzz], 'y', 0.35, 0.17, 8, { colour: BELL, decor: true }, 0.08);
-    sink.span('structureWood', -0.05, ry + 1.1, tzz - 0.38, 0.05, ry + 1.18, tzz + 0.38, { colour: LOG_DARK, decor: true });
+    // (kitConnectivity, dome-detail-275 wave 2: the bell's beam hung 4 cm under the cap on nothing) the beam run up into the cap
+    sink.span('structureWood', -0.05, ry + 1.1, tzz - 0.44, 0.05, ry + 1.36, tzz + 0.44, { colour: LOG_DARK, decor: true });
     const tcap: RoofSpec = { kind: 'hip', pitchDeg: 35, eave: 0.18, verge: 0.18, thickness: 0.08, bucket: 'roof', ridge: null };
     sink.placed(0, 0, 0, tzz, () => emitRoof(sink, roofGeometry(0.9, 0.9, ry + 1.35, tcap), tcap));
     const ty = bulb(sink, 'roof', 0, ry + 1.35 + 0.45 * Math.tan(35 * Math.PI / 180) - 0.05, tzz, [[0.18, 0.16, 0.34], [0.22, 0.34, 0.26], [0.2, 0.26, 0.04]]);
@@ -693,10 +718,171 @@ const kosciol: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The hay barn (stodoła): hewn log walls on a stone footing, a steep shingle roof, the wide double doors in the long side. */
+// ------------------------------------------------------------------------------------------------ roofs and gables
+// (dome-detail-275, wave 2: the barn, the board store and the villa read as "a smooth roof slab and blank boarded
+// gables") what the outbuildings' and the big house's roofs and gables carry: the gont in its courses, January's snow
+// lying on it in slabs, its cornice over the eaves and slid off here and there, the bargeboards, the purlins' ends.
+
+/** A point (h, z) of a roof slope: h across from the ridge (horizontal), z along it. */
+type P2 = readonly [number, number];
+
+/** A convex polygon (h, z) clipped to a·p <= c (Sutherland–Hodgman; dome-detail-275). */
+function clipHalf(poly: readonly P2[], a: P2, c: number): P2[] {
+  const out: P2[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const dp = a[0] * p[0] + a[1] * p[1] - c, dq = a[0] * q[0] + a[1] * q[1] - c;
+    if (dp <= 0) out.push(p);
+    if ((dp < 0 && dq > 0) || (dp > 0 && dq < 0)) { const t = dp / (dp - dq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+  }
+  return out.filter((p, i) => { const q = out[(i + 1) % out.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
+}
+
+/** A planar quad wound to face `toward` (dome-detail-275). */
+function quadToward(sink: PartSink, bucket: 'roof' | 'plaster', p: readonly Vec3[], toward: Vec3, opts: Parameters<PartSink['polygon']>[2]): void {
+  const n = [(p[1][1] - p[0][1]) * (p[2][2] - p[0][2]) - (p[1][2] - p[0][2]) * (p[2][1] - p[0][1]),
+    (p[1][2] - p[0][2]) * (p[2][0] - p[0][0]) - (p[1][0] - p[0][0]) * (p[2][2] - p[0][2]),
+    (p[1][0] - p[0][0]) * (p[2][1] - p[0][1]) - (p[1][1] - p[0][1]) * (p[2][0] - p[0][0])];
+  sink.polygon(bucket, n[0] * toward[0] + n[1] * toward[1] + n[2] * toward[2] < 0 ? [...p].reverse() : p, opts);
+}
+
+/**
+ * The covering of a gable or half-hip roof's two slopes (dome-detail-275): bare, the gont laid in its courses — each a
+ * lapped row whose butt stands proud, split in lengths of their own tone and a little out of line, the lowest rows
+ * darker with the eaves' moss; under January's snow, the snow lying in slabs down the slope, each its own depth, most
+ * run out past the eave in a cornice with its icicles, a few slid off and the courses showing under their edge; the
+ * little hips' snow. The courses are dressing (a phone keeps the roof's own print); the snow is drawn on every tier.
+ */
+function roofCover(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, look: () => number, o: { snow: boolean; mobile: boolean; course: number }): void {
+  if (rg.kind !== 'gable' && rg.kind !== 'halfhip') return;
+  const { s, tanP, ridgeY } = rg, e = roof.eave, P = Math.atan(tanP), cosP = Math.cos(P), sinP = Math.sin(P);
+  const D = rg.halfD + (rg.hipVerge ?? roof.verge), rH = rg.kind === 'gable' ? D : rg.ridgeHalf;
+  let xC = 0, yC = ridgeY;
+  if (rg.kind !== 'gable' && rH < D - 1e-6) {
+    yC = ridgeY - (D - rH) * (rg.hipTan ?? Math.tan((roof.hipPitchDeg ?? 62) * Math.PI / 180));
+    xC = Math.min(s + e, (ridgeY - yC) / tanP);
+  }
+  const top = ridgeY + roof.thickness / cosP, hE = s + e, lo = rg.eaveY - e * tanP;
+  const zlim = (h: number): number => (xC <= 1e-6 || h >= xC ? D : rH + (D - rH) * h / xC);
+  // a point on a slope's top, `off` out along its normal
+  const Q = (side: number, h: number, z: number, off: number): Vec3 => [side * (h + sinP * off), top - h * tanP + cosP * off, z];
+  const normal = (side: number): Vec3 => [side * sinP, cosP, 0];
+  const uvOf = (side: number) => ({ kind: 'plane' as const, origin: [0, top, 0] as Vec3, u: [0, 0, side] as Vec3, v: [side * cosP, -sinP, 0] as Vec3 });
+  // the courses of one slope from the eave up to hTo, between z0 and z1
+  const courses = (side: number, z0: number, z1: number, hTo: number): void => sink.dressing(o.mobile, () => {
+    const dh = o.course * cosP, B = 0.032, n = normal(side), down: Vec3 = [side * cosP, -sinP, 0], uv = uvOf(side);
+    for (let k = 0; ; k++) {
+      const hb = hE - k * dh, ht = hb - dh * 1.2;
+      if (ht < Math.max(0.12, hTo)) break;
+      const zl = zlim(ht), a = Math.max(z0, -zl), b = Math.min(z1, zl);
+      if (b - a < 0.3) break;
+      const tone = k < 2 ? 0.74 : k < 4 ? 0.84 : 0.88;
+      for (let za = a; za < b - 0.05;) {
+        let zb = Math.min(b, za + 1.6 + look() * 1.9);
+        if (b - zb < 0.4) zb = b;
+        const bh = hb + (look() - 0.5) * 0.05, opts = { decor: true, shade: tone + look() * 0.2, uv };
+        quadToward(sink, 'roof', [Q(side, bh, za, B), Q(side, bh, zb, B), Q(side, ht, zb, 0.004), Q(side, ht, za, 0.004)], n, opts);
+        quadToward(sink, 'roof', [Q(side, bh, za, 0), Q(side, bh, zb, 0), Q(side, bh, zb, B), Q(side, bh, za, B)], down, opts);
+        za = zb;
+      }
+    }
+  });
+  if (!o.snow) { for (const side of [1, -1]) courses(side, -D, D, 0); return; }
+  const Zs = D + (xC > 1e-6 ? 0 : 0.05);
+  for (const side of [1, -1]) {
+    for (let z0 = -Zs; z0 < Zs - 0.05;) {
+      let z1 = Math.min(Zs, z0 + 1.7 + look() * 1.7);
+      if (Zs - z1 < 0.9) z1 = Zs;
+      const slid = look() < 0.28, over = slid ? -(0.5 + look() * 1.1) : 0.08 + look() * 0.2, t = 0.27 + look() * 0.05;
+      const hS = hE + over, hOut = Math.max(hE, hS);
+      let poly: P2[] = xC > 1e-6 ? [[hOut, -D], [hOut, D], [xC, D], [0, rH], [0, -rH], [xC, -D]] : [[hOut, -Zs], [hOut, Zs], [0, Zs], [0, -Zs]];
+      poly = clipHalf(clipHalf(clipHalf(poly, [0, -1], -z0), [0, 1], z1), [1, 0], hS);
+      if (poly.length >= 3) prismAuto(sink, 'plaster', poly.map(([h, z]) => Q(side, h, z, 0.012)), normal(side), t, { decor: true });
+      if (slid) courses(side, z0, z1, hS - 0.15);
+      else {
+        // the icicles along the cornice, hung from the shingles' edge
+        const n = Math.floor(look() * 4);
+        for (let i = 0; i < n; i++) {
+          const z = clamp(z0 + (z1 - z0) * (i + 0.5 + (look() - 0.5) * 0.6) / n, -D + 0.1, D - 0.1), len = 0.18 + look() * 0.42;
+          sink.cylinder('plaster', [side * (hE - 0.06), lo - len, z], 'y', len + 0.02, 0.006, 5, { decor: true, fine: 'near' }, 0.045, false);
+        }
+      }
+      z0 = z1;
+    }
+  }
+  // the little hips' snow
+  if (xC > 1e-6) {
+    for (const end of [1, -1]) {
+      const rise = ridgeY - yC, run = D - rH, len = Math.hypot(rise, run), nE: Vec3 = [0, run / len, end * rise / len], off = roof.thickness + 0.012;
+      const pts: Vec3[] = [[-xC, yC, end * D], [xC, yC, end * D], [0, ridgeY, end * rH]];
+      prismAuto(sink, 'plaster', pts.map((p): Vec3 => [p[0] + nE[0] * off, p[1] + nE[1] * off, p[2] + nE[2] * off]), nE, 0.24, { decor: true });
+    }
+  }
+}
+
+/**
+ * The bargeboards (wiatrownice) along a gable's rakes at the verge's edge (dome-detail-275), run down past the wall to
+ * the eave's; at a gable's apex crossed and run on past it (`cross`, the barns' crossed ends), at a half hip its teeth
+ * under the hip's eave (`teethToo`).
+ */
+function rakes(sink: PartSink, face: Face, frame: HouseFrame, colour: Rgb, cross: number, teethToo: boolean): void {
+  const g = frame.roof.gable;
+  if (!g) return;
+  const rv = frame.spec.roof.verge, re = frame.spec.roof.eave, tp = frame.roof.tanP;
+  let k = 0;
+  for (let i = 0; i < g.length; i++) {
+    let [ua, ya] = g[i], [ub, yb] = g[(i + 1) % g.length];
+    if (Math.abs(yb - ya) < 0.05) continue;
+    if (ya < yb) [ua, ya, ub, yb] = [ub, yb, ua, ya];
+    const ue = ub + Math.sign(ub) * re, ye = yb - re * tp, L = Math.hypot(ua - ue, ya - ye), run = Math.abs(ua) < 0.01 ? cross : 0;
+    const o = rv + (k++ % 2) * 0.045 * (run > 0 ? 1 : 0);
+    sink.member('structureWood', facePoint(face, ue, ye - 0.06, o), facePoint(face, ua + (ua - ue) / L * run, ya - 0.06 + (ya - ye) / L * run, o),
+      0.26, 0.045, face.out, { colour, decor: true }, 0.02);
+  }
+  if (teethToo && g.length === 4) {
+    const gTop = Math.max(...g.map(([, yy]) => yy)), half = Math.max(...g.filter(([, yy]) => yy > gTop - 1e-3).map(([uu]) => Math.abs(uu)));
+    teeth(sink, face, -half - 0.1, half + 0.1, gTop - 0.12, 0.045, 0.2);
+  }
+}
+
+/** The purlins' ends under a gable's verge (dome-detail-275): the ridge purlin and one each side, out to the bargeboards. */
+function purlinEnds(sink: PartSink, face: Face, frame: HouseFrame, colour: Rgb): void {
+  const rg = frame.roof, rv = frame.spec.roof.verge;
+  if (rg.kind !== 'gable') return;
+  for (const u of [-rg.s * 0.52, 0, rg.s * 0.52]) {
+    const yTop = rg.ridgeY - (Math.abs(u) + 0.08) * rg.tanP;
+    faceBox(sink, 'structureWood', face, u, yTop - 0.11, (rv - 0.08) / 2, 0.16, 0.22, rv - 0.08, { colour, decor: true, shadow: true });
+  }
+}
+
+/** Snow drifted against a wall's foot (dome-detail-275): a wedge `h` high, `out` from the wall, from u0 to u1. */
+function drift(sink: PartSink, face: Face, u0: number, u1: number, y: number, h: number, out: number): void {
+  if (u1 - u0 < 0.3) return;
+  prismAuto(sink, 'plaster', [facePoint(face, u0, y - 0.25, -0.02), facePoint(face, u0, y - 0.25, out), facePoint(face, u0, y + h, -0.02)], face.u, u1 - u0, { decor: true });
+}
+
+/** A plank ramp up to a gate's threshold (dome-detail-275): an earth wedge decked in boards, its edge beams. */
+function gateRamp(sink: PartSink, face: Face, u: number, w: number, y: number, len: number): void {
+  prismAuto(sink, 'wood', [facePoint(face, u - w / 2, -0.15, -0.05), facePoint(face, u - w / 2, -0.15, len), facePoint(face, u - w / 2, 0.02, len),
+    facePoint(face, u - w / 2, y, -0.05)], face.u, w, { decor: true });
+  for (const s of [-1, 1]) {
+    sink.member('structureWood', facePoint(face, u + s * (w / 2 - 0.06), y + 0.03, 0), facePoint(face, u + s * (w / 2 - 0.06), 0.05, len - 0.05), 0.12, 0.1,
+      [0, 1, 0], { colour: LOG_DARK, decor: true, exposed: true }, 0.06);
+  }
+}
+
+/**
+ * The hay barn (stodoła): hewn log walls on a stone footing, a steep shingle roof, the wide double doors in the long side.
+ * (dome-detail-275, wave 2: "a smooth roof slab and blank boarded gables") The Podhale stodoła as it stands: the gont in
+ * its courses (or January's snow on it in slabs, its cornice and icicles), the rafters' feet under the eaves, both
+ * gables boarded upright under dark bargeboards crossed at the apex and the purlins' ends; the hay door cut through the
+ * front gable, one leaf swung open on the hay, a vent through the back one; plank ramps up to both gates; the snow
+ * drifted against the walls.
+ */
 const stodola: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
+  const look = ctx.variant;
   const fit = wallsIn(ctx, 0.42, 0.4);
   const W = clamp(fit.w, 6.5, 9.4), D = clamp(fit.d, 9, 14);
   sink.placed(0, fit.cx, 0, fit.cz, () => {
@@ -704,18 +890,52 @@ const stodola: RegionalBuilder = (ctx) => {
       { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.8, y0: 0, h: 3.0 },
       { face: 'right', storey: 0, kind: 'gate', u: 0, w: 3.0, y0: 0, h: 3.0 },
     ];
+    const roof = gont(48, 0.5, 0.45, 'gable'), plinth = 0.35, eave = plinth + 3.6;
+    // (dome-detail-275) the hay door and the vent cut through the gables
+    const hay: HoleRect = { u0: -0.6, u1: 0.6, y0: eave + 0.35, y1: eave + 1.65 }, vent: HoleRect = { u0: -0.28, u1: 0.28, y0: eave + 2.1, y1: eave + 2.55 };
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
+      w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
       // (the props census #17, 2026-10-15, the judges: "deepen stodola's gate reveals from 0.12 m") the gates hung at the
       // back of a reveal as deep as the logs
-      roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.26, spall: null,
-    }, dialect({ ...st, litShare: 0 }));
-    if (ctx.snowCap) roofSnow(sink, frame);
+      roof, gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.26, spall: null,
+      // (dome-detail-275) the rafters' feet under the eaves
+      rafters: LOG_DARK,
+    }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (face) => (face.out[2] > 0 ? [hay] : [vent]) });
     // (the props census, 2026-10-14; the judges: the village's, the barn's and the school's walls wait on real log
     // courses) the stodoła's walls in hewn logs as the Podhale barns stand, a heavier course than the houses', the wide
     // gates cut through them; the gable over them boarded
-    logWork(sink, frame, [0], ctx.variant, st.window, st.mobile, 0.32);
-    if (!st.mobile) gableBoards(sink, frame.faces.front, frame);
+    logWork(sink, frame, [0], look, st.window, st.mobile, 0.32);
+    const F = frame.faces;
+    // (dome-detail-275) both gables boarded, their bargeboards crossed at the apex, the purlins' ends under the verge
+    gableBoards(sink, F.front, frame, [[hay.u0 - 0.06, hay.u1 + 0.06]]);
+    gableBoards(sink, F.back, frame, [[vent.u0 - 0.06, vent.u1 + 0.06]]);
+    for (const g of [F.front, F.back]) { rakes(sink, g, frame, LOG_DARK, 0.6, false); purlinEnds(sink, g, frame, LOG_DARK); }
+    // the hay door (dome-detail-275): its frame, one leaf shut in the reveal, the other swung out on its hinges, the hay
+    // behind; the vent's frame
+    {
+      const f = F.front, c = { colour: shade(LOG, 1.1), decor: true } as const, hw = (hay.u1 - hay.u0) / 2;
+      for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, s * (hw + 0.06), (hay.y0 + hay.y1) / 2, 0.03, 0.12, hay.y1 - hay.y0 + 0.24, 0.06, c);
+      for (const y of [hay.y0 - 0.06, hay.y1 + 0.06]) faceBox(sink, 'structureWood', f, 0, y, 0.03, 2 * hw, 0.12, 0.06, c);
+      const r = frame.gableReveal, leaf = { colour: shade(LOG, 0.95), decor: true } as const;
+      faceBox(sink, 'structureWood', f, -hw / 2, (hay.y0 + hay.y1) / 2, -r + 0.05, hw, hay.y1 - hay.y0 - 0.04, 0.04, leaf);
+      faceBox(sink, 'structureWood', f, hw + 0.14, (hay.y0 + hay.y1) / 2, hw / 2 + 0.02, 0.04, hay.y1 - hay.y0 - 0.06, hw, { ...leaf, shadow: true });
+      mound(sink, facePoint(f, hw * 0.35, hay.y0, -r * 0.5), f.u, f.out, hw * 0.55, r * 0.5 + 0.12, 0.45, HAY, { decor: true }, look() * 2, 5);
+      const v = F.back;
+      for (const s of [-1, 1]) faceBox(sink, 'structureWood', v, s * (vent.u1 + 0.05), (vent.y0 + vent.y1) / 2, 0.025, 0.1, vent.y1 - vent.y0 + 0.2, 0.05, c);
+      for (let y = vent.y0 + 0.1; y < vent.y1 - 0.05; y += 0.14) faceBox(sink, 'structureWood', v, 0, y, -0.05, vent.u1 - vent.u0, 0.05, 0.1, { ...c, fine: true });
+    }
+    // the plank ramps up to the gates' thresholds (dome-detail-275)
+    gateRamp(sink, F.front, 0, 3.0, plinth, 0.85);
+    gateRamp(sink, F.right, 0, 3.2, plinth, 0.75);
+    if (ctx.snowCap) {
+      // the snow drifted against the walls, the gates dug clear (dome-detail-275)
+      for (const [name, gu] of [['front', 1.7], ['right', 1.8], ['back', 0], ['left', 0]] as const) {
+        const f = F[name], half = f.width / 2, h = 0.35 + look() * 0.3, out = 0.5 + look() * 0.25;
+        if (gu) { drift(sink, f, -half - 0.3, -gu, plinth, h, out); drift(sink, f, gu, half + 0.3, plinth, h * 0.8, out); }
+        else drift(sink, f, -half - 0.3, half + 0.3, plinth, h, out);
+      }
+    }
+    roofCover(sink, frame.roof, roof, look, { snow: ctx.snowCap, mobile: st.mobile, course: 0.36 });
   });
   return sink.finish();
 };
@@ -806,7 +1026,8 @@ const tartak: RegionalBuilder = (ctx) => {
     // (kitConnectivity: the log lay 3 cm over the saw's bed) the carriage's two rails under the log its whole length, the
     // log resting on them; past the frame its sawn half, the squared cant on the rails and the boards cut from it on top
     for (const x of [-0.3, 0.3]) sink.span('structureWood', x - 0.07, -0.1, -D * 0.35, x + 0.07, 0.62, D * 0.25, { colour: LOG_DARK, decor: true });
-    sink.cylinder('structureWood', [0, 0.93, -D * 0.35 + 0.2], 'z', D * 0.33, 0.32, 10, { colour: shade(LOG, 1.15), decor: true, shadow: true });
+    // (kitConnectivity, dome-detail-275 wave 2: the log's facets stood 7 cm over the rails) the log down onto its rails
+    sink.cylinder('structureWood', [0, 0.8, -D * 0.35 + 0.2], 'z', D * 0.33, 0.32, 10, { colour: shade(LOG, 1.15), decor: true, shadow: true });
     sink.span('structureWood', -0.27, 0.62, 0.35, 0.27, 1.0, D * 0.22, { colour: shade(PALE, 0.82), decor: true });
     for (let k = 0; k < 2; k++) {
       sink.span('structureWood', -0.25 + k * 0.03, 1.0 + k * 0.05, 0.5 + k * 0.2, 0.25 - k * 0.02, 1.05 + k * 0.05, D * 0.2 - k * 0.3,
@@ -852,63 +1073,359 @@ const tartak: RegionalBuilder = (ctx) => {
 
 /**
  * The sawmill's board store (the warehouse's plot): a long plank building under a shingle roof, wide doors in both
- * gables and the long side, the battens down its boards.
+ * gables and the long side, the battens down its boards. (dome-detail-275, wave 2: "a big plank barn: a smooth sheet
+ * roof and a blank gable") The Podhale board store as a drying shed: its frame standing out of the boards (the posts at
+ * every bay on the sill and under the plate), the long walls' upper band left open in louvre boards for the air; the
+ * gont in its courses (or January's snow on it in slabs) under a ridge ventilator over the middle bays, the rafters'
+ * feet; both gables boarded under crossed bargeboards and the purlins' ends, each with its pitching door under the hoist
+ * beam and its pulley, the louvred vent near the apex; shingled hoods on struts over the gable gates; plank ramps up to
+ * the gates; boards stacked on stickers under the eave; the snow drifted against the walls.
  */
 const sklad: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
+  const look = ctx.variant;
   const bb = ctx.bounds;
   const W = clamp(bb.maxX - bb.minX - 1.2, 11, 17), D = clamp(bb.maxZ - bb.minZ - 1.0, 18, 29);
+  // (dome-detail-275) the loft windows along the long walls gave way to the louvred band
   const openings: Opening[] = [
     { face: 'front', storey: 0, kind: 'gate', u: 0, w: 3.6, y0: 0, h: 3.6 },
     { face: 'back', storey: 0, kind: 'gate', u: 0, w: 3.6, y0: 0, h: 3.6 },
     { face: 'right', storey: 0, kind: 'gate', u: -D * 0.2, w: 3.2, y0: 0, h: 3.2 },
   ];
-  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.8, h: 0.6, sill: 3.2, spacing: 3.0, margin: 1.5, kind: 'loft' })) {
-    if (face === 'right' && Math.abs(o.u + D * 0.2) < 2.4) continue;
-    openings.push(o);
-  }
+  const plinth = 0.3, H = 4.6, eave = plinth + H, roof = gont(40, 0.6, 0.5, 'gable');
+  const ridge = eave + W / 2 * Math.tan(40 * Math.PI / 180);
+  // (dome-detail-275) the pitching door and the vent cut through each gable
+  const pitch: HoleRect = { u0: -0.75, u1: 0.75, y0: eave + 0.7, y1: eave + 2.4 }, louvre: HoleRect = { u0: -0.55, u1: 0.55, y0: ridge - 2.3, y1: ridge - 1.4 };
   sink.placed(0, (bb.minX + bb.maxX) / 2, 0, (bb.minZ + bb.maxZ) / 2, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: 'wood' }],
-      roof: gont(40, 0.6, 0.5, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
-    }, dialect({ ...st, litShare: 0 }));
-    if (ctx.snowCap) roofSnow(sink, frame);
-    if (!st.mobile) {
-      const faces = storeyFaces(frame, 0);
+      w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'wood' }],
+      roof, gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null, rafters: LOG_DARK,
+    }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: () => [pitch, louvre] });
+    const faces = storeyFaces(frame, 0), F = frame.faces;
+    const timber = { colour: LOG_DARK, decor: true, fineSides: true } as const, band0 = 3.75;
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const face = faces[name], half = face.width / 2, long = name === 'right' || name === 'left';
+      const gates = openings.filter((o) => o.face === name).map((o) => [o.u - o.w / 2 - 0.18, o.u + o.w / 2 + 0.18] as const);
+      const clear = (u: number, r: number): boolean => !gates.some(([a, b]) => u > a - r && u < b + r);
+      // the frame (dome-detail-275): the posts at the corners and every bay, the sill on the plinth between the gates, the
+      // plate under the eave
+      const bays = Math.max(2, Math.round((face.width - 0.26) / 3.0));
+      const posts: number[] = [];
+      for (let k = 0; k <= bays; k++) { const u = -half + 0.13 + (face.width - 0.26) * k / bays; if (clear(u, 0.12)) posts.push(u); }
+      for (const u of posts) faceBox(sink, 'structureWood', face, u, (plinth + eave) / 2, 0.035, 0.22, H, 0.07, timber, 'caps');
+      const runs: Array<[number, number]> = [];
+      let from = -half;
+      for (const [a, b] of [...gates].sort((p, q) => p[0] - q[0])) { if (a > from + 0.2) runs.push([from, a]); from = b; }
+      if (half > from + 0.2) runs.push([from, half]);
+      for (const [a, b] of runs) faceBox(sink, 'structureWood', face, (a + b) / 2, plinth + 0.11, 0.04, b - a, 0.22, 0.08, timber);
+      faceBox(sink, 'structureWood', face, 0, eave - 0.12, 0.04, face.width, 0.24, 0.08, timber);
+      // the long walls' louvred band for the air (dome-detail-275): the dark behind, three boards across each bay
+      const yTop = long ? band0 : eave - 0.24;
+      if (long) {
+        for (let k = 0; k + 1 < posts.length; k++) {
+          const a = posts[k] + 0.11, b = posts[k + 1] - 0.11, um = (a + b) / 2;
+          faceBox(sink, 'structureWood', face, um, (band0 + eave - 0.24) / 2, 0.006, b - a, eave - 0.24 - band0, 0.012, { colour: rgb(0x17120e), decor: true }, 'caps');
+          for (let j = 0; j < 3; j++) {
+            faceBox(sink, 'structureWood', face, um, band0 + 0.16 + j * 0.27, 0.04, b - a, 0.14, 0.06, { colour: shade(LOG_AGED, 0.92 + look() * 0.18), decor: true, fineSides: true });
+          }
+        }
+      }
+      // the battens down the boards' joints below the band (fine joinery), clear of the posts and the gates
+      for (let u = -half + 0.36; u < half - 0.2; u += 0.45) {
+        if (!clear(u, 0.05) || posts.some((p) => Math.abs(p - u) < 0.2)) continue;
+        faceBox(sink, 'structureWood', face, u, (plinth + 0.22 + yTop) / 2, 0.012, 0.06, yTop - plinth - 0.22, 0.024, { colour: LOG_DARK, decor: true, fine: true }, 'caps');
+      }
+    }
+    // the gables (dome-detail-275): boarded upright, the bargeboards crossed at the apex, the purlins' ends; the pitching
+    // door's frame and its two leaves shut in the reveal, the hoist beam over it with its pulley and rope; the vent's
+    // frame and louvres; the shingled hood over the gate on its two struts
+    for (const g of [F.front, F.back]) {
+      gableBoards(sink, g, frame, [[pitch.u0 - 0.08, pitch.u1 + 0.08]]);
+      rakes(sink, g, frame, LOG_DARK, 0.65, false);
+      purlinEnds(sink, g, frame, LOG_DARK);
+      const c = { colour: shade(LOG, 1.1), decor: true } as const, r = frame.gableReveal;
+      for (const h of [pitch, louvre]) {
+        const hw = (h.u1 - h.u0) / 2;
+        for (const s of [-1, 1]) faceBox(sink, 'structureWood', g, s * (hw + 0.06), (h.y0 + h.y1) / 2, 0.03, 0.12, h.y1 - h.y0 + 0.24, 0.06, c);
+        for (const y of [h.y0 - 0.06, h.y1 + 0.06]) faceBox(sink, 'structureWood', g, 0, y, 0.03, 2 * hw, 0.12, 0.06, c);
+      }
+      const hw = (pitch.u1 - pitch.u0) / 2, my = (pitch.y0 + pitch.y1) / 2, ph = pitch.y1 - pitch.y0 - 0.04;
+      for (const s of [-1, 1]) {
+        faceBox(sink, 'structureWood', g, s * hw / 2, my, -r + 0.05, hw - 0.02, ph, 0.04, { colour: shade(LOG, 0.95), decor: true });
+        for (const y of [pitch.y0 + 0.3, pitch.y1 - 0.3]) faceBox(sink, 'structureWood', g, s * hw / 2, y, -r + 0.09, hw - 0.12, 0.12, 0.04, { colour: LOG_DARK, decor: true, fine: true });
+      }
+      for (let y = louvre.y0 + 0.12; y < louvre.y1 - 0.06; y += 0.19) faceBox(sink, 'structureWood', g, 0, y, -0.05, louvre.u1 - louvre.u0, 0.06, 0.1, { colour: LOG_DARK, decor: true });
+      const by = pitch.y1 + 0.45;
+      faceBox(sink, 'structureWood', g, 0, by, 0.6, 0.2, 0.24, 1.2, { colour: LOG_DARK, decor: true, shadow: true });
+      const pc = facePoint(g, 0, by - 0.3, 1.0);
+      sink.cylinder('structureWood', [pc[0] - 0.06, pc[1], pc[2]], 'x', 0.12, 0.14, 10, { colour: shade(LOG_DARK, 1.2), decor: true });
+      sink.member('structureWood', facePoint(g, 0, by - 0.1, 1.0), facePoint(g, 0, by - 0.2, 1.0), 0.04, 0.04, g.u, { colour: IRON, decor: true, exposed: true }, 0);
+      sink.member('structureWood', facePoint(g, 0, by - 0.42, 1.0), facePoint(g, 0, pitch.y0 + 0.4, 1.0), 0.025, 0.025, g.u, { colour: PALE, decor: true, exposed: true, fine: true }, 0);
+      const hy = 4.55, ho = 0.95, hy1 = hy - ho * Math.tan(26 * Math.PI / 180), hu = 2.5;
+      slab(sink, 'roof', [facePoint(g, -hu, hy, 0), facePoint(g, hu, hy, 0), facePoint(g, hu, hy1, ho), facePoint(g, -hu, hy1, ho)], 0.08, true);
+      if (ctx.snowCap) slab(sink, 'plaster', [facePoint(g, -hu - 0.04, hy + 0.1, 0), facePoint(g, hu + 0.04, hy + 0.1, 0), facePoint(g, hu + 0.04, hy1 + 0.07, ho + 0.06), facePoint(g, -hu - 0.04, hy1 + 0.07, ho + 0.06)], 0.16, true);
+      for (const s of [-1, 1]) {
+        sink.member('structureWood', facePoint(g, s * 2.2, 3.5, 0), facePoint(g, s * 2.2, hy1 + 0.02, ho - 0.12), 0.12, 0.12, g.u, { colour: LOG_DARK, decor: true, exposed: true }, 0.04);
+      }
+    }
+    // the ridge ventilator over the middle bays (dome-detail-275): its boarded body astride the ridge, the dark of its
+    // louvres along both sides behind their boards, its own little roof
+    {
+      const rt = frame.roof.ridgeTopY, Lv = D * 0.42, vy = rt + 0.55;
+      sink.span('wood', -0.5, ridge - 0.45, -Lv / 2, 0.5, vy, Lv / 2, { decor: true });
+      for (const sx of [-1, 1]) {
+        const vf: Face = { origin: [sx * 0.5, 0, 0], u: [0, 0, -sx], out: [sx, 0, 0], width: Lv };
+        faceBox(sink, 'structureWood', vf, 0, rt + 0.3, 0.006, Lv - 0.3, 0.4, 0.012, { colour: rgb(0x17120e), decor: true }, 'caps');
+        for (const y of [rt + 0.18, rt + 0.36]) faceBox(sink, 'structureWood', vf, 0, y, 0.035, Lv - 0.3, 0.08, 0.05, { colour: LOG_AGED, decor: true, fineSides: true });
+      }
+      const vr: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.32, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
+      const vg = roofGeometry(1.0, Lv, vy, vr);
+      emitRoof(sink, vg, vr);
+      closeGables(sink, vg, 'wood');
+      if (ctx.snowCap) roofSnowOn(sink, 1.0, Lv, vy, vr);
+    }
+    // the plank ramps up to the gates (dome-detail-275)
+    gateRamp(sink, F.front, 0, 3.8, plinth, 0.9);
+    gateRamp(sink, F.back, 0, 3.8, plinth, 0.9);
+    gateRamp(sink, F.right, -D * 0.2, 3.4, plinth, 0.85);
+    // the boards stacked on their stickers under the left eave (dome-detail-275; tartak's piles), a phone draws their tones
+    // and leaves them
+    sink.dressing(st.mobile, () => {
+      const x0 = -W / 2 - 1.05, x1 = -W / 2 - 0.22, zc = (look() - 0.5) * D * 0.3, len = 2.2 + look() * 0.8, layers = 5 + Math.floor(look() * 3);
+      for (let k = 0; k < layers; k++) {
+        const y = 0.15 + k * 0.16;
+        sink.span('structureWood', x0, y, zc - len, x1, y + 0.1, zc + len, { colour: shade(PALE, 0.82 + look() * 0.16), decor: true, shadow: true });
+        for (const dz of [-len + 0.25, 0, len - 0.25]) {
+          sink.span('structureWood', x0 - 0.02, k === 0 ? 0 : y - 0.06, zc + dz - 0.04, x1 + 0.02, y, zc + dz + 0.04, { colour: LOG_DARK, decor: true });
+        }
+      }
+      if (ctx.snowCap) sink.span('plaster', x0 - 0.03, 0.15 + layers * 0.16 - 0.06, zc - len - 0.03, x1, 0.15 + layers * 0.16 + 0.1, zc + len + 0.03, { decor: true });
+    });
+    if (ctx.snowCap) {
+      // the snow drifted against the walls, the gates dug clear (dome-detail-275)
       for (const name of ['front', 'right', 'back', 'left'] as const) {
-        const face = faces[name], gates = openings.filter((o) => o.face === name && o.kind === 'gate').map((o) => [o.u - o.w / 2 - 0.1, o.u + o.w / 2 + 0.1] as const);
-        for (let u = -face.width / 2 + 0.3; u < face.width / 2 - 0.1; u += 0.4) {
-          if (gates.some(([a, b]) => u > a && u < b)) continue;
-          faceBox(sink, 'structureWood', face, u, frame.floors[0] + 2.3, 0.012, 0.06, 4.5, 0.024, { colour: LOG_DARK, decor: true, fine: true }, 'caps');
+        const f = F[name], half = f.width / 2, gates = openings.filter((o) => o.face === name).map((o) => [o.u - o.w / 2 - 0.3, o.u + o.w / 2 + 0.3] as const);
+        let from = -half - 0.3;
+        for (const [a, b] of [...gates, [half + 0.3, half + 0.3] as const].sort((p, q) => p[0] - q[0])) {
+          drift(sink, f, from, a, plinth, 0.35 + look() * 0.3, 0.5 + look() * 0.2);
+          from = b;
         }
       }
     }
+    roofCover(sink, frame.roof, roof, look, { snow: ctx.snowCap, mobile: st.mobile, course: 0.46 });
   });
   return sink.finish();
 };
 
-/** A house burnt in January 1945: the granite foundation, charred log stubs, the whitewashed stack standing. */
+/** The burnt house's ash, its scorched timber and its rusted iron (dome-detail-275). */
+const ASH = rgb(0x6a655d), SCORCH = rgb(0x4b3628), RUST = rgb(0x4a3328), SNOW = rgb(0xe9edf0);
+
+/**
+ * A house burnt in January 1945: the granite foundation, charred log stubs, the whitewashed stack standing.
+ * (dome-detail-275, wave 2: "one plain chimney box and a few black stumps on a bare slab") The Podhale house after the
+ * fire, as the burnt villages stood that winter: the granite footing's ring, its face stones proud and a few tumbled off
+ * it, the cellar inside full of ash; the sill logs charred black on the footing and the walls' lowest courses burnt to
+ * jagged heads, one corner still standing chest high on its notched log ends; the charred door posts over the threshold
+ * stone; in the middle of it the whitewashed stove, its hearth mouth, iron plate and pot and the bench ledge at its side,
+ * the chimney breast and the stack over it, scorched where the roof burnt round it and sooted at its mouth; the roof
+ * fallen in — a sheet of its shingle lying from the breast down into the ash on its rafters, the ridge purlin down from
+ * the standing corner, two rafters leant on the stack, the main beam across the stove; heaps of ash and charred shingle,
+ * an iron bedstead left in them; January's snow on every ledge, on the heaps, drifted against the footing.
+ */
 const spalona: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant, snow = ctx.snowCap;
   const fit = wallsIn(ctx, 0.05, 0.05);
   const W = clamp(fit.w, 5.0, 7.6), D = clamp(fit.d, 6.0, 9.6);
   sink.placed(0, fit.cx, 0, fit.cz, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.55, D / 2);
-    sink.span('plaster', -0.9, 0.55, -0.6, 0.5, 1.8, 0.8);
-    sink.span('plaster', -0.4, 1.8, -0.15, 0.2, 5.6 + rng() * 0.8, 0.45);
-    sink.span('stone', -0.5, 5.6, -0.25, 0.3, 5.75, 0.55);
-    for (let k = 0; k < 10; k++) {
-      const side = k % 4, t = rng(), h = 0.3 + rng() * 1.4;
-      const x = side < 2 ? (side === 0 ? -1 : 1) * (W / 2 - 0.15) : (t - 0.5) * W * 0.8;
-      const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
-      sink.span('structureWood', x - 0.14, 0.55, z - 0.14, x + 0.14, 0.55 + h, z + 0.14, { colour: CHAR });
+    // FT the footing's thickness, F0 its top, C a log course, LD a log's depth
+    const hw = W / 2, hd = D / 2, FT = 0.5, F0 = 0.6, C = 0.26, LD = 0.24, ix = hw - FT, iz = hd - FT;
+    const snowOn = { decor: true } as const;
+    // the footing's ring of granite and the cellar inside it, filled with ash to the old floor's joists
+    sink.span('stone', -ix, -0.3, -iz, ix, 0.24, iz);
+    sink.span('structureWood', -ix, 0.24, -iz, ix, 0.28, iz, { colour: ASH, decor: true });
+    for (const sz of [-1, 1]) sink.span('stone', -hw, -0.3, sz > 0 ? iz : -hd, hw, F0, sz > 0 ? hd : -iz);
+    for (const sx of [-1, 1]) sink.span('stone', sx > 0 ? ix : -hw, -0.3, -iz, sx > 0 ? hw : -ix, F0, iz);
+    const faces: Record<'front' | 'right' | 'back' | 'left', Face> = {
+      front: { origin: [0, 0, hd], u: [1, 0, 0], out: [0, 0, 1], width: W }, right: { origin: [hw, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
+      back: { origin: [0, 0, -hd], u: [-1, 0, 0], out: [0, 0, -1], width: W }, left: { origin: [-hw, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
+    };
+    // the footing's face stones, each its own length and tone, a few tumbled off it onto the snow
+    let tumbled = 0;
+    for (const f of Object.values(faces)) {
+      for (let u = -f.width / 2 + 0.02; u < f.width / 2 - 0.2;) {
+        const len = Math.min(f.width / 2 - 0.02 - u, 0.45 + look() * 0.45), h = 0.22 + look() * 0.1, gone = look() < 0.1 && tumbled < 4;
+        if (gone) {
+          tumbled++;
+          const a = facePoint(f, u + len / 2 - 0.2, 0.1, 0.3 + look() * 0.15), b = facePoint(f, u + len / 2 + 0.25, 0.1, 0.25 + look() * 0.2);
+          sink.member('stone', a, b, h, 0.24, [0, 1, 0], { decor: true, exposed: true, shade: 0.8 }, 0.12);
+        } else faceBox(sink, 'stone', f, u + len / 2, F0 - 0.02 - h / 2, 0.025, len - 0.04, h, 0.05, { decor: true, fine: 'near', shade: 0.82 + look() * 0.26 });
+        u += len;
+      }
     }
-    // the burnt logs fallen across the foundation, lying on it (kitConnectivity: they reared up on nothing)
-    for (let k = 0; k < 5; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W, 0.5, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3.5, 0.5 + rng() * 0.1, a[2] + (rng() - 0.5) * 3.5];
-      sink.member('structureWood', a, b, 0.22, 0.22, [0, 1, 0], { colour: CHAR, decor: true, exposed: true });
+    // the walls' charred courses (the eave walls' logs half a course off the gable walls', each sitting in the other's
+    // notch): the sills on the footing, the courses over them burnt to jagged heads, the standing corner, the door gap
+    const corner = Math.floor(rng() * 4), csx = corner & 1 ? 1 : -1, csz = corner & 2 ? 1 : -1;
+    const Nc = 5 + Math.floor(rng() * 3), fall = 2.4 + rng() * 1.4, door = (rng() < 0.5 ? -1 : 1) * W * 0.18;
+    const cornerU = (name: keyof typeof faces): number | null => {
+      if (name === 'front') return csz > 0 ? csx * hw : null;
+      if (name === 'back') return csz < 0 ? -csx * hw : null;
+      if (name === 'right') return csx > 0 ? -csz * hd : null;
+      return csx < 0 ? csz * hd : null;
+    };
+    const CELL = 0.3;
+    // the courses standing at each cell of each wall
+    const profile = {} as Record<keyof typeof faces, number[]>;
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = faces[name], cu = cornerU(name), n = Math.round(f.width / CELL);
+      // burnt to the sill along most of a wall, a second course left in stretches of a metre or two; the standing corner's
+      // courses falling away from it, each head a little short of the one under it
+      const stretch: number[] = [];
+      for (let i = 0; i < n; i += 4 + Math.floor(look() * 3)) stretch.push(i);
+      const second = stretch.map(() => look() < 0.4), notch = Array.from({ length: Math.ceil(n / 3) }, () => Math.floor(look() * 3) - 1);
+      profile[name] = Array.from({ length: n }, (_, i) => {
+        const u = -f.width / 2 + (i + 0.5) * f.width / n;
+        if (name === 'front' && Math.abs(u - door) < 0.6) return 1;
+        let s2 = 0;
+        for (let k = 0; k < stretch.length; k++) if (stretch[k] <= i) s2 = k;
+        const stand = cu === null ? 0 : Math.floor(Nc * (1 - Math.abs(u - cu) / fall) + 0.5);
+        return Math.max(1, second[s2] ? 2 : 1, stand + (stand > 1 && Math.abs(u - (cu ?? 0)) > 0.5 ? notch[Math.floor(i / 3)] : 0));
+      });
+    }
+    const topAt = (name: keyof typeof faces, u: number): number => {
+      const pr = profile[name], f = faces[name], i = clamp(Math.floor((u + f.width / 2) / f.width * pr.length), 0, pr.length - 1);
+      const lift = name === 'front' || name === 'back' ? -C / 2 : 0;
+      return F0 + pr[i] * C + lift;
+    };
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = faces[name], pr = profile[name], n = pr.length, cell = f.width / n, half = f.width / 2, ends = name === 'front' || name === 'back';
+      const touches = cornerU(name) !== null;
+      for (let k = 0; k < Math.max(...pr); k++) {
+        const y0 = Math.max(F0, F0 + k * C - (ends ? C / 2 : 0)), y1 = F0 + (k + 1) * C - (ends ? C / 2 : 0) - 0.012;
+        for (let i = 0; i < n;) {
+          if (pr[i] <= k) { i++; continue; }
+          let j = i;
+          while (j < n && pr[j] > k) j++;
+          let u0 = -half + i * cell, u1 = -half + j * cell;
+          // a burnt head ends ragged; a log reaching the corner runs on past it, its notched end
+          const rag = k ? 0.45 : 0.2;
+          u0 = i === 0 ? u0 - (0.2 + look() * 0.08) : u0 + (look() - 0.5) * rag;
+          u1 = Math.max(u0 + 0.2, j === n ? u1 + (0.2 + look() * 0.08) : u1 + (look() - 0.5) * rag);
+          const a = facePoint(f, u0, y0, -0.03 - LD), b = facePoint(f, u1, y1, -0.03);
+          const solid = k === 0 || (touches && k <= 3);
+          sink.span('structureWood', Math.min(a[0], b[0]), y0, Math.min(a[2], b[2]), Math.max(a[0], b[0]), y1, Math.max(a[2], b[2]),
+            { colour: shade(CHAR, 0.8 + look() * 0.45), ...(solid ? {} : { decor: true }) });
+          // the snow on a course where it is the head of the wall
+          if (snow && pr[Math.min(n - 1, Math.floor((i + j) / 2))] === k + 1) {
+            const p = facePoint(f, u0 + 0.05, y1, -0.03 - LD + 0.02), q = facePoint(f, u1 - 0.05, y1 + 0.06 + look() * 0.04, -0.05);
+            sink.span('plaster', Math.min(p[0], q[0]), y1, Math.min(p[2], q[2]), Math.max(p[0], q[0]), q[1], Math.max(p[2], q[2]), snowOn);
+          }
+          i = j;
+        }
+      }
+    }
+    // the door's charred posts on the threshold stone, one burnt short
+    {
+      const f = faces.front;
+      faceBox(sink, 'stone', f, door, 0.12, 0.3, 1.3, 0.24, 0.6, { decor: true, shade: 0.9 });
+      for (const s of [-1, 1]) {
+        const top = F0 + (s > 0 ? 1.15 + look() * 0.4 : 1.55 + look() * 0.4);
+        faceBox(sink, 'structureWood', f, door + s * 0.58, (F0 + top) / 2, -0.15, 0.16, top - F0, 0.2, { colour: shade(CHAR, 1.1), decor: true });
+      }
+    }
+    // the stove (piec) whitewashed in the middle of it, its bench ledge (przypiecek), its hearth mouth framed and sooted,
+    // the iron plate on its top with its rings and a pot left on it
+    const scx = (rng() - 0.5) * W * 0.15, scz = (rng() - 0.5) * D * 0.12, sTop = 1.45;
+    sink.span('plaster', scx - 0.85, 0.24, scz - 0.8, scx + 0.85, sTop, scz + 0.8);
+    sink.span('plaster', scx + 0.85, 0.24, scz - 0.8, scx + 1.45, 0.75, scz + 0.8);
+    const sf: Face = { origin: [scx, 0, scz + 0.8], u: [1, 0, 0], out: [0, 0, 1], width: 1.7 };
+    for (const s of [-1, 1]) faceBox(sink, 'plaster', sf, s * 0.38, 0.78, 0.03, 0.15, 0.56, 0.06, { decor: true });
+    faceBox(sink, 'plaster', sf, 0, 1.12, 0.035, 0.92, 0.13, 0.07, { decor: true });
+    faceBox(sink, 'structureWood', sf, 0, 0.78, 0.004, 0.6, 0.56, 0.008, { colour: CHAR, decor: true });
+    faceBox(sink, 'plaster', sf, 0, 1.31, 0.005, 0.7, 0.24, 0.01, { decor: true, shade: 0.45 });
+    sink.span('structureMetal', scx - 0.78, sTop, scz - 0.1, scx + 0.12, sTop + 0.03, scz + 0.72, { colour: RUST, decor: true });
+    for (const [dx, r] of [[-0.55, 0.13], [-0.17, 0.11]] as const) sink.cylinder('structureMetal', [scx + dx, sTop + 0.03, scz + 0.32], 'y', 0.012, r, 12, { colour: shade(RUST, 0.8), decor: true, fine: true });
+    sink.cylinder('structureMetal', [scx - 0.55, sTop + 0.042, scz + 0.32], 'y', 0.2, 0.16, 10, { colour: IRON, decor: true }, 0.17);
+    // the chimney breast over the stove's back half, its shoulder, the stack: scorched where the roof burnt round it,
+    // sooted at its mouth, the oversailing course and the granite cap
+    const kx = scx + 0.3, kz = scz - 0.35, T = 5.6 + rng() * 0.8, K = 0.31;
+    sink.span('plaster', kx - 0.5, sTop, kz - 0.45, kx + 0.5, 2.7, kz + 0.45);
+    sink.cylinder('plaster', [kx, 2.7, kz], 'y', 0.4, 0.45 * Math.SQRT2, 4, { decor: true }, K * Math.SQRT2, true, Math.PI / 4);
+    const stackBand = (y0: number, y1: number, opts: { shadeAt?: (p: Vec3) => number; shade?: number }) => sink.span('plaster', kx - K, y0, kz - K, kx + K, y1, kz + K, opts);
+    stackBand(2.7, 3.4, {});
+    stackBand(3.4, 4.5, { shadeAt: (p) => (p[1] < 3.9 ? 0.62 : 0.88) });
+    stackBand(4.5, T - 0.7, {});
+    stackBand(T - 0.7, T, { shadeAt: (p) => (p[1] > T - 0.05 ? 0.42 : 0.72) });
+    sink.span('plaster', kx - K - 0.055, T - 0.38, kz - K - 0.055, kx + K + 0.055, T - 0.24, kz + K + 0.055, { decor: true, shade: 0.6 });
+    sink.span('stone', kx - K - 0.09, T, kz - K - 0.09, kx + K + 0.09, T + 0.1, kz + K + 0.09);
+    // the roof fallen in (the sheet of shingle from the breast's back down into the ash, its rafters under it)
+    {
+      const z0 = scz - 0.82, L = Math.min(2.4, z0 + iz - 0.15), y0 = sTop + 0.02, y1 = 0.3;
+      const at = (x: number, t: number, off: number): Vec3 => {
+        const len = Math.hypot(y0 - y1, L), ny = L / len, nz = -(y0 - y1) / len;
+        return [scx + x, y0 - t * (y0 - y1) + ny * off, z0 - t * L + nz * off];
+      };
+      const outline: Array<[number, number]> = [[-0.7 + look() * 0.2, 0], [0.9 + look() * 0.2, 0], [1.4, 0.45], [1.0 + look() * 0.3, 1], [-0.9 - look() * 0.3, 1], [-1.2, 0.5]];
+      const ln = Math.hypot(y0 - y1, L), n: Vec3 = [0, L / ln, -(y0 - y1) / ln];
+      prismAuto(sink, 'roof', outline.map(([x, t]) => at(x, t, 0)), n, 0.08, { decor: true, shade: 0.5 });
+      for (const x of [-0.6, 0.15, 0.9]) sink.member('structureWood', at(x, 0.02, -0.07), at(x, 0.98, -0.07), 0.12, 0.12, [1, 0, 0], { colour: CHAR, decor: true, exposed: true }, 0.06);
+      if (snow) prismAuto(sink, 'plaster', outline.map(([x, t]) => at(x * 0.92, 0.04 + t * 0.92, 0.09)), n, 0.12, snowOn);
+    }
+    // the ridge purlin down from the standing corner's head into the ash, two rafters leant on the stack, the main beam
+    // (the sosrąb) fallen across the stove
+    {
+      const endName = csz > 0 ? 'front' : 'back', ue = endName === 'front' ? csx * (hw - 0.6) : -csx * (hw - 0.6);
+      const a: Vec3 = [csx * (hw - 0.6), topAt(endName, ue) + 0.11, csz * (hd - 0.16)];
+      const b: Vec3 = [csx * (ix - 0.5), 0.39, -csz * (iz - 0.5)];
+      sink.member('structureWood', a, b, 0.22, 0.22, [1, 0, 0], { colour: shade(CHAR, 1.15), decor: true, exposed: true }, 0.11);
+      for (const s of [-1, 1]) {
+        const r = clamp(ix - 0.2 - s * kx, 1.2, 2.2);
+        sink.member('structureWood', [kx + s * r, 0.3, kz + 0.2 * s], [kx + s * (K + 0.07), 3.3 + look() * 0.6, kz + 0.1 * s], 0.12, 0.14, [0, 0, 1],
+          { colour: shade(CHAR, 0.9 + look() * 0.3), decor: true, exposed: true }, 0.07);
+      }
+      const bz = Math.min(iz - 0.25, scz + 2.3);
+      sink.member('structureWood', [scx - 0.35, sTop + 0.17, scz + 0.55], [scx - 1.6, 0.42, bz], 0.28, 0.3, [1, 0, 0], { colour: shade(SCORCH, 0.9), decor: true, exposed: true }, 0.15);
+    }
+    // the heaps of ash and charred shingle in the cellar's corners and before the stove, the snow on their crowns
+    {
+      const spots: Array<[number, number]> = [[-csx * (ix - 1.0), csz * (iz - 1.1)], [csx * (ix - 1.1), -csz * (iz - 1.0)], [scx + (look() - 0.5), scz + 1.6]];
+      for (const [x, z] of spots) {
+        const rx = 0.7 + look() * 0.4, rz = 0.6 + look() * 0.4, h = 0.35 + look() * 0.3;
+        const tw = look() * 3;
+        mound(sink, [clamp(x, -ix + rx, ix - rx), 0.26, clamp(z, -iz + rz, iz - rz)], [1, 0, 0], [0, 0, 1], rx, rz, h, look() < 0.5 ? ASH : shade(CHAR, 1.4), { decor: true }, tw, 6);
+        if (snow) mound(sink, [clamp(x, -ix + rx, ix - rx), 0.26 + h * 0.48, clamp(z, -iz + rz, iz - rz)], [1, 0, 0], [0, 0, 1], rx * 0.95, rz * 0.95, h * 0.55, SNOW, { decor: true }, tw, 6);
+      }
+    }
+    // the iron bedstead left in the ash by the wall across from the standing corner: its head and foot frames, their bars,
+    // the side rails
+    {
+      const bx = -csx * (ix - 0.6), bz = -csz * (iz - 1.5), y = 0.26, c = { colour: RUST, decor: true } as const;
+      for (const [ez, hgt] of [[-0.95, 1.1], [0.95, 0.82]] as const) {
+        const z = bz + ez * csz;
+        for (const s of [-1, 1]) sink.span('structureMetal', bx + s * 0.47 - 0.025, y, z - 0.025, bx + s * 0.47 + 0.025, y + hgt, z + 0.025, c);
+        for (const ry of [hgt - 0.05, 0.5]) sink.span('structureMetal', bx - 0.45, y + ry - 0.02, z - 0.015, bx + 0.45, y + ry + 0.02, z + 0.015, c);
+        for (let k = 1; k < 5; k++) sink.span('structureMetal', bx - 0.45 + k * 0.18 - 0.01, y + 0.52, z - 0.01, bx - 0.45 + k * 0.18 + 0.01, y + hgt - 0.07, z + 0.01, { ...c, fine: true });
+      }
+      for (const s of [-1, 1]) sink.span('structureMetal', bx + s * 0.47 - 0.02, y + 0.32, bz - 0.93, bx + s * 0.47 + 0.02, y + 0.38, bz + 0.93, c);
+    }
+    if (snow) {
+      // January's snow on the footing's inner ledge, the stove's top and ledge and the cap, drifted against the footing
+      for (const sz of [-1, 1]) sink.span('plaster', -ix + 0.02, F0, sz > 0 ? iz - 0.02 : -iz, ix - 0.02, F0 + 0.07, sz > 0 ? iz : -iz + 0.02, snowOn);
+      sink.span('plaster', scx + 0.87, 0.75, scz - 0.78, scx + 1.43, 0.84, scz + 0.78, snowOn);
+      sink.span('plaster', scx - 0.83, sTop, scz - 0.78, scx - 0.2, sTop + 0.08, scz - 0.12, snowOn);
+      sink.span('plaster', kx - K - 0.07, T + 0.1, kz - K - 0.07, kx + K + 0.07, T + 0.18, kz + K + 0.07, snowOn);
+      for (const name of ['back', 'left', 'right'] as const) {
+        const f = faces[name];
+        drift(sink, f, -f.width / 2 - 0.2, f.width / 2 + 0.2, 0.05, 0.3 + look() * 0.25, 0.45 + look() * 0.1);
+      }
+      // inside, the snow blown in over the ash: banked in the lee of the footing's back and one side, lying in patches
+      const inner: Face[] = [{ origin: [0, 0, -iz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * ix }, { origin: [csx * ix, 0, 0], u: [0, 0, csx], out: [-csx, 0, 0], width: 2 * iz }];
+      for (const f of inner) drift(sink, f, -f.width / 2, f.width / 2 - 0.4, 0.28, 0.18 + look() * 0.14, 0.7 + look() * 0.4);
+      for (let k = 0; k < 3; k++) {
+        const x = (look() - 0.5) * (2 * ix - 2.2), z = (look() - 0.5) * (2 * iz - 2.2), r = 0.6 + look() * 0.5;
+        sink.cylinder('plaster', [x, 0.27, z], 'y', 0.05, r, 7, snowOn, r * 0.8, true, look() * 2);
+      }
     }
   });
   return sink.finish();

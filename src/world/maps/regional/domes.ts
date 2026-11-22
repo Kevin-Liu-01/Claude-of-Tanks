@@ -142,7 +142,8 @@ export function finialOn(sink: PartSink, x: number, y: number, z: number, scale:
   sink.revolve('structureMetal', [x, y - 0.05, z], 'y', [[0, 0.05 * s], [0.25 * s, 0.035 * s], [0.25 * s, 0.11 * s], [0.36 * s, 0.13 * s], [0.47 * s, 0.11 * s],
     [0.5 * s, 0.03 * s], [0.62 * s, 0.07 * s], [0.72 * s, 0.03 * s], [0.95 * s, 0.015 * s], [0.95 * s, 0]], 8, o);
   // the crescent: an arc of short members, its horns to the sky
-  const cy = y + 1.1 * s, R = 0.18 * s, pts: Vec3[] = [];
+  // (kitConnectivity: the bowl stood 2.7 cm over the stem's tip) its belly sunk into the stem below the tip
+  const cy = y + 1.02 * s, R = 0.18 * s, pts: Vec3[] = [];
   for (let k = 0; k <= 6; k++) { const a = Math.PI * (1.15 + 0.7 * k / 6); pts.push([x + Math.cos(a) * R, cy + Math.sin(a) * R, z]); }
   for (let k = 0; k + 1 < pts.length; k++) {
     const w = 0.035 * s * (1 - Math.abs(k - 2.5) / 4);

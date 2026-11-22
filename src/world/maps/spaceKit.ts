@@ -12,6 +12,7 @@
 // the drum slumps off its legs, the legs fold, the end caps and the radiators come down, the bags spill.
 import * as THREE from 'three';
 import type { HutTools } from './hutKit.ts';
+import { smoothProfile } from './regional/domes.ts';
 
 type V3 = readonly [number, number, number];
 export type SpaceWorld = 'moon' | 'mars';
@@ -362,41 +363,66 @@ function fuelTanks(T: HutTools, world: SpaceWorld): void {
     T.put(strut(T, [0, cy + r - 0.1, 2.0], [0, 0.05, 3.2], 0.07), P.frame);
     return;
   }
-  // Mars: two spheres on four-legged stands (their ring girders and pads), an orange band, the manifold and a valve box,
-  // on the farm's apron
-  const r = 1.85, cy = r + 0.7;
+  // Mars: two spheres on four-legged stands (their ring girders, sway rods and pads), an orange band, the manifold and a
+  // valve box, on the farm's apron inside its bund kerb
+  // (dome-detail-275: the spheres had been a cylinder's two rings pulled to its poles, a post where a tank should stand,
+  // its band and girder hanging round nothing; now true spheres, smooth, each with its manway and relief valve on top,
+  // its outlet down into the manifold header; a ladder and a catwalk over both crowns; the vent stack; the bund)
+  const r = 1.85, cy = r + 0.7, legs = [0.785, 2.356, 3.927, 5.498];
   T.tag('footing', 'apron', 'concrete');
   T.put(footprintApron(T, 'fueltanks', 0.04), P.apron, 0.06);
+  T.tag('footing', 'bund', 'concrete');
+  for (const s of [-1, 1]) {
+    T.put(T.mbox(0.18, 0.32, 9.3).translate(s * 2.5, 0.04 + 0.16, 0), P.apron, 0.05);
+    T.put(T.mbox(4.82, 0.32, 0.18).translate(0, 0.04 + 0.16, s * 4.65), P.apron, 0.05);
+  }
   for (const z of [-2.55, 2.55]) {
     T.tag('footing', `pads${z}`, 'concrete');
-    for (const a of [0.785, 2.356, 3.927, 5.498]) T.put(pad(T, 0.28, 0.08, Math.cos(a) * 1.4, 0, z + Math.sin(a) * 1.4), P.apron, 0.05);
+    for (const a of legs) T.put(pad(T, 0.28, 0.08, Math.cos(a) * 1.4, 0, z + Math.sin(a) * 1.4), P.apron, 0.05);
     T.tag('post', `legs${z}`, 'metal');
-    for (const a of [0.785, 2.356, 3.927, 5.498]) T.put(strut(T, [Math.cos(a) * 1.4, 0.08, z + Math.sin(a) * 1.4], [Math.cos(a) * 1.25, cy - 0.3, z + Math.sin(a) * 1.25], 0.12), P.frame);
+    for (const a of legs) T.put(strut(T, [Math.cos(a) * 1.4, 0.08, z + Math.sin(a) * 1.4], [Math.cos(a) * 1.25, cy - 0.3, z + Math.sin(a) * 1.25], 0.12), P.frame);
+    // the sway rods, crossed between the legs on the two long faces
+    T.tag('brace', `rods${z}`, 'metal');
+    for (const [a0, a1] of [[legs[0], legs[3]], [legs[1], legs[2]]] as const) {
+      const p = (a: number, t: number): V3 => [Math.cos(a) * (1.4 - 0.15 * t), 0.3 + t * (cy - 0.9), z + Math.sin(a) * (1.4 - 0.15 * t)];
+      T.put(dressing(strut(T, p(a0, 0), p(a1, 1), 0.035)), P.frame);
+      T.put(dressing(strut(T, p(a1, 0), p(a0, 1), 0.035)), P.frame);
+    }
     T.tag('plate', `girder${z}`, 'metal');
-    const girder = T.cylinder(1.32, 1.32, 0.16, 16).translate(0, cy - 0.3, z);
-    T.put(girder, P.frame);
+    T.put(T.cylinder(1.32, 1.32, 0.16, 16).translate(0, cy - 0.3, z), P.frame);
     T.tag('wall', `sphere${z}`, 'metal');
-    T.put(sphereish(T, r, 0, cy, z), P.hull, 0.03);
+    // (the sphere collides as three hulls, its lower cap, its girth and its crown: structureCollision)
+    for (const h of lifts(sphere(r, 0, cy, z), [cy - 1.0, cy + 1.0])) T.put(hulled(h), P.hull, 0.02);
     T.tag('fitting', `band${z}`, 'metal');
-    T.put(T.cylinder(r + 0.02, r + 0.02, 0.22, 18).translate(0, cy, z), P.accent, 0.03);
+    T.put(dressing(new THREE.CylinderGeometry(r + 0.03, r + 0.03, 0.22, 20, 1, true).translate(0, cy, z)), P.accent, 0.03);
+    // the manway and the relief valve on the crown, the outlet from the bottom to the header
+    T.tag('fitting', `crown${z}`, 'metal');
+    T.put(T.cylinder(0.3, 0.3, 0.3, 10).translate(0.5, cy + r - 0.08 + 0.1, z), P.frame);
+    T.put(T.cylinder(0.08, 0.1, 0.45, 8).translate(-0.4, cy + r - 0.04 + 0.2, z + 0.3), P.accent);
+    T.put(dressing(strut(T, [0, cy - r + 0.05, z], [0, 0.5, z], 0.14)), P.frame);
   }
+  // the header along the farm under the spheres, out to the valve box at the side; the transfer line on the crowns
   T.tag('fitting', 'manifold', 'metal');
-  T.put(strut(T, [0, cy + r - 0.2, -2.55], [0, cy + r - 0.2, 2.55], 0.1), P.frame);
-  T.put(T.mbox(1.1, 1.0, 0.8).translate(2.0, 0.5, 0), P.frame);
-  T.put(strut(T, [0.05, cy + r - 0.2, 0], [1.6, 0.9, 0], 0.08), P.frame);
+  T.put(strut(T, [0, 0.5, -3.3], [0, 0.5, 3.3], 0.16), P.frame);
+  T.put(strut(T, [0, 0.5, 0], [1.6, 0.5, 0], 0.14), P.frame);
+  T.put(T.mbox(1.1, 1.0, 0.8).translate(2.0, 0.04 + 0.5, 0), P.frame);
+  T.put(T.box(0.03, 0.5, 0.4).translate(2.56, 0.6, 0), P.accent, 0.02);
+  // the ladder up the side of the north sphere's stand, the catwalk across both crowns on its rails
+  ladder(T, P, -1.45, 0.75, cy + r - 0.15, 0.42);
+  T.tag('plate', 'catwalk', 'metal');
+  T.put(T.mbox(0.7, 0.06, 5.1).translate(-0.35, cy + r - 0.03, 0), P.frame);
+  T.tag('fitting', 'catwalk-rail', 'metal');
+  for (const x of [-0.68, -0.02]) T.put(dressing(strut(T, [x, cy + r + 0.95, -2.4], [x, cy + r + 0.95, 2.4], 0.04)), P.accent);
+  for (const z of [-2.4, 2.4]) for (const x of [-0.68, -0.02]) T.put(dressing(strut(T, [x, cy + r, z], [x, cy + r + 0.95, z], 0.04)), P.frame);
+  // the vent stack at the farm's corner, its cap
+  T.tag('post', 'vent', 'metal');
+  T.put(hulled(T.cylinder(0.09, 0.11, 4.9, 8).translate(2.1, 0.04 + 2.45, -4.2)), P.frame);
+  T.put(T.cylinder(0.2, 0.14, 0.18, 8).translate(2.1, 0.04 + 4.9 + 0.09, -4.2), P.accent);
 }
 
-/** A sphere of radius r at (x, y, z) from the hut tools' rounds (a stack of frusta: a sphere's look, its own hull). */
-function sphereish(T: HutTools, r: number, x: number, y: number, z: number): THREE.BufferGeometry {
-  // (one cylinder whose rings are pulled onto the sphere: 6 bands)
-  const g = T.cylinder(r, r, 2 * r, 18);
-  const p = g.getAttribute('position');
-  for (let i = 0; i < p.count; i++) {
-    const vy = p.getY(i), t = vy / r, k = Math.sqrt(Math.max(0.02, 1 - t * t));
-    p.setXYZ(i, p.getX(i) * k, vy * 0.98, p.getZ(i) * k);
-  }
-  g.computeVertexNormals();
-  return g.translate(x, y, z);
+/** (dome-detail-275) A sphere of radius r at (x, y, z), smooth: 20 round by 12 up. */
+function sphere(r: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  return new THREE.SphereGeometry(r, 20, 12).translate(x, y, z);
 }
 
 /**
@@ -404,15 +430,27 @@ function sphereish(T: HutTools, r: number, x: number, y: number, z: number): THR
  * angle in x-z, counter-clockwise from +x): a shell that breaks in lengths, each its own piece.
  */
 function sectors(geo: THREE.BufferGeometry, n: number, from = 0): THREE.BufferGeometry[] {
+  return splitBy(geo, n, (cx, _cy, cz) => {
+    const a = ((Math.atan2(cz, cx) - from) % (Math.PI * 2) + Math.PI * 4) % (Math.PI * 2);
+    return Math.min(n - 1, Math.floor(a / ((Math.PI * 2) / n)));
+  });
+}
+
+/** (dome-detail-275) A shell's triangles split into lifts at the heights `cuts` (ascending), by each triangle's middle. */
+function lifts(geo: THREE.BufferGeometry, cuts: readonly number[]): THREE.BufferGeometry[] {
+  return splitBy(geo, cuts.length + 1, (_cx, cy) => cuts.filter((c) => cy > c).length);
+}
+
+/** A geometry's triangles dealt into `n` pieces by `key` of each triangle's middle (the empty pieces dropped). */
+function splitBy(geo: THREE.BufferGeometry, n: number, key: (cx: number, cy: number, cz: number) => number): THREE.BufferGeometry[] {
   const g = geo.index ? geo.toNonIndexed() : geo;
   const names = Object.keys(g.attributes);
   const out = Array.from({ length: n }, () => Object.fromEntries(names.map((k) => [k, [] as number[]])) as Record<string, number[]>);
   const pos = g.getAttribute('position');
   for (let t = 0; t < pos.count / 3; t++) {
-    let cx = 0, cz = 0;
-    for (let k = 0; k < 3; k++) { cx += pos.getX(t * 3 + k); cz += pos.getZ(t * 3 + k); }
-    const a = ((Math.atan2(cz, cx) - from) % (Math.PI * 2) + Math.PI * 4) % (Math.PI * 2);
-    const sct = Math.min(n - 1, Math.floor(a / ((Math.PI * 2) / n)));
+    let cx = 0, cy = 0, cz = 0;
+    for (let k = 0; k < 3; k++) { cx += pos.getX(t * 3 + k); cy += pos.getY(t * 3 + k); cz += pos.getZ(t * 3 + k); }
+    const sct = key(cx / 3, cy / 3, cz / 3);
     for (const name of names) {
       const at = g.getAttribute(name);
       for (let k = 0; k < 3; k++) for (let c = 0; c < at.itemSize; c++) out[sct][name].push(at.array[(t * 3 + k) * at.itemSize + c]);
@@ -423,6 +461,49 @@ function sectors(geo: THREE.BufferGeometry, n: number, from = 0): THREE.BufferGe
     for (const name of names) r.setAttribute(name, new THREE.Float32BufferAttribute(o[name], g.getAttribute(name).itemSize));
     return r;
   });
+}
+
+/**
+ * (dome-detail-275) A shell turned about the y axis: `profile` [height, radius] from the bottom up, `seg` round. One
+ * LatheGeometry, its normals blended round the ring and up the profile, so a printed shell reads as one surface (the
+ * dome law, regional/domes.ts: the stations' domes and towers had been stacks of frusta, faceted cones).
+ */
+function turned(profile: ReadonlyArray<readonly [number, number]>, seg: number): THREE.BufferGeometry {
+  return new THREE.LatheGeometry(profile.map(([y, r]) => new THREE.Vector2(Math.max(0.001, r), y)), seg);
+}
+
+/** (dome-detail-275) The radius of a turned profile at height y (between its rows, straight). */
+function radiusAt(profile: ReadonlyArray<readonly [number, number]>, y: number): number {
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [y0, r0] = profile[i], [y1, r1] = profile[i + 1];
+    if (y <= y1 || i + 2 === profile.length) return r0 + (r1 - r0) * Math.min(1, Math.max(0, (y - y0) / Math.max(1e-6, y1 - y0)));
+  }
+  return profile[0][1];
+}
+
+/** (dome-detail-275) A ring proud of a turned shell at height y: a rolled band `out` past the profile, `h` tall. */
+function bandOn(profile: ReadonlyArray<readonly [number, number]>, y: number, out: number, h: number, seg: number): THREE.BufferGeometry {
+  return turned([[y - h / 2, radiusAt(profile, y - h / 2) - 0.03], [y, radiusAt(profile, y) + out], [y + h / 2, radiusAt(profile, y + h / 2) - 0.03]], seg);
+}
+
+/** (dome-detail-275) Reverse a geometry's winding and normals (a soffit, a bowl's face: the inside of a turned shell). */
+function inward<T extends THREE.BufferGeometry>(geo: T): T {
+  const idx = geo.getIndex();
+  if (idx) for (let i = 0; i < idx.count; i += 3) { const a = idx.getX(i + 1); idx.setX(i + 1, idx.getX(i + 2)); idx.setX(i + 2, a); }
+  const nor = geo.getAttribute('normal');
+  for (let i = 0; i < nor.count; i++) nor.setXYZ(i, -nor.getX(i), -nor.getY(i), -nor.getZ(i));
+  return geo;
+}
+
+/** (dome-detail-275) A half barrel along z, smooth: radius r, length len, its arch over y = 0, open at its ends. */
+function halfBarrel(r: number, len: number, seg: number): THREE.BufferGeometry {
+  return new THREE.CylinderGeometry(r, r, len, seg, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
+}
+
+/** (dome-detail-275) A half annulus standing across z (an arch's face, a rib's cheek): radii r0..r1, facing `nz`. */
+function halfRing(r0: number, r1: number, seg: number, nz: 1 | -1): THREE.BufferGeometry {
+  const g = new THREE.RingGeometry(r0, r1, seg, 1, 0, Math.PI);
+  return nz > 0 ? g : g.rotateY(Math.PI);
 }
 
 // --- the comms mast ---------------------------------------------------------------------------------------------------
@@ -456,7 +537,9 @@ function commsMast(T: HutTools, world: SpaceWorld): void {
   }
   T.tag('plate', 'head', 'metal');
   T.put(T.cylinder(R * 1.2, R * 1.2, 0.14, 9).translate(0, H + 0.07, 0), P.frame);
-  // the dish (its back frame, its bowl of ribs and mesh, the feed on its struts), turned to the horizon
+  // the dish (its back frame, its bowl, the feed on its struts), turned to the horizon
+  // (dome-detail-275: the bowl had been a frustum, a flat-faced drum; now a turned paraboloid, its back and its face, the
+  // feed on three struts at its focus)
   const dish = (y: number, rDish: number, yaw: number, group: string): void => {
     T.tag('fitting', group, 'metal');
     const fx = Math.sin(yaw), fz = Math.cos(yaw), cx = fx * 0.55, cz = fz * 0.55;
@@ -464,13 +547,21 @@ function commsMast(T: HutTools, world: SpaceWorld): void {
     const rr = R * (1.25 - 0.25 * (y / H));
     T.put(T.cylinder(rr + 0.05, rr + 0.05, 0.14, 9).translate(0, y, 0), P.frame);
     T.put(strut(T, [fx * rr * 0.8, y, fz * rr * 0.8], [cx, y, cz], 0.07), P.frame);
-    const bowl = T.cylinder(rDish, rDish * 0.25, rDish * 0.42, 14);
-    bowl.rotateX(Math.PI / 2 - 0.25);
-    bowl.rotateY(yaw);
-    T.put(bowl.translate(cx + fx * rDish * 0.2, y + 0.1, cz + fz * rDish * 0.2), P.hull, 0.03);
-    const tip: V3 = [cx + fx * (rDish * 0.95), y + 0.32, cz + fz * (rDish * 0.95)];
-    for (const s of [-1, 1]) T.put(strut(T, [cx + fx * rDish * 0.35 + s * fz * rDish * 0.7, y + 0.1, cz + fz * rDish * 0.35 - s * fx * rDish * 0.7], tip, 0.025), P.frame);
-    T.put(T.mbox(0.12, 0.12, 0.18).translate(tip[0], tip[1], tip[2]), P.accent);
+    const depth = rDish * 0.32, focus = (rDish * rDish) / (4 * depth), el = 0.22;
+    const bowl = [0, 1, 2, 3].map((i): [number, number] => [depth * (i / 3) ** 2, rDish * Math.max(0.06, i / 3)]);
+    const axis = new THREE.Vector3(fx * Math.cos(el), Math.sin(el), fz * Math.cos(el));
+    const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+    // (the bowl's back on the arm's end: kitConnectivity's 2 cm)
+    const at = (g: THREE.BufferGeometry): THREE.BufferGeometry => g.applyQuaternion(turn).translate(cx, y, cz);
+    T.put(at(turned(bowl, 16)), P.hull, 0.02);
+    T.put(dressing(at(inward(turned(bowl.map(([h, r]) => [h + 0.035, r * 0.99] as [number, number]), 16)))), P.blanket, 0.02);
+    // the feed at the focus on its three struts from the rim
+    const o = new THREE.Vector3(cx, y, cz), tip = o.clone().addScaledVector(axis, focus);
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.5, rim = new THREE.Vector3(Math.cos(a) * rDish * 0.97, depth, Math.sin(a) * rDish * 0.97).applyQuaternion(turn).add(o);
+      T.put(dressing(strut(T, [rim.x, rim.y, rim.z], [tip.x, tip.y, tip.z], 0.03)), P.frame);
+    }
+    T.put(T.mbox(0.14, 0.14, 0.22).translate(tip.x, tip.y, tip.z), P.accent);
   };
   if (world === 'moon') {
     dish(H - 0.5, 1.15, 0.6, 'dish');
@@ -480,13 +571,37 @@ function commsMast(T: HutTools, world: SpaceWorld): void {
     dish(H - 0.6, 1.0, 0.4, 'dish');
     dish(H - 2.4, 0.75, 2.6, 'dish2');
     T.tag('fitting', 'beacon', 'metal');
-    T.put(T.cylinder(0.1, 0.12, 0.7, 8).translate(0, H + 0.14 + 0.35, 0), P.accent);
+    T.put(T.beacon(T.cylinder(0.1, 0.12, 0.5, 8).translate(0, H + 0.14 + 0.25, 0)), P.accent);
+    // (dome-detail-275) the lightning rod over the beacon; the three sector panels on the head frame; the work platform
+    // under the dishes, its deck and its rail on three stanchions
+    T.put(T.cylinder(0.02, 0.03, 1.4, 6).translate(0, H + 0.64 + 0.7, 0), P.frame);
+    T.tag('fitting', 'panels', 'metal');
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + Math.PI / 6, rr = R * 1.02 + 0.12;
+      T.put(T.mbox(0.3, 1.3, 0.1).rotateY(Math.PI / 2 - a).translate(Math.cos(a) * rr, H - 0.95, Math.sin(a) * rr), P.hull, 0.03);
+      T.put(dressing(strut(T, [Math.cos(a) * R * 1.0, H - 0.55, Math.sin(a) * R * 1.0], [Math.cos(a) * (rr - 0.05), H - 0.55, Math.sin(a) * (rr - 0.05)], 0.05)), P.frame);
+    }
+    const py = H - 3.6, pr = 1.1;
+    T.tag('plate', 'platform', 'metal');
+    T.put(T.cylinder(pr, pr, 0.08, 12).translate(0, py, 0), P.frame);
+    T.tag('fitting', 'platform-rail', 'metal');
+    const rail = Array.from({ length: 7 }, (_, k): V3 => { const a = (k / 6) * Math.PI * 2; return [Math.cos(a) * (pr - 0.05), py + 1.0, Math.sin(a) * (pr - 0.05)]; });
+    for (let k = 0; k < 6; k++) T.put(dressing(strut(T, rail[k], rail[k + 1], 0.04)), P.accent);
+    for (let k = 0; k < 6; k += 2) T.put(dressing(strut(T, [rail[k][0], py + 0.04, rail[k][2]], rail[k], 0.04)), P.frame);
   }
   // the equipment box at the foot, its radiator fins, its cable up the leg
   T.tag('fitting', 'equipment', 'metal');
   T.put(T.mbox(0.7, 0.6, 0.5).translate(0.75, 0.42, -0.45), P.hull, 0.03);
   // (the r2 sweep: the fins stand off the box's face, not laid flat on it)
   for (const k of [-1, 0, 1]) T.put(T.mbox(0.24, 0.45, 0.03).translate(1.1 + 0.12, 0.4, -0.45 + k * 0.14), P.frame);
+  if (world === 'mars') {
+    // (dome-detail-275) the shelter's door and its lamp; the cable tray from the box to the mast and up its leg
+    T.put(T.box(0.4, 0.5, 0.03).translate(0.75, 0.4, -0.71), P.dark, 0.01);
+    T.tag('fitting', 'cable', 'metal');
+    const l0 = leg(0, 0.7), l1 = leg(0, H - 3.6);
+    T.put(dressing(strut(T, [0.5, 0.62, -0.3], [l0[0] + 0.06, 0.7, l0[2] + 0.06], 0.06)), P.dark, 0.02);
+    T.put(dressing(strut(T, [l0[0] + 0.06, 0.7, l0[2] + 0.06], [l1[0] + 0.06, l1[1], l1[2] + 0.06], 0.06)), P.dark, 0.02);
+  }
 }
 
 
@@ -561,36 +676,32 @@ function landingPad(T: HutTools, world: SpaceWorld): void {
 
 // --- the domed habitat ------------------------------------------------------------------------------------------------
 
-/** A dome (a sphere's cap of radius r, `rise` high) at (0, y0, 0): a cylinder's rings pulled onto the cap. */
-function dome(T: HutTools, r: number, rise: number, y0: number, seg = 18): THREE.BufferGeometry {
-  const g = T.cylinder(r, r, rise, seg);
-  const p = g.getAttribute('position');
-  for (let i = 0; i < p.count; i++) {
-    const t = (p.getY(i) + rise / 2) / rise, k = Math.cos(t * Math.PI / 2) * 0.97 + 0.03;
-    p.setXYZ(i, p.getX(i) * k, t * rise, p.getZ(i) * k);
-  }
-  g.computeVertexNormals();
-  return g.translate(0, y0, 0);
+/** A dome (a sphere's cap of radius r, `rise` high) at (0, y0, 0). (dome-detail-275: a cylinder's two rings pulled onto
+ *  the cap had made a cone; now the cap turned smooth, ten rows up, `seg` round, its crown closed) */
+function dome(r: number, rise: number, y0: number, seg = 28): THREE.BufferGeometry {
+  const rows: Array<[number, number]> = [];
+  for (let i = 0; i <= 10; i++) { const t = i / 10; rows.push([y0 + t * rise, r * (Math.cos(t * Math.PI / 2) * 0.97 + 0.03) * (i === 10 ? 0 : 1)]); }
+  return turned(rows, seg);
 }
 
 function habDome(T: HutTools, world: SpaceWorld): void {
   const P = PAINT[world], r = 5.6, rise = world === 'moon' ? 4.6 : 5.4;
   T.tag('footing', 'pad', 'concrete');
   T.put(footprintApron(T, 'habdome', 0.06), P.apron, 0.06);
+  if (world === 'mars') { marsDome(T, P); return; }
   T.tag('footing', 'ring', 'concrete');
   T.put(T.cylinder(r + 0.35, r + 0.6, 0.5, 18).translate(0, 0.25, 0), P.apron, 0.05);
   // (the shell in six lengths of its own: it caves by sectors)
-  sectors(dome(T, r, rise, 0.45), 6, 0.3).forEach((g, k) => {
-    T.tag('roof', `shell${k}`, world === 'moon' ? 'earth' : 'concrete');
-    T.put(g, world === 'moon' ? P.bag : 0x9c6648, 0.06);
+  sectors(dome(r, rise, 0.45), 6, 0.3).forEach((g, k) => {
+    T.tag('roof', `shell${k}`, 'earth');
+    T.put(g, P.bag, 0.06);
   });
-  // the shell's courses: the Moon's bagged regolith in rings, Mars's printed ridges
-  T.tag('fitting', 'courses', world === 'moon' ? 'earth' : 'concrete');
-  const n = world === 'moon' ? 5 : 8;
-  for (let k = 1; k < n; k++) {
-    const t = k / n, y = 0.45 + t * rise, rr = r * (Math.cos(t * Math.PI / 2) * 0.97 + 0.03) + 0.04;
+  // the shell's courses: the Moon's bagged regolith in rings
+  T.tag('fitting', 'courses', 'earth');
+  for (let k = 1; k < 5; k++) {
+    const t = k / 5, y = 0.45 + t * rise, rr = r * (Math.cos(t * Math.PI / 2) * 0.97 + 0.03) + 0.04;
     if (rr < 1.2) continue;
-    T.put(T.cylinder(rr, rr + 0.03, world === 'moon' ? 0.16 : 0.08, 18).translate(0, y, 0), world === 'moon' ? 0x7a7670 : 0xa87050, 0.05);
+    T.put(T.cylinder(rr, rr + 0.03, 0.16, 18).translate(0, y, 0), 0x7a7670, 0.05);
   }
   // the airlock tunnel to +z and its hatch; the hatch's porch light
   T.tag('wall', 'tunnel', 'metal');
@@ -603,17 +714,70 @@ function habDome(T: HutTools, world: SpaceWorld): void {
   T.put(T.cylinder(0.08, 0.1, 2.6, 8).translate(0, 0.45 + rise + 1.2, 0), P.frame);
   T.tag('fitting', 'crown-light', 'metal');
   T.put(T.cylinder(0.14, 0.14, 0.24, 8).translate(0, 0.45 + rise + 2.6, 0), P.accent);
-  if (world === 'mars') {
-    // Mars's ports in their frames under the second ridge
-    T.tag('fitting', 'ports', 'metal');
-    for (const a of [-0.9, 0.9, Math.PI - 0.6, Math.PI + 0.6]) {
-      const x = Math.sin(a) * (r * 0.93), z = Math.cos(a) * (r * 0.93), y = 1.6;
-      const ring = T.cylinder(0.36, 0.36, 0.14, 12); ring.rotateX(Math.PI / 2); ring.rotateY(a);
-      T.put(ring.translate(x, y, z), P.frame);
-      const pane = T.cylinder(0.27, 0.27, 0.05, 12); pane.rotateX(Math.PI / 2); pane.rotateY(a);
-      T.put(T.aperture(pane.translate(x + Math.sin(a) * 0.04, y, z + Math.cos(a) * 0.04), [Math.sin(a), 0, Math.cos(a)]), P.glass, 0.02);
-    }
+}
+
+/**
+ * (dome-detail-275) Mars's printed dome: its shell turned smooth from a flared printed foot on its footing ring to a
+ * glazed oculus in a kerb at the crown, two printed course bands, four ports in their frames tipped to the shell, the
+ * airlock tunnel under its bagged regolith with its collar rings and hatch, the porch lamp; a radiator wing on its posts
+ * and the umbilical pedestal behind; the mast and beacon on the kerb. (Before: a cylinder's two rings pulled onto the cap
+ * made an 18-sided cone under eight ridge rings, a stepped beehive.)
+ */
+function marsDome(T: HutTools, P: SpacePaint): void {
+  const C = 0x9c6648, RIDGE = 0xa87050, SEG = 28;
+  T.tag('footing', 'ring', 'concrete');
+  // (its top at 50 cm, a collision band's floor: the tapered ring stays out of the band above it)
+  T.put(T.cylinder(5.95, 6.2, 0.44, SEG).translate(0, 0.06 + 0.22, 0), P.apron, 0.05);
+  const shell = [...smoothProfile([[0.5, 5.85], [1.0, 5.6], [2.6, 5.3], [4.3, 4.2], [5.5, 2.4], [5.95, 1.2]], 2), [6.05, 1.08] as [number, number]];
+  // (each sector collides as its plan hull lift by lift up the curve, as the tower's: structureCollision)
+  sectors(turned(shell, SEG), 6, 0.3).forEach((g, k) => {
+    T.tag('roof', `shell${k}`, 'concrete');
+    for (const h of lifts(g, [1.5, 2.6, 3.6, 4.5, 5.3])) T.put(hulled(h), C, 0.025);
+  });
+  T.tag('fitting', 'courses', 'concrete');
+  for (const y of [2.3, 4.0]) T.put(dressing(bandOn(shell, y, 0.09, 0.22, SEG)), RIDGE, 0.05);
+  // the ports in their frames under the first course, each tipped to the shell's lean (a ring 20 cm proud, the pane at
+  // its back)
+  T.tag('fitting', 'ports', 'metal');
+  for (const a of [-1.0, 1.0, Math.PI - 0.7, Math.PI + 0.7]) {
+    const y = 1.75, lean = Math.atan2(radiusAt(shell, y - 0.3) - radiusAt(shell, y + 0.3), 0.6), rr = radiusAt(shell, y) * Math.cos(Math.PI / SEG) - 0.02;
+    const place = (g: THREE.BufferGeometry): THREE.BufferGeometry => g.rotateX(Math.PI / 2 - lean).rotateY(a).translate(Math.sin(a) * rr, y, Math.cos(a) * rr);
+    T.put(dressing(place(T.cylinder(0.42, 0.42, 0.26, 12).translate(0, 0.08, 0))), P.frame);
+    T.put(T.aperture(dressing(place(T.cylinder(0.3, 0.3, 0.05, 12).translate(0, 0.22, 0))), [Math.sin(a) * Math.cos(lean), Math.sin(lean), Math.cos(a) * Math.cos(lean)]), P.glass, 0.02);
   }
+  // the airlock tunnel to +z: its drum, two collar rings, the end ring and hatch, the bagged regolith over its back
+  const tz = 6.3;
+  T.tag('wall', 'tunnel', 'metal');
+  T.put(hulled(drumZ(T, 1.3, 2.6, 0, 1.75, tz - 0.1, 16)), P.hull, 0.03); // (it collides as its plan hull, a box)
+  T.tag('fitting', 'tunnel-rings', 'metal');
+  for (const z of [tz - 0.6, tz + 0.5]) T.put(dressing(drumZ(T, 1.36, 0.16, 0, 1.75, z, 16)), P.accent, 0.03);
+  T.tag('sheet', 'tunnel-end', 'metal');
+  T.put(drumZ(T, 1.38, 0.14, 0, 1.75, tz + 1.24, 16), P.frame);
+  hatch(T, P, 0, 0.95, tz + 1.32, 1.0, 1.6);
+  T.tag('bag', 'tunnel-bags', 'earth');
+  for (const [x, z, rz] of [[-0.62, tz - 0.55, 0.42], [0.62, tz - 0.55, -0.42], [-0.62, tz + 0.25, 0.42], [0.62, tz + 0.25, -0.42], [0, tz - 0.15, 0]] as const) {
+    T.put(T.mbox(0.9, 0.24, 0.72, 0.07).rotateZ(rz).translate(x, 1.75 + (x === 0 ? 1.38 : 1.22), z), P.bag, 0.1);
+  }
+  T.tag('fitting', 'porch-lamp', 'metal');
+  T.put(T.aperture(T.box(0.44, 0.06, 0.2).translate(0, 2.88, tz + 1.42), [0, -1, 0]), 0xf2e2b4, 0.02);
+  // the radiator wing on its posts behind the dome, its coolant line into the shell; the umbilical pedestal beside it
+  T.tag('post', 'radiator-posts', 'metal');
+  for (const x of [-1.9, 1.9]) T.put(hulled(T.cylinder(0.08, 0.1, 2.8, 8).translate(x, 0.06 + 1.4, -7.4)), P.frame);
+  T.tag('plate', 'radiator', 'metal');
+  T.put(T.mbox(4.2, 1.6, 0.08).translate(0, 0.06 + 2.0, -7.4), P.hull, 0.03);
+  T.put(dressing(T.box(4.1, 0.05, 0.12).translate(0, 0.06 + 2.0, -7.4)), P.frame);
+  T.tag('fitting', 'coolant', 'metal');
+  T.put(dressing(strut(T, [0.8, 0.06 + 1.3, -7.36], [0.8, 0.06 + 1.3, -5.6], 0.09)), P.dark, 0.02);
+  T.tag('fitting', 'pedestal', 'metal');
+  T.put(T.mbox(0.8, 1.0, 0.6).translate(-5.2, 0.06 + 0.5, -5.4), P.hull, 0.03);
+  // the oculus in its kerb at the crown, its glazing bars, the mast and beacon on the kerb
+  T.tag('roof', 'oculus', 'metal');
+  T.put(T.aperture(T.cylinder(1.18, 1.18, 0.06, 16).translate(0, 5.98, 0), [0, 1, 0]), P.glass, 0.02);
+  T.put(dressing(strut(T, [-1.12, 6.03, 0], [1.12, 6.03, 0], 0.07)), P.frame);
+  T.tag('post', 'crown-mast', 'metal');
+  T.put(T.cylinder(0.07, 0.1, 2.4, 8).translate(0.75, 6.05 + 1.2, -0.75), P.frame);
+  T.tag('fitting', 'crown-light', 'metal');
+  T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(0.75, 6.05 + 2.52, -0.75)), P.accent);
 }
 
 // --- the ascent lander ------------------------------------------------------------------------------------------------
@@ -728,47 +892,77 @@ function roverGarage(T: HutTools, world: SpaceWorld): void {
     rover(T, P, 2.8, 0.8, 'rover2');
     return;
   }
-  // Mars (Mars Dune Alpha's vaulted hangar): a printed vault along z in course segments, its ridges, its end walls, the
-  // bay door in a recessed frame at +z, a rover inside it
-  const R = 5.6, L = 15.2, segs = 4;
+  // Mars (Mars Dune Alpha's vaulted hangar): a printed vault along z in four courses, smooth, its soffit within; a rib at
+  // each joint and a portal rib at each end; the end walls set back in the vault's mouth, the bay's opening cut through
+  // the front one in its frame under the raised door's coil, a rover nosing out of the dark; the personnel hatch in the
+  // back wall; the regolith berms banked along both flanks; the bay lamps, the vents on the crown, the charging post
+  // (dome-detail-275: the vault had been sixteen-sided cylinders pressed flat, faceted, its bay a frame on a solid wall
+  // with the rover shut inside it)
+  const R = 5.6, L = 15.2, segs = 4, y0 = 0.12, SEG = 24, C = 0x9c6648, RIB = 0xa87050, WALL = 0x8e5a40;
   for (let k = 0; k < segs; k++) {
-    const z0 = -L / 2 + (k * L) / segs, z1 = z0 + L / segs;
-    const vault = T.cylinder(R, R, z1 - z0, 16);
-    const p = vault.getAttribute('position');
-    for (let i = 0; i < p.count; i++) if (p.getZ(i) < 0) p.setZ(i, 0);
-    vault.computeVertexNormals();
-    // (the half cylinder over the floor: its lower half flattened into the floor line, its axis turned along z; each
-    // course segment in its two halves, so a segment caves rather than lying down whole)
-    sectors(vault, 2, -Math.PI / 2).forEach((h, j) => {
-      h.rotateX(-Math.PI / 2);
+    const len = L / segs, zc = -L / 2 + (k + 0.5) * len;
+    // (each course in its two halves, so a course caves rather than lying down whole)
+    const halves = (g: THREE.BufferGeometry): THREE.BufferGeometry[] => splitBy(g.translate(0, y0, zc), 2, (cx) => (cx < 0 ? 0 : 1));
+    const soffit = halves(inward(halfBarrel(R - 0.3, len, 12)));
+    halves(halfBarrel(R, len, SEG)).forEach((h, j) => {
       T.tag('roof', `vault${k}${j}`, 'concrete');
-      T.put(h.translate(0, 0.12, (z0 + z1) / 2), 0x9c6648, 0.06);
+      T.put(h, C, 0.025);
+      T.put(soffit[j], WALL, 0.03);
     });
-    T.tag('fitting', `ridges${k}`, 'concrete');
-    for (let r = 1; r < 3; r++) {
-      const ridge = T.cylinder(R + 0.05, R + 0.05, 0.12, 16);
-      const rp = ridge.getAttribute('position');
-      for (let i = 0; i < rp.count; i++) if (rp.getZ(i) < 0) rp.setZ(i, 0);
-      ridge.computeVertexNormals();
-      T.put(ridge.rotateX(-Math.PI / 2).translate(0, 0.12, z0 + (r * (z1 - z0)) / 3), 0xa87050, 0.05);
-    }
   }
-  for (const s of [-1, 1]) {
-    T.tag('wall', `end${s}`, 'concrete');
-    const wall = T.cylinder(R - 0.05, R - 0.05, 0.4, 16);
-    const wp = wall.getAttribute('position');
-    for (let i = 0; i < wp.count; i++) if (wp.getZ(i) < 0) wp.setZ(i, 0);
-    wall.computeVertexNormals();
-    T.put(wall.rotateX(-Math.PI / 2).translate(0, 0.12, s * (L / 2 - 0.2)), 0x8e5a40, 0.05);
+  // the ribs: a band proud of the vault and its two cheeks, at each joint and (deeper) at each end
+  for (let k = 0; k <= segs; k++) {
+    const z = -L / 2 + (k * L) / segs, end = k === 0 || k === segs, d = end ? 0.5 : 0.3, out = end ? 0.24 : 0.14;
+    const zc = end ? z - Math.sign(z) * d / 2 : z;
+    T.tag('fitting', `rib${k}`, 'concrete');
+    T.put(halfBarrel(R + out, d, SEG).translate(0, y0, zc), RIB, 0.03);
+    for (const s of [-1, 1] as const) T.put(halfRing(end ? R - 0.3 : R - 0.02, R + out, SEG, s).translate(0, y0, zc + s * d / 2), RIB, 0.03);
   }
-  // the bay door in its frame: the frame, the dark of the bay, the door's leaves raised two thirds
+  // the end walls in the vault's mouth, 50 cm thick: the front one round the bay's opening, the back one whole
+  const wall = (notch: number, h: number): THREE.BufferGeometry => {
+    const r = R - 0.3, sh = new THREE.Shape();
+    sh.moveTo(r, 0);
+    for (let i = 1; i <= SEG; i++) sh.lineTo(r * Math.cos((i / SEG) * Math.PI), r * Math.sin((i / SEG) * Math.PI));
+    if (notch > 0) { sh.lineTo(-notch, 0); sh.lineTo(-notch, h); sh.lineTo(notch, h); sh.lineTo(notch, 0); }
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.5, bevelEnabled: false });
+  };
+  const bw = 5.1, bh = 3.5, zf = L / 2 - 0.5;
+  T.tag('wall', 'end1', 'concrete');
+  T.put(wall(bw / 2, bh).translate(0, y0, zf - 0.5), WALL, 0.04);
+  T.tag('wall', 'end-1', 'concrete');
+  T.put(wall(0, 0).translate(0, y0, -zf), WALL, 0.04);
+  // the bay: its frame of three members proud of the wall, the dark of the hangar at the reveal's back, the door's coil
+  // housing over the head, the lamps under it
   T.tag('frame', 'bay', 'metal');
-  for (const sx of [-1, 1]) T.put(T.mbox(0.3, 3.6, 0.3).translate(sx * 2.7, 0.12 + 1.8, L / 2 + 0.02), P.frame);
-  T.put(T.mbox(5.7, 0.3, 0.3).translate(0, 0.12 + 3.75, L / 2 + 0.02), P.frame);
-  T.put(T.box(5.1, 3.5, 0.06).translate(0, 0.12 + 1.75, L / 2 - 0.25), P.dark, 0.01);
+  for (const sx of [-1, 1]) T.put(T.mbox(0.3, bh + 0.15, 0.4).translate(sx * (bw / 2 + 0.15), y0 + (bh + 0.15) / 2, zf + 0.1), P.frame);
+  T.put(T.mbox(bw + 0.6, 0.3, 0.4).translate(0, y0 + bh + 0.15, zf + 0.1), P.frame);
+  T.put(T.box(bw, bh, 0.04).translate(0, y0 + bh / 2, zf - 0.48), P.dark, 0.01);
   T.tag('door', 'bay-door', 'metal');
-  T.put(T.mbox(5.1, 1.2, 0.08).translate(0, 0.12 + 3.0, L / 2 - 0.05), P.hull, 0.03);
-  rover(T, P, 0, 3.0, 'rover');
+  T.put(T.mbox(bw + 0.4, 0.55, 0.5).translate(0, y0 + bh + 0.58, zf + 0.15), P.hull, 0.03);
+  T.tag('fitting', 'bay-lamps', 'metal');
+  for (const sx of [-1, 1]) T.put(T.aperture(T.box(0.6, 0.06, 0.24).translate(sx * 1.6, y0 + bh + 0.27, zf + 0.32), [0, -1, 0]), 0xf2e2b4, 0.02);
+  // the rover nosing out of the bay, its back half still in the dark
+  rover(T, P, 0, zf - 1.75, 'rover');
+  // the personnel hatch in the back wall, its lamp
+  hatch(T, P, -2.2, y0 + 0.2, -(zf + 0.02), 0.9, 1.8, -1);
+  T.tag('fitting', 'hatch-lamp', 'metal');
+  T.put(T.aperture(T.box(0.4, 0.06, 0.2).translate(-2.2, y0 + 2.35, -(zf + 0.14)), [0, -1, 0]), 0xf2e2b4, 0.02);
+  // the regolith berms banked along both flanks (a wedge from the apron up the vault's haunch)
+  for (const sx of [-1, 1]) {
+    T.tag('bag', `berm${sx}`, 'earth');
+    const berm = T.box(1.0, 1.5, L - 1.4);
+    const p = berm.getAttribute('position');
+    for (let i = 0; i < p.count; i++) if (p.getY(i) > 0 && p.getX(i) * sx > 0) p.setX(i, p.getX(i) - sx * 0.8);
+    berm.computeVertexNormals();
+    T.put(berm.translate(sx * (R + 0.25), y0 + 0.75, 0), P.bag, 0.08);
+  }
+  // the vents on the crown, the charging post by the bay
+  T.tag('fitting', 'vents', 'metal');
+  for (const z of [-3.8, 0, 3.8]) T.put(T.mbox(0.7, 0.4, 0.5).translate(0, y0 + R + 0.12, z), P.frame);
+  T.tag('fitting', 'charger', 'metal');
+  T.put(T.mbox(0.5, 1.3, 0.4).translate(4.1, y0 + 0.65, L / 2 + 0.55), P.hull, 0.03);
+  T.put(T.aperture(T.box(0.24, 0.12, 0.03).translate(4.1, y0 + 1.05, L / 2 + 0.76), [0, 0, 1]), P.accent, 0.02);
 }
 
 // --- mission control --------------------------------------------------------------------------------------------------
@@ -783,7 +977,7 @@ function missionControl(T: HutTools, world: SpaceWorld): void {
     T.tag('wall', 'node', 'metal');
     T.put(T.cylinder(2.6, 2.6, 5.0, 16).translate(0, 0.12 + 2.5, 0), P.blanket, 0.03);
     T.tag('roof', 'node-roof', 'earth');
-    T.put(dome(T, 2.9, 1.6, 0.12 + 5.0), P.bag, 0.06);
+    T.put(dome(2.9, 1.6, 0.12 + 5.0), P.bag, 0.06);
     for (const s of [-1, 1]) {
       T.tag('wall', `module${s}`, 'metal');
       const m = T.cylinder(1.9, 1.9, 4.6, 16); m.rotateZ(Math.PI / 2);
@@ -836,53 +1030,92 @@ function missionControl(T: HutTools, world: SpaceWorld): void {
     T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(1.4, 0.12 + 10.55, -1.2)), P.accent);
     return;
   }
-  // Mars (MARSHA): the printed tower, its barrel swelling and drawn in again, its course ridges, its slit windows in
-  // their frames up a spiral, its entrance porch, its crown and mast
-  T.tag('wall', 'tower-lo', 'concrete');
-  const barrel = (y0: number, h: number, r0: number, r1: number, group: string): void => {
-    sectors(T.cylinder(r1, r0, h, 18), 3, 0.5).forEach((g, k) => {
-      T.tag('wall', `${group}${k}`, 'concrete');
-      T.put(g.translate(0, y0 + h / 2, 0), 0x9c6648, 0.05);
-    });
-  };
-  barrel(0.12, 3.6, 4.2, 4.6, 'tower-lo');
-  barrel(3.72, 3.6, 4.6, 4.1, 'tower-mid');
-  barrel(7.32, 3.0, 4.1, 2.6, 'tower-hi');
-  // (the barrel's radius at a height: its three lifts' frusta, inscribed in their 18-gons a little)
-  const radius = (y: number): number => {
-    const t = y < 3.72 ? (y - 0.12) / 3.6 : y < 7.32 ? (y - 3.72) / 3.6 : (y - 7.32) / 3.0;
-    return (y < 3.72 ? 4.2 + 0.4 * t : y < 7.32 ? 4.6 - 0.5 * t : 4.1 - 1.5 * t) * Math.cos(Math.PI / 18);
-  };
-  T.tag('fitting', 'ridges', 'concrete');
-  for (let k = 1; k < 10; k++) {
-    const y = 0.12 + k * 1.03, r = radius(y) / Math.cos(Math.PI / 18);
-    T.put(T.cylinder(r + 0.05, r + 0.05, 0.07, 18).translate(0, y, 0), 0xa87050, 0.05);
-  }
+  // Mars (MARSHA): the printed tower, its barrel swelling and drawn in again to the oculus at its crown, its floor bands,
+  // its slot windows in their deep frames round three floors, its entrance porch under a hood, its radiator wing and
+  // umbilical, its floodlight, the glazed oculus and its mast
+  // (dome-detail-275: the barrel had been three 18-sided frusta under nine ridge rings, a faceted stacked cone with five
+  // slits; now one turned shell, smooth round and up, its printed foot flared into the apron)
+  const C = 0x9c6648, RIDGE = 0xa87050, PORCH = 0x8e5a40, SEG = 28;
+  const shell = [...smoothProfile([[0.12, 4.95], [0.7, 4.62], [4.4, 4.72], [7.6, 4.1], [9.6, 2.5], [10.45, 1.62]], 2),
+    [10.6, 1.5] as [number, number]];
+  // (the shell in three sectors by three lifts, each its own piece: it caves by lengths, the crown last; each sector
+  // collides as its plan hull a metre at a time up the profile, not as the turned shell's hundreds of slices, which the
+  // collision bands could only raster: structureCollision's certification)
+  sectors(turned(shell, SEG), 3, 0.5).forEach((g, k) => lifts(g, [1.2, 2.4, 3.6, 4.8, 6.0, 7.3, 8.3, 9.2, 9.9]).forEach((h, j) => {
+    T.tag('wall', `tower${k}${j < 3 ? 0 : j < 6 ? 1 : 2}`, 'concrete');
+    T.put(hulled(h), C, 0.025);
+  }));
+  // the printed floor bands rolled proud of the shell at the two upper floors (dome-detail-275)
+  T.tag('fitting', 'bands', 'concrete');
+  for (const y of [3.55, 7.2]) T.put(dressing(bandOn(shell, y, 0.1, 0.24, SEG)), RIDGE, 0.04);
+  // the slot windows in their deep frames, each tipped to the shell's lean, staggered round three floors (dome-detail-275:
+  // a frame of four members standing 20 cm proud, the pane at its back)
   T.tag('fitting', 'windows', 'metal');
-  for (let k = 0; k < 5; k++) {
-    const a = k * 1.25 + 0.4, y = 2.2 + k * 1.6, r = radius(y) + 0.02;
-    const fr = T.mbox(0.5, 1.2, 0.16); fr.rotateY(a);
-    T.put(fr.translate(Math.sin(a) * r, y, Math.cos(a) * r), P.frame);
-    const pane = T.box(0.32, 1.0, 0.05); pane.rotateY(a);
-    T.put(T.aperture(pane.translate(Math.sin(a) * (r + 0.05), y, Math.cos(a) * (r + 0.05)), [Math.sin(a), 0, Math.cos(a)]), P.glass, 0.02);
-  }
+  const slot = (a: number, y: number, w: number, h: number): void => {
+    // (a slot stands off the shell's rows, not its faces, and a tall one off its swell: the bulge never comes through the pane)
+    const lean = Math.atan2(radiusAt(shell, y - h / 2) - radiusAt(shell, y + h / 2), h);
+    const r = Math.max(radiusAt(shell, y), (radiusAt(shell, y - h / 2) + radiusAt(shell, y + h / 2)) / 2 + 0.06) - 0.03;
+    const f = 0.1, d = 0.26, place = (g: THREE.BufferGeometry): THREE.BufferGeometry => g.rotateX(-lean).rotateY(a).translate(Math.sin(a) * r, y, Math.cos(a) * r);
+    for (const g of [T.box(w + 2 * f, f, d).translate(0, h / 2 + f / 2, d / 2 - 0.04), T.box(w + 2 * f, f * 1.4, d + 0.08).translate(0, -h / 2 - f * 0.7, d / 2),
+      T.box(f, h, d).translate(-w / 2 - f / 2, 0, d / 2 - 0.04), T.box(f, h, d).translate(w / 2 + f / 2, 0, d / 2 - 0.04)]) T.put(dressing(place(g)), P.frame);
+    const pane = place(T.box(w, h, 0.03).translate(0, 0, 0.06));
+    T.put(T.aperture(dressing(pane), [Math.sin(a) * Math.cos(lean), Math.sin(lean), Math.cos(a) * Math.cos(lean)]), P.glass, 0.02);
+  };
+  for (const a of [1.15, 2.55, -2.55, -1.15]) slot(a, 1.95, 0.5, 1.5);
+  for (const a of [1.85, -1.85, Math.PI]) slot(a, 5.35, 0.5, 1.6);
+  // (the stair's light: one tall slot up the second and third floors over the porch)
+  slot(0, 5.4, 0.6, 3.0);
+  // the entrance porch: its printed box, the hood over the hatch on its brackets, the step, the porch lamp (dome-detail-275)
   T.tag('wall', 'porch', 'concrete');
-  T.put(T.mbox(2.4, 2.6, 1.6).translate(0, 0.12 + 1.3, 4.6 + 0.5), 0x8e5a40, 0.05);
+  T.put(T.mbox(2.4, 2.6, 1.6).translate(0, 0.12 + 1.3, 4.6 + 0.5), PORCH, 0.05);
+  T.tag('roof', 'porch-hood', 'concrete');
+  T.put(T.mbox(3.0, 0.2, 1.4).translate(0, 0.12 + 2.6 + 0.1, 5.45), PORCH, 0.04);
+  for (const s of [-1, 1]) T.put(dressing(T.box(0.14, 0.4, 0.5).translate(s * 1.05, 0.12 + 2.4, 5.95)), P.frame);
+  T.tag('footing', 'porch-step', 'concrete');
+  T.put(T.mbox(1.5, 0.18, 0.5).translate(0, 0.12 + 0.09, 6.15), PORCH, 0.04);
   hatch(T, P, 0, 0.3, 5.92, 1.0, 1.9);
-  T.tag('roof', 'crown', 'concrete');
-  T.put(T.cylinder(1.6, 2.6, 0.6, 18).translate(0, 10.32 + 0.3, 0), 0x8e5a40, 0.05);
+  T.tag('fitting', 'porch-lamp', 'metal');
+  T.put(T.aperture(T.box(0.5, 0.06, 0.2).translate(0, 0.12 + 2.57, 6.0), [0, -1, 0]), 0xf2e2b4, 0.02);
+  // the radiator wing on its two posts off the tower's west flank, its coolant loop into the shell (dome-detail-275)
+  T.tag('post', 'radiator-posts', 'metal');
+  for (const z of [-1.6, 1.6]) T.put(hulled(T.cylinder(0.08, 0.1, 3.0, 8).translate(-6.45, 0.12 + 1.5, z)), P.frame);
+  T.tag('plate', 'radiator', 'metal');
+  T.put(T.mbox(0.08, 1.7, 3.6).translate(-6.45, 0.12 + 2.05, 0), P.hull, 0.03);
+  for (const y of [1.6, 2.5]) T.put(dressing(T.box(0.12, 0.05, 3.5).translate(-6.45, 0.12 + y, 0)), P.frame);
+  T.tag('fitting', 'coolant', 'metal');
+  T.put(dressing(strut(T, [-6.4, 0.12 + 1.3, 0.6], [-4.55, 0.12 + 1.3, 0.6], 0.09)), P.dark, 0.02);
+  // the umbilical riser: a trunk up the tower's east flank from its service pedestal, clipped at the floor bands
+  T.tag('fitting', 'pedestal', 'metal');
+  T.put(T.mbox(0.8, 1.1, 0.6).translate(5.6, 0.12 + 0.55, 1.6), P.hull, 0.03);
+  T.tag('fitting', 'riser', 'metal');
+  const rz = 1.6, off = (y: number): V3 => [Math.sqrt((radiusAt(shell, y) + 0.12) ** 2 - rz * rz), y, rz];
+  const rise: V3[] = [[5.3, 0.9, rz], off(1.2), off(3.4), off(6.4)];
+  for (let k = 0; k + 1 < rise.length; k++) T.put(dressing(strut(T, rise[k], rise[k + 1], 0.12)), P.frame, 0.02);
+  // the floodlight at the apron's front corner
+  T.tag('post', 'flood', 'metal');
+  T.put(hulled(T.cylinder(0.07, 0.09, 4.2, 8).translate(-6.6, 0.12 + 2.1, 5.4)), P.frame);
+  T.tag('fitting', 'flood-head', 'metal');
+  T.put(T.mbox(0.5, 0.25, 0.35).translate(-6.6, 0.12 + 4.2 + 0.12, 5.3), P.accent);
+  // the oculus at the crown: its kerb (the shell's lip), the glazed disc, its four glazing bars, the mast on the kerb
+  T.tag('roof', 'oculus', 'metal');
+  T.put(T.aperture(T.cylinder(1.62, 1.62, 0.06, 16).translate(0, 10.52, 0), [0, 1, 0]), P.glass, 0.02);
+  for (const a of [0, Math.PI / 2]) T.put(dressing(strut(T, [Math.cos(a) * 1.45, 10.56, Math.sin(a) * 1.45], [-Math.cos(a) * 1.45, 10.56, -Math.sin(a) * 1.45], 0.07)), P.frame);
   T.tag('post', 'mast', 'metal');
-  T.put(T.cylinder(0.08, 0.1, 1.6, 8).translate(0, 10.92 + 0.8, 0), P.frame);
+  T.put(T.cylinder(0.07, 0.1, 1.75, 8).translate(1.15, 10.6 + 0.875, -0.85), P.frame);
+  T.put(dressing(strut(T, [1.15, 11.9, -0.85], [1.15, 11.9, -0.15], 0.05)), P.frame);
   T.tag('fitting', 'beacon', 'metal');
-  T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(0, 12.6 - 0.15, 0)), P.accent);
+  T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(1.15, 12.35 + 0.12, -0.85)), P.accent);
 }
 
 // --- the greenhouse ---------------------------------------------------------------------------------------------------
 
 function greenhouse(T: HutTools, world: SpaceWorld): void {
-  const P = PAINT[world], R = 3.7, L = 14.2, bays = 6;
+  const P = PAINT[world], R = 3.7, L = 14.2, bays = 6, FILM = 0xa8c8c0;
   // the base wall, the arched ribs on their posts, the film pillows between them (a bay's cushion, bellied out), the ridge
   // rails, the airlock at +z and the plant room beside it
+  // (dome-detail-275: the ribs had been eight straight members an arch, the pillows twelve-sided drums pressed flat, the
+  // ends open; now each rib one arched member, each pillow a smooth half barrel bellied between its ribs, the arched end
+  // screens on their mullions, the kerb's louvres, the plant room's door, fins, water tank and its feed)
   T.tag('footing', 'pad', 'concrete');
   T.put(footprintApron(T, 'greenhouse', 0.06), P.apron, 0.06);
   T.tag('footing', 'base', 'concrete');
@@ -890,36 +1123,64 @@ function greenhouse(T: HutTools, world: SpaceWorld): void {
   T.tag('wall', 'kerb', 'concrete');
   T.put(T.mbox(7.6, 1.0, L).translate(0, 0.7 + 0.5, 0), P.hull, 0.03);
   const y0 = 1.7;
+  // (an arch's member: a half annulus `r0`..`r1` in twelve lengths, `t` thick across z)
+  const arch = (r0: number, r1: number, t: number): THREE.BufferGeometry => {
+    const sh = new THREE.Shape();
+    sh.moveTo(r1, 0);
+    for (let i = 1; i <= 12; i++) sh.lineTo(r1 * Math.cos((i / 12) * Math.PI), r1 * Math.sin((i / 12) * Math.PI));
+    for (let i = 12; i >= 0; i--) sh.lineTo(r0 * Math.cos((i / 12) * Math.PI), r0 * Math.sin((i / 12) * Math.PI));
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false }).translate(0, 0, -t / 2);
+  };
   for (let k = 0; k <= bays; k++) {
     const z = -L / 2 + (k * L) / bays;
     T.tag('frame', `rib${k}`, 'metal');
-    const pts: V3[] = [];
-    for (let i = 0; i <= 8; i++) { const a = (i / 8) * Math.PI; pts.push([-Math.cos(a) * R, y0 + Math.sin(a) * R, z]); }
-    for (let i = 0; i + 1 < pts.length; i++) T.put(strut(T, pts[i], pts[i + 1], 0.12), P.frame);
+    T.put(arch(R - 0.06, R + 0.12, 0.14).translate(0, y0, z + (k === 0 ? 0.07 : k === bays ? -0.07 : 0)), P.frame);
   }
   for (let k = 0; k < bays; k++) {
-    const z0 = -L / 2 + (k * L) / bays, z1 = z0 + L / bays;
-    const pillow = T.cylinder(R - 0.02, R - 0.02, z1 - z0 - 0.1, 12, );
+    const z0 = -L / 2 + (k * L) / bays, z1 = z0 + L / bays, len = z1 - z0 - 0.1;
+    // the cushion bellies out between its ribs: a smooth half barrel, its middle ring swollen
+    const pillow = new THREE.CylinderGeometry(R - 0.02, R - 0.02, len, 16, 2, true, -Math.PI / 2, Math.PI);
     const p = pillow.getAttribute('position');
     for (let i = 0; i < p.count; i++) {
-      // the cushion bellies out between its ribs; its lower half folded flat into the kerb's top
-      const x = p.getX(i), yy = p.getY(i), zz = p.getZ(i), belly = 1 + 0.035 * (1 - (2 * yy / (z1 - z0 - 0.1)) ** 2);
-      p.setXYZ(i, x * belly, yy, zz < 0 ? zz * 0.02 : zz * belly);
+      const belly = 1 + 0.04 * (1 - (2 * p.getY(i) / len) ** 2);
+      p.setXYZ(i, p.getX(i) * belly, p.getY(i), p.getZ(i) * belly);
     }
     pillow.computeVertexNormals();
-    sectors(pillow, 12, -Math.PI / 2).forEach((h, j) => {
-      h.rotateX(-Math.PI / 2);
+    pillow.rotateX(-Math.PI / 2).translate(0, y0, (z0 + z1) / 2);
+    splitBy(pillow, 2, (cx) => (cx < 0 ? 0 : 1)).forEach((h, j) => {
       T.tag('roof', `pillow${k}${j}`, 'canvas'); // (the film is the house's roof: it comes down flat where it stood, together)
-      T.put(h.translate(0, y0, (z0 + z1) / 2), 0xa8c8c0, 0.03);
+      T.put(h, FILM, 0.02);
     });
   }
+  // the arched end screens: the film on its two mullions in each end rib
+  for (const s of [-1, 1] as const) {
+    T.tag('sheet', `screen${s}`, 'canvas');
+    const screen = new THREE.CircleGeometry(R - 0.04, 16, 0, Math.PI);
+    T.put((s > 0 ? screen : screen.rotateY(Math.PI)).translate(0, y0, s * (L / 2 - 0.1)), FILM, 0.02);
+    for (const x of [-1.3, 1.3]) T.put(dressing(T.mbox(0.1, Math.sqrt(R * R - x * x) - 0.05, 0.1).translate(x, y0 + (Math.sqrt(R * R - x * x) - 0.05) / 2, s * (L / 2 - 0.05))), P.frame);
+  }
   T.tag('plate', 'ridge', 'metal');
-  for (const s of [-1, 1]) T.put(strut(T, [s * 1.9, y0 + R * 0.86, -L / 2], [s * 1.9, y0 + R * 0.86, L / 2], 0.12), P.frame);
+  // (on the ribs' backs, clear of the pillows' bellies)
+  for (const s of [-1, 1]) T.put(strut(T, [s * 1.97, y0 + 3.32, -L / 2], [s * 1.97, y0 + 3.32, L / 2], 0.12), P.frame);
+  // the kerb's louvres, two to a bay down each flank
+  T.tag('fitting', 'louvres', 'metal');
+  for (const sx of [-1, 1]) for (let k = 0; k < bays; k++) {
+    T.put(dressing(T.box(0.06, 0.32, 0.9).translate(sx * 3.82, 1.2, -L / 2 + (k + 0.5) * (L / bays))), P.dark, 0.02);
+  }
   T.tag('wall', 'airlock', 'metal');
   T.put(T.mbox(2.6, 2.8, 1.2).translate(0, 0.7 + 1.4, L / 2 + 0.6), P.hull, 0.03);
   hatch(T, P, 0, 0.75, L / 2 + 1.22, 1.0, 1.8);
+  T.tag('fitting', 'airlock-lamp', 'metal');
+  T.put(T.aperture(T.box(0.44, 0.06, 0.2).translate(0, 3.42, L / 2 + 1.3), [0, -1, 0]), 0xf2e2b4, 0.02);
   T.tag('wall', 'plantroom', 'metal');
   T.put(T.mbox(1.6, 1.6, 3.0).translate(4.4, 0.8, -3.0), P.hull, 0.03);
+  T.put(T.box(0.03, 1.2, 0.7).translate(5.21, 0.66, -2.4), P.dark, 0.01);
+  for (const k of [-1, 0, 1]) T.put(dressing(T.box(0.03, 0.9, 0.5).translate(4.4 + k * 0.35, 1.6 + 0.45, -3.9)), P.frame);
+  // the water tank by the plant room on its plinth, its feed into the kerb
+  T.tag('fitting', 'tank', 'metal');
+  T.put(hulled(T.cylinder(0.6, 0.6, 1.6, 12).translate(4.4, 0.06 + 0.8, -5.5)), P.blanket, 0.03);
+  T.put(dressing(strut(T, [4.4, 1.2, -4.9], [3.85, 1.2, -4.9], 0.08)), P.frame);
 }
 
 /** Build `kind` as `world` builds it with the hut tools (each part named for the wreck). */

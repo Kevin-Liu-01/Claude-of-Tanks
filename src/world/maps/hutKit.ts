@@ -223,6 +223,11 @@ function dressing<T extends THREE.BufferGeometry>(geo: T): T { geo.userData.noCo
 /** How far a sunk post goes into the ground (the families' height band starts 5 cm under it). */
 const SUNK = 0.04;
 
+/** How far a dialect's cladding stands out of its face's plane: an opening's casing sits on it, a pipe clips to it (a
+ *  corrugated sheet's crimps to 4 cm, dome-detail-275). */
+const skin = (d: HutDialect): number => (d.cladding === 'render' ? 0 : d.cladding === 'log' ? d.course * 0.47 : d.cladding === 'panel' ? 0.06
+  : d.cladding === 'sheet' ? 0.04 : 0.03);
+
 /** The walls' material for the break. */
 const wallMat = (d: HutDialect): FractureMaterial => d.wallMaterial ?? ({ batten: 'plank', lap: 'plank', log: 'timber', mat: 'infill', sheet: 'metal',
   render: 'plaster', panel: 'metal' } as const)[d.cladding];
@@ -305,9 +310,18 @@ function cladPiece(k: HutTools, d: HutDialect, f: Face, u0: number, u1: number, 
     }
     case 'sheet': {
       // sheet runs about 1.2 m wide, each lapping the one before it a sheet's thickness out
+      // (dome-detail-275: each run corrugated as the roof's sheets are, three V crimps a sheet standing up its height, so
+      // a tin wall reads ribbed and not as flat panels: the crimps dressing over the piece's one flat backing, which
+      // collides, so a wall cut round many windows stays few collision solids)
       const runs = Math.max(1, Math.round(lu / 1.2)), rw = lu / runs;
       for (let r = 0; r < runs; r++) {
-        put(k, faceMember(k, f, rw + 0.04, h, 0.012), at(f, u0 + (r + 0.5) * rw, (y0 + y1) / 2, 0.008 + (r % 2) * 0.012), tone(p.wall, i + r), 0.05);
+        const sw = rw + 0.04, o = (r % 2) * 0.008, sec: Array<[number, number]> = [];
+        if (r === 0) put(k, faceMember(k, f, lu + 0.04, h, 0.012), at(f, uc, (y0 + y1) / 2, 0.008), tone(p.wall, i), 0.05);
+        for (let v = 0; v <= 6; v++) sec.push([-sw / 2 + v * sw / 6, 0.016 + (v % 2) * 0.024]);
+        sec.push([sw / 2, 0.01], [-sw / 2, 0.01]);
+        // the section across the face (x) and out of it (y), extruded up (z): stood up and turned onto the face
+        const sheet = prism(sec, h, 0.6).rotateX(Math.PI / 2).rotateY(Math.PI / 2);
+        put(k, dressing(onto(sheet, f)), at(f, u0 + (r + 0.5) * rw, (y0 + y1) / 2, o), tone(p.wall, i + r), 0.05);
       }
       return;
     }
@@ -390,6 +404,9 @@ function logWall(k: HutTools, d: HutDialect, f: Face, y0: number, y1: number, ho
 function dressOpening(k: HutTools, d: HutDialect, f: Face, o: HutOpening, floor: number, depth: number): void {
   const p = d.paint, y0 = floor + o.y, yc = y0 + o.h / 2, cw = 0.08, ct = 0.035, out = depth;
   const mass = d.cladding === 'render';
+  // (dome-detail-275) on a sheet wall a window's casing, sill, glass, bars and shutters are dressing on the wall's
+  // backing, which collides: a long tin wall cut for a window a bay stays a wall its collision can answer
+  const trim = <T extends THREE.BufferGeometry>(g: T): T => (d.cladding === 'sheet' && o.kind !== 'door' ? dressing(g) : g);
   // (a door is a piece of its own; a window goes with its stretch of wall)
   if (o.kind === 'door') k.tag('door', `door|${f.id}|${o.u}`, 'plank');
   else k.tag('wall', d.cladding === 'log' ? `wall|${f.id}|${Math.floor((o.y + o.h / 2) / d.course / 3)}` : d.cladding === 'render' ? `wall|${f.id}` : wallGroup(f, o.u), wallMat(d));
@@ -397,8 +414,8 @@ function dressOpening(k: HutTools, d: HutDialect, f: Face, o: HutOpening, floor:
     // the casing: jambs, head (and a window's sill below)
     // (a door's jambs stand on its threshold, a window's run past its sill)
     const jy0 = y0 - (o.y > 0.05 ? cw : 0), jy1 = y0 + o.h + cw;
-    for (const s of [-1, 1]) put(k, faceBox(k, f, cw, jy1 - jy0, ct), at(f, o.u + s * (o.w / 2 + cw / 2), (jy0 + jy1) / 2, out + ct / 2), p.trim, 0.03);
-    put(k, faceMember(k, f, o.w + cw * 2 + 0.06, cw, ct + 0.02), at(f, o.u, y0 + o.h + cw / 2, out + ct / 2 + 0.01), p.trim, 0.03);
+    for (const s of [-1, 1]) put(k, trim(faceBox(k, f, cw, jy1 - jy0, ct)), at(f, o.u + s * (o.w / 2 + cw / 2), (jy0 + jy1) / 2, out + ct / 2), p.trim, 0.03);
+    put(k, trim(faceMember(k, f, o.w + cw * 2 + 0.06, cw, ct + 0.02)), at(f, o.u, y0 + o.h + cw / 2, out + ct / 2 + 0.01), p.trim, 0.03);
   }
   if (mass) {
     // the reveal's head: a timber lintel through the wall
@@ -410,6 +427,9 @@ function dressOpening(k: HutTools, d: HutDialect, f: Face, o: HutOpening, floor:
     const back = mass ? -0.22 : -0.03;
     put(k, onto(lapPanel(o.w - 0.04, o.h - 0.02, 0.2, 0.028), f), at(f, o.u, y0, back), p.door, 0.04);
     for (const s of [-1, 1]) put(k, faceBox(k, f, 0.06, o.h, 0.08), at(f, o.u + s * (o.w / 2 - 0.03), yc, back + 0.02), 0x3c3f42, 0.03);
+    // (dome-detail-275) the shutter's coil box over the head, proud of the wall, and the kick plate's bottom rail
+    put(k, faceMember(k, f, o.w + 0.24, 0.38, 0.36, 0.02), at(f, o.u, y0 + o.h + 0.2, out + 0.17), 0x4a4d50, 0.03);
+    put(k, dressing(faceBox(k, f, o.w - 0.06, 0.12, 0.05)), at(f, o.u, y0 + 0.07, back + 0.04), 0x2e3032, 0.03);
     return;
   }
   if (o.kind === 'louvre') {
@@ -435,20 +455,20 @@ function dressOpening(k: HutTools, d: HutDialect, f: Face, o: HutOpening, floor:
     return;
   }
   // a window's sill, proud of the wall and tipped to shed the rain
-  put(k, faceMember(k, f, o.w + 0.22, 0.05, 0.12), at(f, o.u, y0 - 0.025, out + 0.04), p.trim, 0.03);
+  put(k, trim(faceMember(k, f, o.w + 0.22, 0.05, 0.12)), at(f, o.u, y0 - 0.025, out + 0.04), p.trim, 0.03);
   const back = mass ? -0.1 : -0.02;
   if (o.kind === 'slit') {
     put(k, faceBox(k, f, o.w, o.h, 0.02), at(f, o.u, yc, mass ? back - 0.1 : -0.02), p.dark, 0.02);
     return;
   }
-  put(k, k.aperture(faceBox(k, f, o.w - 0.04, o.h - 0.04, 0.02), f.n), at(f, o.u, yc, back), p.glass, 0.03);
-  put(k, faceBox(k, f, 0.035, o.h - 0.04, 0.03), at(f, o.u, yc, back + 0.02), p.trim, 0.02);
-  if (o.h > 0.65) put(k, faceBox(k, f, o.w - 0.04, 0.035, 0.03), at(f, o.u, y0 + o.h * 0.55, back + 0.02), p.trim, 0.02);
+  put(k, trim(k.aperture(faceBox(k, f, o.w - 0.04, o.h - 0.04, 0.02), f.n)), at(f, o.u, yc, back), p.glass, 0.03);
+  put(k, trim(faceBox(k, f, 0.035, o.h - 0.04, 0.03)), at(f, o.u, yc, back + 0.02), p.trim, 0.02);
+  if (o.h > 0.65) put(k, trim(faceBox(k, f, o.w - 0.04, 0.035, 0.03)), at(f, o.u, y0 + o.h * 0.55, back + 0.02), p.trim, 0.02);
   if (d.shutters) {
     // the two leaves open flat against the wall beside the casing
     for (const s of [-1, 1]) {
-      put(k, faceMember(k, f, o.w / 2, o.h, 0.03), at(f, o.u + s * (o.w * 0.75 + cw + 0.02), yc, out + 0.05), p.door, 0.05);
-      put(k, faceBox(k, f, o.w / 2 - 0.06, 0.06, 0.02), at(f, o.u + s * (o.w * 0.75 + cw + 0.02), yc, out + 0.075), p.door, 0.04);
+      put(k, trim(faceMember(k, f, o.w / 2, o.h, 0.03)), at(f, o.u + s * (o.w * 0.75 + cw + 0.02), yc, out + 0.05), p.door, 0.05);
+      put(k, trim(faceBox(k, f, o.w / 2 - 0.06, 0.06, 0.02)), at(f, o.u + s * (o.w * 0.75 + cw + 0.02), yc, out + 0.075), p.door, 0.04);
     }
   }
 }
@@ -649,6 +669,13 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
       const roll = k.cylinder(r, r, form.d + 2 * d.verge, 7);
       roll.rotateX(Math.PI / 2);
       put(k, roll, [0, top + form.rise + ridgeLift * Math.cos(sls[0].angle) + 0.35 * r, 0], d.snow ? 0xe4e9ee : p.roof[2], 0.05);
+    } else if (d.covering === 'sheet') {
+      // (dome-detail-275) the ridge cap: a bent flashing over the two slopes' top sheets, each leg crossing the ridge
+      k.tag('roof', 'ridgecap', 'metal');
+      for (const sl of sls) {
+        const leg = slopeGeo(k, sl, 0.3, 0.014, sl.across + 0.02, 'box');
+        k.put(dressing(onSlope(leg, sl, -sl.len / 2 + 0.12, ridgeLift + 0.003)), p.roof[2], 0.03);
+      }
     }
   }
 }
@@ -810,6 +837,13 @@ function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
           if (hh < 0.2) continue;
           put(k, faceBox(k, f, 0.05, hh, 0.022), at(f, g2, top + hh / 2, o + 0.026), p.wall[1], 0.04);
         }
+      } else if (d.cladding === 'sheet') {
+        // (dome-detail-275) a sheet gable's crimps standing up it at the walls' pitch, dressing on its sheet
+        for (let g2 = -run + 0.2; g2 < run - 0.1; g2 += 0.4) {
+          const hh = rise * (1 - Math.abs(g2) / run) - 0.04;
+          if (hh < 0.15) continue;
+          put(k, dressing(faceBox(k, f, 0.04, hh, 0.024)), at(f, g2, top + hh / 2, o + 0.026), tone(p.wall, Math.round(g2 / 1.2)), 0.04);
+        }
       }
     }
   } else if (parapet) {
@@ -834,7 +868,7 @@ function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
     }
   }
   // the openings' dress
-  const depth = d.cladding === 'render' ? 0 : d.cladding === 'log' ? d.course * 0.47 : d.cladding === 'panel' ? 0.06 : 0.03;
+  const depth = skin(d);
   for (const o of form.openings) dressOpening(k, d, faces[o.face], o, floor, depth);
   roof(k, form, d, top);
   // the stove pipe through the roof, its cap
@@ -910,11 +944,11 @@ function boom(k: HutTools, h: HutFrame, face: FaceId, u: number, out: number, le
 }
 
 /** Oil drums standing in a cluster at (x, z). */
-function drums(k: HutTools, x: number, z: number, n: number, color = 0x5a3a2a): void {
+function drums(k: HutTools, x: number, z: number, n: number, color = 0x5a3a2a, y = 0): void {
   k.tag('fitting', `drums|${x}|${z}`, 'metal');
   for (let i = 0; i < n; i++) {
     const a = i * 2.4, r = i ? 0.62 : 0;
-    put(k, k.cylinder(0.29, 0.29, 0.88, 8), [x + Math.cos(a) * r, 0.44, z + Math.sin(a) * r], i % 2 ? 0x3f4a3a : color, 0.08);
+    put(k, k.cylinder(0.29, 0.29, 0.88, 8), [x + Math.cos(a) * r, y + 0.44, z + Math.sin(a) * r], i % 2 ? 0x3f4a3a : color, 0.08);
   }
 }
 
@@ -953,9 +987,369 @@ function block(k: HutTools, x: number, y: number, z: number, color: number): voi
   put(k, k.cylinder(0.24, 0.26, 0.48, 7), [x, y + 0.24, z], color, 0.06);
 }
 
-// ------------------------------------------------------------------------------------------------------------ forms
+// ------------------------------------------------------------------------------------- the yards' gear (dome-detail-275)
 
 type Gear = (k: HutTools, h: HutFrame) => void;
+
+/** A yard's cast concrete (floors, aprons, lintels, wheel stops). */
+const CONCRETE = 0x9c988e;
+
+/** A build's parapet over its roof (buildHut's rule: a masonry skillion's). */
+const parapetOf = (h: HutFrame): number => (h.dialect.cladding === 'render' && h.form.roof === 'skillion' ? h.form.parapet ?? 0 : 0);
+
+/** A wall's head at (x, z) on face `id`: under a gable its plates, under a skillion the roof's plane, a parapet's coping. */
+function wallHead(h: HutFrame, id: FaceId, x: number, z: number): number {
+  const { form, dialect: d, top } = h, par = parapetOf(h);
+  if (par) return top + form.rise + par;
+  if (form.roof === 'gable') return top;
+  return id === 'back' ? top + form.rise : roofTop(form, d, top, x, z);
+}
+
+/** (dome-detail-275) A masonry hall's pilasters: a pier proud of each named face at its frame's bay lines and corners,
+ *  from the ground to the wall's head, so a long wall reads in bays and not as one slab (dressing: the wall collides). */
+function pilasters(k: HutTools, h: HutFrame, ids: readonly FaceId[], bay: number): void {
+  const d = h.dialect;
+  if (d.cladding !== 'render') return;
+  for (const id of ids) {
+    const f = h.face(id), n = Math.max(1, Math.round((2 * f.half) / bay));
+    for (let i = 0; i <= n; i++) {
+      const u = Math.max(-f.half + 0.22, Math.min(f.half - 0.22, -f.half + (i * 2 * f.half) / n));
+      const [x, , z] = at(f, u, 0, 0), y1 = wallHead(h, id, x, z) - 0.06;
+      k.tag('wall', wallGroup(f, u), wallMat(d));
+      put(k, dressing(faceBox(k, f, 0.44, y1, 0.12)), at(f, u, y1 / 2, 0.05), tone(d.paint.wall, i + 1), 0.03);
+    }
+  }
+}
+
+/** (dome-detail-275) A concrete apron before a face's opening, `out` metres deep, ramped up to a plinth's floor. */
+function apron(k: HutTools, h: HutFrame, face: FaceId, u: number, len: number, out: number): void {
+  const f = h.face(face), y0 = Math.max(0.06, h.floor + 0.02);
+  k.tag('slab', `apron|${face}`, 'concrete');
+  const sec: Array<[number, number]> = [[-0.05, 0], [out, 0], [out, 0.03], [-0.05, y0]];
+  put(k, dressing(onto(prism(sec, len, 0.5), f)), at(f, u, 0, 0), CONCRETE, 0.04);
+}
+
+/**
+ * (dome-detail-275) The rainwater goods, dressing: a gutter along each eave hung off its fascia, a swan neck from each
+ * end back to the side wall and the downpipe down it to the ground; over a parapet, its scuppers through the wall into
+ * hoppers and their pipes.
+ */
+function rainwater(k: HutTools, h: HutFrame, color = 0x55595c): void {
+  const { form, dialect: d, top } = h, w = form.w, dd = form.d, sk = skin(d) + 0.06;
+  k.tag('fitting', 'rainwater', 'metal');
+  const pipe = (x: number, z: number, y1: number) => put(k, dressing(k.cylinder(0.05, 0.05, y1, 6)), [x, y1 / 2, z], color, 0.03);
+  const neck = (a: V3, b: V3) => k.put(dressing(k.mbeam(a, b, 0.09, 0.09)), color, 0.03);
+  if (parapetOf(h)) {
+    for (const id of ['left', 'right'] as const) for (const e of [-1, 1]) {
+      const f = h.face(id), u = e * (f.half - 0.6);
+      const [x, , z] = at(f, u, 0, 0), ys = roofTop(form, d, top, x, z) + 0.1;
+      put(k, dressing(faceBox(k, f, 0.14, 0.1, 0.34)), at(f, u, ys, 0.12), color, 0.03);
+      put(k, dressing(faceMember(k, f, 0.34, 0.3, 0.26, 0.02)), at(f, u, ys - 0.17, sk + 0.07), color, 0.03);
+      const [px, , pz] = at(f, u, 0, sk);
+      pipe(px, pz, ys - 0.3);
+    }
+    return;
+  }
+  if (d.eave < 0.1) return;
+  if (form.roof === 'gable') {
+    // the eaves along the long sides, the pipes down the side walls near the corners
+    const ye = top - form.rise * d.eave / (w / 2);
+    for (const s of [-1, 1]) {
+      const gx = s * (w / 2 + d.eave + 0.05), px = s * (w / 2 + sk);
+      const gutter = k.cylinder(0.075, 0.075, dd + 2 * d.verge, 6);
+      gutter.rotateX(Math.PI / 2);
+      put(k, dressing(gutter), [gx, ye - 0.06, 0], color, 0.03);
+      for (const e of [-1, 1]) {
+        const pz = e * (dd / 2 - 0.3);
+        neck([gx, ye - 0.1, pz], [px, ye - 0.5, pz]);
+        pipe(px, pz, ye - 0.46);
+      }
+    }
+    return;
+  }
+  // a skillion's one eave along the front, its pipes down the side walls by the front corners
+  const ze = dd / 2 + d.eave, ye = roofTop(form, d, top, 0, ze), gz = ze + 0.05;
+  const gutter = k.cylinder(0.075, 0.075, w + 2 * d.verge, 6);
+  gutter.rotateZ(Math.PI / 2);
+  put(k, dressing(gutter), [0, ye - 0.06, gz], color, 0.03);
+  for (const s of [-1, 1]) {
+    const px = s * (w / 2 + sk), pz = dd / 2 - 0.25;
+    neck([px, ye - 0.1, gz], [px, ye - 0.5, pz]);
+    pipe(px, pz, ye - 0.46);
+  }
+}
+
+/** (dome-detail-275) A layer for parts on a roof's covering: `lay(geo, x, z, up, colour)` tips a part built level (its
+ *  fall along z on a skillion, along x on a gable's slope) to the roof's plane at (x, z), `up` metres over the covering's
+ *  top, as dressing; `part(along, t, across)` builds such a box. */
+function roofLayer(k: HutTools, h: HutFrame) {
+  const { form, dialect: d, top } = h, gable = form.roof === 'gable', cov = d.covering;
+  // the covering's top over the rafters (buildHut's roof: under snow its deck and the snow)
+  const lift = d.snow ? 0.025 + d.snow : cov === 'tile' ? 0.14 : cov === 'thatch' ? 0.42 : cov === 'slab' ? 0.085 : cov === 'shingle' ? 0.06 : 0.05;
+  const ang = gable ? Math.atan2(form.rise, form.w / 2) : Math.atan2(form.rise, form.d);
+  const part = (al: number, t: number, ac: number) => (gable ? k.box(al, t, ac) : k.box(ac, t, al));
+  const lay = (g: THREE.BufferGeometry, x: number, z: number, up: number, color: number, jitter = 0.04) => {
+    if (gable) g.rotateZ(-(Math.sign(x) || 1) * ang); else g.rotateX(ang);
+    k.put(dressing(g.translate(x, roofTop(form, d, top, x, z) + (lift + up) / Math.cos(ang), z)), color, jitter);
+  };
+  /** a point on slope `s` (a skillion's one), `f` of the way down from its high edge to the walls' line, `c` across it */
+  const pos = (s: number, f: number, c: number): [number, number] => (gable ? [s * f * form.w / 2, c] : [c, -form.d / 2 + f * form.d]);
+  return { lift, ang, gable, part, lay, pos };
+}
+
+/**
+ * (dome-detail-275) A shed roof in relief, dressing on its covering: a sheet roof's end laps across the fall, its
+ * translucent roof-lights a bay, a replaced sheet in another shade and the rust (or lichen on asbestos) run down from the
+ * laps; a felt roof's glazed lights on their curbs and its patches; a ridge ventilator along a gable, a level monitor
+ * across a skillion, deep verge boards; on a parapeted flat roof its cowl vents, stack and hatch.
+ */
+function roofRelief(k: HutTools, h: HutFrame): void {
+  const { form, dialect: d } = h, p = d.paint, w = form.w, dd = form.d, par = parapetOf(h), cov = d.covering;
+  const { lift, gable, part, lay, pos } = roofLayer(k, h);
+  const sides = gable ? [-1, 1] : [1];
+  const acrossLen = gable ? dd + 2 * d.verge : w + 2 * d.verge, fallLen = gable ? w / 2 : dd;
+  const r = (p.roof[0] >> 16) & 255, b = p.roof[0] & 255, rusty = r > b + 24, shifer = r >= b && r - b < 12 && r > 0x80;
+  const open = !d.snow && (cov === 'sheet' || cov === 'felt');
+  k.tag('roof', 'relief', cov === 'felt' ? 'plank' : 'metal');
+  if (open && cov === 'sheet') {
+    // the end laps across the fall, a sheet's length apart
+    for (const s of sides) for (const f of [1 / 3, 2 / 3]) {
+      const [x, z] = pos(s, f, 0);
+      lay(part(0.09, 0.02, acrossLen - 0.04), x, z, 0.0, p.roof[2], 0.03);
+    }
+    // the rust (or the lichen on asbestos cement) run down from the laps
+    for (const s of sides) for (let i = 0; i < 6; i++) {
+      const [x, z] = pos(s, (i % 2 ? 1 / 3 : 2 / 3) + 0.09, -acrossLen / 2 + (i + 0.5 + 0.17 * (i % 3)) * acrossLen / 6.5);
+      lay(part(0.18 * fallLen, 0.006, 0.12 + 0.05 * (i % 2)), x, z, 0.012, shifer ? 0x55534a : 0x7a4a30, 0.08);
+    }
+  }
+  if (open) {
+    // the roof-lights: translucent sheets in a sheet roof, glazed lights on curbs in a felt one, one a bay
+    const n = gable ? Math.max(1, Math.round(dd / 2.5)) : Math.max(1, Math.round(w / 2.4));
+    const L = gable ? fallLen * 0.38 : dd * 0.26, W = gable ? 0.8 : 0.85, f0 = gable ? 0.5 : 0.62;
+    for (const s of sides) for (let i = 0; i < n; i++) {
+      const span = gable ? dd : w, [x, z] = pos(s, f0, -span / 2 + (i + 0.5) * span / n);
+      if (cov === 'sheet') lay(part(L, 0.016, W), x, z, 0.0, 0xcdd3c2, 0.03);
+      else {
+        lay(part(L + 0.12, 0.14, W + 0.12), x, z, 0.05, p.trim, 0.03);
+        lay(part(L, 0.03, W), x, z, 0.13, 0x8fa2a6, 0.02);
+      }
+    }
+    // a replaced sheet (or a patch of new felt) in another shade
+    for (const [s, f, c] of [[sides[0], 0.22, -0.28], [sides[sides.length - 1], 0.84, 0.2]] as const) {
+      const [x, z] = pos(s, f, c * acrossLen);
+      lay(part(cov === 'sheet' ? Math.min(2.2, fallLen * 0.3) : 1.5, 0.012, cov === 'sheet' ? 1.2 : 1.3), x, z, 0.006,
+        cov === 'felt' ? 0x1b1a19 : rusty ? 0xa9aeb0 : shifer ? 0xbdbcb2 : 0x8a5f42, 0.04);
+    }
+  }
+  if (gable) {
+    // the ridge ventilator along the ridge: its base astride the two slopes, louvres either side, the cap over them
+    const y = h.top + form.rise + lift, len = dd * 0.55;
+    k.put(dressing(k.box(0.5, 0.3, len).translate(0, y + 0.05, 0)), p.roof[1], 0.03);
+    k.put(dressing(k.box(0.53, 0.12, len - 0.1).translate(0, y + 0.1, 0)), p.dark, 0.02);
+    k.put(dressing(k.box(0.82, 0.05, len + 0.1).translate(0, y + 0.225, 0)), p.roof[2], 0.03);
+    return;
+  }
+  if (par) {
+    // a flat roof's cowl vents, its soil stack and the roof hatch
+    k.tag('fitting', 'roofvents', 'metal');
+    for (const [x, z] of [[-2.0, 1.5], [2.6, 2.4]] as const) {
+      const y = roofTop(form, d, h.top, x, z) + lift;
+      k.put(dressing(k.box(0.45, 0.55, 0.45).translate(x, y + 0.24, z)), 0x8a8a84, 0.03);
+      k.put(dressing(k.box(0.62, 0.06, 0.62).translate(x, y + 0.54, z)), 0x6e6e68, 0.03);
+    }
+    const sy = roofTop(form, d, h.top, -2.6, -2.8) + lift;
+    k.put(dressing(k.cylinder(0.09, 0.09, 1.3, 8).translate(-2.6, sy + 0.6, -2.8)), 0x55595c, 0.03);
+    k.put(dressing(k.cylinder(0.16, 0.12, 0.08, 8).translate(-2.6, sy + 1.28, -2.8)), 0x55595c, 0.03);
+    const hy = roofTop(form, d, h.top, 0.4, 2.6) + lift;
+    k.put(dressing(k.box(0.9, 0.24, 0.9).translate(0.4, hy + 0.08, 2.6)), p.trim, 0.03);
+    k.put(dressing(k.box(1.0, 0.05, 1.0).translate(0.4, hy + 0.22, 2.6)), 0x5d6266, 0.03);
+    return;
+  }
+  // a skillion's level monitor across the roof near its high side: its base, louvres either side, the cap
+  const zm = -1.0, ym = roofTop(form, d, h.top, 0, zm) + lift;
+  k.put(dressing(k.box(w - 1.2, 0.34, 0.5).translate(0, ym + 0.12, zm)), p.roof[1], 0.03);
+  k.put(dressing(k.box(w - 1.3, 0.13, 0.52).translate(0, ym + 0.17, zm)), p.dark, 0.02);
+  k.put(dressing(k.box(w - 1.0, 0.05, 0.76).translate(0, ym + 0.31, zm)), p.roof[2], 0.03);
+  // the deep verge boards down both rakes
+  k.tag('fitting', 'verges', 'timber');
+  for (const s of [-1, 1]) lay(k.box(0.045, 0.3, dd + 2 * d.eave), s * (w / 2 + d.verge + 0.022), 0, -0.1, p.trim, 0.03);
+}
+
+/** (dome-detail-275) Old tyres and sandbags weighting a shed's sheets down against the wind (a war map's yard). */
+const roofWeights: Gear = (k, h) => {
+  const { lay, pos } = roofLayer(k, h);
+  k.tag('fitting', 'weights', 'earth');
+  for (const [f, c] of [[0.2, -2.9], [0.2, 0.4], [0.5, 3.1], [0.82, -1.6], [0.86, 2.0]] as const) {
+    const [x, z] = pos(1, f, c);
+    lay(k.cylinder(0.34, 0.34, 0.16, 8), x, z, 0.075, 0x262626, 0.05);
+  }
+  for (const [f, c] of [[0.34, -0.9], [0.34, -0.3], [0.72, 1.2]] as const) {
+    const [x, z] = pos(1, f, c);
+    lay(k.box(0.56, 0.18, 0.34), x, z, 0.085, 0x8e7f5e, 0.09);
+  }
+};
+
+/**
+ * (dome-detail-275) The motor pool's working shed: the bressummer over the open bays (a cast lintel on a masonry kit's
+ * piers, a girder on a framed kit's posts) with the bays' number boards, the concrete floor and its apron ramped up to a
+ * plinth's floor, the wheel stops, the fitters' bench and tool board on the back wall, the spare tyres, the drums and
+ * crates in the end bays, the fire point on the side wall, the gutter and downpipes, and a masonry kit's pilasters.
+ */
+const motorShed: Gear = (k, h) => {
+  const { form, dialect: d, top } = h, w = form.w, dd = form.d, mass = d.cladding === 'render';
+  const fy = Math.max(0.06, h.floor + 0.02), zin = -dd / 2 + (mass ? 0.3 : 0), sk = skin(d);
+  const bays = Math.max(1, Math.round(w / 2.4)), bay = (i: number) => -w / 2 + (i + 0.5) * w / bays;
+  // the bressummer over the open front, its number boards
+  k.tag('plate', 'header', mass ? 'concrete' : 'timber');
+  const hd = mass ? 0.4 : 0.16, hh = mass ? 0.36 : 0.3, hz = dd / 2 - (mass ? 0.18 : 0.035), hy = top - 0.1 - hh / 2;
+  put(k, k.mbox(w + (mass ? 0 : 0.12), hh, hd, 0.015), [0, hy, hz], mass ? CONCRETE : d.paint.frame, 0.03);
+  k.tag('fitting', 'boards', 'metal');
+  for (let i = 0; i < bays; i++) put(k, dressing(k.box(0.42, 0.24, 0.02)), [bay(i), hy, hz + hd / 2 + 0.005], 0xdedbd2, 0.03);
+  // the knee braces from each post up under the bressummer (a steel angle on a masonry kit's piers)
+  k.tag('brace', 'knees', mass ? 'metal' : 'timber');
+  const off = mass ? 0.18 : 0.035, ph = mass ? 0.18 : 0.07, hb = hy - hh / 2;
+  for (let i = 0; i <= bays; i++) {
+    // (a masonry kit's piers stand in from their posts' lines toward the middle, buildHut's open-face piers)
+    const x0 = -w / 2 + i * w / bays, px = mass ? x0 - Math.sign(Math.round(x0 * 1e6)) * off : i === 0 ? -w / 2 + off : i === bays ? w / 2 - off : x0;
+    for (const s of [-1, 1]) {
+      if ((i === 0 && s < 0) || (i === bays && s > 0)) continue;
+      k.put(dressing(k.mbeam([px + s * (ph - 0.03), hb - 0.7, hz], [px + s * 0.78, hb + 0.03, hz], 0.08, 0.08)), mass ? 0x4a4d50 : d.paint.frame, 0.03);
+    }
+  }
+  // the floor and the apron
+  k.tag('slab', 'floor', 'concrete');
+  put(k, dressing(k.box(w - 0.2, fy, dd - 0.2)), [0, fy / 2, 0], CONCRETE, 0.04);
+  apron(k, h, 'front', 0, w + 0.2, 1.0);
+  // the wheel stops in the middle bays
+  k.tag('fitting', 'stops', 'concrete');
+  for (let i = 1; i < bays - 1; i++) for (const s of [-1, 1]) {
+    put(k, dressing(k.mbox(0.55, 0.14, 0.22, 0.03)), [bay(i) + s * 0.75, fy + 0.07, zin + 1.6], CONCRETE, 0.05);
+  }
+  // the fitters' bench against the back wall, its shelf, legs and vice; the tool board over it
+  const bx = bay(Math.min(bays - 1, 2)), bz = zin + 0.37;
+  k.tag('fitting', 'bench', 'timber');
+  put(k, dressing(k.mbox(1.8, 0.06, 0.7, 0.01)), [bx, fy + 0.88, bz], 0x6a5a44, 0.05);
+  put(k, dressing(k.mbox(1.7, 0.03, 0.6, 0.008)), [bx, fy + 0.28, bz], 0x5a4c3a, 0.05);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(k, dressing(k.box(0.06, 0.85, 0.06)), [bx + sx * 0.82, fy + 0.425, bz + sz * 0.28], 0x3c3f42, 0.03);
+  put(k, dressing(k.box(0.16, 0.14, 0.24)), [bx + 0.7, fy + 0.98, bz + 0.25], 0x2f4a5a, 0.03);
+  const fb = h.face('back');
+  put(k, dressing(faceBox(k, fb, 1.6, 0.9, 0.024)), at(fb, -bx, fy + 1.45, -dd / 2 - zin - 0.011), 0x3c3a34, 0.03);
+  // the spare tyres stacked in the next bay
+  k.tag('fitting', 'tyres', 'metal');
+  for (let i = 0; i < 3; i++) put(k, dressing(k.cylinder(0.36, 0.36, 0.25, 8)), [bay(1) - 0.5, fy + 0.125 + i * 0.25, zin + 0.45], 0x252525, 0.05);
+  // the drums in the end bay, the crates in the other
+  drums(k, bay(0), zin + 1.0, 4, undefined, fy);
+  k.tag('fitting', 'crates', 'plank');
+  const cx = bay(bays - 1);
+  for (const [x, z, y, s] of [[cx - 0.55, zin + 0.6, 0, 1], [cx + 0.35, zin + 0.7, 0, 0.8], [cx - 0.55, zin + 0.6, 0.7, 0.7]] as const) {
+    put(k, k.box(0.9 * s, 0.7 * s, 0.9 * s), [x, fy + y + 0.35 * s, z], 0x6a5a40, 0.08);
+  }
+  // the oil on the floor where the engines stood, a stain a bay
+  k.tag('slab', 'stains', 'concrete');
+  for (const [i, dz, a] of [[1, 2.6, 0.3], [2, 4.4, -0.2], [0, 3.6, 0.5]] as const) {
+    if (i >= bays) continue;
+    const stain = k.box(1.1 + 0.2 * i, 0.006, 1.5);
+    stain.rotateY(a);
+    put(k, dressing(stain), [bay(i), fy + 0.002, zin + dz], 0x2b2723, 0.08);
+  }
+  // a vehicle under its tarpaulin in the second bay, before its stops: the body, the cab's hump, the lashings
+  if (bays > 2) {
+    const vx = bay(1), vz = zin + 3.75;
+    k.tag('fitting', 'tarp', 'canvas');
+    put(k, dressing(k.mbox(1.9, 1.15, 4.0, 0.22)), [vx, fy + 0.575, vz], 0x5f5a3e, 0.06);
+    put(k, dressing(k.mbox(1.7, 0.6, 1.7, 0.2)), [vx, fy + 1.4, vz + 0.9], 0x5a553a, 0.06);
+    for (const dz of [-1.2, 0.2]) put(k, dressing(k.box(1.94, 0.04, 0.05)), [vx, fy + 1.13, vz + dz], 0x2e2a22, 0.03);
+  }
+  // the engine hoist in the third bay before the bench: two A-frames, the beam across them, the chain down to the
+  // engine block on its stand
+  if (bays > 2) {
+    const ex = bay(2), ez = zin + 2.75, ey = fy + 2.2, steel = 0x3f4a52;
+    k.tag('fitting', 'hoist', 'metal');
+    for (const s of [-1, 1]) for (const t of [-1, 1]) {
+      k.put(dressing(k.mbeam([ex + s * 0.95, fy, ez + t * 0.62], [ex + s * 0.95, ey, ez], 0.08, 0.08)), steel, 0.03);
+    }
+    put(k, dressing(k.box(2.02, 0.12, 0.1)), [ex, ey, ez], steel, 0.03);
+    put(k, dressing(k.box(0.04, 0.96, 0.04)), [ex, fy + 1.66, ez], 0x2a2a2a, 0.02);
+    put(k, dressing(k.box(0.5, 0.7, 0.4)), [ex, fy + 0.35, ez], 0x4a4d50, 0.03);
+    put(k, dressing(k.box(0.7, 0.5, 0.56)), [ex, fy + 0.95, ez], 0x3a3f3a, 0.04);
+  }
+  // a two-wheeled trailer in the end bay before the crates: its bed and sides, wheels, drawbar and jockey leg
+  if (bays > 3) {
+    const tx = bay(bays - 1) - 0.27, tz = zin + 2.6;
+    k.tag('fitting', 'trailer', 'metal');
+    put(k, dressing(k.box(1.5, 0.12, 2.4)), [tx, fy + 0.56, tz], 0x4f5a44, 0.04);
+    for (const s of [-1, 1]) put(k, dressing(k.box(0.04, 0.36, 2.4)), [tx + s * 0.73, fy + 0.8, tz], 0x56614a, 0.04);
+    for (const s of [-1, 1]) put(k, dressing(k.box(1.5, 0.36, 0.04)), [tx, fy + 0.8, tz + s * 1.18], 0x56614a, 0.04);
+    for (const s of [-1, 1]) put(k, dressing(k.cylinder(0.33, 0.33, 0.2, 8).rotateZ(Math.PI / 2)), [tx + s * 0.85, fy + 0.33, tz], 0x222222, 0.04);
+    put(k, dressing(k.box(0.08, 0.08, 1.1)), [tx, fy + 0.54, tz + 1.75], 0x3a3a38, 0.03);
+    put(k, dressing(k.box(0.06, 0.52, 0.06)), [tx, fy + 0.26, tz + 2.25], 0x3a3a38, 0.03);
+  }
+  // the fire point on the side wall by the front: its red board, the buckets on it and the sand bin under it
+  const fr = h.face('right'), fu = -fr.half + 1.4;
+  k.tag('fitting', 'firepoint', 'metal');
+  put(k, dressing(faceBox(k, fr, 1.1, 0.8, 0.03)), at(fr, fu, 1.35, sk + 0.012), 0xa8322a, 0.03);
+  for (const s of [-1, 0, 1]) put(k, dressing(k.cylinder(0.13, 0.1, 0.24, 7)), at(fr, fu + s * 0.34, 1.12, sk + 0.14), 0xb8372c, 0.04);
+  put(k, dressing(faceBox(k, fr, 0.8, 0.5, 0.42)), at(fr, fu, 0.25, sk + 0.23), 0xa8322a, 0.04);
+  pilasters(k, h, ['left', 'right', 'back'], 2.4);
+  rainwater(k, h);
+  roofRelief(k, h);
+};
+
+/**
+ * (dome-detail-275) The service garage's yard: a masonry kit's pilasters down its long walls, the apron ramped up to the
+ * roller door between its bollards, a hood on brackets over the side door, the name board over the doors, the gutters and
+ * downpipes (a parapet's hoppers), the drums by the side.
+ */
+const garageYard: Gear = (k, h) => {
+  const { form, dialect: d, top, floor } = h, f = h.face('front'), sk = skin(d), mass = d.cladding === 'render';
+  pilasters(k, h, ['left', 'right'], 2.5);
+  rainwater(k, h);
+  roofRelief(k, h);
+  const g = form.openings.find((o) => o.kind === 'garage'), dr = form.openings.find((o) => o.kind === 'door' && o.face === 'front');
+  if (g) {
+    apron(k, h, 'front', g.u, g.w + 0.8, 1.3);
+    k.tag('fitting', 'bollards', 'metal');
+    for (const s of [-1, 1]) {
+      const [x, , z] = at(f, g.u + s * (g.w / 2 + 0.3), 0, 0.42);
+      put(k, dressing(k.cylinder(0.1, 0.1, 0.95, 8)), [x, 0.475, z], 0xc9a227, 0.04);
+      put(k, dressing(k.cylinder(0.105, 0.105, 0.12, 8)), [x, 0.75, z], 0x2a2a2a, 0.03);
+    }
+  }
+  if (dr) {
+    // the hood: a slab cantilevered off the wall (a framed kit's sheet on two brackets)
+    k.tag('fitting', 'hood', mass ? 'concrete' : 'metal');
+    const hy = floor + dr.h + 0.32;
+    put(k, dressing(faceMember(k, f, dr.w + 0.5, 0.06, 0.7, 0.01)), at(f, dr.u, hy, sk + 0.33), mass ? CONCRETE : d.paint.roof[1], 0.03);
+    if (!mass) for (const s of [-1, 1]) {
+      const uu = dr.u + s * (dr.w / 2 + 0.12);
+      k.put(dressing(k.mbeam(at(f, uu, hy - 0.4, sk - 0.01), at(f, uu, hy - 0.03, sk + 0.6), 0.05, 0.05)), d.paint.frame, 0.03);
+    }
+  }
+  // the name board: on the front gable over the doors, or high on a parapet's front
+  k.tag('fitting', 'sign', 'timber');
+  const sy = form.roof === 'gable' ? top + 0.45 : wallHead(h, 'front', 0, form.d / 2) - 0.32;
+  put(k, dressing(faceBox(k, f, 2.6, 0.5, 0.04)), at(f, 0, sy, sk + 0.02), 0x2f4a3c, 0.03);
+  put(k, dressing(faceBox(k, f, 2.2, 0.07, 0.02)), at(f, 0, sy, sk + 0.045), 0xd8d4c8, 0.03);
+  drums(k, form.w / 2 + 0.5, form.d / 2 - 1.0, 3);
+};
+
+/** (dome-detail-275) The evaporative cooler on a desert garage's flat roof: its cabinet on a curb, louvred on each side. */
+const swampCooler: Gear = (k, h) => {
+  const { form, dialect: d, top } = h, x = 1.6, z = -2.0;
+  // (the roof falls to the front: the curb's foot in the deck at the cabinet's low edge, its head level)
+  const y0 = roofTop(form, d, top, x, z + 0.6), y1 = roofTop(form, d, top, x, z - 0.6) + 0.22;
+  k.tag('fitting', 'cooler', 'metal');
+  put(k, dressing(k.box(1.2, y1 - y0, 1.2)), [x, (y0 + y1) / 2, z], 0x7d7a72, 0.03);
+  put(k, dressing(k.mbox(1.05, 0.85, 1.05, 0.02)), [x, y1 + 0.425, z], 0xb3ab98, 0.03);
+  put(k, dressing(k.mbox(1.15, 0.06, 1.15, 0.01)), [x, y1 + 0.88, z], 0x8c8778, 0.03);
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    put(k, dressing(k.box(nx ? 0.02 : 0.8, 0.55, nz ? 0.02 : 0.8)), [x + nx * 0.53, y1 + 0.43, z + nz * 0.53], 0x5e5a50, 0.03);
+  }
+};
+
+// ------------------------------------------------------------------------------------------------------------ forms
+
 interface HutVariant { form: HutForm; gear?: Gear }
 
 const win = (face: FaceId, u: number, w = 0.7, h = 0.6, y = 1.0): HutOpening => ({ face, u, y, w, h, kind: 'window' });
@@ -1101,20 +1495,22 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
     gear: bushings,
   },
   // the service garage: its roller door and the side door, windows down the sides, a louvre at the back, drums by it
+  // (dome-detail-275: a window in each bay of the long walls between the pilasters, a back door, garageYard's apron,
+  // hood, name board and rainwater goods)
   servicegarage: {
     form: { id: 'servicegarage', w: 8.4, d: 10.2, wallH: 3.4, lift: 0, roof: 'gable', rise: 1.3, battens: 0.9,
-      openings: [{ face: 'front', u: -1.6, y: 0, w: 3.2, h: 3.0, kind: 'garage' }, door('front', 2.7, 0.9, 2.1), win('left', 0, 1.2, 0.8, 1.5),
-        win('right', 0, 1.2, 0.8, 1.5), { face: 'back', u: 0, y: 2.0, w: 1.0, h: 0.8, kind: 'louvre' }] },
-    gear: (k, h) => drums(k, h.form.w / 2 + 0.5, h.form.d / 2 - 1.0, 3),
+      openings: [{ face: 'front', u: -1.6, y: 0, w: 3.2, h: 3.0, kind: 'garage' }, door('front', 2.7, 0.9, 2.1),
+        ...[-3.825, -1.275, 1.275, 3.825].flatMap((u) => [win('left', u, 1.1, 1.3, 1.1), win('right', u, 1.1, 1.3, 1.1)]),
+        { face: 'back', u: 0, y: 2.0, w: 1.0, h: 0.8, kind: 'louvre' }, door('back', 2.5, 0.9, 2.1)] },
+    gear: garageYard,
   },
   // the motor pool: an open-fronted shed under its skillion, posts along the open side, drums and crates under it
+  // (dome-detail-275: the high strip windows in the back and side bays, the side door, motorShed's yard and fittings)
   motorpool: {
-    form: { id: 'motorpool', w: 8.6, d: 10.6, wallH: 3.0, lift: 0, roof: 'skillion', rise: 0.6, open: ['front'], openings: [], battens: 0.9 },
-    gear: (k, h) => {
-      drums(k, -h.form.w / 2 + 1.0, -h.form.d / 2 + 1.0, 4);
-      k.tag('fitting', 'crates', 'plank');
-      for (const [x, z, y, s] of [[2.6, -3.9, 0, 1], [3.6, -3.7, 0, 0.8], [2.6, -3.9, 0.7, 0.7]] as const) put(k, k.box(0.9 * s, 0.7 * s, 0.9 * s), [x, y + 0.35 * s, z], 0x6a5a40, 0.08);
-    },
+    form: { id: 'motorpool', w: 8.6, d: 10.6, wallH: 3.0, lift: 0, roof: 'skillion', rise: 0.6, open: ['front'], battens: 0.9,
+      openings: [...[-3.225, -1.075, 1.075, 3.225].map((u) => win('back', u, 1.1, 0.6, 2.1)), door('left', -1.325, 0.9, 2.0),
+        win('left', -3.975, 1.1, 0.6, 2.1), ...[-1.325, 1.325].map((u) => win('right', u, 1.1, 0.6, 2.1))] },
+    gear: motorShed,
   },
 };
 
@@ -1272,6 +1668,21 @@ const bengalVeranda: Gear = (k, h) => {
   for (let i = 0; i < 3; i++) put(k, k.mbox(1.3, y0 * (1 - i / 3), 0.35), [-0.6, y0 * (1 - i / 3) / 2, d / 2 + 0.6 + 0.3 * i], p.foot, 0.05);
 };
 
+/** (dome-detail-275) The char yard's straw stack (a pala: the rice straw stacked round its pole, the pole's tied head
+ *  over the cone) at the homestead's back end, and the clay water pots (kolshi) by the front steps. */
+const bengalYard: Gear = (k, h) => {
+  const d = h.form.d;
+  k.tag('fitting', 'strawstack', 'thatch');
+  put(k, k.cylinder(0.62, 0.55, 1.4, 10), [-1.0, 0.7, -d / 2 - 1.2], 0xa08a55, 0.08);
+  put(k, k.cylinder(0.06, 0.64, 1.1, 10), [-1.0, 1.95, -d / 2 - 1.2], 0xb09a62, 0.08);
+  put(k, k.cylinder(0.09, 0.09, 0.4, 6), [-1.0, 2.62, -d / 2 - 1.2], 0x6e5a3c, 0.05);
+  k.tag('fitting', 'kolshi', 'tile');
+  for (const [x, z, s] of [[0.5, d / 2 + 0.85, 1], [0.95, d / 2 + 0.75, 0.85]] as const) {
+    put(k, k.cylinder(0.22 * s, 0.15 * s, 0.42 * s, 8), [x, 0.21 * s, z], 0x8a4a2c, 0.06);
+    put(k, k.cylinder(0.09 * s, 0.12 * s, 0.1 * s, 8), [x, 0.47 * s, z], 0x7a4026, 0.05);
+  }
+};
+
 /** The glazed water jars by a ladder's foot (the Ca Mau house). */
 const jars: Gear = (k, h) => {
   k.tag('fitting', 'jars', 'tile');
@@ -1383,7 +1794,7 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     saunahut: { form: { stove: undefined }, extra: chimney(0, -1.6) },
     leanto: {},
   },
-  hostomel: { motorpool: {}, guardpost: { ...towerPost(), extra: bagged } },
+  hostomel: { motorpool: { extra: roofWeights }, guardpost: { ...towerPost(), extra: bagged } },
   kyushu: { transformershed: {}, motorpool: {}, guardpost: {}, servicegarage: { form: flat() } },
   shanghai: { motorpool: {}, transformershed: { form: { roof: 'gable', rise: 0.9, parapet: 0 } }, checkpointhut: {}, servicegarage: {} },
   queenstown: { guardpost: {}, motorpool: {}, servicegarage: {} },
@@ -1395,10 +1806,10 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     checkpointhut: { form: { parapet: 0.35, rise: 0.1 }, extra: bagged },
     transformershed: {},
   },
-  saar: { transformershed: {}, motorpool: {}, checkpointhut: {}, servicegarage: {} },
+  saar: { transformershed: {}, motorpool: { extra: roofWeights }, checkpointhut: {}, servicegarage: {} },
   ruhr: { transformershed: {}, motorpool: {}, guardpost: groundPost({ roof: 'gable', rise: 0.8 }) },
   sarajevo: { guardpost: { ...towerPost(), extra: bagged }, transformershed: {}, motorpool: {}, servicegarage: {} },
-  glencanyon: { motorpool: {}, transformershed: {}, guardpost: groundPost({ parapet: 0.3, rise: 0.1 }), servicegarage: { form: flat() } },
+  glencanyon: { motorpool: {}, transformershed: {}, guardpost: groundPost({ parapet: 0.3, rise: 0.1 }), servicegarage: { form: flat(), extra: swampCooler } },
   navajo: { motorpool: {}, checkpointhut: {} },
   franconian: { guardpost: groundPost(), checkpointhut: {}, transformershed: {}, motorpool: {}, servicegarage: { form: flat() } },
   arctic: { motorpool: {}, servicegarage: {} },
@@ -1408,10 +1819,10 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
   bengal: {
     // the char homestead: galvanised sheet walls on its earthen plinth above the flood line, the yard-side veranda
     longhouse: {
-      dialect: { cladding: 'sheet', footing: 'plinth', paint: { wall: GALVANISED } },
+      dialect: { cladding: 'sheet', footing: 'plinth', shutters: true, paint: { wall: GALVANISED } },
       form: { w: 5.0, d: 10.6, wallH: 2.5, rise: 1.5, plinth: 0.9, stove: undefined,
         openings: [door('right', 0, 1.0, 1.95), win('right', -3.2, 0.9, 0.78, 1.0), win('right', 3.2, 0.9, 0.78, 1.0), win('left', 0, 0.9, 0.7, 1.1)] },
-      extra: bengalVeranda,
+      extra: both(bengalVeranda, bengalYard),
     },
     // the flood-season house on bamboo stilts, its ladder up to the door
     stilthouse: { form: { w: 4.6, d: 6.2, wallH: 2.3, lift: 1.7, rise: 1.35, veranda: 0,

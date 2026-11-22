@@ -11,12 +11,12 @@
    "facePass": 1
   },
   "savoyard": {
-   "score": 16,
+   "score": 17,
    "silhouette": 5,
    "mid": 5,
    "fine": 4,
-   "trisPerWallM2": 17.17,
-   "fineShare": 0.579,
+   "trisPerWallM2": 20.34,
+   "fineShare": 0.478,
    "facePass": 1
   },
   "dalmatian": {
@@ -47,12 +47,12 @@
    "facePass": 1
   },
   "goral": {
-   "score": 13,
+   "score": 15,
    "silhouette": 4,
    "mid": 4,
    "fine": 3,
-   "trisPerWallM2": 19.42,
-   "fineShare": 0.225,
+   "trisPerWallM2": 21.6,
+   "fineShare": 0.206,
    "facePass": 1
   },
   "polder": {
@@ -97,7 +97,7 @@
    "mid": 6,
    "fine": 6,
    "trisPerWallM2": 29.98,
-   "fineShare": 0.588,
+   "fineShare": 0.578,
    "facePass": 0.75
   },
   "franconian": {
@@ -114,8 +114,8 @@
    "silhouette": 1,
    "mid": 4,
    "fine": 1,
-   "trisPerWallM2": 15.96,
-   "fineShare": 0.144,
+   "trisPerWallM2": 22.12,
+   "fineShare": 0.142,
    "facePass": 0.5
   },
   "arctic": {
@@ -177,8 +177,8 @@
    "silhouette": 4,
    "mid": 3,
    "fine": 3,
-   "trisPerWallM2": 7,
-   "fineShare": 0.559,
+   "trisPerWallM2": 8.34,
+   "fineShare": 0.518,
    "facePass": 0.636
   },
   "queenstown": {
@@ -186,8 +186,8 @@
    "silhouette": 3,
    "mid": 3,
    "fine": 2,
-   "trisPerWallM2": 5.89,
-   "fineShare": 0.34,
+   "trisPerWallM2": 8.78,
+   "fineShare": 0.287,
    "facePass": 0.75
   },
   "glencanyon": {
@@ -195,7 +195,7 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 6,
-   "trisPerWallM2": 14.8,
+   "trisPerWallM2": 14.88,
    "fineShare": 0.556,
    "facePass": 1
   },
@@ -240,8 +240,8 @@
    "silhouette": 4,
    "mid": 4,
    "fine": 5,
-   "trisPerWallM2": 8.62,
-   "fineShare": 0.492,
+   "trisPerWallM2": 8.65,
+   "fineShare": 0.453,
    "facePass": 1
   },
   "andalusian": {
@@ -249,16 +249,16 @@
    "silhouette": 5,
    "mid": 3,
    "fine": 4,
-   "trisPerWallM2": 16.25,
+   "trisPerWallM2": 16.29,
    "fineShare": 0.446,
    "facePass": 1
   },
   "chouf": {
-   "score": 13,
+   "score": 14,
    "silhouette": 3,
    "mid": 5,
    "fine": 3,
-   "trisPerWallM2": 14.91,
+   "trisPerWallM2": 16.52,
    "fineShare": 0.335,
    "facePass": 1
   },
@@ -276,8 +276,8 @@
    "silhouette": 5,
    "mid": 4,
    "fine": 4,
-   "trisPerWallM2": 10.11,
-   "fineShare": 0.486,
+   "trisPerWallM2": 10.13,
+   "fineShare": 0.479,
    "facePass": 1
   }
  },

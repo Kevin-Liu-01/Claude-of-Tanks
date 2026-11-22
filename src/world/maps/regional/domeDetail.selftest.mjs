@@ -7,7 +7,7 @@
 //      standing on the last's head, narrowing to under 0.6 of its widest radius, at 0.8 m or more (domes.ts smoothDome,
 //      bulb: one smooth revolve);
 //   2. every upright revolve that closes over its axis like a dome (from 0.9 of its widest radius to under 0.35 of it
-//      over a rise of at least 0.3 of it, never through a flat lid), 0.8 m or wider, turns at least DOME_MIN_SEGMENTS round and five rows up that
+//      over a rise of at least 0.3 of it, never through a flat lid, and curved: two bands or more), 0.8 m or wider, turns at least DOME_MIN_SEGMENTS round and five rows up that
 //      closing (domes.ts draws DOME_MIN_RINGS up the whole curve);
 //      (domes.ts polygonalDome, the cloister vault over a polygonal body, is drawn as faces and is not a round dome);
 //   3. the watch sees what it guards (synthetic): the old Chouf dome fails law 1, a 14-segment revolve fails law 2, and
@@ -74,6 +74,8 @@ function coarseRevolves(list) {
     // (a shaft tapering to a flat lid reaches its axis through the lid: not a dome)
     if (iHead < 0 || profile[iHead][0] - profile[iMax][0] < 0.3 * rMax || Math.abs(profile[iHead][0] - profile[iHead - 1][0]) < 1e-6) continue;
     const rows = profile.slice(iMax, iHead + 1).filter((p, i, arr) => i === 0 || Math.abs(p[0] - arr[i - 1][0]) > 1e-6).length - 1;
+    // a straight cone (one band: a spire, a tank's roof, a lantern's cap) is not a dome
+    if (rows < 2) continue;
     if (segments < DOME_MIN_SEGMENTS || rows < 5) out.push(`${segments} segments x ${rows} rows, r ${rMax.toFixed(2)} m at ${where(c)}`);
   }
   return out;
