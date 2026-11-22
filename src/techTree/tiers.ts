@@ -31,7 +31,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   pgz09: 6, pgz95: 5, pl01: 10,
   pl01_105: 10, pt64_tur: 4, pt84_orzel: 10, pt84_sokol: 9, pt84_zbik: 10, pt91a_twardy: 5, pt91m: 4, puma_s1: 6, pza_loara: 6,
   raiju_ifv: 10, sabra_mk2: 2, shot_kal: 3, spz_puma: 4, spz_wotan: 6, stb1: 1, strv103a: 2, strv103b: 2, strv103b_net: 2, strv103e: 10, strv152: 10, strv105: 3,
-  strv121: 9, strv122: 9, strv81: 2, t14_armata: 10, t62_1975: 1, t62mv1: 2, t64b1v_2022: 4, t64bm1m: 4, t64bv: 3,
+  strv121: 10, strv122: 10, strv81: 2, t14_armata: 10, t62_1975: 1, t62mv1: 2, t64b1v_2022: 4, t64bm1m: 4, t64bv: 3,
   t64bv1: 3, t64bv_donbas: 4,
   osorio_p1: 3, osorio_p2: 4,
   t72_rys: 5, t72b3: 6, t72b3_bastion_m: 8, t72b3_qilin: 7, t72b3_sich: 7, t72b3_zubr: 6, t72b3_zubr_ii: 6,
