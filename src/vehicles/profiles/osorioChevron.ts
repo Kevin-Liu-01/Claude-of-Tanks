@@ -31,6 +31,27 @@ export interface OsorioChevron {
 interface Plane { readonly a: number; readonly bx: number; readonly bz: number }
 const at = (p: Plane, x: number, z: number): number => p.a + p.bx * x + p.bz * z;
 
+/** The wedge's flat roof and its front slope rising behind the face's top edge, and its floor rising toward the tip. */
+function chevronPlanes(c: OsorioChevron): { roof: Plane; front: Plane; floor: (z: number) => number } {
+  const [xs, zs] = c.shoulder, [xt, zt] = c.tip;
+  // the face's plan normal (forward and out) and the front slope rising behind it from the face's top edge
+  const ul = Math.hypot(xs - xt, zs - zt), nx = -(zs - zt) / ul, nz = (xs - xt) / ul;
+  return {
+    roof: { a: c.roofY + 0.02 * CHEVRON_ROOT_Z, bx: 0, bz: -0.02 },
+    front: { a: c.faceTopY + c.frontSlope * (xt * nx + zt * nz), bx: -c.frontSlope * nx, bz: -c.frontSlope * nz },
+    floor: (z) => c.floorY + Math.max(0, z - c.turnZ) * c.floorRise,
+  };
+}
+
+/**
+ * The wedge's top (its roof and front slope; the outer bevel stands well clear of the inner face) and floor at turret
+ * (|x|, z), for a part that meets its inner face: the EE mantlets carry them across the gun slot (osorio.ts).
+ */
+export function osorioChevronSurfaces(c: OsorioChevron): { top: (x: number, z: number) => number; floor: (z: number) => number } {
+  const { roof, front, floor } = chevronPlanes(c);
+  return { top: (x, z) => Math.min(at(roof, Math.abs(x), z), at(front, Math.abs(x), z)), floor };
+}
+
 /** One wedge on side s (+1 the left, +X), its outer face at the side armour's outer face `outerX` at the root. */
 export function addOsorioChevron(P: TankBuilderPort, s: 1 | -1, c: OsorioChevron, outerX: number): void {
   const z0 = CHEVRON_ROOT_Z, [xs, zs] = c.shoulder, [xt, zt] = c.tip, xi = c.innerX;
@@ -39,11 +60,7 @@ export function addOsorioChevron(P: TankBuilderPort, s: 1 | -1, c: OsorioChevron
     if (z <= zs) return outerX - 0.02 + (z - c.turnZ) / (zs - c.turnZ) * (xs - outerX + 0.02);
     return xs + (z - zs) / (zt - zs) * (xt - xs);
   };
-  const floor = (z: number): number => c.floorY + Math.max(0, z - c.turnZ) * c.floorRise;
-  // the face's plan normal (forward and out) and the front slope rising behind it from the face's top edge
-  const ul = Math.hypot(xs - xt, zs - zt), nx = -(zs - zt) / ul, nz = (xs - xt) / ul;
-  const roof: Plane = { a: c.roofY + 0.02 * z0, bx: 0, bz: -0.02 };
-  const front: Plane = { a: c.faceTopY + c.frontSlope * (xt * nx + zt * nz), bx: -c.frontSlope * nx, bz: -c.frontSlope * nz };
+  const { roof, front, floor } = chevronPlanes(c);
   const bevelX = outerX - c.bevelRun;
   const bevel: Plane = { a: c.roofY + c.bevelSlope * bevelX, bx: -c.bevelSlope, bz: 0 };
   const planes = [roof, front, bevel];

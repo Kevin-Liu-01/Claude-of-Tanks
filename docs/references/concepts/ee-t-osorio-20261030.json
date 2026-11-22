@@ -21,8 +21,8 @@
     },
     "mantlets": {
       "date": "2026-11-21",
-      "request": "for the eet3 and ee4 make their mantelts different but also make both actually match up and align with the cheeks",
-      "scope": "Each mark's mantlet becomes one block riding the gun that fills the slot between its chevron wedges wall to wall, its face's top edge on the chevrons' face-top line, its face's foot beside the chin on their face foot at the tips, and its nose out to their tips: the EE-T3's a pointed wedge, its faces parallel to the chevrons' faces (the Leopard 2A6's mantlet wedge between its turret wedges); the EE-T4's a flat bolted module square to the gun. Under the gun each traces the old mount's round underside, so the published gun-depression curves hold (tools/gun-depression-sweep.mjs)."
+      "request": "for the eet3 and ee4 make their mantelts different but also make both actually match up and align with the cheeks; then \"the eet3 mantlet is just flat and horizontal. fix both so theyre more like the leopard 2 mantlets in how they also match the top and bottom angle o the turrets/cheeks\" and \"it looks like the mantlets guns dont look properly attached\"",
+      "scope": "Each mark's mantlet becomes one block riding the gun that fills the slot between its chevron wedges wall to wall, as the Leopard 2A5/2A6's mantlet wedge does: its top is the chevrons' own top carried across the slot (their front slope rising to the roof, meeting in a low ridge over the gun), its underside beside the gun their rising floor, its nose at their tips, and the gun leaves through a collar and seal ring. The EE-T3's is a pointed wedge, its faces parallel to the chevrons' faces; the EE-T4's a flat bolted face square to the gun, gabled on the two planes. The brow is dropped; the gun cradle's round housing about the trunnion axis closes the gun line behind the mantlet. Under the gun each traces the old mount's round underside, so the published gun-depression curves hold (tools/gun-depression-sweep.mjs)."
     }
   },
   "comparisonPurpose": "owner-authored-concept",
