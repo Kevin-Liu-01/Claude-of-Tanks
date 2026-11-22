@@ -8,11 +8,13 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { KONTAKT1_ERA } from '../leopard2A4Kontakt1.ts';
-import { T80BV_KONTAKT1_PLATES, T80U_KURSK_ARMOR_FACTOR, T80U_KURSK_K1_PLATES, T84_ERA_PLATES, t80SternPitchByYawDeg } from '../t80MarkFrames.ts';
+import { T80BV_KONTAKT1_PLATES, UA_T80BV_KONTAKT1_PLATES, T80U_KURSK_ARMOR_FACTOR, T80U_KURSK_K1_PLATES, T84_ERA_PLATES, t80SternPitchByYawDeg } from '../t80MarkFrames.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import { eraPlateNames } from './eraAgreement.test-support.mjs';
+import { rubberSkirtRun, skirtSections } from './rubberSkirt.ts';
+import { t80uXApronAt, t80uXApronX } from './t80uX.ts';
 
 const MARKS = ['t80', 't80b', 't80bv', 'ua_t80bv'];
 const receipts = {};
@@ -64,18 +66,17 @@ assert.deepEqual(MARKS.map((id) => receipts[id].overheadScreen), [false, false, 
 for (const id of ['t80', 't80b']) assert.deepEqual(receipts[id].kontakt1, {}, `${id}: no Kontakt-1`);
 
 // the BV's Kontakt-1: every cluster populated (eight wedge columns left of the gun's line on the casting's +x cheek, five
-// on the -x, two deep; the 4x4 roof grid on the -x front; the tapering glacis field; ten a skirt), and the spec's plates
+// on the -x, two deep; the 4x4 roof grid on the -x front; the tapering glacis field; bare skirts), and the spec's plates
 // at the fleet's Kontakt-1 values
 const k1 = receipts.t80bv.kontakt1;
 assert.deepEqual(Object.keys(k1).sort(), [...T80BV_KONTAKT1_PLATES]);
 assert.equal(k1.turret_era_R, 16, 'eight double-stacked columns on the +x cheek');
 assert.equal(k1.turret_era_L, 10 + 16, 'five double-stacked columns and the 4x4 roof grid on the -x side');
-assert.equal(k1.skirt_era_L, 10);
-assert.equal(k1.skirt_era_R, 10);
+assert.equal(k1.skirt_era_L, undefined, 'no Kontakt-1 on the T-80BV\'s skirts (274, Kevin: "remove the goofy squares")');
 assert.ok(k1.glacis_era_L + k1.glacis_era_R >= 30, 'the glacis field (11-10-8-6-4 less the lamp and hook clearances)');
 // the Ukrainian BV: the same field, the skirt row the full length (15 a side) and the extra 3x4 box on the +x flank
 const ua = receipts.ua_t80bv.kontakt1;
-assert.deepEqual(Object.keys(ua).sort(), [...T80BV_KONTAKT1_PLATES]);
+assert.deepEqual(Object.keys(ua).sort(), [...UA_T80BV_KONTAKT1_PLATES]);
 assert.equal(ua.skirt_era_L, 15);
 assert.equal(ua.skirt_era_R, 15);
 assert.equal(ua.turret_era_R, k1.turret_era_R + 12, 'the flank box adds three columns of four');
@@ -182,4 +183,38 @@ twinTank.dispose();
   assert.equal(spec.hp, 2250, `${id}: its own hp`);
 }
 
-console.log('t80Marks.selftest: T-80, T-80B, T-80BV, the Ukrainian T-80BV, the T-80U Kursk and the T-84 on the T-80U X hull, each with its own kit; ERA drawn = spec');
+
+// the segmented rubber skirts (profiles/rubberSkirt.ts, 274 t80-skirts-274; Kevin: "fix these rubber sideskirts they look so
+// bad"): separate sheets with gaps, each hung on the apron line under its own clamp strip and bolts, its foot kicked out
+// and its lower corners curled, each sheet unlike its neighbours, and the same build twice
+{
+  const runOf = (clamp) => {
+    const sheets = [], fittings = [];
+    const port = { addMudguard: (label, bucket, geo) => sheets.push({ label, bucket, geo }), addEquipment: (bucket, geo) => fittings.push({ bucket, geo }) };
+    rubberSkirtRun(port, { label: 't80b-rubber-skirt', bucket: 'hullRubber', side: 1, sections: skirtSections(-2.86, 2.88, 7),
+      top: (z) => t80uXApronAt(z).top, foot: (z) => t80uXApronAt(z).foot, x: t80uXApronX, clamp });
+    return { sheets, fittings };
+  };
+  const { sheets, fittings } = runOf();
+  assert.equal(sheets.length, 7, 'seven sheets a side');
+  const boxes = sheets.map(({ geo }) => { geo.computeBoundingBox(); return geo.boundingBox; });
+  for (let i = 1; i < boxes.length; i++) {
+    const gap = boxes[i].min.z - boxes[i - 1].max.z;
+    assert.ok(gap > .024 && gap < .034, `sheet ${i}: a ${gap.toFixed(4)} m open joint to its neighbour`);
+  }
+  for (const [i, b] of boxes.entries()) {
+    const z = (b.min.z + b.max.z) / 2, { top, foot } = t80uXApronAt(z);
+    assert.ok(Math.abs(b.max.y - top) < .03, `sheet ${i}: hangs from the apron line`);
+    assert.ok(b.min.y > foot - .04 && b.min.y < foot + .03, `sheet ${i}: reaches the apron's foot, its hem its own`);
+    assert.ok(b.max.x - t80uXApronX(z, foot) > .03, `sheet ${i}: its foot kicked out, flared and beaded`);
+  }
+  const kicks = boxes.map((b) => b.max.x.toFixed(4));
+  assert.ok(new Set(kicks).size >= 5, `the sheets differ (${kicks.join(', ')})`);
+  assert.ok(fittings.length >= 7 * 3 && fittings.every(({ bucket }) => bucket === 'hullDetail'), 'a clamp strip and at least two bolts on every sheet');
+  const again = runOf();
+  assert.deepEqual(again.sheets.map(({ geo }) => [...geo.getAttribute('position').array]), sheets.map(({ geo }) => [...geo.getAttribute('position').array]),
+    'the same skirts every build');
+  assert.equal(runOf(() => false).fittings.length, 0, 'a sheet under an ERA row carries no clamp of its own');
+}
+
+console.log('t80Marks.selftest: T-80, T-80B, T-80BV, the Ukrainian T-80BV, the T-80U Kursk and the T-84 on the T-80U X hull, each with its own kit; ERA drawn = spec; segmented rubber skirts');

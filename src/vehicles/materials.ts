@@ -2824,6 +2824,33 @@ const FIELD_DUST_UNIFORM = Object.freeze({
     return fieldDustValue;
   },
 });
+/**
+ * The rubber's tile, broken up (274, t80-skirts-274; Kevin, 2026-11-21: "the texture repeating is too jarring"). The
+ * rubber's detail maps (rubberSurface.ts) are one 0.4 m tile, so a 5.7 m skirt showed the same grime blotches fourteen
+ * times in a row. A material with COT_RUBBER_TILES samples each map twice: once on its own UVs and once on UVs turned
+ * 35 deg and scaled by 0.731, so the two tiles never line up. It blends the two by a value noise about 0.9 m across, and
+ * rescales the blend about the map's mean (its smallest mip), so the grain keeps its contrast where the two halves mix.
+ * The look up close is the tile's own. Only the repeat goes. Three more samples a map, so nine a fragment for the
+ * rubber's three maps, and no other program changes. vehicleAmbientFloorHook swaps the maps' sampler calls for
+ * cotRubberTexture around their three chunks; the chunks' include lines stay, so the hooks chained after it (the burn
+ * mask, the armour paint) still find them (the text they put before a chunk falls inside the swap and calls no texture2D).
+ */
+const RUBBER_TILES_GLSL = /* glsl */ `
+float cotRbHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+float cotRbNoise( vec2 p ) {
+	vec2 i = floor( p ), f = fract( p );
+	f = f * f * ( 3.0 - 2.0 * f );
+	return mix( mix( cotRbHash( i ), cotRbHash( i + vec2( 1.0, 0.0 ) ), f.x ),
+		mix( cotRbHash( i + vec2( 0.0, 1.0 ) ), cotRbHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
+}
+vec4 cotRubberTexture( sampler2D t, vec2 uv ) {
+	float w = smoothstep( 0.2, 0.8, cotRbNoise( uv * 0.43 + 7.3 ) );
+	vec2 turned = mat2( 0.8192, 0.5736, -0.5736, 0.8192 ) * uv * 0.731 + vec2( 0.37, 0.19 );
+	vec4 a = texture( t, uv ), b = texture( t, turned ), mean = texture( t, uv, 16.0 );
+	return mean + ( mix( a, b, w ) - mean ) * inversesqrt( w * w + ( 1.0 - w ) * ( 1.0 - w ) );
+}`;
+/** The rubber's three map chunks, each between the sampler swap and its restore (RUBBER_TILES_GLSL). */
+const RUBBER_TILE_CHUNKS = ['#include <map_fragment>', '#include <roughnessmap_fragment>', '#include <normal_fragment_maps>'] as const;
 const FIELD_DUST_GLSL = /* glsl */ `
 float cotFdHash( vec3 p ) {
 	p = fract( p * 0.3183099 + 0.1 );
@@ -2855,6 +2882,14 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
   shader.uniforms.uCotFieldDust = FIELD_DUST_UNIFORM;
+  if (shader.defines?.COT_RUBBER_TILES !== undefined) {
+    let fragment = `${RUBBER_TILES_GLSL}\n${shader.fragmentShader}`;
+    for (const chunk of RUBBER_TILE_CHUNKS) {
+      fragment = fragment.replace(chunk,
+        `#undef texture2D\n#define texture2D cotRubberTexture\n${chunk}\n#undef texture2D\n#define texture2D texture`);
+    }
+    shader.fragmentShader = fragment;
+  }
   shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\nvarying float vCotSuitShade;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
   // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves); (264) the
   // suit's shade passes through with it
@@ -3265,8 +3300,11 @@ export function chainVehicleMaterialHook<T extends THREE.Material>(
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it. COT_NO_FIELD_DUST (2026-10-24, transitions-249; the owner: rubber stays rubber): the tyres', tracks', mats'
  * and glass's opt-out of the field dust, which the Garage hero's dormant energy skins (clones) dropped, dusting them.
+ * COT_RUBBER_TILES (274): the rubber's broken-up tile (RUBBER_TILES_GLSL), kept by the hull's rubber (tankFactoryCore
+ * separateHullRubber clones it), so skirts and flaps lose the repeat with the tyres.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS', 'COT_NO_FIELD_DUST'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS', 'COT_NO_FIELD_DUST',
+  'COT_RUBBER_TILES'] as const;
 
 /**
  * A clone of a cascade-registered material outside vehicleMaterialSetup: a dev build and the node receipts say so; the
@@ -3581,6 +3619,8 @@ export function createTankMaterials(
   // and dust in rubberSurface.ts's maps, so the field-dust term leaves it out; a second dust film would wash the tyres
   // pale grey (launch night 2026-10-08: "dusty dark grey is right and pale grey is not").
   rubber.defines = { ...rubber.defines, COT_NO_FIELD_DUST: 1 };
+  // 274 (t80-skirts-274; Kevin: "the texture repeating is too jarring"): its 0.4 m tile, broken up (RUBBER_TILES_GLSL)
+  rubber.defines.COT_RUBBER_TILES = 1;
   // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
   // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
   const rubberCavity = track(setup(new THREE.MeshStandardMaterial({

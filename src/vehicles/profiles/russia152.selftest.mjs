@@ -54,11 +54,12 @@ for (const quality of ['high', 'low']) {
       assert.ok(near(b.max.z, muzzleZ, .03), `${quality}: ${id}'s muzzle at the spec's barrel end (${b.max.z.toFixed(3)} v ${muzzleZ.toFixed(3)})`);
       assert.ok(gunG, `${quality}: ${id} has a gun rig`);
     }
-    // the Object 292's hull is the T-80U X's: the same hull group's envelope, its width 2 cm more over Kubinka's rubber skirts
+    // the Object 292's hull is the T-80U X's: the same hull group's envelope. Its width is Kubinka's own rubber skirt run
+    // (object292-275), up to 8 cm inside the T-80U X's leaning segmented sheets (t80-skirts-274) or 3 cm outside them
     const hull = (id) => box(tanks[id].root.getObjectByName('rig_hull') ?? tanks[id].hullG);
     const h292 = hull('object292'), hu = hull('t80u');
     // (the front's rubber flaps flare forward over the track noses, Kubinka's: up to 9 cm past the T-80U X's bow)
-    for (const k of ['x', 'y', 'z']) assert.ok(near(h292.min[k], hu.min[k], k === 'x' ? .02 : .01) && (k === 'z' ? h292.max.z >= hu.max.z - .01 && h292.max.z <= hu.max.z + .09 : near(h292.max[k], hu.max[k], k === 'x' ? .02 : .01)), `${quality}: the Object 292's hull is the T-80U X's (${k}: ${h292.min[k].toFixed(3)}..${h292.max[k].toFixed(3)} v ${hu.min[k].toFixed(3)}..${hu.max[k].toFixed(3)})`);
+    for (const k of ['x', 'y', 'z']) assert.ok((k === 'x' ? h292.min.x >= hu.min.x - .03 && h292.min.x <= hu.min.x + .08 && h292.max.x <= hu.max.x + .03 && h292.max.x >= hu.max.x - .08 : near(h292.min[k], hu.min[k], .01)) && (k === 'z' ? h292.max.z >= hu.max.z - .01 && h292.max.z <= hu.max.z + .09 : k === 'x' || near(h292.max[k], hu.max[k], .01)), `${quality}: the Object 292's hull is the T-80U X's (${k}: ${h292.min[k].toFixed(3)}..${h292.max[k].toFixed(3)} v ${hu.min[k].toFixed(3)}..${hu.max[k].toFixed(3)})`);
     // the T-14 152's hull is the T-14's: the same length and floor; its field kit (owner 2026-11-05: the net and ghillie
     // over the engine deck, the drapes down the rear slat cages) stands at most 2 cm wider and 3 cm higher
     const h152 = hull('t14_152'), h14 = hull('t14_armata');
