@@ -271,6 +271,7 @@ import {
   answerTutorialOffer, markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
   TUTORIAL_ON,
 } from './ui/tutorial/tutorialRecord.ts';
+import { uiIconSVG } from './ui/uiIcons.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
@@ -4859,6 +4860,7 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   keyLabel: (action) => (input.isPadConnected() && !input.isTouchLayout()
     ? labelForPadButton(input.getPadBinding(action)) : labelForCode(input.getBinding(action))),
   codeLabel: labelForCode,
+  iconSvg: (id) => uiIconSVG(id, 18),
   playerPosition: () => {
     const pos = game.phase === 'battle' ? game.player?.state?.pos : null;
     return pos ? { x: pos.x, z: pos.z } : null;

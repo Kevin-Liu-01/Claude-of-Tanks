@@ -48,6 +48,8 @@ export interface TutorialPort {
   /** A key's cap as the game writes it (input.ts labelForCode; passed in so the chunk never splits input.ts off the
    *  boot graph into a request of its own). */
   codeLabel(code: string): string;
+  /** 274: a step's icon as markup (ui/uiIcons.ts, passed in so the chunk never splits it off the boot graph). */
+  iconSvg?(id: string): string;
   /** The player's tank on the ground plane, in battle; null elsewhere. */
   playerPosition(): { readonly x: number; readonly z: number } | null;
   /** The chapter's screen: live, covered by a surface the step did not open, or gone. */
@@ -464,6 +466,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
       progress: steps.length > 1 ? t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }) : '',
       fraction: (index + 1) / steps.length,
       title: t(step.title),
+      iconHtml: port.iconSvg?.(step.icon) ?? '',
       bodyHtml: bodyHtml(step, port),
       media: step.media ? { ...step.media, alt: t(step.title) } : null,
       target: resolver(step),
