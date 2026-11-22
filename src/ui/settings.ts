@@ -278,16 +278,13 @@ const SETTINGS_CSS = `
 .cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
   background:oklch(from var(--scrim) l c h / .7);font-family:var(--font-ui);color:var(--ink-1);
   -webkit-user-select:none;user-select:none;}
-.cot-settings.open{display:flex;animation:cotSetVeil var(--dur-base) var(--ease-enter);}
+.cot-settings.open{display:flex;}
 /* the panel's reset spares every kit element (buttons, notices, swatches), whose components layer the surfaces layer
    would otherwise override */
 .cot-settings :where(:not([class*="cot-c-"])){box-sizing:border-box;margin:0;padding:0;}
 .cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(1080px,88vh);max-height:88vh;
   display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
 .cot-set-panel:focus{outline:none;}
-.cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
-@keyframes cotSetVeil{from{opacity:0;}}
-@keyframes cotSetIn{from{opacity:0;transform:translateY(14px);}}
 .cot-set-hdr{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s5) var(--s2);}
 .cot-set-hdr h2{margin-right:auto;font:600 max(20px,var(--fs-20))/1.15 var(--font-display);letter-spacing:var(--track-title);
   color:var(--ink-1);}
@@ -471,7 +468,6 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 /* settings_ui r2: the panel respects reduced motion — enter transition,
    paused lamp and listening pulse all freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
-  .cot-settings.open,.cot-settings.open .cot-set-panel{animation:none;}
   .cot-set-paused::before{animation:none;}
   .cot-chip.listening{animation:none;}
   .cot-settings *{transition-duration:0s !important;}
@@ -514,8 +510,7 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-cot-st
    Settings, the Esc menu, is its one other way out. */
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
   background:oklch(from var(--scrim) l c h / .5);color:var(--ink-1);-webkit-user-select:none;user-select:none;}
-.cot-resume.show{display:grid;animation:cot-rz-in var(--dur-base) var(--ease-enter);}
-@keyframes cot-rz-in{from{opacity:0}}
+.cot-resume.show{display:grid;}
 .cot-resume .rz-plate{display:grid;justify-items:center;gap:var(--s5);padding:var(--s6) var(--s7);
   background:var(--hud-plate);box-shadow:var(--e2);}
 .cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
@@ -650,11 +645,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ensureStyle('cot-settings-style', SETTINGS_CSS, 'surfaces');
 
   // --- DOM ---------------------------------------------------------------------
-  const root = el('div', 'cot-settings');
+  // (ui-motion-275) the veil fades and the panel rises with the shared vocabulary (components/surfaceMotion.css): enter as
+  // .open shows it, exit as .open goes, the input already released to the game
+  const root = el('div', 'cot-settings cot-m-fade cot-m-by-open');
   // the keys a kit control keeps (onPanelKey yields them to it) stop here, short of the game behind the panel
   root.addEventListener('keydown', (event) => { if (open) event.stopPropagation(); });
   root.innerHTML =
-    `<div class="cot-set-panel" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
+    `<div class="cot-set-panel cot-m-rise" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused"${datumAttr('paused')}>${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
@@ -742,11 +739,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // Click-to-resume veil (controls_gunnery r2): pointer-lock loss from ALT-TAB
   // / focus loss must NOT throw the options menu at the player (WoT returns
   // you to the battle). The veil relocks inside its own click gesture.
-  const resume = el('div', 'cot-resume');
+  // (ui-motion-275) the pause veil fades and its plate pops in; a resume takes the pointer at once while it fades out
+  const resume = el('div', 'cot-resume cot-m-fade cot-m-by-show');
   resume.setAttribute('role', 'dialog');
   resume.setAttribute('aria-labelledby', 'cot-rz-title');
   resume.innerHTML =
-    `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
+    `<div class="rz-plate cot-m-pop"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
     '<div class="rz-actions">' +
     `<button type="button" class="cot-c-btn cot-c-btn--48 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--48 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
@@ -1735,7 +1733,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     langNote.textContent = t('settings.language.note');
   }
 
+  // (ui-motion-275) a tab change swaps its page in (cot-m-swap, components/surfaceMotion.css); a redraw of the same tab (a
+  // reset, a setting that reshapes the page) and the panel's own opening never do
+  let renderedTab = '';
   function renderTab() {
+    const swapped = renderedTab !== activeTab && root.classList.contains('open');
+    renderedTab = activeTab;
     for (const menu of tabMenus.splice(0)) menu.dispose();
     cancelCapture();
     clearConflict();
@@ -1756,6 +1759,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
+    if (swapped) for (const page of body.children) page.classList.add('cot-m-swap');
     scheduleScrollFades(); // fades follow the fresh content's real overflow
   }
 

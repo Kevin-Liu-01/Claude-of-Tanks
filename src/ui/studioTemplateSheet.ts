@@ -99,7 +99,7 @@ export function createTemplateSheet(options: TemplateSheetOptions): TemplateShee
 
   const build = (): HTMLDialogElement => {
     const sheet = document.createElement('dialog');
-    sheet.className = 'cot-studio-templates';
+    sheet.className = 'cot-studio-templates cot-m-rise'; // (ui-motion-275) components/surfaceMotion.css
     sheet.setAttribute('aria-labelledby', 'cot-studio-templates-title');
     // the preview is the cards' echo, so assistive tech reads the focused option, not this figure
     sheet.innerHTML = '<header class="st-tpl__head"><h2 id="cot-studio-templates-title"></h2><span class="st-tpl__count"></span>'

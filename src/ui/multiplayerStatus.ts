@@ -348,7 +348,8 @@ export function createMultiplayerStatusSurface({
     bannerLeave.type = 'button';
     bannerLeave.textContent = t('mpStatus.leave');
   }
-  const panel = createElement('div', 'cot-mp-panel unknown', root);
+  // (ui-motion-275) the network panel drops into place under its strip and back (components/surfaceMotion.css)
+  const panel = createElement('div', 'cot-mp-panel cot-m-drop unknown', root);
   panel.id = 'cot-mp-panel';
   panel.setAttribute('role', 'region');
   panel.setAttribute('aria-label', t('mpStatus.panelAria'));
@@ -447,7 +448,7 @@ export function createMultiplayerStatusSurface({
     if (text.health !== lastHealth) {
       lastHealth = text.health;
       setHealthClass(strip, 'cot-mp-strip', text.health);
-      setHealthClass(panel, 'cot-mp-panel', text.health);
+      setHealthClass(panel, 'cot-mp-panel cot-m-drop', text.health);
     }
     // (after the health's class, which sets the strip's whole class: the tile's word stands in its ping's line)
     strip.classList?.toggle('noted', !!shortNotice);

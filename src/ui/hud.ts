@@ -2484,7 +2484,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   let flagHtml: ((nation: string) => string) | null = null;
   import('./flags.ts').then(({ flagIconHTML }) => { flagHtml = (nation) => flagIconHTML(nation, 16, 12); }, () => {});
 
-  const touchAimWarning = el('div', 'cot-aim-warning', root);
+  // (ui-motion-275) the HUD's chips come and go with the shared vocabulary (components/surfaceMotion.css): a short drop or
+  // rise as each shows, never a motion on the numbers they carry
+  const touchAimWarning = el('div', 'cot-aim-warning cot-m-drop', root);
   touchAimWarning.hidden = true;
   touchAimWarning.setAttribute('role', 'status');
   // the chip's glyph and words: a compact chip (battleHudLayout.css, the 11 px floor) reads as its glyph alone, the words
@@ -2617,7 +2619,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const allyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.ally .team-label');
   const enemyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .team-label');
   const timerLabelEl = requireElement<HTMLElement>(topPlate, '.tm-label');
-  const modeStatusEl = el('div', 'cot-mode-status', root);
+  const modeStatusEl = el('div', 'cot-mode-status cot-m-drop cot-m-by-show', root);
   modeStatusEl.setAttribute('role', 'status');
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
   // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
@@ -3071,7 +3073,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   specialButton.dataset.tip = t(vehicleAction('suspension').help);
   bindControl(specialButton, () => { if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {}); });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
-  const jumpHint = el('button', 'cot-jump', controlsRow);
+  const jumpHint = el('button', 'cot-jump cot-m-rise cot-m-by-on', controlsRow);
   jumpHint.type = 'button';
   bindControl(jumpHint, () => bus.emit('ui:selfRight', {}));
   // round 30 (owner 2026-09-20): a rocket marks the jump — it is a boost now, on the ground or in the air

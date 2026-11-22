@@ -83,7 +83,8 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
 } {
   const subject = bar.querySelector<HTMLButtonElement>('.subject');
   const pop = document.createElement('div');
-  pop.className = 'cot-spec-pick';
+  // (ui-motion-275) the ally picker rises from the bar and its scrim fades (components/surfaceMotion.css)
+  pop.className = 'cot-spec-pick cot-m-rise';
   pop.hidden = true;
   // (the picker on its own host: an Esc it spends restoring stops there, short of the back-out on the pop below)
   const host = document.createElement('div');
@@ -103,7 +104,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   // (the battle under the open list veiled whole, as a modal's scrim: half-covered, the lanes' "You" stuck out of its edge
   // and the map was cut through, gauntlet r15; a press on it closes the list, as any press outside does)
   const scrim = document.createElement('div');
-  scrim.className = 'cot-spec-scrim';
+  scrim.className = 'cot-spec-scrim cot-m-fade';
   scrim.hidden = true;
   bar.parentElement?.insertBefore(scrim, bar);
   let allies: readonly SpectateAlly[] = [];

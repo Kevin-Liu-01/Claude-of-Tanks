@@ -740,7 +740,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="${t('garage.nav.menu')}" ` +
     `aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
     `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.menu')}</span></button>` +
-    `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
+    `<div class="cot-mobile-nav-menu cot-m-drop" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
     `${uiIconSVG('home', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.home')}</strong></span></button>` +
@@ -787,7 +787,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
     // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
     // the time, the tank and one Deploy button. Private and LAN rooms open the play menu as before.
-    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-modal="true" aria-labelledby="cot-deploy-title">` +
+    `<div class="cot-battle-menu cot-m-swap" id="cot-battle-menu" role="dialog" aria-modal="true" aria-labelledby="cot-deploy-title">` +
     `<header class="cot-deploy-head">` +
     `<button type="button" class="cot-deploy-back" data-battle-close data-ui-sound="back" aria-label="${t('garage.battle.closeSetup')}">` +
     `${uiIconSVG('chevronLeft', 18)}<span>${t('garage.nav.garage')}</span>${keycap('Esc')}</button>` +
@@ -802,12 +802,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" class="cot-deploy-tab" data-deploy-room="lan">${uiIconSVG('battleLan', 18)}${t('garage.battle.typeLan')}</button>` +
     `</nav></header>` +
     `<div class="cot-battle-menu-scroll">` +
-    `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
+    `<section class="cot-battle-mode-list cot-deploy-panel cot-m-swap" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
     // the battle modes: the one mode picker (modePicker.ts, the Rooms host's too), filled when it loads (openDeployModes)
     `<div class="cot-deploy-modes" data-deploy-modes></div>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `<div class="cot-deploy-lower" data-deploy-lower></div></section>` +
-    `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
+    `<section class="cot-deploy-panel cot-deploy-campaign cot-m-swap" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
     `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
     `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
     // the campaign tab's plate: the operation in focus (deployScreen.ts brief)
@@ -825,7 +825,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="cot-deploy-field-tags" data-deploy-field-tags></span></span>` +
     `<span class="cot-c-chip cot-deploy-field-all" data-deploy-field-all aria-hidden="true"></span></button>` +
     `<span class="cot-deploy-field-mm" aria-hidden="true"><img data-deploy-field-mm alt="" width="256" height="256" decoding="async" hidden></span>` +
-    `<div class="cot-deploy-field-pop" id="cot-deploy-field-pop" data-deploy-field-pop hidden></div></div>` +
+    `<div class="cot-deploy-field-pop cot-m-swap" id="cot-deploy-field-pop" data-deploy-field-pop hidden></div></div>` +
     `<div class="cot-battle-solo-options" data-solo-options>` +
     `<div data-team-options>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
@@ -882,7 +882,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-tabbar="gallery">${uiIconSVG('gallery', 22)}<span>${t('garage.nav.gallery')}</span></button>` +
     `<button type="button" data-tabbar="record">${uiIconSVG('record', 22)}<span>${t('garage.nav.record')}</span></button>` +
     `<button type="button" data-tabbar="more">${uiIconSVG('menu', 22)}<span>${t('garage.nav.more')}</span></button></nav>` +
-    `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
+    `<button class="cot-garage-panel-scrim cot-m-fade cot-m-out" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
     `<div class="cot-country-chips" role="group" aria-label="${t('garage.country.filterAria')}"></div>` +
@@ -896,7 +896,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
-    `<div class="cot-leftcol">` +
+    `<div class="cot-leftcol cot-m-rise cot-m-out">` +
     `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     // the staging area is its own surface (owner 10-26: "should not be combined with camo, it should have its own ui
@@ -1197,6 +1197,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let station: GarageStation = 'overview';
   root.dataset.station = station;
   function setStation(next: GarageStation, { sound = true } = {}): void {
+    // (ui-motion-275) the sections a new station shows fade in a nudge up (cot-m-swap, components/surfaceMotion.css); the
+    // ones it hides go at once. Only a station change marks them: a tank switch rebuilds the readout unmarked, so browsing
+    // the fleet never waits on motion
+    if (next !== station) {
+      for (const section of statsEl.querySelectorAll<HTMLElement>('[data-stations]')) {
+        section.classList.toggle('cot-m-swap', (section.dataset.stations ?? '').split(' ').includes(next));
+      }
+    }
     station = next;
     root.dataset.station = next;
     if (calloutsShown) opts.onOverlayChange?.(); // the callouts show on the overview alone
@@ -1641,6 +1649,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
+    // (ui-motion-275) the paint sheet rises and the scrim fades as they come and go (components/surfaceMotion.css); the
+    // panel's state is already set, only the leaving sheet's display waits for its exit
+    requiredElement<HTMLElement>(root, '.cot-leftcol').classList.toggle('cot-m-out', next !== 'appearance');
+    garagePanelScrim.classList.toggle('cot-m-out', !next);
     if (next === 'equipment') renderStaleDossier();
     if (next === 'appearance' && previous !== next) {
       refreshCamoSel(); // the swatches it left for the drawer

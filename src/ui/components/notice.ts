@@ -20,6 +20,7 @@
 // draws what it decides. The catalog gives the two control names (Dismiss, Retry); every text is the caller's.
 import { icon, type IconId } from '../icons/icon.ts';
 import { t } from '../i18n.ts';
+import { leaveThen } from './surfaceMotion.ts';
 import { attrs, esc, type Attrs } from './escape.ts';
 
 export type NoticeSeverity = 'info' | 'success' | 'warning' | 'error' | 'progress';
@@ -402,7 +403,9 @@ export function noticeRegion(name: string, options: RegionOptions = {}): void {
       if (!item) return;
       const hadFocus = item.contains(document.activeElement);
       item.dataset.state = 'exit';
-      setTimeout(() => item.remove(), 200);
+      // (ui-motion-275) gone once its exit has played (components/surfaceMotion.ts; at once under reduced motion), not on a
+      // fixed 200 ms that outlived the 140 ms fade
+      leaveThen(item, () => item.remove());
       const back = returnFocus.get(toast.id);
       returnFocus.delete(toast.id);
       if (hadFocus && back?.isConnected) back.focus();

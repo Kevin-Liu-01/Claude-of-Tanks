@@ -18,6 +18,16 @@
   --cot-ease-move: var(--ease-move, cubic-bezier(.65,0,.35,1));
   --cot-ease-drawer: var(--ease-enter, cubic-bezier(.2,.8,.2,1));
   --cot-ease-soft: var(--ease-enter, cubic-bezier(.2,.8,.2,1));
+  /* ui-motion-275: how far a surface travels as it enters (src/ui/components/surfaceMotion.css), on the spacing scale;
+     it leaves along the same path at half the distance. Reduce motion needs no copy of these: the durations it collapses
+     to 1 ms make every travel instant. Kept here, not in tokens.json, under tokens.css's 4 KB boot budget. */
+  --motion-nudge: var(--s1, 4px);
+  --motion-rise: var(--s2, 8px);
+  --motion-slide: var(--s4, 16px);
+  --motion-scale-in: .96;
+  /* success and failure beats (a purchase landed, ready set, a refusal): a hard start that settles; no overshoot, as
+     --ease-camera (tanks have mass) */
+  --motion-ease-emphasis: cubic-bezier(.2,0,0,1);
 }
 
 @media (prefers-reduced-motion: reduce) {

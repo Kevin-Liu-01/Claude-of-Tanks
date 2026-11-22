@@ -202,10 +202,7 @@ const CSS = `
    document declares the weight-voiced 'Cot UI' family, so the reading voice is that family too */
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:flex-start;justify-content:center;
   padding:max(72px,8vh) var(--s5) var(--s5);background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
-.cot-play.show{display:flex;animation:cotPlayVeil var(--dur-base) var(--ease-enter)}
-.cot-play.show .panel{animation:cotPlayPanel var(--dur-screen) var(--ease-enter) backwards}
-@keyframes cotPlayVeil{from{opacity:0}}
-@keyframes cotPlayPanel{from{opacity:0;transform:translateY(12px)}}
+.cot-play.show{display:flex}
 .cot-play,.cot-play *{box-sizing:border-box}
 /* one plate, no glass (the Premiere direction): the plate laid on the opaque scene colour, so neither the Garage behind the
    panel nor the roster scrolling under its sticky head and foot shows through */
@@ -556,8 +553,7 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.sh
   margin:var(--s3) calc(-1 * var(--s4)) 0;padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:minmax(0,1fr)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s4)}
-@media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
-  .cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
+@media(prefers-reduced-motion:reduce){.cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -698,7 +694,9 @@ export function createPlayMenu({
   ensureFonts();
   ensureStyle(STYLE_ID, CSS, 'surfaces');
   const root = document.createElement('div');
-  root.className = 'cot-play multiplayer-entry';
+  // (ui-motion-275) the veil fades and the panel rises as .show comes and goes (components/surfaceMotion.css); the room,
+  // the lobby and their pickers swap in place
+  root.className = 'cot-play multiplayer-entry cot-m-fade cot-m-by-show';
   // campaign slice 4 (2026-09-12): the Frontline Assault card shows the campaign push
   const frontlineProgressLabel = (): string => {
     const summary = frontlineSummary();
@@ -749,7 +747,7 @@ export function createPlayMenu({
         facts: rule.id === 'frontline_assault' ? [frontlineProgressLabel(), ...rules.slice(0, 1)] : rules.slice(0, 2),
         description: t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id)), rules };
     });
-  root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
+  root.innerHTML = `<div class="panel cot-m-rise" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
     <section class="version-refusal cot-c-notice" data-severity="info" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
       <span class="cot-c-notice__glyph">${uiIconSVG('info', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
@@ -759,7 +757,7 @@ export function createPlayMenu({
     ${segmented({ label: t('playMenu.kind'), value: 'private', className: 'modes', options: [
       { value: 'private', label: t('playMenu.kind.private'), icon: 'battlePrivate' },
       { value: 'lan', label: t('playMenu.kind.lan'), icon: 'battleLan' }] })}
-    <section class="room"><div class="setup">
+    <section class="room cot-m-swap"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
         <div class="room-action"><div class="room-action-head"><b>${t('playMenu.create.title')}</b></div>
@@ -780,7 +778,7 @@ export function createPlayMenu({
         <button class="action alt cot-c-btn" data-room-failure="code" type="button">${t('playMenu.failure.editCode')}</button>
         <button class="action alt cot-c-btn" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
-    </section><div class="lobby">
+    </section><div class="lobby cot-m-swap">
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"${datumAttr('room-code')}></div></div>
         <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
@@ -806,10 +804,10 @@ export function createPlayMenu({
                 `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div>
           <div class="field format-field"><span class="field-label">${t('playMenu.advanced.size')}</span>
             ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
-      <div class="mode-pick" id="cot-room-mode-pick" role="group" aria-labelledby="cot-room-mode-label" hidden></div>
-      <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
+      <div class="mode-pick cot-m-swap" id="cot-room-mode-pick" role="group" aria-labelledby="cot-room-mode-label" hidden></div>
+      <div class="battlefield-pick cot-m-swap" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
       <div class="controls">
-        <div class="vehicle-pick" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
+        <div class="vehicle-pick cot-m-swap" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
             <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"

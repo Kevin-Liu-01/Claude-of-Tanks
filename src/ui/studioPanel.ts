@@ -834,7 +834,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // open: each map's picture, name and biomes, the biome chips, search and favourites. The inspector is narrower than the
   // picker's own preview needs, so the card above it is the preview: the map under the pointer or the focus shows there,
   // and leaving puts the scene's map back.
-  const mapPop = el('div', 'mapPop');
+  const mapPop = el('div', 'mapPop cot-m-drop cot-m-by-open'); // (ui-motion-275) components/surfaceMotion.css
   // a sheet names itself and closes from its own head (a touch screen has no Escape)
   const mapPopHead = el('div', 'mapPopHead');
   const mapPopClose = el('button', 'cot-c-btn cot-c-btn--icon cot-c-btn--ghost mapPopX');
@@ -2175,7 +2175,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     progress: number;
   }
   const queueJobs: QueueJob[] = [];
-  const queuePop = el('div', 'st-queue');
+  const queuePop = el('div', 'st-queue cot-m-drop'); // (ui-motion-275) components/surfaceMotion.css
   queuePop.hidden = true;
   queuePop.setAttribute('role', 'dialog');
   const queuePresets = el('div', 'qp');

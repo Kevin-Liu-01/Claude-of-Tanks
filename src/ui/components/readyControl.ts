@@ -53,9 +53,12 @@ export function readyControlView({ ready, spectator = false, waitingOn = null }:
  */
 export function renderReadyControl(button: HTMLButtonElement, input: ReadyControlInput, iconSize = 16): ReadyControlView {
   const view = readyControlView(input);
+  // (ui-motion-275) the check lands with one emphasis beat as the seat turns ready (cot-m-beat, components/surfaceMotion.css),
+  // never on a redraw of a seat already ready (a count of the others changing)
+  const landed = button.dataset.readyState === 'idle' && view.state === 'ready';
   button.classList.add('cot-ready');
   button.dataset.readyState = view.state;
-  button.innerHTML = `${view.state === 'ready' ? uiIconSVG('check', iconSize, 'currentColor', 'cot-ready__mark') : ''}` +
+  button.innerHTML = `${view.state === 'ready' ? uiIconSVG('check', iconSize, 'currentColor', landed ? 'cot-ready__mark cot-m-beat' : 'cot-ready__mark') : ''}` +
     `<span class="cot-ready__copy"><span class="cot-ready__label cot-c-btn__label">${esc(view.label)}</span>` +
     `${view.hint ? `<small class="cot-ready__hint">${esc(view.hint)}</small>` : ''}</span>`;
   if (view.state === 'watching') button.removeAttribute('aria-pressed');
