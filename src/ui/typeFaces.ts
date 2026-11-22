@@ -332,7 +332,7 @@ export function typeTokenCss(options: TypeHeadOptions = {}): string {
 export function jaTypeStyle(): string {
   const stacks = (['ui', 'body', 'display'] as const).map((family) => `--font-${family}:${TYPE_STACK[family].replace(CJK_STACK, JA_STACK)}`);
   return `<style id="cot-ja-type">:root:lang(ja){${stacks.join(';')}}:lang(ja){letter-spacing:0!important}`
-    + ':lang(ja) :where(p,li,dd){line-height:1.7}:lang(ja) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}</style>';
+    + ':lang(ja) :where(p,li,dd){line-height:1.7}:lang(ja) .t-hollow{color:var(--hollow-ink);-webkit-text-stroke:0;opacity:.72}</style>';
 }
 
 /** A face token of a type marker: `<voice>-<weight>`, e.g. `display-700`. */

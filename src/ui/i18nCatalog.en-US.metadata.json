@@ -100,5 +100,116 @@
   },
   "playMenu.matchMode.gun_game.desc": {
     "context": "Game-mode card copy. Preserve {killsPerWeapon} (kills per weapon step) and {weapons} (the number of weapon stages); both are filled in from the match ruleset."
+  },
+  "tutorial.garage.deploy.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.drive.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.turret.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.zoom.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.spot.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.armourSight.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.armour.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.firePen.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fireBounce.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.bush.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fireHE.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.angle.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.volley.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.hullDown.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.hullDownFire.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fireBack.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.toP.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.peekShoot.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.repair.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.smoke.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.toU.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.flank.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fight.body": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.drive.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.turret.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.zoom.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.armourSight.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.firePen.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 62 characters (Russian: 55; Japanese: 34; Chinese: 40). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fireHE.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.fireBack.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.repair.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.smoke.bodyTouch": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.drive.bodyPad": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.turret.bodyPad": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.training.zoom.bodyPad": {
+    "context": "A tutorial instruction card in Claude of Tanks, a browser tank game, shown while the battle goes on under it. It must fit in two short lines on a phone: write it as briefly as possible, cutting words rather than meaning. Hard limit: at most 85 characters (Russian: 72; Japanese: 40; Chinese: 52). Letters such as C, D, F, G, Q, U and V are ring or bush markers on the ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash."
+  },
+  "tutorial.skip": {
+    "context": "A small text button on a tutorial card in Claude of Tanks, a browser tank game; it shares one row with the card's other button on a narrow phone screen, so keep it as short as the language allows: hard limit at most 15 characters (Russian: 14; Japanese: 8; Chinese: 6). Never use an em dash."
+  },
+  "tutorial.next": {
+    "context": "A small text button on a tutorial card in Claude of Tanks, a browser tank game; it shares one row with the card's other button on a narrow phone screen, so keep it as short as the language allows: hard limit at most 15 characters (Russian: 14; Japanese: 8; Chinese: 6). Never use an em dash."
   }
 }
