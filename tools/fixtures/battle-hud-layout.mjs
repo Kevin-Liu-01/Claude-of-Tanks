@@ -15,6 +15,8 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
+// (Air Support's surfaces, which battleHudAccess loads with the HUD: ?state=binoculars)
+import '../../src/ui/airSupportHud.css';
 // the tablet layer (main.ts loads it at boot): the touch HUD's tablet sizes, item 262
 import '../../src/ui/tablet.css';
 import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
@@ -40,6 +42,10 @@ import {createMultiplayerStatusSurface} from '../../src/ui/multiplayerStatus.ts'
 import {NetworkStatusModel} from '../../src/mp/session/networkStatus.ts';
 import { setLocale, t } from '../../src/ui/i18n.ts';
 import { battleNotices } from '../../src/ui/battleNotices.ts';
+import { BATTLE_EVENT } from '../../src/ui/battleNoticeEvents.ts';
+import { NOTICE_PRIORITY } from '../../src/ui/battleNotices.ts';
+import { strikeView } from '../../src/game/strikeViewState.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES } from '../../src/sim/matchRuleset.ts';
 import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
 
 // the catalog lands before the HUD builds (the game awaits it too), and a zh-CN capture carries the label floor its /cn/
@@ -235,6 +241,7 @@ function multiplayer(kind='healthy', role='host') {
   network.set(snapshot,kind==='healthy'?null:{kind:'reconnecting',scope:'match',attempt:2,nextRetryS:3});
   return network;
 }
+const params0 = new URLSearchParams(location.search);
 function state(name) {
   network?.dispose();network=null;
   battleNotices.dismiss('cot-pointer-lock');
@@ -331,6 +338,27 @@ function state(name) {
     flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
     frame.camera=flightCamera;
     for(let i=0;i<5;i++)hud.update(frame);
+  }
+  // ?state=binoculars (notices-276; Kevin 2026-11-23: "gunship overhead with X binoculars in air support"): Air Support's
+  // binoculars up (the readout, the hint, the call-ins, Support as the close, a phone's CALL) with an enemy AC-130 over the
+  // crew, so its INCOMING notice ("Gunship overhead") holds in the condition lane over them
+  strikeView.open=false;
+  if(name==='binoculars'){
+    const p=player.state.pos, cooldowns=Object.fromEntries(AIR_STRIKE_KINDS.map((kind)=>[kind,0]));
+    frame.matchModeState={...frame.matchModeState,id:'air_support',air:{nowS:frame.timeS,points:420,cooldowns,
+      strikes:[{id:1,kind:'gunship',team:'bravo',x:p.x,y:0,z:p.z,heading:0,calledS:frame.timeS-6,landsS:frame.timeS+4,
+        endS:frame.timeS+4+AIR_SUPPORT_RULES.gunship.orbitS,hp:1,maxHp:1,downedS:null,downedBy:null,mine:false}]}};
+    frame.aim.point={x:p.x+40,y:0,z:p.z+180};
+    strikeView.open=true;strikeView.kind='strafe';strikeView.blend=1;
+    for(let i=0;i<4;i++)hud.update(frame);
+  }
+  // &notices=1 (notices-276): both lanes hold a notice over the state, as a battle raises them, so the probe measures each
+  // lane's box against the state's controls: an event at the threat rung (it shows through a scope) and a condition
+  if(params0.has('notices')){
+    bus.emit(BATTLE_EVENT,{text:t('hud.alert.ammoTypeEmpty'),priority:NOTICE_PRIORITY.threat,severity:'error',icon:'shell'});
+    if(name!=='binoculars')battleNotices.condition({id:'cot-air-incoming',className:'cot-air-incoming',severity:'warning',icon:'alert',
+      text:t('airSupport.incoming.gunship'),detail:'4 s',durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.threat});
+    for(let i=0;i<3;i++)hud.update(frame);
   }
   if(name==='markers'||name==='watch-markers')markers();
   // ?state=proving | proving-moving: the proving ground's range (sim/matchModes.ts ProvingRangePresentation), its lanes'

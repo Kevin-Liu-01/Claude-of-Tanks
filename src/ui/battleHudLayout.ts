@@ -10,6 +10,7 @@ import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn,
   type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 import { cardNaturalSize, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
+import { VIEW_CONTROL_PARTS, VIEW_CONTROL_SELECTOR } from './hudViewControls.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -229,12 +230,12 @@ const CHASE_CEILING_HALF = 60;
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
  *  the objective, the rosters, the network readouts and the feed lanes (`soft`; the map apart, touchNoticePlan `map`). */
-const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
+export const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-dp,.cot-drive,.cot-scope-vision,'
   + `${AIM_CHIP},.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,`
   + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open,'
-  // (Watch's bar where it rides on the floor: watchHud.ts)
-  + '.cot-watch:not([hidden])';
+  // (Watch's bar where it rides on the floor: watchHud.ts; the controls a view brings: hudViewControls.ts)
+  + `.cot-watch:not([hidden]),${VIEW_CONTROL_SELECTOR}`;
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
@@ -245,7 +246,7 @@ export const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot
   + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat]),.cot-respawn:not([hidden])';
 export const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
   + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
-  + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
+  + `.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden]),${VIEW_CONTROL_SELECTOR}`;
 const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-toasthost';
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
 export const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
@@ -919,10 +920,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (width < 768) box(width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8, top + 8, 88, 20);
     else add(net);
     add(read('.cot-spec.show'));
-    // the drone's and the gunship's flight console while their view is up (a view change, like the spectator tray),
-    // where keeping off it costs no reticle clearance (below)
-    const plain = nextKey.length;
-    add(read('.cot-flight-hud:not([hidden]) .flight-console'));
+    // (notices-276) the controls a view brings (hudViewControls.ts: Air Support's binoculars, rack and Support, the flight's
+    // console and solution), each where it stands this pass: kept, like every other control, at any cost to the reticle's
+    // clearance (before, the flight console was dropped where keeping off it cost clearance, and the binoculars were not
+    // seen at all: a CSS rule moved the alert off the readout)
+    for (const node of hudQueryAll(VIEW_CONTROL_SELECTOR)) add(shownBox(node));
     const boxesEnd = nextKey.length;
     const laneKey = (x: number, from: number, to: number) => {
       if (to - from >= 26) nextKey.push(Math.round(x), Math.round(sideWidth), Math.round(from), Math.round(to));
@@ -949,10 +951,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
         return planned;
       }
       const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
-      let plainObstacles = 0;
       for (let i = 7; i < boxesEnd; i += 5) {
         const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] }, role = nextKey[i + 4];
-        if (role !== 2) { obstacles.push(r); if (i < plain) plainObstacles++; }
+        if (role !== 2) obstacles.push(r);
         if (role) furniture.push(r);
       }
       const lane = (i: number): PlanLane | null => nextKey[i] < 0 && nextKey[i + 1] < 0 ? null
@@ -969,10 +970,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
         sightY: height / 2 - sightShift,
       };
       planned = planMouseNotices(input);
-      if (boxesEnd > plain && planned.clearance < 2) {
-        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, plainObstacles) });
-        if (without.clearance > planned.clearance) planned = without;
-      }
       plannedSize = size;
       recentPlans.unshift({ key: nextKey.slice(), size, plan: planned });
       if (recentPlans.length > 4) recentPlans.pop();
@@ -1135,11 +1132,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
       // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
       // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
-      observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
+      observe('.cot-mp-status.battle');
       // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
       observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
       // Watch's bar (its seat: refresh)
       observe('.cot-watch');
+      // (notices-276) the controls a view brings: their coming and going replans the notices round them
+      observe(VIEW_CONTROL_PARTS);
       // (battle-camera-264) the first battles' controls strip: the chase framing clears it while it shows
       observe('.cot-hints');
     }
