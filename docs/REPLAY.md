@@ -248,7 +248,22 @@ P1 alone is already useful: every solo battle becomes a file that reproduces it 
 - `src/sim/replayFormat.ts`: the file. `src/game/replay/`: the recorder (wired in `main.ts`: round `setupBattle`, the
   step, the rules port, the bus), the runner (the local driver headless), seat actions, checksum, build digest, store.
 - `tools/replay-verify.mjs` re-simulates a file in Node. `tools/replay-browser-check.mjs` records real browser battles
-  and verifies them (the perf pass rule's harness).
+  and verifies them (the perf pass rule's harness). `tools/replay-measure.mjs` and `tools/replay-measure-local.mjs` are
+  the design's Node measurements (the authority and the local driver replaying whole battles, and the input sizes).
+- The divergence trace (`src/game/replay/replayTrace.ts`), a diagnostic off unless a tool asks
+  (`recorder.trace = true`): a traced battle also keeps every step's digest numbers per hull and a deep dump of the
+  battle before step 1 and every 60 steps to step 600. `tools/replay-diff.mjs` replays it in Node with the same trace
+  and names the first step, hull and field where the replay leaves the page. The round-trip receipt holds a Node
+  recording's trace equal to its replay's, number for number and dump for dump.
+
+### The first browser check (2026-11-22): FAIL
+
+Frame time was unchanged, but both recorded battles drifted at step 600 when replayed in Node, and the recorder's cost
+read 0.0197 ms per step against a 0.010 bound (its p99 bound was unmeasurable: Chrome's clock reads in 100 us steps).
+One cause is fixed: the runner handed setup the bot memory as arrays where the page keeps Sets. Ruled out in Node: the
+collision world's precision (a full-precision Verdant gives the same drifted digests as the shard), the world kernels
+(WASM gives the same digests as TypeScript) and opening routes planned during the countdown. The drift's cause is still
+open; the next run carries the trace, and the cost is measured in 600-step blocks (rule re-registered first).
 
 Differences from the plan above, each for a measured or found reason:
 

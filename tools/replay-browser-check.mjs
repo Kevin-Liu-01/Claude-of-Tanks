@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 /**
  * The recorder in a real page (replay-system-275, docs/REPLAY.md §2 and P1): four solo battles interleaved ON, OFF, ON,
- * OFF, each driven by real keys for --seconds after controls release. Measures the recorder's time per fixed step (ON) and
- * every frame's delta (all arms), flags any paused block (which invalidates the run), then leaves each ON battle, fetches
- * its saved recording from IndexedDB and replays it in Node (tools/replay-verify.mjs). The pass rule was registered
- * before the first measurement: ~/cot-lanes/replay-system-notes/perf-rule.md (sha256 8e777e1f34efcb06).
+ * OFF, each driven by real keys for --seconds after controls release, then a fifth, TRACE, recorded with the divergence
+ * trace (game/replay/replayTrace.ts) and left out of the cost and frame verdict. Measures the recorder's cost per fixed
+ * step in blocks (ON: every 600 steps, between frames, the recorder's own step work run 600 times on the live battle and
+ * timed as one block, recorder.probeCost; Chrome's clock reads in 100 us steps and cannot time one step) and every
+ * frame's delta (all arms), flags any paused block (which invalidates the run), then leaves each recorded battle,
+ * fetches its saved recording from IndexedDB and replays it in Node (tools/replay-verify.mjs; the TRACE arm also through
+ * tools/replay-diff.mjs). The pass rule is registered before each run: ~/cot-lanes/replay-system-notes/perf-rule-2.md
+ * (the first run's rule, perf-rule.md, timed each step and read the clock's quantum; that run's FAIL stands).
  *
  *   node tools/with-capture-lock.mjs --lock-class=timing -- node tools/replay-browser-check.mjs --out=<dir> [--seconds=45]
  *
@@ -22,6 +26,9 @@ import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 const TOOL = 'replay-browser-check';
 const SPEC = 'm1a1_abrams_hc';
 const MAP = 'verdant';
+const RULE = 'perf-rule-2.md sha256 64283aa6e39cb158';
+/** The arms in order: the recorder on or off, and the diagnostic trace (its arm left out of the cost and frame verdict). */
+const ARMS = [{ on: true }, { on: false }, { on: true }, { on: false }, { on: true, trace: true }];
 
 function parse(argv) {
   const out = { out: null, seconds: 45, root: process.cwd(), width: 1600, height: 900 };
@@ -40,16 +47,13 @@ function parse(argv) {
 const stamp = () => new Date().toISOString().slice(11, 19);
 const say = (line) => console.log(`[${TOOL}] ${stamp()} ${line}`);
 
-/** In-page: arm the samplers. `on` keeps the recorder; off replaces its step and bus hooks with no-ops. */
+/** In-page: arm the samplers. `on` keeps the recorder (untouched); off replaces its step and bus hooks with no-ops. */
 function armSamplers(on) {
   const R = window.__COT_REPLAY, rec = R.recorder, D = window.__DEBUG;
-  const S = window.__replayCheck = { on, frames: [], stepMs: [], paused: 0, pausedRun: 0, pausedMax: 0, last: performance.now(), stop: false };
+  const S = window.__replayCheck = { on, frames: [], blocks: [], paused: 0, pausedRun: 0, pausedMax: 0, last: performance.now(), stop: false,
+    nextProbe: (D.game.tick ?? 0) + 600 };
   S.saved = { beforeStep: rec.beforeStep, afterStep: rec.afterStep, onEvent: rec.onEvent };
-  if (on) {
-    let t0 = 0;
-    rec.beforeStep = function timedBefore() { t0 = performance.now(); S.saved.beforeStep.call(this); S.mid = performance.now() - t0; };
-    rec.afterStep = function timedAfter() { const t1 = performance.now(); S.saved.afterStep.call(this); S.stepMs.push((S.mid ?? 0) + performance.now() - t1); };
-  } else {
+  if (!on) {
     rec.beforeStep = () => {};
     rec.afterStep = () => {};
     rec.onEvent = () => {};
@@ -60,6 +64,12 @@ function armSamplers(on) {
     S.last = now;
     const paused = !!D.pauseInfo?.paused || D.settings?.isOpen?.() || D.killcam?.isActive?.() || D.game.phase !== 'battle';
     if (paused) { S.pausedRun += S.frames.at(-1); S.pausedMax = Math.max(S.pausedMax, S.pausedRun); } else S.pausedRun = 0;
+    // a block of the recorder's step work every 600 steps, between frames (never inside a step)
+    if (S.on && rec.active && D.game.tick >= S.nextProbe) {
+      const ms = rec.probeCost(600, () => performance.now());
+      if (ms != null) S.blocks.push(ms);
+      S.nextProbe += 600;
+    }
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -69,7 +79,7 @@ function collectSamplers() {
   const S = window.__replayCheck, rec = window.__COT_REPLAY.recorder;
   S.stop = true;
   Object.assign(rec, S.saved);
-  return { frames: S.frames.slice(10), stepMs: S.stepMs, pausedMaxMs: S.pausedMax, active: rec.active };
+  return { frames: S.frames.slice(10), blocks: S.blocks, pausedMaxMs: S.pausedMax, active: rec.active };
 }
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : NaN; };
@@ -97,20 +107,20 @@ async function driveBattle(page, seconds) {
   await page.keyboard.up('KeyW');
 }
 
-async function fetchNewestReplay(page) {
-  return page.evaluate(async () => {
+async function fetchNewestReplay(page, withTrace) {
+  return page.evaluate(async (withTrace) => {
     const R = window.__COT_REPLAY;
     const list = await R.list();
     if (!list.length) return null;
     const bytes = await R.load(list[0].id);
-    return { summary: list[0], bytes: bytes ? Array.from(bytes) : null };
-  });
+    return { summary: list[0], bytes: bytes ? Array.from(bytes) : null, trace: withTrace ? JSON.stringify(R.lastTrace()) : null };
+  }, withTrace);
 }
 
 async function main(argv) {
   const options = parse(argv);
   mkdirSync(options.out, { recursive: true });
-  const receipt = { tool: TOOL, rule: 'perf-rule.md sha256 8e777e1f34efcb06', spec: SPEC, map: MAP, seconds: options.seconds, arms: [] };
+  const receipt = { tool: TOOL, rule: RULE, spec: SPEC, map: MAP, seconds: options.seconds, arms: [] };
   await runWarmHold({
     label: TOOL,
     place: `${TOOL}:${path.basename(options.out)}`,
@@ -132,23 +142,29 @@ async function main(argv) {
       } catch (error) { await close(); throw error; }
     },
     shoot: async ({ page, errors }) => {
-      for (const [index, on] of [true, false, true, false].entries()) {
-        say(`arm ${index + 1}: recorder ${on ? 'ON' : 'OFF'}`);
+      for (const [index, { on, trace = false }] of ARMS.entries()) {
+        say(`arm ${index + 1}: recorder ${trace ? 'TRACE' : on ? 'ON' : 'OFF'}`);
+        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = trace; }, trace);
         await beginSoloBattle(page, { specId: SPEC, mapId: MAP, gameMode: 'standard' });
+        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = false; }, trace);
         await page.evaluate(armSamplers, on);
         await driveBattle(page, options.seconds);
         const sample = await page.evaluate(collectSamplers);
-        const arm = { on, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
-          steps: sample.stepMs.length, stepMeanMs: mean(sample.stepMs), stepP99Ms: pct(sample.stepMs, 0.99), pausedMaxMs: sample.pausedMaxMs,
-          recorderActive: sample.active };
+        const arm = { on, trace, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
+          blocks: sample.blocks, blockMeanMs: mean(sample.blocks), blockMaxMs: sample.blocks.length ? Math.max(...sample.blocks) : null,
+          pausedMaxMs: sample.pausedMaxMs, recorderActive: sample.active };
         await page.evaluate(() => { window.__DEBUG.leaveBattleToGarage(); });
         await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 120000, polling: 250 });
         await sleep(1500);
         if (on) {
-          const saved = await fetchNewestReplay(page);
+          const saved = await fetchNewestReplay(page, trace);
           if (saved?.bytes) {
             const file = path.join(options.out, `arm${index + 1}.cotreplay`);
             writeFileSync(file, Buffer.from(saved.bytes));
+            if (trace && saved.trace && saved.trace !== 'null') {
+              arm.traceFile = path.join(options.out, `arm${index + 1}.trace.json`);
+              writeFileSync(arm.traceFile, saved.trace);
+            }
             arm.replayFile = file;
             arm.replayBytes = saved.bytes.length;
             arm.replaySteps = saved.summary.ticks;
@@ -169,16 +185,26 @@ async function main(argv) {
     } catch (error) {
       try { arm.replay = JSON.parse(String(error.stdout)); } catch { arm.replay = { holds: false, mismatch: { message: String(error.message).slice(0, 300) } }; }
     }
+    // the trace arm: where the replay leaves the page, its report kept beside the recording
+    if (arm.traceFile) {
+      let report;
+      try {
+        report = execFileSync(process.execPath, ['tools/replay-diff.mjs', arm.replayFile, arm.traceFile], { cwd: options.root, encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'] });
+      } catch (error) { report = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
+      arm.diffFile = arm.traceFile.replace(/\.trace\.json$/, '.diff.txt');
+      writeFileSync(arm.diffFile, report);
+    }
   }
-  const onArms = receipt.arms.filter((a) => a.on), offArms = receipt.arms.filter((a) => !a.on);
-  const pooled = onArms.flatMap((a) => Array(a.steps).fill(a.stepMeanMs));
+  const onArms = receipt.arms.filter((a) => a.on && !a.trace), offArms = receipt.arms.filter((a) => !a.on);
+  const pooled = onArms.flatMap((a) => a.blocks);
   const onMedian = median(onArms.map((a) => a.frameMedianMs)), offMedian = median(offArms.map((a) => a.frameMedianMs));
   const offNoise = Math.abs((offArms[0]?.frameMedianMs ?? 0) - (offArms[1]?.frameMedianMs ?? 0));
   const tolerance = Math.max(offMedian * 0.01, offNoise);
   const invalid = receipt.arms.some((a) => a.pausedMaxMs > 500);
   receipt.verdict = {
-    recorderMeanMs: mean(pooled), recorderP99Ms: Math.max(...onArms.map((a) => a.stepP99Ms)),
-    cost: mean(pooled) <= 0.010 && Math.max(...onArms.map((a) => a.stepP99Ms)) <= 0.020,
+    recorderMeanMs: mean(pooled), recorderBlockMaxMs: pooled.length ? Math.max(...pooled) : null, blocks: pooled.length,
+    cost: pooled.length >= 6 && mean(pooled) <= 0.010 && Math.max(...pooled) <= 0.020,
     frameOnMs: onMedian, frameOffMs: offMedian, toleranceMs: tolerance, frame: Math.abs(onMedian - offMedian) <= tolerance,
     replays: onArms.every((a) => a.replay?.holds === true),
     invalid,

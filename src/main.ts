@@ -751,15 +751,20 @@ const devTrace = traceRequested
   : null;
 // the battle recorder (docs/REPLAY.md): every solo battle's seat controls, actions and timeline marks, saved on leaving it
 const replayRecorder = createReplayRecorder();
+// a battle recorded with the divergence trace keeps it here for the tools (game/replay/replayTrace.ts; off unless they ask)
+let lastReplayTrace: unknown = null;
 const finishReplay = (): void => {
   const done = replayRecorder.finish();
-  if (done) void saveReplay(done.bytes, done.header, done.end);
+  if (!done) return;
+  if (done.trace) lastReplayTrace = done.trace;
+  void saveReplay(done.bytes, done.header, done.end);
 };
 const bus = createBus(devTrace
   ? (ev, payload) => { devTrace.event(ev, payload); replayRecorder.onEvent(ev, payload); }
   : (ev, payload) => replayRecorder.onEvent(ev, payload));
 // the tools' read of the recorder and the saved battles (tools/replay-browser-check.mjs), as __COT_COUCH publishes the couch's
-(globalThis as { __COT_REPLAY?: unknown }).__COT_REPLAY = { recorder: replayRecorder, finish: finishReplay, list: listReplays, load: loadReplayFile };
+(globalThis as { __COT_REPLAY?: unknown }).__COT_REPLAY = { recorder: replayRecorder, finish: finishReplay, list: listReplays, load: loadReplayFile,
+  lastTrace: () => lastReplayTrace };
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
 installBattleRecords(bus);

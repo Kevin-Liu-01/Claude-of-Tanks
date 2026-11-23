@@ -103,8 +103,13 @@ export function withLayoutSpawnPoints<TWorld extends { heightField: { getHeightA
   return world;
 }
 
+/** A diagnostic's look at each step as the core meets it: its actions applied and its seats staged (tools/replay-diff.mjs). */
+export interface ReplayRunHooks {
+  beforeSimStep?(game: RunGame, tick: number): void;
+}
+
 /** A replay of `recording` on `world` (the recording's map, built by the caller), set up and ready for step 1. */
-export function createReplayRun(recording: ReplayRecording, world: RunWorld): ReplayRun {
+export function createReplayRun(recording: ReplayRecording, world: RunWorld, hooks: ReplayRunHooks = {}): ReplayRun {
   const { header } = recording;
   const refusal = replayRefusal(header.replayDigest, header.build);
   if (refusal) throw new ReplayMismatch('refused', `replay recorded on ${refusal.recordedOn || 'another version'}`);
@@ -178,6 +183,7 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld): Re
           const hull = seats[i]!;
           if (hull.state && hull.input) applySeatControl(hull as never, row[i]!);
         }
+        hooks.beforeSimStep?.(game, k);
         simStep(game as never, bus, world as never, null, collider);
         if (k % REPLAY_CHECKSUM_EVERY === 0) {
           const expected = checksums.get(k);

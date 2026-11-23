@@ -22,6 +22,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { REPLAY_BUILD, REPLAY_DIGEST } from './replayBuild.ts';
 import { PREVIOUS_SHELL_SLOT, wrapRecordedRules } from './seatActions.ts';
+import { createReplayTrace, type ReplayTrace, type ReplayTraceExport } from './replayTrace.ts';
 
 /** A footprint as state.ts validatedContactGeometry leaves it. */
 export interface ReplayFootprint {
@@ -88,10 +89,21 @@ export interface FinishedRecording {
   header: ReplayHeader;
   end: ReplayEnd;
   seatBytes: number;
+  /** The divergence trace, when the battle was recorded with one (replayTrace.ts). */
+  trace: ReplayTraceExport | null;
 }
 
 export interface ReplayRecorder {
   readonly active: boolean;
+  /** A diagnostic: the next battle set up also keeps a divergence trace (replayTrace.ts). Off by default. */
+  trace: boolean;
+  /**
+   * A diagnostic: the recorder's own per-step work (each seat staged, a step written, the footprint scan, a 600th of a
+   * checksum) run `iterations` times on the live battle into scratch, the battle and the recording untouched; the
+   * milliseconds one step costs. tools/replay-browser-check.mjs times it in blocks, as Chrome's coarse clock cannot time
+   * one step.
+   */
+  probeCost(iterations: number, clock: () => number): number | null;
   beginSetup(game: RecorderGame, playerSpecId: string, options: ReplaySetupOptions): void;
   endSetup(): void;
   beforeStep(): void;
@@ -113,6 +125,7 @@ const MARKED_EVENTS = new Set(['tank:destroyed', 'shell:hit', 'tank:fire', 'tank
 const record = (value: unknown): Record<string, RuntimeValue> => (value && typeof value === 'object' ? value as Record<string, RuntimeValue> : {});
 const str = (value: RuntimeValue | undefined): string => (typeof value === 'string' ? value : '');
 const round2 = (value: number): number => Math.round(value * 100) / 100;
+let probeChanges = 0;
 
 interface StorageLike { getItem(key: string): string | null }
 
@@ -137,6 +150,8 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
   let footprints = new Map<RecorderHull, ReplayFootprint | null>();
   let rosterIndex = new Map<RecorderHull, number>();
   let stagedAtTick: number | null = null;
+  let trace: ReplayTrace | null = null;
+  let traceBegun = false;
   let pendingSetup: { playerSpecId: string; options: ReplaySetupOptions; before: Record<string, RuntimeValue> } | null = null;
   let unsupported = false;
   // the storage tap: every value read while setting up or stepping, as first read
@@ -157,6 +172,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
   function reset(): void {
     game = null; header = null; seats = []; controls = []; stream = null; actions = []; events = []; checksums = [];
     footprints = new Map(); rosterIndex = new Map(); stagedAtTick = null; pendingSetup = null; unsupported = false;
+    trace = null; traceBegun = false;
     reads.clear(); tapping = false;
   }
 
@@ -181,6 +197,27 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
 
   const recorder: ReplayRecorder = {
     get active() { return !!stream; },
+    trace: false,
+    probeCost(iterations, clock) {
+      if (!stream || !game) return null;
+      const scratchControls = seats.map(createSeatControl);
+      const scratchStream = new SeatStreamWriter(seats.length);
+      const started = clock();
+      for (let n = 0; n < iterations; n++) {
+        for (let i = 0; i < seats.length; i++) {
+          const hull = seats[i]!;
+          if (hull.state && hull.input) {
+            captureSeatControl(hull as SeatControlEntity, scratchControls[i]!);
+            applySeatControl(hull as SeatControlEntity, scratchControls[i]!);
+          }
+        }
+        scratchStream.writeStep(scratchControls);
+        // the footprint scan as afterStep makes it (the count only keeps the comparison from being optimised away)
+        for (const hull of game.tanks) if (footprints.get(hull) !== (hull.contactGeom ?? null)) probeChanges++;
+        if (n % REPLAY_CHECKSUM_EVERY === 0) replayStateDigest(game);
+      }
+      return (clock() - started) / iterations;
+    },
     beginSetup(battle, playerSpecId, options) {
       reset();
       game = battle;
@@ -232,6 +269,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
       footprints = new Map(battle.tanks.map((hull) => [hull, null]));
       noteFootprints();
       pendingSetup = null;
+      trace = recorder.trace ? createReplayTrace() : null;
     },
     beforeStep() {
       if (!stream || !game) return;
@@ -247,6 +285,8 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
         }
       }
       stream.writeStep(controls);
+      // the trace's first dump: the battle as step 1 meets it, its seat staged (replay-diff takes it at the same point)
+      if (trace && !traceBegun) { traceBegun = true; trace.begin(game as never); }
       tapping = true;
     },
     afterStep() {
@@ -254,6 +294,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
       tapping = false;
       noteFootprints();
       if (game.tick % REPLAY_CHECKSUM_EVERY === 0) checksums.push([game.tick, replayStateDigest(game)]);
+      trace?.afterStep(game as never);
     },
     wrapRules(rules) {
       return wrapRecordedRules(rules as never, seatOf, (seat, kind, args) => {
@@ -313,7 +354,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
       const end: ReplayEnd = { ticks: game.tick, result: game.result ?? null, reason: game.resultReason ?? null, stagedAtTick };
       const seatBytes = stream.take();
       const bytes = encodeReplay({ header, seats: seatBytes, actions, events, checksums, end });
-      const done = { bytes, header, end, seatBytes: seatBytes.length };
+      const done = { bytes, header, end, seatBytes: seatBytes.length, trace: trace ? trace.export() : null };
       reset();
       return done;
     },

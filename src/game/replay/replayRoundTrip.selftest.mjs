@@ -19,6 +19,7 @@ import { decodeReplay } from '../../sim/replayFormat.ts';
 import { createReplayRecorder } from './replayRecorder.ts';
 import { createReplayRun, ReplayMismatch, withLayoutSpawnPoints } from './replayRunner.ts';
 import { replayStateDigest } from './replayChecksum.ts';
+import { createReplayTrace, diffDumps, traceRows } from './replayTrace.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
 
 const MAP = 'verdant';
@@ -54,6 +55,7 @@ function recordBattle() {
     game.previousBotSpecIds = new Set(['t72b3', 'leopard_2a6']);
     game.recentBotSpecIds = new Set(['t72b3']);
     const options = { random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false };
+    recorder.trace = true; // the divergence trace (replayTrace.ts): the replay's must match it number for number, dump for dump
     recorder.beginSetup(game, SPEC, options);
     setupBattle(game, SPEC, world, options);
     recorder.endSetup();
@@ -98,12 +100,13 @@ function recordBattle() {
 
 function replay(recording) {
   const world = worldFor();
-  const run = createReplayRun(recording, world);
+  const trace = createReplayTrace();
+  const run = createReplayRun(recording, world, { beforeSimStep: (game, tick) => { if (tick === 1) trace.begin(game); } });
   let kills = 0;
   run.bus.on('tank:destroyed', () => { kills++; });
   try {
-    while (run.step());
-    return { mismatch: run.mismatch, digest: replayStateDigest(run.game), tick: run.tick, kills };
+    while (run.step()) trace.afterStep(run.game);
+    return { mismatch: run.mismatch, digest: replayStateDigest(run.game), tick: run.tick, kills, trace: JSON.parse(JSON.stringify(trace.export())) };
   } finally {
     run.dispose();
     world.release?.();
@@ -126,6 +129,12 @@ assert.equal(again.mismatch, null, `the replay holds: ${again.mismatch?.message}
 assert.equal(again.tick, live.tick, 'the replay runs every recorded step');
 assert.equal(again.digest, live.digest, 'the replay ends where the battle ended');
 assert.equal(again.kills, live.kills, 'the same kills');
+// the trace: a page's arrives as JSON; the replay's, taken at the same points, matches it in every number and every dump
+const pageTrace = JSON.parse(JSON.stringify(live.finished.trace));
+assert.deepEqual(traceRows(again.trace), traceRows(pageTrace), 'the trace\'s numbers match step for step');
+for (const key of Object.keys(pageTrace.snapshots)) {
+  assert.deepEqual(diffDumps(pageTrace.snapshots[key], again.trace.snapshots[key], 5), [], `the trace's dump after step ${key} matches`);
+}
 
 // negative control: the throttle one unit (1/127) off at step 500 (an aim unit off while the turret slews at its rate
 // limit changes nothing, rightly)
