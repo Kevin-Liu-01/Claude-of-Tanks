@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { isMapId } from '../src/world/maps/mapIds.ts';
-import type { CollisionManifest, PackedCollisionRecord, PackedSimpleShape } from '../src/world/headlessCollisionWorld.ts';
+import type { CollisionManifest } from '../src/world/headlessCollisionWorld.ts';
+import type { PackedCollisionRecord, PackedSimpleShape } from '../src/world/collisionRecordCodec.ts';
 
 export interface CollisionManifestCounts {
   obstacles: number;

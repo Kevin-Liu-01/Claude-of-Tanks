@@ -9,7 +9,7 @@ import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { setCompoundShape, setObbShape } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
 import { createTerrainDeformation } from '../sim/terrainDeformation.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../world/collisionRecordCodec.ts';
 
 // a flat field and a 24 × 6 m house on it (its south wall at z = −38, its north wall at z = −32)
 const field = {

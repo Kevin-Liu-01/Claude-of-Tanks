@@ -77,8 +77,8 @@ structureIdx?: number;     // the placement's group id, in build order (0, 1, 2 
 structureRole?: 'building' | 'setpiece' | 'fixed';   // absent = 'building'
 ```
 
-The shard packs them as `g` and `gr` (`tools/headlessWorldCollision.mjs packCollisionRecord`;
-`headlessCollisionWorld.unpackRecord` reads them; the codec already passes unknown keys through). Every shard is
+The shard packs them as `g` and `gr` (`src/world/collisionRecordCodec.ts packCollisionRecord`;
+`unpackCollisionRecord` there reads them; the codec already passes unknown keys through). Every shard is
 recaptured once with `node tools/capture-world-collision-manifests.mjs --node` (record order and counts unchanged;
 only the bytes and digests of `index.json` move). A shard without `g` (an older capture) has no structures: buildings
 stay indestructible there and the authority logs it once.

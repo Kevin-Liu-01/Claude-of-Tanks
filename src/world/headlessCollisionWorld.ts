@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
-import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay, setCrushedRecords } from './collision.ts';
+import { createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay, setCrushedRecords } from './collision.ts';
+import { unpackCollisionRecord, type PackedCollisionRecord } from './collisionRecordCodec.ts';
 import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 import { createDeformedHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -7,38 +8,6 @@ import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { instantiateWorldKernels, type WorldKernelModule } from './wasmWorldKernels.ts';
 import type { StructureSupportField, SupportHeightField } from '../sim/structureSupport.ts';
 import { createConcealerIndex } from './concealerIndex.ts';
-
-/**
- * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
- * part may append its own vertical extent: 'o' and 'c' take two more numbers (y0, y1), a convex polygon with an
- * extent is tagged 'w' (y0, y1, then the x, z pairs). Shards captured before that decode unchanged.
- */
-export type PackedSimpleShape =
-  | readonly ['o', number, number, number, number, number]
-  | readonly ['o', number, number, number, number, number, number, number]
-  | readonly ['c', number, number, number]
-  | readonly ['c', number, number, number, number, number]
-  | readonly ['v', ...number[]]
-  | readonly ['w', number, number, ...number[]]
-  /** 'p' (2026-10-13): a convex part with a drawn top — y0, y1, the planes' origin ox, oz, their count k, k (a, b, c)
-   * triples, then its corners (world/collision.ts collisionPartTopAt). */
-  | readonly ['p', number, number, number, number, number, ...number[]];
-
-type PackedShape = PackedSimpleShape | readonly ['m', ...PackedSimpleShape[]];
-
-export interface PackedCollisionRecord {
-  b: readonly [number, number, number, number, number, number];
-  s?: PackedShape;
-  q?: boolean | 0 | 1;
-  m?: number | null;
-  e?: number | null;
-  k?: string | null;
-  t?: number | null;
-  p?: number | null;
-  /** The structure group (docs/DESTRUCTION.md §3.1) and its role (1 setpiece, 2 fixed); absent before 2026-10-07. */
-  g?: number | null;
-  gr?: number | null;
-}
 
 interface ConcealmentRecord {
   x: number;
@@ -92,71 +61,6 @@ interface HeadlessCollisionWorld {
   kernelSupportField?(terrain: SupportHeightField): StructureSupportField;
 }
 
-function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
-  const bounds = packed.b;
-  const record: CollisionRecord = {
-    min: [bounds[0], bounds[1], bounds[2]],
-    max: [bounds[3], bounds[4], bounds[5]],
-  };
-  const shape = packed.s;
-  const unpackSimpleShape = (value: PackedSimpleShape) => {
-    if (value[0] === 'o') return {
-      kind: 'obb' as const, cx: value[1], cz: value[2], hw: value[3], hl: value[4], yaw: value[5],
-      ...(value.length >= 8 ? { y0: value[6] as number, y1: value[7] as number } : {}),
-    };
-    if (value[0] === 'c') return {
-      kind: 'circle' as const, cx: value[1], cz: value[2], r: value[3],
-      ...(value.length >= 6 ? { y0: value[4] as number, y1: value[5] as number } : {}),
-    };
-    if (value[0] === 'p') {
-      const k = value[5] as number;
-      const tp = [value[3] as number, value[4] as number, ...(value.slice(6, 6 + 3 * k) as number[])];
-      const points = convexOutlineInPlace(value.slice(6 + 3 * k) as number[]);
-      let px = 0, pz = 0;
-      for (let index = 0; index < points.length; index += 2) { px += points[index]; pz += points[index + 1]; }
-      const pn = Math.max(1, points.length / 2);
-      return { kind: 'convex' as const, cx: px / pn, cz: pz / pn, points, y0: value[1] as number, y1: value[2] as number, tp };
-    }
-    const ranged = value[0] === 'w';
-    const extent = ranged ? { y0: value[1] as number, y1: value[2] as number } : {};
-    // (the hitbox lane, 2026-10-08) a part's quantised corners convex in fact, as every builder's are (collision.ts)
-    const points = convexOutlineInPlace(value.slice(ranged ? 3 : 1) as number[]);
-    let cx = 0;
-    let cz = 0;
-    for (let index = 0; index < points.length; index += 2) {
-      cx += points[index];
-      cz += points[index + 1];
-    }
-    const count = Math.max(1, points.length / 2);
-    return { kind: 'convex' as const, cx: cx / count, cz: cz / count, points, ...extent };
-  };
-  if (shape?.[0] === 'm') {
-    const parts = shape.slice(1).map((part) => unpackSimpleShape(part as PackedSimpleShape));
-    record.shape2 = {
-      kind: 'compound',
-      cx: (bounds[0] + bounds[3]) * 0.5,
-      cz: (bounds[2] + bounds[5]) * 0.5,
-      parts,
-    };
-  } else if (shape) {
-    record.shape2 = unpackSimpleShape(shape);
-  }
-  if (packed.q) record.crushable = true;
-  if (packed.m != null) record.crushMin = packed.m;
-  if (packed.e != null) record.crushKeep = packed.e;
-  if (packed.k != null) record.kind = packed.k;
-  if (record.kind === 'tree') {
-    record.crushMin = 0;
-    record.crushKeep = 1;
-  }
-  if (packed.t != null) record.treeIdx = packed.t;
-  if (packed.p != null) record.propIdx = packed.p;
-  if (packed.g != null) record.structureIdx = packed.g;
-  if (packed.gr === 1) record.structureRole = 'setpiece';
-  else if (packed.gr === 2) record.structureRole = 'fixed';
-  return record;
-}
-
 /** Inflate one captured visual-world manifest into a match-local facade. */
 export function createHeadlessCollisionWorld(
   { mapId, heightField, manifest, kernels: kernelModule = null }: HeadlessCollisionWorldOptions = {},
@@ -173,8 +77,8 @@ export function createHeadlessCollisionWorld(
   const worldHeightField: HeightField = contact
     ? { ...heightField, getContactHeightAt: contact.heightAt, getContactCellFlippedAt: contact.cellFlippedAt }
     : heightField;
-  const obstacles = manifest.obstacles.map(unpackRecord);
-  const colliders = manifest.colliders.map(unpackRecord);
+  const obstacles = manifest.obstacles.map(unpackCollisionRecord);
+  const colliders = manifest.colliders.map(unpackCollisionRecord);
   const packedTreeIds = new Set(
     colliders.filter((record) => record.treeIdx != null).map((record) => record.treeIdx),
   );

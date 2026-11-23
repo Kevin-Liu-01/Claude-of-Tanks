@@ -28,7 +28,7 @@ setCrushedRecords([trunk], [trunk], true);
 assert.deepEqual([trunk.crushed, trunk.dead], [true, true], 'a record in both lists (a page world trunk) ends ghost and dead');
 
 // ---- the headless world: every record of the prop, a clutter's several, through the same transition
-const { packCollisionRecord } = await import('../../tools/headlessWorldCollision.mjs');
+const { packCollisionRecord } = await import('./collisionRecordCodec.ts');
 const rec = (x, p) => ({ min: [x, 0, 0], max: [x + 1, 1, 1], crushable: true, crushed: false, kind: 'rubble', propIdx: p });
 const world = createHeadlessCollisionWorld({ mapId: 'crush-records', heightField: { getHeightAt: () => 0, getNormalAt: () => new Vector3(0, 1, 0) },
   manifest: { obstacles: [rec(0, 7), rec(2, 7), rec(5, 8)].map(packCollisionRecord), colliders: [rec(0, 7), rec(2, 7)].map(packCollisionRecord), concealers: [] } });

@@ -101,7 +101,7 @@ function world() {
 // fellConcealersAt call is then a no-op)
 {
   const { createHeadlessCollisionWorld } = await import('./headlessCollisionWorld.ts');
-  const { packCollisionRecord } = await import('../../tools/headlessWorldCollision.mjs');
+  const { packCollisionRecord } = await import('./collisionRecordCodec.ts');
   const trunk = setCircleShape({ min: [9.7, 2, -4.3], max: [10.3, 10, -3.7], crushable: true, crushed: false, treeIdx: 0, kind: 'tree' }, 10, -4, 0.3);
   const headless = createHeadlessCollisionWorld({ mapId: 'felled-trees', heightField: { getHeightAt: () => 2, getNormalAt: () => new THREE.Vector3(0, 1, 0) },
     manifest: { obstacles: [packCollisionRecord(trunk)], colliders: [], concealers: [[10, -4, 3, 0.08], [14, -4, 2, 0.35]] } });

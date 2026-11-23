@@ -1,7 +1,6 @@
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
-import type {
-  CollisionManifest, PackedCollisionRecord, PackedSimpleShape,
-} from '../src/world/headlessCollisionWorld.ts';
+import type { CollisionManifest } from '../src/world/headlessCollisionWorld.ts';
+import type { PackedCollisionRecord, PackedSimpleShape } from '../src/world/collisionRecordCodec.ts';
 import {
   COLLISION_COMPOUND_MAX_PARTS, isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionCraters, readCollisionManifest,
 } from './collisionManifestFormat.ts';

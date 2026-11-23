@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
 import { decodeCollisionManifest } from '../server/collisionManifestCodec.ts';
 import { writeCollisionManifestShard, writeCollisionManifestIndex } from './worldCollisionManifestFiles.mjs';
-import { packCollisionRecord } from './headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../src/world/collisionRecordCodec.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const n = value => Math.round(value * 10000) / 10000;

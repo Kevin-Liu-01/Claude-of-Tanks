@@ -72,6 +72,7 @@ import {
   type CollisionRecord,
   type ObstacleQuery,
 } from './collision.ts';
+import { canonicalizeCollisionRecords } from './collisionRecordCodec.ts';
 import {
   createStructureDamageSeam, measureDeferredStructures, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
@@ -792,6 +793,11 @@ function* assembleWorldSteps(
   // DST-04 (2026-10-15): the map's pre-placed craters as bowls, decided once on this build's own records
   // (world/mapCraters.ts); every match on this world lays them first, and the shards carry them for the authority
   const mapCraters = mapCraterStamps(props.mapCraterSites, obstacles, heightField);
+  // (migration-parity, 275) and every record takes the geometry its map's shard holds, before the grids read it: a
+  // local battle, Watch, a replay and the client's prediction collide on what the authority decodes (0.1 mm numbers, the
+  // shard's extents, corners and centres), not on the build's full-precision records (collisionRecordCodec.ts). After the
+  // craters, which the shard's capture decides on the records as built.
+  canonicalizeCollisionRecords(obstacles, colliders);
   yield;
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry

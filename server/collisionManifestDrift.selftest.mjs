@@ -12,6 +12,10 @@
 // for V8's fast properties (COT_DRAWN_GEOMETRY_SHAPE; src/world/geometryStreams.ts says why a deletion costs a
 // millisecond a frame), so the shape check rides on this receipt's world build instead of a second one;
 // drawnGeometryShape.selftest keeps the control and the garages, fleetPassHigh the tanks.
+//
+// 2026-11-22 (migration-parity, 275): and every map's records, given the shard's geometry as the rendered world gives
+// them (world/map.ts canonicalizeCollisionRecords), are their packed records read back bit for bit, so a local battle
+// collides on what the authority decodes on every map (collisionRecordCodec.selftest holds Verdant in the default tier).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
@@ -25,7 +29,7 @@ const shares = Array.from({ length: workers }, (_, w) => MAP_IDS.filter((_, inde
 function check(maps) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [tool, '--check', '--maps', maps.join(',')],
-      { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, COT_DRAWN_GEOMETRY_SHAPE: '1', COT_LANDMARK_PLACEMENT: '1' } });
+      { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, COT_DRAWN_GEOMETRY_SHAPE: '1', COT_LANDMARK_PLACEMENT: '1', COT_CANONICAL_RECORDS: '1' } });
     let out = '', err = '';
     child.stdout.on('data', (chunk) => { out += chunk; });
     child.stderr.on('data', (chunk) => { err += chunk; });
@@ -35,7 +39,7 @@ function check(maps) {
 }
 
 const results = await Promise.all(shares.map(check));
-const rows = new Map(), shapes = new Map(), placements = new Map();
+const rows = new Map(), shapes = new Map(), placements = new Map(), canonical = new Map();
 for (const { out } of results) {
   for (const line of out.split('\n')) {
     const match = /^([a-z_]+): (current|DRIFTED)(.*)$/.exec(line.trim());
@@ -44,6 +48,8 @@ for (const { out } of results) {
     if (shape) shapes.set(shape[1], { walked: Number(shape[2]), standIns: Number(shape[3]), offenders: Number(shape[4]), first: shape[5] });
     const placed = /^landmarks ([a-z_]+): (\d+) placed, (\d+) failures(.*)$/.exec(line.trim());
     if (placed) placements.set(placed[1], { placed: Number(placed[2]), failures: Number(placed[3]), detail: placed[4] });
+    const read = /^canonical ([a-z_]+): (\d+) records(.*)$/.exec(line.trim());
+    if (read) canonical.set(read[1], { compared: Number(read[2]), detail: read[3] });
   }
 }
 for (const { code, err } of results) {
@@ -66,8 +72,13 @@ assert.ok(placements.size >= 10 && placements.has('delta'), `the set-piece recei
 const refused = [...placements.entries()].filter(([, p]) => p.failures > 0);
 assert.deepEqual(refused.map(([id, p]) => `${id}:${p.detail}`), [],
   'every authored set piece stands, or is named in landmarkPlacement.test-support.mjs SKIPPED_ALLOWANCE with the composer\'s reason');
+assert.deepEqual([...canonical.keys()].sort(), [...MAP_IDS].sort(), 'every map compared its canonical records');
+const parted = [...canonical.entries()].filter(([, read]) => read.detail !== ' equal');
+assert.deepEqual(parted.map(([id, read]) => `${id}${read.detail}`), [],
+  'every record given the shard\'s geometry is its packed record read back (src/world/collisionRecordCodec.ts)');
 const walked = [...shapes.values()].reduce((sum, shape) => sum + shape.walked, 0);
 console.log(`collisionManifestDrift.selftest: ${rows.size}/${MAP_IDS.length} shards match the Node build`
   + ` (${rows.size - rounded.length} byte-identical, ${rounded.length} within the last packed digit: ${rounded.map(([id]) => id).join(', ') || 'none'}; ${workers} workers);`
   + ` ${walked} drawn geometries keep fast attribute objects (shadow stand-ins on ${[...shapes.values()].filter((shape) => shape.standIns > 0).length} maps);`
-  + ` ${[...placements.values()].reduce((sum, p) => sum + p.placed, 0)} set pieces stand on ${placements.size} maps`);
+  + ` ${[...placements.values()].reduce((sum, p) => sum + p.placed, 0)} set pieces stand on ${placements.size} maps;`
+  + ` ${[...canonical.values()].reduce((sum, read) => sum + read.compared, 0)} canonical records are their shards' on ${canonical.size} maps`);

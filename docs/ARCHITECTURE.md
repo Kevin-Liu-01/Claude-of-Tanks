@@ -176,6 +176,18 @@ Guards, in `npm test`, each with seeded violations it must catch:
   both drivers' steps, every tick. It covers a 1v1 of player-driven hulls on Verdant: drive, turn, gun lay, a crash,
   shots, hits, knock, bloom and reload.
 
+One collision geometry (275, 2026-11-22). The authority, its Worker host and Node collide on each map's shard
+(`server/world-collision-manifests/`): the rendered world's records packed by `src/world/collisionRecordCodec.ts`
+`packCollisionRecord` (0.1 mm numbers, a part's extent dropped within 1 mm of its record's range, a corner the rounding
+brings within 1 mm of its chord dropped) and read back by `unpackCollisionRecord` (convex and compound centres
+recomputed). Until 275 the local driver and the client's prediction collided on the records as built: every number up to
+0.05 mm off the shard's, an extent up to 1 mm, a centre up to 13 cm (Urban), so a hull's contact in a solo battle or a
+replay was not the authority's. `world/map.ts` now gives every record the shard's geometry in place
+(`canonicalizeCollisionRecords`, after the map's craters and before its grids), so both drivers read one geometry and
+the shard is its encoding: packing a canonical record writes the committed bytes unchanged. Guards:
+`src/world/collisionRecordCodec.selftest.mjs` (the rules, the wiring, and Verdant bit for bit against its committed
+shard) and, on every map in the manual `world` suite, `server/collisionManifestDrift.selftest.mjs`.
+
 Still separate, the named follow-up: `game/state.ts` `simStep` and `sim/authoritativeMatch.ts` `step` are two loops over
 the same subsystem functions. The bots' controllers and the mode controllers still run in each loop on its own. Folding
 the two loops into one core step, bots and mode controllers included, is its own lane.

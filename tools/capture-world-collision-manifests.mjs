@@ -41,7 +41,7 @@ import {
   assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries, readCollisionManifestVariants,
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
-import { packCollisionRecord } from './headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../src/world/collisionRecordCodec.ts';
 import { AUTOMATION_PATH_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
@@ -203,9 +203,21 @@ if (options.node && options.variant) {
   const placement = process.env.COT_LANDMARK_PLACEMENT === '1' ? await import('../src/world/landmarks/landmarkPlacement.test-support.mjs') : null;
   const { getMapConfig } = placement ? await import('../src/world/maps/index.ts') : {};
   const fieldWorks = (await fieldWorksReceipts())?.(null);
-  const inspectAll = shape || placement || fieldWorks ? (args) => {
+  // 2026-11-22 (migration-parity, 275): COT_CANONICAL_RECORDS=1 (the drift receipt sets it) also gives this build's
+  // records the shard's geometry as the rendered world does (world/map.ts canonicalizeCollisionRecords) and requires
+  // each to be its packed record read back, bit for bit: on every map a local battle collides on what the authority
+  // decodes; one line per map, read by the receipt
+  const canonical = process.env.COT_CANONICAL_RECORDS === '1' ? {
+    ...await import('../src/world/collisionRecordCodec.ts'), ...await import('../src/world/collisionRecordCodec.test-support.mjs'),
+  } : null;
+  let built = null;
+  const inspectAll = shape || placement || fieldWorks || canonical ? (args) => {
     inspect?.(args);
     fieldWorks?.(args);
+    if (canonical) {
+      built = { obstacles: [...args.dressing.obstacles, ...args.flora.treeObstacles],
+        colliders: [...args.dressing.colliders, ...args.flora.treeObstacles] };
+    }
     if (!placement) return;
     const landmarks = getMapConfig(args.mapId).props?.landmarks ?? [];
     if (!landmarks.length) return;
@@ -214,6 +226,12 @@ if (options.node && options.variant) {
   } : undefined;
   for (const mapId of options.mapIds) {
     const data = await buildWorldCollisionData(mapId, { inspect: inspectAll });
+    if (canonical && built) {
+      canonical.canonicalizeCollisionRecords(built.obstacles, built.colliders);
+      const { compared, mismatch } = canonical.canonicalRecordMismatch(built, data);
+      console.log(`canonical ${mapId}: ${compared} records${mismatch ? `, MISMATCH at ${mismatch}` : ' equal'}`);
+      built = null;
+    }
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
     const text = JSON.stringify(encoded);

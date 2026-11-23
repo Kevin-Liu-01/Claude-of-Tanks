@@ -34,10 +34,10 @@ import { decodeCollisionManifest } from './collisionManifestCodec.ts';
 // (physics, 2026-10-16) the packer publishes the corners the decoder keeps: its 0.1 mm rounding brought a corner within a
 // millimetre of its chord in 136 parts on the 226 base (a hay cock's crown, a cable drum, a dry-stone module, structure
 // bands), the decoder dropped it and the part's read outline lost a sliver (Verdant's cocks: 40 of 41 samples).
-// tools/headlessWorldCollision.mjs packCollisionRecord carries the outline law in full (the capture page evaluates its
+// src/world/collisionRecordCodec.ts packCollisionRecord carries the outline law in full (the capture page evaluates its
 // source): every packed outline is one convexOutlineInPlace leaves as it is, and the dropped corner is the decoder's.
 {
-  const { packCollisionRecord } = await import('../tools/headlessWorldCollision.mjs');
+  const { packCollisionRecord } = await import('../src/world/collisionRecordCodec.ts');
   const cock = [-243.0802, 163.5094, -243.0708, 163.5344, -243.0656, 163.553, -243.105, 163.5437, -243.1209, 163.5001];
   const shake = (points, k) => points.map((v, i) => v + Math.sin(k * 7.13 + i * 1.7) * 0.00004);
   for (let k = 0; k < 200; k++) {
