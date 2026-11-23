@@ -145,10 +145,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='5'] .cot-ac
    26 px; the r25 critic: Firepower at 1280 dropped Ammunition and Armament with room to spare) */
 .cot-garage .stats[data-density~='bars'] :is(.srow,.cot-hrow) .cot-c-scale{display:none;}
 /* one line a round: the glyph carries the type, the figures take their units inline in columns wide enough for them */
-.cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 84px 52px;}
+.cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 34px 84px 52px;}
 /* Chinese figures stand at the 13 px floor: the figure columns widen so "806 / 733 mm" never runs into its damage */
-html[lang^='zh'] .cot-garage .stats :is(.shellhead,.shellrow){grid-template-columns:46px minmax(0,1fr) 96px 58px;}
-html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 96px 58px;}
+html[lang^='zh'] .cot-garage .stats :is(.shellhead,.shellrow){grid-template-columns:46px minmax(0,1fr) 38px 96px 58px;}
+html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 34px 96px 58px;}
 .cot-garage .stats[data-density~='1'] .shellhead span:first-child{visibility:hidden;}
 .cot-garage .stats[data-density~='1'] .shellkind .ty{display:none;}
 .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
@@ -251,6 +251,11 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-ammo-tile:first-child{border-color:var(--accent);background:var(--accent-wash);}
 /* the round's glyph square on the plate's text edge (a 40 px box centred it 12 px in) */
 .cot-garage .cot-ammo-tile svg{width:20px;height:20px;color:var(--ink-1);}
+/* the head: the round's glyph on the text edge, the rounds it carries on the far edge (owner 2026-11-22) */
+.cot-garage .cot-ammo-tile .hd{display:flex;align-items:center;justify-content:space-between;gap:var(--s1);min-width:0;}
+.cot-garage .cot-ammo-tile .ct{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;
+  font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-mono);color:var(--ink-2);}
+.cot-garage .cot-ammo-tile .ct svg{width:14px;height:14px;color:var(--ink-3);}
 .cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-data);color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-mono);color:var(--ink-3);}
 /* the type over its damage on every plate (APFSDS alone wrapped onto a second line while HEAT and HE kept one) */

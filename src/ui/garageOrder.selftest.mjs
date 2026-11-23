@@ -34,8 +34,14 @@ assert.match(garageSource,
 assert.match(garageSource,
   /previousCard\?\.setAttribute\('aria-selected', 'false'\);[\s\S]*?card\?\.setAttribute\('aria-selected', 'true'\);[\s\S]*?aria-activedescendant/,
   'selection keeps the focusable vehicle catalog accessibility state synchronized');
-assert.match(garageSource, /t\('garage\.dossier\.shell\.carried', \{ n: shellAmmunitionCapacity\(shell\) \}\)/,
-  'the dossier exposes authoritative per-channel ammunition capacity');
+// owner 2026-11-22 ("number of ammunition per ammo type in the rows"): the dossier's rows carry a rounds column and the
+// overview's tiles a rounds figure, both the count the battle HUD's slot starts with (shellAmmunitionCapacity)
+assert.match(garageSource, /function ammunitionRows[\s\S]*?const rounds = shellAmmunitionCapacity\(shell\);[\s\S]*?class="shellmetric shellcount"[\s\S]*?\$\{rounds\}/,
+  'the dossier exposes authoritative per-channel ammunition capacity in its own column');
+assert.match(garageSource, /const ammoCount = [\s\S]*?const rounds = shellAmmunitionCapacity\(shell\);[\s\S]*?garage\.dossier\.shell\.carried/,
+  'the overview tiles show the same per-channel capacity');
+assert.match(garageSource, /class="cot-ammo-tile">` \+\s*`<span class="hd">\$\{shellIconSVG\(shell\.type, 28\)\}\$\{ammoCount\(shell\)\}/,
+  'every overview ammo tile carries its count');
 // The 245 redesign: the equipment, the paint and the acts live in the band under the name in every layout; the readout
 // holds the stations' figures and never scrolls; the battle card shows the battlefield it deploys to.
 const showroomSource = await readFile(new URL('./showroom.css', import.meta.url), 'utf8');
