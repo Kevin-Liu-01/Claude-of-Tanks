@@ -38,6 +38,11 @@ const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : '';
 const gate = args.includes('--gate');
 const TOL = 0.15;
+// Accepted volume overflows past TOL, by id: the measured worst (m) and why it is no volume in air. A row holds while its
+// overflow stays at or under maxM; anything larger flags as before.
+const VOLUME_OUT_ACCEPT = Object.freeze({
+  cv90105_tml: { maxM: 0.169, reason: "gunner head inside turret_cupola structure cell (cv90105 lane probe, MAIN accept 2026-11-23)" },
+});
 const FACE_TOL = 0.035;
 const MIN_VOLUME_DEPTH_M = 0.05;
 
@@ -389,7 +394,7 @@ await eachBrowserChunk('tools/module-visual-align-probe.mjs', list, (chunk, { la
       if (receipt.trackFaceGap > FACE_TOL) flags.push(`track-face+${receipt.trackFaceGap.toFixed(3)}`);
       if (receipt.structureFaceGap > FACE_TOL) flags.push(`structure-face+${receipt.structureFaceGap.toFixed(3)}`);
       if (receipt.moduleShapeGap > FACE_TOL) flags.push(`module-shape+${receipt.moduleShapeGap.toFixed(3)}`);
-      if (receipt.volumeOverflow > TOL) flags.push(`volume-out+${receipt.volumeOverflow.toFixed(2)}`);
+      if (receipt.volumeOverflow > Math.max(TOL, VOLUME_OUT_ACCEPT[row.id]?.maxM ?? 0)) flags.push(`volume-out+${receipt.volumeOverflow.toFixed(2)}`);
       if (receipt.minVolumeDepth < MIN_VOLUME_DEPTH_M) flags.push(`shallow-${receipt.minVolumeDepth.toFixed(3)}`);
       rows.push({
         id: row.id, source: row.source, receipt, diagnostics: gaps,
