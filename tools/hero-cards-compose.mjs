@@ -660,7 +660,8 @@ async function ship() {
       face: [meta.bowSide, meta.gunSide],
       pose: [meta.pose.traverseDeg ?? 0, meta.pose.turretYawDeg, meta.pose.gunPitchDeg],
       // Why a gun did not take the full policy traverse: no turret rig, a turretless mount, or a limited arc.
-      ...(!meta.pose.turret ? { mount: 'none' } : meta.pose.turretless ? { mount: 'turretless' }
+      // (endscreen-modes-275) an aircraft has no turret to turn: its own mount kind
+      ...(record.kind === 'aircraft' ? { mount: 'aircraft' } : !meta.pose.turret ? { mount: 'none' } : meta.pose.turretless ? { mount: 'turretless' }
         : (meta.pose.traverseDeg ?? 0) < HERO_POSE.turretTowardCameraDeg ? { mount: 'arc' } : {}),
       ...written,
       fill: meta.coreFill,

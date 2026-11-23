@@ -180,6 +180,7 @@ import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, 
 } from './soloConsumables.ts';
 import { beginCouchSession, endCouchSession, type CouchBattle, type CouchSession } from './couchSeats.ts';
+import { modeEndReport } from '../sim/modeEndReport.ts';
 import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from '../sim/airSupportFire.ts';
 import type { AirStrike } from '../sim/airSupport.ts';
@@ -3228,6 +3229,8 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
     // battle endings (2026-09-25): the Horde report names the wave the last stand fell on
     hordeWave: game.matchModeState?.horde ? game.matchModeState.horde.wave : null,
+    // (endscreen-modes-275) the mode's figures the HUD showed as the battle ended (sim/modeEndReport.ts): the report's tiles
+    modeReport: modeEndReport(game.matchModeState, (game.player ?? (game.watch ? watchViewer(game) : null))?.id),
     // Jev commander (2026-09-25): the report names who commanded each side, and the commander's tallies
     brains: { enemy: (game.brains ?? DEFAULT_BRAIN_SETTINGS).opponent, allies: game.jev?.teams.includes('player') ? 'jev' : 'classic' },
     jev: game.jev ? game.jev.stats() : null,
@@ -3235,6 +3238,8 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
       id: entity.id,
       specId: entity.specId,
       vehicle: entity.spec.name,
+      // (endscreen-modes-275) a named hull's own name (a couch seat's, a named tank's): the report's callsign, as the HUD's
+      ...((entity as { displayName?: string | null }).displayName ? { displayName: (entity as { displayName?: string | null }).displayName } : {}),
       // (ac130-fx-228) the gunship's pilot: the report names the AC-130 (ui/killSourceIdentity.ts), not the garage tank
       ...(isGunship(entity) ? { aircraft: true } : {}),
       team: entity.team,

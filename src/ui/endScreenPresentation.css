@@ -130,6 +130,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:0;box-
 body[data-cot-width] .cot-es.cot-es--record:has(.es-report>.personal) .es-view-tabs{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);gap:var(--s3);overflow:hidden;background:none;box-shadow:none;margin-top:var(--s4)}
+/* (endscreen-modes-275) a room's round: the rematch panel takes its own row over the two columns (it was squeezed into the
+   columns' one row, its Ready button and meter laid over the rosters) */
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal):has(>.es-rematch){grid-template-rows:auto minmax(0,1fr)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>:is(.es-debrief,.es-debrief[hidden]){display:block;min-height:0;
   height:auto;overflow:auto;scrollbar-width:thin;border-radius:var(--r1);box-shadow:var(--e2)}
 /* (the tallies keep their names beside their glyphs on the wide windows too, gauntlet r1: a glyph over "0" or "900"
@@ -259,11 +262,18 @@ body[data-cot-width] .cot-es.cot-es--record .es-tal .k>span{min-width:0;overflow
    windows); a narrow sheet keeps its word heads and its scoreboard */
 .cot-es--record .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 64px 18px;--es-areas:"fl si id kc dg st"}
 .cot-es--record[data-revives='1'] .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 30px 64px 18px;--es-areas:"fl si id kc dc dg st"}
+/* (endscreen-modes-275) a mode scored per row (flags, goals: endScreenModes.ts objective) leads the figures with it */
+.cot-es--record[data-objective='1'] .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 30px 64px 18px;--es-areas:"fl si id oc kc dg st"}
+.cot-es--record[data-revives='1'][data-objective='1'] .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 30px 30px 64px 18px;--es-areas:"fl si id oc kc dc dg st"}
+.cot-es .es-tr .oc,.cot-es .es-roster-cols .ch.oc{display:none}
+.cot-es .es-tr .veh .vc{display:inline-flex;flex:none;align-self:center;margin-right:var(--s1);color:var(--ink-3)}
+.cot-es .es-tr .veh .vc[hidden]{display:none}
+.cot-es .es-vehicle-card>.es-vehicle-glyph{display:grid;place-items:center;width:100%;height:76px}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{display:none}
 /* (no caption over the names at any width: the rows are the combatants, and the word over them read as an eyebrow on the
    narrow sheets, gauntlet r12) */
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .word{display:none}
-body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st){display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st,.oc){display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch{display:flex;justify-content:flex-end;color:var(--ink-3)}
 /* (the damage head over its figures' column, the narrow sheet's second: with no word before it, it took the names' column
    and stood 45 to 75 px left of the figures, gauntlet r13; the wide grid seats it by its area) */
@@ -316,6 +326,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-roster.foe .es-roster-cols .side
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .alive{display:inline-flex;align-items:center;gap:var(--s1);font:500 var(--battle-fs-12)/1 var(--font-data)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st){display:flex}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.kc{grid-area:kc}
+body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.oc{display:flex;grid-area:oc}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.dc{grid-area:dc}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.dg{grid-area:dg}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.st{grid-area:st}
@@ -332,6 +343,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .veh{flex:0 4 auto;min-width:
 body[data-cot-width] .cot-es.cot-es--record .es-tr .dt{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr :is(.kc,.dc){display:block;text-align:right;font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .kc{grid-area:kc}
+body[data-cot-width] .cot-es.cot-es--record .es-tr .oc{display:block;grid-area:oc;text-align:right;font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .dc{grid-area:dc}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .output{grid-area:dg;flex:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .obar{display:none}

@@ -1,4 +1,4 @@
-import { battleEndArt, shotAccuracy } from './battleReportMedia.ts';
+import { battleEndArt } from './battleReportMedia.ts';
 import { battleLoadModeLabel } from './battleLoad.ts';
 import { GAME_MODE_DEFINITIONS } from '../sim/gameModeCatalog.ts';
 import { reportBackdrop } from './reportBackdrop.ts';
@@ -54,6 +54,9 @@ import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
 import { ACHIEVEMENTS, MEDALS, type BattleAwards } from '../game/serviceRecord.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
 import { heroCardChunk } from './heroCardChunk.ts';
+import { endScreenModeView, endStatValue, headlineScore, outcomeKey, type EndPlayerFacts, type EndScreenModeView, type EndStatId } from './endScreenModes.ts';
+import type { ModeEndReport } from '../sim/modeEndReport.ts';
+import { PREVIEW_AIRCRAFT } from '../vehicles/previewVehicles.ts';
 import type { LobbyPlayer, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
@@ -70,6 +73,8 @@ export interface EndScreenTeamRow {
   deaths?: number;
   dead: boolean;
   isPlayer?: boolean;
+  /** (endscreen-modes-275) the flags or goals this combatant scored: the mode's objective column. */
+  objectives?: number;
 }
 
 interface EndScreenKillRow {
@@ -96,6 +101,8 @@ interface EndScreenBestShot {
   damage: number;
   shellType?: string;
   shellName?: string;
+  /** (endscreen-modes-275) the round as a weapon, "120 mm CL3143 APFSDS" (hitEventFormat.ts weaponDisplayName). */
+  weapon?: string;
   targetName?: string;
   zone?: string;
   distM?: number;
@@ -131,6 +138,10 @@ export interface EndScreenSummary {
   finalBlow?: FinalBlow | null;
   /** The Horde wave the last stand fell on. */
   hordeWave?: number | null;
+  /** (endscreen-modes-275) the mode's figures as the battle ended (sim/modeEndReport.ts) and the player's moments of the
+   *  mode (shotInfo.ts): the mode descriptor's tiles read them (endScreenModes.ts). */
+  modeReport?: ModeEndReport | null;
+  facts?: EndPlayerFacts | null;
   /** Jev commander (2026-09-25): who commanded each side's bots ('classic' | 'jev'); absent in rooms. */
   brains?: { readonly enemy: string; readonly allies: string } | null;
   /** Medals and achievement tiers this battle earned (serviceRecord.ts). */
@@ -211,10 +222,55 @@ const COL = {
 };
 
 /**
+ * (endscreen-modes-275) Each figure's words and glyph: the tile's full label (its tip and accessible name), its short
+ * label where the wide record's glyph-and-figure tile needs one, its glyph. The mode descriptor (endScreenModes.ts) picks
+ * which stand.
+ */
+const STAT_TEXT: Readonly<Record<EndStatId, { readonly label: string; readonly short?: string; readonly icon: string }>> = Object.freeze({
+  dealt: { label: 'endScreen.tile.dealt', short: 'endScreen.tile.short.dealt', icon: 'damage' },
+  kills: { label: 'endScreen.tile.kills', icon: 'skull' },
+  accuracy: { label: 'garage.record.accuracy', icon: 'scope' },
+  spotted: { label: 'endScreen.spotted', short: 'endScreen.tile.short.spotted', icon: 'optics' },
+  assist: { label: 'endScreen.assist', short: 'endScreen.tile.short.assist', icon: 'team' },
+  blocked: { label: 'endScreen.damageBlocked', short: 'endScreen.tile.short.blocked', icon: 'shield' },
+  received: { label: 'endScreen.damageReceived', short: 'endScreen.tile.short.received', icon: 'damage' },
+  modules: { label: 'endScreen.modules', short: 'endScreen.tile.short.modules', icon: 'repair' },
+  pens: { label: 'endScreen.penetrations', icon: 'penetration' },
+  deaths: { label: 'endScreen.tile.deaths', icon: 'rematch' },
+  fired: { label: 'endScreen.tile.fired', short: 'endScreen.tile.short.fired', icon: 'shell' },
+  hits: { label: 'endScreen.tile.hits', icon: 'autoAim' },
+  flags: { label: 'endScreen.tile.flags', short: 'endScreen.tile.short.flags', icon: 'modeFlag' },
+  returns: { label: 'endScreen.tile.returns', short: 'endScreen.tile.short.returns', icon: 'undo' },
+  goals: { label: 'endScreen.tile.goals', short: 'endScreen.tile.short.goals', icon: 'modeTurbo' },
+  zones: { label: 'endScreen.tile.zones', short: 'endScreen.tile.short.zones', icon: 'modeZones' },
+  wave: { label: 'endScreen.tile.wave', short: 'endScreen.tile.short.wave', icon: 'modeHorde' },
+  sectors: { label: 'endScreen.tile.sectors', short: 'endScreen.tile.short.sectors', icon: 'modeFrontline' },
+  rescued: { label: 'endScreen.tile.rescued', short: 'endScreen.tile.short.rescued', icon: 'crew' },
+  troopsLost: { label: 'endScreen.tile.troopsLost', short: 'endScreen.tile.short.troopsLost', icon: 'skull' },
+  callIns: { label: 'endScreen.tile.callIns', short: 'endScreen.tile.short.callIns', icon: 'modeAirSupport' },
+  strikeKills: { label: 'endScreen.tile.strikeKills', short: 'endScreen.tile.short.strikeKills', icon: 'strikeStrafe' },
+  aircraftDown: { label: 'endScreen.tile.aircraftDown', short: 'endScreen.tile.short.aircraftDown', icon: 'altitude' },
+  droneKills: { label: 'endScreen.tile.droneKills', short: 'endScreen.tile.short.droneKills', icon: 'modeDrone' },
+  weapon: { label: 'endScreen.tile.weapon', short: 'endScreen.tile.short.weapon', icon: 'modeGunGame' },
+  role: { label: 'endScreen.tile.role', icon: 'player' },
+});
+
+/** A call-in's or a kill source's glyph on the timeline (the strike strip's own glyphs; the gunship's and the drone's
+ *  mode glyphs). */
+const SOURCE_GLYPH: Readonly<Record<string, string>> = Object.freeze({
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'rocket',
+  gunship: 'modeAc130', ac130: 'modeAc130', drone: 'modeDrone',
+});
+
+/** The AC-130 a pilot flew: its preview id (vehicles/previewVehicles.ts), whose renders and nation stand in for a tank's. */
+const AIRCRAFT_PREVIEW = PREVIEW_AIRCRAFT.ac130!;
+const AIRCRAFT_PREVIEW_ID = AIRCRAFT_PREVIEW.id;
+
+/**
  * The player's vehicle tile takes its tank hero card (the 3/4 render over its waving flag) from the lazy
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
-function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement, name: string): void {
+function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLElement, name: string): void {
   // the card module with its stylesheet (the document's one hero card load, heroCardChunk.ts: a sheet that failed at any
   // surface keeps the icon here too, never an unstyled card), the name's policy beside them
   Promise.all([heroCardChunk.load(), import('./heroCardPolicy.ts')])
@@ -225,7 +281,7 @@ function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageE
     .then((decorated) => {
       if (!decorated) return;
       card.setAttribute('role', 'img');
-      card.setAttribute('aria-label', fallback.alt);
+      card.setAttribute('aria-label', fallback.getAttribute('alt') ?? card.getAttribute('aria-label') ?? name);
       fallback.remove();
     })
     .catch(() => { /* the angle icon stays */ });
@@ -341,6 +397,7 @@ const ES_CSS = `
 .cot-es .es-tal .k svg{flex:0 0 auto;color:${COL.amberHi}}
 .cot-es .es-tal.hot{background:linear-gradient(135deg,oklch(from var(--accent-hi) l c h / .13),oklch(from var(--accent-hi) l c h / .025));}
 .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:34px}.cot-es .es-tal.hot .v{color:${COL.gold};}
+.cot-es .es-tal.word .v,.cot-es .es-tal.word.hot .v{font-size:var(--battle-fs-20);overflow-wrap:anywhere;line-height:1.1}
 /* the damage dealt's figures in its one colour, as the shot card, the float and the log carry it (Main 2026-10-31) */
 .cot-es .es-tal[data-stat=dealt] .v{color:var(--battle-damage-dealt);}
 .cot-es .es-stat-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
@@ -615,9 +672,10 @@ function vehicleNation(specId: string | null | undefined): string {
   }
 }
 
-/** A flag's seat; fillFlags() loads the flag art (flags.ts, its SVG assets) once the screen is up. */
-const flagSeat = (specId: string | null | undefined): string => {
-  const nation = vehicleNation(specId);
+/** A flag's seat; fillFlags() loads the flag art (flags.ts, its SVG assets) once the screen is up. An aircraft row flies its
+ *  aircraft's nation (endscreen-modes-275: the AC-130's rows had no flag). */
+const flagSeat = (specId: string | null | undefined, aircraft = false): string => {
+  const nation = aircraft ? AIRCRAFT_PREVIEW.nation : vehicleNation(specId);
   return nation ? `<span class="fl" data-nation="${escapeHtml(nation)}"></span>` : '';
 };
 
@@ -827,11 +885,25 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // stays in the hover tip and for assistive technology
     t.dataset.tip = label;
     if (opts.short) k.setAttribute('aria-label', label);
-    if (opts.text != null) v.textContent = opts.text;
+    if (opts.text != null) {
+      v.textContent = opts.text;
+      // (endscreen-modes-275) a word, not a figure (a role: "Juggernaut", "Superviviente"): its own smaller step
+      if (!/\d/.test(opts.text)) t.classList.add('word');
+    }
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
     if (key) host.dataset[key] = String(opts.datasetV != null ? opts.datasetV : Math.round(opts.value || 0));
     return t;
   }
+
+  /** (endscreen-modes-275) the battle's mode view (endScreenModes.ts): its tiles, details, columns and headline. */
+  function modeView(sum: Pick<EndScreenSummary, 'mode' | 'revives'>): EndScreenModeView {
+    return endScreenModeView(sum.mode, !!sum.revives);
+  }
+  const statSource = (sum: EndScreenSummary) => ({ ...sum, killCount: sum.kills.length });
+  const roleWords = () => ({
+    juggernaut: t('endScreen.role.juggernaut'), hunter: t('endScreen.role.hunter'),
+    survivor: t('endScreen.role.survivor'), infected: t('endScreen.role.infected'),
+  });
 
   function renderRoomHeading(
     parent: HTMLElement,
@@ -964,6 +1036,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     hostile: boolean,
     maxDamage: number,
     revives: boolean,
+    view: EndScreenModeView,
   ): void {
     // (a watched battle's row of the tank the viewer rode last is no row of theirs: the spectator's mark and a neutral ring,
     // never the player's gold plate, which read as "mine" in Watch, gauntlet r17)
@@ -979,10 +1052,18 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const vehicleClass = LATIN_NAME.test(vehicle) ? 'vt lat' : 'vt';
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
+    // (endscreen-modes-275) the vehicle's line leads with its class glyph (the Garage's, filled once the facet tables load:
+    // fillClasses) or the aircraft's role glyph, so the second column reads as what the row drove
+    const kindGlyph = result.aircraft
+      ? `<span class="vc air" role="img" aria-label="${escapeHtml(t('endScreen.class.gunship'))}" data-tip="${escapeHtml(t('endScreen.class.gunship'))}">${uiIconSVG('modeAc130', 12)}</span>`
+      : result.specId ? `<span class="vc" data-class-of="${escapeHtml(result.specId)}" hidden></span>` : '';
+    const objectiveCell = view.columns.includes('objective')
+      ? `<span class="oc num" data-tip="${escapeHtml(t(view.objective === 'goals' ? 'endScreen.tile.goals' : 'endScreen.tile.flags'))}">${Math.max(0, Math.floor(Number(result.objectives) || 0))}</span>` : '';
     row.innerHTML =
-      `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
+      `${flagSeat(result.specId, !!result.aircraft)}<span class="si"></span>` +
       `<span class="identity"><span class="${nameClass}"><span class="nmt">${escapeHtml(result.name || result.id)}</span>${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}</span>` +
-      `<span class="veh"><span class="${vehicleClass}">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
+      `<span class="veh">${kindGlyph}<span class="${vehicleClass}">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
+      objectiveCell +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
@@ -1004,10 +1085,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     stateMark.setAttribute('aria-label', result.dead ? t('endScreen.destroyed') : t('endScreen.survived'));
     stateMark.dataset.tip = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
     const silhouette = requiredDescendant<HTMLElement>(row, '.si');
-    if (result.aircraft) {
-      silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'var(--danger)' : 'var(--ink-2)');
-      silhouette.style.display = 'inline-flex'; silhouette.style.alignItems = 'center'; silhouette.style.justifyContent = 'center';
-    } else maskIcon(silhouette, result.specId || result.id,
+    // (endscreen-modes-275) an aircraft's side silhouette from its own render, as a tank's (the icon pipeline's aircraft row)
+    maskIcon(silhouette, result.aircraft ? AIRCRAFT_PREVIEW_ID : result.specId || result.id,
       'side_silhouette', result.dead ? 'var(--danger)' : 'var(--ink-2)');
   }
 
@@ -1018,6 +1097,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     hostile: boolean,
     maxDamage: number,
     revives: boolean,
+    view: EndScreenModeView,
   ): void {
     const panel = el('div', `es-roster ${hostile ? 'foe' : 'ally'}`, rosters);
     panel.setAttribute('role', 'group');
@@ -1032,6 +1112,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b>` +
       `<span class="alive num" data-tip="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
       `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
+      (view.columns.includes('objective') ? glyphHead(view.objective === 'goals' ? 'modeTurbo' : 'modeFlag',
+        t(view.objective === 'goals' ? 'endScreen.tile.goals' : 'endScreen.tile.flags'), 'oc') : '') +
       glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
       glyphHead('damage', t('endScreen.damage'), 'dg') + `<span class="ch st" aria-hidden="true"></span>`;
     const listRoot = el('div', 'es-roster-list', panel);
@@ -1042,7 +1124,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       el('div', 'es-none', listRoot).textContent = t('endScreen.noCombatants');
       return;
     }
-    for (const result of list) renderTeamRosterRow(listRoot, result, hostile, maxDamage, revives);
+    for (const result of list) renderTeamRosterRow(listRoot, result, hostile, maxDamage, revives, view);
   }
 
   function outcomeLine(result: EndScreenResult, sum: EndScreenSummary): string {
@@ -1052,6 +1134,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // Infected's own endings (the outbreak took every survivor; the survivors held out to extraction)
     if (sum.reason === 'outbreak_complete') return t('endScreen.outcome.outbreak');
     if (sum.reason === 'survivors_extracted') return t('endScreen.outcome.extracted');
+    // (endscreen-modes-275) a mode's own ending (flags home, the score reached, the troops out): "Enemy force destroyed"
+    // read under every points win
+    const reasonKey = outcomeKey(sum.reason, result);
+    if (reasonKey) return t(reasonKey);
     if (result === 'victory') {
       return sum.playerDead
         ? t('endScreen.outcome.victory.survived')
@@ -1090,7 +1176,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     banner.textContent = bannerText;
     host.dataset.banner = bannerText;
     if (sum.allies.length || sum.enemies.length) {
-      const own = fmtN(summarizeTeam(sum.allies).kills), enemy = fmtN(summarizeTeam(sum.enemies).kills);
+      // (endscreen-modes-275) the mode's own score where the mode is scored by one (flags, sectors' points, goals), else the
+      // sides' kills: a Capture the Flag win read 38 : 28 in kills over a 3 : 1 in flags
+      const scored = headlineScore(modeView(sum), sum.modeReport, { own: summarizeTeam(sum.allies).kills, enemy: summarizeTeam(sum.enemies).kills });
+      const own = fmtN(scored.own), enemy = fmtN(scored.enemy);
+      host.dataset.scoreKind = scored.mode ? 'mode' : 'kills';
       const score = markDatum(el('div', 'es-score', headline), 'score');
       score.setAttribute('role', 'img');
       score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
@@ -1228,16 +1318,21 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (key) host.dataset[key] = value;
   }
 
-  /** The combat details' figures (the tiles carry the six that lead: damage, kills, accuracy, spotted, assist, blocked). */
-  function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats, deaths: number | null): void {
-    const penetrationRate = stats.hits > 0
-      ? Math.round((stats.pens / stats.hits) * 100) : 0;
-    renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
-      `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
-    renderMiniStat(parent, 'repair', null, t('endScreen.modules'), String(stats.modulesDestroyed ?? 0));
-    renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
+  /** The combat details' figures, as the mode declares them (endScreenModes.ts details; the tiles lead with the rest). */
+  function renderSecondaryStats(parent: HTMLElement, sum: EndScreenSummary, view: EndScreenModeView): void {
+    const stats = sum.stats;
+    const details: EndStatId[] = [...view.details];
     // owner 2026-09-21: in a reviving mode deaths are a stat of the battle, not the player's end state
-    if (deaths != null) renderMiniStat(parent, 'skull', 'deaths', t('endScreen.deaths'), String(deaths));
+    if (sum.revives && !view.tiles.includes('deaths') && !details.includes('deaths')) details.push('deaths');
+    for (const id of details) {
+      const value = endStatValue(id, statSource(sum), roleWords());
+      if (!value) continue;
+      const text = STAT_TEXT[id];
+      const detail = id === 'pens' && stats.hits > 0
+        ? t('endScreen.penetrationPercent', { percent: Math.round((stats.pens / stats.hits) * 100) }) : '';
+      renderMiniStat(parent, text.icon, id === 'received' || id === 'deaths' ? id : null, t(text.label),
+        value.text ?? fmtN(value.value), detail);
+    }
     host.dataset.hits = String(stats.hits);
     host.dataset.pens = String(stats.pens);
     host.dataset.received = String(Math.round(stats.received));
@@ -1250,6 +1345,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const strip = el('div', 'es-best', parent);
     strip.style.setProperty('--i', nextI());
     const details = [
+      // (endscreen-modes-275) the weapon it was, the AC-130's howitzer as a tank's gun
+      bestShot.weapon,
       bestShot.zone,
       bestShot.distM ? `${Math.round(bestShot.distM)} m` : '',
       bestShot.destroyed ? t('endScreen.killConfirmed') : '',
@@ -1355,13 +1452,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       case 'loss': return moduleName(beat.id ?? '');
       case 'death': return t('endScreen.beat.destroyed');
       case 'spot': return t('endScreen.beat.spot');
+      // (endscreen-modes-275) an air-support call-in by its kind, and an aircraft the player brought down
+      case 'strike': return t(`airSupport.kind.${beat.source ?? ''}`);
+      case 'downed': return t('endScreen.beat.downed');
     }
   }
 
   function beatLabel(beat: PlacedBeat, rows: readonly EndScreenTeamRow[]): string {
-    const glyph = beat.kind === 'kill' ? 'autoAim' : beat.kind === 'zone' ? 'modeZones' : beat.kind === 'flag' ? 'modeFlag'
+    // (endscreen-modes-275) a kill a platform made (the AC-130, a call-in, the drone) carries the platform's glyph, a
+    // call-in its strike glyph
+    const sourceGlyph = beat.source ? SOURCE_GLYPH[beat.source] : undefined;
+    const glyph = beat.kind === 'kill' ? sourceGlyph ?? 'autoAim' : beat.kind === 'zone' ? 'modeZones' : beat.kind === 'flag' ? 'modeFlag'
       : beat.kind === 'goal' ? 'modeTurbo' : beat.kind === 'loss' ? moduleGlyph(beat.id ?? '') : beat.kind === 'death' ? 'skull'
-        : 'optics';
+        : beat.kind === 'strike' ? sourceGlyph ?? 'modeAirSupport' : beat.kind === 'downed' ? 'altitude' : 'optics';
     const identity = beat.kind === 'kill' ? `${flagSeat(beat.specId)}<span class="si"></span>` : '';
     return `${uiIconSVG(glyph, 16)}${identity}<span class="tx">${escapeHtml(beatText(beat, rows))}</span>`;
   }
@@ -1376,6 +1479,27 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       if (host.dataset.flagsPass !== pass) return; // a later report took the screen
       for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) {
         seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+      }
+    }, () => {});
+  }
+
+  /** (endscreen-modes-275) Each tank row's class glyph and name (the Garage cards' own, garage.ts fillCardClasses): the
+   *  facet tables, their glyphs and the class names' catalog slice load once the screen is up, off its first frame. */
+  function fillClasses(): void {
+    const pass = host.dataset.flagsPass;
+    if (!host.querySelector('.vc[data-class-of]')) return;
+    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())]).then(([facets, icons]) => {
+      if (host.dataset.flagsPass !== pass) return; // a later report took the screen
+      for (const seat of host.querySelectorAll<HTMLElement>('.vc[data-class-of]')) {
+        const value = facets.vehicleClassForId(seat.dataset.classOf);
+        if (!value) continue;
+        const name = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
+        seat.innerHTML = icons.vehicleClassGlyphSVG(value, 16);
+        seat.dataset.tip = name;
+        seat.setAttribute('role', 'img');
+        seat.setAttribute('aria-label', name);
+        seat.hidden = false;
       }
     }, () => {});
   }
@@ -1415,14 +1539,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     heading.innerHTML = `<span class="titleline">${uiIconSVG('battleRecord', 18)}` +
       `<span class="ey">${t('endScreen.personal.title')}</span></span>`;
     const statGrid = el('div', 'es-stat-grid', personal);
+    const view = modeView(sum);
+    host.dataset.modeView = sum.mode || 'standard';
     if (sum.playerAircraft) {
-      // (ac130-fx-228) the AC-130's icon in the vehicle card's place
+      // (ac130-fx-228) the AC-130 in the vehicle card's place; (endscreen-modes-275) its hero card as a tank's, from the
+      // real airframe's render (the hero-card pipeline's aircraft row, vehicleKinds.ts), its glyph until that lands
       statGrid.classList.add('has-vehicle');
       const vehicleCard = el('div', 'es-vehicle-card', statGrid);
       const aircraft = killSourceIdentity('ac130');
-      vehicleCard.innerHTML = uiIconSVG(aircraft?.icon ?? 'modeAc130', 56, 'var(--ink-1)');
+      const glyph = el('span', 'es-vehicle-glyph', vehicleCard);
+      glyph.innerHTML = uiIconSVG(aircraft?.icon ?? 'modeAc130', 56, 'var(--ink-1)');
       vehicleCard.setAttribute('role', 'img');
       vehicleCard.setAttribute('aria-label', t('endScreen.vehicle.alt', { name: aircraft?.label ?? '' }));
+      showHeroVehicle(vehicleCard, AIRCRAFT_PREVIEW_ID, glyph, aircraft?.label ?? '');
     } else if (sum.playerSpecId) {
       statGrid.classList.add('has-vehicle');
       const vehicleCard = el('div', 'es-vehicle-card', statGrid);
@@ -1431,28 +1560,25 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
       showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle, sum.playerVehicle || '');
     }
-    tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
-      value: Math.round(sum.stats.dealt), hot: true, icon: 'damage', short: t('endScreen.tile.short.dealt'),
+    // (endscreen-modes-275) the mode's tiles (endScreenModes.ts), its lead figure first: a standard battle's six are the
+    // direction's (11-end-screen .me .k: damage, kills, on target, then what the player lit, helped and turned away); a
+    // flag battle leads with the flags, the AC-130 with the troops it brought out
+    view.tiles.forEach((id, index) => {
+      const value = endStatValue(id, statSource(sum), roleWords());
+      if (!value) return;
+      const text = STAT_TEXT[id];
+      const cell = tile(statGrid, id === 'spotted' ? null : id, t(text.label), {
+        hot: index === 0, icon: text.icon, ...(text.short ? { short: t(text.short) } : {}),
+        ...(value.text != null ? { text: value.text } : { value: value.value, datasetV: value.value }),
+      });
+      cell.dataset.stat = id;
     });
-    statGrid.lastElementChild?.setAttribute('data-stat','dealt');
-    tile(statGrid, 'kills', t('endScreen.tile.kills'), {
-      value: sum.playerKills ?? sum.kills.length, datasetV: sum.playerKills ?? sum.kills.length, icon: 'skull',
-    });
-    tile(statGrid, 'accuracy', t('garage.record.accuracy'), {
-      value: shotAccuracy(sum.stats.hits, sum.stats.fired), icon: 'scope',
-    });
-    statGrid.lastElementChild?.setAttribute('data-stat','accuracy');
-    // the direction's six (11-end-screen .me .k): the three that lead, then what the player lit, helped and turned away
-    tile(statGrid, null, t('endScreen.spotted'), { value: sum.stats.spotted ?? 0, icon: 'optics', short: t('endScreen.tile.short.spotted') });
-    tile(statGrid, 'assist', t('endScreen.assist'), { value: Math.round(sum.stats.assist), icon: 'team', short: t('endScreen.tile.short.assist') });
-    tile(statGrid, 'blocked', t('endScreen.damageBlocked'), { value: Math.round(sum.stats.blocked), icon: 'shield', short: t('endScreen.tile.short.blocked') });
     renderAwards(personal, sum.awards);
     renderBestShot(personal, sum.bestShot);
     const detail = el('details', 'es-combat-details', personal);
     const toggle = el('summary', '', detail);toggle.tabIndex=0;toggle.textContent = t('endScreen.combatDetails');
     const blow = host.querySelector('.es-blow'); if (blow) personal.insertBefore(blow, detail);
-    renderSecondaryStats(el('div', 'es-stat-secondary', detail), sum.stats,
-      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
+    renderSecondaryStats(el('div', 'es-stat-secondary', detail), sum, view);
     renderKillList(detail, result, sum.kills);
   }
 
@@ -1483,9 +1609,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
     const revives = !!sum.revives;
-    renderTeamRoster(rosters, allyTitle(), sum.allies, false, maxDamage, revives);
-    renderTeamRoster(rosters, enemyTitle(), sum.enemies, true, maxDamage, revives);
+    const view = modeView(sum);
+    renderTeamRoster(rosters, allyTitle(), sum.allies, false, maxDamage, revives, view);
+    renderTeamRoster(rosters, enemyTitle(), sum.enemies, true, maxDamage, revives, view);
     host.dataset.revives = revives ? '1' : '0';
+    host.dataset.objective = view.columns.includes('objective') ? '1' : '0';
     host.dataset.rosterAllies = String(sum.allies.length);
     host.dataset.rosterEnemies = String(sum.enemies.length);
     host.dataset.damageRows = String(sum.allies.length + sum.enemies.length);
@@ -1615,6 +1743,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         armCues(report);
         renderEndActions(sum);
         fillFlags();
+        fillClasses();
         host.classList.add('show');
         host.setAttribute('aria-hidden', 'false');
         document.body.classList.add('cot-si-report');
@@ -1650,6 +1779,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       armCues(report);
       renderEndActions(sum);
       fillFlags();
+      fillClasses();
 
       host.classList.add('show');
       host.setAttribute('aria-hidden', 'false');

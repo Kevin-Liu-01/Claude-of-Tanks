@@ -12,7 +12,8 @@
  */
 import { zoneLetter } from './minimapObjectives.ts';
 
-export type BattleBeatKind = 'spot' | 'kill' | 'zone' | 'flag' | 'goal' | 'loss' | 'death';
+/** (endscreen-modes-275) 'strike': an air-support call-in the player made; 'downed': an enemy aircraft the player shot down. */
+export type BattleBeatKind = 'spot' | 'kill' | 'zone' | 'flag' | 'goal' | 'loss' | 'death' | 'strike' | 'downed';
 export type BattleSide = 'alpha' | 'bravo';
 
 export interface BattleBeat {
@@ -27,6 +28,8 @@ export interface BattleBeat {
   readonly specId?: string;
   /** zone: the zone's letter. */
   readonly label?: string;
+  /** kill: what made it when not the player's vehicle (the AC-130, a call-in, the drone); strike / downed: the call-in's kind. */
+  readonly source?: string;
   /** A battle beat (battleList): the side that made it. */
   readonly side?: BattleSide;
 }
@@ -47,7 +50,10 @@ export interface BattleBeatLog {
   /** The player's side for the mode's objective events ('alpha' unless the room seats the player in bravo). */
   setPerspective(team: string | null | undefined): void;
   spot(timeS?: number): void;
-  kill(id: string, specId: string | null | undefined, timeS?: number): void;
+  kill(id: string, specId: string | null | undefined, timeS?: number, source?: string | null): void;
+  /** An air-support call-in the player made, or an enemy aircraft the player brought down (its kind). */
+  strike(kind: string, timeS?: number): void;
+  downed(kind: string, timeS?: number): void;
   loss(moduleId: string, timeS?: number): void;
   death(timeS?: number): void;
   revive(): void;
@@ -70,7 +76,7 @@ const MAX_PLACED = 8;
 const LABEL_GAP = 0.12;
 /** Which beats keep a mark and a label first when the line is full. */
 const PRIORITY: Readonly<Record<BattleBeatKind, number>> = Object.freeze({
-  kill: 0, zone: 1, flag: 1, goal: 1, death: 2, loss: 3, spot: 4,
+  kill: 0, zone: 1, flag: 1, goal: 1, downed: 1, strike: 2, death: 2, loss: 3, spot: 4,
 });
 
 const finite = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -106,9 +112,11 @@ export function createBattleBeatLog(): BattleBeatLog {
       spotted = true;
       push({ t: at(timeS), kind: 'spot' });
     },
-    kill(id, specId, timeS) {
-      push({ t: at(timeS), kind: 'kill', id, ...(specId ? { specId } : {}) });
+    kill(id, specId, timeS, source) {
+      push({ t: at(timeS), kind: 'kill', id, ...(specId ? { specId } : {}), ...(source ? { source } : {}) });
     },
+    strike(kind, timeS) { if (kind) push({ t: at(timeS), kind: 'strike', source: kind }); },
+    downed(kind, timeS) { push({ t: at(timeS), kind: 'downed', ...(kind ? { source: kind } : {}) }); },
     loss(moduleId, timeS) {
       if (!moduleId || lost.has(moduleId)) return;
       lost.add(moduleId);

@@ -199,6 +199,7 @@ export function incomingHitFeedbackFor(
 
 interface PresentationShell {
   readonly name?: string;
+  readonly caliberMm?: number;
   readonly type?: string;
   readonly pen100Mm: number;
   readonly pen1000Mm: number;
@@ -270,6 +271,29 @@ export function shellDisplayName(ev: HitEventPresentation): string {
   const escapedType = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   name = name.replace(new RegExp(`^${escapedType}\\s+|\\s+${escapedType}$`, 'i'), '');
   return name.toUpperCase() === type.toUpperCase() ? '' : name;
+}
+
+/**
+ * A round named as a weapon (endscreen-modes-275: the report's final blow read "destroyed you with CL3143", the bare
+ * designation the cards' type column leaves): its calibre, designation and type, "120 mm CL3143 APFSDS", or the
+ * gunship's "152 mm Howitzer" as its table names it. The calibre is the event's, else its round's in the attacker's
+ * table; a name that already carries one keeps it.
+ */
+export function weaponDisplayName(ev: HitEventPresentation): string {
+  const type = (ev.shellType || '').trim();
+  const name = (ev.shellName || '').trim();
+  let label = name || type;
+  if (!label) return '';
+  if (type && name && !new RegExp(`(^|\\s)${type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`, 'i').test(name)) label = `${name} ${type}`;
+  let calibre = Number(ev.caliberMm);
+  if (!(calibre > 0)) {
+    try {
+      const shells = ev.attackerSource === 'ac130' ? GUNSHIP_WEAPONS as readonly PresentationShell[]
+        : ev.attackerSpecId ? shellsForSpec(ev.attackerSpecId) : undefined;
+      calibre = Number(matchingPresentationShell(shells, ev)?.caliberMm);
+    } catch { calibre = 0; }
+  }
+  return calibre > 0 && !/\d\s*mm\b/i.test(label) ? `${Math.round(calibre)} mm ${label}` : label;
 }
 
 /**

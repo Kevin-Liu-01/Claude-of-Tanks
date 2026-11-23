@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>aircraft asset generator</title></head>
+<body>
+<script type="module">
+// Offscreen studio for tools/genAircraftAssets.mjs (endscreen-modes-275): the preview aircraft (vehicles/previewVehicles.ts)
+// rendered from their real first-party airframes into the tanks' own icon files (tankAssetFile names, the same sizes,
+// encodes and studio light as tools/icons-page.html), so iconUrl / maskIcon / tankThumbUrl read an aircraft as a tank.
+// A sibling of the tank page rather than a branch inside it: that page is the fleet regen's icons step, keyed on its own
+// source, and an edit there would re-render every tank. First-party tooling: Kevin B. Liu (NOTICE.md).
+import * as THREE from 'three';
+import { buildPreviewAircraft } from '/src/game/previewAircraftBuild.ts';
+import { PREVIEW_AIRCRAFT_IDS } from '/src/vehicles/previewVehicles.ts';
+import { exteriorFingerprint, tankAssetFile } from '/src/vehicles/tankAssets.ts';
+import { measurePortraitFullBounds } from '/src/ui/portraitFraming.ts';
+
+const BASE = 512;
+const SS = 2;
+const MARGIN = 1.07;
+
+// the tank page's studio (tools/icons-page.html): one look for every preview
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.18;
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x77818b, 1.55));
+const key = new THREE.DirectionalLight(0xfff6ea, 3.05);
+key.position.set(-4, 6, 5);
+const fill = new THREE.DirectionalLight(0xe8f0ff, 1.25);
+fill.position.set(5, 2.5, 1);
+const rim = new THREE.DirectionalLight(0xffffff, 1.55);
+rim.position.set(1.5, 4, -6);
+scene.add(key, fill, rim);
+
+function capture(cam, w, h) {
+  renderer.setSize(w * SS, h * SS, false);
+  renderer.render(scene, cam);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const c = out.getContext('2d');
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(renderer.domElement, 0, 0, w, h);
+  return out;
+}
+
+/** The tank page's encode: transparent pixels keep a 1/255 alpha floor so the lossy encoder fills them black. */
+function encodeWebp(canvas, quality = 0.9) {
+  const out = document.createElement('canvas');
+  out.width = canvas.width; out.height = canvas.height;
+  const context = out.getContext('2d', { willReadFrequently: true });
+  context.drawImage(canvas, 0, 0);
+  const image = context.getImageData(0, 0, out.width, out.height);
+  for (let i = 3; i < image.data.length; i += 4) if (image.data[i] === 0) image.data[i] = 1;
+  context.putImageData(image, 0, 0);
+  return out.toDataURL('image/webp', quality);
+}
+
+/** The tank page's silhouette: white, alpha lifted, resampled. */
+function silhouette(src, outW, outH) {
+  const full = document.createElement('canvas');
+  full.width = src.width; full.height = src.height;
+  const fc = full.getContext('2d');
+  fc.drawImage(src, 0, 0);
+  const img = fc.getImageData(0, 0, full.width, full.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+    d[i + 3] = a < 8 ? 0 : Math.min(255, a * 1.8);
+  }
+  fc.putImageData(img, 0, 0);
+  const out = document.createElement('canvas');
+  out.width = outW; out.height = outH;
+  const c = out.getContext('2d');
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(full, 0, 0, outW, outH);
+  return out;
+}
+
+function orthoCam(center, size, dir, up, halfW, halfH) {
+  const dist = Math.max(size.x, size.y, size.z) * 2 + 6;
+  const cam = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, dist * 3);
+  cam.up.set(up[0], up[1], up[2]);
+  cam.position.set(center.x + dir[0] * dist, center.y + dir[1] * dist, center.z + dir[2] * dist);
+  cam.lookAt(center);
+  cam.updateMatrixWorld();
+  return cam;
+}
+
+/**
+ * The 3/4 portrait on the tanks' card: the whole airframe (its span would leave a tank's dense-core framing) fitted inside
+ * the card with the tank page's grounding shadow and tonal pass, its plan centre on the card's centre line.
+ */
+function anglePortrait(src, outSize) {
+  const pixels = src.getContext('2d').getImageData(0, 0, src.width, src.height).data;
+  const full = measurePortraitFullBounds(pixels, src.width, src.height);
+  if (!full) throw new Error('empty aircraft portrait');
+  const pad = outSize * 0.06;
+  const w = full.x1 + 1 - full.x0, h = full.y1 + 1 - full.y0;
+  const scale = Math.min((outSize - 2 * pad) / w, (outSize - 2 * pad) / h);
+  const dx = (outSize - w * scale) / 2 - full.x0 * scale;
+  const dy = (outSize - h * scale) / 2 - full.y0 * scale;
+  const out = document.createElement('canvas');
+  out.width = outSize; out.height = outSize;
+  const oc = out.getContext('2d');
+  oc.imageSmoothingEnabled = true;
+  oc.imageSmoothingQuality = 'high';
+  oc.save();
+  oc.globalAlpha = 0.28;
+  oc.filter = 'brightness(0) blur(10px)';
+  oc.drawImage(src, dx, dy + 7, src.width * scale, src.height * scale);
+  oc.restore();
+  oc.save();
+  oc.filter = 'brightness(1.06) contrast(1.07) saturate(1.03)';
+  oc.drawImage(src, dx, dy, src.width * scale, src.height * scale);
+  oc.restore();
+  return out;
+}
+
+/** One aircraft's files and its manifest row (the views the preview surfaces read: angle and its thumbnail, side, top and
+ *  their silhouettes; an aircraft has no armour, module, crew or marking diagram). */
+function generate(id) {
+  const visual = buildPreviewAircraft(id);
+  const root = visual.root;
+  scene.add(root);
+  try {
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const files = {};
+    // top: plan view, nose up the card
+    const topHalf = Math.max(size.x, size.z) / 2 * MARGIN;
+    const topCanvas = capture(orthoCam(center, size, [0, 1, 0], [0, 0, 1], topHalf, topHalf), BASE, BASE);
+    files[tankAssetFile(id, 'top')] = encodeWebp(topCanvas);
+    files[tankAssetFile(id, 'topSilhouette')] = silhouette(topCanvas, 128, 128).toDataURL('image/png');
+    // side: the tanks' side camera (from -x: the nose toward the card's right, as every tank's side view)
+    const sideHalfW = Math.max(size.z / 2, size.y) * MARGIN;
+    const sideCanvas = capture(orthoCam(center, size, [-1, 0, 0], [0, 1, 0], sideHalfW, sideHalfW / 2), BASE, BASE / 2);
+    files[tankAssetFile(id, 'side')] = encodeWebp(sideCanvas);
+    files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
+    // angle: the tanks' front three-quarter from above, swung toward the port side (the guns' side) and higher, so the
+    // wing and the gun line read
+    const fov = 28;
+    const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
+    const dist = (radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+    const dir = new THREE.Vector3(0.9, 0.55, 1.0).normalize();
+    const cam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
+    cam.position.copy(center).addScaledVector(dir, dist);
+    cam.lookAt(center);
+    cam.updateMatrixWorld();
+    const source = capture(cam, BASE * 2, BASE * 2);
+    const angleFile = tankAssetFile(id, 'angle');
+    files[angleFile] = encodeWebp(anglePortrait(source, BASE));
+    files[`thumbs/${angleFile}`] = encodeWebp(anglePortrait(source, BASE / 2));
+    const meta = {
+      kind: 'aircraft', airframe: visual.aircraft.airframe, nation: visual.aircraft.nation,
+      geometryHash: exteriorFingerprint(root),
+      dims: { lengthM: +size.z.toFixed(2), spanM: +size.x.toFixed(2), heightM: +size.y.toFixed(2) },
+    };
+    return { files, meta };
+  } finally {
+    visual.dispose();
+  }
+}
+
+window.__AIRCRAFT_IDS = [...PREVIEW_AIRCRAFT_IDS];
+window.__AIRCRAFT_GEN = (ids) => {
+  const result = { files: {}, aircraft: {} };
+  for (const id of ids && ids.length ? ids : PREVIEW_AIRCRAFT_IDS) {
+    try {
+      const one = generate(id);
+      Object.assign(result.files, one.files);
+      result.aircraft[id] = one.meta;
+    } catch (error) {
+      result.files[`${id}.error`] = String(error && error.stack || error);
+    }
+  }
+  return result;
+};
+window.__AIRCRAFT_READY = true;
+</script>
+</body>
+</html>
