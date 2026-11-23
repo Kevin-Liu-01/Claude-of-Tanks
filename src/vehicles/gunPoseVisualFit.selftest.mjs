@@ -4,7 +4,8 @@
 // between the two at the fire instant, measured here on the real rig (createTank, headless three):
 // - every production id's main-gun mounts: a single bore, each mouth of a twin, each launcher tube;
 // - the hull on a grade (visualPitch 0.04, visualRoll -0.03), at turret yaws across the ring (a casemate's own arc) and
-//   gun pitches across its depression and elevation; a fixed hydraulic gun (Strv 103) at its only lay, the hull tilted;
+//   gun pitches across its depression and elevation, never below the floor the sim holds the gun to at that yaw (a rear
+//   deck's curve: sim/gunPitchLimits.ts); a fixed hydraulic gun (Strv 103) at its only lay, the hull tilted;
 // - during traverse: the turret slewing at its rated speed for ten ticks before the shot, the visual synced every tick.
 // Rule (Main, 2026-11-22, written before the measurement): p99 <= 3 cm and max <= 10 cm, and any id beyond is listed by
 // distance; there is no looser bound and no tracer blend. Recoil starts after the shot leaves, so the barrel is at rest.
@@ -24,6 +25,7 @@ import { createTankState, SIM_DT } from '../sim/movement.ts';
 import { createCombatState } from '../sim/damage.ts';
 import { gunWorldPose } from '../sim/gunPose.ts';
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
+import { mechanicalGunPitchFloor, minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
 // the rig's lazy materials paint on canvases; their pixels are not measured here
@@ -32,7 +34,28 @@ installCanvasFixture();
 const P99_M = 0.03, MAX_M = 0.10;
 /** Ids whose worst row is beyond 3 cm today: id -> that worst distance (cm), measured on the full fleet pass. */
 const KNOWN_STRAYS = Object.freeze({
-  m1a1_abrams_hc: 25.5, // drawn barrel 4.12 m from the drawn trunnion against gunBarrel.lengthM 3.89; trunnion 5/6.6 cm off gunPivot
+  // seeded from the full fleet pass of 2026-11-22 (313 ids, 10,028 shots; the other 295 ids: p99 1.40 cm, max 2.00 cm).
+  // Each is spec drift from the built rig (armor.turretPivot, armor.gunPivot or armor.gunBarrel.lengthM against the drawn
+  // ring, trunnion and barrel): olifant_mk1b's ring 37 cm forward of its spec pivot and its barrel 4.74 m against 6.13,
+  // ua_m1a1's ring 55 cm and trunnion 81 cm off, the M1A1 family's barrel 23 cm long. Online has always fired from the spec.
+  olifant_mk1b: 196.1,
+  centurion5_2dk: 193.7,
+  olifant_mk1a: 193.7,
+  semel: 170.7,
+  olifant_mk1: 170.7,
+  ua_m1a1: 99.8,
+  m1a1_aim_sa_aus: 90.8,
+  leopard_as1: 84.4,
+  cv9040c: 49.3,
+  m1a1: 25.6,
+  m1a1ha: 25.6,
+  m1a1_abrams_hc: 25.6,
+  m1a1_abrams_sa: 25.6,
+  m1a1_abrams_aim: 25.6,
+  m1a1_abrams_fep: 25.6,
+  kf41_lynx: 8.3,
+  fv510: 3.6,
+  fv510_milan: 3.6,
 });
 /** How far a pinned id's worst row may move before it counts as growth (the measurement's own repeatability is exact). */
 const PIN_SLACK_CM = 0.1;
@@ -82,9 +105,14 @@ for (const id of ids) {
     const pitches = fixed ? [0] : [-spec.gunDepressionDeg, 0, spec.gunElevationDeg * 0.5, spec.gunElevationDeg].map((deg) => deg * DEG);
     const yaws = fixed ? [0] : turretless ? [-1, 0, 1].map((side) => casemateGunYaw(spec, side)) : [-2.6, -1.2, 0, 0.7, Math.PI];
     const hullPitches = fixed ? [-0.12, 0.04, 0.15] : [0.04];
+    // the lowest the sim lays the gun at a turret yaw (a rear deck's curve, a casemate's floor): movement.ts mechanicalLowAt
+    const floor = spec.gunPitchByYawDeg ? mechanicalGunPitchFloor(spec) : null;
+    const floorAt = (yaw) => (floor ? floor(yaw) : minimumMechanicalGunPitch(spec, yaw));
     for (const mount of mountsOf(spec)) {
       for (const hullPitch of hullPitches) for (const yaw of yaws) for (const pitch of pitches) {
-        state.visualPitch = hullPitch; state.turretYaw = yaw; state.gunPitch = pitch; state.turretYawRate = 0;
+        // only poses the sim lays: a gun is held above its deck's floor at that yaw (movement.ts mechanicalLowAt)
+        if (pitch < floorAt(yaw) - 1e-9 && pitch !== pitches[0]) continue;
+        state.visualPitch = hullPitch; state.turretYaw = yaw; state.gunPitch = Math.max(pitch, floorAt(yaw)); state.turretYawRate = 0;
         for (let k = 0; k < 3; k++) tank.syncFromState(state, SIM_DT);
         rows.push({ id, kind: mount.kind, mount: mount.launcher ? `tube ${mount.tube}` : mount.cannonMuzzle >= 0 ? `mouth ${mount.cannonMuzzle}` : 'bore',
           pose: `${fixed ? `hull pitch ${hullPitch} ` : ''}yaw ${yaw.toFixed(2)} pitch ${(pitch / DEG).toFixed(1)}`, d: gap(tank, entity, mount) });
@@ -93,8 +121,10 @@ for (const id of ids) {
       if (!turretless) {
         // traverse: ten ticks at the rated slew, the visual synced each tick, the shot on the tenth
         const rate = spec.turretTraverseDegS * DEG;
-        state.gunPitch = pitches[2]; state.turretYaw = 0.2; state.turretYawRate = rate;
-        for (let tick = 0; tick < 10; tick++) { state.turretYaw += rate * SIM_DT; tank.syncFromState(state, SIM_DT); }
+        state.turretYaw = 0.2; state.turretYawRate = rate;
+        for (let tick = 0; tick < 10; tick++) {
+          state.turretYaw += rate * SIM_DT; state.gunPitch = Math.max(pitches[2], floorAt(state.turretYaw)); tank.syncFromState(state, SIM_DT);
+        }
         rows.push({ id, kind: mount.kind, mount: mount.launcher ? `tube ${mount.tube}` : mount.cannonMuzzle >= 0 ? `mouth ${mount.cannonMuzzle}` : 'bore',
           pose: `traverse ${spec.turretTraverseDegS} deg/s`, d: gap(tank, entity, mount) });
       }
