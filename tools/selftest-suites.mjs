@@ -3142,6 +3142,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudTeamPips.selftest.mjs',
     // couch-split-274: a couch split pane's HUD owns its seat's tank (its own row, side and enemy count), not seat 1's
     'src/ui/hudOwnTank.selftest.mjs',
+    // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
+    // condition in the page's lane
+    'src/ui/airSupportNotices.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

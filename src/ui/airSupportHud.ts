@@ -16,9 +16,12 @@
  *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
  *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
- * - The warning: a strike whose footprint covers the crew raises the battle's one notice (battleNotices.ts, the queue
- *   2026-11-21: the bespoke INCOMING plate folded into it) with its countdown, updated in place and taken down when its
- *   danger has passed; every strike's footprint is also on the minimap and the ground, and its aircraft on the minimap.
+ * - The warning: a strike whose footprint covers the crew is a condition of the battle notices (battleNotices.ts, at
+ *   NOTICE_PRIORITY.threat; the bespoke INCOMING plate folded into it) with its countdown, updated in place and taken
+ *   down when its danger has passed. The condition lane is the page's: a couch pane's HUD is handed a port that raises
+ *   none (hud.ts). Every strike's footprint is also on the minimap and the ground, and its aircraft on the minimap.
+ * - A refused call-in and an aircraft the crew brought down are events (battleNoticeEvents.ts BATTLE_EVENT, at
+ *   NOTICE_PRIORITY.answered), raised on the HUD's own bus, so a couch pane's seat hears its own in its own lane.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { EventBus } from '../game/stateCore.ts';
@@ -34,7 +37,8 @@ import { markDatum } from './dom.ts';
 import { t } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
-import { battleNotices, type BattleNoticePort } from './battleNotices.ts';
+import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
+import { BATTLE_EVENT, type BattleEvent } from './battleNoticeEvents.ts';
 
 interface Point { x: number; y: number; z: number }
 
@@ -64,7 +68,7 @@ const PLATE_STATE: Readonly<Record<StrikeOrderRefusal, PlateState>> = {
 };
 
 /** The INCOMING notice's id in the battle's region (one at a time: the nearest-landing strike's). */
-const INCOMING_NOTICE = 'cot-air-incoming';
+export const INCOMING_NOTICE = 'cot-air-incoming';
 
 export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices: BattleNoticePort = battleNotices) {
   // the rest slot: Support (the binoculars) with the points; it joins the battle tray on a desktop (update() re-seats it
@@ -168,25 +172,27 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     if (key === warningShown) return;
     warningShown = key;
     if (!text) { notices.dismiss(INCOMING_NOTICE); return; }
-    notices.show({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
-      durationMs: null, dismissible: false, priority: 3, className: 'cot-air-incoming' });
+    notices.condition({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat, className: 'cot-air-incoming' });
   }
 
-  // ---- the events (notices-audit-275's ladder: P1, your action answered; 2.4 s, repeats coalesce): a refused call-in
-  // (sound-only before) and an aircraft our crew brought down
+  // ---- the events (the event lane, battleNoticeEvents.ts: your action answered; "A · B" shows B as the detail; a repeat
+  // while it shows counts on it, and one inside the lane's cooldown is dropped): a refused call-in (sound-only before) and
+  // an aircraft our crew brought down. Raised on this HUD's bus, which its own HUD's lane hears (a couch pane's seat bus too)
   const isKind = (kind: unknown): kind is AirStrikeKind => AIR_STRIKE_KINDS.includes(kind as AirStrikeKind);
+  const raise = (event: BattleEvent): void => { bus.emit(BATTLE_EVENT, event); };
   bus.on('ui:strikeRefusal', (payload) => {
     const { kind, reason } = (payload ?? {}) as { kind?: unknown; reason?: unknown };
     if (!isKind(kind)) return;
     const plate = PLATE_STATE[String(reason) as StrikeOrderRefusal] ?? 'denied';
-    notices.show({ severity: 'warning', text: t(`airSupport.state.${plate}`), detail: t(`airSupport.kind.${kind}`),
-      durationMs: 2400, priority: 1, dedupeKey: `cot-air-refused-${plate}`, className: 'cot-air-refused' });
+    raise({ text: `${t(`airSupport.state.${plate}`)} · ${t(`airSupport.kind.${kind}`)}`, priority: NOTICE_PRIORITY.answered,
+      severity: 'warning', icon: STRIKE_ICON[kind] });
   });
   bus.on('ui:aircraftDowned', (payload) => {
     const kind = (payload as { kind?: unknown } | null)?.kind;
     if (!isKind(kind)) return;
-    notices.show({ severity: 'success', text: t('airSupport.downed'), detail: t(`airSupport.kind.${kind}`),
-      durationMs: 2400, priority: 1, dedupeKey: 'cot-air-downed', className: 'cot-air-downed' });
+    raise({ text: `${t('airSupport.downed')} · ${t(`airSupport.kind.${kind}`)}`, priority: NOTICE_PRIORITY.answered,
+      severity: 'success', icon: STRIKE_ICON[kind] });
   });
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
