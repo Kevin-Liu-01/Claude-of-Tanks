@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { nativeBrowserLaunchOptions } from './native-browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
@@ -28,15 +28,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const FINISHED = JSON.stringify({ v: 2, garage: 'skipped', training: 'skipped', debrief: 'skipped', tour: 'skipped', offer: 'later' });
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
-const lock = createCaptureLock();
-let browser, refresh;
+let browser;
 const report = { url, specs, rows: [], errors: [] };
 try {
-  await lock.acquire(30 * 60 * 1000, { command: 'phone-smoke-reach', lockClass: 'render' });
-  refresh = setInterval(() => lock.refresh(), 30000);
+  // one capture hold, owned by tools/capture-hold.mjs (the refresh, the cap, the signals and the teardown in one place)
+  await withCaptureHold(async ({ checkpoint }) => {
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: true, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox'],
     protocolTimeout: 300000 }), { label: 'phone-smoke-reach', tutorial: 'keep' });
   for (const spec of specs) {
+    await checkpoint();
     const page = await browser.newPage();
     page.on('pageerror', (e) => report.errors.push(String(e.message).slice(0, 300)));
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -70,6 +70,8 @@ try {
     console.log(`phone-smoke-reach ${spec}: ${reach.map((r) => `${r.control} ${r.reached ? 'reached' : `COVERED by ${r.hit}`}`).join(', ')}; tap spent smoke: ${spent}`);
     await page.close();
   }
+  }, { label: 'phone-smoke-reach', command: 'phone-smoke-reach', lockClass: 'render', timeoutMs: 30 * 60 * 1000,
+    teardown: async () => { await browser?.close(); browser = null; } });
   for (const row of report.rows) {
     const smoke = row.reach.find((r) => r.control === 'smoke');
     assert.ok(smoke, `${row.spec}: a smoke tile shows on the phone HUD`);
@@ -84,5 +86,5 @@ try {
   process.exitCode = 1;
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
-  clearInterval(refresh); await browser?.close(); lock.release();
+  await browser?.close();
 }
