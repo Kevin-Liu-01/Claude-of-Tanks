@@ -60,25 +60,21 @@ export const CARD_FRAME = Object.freeze({
 
 /**
  * The card a tank should have: a frame of its take's film at CARD_FRAME[id] s, else its 4K still; and, for a tank no take
- * has filmed (`filmed` given and without it), its render (274.0, Kevin via Main 2026-11-22, "Render-based in 274"): the
+ * has no card cut from a take (`filmed` given and without it), its render (274.0, Kevin via Main 2026-11-22, "Render-based in 274"): the
  * shipped hero card's tank layer over its nation's flag layer (tools/genHeroCards.mjs, first-party procedural pixels), in
- * the same share design. A filmed take always wins: a tank leaves render the moment the media lane films it.
+ * the same share design. A filmed take always wins: a tank leaves render the moment the media lane cuts its take's card.
  */
 export const wantedCard = (id, cardFrame = CARD_FRAME, filmed = null) =>
   (cardFrame[id] !== undefined ? { source: 'film', frame: cardFrame[id] }
     : !filmed || filmed.has(id) ? { source: 'still' } : { source: 'render' });
 
-/** The fleet takes' index (the media lane's deliveries): the vehicles a take has filmed, under their current ids. */
-const FLEET_INDEX = 'public/media/site50-r14/fleet/index.json';
-/** The tanks with a filmed source: each vehicle of the fleet takes' index, and each tank whose card was cut from a take. */
+/**
+ * The tanks whose card is cut from a take (its record a still or a film frame). A tank the media lane has filmed but whose
+ * card is not cut yet (its 4K still not delivered here) keeps its render card until the take's card is cut: renderDue
+ * counts a take handed to the run as filmed, so the still or frame then wins and replaces the render.
+ */
 export function filmedIds({ root = ROOT, records = readCardRecords(root) } = {}) {
-  const ids = new Set(Object.entries(records).filter(([, record]) => record?.source === 'still' || record?.source === 'film').map(([id]) => id));
-  const file = join(root, FLEET_INDEX);
-  if (existsSync(file)) {
-    const index = JSON.parse(readFileSync(file, 'utf8'));
-    for (const key of Object.keys(index.vehicles ?? {})) ids.add(resolveTankId(key, index.tankIdSchema));
-  }
-  return ids;
+  return new Set(Object.entries(records).filter(([, record]) => record?.source === 'still' || record?.source === 'film').map(([id]) => id));
 }
 /** A render card's source: the shipped hero card's 960 px tank layer (public/icons/hero, hero-cards-compose ship). */
 export const heroLayerPath = (id, root = ROOT) => join(root, 'public/icons/hero', `${id}-960.avif`);
@@ -103,9 +99,16 @@ export async function composeRenderSource(id, out, root = ROOT) {
   context.fillStyle = ground; context.fillRect(0, 0, W, H);
   const flag = heroFlagPath(id, root);
   if (flag && existsSync(flag)) {
-    const cloth = await loadImage(flag);
+    // the cloth past the card's top and right edges, its hoist side faded into the ground (no hard edge under the title)
+    const cloth = await loadImage(flag), fw = 2200, fh = Math.round(fw * cloth.height / cloth.width);
+    const layer = createCanvas(fw, fh), lc = layer.getContext('2d');
+    lc.drawImage(cloth, 0, 0, fw, fh);
+    lc.globalCompositeOperation = 'destination-in';
+    const fade = lc.createLinearGradient(0, 0, fw * 0.55, 0);
+    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)');
+    lc.fillStyle = fade; lc.fillRect(0, 0, fw, fh);
     context.globalAlpha = 0.5;
-    context.drawImage(cloth, W - 1900, 60, 1900, 1900 * cloth.height / cloth.width);
+    context.drawImage(layer, W - fw + 80, -90, fw, fh);
     context.globalAlpha = 1;
   }
   const glow = context.createRadialGradient(W * 0.58, H * 0.82, 40, W * 0.58, H * 0.82, 980);
@@ -347,7 +350,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const stillsFile = arg('cards');
   const stills = stillsFile ? JSON.parse(readFileSync(stillsFile, 'utf8')) : {};
-  // --render: every visible tank no take has filmed gets its render card (the hero card layer in the share design)
+  // --render: every visible tank with no card cut from a take gets its render card (the hero card layer in the share design)
   if (process.argv.includes('--render')) {
     const filmed = filmedIds();
     for (const id of VISIBLE_TANK_IDS) if (!filmed.has(id) && CARD_FRAME[id] === undefined && !(id in stills)) stills[id] = null;

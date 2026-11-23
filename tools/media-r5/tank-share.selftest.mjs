@@ -183,14 +183,16 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
 // hero card layer ({ source: 'render' }, the layer's digest recorded); a filmed take always wins; a missing layer fails by
 // name. (Injected compose, layer and reader: no canvas, browser or master filter.)
 {
-  const tank = Object.keys(table.tanks).find((t) => !table.tanks[t].card && CARD_FRAME[t] === undefined && t !== id);
+  const shipped = share.readCardRecords();
+  const rendered = Object.keys(table.tanks).filter((t) => (shipped[t]?.source === 'render' || !table.tanks[t].card) && CARD_FRAME[t] === undefined && t !== id);
+  const tank = rendered[0];
   assert.ok(tank, 'a tank with no filmed card to render');
   assert.deepEqual(share.wantedCard(tank, CARD_FRAME, new Set()), { source: 'render' }, `${tank}: no take, so its render`);
   assert.deepEqual(share.wantedCard(tank, CARD_FRAME, new Set([tank])), { source: 'still' }, `${tank}: a take filmed it, so its still wins`);
   assert.deepEqual(share.wantedCard(tank, { ...CARD_FRAME, [tank]: 1.5 }, new Set()), { source: 'film', frame: 1.5 }, 'a CARD_FRAME second is a take: its film wins');
   assert.deepEqual(share.wantedCard(tank), { source: 'still' }, 'with no filmed set the card is the take\'s (the old call)');
   assert.ok(share.filmedIds().has(id), `${id}: a tank with a take's card counts as filmed`);
-  assert.ok(!share.filmedIds().has(tank) || table.tanks[tank].card, `${tank}: no take, no take's card`);
+  assert.ok(!share.filmedIds().has(tank), `${tank}: no card cut from a take, so not filmed`);
 
   const layers = join(fixture, 'hero-layers');
   mkdirSync(layers, { recursive: true });
@@ -233,7 +235,7 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.equal(readFileSync(renderCard, 'utf8'), 'card-from-take-still');
   assert.equal(records[tank].source, 'still', 'and its record says so');
   // no hero layer: the run fails, naming the tank
-  const other = Object.keys(table.tanks).find((t) => !table.tanks[t].card && CARD_FRAME[t] === undefined && t !== id && t !== tank);
+  const other = rendered[1];
   await assert.rejects(go({ records: {}, stills: { [other]: null } }), new RegExp(`^Error: ${other}: its render card needs its hero card layer`), 'a missing hero layer fails by name');
   rmSync(renderCard, { force: true });
 }
@@ -244,7 +246,8 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   const records = share.readCardRecords();
   const files = readdirSync(join(ROOT, 'public/brand/og-r2/tanks')).map((name) => /^(.+)-card\.jpg$/.exec(name)?.[1]).filter(Boolean).sort();
   assert.deepEqual(Object.keys(records).sort(), files, 'tools/media-r5/tank-cards.json records every card on disk, and only those');
-  for (const tank of files) assert.equal(share.cardState(records[tank], share.wantedCard(tank), true), 'published', `${tank}: its card is the one wanted`);
+  const filmedNow = share.filmedIds();
+  for (const tank of files) assert.equal(share.cardState(records[tank], share.wantedCard(tank, CARD_FRAME, filmedNow), true), 'published', `${tank}: its card is the one wanted`);
   assert.equal(readFileSync(join(ROOT, share.CARD_RECORDS), 'utf8'), share.cardRecordsText(records), 'the records file is in its written form');
 }
 
@@ -297,4 +300,4 @@ for (const [html, path] of [[english, '/gallery'], [localizeHtmlDocument(english
   }
 }
 for (const id of ['', null, 'no_such_tank', '__proto__', 'constructor', 'toString']) assert.equal(tankShareFor(id), null, `${id}: no share`);
-console.log(`tank-share.selftest: ${Object.keys(table.tanks).length} tanks named, ${cards.length} with their take's card; a tank link shares its name, link and card in both languages`);
+console.log(`tank-share.selftest: ${Object.keys(table.tanks).length} tanks named, ${cards.length} with a card (a take's, else its render); a tank link shares its name, link and card in both languages`);
