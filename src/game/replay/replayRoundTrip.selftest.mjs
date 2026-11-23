@@ -50,6 +50,9 @@ function recordBattle() {
     spawnTanks(game, { scene: { remove() {} } });
     for (const hull of game.allTanks) if (hull) hull.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
     game.battleCount = 3;
+    // a page's second battle: the bot memory rosterState keeps as two Sets (arm 3 of the first browser check failed on it)
+    game.previousBotSpecIds = new Set(['t72b3', 'leopard_2a6']);
+    game.recentBotSpecIds = new Set(['t72b3']);
     const options = { random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false };
     recorder.beginSetup(game, SPEC, options);
     setupBattle(game, SPEC, world, options);

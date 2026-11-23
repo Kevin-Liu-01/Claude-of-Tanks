@@ -116,8 +116,10 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld): Re
     spawnTanks(game as never, { scene: { remove() {} } } as never);
     for (const hull of game.allTanks as unknown as RunHull[]) if (hull) hull.visual = stubVisual();
     game.battleCount = Number(setup.battleCount);
-    game.previousBotSpecIds = setup.previousBotSpecIds ?? null;
-    game.recentBotSpecIds = setup.recentBotSpecIds ?? null;
+    // the bot memory is two Sets on the page (rosterState.ts), arrays in the recording
+    const specSet = (value: RuntimeValue) => (Array.isArray(value) ? new Set(value.map(String)) : null);
+    game.previousBotSpecIds = specSet(setup.previousBotSpecIds) as RuntimeValue;
+    game.recentBotSpecIds = specSet(setup.recentBotSpecIds) as RuntimeValue;
     const root = globalThis as { __DEBUG?: unknown };
     const previousDebug = root.__DEBUG;
     if (setup.debugFlags) root.__DEBUG = { flags: setup.debugFlags };
