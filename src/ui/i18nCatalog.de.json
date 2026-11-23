@@ -71,6 +71,8 @@
   "battle.entryFailed.network": "Die Verbindung wurde beim Laden des Gefechts unterbrochen. Du bist zurück in der Garage. Versuche es erneut, sobald die Verbindung wiederhergestellt ist.",
   "battle.entryFailed.retry": "Erneut versuchen",
   "battle.entryFailed.reload": "Ein Teil des Spiels konnte beim Laden des Gefechts nicht übertragen werden. Lade die Seite neu, sobald die Verbindung wiederhergestellt ist.",
+  "battle.pointer.distance": "{m} m",
+  "battle.pointer.seconds": "{s} s",
   "credits.body1": "Ich habe Claude of Tanks als Experiment entworfen und entwickelt, um herauszufinden, wie weit eine einzelne Person ein eigenständiges Browserspiel in kontinuierlicher Zusammenarbeit mit Agenten voranbringen kann. Claude und Codex waren Entwicklungswerkzeuge, keine Mitautoren.",
   "credits.body2": "Fahrzeuge, Simulation, Kampfsysteme, Benutzeroberfläche, Leistungsoptimierung, Tests, Dokumentation und Produktionspipeline entstanden von Grund auf in einem kontinuierlichen Arbeitsprozess mit vielen Claude- und Codex-Agenten. Jeder auswählbare Panzer ist ein eigens erstelltes prozedurales Modell von Kevin B. Liu.",
   "credits.links.github": "Kevin auf GitHub",

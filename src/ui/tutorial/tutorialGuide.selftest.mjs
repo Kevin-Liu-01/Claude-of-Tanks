@@ -2,10 +2,9 @@
 // tutorialGuide.selftest.mjs — the tutorial's guidance over the battle (273). Copyright © 2026 Kevin B. Liu.
 //
 // Holds:
-//  1. the geometry (tutorialGuideMath.ts): the ring closes at its radius; the path's chevrons stand on the way, step
-//     evenly, never inside the ring, and go once the player is close; an actor's own frame turns with its yaw; a box
-//     behind the camera is none; the edge pointer stands on the inset rectangle toward a point in front, above the HUD's
-//     band at the bottom, on the side to turn to for a point behind the camera, and down for one straight behind;
+//  1. the geometry (tutorialGuideMath.ts): the ring closes at its radius; an actor's own frame turns with its yaw; a box
+//     behind the camera is none; a point behind the camera is never on screen (the way there, its trail and the edge of
+//     the screen, are the pointer layer's since 275: ui/pointers/pointerPlan.selftest.mjs);
 //  2. the step data: a reach step has a marker; an actor's bracket, a hit, spot or destroy step names the actor it waits
 //     for; every guide label and the distance line are in en-US and zh-CN;
 //  3. the 272.1 rules for the guide: neither of its layers takes the pointer (it can never swallow a press or leave a
@@ -16,8 +15,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PATH_COUNT, PATH_FIRST_M, PATH_HIDE_WITHIN_M, PATH_STEP_M, actorCorners, actorPoint, edgeInsets, edgePointer, groundDistance,
-  insideInsets, onScreen, pathChevrons, ringPoints, screenBox,
+  actorCorners, actorPoint, groundDistance, onScreen, ringPoints, screenBox,
 } from './tutorialGuideMath.ts';
 import { TRAINING_STEPS, TUTORIAL_STEPS, chapterSteps } from './tutorialSteps.ts';
 import { DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS } from '../../game/input.ts';
@@ -37,19 +35,6 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
   for (const p of ring) assert.ok(near(groundDistance(p, { x: 10, z: -4 }), 6, 1e-9), 'every ring point at its radius');
 }
 {
-  const from = { x: 0, z: 0 }, to = { x: 0, z: 100 };
-  const way = pathChevrons(from, to, 6);
-  assert.equal(way.length, PATH_COUNT, 'a far marker gets every chevron');
-  way.forEach((c, i) => {
-    assert.ok(near(c.at.x, 0) && near(c.at.z, PATH_FIRST_M + i * PATH_STEP_M), `chevron ${i} on the way, evenly`);
-    assert.ok(near(c.dir.x, 0) && near(c.dir.z, 1), 'it points at the marker');
-  });
-  const close = pathChevrons(from, { x: 0, z: 6 + PATH_HIDE_WITHIN_M }, 6);
-  assert.equal(close.length, 0, 'none once the player is within reach of the ring');
-  const mid = pathChevrons(from, { x: 30, z: 0 }, 6);
-  for (const c of mid) assert.ok(groundDistance(c.at, { x: 30, z: 0 }) > 6, 'no chevron inside the ring');
-}
-{
   const pose = { x: 5, y: 2, z: 7, yaw: 0 };
   const ahead = actorPoint(pose, 3, 1, 0);
   assert.ok(near(ahead.x, 5) && near(ahead.y, 3) && near(ahead.z, 10), 'yaw 0: along is +z');
@@ -63,25 +48,6 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
 }
 {
   const view = { width: 1000, height: 600 };
-  const insets = edgeInsets(view, 50);
-  assert.deepEqual(insets, { top: 50, right: 50, left: 50, bottom: 120 }, 'the bottom keeps a fifth of the height for the HUD');
-  const rect = { left: 50, right: 950, top: 50, bottom: 480 };
-  const onRect = (p) => [p.x - rect.left, p.x - rect.right, p.y - rect.top, p.y - rect.bottom].some((d) => Math.abs(d) < 1e-6)
-    && p.x >= rect.left - 1e-6 && p.x <= rect.right + 1e-6 && p.y >= rect.top - 1e-6 && p.y <= rect.bottom + 1e-6;
-  const right = edgePointer({ x: 3000, y: 300, behind: false }, view, insets);
-  assert.ok(near(right.x, 950) && near(right.y, 300) && near(right.angle, 0), 'a point far right: the right edge, pointing right');
-  const corner = edgePointer({ x: -400, y: -900, behind: false }, view, insets);
-  assert.ok(onRect(corner) && corner.x < 500 && corner.y < 300, 'a point up and left: on the rectangle, up and left');
-  const low = edgePointer({ x: 520, y: 5000, behind: false }, view, insets);
-  assert.ok(near(low.y, 480) && low.y < 600 - 120 + 1e-6, 'a point far below: the pointer stays above the HUD band');
-  const behindRight = edgePointer({ x: 200, y: 300, behind: true }, view, insets);
-  assert.ok(near(behindRight.x, 950) && near(behindRight.angle, 0), 'behind the camera, mirrored left: turn right (the right edge)');
-  const behindLeft = edgePointer({ x: 800, y: 300, behind: true }, view, insets);
-  assert.ok(near(behindLeft.x, 50) && near(behindLeft.angle, Math.PI), 'behind, mirrored right: turn left (the left edge)');
-  const straightBehind = edgePointer({ x: 510, y: 300, behind: true }, view, insets);
-  assert.ok(near(straightBehind.y, 480) && near(straightBehind.angle, Math.PI / 2), 'straight behind: the inset bottom, pointing down');
-  assert.ok(insideInsets({ x: 500, y: 300, behind: false }, view, insets) && !insideInsets({ x: 500, y: 520, behind: false }, view, insets),
-    'a subject in the HUD band counts as off screen');
   assert.ok(onScreen({ x: 500, y: 300, behind: false }, view, 50) && !onScreen({ x: 20, y: 300, behind: false }, view, 50));
   assert.ok(!onScreen({ x: 500, y: 300, behind: true }, view), 'behind the camera is never on screen');
 }
@@ -164,6 +130,10 @@ assert.doesNotMatch(css.slice(css.indexOf('/* the guide')), /pointer-events:\s*a
 const guide = read('src/ui/tutorial/tutorialGuide.ts');
 assert.doesNotMatch(guide, /from 'three'|THREE\./, 'the guide draws in screen space: no Three.js, nothing added to the scene');
 assert.match(guide, /root\.setAttribute\('aria-hidden', 'true'\)/, 'its layers are hidden from assistive tech (the card speaks)');
+// (guidance-pointers-275) the way there is the pointer layer's: the guide posts its place and draws no trail or edge arrow
+assert.match(guide, /setGuideFollow\(\{ id: 'tutorial', kind: 'waypoint'/, 'the marker goes to the pointer layer as a waypoint');
+assert.equal(guide.match(/setGuideFollow\(null\)/g)?.length ?? 0, 3, 'and comes off it with no subject, hidden, and destroyed');
+assert.doesNotMatch(guide + css, /cot-tut-guide-(chevron|edge)/, 'no chevrons or edge arrow of the guide\'s own');
 const runner = read('src/ui/tutorial/tutorialRunner.ts');
 assert.match(runner, /overlay\.destroy\(\{[^}]*\}\);\s*guide\?\.destroy\(\);/, 'the guide goes with its run, wherever the run ends (done, skip, screen gone)');
 const hides = runner.match(/overlay\.setHidden\(hiddenByPause \|\| covered\);\s*guide\?\.setHidden\(hiddenByPause \|\| covered\);/g) ?? [];

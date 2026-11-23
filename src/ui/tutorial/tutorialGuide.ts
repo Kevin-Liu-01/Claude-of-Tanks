@@ -3,29 +3,34 @@
  * press (273). Copyright © 2026 Kevin B. Liu.
  *
  * A step's `guide` record (tutorialSteps.ts TutorialGuideSpec) names what to show, and this module draws it; no step
- * draws its own arrows. It draws six pieces:
+ * draws its own arrows. It draws these pieces:
  *
  * - a marker: a ring on the ground, a light column, its label and the distance to it;
- * - the path: up to five chevrons on the ground from the player toward the marker (none once the player is close);
  * - a bracket: corners round an actor (a target or a scripted shooter) and its label;
- * - an edge pointer: an arrow on the screen's edge toward the marker or actor while it is off screen or behind the camera,
- *   with its label and distance;
  * - a HUD chevron: a small bouncing chevron at a HUD control (the first selector that is on screen, as a step's target);
- * - an aim ghost: a dashed ring on the plate to aim at, shown only once the step has fallen behind (setEscalated).
+ * - an aim ghost: a dashed ring on the plate to aim at, shown only once the step has fallen behind (setEscalated);
+ * - the training's angling arc, reload ring and exposure shape.
+ *
+ * The way there is the battle's one pointer layer's (guidance-pointers-275, ui/pointers/pointerPlan.ts; Kevin: "for stuff
+ * for you to follow, its on ground"): the guide posts its marker as a waypoint (a trail on the ground when the step asks
+ * for its path) or, with no marker, its actor as a thing to look at (ui/pointers/pointerBoard.ts), and the HUD paints the
+ * trail and, while it is out of view, the turn arrow round the tank. Until 275 the guide drew five thin chevrons of its
+ * own and an arrow on the screen's edge.
  *
  * World pieces are drawn in screen space from points the game projects (GuidePort.project), so the guide adds nothing to
  * the 3D scene and costs nothing outside a run; it loads with the tutorial's chunk. It owns two layers: the world pieces
- * under the HUD (--z-hud-world) and the pointer and chevron over it (--z-hud-score). Neither takes the pointer, so the
- * guide can never swallow a press (the dim's inert blockers stay the overlay's, tutorialOverlay.ts). It redraws on
- * animation frames while it shows something and is not hidden, and it goes with its run (destroy).
+ * under the HUD (--z-hud-world) and the HUD chevron over it (--z-hud-score). Neither takes the pointer, so the guide can
+ * never swallow a press (the dim's inert blockers stay the overlay's, tutorialOverlay.ts). It redraws on animation frames
+ * while it shows something and is not hidden, and it goes with its run (destroy).
  *
- * Its geometry (where on the ring to sample, where the chevrons stand, where the pointer meets the edge) is in
- * tutorialGuideMath.ts, held by tutorialGuide.selftest.mjs.
+ * Its geometry (where on the ring to sample, an actor's box, the arc's sectors) is in tutorialGuideMath.ts, held by
+ * tutorialGuide.selftest.mjs.
  */
 import {
-  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox,
-  type ScreenPoint, type Viewport, type WorldPoint,
+  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, groundDistance, headingFromLine, onScreen, ringPoints, screenBox,
 } from './tutorialGuideMath.ts';
+import type { ScreenPoint, Viewport, WorldPoint } from '../pointers/pointerPlan.ts';
+import { setGuideFollow } from '../pointers/pointerBoard.ts';
 import type { PenVerdict } from '../../sim/penVerdict.ts';
 import { EXPOSURE_POINTS, trainingExposure } from '../../sim/trainingSight.ts';
 import { PEN_INK } from '../penInk.ts';
@@ -66,7 +71,7 @@ export interface TutorialGuideLayer {
   setEscalated(on: boolean): void;
   /** Hide while the card hides (a pause, a covering surface); show(...) or setHidden(false) brings it back. */
   setHidden(hidden: boolean): void;
-  /** What the guide drew last (receipts): which pieces show, and the edge pointer's place when it does. */
+  /** What the guide drew last (receipts): which pieces show, and what it handed the pointer layer. */
   snapshot(): GuideSnapshot;
   destroy(): void;
 }
@@ -80,17 +85,14 @@ interface GuideSnapshot {
   readonly exposure: { readonly hull: boolean; readonly turret: boolean } | null;
   readonly needle: PenVerdict | null;
   readonly ring: boolean;
-  readonly chevrons: number;
+  /** The follow pointer posted for the pointer layer (pointerBoard.ts): a waypoint (with its trail or not), a look, none. */
+  readonly follow: 'trail' | 'waypoint' | 'look' | null;
   readonly bracket: boolean;
-  readonly edge: { readonly x: number; readonly y: number } | null;
   readonly hud: boolean;
   readonly aim: boolean;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-/** The edge pointer stands this far inside the screen's edges (a fifth of the height at the bottom, tutorialGuideMath.ts
- *  edgeInsets); a subject outside that rectangle counts as off screen. */
-const EDGE_INSET = 56;
 const COLUMN_M = 7;
 const MARKER_LIFT_M = 0.15;
 /** A bracket's box round an actor: half length, half width and height (m), wide enough for any fleet hull. */
@@ -118,9 +120,6 @@ function layer(className: string): { root: HTMLDivElement; svg: SVGSVGElement } 
   return { root, svg };
 }
 
-const CHEVRON_PATH = 'M-11,6 L0,-5 L11,6';
-const POINTER_PATH = 'M14,0 L-6,-11 L-2,0 L-6,11 Z';
-
 export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   const world = layer('cot-tut-guide--world');
   const over = layer('cot-tut-guide--over');
@@ -129,8 +128,6 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   const column = svgEl('line', 'cot-tut-guide-column', world.svg);
   const markerLabel = svgEl('text', 'cot-tut-guide-label', world.svg);
   const markerDistance = svgEl('text', 'cot-tut-guide-distance', world.svg);
-  const chevrons = Array.from({ length: 5 }, () => svgEl('path', 'cot-tut-guide-chevron', world.svg));
-  for (const chevron of chevrons) chevron.setAttribute('d', CHEVRON_PATH);
   const bracket = svgEl('path', 'cot-tut-guide-bracket', world.svg);
   const bracketLabel = svgEl('text', 'cot-tut-guide-label cot-tut-guide-label--actor', world.svg);
   const aim = svgEl('circle', 'cot-tut-guide-aim', world.svg);
@@ -157,11 +154,6 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     node.setAttribute('x', String(x)); node.setAttribute('y', String(y)); node.setAttribute('width', String(w)); node.setAttribute('height', String(h));
   }
 
-  const edge = svgEl('g', 'cot-tut-guide-edge', over.svg);
-  const edgeArrow = svgEl('path', 'cot-tut-guide-edge-arrow', edge);
-  edgeArrow.setAttribute('d', POINTER_PATH);
-  const edgeLabel = svgEl('text', 'cot-tut-guide-edge-label', edge);
-  const edgeDistance = svgEl('text', 'cot-tut-guide-edge-distance', edge);
   const hudChevron = document.createElement('span');
   hudChevron.className = 'cot-tut-guide-hud';
   over.root.append(hudChevron);
@@ -171,7 +163,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let escalated = false;
   let hidden = false;
   let frame = 0;
-  let drawn: GuideSnapshot = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+  let drawn: GuideSnapshot = { reload: null, exposure: null, arc: 0, needle: null, ring: false, follow: null, bracket: false, hud: false, aim: false };
 
   const show = (node: Element, on: boolean): void => {
     if (on) node.removeAttribute('display'); else node.setAttribute('display', 'none');
@@ -205,8 +197,8 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     const actorSpec = spec?.actor ?? null;
     const actor = actorSpec ? port.actor(actorSpec.id) : null;
     const next: { reload: number | null; exposure: { hull: boolean; turret: boolean } | null; arc: number; needle: PenVerdict | null; ring: boolean;
-      chevrons: number; bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
-      { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      follow: GuideSnapshot['follow']; bracket: boolean; hud: boolean; aim: boolean } =
+      { reload: null, exposure: null, arc: 0, needle: null, ring: false, follow: null, bracket: false, hud: false, aim: false };
 
     // the reload ring over its actor: the track, and the fill as far as its gun has loaded
     const reloadSpec = spec?.reload ?? null;
@@ -276,7 +268,6 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     }
 
     // the marker: its ring, column, label and distance
-    let subject: { point: ScreenPoint; label: string; metres: number | null } | null = null;
     if (marker) {
       const outline = ringPoints(marker, marker.radiusM).map((p) => port.project(lifted(p.x, p.z, MARKER_LIFT_M)));
       const ringOk = outline.every((p) => p && !p.behind);
@@ -296,27 +287,20 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       markerLabel.textContent = labels?.marker ?? '';
       markerDistance.textContent = metres == null ? '' : labels?.distance(Math.round(metres)) ?? '';
       show(column, columnOk); show(markerLabel, columnOk); show(markerDistance, columnOk);
-      const centre = port.project(lifted(marker.x, marker.z, 1));
-      if (centre) subject = { point: centre, label: labels?.marker ?? '', metres };
-
-      // the path toward it
-      const way = spec?.path && player ? pathChevrons(player, marker, marker.radiusM) : [];
-      chevrons.forEach((chevron, i) => {
-        const step = way[i];
-        const at = step ? port.project(lifted(step.at.x, step.at.z, MARKER_LIFT_M)) : null;
-        const ahead = step ? port.project(lifted(step.at.x + step.dir.x, step.at.z + step.dir.z, MARKER_LIFT_M)) : null;
-        const ok = !!at && !!ahead && !at.behind && !ahead.behind;
-        if (ok) {
-          // a chevron's art points up (−y): it turns by the screen angle of its way plus a quarter turn
-          const deg = (screenAngle(at!, ahead!) * 180) / Math.PI + 90;
-          chevron.setAttribute('transform', `translate(${at!.x.toFixed(1)} ${at!.y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
-          chevron.style.setProperty('--i', String(i));
-          next.chevrons += 1;
-        }
-        show(chevron, ok);
-      });
     } else {
-      for (const node of [ring, column, markerLabel, markerDistance, ...chevrons]) show(node, false);
+      for (const node of [ring, column, markerLabel, markerDistance]) show(node, false);
+    }
+
+    // the way there, on the ground: the pointer layer's (the HUD draws it, pointerBoard.ts), the marker as a waypoint (its
+    // trail when the step asks for its path), or, with no marker, the actor as a thing to turn toward
+    if (marker) {
+      setGuideFollow({ id: 'tutorial', kind: 'waypoint', x: marker.x, z: marker.z, radiusM: marker.radiusM, trail: !!spec?.path });
+      next.follow = spec?.path ? 'trail' : 'waypoint';
+    } else if (actor) {
+      setGuideFollow({ id: 'tutorial', kind: 'look', x: actor.x, z: actor.z, radiusM: 0, trail: false });
+      next.follow = 'look';
+    } else {
+      setGuideFollow(null);
     }
 
     // the actor's bracket
@@ -333,10 +317,6 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
         bracketLabel.textContent = labels?.actor ?? '';
         bracketOk = true;
       }
-      if (!marker) {
-        const centre = port.project({ x: actor.x, y: actor.y + 1.5, z: actor.z });
-        if (centre) subject = { point: centre, label: labels?.actor ?? '', metres: player ? groundDistance(player, actor) : null };
-      }
     }
     show(bracket, bracketOk); show(bracketLabel, bracketOk);
     next.bracket = bracketOk;
@@ -349,26 +329,6 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     if (aimOk) { aim.setAttribute('cx', aimAt!.x.toFixed(1)); aim.setAttribute('cy', aimAt!.y.toFixed(1)); }
     show(aim, aimOk);
     next.aim = aimOk;
-
-    // the edge pointer, while the subject is off screen
-    const insets = edgeInsets(view, EDGE_INSET);
-    const off = subject && !insideInsets(subject.point, view, insets);
-    if (subject && off) {
-      const at = edgePointer(subject.point, view, insets);
-      edge.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`);
-      edgeArrow.setAttribute('transform', `rotate(${((at.angle * 180) / Math.PI).toFixed(1)})`);
-      // the words stand on the screen's side of the arrow
-      const inward = { x: -Math.cos(at.angle), y: -Math.sin(at.angle) };
-      const tx = (inward.x * 34).toFixed(1), ty = (inward.y * 30).toFixed(1);
-      edgeLabel.setAttribute('x', tx); edgeLabel.setAttribute('y', ty);
-      edgeDistance.setAttribute('x', tx); edgeDistance.setAttribute('y', (Number(ty) + 15).toFixed(1));
-      const anchor = inward.x > 0.35 ? 'start' : inward.x < -0.35 ? 'end' : 'middle';
-      edgeLabel.setAttribute('text-anchor', anchor); edgeDistance.setAttribute('text-anchor', anchor);
-      edgeLabel.textContent = subject.label;
-      edgeDistance.textContent = subject.metres == null ? '' : labels?.distance(Math.round(subject.metres)) ?? '';
-      next.edge = { x: at.x, y: at.y };
-    }
-    show(edge, !!next.edge);
 
     // the HUD chevron: above its control, or below one near the top of the screen
     const hudRect = spec?.hud?.length ? hudTarget(spec.hud) : null;
@@ -392,6 +352,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
 
   function schedule(): void {
     const visible = !!spec && !hidden;
+    if (!visible) setGuideFollow(null);
     world.root.classList.toggle('is-on', visible);
     over.root.classList.toggle('is-on', visible);
     if (visible && !frame) frame = requestAnimationFrame(loop);
@@ -407,7 +368,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       arcAskedAt = -Infinity;
       arcVerdicts = [];
       needleVerdict = null;
-      drawn = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      drawn = { reload: null, exposure: null, arc: 0, needle: null, ring: false, follow: null, bracket: false, hud: false, aim: false };
       schedule();
     },
     setEscalated(on): void {
@@ -423,6 +384,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
       spec = null;
+      setGuideFollow(null);
       world.root.remove();
       over.root.remove();
     },

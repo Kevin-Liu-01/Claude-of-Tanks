@@ -71,6 +71,8 @@
   "battle.entryFailed.network": "A conexão caiu durante o carregamento da batalha. Você voltou à Garagem; tente novamente quando a conexão voltar.",
   "battle.entryFailed.retry": "Tentar novamente",
   "battle.entryFailed.reload": "Parte do jogo não foi recebida durante o carregamento da batalha. Recarregue a página quando a conexão voltar.",
+  "battle.pointer.distance": "{m} m",
+  "battle.pointer.seconds": "{s} s",
   "credits.body1": "Concebi e desenvolvi Claude of Tanks como um experimento para descobrir até onde uma pessoa pode levar um jogo original de navegador com a colaboração contínua de agentes. Claude e Codex foram ferramentas de desenvolvimento, não coautores.",
   "credits.body2": "Os veículos, a simulação, os sistemas de combate, a interface, as otimizações de desempenho, os testes, a documentação e o processo de produção foram desenvolvidos de ponta a ponta em um fluxo de trabalho contínuo com muitos agentes Claude e Codex. Cada tanque selecionável é um modelo procedural original criado por Kevin B. Liu.",
   "credits.links.github": "Kevin no GitHub",

@@ -4,11 +4,15 @@
 // Boots the game (a player whose tutorial is done, so no chapter runs), starts a solo battle, and shows guide specs
 // through the diagnostics hook (window.__TUTORIAL_GUIDE, main.ts):
 //   ahead   a marker 50 m ahead with its path, a bracket on the nearest enemy and the HUD chevron on the shells: the ring,
-//           at least three chevrons, the bracket and the chevron draw, and a press where they stand reaches the game
-//           (the guide takes no pointer);
-//   behind  the marker 60 m behind: no ring, the edge pointer on the screen's edge;
-//   aside   the marker 90 m to the right: the edge pointer on the right half;
-//   clear   null: nothing of the guide is left in the page.
+//           at least three chevrons of the pointer layer's trail on the ground (guidance-pointers-275), the bracket and the
+//           chevron draw, and a press where they stand reaches the game (neither layer takes the pointer);
+//   behind  the marker 60 m behind: no ring, the turn arrow painted round the tank (never an arrow on the screen's edge:
+//           Kevin, "for stuff for you to follow, its on ground");
+//   aside   the marker 90 m to the side: the turn arrow, its head on the marker's side;
+//   warn    the battle held still (src/dev/battleHold.ts), two enemies set down round the tank, one on the flank with its gun
+//           laid on it and one close behind, and the marker ahead: the warnings' red bubbles on the screen's rim (never on
+//           the ground: Kevin, "for the warnings / indicators thats in the ui") beside the trail;
+//   clear   null: nothing of the guide is left in the page, and the pointer layer draws no way to follow.
 // Each case is shot to the evidence folder with its snapshot in report.json.
 //
 //   node tools/tutorial-guide.browser.mjs --view=desktop --locale=en
@@ -68,7 +72,8 @@ try {
   await page.goto(`http://127.0.0.1:${port}${LOCALE === 'cn' ? '/cn' : ''}/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`,
     { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG && !!window.__TUTORIAL_GUIDE`, { timeout: 600_000, polling: 500 });
-  await page.evaluate(() => window.__DEBUG.beginSoloBattle({}));
+  // (guidance-pointers-275) the battle held alive and still, so the staged warnings stand where they are set down
+  await page.evaluate(() => { window.__DEBUG.battleHold?.set(true); return window.__DEBUG.beginSoloBattle({}); });
   await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
   await sleep(1500);
 
@@ -88,17 +93,26 @@ try {
     await sleep(700);
     const facts = await page.evaluate(() => {
       const drawn = window.__guideRead?.() ?? null;
-      const pieces = [...document.querySelectorAll('.cot-tut-guide-ring, .cot-tut-guide-chevron, .cot-tut-guide-bracket, .cot-tut-guide-edge, .cot-tut-guide-hud')]
-        .filter((el) => el.getAttribute('display') !== 'none' && !el.hidden);
+      const shown = (el) => el.getAttribute('display') !== 'none' && !el.hidden && !!el.closest('.is-on');
+      const pieces = [...document.querySelectorAll('.cot-tut-guide-ring, .cot-ptr-chevron, .cot-ptr-turn, .cot-tut-guide-bracket, .cot-tut-guide-hud')]
+        .filter(shown);
+      // the pointer layer's way to follow (ui/pointers/pointerLayer.ts): its trail's chevrons, and the turn arrow's head
+      const chevrons = [...document.querySelectorAll('.cot-ptr-chevron')].filter(shown).length;
+      const head = [...document.querySelectorAll('.cot-ptr-turn-head')].find(shown)?.getBoundingClientRect() ?? null;
+      const turn = head ? { x: head.left + head.width / 2, y: head.top + head.height / 2 } : null;
       // a press where a piece stands: the element there is never the guide's
       const hits = pieces.map((el) => {
         const r = el.getBoundingClientRect();
         const x = Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2)), y = Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2));
         const top = document.elementFromPoint(x, y);
-        return { piece: el.getAttribute('class'), guideTakesIt: !!top?.closest('.cot-tut-guide') };
+        return { piece: el.getAttribute('class'), guideTakesIt: !!top?.closest('.cot-tut-guide, .cot-ptr') };
       });
-      const layers = [...document.querySelectorAll('.cot-tut-guide')].map((el) => getComputedStyle(el).pointerEvents);
-      return { drawn, hits, layers };
+      const layers = [...document.querySelectorAll('.cot-tut-guide, .cot-ptr')].map((el) => getComputedStyle(el).pointerEvents);
+      const bubbles = [...document.querySelectorAll('.cot-ptr-bubble')].filter(shown).map((el) => {
+        const r = el.getBoundingClientRect();
+        return { kind: el.dataset.kind, x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+      });
+      return { drawn: drawn ? { ...drawn, chevrons, turn, bubbles } : null, hits, layers };
     });
     await page.screenshot({ path: resolve(OUT, `${name}.png`) });
     report.cases[name] = { spec, ...facts };
@@ -115,25 +129,56 @@ try {
     ...(me.enemy ? { actor: { id: me.enemy, label: 'Target' } } : {}), hud: ['.cot-shells', '.cot-touch .round.fire'],
   });
   assert.ok(ahead.ring, 'ahead: the ring draws');
-  assert.ok(ahead.chevrons >= 3, 'ahead: the path draws at least three chevrons');
+  assert.equal(ahead.follow, 'trail', 'ahead: the marker goes to the pointer layer with its trail');
+  assert.ok(ahead.chevrons >= 3, 'ahead: the trail lays at least three chevrons on the ground');
   assert.ok(ahead.hud, 'ahead: the HUD chevron stands at its control');
-  assert.equal(ahead.edge, null, 'ahead: no edge pointer for a marker on screen');
+  assert.equal(ahead.turn, null, 'ahead: no turn arrow for a marker in view');
   report.cases.ahead.enemyOnScreen = ahead.bracket;
 
   const behind = await show('behind', { marker: { ...at(-60, 0), radiusM: 6, label: 'B' }, path: true });
-  assert.ok(!behind.ring && behind.edge, 'behind: no ring, an edge pointer');
+  assert.ok(!behind.ring && behind.turn, 'behind: no ring, the turn arrow round the tank');
   const vp = VIEWS[VIEW];
-  assert.ok(behind.edge.y > vp.height / 2, 'behind: the pointer stands low (turn round)');
+  assert.ok(behind.turn.y > vp.height / 3, 'behind: the turn arrow lies on the ground round the tank, low on the screen');
 
   const aside = await show('aside', { marker: { ...at(0, 90), radiusM: 6, label: 'C' }, path: true });
-  assert.ok(aside.edge, 'aside: an edge pointer');
-  report.cases.aside.side = aside.edge.x > vp.width / 2 ? 'right' : 'left';
+  assert.ok(aside.turn, 'aside: the turn arrow');
+  report.cases.aside.side = aside.turn.x > vp.width / 2 ? 'right' : 'left';
+  for (const [name, read] of [['behind', behind], ['aside', aside]]) {
+    assert.ok(read.turn.x >= 0 && read.turn.x <= vp.width && read.turn.y >= 0 && read.turn.y <= vp.height,
+      `${name}: the turn arrow's head stands on the screen`);
+  }
+
+  // the warnings: one enemy on the flank, its gun laid on the tank, one close behind
+  const staged = await page.evaluate(() => {
+    const game = window.__DEBUG.game;
+    const me = game.player;
+    const p = me.state.pos, yaw = me.state.yaw;
+    const enemies = [...game.tankById.values()].filter((t) => t.state?.pos && t.team !== me.team && !t.combat?.destroyed);
+    const place = (tank, along, across) => {
+      const x = p.x + Math.sin(yaw) * along + Math.cos(yaw) * across, z = p.z + Math.cos(yaw) * along - Math.sin(yaw) * across;
+      tank.state.pos.set(x, p.y, z);
+      tank.state.prevPos?.set?.(x, p.y, z);
+      tank.state.turretYaw = Math.atan2(p.x - x, p.z - z) - tank.state.yaw;
+      return tank.id;
+    };
+    return enemies.length >= 2 ? [place(enemies[0], 30, 150), place(enemies[1], -30, -8)] : null;
+  });
+  report.cases.staged = staged;
+  await sleep(1500);
+  const warn = await show('warn', { marker: { ...at(55, 0), radiusM: 6, label: 'A' }, path: true });
+  assert.ok(staged, 'warn: two enemies to stage');
+  assert.ok(warn.bubbles.length >= 1 && warn.bubbles.every((b) => b.kind === 'tank'), 'warn: the warnings stand on the rim as tank bubbles');
+  assert.ok(warn.chevrons >= 3, 'warn: the trail stays on the ground beside them');
 
   await page.evaluate(() => window.__TUTORIAL_GUIDE(null));
   await sleep(200);
   const left = await page.evaluate(() => document.querySelectorAll('.cot-tut-guide').length);
-  report.cases.clear = { layersLeft: left };
+  const way = await page.evaluate(() => [...document.querySelectorAll('.cot-ptr.is-on :is(.cot-ptr-chevron, .cot-ptr-turn)')]
+    .filter((el) => el.getAttribute('display') !== 'none').length);
+  report.cases.clear = { layersLeft: left, wayLeft: way };
+  await page.evaluate(() => window.__DEBUG.battleHold?.set(false));
   assert.equal(left, 0, 'clear: nothing of the guide is left');
+  assert.equal(way, 0, 'clear: the pointer layer draws no way to follow');
   report.ok = true;
 } catch (error) {
   report.ok = false;

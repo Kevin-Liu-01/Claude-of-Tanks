@@ -71,6 +71,8 @@
   "battle.entryFailed.network": "戦闘の読み込み中に接続が切れたため、ガレージに戻りました。接続が復旧したら、もう一度お試しください。",
   "battle.entryFailed.retry": "もう一度試す",
   "battle.entryFailed.reload": "戦闘の読み込み中に、ゲームデータの一部を受信できませんでした。接続が復旧したら、ページを再読み込みしてください。",
+  "battle.pointer.distance": "{m} m",
+  "battle.pointer.seconds": "{s} 秒",
   "credits.body1": "私は、エージェントとの継続的な協働によって、1人でオリジナルのブラウザーゲームをどこまで作り込めるかを試すために、Claude of Tanksを設計・開発しました。ClaudeとCodexは開発ツールであり、共同著作者ではありません。",
   "credits.body2": "車両、シミュレーション、戦闘システム、インターフェース、性能最適化、テスト、ドキュメント、制作パイプラインは、多数のClaudeおよびCodexエージェントを継続的に活用するワークフローのもと、すべて一貫して構築しました。選択可能な戦車はすべて、Kevin B. Liuが独自に制作したプロシージャルモデルです。",
   "credits.links.github": "KevinのGitHub",
