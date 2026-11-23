@@ -8,7 +8,8 @@
 // 5. the surface cache paints each map once;
 // 6. the map's set pieces stand on the horizon at their true bearing with their angular size kept;
 // 7. a horizon piece is part for part the piece the world's composer merges;
-// 8. the horizon pieces stand clear of the yard and the hero (rubric overlap and sightline), planted ones are caught.
+// 8. the horizon pieces stand clear of the yard and the hero (rubric overlap and sightline), planted ones are caught;
+// 9. every kit-rebuilt building certifies as battle certifies it (> 90, assembly connected); collision 4 m off fails.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -22,6 +23,9 @@ import { LANDMARK_BUILDERS } from '../world/landmarks/index.ts';
 import { resolveLandmarkParams } from '../world/landmarks/plan.ts';
 import { resolveRegionalArchitecture } from '../world/maps/regional/index.ts';
 import { auditGarageHorizonSetPieces } from './garageHorizonSetPieces.ts';
+import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
+import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from '../world/structureCollision.ts';
+import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const recipeSource = await readFile(new URL('./garageEnvironmentRecipes.ts', import.meta.url), 'utf8');
@@ -47,6 +51,7 @@ const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene, () => {}, () => import('./garageEnvironmentKit.ts'));
 const outdoor = GARAGE_VARIANTS.filter((variant) => variant.architecture !== 'field_shed');
 const rows = [], horizonRows = [];
+let certRow = '';
 for (const variant of outdoor) {
   controller.setVariant(variant);
   const stats = await controller.whenReady();
@@ -143,6 +148,38 @@ controller.dispose?.();
 // (5) the surface cache paints a map once: a prepare that stops part-way leaves its build where it stood, the next one
 // resumes it, a later one takes the painted set as it is; unheld maps past two are disposed
 const adapter = await import('./garageBattleStructures.ts');
+// (9) the rubric's standard for a kit-rebuilt building is battle's: every one, in every pack, certifies its collision as the
+// world build's would (deriveRuntimeStructureCollisionProfile + certifyStructureCollisionProfile above 90, battle's own
+// STRICT_SCORE) with its assembly connected; a collision record standing 4 m off its building fails
+{
+  let seed = 7; const draw = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  let certified = 0, lowest = Infinity, stripped = null;
+  for (const variant of outdoor) {
+    const map = adapter.resolveGarageMapStructures(variant.mapId);
+    GARAGE_ENVIRONMENT_RECIPES[variant.architecture].structures.forEach((placement, index) => {
+      const steps = adapter.buildGarageStructureSteps(map, { builder: placement.builder, catalogId: placement.catalogId, index, x: 0, z: 0, yaw: placement.yaw }, draw);
+      let step = steps.next(); while (!step.done) step = steps.next();
+      const { buckets, rebuilt } = step.value;
+      if (!rebuilt) return;
+      const score = certifyStructureCollisionProfile(buckets, deriveRuntimeStructureCollisionProfile(buckets)).minimumScore;
+      assert.ok(score > 90, `${variant.id}/${placement.catalogId}: kit building certifies ${score.toFixed(1)} > 90`);
+      assert.equal(auditStructureAssembly(buckets).unsupportedParts, 0, `${variant.id}/${placement.catalogId}: assembly connected`);
+      certified += 1; lowest = Math.min(lowest, score);
+      stripped ??= placement.catalogId === 'warehouse' ? buckets : null;
+    });
+  }
+  // negative control: the warehouse's collision stood 4 m off its walls (a misplaced record) no longer certifies
+  const shift = (shape) => shape.kind === 'convex'
+    ? { ...shape, cx: shape.cx + 4, points: shape.points.map((v, i) => (i % 2 === 0 ? v + 4 : v)) }
+    : { ...shape, cx: shape.cx + 4 };
+  const profile = deriveRuntimeStructureCollisionProfile(stripped);
+  const moved = { contact: { ...profile.contact, parts: profile.contact.parts.map(shift) },
+    shell: profile.shell.map((band) => ({ ...band, parts: band.parts.map(shift) })) };
+  const controlScore = certifyStructureCollisionProfile(stripped, moved).minimumScore;
+  assert.ok(controlScore <= 90, `control: a warehouse whose collision stands 4 m off no longer certifies (${controlScore.toFixed(1)})`);
+  certRow = `${certified} kit buildings certify (lowest ${lowest.toFixed(1)}); collision 4 m off fails (${controlScore.toFixed(1)})`;
+}
+
 const fresh = adapter.resolveGarageMapStructures('steppe');
 let slices = 0;
 const stopped = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => (slices += 1) < 2);
@@ -158,5 +195,5 @@ adapter.releaseGarageStructureSurfaces(again);
 assert.ok(adapter.garageStructureSurfaceCache().filter((entry) => entry.holds === 0).length <= 2,
   'no more than two unheld maps stay painted');
 console.log(`garageBattleStructures.selftest: ${outdoor.length} packs wear their battlefield materials and kits `
-  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes); set pieces on the horizon (${horizonRows.join(', ')}), the composer's own, clear of the yard and the hero (planted overlaps and intrusions caught) PASS`);
+  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes); set pieces on the horizon (${horizonRows.join(', ')}), the composer's own, clear of the yard and the hero (planted overlaps and intrusions caught); ${certRow} PASS`);
 process.exit(0);

@@ -118,6 +118,10 @@ interface GarageEnvironmentStats {
   readonly structures: number;
   /** The structures its map's regional architecture kit rebuilt, as the world build rebuilds them (garage-env-276). */
   readonly regionalKitStructures: number;
+  /** Every kit-rebuilt building's assembly connected (the legacy-built keep their facade support-gap criterion). */
+  readonly facadeDetailCertified: boolean;
+  /** The kit-rebuilt buildings, certified as battle certifies them (garageBattleStructures.selftest.mjs). */
+  readonly battleCertifiedStructures: number;
   /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
   readonly horizonSetPieces: readonly GarageHorizonSetPiece[];
   /** What the horizon pieces' audit found (an overlap or a sightline intrusion), by name. */
@@ -2922,22 +2926,31 @@ export function buildGarageEnvironment(
     approachTerrainGraded: true,
     approachMaxGrade,
     connectedExteriorParts: structureRecords.reduce((sum, record) => sum + record.exteriorParts, 0),
+    // (garage-env-276) a building its map's kit rebuilt is the battlefield's building: its facade is certified as the
+    // kit's (every part connected: the assembly audit), its collision as battle certifies it (deriveRuntimeStructure-
+    // CollisionProfile + certifyStructureCollisionProfile > 90, in garageBattleStructures.selftest.mjs: the geometry is
+    // deterministic, and the certification costs up to 4 s a pack, so it is the receipt's, not the switch's). A building
+    // the kit left as built keeps the legacy envelope audits, and its facade fixtures their support gap (its own
+    // criterion): what a pack has left as built is mostly a utility structure (a water tower, a container row) that
+    // never carried fixtures, so the legacy whole-pack marker count no longer measures anything (battle has none).
+    facadeDetailCertified: structureRecords.every((record) => !record.regionalKit || record.assemblyAudit.unsupportedParts === 0),
+    battleCertifiedStructures: structureRecords.filter((record) => record.regionalKit).length,
     connectedExteriorBuildings: structureRecords.filter((record) => record.exteriorParts > 0).length,
     maxExteriorSupportGapM: Number(Math.max(
       0,
       ...structureRecords.map((record) => record.exteriorSupportGap),
     ).toFixed(4)),
-    collisionAuditedStructures: structureRecords.filter(
-      (record) => record.collisionAudit.sourceParts > 0 && record.collisionAudit.footprints.length > 0,
-    ).length,
+    collisionAuditedStructures: structureRecords.filter((record) => record.regionalKit
+      || (record.collisionAudit.sourceParts > 0 && record.collisionAudit.footprints.length > 0)).length,
     collisionFootprints: structureRecords.reduce(
       (sum, record) => sum + record.collisionAudit.footprints.length, 0,
     ),
     collisionEnvelopeFill: Number((structureRecords.reduce(
-      (sum, record) => sum + record.collisionAudit.tightness, 0,
-    ) / Math.max(1, structureRecords.length)).toFixed(4)),
+      (sum, record) => sum + (record.regionalKit ? 0 : record.collisionAudit.tightness), 0,
+    ) / Math.max(1, structureRecords.filter((record) => !record.regionalKit).length)).toFixed(4)),
+    // (the legacy open ids are open only as the legacy builder draws them: a kit's version is its own building)
     openCollisionMaxFill: Number(structureRecords.reduce(
-      (maxFill, record) => structureCollisionOpenIds.has(record.placement.catalogId)
+      (maxFill, record) => !record.regionalKit && structureCollisionOpenIds.has(record.placement.catalogId)
         ? Math.max(maxFill, record.collisionAudit.tightness)
         : maxFill,
       0,

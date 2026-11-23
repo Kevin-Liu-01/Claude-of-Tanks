@@ -77,6 +77,9 @@ export interface GarageArchitectureStats {
   approachTerrainGraded: boolean;
   approachMaxGrade: number;
   connectedExteriorParts: number;
+  /** (garage-env-276) the facade criterion: every kit-rebuilt building's assembly connected. */
+  facadeDetailCertified?: boolean;
+  battleCertifiedStructures?: number;
   connectedExteriorBuildings: number;
   maxExteriorSupportGapM: number;
   collisionAuditedStructures: number;
@@ -263,6 +266,8 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     groundCover: 0,
     structures: 1,
     regionalKitStructures: 0,
+    facadeDetailCertified: true,
+    battleCertifiedStructures: 0,
     horizonSetPieces: [],
     horizonFindings: [],
     facilityProps: 0,
@@ -507,6 +512,8 @@ export function createGarageArchitectureController(
       approachTerrainGraded: data.approachTerrainGraded === true,
       approachMaxGrade: numericStat(data.approachMaxGrade),
       connectedExteriorParts: numericStat(data.connectedExteriorParts),
+      facadeDetailCertified: typeof data.facadeDetailCertified === 'boolean' ? data.facadeDetailCertified : undefined,
+      battleCertifiedStructures: numericStat(data.battleCertifiedStructures),
       connectedExteriorBuildings: numericStat(data.connectedExteriorBuildings),
       maxExteriorSupportGapM: numericStat(data.maxExteriorSupportGapM),
       collisionAuditedStructures: numericStat(data.collisionAuditedStructures),

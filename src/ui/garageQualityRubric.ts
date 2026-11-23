@@ -32,6 +32,7 @@ interface GarageArchitectureQualityReceipt {
   readonly lastBuildMs?: number;
   readonly collisionAuditedStructures?: number;
   readonly openCollisionMaxFill?: number;
+  readonly facadeDetailCertified?: boolean;
   readonly structurePerimeterSectors?: number;
   readonly treeTrunkMinRadialSegments?: number;
   readonly treeTrunksRooted?: boolean;
@@ -163,7 +164,10 @@ function scoreMaterialDetail(
   const { architecture, workshop, isVerdant } = input;
   return ledger.award(number(architecture.facilityMaterialClasses) >= 4,
     2, 'facility material language is too flat')
-    + ledger.award(isVerdant || number(architecture.connectedExteriorParts) >= 120,
+    // (garage-env-276) a pack reports its facade criterion (every kit-rebuilt building's assembly connected);
+    // a report without it is judged on the legacy marker count
+    + ledger.award(isVerdant || (typeof architecture.facadeDetailCertified === 'boolean'
+      ? architecture.facadeDetailCertified : number(architecture.connectedExteriorParts) >= 120),
       2, 'map buildings lack supported facade detail')
     + ledger.award(rows(architecture.textureSets).length >= (isVerdant ? 3 : 6),
       2, 'insufficient PBR surface variety')

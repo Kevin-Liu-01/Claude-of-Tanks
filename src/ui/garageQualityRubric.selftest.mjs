@@ -81,4 +81,19 @@ const proxy = scoreGarageQuality({
 assert.equal(proxy.total, 98);
 assert.ok(proxy.failures.includes('proxy tank or proxy component path is active'));
 
+// (garage-env-276) a pack that reports its facade criterion is judged on it, not on the legacy marker count: kit-rebuilt
+// buildings carry no legacy markers, and a reported failure (a kit building with a loose part) consumes the criterion
+const kitFacades = scoreGarageQuality({
+  ...passing,
+  architecture: { ...passing.architecture, connectedExteriorParts: 0, facadeDetailCertified: true },
+});
+assert.equal(kitFacades.total, 100, 'certified kit facades pass without legacy markers');
+const looseKitFacade = scoreGarageQuality({
+  ...passing,
+  architecture: { ...passing.architecture, connectedExteriorParts: 400, facadeDetailCertified: false },
+});
+assert.equal(looseKitFacade.total, 98);
+assert.ok(looseKitFacade.failures.includes('map buildings lack supported facade detail'),
+  'a reported facade failure fails, whatever the marker count');
+
 console.log('garageQualityRubric.selftest: ok');
