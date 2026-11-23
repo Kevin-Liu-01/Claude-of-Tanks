@@ -15,9 +15,12 @@
 // Files in the folder that no pick names are removed. site-media-wire.mjs wires it (--only=gallery: galleryShots.ts;
 // --only=loading: the rotation's gallery stills and their captions); src/ui/galleryShots.selftest.mjs and loadingScreens.selftest.mjs hold
 // the result.
-//   node tools/media-r5/loading-media.mjs [--masters <dir>] [--jobs <n>] [--cache <dir>] [--plan | --dry]
+// The same build makes any picks.json entry of that shape a collection (--set <key>, default gallery): `stills` is the
+// owner's picks from the renders that had never shipped (2026-11-22), public/media/stills-r1, which only the media library
+// shows. An entry's `description` is its manifest's; an entry with no `focal` has none (no crop shows its stills).
+//   node tools/media-r5/loading-media.mjs [--set <key>] [--masters <dir>] [--jobs <n>] [--cache <dir>] [--plan | --dry]
 // --plan prints each pick's render and caption and encodes nothing; --cache keeps the encodes between runs.
-// (--masters defaults to picks.json gallery.masters under the repository: shots/ is ignored, so a lane names the media
+// (--masters defaults to the entry's masters under the repository: shots/ is ignored, so a lane names the media
 // worktree's folder.)
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -39,7 +42,9 @@ const option = (name) => {
 };
 const DRY = argv.includes('--dry');
 const ALL_PICKS = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
-const PICKS = ALL_PICKS.gallery;
+const SET = option('set') ?? 'gallery';
+const PICKS = ALL_PICKS[SET];
+if (!PICKS?.collection) throw new Error(`picks.json has no collection entry "${SET}"`);
 const FOCAL = PICKS.focal;
 const FOCAL_RE = /^(?:[1-9]\d)% (?:[1-9]\d)%$/;
 // the smaller rungs each still ships beside its 1920 file ({ width, quality }: the 640 cards)
@@ -70,16 +75,24 @@ const word = (catalog, key, lang) => {
 };
 const roleOf = (name) => (/^foe\d*$/.test(name) ? 'foe' : /^ally\d*$/.test(name) ? 'ally' : /^wreck\d*$/.test(name) ? 'wreck' : name);
 
-/** The still's render: its one 4K png and the scene its cinema receipt recorded. */
+/**
+ * The still's render: its one 4K png and the scene its cinema receipt recorded. The render finished cleanly when its
+ * receipt says so, or when the receipt's record of this png is complete and carries the png's sha256 (a batch's take
+ * moved to its own folder before the batch run wrote `finished`).
+ */
 function renderOf(id) {
   const dir = join(MASTERS, id);
   const receiptFile = join(dir, 'cinema-receipt.json');
   if (!existsSync(receiptFile)) throw new Error(`no render (${relative(ROOT, receiptFile)} is missing)`);
   const pngs = existsSync(join(dir, 'stills')) ? readdirSync(join(dir, 'stills')).filter((f) => f.endsWith('.png')) : [];
   if (pngs.length !== 1) throw new Error(`${pngs.length} pngs in ${id}/stills, not one`);
+  const png = join(dir, 'stills', pngs[0]);
   const receipt = JSON.parse(readFileSync(receiptFile, 'utf8'));
-  if (!receipt.finished || receipt.errors?.length) throw new Error(`its render did not finish cleanly (${receiptFile})`);
-  return { png: join(dir, 'stills', pngs[0]), source: `${id}/stills/${pngs[0]}`, revision: receipt.revision, scene: receipt.config.scene };
+  const record = (receipt.stills ?? []).filter((s) => s.complete).flatMap((s) => s.files ?? [])
+    .find((f) => f.path?.endsWith(`/${pngs[0]}`));
+  const recorded = receipt.finished || (record?.sha256 && record.sha256 === sha256(readFileSync(png)));
+  if (!recorded || receipt.errors?.length) throw new Error(`its render did not finish cleanly (${receiptFile})`);
+  return { png, source: `${id}/stills/${pngs[0]}`, revision: receipt.revision, scene: receipt.config.scene };
 }
 
 /** The still's map, hour, tanks and caption (the owner's gallery, ~/cot-lanes/og-r1/elevated-269/gallery-build.py). */
@@ -107,8 +120,9 @@ function itemOf(id, group, scene) {
     en: `${word(EN, `map.${map}`, 'en-US')}: ${who.en}`,
     zh: `${word(ZH, `map.${map}`, 'zh-CN')}：${who.zh}`,
   };
+  if (!FOCAL) return { id, group, map, hour: scene.timeOfDay, title, tanks };
   const focal = FOCAL[id];
-  if (!focal || !FOCAL_RE.test(focal)) throw new Error(`its focal ${focal} is not "<x>% <y>%" in two digits each (picks.json gallery.focal)`);
+  if (!focal || !FOCAL_RE.test(focal)) throw new Error(`its focal ${focal} is not "<x>% <y>%" in two digits each (picks.json ${SET}.focal)`);
   return { id, group, map, hour: scene.timeOfDay, focal, title, tanks };
 }
 
@@ -223,7 +237,7 @@ const manifest = {
   author: PROJECT_CREATOR,
   copyright: PROJECT_COPYRIGHT,
   license: FIRST_PARTY_LICENSE,
-  description: 'The owner\'s loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual\'s archive show them (src/ui/galleryShots.ts GALLERY_SHOTS), and the loading screens rotate some of them after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still\'s focal aims a crop at its hero tank.',
+  description: PICKS.description,
   generatedBy: relative(ROOT, fileURLToPath(import.meta.url)),
   sources: `the 4K stills of the Scene Studio renders under ${PICKS.masters} (each item's source names its file, its revision the commit it was rendered on)`,
   dimensions: { width: WIDTH, height: HEIGHT },

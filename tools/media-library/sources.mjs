@@ -73,12 +73,13 @@ function rungNotes(out, rungs, main) {
 
 // ---- folders whose pictures the library takes from their manifests ------------------------------------------------
 
-/** The owner's loading-screen gallery (78 stills, 11-10/11, current tanks and fireballs): its close-ups join the battle
- *  scenes by battlefield, its elevated stills the duels from above. */
-function gallery(ctx) {
+/** A collection tools/media-r5/loading-media.mjs builds: its close-ups join the battle scenes by battlefield, its
+ *  elevated stills the duels from above. gallery-r1 is the owner's loading-screen gallery (78 stills, 11-10/11, current
+ *  tanks and fireballs); stills-r1 his picks from the close-up and elevated renders that had never shipped (65, 11-22). */
+const stills = (folder) => (ctx) => {
   const out = sink();
-  for (const it of ctx.manifest('gallery-r1').items) {
-    const what = `gallery-r1/${it.id}`;
+  for (const it of ctx.manifest(folder).items) {
+    const what = `${folder}/${it.id}`;
     const { who } = placeAndWho(it.title, what);
     if (it.group !== 'close' && it.group !== 'elevated') throw new Error(`${what}: group ${it.group}`);
     const close = it.group === 'close';
@@ -91,7 +92,7 @@ function gallery(ctx) {
     rungNotes(out, it.rungs ?? [], it.path);
   }
   return out;
-}
+};
 
 /** The boot splash's own stills (11-20, frames of the owner's Studio clips): each joins its battlefield's battle scenes,
  *  titled with the battlefield and the hour; its 1280 rung is the boot splash's copy. */
@@ -490,7 +491,8 @@ function webVideo(ctx) {
 
 const RETIRED = 'which no page shows (tools/media-freshness.selftest.mjs RETIRING)';
 export const FOLDERS = {
-  'gallery-r1': { owns: true, read: gallery },
+  'gallery-r1': { owns: true, read: stills('gallery-r1') },
+  'stills-r1': { owns: true, read: stills('stills-r1') },
   'versus-r1': { owns: true, read: versus },
   'boot-r1': { owns: true, read: boot },
   'home-r2': { owns: true, read: home },
