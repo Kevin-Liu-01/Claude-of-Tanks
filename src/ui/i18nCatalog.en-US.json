@@ -4675,6 +4675,7 @@
   "endScreen.awardedThisBattle": "Earned in this battle",
   "hud.status.title": "Vehicle conditions",
   "hud.status.fire": "On fire",
+  "hud.status.fireLine": "{key} Puts it out",
   "hud.status.tracks": "Tracks",
   "hud.status.crew": "Crew wounded",
   "hud.status.crewCount": "{count} crew wounded",

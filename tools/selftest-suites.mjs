@@ -550,6 +550,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding; a hull's event point on the hull where it stands (round 4 merge review r2), never measured from a hidden network hull's last sample (round 5 U16)
     'src/fx/fireVisible.selftest.mjs', // fire-visible-275: every burning hull this viewer sees has a live fire (own, ally, near/far foe, scan-only, migrated) with the wreck budget full, in the chase, sight and far views; far licks floored to a share of the view; a far-LOD hull keeps its fire on its root
     'src/ui/scopeFireEdge.selftest.mjs', // fire-visible-275: the sight's bottom edge burns while our own tank does (Kevin's pick), only scoped, compositor-only, still under reduced motion
+    'src/ui/hudFireNotice.selftest.mjs', // fire-visible-275: our tank on fire raises one threat condition, kept while scoped, with the fire kit's key line; gone with the fire and at a death
     'src/fx/heRoundRecords.selftest.mjs', // 2026-11-02 audit U31/U33 (round 2): an HE round's records outlast other rounds and a rebase; a late ground expiry keeps its marks; (round 5 U11) a record keeps its grace after its round's last drawn frame
     'src/fx/replayVeil.selftest.mjs', // 2026-11-02 audit U31 (round 2): the killcam's suppression hides the FX veil, never an owner's own flag (the lens guns)
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
