@@ -265,7 +265,7 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { createReplayRecorder, type RecorderGame, type ReplaySetupOptions } from './game/replay/replayRecorder.ts';
-import { saveReplay } from './game/replay/replayStore.ts';
+import { listReplays, loadReplayFile, saveReplay } from './game/replay/replayStore.ts';
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
@@ -758,6 +758,8 @@ const finishReplay = (): void => {
 const bus = createBus(devTrace
   ? (ev, payload) => { devTrace.event(ev, payload); replayRecorder.onEvent(ev, payload); }
   : (ev, payload) => replayRecorder.onEvent(ev, payload));
+// the tools' read of the recorder and the saved battles (tools/replay-browser-check.mjs), as __COT_COUCH publishes the couch's
+(globalThis as { __COT_REPLAY?: unknown }).__COT_REPLAY = { recorder: replayRecorder, finish: finishReplay, list: listReplays, load: loadReplayFile };
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
 installBattleRecords(bus);
