@@ -111,7 +111,8 @@ assert.deepEqual(styleProblems(css), [], 'the shipped styles');
 assert.deepEqual(styleProblems('.binocular-call,.binocular-close{display:none;pointer-events:auto}'), ['a .binocular-close rule']);
 assert.equal(styleProblems('html[data-cot-strike-view] .cot-strike-dock{top:40px}').length, 1, 'a seat moved under the binoculars fails');
 assert.equal(styleProblems('.strike-support[data-selected=true]{width:80px}').length, 1, 'a slot resized while up fails');
-// the HUD's module and the air-support capture tool no longer name the old button
+// the HUD's module and the air-support capture tool no longer name the old button (its negative control is
+// air-support-close-box.mjs putBackOldClose, the one place that does)
 for (const file of ['src/ui/airSupportHud.ts', 'tools/air-support-shots.mjs']) {
   assert.ok(!readFileSync(file, 'utf8').includes('binocular-close'), `${file} names .binocular-close`);
 }
