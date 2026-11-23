@@ -197,6 +197,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
     'src/vehicles/smokeLauncherFleet.selftest.mjs',
+    // 271 (Main): the decor smoke pair only on a build with no drawn banks; a salvo is its drawn launcher mouths
+    'src/vehicles/decorDrawnSmoke.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
     'src/vehicles/suppliedSourceWeapons.selftest.mjs',
     'src/vehicles/dragunAssaultBalance.selftest.mjs',

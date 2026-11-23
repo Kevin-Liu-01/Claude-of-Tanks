@@ -4,6 +4,7 @@ import { antennaPart } from './antennaPart.ts';
 // neutral source views, not the old T-14 builder or source topology.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -493,7 +494,8 @@ export function addTurret(P: TankBuilderPort, gun152 = false): void {
     }
     P.addEquipment('turretDetail', box(.45, .32, .12), side * 1.015, localY(2.68), localZ(-.48));
     for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
-      P.addEquipment('turretDark', cylZ(.039, .01, 12), side * (1.015 + (col - 1.5) * .094), localY(2.59 + row * .091), localZ(-.418));   // 3 mm into the box face (5 mm off it)
+      // the soft-kill grenade mouths (Afganit), marked as launchers (271, Main: the salvo is the drawn mouths, no decor pair)
+      P.addEquipment('turretDark', markSmokeTube(cylZ(.039, .01, 12)), side * (1.015 + (col - 1.5) * .094), localY(2.59 + row * .091), localZ(-.418));   // 3 mm into the box face (5 mm off it)
     }
   }
 }
