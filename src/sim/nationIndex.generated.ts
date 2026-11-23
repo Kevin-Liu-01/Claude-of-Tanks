@@ -92,7 +92,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["challenger1_mk1","uk","cold-war",8],
   ["challenger1_mk2","uk","cold-war",8],
   ["challenger_x","uk","cold-war",8],
-  ["challenger_x_sleek","uk","cold-war",8],
+  ["challenger_x_sleek","uk","cold-war",7],
   ["fv4034","uk","cold-war",4],
   ["challenger2","uk","modern",9],
   ["challenger2e","uk","modern",9],

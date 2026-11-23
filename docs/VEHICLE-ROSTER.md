@@ -56,7 +56,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 46 | PROD | `challenger1_mk1` | Challenger 1 Mk 1 | UK | VIII | Cold War | Production |
 | 47 | PROD | `challenger1_mk2` | Challenger 1 Mk 2 | UK | VIII | Cold War | Production |
 | 48 | PROD | `challenger_x` | FV4030/5 | UK | VIII | Cold War | Production |
-| 49 | PROD | `challenger_x_sleek` | FV4030/6 | UK | VIII | Cold War | Production |
+| 49 | PROD | `challenger_x_sleek` | FV4030/6 | UK | VII | Cold War | Production |
 | 50 | PROD | `fv4034` | FV4034 | UK | IV | Cold War | Production |
 | 51 | PROD | `challenger2` | Challenger 2 | UK | IX | Modern | Production |
 | 52 | PROD | `challenger2e` | Challenger 2E | UK | IX | Modern | Production |
