@@ -35,7 +35,7 @@ import {
   ROCK_DRIVE_OVER_M, ROCK_TIER_FIRST_M, ROCK_TIER_FLOOR_M, applyFormationCollision, applyRockCollisionProfile, formationCollisionProfile,
   rockCollisionProfile, rockFormFrom, rockFormOf, rockStaysCrushable,
 } from './rockCollision.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from './collisionRecordPacking.ts';
 import { isSimpleShape } from '../../server/collisionManifestFormat.ts';
 import {
   CONTACT_BAND, TriangleSoup, addMeshTriangles, colliderRaster, makeRegion, regionGround, sectionRaster, sliceSegments, raySegments2,
