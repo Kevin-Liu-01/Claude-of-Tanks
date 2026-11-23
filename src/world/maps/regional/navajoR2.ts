@@ -4,12 +4,13 @@
 // imports those back). See navajo.ts for the kit's sources and the place.
 import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { bulb } from './domes.ts';
-import { emitRoof, holedFace, leanTo, placeShed, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
+import { emitRoof, holedFace, leanTo, placeShed, roofGeometry, type HoleRect, type RoofGeometry, type RoofPatch, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
 import { recordShed } from './shedFall.ts';
 import { board, pad, rod } from './r2Members.ts';
+import { ridge } from './dressing.ts';
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 export const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
 export const JUNIPER_DARK = rgb(0x5a4d41);
@@ -252,6 +253,73 @@ export function groundCourse(sink: PartSink, x0: number, z0: number, x1: number,
 }
 
 
+/** (dome-detail-275) Sheets replaced in a tin covering or a wall: fresh galvanised, rusted through, red-leaded, oxide. */
+export function patchTin(look: () => number): Rgb {
+  const c = look();
+  return c < 0.35 ? shade(RUSTY, 0.9 + look() * 0.25) : c < 0.6 ? shade(GALV, 1.1) : c < 0.8 ? rgb(0x8a4a3a) : shade(RUSTY, 0.68);
+}
+
+/**
+ * (dome-detail-275) A corrugated-iron covering in relief (the work list: "a smooth roof") on a gable, hip or shed roof
+ * `rg` (its ridge along z): the sheets' end laps in courses across each slope a sheet's length apart, their side laps
+ * down it (fine), and `patches` sheets a slope replaced; left open a hand clear over the patch the war wear stripped
+ * (HouseFrame.roofPatch). The laps in the covering's own bucket (`colour` for a painted structureMetal sheet).
+ */
+export function tinCovering(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, hole: RoofPatch | null, look: () => number, patches: number, colour?: Rgb): void {
+  if (rg.kind !== 'gable' && rg.kind !== 'hip' && rg.kind !== 'shed') return;
+  const shed = rg.kind === 'shed', cosP = 1 / Math.hypot(1, rg.tanP), xe = rg.s + roof.eave, ze = rg.halfD + roof.verge, pad = 0.08;
+  const hT = rg.hipTan ?? rg.tanP, rh = rg.ridgeHalf, sheet = 2.4 * cosP;
+  const lap = (k: number, fine: boolean): EmitOptions & { exposed?: boolean } => ({ ...(colour ? { colour: shade(colour, k) } : { shade: k }), decor: true, exposed: true, ...(fine ? { fine: true } : {}) });
+  // the main slope's reach along the ridge at a run r from the ridge line (a hip's slope narrows to its ridge), and the
+  // run at which a side lap at z meets its hip
+  const zLim = (r: number) => (rg.kind === 'hip' ? Math.min(ze, rh + r * rg.tanP / hT) : ze) - 0.04;
+  const rTop = (az: number) => (rg.kind === 'hip' && az > rh ? (az - rh) * hT / rg.tanP + 0.06 : shed ? 0.05 : 0.14);
+  const R1 = (shed ? 2 * xe : xe) - 0.03;
+  for (const sd of (shed ? [1] : [1, -1]) as Array<1 | -1>) {
+    const l = Math.hypot(rg.tanP, 1), n: Vec3 = [sd * rg.tanP / l, 1 / l, 0];
+    const X = (r: number) => (shed ? -xe + r : sd * r);
+    const gap = hole && !shed && hole.side === sd ? hole : null;
+    const on = (r: number, z: number): Vec3 => [X(r), rg.topAt(X(r), shed ? z : Math.max(-rh, Math.min(rh, z))) ?? rg.eaveY, z];
+    // the end laps across the slope, a sheet's length apart up from the eave
+    for (let r = R1 - sheet; r > rTop(0) + 0.3; r -= sheet) {
+      const zl = zLim(r);
+      const runs: Array<[number, number]> = gap && r > gap.x0 - pad && r < gap.x1 + pad ? [[-zl, gap.z0 - pad], [gap.z1 + pad, zl]] : [[-zl, zl]];
+      for (const [z0, z1] of runs) if (z1 - z0 > 0.3) sink.member(roof.bucket, on(r, z0), on(r, z1), 0.1, 0.024, n, lap(0.8, false), 0);
+    }
+    // the side laps down it, a sheet's cover apart
+    for (let z = -ze + 0.76; z < ze - 0.2; z += 0.76) {
+      const r0 = rTop(Math.abs(z));
+      if (r0 > R1 - 0.3) continue;
+      const runs: Array<[number, number]> = gap && z > gap.z0 - pad && z < gap.z1 + pad ? [[r0, gap.x0 - pad], [gap.x1 + pad, R1]] : [[r0, R1]];
+      for (const [a, b] of runs) if (b - a > 0.3) sink.member(roof.bucket, on(a, z), on(b, z), 0.045, 0.016, n, lap(0.86, true), 0);
+    }
+    // the sheets replaced, a sheet or two up from the eave or from a lap
+    for (let k = 0; k < patches; k++) {
+      const len = sheet * (look() < 0.6 ? 1 : 2), rb = R1 - (look() < 0.5 ? 0 : sheet), ra = Math.max(rTop(0) + 0.1, rb - len);
+      const zl = zLim(ra) - 0.45, z = (look() * 2 - 1) * zl, tone = patchTin(look);
+      if (zl < 0.2 || rb - ra < 0.6) continue;
+      if (gap && rb > gap.x0 - pad && ra < gap.x1 + pad && z + 0.4 > gap.z0 - pad && z - 0.4 < gap.z1 + pad) continue;
+      sink.member('structureMetal', on(rb, z), on(ra, z), 0.74, 0.013, n, { colour: tone, decor: true, exposed: true }, 0.003);
+    }
+  }
+  if (rg.kind !== 'hip') return;
+  // a hip's end slopes: their end laps across, their side laps down each to its hips
+  const zeH = rg.halfD + (rg.hipVerge ?? roof.verge) - 0.03, cosH = 1 / Math.hypot(1, hT);
+  for (const sz of [1, -1]) {
+    const l = Math.hypot(hT, 1), n: Vec3 = [0, 1 / l, sz * hT / l];
+    const at = (x: number, e: number): Vec3 => { const z = sz * (rh + e); return [x, rg.topAt(x, z) ?? rg.eaveY, z]; };
+    const xLim = (e: number) => Math.min(xe - 0.03, e * hT / rg.tanP - 0.05);
+    for (let e = zeH - rh - 2.4 * cosH; e > 0.4; e -= 2.4 * cosH) {
+      const xl = xLim(e);
+      if (xl > 0.3) sink.member(roof.bucket, at(-xl, e), at(xl, e), 0.1, 0.024, n, lap(0.8, false), 0);
+    }
+    for (let x = -xe + 0.76; x < xe - 0.2; x += 0.76) {
+      const e0 = Math.abs(x) * rg.tanP / hT + 0.06, e1 = zeH - rh;
+      if (e1 - e0 > 0.3) sink.member(roof.bucket, at(x, e0), at(x, e1), 0.045, 0.016, n, lap(0.86, true), 0);
+    }
+  }
+}
+
 /**
  * The red earth trodden dark round a body's foot (the r2 rebuilds' groundCourse without its footing; the r2 sweep: the
  * old patch a 10 cm slab standing square out of the sand): a pad sunk in the ground whose edge feathers out into it, its
@@ -443,14 +511,11 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
       const xa = px - 0.09, xb = x0 + 0.08, r = 0.065;
       rod(sink, 'structureWood', [xa, purlinY(xa) - 0.05 - r, zr], [xb, purlinY(xb) - 0.05 - r, zr], r, 7, { colour: shade(plate, 0.95), decor: true, uv: UV_MEMBER });
     }
-    // the corrugated sheets' side laps down the slope, a sheet's width apart (fine joinery on the sheets' top)
-    const cosP = Math.cos(9 * Math.PI / 180), topAt = (x: number) => shed.undersideAt(x, 0) + roof.thickness / cosP;
-    const nrm: Vec3 = [-Math.sin(9 * Math.PI / 180), cosP, 0];
-    for (let z = -D / 2 - 0.3 + 0.86; z < D / 2 + 0.3 - 0.1; z += 0.86) {
-      const xa = x0 - 0.3, xb = x0 + W + 0.3;
-      sink.member('roof', [xa, topAt(xa), z], [xb, topAt(xb), z], 0.06, 0.02, nrm, { decor: true, fine: true, exposed: true }, 0.004);
-    }
   });
+  // (dome-detail-275; the work list: "a smooth roof") the covering in relief, its laps across and down it and its sheets
+  // replaced (the side laps the dressing above laid are tinCovering's now), one sheet lifted off the low eave
+  sink.placed(Math.PI, x0 + W / 2, 0, 0, () => tinCovering(sink, shed.rg, roof, null, look, 3));
+  shedWear(sink, shed, roof, x0, W, D, H, look);
   // the lean-to off the front for the trucks: a low tin roof falling away from the shed, hung at its high line on a
   // ledger along the front poles and resting on a plate over its own poles
   if (lw > 1.2) {
@@ -458,6 +523,7 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
     const lean = leanTo(sink, { face: front, u0: -D / 2 + 0.1, u1: D / 2 - 0.1, from: -0.15 + 0.11, depth: lw - 0.12,
       highY: plateTop - 0.18 - 0.2, roof: { pitchDeg: 8, eave: 0.12, verge: 0.2, thickness: 0.06, bucket: 'roof' },
       posts: null, plate: { h: 0.15, w: 0.16, bucket: 'structureWood', colour: shade(plate, 0.95) } });
+    sink.placed(0, x0 + W + (-0.04 + lw - 0.12) / 2, 0, 0, () => tinCovering(sink, lean.shed.rg, { kind: 'shed', pitchDeg: 8, eave: 0.12, verge: 0.2, thickness: 0.06, bucket: 'roof' }, null, look, 2));
     // the ledger the lean-to hangs on, along the front poles
     chamferedBeam(sink, 'structureWood', 'z', -D / 2, D / 2, x0 + W - 0.15 + 0.11 + 0.05, lean.highY - 0.07, 0.05, 0.07, 0.012, { colour: shade(plate, 0.85), decor: true, uv: UV_MEMBER });
     for (let k = 0; k <= n; k += 2) {
@@ -478,9 +544,90 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
       rod(sink, 'structureWood', [x, y, z1 - 2.4], [x, y, z1], r, 6, { colour: pick(look, JUNIPER), decor: true, uv: UV_MEMBER });
     }
   });
+  // (dome-detail-275) the old pickup nosed into an empty bay, a drum by the front poles
+  const kb = bays >= 4 ? 3 : 1, zb0 = -D / 2 + 0.3 + (D - 0.6) * kb / bays, zb1 = -D / 2 + 0.3 + (D - 0.6) * (kb + 1) / bays;
+  if (W > 6.2 && zb1 - zb0 > 2.4) oldPickup(sink, x0 + W - 2.62, (zb0 + zb1) / 2 + (look() - 0.5) * 0.3, Math.PI + (look() - 0.5) * 0.12, pick(look, TRUCK_PAINT), look);
+  drum(sink, px - 0.55, zb0 + 0.35, look);
   });
   return sink.finish();
 };
+
+/** (dome-detail-275) The reservation's old pickups: faded turquoise, sun-bleached red, primer, rust brown, a pale green. */
+const TRUCK_PAINT: readonly Rgb[] = [0x5a8a86, 0x9a4a3a, 0x7a7a74, 0x7a5641, 0x8aa08a].map(rgb);
+
+/**
+ * (dome-detail-275) An old pickup (a 1950s half-ton) on its own frame at (x, z), its nose along local +x turned `yaw`: the
+ * chassis, the hood and grille between the front fenders, the cab with its slanted windscreen, the bed with its sides and
+ * tailgate over the rear fenders, the bumpers, four wheels or three and the fourth corner up on cinder blocks.
+ */
+function oldPickup(sink: PartSink, x: number, z: number, yaw: number, paint: Rgb, look: () => number): void {
+  const chrome = rgb(0xb8b4aa), dark = rgb(0x262626), tyre = rgb(0x1c1c1d), worn = shade(paint, 0.82);
+  const P = { colour: paint, decor: true }, D2 = { colour: dark, decor: true };
+  const blocked = look() < 0.45;
+  sink.placed(yaw, x, 0, z, () => {
+    sink.span('structureMetal', -2.15, 0.34, -0.45, 2.15, 0.52, 0.45, D2);
+    // the wheels (a rear one gone, its corner up on blocks)
+    for (const [wx, wz] of [[1.45, 1], [1.45, -1], [-1.35, 1], [-1.35, -1]] as const) {
+      if (blocked && wx < 0 && wz > 0) {
+        sink.span('stone', wx - 0.2, 0, wz * 0.62 - 0.2, wx + 0.2, 0.36, wz * 0.62 + 0.2, { decor: true, shade: 0.75 });
+        continue;
+      }
+      sink.cylinder('structureMetal', [wx, 0.37, wz > 0 ? 0.62 : -0.84], 'z', 0.22, 0.37, 12, { colour: tyre, decor: true });
+      sink.cylinder('structureMetal', [wx, 0.37, wz > 0 ? 0.84 : -0.855], 'z', 0.015, 0.17, 10, { colour: chrome, decor: true, fine: true });
+    }
+    // the front fenders and the hood between them, the grille, the headlamps
+    for (const sz of [-1, 1]) {
+      chamferedBeam(sink, 'structureMetal', 'x', 0.85, 2.1, sz * 0.78, 0.78, 0.17, 0.22, 0.07, P);
+      sink.cylinder('structureMetal', [2.1, 0.98, sz * 0.62], 'x', 0.08, 0.1, 10, { colour: chrome, decor: true, fine: true });
+    }
+    chamferedBeam(sink, 'structureMetal', 'x', 0.7, 2.2, 0, 1.08, 0.56, 0.22, 0.06, P);
+    sink.span('structureMetal', 2.2, 0.58, -0.44, 2.24, 1.24, 0.44, { colour: chrome, decor: true });
+    // the cab, its glasshouse with the windscreen raked back, its windows
+    sink.span('structureMetal', -0.75, 0.52, -0.82, 0.72, 1.3, 0.82, P);
+    sink.prism('structureMetal', [[-0.72, 1.3, -0.8], [0.66, 1.3, -0.8], [0.4, 1.92, -0.8], [-0.66, 1.92, -0.8]], [0, 0, 1], 1.6, P);
+    sink.quad('glass', [0.668, 1.36, 0.66], [0.668, 1.36, -0.66], [0.43, 1.87, -0.66], [0.43, 1.87, 0.66], { decor: true });
+    for (const sz of [-1, 1]) {
+      const zz = sz * 0.805, a: Vec3 = [-0.55, 1.36, zz], b: Vec3 = [0.4, 1.36, zz], c: Vec3 = [0.24, 1.84, zz], d: Vec3 = [-0.55, 1.84, zz];
+      sink.quad('glass', ...((sz > 0 ? [a, b, c, d] : [d, c, b, a]) as [Vec3, Vec3, Vec3, Vec3]), { decor: true });
+    }
+    sink.quad('glass', [-0.735, 1.4, -0.5], [-0.735, 1.4, 0.5], [-0.735, 1.8, 0.5], [-0.735, 1.8, -0.5], { decor: true });
+    // the bed: its floor, sides and front board over the rear fenders, the tailgate; a rust patch on a side
+    sink.span('structureMetal', -2.4, 0.52, -0.8, -0.8, 0.62, 0.8, { colour: worn, decor: true });
+    for (const sz of [-1, 1]) {
+      sink.span('structureMetal', -2.4, 0.62, sz > 0 ? 0.74 : -0.8, -0.8, 1.16, sz > 0 ? 0.8 : -0.74, P);
+      chamferedBeam(sink, 'structureMetal', 'x', -1.85, -0.85, sz * 0.88, 0.72, 0.1, 0.2, 0.06, P);
+    }
+    sink.span('structureMetal', -0.86, 0.62, -0.74, -0.8, 1.16, 0.74, P);
+    sink.span('structureMetal', -2.46, 0.6, -0.8, -2.4, 1.12, 0.8, { colour: worn, decor: true });
+    sink.span('structureMetal', -1.9 + look() * 0.6, 0.7, 0.8, -1.4 + look() * 0.6, 1.0, 0.812, { colour: shade(RUSTY, 0.9), decor: true, fine: true });
+    // the bumpers
+    sink.span('structureMetal', 2.24, 0.42, -0.95, 2.36, 0.58, 0.95, { colour: chrome, decor: true });
+    sink.span('structureMetal', -2.56, 0.42, -0.9, -2.46, 0.56, 0.9, D2);
+  });
+}
+
+/**
+ * (dome-detail-275) The equipment shed's wear: sheets replaced in the clad back wall and the ends, one sheet off the
+ * covering lifted at the low eave, and the red sand drifted against the back wall's foot.
+ */
+function shedWear(sink: PartSink, shed: { undersideAt(x: number, z: number): number }, roof: RoofSpec, x0: number, W: number, D: number, H: number, look: () => number): void {
+  for (let k = 0; k < 3; k++) {
+    const z = (look() * 2 - 1) * (D / 2 - 1), h = look() < 0.5 ? 2.4 : H - 0.35;
+    sink.span('structureMetal', x0 - 0.012, 0.16, z - 0.38, x0 + 0.002, 0.16 + h, z + 0.38, { colour: patchTin(look), decor: true });
+  }
+  for (const sz of [-1, 1]) {
+    const x = x0 + 0.8 + look() * (W - 2.2), h = Math.min(2.4, H - 0.6);
+    sink.span('structureMetal', x - 0.38, 0.16, sz > 0 ? D / 2 - 0.002 : -D / 2 - 0.012, x + 0.38, 0.16 + h, sz > 0 ? D / 2 + 0.012 : -D / 2 + 0.002, { colour: patchTin(look), decor: true });
+  }
+  // the sheet lifted off the low (back) eave, still nailed up the slope
+  const tanP = Math.tan(roof.pitchDeg * Math.PI / 180), top = (x: number) => shed.undersideAt(x, 0) + roof.thickness * Math.hypot(1, tanP);
+  if (look() < 0.7) {
+    const z = (look() * 2 - 1) * (D / 2 - 1.2), xa = x0 + 1.7, xb = x0 - roof.eave + 0.05;
+    sink.member('roof', [xa, top(xa) + 0.005, z], [xb, top(xb) + 0.4, z], 0.76, 0.02, [-0.25, 0.97, 0], { decor: true, exposed: true }, 0);
+  }
+  // the red sand drifted against the back wall's foot
+  ridge(sink, [x0 - 0.33, 0.0, -D / 2 + 0.2], [x0 - 0.33, 0.0, D / 2 - 0.2], 0.8, 0.32, rgb(0xa06a4c));
+}
 
 /**
  * The trailer home (a container row plot): a double-wide on a deep plot, a single-wide otherwise — an aluminium- or
@@ -595,9 +742,74 @@ export const trailer: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [-L / 2 - 0.65, 1.2, -0.4], 'y', 0.25, 0.36, 10, { colour: rgb(0xe8e6e0), decor: true }, 0.12);
     sink.cylinder('structureMetal', [L / 2 - 0.6, top + 0.05, -T / 2 + 0.5], 'y', 0.7, 0.03, 6, { colour: IRON, decor: true });
     sink.cylinder('structureMetal', [L / 2 - 0.6, top + 0.75, -T / 2 + 0.5], 'z', 0.12, 0.38, 12, { colour: rgb(0xd8d8d4), decor: true }, 0.3);
+    trailerLife(sink, { L, T, floor, top, du, deckW, deckD, rg, roof, roofColour, skin }, ctx.variant);
   });
   return sink.finish();
 };
+
+/**
+ * (dome-detail-275; the work list: the trailer a skinned box) The trailer's life and wear: its roof's seams across and a
+ * patch, old tyres laid on it against the wind, the wood stove's pipe through it; the skirting's panels, one gone to show
+ * the block piers in the dark under the floor and one leaning askew; the hitch's A-frame on its jack at the blank end; the
+ * stains run down from the window sills; a tin shade on juniper posts over the door's porch, the stove wood stacked along
+ * the front, the hauled-water drums by the steps.
+ */
+function trailerLife(sink: PartSink, t: { L: number; T: number; floor: number; top: number; du: number; deckW: number; deckD: number;
+  rg: RoofGeometry; roof: RoofSpec; roofColour: Rgb; skin: Rgb }, look: () => number): void {
+  const { L, T, floor, top, du, deckW, deckD, rg, roof } = t;
+  // the roof's seams across (the frame turned a quarter: the roof's ridge along x), a patch of tin
+  sink.placed(Math.PI / 2, 0, 0, 0, () => tinCovering(sink, rg, roof, null, look, 1, t.roofColour));
+  const roofY = (xw: number, zw: number) => rg.topAt(-zw, xw) ?? top;
+  // the tyres on the roof
+  for (const f of [-0.36, 0.02, 0.3]) {
+    if (look() < 0.25) continue;
+    const x = L * f + (look() - 0.5) * 0.6, z = (look() - 0.5) * 0.9;
+    sink.cylinder('structureMetal', [x, roofY(x, z) - 0.02, z], 'y', 0.2, 0.33, 12, { colour: rgb(0x1e1e1f), decor: true });
+  }
+  // the wood stove's pipe through the roof at the living-room end, its hat
+  const sx = -L / 2 + 1.3, sz = -T * 0.2, sy = roofY(sx, sz);
+  sink.cylinder('structureMetal', [sx, sy - 0.1, sz], 'y', 1.3, 0.08, 8, { colour: STOVEPIPE, decor: true });
+  sink.cylinder('structureMetal', [sx, sy + 1.2, sz], 'y', 0.14, 0.2, 8, { colour: STOVEPIPE, decor: true }, 0.03);
+  // the skirting's panels down each long side, one panel gone (the piers and the dark under the floor), one askew
+  const skirt = shade(t.skin, 0.82);
+  for (const side of [-1, 1]) {
+    const z = side * (T / 2 - 0.1);
+    for (let x = -L / 2 + 0.7; x < L / 2 - 0.2; x += 1.2) sink.span('structureMetal', x - 0.015, 0.02, z - (side > 0 ? 0 : 0.012), x + 0.015, floor - 0.04, z + (side > 0 ? 0.012 : 0), { colour: shade(skirt, 0.85), decor: true, fine: true });
+  }
+  const gx = (look() - 0.5) * L * 0.5, gz = -(T / 2 - 0.1);
+  sink.quad('structureMetal', [gx + 0.6, 0.0, gz - 0.006], [gx - 0.6, 0.0, gz - 0.006], [gx - 0.6, floor - 0.05, gz - 0.006], [gx + 0.6, floor - 0.05, gz - 0.006], { colour: rgb(0x151515), decor: true });
+  for (const dx of [-0.25, 0.25]) sink.span('stone', gx + dx - 0.2, 0.0, gz - 0.2, gx + dx + 0.2, floor - 0.06, gz - 0.01, { decor: true, shade: 0.7 });
+  // the panel off it, leaning against the skin
+  const ly = floor + 0.08, lz = 0.42, ll = Math.hypot(ly, lz), lean: Vec3 = [0, lz / ll, -ly / ll];
+  sink.member('structureMetal', [gx + 1.1, 0.02, gz - 0.02 - lz], [gx + 1.1, 0.02 + ly, gz - 0.02], 1.18, 0.02, lean, { colour: skirt, decor: true, exposed: true }, 0);
+  // the hitch: an A-frame of channel from the frame's corners to the coupler, its jack on a block
+  const hx = L / 2 + 0.8;
+  for (const sz2 of [-1, 1]) sink.member('structureMetal', [L / 2 - 0.3, 0.42, sz2 * 0.85], [hx, 0.42, 0], 0.1, 0.12, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  sink.span('structureMetal', hx - 0.12, 0.36, -0.08, hx + 0.08, 0.5, 0.08, { colour: IRON, decor: true });
+  rod(sink, 'structureMetal', [hx - 0.35, 0.12, 0], [hx - 0.35, 0.5, 0], 0.045, 8, { colour: IRON, decor: true });
+  sink.span('stone', hx - 0.55, -0.05, -0.2, hx - 0.15, 0.12, 0.2, { decor: true, shade: 0.75 });
+  // the stains run down from the window sills on the front
+  const nWin = Math.max(2, Math.floor(L / 3.4));
+  for (let k = 0; k < nWin; k++) {
+    const x = -L / 2 + (k + 0.5) * L / nWin + (k === 1 ? 1.0 : 0);
+    if (Math.abs(x - du) < 1.2) continue;
+    for (const e of [-0.42, 0.05 + look() * 0.3]) {
+      sink.span('structureMetal', x + e - 0.03, floor + 0.3 + look() * 0.2, T / 2 + 0.004, x + e + 0.03, floor + 1.02, T / 2 + 0.01, { colour: shade(t.skin, 0.74), decor: true, fine: 'near' });
+    }
+  }
+  // the tin shade over the porch on juniper posts, falling away from the skin, hung under the trailer's eave
+  const front: Face = { origin: [0, 0, T / 2], u: [1, 0, 0], out: [0, 0, 1], width: L };
+  leanTo(sink, { face: front, u0: du - deckW / 2 - 0.1, u1: du + deckW / 2 + 0.1, from: 0.02, depth: deckD - 0.05, highY: top - 0.12,
+    under: { eaveY: top, eave: roof.eave, tanP: Math.tan(roof.pitchDeg * Math.PI / 180) },
+    roof: { pitchDeg: 7, eave: 0.12, verge: 0.12, thickness: 0.05, bucket: 'roof', decor: true },
+    posts: { at: [du - deckW / 2 + 0.05, du + deckW / 2 - 0.05], size: 0.14, bucket: 'structureWood', colour: pick(look, JUNIPER), decor: true, round: true }, plate: null });
+  // the stove wood corded along the front and the water drums by the steps
+  if (deckD > 1.6) {
+    woodpile(sink, du < 0 ? L * 0.28 : -L * 0.28, T / 2 + 0.75, 0, look);
+    drum(sink, du + deckW / 2 + 0.45, T / 2 + deckD - 0.4, look);
+    drum(sink, du + deckW / 2 + 0.5, T / 2 + deckD - 1.05, look);
+  }
+}
 
 /**
  * The hay shed (a gantry plot): a long pole barn of juniper posts under a low tin gable, bales stacked under it. (Props

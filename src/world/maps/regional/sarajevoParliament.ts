@@ -10,10 +10,10 @@
 // slab's soffit (a gutted floor's floor runs a bay deep to its charred back wall). The fins are tapered concrete fins
 // with a chamfered nose, the corner piers chamfered columns, the roof a slab with its parapet, coping and deck, the
 // plant room with its cornice, the podium a plinth with its chamfered course, the wing a body with its parapet.
-import { holedPolygon, recordBody } from './house.ts';
-import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { holedBox, recordBody, type HoleRect } from './house.ts';
+import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import type { RegionalBuildContext } from './types.ts';
-import { CHAR, clampTo, fillOf, shellPocks, sootBand, unhcrSheet } from './sarajevoParts.ts';
+import { CHAR, IRON, clampTo, fillOf, sandbagWindow, shellPocks, sootBand, unhcrSheet } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -112,6 +112,62 @@ function fin(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: 
   }
 }
 
+/** (dome-detail-275) Rust on the bars the fire and the blasts left bare; the burnt frames' char. */
+const REBAR = rgb(0x5a3a28), BURNT_FRAME = rgb(0x4a4540), ASH = rgb(0x45433f);
+
+/**
+ * (dome-detail-275) A bar left bare: from `a` (inside what holds it) to `b`, kept within 20 degrees of the plumb (a raking
+ * bar must meet something at both ends: kitConnectivity). Fine joinery.
+ */
+function rebar(sink: PartSink, a: Vec3, b: Vec3): void {
+  sink.member('structureMetal', a, b, 0.032, 0.032, normalize3([b[2] - a[2] || 1e-3, 0, -(b[0] - a[0])]), { colour: REBAR, decor: true, fine: true, exposed: true }, 0);
+}
+
+const cross3 = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/**
+ * (dome-detail-275; the work list: "its gutted floors are plain slabs") A gutted floor's burnt bay over its floor (y0)
+ * to the next soffit (y1): the frame's columns standing at the face line a bay apart, charred; the curtain wall's
+ * burnt mullions where they still stand on the glazing line, hang from the soffit or stick up from the sill; here and
+ * there a length of the slab's edge (its top at `ye`) broken off and hanging over the face, its bars bare along the
+ * break.
+ */
+function guttedBay(sink: PartSink, faces: readonly Face[], slab: RegionalBucket, y0: number, y1: number, ye: number, rec: number, deep: number,
+  step: number, look: () => number): void {
+  // the floor over it fallen in across one bay: its slab leaning from the soffit at the back wall down to the floor
+  // behind the face line
+  const fall = look() < 0.34 ? Math.floor(look() * faces.length) : -1;
+  for (const [fi, fc] of faces.entries()) {
+    if (fi === fall && fc.width > 5) {
+      const u = (look() - 0.5) * (fc.width - 5), wl = 2.4 + look() * 1.6;
+      const A = facePoint(fc, u, y1 - 0.12, -deep + 0.35), B = facePoint(fc, u + (look() - 0.5) * 0.6, y0 + 0.12, -0.7);
+      const d = normalize3([B[0] - A[0], B[1] - A[1], B[2] - A[2]]);
+      sink.member(slab, A, B, wl, 0.22, normalize3(cross3(d, fc.u)), { decor: true, exposed: true, shade: 0.62 }, 0.11);
+    }
+    const n = Math.max(2, Math.round(fc.width / 3.6));
+    for (let k = 1; k < n; k++) {
+      const [x, , z] = facePoint(fc, -fc.width / 2 + fc.width * k / n, 0, -0.34);
+      sweep(sink, slab, rect(x - 0.19, z - 0.19, x + 0.19, z + 0.19), [[0, y0], [0, y1]], { decor: true, shade: 0.5 + look() * 0.2 });
+    }
+    const m = Math.max(1, Math.round(fc.width / step));
+    for (let k = 1; k < m; k++) {
+      const u = -fc.width / 2 + fc.width * k / m, r = look();
+      if (r < 0.55) continue;
+      const [a, b] = r < 0.74 ? [y0, y1] : r < 0.88 ? [y1 - 0.4 - look() * 1.0, y1] : [y0, y0 + 0.3 + look() * 0.7];
+      sink.member('structureMetal', facePoint(fc, u, a, -rec - 0.05), facePoint(fc, u, b, -rec - 0.05), 0.07, 0.1, fc.out, { colour: BURNT_FRAME, decor: true, fine: true }, 0);
+    }
+    if (look() >= 0.5 || fc.width < 4) continue;
+    const wf = 1.8 + look() * 1.8, uc = (look() - 0.5) * (fc.width - wf - 1.2), tilt = 0.9 + look() * 0.4, L = Math.min(wf * 0.6, 0.8 + look() * 0.35);
+    const A = facePoint(fc, uc, ye - 0.12, 0.02), ay: Vec3 = [fc.out[0] * Math.cos(tilt), -Math.sin(tilt), fc.out[2] * Math.cos(tilt)];
+    const B: Vec3 = [A[0] + ay[0] * L, A[1] + ay[1] * L, A[2] + ay[2] * L];
+    sink.member(slab, A, B, wf, 0.2, normalize3(cross3(ay, fc.u)), { decor: true, exposed: true, shade: 0.6 }, 0.1);
+    for (let j = 0; j < 2; j++) {
+      const u = uc + (j - 0.5) * wf * 0.5 + (look() - 0.5) * 0.2;
+      rebar(sink, facePoint(fc, u, ye - 0.06, 0.03), facePoint(fc, u + (look() - 0.5) * 0.06, ye - 0.5 - look() * 0.9, 0.07));
+    }
+  }
+}
+
 /**
  * The parliament slab's floors (the r2 rebuild of the kit's curtainFloors for this tower): per floor the slab (its soffit
  * over the window under it, its edge 5 cm proud) and the spandrel strip on it (the panel, its sill back to the glazing
@@ -136,19 +192,22 @@ function slabFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, number
     const gutted = states.filter((s2) => s2 === 'gone' || s2 === 'burnt').length > faces.length / 2;
     guttedFloors.push(gutted);
     const burnt = states.some((s2) => s2 === 'burnt');
-    const panel = burnt ? CHAR : shade(spandrel, 0.92 + look() * 0.14);
+    // (dome-detail-275) a burnt panel's concrete sooted black but still concrete, a gutted floor's floor ash-grey (they
+    // were the char's flat black: the gutted floors read as plain dark slabs)
+    const panel = burnt ? shade(CONCRETE, 0.3 + look() * 0.12) : shade(spandrel, 0.92 + look() * 0.14);
     const back = gutted ? dI : rec;
     // the slab: its soffit from the glazing (or the gutted bay's back) of the floor under it out to its edge, the edge
     sweep(sink, slab, plan, [[-below, y], [0.05, y], [0.05, y + edge], [0, y + edge]]);
     // the spandrel strip on it: the panel, its sill to the glazing line (a gutted floor's floor to its back wall), the
     // glazing wall (the rooms behind the glass; the charred back wall) up to the next floor's soffit
     sweep(sink, 'structureMetal', plan, [[0, y + edge], [0, y + spH], [-back, y + spH], [-back, y + fh]], {},
-      (k) => (k < 2 ? panel : gutted ? CHAR : ROOMS));
+      (k) => (k === 0 ? panel : k === 1 ? (gutted ? ASH : panel) : gutted ? CHAR : ROOMS));
     below = back;
     if (gutted) {
       // the columns at the face line over the gutted bay, and the soot up to the next floor
       for (const [x, z] of shallow) pier(sink, slab, x, z, 0.22, y + spH, y + fh);
       faces.forEach((fc) => { if (burnt && f + 1 < floors) sootBand(sink, slab, fc, -fc.width / 2, fc.width / 2, y + fh, y + fh + 0.8); });
+      guttedBay(sink, faces, slab, y + spH, y + fh, y + edge, rec, dI, opts.step, look);
       continue;
     }
     // the corner piers closing each face's bay of glazing (a bay ends at the corners: no view along the recess round them)
@@ -184,7 +243,8 @@ function slabFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, number
 /**
  * The parliament's tower (props census #9; the looks lane's r2, 2026-10-16): the slab of floors behind its grid of
  * tapered fins on a podium, its burnt floors gutted a bay deep, its roof slab with a parapet and the plant room, in front
- * of the low assembly wing with its ribbons of glazing cut into the front.
+ * of the low assembly wing. (dome-detail-275) The gutted floors' burnt frames (guttedBay); the wing's upper storey on its
+ * pilotis over the glazed ground storey, its window grids cut through front and sides, its roof's clerestory and breach.
  */
 export function parliament(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
@@ -218,25 +278,71 @@ export function parliament(ctx: RegionalBuildContext): RegionalParts {
     const cz = (tz0 + tz1) / 2, plant = rect(-W * 0.2, cz - 1.8, W * 0.2, cz + 1.8);
     sweep(sink, concrete, plant, [[0, top + 0.6], [0, top + 3.0], [0.12, top + 3.0], [0.12, top + 3.2], [0, top + 3.2]]);
     deck(sink, concrete, plant, top + 3.2);
-    // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof behind its parapet
+    // the assembly wing in front (dome-detail-275; the work list: "its podium a box"): the upper storey carried over the
+    // street on a colonnade of pilotis, the ground storey's glazed front set back under it with the entrance's canopy
+    // and steps; the upper storey's grid of windows along the front and down the sides over the ground storey's, each
+    // cut through its wall (the glass at the back of the cut, burnt out to the dark, sheeted or sandbagged, the soot over
+    // a burnt one); the parapet and its coping; on the roof the assembly hall's clerestory, the plant and a shell's breach
     const wz0 = tz1 + 0.6, wz1 = D / 2;
     if (wz1 - wz0 > 2.5) {
       recordBody(sink, 0, (wz0 + wz1) / 2, W, wz1 - wz0, 8.2, concrete);
-      // (its ribbons of glazing cut into its front, the glass at the back of the cuts: they were laid on the span)
-      const body = rect(-W / 2, wz0, W / 2, wz1 - 0.4);
-      sweep(sink, concrete, body, [[0, -0.4], [0, 8.2], [-0.3, 8.2], [-0.3, 7.9]]);
-      deck(sink, concrete, insetPlan(body, 0.3), 7.9);
-      sink.polygon(concrete, body.map(([x, z]): Vec3 => [x, -0.4, z]).reverse());
-      const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      holedPolygon(sink, concrete, wf, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, 8.2], [-W / 2, 8.2]],
-        [{ u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 0.7, y1: 3.3 }, { u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 4.5, y1: 6.7 }], 0.4, 0.34);
-      facePanel(sink, 'glass', wf, 0, 2.0, -0.33, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
-      if (look() < 0.5) { /* (the upper ribbon's glass gone to the dark behind it: the cut's dark shows) */ } else facePanel(sink, 'glass', wf, 0, 5.6, -0.33, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
-      for (const yy of [2.0, 5.6]) for (let k = 1, n = Math.max(2, Math.round((W - 1.6) / 1.8)); k < n; k++) {
-        fin(sink, concrete, wf, -(W - 1.6) / 2 + (W - 1.6) * k / n, yy - (yy > 3 ? 1.1 : 1.3), yy + (yy > 3 ? 1.1 : 1.3), 0.12, 0.34, { decor: true });
+      const wd = wz1 - wz0, gh = 4.0, top = 8.2, col = wd > 6 ? 1.8 : 0, rev = 0.3;
+      const bayN = Math.max(3, Math.round((W - 1.2) / 2.1)), bay = (W - 1.2) / bayN;
+      const uOf = (k: number) => -W / 2 + 0.6 + bay * (k + 0.5);
+      const front: HoleRect[] = [], ground: HoleRect[] = [];
+      for (let k = 0; k < bayN; k++) {
+        front.push({ u0: uOf(k) - bay / 2 + 0.28, u1: uOf(k) + bay / 2 - 0.28, y0: gh + 0.75, y1: top - 1.0 });
+        ground.push({ u0: uOf(k) - bay / 2 + 0.3, u1: uOf(k) + bay / 2 - 0.3, y0: 0.15, y1: gh - 0.6 });
       }
-      faceBox(sink, concrete, wf, 0, 8.0, 0.2, W + 0.2, 0.5, 0.4, { decor: true });
-      sink.dressing(mobile, () => shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone'));
+      const sides = (span: number, y0: number, y1: number): HoleRect[] => {
+        const n = Math.max(1, Math.round((span - 1.0) / 2.3)), sb = (span - 1.0) / n;
+        return Array.from({ length: n }, (_, k) => ({ u0: -span / 2 + 0.5 + sb * k + 0.4, u1: -span / 2 + 0.5 + sb * (k + 1) - 0.4, y0, y1 }));
+      };
+      const upSides = sides(wd - 0.8, gh + 0.75, top - 1.0), lowSides = sides(wd - col - 0.8, 0.9, gh - 0.8);
+      const up = holedBox(sink, concrete, -W / 2, wz0, W / 2, wz1, gh, top, { front, left: upSides, right: upSides }, 0.4, rev);
+      const low = holedBox(sink, concrete, -W / 2 + 0.3, wz0, W / 2 - 0.3, wz1 - col, -0.4, gh, col > 0 ? { front: ground, left: lowSides, right: lowSides } : { left: lowSides, right: lowSides }, 0.4, rev);
+      // the panes at the backs of the cuts (or the dark), the mullion in each upper light, the soot over a burnt one
+      let sheets = 0, bags = 0;
+      const pane = (face: Face, h: HoleRect, mullion: boolean) => {
+        const u = (h.u0 + h.u1) / 2, w = h.u1 - h.u0, ht = h.y1 - h.y0, r = look();
+        if (r < 0.3) { sootBand(sink, concrete, face, h.u0 - 0.1, h.u1 + 0.1, h.y1, h.y1 + 0.9); return; }
+        if (r < 0.42 && w > 1.2 && sheets < 2) { sheets++; unhcrSheet(sink, face, u, h.y0, w + 0.2, ht, look); return; }
+        if (r < 0.5 && h.y0 < 2 && bags < 1) { bags++; sandbagWindow(sink, face, u, h.y0, w, ht, look); return; }
+        facePanel(sink, 'glass', face, u, (h.y0 + h.y1) / 2, -rev + 0.012, w, ht, { decor: true, window: face.out });
+        if (mullion) faceBox(sink, 'structureMetal', face, u, (h.y0 + h.y1) / 2, -rev + 0.04, 0.07, ht, 0.05, { colour: IRON, decor: true, fine: true });
+      };
+      for (const h of front) pane(up.front, h, true);
+      for (const name of ['left', 'right'] as const) { for (const h of upSides) pane(up[name], h, true); for (const h of lowSides) pane(low[name], h, false); }
+      if (col > 0) {
+        for (const h of ground) pane(low.front, h, false);
+        // the pilotis under the upper storey's front, a bay apart
+        for (let k = 0; k <= bayN; k++) { const x = -W / 2 + 0.6 + bay * k, z = wz1 - 0.4; sweep(sink, concrete, rect(x - 0.22, z - 0.22, x + 0.22, z + 0.22), [[0, -0.4], [0, gh]]); }
+        // the entrance's canopy in the middle bay over its steps
+        const eu = uOf(Math.floor(bayN / 2)), ez = wz1 - col;
+        faceBox(sink, concrete, low.front, eu, gh - 0.75, 0.6, bay - 0.2, 0.18, 1.2, { decor: true }, { back: true });
+        for (let k = 0; k < 3; k++) sink.span(concrete, eu - bay / 2 + 0.2 - k * 0.3, -0.4, ez, eu + bay / 2 - 0.2 + k * 0.3, 0.15 - k * 0.15, ez + 0.4 + k * 0.4, { decor: true, shade: 0.9 });
+      }
+      // the string course over the ground storey's sides, the parapet and its coping round the roof
+      for (const name of ['left', 'right', 'front'] as const) faceBox(sink, concrete, up[name], 0, gh + 0.2, 0.06, up[name].width, 0.4, 0.12, { decor: true, shade: 0.92 });
+      const body = rect(-W / 2, wz0, W / 2, wz1);
+      sweep(sink, concrete, body, [[0.04, top], [0.04, top + 0.7], [-0.24, top + 0.7], [-0.24, top]], { decor: true });
+      // the assembly hall's clerestory on the roof, its band of louvres; a shell's breach in the deck beside it
+      const hx = Math.min(W * 0.32, 6), hz0 = wz0 + wd * 0.25, hz1 = wz1 - wd * 0.25;
+      if (hz1 - hz0 > 1.6) {
+        const hall = rect(-hx, hz0, hx, hz1);
+        sweep(sink, concrete, hall, [[0, top], [0, top + 1.6], [0.12, top + 1.6], [0.12, top + 1.85], [0, top + 1.85]]);
+        deck(sink, concrete, hall, top + 1.85);
+        for (const fc of planFaces(hall)) facePanel(sink, 'dark', fc, 0, top + 0.85, 0.01, fc.width - 0.8, 0.9, { decor: true });
+        for (const fc of planFaces(hall)) if (fc.width > 3) for (let y = top + 0.55; y < top + 1.25; y += 0.24) faceBox(sink, 'structureMetal', fc, 0, y, 0.04, fc.width - 0.8, 0.05, 0.06, { colour: IRON, decor: true, fine: true });
+      }
+      const bx = (look() < 0.5 ? -1 : 1) * (hx + (W / 2 - hx) * (0.35 + look() * 0.3)), bz = (wz0 + wz1) / 2 + (look() - 0.5) * wd * 0.3, br = 0.7 + look() * 0.5;
+      sink.polygon('dark', Array.from({ length: 9 }, (_, j) => { const a = -j / 9 * Math.PI * 2, rr = br * (0.75 + look() * 0.3); return [bx + Math.cos(a) * rr, top + 0.01, bz + Math.sin(a) * rr] as Vec3; }), { decor: true });
+      for (let j = 0; j < 4; j++) {
+        const a = j * Math.PI / 2 + look(), s2 = 0.18 + look() * 0.2;
+        sink.placed(look() * Math.PI, bx + Math.cos(a) * (br + 0.5), 0, bz + Math.sin(a) * (br + 0.5), () => sink.span(concrete, -s2, top, -s2 * 0.7, s2, top + s2 * 0.8, s2 * 0.7, { decor: true, shade: 0.8 }));
+      }
+      sink.dressing(mobile, () => shellPocks(sink, up.front, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: gh + 0.3, y1: top - 0.2 }, 10 + Math.floor(look() * 14),
+        front.map((h) => ({ u0: h.u0 - 0.1, u1: h.u1 + 0.1, y0: h.y0 - 0.1, y1: h.y1 + 1.0 })), look, 'stone'));
     }
   });
   return sink.finish();

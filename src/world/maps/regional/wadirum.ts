@@ -3,7 +3,7 @@
 // the next storey left standing at the corners and black water tanks on the roof, steel doors painted green or blue,
 // window grilles; the Desert Patrol's fort, crenellated with corner towers; steel-portal stores and workshops under
 // low corrugated roofs instead of tiles; walled compounds of block houses.
-import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, plotAxes, rgb, shade, streamFrom, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, holedShaft, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec,
 } from './house.ts';
@@ -11,6 +11,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
+import { finialOn, smoothProfile } from './domes.ts';
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
 const TANK = rgb(0x262626), REBAR = rgb(0x5a3e2e);
@@ -47,7 +48,7 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
  * 2.6 m on the face.
  */
 const SHOP_GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0, 0x7a5a3a].map(rgb);
-function shopInterior(sink: PartSink, face: Face, u: number, w: number, mobile: boolean, seed: number): void {
+function shopInterior(sink: PartSink, face: Face, u: number, w: number, mobile: boolean, seed: number, reveal = 0, step = 0): void {
   faceBox(sink, 'structureWood', face, u, 1.45, 0.005, w, 2.3, 0.02, { colour: rgb(0x4a4038), decor: true });
   // the display racks stand under the half-drawn shutter (its foot is 1.5 m or more), the goods out on them
   const shelves = [0.55, 1.05];
@@ -59,10 +60,10 @@ function shopInterior(sink: PartSink, face: Face, u: number, w: number, mobile: 
       const h = 0.16 + g() * 0.18;
       faceBox(sink, 'structureWood', face, a, y + 0.02 + h / 2, 0.17, 0.22 + g() * 0.06, h, 0.2, { colour: pick(g, SHOP_GOODS), decor: true });
     }
-    // a crate of produce on the step in front
+    // a crate of produce on the step in front (dome-detail-275: out of a cut shop's `reveal`, on its pavement `step` high)
     const a = u + (g() - 0.5) * (w - 0.8);
-    faceBox(sink, 'structureWood', face, a, 0.2, 0.45, 0.6, 0.4, 0.45, { colour: rgb(0x9a7a52), decor: true });
-    faceBox(sink, 'structureWood', face, a, 0.43, 0.45, 0.52, 0.06, 0.38, { colour: pick(g, [rgb(0xb8452e), rgb(0xc9a23a), rgb(0x5f8a3a)]), decor: true });
+    faceBox(sink, 'structureWood', face, a, step + 0.2, reveal + 0.45, 0.6, 0.4, 0.45, { colour: rgb(0x9a7a52), decor: true });
+    faceBox(sink, 'structureWood', face, a, step + 0.43, reveal + 0.45, 0.52, 0.06, 0.38, { colour: pick(g, [rgb(0xb8452e), rgb(0xc9a23a), rgb(0x5f8a3a)]), decor: true });
   });
 }
 
@@ -562,32 +563,168 @@ const ruin: RegionalBuilder = (ctx) => {
 // towers read as a rail yard, not a Jordanian desert outpost)
 
 /** A shop row of the souq: one storey of rendered block, a run of shopfronts with rolling shutters and awnings, a flat
- *  roof behind a parapet with its tanks (the base marketRow plot). */
+ *  roof behind a parapet with its tanks (the base marketRow plot).
+ *  (dome-detail-275; the worklist: "the shopfronts read; the back, sides and parapet are blank") the row as Rum's are
+ *  built: the shops cut deep into the front between the concrete frame's piers, under its ring beam; each shop's
+ *  rolling shutter half up from its drum box, in its guides; a steel-framed sheet awning on brackets, the painted board
+ *  over it; the raised pavement along the front with its kerb; the back with the shops' steel doors and barred store
+ *  windows, the split units and their drains, the meters, the cable run and a downpipe; one end barred and shaded, the
+ *  other a painted advertising board; the dust's dado round the foot; the parapet coped, spouted and stained; a solar
+ *  water heater by the tanks, a cage of gas bottles at the street corner. */
 const souqRow: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   // the base market row's plot is wider than deep: the row lies along it, its shopfronts (+x) down one long side
   const plot = plotAxes(ctx.info);
   const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(18, plot.d - 0.6));
   const H = 3.6, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
-  const awning = plot.turned ? 0.8 : 1.1;
+  const awning = plot.turned ? 0.8 : 1.1, mobile = ctx.tier === 'mobile';
   alongPlot(sink, plot.turned, () => {
     sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
-    sink.span(wall, -W / 2, 0.25, -D / 2, W / 2, H, D / 2);
+    // (dome-detail-275) the shops cut into the street face (+x) a deep bay each, the back's doors and store windows, one
+    // end's window: the body a holed box (its core inset from each face by that face's wall)
+    const n = Math.max(2, Math.floor(D / 3.2)), bay = D / n, sh = 2.5, deep = 0.85, step = 0.18;
+    const shops: HoleRect[] = [], back: HoleRect[] = [], backDoor: boolean[] = [];
+    for (let k = 0; k < n; k++) {
+      const u = -D / 2 + (k + 0.5) * bay, w = bay - 0.7;
+      shops.push({ u0: u - w / 2, u1: u + w / 2, y0: 0.25, y1: sh });
+      // the back face runs the other way along z (its u is +z): each shop's door or store window behind it
+      const door = look() < 0.55, bu = -u + (look() - 0.5) * (w - 1.4);
+      backDoor.push(door);
+      back.push(door ? { u0: bu - 0.45, u1: bu + 0.45, y0: 0.25, y1: 2.25 } : { u0: bu - 0.4, u1: bu + 0.4, y0: 1.75, y1: 2.35 });
+    }
+    const endWin = look() < 0.5 ? 'front' : 'back', endHole: HoleRect = { u0: -0.45, u1: 0.45, y0: 1.2, y1: 2.2 };
+    const F = holedBox(sink, wall, -W / 2, -D / 2, W / 2, D / 2, 0.25, H, { right: shops, left: back, ...(endWin === 'front' ? { front: [endHole] } : { back: [endHole] }) },
+      { right: deep, left: 0.25, front: 0.25, back: 0.25 }, 0.2, {}, { reveals: { right: deep - 0.05 } });
     for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + 0.22], [-W / 2, D / 2 - 0.22, W / 2, D / 2], [-W / 2, -D / 2, -W / 2 + 0.22, D / 2], [W / 2 - 0.22, -D / 2, W / 2, D / 2]] as const) {
       sink.span(wall, x0, H, z0, x1, H + 0.6, z1);
+      // (dome-detail-275) its coping, a pale cast course a hand over both faces
+      sink.band(wall, x0 - 0.04, H + 0.6, z0 - 0.04, x1 + 0.04, H + 0.68, z1 + 0.04, { decor: true, tint: [1.08, 1.06, 1.02] });
+    }
+    // (dome-detail-275) the concrete frame the block fills: its piers between the shops and at the corners, 6 cm proud in
+    // the bare grey, the ring beam over them round all four faces
+    const grey: Rgb = [0.8 + look() * 0.06, 0.8, 0.82], frame = { decor: true, tint: grey, fineSides: true } as const;
+    for (const fn of ['front', 'right', 'back', 'left'] as const) {
+      const f = F[fn], piers = fn === 'right' ? Array.from({ length: n + 1 }, (_, k) => Math.max(-D / 2 + 0.17, Math.min(D / 2 - 0.17, -D / 2 + k * bay))) : [-f.width / 2 + 0.17, f.width / 2 - 0.17];
+      for (const u of piers) faceBox(sink, wall, f, u, (0.25 + H - 0.3) / 2, 0.03, 0.34, H - 0.3 - 0.25, 0.06, frame, 'caps');
+      faceBox(sink, wall, f, 0, H - 0.15, 0.035, f.width + 0.07, 0.3, 0.07, frame);
+      // the dust's dado round the foot, darker to a hand over a metre, broken at the doors (the shops' pavement takes it
+      // on the front)
+      if (fn === 'right') continue;
+      const cuts = (fn === 'left' ? back.filter((h) => h.y0 < 1.25) : []).map((h) => [h.u0 - 0.12, h.u1 + 0.12] as const).sort((a, b) => a[0] - b[0]);
+      let a = -f.width / 2 + 0.02;
+      for (const [c0, c1] of [...cuts, [f.width / 2 - 0.02, f.width / 2] as const]) {
+        if (c0 - a > 0.2) faceBox(sink, wall, f, (a + c0) / 2, 0.25 + 0.5, 0.004, c0 - a, 1.0, 0.008, { decor: true, tint: [0.84, 0.78, 0.7] });
+        a = Math.max(a, c1);
+      }
     }
     // the shopfronts along the street side (+x): rolling shutters half up over dark shops, an awning over each
-    const face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    const n = Math.max(2, Math.floor(D / 3.2));
+    const face = F.right, inner: Face = { ...face, origin: facePoint(face, 0, 0, -(deep - 0.05)) }, steel = rgb(0x8a8e90);
     for (let k = 0; k < n; k++) {
-      const u = -D / 2 + (k + 0.5) * D / n, w = D / n - 0.7;
-      shopInterior(sink, face, u, w, ctx.tier === 'mobile', k * 7.31 + D * 3.7 + W);
-      faceBox(sink, 'structureMetal', face, u, 2.15 + rng() * 0.25, 0.04, w, 0.9 + rng() * 0.4, 0.05, { colour: rgb(0x8a8e90), decor: true });
-      faceBox(sink, 'structureMetal', face, u, 2.95, awning / 2, w + 0.3, 0.05, awning, { colour: pick(rng, SAND_SHEET), decor: true });
-      faceBox(sink, 'structureWood', face, u, 3.3, 0.03, w * 0.8, 0.35, 0.04, { colour: pick(rng, STEEL_DOORS), decor: true });
+      const u = -D / 2 + (k + 0.5) * bay, w = bay - 0.7;
+      shopInterior(sink, inner, u, w, mobile, k * 7.31 + D * 3.7 + W, deep - 0.05, step);
+      // its floor of terrazzo over the sill (dome-detail-275)
+      faceBox(sink, 'stone', face, u, 0.26, -(deep - 0.05) / 2, w, 0.02, deep - 0.05, { decor: true, tint: [1.1, 1.06, 1.0] });
+      // (dome-detail-275) the shutter: its curtain run down from the head to where it stands (the old draws), in its
+      // guides 6 cm inside the face, the bottom bar, the slats; its drum's box over the head
+      const yc = 2.15 + rng() * 0.25, hh = 0.9 + rng() * 0.4, foot = Math.min(sh - 0.5, yc - hh / 2 + 0.2);
+      faceBox(sink, 'structureMetal', face, u, (sh + foot) / 2, -0.07, w - 0.04, sh - foot, 0.03, { colour: steel, decor: true });
+      faceBox(sink, 'structureMetal', face, u, foot + 0.04, -0.07, w - 0.04, 0.08, 0.06, { colour: shade(steel, 0.7), decor: true });
+      sink.dressing(mobile, () => {
+        for (let y = sh - 0.16; y > foot + 0.12; y -= 0.2) faceBox(sink, 'structureMetal', face, u, y, -0.05, w - 0.04, 0.015, 0.01, { colour: shade(steel, 0.78), decor: true, fine: true });
+      });
+      for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 - 0.03), (0.25 + sh) / 2, -0.07, 0.06, sh - 0.25, 0.08, { colour: shade(steel, 0.85), decor: true });
+      faceBox(sink, 'structureMetal', face, u, sh + 0.2, 0.15, w + 0.2, 0.4, 0.3, { colour: shade(steel, 0.9), decor: true });
+      // the awning: a sheet falling outward from the wall over the drum box on two flat brackets, its underside dark
+      const top = 3.28, low = top - 0.26, cw = w + 0.3, sheet = pick(rng, SAND_SHEET);
+      for (const s of [-1, 1]) {
+        sink.member('structureMetal', facePoint(face, u + s * (cw / 2 - 0.08), top - 0.32, 0.01), facePoint(face, u + s * (cw / 2 - 0.08), low - 0.05, awning - 0.05),
+          0.05, 0.012, [face.u[0], 0, face.u[2]], { colour: rgb(0x4a4e50), decor: true, exposed: true }, 0);
+      }
+      // (a thin closed sheet: two open quads let the ray casts in between them at the edges)
+      const fallL = Math.hypot(awning, top - low), sheetOut: Vec3 = [face.out[0] * (top - low) / fallL, awning / fallL, face.out[2] * (top - low) / fallL];
+      sink.member('structureMetal', facePoint(face, u, top - 0.03, 0), facePoint(face, u, low - 0.03, awning), cw, 0.03, sheetOut, { colour: sheet, decor: true, exposed: true }, 0);
+      faceBox(sink, 'structureMetal', face, u, low - 0.04, awning, cw, 0.1, 0.03, { colour: shade(sheet, 0.85), decor: true });
+      // the painted board over it on the ring beam, its lettering
+      const board = pick(rng, STEEL_DOORS);
+      faceBox(sink, 'structureWood', face, u, 3.6, 0.09, w * 0.85, 0.46, 0.04, { colour: board, decor: true });
+      faceBox(sink, 'structureWood', face, u - w * 0.08, 3.62, 0.115, w * 0.5, 0.14, 0.01, { colour: rgb(0xe8e2d0), decor: true, fine: 'near' });
     }
+    // (dome-detail-275) the raised pavement along the front, its kerb
+    sink.span('stone', W / 2, -0.3, -D / 2, W / 2 + 0.82, step, D / 2, { decor: true, shade: 0.92 });
+    sink.span('stone', W / 2 + 0.72, -0.3, -D / 2, W / 2 + 0.84, step + 0.03, D / 2, { decor: true, tint: [1.1, 1.08, 1.04] });
+    // the back: the shops' steel doors and barred store windows at the back of their reveals; the split units, the meters
+    // on a board, the cable run under the beam, the downpipe, the parapet's spouts and the stains under them
+    const bf = F.left, grille: WindowStyle = { frame: rgb(0x4a4e50), frameWidth: 0.04, frameOut: 0.03, bars: 'six', surround: null, sill: { bucket: 'plaster', out: 0.05 }, shutters: null };
+    sink.recess = 0.2;
+    try {
+      back.forEach((h, k) => {
+        const hu = (h.u0 + h.u1) / 2, hw = h.u1 - h.u0;
+        if (backDoor[k]) {
+          // a plain steel leaf at the back of its reveal, its frame, the step up to it
+          faceBox(sink, 'structureMetal', bf, hu, (h.y0 + h.y1) / 2, -0.18, hw - 0.02, h.y1 - h.y0 - 0.01, 0.04, { colour: pick(look, STEEL_DOORS), decor: true });
+          faceBox(sink, 'structureMetal', bf, hu, h.y1 + 0.05, 0.02, hw + 0.2, 0.1, 0.04, { colour: rgb(0x4a4e50), decor: true });
+          faceBox(sink, 'stone', bf, hu, 0.1, 0.18, hw + 0.3, 0.2, 0.36, { decor: true });
+        } else windowUnit(sink, bf, (h.u0 + h.u1) / 2, h.y0, h.u1 - h.u0, h.y1 - h.y0, grille, look, 0.2);
+      });
+      const ef = F[endWin];
+      windowUnit(sink, ef, 0, endHole.y0, endHole.u1 - endHole.u0, endHole.y1 - endHole.y0, grille, look, 0.3);
+    } finally { sink.recess = 0; }
+    const white = rgb(0xdedbd2), pale = rgb(0x9a9a94);
+    {
+      const ef = F[endWin];
+      faceBox(sink, 'plaster', ef, 0, endHole.y1 + 0.17, 0.2, 1.26, 0.1, 0.4, { decor: true, tint: [1.04, 1.02, 0.98] });
+      // the other end: the painted board of an advertisement, framed, its two fields and its slogan
+      const af = F[endWin === 'front' ? 'back' : 'front'], aw = Math.min(3.0, W - 1.0), paint = pick(look, [rgb(0xb83a2e), rgb(0x2e5a9a), rgb(0x3a7a4a)]);
+      faceBox(sink, 'structureMetal', af, 0, 2.2, 0.03, aw + 0.1, 1.5, 0.06, { colour: rgb(0x4a4e50), decor: true });
+      faceBox(sink, 'structureWood', af, 0, 2.45, 0.065, aw, 0.9, 0.01, { colour: paint, decor: true });
+      faceBox(sink, 'structureWood', af, 0, 1.75, 0.065, aw, 0.5, 0.01, { colour: rgb(0xe8e2d0), decor: true });
+      faceBox(sink, 'structureWood', af, -aw * 0.12, 2.5, 0.072, aw * 0.6, 0.22, 0.006, { colour: rgb(0xf0ead8), decor: true, fine: 'near' });
+      faceBox(sink, 'structureWood', af, 0, 1.75, 0.072, aw * 0.7, 0.12, 0.006, { colour: shade(paint, 0.9), decor: true, fine: 'near' });
+      // its meter by the corner
+      faceBox(sink, 'structureMetal', af, af.width / 2 - 0.5, 1.5, 0.07, 0.34, 0.44, 0.14, { colour: rgb(0xb4b0a4), decor: true });
+    }
+    // the split units where two shops' backs meet (clear of their doors), their drains down the wall
+    for (let k = 0, m = Math.min(n - 1, 1 + Math.floor(look() * 2)); k < m; k++) {
+      const u = D / 2 - (k + 1) * bay + 0.25;
+      faceBox(sink, 'structureMetal', bf, u, 2.75, 0.13, 0.82, 0.5, 0.26, { colour: white, decor: true });
+      for (let b = 0; b < 3; b++) faceBox(sink, 'structureMetal', bf, u + 0.12, 2.62 + b * 0.11, 0.265, 0.4, 0.014, 0.01, { colour: pale, decor: true, fine: 'near' });
+      faceBox(sink, 'structureMetal', bf, u - 0.3, 1.25, 0.015, 0.03, 2.25, 0.03, { colour: white, decor: true });
+    }
+    // (the meters on their board where two shops' backs meet, clear of their doors)
+    const mu = -D / 2 + bay, mn = Math.min(3, n);
+    faceBox(sink, 'structureMetal', bf, mu, 1.55, 0.02, 0.28 * mn + 0.12, 0.55, 0.04, { colour: rgb(0x8a8478), decor: true });
+    for (let k = 0; k < mn; k++) faceBox(sink, 'structureMetal', bf, mu + (k - (mn - 1) / 2) * 0.28, 1.55, 0.07, 0.2, 0.32, 0.06, { colour: rgb(0xb4b0a4), decor: true, fine: 'near' });
+    faceBox(sink, 'structureMetal', bf, mu, (1.825 + 3.12) / 2, 0.02, 0.04, 3.12 - 1.825, 0.04, { colour: pale, decor: true });
+    faceBox(sink, 'structureMetal', bf, 0, 3.12, 0.025, D - 0.6, 0.05, 0.05, { colour: rgb(0x2a2a2a), decor: true });
+    const ds = look() < 0.5 ? -1 : 1;
+    sink.cylinder('structureMetal', [-W / 2 - 0.06, 0.25, ds * (D / 2 - 0.3)], 'y', H + 0.4 - 0.25, 0.05, 6, { colour: white, decor: true });
+    for (let k = 0, m = 2 + Math.floor(look() * 2); k < m; k++) {
+      const u = (k + 0.5 + (look() - 0.5) * 0.6) * D / m - D / 2, len = 1.0 + look() * 1.8;
+      faceBox(sink, 'structureMetal', bf, u, H + 0.08, 0.22, 0.12, 0.12, 0.44, { colour: pale, decor: true });
+      faceBox(sink, wall, bf, u, H - len / 2, 0.006, 0.18 + look() * 0.2, len, 0.012, { decor: true, tint: [0.78, 0.72, 0.64] });
+    }
+    // the roof: its tanks and rebar (the old draws); a solar water heater: the collector tilted south on its frame,
+    // the cylinder over it on two saddles (dome-detail-275)
     rooftop(sink, W, D, H, rng);
+    {
+      const z = (look() < 0.5 ? -1 : 1) * (D / 2 - 1.3), x0 = -0.9, x1 = 0.6, hi = 1.0, ink = { colour: rgb(0x6a6e70), decor: true } as const;
+      for (const zz of [z - 0.7, z + 0.7]) {
+        sink.span('structureMetal', x0 - 0.03, H, zz - 0.03, x0 + 0.03, H + hi, zz + 0.03, ink);
+        sink.span('structureMetal', x1 - 0.03, H, zz - 0.03, x1 + 0.03, H + 0.3, zz + 0.03, ink);
+        sink.span('structureMetal', x0 - 0.06, H + hi - 0.02, zz - 0.12, x0 + 0.06, H + hi + 0.02, zz + 0.12, ink);
+      }
+      const pl = Math.hypot(x1 - x0, hi - 0.3);
+      sink.member('structureMetal', [x1, H + 0.27, z], [x0, H + hi - 0.03, z], 1.5, 0.04, [(hi - 0.3) / pl, (x1 - x0) / pl, 0], { colour: rgb(0x2a3a52), decor: true, exposed: true }, 0);
+      sink.cylinder('structureMetal', [x0, H + hi + 0.26, z - 0.85], 'z', 1.7, 0.24, 10, { colour: rgb(0xd4d2ca), decor: true });
+    }
+    // the cage of gas bottles at the street corner of the end with the board
+    {
+      const zs = endWin === 'front' ? -1 : 1, zc = zs * (D / 2 + 0.32), xc = W / 2 - 0.75, cage = { colour: rgb(0x5a5e60), decor: true } as const;
+      for (const [dx, dz] of [[-0.5, -0.25], [0.5, -0.25], [-0.5, 0.25], [0.5, 0.25]] as const) sink.span('structureMetal', xc + dx - 0.02, 0, zc + dz - 0.02, xc + dx + 0.02, 1.15, zc + dz + 0.02, cage);
+      for (const y of [0.05, 1.1]) for (const dz of [-0.25, 0.25]) sink.span('structureMetal', xc - 0.52, y, zc + dz - 0.015, xc + 0.52, y + 0.04, zc + dz + 0.015, cage);
+      for (let b = 0; b < 3; b++) sink.cylinder('structureMetal', [xc - 0.32 + b * 0.32, 0, zc], 'y', 0.85, 0.14, 6, { colour: pick(look, [rgb(0x3e5f86), rgb(0x8a8e90), rgb(0xb8452e)]), decor: true });
+    }
   }, 1);
   return renderCoat(sink.finish());
 };
@@ -660,45 +797,172 @@ const concreteTower: RegionalBuilder = (ctx) => {
  * census #5, lane B 2026-10-15; the judges: "a blank shaft on a solid block") the base's door and the shaft's stair lights
  * cut in reveals, climbing round the shaft as its stair does; the muezzin's lantern open on four sides; the shaft recorded
  * as a tower body (it topples in its courses, the cap its crown).
+ * (dome-detail-275; the worklist: "a plain shaft with a blocky gallery") the village minaret of southern Jordan as it is
+ * built: the square base on a stepped stone apron, corner pilasters and a stepped cornice, its door in a pointed arch of
+ * dressed stone over a painted tympanum and the foundation plaque; the square brought to the octagon in sloped broaches;
+ * the shaft in two stages under string courses, a blind pointed niche up each facet of the upper stage, a hood and a
+ * sill to each stair light, the loudspeakers' cable up one arris; the balcony corbelled out in three stepped rings, the
+ * green light-strip round its edge, its pierced balustrade of posts and balusters under a coping; the lantern's openings
+ * under pointed hoods, the four horn loudspeakers on their brackets between them, a stepped cornice; the cap a slender
+ * pencil cone on its collar and the brass alem with its crescent; the rain's stains under the balcony.
  */
+function pointedArch(a: number, rise: number, n: number): Array<[number, number]> {
+  // a two-centred arch of half-span a and rise `rise` over its springing at (0, 0): from the right springing over the
+  // apex to the left (counter-clockwise seen from the face, as prism wants it) (dome-detail-275)
+  const R = (a * a + rise * rise) / (2 * a), c = a - R, top = Math.acos(Math.max(-1, Math.min(1, -c / R)));
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= n; i++) { const t = top * i / n; pts.push([c + R * Math.cos(t), R * Math.sin(t)]); }
+  for (let i = n - 1; i >= 0; i--) { const t = top * i / n; pts.push([-(c + R * Math.cos(t)), R * Math.sin(t)]); }
+  return pts;
+}
+
+/** A pointed arch's ring laid flat `o` proud of a face (a niche's or a hood's head): `ringW` wide about the arch line. */
+function archRing(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, a: number, rise: number, ringW: number, n: number, o: number,
+  opts: EmitOptions): void {
+  const lo = pointedArch(a - ringW / 2, rise - ringW / 2, n), hi = pointedArch(a + ringW / 2, rise + ringW / 2, n);
+  const P = ([pu, py]: [number, number]) => facePoint(face, u + pu, y + py, o);
+  for (let j = 0; j + 1 < lo.length; j++) sink.quad(bucket, P(lo[j + 1]), P(lo[j]), P(hi[j]), P(hi[j + 1]), opts);
+}
+
+/** The eight facets of an octagon of apothem `a` about the axis, facet 0 facing +z (holedShaft's turn) (dome-detail-275). */
+function octFaces(a: number): Face[] {
+  const w = 2 * a * Math.tan(Math.PI / 8);
+  return Array.from({ length: 8 }, (_, i): Face => {
+    const t = Math.PI / 2 - i * Math.PI / 4, out: Vec3 = [Math.cos(t), 0, Math.sin(t)];
+    return { origin: [out[0] * a, 0, out[2] * a], u: [out[2], 0, -out[0]], out, width: w };
+  });
+}
+
 const minaret: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const H = Math.max(10, Math.min(13, ctx.info.h)), B = 2.6;
+  const look = ctx.variant;
+  const H = Math.max(10, Math.min(13, ctx.info.h)), B = 2.6, k = H / 13;
+  const P8 = Math.PI / 8, lime = { tint: [1.1, 1.07, 1.0] as Rgb };
+  const dressed = { tint: [1.12, 1.06, 0.96] as Rgb }, brass = rgb(0xa08a52), grey = rgb(0x9a9a94);
+  // the heights: the base's head, the broach's, the string course, the balcony's corbels, floor and parapet, the lantern
+  const yb = 3.4, ys = yb + 0.6, sc = ys + 1.1, bal = 8.2 * k, fl = bal + 0.45, ff = fl + 0.15;
+  // the apron: a stepped stone platform the base stands on (dome-detail-275), the dust darker at the foot
+  const scour = (p: Vec3) => (p[1] < 0.6 ? 0.82 : p[1] < 1.3 ? 0.92 : 1.0);
+  sink.span('stone', -1.85, -0.3, -1.85, 1.85, 0.1, 1.85, { decor: true, shade: 0.9 });
   // the base: a rendered block on its stone footing, the door cut in its front
   sink.span('stone', -B / 2 - 0.08, -0.3, -B / 2 - 0.08, B / 2 + 0.08, 0.25, B / 2 + 0.08);
-  const door: HoleRect = { u0: -0.45, u1: 0.45, y0: 0.25, y1: 2.1 };
-  const base = holedBox(sink, 'plaster', -B / 2, -B / 2, B / 2, B / 2, 0.25, 2.4, { front: [door] }, 0.35, 0.28);
-  sink.span('stone', -B / 2 - 0.06, 2.4, -B / 2 - 0.06, B / 2 + 0.06, 2.55, B / 2 + 0.06);
+  const door: HoleRect = { u0: -0.45, u1: 0.45, y0: 0.25, y1: 2.15 };
+  const win: HoleRect = { u0: -0.22, u1: 0.22, y0: 1.55, y1: 2.25 };
+  const base = holedBox(sink, 'plaster', -B / 2, -B / 2, B / 2, B / 2, 0.25, yb, { front: [door], right: [win], left: [win] }, 0.35, 0.28, { shadeAt: scour });
+  // (dome-detail-275) the base's corner pilasters (each face's running past the corner over its neighbour's end), its
+  // stepped cornice; the door's dressed jambs and pointed arch over a painted tympanum, the foundation plaque over it
+  for (const fn of ['front', 'right', 'back', 'left'] as const) {
+    const f = base[fn];
+    for (const e of [-1, 1]) faceBox(sink, 'plaster', f, e * (B / 2 - 0.125), (0.25 + yb - 0.28) / 2, 0.025, 0.3, yb - 0.28 - 0.25, 0.05, { ...lime, decor: true, shadeAt: scour }, 'caps');
+  }
+  sink.band('plaster', -B / 2 - 0.07, yb - 0.28, -B / 2 - 0.07, B / 2 + 0.07, yb - 0.1, B / 2 + 0.07, { ...lime, decor: true });
+  sink.band('plaster', -B / 2 - 0.14, yb - 0.1, -B / 2 - 0.14, B / 2 + 0.14, yb, B / 2 + 0.14, { ...lime, decor: true });
+  {
+    const f = base.front, ja = 0.45 + 0.08, spring = door.y1, rise = 0.55;
+    for (const e of [-1, 1]) faceBox(sink, 'stone', f, e * ja, (0.25 + spring) / 2, 0.035, 0.16, spring - 0.25, 0.07, { ...dressed, decor: true }, 'caps');
+    const arch = pointedArch(ja, rise, 4);
+    sink.prism('plaster', arch.map(([u, y]) => facePoint(f, u * 0.9, spring + y * 0.9, 0)), f.out, 0.02, { decor: true, tint: [0.62, 0.8, 0.68] });
+    for (let i = 0; i + 1 < arch.length; i++) {
+      const [ua, ya] = arch[i], [ub, yb2] = arch[i + 1];
+      sink.member('stone', facePoint(f, ua, spring + ya, 0), facePoint(f, ub, spring + yb2, 0), 0.16, 0.07, f.out, { ...dressed, decor: true });
+    }
+    faceBox(sink, 'structureWood', f, 0, spring + rise + 0.22, 0.02, 1.0, 0.26, 0.04, { colour: rgb(0x2f5a46), decor: true });
+    faceBox(sink, 'structureWood', f, 0, spring + rise + 0.22, 0.045, 0.8, 0.07, 0.01, { colour: rgb(0xd8cfa8), decor: true, fine: 'near' });
+  }
+  // the broaches: the base's square brought to the shaft's octagon on a sloped course (dome-detail-275)
+  const r = 0.95;
+  sink.cylinder('plaster', [0, yb, 0], 'y', ys - yb, (B / 2) / Math.cos(P8), 8, lime, r, false, P8);
   // the shaft: eight facets, its stair's lights cut round it (each a quarter turn and a metre up from the last)
-  const bal = H * 0.62, r = 0.92, light = (y: number): HoleRect[] => [{ u0: -0.12, u1: 0.12, y0: y, y1: y + 0.55 }];
+  const light = (y: number): HoleRect[] => [{ u0: -0.12, u1: 0.12, y0: y, y1: y + 0.55 }];
   const holes: Array<HoleRect[] | undefined> = [];
-  for (let k = 0, y = 3.3; y + 0.55 < bal - 0.5; k++, y += 1.05) holes[(k * 2) % 8] = [...(holes[(k * 2) % 8] ?? []), ...light(y)];
-  const shaft = holedShaft(sink, 'plaster', 0, 0, r, 8, 0, 2.55, bal, holes, 0.22, 0.16);
-  // the balcony: a corbelled slab and its solid parapet drum (an open ring shows its inner faces from above)
-  sink.cylinder('plaster', [0, bal, 0], 'y', 0.3, 1.35, 8, {}, 1.35, true, Math.PI / 8);
-  sink.cylinder('plaster', [0, bal + 0.3, 0], 'y', 0.55, 1.3, 8, { decor: true }, 1.3, true, Math.PI / 8);
+  for (let i = 0, y = ys + 0.4; y + 0.55 < bal - 0.5; i++, y += 1.05) holes[(i * 2) % 8] = [...(holes[(i * 2) % 8] ?? []), ...light(y)];
+  const shaft = holedShaft(sink, 'plaster', 0, 0, r, 8, 0, ys, bal, holes, 0.22, 0.16);
+  // (dome-detail-275) the string courses between the stages and under the corbels; each facet's upper stage a blind
+  // pointed niche (its strips and head 5 cm proud); the lights' hoods and sills; the cable up one arris to the horns; the
+  // rain's stains down a few facets from the balcony
+  for (const [y, h] of [[sc, 0.16], [bal - 0.2, 0.2]] as const) sink.cylinder('plaster', [0, y, 0], 'y', h, r + 0.06, 8, { ...lime, decor: true }, r + 0.06, true, P8);
+  // (the niche stands on the string course)
+  const n0 = sc + 0.16, n1 = bal - 0.75, na = 0.24, nr = 0.32;
+  shaft.forEach((f, i) => {
+    // (their heads open under the flat ring: closed, the ray casts see into them)
+    for (const e of [-1, 1]) faceBox(sink, 'plaster', f, e * na, (n0 + n1) / 2, 0.025, 0.07, n1 - n0, 0.05, { ...lime, decor: true }, { bottom: true });
+    archRing(sink, 'plaster', f, 0, n1, na, nr, 0.07, 2, 0.05, { ...lime, decor: true });
+    for (const h of holes[i] ?? []) {
+      faceBox(sink, 'plaster', f, 0, h.y1 + 0.05, 0.05, 0.36, 0.08, 0.1, { ...lime, decor: true });
+      faceBox(sink, 'plaster', f, 0, h.y0 - 0.04, 0.04, 0.32, 0.06, 0.08, { ...lime, decor: true });
+    }
+    if (i % 2 === 1 && look() < 0.6) {
+      const len = 1.2 + look() * 1.6;
+      for (let b = 0; b < 3; b++) {
+        const t = b / 3, w = 0.22 * (1 - 0.5 * t);
+        facePanel(sink, 'plaster', f, (look() - 0.5) * 0.1, bal - 0.2 - len * (t + 1 / 6), 0.004 + b * 0.001, w, len / 3 + 0.01, { decor: true, tint: [0.84 + 0.05 * t, 0.8 + 0.05 * t, 0.74 + 0.06 * t] });
+      }
+    }
+  });
+  {
+    const f = shaft[3];
+    faceBox(sink, 'structureMetal', f, f.width / 2 - 0.05, (ys + bal - 0.2) / 2, 0.015, 0.03, bal - 0.2 - ys, 0.03, { colour: grey, decor: true });
+  }
+  // the balcony: corbelled out in three stepped rings under its floor slab (dome-detail-275: a single slab before), the
+  // green light-strip round its edge, its balustrade (an open ring shows its inner faces from above: each facet a run of
+  // its own, faced both sides): a kerb, a post at each corner, the balusters between, the coping
+  for (const [j, rr] of [[0, r + 0.12], [1, r + 0.26], [2, r + 0.4]] as const) {
+    sink.cylinder('plaster', [0, bal + j * 0.15, 0], 'y', 0.15, rr, 8, { ...lime, decor: j < 2, shade: 0.94 + j * 0.03 }, rr, true, P8);
+  }
+  const R = 1.48;
+  sink.cylinder('plaster', [0, fl, 0], 'y', 0.15, R, 8, lime, R, true, P8);
+  sink.cylinder('structureWood', [0, fl + 0.04, 0], 'y', 0.05, R + 0.012, 8, { colour: rgb(0x3fae62), decor: true }, R + 0.012, false, P8);
+  // (each run's faces laid on a facet 10 cm inside its middle line, so the box is not seated on it and keeps its inner face)
+  const ga = R * Math.cos(P8) - 0.17, gf = octFaces(ga), kh = 0.22, ph = 0.95, go = 0.1;
+  for (const f of gf) {
+    const w = f.width + 0.06 + 2 * go * Math.tan(P8);
+    faceBox(sink, 'plaster', f, 0, ff + kh / 2, go, w, kh, 0.12, { ...lime, decor: true });
+    faceBox(sink, 'plaster', f, 0, ff + ph - 0.04, go, w + 0.04, 0.08, 0.16, { ...lime, decor: true });
+    faceBox(sink, 'plaster', f, -w / 2 + 0.08, ff + (kh + ph - 0.08) / 2, go, 0.1, ph - 0.08 - kh, 0.1, { ...lime, decor: true }, 'caps');
+    for (let b = 1; b <= 3; b++) {
+      faceBox(sink, 'plaster', f, -w / 2 + 0.08 + b * (w - 0.16) / 4 + (look() - 0.5) * 0.02, ff + (kh + ph - 0.08) / 2, go, 0.06, ph - 0.08 - kh, 0.06,
+        { ...lime, decor: true, fine: 'near' }, 'caps');
+    }
+  }
   // the lantern over it, its four openings to the four quarters
-  const lt = bal + 0.3, lh = H * 0.2, open: HoleRect = { u0: -0.15, u1: 0.15, y0: lt + 0.7, y1: lt + lh - 0.35 };
-  holedShaft(sink, 'plaster', 0, 0, 0.74, 8, 0, lt, lt + lh, [[open], undefined, [open], undefined, [open], undefined, [open]], 0.16, 0.12);
-  // (round 9, the gauntlet's wave 261: "a green-capped minaret that looks like a game token") the cap rendered as the shaft
-  // under a brass finial and its crescent, as the village mosques' are
+  const lt = ff, lh = 2.0 * k, open: HoleRect = { u0: -0.15, u1: 0.15, y0: lt + 0.6, y1: lt + lh - 0.45 };
+  const lr = 0.74;
+  const lantern = holedShaft(sink, 'plaster', 0, 0, lr, 8, 0, lt, lt + lh, [[open], undefined, [open], undefined, [open], undefined, [open]], 0.16, 0.12);
+  // (dome-detail-275) a pointed hood over each opening; the horn loudspeakers on their brackets on the facets between,
+  // one to each quarter; the stepped cornice
+  lantern.forEach((f, i) => {
+    if (i % 2 === 0) {
+      archRing(sink, 'plaster', f, 0, open.y1 + 0.03, 0.21, 0.28, 0.06, 2, 0.05, { ...lime, decor: true });
+      for (const e of [-1, 1]) faceBox(sink, 'plaster', f, e * 0.21, (open.y0 + open.y1 + 0.03) / 2, 0.025, 0.06, open.y1 + 0.03 - open.y0, 0.05, { ...lime, decor: true }, { bottom: true });
+      faceBox(sink, 'plaster', f, 0, open.y0 - 0.03, 0.04, 0.5, 0.06, 0.08, { ...lime, decor: true });
+    } else {
+      const y = lt + lh * 0.62;
+      faceBox(sink, 'structureMetal', f, 0, y, 0.09, 0.06, 0.3, 0.18, { colour: grey, decor: true });
+      sink.pipe('structureMetal', facePoint(f, 0, y + 0.02, 0.17), facePoint(f, 0, y - 0.1, 0.58), 0.06, 6, { colour: rgb(0xc8c6bc), decor: true, caps: true }, 0.17);
+    }
+  });
   const capY = lt + lh;
-  sink.cylinder('plaster', [0, capY, 0], 'y', 0.12, 0.84, 8, {}, 0.84, true, Math.PI / 8);
-  sink.cylinder('plaster', [0, capY + 0.12, 0], 'y', H * 0.16, 0.78, 8, {}, 0.08, true, Math.PI / 8);
-  sink.cylinder('structureMetal', [0, capY + 0.12 + H * 0.16, 0], 'y', 0.95, 0.05, 6, { colour: rgb(0xa08a52) }, 0.03);
-  sink.span('structureMetal', -0.2, capY + 0.12 + H * 0.16 + 0.95, -0.03, 0.2, capY + 0.12 + H * 0.16 + 1.05, 0.03, { colour: rgb(0xa08a52), decor: true });
-  // the units at the back of their reveals: the plank door, the lights' dark frames
+  sink.cylinder('plaster', [0, capY, 0], 'y', 0.1, lr + 0.08, 8, { ...lime, decor: true }, lr + 0.08, true, P8);
+  sink.cylinder('plaster', [0, capY + 0.1, 0], 'y', 0.12, lr + 0.16, 8, { ...lime, decor: true }, lr + 0.16, true, P8);
+  // the cap: a collar, then the pencil cone turned smooth (dome-detail-275: an eight-facet frustum before), the alem
+  const cone = 2.1 * k, coneY = capY + 0.22;
+  sink.cylinder('plaster', [0, coneY, 0], 'y', 0.12, 0.8, 16, {}, 0.8, true);
+  sink.revolve('plaster', [0, coneY + 0.12, 0], 'y', smoothProfile([[0, 0.74], [cone * 0.35, 0.6], [cone * 0.7, 0.33], [cone, 0]], 2), 16, {});
+  finialOn(sink, 0, coneY + 0.12 + cone - 0.02, 0, 0.75, brass, 'alem');
+  // the units at the back of their reveals: the plank door, the side windows' grilles, the lights' dark frames
   const frame = rgb(0x4a4038);
   sink.recess = 0.28;
   try {
     doorUnit(sink, base.front, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: rgb(0x3f5f6a), frame: { bucket: 'plaster', width: 0.14, out: 0.04 },
       steps: { bucket: 'stone' }, leafKind: 'plank' }, door.y0);
+    const grille: WindowStyle = { frame: rgb(0x3e4446), frameWidth: 0.04, frameOut: 0.03, bars: 'six', surround: null, sill: { bucket: 'stone', out: 0.06 }, shutters: null };
+    for (const f of [base.right, base.left]) windowUnit(sink, f, 0, win.y0, win.u1 - win.u0, win.y1 - win.y0, grille, look, 0.2);
   } finally { sink.recess = 0; }
   sink.recess = 0.16;
   try {
     shaft.forEach((f, i) => { for (const h of holes[i] ?? []) windowUnit(sink, f, 0, h.y0, h.u1 - h.u0, h.y1 - h.y0, { frame, frameWidth: 0.03, frameOut: 0.02, bars: 'none', surround: null, sill: null, shutters: null }, ctx.rng, 0.1); });
   } finally { sink.recess = 0; }
-  recordShaft(sink, 0, 0, 2 * r, capY + 0.12 + H * 0.16, 'plaster', true);
+  recordShaft(sink, 0, 0, 2 * r, coneY + 0.12 + cone, 'plaster', true);
   return sink.finish();
 };
 

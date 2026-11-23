@@ -7,13 +7,105 @@
 // under a moulded cornice, the tower on its own base course, both swept round their plans with their decks; the piers
 // are of two orders (skylineDeco.ts steppedPier), the spandrel beams carry drip-nosed sills, the lattice band is a frieze
 // between its fillets. The streams draw as before.
-import { PartSink, faceBox, facePanel, rgb, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePanel, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { faceSection, steppedPier } from './skylineDeco.ts';
-import { emitRoof, recordBody, roofGeometry, type RoofSpec } from './house.ts';
+import { emitRoof, recordBody, roofGeometry, type RoofGeometry, type RoofPatch, type RoofSpec } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
 import { BRONZE, GILT, clampTo, fillOf, planFaces, pocks, rect, uvOffset } from './shanghaiParts.ts';
 
 const SHADOWED = { decor: true, shadow: true } as const;
+
+// ------------------------------------------------------------------------------------------------ (dome-detail-275) roofs in relief (the kit's: shanghai.ts and the Bank of China)
+
+export const sub3 = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross3 = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+export const unit3 = (v: Vec3): Vec3 => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+
+/** A convex polygon wound to face `toward` (dome-detail-275). */
+export function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec3, opts: EmitOptions): void {
+  const n = cross3(sub3(pts[1], pts[0]), sub3(pts[2], pts[0]));
+  sink.polygon(bucket, n[0] * toward[0] + n[1] * toward[1] + n[2] * toward[2] >= 0 ? pts : [...pts].reverse(), opts);
+}
+
+/** How a roof's tiles are laid (dome-detail-275): the rows' pitch, a roll's width, a glazed tile's colour. */
+export interface TileLay { pitch?: number; w?: number; colour?: Rgb; bucket?: RegionalBucket; stopY?: number; gaps?: ReadonlyArray<RoofPatch | null> }
+
+/**
+ * (dome-detail-275; the roof bar: "lay them in relief") A Jiangnan roof's canal tiles in relief, drawn in the roof's own
+ * frame (where emitRoof drew it): the cover rows of convex tiles down each slope a hand apart, from the eave to the ridge
+ * or cut at a hip line, each row its own tone, the drip tile's dark mouth at its foot; `stopY` holds a hip end's rows
+ * under its gablet; `gaps` (a stripped patch, a shell hole: house.ts RoofPatch) are left open. Returns the hip lines
+ * (ridge end to eave corner) for the hip ridges.
+ */
+export function canalRolls(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, look: () => number, lay: TileLay = {}): Array<[Vec3, Vec3]> {
+  const hips: Array<[Vec3, Vec3]> = [];
+  if (rg.kind !== 'gable' && rg.kind !== 'hip') return hips;
+  const pitch = lay.pitch ?? 0.3, w = lay.w ?? 0.15, dep = 0.075, bucket = lay.bucket ?? 'roof', colour = lay.colour;
+  const xe = rg.s + roof.eave, hip = rg.kind === 'hip' && rg.ridgeHalf < rg.halfD + (rg.hipVerge ?? roof.verge) - 0.05;
+  const D = rg.halfD + (rg.kind === 'hip' ? rg.hipVerge ?? roof.verge : roof.verge);
+  const top = (x: number, z: number): number => rg.topAt(x, z) ?? rg.eaveY;
+  const hF = hip ? (rg.ridgeTopY - top(0, D - 1e-4)) / Math.max(1e-3, D - 1e-4 - rg.ridgeHalf) : 1;
+  const opt = (tone: number): EmitOptions => (colour ? { decor: true, colour: shade(colour, tone) } : { decor: true, shade: tone });
+  const gaps = (lay.gaps ?? []).filter((g): g is RoofPatch => !!g);
+  const row = (a: Vec3, b: Vec3, n: Vec3, mouth: boolean): void => {
+    const tone = 0.8 + look() * 0.24;
+    sink.member(bucket, a, b, w, dep, n, opt(tone), 0.02);
+    if (!mouth) return;
+    const ay = unit3(sub3(b, a)), ax = unit3(cross3(ay, n));
+    const P = (s: number, h: number): Vec3 => [a[0] + ax[0] * s * w / 2 + n[0] * h, a[1] + ax[1] * s * w / 2 + n[1] * h, a[2] + ax[2] * s * w / 2 + n[2] * h];
+    facing(sink, bucket, [P(-1, -0.02), P(1, -0.02), P(1, dep - 0.02), P(-1, dep - 0.02)], [-ay[0], -ay[1], -ay[2]], opt(tone * 0.42));
+  };
+  // the side slopes: each row from the eave up to the ridge, or to the hip line where a hip closes the slope
+  for (const sx of [-1, 1] as const) {
+    const n = unit3([sx * rg.tanP, 1, 0]), rows = Math.max(2, Math.round((2 * D - 0.2) / pitch));
+    for (let k = 0; k < rows; k++) {
+      const z = -D + 0.1 + (k + 0.5) * (2 * D - 0.2) / rows;
+      const x1 = Math.max(0.12, hip ? (Math.abs(z) - rg.ridgeHalf) * hF / rg.tanP + w : 0.12);
+      if (x1 > xe - 0.25) continue;
+      // the row split round an open patch on this slope (its x measured out from the ridge line)
+      const runs: Array<[number, number]> = [[xe, x1]];
+      for (const g of gaps) {
+        if (g.side !== sx || z < g.z0 - w || z > g.z1 + w) continue;
+        const [r0, r1] = runs.pop()!;
+        if (g.x1 + 0.05 < r0) runs.push([r0, Math.max(r1, g.x1 + 0.05)]);
+        if (g.x0 - 0.05 > r1) runs.push([Math.min(r0, g.x0 - 0.05), r1]);
+      }
+      for (const [r0, r1] of runs) if (r0 - r1 > 0.2) row([sx * r0, top(sx * r0, z), z], [sx * r1, top(sx * r1, z), z], n, r0 === xe);
+    }
+  }
+  if (!hip) return hips;
+  // the hip ends: each row from the end's eave up to the hip lines (or the gablet's foot)
+  for (const sz of [-1, 1] as const) {
+    const n = unit3([0, 1, sz * hF]), rows = Math.max(2, Math.round((2 * xe - 0.2) / pitch));
+    const zStop = lay.stopY !== undefined ? rg.ridgeHalf + (rg.ridgeTopY - lay.stopY) / hF : 0;
+    for (let k = 0; k < rows; k++) {
+      const x = -xe + 0.1 + (k + 0.5) * (2 * xe - 0.2) / rows;
+      const z1 = Math.max(zStop, rg.ridgeHalf + Math.abs(x) * rg.tanP / hF + w), z0 = D - 1e-3;
+      if (z1 > z0 - 0.25) continue;
+      row([x, top(x, sz * z0), sz * z0], [x, top(x, sz * z1), sz * z1], n, true);
+    }
+    for (const sx of [-1, 1]) {
+      const t = Math.min(xe / hF, (D - rg.ridgeHalf) / rg.tanP);
+      const b: Vec3 = [sx * t * hF * 0.995, 0, sz * (rg.ridgeHalf + t * rg.tanP * 0.995)];
+      hips.push([[0, rg.ridgeTopY, sz * rg.ridgeHalf], [b[0], top(b[0], b[2]), b[2]]]);
+    }
+  }
+  return hips;
+}
+
+/** The hip ridges (dome-detail-275): a stack of ridge tiles bedded down each hip line, its foot turned up. */
+export function hipRidges(sink: PartSink, hips: ReadonlyArray<[Vec3, Vec3]>, w: number, h: number, opts: EmitOptions, curl = 0, bucket: RegionalBucket = 'roof'): void {
+  for (const [a, b] of hips) {
+    const ay = unit3(sub3(b, a)), up = unit3([-ay[0] * ay[1], 1 - ay[1] * ay[1], -ay[2] * ay[1]]);
+    sink.member(bucket, a, b, w, h, up, { ...opts, exposed: true }, h * 0.35);
+    if (curl > 0) {
+      const d = unit3([b[0] - a[0], 0, b[2] - a[2]]);
+      sink.member(bucket, [b[0] - d[0] * 0.5, b[1] + h * 0.4, b[2] - d[2] * 0.5], [b[0] + d[0] * curl * 0.5, b[1] + curl, b[2] + d[2] * curl * 0.5], w * 0.8, h * 0.8,
+        [0, 1, 0], { ...opts, exposed: true }, 0);
+    }
+  }
+}
+
 
 /** A convex plan (counter-clockwise seen from above) moved in by `r` on every side (each edge offset, the offsets met). */
 function insetPlan(points: ReadonlyArray<readonly [number, number]>, r: number): Array<[number, number]> {
@@ -130,7 +222,10 @@ function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile
   });
 }
 
-/** The Bank of China: golden granite wings, the tower over them, the lattice band, the green-tiled pyramid roof. */
+/**
+ * The Bank of China: golden granite wings, the tower over them, the lattice band, the green-tiled pyramid roof.
+ * (dome-detail-275) Its tiles in rows with stacked ridges, the eave's bracket sets, the wings' stone railing, the portal.
+ */
 export const bankOfChina: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const f = fillOf(ctx.bounds, 0.1);
@@ -179,9 +274,39 @@ export const bankOfChina: RegionalBuilder = (ctx) => {
     // the roof: a pyramid of green glazed tile on its eaves, the finial
     const roof: RoofSpec = { kind: 'hip', pitchDeg: 27, eave: 0.9, verge: 0.9, thickness: 0.28, bucket: 'structureMetal', ridge: null };
     const rg = roofGeometry(2 * tx, 2 * tz, towerTop, roof);
-    emitRoof(sink, rg, roof, rgb(0x3e6a60));
+    const glaze = rgb(0x3e6a60);
+    emitRoof(sink, rg, roof, glaze);
     sink.cylinder('structureMetal', [0, rg.ridgeTopY - 0.1, 0], 'y', 1.6, 0.18, 6, { colour: GILT, decor: true, shadow: true }, 0.06);
     scars(sink, faces[0], 5, look, mobile);
+    // (dome-detail-275, the work list: "two stacked boxes with a flat window grid, a plain podium and a plain cap") The roof
+    // laid in green glazed tiles in their rows, its ridge and hip ridges stacked, the hips' feet swept up; the bracket
+    // sets along the tower's eave beam; the wings' roof terraces behind a Chinese stone railing (its posts and rail);
+    // the entrance's granite portal, its bronze doors and lintel, its steps
+    const hips = canalRolls(sink, rg, roof, look, { pitch: 0.36, w: 0.16, colour: glaze, bucket: 'structureMetal' });
+    hipRidges(sink, hips, 0.34, 0.3, { colour: shade(glaze, 0.8), decor: true, shadow: true }, 1.1, 'structureMetal');
+    sink.span('structureMetal', -0.22, rg.ridgeTopY - 0.1, -rg.ridgeHalf - 0.2, 0.22, rg.ridgeTopY + 0.4, rg.ridgeHalf + 0.2, { colour: shade(glaze, 0.8), decor: true, shadow: true });
+    const beam = { colour: rgb(0x6b3a2a), decor: true } as const, paint = { colour: rgb(0x2f5a55), decor: true } as const;
+    for (const face of tfaces) {
+      faceBox(sink, 'structureMetal', face, 0, towerTop - 0.2, 0.09, face.width, 0.36, 0.18, beam);
+      const n = Math.max(2, Math.round(face.width / 1.3));
+      for (let k = 0; k <= n; k++) {
+        faceBox(sink, 'structureMetal', face, -face.width / 2 + 0.2 + k * (face.width - 0.4) / n, towerTop + 0.08, 0.3, 0.42, 0.2, 0.6, paint);
+      }
+    }
+    const rail = { decor: true, shade: 0.96 } as const;
+    const wf = tierFaces(-W / 2 + 0.15, W / 2 - 0.15, -D / 2 + 0.15, D / 2 - 0.15);
+    for (const face of wf) {
+      const n = Math.max(2, Math.round(face.width / 2.0));
+      for (let k = 0; k <= n; k++) faceBox(sink, 'plaster2', face, -face.width / 2 + 0.15 + k * (face.width - 0.3) / n, wingTop + 0.5, -0.15, 0.24, 1.0, 0.24, rail, { bottom: true });
+      faceBox(sink, 'plaster2', face, 0, wingTop + 0.82, -0.15, face.width - 0.3, 0.14, 0.18, rail, 'ends');
+      faceBox(sink, 'plaster2', face, 0, wingTop + 0.12, -0.15, face.width - 0.3, 0.24, 0.16, rail, 'ends');
+    }
+    const fr = faces[0], dw = Math.min(4.2, W * 0.18);
+    faceBox(sink, 'structureMetal', fr, 0, 2.0, 0.14, dw, 3.4, 0.04, { colour: BRONZE, decor: true });
+    for (const s2 of [-1, 1]) faceBox(sink, 'plaster2', fr, s2 * (dw / 2 + 0.3), 2.3, 0.3, 0.6, 4.6, 0.6, { decor: true, shadow: true, shade: 1.06 });
+    faceBox(sink, 'plaster2', fr, 0, 4.85, 0.32, dw + 1.6, 0.5, 0.64, { decor: true, shadow: true, shade: 1.06 });
+    faceBox(sink, 'structureMetal', fr, 0, 4.85, 0.66, dw, 0.24, 0.04, { colour: GILT, decor: true, fine: true });
+    sink.span('plaster2', -dw / 2 - 1.0, -0.4, D / 2, dw / 2 + 1.0, 0.16, D / 2 + 0.6, { decor: true, shade: 1.02 });
   });
   return sink.finish();
 };

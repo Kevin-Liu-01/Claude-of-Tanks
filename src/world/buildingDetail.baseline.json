@@ -29,12 +29,12 @@
    "facePass": 0.833
   },
   "breton": {
-   "score": 15,
+   "score": 16,
    "silhouette": 4,
    "mid": 4,
    "fine": 5,
-   "trisPerWallM2": 15.41,
-   "fineShare": 0.577,
+   "trisPerWallM2": 19.41,
+   "fineShare": 0.48,
    "facePass": 1
   },
   "kolkhoz": {
@@ -42,8 +42,8 @@
    "silhouette": 5,
    "mid": 6,
    "fine": 5,
-   "trisPerWallM2": 12.23,
-   "fineShare": 0.644,
+   "trisPerWallM2": 14.05,
+   "fineShare": 0.585,
    "facePass": 1
   },
   "goral": {
@@ -69,8 +69,8 @@
    "silhouette": 5,
    "mid": 3,
    "fine": 7,
-   "trisPerWallM2": 25.38,
-   "fineShare": 0.53,
+   "trisPerWallM2": 25.41,
+   "fineShare": 0.508,
    "facePass": 1
   },
   "mekong": {
@@ -141,7 +141,7 @@
    "silhouette": 1,
    "mid": 3,
    "fine": 2,
-   "trisPerWallM2": 24.18,
+   "trisPerWallM2": 27.9,
    "fineShare": 0.103,
    "facePass": 0.667
   },
@@ -204,8 +204,8 @@
    "silhouette": 5,
    "mid": 3,
    "fine": 3,
-   "trisPerWallM2": 25.81,
-   "fineShare": 0.305,
+   "trisPerWallM2": 27.16,
+   "fineShare": 0.289,
    "facePass": 0.5
   },
   "saar": {
@@ -218,12 +218,12 @@
    "facePass": 1
   },
   "shanghai": {
-   "score": 5,
+   "score": 16,
    "silhouette": 1,
    "mid": 0,
    "fine": 2,
-   "trisPerWallM2": 6.94,
-   "fineShare": 0.494,
+   "trisPerWallM2": 9.46,
+   "fineShare": 0.47,
    "facePass": 1
   },
   "longleaf": {

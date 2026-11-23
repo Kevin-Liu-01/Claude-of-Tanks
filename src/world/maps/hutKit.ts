@@ -81,6 +81,8 @@ interface HutDialect {
   course: number;
   /** a render's dado to this height over the floor */
   dado?: number;
+  /** (dome-detail-275) what holds a tin roof down: bamboo poles laid across it */
+  weights?: 'poles';
   /** what the walls, the covering and the footings are of, for the break (default by the cladding and covering) */
   wallMaterial?: FractureMaterial;
   roofMaterial?: FractureMaterial;
@@ -991,6 +993,9 @@ function block(k: HutTools, x: number, y: number, z: number, color: number): voi
 
 type Gear = (k: HutTools, h: HutFrame) => void;
 
+/** Gears built one after the other (dome-detail-275: here, so the forms' table can use it). */
+const both = (...gs: Array<Gear | undefined>): Gear => (k, h) => { for (const g of gs) g?.(k, h); };
+
 /** A yard's cast concrete (floors, aprons, lintels, wheel stops). */
 const CONCRETE = 0x9c988e;
 
@@ -1348,9 +1353,437 @@ const swampCooler: Gear = (k, h) => {
   }
 };
 
+// ------------------------------------------------------------------- the vernacular kinds' dress (dome-detail-275 pass 2)
+
+/** (dome-detail-275) A colour `t` of the way from `a` to `b`. */
+const mix = (a: number, b: number, t: number): number => {
+  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t) << s;
+  return ch(16) | ch(8) | ch(0);
+};
+
+/** (dome-detail-275) A fixed scatter in [0, 1) by index: the hand-built irregularity, without drawing on the build's stream. */
+const jit = (i: number): number => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+
+/** (dome-detail-275) Whether a face's openings (floor-relative) leave u0..u1, y0..y1 over the ground clear. */
+const clear = (h: HutFrame, id: FaceId, u0: number, u1: number, y0: number, y1: number): boolean =>
+  !h.form.openings.some((o) => o.face === id && o.u + o.w / 2 + 0.12 > u0 && o.u - o.w / 2 - 0.12 < u1
+    && h.floor + o.y - 0.12 < y1 && h.floor + o.y + o.h + 0.12 > y0);
+
+/**
+ * (dome-detail-275) A hut's covering in relief, dressing on it: a tin roof's end lap, the rust (or the lichen on asbestos)
+ * run down from it and a replaced sheet, with the bamboo poles laid across it where the dialect weights its tin; a felt
+ * roof's battens down the fall, its weathered patches and the roll over its ridge; a thatch's courses and the poles riding
+ * its ridge; canal tiles' mortared eave and verges, the lichen and a slipped cover; under snow the cornice it rolls over
+ * each eave and the icicles hanging from it.
+ */
+function hutCover(k: HutTools, h: HutFrame): void {
+  const { form, dialect: d } = h, p = d.paint, cov = d.covering;
+  const { lift, ang, gable, part, lay, pos } = roofLayer(k, h);
+  const sides = gable ? [-1, 1] : [1];
+  // f runs from a gable's ridge (a skillion's back wall) to the walls' line, a slope's fraction t from its high edge to its eave
+  const run = gable ? form.w / 2 : form.d, f0 = gable ? 0 : -d.eave / run, fe = 1 + d.eave / run;
+  const fOf = (t: number) => f0 + t * (fe - f0), L = ((fe - f0) * run) / Math.cos(ang);
+  const acrossLen = gable ? form.d + 2 * d.verge : form.w + 2 * d.verge;
+  k.tag('roof', 'cover', d.roofMaterial ?? (cov === 'sheet' ? 'metal' : cov === 'thatch' ? 'thatch' : cov === 'tile' ? 'tile' : 'plank'));
+  if (d.snow) {
+    // the snow's cornice rolled over each eave, the icicles hanging from it
+    for (const s of sides) {
+      const [x, z] = pos(s, fe, 0), y = roofTop(form, d, h.top, x, z) + (lift - 0.06) / Math.cos(ang);
+      const lip = k.cylinder(0.1, 0.1, acrossLen, 7);
+      if (gable) lip.rotateX(Math.PI / 2); else lip.rotateZ(Math.PI / 2);
+      lay(lip, x, z, -0.06, 0xe4e9ee, 0.02);
+      const n = Math.max(4, Math.round(acrossLen / 0.5));
+      for (let i = 0; i < n; i++) {
+        const c = -acrossLen / 2 + (i + 0.3 + 0.4 * jit(i * 5 + s)) * acrossLen / n, len = 0.16 + 0.34 * jit(i * 11 + 3);
+        put(k, dressing(k.cylinder(0.035, 0.004, len, 5)), gable ? [x, y - len / 2 - 0.03, c] : [c, y - len / 2 - 0.03, z], 0xd6e0e8, 0.03);
+      }
+    }
+    return;
+  }
+  if (cov === 'sheet') {
+    const r = (p.roof[0] >> 16) & 255, b = p.roof[0] & 255, rusty = r > b + 24, shifer = r >= b && r - b < 12 && r > 0x80;
+    const runC = mix(p.roof[0], shifer ? 0x5e5c52 : rusty ? 0x4e2e20 : 0x7a4a30, shifer ? 0.45 : 0.6);
+    for (const s of sides) {
+      // the end lap half way down, the runs from it
+      const [x, z] = pos(s, fOf(0.5), 0);
+      lay(part(0.09, 0.02, acrossLen - 0.04), x, z, 0, p.roof[2], 0.03);
+      for (let i = 0; i < 5; i++) {
+        const c = -acrossLen / 2 + (i + 0.25 + 0.5 * jit(i * 3 + s * 7)) * acrossLen / 5, ln = L * (0.14 + 0.14 * jit(i + 9));
+        const [x2, z2] = pos(s, fOf(0.5) + (ln / 2) * Math.cos(ang) / run, c);
+        lay(part(ln, 0.006, 0.16 + 0.14 * jit(i * 13)), x2, z2, 0.012, runC, 0.08);
+      }
+    }
+    // a replaced sheet in another shade
+    const [xr, zr] = pos(sides[sides.length - 1], fOf(0.3), acrossLen * 0.18);
+    lay(part(Math.min(2.0, L * 0.45), 0.012, 1.15), xr, zr, 0.006, rusty ? 0xa9aeb0 : shifer ? 0xbdbcb2 : mix(p.roof[0], 0x8a5f42, 0.6), 0.04);
+    if (d.weights === 'poles') {
+      // the bamboo poles laid across the tin and lashed down against the storms
+      k.tag('fitting', 'roofpoles', 'timber');
+      for (const s of sides) for (const t of [0.28, 0.8]) {
+        const [x, z] = pos(s, fOf(t), 0), pole = k.cylinder(0.045, 0.045, acrossLen + 0.1, 6);
+        if (gable) pole.rotateX(Math.PI / 2); else pole.rotateZ(Math.PI / 2);
+        lay(pole, x, z, 0.035, 0x9a8660, 0.05);
+      }
+    }
+    return;
+  }
+  if (cov === 'felt') {
+    // the battens down the fall the felt is dressed over, a weathered patch or two, a gable's ridge roll
+    const bat = mix(p.roof[2], 0x8a8478, 0.22), n = Math.max(3, Math.round(acrossLen / 0.9));
+    for (const s of sides) for (let i = 0; i <= n; i++) {
+      const [x, z] = pos(s, fOf(0.5), -acrossLen / 2 + 0.06 + (i * (acrossLen - 0.12)) / n);
+      lay(part(L - 0.06, 0.045, 0.06), x, z, 0.01, bat, 0.04);
+    }
+    for (const [s, t, c, a] of [[sides[0], 0.3, -0.22, 1.3], [sides[sides.length - 1], 0.72, 0.31, 0.9]] as const) {
+      const [x, z] = pos(s, fOf(t), c * acrossLen);
+      lay(part(a, 0.01, 0.8), x, z, 0.0, mix(p.roof[0], 0x9a968c, 0.3), 0.05);
+    }
+    if (gable) k.put(dressing(k.mbox(0.24, 0.09, acrossLen, 0.02).translate(0, h.top + form.rise + lift / Math.cos(ang) - 0.01, 0)), bat, 0.03);
+    return;
+  }
+  if (cov === 'thatch') {
+    // the courses: a band proud across the slope every 0.7 m or so (on the main coat above the eave coat, on the eave
+    // coat below), and the poles riding the ridge in pairs, held over it by the roll
+    const n = Math.max(3, Math.round(L / 0.55));
+    for (const s of sides) for (let i = 1; i < n; i++) {
+      const t = i / n;
+      if (Math.abs(t - 0.64) < 0.06) continue;
+      // (laid plumb over its point, a band stands off the rafters' plane out toward the eave: t is the rafters' point under it)
+      const up = (t < 0.64 ? -0.16 : 0) + 0.012, [x, z] = pos(s, fOf(t) + ((lift + up) * Math.sin(ang)) / run, 0);
+      lay(part(0.14, 0.05, acrossLen - 0.12), x, z, up, i % 2 ? mix(p.roof[0], p.roof[2], 0.4) : p.roof[1], 0.06);
+    }
+    if (gable) {
+      k.tag('fitting', 'riders', 'timber');
+      const m = Math.max(2, Math.round(acrossLen / 1.5));
+      for (let i = 0; i < m; i++) {
+        const c = -acrossLen / 2 + (i + 0.5) * acrossLen / m;
+        for (const s of sides) {
+          const [x, z] = pos(s, fOf(0.55 / L), c);
+          lay(part(1.1, 0.07, 0.07), x, z, -0.16 + 0.035, p.frame, 0.05);
+        }
+      }
+    }
+    return;
+  }
+  if (cov === 'tile') {
+    // the eave's mortar under the covers' ends and the verges' mortar up the rakes (limewash on a whitewashed kit)
+    const lime = d.cladding === 'render' ? p.wall[0] : 0xc9c3b4;
+    for (const s of sides) {
+      const [x, z] = pos(s, fOf(0.975), 0);
+      lay(part(0.16, 0.1, acrossLen - 0.02), x, z, -0.08, lime, 0.03);
+      for (const e of [-1, 1]) {
+        const [x2, z2] = pos(s, fOf(0.5), e * (acrossLen / 2 - 0.1));
+        lay(part(L - 0.1, 0.09, 0.2), x2, z2, -0.045, lime, 0.04);
+      }
+      // the lichen on the covers, a cover slipped down over its neighbours
+      for (let i = 0; i < 4; i++) {
+        const [x3, z3] = pos(s, fOf(0.2 + 0.6 * jit(i * 7 + s)), (jit(i * 3 + 1) - 0.5) * (acrossLen - 1.0));
+        lay(part(0.3 + 0.3 * jit(i), 0.012, 0.22 + 0.2 * jit(i + 5)), x3, z3, 0.0, mix(p.roof[0], i % 2 ? 0xb39a4a : 0x8c8a6a, 0.55), 0.06);
+      }
+      const [x4, z4] = pos(s, fOf(0.62), acrossLen * 0.21 * s);
+      lay(part(0.45, 0.06, 0.22).rotateY(0.35), x4, z4, 0.02, p.roof[1], 0.05);
+    }
+  }
+}
+
+/**
+ * (dome-detail-275) A hut's walls dressed and set into the ground: a board wall's water-table board along its foot round
+ * the doors, a board or two replaced in fresh timber; a rendered wall's render fallen in patches off the saman, brick or
+ * rubble under it, a stain run down from each sill; the snow drifted against a winter kit's walls.
+ */
+function hutWalls(k: HutTools, h: HutFrame): void {
+  const { form, dialect: d, floor } = h, p = d.paint, ground = form.lift < 0.3;
+  const ids: FaceId[] = ['front', 'back', 'left', 'right'];
+  for (const [n, id] of ids.entries()) {
+    if (form.open?.includes(id)) continue;
+    const f = h.face(id), holes = form.openings.filter((o) => o.face === id).map((o) => ({ ...o, y: o.y + floor }));
+    const head = form.roof === 'skillion' && id === 'back' ? h.top + form.rise : h.top;
+    k.tag('wall', wallGroup(f, 0), wallMat(d));
+    if (ground && (d.cladding === 'batten' || d.cladding === 'lap')) {
+      const o = d.cladding === 'batten' ? 0.062 : 0.045;
+      for (const [a, b] of around(-f.half - 0.02, f.half + 0.02, floor + 0.02, floor + 0.24, holes)) {
+        if (b - a > 0.1) put(k, dressing(faceMember(k, f, b - a, 0.2, 0.03)), at(f, (a + b) / 2, floor + 0.13, o), p.trim, 0.04);
+      }
+    }
+    if (d.cladding === 'batten') {
+      const step = form.battens ?? 0.6;
+      for (const q of [0.3, 0.74]) {
+        const u = -f.half + Math.max(1, Math.round((q * 2 * f.half) / step)) * step;
+        if (u > f.half - 0.3 || !clear(h, id, u - step / 2, u + step / 2, floor, head)) continue;
+        put(k, dressing(faceBox(k, f, step - 0.07, head - floor - 0.12, 0.006)), at(f, u, (floor + head) / 2, 0.028), mix(p.wall[1], 0xa89070, 0.4), 0.04);
+      }
+    }
+    if (d.cladding === 'render') {
+      const under = mix(p.wall[2], d.wallMaterial === 'adobe' ? 0x8a7458 : d.wallMaterial === 'brick' ? 0x8a4a38 : 0x8d877a, 0.42);
+      const base = floor + Math.max(d.dado ?? 0, 0.2);
+      const spots = f.half > 1.6 ? [[0.22, 0.35, 0.95, 0.5], [0.71, 0.95, 0.6, 0.42]] : [[0.5 + 0.3 * (n % 2 ? 1 : -1) * 0.5, 0.35, 0.6, 0.4]];
+      for (const [q, yq, pw, ph] of spots) {
+        const u = -f.half + q * 2 * f.half, y = base + yq + ph / 2;
+        if (y + ph / 2 > head - 0.1 || !clear(h, id, u - pw / 2, u + pw / 2, y - ph / 2, y + ph / 2)) continue;
+        put(k, dressing(faceMember(k, f, pw, ph, 0.012, 0.004)), at(f, u, y, 0.006), under, 0.06);
+        // (its edge ragged: a smaller piece off one corner)
+        put(k, dressing(faceMember(k, f, pw * 0.45, ph * 0.5, 0.012, 0.004)), at(f, u + pw * 0.4, y - ph * 0.42, 0.006), under, 0.06);
+      }
+      // the stain run down from each window's sill
+      for (const o of holes) if (o.kind === 'window') {
+        put(k, dressing(faceBox(k, f, o.w * 0.5, 0.45, 0.006)), at(f, o.u, o.y - 0.3, 0.003), mix(p.wall[2], 0x4a4438, 0.16), 0.05);
+      }
+    }
+    if (d.snow && ground) {
+      // the drift against the wall, deepest at its foot
+      put(k, dressing(onto(prism([[0, 0], [0.45, 0], [0.12, 0.2], [0, 0.28]], 2 * f.half - 0.1, 0.5), f)), at(f, 0, 0, skin(d) - 0.01), 0xe4e9ee, 0.02);
+    }
+  }
+}
+
+/** (dome-detail-275) A louvred vent high in each gable: its frame, the dark behind its blades. */
+function gableVents(k: HutTools, h: HutFrame): void {
+  const { form, dialect: d, top } = h, p = d.paint;
+  if (form.roof !== 'gable' || form.rise < 0.9) return;
+  // the gable's outer face (buildHut's gable: a render's masonry, a log kit's boards, the boards and battens)
+  const o = d.cladding === 'render' ? 0 : d.cladding === 'log' ? d.course / 2 - 0.005 : 0.03;
+  const vw = Math.min(0.8, form.w * 0.14), vh = Math.min(0.55, form.rise * 0.3), y = top + form.rise * 0.42;
+  for (const id of ['front', 'back'] as const) {
+    const f = h.face(id);
+    k.tag('wall', `gable|${id}`, d.cladding === 'log' ? 'plank' : wallMat(d));
+    for (const s of [-1, 1]) put(k, dressing(faceBox(k, f, 0.07, vh + 0.14, 0.07)), at(f, s * (vw / 2 + 0.035), y, o + 0.035), p.trim, 0.03);
+    for (const s of [-1, 1]) put(k, dressing(faceBox(k, f, vw + 0.14, 0.07, 0.07)), at(f, 0, y + s * (vh / 2 + 0.035), o + 0.035), p.trim, 0.03);
+    put(k, dressing(faceBox(k, f, vw, vh, 0.012)), at(f, 0, y, o + 0.006), p.dark, 0.02);
+    for (let i = 0; i < 3; i++) put(k, dressing(faceBox(k, f, vw, 0.06, 0.05)), at(f, 0, y - vh / 2 + (i + 0.5) * vh / 3, o + 0.025), p.trim, 0.03);
+  }
+}
+
+/** (dome-detail-275) The stilts braced: a diagonal from foot to head between each pair of legs down every side. */
+function stiltBraces(k: HutTools, h: HutFrame): void {
+  const { form, dialect: d } = h, w = form.w, dd = form.d;
+  if (form.lift < 1.1 || d.footing === 'staddle') return;
+  const nx = Math.max(1, Math.round(w / 2.4)), nz = Math.max(1, Math.round(dd / 2.4)), t = d.round ? 0.065 : 0.055;
+  const y0 = 0.25, y1 = form.lift - 0.24;
+  k.tag('brace', 'stilts', 'timber');
+  const brace = (a: V3, b: V3) => k.put(dressing(k.mbeam(a, b, t, t)), d.paint.frame, 0.04);
+  for (const sx of [-1, 1]) for (let j = 0; j < nz; j++) {
+    const za = -dd / 2 + (j * dd) / nz, zb = za + dd / nz, up = (j + (sx > 0 ? 1 : 0)) % 2 === 0;
+    brace([sx * w / 2, up ? y0 : y1, za], [sx * w / 2, up ? y1 : y0, zb]);
+  }
+  for (const sz of [-1, 1]) for (let i = 0; i < nx; i++) {
+    const xa = -w / 2 + (i * w) / nx, xb = xa + w / nx, up = (i + (sz > 0 ? 0 : 1)) % 2 === 0;
+    brace([xa, up ? y0 : y1, sz * dd / 2], [xb, up ? y1 : y0, sz * dd / 2]);
+  }
+}
+
+/** (dome-detail-275) A plank boat drawn up on the bank: its hull flaring from a narrow bottom, the dark inside over its
+ *  gunwales, two thwarts. */
+function boat(k: HutTools, x: number, z: number, len: number, beam: number, yaw: number, color: number): void {
+  k.tag('fitting', `boat|${x.toFixed(1)}|${z.toFixed(1)}`, 'plank');
+  const plan = (s: number, l: number): Array<[number, number]> => {
+    const a = l / 2, b = (beam * s) / 2;
+    return [[-a, 0], [-a * 0.72, -b * 0.8], [-a * 0.32, -b], [a * 0.32, -b], [a * 0.72, -b * 0.8], [a, 0], [a * 0.72, b * 0.8], [a * 0.32, b], [-a * 0.32, b], [-a * 0.72, b * 0.8]];
+  };
+  const place = (g: THREE.BufferGeometry, c: number, j = 0.05) => k.put(dressing(g.rotateY(yaw).translate(x, 0, z)), c, j);
+  const hull = (s: number, l: number, y0: number, y1: number, c: number) => place(prism(plan(s, l), y1 - y0, 0.5).rotateX(-Math.PI / 2).translate(0, (y0 + y1) / 2, 0), c);
+  hull(0.7, len * 0.84, 0, 0.17, mix(color, 0x000000, 0.25));
+  hull(1, len, 0.16, 0.46, color);
+  hull(0.84, len * 0.9, 0.455, 0.47, 0x2a2219);
+  for (const t of [-0.2, 0.16]) place(k.box(0.13, 0.04, beam * 0.86).translate(t * len, 0.48, 0), mix(color, 0xffffff, 0.12), 0.04);
+}
+
+/** (dome-detail-275) An oar leaning on a face at `u`: its loom from the ground to the wall's boards, the blade at its foot. */
+function oar(k: HutTools, h: HutFrame, id: FaceId, u: number, color: number): void {
+  const f = h.face(id), sk = skin(h.dialect);
+  k.tag('fitting', `oar|${id}|${u}`, 'timber');
+  k.put(dressing(k.mbeam(at(f, u, 0.02, 0.55), at(f, u + 0.12, Math.min(2.05, h.top - 0.15), sk - 0.01), 0.055, 0.045)), color, 0.04);
+  k.put(dressing(k.mbeam(at(f, u - 0.005, 0.02, 0.56), at(f, u + 0.03, 0.62, 0.45), 0.16, 0.03)), color, 0.04);
+}
+
+/** (dome-detail-275) Fish traps of split bamboo lying by a wall: tapered cages on their sides. */
+function fishTraps(k: HutTools, x: number, z: number, n: number): void {
+  k.tag('fitting', `traps|${x}|${z}`, 'timber');
+  for (let i = 0; i < n; i++) {
+    const trap = k.cylinder(0.2 - 0.02 * i, 0.12, 0.75, 7).rotateZ(Math.PI / 2).rotateY(0.3 * i);
+    put(k, dressing(trap), [x, 0.2 - 0.02 * i, z + i * 0.5], i % 2 ? 0x8f7a56 : 0xa58f63, 0.06);
+  }
+}
+
+/** (dome-detail-275) A terracotta storage jar (a tinaja, a kolshi) at (x, z), `s` its scale (under 0.8 m). */
+function jar(k: HutTools, x: number, z: number, s: number, color: number): void {
+  k.tag('fitting', `jar|${x.toFixed(1)}|${z.toFixed(1)}`, 'tile');
+  put(k, dressing(k.cylinder(0.3 * s, 0.17 * s, 0.42 * s, 9)), [x, 0.21 * s, z], color, 0.05);
+  put(k, dressing(k.cylinder(0.15 * s, 0.3 * s, 0.26 * s, 9)), [x, 0.55 * s, z], color, 0.05);
+  put(k, dressing(k.cylinder(0.17 * s, 0.17 * s, 0.06 * s, 9)), [x, 0.71 * s, z], mix(color, 0x000000, 0.18), 0.04);
+}
+
+/** (dome-detail-275) A sawbuck before a face: its two crossed trestles and the log across them. */
+function sawbuck(k: HutTools, x: number, z: number, color: number): void {
+  k.tag('fitting', 'sawbuck', 'timber');
+  for (const s of [-1, 1]) for (const e of [-1, 1]) {
+    k.put(dressing(k.mbeam([x + s * 0.4, 0.0, z - e * 0.3], [x + s * 0.4, 0.84, z + e * 0.13], 0.06, 0.06)), color, 0.04);
+  }
+  put(k, dressing(k.cylinder(0.11, 0.12, 1.5, 8).rotateZ(Math.PI / 2)), [x, 0.87, z], mix(color, 0x8a7458, 0.4), 0.05);
+}
+
+/** (dome-detail-275) The kinds' own dress: the covering's relief, the walls dressed and set into the ground. */
+const dressHut: Gear = (k, h) => { hutCover(k, h); hutWalls(k, h); };
+
+/** (dome-detail-275) The lean-to's yard: the sawbuck with its log before the open front, a ladder against a side wall. */
+const leantoYard: Gear = (k, h) => {
+  const p = h.dialect.paint;
+  sawbuck(k, -1.2, h.form.d / 2 + 0.75, p.frame);
+  ladder(k, h.face('left'), -0.4, Math.min(1.6, h.top - 0.2), 0.5, p.frame, h.dialect.round, skin(h.dialect));
+};
+
+/** (dome-detail-275) The fisher's yard: the boat drawn up before the shack, the oars against its side, the traps by it. */
+const fisherYard: Gear = (k, h) => {
+  const { form, dialect: d } = h;
+  boat(k, -0.9, form.d / 2 + 0.8, Math.min(3.6, form.w * 0.84), 1.05, 0.08, mix(d.paint.wall[0], 0x3a4a52, 0.35));
+  for (const u of [-1.45, -1.8]) oar(k, h, 'left', u, mix(d.paint.frame, 0x8a7458, 0.35));
+  fishTraps(k, form.w / 2 + 0.35, -form.d / 2 + 0.9, 2);
+};
+
+// ------------------------------------------------------------------------ the kits' yards (dome-detail-275 pass 2)
+
+/**
+ * (dome-detail-275) The Lorraine farm's long barn: the manure heap on the usoir before it, the hay cart standing at the
+ * back on its wheels and prop, the stone trough by the side wall, the zinc gutters and downpipes.
+ */
+const lorrainYard: Gear = (k, h) => {
+  const { form, dialect: d } = h, p = d.paint, zf = form.d / 2;
+  k.tag('fitting', 'fumier', 'earth');
+  const hx = 1.9, hz = zf + 0.75;
+  put(k, dressing(prism([[-0.55, 0], [0.55, 0], [0.38, 0.38], [0.08, 0.58], [-0.32, 0.46]], 2.1, 0.5).rotateY(Math.PI / 2)), [hx, 0, hz], 0x4a3a26, 0.08);
+  put(k, dressing(k.mbox(1.5, 0.08, 0.45, 0.02)), [hx - 0.1, 0.5, hz + 0.02], 0x8a7448, 0.06);
+  for (const s of [-1, 1]) put(k, dressing(k.mbox(0.22, 0.24, 1.1, 0.03)), [hx + s * 1.16, 0.12, hz], p.foot, 0.06);
+  // the cart: its wheels on the axle, the bed and its rails, the shafts out level to the prop under their ends
+  k.tag('fitting', 'cart', 'timber');
+  const cx = -1.2, cz = -zf - 0.7, wood = 0x6a5a44;
+  for (const s of [-1, 1]) put(k, dressing(k.cylinder(0.55, 0.55, 0.08, 12).rotateX(Math.PI / 2)), [cx, 0.55, cz + s * 0.6], 0x4a3c2c, 0.04);
+  put(k, dressing(k.box(0.12, 0.12, 1.3)), [cx, 0.55, cz], 0x3c342a, 0.03);
+  put(k, dressing(k.box(2.0, 0.08, 1.0)), [cx, 0.65, cz], wood, 0.05);
+  for (const s of [-1, 1]) put(k, dressing(k.box(2.0, 0.3, 0.05)), [cx, 0.84, cz + s * 0.475], wood, 0.05);
+  for (const s of [-1, 1]) put(k, dressing(k.box(1.45, 0.07, 0.07)), [cx - 1.7, 0.65, cz + s * 0.32], wood, 0.04);
+  for (const s of [-1, 1]) put(k, dressing(k.box(0.07, 0.62, 0.07)), [cx - 2.35, 0.31, cz + s * 0.32], wood, 0.04);
+  // the trough of Jaumont stone by the right wall, its water
+  k.tag('fitting', 'trough', 'stone');
+  put(k, dressing(k.mbox(0.55, 0.5, 1.6, 0.03)), [form.w / 2 + 0.45, 0.25, 1.5], p.foot, 0.05);
+  put(k, dressing(k.box(0.42, 0.02, 1.46)), [form.w / 2 + 0.45, 0.5, 1.5], 0x34403f, 0.02);
+  // the barn door's two leaves: the stile where they meet
+  const g = form.openings.find((o) => o.face === 'front' && o.kind === 'door');
+  if (g && g.w > 1.6) put(k, dressing(faceBox(k, h.face('front'), 0.07, g.h - 0.06, 0.03)), at(h.face('front'), g.u, h.floor + g.h / 2, 0.06), p.door, 0.03);
+  rainwater(k, h);
+};
+
+/**
+ * (dome-detail-275) The Virgin Lands house: the boarded entrance porch (the senki) over its door under its own small gable
+ * of asbestos sheet, its step; the kizyak (dried dung bricks for the stove) stacked by the back.
+ */
+const tselinaYard: Gear = (k, h) => {
+  const { form, dialect: d } = h, p = d.paint, zf = form.d / 2;
+  k.tag('fitting', 'porch', 'plank');
+  const pw = 1.9, pd = 1.05, ph = 2.25, board = 0x8a7a62, rise = 0.55, hw = pw / 2 + 0.15, a = Math.atan2(rise, hw);
+  for (const s of [-1, 1]) put(k, dressing(k.box(0.08, ph, pd)), [s * (pw / 2 - 0.04), ph / 2, zf + pd / 2], board, 0.05);
+  for (const s of [-1, 1]) put(k, dressing(k.box(0.5, ph, 0.08)), [s * (pw / 2 - 0.25), ph / 2, zf + pd - 0.04], board, 0.05);
+  put(k, dressing(k.box(0.9, 0.3, 0.08)), [0, ph - 0.15, zf + pd - 0.04], board, 0.05);
+  put(k, dressing(k.box(0.86, 1.92, 0.04)), [0, 0.98, zf + pd - 0.07], p.door, 0.04);
+  for (const s of [-1, 1]) put(k, dressing(k.box(0.06, 1.98, 0.05)), [s * 0.47, 0.99, zf + pd - 0.0], p.trim, 0.03);
+  put(k, dressing(prism([[-pw / 2, 0], [pw / 2, 0], [0, rise - 0.04]], 0.05, 0.5)), [0, ph, zf + pd - 0.04], board, 0.05);
+  for (const s of [-1, 1]) {
+    const sheet = k.box(Math.hypot(hw, rise) + 0.04, 0.04, pd + 0.25).rotateZ(-s * a);
+    put(k, dressing(sheet), [(s * hw) / 2, ph + rise / 2 + 0.02, zf + pd / 2 + 0.06], p.roof[1], 0.04);
+  }
+  k.tag('footing', 'step', 'concrete');
+  put(k, dressing(k.mbox(1.0, 0.15, 0.3, 0.02)), [0, 0.075, zf + pd + 0.13], p.foot, 0.05);
+  // the kizyak stack: its courses stepping in to its ridge
+  k.tag('fitting', 'kizyak', 'earth');
+  for (let r = 0; r < 5; r++) put(k, dressing(k.box(1.8 - 0.24 * r, 0.2, 1.0 - 0.13 * r)), [-1.9, 0.1 + 0.2 * r, -zf - 0.85], r % 2 ? 0x5a4834 : 0x4e3e2c, 0.08);
+};
+
+/** (dome-detail-275) The Angami house's yard: the firewood stacked down both long walls under the deep thatch, the sitting
+ *  platform of dry stone before it and the memorial stone standing by it. */
+const kohimaYard: Gear = (k, h) => {
+  const { form, dialect: d } = h, p = d.paint, zf = form.d / 2 + 0.75;
+  for (const id of ['left', 'right'] as const) woodpile(k, h.face(id), id === 'left' ? -1.6 : 1.2, 4.2, 5, 0, mix(p.frame, 0x8a7050, 0.35));
+  k.tag('footing', 'platform', 'stone');
+  put(k, dressing(k.mbox(2.4, 0.45, 1.1, 0.06)), [-1.3, 0.225, zf], 0x6e6a62, 0.08);
+  for (let i = 0; i < 3; i++) put(k, dressing(k.mbox(0.74, 0.08, 0.95, 0.02)), [-2.05 + i * 0.75, 0.49, zf + 0.03 * (i - 1)], 0x7d786e, 0.06);
+  put(k, dressing(k.mbox(0.42, 1.55, 0.26, 0.08)), [-2.95, 0.775, zf - 0.1], 0x77736a, 0.05);
+};
+
+/** (dome-detail-275) The char's stilt house yard: the jute sticks stood in a cone, the kolshi under the floor, the
+ *  flood season's boat drawn up under it. */
+const bengalStilt: Gear = (k, h) => {
+  const { form } = h;
+  k.tag('fitting', 'jute', 'thatch');
+  put(k, dressing(k.cylinder(0.05, 0.62, 1.9, 9)), [-form.w / 2 - 0.75, 0.95, -1.2], 0xb59f6e, 0.08);
+  put(k, dressing(k.cylinder(0.2, 0.22, 0.08, 9)), [-form.w / 2 - 0.75, 1.42, -1.2], 0x6e5a3c, 0.05);
+  jar(k, 0.9, 0.5, 0.9, 0x8a4a2c);
+  jar(k, 1.35, -0.2, 0.75, 0x7a4026);
+  boat(k, -0.9, 0, 3.4, 0.9, Math.PI / 2, 0x5a4a36);
+};
+
+/** (dome-detail-275) The Mekong long house's bank: its jars by the ladder, the sampan drawn up along its side. */
+const mekongYard: Gear = (k, h) => {
+  const { form } = h;
+  jar(k, form.w / 2 + 0.5, form.d / 2 - 0.6, 1, 0x6e4128);
+  jar(k, form.w / 2 + 0.55, form.d / 2 - 1.3, 0.8, 0x5e3a24);
+  boat(k, -form.w / 2 - 0.65, 0.6, 4.0, 0.95, Math.PI / 2 + 0.05, 0x5a4a38);
+};
+
+/** (dome-detail-275) The Ca Mau house: the sampan stored under its floor, the fish traps by the back. */
+const camauYard: Gear = (k, h) => {
+  const { form } = h;
+  boat(k, -1.2, 0, 3.6, 0.9, Math.PI / 2, 0x5a4a38);
+  fishTraps(k, -form.w / 2 - 0.3, -1.6, 2);
+};
+
+/** (dome-detail-275) The tinajas and the straw bales under the Andalusian lean-to. */
+const andalusYard: Gear = (k) => {
+  jar(k, 1.75, 0.35, 1, 0xa0583a);
+  jar(k, 1.15, 0.6, 0.85, 0x94502f);
+  k.tag('fitting', 'bales', 'thatch');
+  for (const [x, y, z] of [[-1.6, 0.21, 0.4], [-0.72, 0.21, 0.46], [-1.18, 0.63, 0.42]] as const) put(k, dressing(k.mbox(0.88, 0.42, 0.48, 0.03)), [x, y, z], 0xc2a764, 0.07);
+};
+
+/** (dome-detail-275) The puesto's cover: the lentisk brush piled against its sides and corners, the dry-stone wing wall. */
+const puestoCover: Gear = (k, h) => {
+  const { form } = h, hw = form.w / 2, hd = form.d / 2;
+  k.tag('fitting', 'brush', 'timber');
+  // (each bush two lumps of its foliage, turned off the walls' lines)
+  for (const [i, [x, z, w, hh, d, c]] of ([[-hw - 0.34, 0, 0.66, 0.78, 1.2, 0x5d6b3c], [hw + 0.34, 0.2, 0.66, 0.68, 1.1, 0x6b7444],
+    [-0.62, hd + 0.26, 0.74, 0.56, 0.5, 0x56653a], [0.66, hd + 0.26, 0.66, 0.5, 0.5, 0x5d6b3c]] as const).entries()) {
+    put(k, dressing(k.mbox(w, hh, d, 0.18).rotateY(0.25 * (i % 2 ? 1 : -1))), [x, hh / 2, z], c, 0.1);
+    put(k, dressing(k.mbox(w * 0.7, hh * 0.7, d * 0.6, 0.14).rotateY(0.6)), [x + 0.08 * (i % 2 ? -1 : 1), hh * 0.7 + 0.08, z + d * 0.18], mix(c, 0x8a8a5a, 0.25), 0.1);
+  }
+  k.tag('fitting', 'wing', 'stone');
+  for (let i = 0; i < 2; i++) put(k, dressing(k.mbox(0.5, 0.55 - 0.1 * i, 0.4, 0.05)), [-hw - 0.4 - 0.45 * i, (0.55 - 0.1 * i) / 2, hd + 0.05 + 0.05 * i], 0x8d877a, 0.07);
+};
+
+/** (dome-detail-275) The kolkhoz shed's milk churns and the cart wheel leaning on its side wall. */
+const kolkhozYard: Gear = (k, h) => {
+  const { form, dialect: d } = h;
+  k.tag('fitting', 'churns', 'metal');
+  for (const [x, z] of [[1.7, 0.45], [2.0, -0.1]] as const) {
+    put(k, dressing(k.cylinder(0.17, 0.17, 0.5, 8)), [x, 0.25, z], 0x9aa0a0, 0.04);
+    put(k, dressing(k.cylinder(0.08, 0.17, 0.12, 8)), [x, 0.56, z], 0x9aa0a0, 0.04);
+    put(k, dressing(k.cylinder(0.1, 0.1, 0.12, 8)), [x, 0.68, z], 0x7d8384, 0.03);
+  }
+  k.tag('fitting', 'wheel', 'timber');
+  const r = 0.55, t = 0.15, xc = form.w / 2 + skin(d) + r * Math.sin(t) + 0.03;
+  put(k, dressing(k.cylinder(r, r, 0.07, 12).rotateZ(Math.PI / 2 + t)), [xc, r * Math.cos(t), 0.2], 0x5a4a38, 0.05);
+  put(k, dressing(k.cylinder(0.1, 0.1, 0.16, 8).rotateZ(Math.PI / 2 + t)), [xc, r * Math.cos(t), 0.2], 0x3c342a, 0.04);
+};
+
+/** (dome-detail-275) The Podhale sledge left in the snow before the lean-to. */
+const sledge: Gear = (k, h) => {
+  const c = h.dialect.paint.frame, x = 0.4, z = h.form.d / 2 + 1.0;
+  k.tag('fitting', 'sledge', 'timber');
+  for (const s of [-1, 1]) put(k, dressing(k.box(1.3, 0.05, 0.05)), [x, 0.025, z + s * 0.22], c, 0.04);
+  for (const s of [-1, 1]) for (const e of [-1, 1]) put(k, dressing(k.box(0.05, 0.22, 0.05)), [x + e * 0.45, 0.14, z + s * 0.22], c, 0.04);
+  put(k, dressing(k.box(1.1, 0.04, 0.52)), [x, 0.27, z], mix(c, 0x8a7458, 0.3), 0.04);
+};
+
 // ------------------------------------------------------------------------------------------------------------ forms
 
-interface HutVariant { form: HutForm; gear?: Gear }
+/** (dome-detail-275) `dress`: the kind's own dress, built whatever gear a kit gives it. */
+interface HutVariant { form: HutForm; gear?: Gear; dress?: Gear }
 
 const win = (face: FaceId, u: number, w = 0.7, h = 0.6, y = 1.0): HutOpening => ({ face, u, y, w, h, kind: 'window' });
 const door = (face: FaceId, u: number, w = 0.9, h = 1.9): HutOpening => ({ face, u, y: 0, w, h, kind: 'door' });
@@ -1381,6 +1814,7 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       }
       block(k, 1.3, 0, 1.9, h.dialect.paint.frame);
     },
+    dress: both(dressHut, leantoYard),
   },
   // the hunting blind: a boarded box on four legs braced across, a slit under its skillion, its ladder up the side
   huntingblind: {
@@ -1400,6 +1834,7 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       }
       ladder(k, h.face('left'), 0, y, 0.95, p.frame, h.dialect.round);
     },
+    dress: dressHut,
   },
   // the fisher's shack: a gabled shed with its wide net door, the net hung on its rack behind it, a barrel by the door
   fishershack: {
@@ -1421,6 +1856,7 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       k.tag('fitting', 'barrel', 'timber');
       put(k, k.cylinder(0.27, 0.24, 0.8, 8), [1.3, 0.4, h.form.d / 2 + 0.55], 0x5b4636, 0.06);
     },
+    dress: both(dressHut, gableVents, stiltBraces, fisherYard),
   },
   // the sauna: a small gabled cabin, its stove pipe, a small high window, the bench and the woodpile by the door
   saunahut: {
@@ -1451,6 +1887,7 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       const f = h.face('right');
       ladder(k, f, -(h.form.d / 2 + (h.form.veranda ?? 0) - 0.55), h.form.lift, 0.9, h.dialect.paint.frame, h.dialect.round);
     },
+    dress: both(dressHut, gableVents, stiltBraces),
   },
   // the long house: a long gabled hall, a door at the front and one in the side, a window every bay
   longhouse: {
@@ -1461,6 +1898,7 @@ const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       bench(k, h.face('front'), 1.9, 0, h.dialect.paint.frame);
       woodpile(k, h.face('back'), -1.3, 2.4, 5, 0, h.dialect.paint.frame);
     },
+    dress: both(dressHut, gableVents, stiltBraces),
   },
   // ---- the military and industrial kinds (their forms dressed by the kit's dialect)
   // the guard post: a cabin raised on four braced legs, windows on three sides, its door and ladder at the back
@@ -1567,7 +2005,7 @@ export const HUT_DIALECTS: Readonly<Record<string, HutDialect>> = {
   mekong: dialect('batten', 'thatch', 'sunk', paint([0x6f6150, 0x8d7c66, 0x5f5344], 0x3c342b, 0x4a3f33, [0x6e6447, 0x8f8460, 0x5a523a], 0x5a4e40, 0x2a2018),
     { round: true, eave: 0.5, verge: 0.4 }),
   // the Jamuna's chars: bamboo mats on round bamboo under galvanised tin
-  bengal: dialect('mat', 'sheet', 'sunk', paint(BAMBOO, 0x5d4f37, 0x5d4f37, GALVANISED, 0x7b6650, 0x3a2e24), { round: true, footMaterial: 'earth' }),
+  bengal: dialect('mat', 'sheet', 'sunk', paint(BAMBOO, 0x5d4f37, 0x5d4f37, GALVANISED, 0x7b6650, 0x3a2e24), { round: true, footMaterial: 'earth', weights: 'poles' }),
   // the Maurienne: larch boards under lauzes and their snow on a stone sill
   savoyard: dialect('batten', 'slab', 'plinth', paint([0x6b5a48, 0x857055, 0x5d4e3e], 0x3d3329, 0x4a3d31, [0x5c5f63, 0x6a6d70, 0x50545a], 0x7b7d7e, 0x3a2f25),
     { snow: 0.14, eave: 0.4, verge: 0.35, roofMaterial: 'stone' }),
@@ -1699,7 +2137,6 @@ const chimney = (x: number, z: number): Gear => (k, h) => {
   put(k, k.box(0.66, 0.08, 0.66), [x, y1 + 0.04, z], h.dialect.paint.foot, 0.05);
 };
 
-const both = (...gs: Array<Gear | undefined>): Gear => (k, h) => { for (const g of gs) g?.(k, h); };
 
 interface RegionalHut {
   dialect?: Partial<Omit<HutDialect, 'paint'>> & { paint?: Partial<HutPaint> };
@@ -1737,8 +2174,17 @@ const bagged: Gear = (k, h) => {
  * and gear the region changes). structureKit's REGIONAL_DESTRUCTIBLE_TYPES builds each through buildRegionalHut.
  */
 export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, RegionalHut>>>> = {
-  kolkhoz: { fieldhut: {}, leanto: {}, huntingblind: {} },
-  lorrain: { fieldhut: {}, leanto: {}, longhouse: {} },
+  kolkhoz: { fieldhut: {}, leanto: { extra: kolkhozYard }, huntingblind: {} },
+  lorrain: {
+    fieldhut: {}, leanto: {},
+    // (dome-detail-275) the farm's long barn: its wide barn door and a window a bay, the yard before and behind it
+    // (a maison lorraine: its ochre render over rubble and the low pitch of its canal tiles, the Jaumont-stone casings)
+    longhouse: { dialect: { cladding: 'render', covering: 'tile', footing: 'sunk', dado: 0.45, eave: 0.35, verge: 0.2, wallMaterial: 'stone',
+      roofMaterial: 'tile', paint: { wall: [0xc4ae86, 0xbaa47c, 0xae9872], trim: 0xbfae84, frame: 0x4a3a2a, roof: [0x9a5a3e, 0xa8653f, 0x8a4e36],
+        door: 0x5a4632, dado: 0x9c8e72 } },
+    form: { rise: 1.5, stove: undefined, openings: [door('front', -0.9, 2.2, 2.15), win('front', 1.7, 0.6, 0.6, 1.2), win('left', -3.4), win('left', -0.4),
+      win('left', 2.6), win('right', -2.4), win('right', 0.6), win('right', 3.4), win('back', 1.2)] }, extra: both(chimney(1.4, -3.0), lorrainYard) },
+  },
   hessian: { fieldhut: {}, huntingblind: {}, checkpointhut: {} },
   eifel: {
     fieldhut: {}, huntingblind: {},
@@ -1763,7 +2209,7 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
       win('left', 0, 0.8, 0.8), win('right', 0, 0.8, 0.8)] } },
     // (the blind and the lean-to boarded: a log box on legs is a granary, not a hide)
     huntingblind: { dialect: { cladding: 'batten', snow: 0.1 } },
-    leanto: { dialect: { cladding: 'batten' } },
+    leanto: { dialect: { cladding: 'batten' }, extra: sledge },
   },
   savoyard: {
     saunahut: {},
@@ -1781,10 +2227,10 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     // the farm's tool house (caseta de aperos): a low tile gable, its wide door, a small high window
     fieldhut: { form: { w: 3.8, d: 5.6, wallH: 2.4, rise: 1.0, stove: undefined,
       openings: [door('front', 0, 1.1, 1.9), win('right', -1.2, 0.55, 0.55, 1.4)] }, gear: (k, h) => bench(k, h.face('back'), 0, 0, h.dialect.paint.foot) },
-    leanto: {},
+    leanto: { extra: andalusYard },
     // the puesto: a whitewashed hide on the ground, a slit to the front and a low door behind
     huntingblind: { form: { w: 1.9, d: 1.8, wallH: 1.45, lift: 0, rise: 0.3,
-      openings: [{ face: 'front', u: 0, y: 0.9, w: 1.2, h: 0.22, kind: 'slit' }, door('back', 0, 0.7, 1.3)] }, gear: () => {} },
+      openings: [{ face: 'front', u: 0, y: 0.9, w: 1.2, h: 0.22, kind: 'slit' }, door('back', 0, 0.7, 1.3)] }, gear: puestoCover },
   },
   breton: {
     // the customs men's granite hut under its slates
@@ -1814,7 +2260,9 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
   franconian: { guardpost: groundPost(), checkpointhut: {}, transformershed: {}, motorpool: {}, servicegarage: { form: flat() } },
   arctic: { motorpool: {}, servicegarage: {} },
   longleaf: { leanto: {}, huntingblind: { form: { lift: 2.8 } }, fishershack: {}, stilthouse: { form: { lift: 1.2, veranda: 1.6 } } },
-  tselina: { longhouse: { form: { stove: undefined }, extra: chimney(1.4, -3.0) }, motorpool: {} },
+  // (dome-detail-275: the saman house's windows down both long walls, its porch and its kizyak)
+  tselina: { longhouse: { form: { stove: undefined, openings: [door('front', 0, 1.0, 2.0), ...[-4.2, -1.4, 1.4, 4.2].flatMap((u) => [win('left', u, 0.8, 0.9, 0.9),
+    win('right', u, 0.8, 0.9, 0.9)]), win('back', 0, 0.8, 0.9, 0.9)] }, extra: both(chimney(1.4, -3.0), tselinaYard) }, motorpool: {} },
   // the Jamuna's chars
   bengal: {
     // the char homestead: galvanised sheet walls on its earthen plinth above the flood line, the yard-side veranda
@@ -1826,7 +2274,7 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     },
     // the flood-season house on bamboo stilts, its ladder up to the door
     stilthouse: { form: { w: 4.6, d: 6.2, wallH: 2.3, lift: 1.7, rise: 1.35, veranda: 0,
-      openings: [door('right', 1.4, 0.85, 1.8), win('right', -1.4, 0.8, 0.7, 0.9), win('front', 0, 0.8, 0.7)] }, gear: ladderTo('right', 1.4) },
+      openings: [door('right', 1.4, 0.85, 1.8), win('right', -1.4, 0.8, 0.7, 0.9), win('front', 0, 0.8, 0.7)] }, gear: both(ladderTo('right', 1.4), bengalStilt) },
     fishershack: { form: { w: 4.2, d: 5.6, wallH: 2.0, rise: 0.9 } },
   },
   kohima: {
@@ -1835,7 +2283,7 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
       dialect: { cladding: 'batten', covering: 'thatch', eave: 0.7, verge: 0.5, paint: { wall: [0x5b4735, 0x856b51, 0x4f3d2d], frame: 0x2f251b,
         roof: [0x7c6b4d, 0x9f8c65, 0x3e3327] } },
       form: { w: 5.2, d: 11.2, wallH: 1.8, rise: 2.9, stove: undefined, openings: [door('front', 0.7, 0.9, 1.5)] },
-      gear: kika,
+      gear: both(kika, kohimaYard),
     },
     // the Naga granary on its legs: a bamboo-mat store under a steep thatch, its notched-log ladder
     stilthouse: {
@@ -1848,13 +2296,13 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     // the long house on its low deck over posts, under nipa, its porch before the door
     longhouse: { form: { w: 5.6, d: 10.0, wallH: 2.4, lift: 0.9, rise: 2.2, veranda: 1.4, stove: undefined,
       openings: [door('front', 0.6, 0.9, 1.9), win('left', -1.5), win('right', 2.0)] },
-      gear: (k, h) => ladderTo('right', -(h.form.d / 2 + (h.form.veranda ?? 0) / 2))(k, h) },
+      gear: (k, h) => both(ladderTo('right', -(h.form.d / 2 + (h.form.veranda ?? 0) / 2)), mekongYard)(k, h) },
     // the shrimp-pond guard hut on tall stilts, its ladder down to the bund
     fishershack: { form: { w: 3.6, d: 4.6, wallH: 1.8, lift: 1.4, rise: 1.0, openings: [door('right', 0.8, 0.8, 1.6), win('front', 0)] },
       gear: ladderTo('right', 0.8) },
     // the Ca Mau house on stilts under rusted iron, its veranda on the canal side, the jars by the ladder's foot
     stilthouse: { dialect: { covering: 'sheet', paint: { roof: RUSTED_TIN } }, form: { w: 4.8, d: 5.0, wallH: 2.45, lift: 1.7, rise: 1.05, veranda: 1.6 },
-      extra: jars },
+      extra: both(jars, camauYard) },
   },
 };
 
@@ -1871,6 +2319,6 @@ export function buildRegionalHut(k: HutTools, kit: string, kind: string): HutFra
   const d: HutDialect = { ...base, ...spec.dialect, paint: { ...base.paint, ...spec.dialect?.paint } } as HutDialect;
   const form: HutForm = { ...kf.form, ...spec.form };
   const h = buildHut(k, form, d);
-  both(spec.gear ?? kf.gear, spec.extra)(k, h);
+  both(spec.gear ?? kf.gear, spec.extra, kf.dress)(k, h);
   return h;
 }
