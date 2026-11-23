@@ -1692,7 +1692,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/muzzleNearField.selftest.mjs', // 271: a gun's muzzle light reaches its own gun through a near field
-    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's report, flash, light and kick by its cadence; a slow gun's as before
+    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's flash, light and kick by its cadence; 276: its sound by its fire-rate regime
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
@@ -1907,6 +1907,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed; a mode
     // respawn starts the hull's module states whole (round 4 merge review r1)
     'src/audio/audioLatches.selftest.mjs',
+    'src/audio/toggleSettle.selftest.mjs', // 276: a toggle's sound settles on its final state (scope, zoom steps, auto-aim, lights)
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.

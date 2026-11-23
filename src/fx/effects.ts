@@ -1703,7 +1703,7 @@ function* createFxSteps(
   type FlashCadence = 'none' | 'flicker' | 'held' | 'full';
   function flashCadenceOf(shooter: ShotKey | null | undefined, weapon: ShotKey | null, timeS: number): FlashCadence {
     if (weapon == null || !Number.isFinite(timeS)) return 'full';
-    if (flashCadence.admit('report', shooter, weapon, timeS) === 0) return 'none';
+    if (flashCadence.admit('core', shooter, weapon, timeS) === 0) return 'none';
     if (flashCadence.admit('flash', shooter, weapon, timeS) === 0) return 'flicker';
     return flashCadence.gapS < SHOT_SUSTAIN_GAP_S ? 'held' : 'full';
   }

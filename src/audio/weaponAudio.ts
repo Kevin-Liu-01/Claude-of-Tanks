@@ -1051,3 +1051,96 @@ export function reloadAssets(m: WeaponMount | null, loader: LoaderMake): string[
   out.add('latch_ready');
   return [...out];
 }
+
+// ------------------------------------------------------------- fast guns ---
+
+/**
+ * (276) The roar of a gun past 20 rounds a second, or any rotary gun (game/shotCadence.ts fireRegime 'roar'): no
+ * round is heard on its own. The burst is the A-10's GAU-8 recordings' steady section, the only rotary-cannon bursts the
+ * bank holds, laid as overlapping grains (each from a fresh variant and offset, faded in, so no seam or variant repeats)
+ * for as long as the trigger is held, pitched by the gun's true rate against the GAU-8's 3,900 rounds a minute; near,
+ * its tearing close bank, far its distant bank darkened to a low rumble. A rotary gun's barrels spin up under it and
+ * down after it: an electric drive's recorded whine, its rate by the barrels' turns a second.
+ */
+export const ROAR = Object.freeze({
+  close: 'air_gau8_close',
+  far: 'air_gau8_far',
+  whine: 'electric_drive_loop',
+  /** the GAU-8/A's rate, the recordings' (rounds a minute) */
+  sourceRpm: 3900,
+  /** where a grain may start inside a recording (s): its steady burst runs from ~0.05 s to ~0.6 s */
+  grainOffsetS: Object.freeze([0.06, 0.16] as const),
+  /** a grain's length, its spacing and its fade in (s): spaced under its length so two overlap through the fades */
+  grainS: 0.42,
+  grainEveryS: 0.32,
+  grainFadeInS: 0.1,
+  /** the distant bank's darkening: a far roar is a low rumble */
+  farLowpassHz: 900,
+  /** the whine under the near roar, re the close report (dB), and the range it carries (m) */
+  whineDb: -16,
+  whineM: 160,
+  /** the burst's level re the gun's close report (dB): a held roar sits under one crack's peak */
+  levelDb: -3,
+});
+
+/** The rotary guns, by bore: the Vulcan line's barrels (the M163's M61A1, the M6's GAU-12/U, the A-10's GAU-8/A). */
+export const ROTARY_GUNS: readonly { readonly maxMm: number; readonly name: string; readonly barrels: number; readonly spinUpS: number }[] = Object.freeze([
+  Object.freeze({ maxMm: 22, name: 'M61A1 Vulcan', barrels: 6, spinUpS: 0.3 }),
+  Object.freeze({ maxMm: 27, name: 'GAU-12/U Equalizer', barrels: 5, spinUpS: 0.4 }),
+  Object.freeze({ maxMm: Infinity, name: 'GAU-8/A Avenger', barrels: 7, spinUpS: 0.5 }),
+]);
+
+export function rotaryGun(caliberMm: number): (typeof ROTARY_GUNS)[number] {
+  return ROTARY_GUNS.find((gun) => caliberMm <= gun.maxMm) ?? ROTARY_GUNS[ROTARY_GUNS.length - 1];
+}
+
+export interface RoarVoicing {
+  /** the burst grains' rate: the gun's rounds a minute against the recording's, a smaller bore a shade higher */
+  readonly burstRate: number;
+  /** a rotary gun's drive whine rate (its barrels' turns a second), null for a gun with no barrels to spin */
+  readonly whineRate: number | null;
+  readonly barrels: number | null;
+  /** the spin-up the burst rises through and the spin-down after the release (s) */
+  readonly spinUpS: number;
+  readonly spinDownS: number;
+}
+
+/** How one gun roars: `cycleS` its true cycle (s), `caliberMm` its bore, `rotary` whether its barrels spin. */
+export function roarVoicing(cycleS: number, caliberMm: number, rotary: boolean): RoarVoicing {
+  const rpm = 60 / Math.max(1 / 120, cycleS);
+  const bore = Math.max(0.85, Math.min(1.2, Math.pow(30 / Math.max(5, caliberMm), 0.3)));
+  const burstRate = Math.max(0.55, Math.min(1.4, rpm / ROAR.sourceRpm)) * bore;
+  if (!rotary) return Object.freeze({ burstRate, whineRate: null, barrels: null, spinUpS: 0, spinDownS: 0 });
+  const gun = rotaryGun(caliberMm);
+  const turnsPerS = rpm / 60 / gun.barrels;
+  return Object.freeze({
+    burstRate, barrels: gun.barrels, spinUpS: gun.spinUpS, spinDownS: 2.2 * gun.spinUpS,
+    whineRate: Math.max(0.7, Math.min(1.6, 0.6 + turnsPerS / 20)),
+  });
+}
+
+/**
+ * (276) The held body of a sustained gun (fireRegime 'sustained'): the map's own echo bank (the tail the release rings
+ * out on), its ringing section laid as grains that swell in over the burst's first rounds, so a held machine gun builds
+ * the reverberant wash of real sustained fire under its rounds' short cracks.
+ */
+export const SUSTAIN_BODY = Object.freeze({
+  /** where a grain starts inside the echo recording (s) and how long it rings */
+  grainOffsetS: Object.freeze([0.15, 0.6] as const),
+  grainS: 0.6,
+  grainEveryS: 0.4,
+  grainFadeInS: 0.15,
+  /** the held body's level re the release echo (dB): under it, so the release rings out over the burst */
+  levelDb: -3,
+  /** the swell: the first grain this far under the body's level, each next one `swellDb` nearer, to 0 (dB) */
+  startDb: -9,
+  swellDb: 4.5,
+  /** a round's crack in a sustained burst rings this long at most (s): its attack and the first of its decay */
+  crackS: Object.freeze([0.18, 0.35] as const),
+});
+
+/** A sustained gun's crack length (s) for its cycle: three cycles, within SUSTAIN_BODY.crackS. */
+export function sustainedCrackS(cycleS: number): number {
+  const [lo, hi] = SUSTAIN_BODY.crackS;
+  return Math.min(hi, Math.max(lo, 3 * cycleS));
+}
