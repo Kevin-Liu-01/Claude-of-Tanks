@@ -23,6 +23,7 @@ import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import { tubeGun } from './russia.ts';
+import { addTurretRail, type DomeSkin } from './t54Family.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Vec3 = [number, number, number];
@@ -473,26 +474,7 @@ function addRubberSkirts(P: TankBuilderPort): void {
 // Turret
 // ---------------------------------------------------------------------------
 
-/** Handrails standing 6 cm off the casting at h, between plan angles a0..a1 (radians), with stanchions. */
-function addTurretRail(P: TankBuilderPort, h: number, a0: number, a1: number): void {
-  const pts: THREE.Vector3[] = [];
-  const n = 10;
-  for (let i = 0; i <= n; i++) {
-    const t = a0 + (a1 - a0) * i / n, p = domePoint(t, h), nrm = domeNormal(t, h);
-    pts.push(p.addScaledVector(nrm, 0.06));
-  }
-  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-  P.add('turretDetail', new THREE.TubeGeometry(curve, P.q ? 24 : 10, 0.014, 6, false));
-  // round end caps: an open tube end shows its inside (tank-sealed-check, 274.1)
-  for (const end of [pts[0], pts[n]]) P.add('turretDetail', new THREE.SphereGeometry(0.0145, 6, 4), end.x, end.y, end.z);
-  for (const f of [0.08, 0.5, 0.92]) {
-    const t = a0 + (a1 - a0) * f, p = domePoint(t, h), nrm = domeNormal(t, h);
-    const mid = p.clone().addScaledVector(nrm, 0.03);
-    const geo = KIT.cylY(0.011, 0.011, 0.075, 6);
-    geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm));
-    P.add('turretDetail', geo, mid.x, mid.y, mid.z);
-  }
-}
+const T62_SKIN: DomeSkin = { point: domePoint, normal: domeNormal };
 
 const skinAt = (x: number, z: number): number => domeHeightAt(x, z);
 
@@ -718,8 +700,8 @@ function buildFamilyTurret(P: TankBuilderPort, v: T62Variant): void {
   P.turretG.position.set(...TURRET_PIVOT);
   P.gunG.position.set(...TRUNNION);
   P.add('turret', castDome());
-  addTurretRail(P, 0.30, 50 * D2R, 140 * D2R);
-  addTurretRail(P, 0.30, -50 * D2R, -140 * D2R);
+  addTurretRail(P, T62_SKIN, 0.30, 50 * D2R, 140 * D2R);
+  addTurretRail(P, T62_SKIN, 0.30, -50 * D2R, -140 * D2R);
   addTurretRoof(P, v);
   addMantletCover(P);
   addMainGun(P, v);
