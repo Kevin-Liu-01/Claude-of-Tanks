@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
+import { GARAGE_PACK_BUDGET } from './garageQualityRubric.ts';
 import { createStarvationMeter, threadCpuMs } from '../../tools/starvation-meter.mjs';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
@@ -164,9 +165,9 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.enclosingSurfaces, 0,
     `${variant.id} must remain an open Garage environment`);
   assert.equal(stats.source, 'authentic-garage-scene-pack');
-  assert.ok(stats.objects >= 8 && stats.drawCalls <= 26,
+  assert.ok(stats.objects >= 8 && stats.drawCalls <= GARAGE_PACK_BUDGET.drawCalls,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
-  assert.ok(stats.triangles > 0 && stats.triangles <= 72_000, // 72k since 2026-10-16 (deploy 226): see garageQualityRubric.ts
+  assert.ok(stats.triangles > 0 && stats.triangles <= GARAGE_PACK_BUDGET.triangles, // the one budget (garageQualityRubric.ts)
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
@@ -208,7 +209,9 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must surround the hero with at least nine connected map structures`);
   assert.equal(stats.collisionAuditedStructures, stats.structures,
     `${variant.id} must derive every hitbox from its real structure geometry`);
-  assert.ok(stats.collisionEnvelopeFill > 0 && stats.collisionEnvelopeFill <= 1,
+  // (the envelope fill averages the legacy-built structures: a pack its kit rebuilt whole has none to average)
+  assert.ok(stats.collisionEnvelopeFill >= 0 && stats.collisionEnvelopeFill <= 1
+    && (stats.collisionEnvelopeFill > 0 || stats.battleCertifiedStructures === stats.structures),
     `${variant.id} collision coverage receipt must remain normalized`);
   assert.ok(stats.openCollisionMaxFill >= 0 && stats.openCollisionMaxFill <= 0.82,
     `${variant.id} open-structure compounds must preserve intentional free space`);
@@ -218,10 +221,10 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} structure contact chains must stay inside the strict nine-centimetre gate`);
   assert.ok(stats.structurePerimeterSectors >= 4,
     `${variant.id} structure composition must survive at least four orbit sectors`);
-  assert.ok(stats.connectedExteriorBuildings >= 3,
-    `${variant.id} must apply connected exterior detail to its building district`);
-  assert.ok(stats.connectedExteriorParts >= 120,
-    `${variant.id} must retain high-detail supported facades`);
+  // (garage-env-276) one standard with battle: a kit-rebuilt building's facade is its kit's, every part connected
+  // (the legacy whole-pack marker count measured the legacy builders' fixtures; garageBattleStructures.selftest.mjs)
+  assert.equal(stats.facadeDetailCertified, true,
+    `${variant.id} must connect every facade part of its kit-rebuilt buildings`);
   assert.ok(stats.maxExteriorSupportGapM <= 0.065,
     `${variant.id} exterior fixtures must touch their authored supports`);
   assert.ok(stats.approachConnected && stats.approachSegments >= 8,

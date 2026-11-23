@@ -178,21 +178,30 @@ function scoreMaterialDetail(
     2, 'near-tree trunks are faceted or lack grounded root flares');
 }
 
+/**
+ * One outdoor Garage pack's geometry budget, the one owner every gate reads (the rubric, qa:garage, the architecture and
+ * near-facility receipts). PROVISIONAL (garage-env-276, Main 2026-11-23): the packs build their buildings the battlefield's
+ * way (its regional kits and set pieces), measured at 97-165k triangles and 30-35 draws in the browser with p95 frame time
+ * equal to main's at the refresh floor on desktop (1920x1080) and the mobile tier (844x390, 4x CPU). Fixed from the final
+ * base's measurement once the switch work (D) lands. (Was 25 draws, 64k since round 7, 72k since deploy 226.)
+ */
+export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls: 36 });
+
 function scorePerformance(
   input: GarageQualityInput,
   ledger: QualityAwardLedger,
 ): number {
   const { architecture, isVerdant } = input;
-  return ledger.award(isVerdant || number(architecture.drawCalls) <= 25,
-    3, 'environment exceeds 25 draw calls')
+  return ledger.award(isVerdant || number(architecture.drawCalls) <= GARAGE_PACK_BUDGET.drawCalls,
+    3, `environment exceeds ${GARAGE_PACK_BUDGET.drawCalls} draw calls`)
     // 64k since garage round 7 (GA.04, 2026-10-14): the regional buildings at the props standard (real members, openings
     // cut through) need the room; triangles at this scale cost the GPU nothing measurable, and the switch gates below
     // (80 ms gap, 100 ms build) still hold the CPU side. 72k since 2026-10-16 (deploy 226, coordinator ruling Option A):
     // the garages' place-truth facilities and r8 detail with the props lanes' container (LOOKS) and tower (Lane B)
     // rebuilds put railyard_overhaul at 74,795 (70,907 with its yard rails trimmed) and alpine_service_cavern at 70,509;
     // the Garage frame time is measured in the final pass
-    + ledger.award(isVerdant || number(architecture.triangles) <= 72_000,
-      2, 'environment exceeds 72k triangles')
+    + ledger.award(isVerdant || number(architecture.triangles) <= GARAGE_PACK_BUDGET.triangles,
+      2, `environment exceeds ${GARAGE_PACK_BUDGET.triangles / 1000}k triangles`)
     + ledger.award(input.transitionMaxGapMs <= 80,
       3, 'normal-speed switch stalls longer than 80 ms')
     + ledger.award(isVerdant || number(architecture.lastBuildMs) <= 100,

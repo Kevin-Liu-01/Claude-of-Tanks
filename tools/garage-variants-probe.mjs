@@ -6,7 +6,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
+import { GARAGE_PACK_BUDGET, scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
 import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { awaitPickerImages } from './garage-picker-images.mjs';
@@ -389,8 +389,8 @@ try {
         failures.push(`${result.id}: restored workshop receipt failed`);
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
-        || architecture.drawCalls < 8 || architecture.drawCalls > 25
-        || architecture.triangles <= 0 || architecture.triangles > 72_000 // 72k since 2026-10-16 (garageQualityRubric.ts)
+        || architecture.drawCalls < 8 || architecture.drawCalls > GARAGE_PACK_BUDGET.drawCalls
+        || architecture.triangles <= 0 || architecture.triangles > GARAGE_PACK_BUDGET.triangles // the one budget
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2

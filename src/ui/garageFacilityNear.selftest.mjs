@@ -6,13 +6,14 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
+import { GARAGE_PACK_BUDGET } from './garageQualityRubric.ts';
 
-// near (<= 25 m of the turntable) facility primitive instances over 0.25 m before the rebuild, and each pack's triangle target
+// near (<= 25 m of the turntable) facility primitive instances over 0.25 m before the rebuild
 const BEFORE = {
-  badlands_recovery_yard: { near: 431, triangles: 68000 },
-  alpine_service_cavern: { near: 608, triangles: 70000 },
-  winter_repair_bunker: { near: 418, triangles: 68000 },
-  monsoon_field_bay: { near: 590, triangles: 68000 },
+  badlands_recovery_yard: { near: 431 },
+  alpine_service_cavern: { near: 608 },
+  winter_repair_bunker: { near: 418 },
+  monsoon_field_bay: { near: 590 },
 };
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
@@ -36,8 +37,9 @@ for (const [id, before] of Object.entries(BEFORE)) {
     }
   });
   assert.ok(near <= before.near * 0.2, `${id}: ${near} near facility primitives, at most ${Math.floor(before.near * 0.2)} (80 % under ${before.near})`);
-  assert.ok(stats.triangles <= before.triangles, `${id}: ${stats.triangles} triangles (target ${before.triangles})`);
-  assert.ok(stats.drawCalls <= 24, `${id}: ${stats.drawCalls} draws`);
+  // (garage-env-276) the pack's budget is the one GARAGE_PACK_BUDGET: its buildings are now its battlefield's
+  assert.ok(stats.triangles <= GARAGE_PACK_BUDGET.triangles, `${id}: ${stats.triangles} triangles (budget ${GARAGE_PACK_BUDGET.triangles})`);
+  assert.ok(stats.drawCalls <= GARAGE_PACK_BUDGET.drawCalls, `${id}: ${stats.drawCalls} draws`);
   assert.equal(stats.unsupportedParts ?? 0, 0, `${id}: no unsupported parts`);
 }
 controller.dispose();

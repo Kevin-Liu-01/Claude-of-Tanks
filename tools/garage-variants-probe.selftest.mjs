@@ -11,7 +11,8 @@ assert.match(source, /stats\.exhibitCount !== 5/);
 assert.match(source, /stats\.sharedMaintenanceBayCount !== 4/);
 assert.match(source, /__GARAGE_DRESSING_PROBE/);
 assert.match(source, /source !== 'authentic-garage-scene-pack'/);
-assert.match(source, /architecture\.drawCalls > 25/);
+assert.match(source, /architecture\.drawCalls > GARAGE_PACK_BUDGET\.drawCalls/);
+assert.match(source, /architecture\.triangles > GARAGE_PACK_BUDGET\.triangles/);
 assert.match(source, /architecture\.residentTextureSets > 9/);
 assert.match(source, /for \(let pass = 0; pass < 4/);
 assert.match(source, /intentRaceDecoy[\s\S]*architecture\.presented === true/,
