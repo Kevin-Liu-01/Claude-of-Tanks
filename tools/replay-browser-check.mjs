@@ -32,13 +32,16 @@ const RULE = 'perf-rule-2.md sha256 64283aa6e39cb158';
 const ARMS = [{ on: true }, { on: false }, { on: true }, { on: false }, { on: true, trace: true }];
 
 function parse(argv) {
-  const out = { out: null, seconds: 45, root: process.cwd(), width: 1600, height: 900 };
+  const out = { out: null, seconds: 45, root: process.cwd(), width: 1600, height: 900, maps: [MAP], traceOnly: false };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
     if (m[1] === 'out') out.out = path.resolve(m[2]);
     else if (m[1] === 'seconds') out.seconds = Number(m[2]);
     else if (m[1] === 'root') out.root = path.resolve(m[2]);
+    // (276 sim-det-trig (f)) one TRACE recording per map, each verified on the page's world and on the committed shard
+    else if (m[1] === 'maps') out.maps = m[2].split(',').filter(Boolean);
+    else if (m[1] === 'arms' && m[2] === 'trace') out.traceOnly = true;
     else throw new Error(`unknown flag --${m[1]}`);
   }
   if (!out.out) throw new Error('--out=<dir> is required');
@@ -121,7 +124,10 @@ async function fetchNewestReplay(page, withTrace) {
 async function main(argv) {
   const options = parse(argv);
   mkdirSync(options.out, { recursive: true });
-  const receipt = { tool: TOOL, rule: RULE, spec: SPEC, map: MAP, seconds: options.seconds, arms: [] };
+  const plan = options.traceOnly ? options.maps.map((mapId) => ({ on: true, trace: true, mapId }))
+    : ARMS.map((arm) => ({ ...arm, mapId: options.maps[0] }));
+  const receipt = { tool: TOOL, rule: options.traceOnly ? 'sim-det-trig (f): every replay holds on the shard, replay-diff zero' : RULE,
+    spec: SPEC, maps: options.maps, seconds: options.seconds, arms: [] };
   await runWarmHold({
     label: TOOL,
     place: `${TOOL}:${path.basename(options.out)}`,
@@ -143,15 +149,15 @@ async function main(argv) {
       } catch (error) { await close(); throw error; }
     },
     shoot: async ({ page, errors }) => {
-      for (const [index, { on, trace = false }] of ARMS.entries()) {
+      for (const [index, { on, trace = false, mapId }] of plan.entries()) {
         say(`arm ${index + 1}: recorder ${trace ? 'TRACE' : on ? 'ON' : 'OFF'}`);
         await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = trace; }, trace);
-        await beginSoloBattle(page, { specId: SPEC, mapId: MAP, gameMode: 'standard' });
+        await beginSoloBattle(page, { specId: SPEC, mapId, gameMode: 'standard' });
         await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = false; }, trace);
         await page.evaluate(armSamplers, on);
         await driveBattle(page, options.seconds);
         const sample = await page.evaluate(collectSamplers);
-        const arm = { on, trace, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
+        const arm = { mapId, on, trace, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
           blocks: sample.blocks, blockMeanMs: mean(sample.blocks), blockMaxMs: sample.blocks.length ? Math.max(...sample.blocks) : null,
           pausedMaxMs: sample.pausedMaxMs, recorderActive: sample.active };
         await page.evaluate(() => { window.__DEBUG.leaveBattleToGarage(); });
@@ -187,16 +193,31 @@ async function main(argv) {
     } catch (error) {
       try { arm.replay = JSON.parse(String(error.stdout)); } catch { arm.replay = { holds: false, mismatch: { message: String(error.message).slice(0, 300) } }; }
     }
+    if (options.traceOnly) {
+      try {
+        arm.replayShard = JSON.parse(execFileSync(process.execPath, [...CAPPED, 'tools/replay-verify.mjs', arm.replayFile, '--json', '--world=shard'], { cwd: options.root, encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'] }));
+      } catch (error) {
+        try { arm.replayShard = JSON.parse(String(error.stdout)); } catch { arm.replayShard = { holds: false, mismatch: { message: String(error.message).slice(0, 300) } }; }
+      }
+    }
     // the trace arm: where the replay leaves the page, its report kept beside the recording
     if (arm.traceFile) {
       let report;
       try {
-        report = execFileSync(process.execPath, [...CAPPED, 'tools/replay-diff.mjs', arm.replayFile, arm.traceFile], { cwd: options.root, encoding: 'utf8',
+        report = execFileSync(process.execPath, [...CAPPED, 'tools/replay-diff.mjs', arm.replayFile, arm.traceFile, ...(options.traceOnly ? ['--world=shard'] : [])], { cwd: options.root, encoding: 'utf8',
           stdio: ['ignore', 'pipe', 'pipe'] });
       } catch (error) { report = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
       arm.diffFile = arm.traceFile.replace(/\.trace\.json$/, '.diff.txt');
       writeFileSync(arm.diffFile, report);
     }
+  }
+  if (options.traceOnly) {
+    receipt.verdict = { pass: receipt.arms.every((a) => a.replay?.holds === true && a.replayShard?.holds === true),
+      arms: receipt.arms.map((a) => ({ mapId: a.mapId, steps: a.replaySteps, page: a.replay?.holds, shard: a.replayShard?.holds, diff: a.diffFile })) };
+    writeFileSync(path.join(options.out, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
+    say(`verdict ${receipt.verdict.pass ? 'PASS' : 'FAIL'}: ${JSON.stringify(receipt.verdict)}`);
+    return receipt.verdict.pass ? 0 : 1;
   }
   const onArms = receipt.arms.filter((a) => a.on && !a.trace), offArms = receipt.arms.filter((a) => !a.on);
   const pooled = onArms.flatMap((a) => a.blocks);
