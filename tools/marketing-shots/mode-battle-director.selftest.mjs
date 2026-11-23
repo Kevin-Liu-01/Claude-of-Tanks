@@ -72,8 +72,9 @@ assert.equal(tank.state._ride.v, 0);
 for (const [slot, recipe] of Object.entries(RECIPES)) {
   assert.equal(recipeFor(slot), recipe);
   assert.ok(typeof recipe.run === 'function' || typeof recipe.custom === 'function', `${slot} has a run or custom step`);
-  // (deploy/<mode>: a Deploy plate's still, the media lane's deploy-r1 panels, bf50a803fe)
-  assert.ok(/^(modes|mechanics|features|deploy)\//.test(slot), `${slot} is a home-page or Deploy plate slot`);
+  // (deploy/<mode>: a Deploy plate's still, the media lane's deploy-r1 panels, bf50a803fe; proof/<mode>: a lane's READY
+  // evidence in the real game page, never delivered, combined-arms-276)
+  assert.ok(/^(modes|mechanics|features|deploy|proof)\//.test(slot), `${slot} is a home-page, Deploy plate or proof slot`);
 }
 assert.equal(recipeFor('modes/none'), null);
 
