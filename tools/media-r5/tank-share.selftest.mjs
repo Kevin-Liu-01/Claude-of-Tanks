@@ -179,6 +179,65 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.match(seededStill[id].digest ?? '', /^[0-9a-f]{16}$/);
 }
 
+// Render cards (274.0, Kevin via Main 2026-11-22, "Render-based in 274"): a tank no take has filmed gets a card from its
+// hero card layer ({ source: 'render' }, the layer's digest recorded); a filmed take always wins; a missing layer fails by
+// name. (Injected compose, layer and reader: no canvas, browser or master filter.)
+{
+  const tank = Object.keys(table.tanks).find((t) => !table.tanks[t].card && CARD_FRAME[t] === undefined && t !== id);
+  assert.ok(tank, 'a tank with no filmed card to render');
+  assert.deepEqual(share.wantedCard(tank, CARD_FRAME, new Set()), { source: 'render' }, `${tank}: no take, so its render`);
+  assert.deepEqual(share.wantedCard(tank, CARD_FRAME, new Set([tank])), { source: 'still' }, `${tank}: a take filmed it, so its still wins`);
+  assert.deepEqual(share.wantedCard(tank, { ...CARD_FRAME, [tank]: 1.5 }, new Set()), { source: 'film', frame: 1.5 }, 'a CARD_FRAME second is a take: its film wins');
+  assert.deepEqual(share.wantedCard(tank), { source: 'still' }, 'with no filmed set the card is the take\'s (the old call)');
+  assert.ok(share.filmedIds().has(id), `${id}: a tank with a take's card counts as filmed`);
+  assert.ok(!share.filmedIds().has(tank) || table.tanks[tank].card, `${tank}: no take, no take's card`);
+
+  const layers = join(fixture, 'hero-layers');
+  mkdirSync(layers, { recursive: true });
+  const layerOf = (t) => join(layers, `${t}-960.avif`);
+  writeFileSync(layerOf(tank), 'layer-v1');
+  const renderCard = join(fixture, 'public', share.TANK_CARD_DIR, `${tank}-card.jpg`);
+  const go = async ({ records, stills = { [tank]: null }, heroLayer = layerOf, luma = 0.05 }) => {
+    const lines = [];
+    const result = await share.renderDue({
+      stills, root: fixture, records, cardFrame: CARD_FRAME, schema: 1, frameDir: join(fixture, 'frames'), log: (line) => lines.push(line),
+      heroLayer, composeRender: async (t, out) => { writeFileSync(out, `composed-${readFileSync(heroLayer(t), 'utf8')}`); return out; },
+      readSource: async () => ({ luma, tl: 1, tr: 0 }), saveRecords: () => {},
+      render: async (t, source) => Buffer.from(`card-from-${readFileSync(source, 'utf8')}`),
+    });
+    return { ...result, lines };
+  };
+  const records = {};
+  let out = await go({ records });
+  assert.deepEqual(out.wrote, [tank], `${tank}: its render card is written (a dark ground is no bar for a render)`);
+  assert.equal(readFileSync(renderCard, 'utf8'), 'card-from-composed-layer-v1', 'from its hero layer, through the share design');
+  assert.equal(records[tank].source, 'render');
+  assert.equal(records[tank].digest, share.sourceDigest(layerOf(tank)), 'the record keeps the hero layer\'s digest');
+  assert.match(out.lines.join('\n'), new RegExp(`${tank}-card\\.jpg from its render`), 'the run says it rendered it');
+  out = await go({ records });
+  assert.deepEqual(out.upToDate, [tank], 'the same layer: up to date');
+  writeFileSync(layerOf(tank), 'layer-v2');
+  assert.equal(share.cardDue(records[tank], { source: 'render', digest: share.sourceDigest(layerOf(tank)) }), 'digest', 'a re-rendered hero card makes its share card due');
+  out = await go({ records });
+  assert.deepEqual(out.wrote, [tank], 'and the run renders it again');
+  // the table: published while no take films the tank; once a take does, the render card leaves the table (stale)
+  const publish = (filmed) => share.tankShareTable({ root: fixture, records, filmed }).tanks[tank].card;
+  assert.equal(publish(new Set()), `/${share.TANK_CARD_DIR}/${tank}-card.jpg`, `${tank}: its render card is published`);
+  assert.equal(publish(new Set([tank])), null, `${tank}: a filmed take wins; the render card stays out until the take's card is cut`);
+  assert.deepEqual(share.staleCards({ root: fixture, records, filmed: new Set([tank]) }).map((s) => s.id).filter((s) => s === tank), [tank], 'and is listed stale');
+  // a filmed take handed to the run wins over the render the records hold
+  const take = join(fixture, 'takes', `${tank}-take`); mkdirSync(take, { recursive: true });
+  const still = join(take, 'still.png'); writeFileSync(still, 'take-still');
+  out = await go({ records, stills: { [tank]: still }, luma: 0.5 });
+  assert.deepEqual(out.wrote, [tank], `${tank}: the take's still replaces its render card`);
+  assert.equal(readFileSync(renderCard, 'utf8'), 'card-from-take-still');
+  assert.equal(records[tank].source, 'still', 'and its record says so');
+  // no hero layer: the run fails, naming the tank
+  const other = Object.keys(table.tanks).find((t) => !table.tanks[t].card && CARD_FRAME[t] === undefined && t !== id && t !== tank);
+  await assert.rejects(go({ records: {}, stills: { [other]: null } }), new RegExp(`^Error: ${other}: its render card needs its hero card layer`), 'a missing hero layer fails by name');
+  rmSync(renderCard, { force: true });
+}
+
 // The seeded records: every card on disk has one (the 14 CARD_FRAME tanks from their film at its second, the others from
 // their still), none without a card, and the table they give is the shipped one (tankShare.json unchanged, above).
 {

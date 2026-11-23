@@ -11,6 +11,9 @@
 //        render the cards that are due (all of them with --force; the first run also renders once each card seeded
 //        without a digest, below) from the take stills (<stills.json>: { <vehicle>: <4K still path> }, the media lane's
 //        deliveries), then write the table
+//   node tools/media-r5/tank-share.mjs --render [--only=a,b] [--force]
+//        render the cards of the tanks no take has filmed from their hero card layer (274.0: { source: 'render' }, the
+//        shipped public/icons/hero/<id>-960.avif over its flag layer, digest recorded); a filmed take always wins
 //   node tools/media-r5/tank-share.mjs --check                  exit 1 when the table is stale or a card on disk is
 //        unpublished (stale: it stays out of the table until it is rendered again), listing each with its command
 //
@@ -55,9 +58,64 @@ export const CARD_FRAME = Object.freeze({
   t72b3m_hetman_ii: 4.8, udes03: 1.05,
 });
 
-/** The card a tank should have: a frame of its take's film at CARD_FRAME[id] s, else its 4K still. */
-export const wantedCard = (id, cardFrame = CARD_FRAME) =>
-  (cardFrame[id] === undefined ? { source: 'still' } : { source: 'film', frame: cardFrame[id] });
+/**
+ * The card a tank should have: a frame of its take's film at CARD_FRAME[id] s, else its 4K still; and, for a tank no take
+ * has filmed (`filmed` given and without it), its render (274.0, Kevin via Main 2026-11-22, "Render-based in 274"): the
+ * shipped hero card's tank layer over its nation's flag layer (tools/genHeroCards.mjs, first-party procedural pixels), in
+ * the same share design. A filmed take always wins: a tank leaves render the moment the media lane films it.
+ */
+export const wantedCard = (id, cardFrame = CARD_FRAME, filmed = null) =>
+  (cardFrame[id] !== undefined ? { source: 'film', frame: cardFrame[id] }
+    : !filmed || filmed.has(id) ? { source: 'still' } : { source: 'render' });
+
+/** The fleet takes' index (the media lane's deliveries): the vehicles a take has filmed, under their current ids. */
+const FLEET_INDEX = 'public/media/site50-r14/fleet/index.json';
+/** The tanks with a filmed source: each vehicle of the fleet takes' index, and each tank whose card was cut from a take. */
+export function filmedIds({ root = ROOT, records = readCardRecords(root) } = {}) {
+  const ids = new Set(Object.entries(records).filter(([, record]) => record?.source === 'still' || record?.source === 'film').map(([id]) => id));
+  const file = join(root, FLEET_INDEX);
+  if (existsSync(file)) {
+    const index = JSON.parse(readFileSync(file, 'utf8'));
+    for (const key of Object.keys(index.vehicles ?? {})) ids.add(resolveTankId(key, index.tankIdSchema));
+  }
+  return ids;
+}
+/** A render card's source: the shipped hero card's 960 px tank layer (public/icons/hero, hero-cards-compose ship). */
+export const heroLayerPath = (id, root = ROOT) => join(root, 'public/icons/hero', `${id}-960.avif`);
+/** The nation's flag layer a render card stands its tank on (the hero card's own, hero-cards.json's row). */
+function heroFlagPath(id, root) {
+  const file = join(root, 'public/icons/hero/hero-cards.json');
+  const flag = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).tanks?.[id]?.flag : null;
+  return flag ? join(root, 'public/icons/hero', `flag-${flag}-960.avif`) : null;
+}
+
+/**
+ * A render card's picture: the tank layer over its flag layer on the cards' dark ground, at 2400 x 1260 (the 1200 x 630
+ * card's cover at twice its pixels), the tank right of centre and low, so the title's top corners stay clear. PNG at `out`.
+ */
+export async function composeRenderSource(id, out, root = ROOT) {
+  const { createCanvas, loadImage } = await import('@napi-rs/canvas');
+  const layer = heroLayerPath(id, root);
+  if (!existsSync(layer)) throw new Error(`${id}: no hero card layer at ${layer} (render it first: node tools/genHeroCards.mjs --ids=${id}, then hero-cards-compose.mjs ship)`);
+  const W = 2400, H = 1260, canvas = createCanvas(W, H), context = canvas.getContext('2d');
+  const ground = context.createLinearGradient(0, 0, 0, H);
+  ground.addColorStop(0, '#0d151b'); ground.addColorStop(0.62, '#0a1015'); ground.addColorStop(1, '#05080b');
+  context.fillStyle = ground; context.fillRect(0, 0, W, H);
+  const flag = heroFlagPath(id, root);
+  if (flag && existsSync(flag)) {
+    const cloth = await loadImage(flag);
+    context.globalAlpha = 0.5;
+    context.drawImage(cloth, W - 1900, 60, 1900, 1900 * cloth.height / cloth.width);
+    context.globalAlpha = 1;
+  }
+  const glow = context.createRadialGradient(W * 0.58, H * 0.82, 40, W * 0.58, H * 0.82, 980);
+  glow.addColorStop(0, 'rgba(120,150,165,0.20)'); glow.addColorStop(1, 'rgba(120,150,165,0)');
+  context.fillStyle = glow; context.fillRect(0, 0, W, H);
+  const tank = await loadImage(layer), tw = 1960, th = tw * tank.height / tank.width;
+  context.drawImage(tank, W * 0.58 - tw / 2, H - th - 20, tw, th);
+  writeFileAtomic(out, canvas.toBuffer('image/png'));
+  return out;
+}
 
 /** A card's states: 'none' (no file), 'published' (its record is the wanted card), 'stale' (any other file). */
 export const CARD_STATES = Object.freeze(['none', 'stale', 'published']);
@@ -94,11 +152,11 @@ export function cardRecordsText(records) {
 }
 
 /** The table as the fleet stands: each visible tank's display name, and its card's site path when it is published. */
-export function tankShareTable({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME } = {}) {
+export function tankShareTable({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME, filmed = filmedIds({ root, records }) } = {}) {
   const tanks = {};
   for (const id of [...VISIBLE_TANK_IDS].sort()) {
     const card = `${TANK_CARD_DIR}/${id}-card.jpg`;
-    const state = cardState(records[id], wantedCard(id, cardFrame), existsSync(join(root, 'public', card)));
+    const state = cardState(records[id], wantedCard(id, cardFrame, filmed), existsSync(join(root, 'public', card)));
     tanks[id] = { name: tankDisplayName(TANK_SPECS[id]), card: state === 'published' ? `/${card}` : null };
   }
   return { schemaVersion: 1, tanks };
@@ -106,9 +164,9 @@ export function tankShareTable({ root = ROOT, records = readCardRecords(root), c
 const tableText = (options) => `${JSON.stringify(tankShareTable(options), null, 1)}\n`;
 
 /** Visible tanks whose card file is stale (on disk, out of the table), with why. */
-export function staleCards({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME } = {}) {
+export function staleCards({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME, filmed = filmedIds({ root, records }) } = {}) {
   return [...VISIBLE_TANK_IDS].sort().flatMap((id) => {
-    const want = wantedCard(id, cardFrame);
+    const want = wantedCard(id, cardFrame, filmed);
     const exists = existsSync(join(root, 'public', TANK_CARD_DIR, `${id}-card.jpg`));
     return cardState(records[id], want, exists) === 'stale' ? [{ id, due: cardDue(records[id], want, { exists }), want }] : [];
   });
@@ -119,10 +177,10 @@ export function staleCards({ root = ROOT, records = readCardRecords(root), cardF
  * they are rendered again (`stale`), and the exit code: 0 only when the table is current and no card is stale, so a
  * CARD_FRAME edit fails until the card is rendered, whether or not the table was rewritten meanwhile.
  */
-export function checkShare({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME } = {}) {
+export function checkShare({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME, filmed = filmedIds({ root, records }) } = {}) {
   const file = join(root, TABLE_PATH);
-  const current = existsSync(file) && readFileSync(file, 'utf8') === tableText({ root, records, cardFrame });
-  const stale = staleCards({ root, records, cardFrame });
+  const current = existsSync(file) && readFileSync(file, 'utf8') === tableText({ root, records, cardFrame, filmed });
+  const stale = staleCards({ root, records, cardFrame, filmed });
   return { current, stale, code: current && !stale.length ? 0 : 1 };
 }
 
@@ -167,41 +225,60 @@ const DUE_TEXT = {
  * written whole or not at all, then its record (saveRecords). A source that is missing or too dark to be a card (a
  * broken delivery) leaves any older card as it is: still published when it is the card wanted ('kept published', said
  * apart from the tanks with no card), else still stale ('no card'). Every card rendered and every one left is printed.
+ * A tank no take has filmed (`stills` maps it to null; --render lists them all) wants its render card: its source is
+ * composeRenderSource's picture of its shipped hero layer, its digest the layer's, and a missing layer throws by name.
  * Returns { wrote, upToDate, kept, skipped }.
  */
 export async function renderDue({ stills, only = null, force = false, root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME,
   schema, render, readSource = readStill, frameAt = filmFrame, digestOf = sourceDigest, frameDir = tmpdir(),
+  composeRender = composeRenderSource, heroLayer = heroLayerPath,
   saveRecords = (next) => writeFileAtomic(join(root, CARD_RECORDS), cardRecordsText(next)), log = console.log }) {
   const dir = join(root, 'public', TANK_CARD_DIR);
   mkdirSync(dir, { recursive: true });
   for (const name of sweepPartials(dir)) log(`removed a killed run's partial ${TANK_CARD_DIR}/${name}`);
   const wrote = [], upToDate = [], kept = [], skipped = [];
+  // a tank this run hands a take for is filmed, whatever the index says yet
+  const filmed = filmedIds({ root, records });
+  for (const [key, still] of Object.entries(stills)) if (still) filmed.add(resolveTankId(key, schema));
   for (const [key, still] of Object.entries(stills)) {
-    const id = resolveTankId(key, schema);
+    // (a take is keyed in its scene's id schema; a render entry, null, names a current id)
+    const id = still === null ? key : resolveTankId(key, schema);
     if (only && !only.includes(id)) continue;
-    const want = wantedCard(id, cardFrame);
+    const want = wantedCard(id, cardFrame, filmed);
     const target = join(dir, `${id}-card.jpg`);
     const exists = existsSync(target);
     const state = cardState(records[id], want, exists);
     /** This run leaves the card as it is: a published one stays published, listed apart from the tanks with no card. */
     const leave = (why) => (state === 'published' ? kept : skipped).push(`${id}: ${why}`);
-    if (!TANK_SPECS[id] || !still || !existsSync(still)) { leave('no still'); continue; }
-    const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
-    const from = want.source === 'film' ? film : still;
-    if (!existsSync(from)) { leave(`no film for its frame at ${want.frame} s`); continue; }
-    const digest = digestOf(from);
-    const due = cardDue(records[id], { ...want, digest }, { force, exists });
-    if (!due) { upToDate.push(id); continue; }
-    let source = still;
-    if (want.source === 'film') {
-      source = join(frameDir, `tank-card-${id}.jpg`);
-      // never read a frame an earlier run left: a seek past the film's end writes nothing
-      rmSync(source, { force: true });
-      frameAt(film, want.frame, source);
-      if (!existsSync(source)) { leave(`its film has no frame at ${want.frame} s (${DUE_TEXT[due]})`); continue; }
+    let source, digest, due;
+    if (want.source === 'render') {
+      if (!TANK_SPECS[id]) { leave('not a tank'); continue; }
+      const layer = heroLayer(id, root);
+      if (!existsSync(layer)) throw new Error(`${id}: its render card needs its hero card layer, and ${layer} is missing (node tools/genHeroCards.mjs --ids=${id}, then hero-cards-compose.mjs ship)`);
+      digest = digestOf(layer);
+      due = cardDue(records[id], { ...want, digest }, { force, exists });
+      if (!due) { upToDate.push(id); continue; }
+      source = await composeRender(id, join(frameDir, `tank-card-${id}-render.png`), root);
+    } else {
+      if (!TANK_SPECS[id] || !still || !existsSync(still)) { leave('no still'); continue; }
+      const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
+      const from = want.source === 'film' ? film : still;
+      if (!existsSync(from)) { leave(`no film for its frame at ${want.frame} s`); continue; }
+      digest = digestOf(from);
+      due = cardDue(records[id], { ...want, digest }, { force, exists });
+      if (!due) { upToDate.push(id); continue; }
+      source = still;
+      if (want.source === 'film') {
+        source = join(frameDir, `tank-card-${id}.jpg`);
+        // never read a frame an earlier run left: a seek past the film's end writes nothing
+        rmSync(source, { force: true });
+        frameAt(film, want.frame, source);
+        if (!existsSync(source)) { leave(`its film has no frame at ${want.frame} s (${DUE_TEXT[due]})`); continue; }
+      }
     }
     const read = await readSource(source);
-    if (read.luma < 0.12) {
+    // (a render card has no darkness bar: its ground is the cards' own dark by design, and the tank layer is lit)
+    if (want.source !== 'render' && read.luma < 0.12) {
       leave(`source too dark (${read.luma.toFixed(2)}); ${state === 'published' ? 'kept the older card, from the source wanted'
         : state === 'stale' ? 'its older card stays unpublished (not from the source wanted)' : 'the link keeps the Gallery\'s card'}`);
       continue;
@@ -226,7 +303,9 @@ async function renderCards(stills, only) {
   const { filterPublishedImage, masterFilter } = await import('./master-filter.mjs');
   const puppeteer = (await import('puppeteer')).default;
   const filter = masterFilter();
-  if (!filter) throw new Error('no master filter (set COT_MASTER_FILTER)');
+  // a take's still is graded through the master filter; a render card (first-party procedural pixels) goes through it
+  // when one is configured and is published as rendered otherwise
+  if (!filter && Object.values(stills).some(Boolean)) throw new Error('no master filter (set COT_MASTER_FILTER)');
   const index = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/fleet/index.json'), 'utf8'));
   let browser = null, page = null;
   const render = async (id, source, read) => {
@@ -266,8 +345,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (check.stale.length) console.log(`tank-share: ${check.stale.length} card(s) on disk stay unpublished until rendered again (above)`);
     process.exit(check.code);
   }
-  const stills = arg('cards');
-  if (stills) await renderCards(JSON.parse(readFileSync(stills, 'utf8')), arg('only')?.split(','));
+  const stillsFile = arg('cards');
+  const stills = stillsFile ? JSON.parse(readFileSync(stillsFile, 'utf8')) : {};
+  // --render: every visible tank no take has filmed gets its render card (the hero card layer in the share design)
+  if (process.argv.includes('--render')) {
+    const filmed = filmedIds();
+    for (const id of VISIBLE_TANK_IDS) if (!filmed.has(id) && CARD_FRAME[id] === undefined && !(id in stills)) stills[id] = null;
+  }
+  if (Object.keys(stills).length) await renderCards(stills, arg('only')?.split(','));
   writeFileAtomic(TABLE, tableText());
   reportStale();
   const table = tankShareTable();
