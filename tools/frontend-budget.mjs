@@ -392,12 +392,27 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   plate fits in the anatomy data. home +457, docs +681, notFound +485: the shared tokens and components CSS (the
   //   ready control, the training mode tone). gallery +1 request. Follow-up owed to the tutorial lane: trainingGround and
   //   hullField behind the tutorial's dynamic import (target: the +2 requests and most of the +872 B entry back).
-  game: { brotliBytes: 1256205, requests: 151, entryBrotliBytes: 252459 },
-  cn: { brotliBytes: 1302928, requests: 152, entryBrotliBytes: 252459 },
-  gallery: { brotliBytes: 790344, requests: 84 },
-  home: { brotliBytes: 29390, requests: 8 },
-  docs: { brotliBytes: 37931, requests: 12 },
-  notFound: { brotliBytes: 19219, requests: 7 },
+  // 2026-11-22 (integrator 274.0, coordinator ruling, at the release build of integ/274.0 cc57acb17b): nine pins re-set at
+  //   their measure, attributed per module (sourcemapped builds of the pin ec9b38a11d and the head, each grown module
+  //   mapped to the first-parent merges that touched it). game +15,349 B brotli (+1.2 %), cn +15,798, gallery +11,776:
+  //   roof-station-keepout-275 (stationSweepKeepOut.ts new, ~1.9 KB, and auxiliaryWeapons split into its own chunk, ~1.1
+  //   KB, +1 request), ttd-275 (ttdArmor.ts new chunk, ~1.8 KB, +1 request), hydro-arms-274 (hydraulicSuspension.ts new,
+  //   ~1.8 KB; loadedTrackContact, suspensionPatterns, runningGearFinish ~0.7 KB), the turret-deck lane (turretSeatRace
+  //   ~1.5 KB, ringZoneGuard new ~0.8 KB; turret-deck-gate-274b and turret-deck-274-fix to -fix3), tankFactoryCore ~0.8 KB
+  //   (hydro-arms-274, turret-deck-gate-274b, -fix2 together), decorations ~0.8 KB (searchlights-274, brazil-kit-274b,
+  //   oplot-275, roof-station-keepout-275 together), the T-80 lane (t80uXApron replaces t80uXArmor, rubberSkirtSheets new,
+  //   sourceXSovietAuxArmor, ~1.1 KB; t80-skirts-274, t80-274-fix to -fix3; the skirt growth Main accepted), main.ts ~0.5
+  //   KB (ui-motion-275, pad-controls-274, the tutorial lanes, armour-live-pen-274-fix together), locales-275b
+  //   (localePrefix ~0.4 KB) and t62-275 (roofStationArcs new); garageAuxiliarySummary.generated splits into its own chunk
+  //   (+1 request) and vehicleAuxiliaryGeometry's chunk goes. Requests: game and cn +2, gallery +1. The entry fell 1,282 B
+  //   and keeps its pin. home +754, docs +755, notFound +710: locales-275b's localePrefix.ts in the shared chunk (+382 B)
+  //   and its five new locales' hreflang links and i18n catalog entries in each page.
+  game: { brotliBytes: 1271554, requests: 153, entryBrotliBytes: 252459 },
+  cn: { brotliBytes: 1318726, requests: 154, entryBrotliBytes: 252459 },
+  gallery: { brotliBytes: 802120, requests: 85 },
+  home: { brotliBytes: 30144, requests: 8 },
+  docs: { brotliBytes: 38686, requests: 12 },
+  notFound: { brotliBytes: 19929, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. The entry's
  *  256 B covers its commit-hash noise, up to 201 B over five builds in round seven (owner approved 2026-11-13, V11). A
