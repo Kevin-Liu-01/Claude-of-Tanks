@@ -1038,11 +1038,13 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m1a2_sepv3_aus: 'paint_leopard_as1',
   redback: 'paint_leopard_as1',
   // the 152 mm line's Soviet prototypes (release 272, owner 2026-11-11: "give the molot and obj 292 actual camos"; they
-  // wore the national Russian plain): the Object 292 in its own paint, the three-tone the surviving tank wore at Kubinka
-  // (the Patriot Park photograph: pale sand under grey-green and near-black bands); the Molot, whose one photograph shows
+  // wore the national Russian plain): the Object 292 in the Russian Woodland the T-80U Bars-M family wears (release 275,
+  // Kevin 2026-11-22: "russian woodland type camo suits obj 292 much better too"; its 272 paint, the three-tone the
+  // surviving tank wore at Kubinka, pale sand under grey-green and near-black bands, stays in the catalog and is its spec's
+  // Factory coat); the Molot, whose one photograph shows
   // no scheme, in the Soviet and Russian Army's three-colour deforming coat of its era (late 1980s to the 1990s: green
   // under khaki and black blotches), the Pantsir-S1's paint (no new paint)
-  object292: 'paint_object292',
+  object292: 'paint_ru_t80u_modern',
   object477_molot: 'paint_pantsir_s1',
 });
 

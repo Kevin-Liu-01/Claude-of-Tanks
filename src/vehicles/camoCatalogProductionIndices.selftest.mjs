@@ -167,8 +167,8 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'challenger3_td', 
   // release 270: the Tunguska-M and the Pantsir-S1 each in its own Russian coat (owner 2026-11-05: "tunguska and
   // pantsir need camos")
   'tunguska_m', 'pantsir_s1',
-  // release 272: the Object 292 in its own Kubinka three-tone (owner 2026-11-11: "give the molot and obj 292 actual camos")
-  'object292'];
+  // (release 272 put the Object 292 here in its own Kubinka three-tone; 275 repaints it, ADDED_IN_REPAINT below)
+];
 // Release 267: the Danish Leopard 2A7 DK in its own coat under the Barracuda cover and the Centurion Mk 5/2 DK in its
 // 1980s three-tone, appended after 266's; then the Japan line's Type 90 (B) in its JGSDF two-tone;
 // then the original BMPT Terminator in its Engineering Technologies 2012 three-tone desert.
@@ -207,7 +207,9 @@ const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't
   strv103b_net: 'strv103b' };
 // Added since production and repainted under a new paint id, the old id keeping its recipe for the hulls and saved
 // selections still wearing it (273: the Olifant Mk 1B in the SANDF's 1994 three-colour; the TTD keeps paint_olifant_mk1b).
-const ADDED_IN_REPAINT = { olifant_mk1b: 'paint_olifant_mk1b_2' };
+// release 275 (Kevin 2026-11-22: "russian woodland type camo suits obj 292 much better too"): the Object 292 in the shared
+// Russian Woodland (the T-80U Bars-M family's), its 272 Kubinka three-tone kept in the catalog and as its Factory coat
+const ADDED_IN_REPAINT = { olifant_mk1b: 'paint_olifant_mk1b_2', object292: 'paint_ru_t80u_modern' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 // Release 275 (Kevin 2026-11-21): the T-84BM Oplot-M and Oplot-T, added in their own 262 paints (still selectable, above),
 // stock in Ukrainian-coloured Signatures of their own.

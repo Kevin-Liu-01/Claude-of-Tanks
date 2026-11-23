@@ -146,6 +146,34 @@
   - russia152.selftest: the hull-width clause now lets Kubinka's own skirt run sit up to 8 cm inside the T-80U X's
     leaning sheets or 3 cm outside them.
 
+- object292-cheeks-275 (Kevin 2026-11-22, his two surface markups on the flat rear faces at turret-local z 1.098; his
+  look picks from the lane's mockup: cast noses, jammer and laser warner, curved cast shield; on the stills, custom
+  sensors in place of the Shtora):
+  - Cheeks: the marked faces were the backs of the T-80U X casting's two nose prisms (profiles/t80uX.ts casting(),
+    covered by its ERA there, bare here). The 292 now builds without them (buildT80UXCasting cheekNoses false) and lofts
+    its own cast noses from the shell's own section (T80U_X_CAST_ROWS): from 18 cm inside the shell at 4 mm in, out of
+    its end at z 1.108, narrowing and dropping to a rounded nose at z 1.48, the inner walls at x 0.44 either side of the
+    mantlet, the foot rising 3 cm off the deck the turret sweeps. A CPU ray probe sees 0.112 m2 of the old flat backs
+    and none after. The welded wedge boxes stay on the noses.
+  - Sensors: custom sensor pods (Kevin on the first stills: "the shtora looks ugly make them custom sensors instead"):
+    a low armoured housing each side in the turret's paint, its front raked over a short lip, a tinted wide-angle
+    window in a dark frame and a small round lens on the raked face, a laser-warning dome on its outboard rear corner,
+    on a solid plinth seated into the nose ahead of the wedge box. The Kubinka tank carried no such kit: Kevin's ask.
+  - Smoke: the T-80BV's eight 902B Tucha tubes, four a side on the casting's upper flank behind the wedge boxes
+    (z 0.40-0.64), raked up and out on brackets over a rail and marked as smoke sockets, so the salvo is the eight
+    drawn (it was the decor's generic pair of eight; the fleet's drawn-smoke rule, decorations.ts drawsOwnSmoke, keeps
+    the pair off a build with marked tubes). The Kubinka photographs show none (the
+    launchers are off, as on most museum pieces); the smoke-salvo lane asked for the BV's.
+  - Mantlet: a cast shield whose face is a cylinder (r 0.31 m) about the trunnion axis, 0.82 m wide with chamfered
+    ends, so it keeps an even gap to the noses at every pitch; trunnion caps with bolt rings, the centre insert's weld
+    seams, a brow lip, the coax port to the gun's right and the auxiliary sight aperture under a hood to its left. Its
+    underside stays 0.203 m under the axis from -5 to +15 degrees.
+  - Gun assembly: a bolted cradle flange where the barrel enters the shield, the recoil housing (the old root drum's
+    envelope, underside 0.175 m under the bore) with two clamp bands and a guide key, then the step and cone to the
+    thermal sleeve. The published depression curve stays (a fresh sweep at 26 mm is at or deeper than it everywhere).
+- Camo (object292-cheeks-275, Kevin 2026-11-22: "russian woodland type camo suits obj 292 much better too"): stock in the shared Russian Woodland (paint_ru_t80u_modern, the T-80U Bars-M family's green, black and
+  brown); the 272 Kubinka three-tone (paint_object292) stays in the catalog and is the spec's Factory coat.
+
 ## Publication receipt (only if requested)
 
 - Not requested; the lane's READY to Main carries the branch, sha and receipts.
