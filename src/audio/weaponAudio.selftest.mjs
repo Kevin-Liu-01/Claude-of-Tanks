@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   FLEET_ROWS, LAUNCH_ASSET, WEAPON_CLASSES, WEAPON_ROWS, brakeGainDb, eventMount, isLaunchProfile, loaderFor, missileLaunchFor,
-  mountForRound, readyRackDoor, reloadAssets, resolveReloadCuePlan, resolveWeaponReport, stationMount, weaponKeyFor, weaponMounts,
+  mountForRound, readyRackDoor, reloadAssets, resolveReloadCuePlan, roundHandling, slideOf, resolveWeaponReport, stationMount, weaponKeyFor, weaponMounts,
   weaponReportAssets,
 } from './weaponAudio.ts';
 
@@ -111,14 +111,14 @@ const assets = (plan) => plan.cues.map((c) => c.asset);
 assert.equal(resolveReloadCuePlan(0.3, 'shell', eventMount(30, '2a42'), 'autocannon').profile, 'rapid', 'an autocannon cycle is its own action');
 assert.equal(resolveReloadCuePlan(0.75, 'shell', eventMount(30, 'rarden-l21a1'), 'autocannon').profile, 'rapid', 'even a slow Rarden');
 const leoPlan = resolveReloadCuePlan(6, 'shell', main(LEO2), 'manual', { rackDoor: true });
-assert.deepEqual(types(leoPlan), ['breechOpen', 'stubEject', 'ammoDoorOpen', 'shellGrab', 'ammoDoorClose', 'ram', 'breechClose'],
+assert.deepEqual(types(leoPlan), ['breechOpen', 'stubEject', 'ammoDoorOpen', 'shellGrab', 'ammoDoorClose', 'slide', 'ram', 'breechClose'],
   `a combustible case leaves only its stub; the loader opens the bustle door (${types(leoPlan)})`);
 const m60Plan = resolveReloadCuePlan(6.8, 'shell', main({ caliberMm: 105, shells: [{ name: 'DM63 (105) APFSDS', caliberMm: 105 }] }), 'manual');
 assert.ok(assets(m60Plan).includes('case_eject_brass') && !types(m60Plan).includes('ammoDoorOpen'), 'a 105 mm brass case clangs out; hull racks have no door');
 assert.ok(assets(resolveReloadCuePlan(4.6, 'shell', main({ caliberMm: 76, shells: [{ name: 'M352 HE-T', caliberMm: 76 }] }), 'manual')).includes('case_eject_brass_light'),
   'a 76 mm case is lighter');
 const cr2Plan = resolveReloadCuePlan(6.8, 'shell', main(CR2), 'manual');
-assert.deepEqual(types(cr2Plan), ['breechOpen', 'ventEject', 'shellGrab', 'ram', 'bagCharge', 'breechClose', 'ventLoad'],
+assert.deepEqual(types(cr2Plan), ['breechOpen', 'ventEject', 'shellGrab', 'slide', 'ram', 'bagCharge', 'breechClose', 'ventLoad'],
   `the L30: vent tube out, projectile, bag charge, breech, a fresh vent tube (${types(cr2Plan)})`);
 assert.ok(!types(resolveReloadCuePlan(20, 'shell', main(AVRE), 'manual')).includes('bagCharge'), "the L9's charge rides in the projectile's base");
 const kvPlan = resolveReloadCuePlan(20.5, 'shell', main(KV2), 'manual');
@@ -127,12 +127,12 @@ assert.ok(assets(kvPlan).includes('case_eject_brass_heavy') && assets(kvPlan).in
   `the 152 mm handled as the superheavy it is (${assets(kvPlan)})`);
 assert.equal(types(resolveReloadCuePlan(8.6, 'shell', main(M551A1), 'manual'))[0], 'scavenge', 'the gun-launcher purges its bore');
 const az = resolveReloadCuePlan(7, 'shell', main(T90), 'carousel_az');
-assert.deepEqual(types(az), ['stubPort', 'carouselTurn', 'cassetteLift', 'chainRam', 'chargeChainRam', 'breechClose'],
+assert.deepEqual(types(az), ['stubPort', 'carouselTurn', 'cassetteLift', 'slide', 'chainRam', 'chargeSlide', 'chargeChainRam', 'breechClose'],
   `the AZ carousel: the stub out through its hatch, projectile then charge (${types(az)})`);
 assert.equal(types(resolveReloadCuePlan(7, 'shell', main(T90), 'basket_mz'))[0], 'stubCatch', 'the MZ basket keeps its stub');
 assert.equal(types(resolveReloadCuePlan(6.5, 'shell', main(T90), 'basket_mz'))[1], 'basketTurn');
 const bustle = resolveReloadCuePlan(5.2, 'shell', main(LEO2), 'bustle');
-assert.deepEqual(types(bustle), ['stubEject', 'bustleIndex', 'bustleRam', 'breechClose']);
+assert.deepEqual(types(bustle), ['stubEject', 'bustleIndex', 'slide', 'bustleRam', 'breechClose']);
 assert.equal(types(resolveReloadCuePlan(5.4, 'shell', main({ caliberMm: 105, shells: [{ name: 'x', caliberMm: 105 }] }), 'fixed_ram'))[0], 'caseOutside',
   "the Strv 103 throws its case out of the hull's rear");
 const magazine = resolveReloadCuePlan(9, 'magazine', main(LEO2), 'bustle', { magazineRounds: 3 });
@@ -145,17 +145,23 @@ assert.deepEqual(types(resolveReloadCuePlan(8, 'shell', arkan, 'ifv_autoloader')
 assert.deepEqual(types(resolveReloadCuePlan(48, 'magazine', mountForRound(weaponMounts(TOS), '220 mm Salvo HE'), 'rocket_rack')).filter((t) => t === 'rocketLoad').length, 3);
 const gunshipPlan = resolveReloadCuePlan(3.5, 'shell', eventMount(152, 'gunship-howitzer'), loaderFor(null, eventMount(152, 'gunship-howitzer')));
 assert.deepEqual(types(gunshipPlan), ['breechOpen', 'gunshipLoad', 'breechClose'], 'the AC-130 howitzer is loaded by hand');
-for (const plan of [leoPlan, m60Plan, cr2Plan, kvPlan, az, bustle, magazine, towPlan]) {
-  for (let i = 1; i < plan.cues.length; i++) assert.ok(plan.cues[i].at > plan.cues[i - 1].at, `cues in order (${types(plan)})`);
-  assert.ok(plan.cues.every((c) => c.at >= 0 && c.at < 0.99), 'inside the cycle');
+// a stroke's layers share their anchor and follow it by their own seconds: in time order, every cue inside the cycle
+const totals = new Map([[leoPlan, 6], [m60Plan, 6.8], [cr2Plan, 6.8], [kvPlan, 20.5], [az, 7], [bustle, 5.2], [magazine, 9], [towPlan, 10]]);
+for (const [plan, total] of totals) {
+  const when = plan.cues.map((c) => c.at * total + (c.delayS ?? 0));
+  for (let i = 1; i < when.length; i++) assert.ok(when[i] >= when[i - 1], `cues in order (${types(plan)})`);
+  assert.ok(when.every((t) => t >= 0 && t < total - 0.07), `inside the cycle, ahead of the ready latch (${types(plan)})`);
 }
 
 // The reload lines up with the real reload time: the breech closes a fixed time before the cycle ends, the case is thrown
 // a fixed time after it starts, a heavier round's work takes longer.
 for (const total of [4, 6, 9, 14]) {
   const plan = resolveReloadCuePlan(total, 'shell', main(LEO2), 'manual');
-  const close = plan.cues.find((c) => c.type === 'breechClose').at;
-  assert.ok(Math.abs((1 - close) * total - 0.22 * 1.1) < 0.05, `the breech closes ~0.24 s before ready on a ${total} s cycle`);
+  const closeCue = plan.cues.find((c) => c.type === 'breechClose');
+  const close = closeCue.at * total + closeCue.delayS;
+  assert.ok(Math.abs(total - close - 0.22 * 1.1) < 0.05, `the breech closes ~0.24 s before ready on a ${total} s cycle`);
+  const slide = plan.cues.find((c) => c.type === 'slide');
+  assert.ok(Math.abs(close - (slide.at * total + slide.maxDurS) - 0.075) < 0.03, 'and slams on the seat, right after the round slides home');
   const stub = plan.cues.find((c) => c.type === 'stubEject').at;
   assert.ok(Math.abs(stub * total - 0.35 * 1.1) < 0.05, `the stub drops ~0.39 s after the shot on a ${total} s cycle`);
 }
@@ -163,8 +169,41 @@ const before = (plan, type) => (1 - plan.cues.find((c) => c.type === type).at) *
 assert.ok(before(resolveReloadCuePlan(20, 'shell', main(KV2), 'manual'), 'ram') > before(resolveReloadCuePlan(20, 'shell', main(LEO2), 'manual'), 'ram'),
   'a 152 mm projectile is rammed earlier: its charge follows');
 
+// reload-sfx-275: the slide is derived from the round (its bore and construction), never a per-tank table. A bigger
+// round slides lower, darker, longer and heavier; a combustible case is duller than brass; the 125 mm's charge has its own.
+const slideFor = (gun, loader, total = 8) => resolveReloadCuePlan(total, 'shell', main(gun), loader).cues.find((c) => c.type === 'slide');
+const roundLadder = [[30, null], [76, 'M339 HE'], [105, 'DM63 (105) APFSDS'], [120, 'DM53 APFSDS'], [152, 'OF-530 HE']];
+const slides = roundLadder.slice(1).map(([mm, name]) => slideFor({ caliberMm: mm, shells: [{ name, caliberMm: mm }] }, 'manual'));
+for (let i = 1; i < slides.length; i++) {
+  assert.ok(slides[i].rate < slides[i - 1].rate, `a bigger bore slides lower (${slides.map((c) => c.rate)})`);
+}
+const sameSkin = [30, 76, 105, 125, 152].map((mm) => slideOf(mm, 0.9, 18, 'brass', 'hand').lowpassHz);
+for (let i = 1; i < sameSkin.length; i++) assert.ok(sameSkin[i] < sameSkin[i - 1], `and darker (${sameSkin})`);
+assert.ok(slides[2].maxDurS > slides[0].maxDurS + 0.15, `a 105 mm round takes longer to slide home than a 76 mm one (${slides.map((c) => c.maxDurS)})`);
+assert.ok(new Set(slides.map((c) => `${c.rate}/${c.lowpassHz}/${c.maxDurS}`)).size === slides.length, 'every calibre class sounds its own');
+const brass120 = slideOf(120, 0.98, 20, 'brass', 'hand');
+const card120 = slideOf(120, 0.98, 20, 'combustible', 'hand');
+assert.ok(card120.lowpassHz < brass120.lowpassHz && card120.gainDb < brass120.gainDb, 'a combustible case scrapes duller than brass');
+assert.ok(slideOf(125, 0.68, 15.6, 'projectile', 3).slideS < slideOf(125, 0.68, 15.6, 'projectile', 'hand').slideS, 'a chain rammer snaps the round home faster than an arm');
+const r125 = roundHandling(WEAPON_ROWS['125/two_piece']);
+assert.ok(r125.chargeLengthM > 0.3 && r125.lengthM > 0.6 && r125.lengthM < 0.8, `the 125 mm: projectile, then its charge (${JSON.stringify(r125)})`);
+assert.ok(roundHandling(WEAPON_ROWS['105/unitary_brass']).lengthM > 0.85 && roundHandling(WEAPON_ROWS['152/separate_case']).massKg > 35,
+  'a 105 mm round is about a metre long; a 152 mm projectile weighs over 35 kg');
+// an autoloader's stroke: the projectile, then the charge, the block rising on the last piece home
+assert.ok(az.cues.find((c) => c.type === 'chargeSlide') && az.cues.filter((c) => c.type === 'breechClose').length === 1, 'the carousel: two slides, one slam');
+// a cased charge's push is the scrape itself: played once, whole to its seat
+assert.equal(kvPlan.cues.filter((c) => c.asset === 'charge_case_load').length, 2, 'the howitzer: projectile slide, then the cased charge');
+// an autocannon's box run dry: a new box latched in and the first round charged, pitched by the bore; its shots stay silent
+const box20 = resolveReloadCuePlan(4, 'magazine', eventMount(20, 'rh202'), 'autocannon');
+const box50 = resolveReloadCuePlan(4, 'magazine', eventMount(50, 'xm913-50'), 'autocannon');
+assert.deepEqual(types(box20), ['beltBox', 'beltCharge'], 'the box, then the charging handle');
+assert.ok(box20.cues[0].rate > box50.cues[0].rate, 'a 20 mm box rattles higher than a 50 mm one');
+assert.equal(resolveReloadCuePlan(0.9, 'magazine', eventMount(30, '2a42'), 'autocannon').profile, 'rapid', 'a quick feed swap stays the gun\'s own action');
+
 // Every asset a plan can play is in the hull's warm.
 assert.ok(reloadAssets(main(CR2), 'manual').includes('bag_charge_load') && reloadAssets(main(CR2), 'manual').includes('latch_ready'));
+assert.ok(reloadAssets(main(LEO2), 'manual').includes('charge_case_load'), 'the slide is warmed with the hull');
+assert.ok(reloadAssets(eventMount(30, '2a42'), 'autocannon').includes('magazine_swap'), "an autocannon's box is warmed");
 
 console.log(`weaponAudio.selftest: ${Object.keys(WEAPON_ROWS).length} rows (bore/construction), keys from the specs, the brake, `
   + `and the choreography of every construction and loader make passed`);

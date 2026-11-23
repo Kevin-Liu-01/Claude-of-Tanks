@@ -161,9 +161,14 @@ assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank 
 assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
-for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
+// (reload-sfx-275) a frame between the projectile's stroke and the charge's: each is a slide, the rammer and, last, the slam
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.88, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
 bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
 names = logSince(since).map((e) => e.n);
+assert.equal(names.filter((n) => n === 'charge_case_load').length, 2, `the projectile and its charge each slide home (${names})`);
+const slam = logSince(since).find((e) => e.n === 'breech_close');
+const chargeSlide = logSince(since).filter((e) => e.n === 'charge_case_load').at(-1);
+assert.ok(slam.t > chargeSlide.t + 0.1 && slam.t < chargeSlide.t + 0.4, `the block slams on the charge's seat (${chargeSlide.t} → ${slam.t})`);
 for (const id of ['stub_port_eject', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
   assert.ok(names.includes(id), `the T-72's AZ carousel reload plays ${id} (${names})`);
 }

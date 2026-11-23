@@ -336,11 +336,32 @@ the authoritative reload, and a heavier round's work takes longer.
 | TOS-1A | the reloading crane lowers rockets into the tubes |
 | AC-130 | the howitzer's breech drops open, a round is hefted and rammed, the breech closes; a pylon missile arms with its relay |
 
+The round going home is a stroke (reload-sfx-275): the round slides along the
+tray into the chamber, the loader's fist or the rammer pushes under it, and a
+semi-automatic block slams up on the seat (shhk, clank) in the 60–120 ms after
+it. Nothing in a stroke is looked up per tank: `roundHandling` estimates the
+round's length and mass from its bore and construction (a 76 mm round 0.68 m
+and 7 kg, a 105 mm 0.95 m and 18 kg, a 125 mm projectile 0.68 m with its
+charge apart, a 152 mm projectile 44 kg), and `slideOf` turns them into the
+slide: its pitch by the bore, its cutoff by the bore and the skin (brass
+brightest, lacquered steel, the bare projectile's band, a combustible case's
+felt and card darkest), its length the round's travel at the loader's speed (an
+arm slows with the mass, a chain rammer snaps a round home at 3 m/s, a bustle
+rammer pushes at 2.5), its weight by the mass. Every slide is cut from one long
+recording of a case scraping along a tray (`charge_case_load`), so no new
+asset ships. A two-piece round is two strokes, the projectile then its charge,
+the block rising on the charge; a screw breech (the bagged and cased heavy
+guns) is swung shut by hand after the charge, and a cased charge's push is its
+own scrape, played whole to its seat. Only our own crew's reloads sound (the
+owner, 2026-11-22).
+
 An autocannon's or machine gun's per-shot cycle is its own action, heard with
 the shot (`ac_feed`); selecting another round on a dual-feed autocannon
 switches belts with a solenoid clack, on an autoloader turns the carousel or
-basket, on a bustle loader indexes it. The simulation never reloads a belt, a
-roof gun or a smoke discharger, so none of those has a reload sound.
+basket, on a bustle loader indexes it. A box run dry (a magazine reload over
+1.2 s) is a new box latched into the feed and the first round charged, pitched
+by the bore. The simulation never reloads a belt, a roof gun or a smoke
+discharger, so none of those has a reload sound.
 
 Every cycle ends in the lock that says the gun is ready. The turret drive has
 a start when a real slew begins (never on a servo flicker), its electric or
@@ -1557,6 +1578,18 @@ without it (`--lines <id>`).
   The sound-effect payload grew 0.66 MB (33.7 to 34.3 MB; the selftest cap
   rose to 35 MB pending Main's ruling), decoded only in an Air Support battle;
   the voice packs grew about 3.2 MB across 17 languages.
+
+- **2026-11-22, the round slides home (reload-sfx-275).** The owner: "can we add a
+  sound effect to our reloading seqeucnes, that sounds different for all
+  calibers, of a shell being slid in? its rly satifsying". The ram had been
+  three recordings shared by weight class (the 76 and the 105 mm the same) at
+  a rate between 0.88 and 1.15, the breech closing 0.6 s after it. Each ram
+  is now a stroke derived from the round (Your own tank: loading and
+  machinery, above): the slide, the push and the block slamming on the seat,
+  on every loader make, two strokes for a two-piece round, and an autocannon's
+  dry box refilled. Layered from shipped takes, no generation, no new asset;
+  own crew only. The owner chose it from a nine-clip listening set rendered
+  offline from the plans.
 
 ### Cost
 
