@@ -23,6 +23,7 @@
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
+import { quaternionFromEuler } from '../sim/detRotation.ts';
 import type { BotMission } from '../sim/matchModes.ts';
 import { BOT_TURBO, createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
 import { tankAirborne } from '../sim/hullFlight.ts';
@@ -4796,7 +4797,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const desiredYaw = detMath.atan2(dx, dz);
     const desiredPitch = detMath.atan2(dy, horizontal);
     _hullEuler.set(-(state.visualPitch || 0), state.yaw, state.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(
       detMath.sin(state.turretYaw) * detMath.cos(state.gunPitch),
       detMath.sin(state.gunPitch),
@@ -4991,7 +4992,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
     const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = detMath.hypot(dx, dz) || 1;
     _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
       .applyQuaternion(_hullQuat).normalize();
     if (Math.abs(wrapAngle(detMath.atan2(dx, dz) - detMath.atan2(_vF.x, _vF.z))) > BALL_SHOT.bearRad) return true;
@@ -5025,7 +5026,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.fire = false;
     if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
     _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
       .applyQuaternion(_hullQuat).normalize();
     const dx = aim.x - st.pos.x, dy = aim.y - (st.pos.y + selfEyeM), dz = aim.z - st.pos.z, d = detMath.hypot(dx, dy, dz) || 1;

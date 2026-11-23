@@ -16,6 +16,7 @@
  * fog colour and the hemisphere light the summary derives.
  */
 import * as THREE from 'three';
+import { vectorFromSphericalCoords } from '../sim/detRotation.ts';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 
 /** Planet and atmosphere radii (km), the paper's Earth. */
@@ -152,8 +153,7 @@ function hexToLinear(hex: number): [number, number, number] {
 
 /** Unit vector toward a preset's sun from its elevation / azimuth (the sky.ts convention). */
 export function sunDirectionOf(sunElevationDeg: number, sunAzimuthDeg: number): [number, number, number] {
-  const v = new THREE.Vector3().setFromSphericalCoords(
-    1, THREE.MathUtils.degToRad(90 - sunElevationDeg), THREE.MathUtils.degToRad(sunAzimuthDeg));
+  const v = vectorFromSphericalCoords(new THREE.Vector3(), 1, THREE.MathUtils.degToRad(90 - sunElevationDeg), THREE.MathUtils.degToRad(sunAzimuthDeg));
   return [v.x, v.y, v.z];
 }
 

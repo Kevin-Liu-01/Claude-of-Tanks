@@ -870,6 +870,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',
+    // 276 (sim-det-trig): three's rotation constructors on detMath, bit-identical to three on detMath, and to three on
+    // native Math wherever native Math agrees with detMath (tools/det-math-lint.mjs flags the methods by name)
+    'src/sim/detRotation.selftest.mjs',
     // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
