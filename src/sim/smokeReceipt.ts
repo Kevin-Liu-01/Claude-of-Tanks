@@ -1,4 +1,5 @@
 import { Euler, Matrix4, Vector3 } from 'three';
+import { matrixRotationY, matrixRotationFromEuler } from './detRotation.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { smokeCloudBanks, SMOKE_LAUNCH_SPEED_MPS, type SmokeCanister } from './smokeBallistics.ts';
 import type { SmokeScreen } from './smokeScreen.ts';
@@ -63,8 +64,8 @@ export function restoreSmokeScreen(screen:SmokeScreen,wind?:readonly [number,num
   const key=JSON.stringify(screen)+(wind?`|${wind[0]},${wind[1]}`:''),cached=restored.get(key);if(cached)return cached;
   const s=screen.source,kit=auxiliaryCapabilities({id:s[0]});
   if(!kit||kit.smoke.length!==flightMs.length)return screen;
-  const hull=new Matrix4().makeRotationFromEuler(new Euler(-s[6],s[4],s[7],'YXZ')).setPosition(s[1],s[2],s[3]);
-  const turret=hull.clone().multiply(new Matrix4().makeRotationY(s[5]).setPosition(s[8],s[9],s[10]));
+  const hull=matrixRotationFromEuler(new Matrix4(), new Euler(-s[6],s[4],s[7],'YXZ')).setPosition(s[1],s[2],s[3]);
+  const turret=hull.clone().multiply(matrixRotationY(new Matrix4(), s[5]).setPosition(s[8],s[9],s[10]));
   const position=new Vector3(),direction=new Vector3();
   const canisters=kit.smoke.map((socket,index):SmokeCanister=>{
     const frame=socket.owner==='hull'?hull:turret;

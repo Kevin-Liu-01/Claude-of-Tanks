@@ -18,6 +18,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { quaternionFromEuler, matrixRotationY } from './detRotation.ts';
 import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
@@ -649,10 +650,10 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec,
   const barrelM = Math.max(0.5, finite(armor.gunBarrel && armor.gunBarrel.lengthM, 3));
 
   _euler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _quat.setFromEuler(_euler);
+  quaternionFromEuler(_quat, _euler);
   _unit.setScalar(state.modeScale??1);
   _hullMatrix.compose(state.pos, _quat, _unit);
-  _localMatrix.makeRotationY(state.turretYaw);
+  matrixRotationY(_localMatrix, state.turretYaw);
   _localMatrix.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
   _turretMatrix.multiplyMatrices(_hullMatrix, _localMatrix);
 

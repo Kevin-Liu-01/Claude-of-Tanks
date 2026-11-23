@@ -1,6 +1,7 @@
 /** Fixed-step flight shared by solo and multiplayer. Hits stay in the normal projectile pipeline. */
 import { botDriven } from './botDriven.ts';
 import { Vector3, Quaternion } from 'three';
+import { quaternionFromAxisAngle, applyAxisAngle } from './detRotation.ts';
 import { createShell, type ShellEntity } from './ballistics.ts';
 import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
@@ -123,8 +124,8 @@ export function avoidDroneObstacles(world: AerialWorldQuery, ownerId: string, po
   if (_axis.lengthSq() < 1e-8) _axis.set(1, 0, 0);
   _axis.normalize();
   for (const pitch of rules.climbRad) {
-    _escape.copy(_probe).applyQuaternion(_q.setFromAxisAngle(_axis, pitch));
-    if (_escape.y < _probe.y) _escape.copy(_probe).applyQuaternion(_q.setFromAxisAngle(_axis, -pitch));
+    _escape.copy(_probe).applyQuaternion(quaternionFromAxisAngle(_q, _axis, pitch));
+    if (_escape.y < _probe.y) _escape.copy(_probe).applyQuaternion(quaternionFromAxisAngle(_q, _axis, -pitch));
     if (probeClear(world, position, _escape, reach) >= reach) { commanded.copy(_escape).multiplyScalar(speed); return true; }
   }
   // Around: level side-steps, the roomier side first.
@@ -132,9 +133,9 @@ export function avoidDroneObstacles(world: AerialWorldQuery, ownerId: string, po
   if (_flat.lengthSq() < 1e-8) _flat.set(0, 0, 1);
   _flat.normalize();
   for (const yaw of rules.sideRad) {
-    const left = _escape.copy(_flat).applyAxisAngle(WORLD_UP, yaw), leftRoom = probeClear(world, position, left, reach);
+    const left = applyAxisAngle(_escape.copy(_flat), WORLD_UP, yaw), leftRoom = probeClear(world, position, left, reach);
     const leftX = left.x, leftZ = left.z;
-    const right = _escape.copy(_flat).applyAxisAngle(WORLD_UP, -yaw), rightRoom = probeClear(world, position, right, reach);
+    const right = applyAxisAngle(_escape.copy(_flat), WORLD_UP, -yaw), rightRoom = probeClear(world, position, right, reach);
     const best = Math.max(leftRoom, rightRoom);
     if (best >= reach * .75) {
       if (leftRoom >= rightRoom) _escape.set(leftX, 0, leftZ);
