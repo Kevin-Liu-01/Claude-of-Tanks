@@ -110,6 +110,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/galleryShots.selftest.mjs': lists('public/media/gallery-r*/*'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
+  'src/ui/pointers/pointerFollowView.selftest.mjs': lists('src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),
   'src/ui/mapBackdrop.selftest.mjs': lists('public/maps/cards/*.webp'),
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),

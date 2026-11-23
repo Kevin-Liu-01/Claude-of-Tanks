@@ -1218,8 +1218,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tutorial/tutorialGuide.selftest.mjs',
     // guidance-pointers-275 (Kevin: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the
     // ui"): the one pointer primitive: the follow trail and turn arrow, the warnings' ranked, merged, capped rim bubbles, and
-    // their sources (tanks with a gun on the player, air runs, missiles, the objective that matters now)
+    // their sources (tanks with a gun on the player, air runs, missiles, drones), the moving objectives' indicators (276)
     'src/ui/pointers/pointerPlan.selftest.mjs',
+    // guidance-pointers-276 (Kevin: "they get clipped off if you aim to ur side"): the follow pointer against the chase
+    // camera, the turret swept round: no piece cut by the screen; only the tutorial posts one
+    'src/ui/pointers/pointerFollowView.selftest.mjs',
     // 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them
     'src/ui/tutorial/tutorialTour.selftest.mjs',
     // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):

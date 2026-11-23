@@ -6,7 +6,7 @@
 //   ahead   a marker 50 m ahead with its path, a bracket on the nearest enemy and the HUD chevron on the shells: the ring,
 //           at least three chevrons of the pointer layer's trail on the ground (guidance-pointers-275), the bracket and the
 //           chevron draw, and a press where they stand reaches the game (neither layer takes the pointer);
-//   behind  the marker 60 m behind: no ring, the turn arrow painted round the tank (never an arrow on the screen's edge:
+//   behind  the marker 60 m behind: no ring, the turn arrow painted on the ground ahead of the tank (never an arrow on the screen's edge:
 //           Kevin, "for stuff for you to follow, its on ground");
 //   aside   the marker 90 m to the side: the turn arrow, its head on the marker's side;
 //   warn    the battle held still (src/dev/battleHold.ts), two enemies set down round the tank, one on the flank with its gun
@@ -136,9 +136,9 @@ try {
   report.cases.ahead.enemyOnScreen = ahead.bracket;
 
   const behind = await show('behind', { marker: { ...at(-60, 0), radiusM: 6, label: 'B' }, path: true });
-  assert.ok(!behind.ring && behind.turn, 'behind: no ring, the turn arrow round the tank');
+  assert.ok(!behind.ring && behind.turn, 'behind: no ring, the turn arrow on the ground');
   const vp = VIEWS[VIEW];
-  assert.ok(behind.turn.y > vp.height / 3, 'behind: the turn arrow lies on the ground round the tank, low on the screen');
+  assert.ok(behind.turn.y > vp.height / 3, 'behind: the turn arrow lies on the ground ahead of the tank, low on the screen');
 
   const aside = await show('aside', { marker: { ...at(0, 90), radiusM: 6, label: 'C' }, path: true });
   assert.ok(aside.turn, 'aside: the turn arrow');
