@@ -7,23 +7,16 @@
 // 1. closed at every checkpoint of the build: no subscription outlives it;
 // 2. completed: both stay subscribed until the material is disposed.
 import assert from 'node:assert/strict';
-import { stripTypeScriptTypes } from 'node:module';
-import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { tileableTorusNoise } from './proceduralTexture.ts';
-import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { groundSurfaceUniformValues } from './groundSurfaces.ts';
-import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 import { terrainSourceText } from './terrainSourceText.mjs';
 
-const source = terrainSourceText();
-const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-function declaration(name) {
-  const matches = ast.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === name);
-  assert.equal(matches.length, 1, `unique real declaration: ${name}`);
-  return matches[0].getText(ast);
-}
+// (inherited-reds-276) the slice closes over terrain.ts's own imports and declarations (tools/source-slice.test-support.mjs):
+// a dependency the build gains (builtEnvironmentFor, e681998907) reaches this sandbox without a hand-kept list
+const terrain = sourceSlice(new URL('./terrain.ts', import.meta.url), { text: terrainSourceText() });
+const declaration = (name) => terrain.declaration(name);
 function fixture({ closeThrows = false } = {}) {
   const state = { noiseCalls: 0, fieldStarts: 0, fieldCloses: 0, paints: [], uploads: [],
     chunks: 0, materials: 0, pending: null, live: new Set() };
@@ -42,9 +35,9 @@ function fixture({ closeThrows = false } = {}) {
     material,
     // (perf-248) the shore and the folds the build and the ring worker share (terrain.ts createShoreAt, foldFieldSteps)
     ...['createShoreAt', 'foldFieldSteps', 'buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
-  ].join('\n').replace(/^export /gm, '');
-  const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
-    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
+  ].join('\n');
+  const compile = (THREE, SimplexNoise, torusNoise, canvasToTexture, layer, own, state, closeThrows) => terrain.compile(
+    { THREE, SimplexNoise, torusNoise, canvasToTexture, layer, own, state, closeThrows }, `
     const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
@@ -83,7 +76,7 @@ function fixture({ closeThrows = false } = {}) {
       try { return yield* state.pending; }
       finally { state.fieldCloses++; if (closeThrows) throw new Error('close-failure'); }
     };
-  `) + `return { fields: splatFields, steps: splatFieldSteps,
+  return { fields: splatFields, steps: splatFieldSteps,
       sample: sampleSplatNoise, noiseTexture: makeShaderNoiseTexture,
       cache: () => _splatFields, materialSteps: createSplatMaterialSteps,
       build: buildTerrainMeshes, buildAsync: buildTerrainMeshesAsync };
@@ -96,7 +89,7 @@ function fixture({ closeThrows = false } = {}) {
     texture.image = { pixels: pixels.slice(), width: size, height: size };
     state.uploads.push({ pixels: texture.image.pixels, size, options });
     return texture;
-  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
+  }, layer, own, state, closeThrows);
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };
   const height = { _layout: { spawns: { player: { x: 0, z: 0 } }, terrain: {} } };
   return { api, state, engine, height, dispose(group) {
