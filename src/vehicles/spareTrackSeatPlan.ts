@@ -46,9 +46,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "spz_puma": {
     "fitting@hull(-0.72,1.79,2.30)": [-1.11831, 1.77062, 2.77705, 0.22242, -0.00052, 0.01438, 0.97484, 1],
   },
-  "strv103a": {
-    "fitting@hull(0.98,1.61,2.30)": [0.98, 1.56176, 2.5963, 0.07852, 0, 0, 0.99691, 1],
-  },
   "strv105": {
     "strip@hull(-0.86,1.26,-3.76)": 45,
     "strip@hull(0.86,1.26,-3.76)": 46,
