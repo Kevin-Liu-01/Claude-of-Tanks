@@ -14,7 +14,8 @@
  *   the tray's one selected state); its hover tip names it in full.
  * - The strike view: the binoculars come up over the scope's camera (game/strikeViewState.ts; the camera rig enters the
  *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
- *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
+ *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL button. The Support
+ *   slot itself is the close while they are up (its X and "Lower"), in its own place on every layout.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
  * - The warning: a strike whose footprint covers the crew is a condition of the battle notices (battleNotices.ts, at
  *   NOTICE_PRIORITY.threat; the bespoke INCOMING plate folded into it) with its countdown, updated in place and taken
@@ -81,11 +82,18 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
   const view = node('button', 'strike-slot strike-support', dock);
   view.type = 'button';
   view.setAttribute('aria-label', t('airSupport.view'));
-  node('span', 'glyph', view).innerHTML = icon('eqBinoculars', { size: 26 });
+  // (Kevin 2026-11-23: "the x button shouldnt just appear and disappear. its part of the ui for air support") the slot
+  // is also the close: with the binoculars up its glyph and short name turn to the X and "Lower" in the same box, and
+  // back when they come down (airSupportHud.css, with the raise; a cut under reduced motion). No second button.
+  const glyph = node('span', 'glyph', view);
+  node('span', 'face face-rest', glyph).innerHTML = icon('eqBinoculars', { size: 26 });
+  node('span', 'face face-up', glyph).innerHTML = icon('close', { size: 26 });
   const viewKey = node('kbd', 'key', view);
   const points = markDatum(node('span', 'strike-points num', view), 'support-points');
   points.setAttribute('role', 'status');
-  node('span', 'label', view).textContent = t('airSupport.short.view');
+  const label = node('span', 'label', view);
+  node('span', 'face face-rest', label).textContent = t('airSupport.short.view');
+  node('span', 'face face-up', label).textContent = t('airSupport.short.lower');
   view.addEventListener('click', () => bus.emit('ui:strikeViewToggle', {}));
   let seat: 'tray' | 'own' = 'own';
   /** The rest slot's seat: the tray's end on a desktop, its own place on a touch layout (or before the tray exists). */
@@ -159,11 +167,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
   call.type = 'button';
   call.textContent = t('airSupport.call');
   call.addEventListener('click', () => bus.emit('ui:strikeCall', {}));
-  const close = node('button', 'binocular-close cot-c-btn cot-c-btn--secondary cot-c-btn--56 cot-c-btn--icon', binoculars);
-  close.type = 'button';
-  close.setAttribute('aria-label', t('airSupport.lower'));
-  close.innerHTML = icon('close', { size: 20 });
-  close.addEventListener('click', () => bus.emit('ui:strikeViewClose', {}));
 
   // ---- the warning: the battle's notice, shown only when what it says changes (its whole seconds) ----
   let warningShown = '';
@@ -243,7 +246,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     setText(points, String(have));
     setText(viewKey, keyX);
     setData(view, 'selected', strikeView.open ? 'true' : 'false');
-    setAttr(view, 'aria-pressed', strikeView.open ? 'true' : 'false');
+    // the slot names what a press does: raise the binoculars, or lower them
+    setAttr(view, 'aria-label', t(strikeView.open ? 'airSupport.lower' : 'airSupport.view'));
     for (const slot of slots) {
       const slotRefusal = strikeCallBlocker(air, slot.kind, slot.kind === strikeView.kind ? rangeM : 0);
       const slotWhy = slotRefusal ? PLATE_STATE[slotRefusal] : null;

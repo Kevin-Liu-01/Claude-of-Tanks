@@ -6048,6 +6048,7 @@
   "airSupport.points": "pts",
   "airSupport.warning": "warning",
   "airSupport.short.view": "Spot",
+  "airSupport.short.lower": "Lower",
   "airSupport.short.recon": "Recon",
   "airSupport.short.artillery": "Arty",
   "airSupport.short.strafe": "Strafe",

@@ -31,6 +31,15 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-hud-tray='stacked']
 /* (gauntlet g6: set a step under the ammo's counts; a count of three figures or more takes the tray's .wide size) */
 .strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-12)/1 var(--font-mono);letter-spacing:0;line-height:13px;color:var(--ink-1)}
 body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .strike-support .strike-points{font-size:var(--battle-fs-11)}
+/* Support is also the close (Kevin 2026-11-23): with the binoculars up, its glyph and short name turn to the X and
+   "Lower" in the same box, crossing over the raise's own --dur-stage (a cut under reduced motion: it collapses to 1 ms),
+   and back as they come down. Each face stands in the other's place: the glyph's box, the label's one grid cell. */
+.strike-support .glyph .face{position:absolute;inset:0;display:block}
+.strike-support .label{display:grid;justify-items:center}
+.strike-support .label .face{grid-area:1/1}
+.strike-support .face{transition:opacity var(--dur-stage) cubic-bezier(.2,.7,.2,1),scale var(--dur-stage) cubic-bezier(.2,.7,.2,1)}
+.strike-support .face-up,.strike-support[data-selected=true] .face-rest{opacity:0;scale:.6}
+.strike-support[data-selected=true] .face-up{opacity:1;scale:1}
 /* a slot: the key, the price, the glyph, the short name, the cooldown shade and its seconds */
 .strike-slot{font:inherit;cursor:pointer;appearance:none;-webkit-tap-highlight-color:transparent;transition:transform var(--dur-instant) ease-out}
 .strike-slot:active{transform:scale(.97)}
@@ -106,7 +115,7 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
 .cot-binoculars .binocular-hint .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;text-transform:none;color:var(--ink-2)}
 .cot-binoculars .binocular-hint .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui)}
 .binocular-hint .cot-c-kbd:empty{display:none}
-.binocular-call,.binocular-close{display:none;pointer-events:auto}
+.binocular-call{display:none;pointer-events:auto}
 /* the raise: the lenses close in from the full frame and the frame settles (a cut under reduced motion: --dur-stage
    collapses to 1 ms, and airSupportHud.ts never raises it then) */
 .cot-binoculars.is-raising .binocular-lens{animation:cot-binocular-raise var(--dur-stage) cubic-bezier(.2,.7,.2,1) both}
@@ -119,12 +128,13 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
 /* (gauntlet g4 at 900x700 and 1024x600: the centre alert's lane is the readout's and the call-ins'; under the binoculars a
    mouse window seats it under INCOMING's place, which mouseNoticePlan.ts cannot see) */
 html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert{top:212px}
-/* (gauntlet g4: on a phone, close and a refused CALL were outlines on the scene; under the binoculars they stand on the plate) */
-.cot-binoculars :is(.binocular-close,.binocular-call:disabled){background:var(--hud-plate-strong)}
+/* (gauntlet g4: on a phone, a refused CALL was an outline on the scene; under the binoculars it stands on the plate) */
+.cot-binoculars .binocular-call:disabled{background:var(--hud-plate-strong)}
 
 /* a phone: Support first on the vehicle's controls row and level with it (battleHudLayout.ts writes the row's place;
    a slot of the row's 44 px touch target). With the binoculars up, the call-ins in a row on the far side of that row
-   from the sight's band (above it in landscape, below it in portrait), CALL and close as the kit's buttons, and INCOMING
+   from the sight's band (above it in landscape, below it in portrait), CALL as the kit's button (Support, in its place,
+   is the close), and INCOMING
    in the corner the score and the settings leave it. (gauntlet g1 at 390x844: the slot, the row and CALL had kept a
    landscape's places and stood on the joystick, AUTO AIM and the consumables; at 844x390 INCOMING crossed the sectors'
    badges and CALL stood flush on the ammunition) */
@@ -139,10 +149,9 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
  .strike-slot .glyph{width:20px;height:20px}
  .cot-binoculars .binocular-hint{display:none}
  .binocular-call{display:inline-flex;position:absolute;right:max(12px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);min-width:112px}
- .binocular-close{display:inline-flex;position:absolute;right:calc(max(12px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px)}
  /* (the phone capture: the readout under the mode banner) the readout below the sectors' badges; (u2: a box centred from
     left:50% shrinks to the half it has left, which clipped READY) every centred plate is max-content wide; (g3: centred,
-    its chip ran under close) its right edge 8 px short of close's left; INCOMING 6 px above CALL; (g6) the right column
+    its chip ran under close) its right edge 8 px short of the close's left (the close is Support's now); INCOMING 6 px above CALL; (g6) the right column
     (INCOMING, CALL, the consumables) on one 12 px edge, the readout on CALL's foot */
  /* (gauntlet g8 at 844x390: right-aligned, the plate stood 8 px off the call-in row's edge; it starts on that edge. g9: the
     name, the figures and NOT ENOUGH POINTS ran 450 px under close and CALL; a phone's plate holds the glyph the lit slot
@@ -163,7 +172,7 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
    top:calc(var(--hud-systems-top,50%) + 52px);bottom:auto}
 }
 /* a portrait phone: the call-ins and the readout under the controls row, the readout without the name the lit slot
-   shows (its 390 px held no more); CALL and close on the centre line over the second FIRE; INCOMING over the row */
+   shows (its 390 px held no more); CALL on the centre line over the second FIRE; INCOMING over the row */
 @media(pointer:coarse) and (orientation:portrait){
  .cot-strike-rack{top:calc(var(--hud-systems-top,50%) + 54px)}
  .cot-binoculars .binocular-readout{top:calc(var(--hud-systems-top,50%) + 108px);bottom:auto;left:calc(var(--hud-systems-left,50%) - 47px);right:auto;transform:none}
@@ -171,6 +180,5 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
  .cot-binoculars :is(.binocular-kind,.binocular-readout>.glyph){display:none}
  .cot-binoculars .binocular-group{border-left:0;padding-left:0}
  .binocular-call{right:auto;left:calc(50% - 24px);bottom:252px}
- .binocular-close{right:auto;left:calc(50% - 88px);bottom:252px}
 }
 }
