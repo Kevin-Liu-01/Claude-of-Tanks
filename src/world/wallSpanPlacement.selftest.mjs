@@ -345,7 +345,9 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
     wallDressing: createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }),
     // (props lane A #6: a mud run's piers carry their region's crown)
-    roughenChunk, adobeCrownFor, regionalArchitecture: null }, `${code}; return addWallRun;`);
+    roughenChunk, adobeCrownFor, regionalArchitecture: null },
+    // the build's local the run reads, as props.ts declares it (buildings-272, 6c9e9cbd7e: a lava wall over a brick print)
+    `const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';\n${code}; return addWallRun;`);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);
