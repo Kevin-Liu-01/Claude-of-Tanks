@@ -61,7 +61,10 @@ try {for(const {quality,camoPattern} of CASES){
   // the mesh's top is the sight's, .3518 -> .5821786 (its floor 2 mm into the boot's highest point under it).
   // Release 227 (2026-10-20): the riding sight keeps its measured top (boxSightSourceTop: source y 2.278 + .236 / 2 =
   // 2.396, 46 mm under the raised box's): .5821786 -> 2.396 - 1.8602 = .5358.
-  for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,1.66-1.8602],[bounds.max.y,2.396-1.8602],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
+  // china-turrets-275 (Kevin: "proper turrets and mantlets"): the boot is the square mantlet block in the slot between the
+  // front modules (type96bX.ts TYPE96_FRONT_MODULE), 0.53 m wide, its rear cap still 0.40 m behind the trunnion; the
+  // lowest point is the collar round the thermal sleeve (r .160) and the front the collar's face (.36); the sight's top is kept.
+  for(const [actual,value] of [[bounds.min.x,-.265],[bounds.max.x,.265],[bounds.min.y,-.16],[bounds.max.y,2.396-1.8602],[bounds.min.z,-.4],[bounds.max.z,.36]])near(actual,value,'finite mantlet block envelope');
   const spec=getSpec('type96b');assert.equal(spec.gunDepressionDeg,7);assert.equal(spec.gunElevationDeg,14);
   const state=createTankState(spec,new T.Vector3(),0);
   const inGun=(mesh,local)=>gun.worldToLocal(mesh.localToWorld(local.clone()));
@@ -74,10 +77,11 @@ try {for(const {quality,camoPattern} of CASES){
    const top=ray(mount,[0,1,0],[0,-1,0]);assert.ok(top,'actual outward box sight top exists');near(gun.worldToLocal(top.point.clone()).y,2.396-1.8602,'box sight top riding the boot at its measured height',2e-6);
    const surfaces=[];root.traverseVisible(o=>{if(o.isMesh)surfaces.push(o)});
    // The box sight riding the boot covers x within +/-125 mm.
-   // Both measured boot shoulders outside it must be exposed.
+   // Both boot shoulders outside it must be exposed (the block or its canvas cover).
    for(const x of[-.16,.16]) {
     const first=new T.Raycaster(gun.localToWorld(new T.Vector3(x,1,0)),new T.Vector3(0,-1,0).transformDirection(gun.matrixWorld),0,3).intersectObjects(surfaces,false)[0];
-    assert.ok(first?.object===mount,`boot shoulder ${x} instead reached ${first?.object?.name}`);
+    // (china-turrets-275: the mantlet wears its canvas cover, which rides the gun with it)
+    assert.ok(first?.object===mount||(first?.object?.name==='gunMountCloth'&&(()=>{for(let p=first.object.parent;p;p=p.parent)if(p===gun)return true;return false;})()),`boot shoulder ${x} instead reached ${first?.object?.name}`);
    }
    // A point 10 mm inside the measured rear cap is enclosed by the actual
    // turret receiver at every pitch. Opposing finite FrontSide rays bound it.

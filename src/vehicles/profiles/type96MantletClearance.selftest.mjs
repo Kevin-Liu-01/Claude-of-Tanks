@@ -141,11 +141,13 @@ for (const id of ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei
     const sightTris = [];
     gun.traverse((o) => {
       // (the gun floodlight's drum and bracket ride their own draw, gunMountLamp, since main-reds-259: lamp, not sight)
-      if (!o.isMesh || !/^gunMount/.test(o.name) || o.name === 'gunMountLamp') return;
+      // (china-turrets-275: the mantlet's canvas cover rides the slot between the front modules, its rear edge on the slot's
+      // back wall by design, and its collar strap is gunMountDark at the bore: neither is the sight's)
+      if (!o.isMesh || !/^gunMount/.test(o.name) || o.name === 'gunMountLamp' || o.name === 'gunMountCloth') return;
       const tri = soup(o, null, /Shadow/, toGun);
       for (let i = 0; i < tri.length; i += 9) {
         const ys = [tri[i + 1], tri[i + 4], tri[i + 7]], xs = [tri[i], tri[i + 3], tri[i + 6]];
-        if (o.name === 'gunMount' && !(Math.max(...ys) > .36 && Math.max(...xs.map(Math.abs)) < .2)) continue;
+        if ((o.name === 'gunMount' || o.name === 'gunMountDark') && !(Math.max(...ys) > .36 && Math.max(...xs.map(Math.abs)) < .2)) continue;
         for (let k = 0; k < 9; k++) sightTris.push(tri[i + k]);
       }
     });

@@ -231,3 +231,24 @@ records the frozen repair. Its
 [independent assembled review](../../history/research/type96-k21-final-assembled-review-20260918.md)
 covers the final static visual result; complete release and publication status
 remain in the current batch section linked above.
+
+## Photo round: turret front and mantlet (china-turrets-275, 2026-11-21)
+
+Kevin: "make the type 96 72m, type 96 80, type 96b, type 72 b3m, type 72b3 have proper turrets and mantlets." All
+five (and `type96_72_long`, `t80u_yun`) draw `buildType96Turret`, so one shared change covers them. Photo class:
+Wikimedia Commons "Type 96B 02" and "Type 96B 03" (Russian MoD, 2018), "Type 96B Tank Biathlon-2022", "ZTZ-96 MBT".
+
+| # | Photo read | Baseline (was) | Fix (now) |
+|---|---|---|---|
+| 1 | Two separate add-on modules either side of the gun: an inner front face near square to the bore, an outer face raked back to the side | One loft narrowing to a 0.26 m point; the gun left through its tip | `TYPE96_FRONT_MODULE`: two module lofts and a centre roof block; the shell stops at z 0.64 |
+| 2 | Tall vertical module fronts under a broad flat top and a narrow bevel | Front stations 0.26 m tall; the roof line closed to the centre line | Tops level with the roof front (2.10-2.06), floors at the turret floor; the side turns vertical at z 0.90 |
+| 3 | The mantlet sits in a slot between the modules' inner walls | No slot | Slot 0.60 m wide, back wall z 1.30 (chamfered top for the riding box sight at full elevation) |
+| 4 | A square mantlet under a bunched canvas cover, top and bottom on the module lines | Rounded Object_6 boot standing 0.12 m proud of the nose roof | Square steel block, canvas cover with folds, gathered onto the collar |
+| 5 | The thermal sleeve leaves through a collar | No collar | Steel collar r 0.160 over z 0.24-0.36 |
+| 6 | No box over the mantlet in these photos | Measured source box sight rides the boot | Kept, riding the new block (owner question) |
+
+Close-out: blind A/B critic, the after version won 14/14 pairs (mean 7.6 vs 2.9). Concept kits re-seated on the new
+faces (Léi/Lóng cheek cassettes square on the raked faces, the Kunlun's chevron tiles on the raked faces, its Shtora
+arm, the Yun's slit lamps on the module tops, the Type 96B net off the raked corners). Combat change: the Type 96B's
+rear-arc stop at yaw 175 is -0.6 (was -0.8): the barrel's sleeve at full recoil, newly outside the turret's outline in
+the open slot, kept 24.6 mm of the 25 mm keep. Generated rows (anatomy, marking seats) are left to the integrator's regen.

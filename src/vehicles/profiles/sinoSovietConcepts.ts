@@ -8,7 +8,8 @@ import {buildT80UXHull} from './t80uX.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {addType96GunnerSightPlinth,buildType96Turret} from './type96bX.ts';
 import {EASTERN_SOURCE_STUDIES} from '../easternSourceStudyData.ts';
-import {attachedCage,cheekEraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
+import {attachedCage,eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
+import {TYPE96_FRONT_MODULE} from './type96bX.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylY}=KIT;
 type Variant='long'|'feng'|'lei';
@@ -18,11 +19,18 @@ type Variant='long'|'feng'|'lei';
 // boot 10 mm over its host's top surface (a 2 cm height field of the hull) at every 2-degree yaw, at rest, half and full
 // elevation and, over the front 240 degrees of traverse, full depression; the stations that wrap the barrel collar keep
 // their measured undersides where the host allows (type96MantletClearance.selftest.mjs sweeps the whole gun).
-const BOOT_FLOOR:Readonly<Record<Variant,readonly (number|null)[]>>={
-  long:[1.733,1.714,1.646,1.658,null,null],
-  feng:[1.725,1.695,1.632,null,null,null],
-  lei:[1.741,1.711,1.689,1.692,null,null],
-};
+const BOOT_FLOOR:Readonly<Record<Variant,number>>={long:1.714,feng:1.695,lei:1.711};
+/** china-turrets-275: one cheek cassette on a front module's raked outer face (type96bX.ts TYPE96_FRONT_MODULE, rakeFrom
+ * to rakeTo), square to the face: `t` along the face from the side's corner (0) to the inner front face (1), `y` its
+ * centre height (source frame), size [thickness, height, length along the face]. The cassettes were seeded radially at
+ * the old sloped nose and came out twisted on the vertical module faces. */
+function rakedFaceCassette(P:TankBuilderPort,side:number,t:number,y:number,size:readonly [number,number,number]):void {
+  const b=TYPE96_FRONT_MODULE.stations[TYPE96_FRONT_MODULE.rakeFrom],c=TYPE96_FRONT_MODULE.stations[TYPE96_FRONT_MODULE.rakeTo],frame=EASTERN_SOURCE_STUDIES.type96b.frame;
+  const dx=c[2]-b[2],dz=c[0]-b[0],len=Math.hypot(dx,dz),nx=dz/len,nz=-dx/len,off=size[0]/2+.003;
+  const x=b[2]+dx*t+nx*off,z=b[0]+dz*t+nz*off;
+  eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,[side*x,y-frame.turret[1],z-frame.turret[2]],[...size],
+    [0,-side*Math.atan2(nz,nx),0]);
+}
 function build(P:TankBuilderPort,variant:Variant):void {
   const frame=EASTERN_SOURCE_STUDIES.type96b.frame;
   if(variant==='feng')buildT80UXHull(P);
@@ -42,9 +50,9 @@ function build(P:TankBuilderPort,variant:Variant):void {
   P.turretG.position.set(frame.turret[0],y,z);
   P.add('turret',cylY(1.05,1.08,.09,40),0,.02,0);
   if(variant==='long'){
-    // Low wedge cheeks and a compact bustle: close to the T-72 silhouette.
-    for(const side of [-1,1])for(let i=0;i<3;i++)cheekEraCassette(P,`turret_era_${side<0?'L':'R'}`,
-      [side*(.67+i*.25),.32,1.38-i*.23],[.23,.11,.36]);
+    // Low wedge cheeks and a compact bustle: close to the T-72 silhouette. One row of three cassettes on each module's
+    // raked face.
+    for(const side of [-1,1])for(const t of [.19,.50,.81])rakedFaceCassette(P,side,t,1.815,[.08,.20,.19]);
     attachedCage(P,'turret',[0,.27,-1.93],1.80,.42,.40);
     strappedPack(P,'turret',[0,.36,-1.69],[.94,.20,.28]);
   }else if(variant==='feng'){
@@ -63,8 +71,8 @@ function build(P:TankBuilderPort,variant:Variant):void {
     // leaves and large side cassette banks mark the heavier command variant.
     P.add('turret',boxSections([[-2.26,1.05,.50,.07],[-1.98,1.28,.57,.04],[-1.02,1.14,.57,.06]]));
     for(const side of [-1,1]){
-      for(let i=0;i<4;i++)cheekEraCassette(P,`turret_era_${side<0?'L':'R'}`,
-        [side*(.62+i*.24),.35,1.47-i*.25],[.22,.16,.43]);
+      // two courses of two large cassettes on each module's raked face
+      for(const t of [.27,.72])for(const y of [1.745,1.885])rakedFaceCassette(P,side,t,y,[.09,.12,.27]);
       P.addEquipment('turretDetail',box(.29,.16,.25),side*1.20,.60,-1.54);
       P.addEquipment('turretGlass',box(.15,.06,.012),side*1.20,.61,-1.407);
       strappedPack(P,'turret',[side*.69,.67,-1.68],[.46,.17,.68]);
