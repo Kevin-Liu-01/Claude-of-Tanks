@@ -1,6 +1,7 @@
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { minimapAngleForDirection } from './minimapOrientation.ts';
+import { OBJECTIVE_PALETTE, sideColor, type ObjectiveSide } from './objectiveGlyphs.ts';
 interface Point {x:number;z:number}
 const atEdge=(value:number,size:number):number=>Math.max(9,Math.min(size-9,value));
 /** Aircraft position and ground carrier are separate tactical objects. */
@@ -28,4 +29,59 @@ export function drawAerialMinimap(ctx:CanvasRenderingContext2D,view:AerialView,c
   for(let rx=-4;rx<=4;rx+=8)for(let ry=-4;ry<=4;ry+=8){ctx.beginPath();ctx.arc(rx,ry,2.7,0,Math.PI*2);ctx.fill();ctx.stroke();}
  }
  ctx.restore();
+}
+
+/**
+ * An aircraft on the minimap (air-support-275), beside the flown aircraft's marker above: a unit with a heading, as a tank's
+ * arrow is, so it lives here and not among the upright objective glyphs (objectiveGlyphs.ts never turns the context;
+ * minimapOrientation.selftest). Its silhouette turned to its nose (`angle`, the canvas rotation of its
+ * heading, as the footprint's lane), the side's colour under the map's keyline: a jet's swept arrow, the AC-130's straight
+ * high wing. `inbound` (an enemy's on its way in): the approach line drawn first, from it to the mark at (`toX`, `toY`),
+ * dashed in the side's colour, marching toward the mark (`march` 0..1).
+ */
+export function drawAircraftGlyph(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, angle: number, gunship: boolean, side: ObjectiveSide,
+  inbound: { toX: number; toY: number; march: number } | null): void {
+  const color = sideColor(side);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (inbound) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(inbound.toX, inbound.toY);
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+    ctx.stroke();
+    ctx.setLineDash([4, 3]);
+    ctx.lineDashOffset = -inbound.march * 7;
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  if (gunship) {
+    // fuselage, the long straight wing and the tailplane, nose up the canvas before the turn
+    ctx.rect(-r * 0.16, -r, r * 0.32, r * 2);
+    ctx.rect(-r * 1.05, -r * 0.38, r * 2.1, r * 0.3);
+    ctx.rect(-r * 0.45, r * 0.68, r * 0.9, r * 0.2);
+  } else {
+    // a jet's swept arrow: the nose, the wing's sweep to its tips, the notch of the tail
+    ctx.moveTo(0, -r * 1.1);
+    ctx.lineTo(r * 0.85, r * 0.55);
+    ctx.lineTo(r * 0.28, r * 0.42);
+    ctx.lineTo(r * 0.36, r * 0.95);
+    ctx.lineTo(-r * 0.36, r * 0.95);
+    ctx.lineTo(-r * 0.28, r * 0.42);
+    ctx.lineTo(-r * 0.85, r * 0.55);
+    ctx.closePath();
+  }
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
 }

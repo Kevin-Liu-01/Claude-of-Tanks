@@ -6,7 +6,7 @@ import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation } from './killPresentation.ts';
 import { killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
-import { drawAerialMinimap } from './aerialMinimap.ts';
+import { drawAerialMinimap, drawAircraftGlyph } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createBattlePointers } from './pointers/battlePointers.ts';
 import { createAirSupportHud } from './airSupportHud.ts';
@@ -56,7 +56,7 @@ import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset
 import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, drawAircraftGlyph, type StrikeGlyphKind,
+  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
