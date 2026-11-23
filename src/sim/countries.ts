@@ -138,19 +138,28 @@ export const COUNTRY_ALLIES: Readonly<Record<CountryId, readonly CountryId[]>> =
   china: allies('russia'),
 });
 
-/** Eras a roster may draw from around the player's: contemporaries only, never WW2 against modern. */
+/**
+ * Eras a roster may draw from around the player's: contemporaries only, never WW2 against modern. WW2 reaches into the
+ * early Cold War (owner 2026-11-22, roster-mirror-fix): the fleet holds three WW2 hulls, one a nation (KV-2, Jagdpanzer
+ * E100, T95), so a WW2-only band cloned the player's own hull on one side and one foreign hull on the other.
+ */
 export const ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  ww2: Object.freeze(['ww2']),
+  ww2: Object.freeze(['ww2', 'cold-war']),
   'cold-war': Object.freeze(['cold-war', 'modern']),
   modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
   'next-generation': Object.freeze(['next-generation', 'modern']),
 });
 
 /**
- * Eras whose sides take no ally fill (271 ruling): COUNTRY_ALLIES is the post-war alliance map, so in WW2 a side's
- * bots come from its own nation only (a German hull never fields a US one beside it); with none left they repeat.
+ * The matchmaking tier band's half-width: a battle's seats come from the humans' tier plus or minus this before any
+ * seat outside it, on both sides (owner 2026-11-22: a T95 at tier II met seven KV-2s at tier I).
  */
-export const ERAS_WITHOUT_ALLY_FILL: ReadonlySet<string> = new Set(['ww2']);
+export const MATCH_TIER_SPREAD = 1;
+
+/** True when a vehicle's tier sits in the band around `anchor` (no anchor: every tier does). */
+export function inMatchTierBand(tier: number, anchor: number | null | undefined): boolean {
+  return anchor == null || !Number.isFinite(anchor) || Math.abs(tier - anchor) <= MATCH_TIER_SPREAD;
+}
 
 /**
  * The country each campaign operation's formation is drawn from (gameplay-modes-228): the one table the solo campaign

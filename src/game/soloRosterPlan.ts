@@ -28,6 +28,8 @@ export interface SoloNationalPlan {
   readonly enemySeats: number;
   readonly campaignEnemy: CountryId | null;
   readonly arrangedEnemy: CountryId | null;
+  /** The wave modes keep each country's seats before the tier band (pickNationalSides `nationFirst`). */
+  readonly nationFirst: boolean;
 }
 
 /** What the roster picker does with a battle's nations: MONO's plan, RANDOM ('random'), or the legacy pool (null). */
@@ -62,6 +64,7 @@ export function battleRosterPlan(
         alliedSeats, enemySeats: Math.max(1, field - alliedSeats),
         campaignEnemy: operation && isCountryId(operation.enemy) ? operation.enemy : null,
         arrangedEnemy: isCountryId(ruleset.enemyNation) ? ruleset.enemyNation : null,
+        nationFirst: isWaveMode(ruleset.mode),
       });
     }
   }

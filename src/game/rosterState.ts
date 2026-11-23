@@ -511,6 +511,7 @@ function randomBattleCandidates(
     shuffledBotPool(game, player, battleOrdinal),
     player,
     game.recentBotSpecIds ?? null,
+    tankTier,
   );
 }
 
@@ -619,6 +620,7 @@ export function pickNationalBattle(
     seed: teamNationsSeed(battleOrdinal, game.rosterSeed ?? 0, playerSpecId),
     rivalBlocWeight: TEAM_NATIONS_RULES.rivalBlocWeight,
     autoNeedsContemporaries: TEAM_NATIONS_RULES.autoEnemyNeedsContemporaries,
+    nationFirst: plan.nationFirst,
   });
   const seat = (side: 'allied' | 'enemy', k: number, id: string, repeat: boolean): RosterEntity => {
     const source = id === player.specId ? player : byId.get(id) ?? game.tankById.get(id)!;

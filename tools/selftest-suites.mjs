@@ -1288,6 +1288,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
+    // roster-mirror-fix (2026-11-22): every registered vehicle drawable in its band, every roster distinct in one tier band
+    'src/game/battleRosterCensus.selftest.mjs',
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',

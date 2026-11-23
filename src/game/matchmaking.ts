@@ -1,4 +1,4 @@
-import { ERA_NEIGHBOURS } from '../sim/countries.ts';
+import { ERA_NEIGHBOURS, inMatchTierBand } from '../sim/countries.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared garage/matchmaking eligibility and pure candidate ordering.
 //
@@ -10,6 +10,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   DEV_FLEET_ACTIVE,
   PRODUCTION_HIDDEN_TANK_IDS,
+  isBattleExcludedTankId,
 } from '../vehicles/rosterPolicy.ts';
 import { PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 
@@ -30,9 +31,9 @@ export { ERA_NEIGHBOURS };
 export const isGarageVisibleTankId = (id: RuntimeValue): id is string =>
   typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));
 
-/** Every vehicle exposed by the production catalog is eligible for bot seats. */
+/** Every vehicle exposed by the production catalog is eligible for bot seats, bar rosterPolicy's battle exclusions. */
 export const isBotTankId = (id: RuntimeValue): id is string =>
-  typeof id === 'string' && PRODUCTION_TANK_IDS.includes(id);
+  typeof id === 'string' && PRODUCTION_TANK_IDS.includes(id) && !isBattleExcludedTankId(id);
 
 /**
  * Curate a pre-shuffled entity pool for a player match.
@@ -47,25 +48,32 @@ export const isBotTankId = (id: RuntimeValue): id is string =>
  * seeded shuffle remains authoritative inside each band so every production
  * vehicle can eventually reach a bot seat. Team assignment balances the
  * resulting tiers. Development and reference-only records remain barred.
+ * With `tierOf`, every vehicle outside the player's tier band (countries.ts MATCH_TIER_SPREAD) ranks behind every
+ * vehicle in it of the same era class, so both sides draw from one band while the catalog allows (owner 2026-11-22).
  */
 export function rankMatchCandidates<T extends MatchCandidate>(
   candidates: readonly (T | null | undefined)[] | null | undefined,
   player: T,
   recent: ReadonlySet<string> | null = null,
+  tierOf: ((specId: string) => number) | null = null,
 ): T[] {
   const playerEra = player?.spec?.era ?? null;
   const neighbours = playerEra ? (ERA_NEIGHBOURS[playerEra] ?? [playerEra]) : null;
   // 0 = the player's era, 1 = a contemporary era, 2 = any other era
   const bandOf = (era: string | null | undefined): number =>
     !playerEra || era === playerEra ? 0 : era && neighbours!.includes(era) ? 1 : 2;
+  const anchor = tierOf && player ? tierOf(player.specId) : null;
+  const outOfTier = (ent: T): number => (tierOf && !inMatchTierBand(tierOf(ent.specId), anchor) ? 1 : 0);
   return (candidates || [])
     .filter((ent): ent is T =>
       !!ent && ent !== player && isBotTankId(ent.specId))
     .map((ent, shuffleIndex) => {
       const band = bandOf(ent.spec?.era ?? null);
       const isRecent = !!recent && recent.has(ent.specId);
-      // fresh own era 0 < fresh contemporary 1 < recent own era 2 < recent contemporary 3 < far eras 4/5
-      return { ent, shuffleIndex, rank: band === 2 ? (isRecent ? 5 : 4) : band + (isRecent ? 2 : 0) };
+      // in the tier band: fresh own era 0 < fresh contemporary 1 < recent own era 2 < recent contemporary 3; the same
+      // outside the band 4-7; far eras always last, the band first (8/9, then 10/11)
+      const rank = band === 2 ? 8 + (isRecent ? 1 : 0) + 2 * outOfTier(ent) : band + (isRecent ? 2 : 0) + 4 * outOfTier(ent);
+      return { ent, shuffleIndex, rank };
     })
     .sort((a, b) => (a.rank - b.rank) || (a.shuffleIndex - b.shuffleIndex))
     .map((row) => row.ent);
