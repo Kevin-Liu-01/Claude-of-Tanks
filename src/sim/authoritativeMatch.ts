@@ -5,7 +5,7 @@ import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
 import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, SMOKE_DURATION_S, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import {
-  usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, cannonMouth, type CannonMouth, type CannonMuzzleCursor,
+  usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor,
 } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
@@ -17,8 +17,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * solo loopback, and dedicated Node servers can all run the same instance.
  */
 
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
-import { quaternionFromEuler, matrixRotationY } from './detRotation.ts';
+import { Matrix4, Quaternion, Vector3 } from 'three';
+import { gunWorldPose } from './gunPose.ts';
 import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
@@ -68,7 +68,6 @@ import {
 import type {
   CombatState,
   DamageShell,
-  DamageShellSpec,
   HitEvent,
 } from './damage.ts';
 import { createMatchSpotting } from './matchSpotting.ts';
@@ -542,16 +541,9 @@ const _contactCenter = new Vector3();
 const _obstacleCenter = new Vector3();
 const _obstacleFoot = createHullFootprint();
 const _aim = new Vector3();
-const _muzzle = new Vector3();
 const _gunDir = new Vector3();
 const _segmentDir = new Vector3();
 const _worldTraceOrigin = new Vector3();
-const _hullMatrix = new Matrix4();
-const _turretMatrix = new Matrix4();
-const _localMatrix = new Matrix4();
-const _quat = new Quaternion();
-const _euler = new Euler();
-const _unit = new Vector3(1, 1, 1);
 const terrainCache = new Map<string, SharedTerrain>();
 const TERRAIN_IDLE_LIMIT = 2;
 let terrainBuilds = 0;
@@ -642,61 +634,6 @@ function spawnFor(
   // (game/state.ts) seats its tanks through the same placement call.
   const slot = placement.deploymentSlot(team, index);
   return { x: slot.x, z: slot.z, yaw: slot.yaw };
-}
-
-const _mouth: CannonMouth = { x: 0, y: 0 };
-/**
- * The round's origin and bore. `cannonMuzzle` (round 8 Y1 s5-01) is the gun's own mouth the round leaves
- * (launcherPolicy.ts nextCannonMuzzle; -1 for a single bore): the origin moves to that mouth in the pitching gun frame
- * (its x and y about the bore, the barrel's length along it), the bore stays the gun's, as the solo step takes the
- * visual's tip of the same mouth and the gun's direction.
- */
-function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec,
-  cannonMuzzle = -1): { muzzle: Vector3; direction: Vector3 } {
-  const state = entity.state;
-  const armor = entity.spec.armor || {};
-  const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
-  const gunPivot = armor.gunPivot || [0, entity.spec.dims.heightM * 0.15, 0];
-  const barrelM = Math.max(0.5, finite(armor.gunBarrel && armor.gunBarrel.lengthM, 3));
-
-  _euler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  quaternionFromEuler(_quat, _euler);
-  _unit.setScalar(state.modeScale??1);
-  _hullMatrix.compose(state.pos, _quat, _unit);
-  matrixRotationY(_localMatrix, state.turretYaw);
-  _localMatrix.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
-  _turretMatrix.multiplyMatrices(_hullMatrix, _localMatrix);
-
-  const sinPitch = detMath.sin(state.gunPitch);
-  const cosPitch = detMath.cos(state.gunPitch);
-  _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
-  if (cannonMouth(entity.spec.gun, cannonMuzzle, _mouth)) {
-    _muzzle.set(gunPivot[0] + _mouth.x, gunPivot[1] + _mouth.y * cosPitch + barrelM * sinPitch,
-      gunPivot[2] - _mouth.y * sinPitch + barrelM * cosPitch).applyMatrix4(_turretMatrix);
-  } else {
-    _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
-      .applyMatrix4(_turretMatrix)
-      .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
-  }
-  const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
-  if (launchers?.length) {
-    const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
-    const tip = launchers[index]!;
-    _muzzle.set(tip.x, tip.y, tip.z);
-    const mouthPitch = tip.pitch ?? 0, mouthYaw = tip.yaw ?? 0;
-    _gunDir.set(detMath.sin(mouthYaw) * detMath.cos(mouthPitch), detMath.sin(mouthPitch),
-      detMath.cos(mouthYaw) * detMath.cos(mouthPitch));
-    if (tip.frame !== 'turret') {
-      _muzzle.set(gunPivot[0] + tip.x, gunPivot[1] + tip.y * cosPitch + tip.z * sinPitch,
-        gunPivot[2] - tip.y * sinPitch + tip.z * cosPitch);
-      const dy = _gunDir.y, dz = _gunDir.z;
-      _gunDir.y = dy * cosPitch + dz * sinPitch;
-      _gunDir.z = -dy * sinPitch + dz * cosPitch;
-    }
-    _muzzle.applyMatrix4(_turretMatrix);
-    _gunDir.transformDirection(_turretMatrix);
-  }
-  return { muzzle: _muzzle, direction: _gunDir };
 }
 
 function segmentTerrainHit(

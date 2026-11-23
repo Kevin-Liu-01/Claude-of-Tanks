@@ -6,6 +6,7 @@ import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxil
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor } from '../sim/launcherPolicy.ts';
+import { gunWorldPose } from '../sim/gunPose.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -2025,22 +2026,23 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
     _dir.copy(entity.input.aimPoint).sub(_muzzle).normalize();
     return -1;
   }
-  const visual = entity.visual;
-  if (!visual) return null;
+  // (276, sim-det-trig) the round leaves from the pose the authority fires from (sim/gunPose.ts), never the visual's
+  // scene graph: the visual draws the flash and smoke at the mouth, and nothing it computes flows back into the shot
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
   let muzzleIndex = -1;
   if (launchers) {
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
-    entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   } else {
     // the gun's own mouths (a twin cannon's bores): the barrel owner both drivers share (sim/launcherPolicy.ts); launcher
     // tubes, aft10's canisters among them, took the branch above
     muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
-  const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
-  visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
-  visual.gunDirWorld(_dir, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
+  // the pose reads the launcher cursor before it advances, as the authority's does
+  const pose = gunWorldPose(entity, shell, launchers ? -1 : muzzleIndex);
+  _muzzle.copy(pose.muzzle);
+  _dir.copy(pose.direction);
+  if (launchers) entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   return muzzleIndex;
 }
 

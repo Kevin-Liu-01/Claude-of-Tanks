@@ -1,6 +1,7 @@
 // Twin cannons on the page's own step (round 8 Y1 s5-01; sim/launcherPolicy.ts nextCannonMuzzle): the solo step asks the
 // barrel owner the authority asks, so a gepard_1a2's rounds leave the same mouths in the same order on both drivers, and
-// each round's origin is taken at that mouth of the drawn gun. Before the fix the solo step kept its own alternation and
+// each round's origin is taken at that mouth of the pose both drivers fire from (276: sim/gunPose.ts; the drawn gun is
+// never asked). Before the fix the solo step kept its own alternation and
 // the authority none (its rounds left the centre line, shell_fired named -1), so the two drivers fired from origins
 // 0.7-1.2 m apart.
 // The selector itself, the authority's mouths, the network screens and the cursor census are
@@ -14,6 +15,7 @@ import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createBus, createCollider, createGameState, setupBattle, simStep } from './state.ts';
 import { spawnTanks } from './rosterState.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
+import { gunWorldPose } from '../sim/gunPose.ts';
 
 // the staged roster (random: false) and the shooter, their combat anatomy only: no vehicle builders
 await ensureAuthorityFleet([...TANK_IDS, 'gepard_1a2', 'm1a1_abrams_hc']);
@@ -59,7 +61,15 @@ const authorityMouths = [];
   game.preBattleS = 0;
   const bus = createBus(() => {});
   const fired = [];
-  bus.on('shell:fired', (event) => { if (event.isPlayer) fired.push(event.muzzleIndex); });
+  // (276, sim-det-trig) each round leaves that mouth of the pose both drivers fire from (sim/gunPose.ts), taken at the shot
+  const strays = [];
+  bus.on('shell:fired', (event) => {
+    if (!event.isPlayer) return;
+    fired.push(event.muzzleIndex);
+    const shell = game.player.spec.gun.shells.find((round) => round.name === event.shellName);
+    const mouth = gunWorldPose(game.player, shell, event.muzzleIndex).muzzle;
+    strays.push(Math.hypot(mouth.x - event.muzzlePos[0], mouth.y - event.muzzlePos[1], mouth.z - event.muzzlePos[2]));
+  });
   const collider = createCollider(game, world);
   const player = game.player;
   try {
@@ -73,9 +83,10 @@ const authorityMouths = [];
     world.release?.();
   }
   assert.deepEqual(fired, authorityMouths, 'the solo step fires the same mouths in the same order');
-  assert.deepEqual(asked, fired, 'and takes each round\'s origin at that mouth of the drawn gun');
+  assert.deepEqual(asked, [], 'and never asks the drawn gun where a round leaves');
+  assert.ok(strays.length === 3 && strays.every((d) => d < 1e-9), `each round leaves that mouth of the shared pose (${strays.join(', ')} m)`);
 }
 
 console.log(`twinMuzzleSolo.selftest: the authority and the solo step fire gepard_1a2 mouths ${authorityMouths.join(', ')}, each `
-  + 'solo round from that mouth of the drawn gun PASS');
+  + 'solo round from that mouth of the shared pose (sim/gunPose.ts), the drawn gun never asked PASS');
 process.exit(0);
