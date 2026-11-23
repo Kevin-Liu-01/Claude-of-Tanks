@@ -25,6 +25,7 @@ import { makeContainerRow } from './containerRowKit.ts';
 import { hallPlinth, hallSlab, makeGantry, makeShed } from './railYardR2.ts';
 import { terraceLayout, terraceUnits } from './terraceLayout.ts';
 import { tagLatticeReading, type LatticeReading } from './regional/lattice.ts';
+import { reliefGeometries, slabTop, type ReliefHole, type ReliefPlane } from './regional/roofRelief.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
   createGablePrism(width, height, depth, 0.5)
@@ -421,13 +422,16 @@ export function makeWarehouse(
   // slabs stood 5 cm over the wall tops and buried the skylights)
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
   parts.dark.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
+  const roofPlanes: ReliefPlane[] = [], lights: ReliefHole[] = [];
   for (const side of [-1, 1]) {
     const slab = hallSlab(seat.length, 0.13, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
+    roofPlanes.push(slabTop(slab, [-side * Math.sin(ang), Math.cos(ang), 0], 0.2));
     // ridge skylights: two glazed strips a metre down each roof plane
     for (const sz of [-d * 0.22, d * 0.2]) {
+      lights.push({ x0: -side * 1.15 - 0.55, x1: -side * 1.15 + 0.55, z0: sz - 1.4, z1: sz + 1.4 });
       // 6 cm glazing: the pitch audit regresses a slab's centre plane through its corners, and a thick narrow box
       // biases that slope (0.14 m on 0.95 m read 0.005 rad off the receipt)
       const light = dressing(box(0.95, 0.06, 2.6, 0.5));
@@ -548,6 +552,9 @@ export function makeWarehouse(
     for (const dy of [-0.22, 0, 0.22]) parts.stone.push(boxAt(0.86 - Math.abs(dy) * 1.4, 0.06, 0.08, 0, oy + dy, oz + e * 0.16));
   }
   parts.dark.push(dressing(new THREE.CylinderGeometry(0.12, 0.12, d + 0.7, 8, 1).rotateX(Math.PI / 2).translate(0, wallH + roofH + 0.1, 0)));
+  // (dome-detail-275, the roof scan: the goods shed's roof a smooth slab) its corrugated sheets in their lapped courses,
+  // clear of the skylights (regional/roofRelief.ts; dressing, no stream draws)
+  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: w * 7 + d }, roofPlanes, lights));
   for (let k = 0; k < 3; k++) {
     const cap = dressing(gablePrism(1.25, 0.38, 2.95));
     cap.translate(0, wallH + roofH + 0.22 + 0.275, -d / 3 + k * (d / 3));

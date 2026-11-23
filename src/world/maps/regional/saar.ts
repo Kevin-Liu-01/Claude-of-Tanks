@@ -8,7 +8,10 @@
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
 import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { DOME_MIN_RINGS, DOME_MIN_SEGMENTS } from './domes.ts';
-import { buildHouse, emitRoof, recordBody, recordShaft, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, layRoofRelief, recordBody, recordShaft, reliefSlope, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofRelief,
+  type RoofSpec,
+} from './house.ts';
 import { facadeOn, roofDormers, shopDisplay } from './facade.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
@@ -33,6 +36,13 @@ const STREAK_SOOT: Rgb = [0.05, 0.045, 0.04], STREAK_RUST: Rgb = [0.27, 0.13, 0.
 const HOLDER = rgb(0x5c6a63), FRAME = rgb(0xc8c2b4), DOOR = rgb(0x3e4e44), IRON = rgb(0x2d2f30);
 const WINDOW: WindowStyle = { frame: FRAME, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: YELLOW_BRICK, width: 0.14, out: 0.05, lintel: 0.26 }, sill: { bucket: 'stone', out: 0.1 }, shutters: null };
 const HALL_WINDOW: WindowStyle = { ...WINDOW, frame: rgb(0x4a4f4e), bars: 'six' };
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief): the houses', the office's and the engine halls' slate
+ * in the Ruhr kit's courses (ruhr.ts SLATE_COURSE), the works' corrugated sheet in its lapped courses on the north lights,
+ * the head houses and the sheds.
+ */
+const SLATE: RoofRelief = { kind: 'slate', gauge: 0.36 };
+const WORKS_SHEET: RoofRelief = { kind: 'sheet', ribs: 2 };
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -437,11 +447,15 @@ function sawtoothHall(ctx: RegionalBuildContext, wallH: number, toothMax: number
       // along its crest over the glazing, the valley gutter at its foot; a round ventilator on every other tooth
       const sl = Math.hypot(rise, tl - 0.05), n: Vec3 = [0, (tl - 0.05) / sl, rise / sl];
       const on = (t: number, x: number, o = 0): Vec3 => [x, y0 + rise * (1 - t) + n[1] * o, z0 + 0.05 + (tl - 0.05) * t + n[2] * o];
-      for (const t of [0.34, 0.67]) sink.member('structureMetal', on(t, -W / 2 + 0.3), on(t, W / 2 - 0.3), 0.07, 0.04, n, { colour: shade(IRON, 1.4), decor: true }, 0.01);
+      // (dome-detail-275) the slope's sheets in their lapped courses (house.ts layRoofRelief), clear of the ventilator
+      const vent = k % 2 === 1 ? (look() - 0.5) * (W - 3) : null, vz = on(0.5, 0)[2];
+      layRoofRelief(sink, WORKS_SHEET, [reliefSlope([-W / 2 + 0.25, y0, z1], [W / 2 - 0.25, y0, z1], [0, rise, z0 + 0.05 - z1], 0.25)], {
+        bucket: 'roof', holes: vent === null ? [] : [{ x0: vent - 0.35, x1: vent + 0.35, z0: vz - 0.4, z1: vz + 0.4 }],
+      });
       sink.member('structureMetal', on(0.015, -W / 2 + 0.25), on(0.015, W / 2 - 0.25), 0.22, 0.05, n, { colour: shade(SHEET, 0.7), decor: true }, 0.01);
       sink.member('structureMetal', [-W / 2 + 0.25, y0 + 0.02, z1 - 0.12], [W / 2 - 0.25, y0 + 0.02, z1 - 0.12], 0.24, 0.12, [0, 1, 0], { colour: IRON, decor: true }, 0);
-      if (k % 2 === 1) {
-        const vx = (look() - 0.5) * (W - 3), vb = on(0.5, vx);
+      if (vent !== null) {
+        const vx = vent, vb = on(0.5, vx);
         sink.cylinder('structureMetal', [vx, vb[1] - 0.25, vb[2]], 'y', 0.95, 0.24, 10, { colour: shade(SHEET, 0.8), decor: true });
         sink.cylinder('structureMetal', [vx, vb[1] + 0.7, vb[2]], 'y', 0.22, 0.38, 10, { colour: shade(SHEET, 0.6), decor: true }, 0.1);
       }
@@ -568,7 +582,7 @@ function gasHolder(ctx: RegionalBuildContext): RegionalParts {
       const vd = Math.min(3.4, room - 0.3), vw = Math.min(4.2, (long ? W : D) - 2 * t - 1.0), vc = (long ? D : W) / 2 - t - 0.15 - vd / 2;
       const [vx, vz, sx, sz] = long ? [0, -vc, vw, vd] : [-vc, 0, vd, vw];
       sink.span('stone', vx - sx / 2, -0.4, vz - sz / 2, vx + sx / 2, 3.2, vz + sz / 2);
-      const cap: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.25, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+      const cap: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.25, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: SLATE };
       sink.placed(0, vx, 0, vz, () => emitRoof(sink, roofGeometry(sx, sz, 3.2, cap), cap));
       // (dome-detail-275: a blank brick box) its door and light toward the holder, the yellow string course and corners
       const toward = long ? (vz < 0 ? 1 : -1) : (vx < 0 ? 1 : -1);
@@ -683,7 +697,7 @@ const conveyor: RegionalBuilder = (ctx) => {
       if (!mobile) {
         for (let y = hy + 0.3; y < hy + 3.1; y += 0.4) sink.span('structureMetal', -Wd / 2 + 0.27, y, hd / 2 - 0.1, Wd / 2 - 0.27, y + 0.03, hd / 2 - 0.07, { colour: shade(SHEET, 0.85), decor: true, fine: true });
       }
-      const cap: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+      const cap: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: WORKS_SHEET };
       emitRoof(sink, roofGeometry(Wd - 0.6, hd - 0.2, hy + 3.2, cap), cap);
     });
     // the trestles under the gallery: braced lattice towers of four legs on brick piers, each leg up into the gallery's
@@ -766,7 +780,7 @@ const headframe: RegionalBuilder = (ctx) => {
     sink.placed(Math.PI / 2, 0, 0, (hb + hz1) / 2, () => {
       const hall = buildHouse(sink, {
         w: hw, d: hd, plinth: { h: 0.5, out: 0.05, bucket: 'stone' }, storeys: [{ h: 6.5, wall: 'stone' }],
-        roof: { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone',
+        roof: { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle', relief: SLATE }, gableBucket: 'stone',
         openings: hallOpenings, chimneys: [], gutters: { colour: IRON }, verge: null, reveal: 0.28, rafters: null, spall: null,
       }, hallDialect);
       // (dome-detail-275) the pilasters and the eave cornice round the hall, the blue-black engineering brick of its plinth
@@ -842,7 +856,7 @@ const headframe: RegionalBuilder = (ctx) => {
       sink.placed(Math.PI / 2, 0, 0, (ez0 + ez1) / 2, () => {
         const house = buildHouse(sink, {
           w: ew, d: ed, plinth: { h: 0.5, out: 0.05, bucket: 'stone' }, storeys: [{ h: 7.2, wall: 'stone' }],
-          roof: { kind: 'gable', pitchDeg: 30, eave: 0.35, verge: 0.25, thickness: 0.14, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
+          roof: { kind: 'gable', pitchDeg: 30, eave: 0.35, verge: 0.25, thickness: 0.14, bucket: 'roof', ridge: 'saddle', relief: SLATE }, gableBucket: 'stone', openings,
           chimneys: [{ x: 0, z: -ed / 2 + 1.0, sx: 0.8, sz: 0.8, above: 2.4, bucket: 'stone', cap: 'slab' }],
           gutters: { colour: IRON }, verge: null, reveal: 0.3, rafters: null, spall: null,
         }, archedDialect(look, dialect(rng, HALL_WINDOW)));
@@ -904,7 +918,7 @@ const worksOffice: RegionalBuilder = (ctx) => {
   sink.placed(0, f.cx, 0, f.cz, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.8, wall: 'stone' }, { h: 3.5, wall: 'stone' }, { h: 3.3, wall: 'stone' }],
-      roof: { kind: 'hip', pitchDeg: 34, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
+      roof: { kind: 'hip', pitchDeg: 34, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'saddle', relief: SLATE }, gableBucket: 'stone', openings,
       chimneys: [{ x: W * 0.25, z: 0, sx: 0.6, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'pots' }, { x: -W * 0.25, z: 0, sx: 0.6, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'pots' }],
       gutters: { colour: rgb(0x6a6e70) }, verge: null, reveal: 0.26, rafters: null, spall: null,
     }, dialect(rng));
@@ -993,7 +1007,7 @@ const minersHouse: RegionalBuilder = (ctx) => {
     sink.placed(0, 0, 0, zc, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
       const frame = buildHouse(sink, {
         w: depth, d: len, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: gH, wall: plaster ? 'plaster' : 'stone' }, { h: kH, wall: plaster ? 'plaster' : 'stone' }],
-        roof: { kind: 'gable', pitchDeg: pitch, eave: 0.45, verge: 0, thickness: 0.15, bucket: 'roof', ridge: 'saddle' }, gableBucket: plaster ? 'plaster' : 'stone', openings,
+        roof: { kind: 'gable', pitchDeg: pitch, eave: 0.45, verge: 0, thickness: 0.15, bucket: 'roof', ridge: 'saddle', relief: SLATE }, gableBucket: plaster ? 'plaster' : 'stone', openings,
         chimneys: [{ x: (rng() - 0.5) * 0.6, z: (stable ? -stable : 1) * len * 0.18, sx: 0.5, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'pots' }],
         gutters: mobile ? null : { colour: rgb(0x6a6e70) }, verge: null, reveal: 0.2, rafters: null, spall: null,
       }, houseDialect);
@@ -1026,7 +1040,7 @@ const minersHouse: RegionalBuilder = (ctx) => {
           try {
             const shed = buildHouse(sink, {
               w: sd, d: sw, plinth: { h: 0.1, out: 0.03, bucket: 'stone' }, storeys: [{ h: lo - 0.1, wall: 'structureWood' }],
-              roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.06, bucket: 'structureMetal' }, roofColour: shade(SHEET, 0.9),
+              roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.06, bucket: 'structureMetal', relief: WORKS_SHEET }, roofColour: shade(SHEET, 0.9),
               gableBucket: 'structureWood', openings: [{ face: 'right', storey: 0, kind: 'door', u: (look() - 0.5) * Math.max(0, sw - 1.6), w: 0.85, y0: 0, h: 1.75 }],
               chimneys: [], gutters: null, verge: null, reveal: 0.06, spall: null,
             }, { window: () => {}, door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(colour, 0.85), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(colour, 0.7) }, steps: null, leafKind: 'plank' }, y0 + o.y0) });

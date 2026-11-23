@@ -3022,6 +3022,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundMarkings.selftest.mjs', // 2026-10-15 (maps lane, Kestrel): paint on the paved ground — Kestrel's apron markings
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/domeDetail.selftest.mjs', // 2026-11-22 (dome-detail-275, Kevin: "no more low quality/low poly buildings"): no kit dome a frustum stack, none under 24 segments
+    'src/world/maps/regional/roofRelief.selftest.mjs', // 2026-11-22 (dome-detail-275, the roof bar: "roofs in courses, in relief"): every kit roof laid in relief, or its builder on the shrinking NOT_YET_IN_RELIEF list
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
     'src/world/maps/regional/latticeDamage.selftest.mjs', // 2026-10-14 props census #3: open frames recorded, read as lattices, folded over in their members

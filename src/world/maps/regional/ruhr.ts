@@ -4,7 +4,7 @@
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
 // two doors and a dormer each; the colony's terraced rows (terraceLayout.ts); a shelled brick shell.
 import { PartSink, alongPlot, faceBox, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofPatch, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofPatch, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { dentilCornice, facadeOn, faceSlab, pilaster, sillStreaks, trimRing, trimRun, windowHead } from './facade.ts';
 import { DOME_MIN_SEGMENTS, smoothProfile } from './domes.ts';
@@ -121,6 +121,8 @@ function slateStep(sink: PartSink, sl: SlateSlope, v: number, t0: number, t1: nu
 
 /** The slates' course up a slope (m): the butt lines the long view reads (dome-detail-275). */
 const SLATE_COURSE = 0.36;
+/** (dome-detail-275) the shared roof relief's slates in the same courses (house.ts RoofSpec.relief): the terrace rows' roofs */
+const SLATE_RELIEF: RoofRelief = { kind: 'slate', gauge: SLATE_COURSE };
 
 /** A slate run's tone (dome-detail-275): the soot-dulled field, now and then a run relaid in new slate or one sooted black. */
 function slateTone(look: () => number): number {
@@ -258,7 +260,7 @@ const terraceRow: RegionalBuilder = (ctx) => {
   sink.placed(Math.PI / 2, 0, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: L.depth, d: L.w, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'stone' }, { h: 2.7, wall: 'stone' }],
-      roof: slate(40), gableBucket: 'stone', openings, chimneys: stacks,
+      roof: { ...slate(40), relief: SLATE_RELIEF }, gableBucket: 'stone', openings, chimneys: stacks,
       gutters: { colour: rgb(0x5a5e60) }, verge: { colour: rgb(0x34302c), bucket: 'structureWood' }, reveal: 0.15,
     }, dialect(rng, door));
     band(sink, frame.bodies[0], frame.floors[1] - 0.12);
@@ -273,7 +275,7 @@ const terraceRow: RegionalBuilder = (ctx) => {
     // the wash-houses behind the pairs, astride their party walls (an odd last house has its own): built along local z
     // and turned a quarter, so the lean-to's fall (local +x) runs to the yard (-z)
     const zw = L.back - L.washDepth / 2;
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.25, verge: 0.12, thickness: 0.1, bucket: 'roof' };
+    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.25, verge: 0.12, thickness: 0.1, bucket: 'roof', relief: SLATE_RELIEF };
     const yard: HouseDialect = {
       window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...WINDOW, bars: 'cross', head: null }, rng, 0.2),
       door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(door, 0.85), frame: { bucket: 'stone', width: 0.1, out: 0.04 }, steps: null, leafKind: 'plank' }, y0 + o.y0),

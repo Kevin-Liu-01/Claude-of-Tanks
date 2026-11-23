@@ -14,6 +14,7 @@ import { MARKET_BUILDERS } from './mapKits.ts';
 import { RAIL_BUILDERS, catalogHoles, cutHall, envelopeMarker, tagCutHall } from './railKit.ts'; // maps r1: railyard + coastal kits
 import { hallPlinth, hallSlab } from './railYardR2.ts'; // the factory's r2 plinth and roof slabs (the looks lane, 2026-10-16)
 import { gableAttic, gablePrism as createGablePrism, gableSlabSeat, pitchRoofPlane } from '../propGeometry.ts';
+import { reliefGeometries, slabTop, type ReliefPlane } from './regional/roofRelief.ts';
 import {
   addConnectedExterior,
   type GeometryBuckets,
@@ -208,12 +209,17 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the hall closed under them)
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.14);
   parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
+  const roofPlanes: ReliefPlane[] = [];
   for (const side of [-1, 1]) {
     const slab = hallSlab(seat.length, 0.14, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
+    roofPlanes.push(slabTop(slab, [-side * Math.sin(seat.pitch), Math.cos(seat.pitch), 0], 0.2));
   }
+  // (dome-detail-275, the roof scan: the hall's roof a smooth slab) its corrugated sheets in their lapped courses
+  // (regional/roofRelief.ts; dressing, no stream draws)
+  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: 3 }, roofPlanes));
   // each window: the glass at the back of the reveal (the core's face behind it), the mullion and transom in the reveal;
   // the brick jambs and lintel round the cut and the stone sill under it
   for (const { side, zz } of bays) {

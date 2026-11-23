@@ -13,7 +13,9 @@ import {
   PartSink, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, holedBox, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, holedBox, layRoofRelief, reliefFlat, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofRelief, type RoofSpec,
+} from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, mound, woodpile } from './dressing.ts';
 import { recordFrameHouse, recordLattice } from './lattice.ts';
@@ -94,9 +96,27 @@ function dialect(st: TselinaState, gate?: Rgb): HouseDialect {
   };
 }
 
-/** The asbestos-cement sheet roof (shifer), or a painted or galvanised sheet one. */
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief): the shifer's sheets 1.75 x 1.13 m lapped 15 cm a
+ * course (their waves the asbestos print's), a sheet now and then replaced a little cleaner or rust run down from its
+ * lap; a painted roofing-steel roof's seamed panels 0.7 m wide in courses of 1.4 m; the flat concrete roofs of the elevator's
+ * gallery and head house and the intake under ruberoid felt, its laps, patches and gravel stop.
+ */
+const SHIFER: RoofRelief = { kind: 'sheet', gauge: 1.6, pitch: 1.0, ribs: 0 };
+const SEAMED: RoofRelief = { kind: 'sheet', gauge: 1.35, pitch: 0.68, ribs: 0 };
+const FELT: RoofRelief = { kind: 'felt' };
+/** ruberoid's black over the concrete slab's grey (EmitOptions.tint of the covering's bucket) */
+const FELT_TINT: Rgb = [0.5, 0.5, 0.52];
+
+/** The asbestos-cement sheet roof (shifer), or a painted or galvanised sheet one, in relief (dome-detail-275). */
 function sheetRoof(kind: RoofSpec['kind'], pitch: number, sheet: boolean, eave = 0.45, verge = 0.4): RoofSpec {
-  return { kind, pitchDeg: pitch, eave, verge, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: kind === 'shed' ? null : 'saddle' };
+  return { kind, pitchDeg: pitch, eave, verge, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: kind === 'shed' ? null : 'saddle',
+    relief: sheet ? SEAMED : SHIFER };
+}
+
+/** (dome-detail-275) A flat roof slab's top (x0..x1, z0..z1 at y) under felt in relief, a gravel stop round its edge. */
+function feltRoof(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y: number): void {
+  layRoofRelief(sink, FELT, [reliefFlat(x0, z0, x1, z1, y, x1 - x0 < z1 - z0)], { bucket: 'roof', base: { tint: FELT_TINT } });
 }
 
 /** The two triangles a shed roof leaves open over the ±z walls of a w × d body (its slope rises toward -x). */
@@ -150,24 +170,6 @@ function steelLadder(sink: PartSink, foot: Vec3, out: Vec3, y1: number, off: num
   }
   for (const k of [1, 4]) sink.member('structureMetal', P(ring[k][0], cage, ring[k][1]), P(ring[k][0], y1, ring[k][1]), 0.05, 0.03, [s[0], 0, s[2]], free, 0);
   sink.member('structureMetal', P(0, cage, off + 0.62), P(0, y1, off + 0.62), 0.05, 0.03, out, free, 0);
-}
-
-/**
- * (dome-detail-275) An asbestos-sheet gable's wear (roofGeometry `rg`, its ridge along z): the sheets' laps in courses
- * down each slope, `patches` sheets a slope replaced in a fresher grey or gone dark with lichen.
- */
-function sheetLaps(sink: PartSink, rg: RoofGeometry, look: () => number, patches: number, verge: number): void {
-  for (const side of [-1, 1]) {
-    const n = normalize3([side * rg.tanP, 1, 0]), step = Math.min(0.3, 1.45 / Math.max(1, rg.s));
-    for (let t = 0.18; t < 1.05; t += step) {
-      const x = side * rg.s * t, y = rg.topAt(x, 0);
-      if (y !== null) sink.member('roof', [x, y, -rg.halfD - verge], [x, y, rg.halfD + verge], 0.07, 0.025, n, { decor: true, shade: 0.72, exposed: true }, 0);
-    }
-    for (let k = 0; k < patches; k++) {
-      const x = side * rg.s * (0.28 + look() * 0.6), z = (look() - 0.5) * (2 * rg.halfD - 3), y = rg.topAt(x, z);
-      if (y !== null) sink.member('roof', [x, y, z], [x, y, z + 1.15], 1.3, 0.018, n, { decor: true, shade: look() < 0.35 ? 0.6 : 1.18, exposed: true }, 0);
-    }
-  }
 }
 
 /** (dome-detail-275) A heap on the ground (spilled grain, a spoil or rubble heap): an eight-sided mound, darker at its foot. */
@@ -466,6 +468,7 @@ const elevator = (ctx: RegionalBuildContext): RegionalParts => {
     const gw = Math.min(2.2, r * 0.8), gh = 3.0;
     sink.span('plaster2', -gw, Hs, zt1, gw, Hs + gh, zb1 - 0.4);
     sink.span('roof', -gw - 0.25, Hs + gh, zt1, gw + 0.25, Hs + gh + 0.18, zb1 - 0.15);
+    feltRoof(sink, -gw - 0.25, zt1, gw + 0.25, zb1 - 0.15, Hs + gh + 0.18);
     for (const sx of [-1, 1]) {
       const side: Face = sx > 0 ? { origin: [gw, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: bankL } : { origin: [-gw, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: bankL };
       for (let z = zt1 + 1.6; z < zb1 - 1.4; z += 2.1) facePanel(sink, paneBucket(look, 0.15), side, sx > 0 ? -z : z, Hs + gh * 0.55, 0.012, 1.3, 0.8, { decor: true, window: side.out });
@@ -477,6 +480,7 @@ const elevator = (ctx: RegionalBuildContext): RegionalParts => {
     const hw = Math.min(tx - 0.8, 2.6), hz = (zt0 + zt1) / 2;
     sink.span('plaster2', -hw, Ht + 0.7, hz - 2.0, hw, Ht + 4.6, hz + 2.0);
     sink.span('roof', -hw - 0.2, Ht + 4.6, hz - 2.2, hw + 0.2, Ht + 4.8, hz + 2.2);
+    feltRoof(sink, -hw - 0.2, hz - 2.2, hw + 0.2, hz + 2.2, Ht + 4.8);
     const towerFaces: Face[] = [
       { origin: [0, 0, zt0], u: [-1, 0, 0], out: [0, 0, -1], width: towerW },
       { origin: [tx, 0, hz], u: [0, 0, -1], out: [1, 0, 0], width: towerD },
@@ -548,7 +552,7 @@ const workshop = (ctx: RegionalBuildContext): RegionalParts => {
     }
     const mw = Math.min(2.6, W * 0.24), my0 = frame.roof.ridgeY - 0.25, mh = 1.25, md = D * 0.72;
     sink.span('structureMetal', -mw / 2, my0, -md / 2, mw / 2, my0 + mh, md / 2, { colour: STEEL });
-    const mr: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.3, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
+    const mr: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.3, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle', relief: SHIFER };
     emitRoof(sink, roofGeometry(mw, md, my0 + mh, mr), mr);
     for (const sx of [-1, 1]) {
       const f: Face = sx > 0 ? { origin: [mw / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: md } : { origin: [-mw / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: md };
@@ -645,10 +649,9 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
       const f = frame.faces[name], stops = [-f.width / 2, ...doors.filter((o) => o.face === name).flatMap((o) => [o.u - o.w / 2 - 0.25, o.u + o.w / 2 + 0.25]), f.width / 2];
       for (let k = 0; k + 1 < stops.length; k += 2) if (stops[k + 1] - stops[k] > 0.3) faceBox(sink, wall, f, (stops[k] + stops[k + 1]) / 2, plinth + 0.22, 0.012, stops[k + 1] - stops[k], 0.44, 0.02, { decor: true, shade: 0.8 });
     }
-    // (dome-detail-275) the roof: the sheets' laps down each slope, a few sheets replaced (fresher) or lichened (darker),
-    // the ridge's three ventilators (a boarded box under a little gable each), the gable's number board
+    // (dome-detail-275) the roof's sheets in relief (sheetRoof); the ridge's three ventilators (a boarded box under a
+    // little gable each), the gable's number board
     const rg = frame.roof;
-    sheetLaps(sink, rg, look, 3, 0.4);
     for (const z of [-D * 0.3, 0, D * 0.3]) {
       const top = rg.ridgeTopY - 0.05;
       sink.span('structureWood', -0.45, top - 0.35, z - 0.5, 0.45, top + 0.65, z + 0.5, { colour: shade(PLANK, 0.9), decor: true });
@@ -774,6 +777,7 @@ const conveyor: RegionalBuilder = (ctx) => {
     sink.band('stone', -hw - 0.04, -0.1, zi - shedL / 2 - 0.04, hw + 0.04, 0.45, half + 0.04, { decor: true });
     sink.band('plaster2', -hw - 0.08, 2.95, zi - shedL / 2 - 0.08, hw + 0.08, 3.2, half + 0.08, { decor: true, shade: 0.9 });
     sink.span('roof', -hw - 0.25, 3.2, zi - shedL / 2 - 0.2, hw + 0.25, 3.36, half + 0.25);
+    feltRoof(sink, -hw - 0.25, zi - shedL / 2 - 0.2, hw + 0.25, half + 0.25, 3.36);
     // (dome-detail-275) the intake: its corner pilasters, the steel lintel over the tipping bay on its bearing pads, the
     // sheet canopy over the mouth on two brackets, the concrete apron the lorries stand on and the grain they spill, the
     // steel door into the side and the dust cyclone on the roof with its duct to the gallery
@@ -945,17 +949,9 @@ const mtsGarage: RegionalBuilder = (ctx) => {
       const stops = [-L / 2, ...own.flatMap((o) => [o.u - o.w / 2 - 0.15, o.u + o.w / 2 + 0.15]), L / 2];
       for (let k = 0; k + 1 < stops.length; k += 2) if (stops[k + 1] - stops[k] > 0.3) faceBox(sink, garageWall, f, (stops[k] + stops[k + 1]) / 2, 0.45, 0.012, stops[k + 1] - stops[k], 0.4, 0.02, { decor: true, shade: 0.8 });
     }
-    // (dome-detail-275) the roof: its sheets' laps falling to the gates' side, a patched sheet or two; the low eave's
-    // gutter and two downpipes; the high eave's fascia; the stove's pipe up through the sheets under its cap
-    const rg = frame.roof, n = normalize3([rg.tanP, 1, 0]);
-    for (let x = rg.s - 0.9; x > -rg.s; x -= 1.45) {
-      const y = rg.topAt(x, 0);
-      if (y !== null) sink.member('roof', [x, y, -rg.halfD - 0.3], [x, y, rg.halfD + 0.3], 0.07, 0.025, n, { decor: true, shade: 0.72, exposed: true }, 0);
-    }
-    for (let k = 0; k < 3; k++) {
-      const x = (look() - 0.5) * (2 * rg.s - 1.6), z = (look() - 0.5) * (L - 3), y = rg.topAt(x, z);
-      if (y !== null) sink.member('roof', [x, y, z], [x, y, z + 1.15], 1.3, 0.018, n, { decor: true, shade: look() < 0.4 ? 0.6 : 1.18, exposed: true }, 0);
-    }
+    // (dome-detail-275) the roof: its sheets in relief (sheetRoof); the low eave's gutter and two downpipes; the high
+    // eave's fascia; the stove's pipe up through the sheets under its cap
+    const rg = frame.roof;
     const lowY = frame.eaveY - 0.45 * rg.tanP, gut = { colour: rgb(0x8a8e8c), decor: true } as const;
     sink.pipe('structureMetal', [W / 2 + 0.5, lowY - 0.08, -L / 2 - 0.25], [W / 2 + 0.5, lowY - 0.08, L / 2 + 0.25], 0.08, 6, { ...gut, caps: true });
     for (const z of [-L / 2 + 0.25, L / 2 - 0.25]) {
@@ -1013,7 +1009,7 @@ const implementShed: RegionalBuilder = (ctx) => {
     }
     sink.span('structureMetal', W / 2 - 0.35, hFront - 0.25, -L / 2, W / 2 - 0.05, hFront, L / 2, { colour: STEEL_DARK });
     const tanP = (hBack - hFront) / (W - 0.2);
-    const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan(tanP) * 180 / Math.PI, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: null };
+    const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan(tanP) * 180 / Math.PI, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: null, relief: SHIFER };
     emitRoof(sink, roofGeometry(W, L, hFront, roof), roof);
     const yAt = (x: number) => hFront + (W / 2 - x) * tanP - 0.02;
     wallPolygon(sink, wall, { origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, [[-W / 2, -0.3], [W / 2 - 0.3, -0.3], [W / 2 - 0.3, yAt(W / 2 - 0.3)], [-W / 2, yAt(-W / 2)]], 0.32);
@@ -1060,15 +1056,6 @@ const implementShed: RegionalBuilder = (ctx) => {
     sink.pipe('structureMetal', [W / 2 + 0.48, ey - 0.14, -L / 2 - 0.25], [W / 2 + 0.48, ey - 0.14, L / 2 + 0.25], 0.07, 6, { colour: rgb(0x8a8e8c), decor: true, caps: true });
     sink.pipe('structureMetal', [W / 2 + 0.48, ey - 0.14, L / 2 + 0.2], [W / 2 + 0.48, 0.05, L / 2 + 0.2], 0.05, 6, { colour: rgb(0x8a8e8c), decor: true });
     sink.span('plaster2', xd + 0.05, -0.1, -L / 2 + 0.32, W / 2 + 0.4, 0.07, L / 2 - 0.32, { decor: true, shade: 0.86 });
-    // (dome-detail-275) the asbestos sheets' laps down the slope, a few sheets replaced in a fresher grey, one darker
-    // with lichen
-    const top = (xx: number) => hFront + 0.1 + (W / 2 - xx) * tanP;
-    for (let xx = W / 2 - 0.9; xx > -W / 2; xx -= 1.45) sink.member('roof', [xx, top(xx), -L / 2 - 0.3], [xx, top(xx), L / 2 + 0.3], 0.07, 0.025, up, { decor: true, shade: 0.72, exposed: true }, 0);
-    for (let k = 0; k < 3; k++) {
-      const xx = W / 2 - 0.2 - (0.5 + Math.floor(look() * 5)) * 1.45 + 0.72, zz = -L / 2 + 1 + look() * (L - 2.6);
-      if (xx < -W / 2 + 0.6) continue;
-      sink.member('roof', [xx, top(xx), zz], [xx, top(xx), zz + 1.15], 1.3, 0.018, up, { decor: true, shade: k === 2 ? 0.62 : 1.18, exposed: true }, 0);
-    }
     // (dome-detail-275) under the roof: a seed drill (its hopper on two wheels, the coulters' discs in a row under it, the
     // drawbar's A to its hitch), a three-furrow plough on its frame, the oil drums by a gable
     const x = W / 2 - 1.15;
@@ -1357,7 +1344,6 @@ const koshara: RegionalBuilder = (ctx) => {
       const f = look() < 0.5 ? frame.faces.front : frame.faces.back, p = facePoint(f, (look() < 0.5 ? -1 : 1) * (f.width / 2 - 1.2), 0, 0.25);
       heap(sink, p[0], p[2], 0.75, 0.5, 0.45, rgb(0x4a3a2a), look() * 3);
     }
-    if (!reed) sheetLaps(sink, frame.roof, look, 2, 0.3);
     // (dome-detail-275) the reed ridge's binding: pairs of crossed riders along it, a pole through their crooks
     if (reed) {
       const ry = frame.roof.ridgeTopY;
@@ -1417,15 +1403,6 @@ const store: RegionalBuilder = (ctx) => {
     if (wall === 'plaster') for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const x = sx * (W - 0.08) / 2, z = sz * (D - 0.08) / 2;
       sink.quoin('stone', x - sx * 0.26, 0.25, z - sz * 0.26, x + sx * 0.04, frame.eaveY - 0.05, z + sz * 0.04, sx, sz, DEC);
-    }
-    // (dome-detail-275) an asbestos roof's laps and its patched sheets
-    if (!sheet) {
-      const rg = frame.roof;
-      if (!shed) sheetLaps(sink, rg, look, 1, 0.25);
-      else for (let x = rg.s - 0.6; x > -rg.s; x -= 1.2) {
-        const y = rg.topAt(x, 0);
-        if (y !== null) sink.member('roof', [x, y, -rg.halfD - 0.2], [x, y, rg.halfD + 0.2], 0.07, 0.025, normalize3([rg.tanP, 1, 0]), { decor: true, shade: 0.72, exposed: true }, 0);
-      }
     }
     const pileSide = look() < 0.5 ? f.right : f.left;
     if (look() < 0.7) woodpile(sink, pileSide, -Math.min(1.2, pileSide.width / 2 - 0.5), Math.min(1.0, pileSide.width / 2 - 0.5), Math.min(1.2, h - 0.6), look);

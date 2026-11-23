@@ -11,7 +11,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
-  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofSpec, type WallRect,
+  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofRelief, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -545,6 +545,11 @@ function hipSlope(rg: RoofGeometry, roof: RoofSpec, end: 1 | -1): TileSlope | nu
 
 /** The plain tiles' gauge up the slope (m): a Biberschwanz roof's courses as they read from the lane (dome-detail-275). */
 const TILE_GAUGE = 0.3;
+/**
+ * (dome-detail-275) The shared roof relief's plain tiles (house.ts RoofSpec.relief) in the same gauge: the farmhouse and
+ * its wing, the church's nave, the chapel and the mill (the dwellings and the barn keep tiledRoof's courses).
+ */
+const PLAIN_TILES: RoofRelief = { kind: 'tile', gauge: TILE_GAUGE };
 
 /**
  * A covering laid in its courses over a TileSlope (dome-detail-275; the work list: "a large smooth roof"; the roof bar:
@@ -995,7 +1000,7 @@ const farmhouse: RegionalBuilder = (ctx) => {
   const sts = storeys(st, ctx, 2, { jettyFront: 0.2, jettySides: 0 });
   const spec: HouseSpec = {
     w: W, d: D, plinth: { h: 0.62, out: 0.06, bucket: 'stone' }, storeys: sts,
-    roof: roofFor(st.rng, { halfHip: 0.55 }), gableFramed: true, gableBucket: st.infill,
+    roof: { ...roofFor(st.rng, { halfHip: 0.55 }), relief: PLAIN_TILES }, gableFramed: true, gableBucket: st.infill,
     openings: houseOpenings(W, D, sts, { face: 'left', u: D * 0.12 }, st),
     chimneys: chimneyFor(st.rng, D, 'stone'), gutters: { colour: ZINC }, verge: { colour: st.timber, bucket: SW },
     rafters: st.mobile ? null : shade(st.timber, 0.92),
@@ -1012,7 +1017,7 @@ const farmhouse: RegionalBuilder = (ctx) => {
     const wing: HouseSpec = {
       w: ww, d: wingL, plinth: { h: 0.3, out: 0.05, bucket: 'stone' },
       storeys: [{ h: 2.5, wall: 'stone' }, { h: 1.1, wall: st.infill, framed: true }],
-      roof: { kind: 'gable', pitchDeg: 46, eave: 0.3, verge: 0.2, thickness: 0.16, bucket: 'roof', ridge: 'round' },
+      roof: { kind: 'gable', pitchDeg: 46, eave: 0.3, verge: 0.2, thickness: 0.16, bucket: 'roof', ridge: 'round', relief: PLAIN_TILES },
       gableFramed: true, gableBucket: st.infill,
       openings: [
         { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.2, y0: 0, h: 2.25 },
@@ -1318,7 +1323,7 @@ const church: RegionalBuilder = (ctx) => {
     buildHouse(sink, {
       w: naveW, d: naveD, plinth: { h: 0.55, out: 0.1, bucket: 'stone' },
       storeys: [{ h: wallH, wall: 'plaster' }],
-      roof: { kind: 'gable', pitchDeg: 52, eave: 0.4, verge: 0.2, thickness: 0.18, bucket: 'roof', ridge: 'round' },
+      roof: { kind: 'gable', pitchDeg: 52, eave: 0.4, verge: 0.2, thickness: 0.18, bucket: 'roof', ridge: 'round', relief: PLAIN_TILES },
       gableBucket: 'plaster', openings, chimneys: [], gutters: { colour: ZINC }, verge: null,
     }, {
       window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -1393,7 +1398,7 @@ const chapel: RegionalBuilder = (ctx) => {
   for (const face of ['right', 'left'] as const) for (const u of [-D * 0.22, D * 0.22]) openings.push({ face, storey: 0, kind: 'window', u, w: 0.8, y0: 1.6, h: 1.7 });
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }],
-    roof: { kind: 'gable', pitchDeg: 54, eave: 0.35, verge: 0.2, thickness: 0.17, bucket: 'roof', ridge: 'round' },
+    roof: { kind: 'gable', pitchDeg: 54, eave: 0.35, verge: 0.2, thickness: 0.17, bucket: 'roof', ridge: 'round', relief: PLAIN_TILES },
     gableFramed: true, gableBucket: st.infill, openings, chimneys: [], gutters: null, verge: { colour: st.timber, bucket: SW },
   }, {
     ...hessianDialect(st),
@@ -1428,7 +1433,7 @@ const mill: RegionalBuilder = (ctx) => {
   const dialect = hessianDialect(st);
   buildHouse(sink, {
     w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: sts,
-    roof: roofFor(st.rng, { halfHip: 0.6 }), gableFramed: true, gableBucket: st.infill,
+    roof: { ...roofFor(st.rng, { halfHip: 0.6 }), relief: PLAIN_TILES }, gableFramed: true, gableBucket: st.infill,
     openings, chimneys: chimneyFor(st.rng, D, 'stone'), gutters: { colour: ZINC }, verge: { colour: st.timber, bucket: SW },
   }, {
     ...dialect,

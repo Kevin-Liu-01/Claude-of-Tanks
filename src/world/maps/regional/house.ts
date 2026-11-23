@@ -13,6 +13,10 @@ import {
 } from './facade.ts';
 import { withSillShadow } from './openings.ts';
 import { registerBuildScope } from '../buildScopes.ts';
+import { roofSpecRelief, type RoofRelief } from './roofRelief.ts';
+
+// (dome-detail-275) the shared roof relief: RoofSpec.relief here, layRoofRelief for a builder's own roofs
+export { layRoofRelief, reliefFlat, reliefSlope, type ReliefHole, type ReliefPlane, type RoofRelief, type RoofReliefKind } from './roofRelief.ts';
 
 /** The walls whose occlusion the weathering pass paints (geometry.ts SHADED): a sill's shadow lies on them. */
 const SILL_SHADOWED: ReadonlySet<RegionalBucket> = new Set(['plaster', 'plaster2', 'plaster3', 'stone']);
@@ -53,6 +57,14 @@ export interface RoofSpec {
    * eave course alone ('nipa': an atap of nipa leaf, whose fine rows are the print's), or none
    */
   thatch?: 'stepped' | 'rows' | 'nipa' | 'none';
+  /**
+   * (dome-detail-275) the covering laid in relief over the slab (roofRelief.ts): plain tiles, pantiles or canal tiles in
+   * their courses and rolls, slates or shingles in runs, sheets in courses with their laps, felt in rolls with its laps,
+   * patches and gravel stop (a flat roof: inside its parapet, which takes a coping), thatch in courses. emitRoof lays it
+   * over every slope it emits (buildHouse leaves the war's stripped patch open); dressing, within a triangle allowance
+   * sized to the roof. Absent, the smooth slab alone, as before, to the byte
+   */
+  relief?: RoofRelief;
 }
 
 export interface StoreySpec {
@@ -724,7 +736,8 @@ export function closeGables(sink: PartSink, rg: RoofGeometry, bucket: RegionalBu
  */
 const CAP_WEATHER: EmitOptions = Object.freeze({ shade: 0.8, tint: [0.9, 0.95, 0.86] as Rgb });
 
-export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colour?: Rgb): void {
+export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colour?: Rgb, patch: RoofPatch | null = null): void {
+  if (roofLog) roofLog.push({ rg, roof, place: sink.placement() });
   const { s, halfD, tanP, eaveY, ridgeY } = rg;
   const t = roof.thickness;
   const bucket = roof.bucket;
@@ -745,6 +758,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       sink.span(pb, s + e - th, eaveY, -halfD - e + th, s + e, top, halfD + e - th);
       sink.span(pb, -s - e, eaveY, -halfD - e + th, -s - e + th, top, halfD + e - th);
     }
+    if (roof.relief) roofSpecRelief(sink, rg, roof, [], dec, patch);
     return;
   }
   const e = roof.eave, D = halfD + (rg.hipVerge ?? roof.verge);
@@ -755,6 +769,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     const n = normalize3([tanP, 1, 0]);
     const pts: Vec3[] = [[s + e, lo, D], [s + e, lo, -D], [-s - e, hi, -D], [-s - e, hi, D]];
     sink.prism(bucket, pts, n, t, dec, { kind: 'plane', origin: [-s - e, hi, 0], u: [0, 0, 1], v: normalize3([1, -tanP, 0]) });
+    if (roof.relief) roofSpecRelief(sink, rg, roof, [{ pts, n }], dec, patch);
     return;
   }
   const cosP = Math.cos(Math.atan(tanP)), sinP = Math.sin(Math.atan(tanP));
@@ -773,6 +788,8 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     else xC = Math.min(s + e, exitX);
   }
   const zEave = zH >= 0 ? zH : D;
+  // (dome-detail-275) the slabs the relief lies over (RoofSpec.relief)
+  const slabs: Array<{ pts: Vec3[]; n: Vec3 }> = [];
   for (const side of [1, -1]) {
     const pts: Vec3[] = [];
     pts.push([side * (s + e), lo, side * zEave]);
@@ -787,6 +804,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     sink.prism(bucket, pts, n, t, dec, {
       kind: 'plane', origin: [0, ridgeY + t / cosP, 0], u: bucket === 'straw' ? down : along, v: bucket === 'straw' ? along : down,
     });
+    if (roof.relief) slabs.push({ pts, n });
     // a thatched slope's eave course and course lines (facade.ts), on its top surface from the eave to the ridge
     if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
@@ -811,6 +829,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       sink.prism(bucket, pts, n, t, dec, {
         kind: 'plane', origin: [0, ridgeY, end * ridgeHalf], u: bucket === 'straw' ? hipDown : hipAlong, v: bucket === 'straw' ? hipAlong : hipDown,
       });
+      if (roof.relief) slabs.push({ pts, n });
       if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
         const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
         const apex = top([0, ridgeY, end * ridgeHalf]);
@@ -846,6 +865,18 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
         { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
     }
   }
+  if (roof.relief) roofSpecRelief(sink, rg, roof, slabs, dec, patch);
+}
+
+/** (dome-detail-275) A roof emitRoof laid: its geometry, its spec and the placement it was laid under (roofRelief.selftest). */
+export interface RoofLogEntry { rg: RoofGeometry; roof: RoofSpec; place: { yaw: number; x: number; y: number; z: number } | null }
+let roofLog: RoofLogEntry[] | null = null;
+registerBuildScope('house.roofLog', () => roofLog !== null);
+/** Run `build` noting every roof emitRoof lays (the roof relief law reads each roof's plan and its relief). */
+export function withRoofLog<T>(build: () => T): [T, RoofLogEntry[]] {
+  const prior = roofLog, log: RoofLogEntry[] = [];
+  roofLog = log;
+  try { return [build(), log]; } finally { roofLog = prior; }
 }
 
 /** A shed roof laid by `placeShed`: its geometry (in its own frame) and the height of its underside over any point. */
@@ -1206,7 +1237,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   // the roof and gables in the top body's frame
   const moveRoof = (fn: () => void) => (Math.abs(roofCx) < 1e-6 && Math.abs(roofCz) < 1e-6 ? fn() : sink.placed(0, roofCx, 0, roofCz, fn));
   if (!spec.ownRoof) moveRoof(() => {
-    emitRoof(sink, rg, spec.roof, spec.roofColour);
+    emitRoof(sink, rg, spec.roof, spec.roofColour, roofPatch);
     if (roofPatch) emitRoofPatch(sink, rg, spec.roof, roofPatch);
     if (rg.gable) {
       const gableBucket = spec.gableBucket ?? spec.storeys[spec.storeys.length - 1].wall;
