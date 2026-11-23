@@ -21,7 +21,10 @@ weapons, impacts, ambience, alarms and the `window.__COT_AUDIO` debug surface.
 Pure, DOM-free policy: `audioMath.ts` (distance, air absorption, delay,
 Doppler, atmospheres, pan), `mixPolicy.ts` (levels, snapshots, HDR, budgets,
 LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
-(report classes, reload choreography), `vehicleAudioProfiles.ts` +
+(report classes, reload choreography, and `ROAR`/`SUSTAIN_BODY`: how a fast gun's
+burst is voiced by its fire-rate regime, `fireRegime` in `src/game/shotCadence.ts`,
+held by the engine's `burstRound`), `toggleSettle.ts` (a toggle's sound settles on
+its final state), `vehicleAudioProfiles.ts` +
 `vehicleAudioModel.ts` (powertrain identity, RPM/gear/track model),
 `environmentScenes.ts` (per-map scenes, bells, flyovers by era, `SPOT_HOURS`
 and each scene's night life), `propSounds.ts` (what every world prop kind sounds
