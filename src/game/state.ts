@@ -729,6 +729,9 @@ function acquireShell(
   sh.dead = false;
   sh.penRollDone = false;
   sh.remainingPenMm = 0;
+  // (276 sim-det-trig) a pooled round is a fresh one: the last round's shot-card roll goes too (a fresh round has none
+  // until its own roll; the per-step round trace read the stale one on the first round a second battle in one page fired)
+  sh.freshPenRollMm = undefined;
   sh.dmgRoll = 0;
   sh.bounces = 0;
   sh.carriedThrough = false;
