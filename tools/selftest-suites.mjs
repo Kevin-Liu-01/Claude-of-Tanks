@@ -3174,6 +3174,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
     // condition in the page's lane
     'src/ui/airSupportNotices.selftest.mjs',
+    // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
+    'tools/air-support-close-box.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

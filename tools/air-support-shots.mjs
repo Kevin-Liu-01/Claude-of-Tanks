@@ -6,6 +6,7 @@
 //   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft | --runs]
 //     [--gauntlet --locale=en-US [--sizes=WxH,WxH]]
 //     [--gauntlet] [--locale=en-US|zh-CN]
+//   node tools/air-support-shots.mjs --out=DIR --close-box [--sizes=WxH,...]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
 // each strike from a camera over its mark (the recon jet's pass, the barrage, the strafing jet's run, the bomb, the AC-130
@@ -20,6 +21,7 @@ import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture
 import { datumProblems } from './datum-census.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { closeBoxProblems, measureCloseBox } from './air-support-close-box.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
 const argv = process.argv.slice(2);
@@ -42,10 +44,19 @@ const framesFilter = arg('frames');
 // <tag>-<kind>-burst-NNN, for a clip (ffmpeg at 10 fps: real time)
 const kindsFilter = arg('kinds')?.split(',') ?? null;
 const burst = argv.includes('--burst');
+// --close-box (air-support-close-276; Kevin 2026-11-23: "the x button shouldnt just appear and disappear. its part of the
+// ui for air support"): at each size, Support at rest, a press of Support raising the binoculars and one lowering them
+// (frames across each change, for a clip), the boxes judged by tools/air-support-close-box.mjs closeBoxProblems, and its
+// negative control: the old standalone close put back in the page, which must fail. Exit 1 on any problem.
+const closeBox = argv.includes('--close-box');
 // --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
 const gauntlet = argv.includes('--gauntlet');
 const locale = arg('locale', 'en-US');
-const GAUNTLET_SIZES = {
+const GAUNTLET_SIZES = closeBox ? {
+  // the desktop's full tray and its stacked one; the phone's two orientations and the iPad's (touch layouts)
+  desktop: [[1920, 1080], [900, 700]],
+  phone: [[390, 844], [844, 390], [820, 1180], [1180, 820]],
+} : {
   desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
   phone: [[844, 390], [390, 844]],
 };
@@ -57,7 +68,7 @@ if (sizesArg) {
 }
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
-const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {} };
+const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {}, closeBox: {} };
 
 const VIEWPORTS = {
   desktop: { width: 1600, height: 900 },
@@ -514,7 +525,7 @@ const surfaceCheck = () => {
   const shown = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width >= 1;
   const name = (el) => `${el.tagName.toLowerCase()}${el.classList.length ? `.${[...el.classList].join('.')}` : ''}`;
   const mine = [...document.querySelectorAll('.cot-strike-rack, .strike-support, .cot-binoculars .binocular-readout, '
-    + '.cot-binoculars .binocular-hint, .cot-strike-warning, .binocular-call, .binocular-close')].filter(shown);
+    + '.cot-binoculars .binocular-hint, .cot-strike-warning, .binocular-call')].filter(shown);
   const clipped = [], off = [], overlaps = [];
   for (const root of mine) {
     const r = root.getBoundingClientRect();
@@ -624,6 +635,88 @@ async function shootGauntlet(page, tag) {
   }
 }
 
+/** The old standalone close (integ/276 fb0f3aba6a airSupportHud.ts and .css, its phone rules shown at every size), put
+ *  back in the binoculars: the negative control the close-box judge must fail. */
+const OLD_CLOSE_CSS = `.cot-binoculars .binocular-close{display:inline-flex;position:absolute;pointer-events:auto;
+ right:calc(max(12px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);background:var(--hud-plate-strong)}
+@media(orientation:portrait){.cot-binoculars .binocular-close{right:auto;left:calc(50% - 88px);bottom:252px}}`;
+
+/** --close-box: at each size, Support's box at rest, raised by its own press and lowered by it again; frames across each
+ *  change; the judge, and the judge on the old standalone close (which must fail). */
+async function shootCloseBox(page, tag) {
+  await page.evaluate(stage);
+  const labels = await page.evaluate(async () => {
+    const { t } = await import('/src/ui/i18n.ts');
+    return { view: t('airSupport.view'), lower: t('airSupport.lower') };
+  });
+  const measure = () => page.evaluate(measureCloseBox, labels.lower);
+  // frames across a change: a press of Support, then a frame as fast as the page gives them for 1.1 s (the raise is 0.7 s)
+  const press = async (name) => {
+    const frames = [];
+    await page.click('.strike-support');
+    const t0 = Date.now();
+    for (let i = 0; Date.now() - t0 < 1100 && i < 40; i++) {
+      const file = `${name}-${String(i).padStart(2, '0')}`;
+      await page.screenshot({ path: path.join(out, `${file}.png`) });
+      frames.push([file, Date.now() - t0]);
+    }
+    return frames;
+  };
+  for (const [width, height] of GAUNTLET_SIZES[tag]) {
+    const kind = tag === 'phone' ? (Math.min(width, height) >= 700 ? 'ipad' : 'phone') : 'desktop';
+    const size = `${kind}-${width}x${height}`;
+    await page.setViewport({ ...VIEWPORTS[tag], width, height });
+    await sleep(1500);
+    await page.evaluate(() => { window.__DEBUG.bus.emit('ui:strikeViewClose', {}); const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; });
+    await sleep(900);
+    const rest = await measure();
+    await shot(page, `close-${size}-rest`);
+    const raise = await press(`close-${size}-raise`);
+    await sleep(300);
+    const up = await measure();
+    await shot(page, `close-${size}-up`);
+    // (Main 2026-11-23: Kevin saw "gunship overhead" over the old X) the binoculars up with an enemy AC-130 over the crew,
+    // so the notices lane's placement and Support's box are checked in one frame; struck off again after it
+    const gunship = await page.evaluate(() => {
+      const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport, p = game.player.state.pos;
+      return game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).some((foe) => {
+        const s = air.capture();
+        s.points = s.points.filter(([id]) => id !== foe.id).concat([[foe.id, air.rules.points.cap]]);
+        s.cooldowns = s.cooldowns.filter(([k]) => !k.startsWith(`${foe.id}:`));
+        air.restore(s);
+        return !!air.requestStrike(foe.id, 'gunship', p.x, p.z, game.timeS);
+      });
+    });
+    await sleep(900);
+    await shot(page, `close-${size}-up-gunship`);
+    await page.evaluate(() => { const air = window.__DEBUG.game.matchModeController.airSupport, s = air.capture(); s.strikes = []; air.restore(s); });
+    await sleep(300);
+    // the negative control: the old button back in the page, with the binoculars up
+    const negative = await page.evaluate((css, lower) => {
+      const style = document.createElement('style'); style.id = 'old-close'; style.textContent = css; document.head.append(style);
+      const button = document.createElement('button');
+      button.className = 'binocular-close cot-c-btn cot-c-btn--secondary cot-c-btn--56 cot-c-btn--icon';
+      button.setAttribute('aria-label', lower); button.textContent = '×';
+      document.querySelector('.cot-binoculars').append(button);
+      return true;
+    }, OLD_CLOSE_CSS, labels.lower) && await measure();
+    await shot(page, `close-${size}-negative-old-button`);
+    await page.evaluate(() => { document.getElementById('old-close')?.remove(); document.querySelector('.cot-binoculars .binocular-close')?.remove(); });
+    const lower = await press(`close-${size}-lower`);
+    await sleep(300);
+    const down = await measure();
+    await shot(page, `close-${size}-down`);
+    const problems = closeBoxProblems(rest, up, labels);
+    const downProblems = closeBoxProblems(down, up, labels).filter((p) => !p.startsWith('up:'));
+    const negativeProblems = closeBoxProblems(rest, negative, labels);
+    receipt.closeBox[size] = {
+      pass: !problems.length && !downProblems.length && negativeProblems.length > 0,
+      problems, downProblems, negativeProblems, gunship, support: { rest: rest.support, up: up.support, down: down.support },
+      frames: { raise, lower },
+    };
+  }
+}
+
 /**
  * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
  * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
@@ -676,12 +769,12 @@ async function measureMarks(page, tag) {
 }
 
 let server = null;
-const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${burst ? '-burst' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${closeBox ? '-close-box' : ''}${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${burst ? '-burst' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
 process.on('exit', () => { try { writeReceipt(); } catch {} });
 await runWarmHold({
   label: 'air-support-275',
   // a film of the runs is a render (it shares the lock with other renders); the perf passes stay exclusive
-  ...(runs ? { lockClass: 'render' } : {}),
+  ...(runs || closeBox ? { lockClass: 'render' } : {}),
   place: `air-support-270-shots-${only ?? 'all'}`,
   // a battle page frozen in the queue is checked (and re-warmed if it reloaded) only past this
   maxFrozenMinutes: 30,
@@ -711,6 +804,10 @@ await runWarmHold({
     return { pages: Object.values(pages), byTag: pages, close: async () => { await browser.close(); await server.close(); } };
   },
   shoot: async ({ byTag, signal, checkpoint }) => {
+    if (closeBox) {
+      for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootCloseBox(byTag[tag], tag);
+      return;
+    }
     if (gauntlet) {
       for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootGauntlet(byTag[tag], tag);
       return;
@@ -737,4 +834,9 @@ await runWarmHold({
   },
 });
 writeReceipt();
+if (closeBox) {
+  const failed = Object.entries(receipt.closeBox).filter(([, r]) => !r.pass).map(([size]) => size);
+  console.log(`air-support close-box: ${Object.keys(receipt.closeBox).length} sizes, ${failed.length ? `FAIL ${failed.join(', ')}` : 'PASS'}`);
+  if (failed.length || !Object.keys(receipt.closeBox).length) process.exitCode = 1;
+}
 console.log(JSON.stringify({ shots: receipt.shots.length, calls: receipt.calls, perf: receipt.perf, errors: Object.fromEntries(Object.entries(receipt.errors).map(([k, v]) => [k, v.length])) }));
