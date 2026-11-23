@@ -668,4 +668,35 @@ assert.equal([...disposedMaterials.values()].every((count) => count === 1), true
   view.dispose();
 }
 
+// (guidance-pointers-276; Kevin: "you know how the bases have indicators in ui tho, we should add that for the ball too",
+// "same for flag holders and juggernaut") the ball and the juggernaut wear the bases' floating icon: a sprite seen through
+// the hills, faded near the viewer; the juggernaut's only while the viewer's side sees it (hullPosition), never revealing it.
+{
+  const viewer = { x: 0, y: 2, z: 0 };
+  const hulls = new Map([['boss', { x: 120, y: 5, z: 60 }]]);
+  const view = createMatchModeWorldPresentation(new Scene(), { viewerPosition: () => viewer, hullPosition: (id) => hulls.get(id) ?? null });
+  view.update({ ...base, id: 'turbo_ball', ball: { x: 90, y: 3, z: 40, vx: 0, vy: 0, vz: 0, lastTouchId: null },
+    goals: [{ team: 'alpha', x: -50, y: 4, z: -110 }, { team: 'bravo', x: 50, y: 4, z: 110 }] }, 1);
+  const ballIcon = view.root.getObjectByName('turbo-ball-icon');
+  assert.ok(ballIcon?.visible, 'the ball wears an icon');
+  assertVector(ballIcon.position, [90, 3, 40], 'the icon rides the ball');
+  const ballSprite = ballIcon.children[0];
+  assert.equal(ballSprite.isSprite && ballSprite.material.depthTest, false, 'seen through the hills, as the bases\' icons are');
+  assert.equal(ballSprite.visible, true, 'far from the viewer: shown');
+  view.update({ ...base, id: 'turbo_ball', ball: { x: 4, y: 3, z: 4, vx: 0, vy: 0, vz: 0, lastTouchId: null },
+    goals: [{ team: 'alpha', x: -50, y: 4, z: -110 }, { team: 'bravo', x: 50, y: 4, z: 110 }] }, 2);
+  assert.equal(ballSprite.visible, false, 'beside the viewer: faded, as the bases\' icons are');
+  const jug = { ...base, id: 'juggernaut', boss: { id: 'boss', team: 'bravo', hp: 900, maxHp: 1000 } };
+  view.update(jug, 3);
+  assert.equal(ballIcon.visible, false, 'a mode change hides the ball\'s icon');
+  const bossIcon = view.root.getObjectByName('juggernaut-icon');
+  assert.ok(bossIcon?.visible, 'the juggernaut wears an icon while seen');
+  assertVector(bossIcon.position, [120, 5, 60], 'over its hull');
+  assert.equal(bossIcon.children[0].userData.iconKey, 'boss:enemy', 'in the enemy\'s colour from the viewer\'s side');
+  hulls.delete('boss');
+  view.update(jug, 4);
+  assert.equal(bossIcon.visible, false, 'unseen (or the viewer\'s own hull): no icon, so it reveals nothing');
+  view.dispose();
+}
+
 console.log('matchModeWorldPresentation.selftest: geometry, retained state, and lifecycle passed');

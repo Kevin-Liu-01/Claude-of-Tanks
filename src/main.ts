@@ -539,6 +539,13 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
     smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
     crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
   },
+  // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)
+  hullPosition: (id) => {
+    const tank = game.tanks.find((entity) => entity.id === id);
+    if (!tank?.state || tank.combat?.destroyed || tank === game.player) return null;
+    const seen = !game.spotting || game.spotting.isSpotted(id, game.player?.team ?? 'player', game.player);
+    return seen ? tank.state.pos : null;
+  },
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
