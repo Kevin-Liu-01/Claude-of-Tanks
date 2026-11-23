@@ -38,7 +38,8 @@ const runs = argv.includes('--runs');
 const framesFilter = arg('frames');
 // (air-support-275) --kinds=missile,bomb: only those runs; 'shootdown' (a strafing jet brought down on its way in, its fall
 // and its burst) and 'warning' (an enemy's Maverick run called on the crew: the HUD on, the minimap's inbound aircraft and
-// the INCOMING notice) are runs of their own. --burst: each run as a frame every 0.1 s across its moments, named
+// the INCOMING notice) are runs of their own; 'dronecrash' (air-crash-he-276: an FPV drone into the nearest building, its
+// crash's burst and hole) only when named. --burst: each run as a frame every 0.1 s across its moments, named
 // <tag>-<kind>-burst-NNN, for a clip (ffmpeg at 10 fps: real time)
 const kindsFilter = arg('kinds')?.split(',') ?? null;
 const burst = argv.includes('--burst');
@@ -367,6 +368,26 @@ async function shootRuns(page, signal, tag, checkpoint) {
         } else if (f.cam === 'fixed') {
           world(eye, -f.out, -f.out, f.up); world(at, 0, 0, f.aimUp ?? 0);
           D.rig.setExternalPose(eye, at, f.fov);
+        } else if (f.cam === 'site') {
+          // (air-crash-he-276) on the crash site: where the downed strike's fall (sim/strikeRuns.ts crashFall) meets the
+          // ground, or the drone run's wall point; from window.__siteFrom's side (default the run's south-east)
+          if (!window.__crashSite && f.id != null) {
+            const R = D.game.matchModeController.airSupport.rules, hf = D.world.heightField;
+            const strike = D.game.matchModeController.airSupport.strikes.find((x) => x.id === f.id);
+            if (strike?.downedS != null) {
+              const q = { x: 0, y: 0, z: 0 };
+              for (let t = 0; t < 30; t += 0.02) {
+                window.__runs.crashFall(R, strike, strike.downedS, strike.downedS + t, q);
+                if (q.y <= hf.getHeightAt(q.x, q.z)) { window.__crashSite = { x: q.x, y: hf.getHeightAt(q.x, q.z), z: q.z }; break; }
+              }
+            }
+          }
+          const c = window.__crashSite;
+          if (c) {
+            const from = window.__siteFrom ?? { x: 0.8, z: 0.6 };
+            eye.set(c.x + from.x * f.out, c.y + f.up, c.z + from.z * f.out); at.set(c.x, c.y + (f.aimUp ?? 0), c.z);
+            D.rig.setExternalPose(eye, at, f.fov);
+          }
         }
       }
       requestAnimationFrame(loop);
@@ -424,7 +445,10 @@ async function shootRuns(page, signal, tag, checkpoint) {
     // a strafing A-10 brought down 1.6 s before its gun would open: struck, falling, its burst at the ground
     shootdown: [['struck', -1.5, { cam: 'chase', back: 60, up: 18, fov: 55 }], ['falling', 0.2, { cam: 'fixed', out: 380, up: 140, fov: 55, aimUp: 40 }],
       ['falling-late', 1.6, { cam: 'fixed', out: 380, up: 140, fov: 55 }], ['crash', 3.2, { cam: 'fixed', out: 380, up: 140, fov: 55 }],
-      ['wreck', 5, { cam: 'fixed', out: 380, up: 140, fov: 55 }]],
+      ['wreck', 5, { cam: 'fixed', out: 380, up: 140, fov: 55 }],
+      // (air-crash-he-276) the crash site close: its blast's hole and the airframe burning in it
+      ['hole', 6.5, { cam: 'site', out: 34, up: 20, fov: 50 }], ['hole-close', 7.5, { cam: 'site', out: 17, up: 11, fov: 50 }],
+      ['wreck-burning', 12, { cam: 'site', out: 45, up: 16, fov: 50, aimUp: 1 }]],
     // the crew's own view (the HUD on: the minimap's inbound fighter and its approach line, the INCOMING notice)
     warning: [['called', -5.2, { cam: 'hud' }], ['inbound', -3, { cam: 'hud' }], ['inbound-late', -1, { cam: 'hud' }]],
     artillery: [['warning', -3, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['first', 0.2, { cam: 'fixed', out: 260, up: 160, fov: 45 }],
@@ -433,7 +457,7 @@ async function shootRuns(page, signal, tag, checkpoint) {
   // --burst: a frame every 0.1 s across each run's moments on one camera (its first frame's), for a clip
   const BURSTS = {
     strafe: [-1.2, 2.6, chase], bomb: ['release-0.4', 'release+2.7', { ...chase, back: 90, up: 30 }], missile: ['release-0.6', 'release+4.6', { ...chase, back: 90, up: 26 }],
-    shootdown: [-2.4, 4.6, { cam: 'fixed', out: 380, up: 140, fov: 55, aimUp: 30 }], gunship: [0, 6, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }],
+    shootdown: [-2.4, 6.4, { cam: 'fixed', out: 380, up: 140, fov: 55, aimUp: 30 }], gunship: [0, 6, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }],
   };
   const burstFrames = (kind) => {
     const [from, to, cam] = BURSTS[kind];
@@ -445,6 +469,8 @@ async function shootRuns(page, signal, tag, checkpoint) {
     return out;
   };
   receipt.runs = [];
+  // (air-crash-he-276) only when asked for: its burst leaves a damaged building in the later runs' battle
+  if (kindsFilter?.includes('dronecrash')) await droneCrash(page, tag, { shot, resume, signal });
   for (const [kind, framesOf] of Object.entries(FRAMES)) {
     if (kindsFilter && !kindsFilter.includes(kind)) continue;
     const all = burst ? (BURSTS[kind] ? burstFrames(kind) : []) : framesOf;
@@ -501,10 +527,68 @@ async function shootRuns(page, signal, tag, checkpoint) {
       receipt.runs.push({ kind, label, shot: name, cam: cam.cam, ...before });
       await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
     }
-    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.shotMode = false; window.__DEBUG.rig.release();
-      document.documentElement.classList.add('as-hud-hidden'); });
+    await page.evaluate(() => { window.__runCam = null; window.__crashSite = null; window.__siteFrom = null; window.__DEBUG.shotMode = false;
+      window.__DEBUG.rig.release(); document.documentElement.classList.add('as-hud-hidden'); });
     await checkpoint?.();
   }
+}
+
+/**
+ * (air-crash-he-276) 'dronecrash': an FPV drone into the nearest building in reach of the crew, its round on the page's
+ * own shell path (a DRONE_WARHEAD shell, as a flight launches, flown straight at the wall at the drone's speed): it
+ * meets the wall and bursts as the drone's crash (sim/airCrash.ts worldImpactSpec), its hole and the building's damage
+ * shot from beside it. With --burst, a frame every 0.1 s for the clip.
+ */
+async function droneCrash(page, tag, { shot, resume, signal }) {
+  const site = await page.evaluate(async () => {
+    const D = window.__DEBUG, game = D.game, p = game.player.state.pos, hf = D.world.heightField;
+    const { createShell } = await import('/src/sim/ballistics.ts');
+    const { DRONE_WARHEAD, AERIAL_RULES } = await import('/src/sim/matchRuleset.ts');
+    let best = null, bestD = Infinity;
+    for (const o of D.world.getObstacles?.() ?? []) {
+      if (o.kind !== 'structure' || o.structureIdx === undefined || o.crushed || o.max[1] - o.min[1] < 3) continue;
+      const cx = (o.min[0] + o.max[0]) / 2, cz = (o.min[2] + o.max[2]) / 2, d = Math.hypot(cx - p.x, cz - p.z);
+      if (d > 60 && d < 600 && d < bestD) { bestD = d; best = o; }
+    }
+    if (!best) return null;
+    // the wall point nearest the crew, 2.5 m up its face; the drone 35 m out from it toward the crew, 4 m higher
+    const wx = Math.max(best.min[0], Math.min(best.max[0], p.x)), wz = Math.max(best.min[2], Math.min(best.max[2], p.z));
+    const ux = p.x - wx, uz = p.z - wz, u = Math.hypot(ux, uz) || 1;
+    const target = { x: wx, y: best.min[1] + 2.5, z: wz };
+    const V = D.camera.position.constructor;
+    const from = new V(wx + ux / u * 35, target.y + 4, wz + uz / u * 35);
+    const dir = new V(target.x - from.x, target.y - from.y, target.z - from.z).normalize();
+    const shell = createShell(DRONE_WARHEAD, game.player.id, true, from, dir, game.nextShellId++);
+    shell.gravityMps2 = 0; shell.vel.multiplyScalar(AERIAL_RULES.drone.speedMps / Math.max(1e-6, shell.vel.length()));
+    game.shells.push(shell);
+    window.__crashSite = { x: target.x, y: best.min[1], z: target.z };
+    // the camera beside the drone's line, off the wall to the side, so the hole and the burst read
+    window.__siteFrom = { x: (ux / u) * 0.7 + (uz / u) * 0.7, z: (uz / u) * 0.7 - (ux / u) * 0.7 };
+    window.__runCam = { cam: 'site', out: 30, up: 9, fov: 52, aimUp: 2.5 };
+    return { t0: game.timeS, structureId: best.structureIdx, wall: target, from: { x: from.x, y: from.y, z: from.z } };
+  });
+  receipt.calls.push({ kind: 'dronecrash', accepted: !!site });
+  if (!site) return;
+  const frames = burst ? Array.from({ length: 30 }, (_, i) => [`burst-${String(i).padStart(3, '0')}`, i * 0.1])
+    : [['inbound', 0.45], ['impact', 0.86], ['hole', 2.5], ['hole-late', 6]];
+  for (const [label, rel] of frames) {
+    if (signal.aborted) return;
+    try {
+      await resume(page);
+      await page.evaluate((t) => { window.__runFrozen = false; window.__runFreezeAt = t; }, site.t0 + rel);
+      await page.waitForFunction(() => window.__runFrozen, { timeout: 120_000, polling: 50 });
+    } catch {
+      receipt.runs.push({ kind: 'dronecrash', label, stalled: true });
+      break;
+    }
+    await sleep(600);
+    const name = `${tag}-dronecrash-${label}`;
+    await shot(page, name);
+    receipt.runs.push({ kind: 'dronecrash', label, shot: name, structureId: site.structureId, wall: site.wall });
+    await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
+  }
+  await page.evaluate(() => { window.__runCam = null; window.__crashSite = null; window.__siteFrom = null; window.__DEBUG.shotMode = false;
+    window.__DEBUG.rig.release(); });
 }
 
 /** In the page: Air Support's surfaces cut or spilling off the screen, and any of their plates over another opaque HUD
