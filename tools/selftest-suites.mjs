@@ -1308,6 +1308,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
+    // garage-env-276 (2026-11-23): qa:garage's picker thumbnails asked for eagerly, settled or named at 15 s (it hung)
+    'tools/garage-picker-images.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
     // roster-mirror-fix (2026-11-22): every registered vehicle drawable in its band, every roster distinct in one tier band
     'src/game/battleRosterCensus.selftest.mjs',

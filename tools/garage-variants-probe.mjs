@@ -9,6 +9,7 @@ import puppeteer from 'puppeteer';
 import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
 import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { awaitPickerImages } from './garage-picker-images.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -87,14 +88,10 @@ try {
 
   // Preview images are a selector-demand asset, never an entry dependency.
   await page.click('[data-picker-menu="garage-staging"]');
-  await page.evaluate(async () => {
-    const images = [...document.querySelectorAll('.cot-c-menu__pop:popover-open .cot-c-picker__opt img')];
-    await Promise.all(images.map((image) => image.complete ? Promise.resolve()
-      : new Promise((resolve) => {
-        image.addEventListener('load', resolve, { once: true });
-        image.addEventListener('error', resolve, { once: true });
-      })));
-  });
+  // (garage-env-276) every thumbnail made eager and settled, or a named failure at 15 s (garage-picker-images.mjs): the
+  // lazy ones past the popover's fold never loaded, and this step hung to the 180 s protocol timeout with no stills
+  await page.evaluate(`(${awaitPickerImages.toString()})(document.querySelectorAll(
+    '.cot-c-menu__pop:popover-open .cot-c-picker__opt img'), { timeoutMs: 15000 })`);
   await page.click('[data-picker-menu="garage-staging"]');
 
   // Reproduce the real selector race: hover starts one pack's offscreen
