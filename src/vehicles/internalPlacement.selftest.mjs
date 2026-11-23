@@ -46,7 +46,10 @@ const DATA_FIXES = Object.freeze({
 /** Volumes outside their frame's armour envelope that are authored that way: data fixes, pinned. */
 // (274: the S-tank family's casemate gun box, pinned here for the 103A, 103B and UDES 03, now lands on the drawn axis;
 // sweden.ts siegeArmor authors it in the pre-reconcile frame)
-const VOLUME_DATA_FIXES = Object.freeze({});
+const VOLUME_DATA_FIXES = Object.freeze({
+  // Main 275.0: same cause as tools/module-visual-align-probe.mjs VOLUME_OUT_ACCEPT; the 276 envelope and seat-fit items unpin it
+  'cv90105_tml: turret gunner': 'gunner head inside turret_cupola structure cell (cv90105 lane probe, MAIN accept 2026-11-23)',
+});
 /** module-visual-align-probe's TOL. */
 const VOLUME_TOL_M = 0.15;
 
