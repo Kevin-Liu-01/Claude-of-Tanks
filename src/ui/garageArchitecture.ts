@@ -59,6 +59,8 @@ export interface GarageArchitectureStats {
   kitSkylineLandmarks: readonly string[];
   groundCover: number;
   structures: number;
+  /** The structures its map's regional kit rebuilt (garageBattleStructures.ts). */
+  regionalKitStructures: number;
   wrecks: number;
   facilityProps: number;
   facilityStations: number;
@@ -484,6 +486,7 @@ export function createGarageArchitectureController(
       kitSkylineLandmarks: Array.isArray(data.kitSkylineLandmarks) ? data.kitSkylineLandmarks as string[] : [],
       groundCover: numericStat(data.groundCover),
       structures: numericStat(data.structures),
+      regionalKitStructures: numericStat(data.regionalKitStructures),
       wrecks: numericStat(data.wrecks),
       facilityProps: numericStat(data.facilityProps),
       facilityStations: numericStat(data.facilityStations),

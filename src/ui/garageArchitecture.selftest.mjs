@@ -43,7 +43,9 @@ for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES))
 }
 assert.match(kitSource,
   /map: handle\.color,[\s\S]{0,100}normalMap: handle\.normal/,
-  'Garage structure buckets must retain their surface-specific albedo and normal textures');
+  'the Garage-owned surfaces (terrain, hardstand, approach) keep their surface-specific albedo and normal textures');
+assert.match(kitSource, /structureSurfaces\.surfaces\.mats\[key\]/,
+  'Garage structure buckets draw their battlefield material (garageBattleStructures.selftest.mjs)');
 for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
   for (const placement of recipe.structures) {
     const axisDelta = placement.yaw - GARAGE_HERO_HEADING_RAD;
