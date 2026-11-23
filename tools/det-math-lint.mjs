@@ -9,6 +9,13 @@
 // square; any other exponent goes to the platform's pow). Rendering, effects, audio and UI are outside the graph and
 // keep Math.*.
 //
+// (276, sim-det-trig) A second driver, the local step: src/game/state.ts's graph cut to src/sim and src/game, plus the
+// world collision the authority runs (a solo battle steps the same simulation on the page, and a recording of it is
+// verified in Node). And three.js's trig: a Quaternion.setFromEuler, Vector3.applyAxisAngle or Matrix4.makeRotationY
+// calls Math.sin and Math.cos inside three, where the native-name rule cannot see it; Node arm64 and Chromium differ in
+// the last bit and chaos turns that into drift by step 600-1800. Those methods are flagged by name, and the sim calls
+// src/sim/detRotation.ts, which computes them on detMath in three's operation order.
+//
 //   node tools/det-math-lint.mjs            # report and exit 1 on any finding
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -19,6 +26,22 @@ export const AUTHORITY_ENTRIES = Object.freeze(['src/sim/authoritativeMatch.ts',
 const NATIVE = /\bMath\.(sin|cos|tan|asin|acos|atan2|atan|sinh|cosh|tanh|asinh|acosh|atanh|exp|expm1|log|log1p|log2|log10|pow|cbrt|hypot)\b/;
 const DESTRUCTURED = /\{[^}]*\b(sin|cos|tan|atan2|hypot|pow|exp|log)\b[^}]*\}\s*=\s*Math\b/;
 const EXPONENT = /\*\*\s*(?!2\b)[^\s=]/;
+/**
+ * three.js methods that call a native transcendental inside three (r185): Euler-to-rotation, axis-angle, the
+ * makeRotation family, Euler-from-matrix or -quaternion (asin, atan2), lookAt and the rotate family on an Object3D (they
+ * reach setFromEuler or setFromRotationMatrix), angleTo, rotateTowards and slerp (acos, atan2, sin), and the spherical
+ * and cylindrical conversions. Called as a method (`.name(`), so a function named lookAtTarget is not one.
+ */
+export const THREE_TRIG_METHODS = Object.freeze(['setFromEuler', 'applyEuler', 'applyAxisAngle', 'setFromAxisAngle',
+  'makeRotationX', 'makeRotationY', 'makeRotationZ', 'makeRotationAxis', 'makeRotationFromEuler', 'setFromQuaternion',
+  'setFromRotationMatrix', 'setRotationFromEuler', 'setRotationFromAxisAngle', 'lookAt', 'rotateX', 'rotateY', 'rotateZ',
+  'rotateOnAxis', 'rotateOnWorldAxis', 'rotateAround', 'rotateTowards', 'angleTo', 'slerp', 'slerpQuaternions',
+  'setFromSpherical', 'setFromSphericalCoords', 'setFromCylindrical', 'setFromCylindricalCoords', 'setFromCartesianCoords',
+  'setFromUnitVectors', 'setQuaternionFromProperEuler']);
+const THREE_TRIG = new RegExp(`\\.(${THREE_TRIG_METHODS.join('|')})\\s*\\(`);
+/** The local step: a solo battle's simulation on the page (its rendering, effects, audio and UI are outside the cut). */
+export const LOCAL_STEP_ENTRIES = Object.freeze(['src/game/state.ts']);
+const LOCAL_STEP_DIRS = Object.freeze(['src/sim/', 'src/game/']);
 
 /** The authority's static import graph (relative imports of src/ and server/; type-only imports are not code). */
 export function authorityModules(root = ROOT, entries = AUTHORITY_ENTRIES) {
@@ -39,7 +62,24 @@ export function authorityModules(root = ROOT, entries = AUTHORITY_ENTRIES) {
   return [...seen].sort();
 }
 
-/** The lines of one module's source that call a native transcendental or a non-square exponent: [{ line, text }]. */
+/**
+ * The local step's modules: state.ts's graph cut to src/sim and src/game, plus the world collision it shares with the
+ * authority (every src/world module state.ts reaches that the authority's graph runs too).
+ */
+export function localStepModules(root = ROOT) {
+  const authority = new Set(authorityModules(root));
+  return authorityModules(root, LOCAL_STEP_ENTRIES).filter((file) => {
+    const rel = path.relative(root, file).split(path.sep).join('/');
+    return LOCAL_STEP_DIRS.some((dir) => rel.startsWith(dir)) || (rel.startsWith('src/world/') && authority.has(file));
+  });
+}
+
+/** Both drivers' simulation: the authority's graph and the local step's, once each. */
+export function simulationModules(root = ROOT) {
+  return [...new Set([...authorityModules(root), ...localStepModules(root)])].sort();
+}
+
+/** The lines of one module's source that call a native transcendental, a non-square exponent or a three.js trig method: [{ line, text }]. */
 export function sourceFindings(source) {
   // code only: block comments become their newlines (line numbers hold), line comments go (a comment naming
   // Math.sin, or a doc comment's opening, is not a call)
@@ -48,7 +88,7 @@ export function sourceFindings(source) {
   const findings = [];
   code.forEach((raw, index) => {
     const line = raw.replace(/(^|[^:'"`])\/\/.*$/, '$1');
-    if (NATIVE.test(line) || DESTRUCTURED.test(line) || EXPONENT.test(line)) findings.push({ line: index + 1, text: lines[index].trim().slice(0, 160) });
+    if (NATIVE.test(line) || DESTRUCTURED.test(line) || EXPONENT.test(line) || THREE_TRIG.test(line)) findings.push({ line: index + 1, text: lines[index].trim().slice(0, 160) });
   });
   return findings;
 }
@@ -68,20 +108,20 @@ export function presentationFindings(root = ROOT, entries = AUTHORITY_ENTRIES) {
   });
 }
 
-/** Every native transcendental and non-square exponent in the graph: [{ file, line, text }]. */
+/** Every native transcendental, non-square exponent and three.js trig method in either driver's simulation: [{ file, line, text }]. */
 export function detMathFindings(root = ROOT) {
   const detMath = path.resolve(root, 'src/sim/detMath.ts');
-  return authorityModules(root).filter((file) => file !== detMath && file.endsWith('.ts'))
+  return simulationModules(root).filter((file) => file !== detMath && file.endsWith('.ts'))
     .flatMap((file) => sourceFindings(readFileSync(file, 'utf8')).map((f) => ({ file: path.relative(root, file), ...f })));
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const modules = authorityModules();
+  const modules = simulationModules();
   const findings = detMathFindings();
   const presentation = presentationFindings();
   for (const f of findings) console.error(`${f.file}:${f.line}: ${f.text}`);
   for (const f of presentation) console.error(`${f.file}: ${f.reason} in the authority graph`);
-  console.log(`det-math-lint: ${modules.length} authority modules, ${findings.length} native transcendental(s) or non-square exponent(s), ${presentation.length} presentation module(s)`);
+  console.log(`det-math-lint: ${modules.length} simulation modules (authority + local step), ${findings.length} native transcendental(s), non-square exponent(s) or three.js trig call(s), ${presentation.length} presentation module(s)`);
   process.exitCode = findings.length || presentation.length ? 1 : 0;
 }

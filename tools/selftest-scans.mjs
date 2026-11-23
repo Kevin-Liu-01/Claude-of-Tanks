@@ -142,8 +142,9 @@ export const SELFTEST_SCANS = Object.freeze({
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
   'tools/hero-cards-check.mjs': lists('public/icons/hero/*'),
   // 266 (Main): the det-math lint reads every module the authority's graph executes (its AUTHORITY_ENTRIES); lanes
-  // missed native Math there in 265 (vehicleMarkings.ts) and 266 (gunFaceSplit.ts through armor.ts)
-  'tools/det-math-lint.mjs': imports('src/sim/authoritativeMatch.ts', 'server/dedicatedWorldCollision.ts'),
+  // missed native Math there in 265 (vehicleMarkings.ts) and 266 (gunFaceSplit.ts through armor.ts); 276 adds the
+  // local step's graph (state.ts, cut to src/sim and src/game)
+  'tools/det-math-lint.mjs': imports('src/sim/authoritativeMatch.ts', 'server/dedicatedWorldCollision.ts', 'src/game/state.ts'),
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
