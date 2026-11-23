@@ -430,18 +430,6 @@ const SETTINGS_REVISION = 2;
 const AI_DIFFICULTIES: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
 const RMB_MODES: readonly RmbMode[] = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
 
-/**
- * AI difficulty persisted with the other gameplay settings (cot.settings.v1,
- * editable in the settings panel's GAMEPLAY tab). Pure localStorage read — no
- * input instance needed, so game/state.ts can call it at battle setup.
- * @returns {'easy'|'normal'|'hard'}
- */
-export function getStoredDifficulty() {
-  const s = loadJson(SETTINGS_KEY);
-  const d = isRecord(s) ? s.aiDifficulty : null;
-  return typeof d === 'string' && isAiDifficulty(d) ? d : 'normal';
-}
-
 /** The mouse's three buttons' catalog keys (the catalog's en reads LMB, MMB and RMB). */
 // (the space bar too: a Chinese key cap reads 空格, the manual's r41 leftover)
 const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right', Space: 'input.key.space' };

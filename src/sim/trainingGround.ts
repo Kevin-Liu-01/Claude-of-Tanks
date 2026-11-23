@@ -18,6 +18,7 @@
  */
 import type { CourseStamp } from './terrainDeformation.ts';
 import type { ProvingLaneMark, ProvingMark, ProvingRangeLayout } from './provingGround.ts';
+import * as detMath from './detMath.ts';
 
 const DEG = Math.PI / 180;
 
@@ -139,11 +140,11 @@ const S11_SENTRY3 = Object.freeze({ x: -220, z: -40 });
 const S11_WALL_AHEAD_M = 6;
 const S11_PEEK_SIDE_M = 10;
 const S11_LINE = (() => {
-  const dx = S11_SENTRY3.x - S11_COVER.x, dz = S11_SENTRY3.z - S11_COVER.z, length = Math.hypot(dx, dz);
+  const dx = S11_SENTRY3.x - S11_COVER.x, dz = S11_SENTRY3.z - S11_COVER.z, length = detMath.hypot(dx, dz);
   return { x: dx / length, z: dz / length };
 })();
 const S10_LINE = (() => {
-  const dx = S10_SENTRY2.x - S10_BERM.x, dz = S10_SENTRY2.z - S10_BERM.z, length = Math.hypot(dx, dz);
+  const dx = S10_SENTRY2.x - S10_BERM.x, dz = S10_SENTRY2.z - S10_BERM.z, length = detMath.hypot(dx, dz);
   return { x: dx / length, z: dz / length };
 })();
 
@@ -296,24 +297,24 @@ export function trainingVolleyAim(
   volley: TrainingVolley, out: { x: number; y: number; z: number },
   shooter: { readonly x: number; readonly z: number } | null = null): { x: number; y: number; z: number } {
   // across: toward the shooter's side of the hull (its left is +x at a yaw of 0)
-  const lx = Math.cos(hull.yaw), lz = -Math.sin(hull.yaw);
+  const lx = detMath.cos(hull.yaw), lz = -detMath.sin(hull.yaw);
   const side = shooter && (shooter.x - hull.x) * lx + (shooter.z - hull.z) * lz < 0 ? -1 : 1;
   // the point in the hull's own frame, tilted as the armour is (sim/armor.ts buildFrames: Euler 'YXZ', x = -pitch,
   // z = roll): on a slope "1 m up the front plate" stays on that plate (the S9 probe of 2026-11-20: aimed level, the
   // Sentry's rounds struck 0.45 m higher, on the green upper glacis, four of six through)
   const x0 = (volley.aim.acrossM ?? 0) * side, y0 = volley.aim.upM, z0 = volley.aim.alongM;
   const r = hull.roll ?? 0, p = -(hull.pitch ?? 0);
-  const x1 = x0 * Math.cos(r) - y0 * Math.sin(r), y1 = x0 * Math.sin(r) + y0 * Math.cos(r);
-  const y2 = y1 * Math.cos(p) - z0 * Math.sin(p), z2 = y1 * Math.sin(p) + z0 * Math.cos(p);
-  out.x = hull.x + x1 * lx + z2 * Math.sin(hull.yaw);
+  const x1 = x0 * detMath.cos(r) - y0 * detMath.sin(r), y1 = x0 * detMath.sin(r) + y0 * detMath.cos(r);
+  const y2 = y1 * detMath.cos(p) - z0 * detMath.sin(p), z2 = y1 * detMath.sin(p) + z0 * detMath.cos(p);
+  out.x = hull.x + x1 * lx + z2 * detMath.sin(hull.yaw);
   out.y = hull.y + y2;
-  out.z = hull.z + x1 * lz + z2 * Math.cos(hull.yaw);
+  out.z = hull.z + x1 * lz + z2 * detMath.cos(hull.yaw);
   return out;
 }
 
 /** A turret that turns at most `degPerS` toward `targetYaw` (rad) over `dt` (s), from `yaw`: its new yaw. Pure. */
 export function trainingTraverse(yaw: number, targetYaw: number, dt: number, degPerS: number): number {
-  const diff = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
+  const diff = detMath.atan2(detMath.sin(targetYaw - yaw), detMath.cos(targetYaw - yaw));
   const step = (degPerS * Math.PI / 180) * dt;
   return yaw + Math.max(-step, Math.min(step, diff));
 }
@@ -322,7 +323,7 @@ export function trainingTraverse(yaw: number, targetYaw: number, dt: number, deg
  *  within 1.5 degrees of the player. Yaws in rad. */
 export function trainingArcAllows(volley: TrainingVolley, hullYaw: number, gunYaw: number, bearing: number): boolean {
   if (volley.frontArcDeg == null) return true;
-  const off = (a: number, b: number): number => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) * 180 / Math.PI;
+  const off = (a: number, b: number): number => Math.abs(detMath.atan2(detMath.sin(a - b), detMath.cos(a - b))) * 180 / Math.PI;
   return off(bearing, hullYaw) <= volley.frontArcDeg && off(bearing, gunYaw) <= 1.5;
 }
 
@@ -375,7 +376,7 @@ const mark = (x: number, z: number, yawDeg: number): ProvingMark => Object.freez
 /** An actor's heading: its nose toward its firing point, turned by its presentation angle (deg). */
 export function trainingActorYawDeg(actor: TrainingActorRule): number {
   const point = TRAINING_POINTS[actor.faces];
-  const bearing = Math.atan2(point.x - actor.x, point.z - actor.z) / DEG;
+  const bearing = detMath.atan2(point.x - actor.x, point.z - actor.z) / DEG;
   return bearing + actor.presentDeg;
 }
 
@@ -387,7 +388,7 @@ export function trainingActorYawDeg(actor: TrainingActorRule): number {
 export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
   const origin = mark(rules.start.x, rules.start.z, rules.start.yawDeg);
   const lane = (x: number, z: number, yawDeg: number, presentDeg: number, index: number): ProvingLaneMark => {
-    const rangeM = Math.hypot(x - origin.x, z - origin.z);
+    const rangeM = detMath.hypot(x - origin.x, z - origin.z);
     return Object.freeze({ ...mark(x, z, yawDeg), index, rangeM, measuredM: rangeM, presentDeg, lateralM: 0 });
   };
   // in roster order (trainingRoster): the actors, then the skirmish's allies and enemies
@@ -398,8 +399,8 @@ export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
   ];
   const stamps: CourseStamp[] = rules.earthworks.map((work) => {
     const toward = trainingActor(rules, work.toward)!;
-    const yaw = Math.atan2(toward.x - work.x, toward.z - work.z);
-    return Object.freeze({ kind: 'course' as const, cx: work.x, cz: work.z, yaw, c: Math.cos(yaw), s: Math.sin(yaw), hw: work.halfWidthM,
+    const yaw = detMath.atan2(toward.x - work.x, toward.z - work.z);
+    return Object.freeze({ kind: 'course' as const, cx: work.x, cz: work.z, yaw, c: detMath.cos(yaw), s: detMath.sin(yaw), hw: work.halfWidthM,
       skirtM: work.skirtM, profile: new Float64Array(work.profile) });
   });
   return Object.freeze({

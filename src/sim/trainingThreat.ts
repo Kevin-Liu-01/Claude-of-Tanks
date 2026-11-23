@@ -13,6 +13,7 @@ import type { ArmorModel, ArmorPoseState, TankArmorPose } from './armor.ts';
 import type { DamageShellSpec } from './damage.ts';
 import { penVerdict, type PenVerdict } from './penVerdict.ts';
 import { trainingVolleyAim, type TrainingVolley } from './trainingGround.ts';
+import * as detMath from './detMath.ts';
 
 /** The shooter's sight over its hull origin (m): the height its line to the plate starts from. */
 const SIGHT_UP_M = 2.2;
@@ -54,7 +55,7 @@ export function trainingThreatVerdicts(
 /** The player's hull angle to a shooter (deg, 0 to 180): 0 nose on, 90 broadside, 180 its rear to it. */
 export function hullAngleToDeg(player: { readonly x: number; readonly z: number; readonly yaw: number },
   shooter: { readonly x: number; readonly z: number }): number {
-  const bearing = Math.atan2(shooter.x - player.x, shooter.z - player.z);
-  const diff = Math.atan2(Math.sin(bearing - player.yaw), Math.cos(bearing - player.yaw));
+  const bearing = detMath.atan2(shooter.x - player.x, shooter.z - player.z);
+  const diff = detMath.atan2(detMath.sin(bearing - player.yaw), detMath.cos(bearing - player.yaw));
   return Math.abs(diff) / DEG;
 }
