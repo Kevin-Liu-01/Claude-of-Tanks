@@ -1167,6 +1167,7 @@
   "action.selfRight": "扶正战车",
   "action.scuttle": "自毁坦克（按住）",
   "hud.alert.scuttleHold": "继续按住以自毁",
+  "hud.alert.scuttleLine": "{key} 松开即取消",
   "action.autoAim": "自动瞄准锁定",
   "action.hitboxOverlay": "装甲覆盖层（碰撞区域）",
   "hud.alert.armorOverlayOn": "装甲覆盖层：开",

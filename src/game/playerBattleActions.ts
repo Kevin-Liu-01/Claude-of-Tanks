@@ -534,23 +534,33 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
 
   // (death-flow-275 R7; Kevin approved 2026-11-21) hold the scuttle key SCUTTLE_HOLD_S to destroy the tank: the one way out
-  // of a hull wedged or overturned past self-righting, or out of rounds. A press starts the hold (the HUD says to keep
-  // holding); a key still down when it runs out scuttles; a release, the menu or a death before then cancels it.
-  let scuttleTimer: ReturnType<typeof setTimeout> | null = null;
-  const cancelScuttle = (): void => { if (scuttleTimer) { clearTimeout(scuttleTimer); scuttleTimer = null; } };
-  disposeCallbacks.push(cancelScuttle);
+  // of a hull wedged or overturned past self-righting, or out of rounds. A press starts the hold (the HUD raises its
+  // notice on 'ui:scuttleHold'); a key still down when it runs out scuttles; a release, the menu or a death before then
+  // cancels it. Either way 'ui:scuttleEnd' takes the notice down (the key is looked at each tenth of a second).
+  const SCUTTLE_POLL_MS = 100;
+  let scuttleTimer: ReturnType<typeof setInterval> | null = null;
+  const endScuttle = (): void => {
+    if (!scuttleTimer) return;
+    clearInterval(scuttleTimer);
+    scuttleTimer = null;
+    bus.emit('ui:scuttleEnd', {});
+  };
+  disposeCallbacks.push(endScuttle);
   if (scuttle) onAction('scuttle', () => {
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player || scuttleTimer || player.aerial?.kind === 'gunship') return;
     bus.emit('ui:scuttleHold', { holdS: scuttle.holdS });
-    scuttleTimer = setTimeout(() => {
-      scuttleTimer = null;
+    let heldMs = 0;
+    scuttleTimer = setInterval(() => {
+      heldMs += SCUTTLE_POLL_MS;
       const live = battleInputAllowed() ? livePlayer() : null;
-      if (!live || live !== player || !(input.isDown?.('scuttle') ?? false)) return;
+      if (!live || live !== player || !(input.isDown?.('scuttle') ?? false)) { endScuttle(); return; }
+      if (heldMs < scuttle.holdS * 1000) return;
+      endScuttle();
       if (network.isActive()) network.queueAction('scuttle');
       else live.input.actionBits = (live.input.actionBits ?? 0) | scuttle.bit;
       bus.emit('ui:click', {});
-    }, scuttle.holdS * 1000);
+    }, SCUTTLE_POLL_MS);
   });
 
   listen('shell:fired', (payload) => {

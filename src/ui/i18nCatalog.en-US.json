@@ -1153,6 +1153,7 @@
   "action.selfRight": "Flip tank",
   "action.scuttle": "Scuttle the tank (hold)",
   "hud.alert.scuttleHold": "Keep holding to scuttle",
+  "hud.alert.scuttleLine": "{key} Let go to cancel",
   "action.autoAim": "Auto-aim lock",
   "action.hitboxOverlay": "Armor overlay (hitboxes)",
   "hud.alert.armorOverlayOn": "ARMOR OVERLAY ON",

@@ -1417,6 +1417,8 @@ const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' 
 const AIM_NOTICE_ID = 'cot-aim-warning';
 /** fire-visible-275: our own tank on fire, a threat condition (Kevin's pick: shown in the sight too, beside its edge). */
 const FIRE_NOTICE_ID = 'cot-fire';
+/** (death-flow-275 R7) The scuttle's hold, while its key is down. */
+const SCUTTLE_NOTICE_ID = 'cot-scuttle-hold';
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
@@ -8808,8 +8810,16 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (the next wave's countdown is the clock's, never the alert's as well: UI-LOCKDOWN B19)
     events.raise({ text: t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'repair' });
   });
-  // (death-flow-275 R7) the scuttle's hold started: keep holding (a release cancels it, game/playerBattleActions.ts)
-  on('ui:scuttleHold', () => { showAlert(t('hud.alert.scuttleHold'), { icon: 'warning', tone: 'warning' }); });
+  // (death-flow-275 R7) the scuttle's hold: a condition while the key is held (game/playerBattleActions.ts raises
+  // 'ui:scuttleHold' on the press and 'ui:scuttleEnd' when it scuttles or the key comes up)
+  on('ui:scuttleHold', () => {
+    battleNotices.condition({
+      id: SCUTTLE_NOTICE_ID, severity: 'warning', icon: 'killSelf', text: t('hud.alert.scuttleHold'),
+      detailHtml: keyLine('hud.alert.scuttleLine', { key: 'scuttle' }),
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
+    });
+  });
+  on('ui:scuttleEnd', () => { battleNotices.dismiss(SCUTTLE_NOTICE_ID); });
   // (death-flow-275) the outbreak took the player: said once, as the battle turned (the dial then reads "Infected")
   on('mode:infected', (payload) => {
     if (playerId == null || (payload as { id?: string } | null)?.id !== playerId) return;
