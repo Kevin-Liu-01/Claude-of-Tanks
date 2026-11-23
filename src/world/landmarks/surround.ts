@@ -206,6 +206,8 @@ export interface SurroundContext {
   square: number;
   spawnClear: number;
   roadClear: number;
+  /** The bridges' piers (compose.ts keepOuts): no prop stands in one. */
+  keepOuts?: ReadonlyArray<{ x: number; z: number; c: number; s: number; hw: number; hd: number }>;
   reserve(x: number, z: number, r: number): void;
   addDestructible(kind: string, x: number, y: number, z: number, yaw: number, scale: number): void;
 }
@@ -234,6 +236,10 @@ export function placeSurroundings(ctx: SurroundContext, kind: LandmarkKind, x: n
     if (hf.getWaterMaskAt(px, pz) > 0.02 || hf._noVeg(px, pz) || hf._roadDist(px, pz) < ctx.roadClear + r) return false;
     if (hf.getNormalAt(px, pz).y < (level ? 0.95 : 0.88)) return false;
     for (const sp of ctx.spawns) if (Math.hypot(px - sp.x, pz - sp.z) < ctx.spawnClear + r) return false;
+    if (ctx.keepOuts?.some((k) => {
+      const dx = px - k.x, dz = pz - k.z;
+      return Math.abs(dx * k.c - dz * k.s) < k.hw + r && Math.abs(dx * k.s + dz * k.c) < k.hd + r;
+    })) return false;
     for (const [dx, dz, dr] of discs) if (Math.hypot(px - dx, pz - dz) < dr + r) return false;
     for (const sp of spots) if (Math.hypot(px - sp.x, pz - sp.z) < sp.r + r + 0.25) return false;
     for (const ob of ctx.obstacles) {

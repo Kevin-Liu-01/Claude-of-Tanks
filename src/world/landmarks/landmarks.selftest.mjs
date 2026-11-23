@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { LANDMARK_BUILDERS } from './index.ts';
 import { LANDMARK_KINDS, isDressingPiece, landmarkClearances, landmarkFootprint, resolveLandmarkParams } from './plan.ts';
-import { composeLandmarks, hasStructure, landmarkObjectiveDiscs } from './compose.ts';
+import { composeLandmarks, hasStructure, keepOutGap, landmarkObjectiveDiscs } from './compose.ts';
 import { PartSink, REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
 import { archedFace } from './kit.ts';
 import { landmarkPiecesOf } from './pieces.ts';
@@ -682,6 +682,32 @@ check('tints', () => {
   const church = obstacles.find((o) => o.kind === 'structure');
   assert.ok(church.min[0] < 60 - 12 && church.max[0] > 60 + 10 && church.max[2] - church.min[2] < 20, 'the church lies along x');
   for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  // a bridge's pier (mapKits.ts bridgeSupportFootprints; built after the pass, so no obstacle yet) refuses a piece on
+  // it or within 0.6 m, as the props' scatter keeps out of it; a placed piece's receipt gives its ground to the nearest
+  assert.equal(keepOutGap({ x: 10, z: 0, c: 1, s: 0, hw: 1, hd: 1 }, 0, 0, 2, 2, 0), 7, 'the gap between two squares');
+  assert.ok(Math.abs(keepOutGap({ x: 10, z: 0, c: Math.SQRT1_2, s: Math.SQRT1_2, hw: 1, hd: 1 }, 0, 0, 2, 2, 0) - (8 - Math.SQRT2)) < 1e-9,
+    "a turned pier's corner is the nearest");
+  assert.equal(keepOutGap({ x: 3, z: 0, c: 1, s: 0, hw: 1.5, hd: 1 }, 0, 0, 2, 2, 0), 0, 'overlapping rectangles meet');
+  {
+    const pier = { x: 250, z: -250, c: 1, s: 0, hw: 4, hd: 6 };
+    const it = composeLandmarks({ ...ctx([
+      { kind: 'obelisk', x: 250, z: -250, name: 'on a pier' },
+      // (an obelisk's footprint is 4.08 m each way: 1.6 + 9 × 0.12 + 1.4 for its railing; the pier's west face is at 246)
+      { kind: 'obelisk', x: 246 - 0.3 - 4.08, z: -250, name: 'at a pier' },
+      { kind: 'obelisk', x: 246 - 1 - 4.08, z: -250, name: 'by a pier' },
+      { kind: 'obelisk', x: 250, z: -220, name: 'off a pier' },
+    ]), keepOuts: [pier] });
+    let st = it.next(); while (!st.done) st = it.next();
+    const at = (name) => st.value.pieces.find((p) => p.name === name);
+    assert.equal(at('on a pier').reason, 'bridge pier', 'a piece never stands on a pier');
+    assert.equal(at('at a pier').reason, 'bridge pier', 'nor within 0.6 m of one');
+    assert.equal(at('by a pier').status, 'placed', 'a metre off it stands');
+    assert.equal(at('by a pier').keepOut, 1, 'its receipt gives the metre');
+    assert.equal(at('off a pier').status, 'placed');
+    assert.equal(at('off a pier').keepOut, 19.92, 'its receipt gives its ground to the pier: -220 - 4.08 - (-250 + 6)');
+    assert.equal(by('a church').keepOut, undefined, 'a map without piers records none');
+    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  }
   // a bridge whose roadway holds more parts than one compound may (64: server/collisionManifestCodec.ts) publishes it
   // in runs of 64, each its own movement record and each cloned into the shells' list
   const before = { obstacles: obstacles.length, colliders: colliders.length };
