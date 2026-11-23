@@ -530,11 +530,17 @@ const T80U_X_CUPOLA = [-.6265, -.225 - T80U_X_YAW[2]] as const;
  * housing keeps the old root drum's underside, .175 under the bore, so the gun keeps its measured depression stops.
  * Gun frame (the trunnion axis; +z forward). */
 const SHIELD_R = .31, SHIELD_HALF = .41, SHIELD_LOW = -36 * Math.PI / 180, SHIELD_HIGH = 62 * Math.PI / 180, SHIELD_BACK = -.06;
-/** The shield's section (z, y) at radius r: the face arc from its foot to its brow, then back to the embrasure. */
+/** The shield's tail (gun frame z, top y, foot y): behind the brow its top slopes down and back under the shell's end
+ * (.24 behind the trunnion), so the embrasure has a roof over the gun line at every pitch (object292-gun-junction-275:
+ * the 275 release census saw the gun line from above through an open 18 cm slot between the shield's back and the
+ * shell); at -5 degrees it stays 4 cm under the shell's roof, at +15 its foot 22 cm over the turret floor. */
+const SHIELD_TAIL = [-.30, .19, .10] as const;
+/** The shield's section (z, y) at radius r: the face arc from its foot to its brow, then its tail back under the shell. */
 function shieldRing(r: number): V2[] {
   const ring: V2[] = [];
   for (let k = 0; k <= 8; k++) { const a = SHIELD_LOW + (SHIELD_HIGH - SHIELD_LOW) * k / 8; ring.push([r * Math.cos(a), r * Math.sin(a)]); }
-  ring.push([SHIELD_BACK, r * Math.sin(SHIELD_HIGH)], [SHIELD_BACK, r * Math.sin(SHIELD_LOW)]);
+  const [tz, ty, tf] = SHIELD_TAIL;
+  ring.push([SHIELD_BACK, r * Math.sin(SHIELD_HIGH)], [tz, ty], [tz, tf], [SHIELD_BACK, r * Math.sin(SHIELD_LOW)]);
   return ring;
 }
 /** A band on the shield's face between x0 and x1 (a seam or a lip), its arc from a0 to a1, t proud. */
