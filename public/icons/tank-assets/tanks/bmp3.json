@@ -672,7 +672,7 @@
       }
     ]
   },
-  "geometryHash": "d079501e",
+  "geometryHash": "1227d004",
   "metadataHash": "619b4ec4",
   "presentationAnchor": {
     "xM": 0.0024,
@@ -732,7 +732,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 25004,
-      "sha256": "ac456cfa71c5e13f5e34bdad02883fa0ce4dc8370773533c934dae1327e06772",
+      "sha256": "9b71bc7d6fad516042ff415cf86473bf42379ca051ca27613254c801b78b0620",
       "thumbnail": {
         "file": "thumbs/bmp3_angle.webp",
         "width": 256,
@@ -756,8 +756,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12776,
-      "sha256": "2ebc2db4f60b60c099deca088ca75a53b3e562f2d348e53120594eb4859b3964"
+      "bytes": 12770,
+      "sha256": "0275b962471b000622733361b1c84d33f8379a7054a7581afdcaecb128350de4"
     },
     "topSilhouette": {
       "file": "bmp3_top_silhouette.png",
@@ -772,32 +772,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5055,
-      "sha256": "7d3a7892e13dd78e107f5f8e2bca804a469dbc9e4813559e52cd65731c2ba005"
+      "bytes": 5057,
+      "sha256": "81ffb5b36da9c4d767bd2484cbeea3e1ddc5051d16cf0996268c0b682f7a6d38"
     },
     "armorSide": {
       "file": "bmp3_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37170,
-      "sha256": "9dda3225256c5214ca6cc5a17be794ff18c63a6e53be76934c1fc39d252aaeb6"
+      "bytes": 37130,
+      "sha256": "a331c15cd4eda9de3c3ea46cbd8a17169e67715a194f93798e60f6467165fc43"
     },
     "modulesSide": {
       "file": "bmp3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35400,
-      "sha256": "ab688ef9b67f622a8322f7169989595a9f0d7b1da3ad3fe34ef162e5febb5a68"
+      "bytes": 35416,
+      "sha256": "6150208ede797f97081694d74c4655ef66a14df8f59ce0ae19fdce005da85104"
     },
     "crewSide": {
       "file": "bmp3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30888,
-      "sha256": "954577588f347522724a6c6889bee9bd04f05374877c3f1278d8a947bb883a18"
+      "bytes": 30906,
+      "sha256": "b4b2ac743a868c9449bad97daa921112b66b2d5acdfa31d367808b4f64ffa1df"
     },
     "markings": {
       "file": "bmp3_markings.png",

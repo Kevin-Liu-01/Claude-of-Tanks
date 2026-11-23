@@ -1270,10 +1270,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [0.1397,0.052,1.0273],
-          [0.873,0.052,0.4207],
-          [0.873,0.6938,0.3385],
-          [0.1397,0.6938,0.9452]
+          [0.1397,0.068,1.0273],
+          [0.873,0.068,0.4207],
+          [0.873,0.694,0.3385],
+          [0.1397,0.694,0.9452]
         ]
       },
       {
@@ -1285,10 +1285,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-0.873,0.052,0.4207],
-          [-0.1397,0.052,1.0273],
-          [-0.1397,0.6938,0.9452],
-          [-0.873,0.6938,0.3385]
+          [-0.873,0.068,0.4207],
+          [-0.1397,0.068,1.0273],
+          [-0.1397,0.694,0.9452],
+          [-0.873,0.694,0.3385]
         ]
       },
       {
@@ -1300,10 +1300,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-0.1473,0.2906,1.08],
-          [0.1473,0.2906,1.08],
-          [0.1473,0.6855,1.0537],
-          [-0.1473,0.6855,1.0537]
+          [-0.1473,0.3007,1.08],
+          [0.1473,0.3007,1.08],
+          [0.1473,0.6859,1.0537],
+          [-0.1473,0.6859,1.0537]
         ]
       },
       {
@@ -1315,10 +1315,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [0.873,0.052,0.4375],
-          [0.873,0.052,-1.044],
-          [0.873,0.6938,-1.044],
-          [0.873,0.6938,0.4375]
+          [0.873,0.068,0.4375],
+          [0.873,0.068,-1.044],
+          [0.873,0.694,-1.044],
+          [0.873,0.694,0.4375]
         ]
       },
       {
@@ -1330,10 +1330,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [-0.873,0.052,-1.044],
-          [-0.873,0.052,0.4375],
-          [-0.873,0.6938,0.4375],
-          [-0.873,0.6938,-1.044]
+          [-0.873,0.068,-1.044],
+          [-0.873,0.068,0.4375],
+          [-0.873,0.694,0.4375],
+          [-0.873,0.694,-1.044]
         ]
       },
       {
@@ -1345,10 +1345,10 @@
         "kind": "main",
         "turretLocal": true,
         "verts": [
-          [0.8294,0.052,-1.044],
-          [-0.8294,0.052,-1.044],
-          [-0.8294,0.6938,-1.044],
-          [0.8294,0.6938,-1.044]
+          [0.8294,0.068,-1.044],
+          [-0.8294,0.068,-1.044],
+          [-0.8294,0.694,-1.044],
+          [0.8294,0.694,-1.044]
         ]
       },
       {
@@ -1446,7 +1446,7 @@
       {
         "volumeId": "M01",
         "name": "gun",
-        "min": [-0.0982,0.3071,-0.4472],
+        "min": [-0.0982,0.3168,-0.4472],
         "max": [0.0982,0.702,1.0273],
         "turretLocal": true
       },
@@ -1460,14 +1460,14 @@
       {
         "volumeId": "M03",
         "name": "feedSystem",
-        "min": [-0.0727,0.3759,-0.1775],
-        "max": [0.0727,0.5931,0.6777],
+        "min": [-0.0727,0.3835,-0.1775],
+        "max": [0.0727,0.5953,0.6777],
         "turretLocal": true
       },
       {
         "volumeId": "M04",
         "name": "missileRack",
-        "min": [0.0102,0.169,-0.7894],
+        "min": [0.0102,0.1821,-0.7894],
         "max": [0.1523,0.702,-0.364],
         "turretLocal": true
       },
@@ -1502,8 +1502,8 @@
       {
         "volumeId": "M09",
         "name": "radio",
-        "min": [0.1455,0.0931,-0.8913],
-        "max": [0.5238,0.405,-0.484],
+        "min": [0.1455,0.1081,-0.8913],
+        "max": [0.5238,0.4123,-0.484],
         "turretLocal": true
       },
       {
@@ -1562,8 +1562,8 @@
       }
     ]
   },
-  "geometryHash": "77c3a062",
-  "metadataHash": "4c6b25a4",
+  "geometryHash": "6055b395",
+  "metadataHash": "56673098",
   "presentationAnchor": {
     "xM": 0.0005,
     "zM": -0.0735
@@ -1617,15 +1617,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29200,
-      "sha256": "7c03e012239ab3b6e54dcdb3d68b750eadcfba6132ec9fac4d5d7861551ea0dc",
+      "bytes": 29254,
+      "sha256": "e003a8a672c0061db6f7c776526940948bb00c56f19ab1361da1bec8c2c18bfb",
       "thumbnail": {
         "file": "thumbs/type100_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11650,
-        "sha256": "56200e44a88e5a6b8fbcdca5711e3e2b05ceeaf44d3c12dc5872afdd6377736e",
+        "sha256": "ce1382f8ea8b2e91ffbeabf0431d92ff60b0049db0713de0bacf7441c74b3fb1",
         "frame": [25,110,225,250]
       }
     },
@@ -1642,8 +1642,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 19086,
-      "sha256": "1486f0a63ed686d30475b4ee084867ba7443ef1f22232302f479b40e855645cc"
+      "bytes": 19052,
+      "sha256": "76ca5f354f1d11669f45b5be3a20d565b6cf6093fec693cd4e06f073249ee1fe"
     },
     "topSilhouette": {
       "file": "type100_top_silhouette.png",
@@ -1658,32 +1658,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5073,
-      "sha256": "64e360aaf7cf3b838577c10bf8b15c39d64ae19d052da2cfdd7cc58ab3681972"
+      "bytes": 5060,
+      "sha256": "c6a297a913b09c8b1c45bb3fc7499d2cf5b4a2109ae060415b4f52b0d7e1d989"
     },
     "armorSide": {
       "file": "type100_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 49022,
-      "sha256": "ec7ee9d7c3bbfe8977be1c46575a6f468dbf83ef3f2c5f3938ad0e712c58f764"
+      "bytes": 49054,
+      "sha256": "282a48e75cb251a6d88fc17d0317aa7ef40257adc324a242ff5cb079720e7ece"
     },
     "modulesSide": {
       "file": "type100_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44002,
-      "sha256": "96d11eccdfe1df2c446a2dc1a801f3bd7e014dff087f60d7e978ba40ddb651d6"
+      "bytes": 43910,
+      "sha256": "7b327e511d807d6b24c1fe49a07f608e9aa1dc35fc4ae3df3ab976eaa734fbab"
     },
     "crewSide": {
       "file": "type100_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42202,
-      "sha256": "1d97d1454dab28144f55e8138a466fd72dfafd5dbae486ab79d3e09a3c350610"
+      "bytes": 42072,
+      "sha256": "e7a3804fb57c8dad86105db034dab7a4ab26b7b71f6206e814492377db1fe52c"
     },
     "markings": {
       "file": "type100_markings.png",
@@ -1696,8 +1696,8 @@
     "technicalLabels": {
       "file": "type100_technical.json",
       "mime": "application/json",
-      "bytes": 5256,
-      "sha256": "1b108dde1306ff7b2b96ee009d19bfbb42d3aec28b3799d5874a7ed096341df2"
+      "bytes": 5251,
+      "sha256": "fe0183b9c424fb2290a7a12015a29ea9cc3a3e383cc1c9ba1d119f93e48e7ba7"
     }
   }
 }

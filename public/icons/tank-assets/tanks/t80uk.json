@@ -12860,8 +12860,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -12873,8 +12873,8 @@
       }
     ]
   },
-  "geometryHash": "1f6f72c1",
-  "metadataHash": "a6e86af4",
+  "geometryHash": "dc68dd43",
+  "metadataHash": "41bdf039",
   "presentationAnchor": {
     "xM": 0.0023,
     "zM": -0.0776
@@ -12980,8 +12980,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30320,
-      "sha256": "aa161df98cdff3b4a47b5dcb6bc3249ae431d808f66542f32b375022a67d2408"
+      "bytes": 30310,
+      "sha256": "a482dc6509d8558b374238e9bedf01eaaa00074dfffd7e3217e7e4dec1042817"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
@@ -12996,8 +12996,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20850,
-      "sha256": "08f70e42f665a394518b9669d109a18d1abbc49a22326407d8fb49d2532eec57"
+      "bytes": 20716,
+      "sha256": "37000525d045dd9f1ccc59529406ab138e696143d29ce5bf05066cafa7d2b779"
     },
     "markings": {
       "file": "t80uk_markings.png",
@@ -13010,8 +13010,8 @@
     "technicalLabels": {
       "file": "t80uk_technical.json",
       "mime": "application/json",
-      "bytes": 4810,
-      "sha256": "f085079ca0bde823bcc49c0dc04e2c65a047aa5901e3bf22c7a377495ed619fb"
+      "bytes": 4875,
+      "sha256": "fe91bb1103a69118f327d4830d7e262dea5b8db5587d65f706c74fd86a58eb80"
     }
   }
 }

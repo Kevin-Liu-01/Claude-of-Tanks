@@ -48770,8 +48770,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -48783,8 +48783,8 @@
       }
     ]
   },
-  "geometryHash": "61c5b6cd",
-  "metadataHash": "aca1107a",
+  "geometryHash": "42a6511f",
+  "metadataHash": "2ce9236b",
   "presentationAnchor": {
     "xM": -0.0004,
     "zM": -0.2344
@@ -48843,15 +48843,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28340,
-      "sha256": "2306e01e28b38beb2068d82965f9cfb4fefbb755abcca83bdc1dbb3fe397ba70",
+      "bytes": 28328,
+      "sha256": "2735c46281aae88eeabda12dc89a91bbb931e531ea2a2a54d734b08ee7fddc37",
       "thumbnail": {
         "file": "thumbs/t80u_kursk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11162,
-        "sha256": "8f4fbcd7531923db6548ee64d9a92cd9d5efbfe3ec9f9392117768dd207dd1a5"
+        "bytes": 11182,
+        "sha256": "c9f88cf87ef67bdb436d5b660252e8552038eff59c163be1f0346241b4965fe2"
       }
     },
     "top": {
@@ -48891,8 +48891,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33406,
-      "sha256": "18459a9e9b221050f53bff68e5ff5a8bdd6f625cc6801c4b08677134b74e4b9d"
+      "bytes": 33414,
+      "sha256": "2fbdb2057846b67bdd35b5b75968fe5784959d79949261017c4dbbec2a5cc5f4"
     },
     "modulesSide": {
       "file": "t80u_kursk_modules_side.webp",
@@ -48907,8 +48907,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23826,
-      "sha256": "034fa9e258bea179da18c953e3b3b4203755bc58f058869d189015d844db0414"
+      "bytes": 23790,
+      "sha256": "b874c45c7b13d4b7ce95ad4a5de4fae401d77a85d8b5adba1aba17d7976f3036"
     },
     "markings": {
       "file": "t80u_kursk_markings.png",
@@ -48921,8 +48921,8 @@
     "technicalLabels": {
       "file": "t80u_kursk_technical.json",
       "mime": "application/json",
-      "bytes": 4794,
-      "sha256": "656a3069718fc69bbe7bf26b4b9c9769a1b368835f2807d48e3e572e979b643b"
+      "bytes": 4807,
+      "sha256": "8d72f9e83b4ba8c319b3a50183cb9ab833b9b002942b78b37e57e2826d2a5ef3"
     }
   }
 }

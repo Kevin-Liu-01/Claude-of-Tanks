@@ -698,7 +698,7 @@
       }
     ]
   },
-  "geometryHash": "404a6c7c",
+  "geometryHash": "1d9ffee9",
   "metadataHash": "00eba7dc",
   "presentationAnchor": {
     "xM": 0,
@@ -757,32 +757,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24046,
-      "sha256": "7284dc255fea6fa9b3b709a2f830b0620d532a9d36ac019e10e109dbacd235b3"
+      "bytes": 24030,
+      "sha256": "310c807ba79c065d3ed649e7cf2da735c5d4837bf1b561e27cdb187d9ec699e1"
     },
     "modulesSide": {
       "file": "leo2_revolution_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24084,
-      "sha256": "032bb2df61625c7d8aa2684c3ccc079cb8457409721e7663f6e86ce7c39da2c0"
+      "bytes": 24042,
+      "sha256": "4cf14c1a9f16194d57f4eb0f634f4b4bd79d92dca034fd42c16ea103611aafcb"
     },
     "crewSide": {
       "file": "leo2_revolution_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21172,
-      "sha256": "bfd491082c2e3e97064f1a9bd6498c0a632a1f2e117511cd343836376dd477fd"
+      "bytes": 21186,
+      "sha256": "9bcf0938ae486c16cbe907369f7696365c34d20ef72641a138ff18f4c232428f"
     },
     "angle": {
       "file": "leo2_revolution_proto_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24116,
-      "sha256": "d468bcd580eb54bce94807a433d2d9148d34bcbf9f2216bbb1d0f1fbb00f4e3f",
+      "bytes": 24092,
+      "sha256": "aeef6f2a636bbc1c1996ced14e5dda1188a6d937bb899705cac8ac6a29acb72f",
       "thumbnail": {
         "file": "thumbs/leo2_revolution_proto_angle.webp",
         "width": 256,
@@ -806,8 +806,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8930,
-      "sha256": "0c36ee6b4dfe0b58685d6d086cda2121d45c26f5adaada0d34f8acaba8678024"
+      "bytes": 8928,
+      "sha256": "cabd9432dcb9f0889271b9b3b013415deb17ab6f560b77b1706bd3ef3575d3fd"
     },
     "topSilhouette": {
       "file": "leo2_revolution_proto_top_silhouette.png",

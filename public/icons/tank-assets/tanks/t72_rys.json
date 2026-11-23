@@ -14484,8 +14484,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -14497,8 +14497,8 @@
       }
     ]
   },
-  "geometryHash": "44d60ccb",
-  "metadataHash": "e33ca2b6",
+  "geometryHash": "eb098269",
+  "metadataHash": "1313ef97",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.0597
@@ -14556,24 +14556,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30110,
-      "sha256": "8fdbb052422ff87224260e79d866f48cdd5663281469530994cb9e23aefdc0e3"
+      "bytes": 29552,
+      "sha256": "b6362f08d43af1afe1cf0ae7b729cba446b85c4f38d4260e36b93d5cfffde10b"
     },
     "modulesSide": {
       "file": "t72_rys_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23594,
-      "sha256": "f84afe714ce542659206d1236bc41ab525bb9c0e3e9a2f5459f3d3e90cac5387"
+      "bytes": 23582,
+      "sha256": "048889ba98264561caeb7d86b7709e6ae78549e1ae009dced79a646a3a24f232"
     },
     "crewSide": {
       "file": "t72_rys_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20586,
-      "sha256": "425e4f75f79615182dab810c0af9b37d234dca8e473964503c4d931c675481c1"
+      "bytes": 21342,
+      "sha256": "a1fa1a35ad3ed21b74e02a800a44b969a5d5a8b3272ad131a5374b25d937a64a"
     },
     "angle": {
       "file": "t72_rys_angle.webp",
@@ -14634,8 +14634,8 @@
     "technicalLabels": {
       "file": "t72_rys_technical.json",
       "mime": "application/json",
-      "bytes": 4917,
-      "sha256": "99ef5cd44d6b1d5c3e6cb7b30ba171c52573fd5f447d041b5bab2fb66e2a6f83"
+      "bytes": 4981,
+      "sha256": "0b962afd6686e84be4e5f29b75f4288efb07fe77c024c692f76c670ccd557d8d"
     }
   }
 }

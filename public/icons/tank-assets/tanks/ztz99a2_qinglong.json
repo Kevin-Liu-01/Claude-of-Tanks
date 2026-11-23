@@ -5597,7 +5597,7 @@
       }
     ]
   },
-  "geometryHash": "a32ffaf9",
+  "geometryHash": "180558b7",
   "metadataHash": "e99ef376",
   "presentationAnchor": {
     "xM": 0.0004,
@@ -5656,15 +5656,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26370,
-      "sha256": "c79ea0115db4d6d3fd8aa50a8cf1442c9bf25ea9d1ceecb536f97c7b4f5997b0",
+      "bytes": 26308,
+      "sha256": "80823d3a4dc98f39f949bfa2b53cccb58c12a3bb28ca034ef35f308711cd2b64",
       "thumbnail": {
         "file": "thumbs/ztz99a2_qinglong_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10776,
-        "sha256": "26c4f1edfd12a398d54bd72a6876f27455e241db4a006a0842d9c751ff0cbdea",
+        "bytes": 10766,
+        "sha256": "0d251b5fb68a6b8e12be309c007d66c55677a6bd90b5160dbd55568901911905",
         "frame": [11,118,223,248]
       }
     },
@@ -5673,16 +5673,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10310,
-      "sha256": "e91bccaa331c27a0bddc16fc0372d1cedb3576d336c1624c70fb14242db186ea"
+      "bytes": 10316,
+      "sha256": "2fdaba3de347aba6fe5aacf509663018ff7102904d7a157351cfbefa798f209f"
     },
     "side": {
       "file": "ztz99a2_qinglong_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8496,
-      "sha256": "9a5312634e46c8359a22453dd527542ee2023d29fd18e4111001fe162b7f9148"
+      "bytes": 8498,
+      "sha256": "5740425659fe2e7a5b1287d423b1205546d4534b899151673c729be5987de8ff"
     },
     "topSilhouette": {
       "file": "ztz99a2_qinglong_top_silhouette.png",
@@ -5697,32 +5697,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3864,
-      "sha256": "c2cec48235cda7caf056ad943d6a724c36956a4590849c7e511372b744c245f9"
+      "bytes": 3859,
+      "sha256": "949026b648f18d387e35b5c97a9ba730f5c9b2906ca187027f71176f33cf305b"
     },
     "armorSide": {
       "file": "ztz99a2_qinglong_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21724,
-      "sha256": "26e20169babaf727c5d963f9eb6629f98acb4b3b178a752892d22ccc0b5f2196"
+      "bytes": 21720,
+      "sha256": "318639701b568602e5bd70ac9f32a4d02640f4facec25f11324511a1ba49c4fd"
     },
     "modulesSide": {
       "file": "ztz99a2_qinglong_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20170,
-      "sha256": "4eaa858f2b98784b02623731c4003b5a8ae167203559c30fe1372bf9b114ea36"
+      "bytes": 20188,
+      "sha256": "e31b3e12f1f5b6701fecff8146c138ce153ef67be2df7c6663d6c2e7f5af3696"
     },
     "crewSide": {
       "file": "ztz99a2_qinglong_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17006,
-      "sha256": "5491e2a3413d641f5a1edc7a983bea34ac1a3f778bb5d33158d681016fd56c4f"
+      "bytes": 17016,
+      "sha256": "434c450d16fd2c886066be3aebf4084e9898fe1e594e1529824f69c7bf7c15d6"
     },
     "markings": {
       "file": "ztz99a2_qinglong_markings.png",

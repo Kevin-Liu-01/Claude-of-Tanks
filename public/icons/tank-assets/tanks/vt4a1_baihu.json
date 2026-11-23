@@ -4873,7 +4873,7 @@
       }
     ]
   },
-  "geometryHash": "2d0ed8d8",
+  "geometryHash": "82be734a",
   "metadataHash": "242273fa",
   "presentationAnchor": {
     "xM": -0.0003,
@@ -4933,15 +4933,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27490,
-      "sha256": "a75a29af83ca95d579c65d7b68906ef49b8d24b25759f7ec999f654f05a523aa",
+      "bytes": 27462,
+      "sha256": "e6260ea3a4f395f9c12454172b8dd3887fb1cdedd35418befca2d2058de4def8",
       "thumbnail": {
         "file": "thumbs/vt4a1_baihu_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11184,
-        "sha256": "4bbf2c2541dbe067e28604d5456207a0b2c89c4f9f2d3bb59b9f8d85bc2194a1",
+        "bytes": 11156,
+        "sha256": "13dcb5d16eae0685bfaac068dd1cd1ce260f194446058e69b0cd693ef2de3baa",
         "frame": [11,122,223,248]
       }
     },
@@ -4950,16 +4950,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10256,
-      "sha256": "5e4816a4dccab551755810eef43e658fe0ec3e0ba5dc3a31ffbf07dddb0b2f7d"
+      "bytes": 10244,
+      "sha256": "9dfc8832a7b2ec09d0ae6d79e7a68524a588d6c2d68098c2589ee51283b0191f"
     },
     "side": {
       "file": "vt4a1_baihu_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9960,
-      "sha256": "2d8eea43cd3fe3f3639f96eee93e15ec0010973b5ce01e3bdaca55c0470b01f6"
+      "bytes": 9966,
+      "sha256": "3126d6ec010a2f7a457da171af833fa1e5ce42ad5e77a3d0a5fa03b2b2c53a87"
     },
     "topSilhouette": {
       "file": "vt4a1_baihu_top_silhouette.png",
@@ -4974,32 +4974,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4004,
-      "sha256": "0784facab8670f7f9a624a6be0ede1ab2ca6303f85086fc2a485f5574964343f"
+      "bytes": 4003,
+      "sha256": "f77e5318d1e773ffe9258e2273f6d2bc9f3de82a21733af9917b432533eebcfb"
     },
     "armorSide": {
       "file": "vt4a1_baihu_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22278,
-      "sha256": "0b377ba29c4e12ed2b437350dd384bfd9a82fbdf9373b0c9ee975a2b770ed343"
+      "bytes": 22324,
+      "sha256": "9511b16e81bf22212e8f57226f6a87b19071995e1c9721bbeb09083ba68aa9e6"
     },
     "modulesSide": {
       "file": "vt4a1_baihu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21504,
-      "sha256": "81673151e763e2ccb5bff4746a8bb6803d6dcf845cfb8ad9e93f88a715388562"
+      "bytes": 21508,
+      "sha256": "f021448070f190e8a1dd5140450396d3a9b860f9d4d492c3d8c48b276c0c0ab5"
     },
     "crewSide": {
       "file": "vt4a1_baihu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19622,
-      "sha256": "f4ba2dde03b19d9df69f9626acbd97512b21c5e2d6a02020ca2f38793d222003"
+      "bytes": 19612,
+      "sha256": "3480c34633d20499336c2f6e64beb6d1879838f4ad217d1e8de8a95923a8ec75"
     },
     "markings": {
       "file": "vt4a1_baihu_markings.png",

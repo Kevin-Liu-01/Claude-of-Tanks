@@ -12604,7 +12604,7 @@
       }
     ]
   },
-  "geometryHash": "48c83c7d",
+  "geometryHash": "b538b469",
   "metadataHash": "1466a87b",
   "presentationAnchor": {
     "xM": 0.0067,
@@ -12712,8 +12712,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27312,
-      "sha256": "c17127d3e96d60dbfce23358d9df3efe29d898ceb53aa0f9c14450f258e4a099"
+      "bytes": 27344,
+      "sha256": "63f16787a20081fb1331596d9b86d9e377039c5d9a93d70189300b1da1dabf76"
     },
     "modulesSide": {
       "file": "object292_modules_side.webp",
@@ -12742,8 +12742,8 @@
     "technicalLabels": {
       "file": "object292_technical.json",
       "mime": "application/json",
-      "bytes": 5297,
-      "sha256": "289ea64b5b36ca294bda633cd1ad9b6725898f1c66be93179af5ef61209fc6ba"
+      "bytes": 5293,
+      "sha256": "52c2bc0f3a4550fe81aca1b2d60673f2fe64c763691976d35f686cf82240dbb3"
     }
   }
 }

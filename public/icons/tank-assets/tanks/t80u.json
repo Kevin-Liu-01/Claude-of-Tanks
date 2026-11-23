@@ -12860,8 +12860,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2962,-0.576,0.0662],
-        "max": [0.7247,0.4417,0.5271],
+        "min": [0.3462,-0.5698,-0.0376],
+        "max": [0.7747,0.4379,0.4571],
         "turretLocal": true
       },
       {
@@ -12873,8 +12873,8 @@
       }
     ]
   },
-  "geometryHash": "b5cb74f4",
-  "metadataHash": "cfd66237",
+  "geometryHash": "f60f3572",
+  "metadataHash": "d430ac36",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.0781
@@ -12930,8 +12930,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28344,
-      "sha256": "cb7f42b1449c0ecba4ef4b9ae5f7a45c4d05ff6682c3c5312ad1190258447454"
+      "bytes": 28326,
+      "sha256": "b42b47e03135667c73ea7c74290fcbfb73fb9e4a9f5832cba91d79c1a50c1b08"
     },
     "modulesSide": {
       "file": "t80u_modules_side.webp",
@@ -12946,23 +12946,23 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20540,
-      "sha256": "7c3a7671fe8a1f67ea51dbaa66b9390faf93c3187760fd4cb9db5865442f0c88"
+      "bytes": 20338,
+      "sha256": "a5ec85b3e11e2a26a03d295dc2ac9308107e3ca91b96bead4069d3aa9423b6b1"
     },
     "angle": {
       "file": "t80u_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25440,
-      "sha256": "f8b672b9eedd42f364e661f434439899a22dd52cf24a35a3b8d37b3fc819a2b7",
+      "bytes": 25416,
+      "sha256": "3417f6e8109c91e1072b2b79e804bef9d99b3ca62349e7ec17c25abb6a7f718a",
       "thumbnail": {
         "file": "thumbs/t80u_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10358,
-        "sha256": "eef8804192c1b6d8999df7cc16387e7197b8c56225f8ac128222ebb46a291a68"
+        "bytes": 10336,
+        "sha256": "cd1992e935c3c0c5ece2eb998b267853b398a5fb92e3253676b023c9e16522d6"
       }
     },
     "top": {
@@ -13008,8 +13008,8 @@
     "technicalLabels": {
       "file": "t80u_technical.json",
       "mime": "application/json",
-      "bytes": 4814,
-      "sha256": "3b395a50688f036e483423dd7f4210e710241dcf0cb1e7932f49b8bbc90be572"
+      "bytes": 4878,
+      "sha256": "e2121eab62e08d7961b3997ba68300afd13d266a36d91c304514cf07ec5bda8c"
     }
   }
 }
