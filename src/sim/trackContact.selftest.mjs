@@ -1,6 +1,7 @@
 // The tracks' published ground contact (src/sim/trackContact.ts; physics lane round 8, the coordinator's ruling of
 // 2026-10-04): every playable tank carries the receipt its builder lays, the host and solo play read the same contact,
 // and no playable tank falls back to the synthetic default line (0.45 x the hull's length either side of its root).
+// Since 275 it is the only footprint: no stamped contact reaches the solve.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import '../../tools/tank-surface-collect.mjs'; // node canvas shim for the three tanks built below
@@ -48,9 +49,9 @@ for (const id of ['t90am', 'challenger3', 'udes03']) {
   }
 }
 
-// 3. The host and solo play drive the same tank: the host stamps no contact, solo play stamps the drawn model's, and
-// the published receipt governs both, so over rolling ground at speed they agree step for step. Before, the host ran
-// 0.9 x the hull's length on its root.
+// 3. The solve reads the published receipt alone (275): a hull carrying some other contact (here a skewed copy of the
+// drawn model's: shorter, offset, its floor 10 cm up) drives step for step as one carrying none. Before 275 solo play
+// stamped the drawn model's on its hulls; before round 8 the host ran 0.9 x the hull's length on its root.
 {
   const id = 't90am';
   const spec = TANK_SPECS[id];
@@ -69,13 +70,14 @@ for (const id of ['t90am', 'challenger3', 'udes03']) {
     }
     return trace;
   };
-  const host = drive(null), solo = drive(drawn);
+  const skewed = { ...drawn, halfLenM: drawn.halfLenM * 0.8, zCenterM: drawn.zCenterM + 0.3, bottomYM: drawn.bottomYM + 0.1 };
+  const host = drive(null), solo = drive(skewed);
   let worst = 0;
   for (let tick = 0; tick < host.length; tick++) {
     for (let k = 0; k < 5; k++) worst = Math.max(worst, Math.abs(host[tick][k] - solo[tick][k]));
   }
-  assert.ok(worst < 1e-6, `the host and solo play drive the T-90M alike over rolling ground (worst difference ${worst})`);
+  assert.equal(worst, 0, `a stamped contact changes nothing over rolling ground (worst difference ${worst})`);
 }
 
 console.log(`trackContact.selftest: ${PRODUCTION_TANK_IDS.length} playable tanks publish their track contact `
-  + `(flat runs ${shortest.toFixed(2)}-${longest.toFixed(2)} m), the drawn and published receipts agree, the host's solve reads it`);
+  + `(flat runs ${shortest.toFixed(2)}-${longest.toFixed(2)} m), the drawn and published receipts agree, the solve reads only it`);

@@ -278,5 +278,5 @@ export function createPredictionWorld({
   };
   const gameMode = normalizeGameMode(mode || 'standard');
   const physicsAt = (gravityScale: number): RulesetPhysics => rulesetPhysicsAt(gameMode, gravityScale);
-  return { heightField: support, collide, contactGeom: null, physics, physicsAt, anchor, beginStep };
+  return { heightField: support, collide, physics, physicsAt, anchor, beginStep };
 }

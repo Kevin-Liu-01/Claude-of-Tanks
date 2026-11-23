@@ -131,6 +131,7 @@ import { waterContactMaskAt } from './world/waterContactMask.ts';
 import { sceneWindOf } from './world/sceneWind.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
+import { publishedTrackContact } from './sim/trackContact.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
@@ -4089,7 +4090,7 @@ const worldFramePresentation = {
             });
           }
           if (!live || !field.getWaterMaskAt || wakeSources.length >= 8) continue;
-          const mask = waterContactMaskAt(field, p.x, p.y + (ent.contactGeom?.bottomYM ?? 0), p.z);
+          const mask = waterContactMaskAt(field, p.x, p.y + (publishedTrackContact(ent.spec)?.bottomYM ?? 0), p.z);
           if (!(mask > 0.05)) continue;
           // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
           // shape the wake. A standing hull still laps the water around it (0.6); a moving

@@ -47,7 +47,6 @@ export async function replayStudioActorGaps({ world: given = null, map, actor: c
     state: createTankState(spec, new THREE.Vector3(p0.x, hf.getHeightAt(p0.x, p0.z), p0.z), p0.yaw),
     input: { throttle: 0, steer: 0, brake: true, fire: false, aimPoint: new THREE.Vector3(), shellSlot: 0 },
     combat: null, rigidGear: false,
-    contactGeom: visual.contactGeom ? { ...visual.contactGeom, endRise: visual.contactGeom.endRise ? { ...visual.contactGeom.endRise } : null } : null,
     supportX: p0.x, supportZ: p0.z, supportYaw: p0.yaw,
   };
   // game/studio.ts actorSupport: terrain plus the standable tops under the belly (a bridge deck from above)
@@ -57,7 +56,7 @@ export async function replayStudioActorGaps({ world: given = null, map, actor: c
     const x = a.state.pos.x, z = a.state.pos.z;
     cands.length = 0;
     world.queryObstacles(x - 4, z - 4, x + 4, z + 4, cands);
-    field.beginHull(x, z, studioSupportBelly(cands, x, z, a.state.pos.y + (a.contactGeom?.bottomYM ?? 0), deckScratch));
+    field.beginHull(x, z, studioSupportBelly(cands, x, z, a.state.pos.y, deckScratch));
     return field;
   };
   visual.setGroundSampler((x, z) => field.getHeightAt(x, z));

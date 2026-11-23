@@ -24,6 +24,11 @@
 // set up on the receipt's seed, which the authority is seated with. Negative control: the authority's battle seed one off
 // (its combat stream kept equal) is found at the first spotting check, the stagger the solo step once drew from a seed of
 // its own.
+// The footprint (275, migration parity): each stub visual carries the contact the built model measures (createTank,
+// geometry only), as the game's visuals do, so a driver reading the drawn footprint parts from one reading the spec's;
+// a Type 10, whose tracks reach 4.25 cm under its root, drives into a step whose top lies within those 4.25 cm of its
+// step-up reach, where the solo step's old line (the drawn model's lowest surface) and the root every obstacle solver
+// reads disagreed.
 // Every section runs, a red one included, and the receipt fails at the end with each failure listed, rethrowing the
 // first one's own error (round 5 S1). The two Mars sections red on 268 run last (round 6 V8), so a new red elsewhere
 // is the first failure and keys apart from the inherited one.
@@ -36,13 +41,32 @@ import { applyPlayerInput } from './playerInputStage.ts';
 import * as detMath from './detMath.ts';
 import { createBus, createCollider, createGameState, mulberry32, setupBattle, simStep } from '../game/state.ts';
 import { spawnTanks } from '../game/rosterState.ts';
-import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
+import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
+import { createCollisionManifestLoader } from '../../server/collisionManifestLoader.ts';
+import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
+import { SUPPORT_STEP_UP_M } from './structureSupport.ts';
 
 const MAP = 'verdant';
 const SEED = 7;
 await ensureFullFleet();
+
+/** The track contact the built model measures (the tank factory's contactGeom, geometry only), once per spec: what the
+ * game's visual carries, so a driver that reads the drawn footprint instead of the spec's parts from the other (275). */
+const drawnContacts = new Map();
+function drawnContact(specId) {
+  if (!drawnContacts.has(specId)) {
+    const tank = createTank(specId, null, { proceduralOnly: true, geometryReceipt: true });
+    try {
+      drawnContacts.set(specId, tank.contactGeom ?? tank.root.userData.contactGeom ?? null);
+    } finally {
+      tank.dispose?.();
+    }
+    assert.ok(drawnContacts.get(specId), `${specId}: the built model measures its track contact`);
+  }
+  return drawnContacts.get(specId);
+}
 
 const _euler = new Euler(), _quat = new Quaternion(), _unit = new Vector3(), _hull = new Matrix4(), _local = new Matrix4();
 const _turret = new Matrix4(), _bore = new Vector3();
@@ -98,11 +122,35 @@ const foeShellSlot = (tick) => ((tick >= 100 && tick < 140) || (tick >= 250 && t
 const FOE_PRESSES = new Map([[70, 1 << 0], [160, 1 << 6], [220, 1 << 7], [330, 1 << 3], [380, 1 << 1]]);
 
 /**
- * The two drivers' collision worlds on MAP for one run, released when it ends, a throw inside it included (round 5 S1:
- * a failed section no longer ends the process, so its worlds are released before the next section builds its own).
+ * (275) The footprint section's step: a block on level ground on MAP, its top `aboveM` over the ground at its near edge,
+ * sunk deep enough to be a part hulls can stand on (world/collision.ts HULL_STANDABLE_HEIGHT_M), packed as the collision
+ * manifest packs one and added to the map's obstacles. The own hull starts STEP_RUN_UP_M short of it, facing it.
+ * `aboveM`: inside the 4.25 cm band a Type 10's two old belly lines split (the section asserts it from the settled root).
  */
-async function withWorlds(body) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+const STEP = { specId: 'type10', x: -278, z: -110, halfWidthM: 4, halfLengthM: 3, aboveM: 0.588 };
+const STEP_RUN_UP_M = 12;
+const STEP_TICKS = 400;
+let manifestLoader = null;
+/** MAP's collision world, with `step`'s block among its obstacles when one is given (its top as `stepTopY`). */
+function worldWithStep(step) {
+  const world = createDedicatedWorldCollision(MAP);
+  if (!step) return world;
+  const top = world.heightField.getHeightAt(step.x, step.z - step.halfLengthM) + step.aboveM, bottom = top - 1.4;
+  const manifest = (manifestLoader ??= createCollisionManifestLoader()).get(MAP, null);
+  const block = { b: [step.x - step.halfWidthM, bottom, step.z - step.halfLengthM, step.x + step.halfWidthM, top, step.z + step.halfLengthM],
+    s: ['o', step.x, step.z, step.halfWidthM, step.halfLengthM, 0, bottom, top], k: 'earthwork' };
+  const blocked = createHeadlessCollisionWorld({ mapId: MAP, heightField: world.heightField,
+    manifest: { ...manifest, obstacles: [...manifest.obstacles, block] } });
+  return Object.assign(blocked, { release: world.release, stepTopY: top });
+}
+
+/**
+ * The two drivers' collision worlds on MAP for one run (with `step`'s block when one is given), released when it ends, a
+ * throw inside it included (round 5 S1: a failed section no longer ends the process, so its worlds are released before
+ * the next section builds its own).
+ */
+async function withWorlds(body, step = null) {
+  const authorityWorld = worldWithStep(step), pageWorld = worldWithStep(step);
   try {
     return await body(authorityWorld, pageWorld);
   } finally {
@@ -115,19 +163,20 @@ async function withWorlds(body) {
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
-async function run(ticks, perturb = null, { fourthShell = false, authoritySeed = SEED, yellowGun = false } = {}) {
+async function run(ticks, perturb = null, { fourthShell = false, authoritySeed = SEED, yellowGun = false, step = null, drawnSkewM = 0 } = {}) {
   // a fourth shell (the second's, stocked as it is) on the own hull's spec, which both sides read, before either seats it
   const ownShells = getSpec(OWN_SPEC).gun.shells;
   if (fourthShell) ownShells.push({ ...ownShells[1], name: `${ownShells[1].name} (fourth slot)` });
   const chosen = fourthShell ? 3 : 1;
   try {
-    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed, yellowGun));
+    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb,
+      { chosen, authoritySeed, yellowGun, step, drawnSkewM }), step);
   } finally {
     if (fourthShell) ownShells.pop();
   }
 }
 
-async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed, yellowGun = false) {
+async function runBattle(authorityWorld, pageWorld, ticks, perturb, { chosen, authoritySeed, yellowGun = false, step = null, drawnSkewM = 0 }) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -137,8 +186,14 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = 1;
-  setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true, seed: SEED });
+  setupBattle(game, step?.specId ?? OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true, seed: SEED });
   const own = game.tanks.find((entity) => entity.isPlayer), foe = game.tanks.find((entity) => entity.team === 'enemy');
+  // (275) the footprint section: the own hull on the level ground short of the step, facing it
+  if (step) {
+    const z = step.z - step.halfLengthM - STEP_RUN_UP_M;
+    own.state.pos.set(step.x, pageWorld.heightField.getHeightAt(step.x, z), z);
+    own.state.yaw = 0;
+  }
   game.tanks = [own, foe];
   game.allTanks = [own, foe];
   game.tankById = new Map([[own.id, own], [foe.id, foe]]);
@@ -156,7 +211,9 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
   // t0: the page's hulls take the authority's settled state; the support samples are re-read on both sides
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
+    // (275) the drawn footprint, skewed off its receipt by `drawnSkewM` (its floor raised, its run shortened) when asked
+    const drawn = drawnContact(entity.specId);
+    entity.visual = { root: new Group(), contactGeom: drawnSkewM ? { ...drawn, bottomYM: drawn.bottomYM + drawnSkewM, halfLenM: drawn.halfLenM - drawnSkewM } : drawn, gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
       gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
@@ -164,6 +221,8 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
     entity.input.aimPoint ??= new Vector3();
     for (const state of [entity.state, authority.state]) if (state._sup) state._sup.x = NaN;
   }
+  // (275) the own hull's settled root on the level ground, from which the step section reads the old belly lines
+  const restY = authorityOf(own).state.pos.y;
   // the own hull's third slot emptied on both sides: asking for it is refused
   own.combat.ammo[EMPTY_SLOT] = 0;
   authorityOf(own).combat.ammo[EMPTY_SLOT] = 0;
@@ -201,12 +260,13 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
   };
   foe.aiCtl = scriptedBot('page', foe, own);
   authorityOf(foe).aiCtl = scriptedBot('authority', authorityOf(foe), authorityOf(own));
-  const inputFor = (tick, self, other) => ({ throttle: 0.6, steer: tick < 240 ? 0 : 0.25, brake: false,
+  const inputFor = (tick, self, other) => ({ throttle: 0.6, steer: step || tick < 240 ? 0 : 0.25, brake: false,
     fire: tick % 150 === 90 || tick === DENIED_FIRE_TICK, shellSlot: ownShellSlot(tick, chosen), actionBits: 0, aimLocked: false,
     ...encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z }) });
   let divergence = null;
   let spottedTicks = 0;
   const seen = [], shells = [];
+  let overStepGap = -Infinity;
   for (let tick = 0; tick < ticks && !divergence; tick++) {
     currentTick = tick;
     const ownInput = inputFor(tick, authorityOf(own), authorityOf(foe));
@@ -218,6 +278,10 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
     applyPlayerInput(own, perturb?.(tick, 'page', own.id, pageInput) ?? pageInput, pageEmit);
     simStep(game, bus, pageWorld, null, collider);
     if (tick === 120 || tick === 200 || tick === 260) foeSlots.push([tick, foe.combat.shellSlot]);
+    // (275) the own root's height over the ground while it is over the step's footprint
+    if (step && Math.abs(own.state.pos.x - step.x) <= step.halfWidthM && Math.abs(own.state.pos.z - step.z) <= step.halfLengthM) {
+      overStepGap = Math.max(overStepGap, own.state.pos.y - pageWorld.heightField.getHeightAt(own.state.pos.x, own.state.pos.z));
+    }
     for (let slot = 0; slot < own.combat.ammo.length; slot++) if (own.combat.ammo[slot] < (shots.at(-1)?.ammo ?? ammoAtStart)[slot]) shots.push({ tick, slot, ammo: own.combat.ammo.slice() });
     for (const entity of game.tanks) {
       const page = hullBytes(entity), authority = hullBytes(authorityOf(entity));
@@ -237,7 +301,8 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
     }
   }
   const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, spottedTicks, denied,
-    shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots, foeSmokeS: foe.combat.auxiliary?.smoke?.born ?? null };
+    shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots, foeSmokeS: foe.combat.auxiliary?.smoke?.born ?? null,
+    restY, overStepGap, stepTopY: pageWorld.stepTopY ?? null };
   return { divergence, exercised, own: own.state, foe: foe.state };
 }
 
@@ -282,7 +347,7 @@ async function realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord
   const authorityOf = (entity) => match.entityById.get(entity.id);
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
+    entity.visual = { root: new Group(), contactGeom: drawnContact(entity.specId), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
       gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
@@ -401,6 +466,43 @@ await section('a yellow gun fires alike', async () => {
   assert.deepEqual(yellow.exercised.shots, [[90, 0], [540, 1]], `the yellow gun fired its first slot, then its second (${JSON.stringify(yellow.exercised.shots)})`);
 });
 
+// ---- (275, migration parity) one footprint: the stub visuals carry the built model's track contact (drawnContact), and a
+// Type 10, whose tracks reach 4.25 cm under its root, drives into a step whose top lies within that 4.25 cm of its
+// step-up reach. The solo step judged a step from the drawn model's lowest surface while its own obstacle solver (and the
+// authority, for both) judged it from the root, so the page's hull found the step neither floor nor wall and drove
+// through it while the authority's climbed it (they parted at tick 137, pos.y). Every driver now judges from the root,
+// the footprint's underside measured from the spec's anatomy (structureSupport.ts hullSupportPose), and both climb it.
+let stepNote = null;
+let stepped = null;
+await section('a Type 10 meets a step alike', async () => {
+  stepped = await run(STEP_TICKS, null, { step: STEP });
+  const { restY, stepTopY, overStepGap } = stepped.exercised;
+  const bottomYM = getSpec(STEP.specId).armor.trackContact.bottomYM;
+  assert.ok(bottomYM < -0.04 && Math.abs(drawnContact(STEP.specId).bottomYM - bottomYM) < 1e-3,
+    `the ${STEP.specId}'s drawn and published tracks reach under its root (${drawnContact(STEP.specId).bottomYM}, ${bottomYM})`);
+  assert.ok(restY + bottomYM + SUPPORT_STEP_UP_M < stepTopY && stepTopY <= restY + SUPPORT_STEP_UP_M,
+    `the step's top (${(stepTopY - restY).toFixed(4)} m over the settled root) lies between the old belly lines' reach `
+    + `(${(bottomYM + SUPPORT_STEP_UP_M).toFixed(4)}-${SUPPORT_STEP_UP_M} m)`);
+  assert.equal(stepped.divergence, null, `at the step the two steps part at ${JSON.stringify(stepped.divergence)}`);
+  // the outcome itself: over the step's footprint the hull stood on its top (its root that high over the ground), not
+  // through it at ground height
+  assert.ok(overStepGap > STEP.aboveM - 0.1, `the hull climbed onto the step on both (its root ${overStepGap.toFixed(3)} m over the ground `
+    + `at most while over it; the step's top ${STEP.aboveM} m)`);
+  stepNote = `a ${STEP.specId} climbed alike onto a step ${(stepTopY - restY).toFixed(3)} m over its root, inside the reach its old solo line missed`;
+  return `${STEP_TICKS} ticks, the step ${(stepTopY - restY).toFixed(3)} m over the root`;
+});
+// (275) the drawn footprint reaches neither driver: its stub skewed 3 cm off the receipt (floor up, run shorter), the
+// Type 10 meets the step as before, alike, ending where the unskewed run ended. The step section catches a solo belly
+// line read off the drawn model; this one catches any other solo read of it (the movement solve's, a stamp's): the
+// skewed run would end elsewhere.
+await section('a drawn footprint off its receipt reaches neither driver', async () => {
+  assert.ok(stepped, 'the step section ran first');
+  const skewed = await run(STEP_TICKS, null, { step: STEP, drawnSkewM: 0.03 });
+  assert.equal(skewed.divergence, null, `with the drawn footprint skewed the two steps part at ${JSON.stringify(skewed.divergence)}`);
+  assert.deepEqual([skewed.own.pos.x, skewed.own.pos.y, skewed.own.pos.z].map(hex), [stepped.own.pos.x, stepped.own.pos.y, stepped.own.pos.z].map(hex),
+    'the hull ends where it ended with the drawn footprint on its receipt');
+});
+
 // ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
 // 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
 const REAL_AI_TICKS = 3000;
@@ -506,7 +608,7 @@ async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
   }
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
+    entity.visual = { root: new Group(), contactGeom: drawnContact(entity.specId), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
       gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
@@ -658,7 +760,7 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `own at ${(same.exercised.ownHp * 100).toFixed(1)} %), the hostile a bot on both drivers switching its ammunition without firing, `
   + `an ammunition switch and the emptied slot refused once at tick `
   + `${denied.page[0].tick}, its trigger held off on a ready gun at ${DENIED_FIRE_TICK}; given a fourth shell, its slot fired as the fourth at `
-  + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
+  + `${four.exercised.shots[1][0]} on both; ${stepNote}; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field}); `
   + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
   + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart, and ${destroyed} was destroyed; `

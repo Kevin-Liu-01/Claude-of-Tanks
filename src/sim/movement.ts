@@ -212,7 +212,6 @@ export interface MovementContactGeometry {
   zCenterM: number;
   bottomYM?: number | null;
   panYM?: number | null;
-  gearBottomYM?: number | null;
   endRise?: {
     dzM: number;
     frontM: number;
@@ -423,11 +422,12 @@ export interface MovementInput {
 
 /**
  * The track contact the solve reads: the spec's published receipt (trackContact.ts: the same on the host, its Worker, the
- * client's prediction, the torture matrix and solo play), else one the caller stamped (solo play's drawn model, for a hull
- * without a receipt), else none: a synthetic test hull on the default support line.
+ * client's prediction, the torture matrix, the Studio and solo play), else none: a synthetic test hull on the default
+ * support line. (Before 275 a caller's stamped contact stood in for a missing receipt: solo play's drawn model's, which
+ * every playable tank's receipt outranked anyway.)
  */
 function trackContactOf(entity: MovementEntity): MovementContactGeometry | null {
-  return publishedTrackContact(entity.spec) ?? entity.contactGeom ?? null;
+  return publishedTrackContact(entity.spec);
 }
 
 export interface MovementEntity {
@@ -435,7 +435,6 @@ export interface MovementEntity {
   state: TankState;
   input: MovementInput;
   combat?: MovementCombatState | null;
-  contactGeom?: MovementContactGeometry | null;
   modeSpeedMultiplier?: number;
   /** Ruleset gravity scale (sim/matchRuleset.ts): airborne hulls and the slope pull scale by it. */
   modeGravityScale?: number;
@@ -612,13 +611,13 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // beyond each real track end: on WoT-typical rolling ground the lowest
 // rendered vertex rode a MEDIAN 20-21 cm above the heightfield (53-69 cm
 // peaks at speed) and PARKED hovering 21 cm — photographed daylight under
-// the whole wheel run on desert. state.ts therefore scans the swapped
+// the whole wheel run on desert. r7 therefore had state.ts scan the swapped
 // visual's low band (vertices within 5 cm of min-Y, exactly like the r7
-// probe) when it detects the swap and publishes the measured geometry as
-// `entity.contactGeom = { halfLenM, halfWidM, zCenterM }`; the solve below
-// uses it for the line half-length, half-width and longitudinal center.
+// probe) and publish the measured geometry for the solve's line half-length,
+// half-width and longitudinal center.
 // Physics lane round 8: every playable tank now publishes that receipt on its spec (trackContact.ts), measured on the
-// built model, and the solve reads it wherever it runs (trackContactOf). The 0.45 L / 0.5 W fractions below are the
+// built model, and the solve reads it wherever it runs (trackContactOf; since 275 the only footprint: no hull carries the
+// drawn model's). The 0.45 L / 0.5 W fractions below are the
 // fallback for a synthetic test hull only: the fleet's measured flat runs are 0.23-0.39 of the hull's length either side
 // of a centre up to 0.9 m off the root, the hulls' tracks 0.69-1.06 of their half-width out.
 const SUPPORT_LEN_FRAC = 0.45;   // support line half-length = 0.45 × hullLengthM
@@ -4818,11 +4817,8 @@ function writeSupportCache(
   const { spec, state } = entity;
   const contact = trackContactOf(entity);
   const fanYield = updateFanYield(state, samples, rigidGear, dt);
-  const rigidUndercut = !!contact && Number.isFinite(contact.gearBottomYM) &&
-    Number.isFinite(contact.bottomYM) &&
-    (contact.bottomYM as number) < (contact.gearBottomYM as number) - 0.01;
   const hydraulicAim = spec.hydropneumaticAim;
-  const hydraulicYield = state.suspensionAim && hydraulicAim && !rigidUndercut
+  const hydraulicYield = state.suspensionAim && hydraulicAim
     ? Math.min(
       hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
       Math.abs(detMath.sin(suspensionPitch)) * samples.halfLength,
@@ -4835,7 +4831,7 @@ function writeSupportCache(
   // the seat the track's springs carry the hull at (trackSpringSeat), at most TRACK_SEAT_SINK_M under the highest
   // contact, never under a track end (hull-fixed) or the belly; rigid running gear has no springs to sink on
   const gravityScale = clamp(Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1, 0.1, 3);
-  let seatY = rigidGear || rigidUndercut
+  let seatY = rigidGear
     ? supportY
     : Math.min(supportY, Math.max(
       trackSpringSeat(samples.bedCount, GRAVITY * gravityScale / (RIDE_OMEGA * RIDE_OMEGA)) - hydraulicYield,
@@ -4858,9 +4854,7 @@ function writeSupportCache(
   const perchCut = rigidGear ? 0 : 0.7 * state._perch;
   const margin = SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
     Math.min(1, (Math.abs(pitch) + Math.abs(roll)) / SUPPORT_MARGIN_ATT_RAD);
-  const normalFloor = (rigidUndercut
-    ? supportY
-    : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + margin;
+  const normalFloor = Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M) + margin;
   const rigidFloor = rigidSupportY + RIGID_BODY_MARGIN_M;
   const cache = state._sup;
   // the support this turn of the hull took away at the contact it rests on (_rotationDrop): the contact's height over
@@ -5422,8 +5416,8 @@ function updateLongitudinalSpeed(
  * Mutates `entity.state` in place; touches nothing else.
  *
  * @param {object} entity - `{ spec, state, input, combat }` (combat may be null ⇒ healthy).
- *   Optional `entity.rigidGear === true` (stamped by state.ts when the active
- *   visual lacks a complete wheel + track conformance layer) hard-clamps every
+ *   Optional `entity.rigidGear === true` (the Studio's conformStudioActor poses
+ *   a hull with it; battle hulls keep it false) hard-clamps every
  *   support fan line — see the FAN_YIELD_* / r5 hard-gate note in the solve.
  * @param {object} heightField - `{ getHeightAt(x,z), getNormalAt(x,z), getGroundType(x,z) }`.
  * @param {number} dt - Timestep in seconds (SIM_DT in-game).

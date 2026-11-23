@@ -29,7 +29,6 @@ import type {
 import { createRotaryShotThinning } from '../sim/fireCycleFloor.ts';
 import type {
   MovementArmorSpec,
-  MovementContactGeometry,
   MovementGunSpec,
   MovementHeightField,
   MovementInput,
@@ -67,7 +66,6 @@ import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
-import { validatedContactGeometry } from '../sim/trackContact.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
@@ -236,14 +234,9 @@ interface SoloInput extends MovementInput {
   actionBits: number;
 }
 
-interface SoloVisualContactGeometry extends MovementContactGeometry {
-  bottomYM?: number | null;
-}
-
 interface SoloVisual {
   specId: string;
   root: THREE.Object3D;
-  contactGeom?: SoloVisualContactGeometry | null;
   setVisible(visible: boolean): void;
   syncFromState(state: TankState): void;
   resetDestroyed?(): void;
@@ -285,7 +278,7 @@ interface ReloadPresentationEvent {
 
 type SoloPooledEntity = Omit<RosterEntity,
   'spec' | 'team' | 'state' | 'combat' | 'specialAction' | 'input' | 'visual' |
-  'contactGeom' | 'aiCtl'> & {
+  'aiCtl'> & {
     spec: SoloSpec;
     team: TeamId;
     state: TankState | null;
@@ -293,7 +286,6 @@ type SoloPooledEntity = Omit<RosterEntity,
     specialAction: SpecialActionState | null;
     input: SoloInput;
     visual: SoloVisual | null;
-    contactGeom: MovementContactGeometry | null;
     aiCtl: SoloAiController | null;
     /** The consumable in each slot, kept across lives (game/soloConsumables.ts). */
     consumableItems?: ConsumableId[];
@@ -318,7 +310,6 @@ type SoloPooledEntity = Omit<RosterEntity,
     /** A bot's paint this battle (game/rosterState.ts soloBotCamo: the authority's roll on a random roster); null for the
      * player, who wears its saved selection. */
     camo?: BotCamo | null;
-    _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
     _lastImpactT?: number;
     /** Impact physics: closing speed already priced in the crash that is still resolving, and when it last grew. */
@@ -834,8 +825,6 @@ function releaseParkedTank(game: SoloGameState, entity: SoloPooledEntity): void 
   entity.team = 'enemy';
   entity.isPlayer = false;
   entity.rigidGear = false;
-  entity.contactGeom = null;
-  entity._glbContactStampedVisual = null;
   if (!entity.visual) return;
   entity.visual.resetDestroyed?.();
   entity.visual.setVisible(false);
@@ -1179,7 +1168,6 @@ function warmStartBattleEntity(
   entity: SoloEntity,
   world: SoloWorld,
 ): void {
-  refreshContactGeometry(entity);
   for (let tick = 0; tick < 30; tick++) {
     updateTank(entity, world.heightField, SIM_DT);
   }
@@ -1551,7 +1539,6 @@ export function setupBattle(
       resetHullCrashMemory(ent);
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
-      refreshContactGeometry(ent);
       for (let tick = 0; !isGunship(ent) && tick < 30; tick++) {
         updateTank(ent, world.heightField, SIM_DT);
       }
@@ -1608,25 +1595,9 @@ export function drainOpeningRoutes(game: SoloGameState): number {
 // Fixed-step simulation
 // ---------------------------------------------------------------------------
 
-/**
- * Publish the authored visual's measured contact footprint once per visual.
- * All playable tanks use terrain-conforming first-party running gear.
- * @param {object} ent pool entity
- * @returns {void}
- */
-function refreshContactGeometry(entity: SoloEntity): void {
-  if (!entity.visual) return;
-  entity.rigidGear = false;
-  if (!entity.contactGeom && entity.visual.contactGeom) {
-    entity.contactGeom = validatedContactGeometry(
-      entity.visual.contactGeom,
-      entity.spec.dims,
-    );
-  }
-}
-
-// First-party builders publish their measured track contact geometry once; the simulation validates that receipt
-// against spec dimensions (sim/trackContact.ts, shared with the host since physics lane round 8) before using it.
+// The hulls' track contact is the spec's published receipt (sim/trackContact.ts, measured on the built model by the
+// combat anatomy generator), the footprint the movement solve reads on every driver; since 275 no hull stamps the drawn
+// model's, which reaches no driver (the replay re-simulation and the authority have no model).
 
 /**
  * Tank collision layer (gameplay_feel r6 — round critique MAJOR "invisible
@@ -2826,12 +2797,13 @@ function stepTankMovement(
     // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
     if (entity.modeActive === false) continue;
     if (isGunship(entity)) continue;
-    refreshContactGeometry(entity);
     collider.setSelf(entity);
-    // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull
-    // origin plus the contact geometry's belly offset
+    // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull's root, as
+    // on the authority: the footprint's underside (hullSupportPose, from the spec's anatomy) is measured from it, as the
+    // obstacle solver's standing rule measures it (275: the solo step added the drawn model's lowest surface, judging a
+    // step 1.4-4.3 cm lower than its own obstacle solver did, so a step in that band was neither floor nor wall)
     support.beginHull(entity.state.pos.x, entity.state.pos.z,
-      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0), hullSupportPose(entity.spec, entity.state, _supportPose));
+      entity.state.pos.y, hullSupportPose(entity.spec, entity.state, _supportPose));
     // Park the carrier only during ground integration; preserve held flight controls
     // for additional fixed steps when rendering slower than the simulation.
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;

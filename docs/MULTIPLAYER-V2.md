@@ -2658,6 +2658,26 @@ second kill. That fight parted the drivers twice:
 `driverStepParity` holds both: Mars is byte-identical for 10,128 ticks, and a new section fires a yellow gun on both drivers.
 Each fix reverted fails it, as does the old staging.
 
+**One contact footprint (275, 2026-11-22).** The replay design (`docs/REPLAY.md`, item/replay-system-275) found the solo step reading the drawn
+model's track contact, which neither the authority nor a headless re-simulation has. The movement solve had read the spec's
+published receipt on every driver since physics round 8 (`trackContact.ts`; all 313 tanks publish one), so the hulls already
+rode one footprint. One read was left: the belly line a hull hands the structure support field, from which a roof, a deck or
+a stone is judged floor or wall. The authority and the client's prediction passed the root. The support field measures the
+hull's underside from that line with the spec's footprint (`structureSupport.ts` `hullSupportPose`), as every driver's
+obstacle solver does from the root. The solo step instead passed the root plus the drawn model's lowest surface, a line under the
+root its own obstacle solver reads. For 305 tanks the published surface is 0 (the drawn value is float noise: −7e-18 on
+the four measured). The eight whose tracks reach under their root (the Type 10s 4.25 cm, the Challenger 1s 1.59 cm, the Leopard 2 Revolution 1.4 cm) met steps in a
+band of that depth that their solo support field read as no floor and their obstacle solver as no wall, so they drove
+through steps the authority climbed. Every driver and the Studio now pass the root (the authority and prediction did not
+change). The solo step's drawn-contact stamp (`refreshContactGeometry`), the movement's stamped-contact fallback and the dead
+`gearBottomYM` undercut rule are gone; the water mask reads the published receipt's lowest surface.
+`driverStepParity`'s stub visuals now carry the contact the built model measures, as the game's do. A new section drives a
+Type 10 into a step 0.529 m over its settled root, inside that band, and requires it to climb onto the step alike on both.
+The old solo step parts from the authority at tick 137 (`pos.y`), and a belly line plus the lowest surface on both drivers
+lets the hull through the step. A second section skews the stub's drawn footprint 3 cm off the receipt and requires the
+same run. Left as it is: measured from the root, those eight hulls step up 1.4-4.3 cm higher over their track bottoms than
+the rest; a uniform reach would move the support field and the obstacle solver's root rule together on every driver.
+
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
 **Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable
