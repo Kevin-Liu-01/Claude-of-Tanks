@@ -49,7 +49,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
   rulesetObjectiveAxisM, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, SCUTTLE_CREDIT_S, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -146,6 +146,7 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
+import { createFireCredit, createRecentDamage, fireDeathCause, type FireCredit, type RecentDamage } from '../sim/fireCredit.ts';
 import {
   createWreckEnvironment, createWreckTurrets, wreckGroundSampler, type WreckTurrets,
 } from '../sim/wreckTurrets.ts';
@@ -446,6 +447,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _wreckTurrets?: WreckTurrets | null;
   /** The pillboxes' damage this battle (sim/fortifiedCover.ts), as the authority keeps it. */
   _fortified?: FortifiedCoverLedger | null;
+  /** Who set each fire (death-flow-275 R8, sim/fireCredit.ts), as the room authority keeps it. */
+  _fireCredit?: FireCredit | null;
+  /** Who hurt each hull last (death-flow-275 R7): a scuttled hull's kill, as the authority keeps it. */
+  _recentDamage?: RecentDamage | null;
   /** Watch mode (watch-mode-243; game/watchSeat.ts): the seat ledger of a watched battle, null otherwise. */
   watch?: WatchSession<SoloAiController> | null;
   /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
@@ -941,7 +946,9 @@ function initializeBattleEntity(
   _spawnPos.set(spawn.pos[0], spawn.pos[1], spawn.pos[2]);
   entity.team = isPlayer || isAlly ? 'player' : 'enemy';
   entity.isPlayer = isPlayer;
-  entity.bot = !isPlayer;
+  // (death-flow-275 R4) a couch seat is a person on a phone, not a bot: every human-count rule (the Horde's last stand,
+  // the front's overrun, a crew's recoil launch and hull) reads it as the room authority reads a seated player
+  entity.bot = !isPlayer && !context.game.couch?.seats.some((seat) => seat.entity === entity);
   entity.modeActive = true;
   entity.state = createTankState(entity.spec, _spawnPos, spawn.yaw);
   entity.combat = createCombatState(entity.spec);
@@ -1321,6 +1328,8 @@ export function setupBattle(
     wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
   game._fortified = createFortifiedCoverLedger();
+  game._fireCredit = createFireCredit();
+  game._recentDamage = createRecentDamage();
   game._destructionEvents = [];
   game._destructionBreaches = [];
   game._destructionCraters = [];
@@ -1890,6 +1899,9 @@ function enrichHitEvent(
   const source = supportKillSource(killSourceOf(attacker, shellSpec ?? { name: event.shellName }));
   if (source) event.attackerSource = source;
   if (!target) return;
+  // (death-flow-275 R8) a round that sets the hull alight makes its shooter the fire's starter (sim/fireCredit.ts)
+  if (event.fireStarted) game._fireCredit?.ignite(target.id, event.attackerId);
+  if ((event.hpRemoved || 0) > 0 || (event.modulesHit?.length ?? 0) > 0) game._recentDamage?.record(target.id, event.attackerId, game.timeS);
   // Air Support: a crew's own guns earn support points for the damage they deal (an airstrike's earn none)
   game.matchModeController?.airSupport?.recordDamage(event.attackerId, target.id, event.hpRemoved || 0, !!source);
   event.targetName = target.spec.name;
@@ -1940,12 +1952,14 @@ function announceDestroyed(
   bus: EventBus,
   ent: SoloEntity,
   killerId: string | null,
-  cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
+  cause: 'ammorack' | 'shot' | 'ram' | 'fire' | 'scuttle' | HullImpactKind,
   source: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'missile' | 'artillery' | null = null,
 ): void {
   // a held player is never announced destroyed: the step's losses are undone before the verdict (devBattleHold.ts)
   if (ent === game.player && battleHeld(game)) return;
   ent._destroyedAnnounced = true;
+  game._fireCredit?.clear(ent.id); // a wreck's fire credits no later death (death-flow-275 R8)
+  game._recentDamage?.clear(ent.id);
   game.matchModeController?.recordDestruction(ent.id, killerId, source != null && source !== 'drone');
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
   game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
@@ -2586,6 +2600,16 @@ function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): 
       get world() { return ref.world; },
       // (FX lane 2026-10-17) on its map's wind (smokeScreen.ts smokeWindForMap)
       get wind() { return smokeWindForMap(game.mapId); },
+      // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
+      scuttle: (entity) => {
+        if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
+        const credited = game.tankById.get(game._recentDamage?.creditFor(entity.id, game.timeS, SCUTTLE_CREDIT_S) ?? '');
+        const killer = credited && credited.team !== entity.team ? credited : null;
+        entity.combat.hp = 0;
+        entity.combat.destroyed = true;
+        entity.combat.fire.burning = false;
+        announceDestroyed(game, ref.bus, entity, killer?.id ?? entity.id, 'scuttle');
+      },
       supply: (entity, kind) => game.matchModeController?.requestSupply(entity.id, kind, game.timeS),
       // Air Support: a seat's call-in at its aim point, as the authority takes it (the player's own presses go through its UI)
       strike: (entity, kind) => game.matchModeController?.airSupport?.requestStrike(entity.id, kind, entity.input.aimPoint.x, entity.input.aimPoint.z, game.timeS),
@@ -3149,9 +3173,11 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
     if (entity.modeActive === false || combat.destroyed || !combat.fire.burning) continue;
     const result = tickFire(entity, game.combatRng);
     if (result.extinguished) bus.emit('tank:fire', { id: entity.id, burning: false });
+    // (death-flow-275 R8) the crew that set the fire is the killer; a fire-cooked rack is an ammo-rack kill
     if (result.destroyed && !entity._destroyedAnnounced) {
-      announceDestroyed(game, bus, entity, entity.id, 'fire');
+      announceDestroyed(game, bus, entity, game._fireCredit?.killerOf(entity.id) ?? entity.id, fireDeathCause(result.ammoRacked));
     }
+    if (result.extinguished || result.destroyed) game._fireCredit?.clear(entity.id);
   }
 }
 
@@ -3177,13 +3203,14 @@ function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | nu
   return outcome;
 }
 
-function applyTimedModeResult(game: SoloGameState): void {
+function applyTimedModeResult(game: SoloGameState, playerTeam: 'alpha' | 'bravo'): void {
   const limitS = game.ruleset.timeLimitS;
   if (!game.matchModeController || limitS == null || game.timeS < limitS) return;
   const score = game.matchModeController.state.score;
   // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost
+  // (death-flow-275) the higher score is the seat's side's victory, whichever side the seat stands on (a Watch seat on bravo)
   game.result = score.alpha === score.bravo ? (game.ruleset.timeout === 'defeat' ? 'defeat' : 'draw')
-    : score.alpha > score.bravo ? 'victory' : 'defeat';
+    : (score.alpha > score.bravo) === (playerTeam === 'alpha') ? 'victory' : 'defeat';
   game.resultReason = 'time_limit';
 }
 
@@ -3192,10 +3219,15 @@ function applyEliminationResult(
   enemiesLeft: number,
   alliesLeft: number,
 ): void {
-  if (enemiesLeft === 0) {
+  const sideWiped = !!verdictSeat(game)?.combat.destroyed && alliesLeft === 0;
+  // death-flow-275 R2, the authority's law: both sides wiped out in one step is a draw
+  if (enemiesLeft === 0 && sideWiped) {
+    game.result = 'draw';
+    game.resultReason = 'elimination';
+  } else if (enemiesLeft === 0) {
     game.result = 'victory';
     game.resultReason = 'elimination';
-  } else if (verdictSeat(game)?.combat.destroyed && alliesLeft === 0) {
+  } else if (sideWiped) {
     game.result = 'defeat';
     game.resultReason = 'elimination';
   } else if (game.ruleset.timeLimitS != null && game.timeS >= game.ruleset.timeLimitS) {
@@ -3204,10 +3236,25 @@ function applyEliminationResult(
   }
 }
 
-function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
+/**
+ * (death-flow-275 R6; Kevin approved 2026-11-21) Leaving a battle that keeps records before its verdict is a defeat: the
+ * records hear `battle:ended` with result 'defeat', reason 'left' and `left: true` (the report and its presentation stand
+ * down for it: the player is on the way to the Garage). The battle's own state takes no verdict, so no ending beat
+ * starts under the return's veil. A practice battle (the range, training), a watched or a couch battle records nothing,
+ * as at their end. Returns whether the leave was recorded.
+ */
+export function recordBattleLeft(game: SoloGameState, bus: EventBus): boolean {
+  if (game.result !== null || !game.ruleset.records || game.ruleset.watch || game.ruleset.couch) return false;
+  emitBattleEnded(game, bus, { result: 'defeat', reason: 'left' });
+  return true;
+}
+
+function emitBattleEnded(game: SoloGameState, bus: EventBus,
+  left: { result: 'defeat'; reason: 'left' } | null = null): void {
   bus.emit('battle:ended', {
-    result: game.result,
-    reason: game.resultReason,
+    result: left?.result ?? game.result,
+    reason: left?.reason ?? game.resultReason,
+    ...(left ? { left: true } : {}),
     timeS: game.timeS,
     map: game.mapId,
     // 2026-09-14: the profile and campaign records read mapId / durationS (map / timeS stay for the
@@ -3281,7 +3328,7 @@ function settleBattleResult(
   } else if (!game.matchModeController || game.matchModeController.usesElimination) {
     applyEliminationResult(game, enemiesLeft, alliesLeft);
   } else {
-    applyTimedModeResult(game);
+    applyTimedModeResult(game, playerTeam);
   }
   // a verdict the mode did not reach latches as the mode controller's own (audit M3, as the authority's finishMatch
   // tells it): through the ending hold the mode scores, respawns and starts waves no more, and names no other winner

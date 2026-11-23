@@ -7,7 +7,7 @@ import type { ControlSample } from '../match/inputStream.ts';
 import { ACTION_BITS } from '../wire/index.ts';
 import type { MatchActor } from './battlePresentation.ts';
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship', number>> = Object.freeze({
+const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship' | 'scuttle', number>> = Object.freeze({
   reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: ACTION_BITS.SPECIAL_ACTION,
   selfRight: ACTION_BITS.SELF_RIGHT,
@@ -15,6 +15,8 @@ const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 's
   // Air Support's call-ins (air-support-270): the same bits the solo step reads (sim/playerActions.ts AIR_STRIKE_BITS)
   strikeRecon: AIR_STRIKE_BITS.recon, strikeArtillery: AIR_STRIKE_BITS.artillery, strikeStrafe: AIR_STRIKE_BITS.strafe,
   strikeBomb: AIR_STRIKE_BITS.bomb, strikeMissile: AIR_STRIKE_BITS.missile, strikeGunship: AIR_STRIKE_BITS.gunship,
+  // (death-flow-275 R7) the crew scuttles its tank, after the client's hold
+  scuttle: ACTION_BITS.SCUTTLE,
 });
 const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
 const DEFAULT_AIM_DISTANCE_M = 1000;
@@ -30,7 +32,7 @@ export interface ControlSampler {
   /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
   sample(tick: number): Readonly<ControlSample> | null;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship' | 'scuttle'): void;
   reset(): void;
 }
 

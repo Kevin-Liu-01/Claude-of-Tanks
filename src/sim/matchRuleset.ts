@@ -1925,6 +1925,41 @@ export function rulesetVerdictSide(ruleset: Pick<MatchRuleset, 'infection'>, cur
 }
 
 /**
+ * (death-flow-275 R5; Kevin approved 2026-11-21) A room seat whose player has gone is driven by a bot after this grace
+ * (the authority's battle seconds): the sides stay fair, and the seat no longer counts as a living human (the Horde's last
+ * stand, the front's overrun). A rejoin takes the seat back from the bot.
+ */
+export const SEAT_BOT_GRACE_S = 30;
+
+/**
+ * (death-flow-275 R7; Kevin approved 2026-11-21) A crew scuttles its own tank by holding the scuttle key this long: the
+ * one way out of a hull wedged or overturned past self-righting, out of rounds where none come back, or crippled in
+ * Realistic. The kill is the enemy's that damaged the hull last within SCUTTLE_CREDIT_S, else nobody's.
+ */
+export const SCUTTLE_HOLD_S = 3;
+export const SCUTTLE_CREDIT_S = 15;
+
+/**
+ * The modes whose controller reaches its own verdict at its clock (death-flow-275 R3): the Juggernaut (the boss survived),
+ * Infected (the survivors held), the AC-130 (the escort's time ran out) and Frontline Assault (the sortie ran out of time,
+ * R10) resolve their clock by their own rule, never by a score. A room's battle limit never pre-empts them, and never puts a clock on a mode without one.
+ */
+export function rulesetTimesItself(ruleset: Pick<MatchRuleset, 'juggernaut' | 'infection' | 'aerial' | 'assault'>): boolean {
+  return !!ruleset.juggernaut || !!ruleset.infection || ruleset.aerial === 'gunship' || !!ruleset.assault;
+}
+
+/**
+ * The battle's clock (death-flow-275 R3): the ruleset's (null = none). A room's explicit battle limit replaces it only where
+ * the ruleset keeps a clock and leaves its expiry to the score or the survivors (Standard, Realistic and the score modes).
+ */
+export function rulesetClockLimitS(ruleset: Pick<MatchRuleset, 'timeLimitS' | 'juggernaut' | 'infection' | 'aerial' | 'assault'>,
+  battleLimitS?: number | null): number {
+  if (ruleset.timeLimitS == null) return Infinity;
+  if (battleLimitS == null || rulesetTimesItself(ruleset)) return ruleset.timeLimitS;
+  return battleLimitS;
+}
+
+/**
  * The modes whose roles light a tank's own surfaces (the Juggernaut, a flag carrier, the infected: game/juggernautVisual.ts).
  * Any tank of their battles can take a role, so every one wears its energy skin from its staging, dormant until a role
  * lights it (mode-sheen-perf-243: the skin's programs compile behind the cover, never on the frame a tank first glows).

@@ -76,6 +76,7 @@ import { BATTLE_EVENT, createBattleEventLane, type BattleEvent } from './battleN
 import { formatKeyLineWith, tilePrompt } from './keyPrompt.ts';
 import { flipPicture } from './noticeDiagrams.ts';
 import type { ActionId } from '../game/input.ts';
+import { createRespawnDial, respawnViewOf } from './respawnDial.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
 import {
@@ -299,6 +300,9 @@ export interface HudFrame {
   matchModeState?: HudMatchModeState | null;
   /** The rounds in flight (sim/ballistics.ts ShellEntity): the pointers' incoming missiles (ui/pointers/battlePointers.ts). */
   shells?: readonly unknown[];
+  /** (death-flow-275) the HUD's own seat's wait for its revive while destroyed (MatchModePresentationState.respawn, a
+   *  couch pane's seat's own); absent while alive or where no revive comes. Read by the respawn dial. */
+  respawn?: { inS: number | null; nextWave?: boolean } | null;
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
@@ -1413,6 +1417,8 @@ const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' 
 const AIM_NOTICE_ID = 'cot-aim-warning';
 /** fire-visible-275: our own tank on fire, a threat condition (Kevin's pick: shown in the sight too, beside its edge). */
 const FIRE_NOTICE_ID = 'cot-fire';
+/** (death-flow-275 R7) The scuttle's hold, while its key is down. */
+const SCUTTLE_NOTICE_ID = 'cot-scuttle-hold';
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
@@ -1997,21 +2003,6 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-alert .cot-c-notice__body{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0;overflow:hidden;}
 .cot-alert .cot-c-notice__detail{color:var(--ink-2);font-size:var(--battle-fs-11);font-weight:600;}
 .cot-alert .cot-c-notice__count{flex:none;color:var(--ink-3);font:600 var(--battle-fs-12)/1 var(--font-data);letter-spacing:0;}
-/* respawn (owner 2026-09-15): in a mode that revives the player the death is a count, not a
-   hand-off — kicker + numeral in the pre-battle style, a little lower so the wreck stays visible.
-   Hidden the instant the revive lands (mode:respawn) or the battle ends. */
-.cot-revive{position:absolute;z-index:var(--hud-layer-status);left:50%;top:30%;transform:translateX(-50%);
-  width:min(390px,calc(100vw - 32px));display:grid;grid-template-rows:30px 92px;row-gap:7px;
-  justify-items:center;text-align:center;pointer-events:none;
-  opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
-.cot-revive.on{opacity:1;}
-.cot-revive .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};font-size:17px;font-weight:700;
-  line-height:1;letter-spacing:.3em;text-indent:.3em;text-transform:uppercase;color:var(--accent-hi);
-  text-shadow:-1px -1px 0 oklch(from var(--surface-scene) l c h / .98),1px -1px 0 oklch(from var(--surface-scene) l c h / .98),-1px 1px 0 oklch(from var(--surface-scene) l c h / .98),1px 1px 0 oklch(from var(--surface-scene) l c h / .98),
-    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);}
-.cot-revive .n{font-family:${FONT_COND};font-size:84px;font-weight:700;line-height:92px;color:var(--ink-1);
-  text-shadow:-2px -2px 0 oklch(from var(--surface-scene) l c h / .98),2px -2px 0 oklch(from var(--surface-scene) l c h / .98),-2px 2px 0 oklch(from var(--surface-scene) l c h / .98),2px 2px 0 oklch(from var(--surface-scene) l c h / .98),
-    0 3px 14px rgba(0,0,0,.9);}
 /* battle_countdown r4 (owner 2026-10-21: "the 3 2 1 area can be a lot better but regardless it needs to be in center of
    screen"): a dial on the centre line just over the crosshair, the rules panel on that line under the sight (both placed
    by countdownPlace.ts). The numeral (Chakra Petch) sits in a ring that drains over each second on a soft dark disc that
@@ -2994,55 +2985,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const pbRules = el('div', 'cot-prebattle-rules', root);
   pbRules.setAttribute('aria-label', t('hud.preBattleRules'));
   const preBattleOverlay = createPreBattleOverlay(preBattleEl, pbKick, pbNum);
-  // respawn (owner 2026-09-15): the revive count replaces the death hand-off to spectate/garage
-  const reviveEl = el('div', 'cot-revive', root);
-  reviveEl.setAttribute('aria-live', 'polite');
-  const rvKick = el('div', 'k', reviveEl);
-  const rvNum = el('div', 'n num', reviveEl);
   let liveRuleset: MatchRuleset | null = null;
-  // (2026-11-02 audit F8) the count runs on the battle's clock (the frame's sim or authority seconds), ticked by the HUD
-  // frame: a paused battle holds it, and a battle that ends while it counts leaves no interval running in the Garage
-  let reviveCounting = false;
-  let reviveUntilS = 0;
-  /** The player's own revive landed; a frame still reading the wreck (a snapshot behind the event) starts no new count. */
-  let revivedAwaitingAlive = false;
-  const reviveCountdown = {
-    hide(): void {
-      reviveCounting = false;
-      reviveEl.classList.remove('on');
-    },
-    /** A destroyed player in a reviving mode sees the seconds to the revive, never a garage bar. */
-    onDestroyed(id: string | null | undefined): void {
-      if (playerId == null || id !== playerId) return;
-      revivedAwaitingAlive = false;
-      reviveCountdown.start();
-    },
-    revived(): void {
-      reviveCountdown.hide();
-      revivedAwaitingAlive = true;
-    },
-    /** Frame-driven fallback: a death the bus never announced (debug kills) still counts down. */
-    observe(dead: boolean, timeS: number): void {
-      if (!dead) revivedAwaitingAlive = false;
-      if (dead && !reviveCounting && !revivedAwaitingAlive) reviveCountdown.start();
-      else if (!dead && reviveCounting) reviveCountdown.hide();
-      if (reviveCounting) reviveCountdown.tick(timeS);
-    },
-    start(): void {
-      const respawnS = liveRuleset?.respawnS;
-      if (respawnS == null) return;
-      reviveCountdown.hide();
-      reviveUntilS = lastTimeS + respawnS;
-      rvKick.textContent = t('hud.revive.kicker');
-      reviveCounting = true;
-      reviveCountdown.tick(lastTimeS);
-      reviveEl.classList.add('on');
-    },
-    tick(timeS: number): void {
-      const left = String(Math.max(1, Math.ceil(reviveUntilS - timeS)));
-      if (rvNum.textContent !== left) rvNum.textContent = left;
-    },
-  };
+  // (death-flow-275) the respawn count is the respawn dial (respawnDial.ts): its own surface at the bottom centre, on the
+  // simulation's clock (the mode state's `respawn`), standing under the kill cam's veil; the verdict's caption hides it
+  const respawnDial = createRespawnDial(view?.mount ?? document.body);
+  let endingShown = false;
 
   // The battle notices' event lane (battleNoticeEvents.ts): what just happened, in the planners' alert seat (.cot-alert),
   // its keys drawn from the frame's caps (applyKeyCaps) or, on a touch layout, the HUD tiles that do it
@@ -8636,7 +8583,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
     pushKill(p);
-    reviveCountdown.onDestroyed(p.id);
   });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
@@ -8848,6 +8794,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // battle endings (2026-09-25): the director's camera beat (battleResultPresentationRuntime) — the clock
   // flashes for time's up and the beat's caption rides the alert strip; the class clears when the beat ends
   on('ending:begin', ({ clockFlash, captionKey, captionValues }) => {
+    endingShown = true;
+    respawnDial.hide();
     topPlate.classList.toggle('times-up', !!clockFlash);
     if (captionKey) events.raise({ text: t(captionKey, captionValues || {}), priority: NOTICE_PRIORITY.turned, severity: 'info', icon: clockFlash ? 'clock' : 'battleRecord' });
   });
@@ -8862,12 +8810,26 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (the next wave's countdown is the clock's, never the alert's as well: UI-LOCKDOWN B19)
     events.raise({ text: t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'repair' });
   });
+  // (death-flow-275 R7) the scuttle's hold: a condition while the key is held (game/playerBattleActions.ts raises
+  // 'ui:scuttleHold' on the press and 'ui:scuttleEnd' when it scuttles or the key comes up)
+  on('ui:scuttleHold', () => {
+    battleNotices.condition({
+      id: SCUTTLE_NOTICE_ID, severity: 'warning', icon: 'killSelf', text: t('hud.alert.scuttleHold'),
+      detailHtml: keyLine('hud.alert.scuttleLine', { key: 'scuttle' }),
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
+    });
+  });
+  on('ui:scuttleEnd', () => { battleNotices.dismiss(SCUTTLE_NOTICE_ID); });
+  // (death-flow-275) the outbreak took the player: said once, as the battle turned (the dial then reads "Infected")
+  on('mode:infected', (payload) => {
+    if (playerId == null || (payload as { id?: string } | null)?.id !== playerId) return;
+    events.raise({ text: t('respawn.event.infected'), priority: NOTICE_PRIORITY.turned, severity: 'warning', icon: 'modeInfected' });
+  });
   on('mode:respawn', ({ id }) => {
     if (id) killLedger.respawn(id);
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
-    reviveCountdown.revived();
     // a revive makes a fresh consumable state at spawn (2026-11-02 audit M4): a frame that carries the state re-reads it
     // (no event: the revive count ending and the camera's return say it, notices-audit-275)
     resetConsumableTray();
@@ -8881,7 +8843,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   on('battle:restarted', () => {
     resetBattleRecord();
     if (playerId == null) return;
-    reviveCountdown.revived();
     resetConsumableTray();
   });
   on('mode:flag_taken', ({ team }) => {
@@ -9195,8 +9156,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     resetCombatPresentation();
     // the revive count, the parked aim notice (it lives in the page's battle notice region, outside root), the flight's
     // body class and the reload ready pulse were not on the list: each outlived the battle into the Garage
-    reviveCountdown.hide();
-    revivedAwaitingAlive = false;
+    respawnDial.hide();
+    endingShown = false;
     syncAimNotice(null);
     syncFireNotice(false);
     document.body.classList.remove('cot-hud-aerial');
@@ -9401,7 +9362,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
     const aim = (!state.advancing && forced) ? forced : (frame.aim || {});
     assembleAimView(state.camera, aim);
-    reviveCountdown.observe(frame.player?.combat?.destroyed === true, lastTimeS);
+    respawnDial.update(respawnViewOf(frame.respawn, frame.matchModeState, endingShown), lastTimeS);
     aimView.selfRightLabel = frame.player?.combat?.destroyed !== true &&
       canSelfRightTank(frame.player?.state)
       ? (frame.selfRightKeyLabel || 'F')
@@ -9514,7 +9475,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
 
     setPreBattleRules(ruleset: MatchRuleset | null) {
       liveRuleset = ruleset;
-      reviveCountdown.hide();
+      respawnDial.hide();
+      endingShown = false;
       // Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots — the
       // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
       jumpLabel.textContent = t('hud.jump');

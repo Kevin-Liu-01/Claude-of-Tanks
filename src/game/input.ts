@@ -73,6 +73,8 @@ export const ACTION_DEFS = [
   { id: 'right', label: 'action.right', group: 'settings.group.movement' },
   { id: 'handbrake', label: 'action.handbrake', group: 'settings.group.movement' },
   { id: 'selfRight', label: 'action.selfRight', group: 'settings.group.movement' },
+  // death-flow-275 R7: held SCUTTLE_HOLD_S, the crew destroys its own tank (wedged, overturned, out of rounds)
+  { id: 'scuttle', label: 'action.scuttle', group: 'settings.group.movement' },
   { id: 'fire', label: 'action.fire', group: 'settings.group.combat' },
   { id: 'sniperToggle', label: 'action.sniperToggle', group: 'settings.group.combat' },
   { id: 'shell1', label: 'action.shell1', group: 'settings.group.combat' },
@@ -310,6 +312,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   perfHud: 'F9',
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
+  scuttle: 'Delete', // death-flow-275 R7: hold to scuttle (a key nothing else takes, far from the driving hand)
   rangeReset: 'KeyR', // proving ground: every hull back on its mark
   rangeMoving: 'KeyY', // proving ground: moving targets on / off
   settingsMenu: 'Escape',

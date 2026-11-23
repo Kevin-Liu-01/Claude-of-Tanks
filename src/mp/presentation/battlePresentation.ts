@@ -260,6 +260,8 @@ export interface BattlePresentation extends PresentationAdapter {
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
   endDisconnected(): boolean;
+  /** (death-flow-275 R6) The seat left before the verdict: the records hear a defeat ('left'); no report follows. */
+  recordLeft(): boolean;
   /**
    * The session's verdict (the newest snapshot's meta, or the room's match status), which lands ahead of the presented
    * tick and of the kill the event queue still holds: while frames flow it waits as the meta does, for the
@@ -1307,6 +1309,20 @@ export function createBattlePresentation({
     });
   }
 
+  /**
+   * (death-flow-275 R6; Kevin approved 2026-11-21) A seat that leaves a room's battle before its verdict is recorded as a
+   * defeat, as a local battle's Leave is (game/state.ts recordBattleLeft): `battle:ended` with reason 'left' and `left:
+   * true` reaches the records, not the report (the player is on the way out). A spectator records nothing.
+   */
+  function recordLeft(): boolean {
+    if (game.result || spectator) return false;
+    bus.emit('battle:ended', {
+      result: 'defeat', reason: 'left', left: true, timeS: game.timeS, map: game.mapId, mapId: game.mapId,
+      durationS: game.timeS, network: true, gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
+    });
+    return true;
+  }
+
   function applyVerdict(verdict: VerdictId, reason: string): void {
     if (game.result || verdict === VERDICT.NONE) return;
     const winner = VERDICT_RESULTS[verdict];
@@ -1849,6 +1865,7 @@ export function createBattlePresentation({
     mount,
     unmount,
     endDisconnected,
+    recordLeft,
     setPerspective,
     get ownActor() { return ownActor(); },
     get sharesAuthorityIndices() { return authorityObstacles.shared; },

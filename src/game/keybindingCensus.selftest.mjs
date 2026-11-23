@@ -36,7 +36,8 @@ const KEY_OWNERS = [
     codes: ['F8', 'KeyJ', 'KeyK', 'KeyL', 'Space', 'Delete', 'Backspace', 'Escape'] },
   { feature: 'minimal HUD', files: ['src/ui/battleUiVisibility.ts'], phases: BATTLE, codes: ['F10'] },
   { feature: 'kill cam', files: ['src/game/killcam.ts'], phases: ['killcam'],
-    codes: ['Escape', 'Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyQ'] },
+    // (death-flow-275) the spectate list steps on A / Q and D / E as well as the arrows: a dead crew drives nothing
+    codes: ['Escape', 'Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyQ', 'KeyA', 'KeyD'] },
 ];
 
 /** The browser's own: reload, the address bar, caret browsing, full screen, the developer tools. */

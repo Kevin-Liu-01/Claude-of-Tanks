@@ -11,6 +11,7 @@ export {
   createCollider,
   cueTrainingActor,
   finishTrainingBattle,
+  recordBattleLeft,
   setTrainingCheckpoint,
   trainingSightFor,
   trainingThreatFor,

@@ -24,7 +24,7 @@ export const IMAGE_FIT_CUTOUTS: readonly ImageFitCutout[] = Object.freeze([
   { owner: 'src/ui/endScreen.ts', key: '.cot-es .es-vehicle-card>img', holds: "the vehicle's render on its card" },
   { owner: 'src/ui/endScreenPresentation.css', key: 'body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img', holds: "the vehicle's render on its card" },
   { owner: 'src/ui/battleLoad.ts', key: '${WIDE} .cot-bl .team.cards .row.card .sil', holds: "a roster card's side silhouette" },
-  { owner: 'src/game/killcam.ts', key: '.cot-kc-killer .nm .sil', holds: "the killer's side silhouette" },
+  { owner: 'src/game/killcamShotCard.ts', key: '.cot-kc-card .art', holds: "the killer's tank render" },
   { owner: 'src/ui/spectatorSwitcher.ts', key: '.cot-spec .portrait img', holds: "the watched tank's angle render" },
   { owner: 'src/ui/techTree.css', key: '.cot-tt .tt-portrait', holds: "a node's tank render" },
   { owner: GARAGE_CSS, key: '.cot-card .ti', holds: "a roster card's packaged angle render" },

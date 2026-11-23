@@ -151,7 +151,7 @@ for (const mode of GAME_MODE_IDS) {
   assert.deepEqual(plan.replay, { finalKill: false }, 'the last stand is the player\'s own death, never a bot\'s kill');
   assert.equal(plan.fallback, 'wreckOrbit');
   assert.deepEqual(plan.focus, { kind: 'wreck', x: 12, z: -21, y: 4, radiusM: 6, id: 'me' });
-  assert.deepEqual(plan.caption, { key: 'ending.lastStand', values: { wave: '7' } });
+  assert.deepEqual(plan.caption, { key: 'ending.runOver', values: { wave: '7' } });
   assert.deepEqual(resolveCameraBeat(plan, false), { beat: 'wreckOrbit', durationS: 2.5 });
   assert.deepEqual(resolveCameraBeat(plan, true), { beat: 'replay', durationS: 0 });
 }

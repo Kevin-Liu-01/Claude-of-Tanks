@@ -330,7 +330,7 @@ try {
     assert.equal(touch.body.hasAttribute('data-hud-notices'),false,'the touch layout carries no plan attribute');
     assert.equal(touch.body.dataset.hudNoticeTiers,undefined,'nor the receipt\'s tiers');
     for(const name of ['notice-x','alert-x','alert-width','alert-shift','banner-x','countdown-x','countdown-top','countdown-scale',
-      'revive-x','revive-top','revive-scale','roster-wide-left','roster-wide-right'])
+      'roster-wide-left','roster-wide-right'])
       assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
     assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
     // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under the detection's
@@ -348,11 +348,11 @@ try {
     assert.equal(mouse.frames.size,0,'a scope toggle relayouts nothing');
     // Tab, with the rosters sized as the CSS sizes them: their width by the class, their height by
     // --hud-roster-*-height, which a pass writes after it has read them (so the pass just after a release still measures
-    // the held height, 30 px a row against 24). With 1366 x 768's census instruments and both notices and the revive
-    // count up, no notice moves when Tab is pressed or released, nor when it was held for the first plan.
+    // the held height, 30 px a row against 24). With 1366 x 768's census instruments and both notices up, no notice moves
+    // when Tab is pressed or released, nor when it was held for the first plan.
     const tabRun=(firstHeld)=>{
-      const revive={offsetWidth:390,offsetHeight:129},shown={};let ears=[];
-      const run=harness({tab:firstHeld,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive,'.cot-sixth.on':()=>shown,'.cot-alert.show':()=>shown,
+      const shown={};let ears=[];
+      const run=harness({tab:firstHeld,inRoot:{'.cot-sixth.on':()=>shown,'.cot-alert.show':()=>shown,
         '.cot-ear.l':()=>ears[0],'.cot-ear.r':()=>ears[1]},extra:(node,{root,properties})=>{
         const ear=(side)=>{const e=node(['cot-ear',side],()=>{const w=root.classList.contains('rosters-expanded')?Math.min(320,1366/2-184):194;
           return rect(side==='l'?0:1366-w,52,w,parseFloat(properties.get(`--hud-roster-${side==='l'?'left':'right'}-height`))||.28*768);});
@@ -362,12 +362,12 @@ try {
           '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
           '.cot-si-cardhost':Object.assign(node([],rect(1050,260,300,260)),{childElementCount:1}),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
       run.settle();return run;};
-    const placed=h=>['revive-top','revive-scale','notice-top','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
+    const placed=h=>['notice-top','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
     const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
       h.mutate([{type:'attributes',target:h.root,attributeName:'class'}]);};
     const rest=tabRun(false),still=placed(rest);
     // the plan's resting rosters are the real resting ones: the left lane never starts under the held height (52 + 232
-    // + 8; the revive count on the centre line crosses neither lane), and starts under the resting roster after a release
+    // + 8), and starts under the resting roster after a release
     assert.notEqual(rest.properties.get('--hud-kill-left-top'),`${52+232+8}px`,'the left kill rows never start under the held roster at rest');
     tab(rest,true);rest.flush();assert.equal(placed(rest),still,'pressing Tab moves no notice (its first relayout)');
     rest.settle();assert.equal(placed(rest),still,'nor once the held rosters have resized');
@@ -385,7 +385,7 @@ try {
       const run=harness({extra:node=>({'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
         '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
         '.cot-si-cardhost':Object.assign(node([],rect(1050,260,300,260)),{childElementCount:1}),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
-      for(const name of ['notice-x','alert-x','alert-shift','banner-x','revive-x','countdown-x'])
+      for(const name of ['notice-x','alert-x','alert-shift','banner-x','countdown-x'])
         assert.equal(run.properties.has(`--hud-${name}`),false,`1366 x 768 writes no --hud-${name}`);
       assert.ok(run.properties.has('--hud-notice-top')&&run.properties.has('--hud-alert-top'),'and writes the notices\' tops');
     }
@@ -440,24 +440,8 @@ try {
       assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
         `the lit detection holds the card exactly where their places meet, never marked as the feed's (${lit}, ${litPlace}, meets ${meets})`);
     }
-    // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
-    // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
-    let met=0,apart=0;
-    const px=v=>parseFloat(v);
-    for(const [w,h] of [[1366,768],[1920,1080],[1024,600],[1280,720],[1600,900],[1024,768],[1440,900],[2560,1440]]){
-      const revive={offsetWidth:Math.min(390,w-32),offsetHeight:129};let banner=null;
-      const run=harness({width:w,height:h,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive},
-        extra:node=>{banner=node();banner.childElementCount=1;return {'.cot-medal-toasts':banner};}});
-      const P=k=>run.properties.get(`--hud-${k}`);
-      const compact=banner.dataset.size==='compact',cw=compact?Math.min(250,w-24):Math.min(380,w-32),ch=compact?40:(w>640?85:76);
-      const card={x:w/2-cw/2,y:px(P('banner-top')),w:cw,h:ch};
-      const s=Number(P('revive-scale')),count={x:w/2-revive.offsetWidth*s/2,y:px(P('revive-top')),w:revive.offsetWidth*s,h:revive.offsetHeight*s};
-      const meet=card.x<count.x+count.w+8&&card.x+card.w>count.x-8&&card.y<count.y+count.h+8&&card.y+card.h>count.y-8;
-      if(meet)met++;else apart++;
-      assert.equal(banner.dataset.placement,meet?'deferred':'ready',`${w}x${h}: the medal card ${meet?'waits on':'shows beside'} the revive count`);
-      assert.equal(run.body.dataset.hudNoticeTiers.endsWith('w'),meet,`${w}x${h}: the tiers mark the waiting card`);
-    }
-    assert.ok(met>0,`the medal card met the revive count somewhere (${met} met, ${apart} apart)`);
+    // (death-flow-275) the respawn count left the centre line for the respawn dial at the bottom centre (respawnDial.ts):
+    // no medal card waits on it any more
     // the systems row as the vehicle's controls mount into it: drawn first where its empty box stood, it jumped 271 px
     // across a phone's window a frame later (the loading census, CLS 0.031). The resize that brings its box into being
     // holds it hidden; the pass that seats it shows it, the same frame its seat is written.

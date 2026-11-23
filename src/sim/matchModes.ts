@@ -337,6 +337,13 @@ export interface MatchModePresentationState {
   weaponStage?: { index: number; total: number; kills: number; required: number; name: string };
   /** proving_ground: the range's lanes, their target hulls and the range card (sim/provingGround.ts). */
   range?: ProvingRangePresentation;
+  /**
+   * The viewer's own wait while destroyed (death-flow-275, the respawn dial ui/respawnDial.ts): the whole seconds to its
+   * revive as the controller has it armed (`respawnAt`, a refused placement's re-arm included), or `nextWave` where the
+   * Horde brings a fallen human back with the next wave. Absent while alive or where no revive comes (one life, the
+   * Juggernaut's boss). Whole seconds, so a peer's mode-state JSON changes once a second, not every snapshot.
+   */
+  respawn?: { inS: number | null; nextWave?: boolean };
 }
 
 /** A round's expected outcome on the range card: the reticle's bands (sim/penVerdict.ts PEN_RATIO). */
@@ -580,6 +587,9 @@ export interface MatchModeController<
    *  the gun can elevate to (`maxPitchRad`), led twice along the aircraft's public flight; null when none. */
   airShot(entity: Entity, roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
+  /** A destroyed hull's wait for its revive (MatchModePresentationState.respawn; a couch pane reads its own seat's), else
+   *  null: alive, after the verdict, or where no revive comes. (death-flow-275) */
+  respawnFor(id: string): { inS: number | null; nextWave?: boolean } | null;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
@@ -1712,6 +1722,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
       !entity.combat.destroyed && !entity.bot);
     if (!humansAlive) return finish('bravo', 'assault_overrun');
+    // (death-flow-275 R10) the sortie's clock is the front's own rule, not a 0-0 score resolved by `timeout`: the attack
+    // that has not held the last sector when it runs out has lost the operation
+    if (ruleset.timeLimitS != null && timeS >= ruleset.timeLimitS) return finish('bravo', 'assault_time');
     const zone = liveLine();
     if (!zone) return null;
     if (regroup && timeS >= regroup.checkedS + 1) {
@@ -2394,7 +2407,19 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         name: GUN_GAME_WEAPONS[Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(viewer.id) ?? 0) / ruleset.gunGame.killsPerWeapon))]!.name,
       } } : {}),
       ...(state.range ? { range: state.range } : {}),
+      ...respawnField(respawnFor(viewer)),
     };
+  };
+  const respawnField = (wait: { inS: number | null; nextWave?: boolean } | null) => (wait ? { respawn: wait } : {});
+
+  /** A destroyed hull's wait (MatchModePresentationState.respawn); null where no revive comes. */
+  const respawnFor = (entity: Entity | null | undefined): { inS: number | null; nextWave?: boolean } | null => {
+    if (result || !entity?.combat.destroyed) return null;
+    const armed = respawnAt.get(entity.id);
+    if (armed) return { inS: Math.max(1, Math.ceil(armed.atS - placementTimeS - 1e-6)) };
+    // the Horde revives its fallen humans with the next wave (startHordeWave), while another human holds on
+    if (ruleset.horde && !entity.bot && teamOf(entity) === 'alpha') return { inS: null, nextWave: true };
+    return null;
   };
 
   const activeFriend = (friend: Entity, team: ObjectiveTeam): boolean =>
@@ -3128,7 +3153,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       handleDeathsAndRespawns(timeS);
       stepSupport(timeS);
       air?.step(timeS, botsHeld);
-      if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??480);if(outcome)return finish(outcome.result,outcome.reason);}
+      // (death-flow-275 R10) a null clock is no clock: the escort's time runs out only where the ruleset keeps one
+      if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??Infinity);if(outcome)return finish(outcome.result,outcome.reason);}
       if (boss && state.boss) {
         state.boss.hp = boss.combat.hp;
         if (boss.combat.destroyed) return finish(otherTeam(teamOf(boss)), 'juggernaut_destroyed');
@@ -3317,5 +3343,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       return search ? { ...search, lead: search.lead ? { ...search.lead } : null } : null;
     },
     serialize,
+    respawnFor: (id: string) => respawnFor(entityById.get(id)),
   };
 }

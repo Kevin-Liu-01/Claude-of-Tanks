@@ -277,9 +277,9 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
 import { trainingRulesFor } from './sim/trainingGround.ts';
-import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
+import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
@@ -386,6 +386,7 @@ const {
   trainingThreatFor,
   finishTrainingBattle,
   setTrainingCheckpoint,
+  recordBattleLeft,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -2405,6 +2406,9 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
+  // (death-flow-275 R6) a Leave before the verdict of a battle that keeps records is a defeat (recordBattleLeft)
+  leaveCountsAsDefeat: () => game.phase === 'battle' && !game.result && !!game.ruleset?.records
+    && !game.ruleset?.watch && !game.ruleset?.couch,
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -2531,6 +2535,8 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
+  // (death-flow-275 R7) hold the scuttle key to destroy the tank
+  scuttle: { bit: PLAYER_ACTION_BITS.SCUTTLE, holdS: SCUTTLE_HOLD_S },
   strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
     blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
   rules: {
@@ -3802,6 +3808,12 @@ const leaveBattleToGarage = (): Promise<void> => {
     // A round still loading: leaving the room ends the entry under its own covered restore.
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
+  }
+  // (death-flow-275 R6; Kevin approved 2026-11-21) a local battle left before its verdict is recorded as a defeat
+  // (game/state.ts recordBattleLeft: the records hear it, no report or ending follows); the Esc menu said so
+  if (game.phase === 'battle' && !game.result) {
+    if (v2?.active) v2.recordLeft();
+    else if (isSoloBattleRuntimeReady()) recordBattleLeft(game, bus);
   }
   // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
   // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection

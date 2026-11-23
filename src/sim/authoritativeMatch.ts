@@ -124,9 +124,11 @@ import {
 } from './specialActions.ts';
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
+import { createFireCredit, createRecentDamage } from './fireCredit.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor, terrainVariantFor,
+  consumableTiming, rulesetClockLimitS, SCUTTLE_CREDIT_S, SEAT_BOT_GRACE_S, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -941,10 +943,16 @@ export function createAuthoritativeMatch({
   // the battle time (a resumed match's offset is the newest frame's battle time, the HUD's clock, never the older
   // keyframe's), against the FULL limit: an explicit battleLimitS (any value, 900 included), else the ruleset's
   // (null = no clock). The mode steps first in a tick, so at the limit its own verdict wins over time_limit.
-  const clockLimitS = battleLimitS ?? ruleset.timeLimitS ?? Infinity;
+  // (death-flow-275 R3) the room's limit never pre-empts a mode that times itself (Juggernaut, Infected, AC-130) and never
+  // puts a clock on a mode without one (the Horde, the range, training): matchRuleset.ts rulesetClockLimitS.
+  const clockLimitS = rulesetClockLimitS(ruleset, battleLimitS);
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
+  // who set each fire (death-flow-275 R8, sim/fireCredit.ts): a hull that burns out is its starter's kill
+  const fireCredit = createFireCredit();
+  // who hurt each hull last (death-flow-275 R7): a scuttled hull's kill is that enemy's, within SCUTTLE_CREDIT_S
+  const recentDamage = createRecentDamage();
   // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
   const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
@@ -1114,7 +1122,8 @@ export function createAuthoritativeMatch({
     // Air Support's recon pass (the mode controller is built below; until then nothing is revealed)
     revealed: (id, team) => airReveal(id, team),
   });
-  const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
+  // (death-flow-275 R5) a room with no bot at its start builds the bots' grid the first time a left seat is handed to one
+  let botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? preparedGround?.navigation ?? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
@@ -1146,6 +1155,36 @@ export function createAuthoritativeMatch({
     while (!route.next().done) { /* every leg now */ }
   }
 
+  /**
+   * (death-flow-275 R5) The seats whose players have gone, and when (battle seconds): past SEAT_BOT_GRACE_S a bot drives
+   * the seat's hull (entity.bot, so it no longer counts as a living human), until its player rejoins. A migrated host
+   * starts the grace over for a seat still away (the ledger is the host's own; a seat already handed over is a bot on the
+   * roster it boots from).
+   */
+  const seatsAway = new Map<string, number>();
+  const seatBots = new Set<string>();
+  function handLeftSeatsToBots(): void {
+    if (!seatsAway.size) return;
+    for (const [id, leftAtS] of seatsAway) {
+      if (timeS - leftAtS < SEAT_BOT_GRACE_S) continue;
+      seatsAway.delete(id);
+      const entity = entityById.get(id);
+      if (!entity || entity.bot || entity.connected) continue;
+      if (!botNavigation) {
+        botNavigation = preparedGround?.navigation ?? createBotNavigationGrid({
+          heightField, queryObstacles: worldCollision?.queryObstacles || null, getObstacles: () => staticObstacles,
+        });
+        botMatch.navigation = botNavigation;
+      }
+      entity.bot = true;
+      entity.input.brake = false;
+      entity.input.aimLocked = false;
+      seatBots.add(id);
+      initializeBot(entity, entities.indexOf(entity));
+      emit('seat_bot', { id, bot: true });
+    }
+  }
+
   function initializeBots(): void {
     for (let index = 0; index < entities.length; index++) {
       const entity = entities[index]!;
@@ -1161,6 +1200,8 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
+      fireCredit.clear(String(payload.id)); // a wreck's fire credits no later death (death-flow-275 R8)
+      recentDamage.clear(String(payload.id));
       // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
       const dead = entityById.get(String(payload.id));
       if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
@@ -1733,6 +1774,17 @@ export function createAuthoritativeMatch({
       });
     },
     selfRighted: (entity) => { emit('tank_self_right', { id: entity.id }); },
+    // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
+    scuttle: (entity) => {
+      if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
+      const credited = entityById.get(recentDamage.creditFor(entity.id, timeS, SCUTTLE_CREDIT_S) ?? '');
+      const killer = credited && credited.team !== entity.team ? credited : null;
+      entity.combat.hp = 0;
+      entity.combat.destroyed = true;
+      entity.combat.fire.burning = false;
+      if (killer) killer.kills += 1;
+      emit('tank_destroyed', { id: entity.id, killerId: killer?.id ?? entity.id, cause: 'scuttle' });
+    },
     consumable: (entity, slot, use) => {
       if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
       if (!use.ok) {
@@ -1909,7 +1961,11 @@ export function createAuthoritativeMatch({
       state: module.newState,
       source: 'hit',
     });
-    if (hit.fireStarted) emit('tank_fire', { id: target.id, burning: true });
+    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, timeS);
+    if (hit.fireStarted) {
+      fireCredit.ignite(target.id, hit.attackerId);
+      emit('tank_fire', { id: target.id, burning: true });
+    }
   }
 
   function recordShotDestruction(
@@ -1920,7 +1976,9 @@ export function createAuthoritativeMatch({
     wasDestroyed: boolean,
   ): void {
     if (!target || wasDestroyed || !target.combat.destroyed) return;
-    if (shooter) shooter.kills += 1;
+    // (death-flow-275 R9) a team or self kill is no kill: the room's tally keeps the mode's rule (matchModes.ts
+    // recordDestruction scores only an enemy's death)
+    if (shooter && shooter !== target && shooter.team !== target.team) shooter.kills += 1;
     // (ac130-fx-228) the kill stays the shooter's; its source names the gunship or the drone that made it
     const source = supportKillSource(killSourceOf(shooter, shell.spec));
     emit('tank_destroyed', {
@@ -2240,10 +2298,11 @@ export function createAuthoritativeMatch({
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
     if (!eliminated && timeS + modeTimeOffsetS < clockLimitS) return;
-    finishMatch(
-      winnerFromScores(alpha, bravo),
-      eliminated ? 'elimination' : 'time_limit',
-    );
+    // death-flow-275 R1/R2, the solo step's law (game/state.ts applyEliminationResult): a side wiped out loses, both
+    // wiped in one tick is a draw, and the clock resolves by the ruleset (a draw; a sortie timed to defeat is lost by
+    // the attackers), never by the survivors' headcount
+    if (eliminated) finishMatch(winnerFromScores(alpha, bravo), 'elimination');
+    else finishMatch(ruleset.timeout === 'defeat' ? TEAM_BRAVO : 'draw', 'time_limit');
   }
 
   function determineResult(modeResult: MatchModeResult | null = null): void {
@@ -2284,6 +2343,7 @@ export function createAuthoritativeMatch({
     if (botNavigation && navigationWreckTicks++ % 15 === 0) {
       syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
     }
+    handLeftSeatsToBots();
     // anything that reached the bots since the last flush lands before the first of them thinks (audit M7)
     applyPendingBotNews(entities);
     for (const entity of entities) {
@@ -2505,11 +2565,17 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       const fire = tickFire(entity, rng);
       if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
-      if (fire.destroyed) emit('tank_destroyed', {
-        id: entity.id,
-        killerId: entity.id,
-        cause: 'fire',
-      });
+      // (death-flow-275 R8) the crew that set the fire is the killer; a fire-cooked rack is an ammo-rack kill
+      if (fire.destroyed) {
+        const starter = entityById.get(fireCredit.killerOf(entity.id));
+        if (starter && starter !== entity && starter.team !== entity.team) starter.kills += 1;
+        emit('tank_destroyed', {
+          id: entity.id,
+          killerId: starter?.id ?? entity.id,
+          cause: fire.ammoRacked ? 'ammo_rack' : 'fire',
+        });
+      }
+      if (fire.extinguished || fire.destroyed) fireCredit.clear(entity.id);
     }
   }
 
@@ -2765,7 +2831,15 @@ export function createAuthoritativeMatch({
 
     onPeerJoin({ peerId }: { peerId: string }): void {
       const entity = entityById.get(peerId);
-      if (entity) entity.connected = true;
+      if (!entity) return;
+      entity.connected = true;
+      seatsAway.delete(peerId);
+      // (death-flow-275 R5) the player is back: the seat's bot hands it over
+      if (seatBots.delete(peerId)) {
+        entity.bot = false;
+        entity.aiCtl = undefined;
+        emit('seat_bot', { id: peerId, bot: false });
+      }
     },
 
     onPeerLeave({ peerId }: { peerId: string }): void {
@@ -2778,6 +2852,8 @@ export function createAuthoritativeMatch({
         entity.input.fire = false;
         entity.input.aimLocked = true;
         entity.input.actionBits = 0;
+        // (death-flow-275 R5) a seat's hull waits SEAT_BOT_GRACE_S for its player, then a bot takes it
+        if (!entity.bot) seatsAway.set(peerId, timeS);
       }
     },
 

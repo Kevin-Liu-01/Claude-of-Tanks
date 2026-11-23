@@ -98,6 +98,7 @@ interface BattleHudFrameInfo<TEntity extends HudTankEntity = HudTankEntity>
   killfeedHandledByBus: boolean;
   spotting: BattleHudSpotFrame<TEntity> | null;
   matchModeState: HudMatchModeState | null;
+  respawn: { inS: number | null; nextWave?: boolean } | null;
 }
 
 type BattleHudGameState<TEntity extends HudTankEntity> = Omit<
@@ -197,6 +198,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     killfeedHandledByBus: true,
     spotting: null,
     matchModeState: null,
+    respawn: null,
     selfRightKeyLabel: 'F',
     auxiliaryKeyLabels: {smoke:'G',lights:'N',roofGun:'B',atgm:'Q'},
   };
@@ -229,6 +231,17 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   const tanks = (): TEntity[] => fieldHulls(game.tanks, fieldTanks);
   const roster = (): TEntity[] => (game.rosterTanks ? fieldHulls(game.rosterTanks, fieldRoster) : tanks());
   const player = (): TEntity | null => game.player;
+  /**
+   * (death-flow-275) the HUD's own seat's wait for its revive, whatever the camera follows: the solo controller answers
+   * for any hull (a couch pane's seat), a room's mode state carries the viewer's own (sim/matchModes.ts respawnFor).
+   */
+  const respawnWait = (): { inS: number | null; nextWave?: boolean } | null => {
+    const own = player();
+    if (!own?.combat?.destroyed) return null;
+    const controller = game.matchModeController as { respawnFor?(id: string): { inS: number | null; nextWave?: boolean } | null } | null;
+    if (controller?.respawnFor) return controller.respawnFor(own.id);
+    return (game.matchModeState as { respawn?: { inS: number | null; nextWave?: boolean } } | null)?.respawn ?? null;
+  };
 
   const bridgeEntity = (value: RuntimeValue): TEntity | null => {
     // Network presentation entities implement the same HUD contract as the
@@ -257,6 +270,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.rosterTanks = roster();
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
+    frameInfo.respawn = null;
     frameInfo.timeLimitS = clockLimitS();
   };
 
@@ -278,6 +292,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.rosterTanks = roster();
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
+    frameInfo.respawn = respawnWait();
     frameInfo.timeLimitS = clockLimitS();
     // every key cap from the live bindings (battleKeyCaps.ts), made again only when they or the layout change
     const caps = keyCaps.read(padSystemOf(focus?.spec));

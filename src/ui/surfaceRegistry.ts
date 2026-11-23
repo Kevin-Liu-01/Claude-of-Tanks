@@ -265,10 +265,16 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'battle', owner: 'src/ui/medalToast.ts', surface: '.cot-medal-toasts' },
     ],
   },
-  /** The killcam's killer card (who destroyed the player, with what). */
+  /** The killcam's shot card (who destroyed whom, with what, where it struck; death-flow-275, killcamShotCard.ts). */
   killer: {
     places: [
-      { screen: 'battle', owner: 'src/game/killcam.ts', surface: '.cot-kc-killer', states: ['killcam'] },
+      { screen: 'battle', owner: 'src/game/killcam.ts', surface: '.cot-kc-card', states: ['killcam'] },
+    ],
+  },
+  /** The seconds to the player's revive while destroyed, on the simulation's clock (death-flow-275, respawnDial.ts). */
+  respawn: {
+    places: [
+      { screen: 'battle', owner: 'src/ui/respawnDial.ts', surface: '.cot-respawn' },
     ],
   },
   /** The tank a spectator or a Watch viewer rides (its player and vehicle). */

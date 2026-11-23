@@ -14,8 +14,14 @@ assert.match(markup, /class="portrait"/);
 assert.doesNotMatch(markup, /cursor-hint/, 'no how-to line: the bar says what it is (INTERACTION-REDESIGN C)');
 assert.match(markup, /class="spec-status"/);
 assert.match(markup, /class="idx"[^>]* hidden/);
-assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">Q<\/kbd>/);
-assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd aria-hidden="true">E<\/kbd>/);
+assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd>A<\/kbd><kbd>Q<\/kbd>/);
+assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd>D<\/kbd><kbd>E<\/kbd>/);
+// (death-flow-275) one plate: the step back, the watched tank, the step on, in that order
+assert.ok(markup.indexOf('cycle prev') < markup.indexOf('class="subject"') && markup.indexOf('class="subject"') < markup.indexOf('cycle next'),
+  'the watched tank between its two steps');
+// (death-flow-275) A / Q back, D / E on: both pairs are named to assistive technology
+assert.match(markup, /class="cycle prev"[^>]*aria-keyshortcuts="A Q"/);
+assert.match(markup, /class="cycle next"[^>]*aria-keyshortcuts="D E"/);
 assert.ok(markup.indexOf('>Q</kbd>') < markup.indexOf('>E</kbd>'), 'Q and E, Watch\'s keys, share one horizontal control row');
 assert.match(markup, /aria-label="Return to garage"/);
 assert.match(markup, /<svg[^>]*aria-hidden="true"/);

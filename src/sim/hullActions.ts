@@ -57,6 +57,8 @@ export interface HullActionsHost<Hull extends ActionHull> {
   magazineReload?(entity: Hull, reason: string | null): void;
   specialAction?(entity: Hull, action: ReturnType<typeof activateSpecialAction>): void;
   selfRighted?(entity: Hull): void;
+  /** (death-flow-275 R7) The crew scuttles its tank (the driver destroys it and credits the kill). */
+  scuttle?(entity: Hull): void;
   /** A consumable slot pressed: its use, or null where the mode's gate refuses every consumable. */
   consumable?(entity: Hull, slot: number, use: ConsumableUse | null): void;
   moduleRepaired?(entity: Hull, module: string): void;
@@ -88,6 +90,7 @@ export function applyHullActions<Hull extends ActionHull>(entity: Hull, host: Hu
     if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
     if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
     if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
+    if (bits & PLAYER_ACTION_BITS.SCUTTLE) { host.scuttle?.(entity); if (entity.combat.destroyed) return; }
   }
   if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
     const reason = magazineReloadDenialReason(entity.combat);

@@ -72,12 +72,17 @@ const roster = src('../game/rosterPresentation.ts'), record = src('./serviceReco
 assert.match(hud, /killSourceIdentity\(payload\.source\)/, 'the kill feed names the authority\'s source');
 assert.match(hud, /vehicleName\(tank\)/, 'the HUD rosters name a gunship pilot through the identity');
 assert.match(killcam, /attackerLabel\(event\)/, "the killcam's header and lines");
-assert.match(killcam, /killSourceIdentity\(event\.attackerSource\)/, "the killcam's killer card");
+const shotCard = src('../game/killcamShotCard.ts');
+assert.match(shotCard, /killSourceIdentity\(ev\.attackerSource\)/, "the killcam's shot card");
 assert.match(shotInfo, /attackerLabel\(ev\)/, 'the battle report');
 // (r3, the engineering critic's mutations M9 and M11 passed the text checks above) the killcam reads the shooter's own
 // vehicle name only as the killer card's fallback after the source's label, and the battle report never reads it bare
-assert.deepEqual(killcam.match(/event\.attackerName/g), ['event.attackerName'], "the killcam reads the attacker's vehicle name once");
-assert.match(killcam, /const killerName = source\?\.label \|\| event\.attackerName \|\|/, "the killer card: the source's label first");
+// (death-flow-275) the shot card names the crew first (a callsign or a room player's name), then the platform's label, and
+// the vehicle only last; a gunship's or a call-in's kill names its platform on the card's second line
+assert.equal(/event\.attackerName/.test(killcam), false, "the killcam reads no attacker vehicle name of its own");
+assert.deepEqual(shotCard.match(/ev\.attackerName/g), ['ev.attackerName'], "the shot card reads the attacker's vehicle name once");
+assert.match(shotCard, /const who = input\.killerCallsign \|\| source\?\.label \|\| ev\.attackerName \|\|/, "the shot card: the crew, then the platform");
+assert.match(shotCard, /if \(source\) vehicle = who === source\.label \? '' : source\.label;/, "the platform's label on the card's second line");
 assert.equal(/\bev\.attackerName\b/.test(shotInfo), false, "the battle report names the attacker through attackerLabel only");
 assert.match(battleLoad, /killSourceIdentity\('ac130'\)/, 'the loading roster');
 assert.match(record, /killSourceIdentity\(step\.source\)/, 'the service record');
