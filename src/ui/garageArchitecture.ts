@@ -66,6 +66,8 @@ export interface GarageArchitectureStats {
   horizonFindings: readonly string[];
   /** The parts that hold the orbiting camera or block its view (garageOrbitClearance.ts). */
   orbitFindings: readonly string[];
+  /** The facility stations the orbit rule moved (garageFacilityDetails.ts). */
+  orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }>;
   horizonSetPieces: ReadonlyArray<Readonly<{ kind: string; bearingDeg: number; distM: number; ringM: number; scale: number; triangles: number }>>;
   wrecks: number;
   facilityProps: number;
@@ -273,6 +275,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     horizonSetPieces: [],
     horizonFindings: [],
     orbitFindings: [],
+    orbitMoves: [],
     orbitAuditMs: 0,
     facilityProps: 0,
     facilityStations: 4,
@@ -504,6 +507,7 @@ export function createGarageArchitectureController(
       regionalKitStructures: numericStat(data.regionalKitStructures),
       horizonFindings: Array.isArray(data.horizonFindings) ? data.horizonFindings as string[] : [],
       orbitFindings: Array.isArray(data.orbitFindings) ? data.orbitFindings as string[] : [],
+      orbitMoves: Array.isArray(data.orbitMoves) ? data.orbitMoves as GarageArchitectureStats['orbitMoves'] : [],
       horizonSetPieces: Array.isArray(data.horizonSetPieces) ? data.horizonSetPieces as GarageArchitectureStats['horizonSetPieces'] : [],
       wrecks: numericStat(data.wrecks),
       facilityProps: numericStat(data.facilityProps),

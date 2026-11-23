@@ -21,6 +21,7 @@ import { GARAGE_KIT_CELL_ARCHITECTURES, GARAGE_KIT_FLANK_ARCHITECTURES } from '.
 import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 import { KitBuilder, kitRandom, type KitVec } from './garageKitGeometry.ts';
+import { auditGarageOrbitClearance, garageOrbitRelocations, garageStandsLevel, type GarageScenePart } from './garageOrbitClearance.ts';
 import { garageKitSkin } from './garageKitSkins.ts';
 
 interface GarageFacilityDetailStats {
@@ -41,6 +42,8 @@ interface GarageFacilityDetailStats {
   readonly servicePurposeTags: readonly string[];
   readonly facilityMaterialClasses: number;
   readonly openingSightlineIntrusions: number;
+  /** (garage-env-276) the stations the orbit rule moved out of the camera's way (its anchor, metres moved; -1: could not). */
+  readonly orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }>;
 }
 
 interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
@@ -98,6 +101,8 @@ interface PrimitiveInstance {
   readonly matrix: THREE.Matrix4;
   readonly color: THREE.Color;
   readonly materialClass: 'structure' | 'painted' | 'equipment' | 'masonry';
+  /** (garage-env-276) the station it belongs to: the orbit rule moves a station whole */
+  readonly cluster?: object;
 }
 
 // Facility facades share the tank's longitudinal axis. The old camera-azimuth
@@ -489,6 +494,8 @@ export function addGarageFacilityDetails({
   let secureStorageSystems = 0;
   let environmentSpecificAssemblies = 0;
   let openingSightlineIntrusions = 0;
+  /** (garage-env-276) the stations the orbit rule moved, and how far (-1: could not clear) */
+  let orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }> = [];
   /** Soft shade pools under high canopies (the contact-shadow decal's blots): matrices of unit quads on the ground. */
   const shadePools: THREE.Matrix4[] = [];
   const servicePurposeTags = new Set<string>();
@@ -656,6 +663,7 @@ export function addGarageFacilityDetails({
       ),
       color: color.clone(),
       materialClass,
+      cluster,
     });
     facilityProps += 1;
   };
@@ -682,6 +690,7 @@ export function addGarageFacilityDetails({
       ),
       color: color.clone(),
       materialClass,
+      cluster,
     });
     facilityProps += 1;
   };
@@ -708,6 +717,7 @@ export function addGarageFacilityDetails({
       ),
       color: color.clone(),
       materialClass: 'equipment',
+      cluster,
     });
     cylinderInstances.set(tier, instances);
     facilityProps += 1;
@@ -4276,6 +4286,10 @@ export function addGarageFacilityDetails({
     }),
   ] as const);
   const emitFacilityMeshes = (): void => {
+  // (garage-env-276, Main's ruling (a)) a station that would hold the orbiting camera or stand between it and the hero
+  // moves straight out from the hero, whole and re-grounded, until it clears (garageOrbitClearance.ts; the kit's pieces
+  // take the same rule in garageKitPlacement.ts)
+  orbitMoves = clearFacilityClustersOfOrbit(boxInstances, cylinderInstances, groundAtWorld);
   const near = kitNearFacilityPrimitives(variant, boxInstances, cylinderInstances, groundAtWorld);
   buckets.baked!.push(...near.geometries);
   for (const renderClass of renderClasses) {
@@ -4469,7 +4483,71 @@ export function addGarageFacilityDetails({
       ...surfaceGeometries.keys(),
     ]).size,
     openingSightlineIntrusions,
+    orbitMoves,
     meshes: Object.freeze(meshes),
     materials: Object.freeze(materials),
   });
+}
+
+const ORBIT_CLEAR_STEP_M = 0.5;
+const ORBIT_CLEAR_REACH_M = 10;
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+const UNIT_CYLINDERS = new Map<number, THREE.CylinderGeometry>();
+
+/**
+ * (garage-env-276) The orbit rule for the facility's stations (the kit's pieces take it in garageKitPlacement.ts): a
+ * station any of whose primitives would hold the orbiting camera or stand between it and the hero moves straight out
+ * from the hero, all its primitives together and re-grounded at its new place, a step at a time until it clears.
+ */
+function clearFacilityClustersOfOrbit(
+  boxes: readonly PrimitiveInstance[],
+  cylinders: ReadonlyMap<number, readonly PrimitiveInstance[]>,
+  groundAtWorld: (x: number, z: number) => number,
+): Array<{ readonly at: readonly [number, number]; readonly movedM: number }> {
+  const byCluster = new Map<object, Array<{ instance: PrimitiveInstance; geometry: THREE.BufferGeometry }>>();
+  const add = (instance: PrimitiveInstance, geometry: THREE.BufferGeometry): void => {
+    if (!instance.cluster) return;
+    const list = byCluster.get(instance.cluster) ?? [];
+    list.push({ instance, geometry });
+    byCluster.set(instance.cluster, list);
+  };
+  for (const instance of boxes) add(instance, UNIT_BOX);
+  for (const [tier, list] of cylinders) {
+    let unit = UNIT_CYLINDERS.get(tier);
+    if (!unit) { unit = new THREE.CylinderGeometry(1, 1, 1, tier, 1); unit.computeBoundingBox(); UNIT_CYLINDERS.set(tier, unit); }
+    for (const instance of list) add(instance, unit);
+  }
+  UNIT_BOX.computeBoundingBox();
+  const moves: Array<{ readonly at: readonly [number, number]; readonly movedM: number }> = [];
+  for (const [cluster, members] of byCluster) {
+    const { x, z } = cluster as { x: number; z: number };
+    const shift = new THREE.Matrix4();
+    const meets = (dx: number, dy: number, dz: number): boolean => {
+      shift.makeTranslation(dx, dy, dz);
+      const parts: GarageScenePart[] = [];
+      for (const { instance, geometry } of members) {
+        const matrix = instance.matrix.clone().premultiply(shift);
+        const box = geometry.boundingBox!.clone().applyMatrix4(matrix);
+        if (box.isEmpty() || box.max.y < 0.35) continue;
+        parts.push({ label: 'station', box, geometry, matrix });
+      }
+      return auditGarageOrbitClearance(parts).length > 0;
+    };
+    if (!meets(0, 0, 0)) continue;
+    let moved = -1;
+    for (const { dx, dz, movedM } of garageOrbitRelocations(x, z, ORBIT_CLEAR_REACH_M, ORBIT_CLEAR_STEP_M)) {
+      const dy = groundAtWorld(x + dx, z + dz) - groundAtWorld(x, z);
+      if (meets(dx, dy, dz)) continue;
+      // (and only where it stands level: a station is never set on a bank)
+      const footprint = new THREE.Box3();
+      shift.makeTranslation(dx, dy, dz);
+      for (const { instance, geometry } of members) footprint.union(geometry.boundingBox!.clone().applyMatrix4(instance.matrix.clone().premultiply(shift)));
+      if (!garageStandsLevel(footprint, groundAtWorld)) continue;
+      for (const { instance } of members) instance.matrix.premultiply(shift);
+      moved = Number(movedM.toFixed(2));
+      break;
+    }
+    moves.push({ at: [Number(x.toFixed(1)), Number(z.toFixed(1))], movedM: moved });
+  }
+  return moves;
 }

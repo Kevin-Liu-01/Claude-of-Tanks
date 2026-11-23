@@ -2731,7 +2731,9 @@ export function buildGarageEnvironment(
       const box = geometry.boundingBox;
       if (!box || box.isEmpty() || box.max.y < 0.35) continue;
       const centre = box.getCenter(new THREE.Vector3());
-      sceneParts.push({ label: `${key} part at (${centre.x.toFixed(1)}, ${centre.z.toFixed(1)})`, box: box.clone(), geometry });
+      const size = box.getSize(new THREE.Vector3());
+      sceneParts.push({ label: `${key} part at (${centre.x.toFixed(1)}, ${centre.z.toFixed(1)}) ${size.x.toFixed(1)}x${size.y.toFixed(1)}x${size.z.toFixed(1)} m`,
+        box: box.clone(), geometry });
     }
   }
   // audited while the parts still stand apart (the merge reshapes and disposes them)
