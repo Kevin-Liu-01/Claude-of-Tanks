@@ -96,6 +96,10 @@ turrets), because the owner asked for "a bunch of extra decorations annd tank pr
 reuqipment onn all of these bradleys and m1a1s" (2026-11-05). Every row before them still seats under 6,000, so nothing
 those vehicles carried before moves; any other vehicle that wants more load asks the owner first (docs/DECORATIONS.md,
 "Release 269").
+Rotary guns (the M163's Vulcan, 269; the M6 Linebacker's GAU-12/U, 276) share one path: `gun.autoloader.rotary`
+(`sim/fireCycleFloor.ts`, one round a tick), the builder's barrels in one group tagged `userData.gunRotor`
+(`gunRotorSpin.ts`, kicked per cannon shot, never per missile) and the thinned presentation in `game/state.ts`. A new
+rotary gun tags its rotor and sets `rotary`; it adds no second spin or cadence system.
 Leaves on vehicles (suit garnish, the per-spec opt-in branch bundles) are spray
 cards on the trees lane's atlases through `vehicleFoliage.ts`, never a second
 foliage system. The Browning-family roof gun is one construction,

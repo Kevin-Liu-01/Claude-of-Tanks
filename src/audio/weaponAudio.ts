@@ -149,7 +149,7 @@ export const WEAPON_ROWS: { readonly [K in WeaponKey]: WeaponRow } = Object.free
   }),
   '20/belt': autocannon('20/belt', 20, 'Rh 202 (Marder 1A3, AMX-10P, the MBT-70\'s station)', 'multi_baffle',
     { loudDb: 128, closeFadeM: [45, 210], farFadeM: [60, 260], tailRate: 1.22, tailGain: 0.3, actionDelayS: 0.03 }),
-  '25/belt': autocannon('25/belt', 25, 'M242 Bushmaster chain gun (Bradley, Dardo, AMX-10P 25, Linebacker)', 'flash_hider',
+  '25/belt': autocannon('25/belt', 25, '25 mm: the M242 Bushmaster chain gun (Bradley, Dardo, AMX-10P 25), the GAU-12/U rotary (Linebacker)', 'flash_hider',
     { loudDb: 130, closeFadeM: [50, 230], farFadeM: [65, 280], tailRate: 1.16, tailGain: 0.34, actionDelayS: 0.035 }),
   '30/belt': autocannon('30/belt', 30, '2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons', 'multi_baffle',
     { loudDb: 132, closeFadeM: [55, 250], farFadeM: [70, 300], tailRate: 1.1, tailGain: 0.38, actionDelayS: 0.04 }),
@@ -307,6 +307,9 @@ const REPORT_TRIMS: Readonly<Record<string, WeaponReportTrim>> = Object.freeze({
   'm2-roof': { rate: 1, gainDb: -1 },
   rh202: { rate: 1.06, gainDb: -0.5 },
   'm242-bushmaster': { rate: 1, gainDb: 0 },
+  // 276: the M6 Linebacker's GAU-12/U, the 25 mm successor of the M163's Vulcan (rh202's trim): the same rotary report
+  // family, a shade lower and louder for the heavier round; its rounds between full ones are thinned as the Vulcan's are
+  'gau-12': { rate: 1.03, gainDb: 0.5 },
   '2a42': { rate: 1.03, gainDb: 0.5 },
   '2a72': { rate: 1.01, gainDb: 0 },
   'twin-2a42': { rate: 1.03, gainDb: 1, twin: true },

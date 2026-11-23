@@ -34,7 +34,11 @@ const EXPECTED = Object.freeze({
   marder1a3:          { hp: 1250, speed: 65, reverse: 17, traverse: 53, damage: 32, pen: [76, 68, 60], reload: 0.20, sound: 'rh202', missile: [450, 'milan-launch'] },
   m3a3_bradley:       { hp: 2300, speed: 61, reverse: 20, traverse: 49.3, damage: 70, pen: [185, 170, 155], reload: 0.33, sound: 'm242-bushmaster', missile: [700, 'tow-launch'] },
   // 272 (airDefenseFirepower.ts): the M6 joins the air-defence rule: the cohort's 25 mm damage (52 -> 17) at the 0.05 s floor
-  m6_linebacker:      { hp: 2400, speed: 60, reverse: 22, traverse: 47, damage: 17, pen: [190, 175, 160], reload: 0.05, sound: 'm242-bushmaster', missile: [340, 'tow-launch'] },
+  // 276 (Kevin: "make the m6 linebackers gun a minigun so its an evolution from the m163"): the GAU-12/U on the M163's rotary
+  // path, one round a tick in 200-round bursts with the 2 s reset; the PGU-20/U API a step over the M163's M53 (9.2 a round
+  // against 7.4, pen 125/108/90 against 90/72/55) and under the M242's M919 APFSDS (190/175/160), its sustained output
+  // where the M242 had it (~20,800 a minute against 20,400)
+  m6_linebacker:      { hp: 2400, speed: 60, reverse: 22, traverse: 47, damage: 9.2, pen: [125, 108, 90], reload: 2, cycle: 1 / 60, magazine: 200, rotary: true, sound: 'gau-12', missile: [340, 'tow-launch'] },
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 50.9, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1820, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [158, 143, 128], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
