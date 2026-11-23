@@ -23,7 +23,7 @@ import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture-hold.mjs';
-import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
@@ -286,8 +286,9 @@ await runWarmHold({
         if (signal.aborted) return;
         await beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: MODES[which], settleMs: 3000, timeoutMs: 900_000 });
         await runCase(page, tag, which);
-        await page.evaluate(() => { void window.__DEBUG.leaveBattleToGarage?.(); });
-        await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 120_000, polling: 250 }).catch(() => {});
+        // (the Leave awaited, then the readiness probe's Garage: docs/AUTOMATION-PATHS.md)
+        await page.evaluate(() => window.__DEBUG.leaveBattleToGarage?.());
+        await page.waitForFunction(readinessExpression('garage'), { timeout: 120_000, polling: 250 }).catch(() => {});
         await sleep(2500);
       }
     }

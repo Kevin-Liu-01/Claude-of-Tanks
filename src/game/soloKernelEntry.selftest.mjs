@@ -41,7 +41,7 @@ const AUTHORITY_STUB = `data:text/javascript,${encodeURIComponent(`
 const noop = () => {};
 export const createCollider = noop, prepareNextOpeningRoute = noop, resetProvingRange = noop, setProvingTargetsMoving = noop,
   setupBattle = noop, simStep = noop, cueTrainingActor = noop, finishTrainingBattle = noop, setTrainingCheckpoint = noop,
-  trainingSightFor = noop, trainingThreatFor = noop;
+  trainingSightFor = noop, trainingThreatFor = noop, recordBattleLeft = noop;
 export function setSoloWorldKernels(kernels) {
   if (globalThis.__soloKernelEntry.installThrows) throw new Error('installer threw');
   globalThis.__soloKernelEntry.events.push(['installed', kernels]);
