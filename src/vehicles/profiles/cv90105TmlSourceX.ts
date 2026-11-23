@@ -89,22 +89,45 @@ function buildTmlRunningGear(P: TankBuilderPort): void {
   });
 }
 
+// The TML-105 turret (owner 2026-11-21: "it needs a fully new turret full stop"), rebuilt from the 1994 prototype's
+// photographs: a long, low welded body whose sides are one slab leaning in from a shadowed bottom edge to a broad flat
+// roof, its front corners cut back in plan, its rear plate sloping back at the foot. Rows are [z, underside half-width,
+// edge half-width, roof half-width, floor y, edge y, roof y] in world metres. The underside (floor and half-widths) and
+// the roof heights stay those the deck, hatches and roof fittings were seated against.
+const TML_TURRET_ROWS: readonly (readonly [number, number, number, number, number, number, number])[] = [
+  [-2.86, .70, .96, .70, 1.80, 1.83, 1.88], [-2.70, .83, 1.02, .80, 1.76, 1.80, 2.18],
+  [-2.28, .94, 1.13, .88, 1.67, 1.74, 2.25], [-1.56, 1.04, 1.19, .95, 1.64, 1.71, 2.28],
+  [-.75, 1.08, 1.21, .95, 1.63, 1.70, 2.28], [-.13, 1.08, 1.21, .92, 1.63, 1.70, 2.245],
+  [.32, .92, 1.00, .76, 1.63, 1.70, 2.18], [.72, .65, .80, .58, 1.64, 1.71, 2.135],
+];
+/** The side slab at height y and station z: its half-width and its lean from vertical (radians). */
+function tmlSlab(z: number, y: number): { x: number; lean: number } {
+  const rows = TML_TURRET_ROWS;
+  let i = 0; while (i < rows.length - 2 && z > rows[i + 1][0]) i++;
+  const t = Math.min(1, Math.max(0, (z - rows[i][0]) / (rows[i + 1][0] - rows[i][0])));
+  const at = (k: number) => rows[i][k] + (rows[i + 1][k] - rows[i][k]) * t;
+  const edgeW = at(2), roofW = at(3), edgeY = at(5), roofY = at(6), lean = Math.atan2(edgeW - roofW, roofY - edgeY);
+  return { x: edgeW - (y - edgeY) * Math.tan(lean), lean };
+}
+
 function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
-  P.add('turret',armorLoft([
-    [-2.70,.83,.92,.63,1.76,1.93,2.18],[-2.28,.94,1.07,.77,1.67,1.91,2.25],
-    [-1.56,1.04,1.13,.72,1.64,1.87,2.28],[-.75,1.08,1.20,.73,1.63,1.84,2.28],
-    [-.13,1.08,1.20,.66,1.63,1.87,2.245],[.32,.92,1.05,.62,1.63,1.94,2.18],
-    [.72,.65,.81,.52,1.64,1.97,2.135],
-  ],py,pz));
+  P.add('turret',armorLoft(TML_TURRET_ROWS,py,pz));
   for(const side of [-1,1]) {
-    smokeBank(P,side,1.13,1.98,.31,4);
+    // Front-corner smoke dischargers: two stacked pairs on each cut corner, as in the photographs.
+    for(const [y,inset] of [[1.90,.05],[2.02,.05]] as const)
+      P.snapGroup(`tml-front-smoke-${side}-${y}`,()=>smokeBank(P,side,tmlSlab(.50,y).x+inset,y-.08,.50,2),{reachM:.04});
     P.snapGroup(`tml-rear-smoke-${side}`,()=>smokeBank(P,side,.94,2.23,-2.02,3),{reachM:.04}); // 2026-10-19 (owner float sweep): the left bank stood 29 mm off
+    // Stowage boxes and their straps lie on the leaning side slab.
     for(const z of [-1.57,-1.03,-.48]) {
-      turretEquipment(P,'turretDetail',box(.07,.12,.36),side*1.115,1.92,z);
-      turretEquipment(P,'turretDetail',box(.035,.15,.045),side*1.15,1.93,z-.16);
-      turretEquipment(P,'turretDetail',box(.035,.15,.045),side*1.15,1.93,z+.16);
+      const slab=tmlSlab(z,1.92), nx=Math.cos(slab.lean), ny=Math.sin(slab.lean), rz=side*slab.lean;
+      turretEquipment(P,'turretDetail',box(.07,.12,.36),side*(slab.x+.025*nx),1.92+.025*ny,z,0,0,rz);
+      for(const dz of [-.16,.16])
+        turretEquipment(P,'turretDetail',box(.035,.15,.045),side*(slab.x+.055*nx),1.92+.055*ny,z+dz,0,0,rz);
     }
-    for(const z of [-2.43,-.13])turretEquipment(P,'turretDetail',box(.055,.10,.33),side*.71,2.30,z);
+    for(const z of [-2.43,-.13]) {
+      const roofY=z<-2.28?2.18+(2.25-2.18)*(z+2.70)/.42:2.245;
+      turretEquipment(P,'turretDetail',box(.055,.10,.33),side*.71,roofY+.045,z);
+    }
   }
 }
 
@@ -125,21 +148,58 @@ function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void 
   for(const x of [.365,.735])turretEquipment(P,'turretDetail',box(.044,.035,.13),x,2.348,-.49);
   turretEquipment(P,'turretDetail',box(.21,.023,.035),.564,2.352,-.13);
   // 2026-10-19 (owner float sweep): the left base stood ~100 mm over the 2.25 bustle roof (49 mm off the rail); seated.
-  antenna(P,-.58,2.248,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
+  antenna(P,-.58,2.248,4.64523,-2.265);antenna(P,.714,2.223,4.528,.025);
+}
+
+// Turret faces the mantlet follows (world metres, from buildTmlTurretArmor's z0.72 front station): the roof falls
+// 0.1125 m per metre forward from 2.135; the floor rises 0.025 per metre to 1.64; below the knee (1.97) the lower cheeks
+// lean in 0.16 m over 0.33 m of height, and above it the upper cheeks 0.29 m over 0.165 m.
+const TML_ROOF_Y = (z: number) => 2.135 - (z - .72) * .1125;
+const TML_FLOOR_Y = (z: number) => 1.64 + (z - .72) * .025;
+const TML_LOWER_CHEEK = .16 / .33, TML_FRONT_LEAN = (.80 - .58) / (2.135 - 1.71);
+
+function buildTmlCastMantlet(P: TankBuilderPort): void {
+  // Owner 2026-11-21: "make the cv90105 tml have a mantlet", then "theres a whole full width mantlet in front of
+  // turret". The TML-105's cast mantlet (about 35 mm, under a canvas dust cover in the prototype's photographs) spans
+  // the turret front and rides the gun, carrying the sight hood on its right and the receiver on its left, the sleeved
+  // gun leaving through a round collar. Its section is the turret front's own: the top runs on the roof's slope 8 mm
+  // under it, the underside parallel to the floor 45 mm over it (the old gun assembly's lowest line, the sleeve's
+  // underside at 1.684), the sides lean in below the knee line at the lower cheeks' angle and above it at the front
+  // face's. Centred on the turret, it tapers slightly forward and its upper front edge is chamfered. Its back starts
+  // 50 mm behind the trunnion, inside the receiving shell's rounded nose, so no gap opens at any elevation.
+  // Its knee line stands at 1.96, so the lower corners tuck in clear of the hull's side kit with the turret abeam.
+  // Gun-local frame: gun axis at x 0 (world 0.016), trunnion at y 0 (world 1.878), z 0 (world 0.70).
+  const knee = 1.96 - 1.878, cx = -.016;
+  const station = (zl: number, halfW: number, topInset: number, lift = 0) => {
+    const zw = zl + .70, top = TML_ROOF_Y(zw) - .008 - topInset - 1.878, bottom = TML_FLOOR_Y(zw) + .045 + lift - 1.878;
+    const footW = halfW - TML_LOWER_CHEEK * (knee - bottom), roofW = halfW - TML_FRONT_LEAN * (top - knee);
+    return { z: zl, ring: [
+      [cx - footW, bottom], [cx + footW, bottom], [cx + halfW, knee], [cx + roofW, top], [cx - roofW, top], [cx - halfW, knee],
+    ] as [number, number][] };
+  };
+  // From 120 mm ahead of the trunnion back past the turret face the underside rises 20 mm, so the corners that drop as
+  // the gun elevates keep the old assembly's clearance over the rear deck.
+  P.add('gunMount', sectionSolid([station(-.05, .62, 0, .02), station(.12, .617, 0), station(.20, .615, 0),
+    station(.245, .595, .022)]));
+  // Collar: a proud cast ring 40 mm deep round the sleeve; a dark seal closes it on the sleeve. Its underside is cut flat
+  // on the sleeve's own lowest line (186 mm under the axis), so nothing on the gun reaches lower than before.
+  const collar = new THREE.Shape(), lip = Math.sqrt(.192 ** 2 - .186 ** 2);
+  collar.absarc(0, 0, .192, Math.atan2(-.186, lip), Math.atan2(-.186, -lip), false); collar.closePath();
+  const bore = new THREE.Path(); bore.absarc(0, 0, .181, 0, Math.PI * 2, true); collar.holes.push(bore);
+  P.add('gunMount', new THREE.ExtrudeGeometry(collar, { depth: .04, bevelEnabled: false, curveSegments: 32 }),
+    0, -.008, .245);
+  // 32 sides at both qualities: the seal must span the collar's bore all round the sleeve's flats.
+  P.add('gunMountDark', new THREE.RingGeometry(.172, .1815, 32), 0, -.008, .2852);
 }
 
 function buildTmlMantlet(P: TankBuilderPort): void {
-  // Source mantlet is asymmetric: its left hood projects far beyond the
-  // right optical face. Keep the receiving shell behind both actual apertures.
   const gunPrism=(left:number,right:number,yz:readonly (readonly [number,number])[])=>
     sectionSolid([left,right].map(x=>({z:x,ring:yz.map(([y,z])=>[-z,y] as const)})))
       .rotateY(Math.PI/2).translate(-.016,-1.878,-.700);
-  P.add('gunMount',gunPrism(-.581,.522,[
+  // The receiving shell (the gun cradle's nose) spans the mantlet slot only: 330 mm each side of the gun.
+  P.add('gunMount',gunPrism(-.314,.346,[
     [1.69,.54],[2.126,.54],[2.126,.65],[2.094,.672],
     [1.98,.753],[1.90,.807],[1.85,.814],[1.80,.792],[1.705,.665],
-  ]));
-  P.add('gunMount',gunPrism(-.581,-.203,[
-    [1.691,.645],[2.127,.645],[2.09,.901],[1.731,.901],
   ]));
   // The boot must overlap the receiving shell behind its front lip. Starting
   // at z=.28 left a 166 mm air gap to the shell; whole-mount bounds hid it.
@@ -147,7 +207,8 @@ function buildTmlMantlet(P: TankBuilderPort): void {
   const boot=[{z:-.06,rx:.185,ry:.186},{z:.28,rx:.185,ry:.186},{z:.46,rx:.170,ry:.176},{z:.69,rx:.145,ry:.166},{z:.89,rx:.142,ry:.160},{z:1.215,rx:.125,ry:.137}];
   P.add('gunMount',sectionSolid(boot.map(({z,rx,ry})=>({z,ring:Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return [Math.cos(a)*rx,Math.sin(a)*ry-.008] as [number,number];})}))));
   for(const z of [.45,.68,.91])P.add('gunMount',cylZ(.148,.022,P.q?24:12).scale(1,1.10,1),0,-.005,z);
-  // The left armored hood surrounds a recessed circular optical receiver.
+  buildTmlCastMantlet(P);
+  // The armored sight hood, right of the gun, surrounds a recessed circular optical receiver.
   // These are sparse source scalar dimensions, not duplicated source topology.
   const hood=new THREE.Shape();
   hood.moveTo(-.560,1.735);hood.lineTo(-.517,1.689);hood.lineTo(-.266,1.689);
@@ -168,14 +229,14 @@ function buildTmlMantlet(P: TankBuilderPort): void {
   P.add('gunMount',new THREE.CylinderGeometry(.0641,.0641,.1403,P.q?24:12,1,true).rotateX(Math.PI/2),opticX,opticY,opticFront-.07015);
   P.add('gunMount',new THREE.RingGeometry(.043,.0641,P.q?24:12),opticX,opticY,opticFront);
   P.add('gunMountDark',cylZ(.0413,.016,P.q?24:12),opticX,opticY,1.052-.700);
-  // The smaller right receiver is 216mm behind the left lens, on the source
-  // sloped root. Its actual open circular seat remains ahead of that stock.
+  // The smaller right receiver: a square frame round an open circular seat, standing on the full-width mantlet's
+  // face (2026-11-21: 146.5 mm forward of the source root, which the mantlet now covers).
   const right=new THREE.Shape();right.moveTo(-.106,-.097);right.lineTo(.106,-.097);
   right.lineTo(.106,.097);right.lineTo(-.106,.097);right.closePath();
   const rightAir=new THREE.Path();rightAir.absarc(0,0,.061,0,Math.PI*2,true);right.holes.push(rightAir);
-  P.add('gunMount',new THREE.ExtrudeGeometry(right,{depth:.076,steps:1,bevelEnabled:false,curveSegments:P.q?12:6}),.400,.046,.0985);
-  P.add('gunMount',cylZ(.066,.052,P.q?24:12),.400,.046,.108);
-  P.add('gunMountDark',cylZ(.0603,.012,P.q?24:12),.400,.046,.1375);
+  P.add('gunMount',new THREE.ExtrudeGeometry(right,{depth:.076,steps:1,bevelEnabled:false,curveSegments:P.q?12:6}),.400,.046,.245);
+  P.add('gunMount',cylZ(.066,.052,P.q?24:12),.400,.046,.2545);
+  P.add('gunMountDark',cylZ(.0603,.012,P.q?24:12),.400,.046,.284);
 }
 
 function buildTmlCannon(P: TankBuilderPort): void {

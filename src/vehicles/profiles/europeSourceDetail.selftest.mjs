@@ -28,9 +28,11 @@ for (const quality of ['high','low']) for (const id of ids) {
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret'), gun=tank.root.getObjectByName('rig_gun');
     if(id==='cv90105_tml') {
+      // 2026-11-21 (cv90105-mantlet-275, the owner's new TML-105 turret): the source sight hood rides the full-width
+      // mantlet as before; the receiver stands on the mantlet's face, 146.5 mm ahead of its old root.
       for(const [yaw,pitch] of [[0,0],[.65,-.12],[-.55,.20]]) {
         turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
-        for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.1435]]) {
+        for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.290]]) {
           const hit=firstHit(tank,gun,x,y,1.3,[0,0,-1]);
           assert.equal(hit.mesh,'gunMountDark', `${quality}: actual non-recoil optical face is the first complete-gun hit`);
           assert.ok(Math.abs(hit.point.z-z)<.001, `${quality}: lens retains its source depth through yaw/pitch`);
@@ -38,7 +40,7 @@ for (const quality of ['high','low']) for (const id of ids) {
         const leftRim=firstHit(tank,gun,-.4058+.055,-.02445,1.3,[0,0,-1]);
         assert.ok(Math.abs(leftRim.point.z-.443)<.001,'left receiver has a real 83mm recess behind its rim');
         const rightRim=firstHit(tank,gun,.475,.046,1.3,[0,0,-1]);
-        assert.ok(Math.abs(rightRim.point.z-.1745)<.001,'right receiver retains its separate shallower frame');
+        assert.ok(Math.abs(rightRim.point.z-.321)<.001,'right receiver retains its separate shallower frame');
       }
     } else {
       const fitting=tank.root.getObjectByName('sabraSourceCupolaWeapon');

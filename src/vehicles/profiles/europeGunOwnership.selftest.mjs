@@ -11,7 +11,10 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const cases = [
   ['kf41_lynx', [-.3465,-.27766,-.16], [.289,.43164,3.57]],
   ['cv90_mk4', [-.29,-.24,-.14], [.29,.26,.42]],
-  ['cv90105_tml', [-.597,-.194,-.16], [.506,.249,1.215]],
+  // 2026-11-21 (cv90105-mantlet-275, the owner's new TML-105 turret): the cradle carries the full-width cast mantlet
+  // across the turret front (centred on the turret, the gun 16 mm right of it), the source sight hood and the receiver
+  // on the mantlet's face, the boot and the collar.
+  ['cv90105_tml', [-.636,-.194,-.16], [.604,.256875,1.215]],
   ['sabra_mk2', [-.63,-.24,-.16], [.63,.35,.83]],
   ['aft10', [-1.245,-.315,-.93], [1.245,-.235,.88]],
 ];
@@ -99,12 +102,20 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
       tank.recoilKick(0,1);tank.syncFromState(state,.12);root.updateMatrixWorld(true);
       near(onGun(mount,gun).distanceTo(fixedBefore),0,1e-6,`${id}: receiving stock stays fixed in gun frame during firing`);
       if(dark)near(onGun(dark,gun).distanceTo(lensesBefore),0,1e-6,`${id}: receiver optics stay with the cradle`);
-      if(id==='cv90105_tml') for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.1435]]) {
+      if(id==='cv90105_tml') for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.290]]) {
         const ray=new THREE.Raycaster(gun.localToWorld(new THREE.Vector3(x,y,1.3)),
           new THREE.Vector3(0,0,-1).transformDirection(gun.matrixWorld));
         const hit=firstVisible(root,ray);
         assert.ok(hit?.object === dark,'actual recessed receiver stays the first full-scene hit during recoil');
         near(gun.worldToLocal(hit.point.clone()).z,z,.001,'source optical face depth is fixed through legal yaw/pitch and recoil');
+      }
+      // The collar's dark seal, between the sleeve's flats and the collar's bore, stays the first hit along the gun.
+      if(id==='cv90105_tml') {
+        const a=15*DEG,ray=new THREE.Raycaster(gun.localToWorld(new THREE.Vector3(.1795*Math.cos(a),.1795*Math.sin(a)-.008,1.3)),
+          new THREE.Vector3(0,0,-1).transformDirection(gun.matrixWorld));
+        const hit=firstVisible(root,ray);
+        assert.ok(hit?.object === dark,'the collar seal stays the first full-scene hit during recoil');
+        near(gun.worldToLocal(hit.point.clone()).z,.2852,.001,'the collar seal holds its depth through legal yaw/pitch and recoil');
       }
 
       if(id==='cv90105_tml') assertTmlBootContact(mount,gun,`${quality}/after recoil`);
@@ -118,7 +129,7 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
       near(onGun(barrel,gun).distanceTo(movingBefore),0,1e-6,`${id}: barrel returns to battery`);
     }
     if(id==='cv90105_tml') {
-      assert.ok(dark.parent === gun,'both recessed optical faces retain direct pitching ownership');
+      assert.ok(dark.parent === gun,'both recessed optical faces and the collar seal retain direct pitching ownership');
       const camera=new THREE.PerspectiveCamera();
       for(const distance of [2,1000,2,1000,2]) {
         camera.position.set(0,0,distance);camera.updateMatrixWorld(true);
