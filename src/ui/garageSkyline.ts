@@ -125,7 +125,7 @@ const thetaOf = (azDeg: number): number => (90 - azDeg) * DEG;
 const angleGap = (a: number, b: number): number => Math.abs(((a - b + 540) % 360) - 180);
 
 /** The ring radius a landmark at this distance stands at. */
-const ringRadius = (distM: number): number => THREE.MathUtils.clamp(58 + 15 * Math.log(Math.max(1, distM) / 150), 58, 116);
+export const ringRadius = (distM: number): number => THREE.MathUtils.clamp(58 + 15 * Math.log(Math.max(1, distM) / 150), 58, 116);
 
 class SkylineMesh {
   readonly positions: number[] = [];

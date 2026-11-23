@@ -23,6 +23,7 @@ import {
   releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
+import { buildGarageHorizonSetPieces, type GarageHorizonSetPiece } from './garageHorizonSetPieces.ts';
 import {
   GARAGE_ENVIRONMENT_RECIPES,
   type GarageEnvironmentRecipe,
@@ -115,6 +116,8 @@ interface GarageEnvironmentStats {
   readonly structures: number;
   /** The structures its map's regional architecture kit rebuilt, as the world build rebuilds them (garage-env-276). */
   readonly regionalKitStructures: number;
+  /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
+  readonly horizonSetPieces: readonly GarageHorizonSetPiece[];
   readonly facilityProps: number;
   readonly facilityStations: number;
   readonly approachLabel: string;
@@ -1475,6 +1478,8 @@ interface PreparedGarageStructures {
   /** The source map as its world build reads it, and its structure surfaces (garageBattleStructures.ts). */
   readonly map: GarageMapStructures;
   readonly surfaces: GarageStructureSurfaces;
+  /** The map's set pieces on the horizon ring, in their buckets (garageHorizonSetPieces.ts). */
+  readonly horizon: { readonly buckets: GeometryBuckets; readonly pieces: readonly GarageHorizonSetPiece[] };
 }
 const preparedStructures = new Map<string, PreparedGarageStructures>();
 // (2026-11-02 audit R5) the holds on each variant's prepared structures, refcounted like the kit and skyline pins: the
@@ -1494,7 +1499,12 @@ function disposePreparedStructures(id: string): void {
   if (!prepared) return;
   preparedStructures.delete(id);
   disposeStructureGeometry(prepared.records, prepared.backdrop);
+  disposeBuckets(prepared.horizon.buckets);
   releaseGarageStructureSurfaces(prepared.surfaces);
+}
+
+function disposeBuckets(buckets: GeometryBuckets): void {
+  for (const value of Object.values(buckets)) if (Array.isArray(value)) for (const geometry of value) geometry.dispose();
 }
 
 function disposeStructureGeometry(records: readonly GarageStructureRecord[], backdrop: THREE.BufferGeometry | null): void {
@@ -2295,6 +2305,20 @@ export function buildGarageEnvironment(
     }
   };
   mergeStructureRecords();
+  // the map's set pieces on the horizon ring (garageHorizonSetPieces.ts), prepared ahead or built here, into the same
+  // buckets under the same battlefield materials
+  const horizonSetPieces = (() => {
+    if (prepared) {
+      for (const [key, list] of Object.entries(prepared.horizon.buckets)) {
+        if (Array.isArray(list) && list.length) (combined[key] ||= []).push(...list);
+      }
+      return prepared.horizon.pieces;
+    }
+    const steps = buildGarageHorizonSetPieces(map, patch.sourceAnchor, combined);
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+  })();
 
   // The buildings sit in their ground (GA.03; the garage critic panel, 2026-10-14: "no cast shadows or contact darkening,
   // so the building looks pasted on ... AO at the base of every structure"; the scenery stays out of the live casters for
@@ -2871,6 +2895,7 @@ export function buildGarageEnvironment(
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     regionalKitStructures: structureRecords.filter((record) => record.regionalKit).length,
+    horizonSetPieces: Object.freeze(horizonSetPieces.map((piece) => Object.freeze({ ...piece }))),
     ...facilityDetails,
     // the kit's working cells carry stocked spares and secured stores of their own (garage r9)
     looseParts: facilityDetails.looseParts + (kit?.stats.looseParts ?? 0),
@@ -3078,7 +3103,24 @@ async function buildPreparedStructures(
     }
     records.push(step.value);
   }
+  // the map's set pieces on the horizon, a piece a slice
+  const horizonBuckets: GeometryBuckets = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
+  const horizonSteps = buildGarageHorizonSetPieces(map, patch.sourceAnchor, horizonBuckets);
+  let horizonStep = horizonSteps.next();
+  while (!horizonStep.done) {
+    await nextSlice();
+    if (!wanted()) {
+      horizonSteps.return([]);
+      disposeBuckets(horizonBuckets);
+      disposeStructureGeometry(records, backdrop);
+      releaseGarageStructureSurfaces(surfaces);
+      return false;
+    }
+    horizonStep = horizonSteps.next();
+  }
   disposePreparedStructures(variant.id);
-  preparedStructures.set(variant.id, { records, rngDraws, backdrop, map, surfaces });
+  preparedStructures.set(variant.id, {
+    records, rngDraws, backdrop, map, surfaces, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
+  });
   return true;
 }
