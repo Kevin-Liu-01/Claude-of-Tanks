@@ -110,8 +110,8 @@ assert.deepEqual(keyAssembled.viewer.movementValues, key.viewer.movementValues, 
     } else base = roundTrip(frame, null).frame;
   }
   const mean = (row, key) => row[key] / row.n;
-  assert.equal(base.viewer.movementValues.length, 63, 'the version-8 checkpoint');
+  assert.equal(base.viewer.movementValues.length, 64, 'the version-10 checkpoint (turbo-spin-275: the air spin is the 64th value, MAX_MOVEMENT_VALUES)');
   assert.ok(mean(sums.driving, 'masked') < 0.75 * mean(sums.driving, 'full'), `driving: ${mean(sums.driving, 'masked').toFixed(0)} B against ${mean(sums.driving, 'full').toFixed(0)} B`);
   assert.ok(mean(sums.stopped, 'masked') < 0.5 * mean(sums.stopped, 'full'), `stopped: ${mean(sums.stopped, 'masked').toFixed(0)} B against ${mean(sums.stopped, 'full').toFixed(0)} B`);
-  console.log(`viewerMask.selftest: masked deltas round-trip exact f32 values (the sign of zero kept), the full form wherever the baseline cannot follow, a missing baseline viewer is typed; the real 63-value checkpoint's viewer costs ${mean(sums.driving, 'masked').toFixed(0)} B a snapshot driving and ${mean(sums.stopped, 'masked').toFixed(0)} B stopped, against ${mean(sums.driving, 'full').toFixed(0)} B whole`);
+  console.log(`viewerMask.selftest: masked deltas round-trip exact f32 values (the sign of zero kept), the full form wherever the baseline cannot follow, a missing baseline viewer is typed; the real 64-value checkpoint's viewer costs ${mean(sums.driving, 'masked').toFixed(0)} B a snapshot driving and ${mean(sums.stopped, 'masked').toFixed(0)} B stopped, against ${mean(sums.driving, 'full').toFixed(0)} B whole`);
 }

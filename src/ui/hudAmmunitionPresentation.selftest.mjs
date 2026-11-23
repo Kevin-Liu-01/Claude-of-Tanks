@@ -254,7 +254,10 @@ const hudSource = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 assert.ok(hudSource.includes("const noConsumables = ruleset?.consumables === false;"), 'the pre-battle ruleset decides whether consumable slots show');
 assert.ok(hudSource.includes("conSep.style.display = noConsumables ? 'none' : '';") && hudSource.includes("conBox.style.display = noConsumables ? 'none' : '';"),
   'separator and consumable wrapper hide together when the ruleset carries no consumables');
-assert.ok(hudSource.includes("setControlsJumpMode(isJumpMode(ruleset));") && hudSource.includes("jumpHint.classList.toggle('on',on);"), 'the jump keycap shows only in rulesets with a jump launch');
+assert.ok(hudSource.includes("setControlsJumpMode(isJumpMode(ruleset),{turbo:!!ruleset?.turbo,airSpin:!!ruleset?.airSpin});") && hudSource.includes("jumpHint.classList.toggle('on',on);"), 'the jump keycap shows only in rulesets with a jump launch');
+// turbo-spin-275: Turbo and the air spin show only beside the jump, and only where the ruleset carries them
+assert.ok(hudSource.includes("turboTile.button.classList.toggle('on',on&&moves.turbo);") && hudSource.includes("spinTile.button.classList.toggle('on',on&&moves.airSpin);"),
+  'the Turbo and air-spin keycaps show only in jump rulesets that carry them');
 const selectorFunctions = hudSource.slice(hudSource.indexOf('  // ---------- shell selector ----------'),
   hudSource.indexOf('  // ---------- world-space tank nameplates ----------'));
 assert.doesNotMatch(selectorFunctions, /requireElement|querySelector/,
