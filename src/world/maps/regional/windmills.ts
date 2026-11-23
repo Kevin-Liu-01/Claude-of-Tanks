@@ -68,7 +68,8 @@ export function buildPostMill(ctx: RegionalBuildContext, p: PostMillPalette): Re
   sink.placed(0, 0, lift, 0, () => {
     const frame = buildHouse(sink, {
       w: bw, d: bd, plinth: null, storeys: [{ h: bh, wall: 'wood' }],
-      roof: { kind: 'gable', pitchDeg: 35, eave: 0.2, verge: 0.25, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      // (dome-detail-275, the roof closeout) the buck's boarded roof in its shingles, in relief (roofRelief.ts)
+      roof: { kind: 'gable', pitchDeg: 35, eave: 0.2, verge: 0.25, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: { kind: 'shingle' } },
       gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
     }, {
       window: (s, face, o, y0) => {

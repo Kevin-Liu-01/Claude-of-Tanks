@@ -414,6 +414,9 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
         faceBox(sink, 'structureWood', f, u + du, y, trail ? depth / 2 + 0.005 : out, w, h, depth, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
       }
     }
+    // (dome-detail-275, the roof sweep) the canal tiles in relief with the bura's stones, as the farmhouse lays them
+    // (the look stream, after every other draw of it)
+    canalTiles(sink, frame, ctx.variant);
   });
   return sink.finish();
 }
@@ -880,6 +883,8 @@ const customsHouse: RegionalBuilder = (ctx) => {
   for (const u of [-1, 1]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.93, 0.45, 0.05, 0.05, 0.9, { colour: iron, decor: true });
   for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.455, 0.86, 0.025, 0.93, 0.025, { colour: iron, decor: true });
   for (const u of [-1, 1]) for (const o of [0.2, 0.42, 0.64]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.455, o, 0.025, 0.93, 0.025, { colour: iron, decor: true });
+  // (dome-detail-275, the roof sweep) the canal tiles in relief round the four slopes, as the fish store lays them
+  canalTiles(sink, frame, ctx.variant);
   return sink.finish();
 };
 

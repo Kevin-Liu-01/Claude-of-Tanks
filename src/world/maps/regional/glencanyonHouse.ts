@@ -15,7 +15,7 @@
 // louvred pads and its duct; and on a desktop build the stem wall's paint, the louvred vents in the gables, the furnace's
 // flue, the television mast, the porch light, the oleanders and the block planter under the picture window.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
-import { buildHouse, leanTo, windowRhythm, type HouseFrame, type Opening } from './house.ts';
+import { buildHouse, leanTo, windowRhythm, type HouseFrame, type Opening, type RoofRelief } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { mound, tvAerial, wallLantern } from './dressing.ts';
 import { doorCanopy, facadeOn, facadeRng, plinthPaint } from './facade.ts';
@@ -37,6 +37,9 @@ const COOLER: readonly Rgb[] = [0xa9aca8, 0x9ea29f, 0xcfc6b0, 0xd8d6cc].map(rgb)
 const STEM: readonly Rgb[] = [0x8a8682, 0x8a5a48, 0x6e5e50].map((hex) => shade(rgb(hex), 1.25));
 /** Oleander: pink, red, rose. */
 const OLEANDER: readonly Rgb[] = [0xe08aa6, 0xc23a48, 0xd85a78].map(rgb);
+
+/** (dome-detail-275, the roof sweep) The gable's asphalt shingle in relief (roofRelief.ts): its courses, butts and jogged runs. */
+const SHINGLE: RoofRelief = { kind: 'shingle' };
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
@@ -130,7 +133,7 @@ export function pageHouse(sink: PartSink, rng: () => number, look: () => number,
   try {
     frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: CONCRETE }, storeys: [{ h: 2.55, wall: body }],
-      roof: { kind: 'gable', pitchDeg: 17, eave: 0.55, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle' }, gableBucket: body,
+      roof: { kind: 'gable', pitchDeg: 17, eave: 0.55, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: SHINGLE }, gableBucket: body,
       openings, chimneys, gutters, verge: { colour: finish.trim, bucket: 'structureWood' }, reveal: 0.14, rafters: null,
       ...(finish.siding ? { spall: null } : {}),
     }, {

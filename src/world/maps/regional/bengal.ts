@@ -11,13 +11,13 @@
 import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { finialOn, roundDrum, smoothDome } from './domes.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, ladder, veranda } from './vernacular.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, hash01, pilaster, plinthPaint, trimRun, windowHead } from './facade.ts';
 import { bench, bicycle, clayPot, dungCakes, handPump, mound, tvAerial, washingLine } from './dressing.ts';
-import { facing, sheetCourses, type SheetSlope } from './harbourSheds.ts'; // (dome-detail-275) the sheet courses in relief
+import { NIPA_RELIEF, TIN_RELIEF, facing, leanToRelief, sheetCourses, type SheetSlope } from './harbourSheds.ts'; // (dome-detail-275) the sheet courses in relief
 import { roundPole } from './waterfront.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { bengalBazaar } from './marketKits.ts'; // props #23: the char bazaar
@@ -52,6 +52,12 @@ function doChalaVentRect(poly: ReadonlyArray<readonly [number, number]>, frame: 
   if (hw * (apex - top) / rise < DO_CHALA_VENT.w / 2 + 0.15) return null;
   return { u0: -DO_CHALA_VENT.w / 2, u1: DO_CHALA_VENT.w / 2, y0: vy - DO_CHALA_VENT.h / 2, y1: top };
 }
+
+/** (dome-detail-275, the roof sweep) the rice straw of the do-chala in its courses (its gauge the nipa's: the eave's
+ *  frayed course stays thatchCourses') */
+const STRAW_RELIEF: RoofRelief = NIPA_RELIEF;
+/** (dome-detail-275, the roof sweep) a flat terrace roof's felt and patches inside its parapet */
+const FELT: RoofRelief = { kind: 'felt' };
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -136,9 +142,10 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   // its eave one thick course, no course lips up the slope: lips a metre apart read as shingles in the round-1 pair)
   const kindRoll = rng(), pitch = rng();
   const kind: RoofSpec['kind'] = thatched ? 'gable' : kindRoll < 0.6 ? 'hip' : 'gable';
+  // (dome-detail-275, the roof sweep) the thatch in its rows, the sheets in their lapped courses, in relief (roofRelief.ts)
   const roof: RoofSpec = thatched
-    ? { kind, pitchDeg: 34 + pitch * 6, eave: 0.75, verge: 0.6, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'nipa' }
-    : { kind, pitchDeg: 24 + pitch * 6, eave: 0.7, verge: 0.6, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
+    ? { kind, pitchDeg: 34 + pitch * 6, eave: 0.75, verge: 0.6, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'nipa', relief: STRAW_RELIEF }
+    : { kind, pitchDeg: 24 + pitch * 6, eave: 0.7, verge: 0.6, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle', relief: TIN_RELIEF };
   const roofLivery = sheetColour(rng);
   const deck = plinth + 0.16;
   const dialect: HouseDialect = {
@@ -204,6 +211,9 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   const lean = veranda(sink, frontFace, plinth, plinth + wallH - 0.1, width, VERANDA_D, BAMBOO,
     thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'structureMetal', colour: verandaRoof }, false,
     { eaveY: hf!.eaveY, eave: roof.eave, tanP: hf!.roof.tanP }, { round: true, ...(thatched ? { thickness: 0.2 } : {}) });
+  // (dome-detail-275, the roof sweep) the lean-to's covering in relief too (veranda's eave 0.3, verge 0.2)
+  leanToRelief(sink, frontFace, -width / 2, width / 2, VERANDA_D - 0.1, lean.shed, { eave: 0.3, verge: 0.2, thickness: thatched ? 0.2 : 0.07 },
+    thatched ? STRAW_RELIEF : TIN_RELIEF, thatched ? { bucket: 'straw' } : { bucket: 'structureMetal', base: { colour: verandaRoof } });
   verandaScreens(sink, frontFace, width, deck, lean.highY, lean.plateTop, lean.postTop, mobile, thatched ? null : { livery, frame });
   if (facadeOn()) homestead(sink, hf!, frontFace, { W, D, plinth, deck, bOut, width, big, thatched, door: openings[0] });
 }
@@ -348,7 +358,8 @@ const bazaar: RegionalBuilder = (ctx) => {
       sink.span('structureMetal', x - 0.8, 0.5, z - 1.15, x + 0.8, 2.6, z + 1.15, { colour: sheetColour(rng) });
       faceBox(sink, 'dark', { origin: [x + side * 0.8, 0, z], u: [0, 0, -side], out: [side, 0, 0], width: 2.3 }, 0, 1.55, 0.005, 1.9, 1.6, 0.02, { decor: true });
     }
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: plot.turned ? 0.35 : 0.6, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
+    // (dome-detail-275, the roof sweep) its sheets in their lapped courses in relief
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: plot.turned ? 0.35 : 0.6, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle', relief: TIN_RELIEF };
     emitRoof(sink, roofGeometry(W, D, top, roof), roof);
   });
   return sink.finish();
@@ -388,7 +399,8 @@ const brickShop: RegionalBuilder = (ctx) => {
   };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.2, wall }, { h: 3.0, wall }],
-    roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.2, bucket: 'plaster', parapet: 0.8 }, gableBucket: wall,
+    // (dome-detail-275, the roof sweep) the terrace's felt in relief inside the parapet, the parapet's coping
+    roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.2, bucket: 'plaster', parapet: 0.8, relief: FELT }, gableBucket: wall,
     openings, chimneys: [], gutters: null, verge: null,
   }, dialect);
   faceBox(sink, 'structureWood', frame.faces.front, 0, 3.95, 0.05, W - 0.8, 0.6, 0.05, { colour: pick(rng, PAINTED_SHEET), decor: true });
@@ -827,7 +839,8 @@ const ghatShed: RegionalBuilder = (ctx) => {
     const x = sx * (W / 2 - 0.12), z = -D / 2 + 0.12 + (D - 0.24) * k / (n - 1);
     sink.span('structureWood', x - 0.08, -0.3, z - 0.08, x + 0.08, top, z + 0.08, { colour: BAMBOO_MAT });
   }
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.5, verge: 0.3, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
+  // (dome-detail-275, the roof sweep) its sheets in their lapped courses in relief
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.5, verge: 0.3, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle', relief: TIN_RELIEF };
   emitRoof(sink, roofGeometry(W, D, top, roof), roof, sheetColour(rng));
   return sink.finish();
 };
@@ -933,9 +946,16 @@ const bazaarStall: RegionalBuilder = (ctx) => {
     roundPole(sink, 'structureWood', [x, under(z0) - rr, z0], [x, under(z1) - rr, z1], rr, { colour: bamboo(k + 9), decor: true });
   }
   // the sheets in their courses, two up the run, and a brick or two weighting them against the nor'westers
+  // (dome-detail-275, the roof sweep: a rusted or galvanised sheet in another livery read as an orange or white band) each
+  // sheet the roof's own livery within about ±12 %: a rusted one a touch redder, a new one a touch cooler and brighter
+  // (the same draws as before)
   const cosP = 1 / Math.hypot(1, tan), run = (D + 0.66) / cosP, roofOpts = (c: number, k: number): EmitOptions => {
     const roll = look();
-    const colour = roll < 0.16 ? shade(pick(look, RUSTED), 0.9 + look() * 0.2) : roll < 0.24 ? shade(pick(look, GALVANISED), 1.06) : shade(roofColour, 0.86 + look() * 0.2 - c * 0.04 + (k % 2) * 0.03);
+    const tone = (t: Rgb, k0: number): Rgb => [Math.min(1, roofColour[0] * t[0] * k0), Math.min(1, roofColour[1] * t[1] * k0), Math.min(1, roofColour[2] * t[2] * k0)];
+    // (the draw the old livery's pick took, kept so the stall's later looks stay)
+    if (roll < 0.24) look();
+    const colour = roll < 0.16 ? tone([1.06, 0.95, 0.87], 0.92 + look() * 0.08) : roll < 0.24 ? tone([0.98, 1.0, 1.04], 1.06)
+      : shade(roofColour, 0.9 + look() * 0.16 - c * 0.03 + (k % 2) * 0.02);
     return { colour, decor: true };
   };
   const slope: SheetSlope = { eave: [-W / 2 - 0.28, ye + 0.05, D / 2 + 0.33], along: [1, 0, 0], up: [0, tan * cosP, -cosP], n: [0, cosP, tan * cosP], run, t1: W + 0.56 };

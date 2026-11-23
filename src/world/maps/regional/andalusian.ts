@@ -493,6 +493,8 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
       const lu = du + (dw / 2 + 0.45) * (du > 0 ? -1 : 1);
       if (lantern && !spans.some(([a, b]) => lu > a - 0.15 && lu < b + 0.15)) wallLantern(sink, f, lu, 2.55);
     });
+    // (dome-detail-275, the roof sweep) the canal tiles in relief, as the barn and the chapel lay them
+    canalTiles(sink, frame, look);
   }));
   return sink.finish();
 }
@@ -569,6 +571,8 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
       }
       if (lantern) wallLantern(sink, f, door.u + (door.w / 2 + 0.8) * (door.u > 0 ? -1 : 1), 3.0);
     });
+    // (dome-detail-275, the roof sweep) the canal tiles in relief
+    canalTiles(sink, frame, look);
   }));
   return sink.finish();
 }
@@ -664,6 +668,9 @@ const posada: RegionalBuilder = (ctx) => {
       faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, 0.24, 0.36, 1.5, 0.62, 0.6, { decor: true, shadow: true });
       wallLantern(sink, f, du + 0.9 * gateSide, 2.6);
     });
+    // (dome-detail-275, the roof sweep) the canal tiles in relief down the four slopes, the cap tiles down the hips
+    canalTiles(sink, frame, look, { hipEnds: false });
+    hipCaps(sink, frame);
   });
   return sink.finish();
 };
@@ -952,14 +959,14 @@ function quoinsAt(sink: PartSink, x: number, z: number, sx: number, sz: number, 
  * (dome-detail-275) A wrought-iron grille over a high light (u, y its foot, w x h): the frame and its square bars as flat
  * irons 4 cm proud of the wall, two flats across (the budget: the kit's reja draws every bar as a box).
  */
-function rejilla(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+function rejilla(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, pitch = 0.14): void {
   const c = { colour: IRON, decor: true } as const, o = 0.04;
   const bar = (ua: number, ub: number, ya: number, yb: number) => sink.quad('structureMetal', facePoint(face, ua, ya, o), facePoint(face, ub, ya, o),
     facePoint(face, ub, yb, o), facePoint(face, ua, yb, o), c);
   const x0 = u - w / 2 - 0.05, x1 = u + w / 2 + 0.05, y0 = y - 0.05, y1 = y + h + 0.05;
   for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, (y0 + y1) / 2, o / 2, 0.04, y1 - y0, o, c, { back: true });
   for (const yy of [y0, y1, y0 + (y1 - y0) * 0.36, y0 + (y1 - y0) * 0.7]) bar(x0, x1, yy - 0.02, yy + 0.02);
-  const n = Math.max(3, Math.round((x1 - x0) / 0.14));
+  const n = Math.max(3, Math.round((x1 - x0) / pitch));
   for (let k = 1; k < n; k++) { const xx = x0 + (x1 - x0) * k / n; bar(xx - 0.013, xx + 0.013, y0, y1); }
 }
 
@@ -997,15 +1004,18 @@ function dampFoot(sink: PartSink, face: Face, u0: number, u1: number, y0: number
  */
 function contrafuerte(sink: PartSink, face: Face, u: number, top: number, proj: number, w: number, look: () => number): void {
   const mid = top * (0.5 + look() * 0.08), p2 = proj * (0.58 + look() * 0.08), cap1 = (proj - p2) * 1.1, cap2 = p2 * 1.25, w2 = w - 0.1;
-  faceBox(sink, 'plaster', face, u, (mid - 0.4) / 2, proj / 2, w, mid + 0.4, proj, { shadeAt: (p: Vec3) => clamp(0.82 + 0.18 * p[1] / 1.3, 0.82, 1) });
-  faceBox(sink, 'plaster', face, u, (mid + top) / 2, p2 / 2, w2, top - mid, p2);
+  // (dome-detail-275, the roof sweep's triangle trade) the stages' buried faces left out: the foot in the ground, each
+  // stage's head under its drip course, the upper stage's bed on the lower drip; the upper drip's head under its cap
+  faceBox(sink, 'plaster', face, u, (mid - 0.4) / 2, proj / 2, w, mid + 0.4, proj, { shadeAt: (p: Vec3) => clamp(0.82 + 0.18 * p[1] / 1.3, 0.82, 1) },
+    { back: true, top: true, bottom: true });
+  faceBox(sink, 'plaster', face, u, (mid + top) / 2, p2 / 2, w2, top - mid, p2, {}, { back: true, top: true, bottom: true });
   const opts = { shadow: true } as const;
   prismAuto(sink, 'stone', [facePoint(face, u - w / 2 - 0.02, mid, p2), facePoint(face, u - w / 2 - 0.02, mid, proj + 0.04),
     facePoint(face, u - w / 2 - 0.02, mid + cap1, p2)], face.u, w + 0.04, opts);
   prismAuto(sink, 'stone', [facePoint(face, u - w2 / 2 - 0.02, top, 0), facePoint(face, u - w2 / 2 - 0.02, top, p2 + 0.04),
     facePoint(face, u - w2 / 2 - 0.02, top + cap2, 0)], face.u, w2 + 0.04, opts);
   faceBox(sink, 'stone', face, u, mid - 0.05, (proj + 0.04) / 2, w + 0.04, 0.1, proj + 0.04, { decor: true });
-  faceBox(sink, 'stone', face, u, top - 0.05, (p2 + 0.04) / 2, w2 + 0.04, 0.1, p2 + 0.04, { decor: true });
+  faceBox(sink, 'stone', face, u, top - 0.05, (p2 + 0.04) / 2, w2 + 0.04, 0.1, p2 + 0.04, { decor: true }, { back: true, top: true });
 }
 
 /**
@@ -1089,14 +1099,16 @@ function portada(sink: PartSink, face: Face, u: number, floor: number, dw: numbe
 function retablo(sink: PartSink, face: Face, u: number, y: number, look: () => number): void {
   const w = 0.9, h = 1.2, glaze = (c: Rgb) => ({ colour: c, decor: true }) as const;
   faceBox(sink, 'stone', face, u, y + h / 2, 0.04, w + 0.24, h + 0.24, 0.08, { decor: true });
-  faceBox(sink, 'structureMetal', face, u, y + h / 2, 0.085, w, h, 0.012, glaze(AZ_WHITE));
+  // (dome-detail-275, the roof sweep's triangle trade) each tile panel's back laid on the one under it, left out
+  const bk = { back: true } as const;
+  faceBox(sink, 'structureMetal', face, u, y + h / 2, 0.085, w, h, 0.012, glaze(AZ_WHITE), bk);
   for (const s of [-1, 1]) {
-    faceBox(sink, 'structureMetal', face, u + s * (w / 2 - 0.06), y + h / 2, 0.093, 0.12, h, 0.008, glaze(AZ_BLUE));
-    faceBox(sink, 'structureMetal', face, u, y + h / 2 + s * (h / 2 - 0.06), 0.093, w - 0.24, 0.12, 0.008, glaze(AZ_BLUE));
+    faceBox(sink, 'structureMetal', face, u + s * (w / 2 - 0.06), y + h / 2, 0.093, 0.12, h, 0.008, glaze(AZ_BLUE), bk);
+    faceBox(sink, 'structureMetal', face, u, y + h / 2 + s * (h / 2 - 0.06), 0.093, w - 0.24, 0.12, 0.008, glaze(AZ_BLUE), bk);
   }
-  faceBox(sink, 'structureMetal', face, u, y + h * 0.78, 0.095, 0.4, 0.22, 0.008, glaze(AZ_OCHRE));
-  faceBox(sink, 'structureMetal', face, u, y + h * 0.42, 0.097, 0.34, 0.62, 0.008, glaze(shade(AZ_BLUE, 0.8)));
-  faceBox(sink, 'structureMetal', face, u, y + h * 0.4, 0.1, 0.12, 0.48, 0.006, glaze(rgb(0xb0503a)));
+  faceBox(sink, 'structureMetal', face, u, y + h * 0.78, 0.095, 0.4, 0.22, 0.008, glaze(AZ_OCHRE), bk);
+  faceBox(sink, 'structureMetal', face, u, y + h * 0.42, 0.097, 0.34, 0.62, 0.008, glaze(shade(AZ_BLUE, 0.8)), bk);
+  faceBox(sink, 'structureMetal', face, u, y + h * 0.4, 0.1, 0.12, 0.48, 0.006, glaze(rgb(0xb0503a)), bk);
   const x0 = u - w / 2 - 0.22, x1 = u + w / 2 + 0.22, yh = y + h + 0.14;
   const pts: Vec3[] = [facePoint(face, x0, yh, 0.32), facePoint(face, x1, yh, 0.32), facePoint(face, x1, yh + 0.22, 0), facePoint(face, x0, yh + 0.22, 0)];
   sink.prism('roof', pts, normalize3([face.out[0] * 0.2, 1, face.out[2] * 0.2]), 0.06, { decor: true, shadow: true });
@@ -1121,24 +1133,34 @@ function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec
  */
 interface TileSlope {
   at: (v: number, t: number, h: number) => Vec3; n: Vec3; up: Vec3; along: Vec3; lim: (v: number) => number;
+  /** (the roof sweep) how far up the slope a row at `t` reaches before the hip closes over it */
+  upTo: (t: number) => number;
   reach: number; side: 1 | -1; end: boolean; closes: boolean;
 }
 
+/**
+ * (the roof sweep) The hips' own pitch: a hip roof wider across its ridge than along it closes on steeper ends
+ * (house.ts RoofGeometry.hipTan): its side slopes narrow faster and its end slopes stand steeper than the sides.
+ */
 function tileSlope(rg: HouseFrame['roof'], roof: RoofSpec, side: 1 | -1, end: boolean): TileSlope {
   const cosP = 1 / Math.hypot(1, rg.tanP), sinP = rg.tanP * cosP, xe = rg.s + roof.eave;
-  const D = rg.halfD + (rg.hipVerge ?? roof.verge), hip = rg.kind === 'hip';
+  const D = rg.halfD + (rg.hipVerge ?? roof.verge), hip = rg.kind === 'hip', hT = rg.hipTan ?? rg.tanP;
   if (end) {
+    const cosH = 1 / Math.hypot(1, hT), sinH = hT * cosH, k = cosH * hT / rg.tanP, a = (D - rg.ridgeHalf) * hT / rg.tanP;
     const ye = rg.topAt(0, side * D) ?? rg.eaveY;
     return {
-      at: (v, t, h) => [t, ye + sinP * v + cosP * h, side * (D - cosP * v + sinP * h)], n: [0, cosP, side * sinP], up: [0, sinP, -side * cosP],
-      along: [1, 0, 0], lim: (v) => xe - cosP * v, reach: (D - rg.ridgeHalf) / cosP, side, end, closes: true,
+      at: (v, t, h) => [t, ye + sinH * v + cosH * h, side * (D - cosH * v + sinH * h)], n: [0, cosH, side * sinH], up: [0, sinH, -side * cosH],
+      along: [1, 0, 0], lim: (v) => Math.min(xe, a - k * v), upTo: (t) => (a - Math.abs(t)) / k, reach: (D - rg.ridgeHalf) / cosH, side, end, closes: true,
     };
   }
   const ye = rg.topAt(side * xe, 0) ?? rg.eaveY;
   const up: Vec3 = [-side * cosP, sinP, 0], n: Vec3 = [side * sinP, cosP, 0];
+  // a side slope's hip edge: |z| = ridgeHalf + x tanP / hT at x in from the eave's edge, no further than the verge
+  const k = cosP * rg.tanP / hT, a = rg.ridgeHalf + xe * rg.tanP / hT;
   return {
     at: (v, t, h) => [side * xe + up[0] * v + n[0] * h, ye + up[1] * v + n[1] * h, t], n, up, along: [0, 0, 1],
-    lim: (v) => (hip ? rg.ridgeHalf + xe - cosP * v : D), reach: (rg.kind === 'shed' ? 2 * rg.s + roof.eave : xe) / cosP, side, end, closes: hip,
+    lim: (v) => (hip ? Math.min(D, a - k * v) : D), upTo: (t) => (hip ? (a - Math.abs(t)) / k : Infinity),
+    reach: (rg.kind === 'shed' ? 2 * rg.s + roof.eave : xe) / cosP, side, end, closes: hip,
   };
 }
 
@@ -1197,9 +1219,13 @@ function canalTiles(sink: PartSink, frame: HouseFrame, look: () => number, opts:
 
 /**
  * pitch: the rows' spacing; facets: the roll's; steps: the courses' butts (`every` course, `whole`: one length across
- * the slope); hipEnds: the rolls' ends closed at a hip (hipCaps covers them)
+ * the slope); hipEnds: the rolls' ends closed at a hip (hipCaps covers them); relaid: the block of newer tiles (false:
+ * none, the church's budget; dome-detail-275, the roof sweep)
  */
-interface TileOptions { pitch?: number; facets?: 2 | 3; steps?: boolean; every?: number; whole?: boolean; hipEnds?: boolean }
+interface TileOptions { pitch?: number; facets?: 2 | 3; steps?: boolean; every?: number; whole?: boolean; hipEnds?: boolean; relaid?: boolean }
+
+/** (dome-detail-275, the roof sweep) the church's tiles at the 11,500 cap: the rolls in two facets a little wider apart, no butts or relaid block */
+const CHURCH_TILES: TileOptions = { pitch: 0.47, facets: 2, steps: false, relaid: false };
 
 /** (dome-detail-275) canalTiles on a roof laid without a house (a porch's lean-to: house.ts roofGeometry, emitRoof). */
 function canalTilesOn(sink: PartSink, rg: HouseFrame['roof'], roof: RoofSpec, hole: HouseFrame['roofPatch'], look: () => number, opts: TileOptions = {}): void {
@@ -1208,17 +1234,17 @@ function canalTilesOn(sink: PartSink, rg: HouseFrame['roof'], roof: RoofSpec, ho
   const pitch = opts.pitch ?? 0.25, roll = opts.facets === 2 ? ROLL2 : ROLL3;
   const cosP = 1 / Math.hypot(1, rg.tanP), xe = rg.s + roof.eave;
   const slopes = rg.kind === 'shed' ? [tileSlope(rg, roof, 1, false)] : [tileSlope(rg, roof, 1, false), tileSlope(rg, roof, -1, false)];
-  if (rg.kind === 'hip' && rg.hipTan === undefined && rg.ridgeHalf < rg.halfD + roof.verge - 0.05) slopes.push(tileSlope(rg, roof, 1, true), tileSlope(rg, roof, -1, true));
+  if (rg.kind === 'hip' && rg.ridgeHalf < rg.halfD + (rg.hipVerge ?? roof.verge) - 0.05) slopes.push(tileSlope(rg, roof, 1, true), tileSlope(rg, roof, -1, true));
   for (const sl of slopes) {
     const top = rg.kind === 'shed' ? sl.reach - 0.04 : sl.reach - 0.1 / cosP;
     const gap = hole && !sl.end && hole.side === sl.side ? { v0: (xe - hole.x1 - pad) / cosP, v1: (xe - hole.x0 + pad) / cosP, t0: hole.z0 - pad, t1: hole.z1 + pad } : null;
     const L = sl.lim(0), span = 2 * L - 0.16;
     const rw = 0.8 + look() * 1.5, rv = look() * top * 0.55, rt = (look() - 0.5) * Math.max(0, span - rw);
-    const relaid = look() < 0.75 ? { t0: rt - rw / 2, t1: rt + rw / 2, v0: rv, v1: rv + 0.9 + look() * 1.3 } : null;
+    const relaid = look() < 0.75 && opts.relaid !== false ? { t0: rt - rw / 2, t1: rt + rw / 2, v0: rv, v1: rv + 0.9 + look() * 1.3 } : null;
     const n = Math.max(2, Math.round(span / pitch));
     for (let k = 0; k < n; k++) {
       const t = -L + 0.08 + (k + 0.5) * span / n + (look() - 0.5) * 0.024, tone = 0.8 + look() * 0.24;
-      const vEnd = sl.closes ? Math.min(top, (L - Math.abs(t) - TILE_R) / cosP) : top;
+      const vEnd = sl.closes ? Math.min(top, sl.upTo(Math.abs(t) + TILE_R)) : top;
       if (vEnd < 0.3) continue;
       const spans: Array<[number, number]> = gap && t + TILE_R > gap.t0 && t - TILE_R < gap.t1 ? [[-0.05, Math.min(vEnd, gap.v0)], [gap.v1, vEnd]] : [[-0.05, vEnd]];
       for (const [a, b] of spans) {
@@ -1313,7 +1339,8 @@ const iglesia: RegionalBuilder = (ctx) => {
       archGlazing(s, face, o.u, y + o.h, r, glazing.frame);
       archHead(s, face, o.u, y + o.h, r, 'stone', 0.2, 7);
       for (const e of [-1, 1]) faceBox(s, 'stone', face, o.u + e * (r + 0.1), y + o.h / 2, 0.015, 0.2, o.h, 0.03, { decor: true }, { back: true });
-      rejilla(s, face, o.u, y, o.w, o.h);
+      // (dome-detail-275, the roof sweep's triangle trade: the high grilles' bars a hand and a half apart)
+      rejilla(s, face, o.u, y, o.w, o.h, 0.19);
     },
     door: (s, face, o, y0) => {
       doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'stone', width: 0.05, out: 0.01 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0);
@@ -1321,11 +1348,14 @@ const iglesia: RegionalBuilder = (ctx) => {
     },
   };
   // ---- the nave
+  // (dome-detail-275, the roof sweep) the nave's and the capilla's frames, their tiles laid last (the look stream as it was)
+  const roofs: HouseFrame[] = [];
   sink.placed(0, 0, 0, (nz0 + nz1) / 2, () => {
     const frame = buildHouse(sink, {
       w: W, d: nave, plinth: { h: fl, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH, wall: 'plaster' }],
       roof: canal(pitch, 0.38, 0.14), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, spall: 'stone', reveal: 0.5, core: 'rubble',
     }, church);
+    roofs.push(frame);
     const eave = frame.eaveY, right = frame.faces.right, left = frame.faces.left, front = frame.faces.front;
     // the tile eave and the ridge's cap tiles over a moulded stone cornice down both flanks
     alero(sink, frame);
@@ -1374,6 +1404,7 @@ const iglesia: RegionalBuilder = (ctx) => {
       w: cw, d: cd, plinth: { h: fl, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH - 1.2, wall: 'plaster' }],
       roof: canal(30, 0.35, 0.35, 'hip'), gableBucket: 'plaster', openings: cOpen, chimneys: [], gutters: null, verge: null, spall: 'stone', reveal: 0.45, core: 'rubble',
     }, church);
+    roofs.push(cf);
     const ce = cf.eaveY, b = cf.bodies[0], back = cf.faces.back;
     // its tile eave round the three free sides over the stone cornice
     alero(sink, cf);
@@ -1440,8 +1471,9 @@ const iglesia: RegionalBuilder = (ctx) => {
   for (const fc of [tfs.right, tfs.left]) dampFoot(sink, fc, -half + 0.05, half - 0.05, fl, look, 1);
   sink.band('stone', -half - 0.07, 10.5, zt0 - 0.07, half + 0.07, 10.7, zTF + 0.07, { decor: true });
   const ck = facePoint(tf, 0, 11.6, 0);
-  sink.cylinder('stone', ck, 'z', 0.1, 0.62, 16, { decor: true });
-  sink.cylinder('structureMetal', [ck[0], ck[1], ck[2] + 0.1], 'z', 0.02, 0.52, 16, { colour: AZ_WHITE, decor: true });
+  // (dome-detail-275, the roof sweep's triangle trade: twelve sides, the clock 0.6 m across)
+  sink.cylinder('stone', ck, 'z', 0.1, 0.62, 12, { decor: true });
+  sink.cylinder('structureMetal', [ck[0], ck[1], ck[2] + 0.1], 'z', 0.02, 0.52, 12, { colour: AZ_WHITE, decor: true });
   for (let h = 0; h < 4; h++) {
     const a = h / 4 * Math.PI * 2;
     faceBox(sink, 'structureMetal', tf, Math.sin(a) * 0.42, 11.6 + Math.cos(a) * 0.42, 0.125, 0.06, 0.12, 0.01, { colour: IRON, decor: true }, { back: true });
@@ -1459,7 +1491,9 @@ const iglesia: RegionalBuilder = (ctx) => {
   sink.span('plaster', -half, shaftTop, zt0, half, sill, zTF);
   sink.band('stone', -half - 0.07, sill - 0.12, zt0 - 0.07, half + 0.07, sill, zTF + 0.07, { decor: true, shadow: true });
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span('plaster', sx > 0 ? half - p : -half, sill, sz > 0 ? zTF - p : zt0, sx > 0 ? half : -half + p, top, sz > 0 ? zTF : zt0 + p);
+    // (dome-detail-275, the roof sweep's triangle trade) the pier's bed and head buried in the stage under and over it
+    const x0 = sx > 0 ? half - p : -half, x1 = sx > 0 ? half : -half + p, z0 = sz > 0 ? zTF - p : zt0, z1 = sz > 0 ? zTF : zt0 + p;
+    sink.box('plaster', [(x0 + x1) / 2, (sill + top) / 2, (z0 + z1) / 2], [(x1 - x0) / 2, (top - sill) / 2, (z1 - z0) / 2], {}, undefined, { py: true, ny: true });
   }
   sink.span('plaster', -half, top, zt0, half, y1, zTF);
   const faces: Face[] = [
@@ -1490,7 +1524,7 @@ const iglesia: RegionalBuilder = (ctx) => {
   const nest = nestDraw < 0.6 ? (nestSide < 0.5 ? 0 : 1) : -1;
   ([[-1, 1], [1, 1], [-1, -1], [1, -1]] as const).forEach(([sx, sz], k) => {
     const px = sx * (half - 0.08), pz = tz + sz * (half - 0.08);
-    sink.span('stone', px - 0.22, ct, pz - 0.22, px + 0.22, ct + 0.42, pz + 0.22);
+    sink.box('stone', [px, ct + 0.21, pz], [0.22, 0.21, 0.22], {}, undefined, { ny: true });
     if (k === nest) {
       sink.dressing(st.mobile, () => sink.cylinder('structureWood', [px - sx * 0.2, ct + 0.42, pz - sz * 0.2], 'y', 0.42, 0.62, 8,
         { colour: rgb(0x5a4a36), decor: true, shadow: true }, 0.72));
@@ -1501,7 +1535,8 @@ const iglesia: RegionalBuilder = (ctx) => {
   // the octagonal stage: limewashed on a stone base course, a pilaster at each angle, a little arched light on four
   // faces, its stepped cornice
   const rc = 1.42, oy1 = ct + 1.4, ph = Math.PI / 8;
-  sink.cylinder('plaster', [0, ct, tz], 'y', oy1 - ct, rc, 8, {}, rc, true, ph);
+  // (the roof sweep's triangle trade: its bed on the cornice and its head under the stone course, no caps)
+  sink.cylinder('plaster', [0, ct, tz], 'y', oy1 - ct, rc, 8, {}, rc, false, ph);
   sink.cylinder('stone', [0, ct, tz], 'y', 0.26, rc + 0.08, 8, { decor: true }, rc + 0.08, true, ph);
   for (let k = 0; k < 8; k++) {
     const th = k * Math.PI / 4, out: Vec3 = [Math.cos(th), 0, Math.sin(th)], ap = rc * Math.cos(ph), side = 2 * rc * Math.sin(ph);
@@ -1565,11 +1600,16 @@ const iglesia: RegionalBuilder = (ctx) => {
   sink.cylinder('structureWood', [ox, fl + 0.1, sideZ], 'y', 1.5, 0.1, 7, { colour: rgb(0x5a4632), decor: true, shadow: true }, 0.08);
   sink.revolve('structureWood', [ox, fl + 1.25, sideZ], 'y', [[0, 0.2], [0.15, 0.55], [0.45, 0.74], [0.8, 0.72], [1.2, 0.45], [1.4, 0]], 8,
     { colour: shade(LEAF, 0.85 + look() * 0.2), decor: true, shadow: true });
-  for (let k = 0; k < 5; k++) {
+  // (dome-detail-275, the roof sweep's triangle trade: three oranges, not five)
+  for (let k = 0; k < 3; k++) {
     // (the fruit set into the crown's skin where it is widest, never standing off it)
     const a = look() * Math.PI * 2, y = fl + 1.25 + 0.45 + look() * 0.35;
     sink.box('structureWood', [ox + Math.cos(a) * 0.72, y, sideZ + Math.sin(a) * 0.72], [0.05, 0.05, 0.05], { colour: rgb(0xe08a2a), decor: true, fine: true });
   }
+  // (dome-detail-275, the roof sweep) the canal tiles in relief on the nave and down the capilla's hips
+  sink.placed(0, 0, 0, (nz0 + nz1) / 2, () => canalTiles(sink, roofs[0], look, CHURCH_TILES));
+  sink.placed(0, 0, 0, nz0 - cLen / 2 + 0.2, () => canalTiles(sink, roofs[1], look, { ...CHURCH_TILES, pitch: 0.5, hipEnds: false }));
+  sink.placed(0, 0, 0, nz0 - cLen / 2 + 0.2, () => hipCaps(sink, roofs[1]));
   return sink.finish();
 };
 
@@ -1854,6 +1894,9 @@ const escuela: RegionalBuilder = (ctx) => {
     for (const dy of [-0.2, 0.2]) faceBox(sink, 'stone', f, 0, py + dy, 0.075, 2.1, 0.05, 0.03, { decor: true, fine: true });
     for (const du of [-1.03, 1.03]) faceBox(sink, 'stone', f, du, py, 0.075, 0.05, 0.45, 0.03, { decor: true, fine: true });
     faceBox(sink, 'stone', f, 0, py, 0.062, 2.0, 0.36, 0.004, { decor: true, shade: 0.78 });
+    // (dome-detail-275, the roof sweep) the canal tiles in relief down the four slopes, the cap tiles down the hips
+    canalTiles(sink, frame, look, { hipEnds: false });
+    hipCaps(sink, frame);
   });
   return sink.finish();
 };
@@ -1884,6 +1927,8 @@ const cortijo: RegionalBuilder = (ctx) => {
   for (const o of windowRhythm('left', 0, D, { w: 0.85, h: 1.15, sill: 0.95, spacing: 2.4, margin: 1.0, avoid: [[D * 0.1 - 0.7, D * 0.1 + 0.7]] })) openings.push(o);
   for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 1, D, { w: 0.8, h: 1.0, sill: 0.8, spacing: 2.4, margin: 1.0, max: 3 })) openings.push(o);
   for (const o of windowRhythm('front', 1, hwide, { w: 0.7, h: 0.9, sill: 0.9, spacing: 2.4, margin: 1.4, max: 1 })) openings.push(o);
+  // (dome-detail-275, the roof sweep) the house's and the wing's frames, their tiles laid last (the look stream as it was)
+  const frames: HouseFrame[] = [];
   sink.placed(0, hx, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: hwide, d: D, plinth: { h: 0.25, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'plaster' }, { h: 2.5, wall: 'plaster' }],
@@ -1894,6 +1939,7 @@ const cortijo: RegionalBuilder = (ctx) => {
     alero(sink, frame);
     if (st.band) zocalo(sink, frame, st.band, 0.8);
     if (look() < 0.6) sink.dressing(st.mobile, () => wallPots(sink, frame.faces.left, -D / 2 + 0.6, D / 2 - 0.6, 2.35, look));
+    frames.push(frame);
   });
   // the stable wing along the far side, under a lean-to falling outward: its walls a prism under the slope
   const sw = clamp((x1 - x0) * 0.24, 2.8, 3.6), sx0 = x1 - sw;
@@ -1919,6 +1965,7 @@ const cortijo: RegionalBuilder = (ctx) => {
       w: sw, d: D, plinth: { h: 0.2, out: 0.03, bucket: 'stone' }, storeys: [{ h: low - 0.2, wall: 'plaster' }], roof: lean, gableBucket: 'plaster',
       openings: stable, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.24,
     }, wingDialect);
+    frames.push(wf);
     // the walls' ends up under the lean-to's rise
     const tanP = Math.tan(pitch * Math.PI / 180);
     for (const zs of [1, -1] as const) {
@@ -1956,6 +2003,9 @@ const cortijo: RegionalBuilder = (ctx) => {
     if (look() < 0.8) chumbera(sink, x0 + 1.2, -hd - 0.4, 1.05 + look() * 0.3, look);
     if (look() < 0.6) chumbera(sink, x1 - 0.8, -hd - 0.3, 0.9 + look() * 0.3, look);
   });
+  // (dome-detail-275, the roof sweep) the canal tiles in relief on the house and down the wing's lean-to
+  sink.placed(0, hx, 0, 0, () => canalTiles(sink, frames[0], look));
+  sink.placed(0, (sx0 + x1) / 2, 0, 0, () => canalTiles(sink, frames[1], look));
   });
   return sink.finish();
 };

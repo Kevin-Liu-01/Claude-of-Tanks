@@ -10,7 +10,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, roofGeometry, windowRhythm,
-  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofPatch, type RoofSpec,
+  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofPatch, type RoofRelief, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { facadeOn, roofDormers, thatchCourses, trimRun, windowHead } from './facade.ts';
@@ -182,6 +182,15 @@ function roofSlopes(rg: RoofGeometry, roof: RoofSpec): SlopeQuad[] {
 
 /** The pantiles' course up the slope and the pitch of their rolls across it (m; dome-detail-275). */
 const PAN_COURSE = 0.3, PAN_ROW = 0.3;
+/**
+ * (dome-detail-275, the roof sweep) The Zeeland pantiles laid in relief by the shared roof relief (house.ts
+ * RoofSpec.relief) on the roofs pantileRelief does not draw (the brick houses', the farm's dwelling and barn, the tarred
+ * sheds'): rolls and courses at pantileRelief's own gauge, the war's stripped patch left open.
+ */
+const PANTILES: RoofRelief = { kind: 'pantile', gauge: PAN_COURSE, pitch: PAN_ROW };
+/** Their allowance: twice the shared default a square metre of a w x d body's roof plan, so the rolls keep their pitch. */
+const laidPantiles = (pitch: number, w: number, d: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
+  ({ ...pantiles(pitch, kind), relief: { ...PANTILES, budget: Math.round((w + 0.6) * (d + 0.3) * 12) } });
 
 /** A rectangle of a slope in its frame (x along the eave, v up the slope) left open: a war-stripped patch (dome-detail-275). */
 interface SlopeHole { x0: number; x1: number; v0: number; v1: number }
@@ -242,7 +251,8 @@ function pantileRelief(sink: PartSink, q: SlopeQuad, look: () => number,
     // a tile slipped a hand down its roll, or a newer one let in (its clay brighter)
     if (look() < 0.12 && v1 > 1.2) {
       const vs = PAN_COURSE * (1 + Math.floor(look() * (v1 / PAN_COURSE - 2)));
-      run(x, vs, Math.min(v1, vs + PAN_COURSE), r * 1.06, 0.008, { decor: true, uv, shade: look() < 0.5 ? tone * 1.22 : tone * 0.7 }, 0.45, true);
+      // (dome-detail-275, the roof sweep: within ±12 % of its roll's tone, was 1.22 and 0.7)
+      run(x, vs, Math.min(v1, vs + PAN_COURSE), r * 1.06, 0.008, { decor: true, uv, shade: look() < 0.5 ? tone * 1.12 : tone * 0.88 }, 0.45, true);
     }
   }
   // the courses' laps across the rolls (split round the stripped patch)
@@ -334,7 +344,7 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
     }
   });
   // the attic's two gable lights
-  const roof = opts.farm ? pantiles(50 + rng() * 4, rng() < 0.6 ? 'halfhip' : 'gable') : pantiles(48 + rng() * 6);
+  const roof = opts.farm ? laidPantiles(50 + rng() * 4, W, D, rng() < 0.6 ? 'halfhip' : 'gable') : laidPantiles(48 + rng() * 6, W, D);
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: sts, roof, gableBucket: 'stone', openings,
     chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null,
@@ -391,7 +401,7 @@ function boerderij(ctx: RegionalBuildContext): RegionalParts {
     holes.set(front ? 'front' : 'back', out);
     return out;
   };
-  const roof = pantiles(50 + rng() * 4);
+  const roof = laidPantiles(50 + rng() * 4, Wv, Dv);
   sink.placed(0, xv, 0, zv, () => {
     const frame = buildHouse(sink, {
       w: Wv, d: Dv, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'stone' }], roof, gableBucket: 'stone', openings: vo,
@@ -443,7 +453,7 @@ function boerderij(ctx: RegionalBuildContext): RegionalParts {
   };
   sink.placed(Math.PI / 2, 0, 0, zw, () => {
     const frame = buildHouse(sink, {
-      w: Dw, d: W, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.4, wall: 'stone' }], roof: pantiles(45), gableBucket: 'stone', openings: wo,
+      w: Dw, d: W, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.4, wall: 'stone' }], roof: laidPantiles(45, Dw, W), gableBucket: 'stone', openings: wo,
       chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: { colour: WHITE, bucket: 'structureWood' },
     }, { ...dialect(st), gableOpenings: (_face, poly) => barnHoles(poly) });
     for (const name of ['front', 'back'] as const) {
@@ -579,7 +589,9 @@ function thatchPatches(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, look: (
         pts.push(f.P(x + Math.cos(t) * w / 2 * j, v + Math.sin(t) * h / 2 * j, 0.016));
       }
       polyToward(sink, 'straw', pts, f.n, { decor: true, uv: { kind: 'plane', origin: q.e0, u: f.down, v: f.a },
-        tint: moss ? [0.62, 0.74, 0.5] : [1.14, 1.08, 0.88] });
+        // (dome-detail-275, the roof sweep) within ±12 % of the straw's tone: a faint grey-green, a paler repair (were
+        // [0.62, 0.74, 0.5] and [1.14, 1.08, 0.88], a green and a peach blotch)
+        tint: moss ? [0.9, 0.97, 0.88] : [1.1, 1.06, 0.92] });
     }
   }
 }
@@ -803,7 +815,7 @@ const tarShed: RegionalBuilder = (ctx) => {
   let frame: HouseFrame;
   try {
     frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.25, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.35, wall: 'structureWood' }], roof: { ...pantiles(40), verge: 0.2 },
+      w: W, d: D, plinth: { h: 0.25, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.35, wall: 'structureWood' }], roof: { ...laidPantiles(40, W, D), verge: 0.2 },
       gableBucket: 'structureWood', openings, chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.12, spall: null,
     }, tarDialect(st));
   } finally { sink.paint = null; }

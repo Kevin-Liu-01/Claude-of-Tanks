@@ -12,7 +12,7 @@ import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './vernacular.ts';
 import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
-import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
+import { NIPA_RELIEF, TIN_RELIEF, leanToRelief, mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
 import { orientedPrism } from './millWorks.ts';
 import { DOME_MIN_SEGMENTS, smoothProfile } from './domes.ts';
 
@@ -23,9 +23,10 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 }
 
 // (the facades lane, 2026-10-08; gauntlet wave 260: "brown shingle gable roofs") an atap of nipa leaf: the kit's thatch print
-// is the nipa's (surfaces.thatch), its eave one thick frayed course, no course lips up the slope
-const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
-const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
+// is the nipa's (surfaces.thatch), its eave one thick frayed course. (dome-detail-275, the roof sweep) The nipa's rows of
+// leaf panels and the tole's lapped sheets in relief (roofRelief.ts)
+const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa', relief: NIPA_RELIEF });
+const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle', relief: TIN_RELIEF });
 
 /**
  * The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder.
@@ -84,7 +85,9 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   });
   look();
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
+  const lean = veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
+  // (dome-detail-275, the roof sweep) the veranda's covering in relief too (veranda's lean-to: eave 0.3, verge 0.2)
+  leanToRelief(sink, front, -W / 2, W / 2, 1.3 - 0.1, lean.shed, { eave: 0.3, verge: 0.2, thickness: 0.07 }, thatched ? NIPA_RELIEF : TIN_RELIEF, { bucket: thatched ? 'straw' : 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
   wetYard(sink, ctx);
   return sink.finish();
@@ -213,7 +216,9 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
       roof: tole(22 + rng() * 6, rng() < 0.4 ? 'hip' : 'gable'), gableBucket: wall, openings, chimneys: [], gutters: null, verge: null,
     }, dialect);
     const post = rgb(0xd6d0c2);
-    veranda(sink, frame.faces[porchFace], 0.55, frame.eaveY - 0.1, porchWidth, 2.0, post, { bucket: 'roof' }, false);
+    const porch = veranda(sink, frame.faces[porchFace], 0.55, frame.eaveY - 0.1, porchWidth, 2.0, post, { bucket: 'roof' }, false);
+    // (dome-detail-275, the roof sweep) the porch's sheets in relief too
+    leanToRelief(sink, frame.faces[porchFace], -porchWidth / 2, porchWidth / 2, 2.0 - 0.1, porch.shed, { eave: 0.3, verge: 0.2, thickness: 0.07 }, TIN_RELIEF, { bucket: 'roof' });
   });
   return sink.finish();
 }

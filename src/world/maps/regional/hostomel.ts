@@ -7,7 +7,10 @@
 // concrete bands under flat roofs, the windows in ribbons; the airport fire station with its hose tower; a Rozhnovsky
 // water tower; shelled concrete shells. Burnt-out and boarded windows come from the house grammar's wear pass.
 import { PartSink, bodyFaces, faceBox, facePanel, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedBox, holedFace, recordShaft, wallPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import {
+  buildHouse, holedBox, holedFace, layRoofRelief, recordShaft, reliefFlat, reliefSlope, wallPolygon, windowRhythm, type HouseDialect, type Opening, type ReliefHole,
+  type ReliefPlane, type RoofGeometry, type RoofRelief,
+} from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -58,6 +61,34 @@ function sandbag(sink: PartSink, face: Face, u: number, y: number, o: number, co
   // the section in the plane square to u at the bag's -u end, counter-clockwise seen from +u, extruded along u
   const pts = sec.map(([oo, yy]) => facePoint(face, u - len / 2, y + yy, o - oo));
   sink.prism('structureMetal', pts, face.u, len, { colour, decor: true, ...(fine ? { fine: true } : {}) });
+}
+
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief, layRoofRelief): the hangars' profiled steel sheet in
+ * long courses a sheet's width across (the maintenance hangar's lapped clear of its roof lights, the cargo hangar's over
+ * every facet of its vault, round the war's holes); the workshop lean-to's shifer, its asbestos-cement sheets 1.75 x 1.13 m
+ * lapped a course (as tselina.ts); the terminal's, the office's and the fire station's flat concrete roofs, and the hose
+ * tower's cap, under ruberoid felt in its rolls with laps and patches.
+ */
+const HANGAR_SHEET: RoofRelief = { kind: 'sheet', gauge: 3.2, pitch: 1.2, ribs: 0 };
+const VAULT_SHEET: RoofRelief = { kind: 'sheet', gauge: 2.6, pitch: 1.1, ribs: 0 };
+const SHIFER: RoofRelief = { kind: 'sheet', gauge: 1.6, pitch: 1.0, ribs: 0 };
+const FELT: RoofRelief = { kind: 'felt' };
+/** ruberoid's black over the concrete slab's grey (EmitOptions.tint of the covering's bucket) */
+const FELT_TINT: Rgb = [0.5, 0.5, 0.52];
+
+/** (dome-detail-275) A gable roof's two slopes' top surfaces (ridge along z) as relief planes: eave `eave`, verge `verge`. */
+function gablePlanes(rg: RoofGeometry, eave: number, verge: number): ReliefPlane[] {
+  const xe = rg.s + eave - 0.002, Z = rg.halfD + verge;
+  return [1, -1].map((s) => {
+    const ye = rg.topAt(s * xe, 0) ?? rg.eaveY;
+    return reliefSlope([s * xe, ye, -Z], [s * xe, ye, Z], [-s * xe, rg.ridgeTopY - ye, 0]);
+  });
+}
+
+/** (dome-detail-275) A flat roof slab's top (x0..x1, z0..z1 at y) under felt in relief, its rolls along the long way. */
+function feltRoof(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y: number, holes: readonly ReliefHole[] = [], edge = false): void {
+  layRoofRelief(sink, FELT, [reliefFlat(x0, z0, x1, z1, y, x1 - x0 < z1 - z0)], { bucket: 'stone', base: { tint: FELT_TINT }, holes, edge });
 }
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -184,6 +215,19 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     while (j < n && JSON.stringify(runs[j]) === JSON.stringify(runs[i])) j++;
     for (const [za, zz] of runs[i]) vaultShell(sink, v, n, i, j, za, zz, t, 'roof');
     i = j;
+  }
+  // (dome-detail-275) the vault's sheet in its courses over every facet, up toward the crown and lapped facet over facet,
+  // round the holes the war tore (each facet's runs of sheet); one allowance for the whole vault
+  {
+    const edge = arc(v, -v.half, v.half, n), planes: ReliefPlane[] = [];
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = edge[i], [bx, by] = edge[i + 1], mx = (ax + bx) / 2, my = (ay + by) / 2 - v.cy, l = Math.hypot(mx, my) || 1;
+      const [lx, ly, hx, hy] = Math.abs(ax) > Math.abs(bx) ? [ax, ay, bx, by] : [bx, by, ax, ay], ul = Math.hypot(hx - lx, hy - ly) || 1;
+      for (const [za, zz] of runs[i]) {
+        planes.push({ pts: [[ax, ay, za], [bx, by, za], [bx, by, zz], [ax, ay, zz]], n: [mx / l, my / l, 0], up: [(hx - lx) / ul, (hy - ly) / ul, 0], top: 0 });
+      }
+    }
+    layRoofRelief(sink, VAULT_SHEET, planes, { bucket: 'roof', edge: false });
   }
   // the standing ribs every bay, and the trusses bare across each hole
   for (let z = zb + bay / 2; z < zf; z += bay) {
@@ -344,7 +388,7 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       };
       buildHouse(sink, {
         w: aw, d: ad, plinth: { h: 0.2, out: 0.04, bucket: 'stone' }, storeys: [{ h: 3.2, wall: 'stone' }],
-        roof: { kind: 'shed', pitchDeg: 8, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' }, gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12,
+        roof: { kind: 'shed', pitchDeg: 8, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof', relief: SHIFER }, gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12,
       }, dialect);
       // (dome-detail-275) the workshop stove's flue out through the wall and up past the eave under its rain cap, the
       // concrete band at the sill line
@@ -451,6 +495,14 @@ function hangarDetail(sink: PartSink, look: () => number, frame: ReturnType<type
     const nl = Math.hypot(tanP, 1);
     sink.member('roof', [xa, ya, z], [xb, yb, z], 0.06, 0.05, [s * tanP / nl, 1 / nl, 0], { decor: true, shade: 0.8 });
   }
+  // (dome-detail-275) the slopes' sheets in their lapped courses (layRoofRelief), clear of the hall's roof lights (hall.ts:
+  // every other bay, the middle half of it, from 0.6 m off the ridge to 0.15 m in from the eave)
+  const bays = Math.max(2, Math.round(D / 5)), lightHoles: ReliefHole[] = [];
+  for (let k = 0; k < bays; k += 2) {
+    const z0 = -D / 2 + (k + 0.25) * D / bays, z1 = -D / 2 + (k + 0.75) * D / bays;
+    for (const s of [-1, 1]) lightHoles.push({ x0: s > 0 ? 0.6 : -W / 2 + 0.15, x1: s > 0 ? W / 2 - 0.15 : -0.6, z0, z1 });
+  }
+  layRoofRelief(sink, HANGAR_SHEET, gablePlanes(rg, 0.4, 0.3), { bucket: 'roof', holes: lightHoles });
   // the apron before the doors: its slab on the ground, the joints, the bollards striped at the jambs
   const af = D / 2, ab = D / 2 + 1.5;
   sink.span('stone', -W / 2 - 0.5, -0.3, af, W / 2 + 0.5, y0 * 0 + 0.03, ab, { decor: true, ground: true, shade: 0.86 });
@@ -649,6 +701,8 @@ const officeBlock: RegionalBuilder = (ctx) => {
     for (const dx of [-1.9, 1.9]) sink.cylinder('stone', [door.u + dx, -0.2, cz - 0.25], 'y', 3.2, 0.13, 8, {});
     // the plant on the roof, and the terminal's sign frame over the apron front
     const top = frame.eaveY + 0.3;
+    // (dome-detail-275) the roof's felt in relief inside the parapet's ring (0.22 m)
+    feltRoof(sink, -W / 2 - 0.15 + 0.22, -D / 2 - 0.15 + 0.22, W / 2 + 0.15 - 0.22, D / 2 + 0.15 - 0.22, top);
     const look = ctx.variant;
     sink.dressing(mobile, () => {
       for (let k = 0; k < 2 + Math.floor(look() * 2); k++) {
@@ -841,16 +895,10 @@ function fireStationDetail(sink: PartSink, ctx: RegionalBuildContext, frame: Ret
   }
   // the hose tower above the roof: its corner fins, its floor bands
   const ry = eave + 0.3, hw = 1.4;
-  // the flat roof's felt laid in strips across it, their laps a shade darker, a patch over a shell's hole; the roof hatch
-  // on its upstand, the soil and vent stubs
-  for (let z = -D / 2 + 1.0; z < D / 2 - 0.3; z += 1.0) {
-    const x1 = z < tz + hw + 0.2 ? tx - hw - 0.1 : W / 2 - 0.05;
-    sink.quad('stone', [-W / 2 + 0.05, ry + 0.006, z + 0.05], [x1, ry + 0.006, z + 0.05], [x1, ry + 0.006, z - 0.05], [-W / 2 + 0.05, ry + 0.006, z - 0.05], { decor: true, shade: 0.8 });
-  }
-  {
-    const px = -W / 2 + 1.5 + look() * (W - 6), pz = -D / 2 + 3 + look() * (D - 8), pw = 1.4 + look() * 1.2, pd = 1.2 + look();
-    sink.quad('stone', [px, ry + 0.01, pz + pd], [px + pw, ry + 0.01, pz + pd], [px + pw, ry + 0.01, pz], [px, ry + 0.01, pz], { decor: true, shade: 0.7 });
-  }
+  // (dome-detail-275: were flat strips and a patch drawn on the slab) the flat roof's felt in relief inside the parapet's
+  // ring, its rolls, laps and patches run on under the hose tower's and the hatch's walls (a hole cuts a roll's whole
+  // width: bare slab round their feet); the roof hatch on its upstand, the soil and vent stubs
+  feltRoof(sink, -W / 2 - 0.2 + 0.22, -D / 2 - 0.2 + 0.22, W / 2 + 0.2 - 0.22, D / 2 + 0.2 - 0.22, ry);
   sink.span('stone', 1.4, ry - 0.02, -1.0, 2.3, ry + 0.42, -0.1, { decor: true, shade: 0.9 });
   sink.span('structureMetal', 1.35, ry + 0.42, -1.05, 2.35, ry + 0.48, -0.05, { colour: RIB, decor: true });
   for (const [vx, vz] of [[-W / 2 + 1.2, -1.5], [-W / 2 + 1.2, 1.2], [2.8, D / 2 - 2.0]] as const) {
@@ -876,8 +924,9 @@ function fireStationDetail(sink: PartSink, ctx: RegionalBuildContext, frame: Ret
     }
   }
   for (let y = 0.35; y < gy + 0.8; y += 0.32) sink.span('structureMetal', tx - 0.25, y - 0.016, lz - 0.016, tx + 0.25, y + 0.016, lz + 0.016, { ...steel, fine: true });
-  // the cap: the siren on its pole, the lightning rod
+  // the cap: the siren on its pole, the lightning rod; (dome-detail-275) its felt in relief with the gravel stop round it
   const cap = th - 0.5 + wr + 0.3;
+  feltRoof(sink, tx - hw - 0.3, tz - hw - 0.3, tx + hw + 0.3, tz + hw + 0.3, cap, [], true);
   const sx0 = tx - 0.6, sz0 = tz + 0.6, iron = rgb(0x5a5e5c);
   sink.cylinder('structureMetal', [sx0, cap - 0.05, sz0], 'y', 1.6, 0.05, 8, { colour: iron, decor: true });
   sink.cylinder('structureMetal', [sx0, cap + 1.55, sz0], 'y', 0.34, 0.26, 12, { colour: shade(iron, 1.2), decor: true }, 0.26);

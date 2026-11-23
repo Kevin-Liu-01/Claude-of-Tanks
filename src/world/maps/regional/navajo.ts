@@ -10,7 +10,10 @@
 // over its stock tank and the chapter's water tower; the BIA day school of cut sandstone under a hipped tin roof; and
 // the abandoned camps: a roofless stone house, a fallen hogan.
 import { LocalFrame, PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, layRoofRelief, reliefSlope, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type ReliefHole, type RoofGeometry,
+  type RoofRelief, type RoofSpec,
+} from './house.ts';
 import { board, rod } from './r2Members.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -24,6 +27,24 @@ import { chamferedBeam, CLADDING, DOOR_PAINT, drum, eastSide, endStacks, equipme
 const TRIM: readonly Rgb[] = [0xd6d0c2, 0x4f7a52, 0x3f6f99, 0x8a3a2c].map(rgb);
 /** (dome-detail-275) The wool sacks' burlap. */
 const BURLAP = rgb(0xb3a07e);
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief, layRoofRelief): the corrugated iron of the ranch
+ * houses, the porches, the school's porch and the wool barn in sheets 2.4 m long and 0.76 m in cover, lapped in courses;
+ * the trading post's and the general store's flat roofs under rolled roofing in its laps. (The ranch houses' flat mud
+ * roofs on vigas stay smooth: an earth roof, not a covering in courses; the hogan's earth mound likewise.)
+ */
+const TIN: RoofRelief = { kind: 'sheet', gauge: 2.3, pitch: 0.76, ribs: 2 };
+const ROLLED: RoofRelief = { kind: 'felt' };
+
+/** (dome-detail-275) A gable's covering in relief over the house frame's roof (the ridge along z), its stripped patch open. */
+function gableRelief(sink: PartSink, frame: HouseFrame, relief: RoofRelief): void {
+  const rg = frame.roof, roof = frame.spec.roof, X = rg.s + roof.eave, Z = rg.halfD + roof.verge;
+  const ye = rg.topAt(X, 0) ?? rg.eaveY, yr = rg.topAt(0, 0) ?? rg.ridgeTopY, p = frame.roofPatch;
+  const holes: ReliefHole[] = p ? [{ x0: Math.min(p.side * p.x0, p.side * p.x1), x1: Math.max(p.side * p.x0, p.side * p.x1), z0: p.z0, z1: p.z1 }] : [];
+  const planes = ([1, -1] as const).map((sx) => reliefSlope([sx * X, ye, -sx * Z], [sx * X, ye, sx * Z], [-sx * X, yr - ye, 0]));
+  layRoofRelief(sink, relief, planes, { bucket: roof.bucket, holes });
+}
+
 /** A point on a face: `u` along it, `y` up, `o` out from it. */
 function facePoint(f: Face, u: number, y: number, o: number): Vec3 {
   return [f.origin[0] + f.u[0] * u + f.out[0] * o, y, f.origin[2] + f.u[2] * u + f.out[2] * o];
@@ -304,9 +325,10 @@ function ranchBody(sink: PartSink, rng: () => number, look: () => number, o: Ran
   for (const o2 of windowRhythm('front', 0, W, { w: 0.9, h: 1.2, sill: 0.95, spacing: 2.3, margin: 0.8, max: 3, avoid: [[du - 0.55, du + 0.55]] })) openings.push(o2);
   for (const face of ['left', 'right'] as const) for (const o2 of windowRhythm(face, 0, D, { w: 0.85, h: 1.1, sill: 1.0, spacing: 2.6, margin: 1.0, max: 2 })) openings.push(o2);
   for (const o2 of windowRhythm('back', 0, W, { w: 0.7, h: 0.9, sill: 1.25, spacing: 3.0, margin: 1.2, max: 1 })) openings.push(o2);
+  // (dome-detail-275, the roof sweep) the tin in relief; the flat mud roof on vigas stays an earth roof
   const roof: RoofSpec = o.flat
     ? { kind: 'flat', pitchDeg: 0, eave: 0.04, verge: 0.04, thickness: 0.24, bucket: 'plaster', parapet: 0.32 }
-    : { kind: 'gable', pitchDeg: 15 + rng() * 6, eave: 0.38, verge: 0.3, thickness: 0.07, bucket: 'roof', ridge: 'saddle' };
+    : { kind: 'gable', pitchDeg: 15 + rng() * 6, eave: 0.38, verge: 0.3, thickness: 0.07, bucket: 'roof', ridge: 'saddle', relief: TIN };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.32, out: 0.05, bucket: 'stone' }, storeys: [{ h: 2.55 + rng() * 0.25, wall: o.wall }], roof,
     gableBucket: rng() < 0.5 ? o.wall : 'wood', openings,
@@ -331,7 +353,8 @@ function ranchBody(sink: PartSink, rng: () => number, look: () => number, o: Ran
       const a: Vec3 = [u, 0.0, D / 2 + depth - 0.12];
       pole(sink, a, [u, y - 0.2, D / 2 + depth - 0.12], 0.08, pick(look, JUNIPER), false);
     }
-    const porch: RoofSpec = { kind: 'shed', pitchDeg: 9, eave: 0.12, verge: 0.12, thickness: 0.06, bucket: 'roof' };
+    // (dome-detail-275, the roof sweep: its tin in relief)
+    const porch: RoofSpec = { kind: 'shed', pitchDeg: 9, eave: 0.12, verge: 0.12, thickness: 0.06, bucket: 'roof', relief: TIN };
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, y - 0.25, porch), porch));
     // a plank deck on stones under it
     sink.span('structureWood', -W / 2 + 0.1, 0.0, D / 2 + 0.02, W / 2 - 0.1, 0.22, D / 2 + depth, { colour: PLANK_GREY, decor: true });
@@ -416,7 +439,8 @@ const tradingPost: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('back', 1, W1, { w: 0.8, h: 1.1, sill: 0.8, spacing: 2.8, margin: 1.2, max: 2 })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W1, d: D1, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall: 'stone' }, { h: 2.9, wall: 'stone' }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.25, bucket: 'plaster', parapet: 0.6 }, gableBucket: 'stone',
+      // (dome-detail-275, the roof sweep: the store's flat roof under rolled roofing in relief)
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.25, bucket: 'plaster', parapet: 0.6, relief: ROLLED }, gableBucket: 'stone',
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.34,
     }, dialectOf(rng, trim, door, { lit: 0.5, leaf: 'glazed' }));
     frameCourse(sink, frame, 0.42);
@@ -427,7 +451,8 @@ const tradingPost: RegionalBuilder = (ctx) => {
       const u = -W1 / 2 + 0.3 + (W1 - 0.6) * k / 3;
       pole(sink, [u, 0, D1 / 2 + depth - 0.15], [u, y, D1 / 2 + depth - 0.15], 0.1, pick(look, JUNIPER), false);
     }
-    const porch: RoofSpec = { kind: 'shed', pitchDeg: 8, eave: 0.15, verge: 0.2, thickness: 0.07, bucket: 'roof' };
+    // (dome-detail-275, the roof sweep: its tin in relief)
+    const porch: RoofSpec = { kind: 'shed', pitchDeg: 8, eave: 0.15, verge: 0.2, thickness: 0.07, bucket: 'roof', relief: TIN };
     sink.placed(-Math.PI / 2, 0, 0, D1 / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W1, y, porch), porch));
     sink.span('structureWood', -W1 / 2 + 0.1, 0.0, D1 / 2 + 0.02, W1 / 2 - 0.1, 0.36, D1 / 2 + depth, { colour: PLANK_GREY, decor: true });
     const f = frame.faces.front, top = frame.eaveY + 0.25;
@@ -462,7 +487,7 @@ const tradingPost: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('right', 0, D2, { w: 0.7, h: 0.5, sill: 2.0, spacing: 2.4, margin: 1.0 })) openings.push({ ...o, kind: 'loft' });
     const frame = buildHouse(sink, {
       w: W2, d: D2, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall: 'stone' }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.24, bucket: 'plaster', parapet: 0.35 }, gableBucket: 'stone',
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.24, bucket: 'plaster', parapet: 0.35, relief: ROLLED }, gableBucket: 'stone',
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.3,
     }, dialectOf(rng, trim, door, { lit: 0 }));
     frameCourse(sink, frame, 0.38);
@@ -574,7 +599,7 @@ const generalStore: RegionalBuilder = (ctx) => {
     const H = 3.5;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.22, bucket: 'plaster', parapet: 0.35 }, gableBucket: wall,
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.22, bucket: 'plaster', parapet: 0.35, relief: ROLLED }, gableBucket: wall,
       openings, chimneys: [], gutters: null, verge: null, reveal: wall === 'stone' ? 0.3 : 0.18,
     }, dialectOf(rng, trim, door, { lit: 0.45, leaf: 'glazed' }));
     frameCourse(sink, frame, 0.3);
@@ -898,7 +923,8 @@ const daySchool: RegionalBuilder = (ctx) => {
   for (const s of [-1, 1]) sink.span('structureWood', s * (pw / 2 - 0.15) - 0.13, 0.0, D / 2 + pd - 0.3, s * (pw / 2 - 0.15) + 0.13, py, D / 2 + pd - 0.04, { colour: trim });
   // (dome-detail-275: its roof was laid with its ridge along the wall, its slopes to the steps and the boarded gable stuck
   // across them) the porch's ridge runs out from the wall, its gable over the steps, its back tucked under the main eave
-  const pr: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.15, thickness: 0.08, bucket: 'structureMetal', ridge: null };
+  // (dome-detail-275, the roof sweep: its tin in relief)
+  const pr: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.15, thickness: 0.08, bucket: 'structureMetal', ridge: null, relief: TIN };
   sink.placed(0, 0, 0, D / 2 + pd / 2 - 0.05, () => emitRoof(sink, roofGeometry(pw, pd + 0.1, py, pr), pr, roofPaint));
   {
     const rise = (pw / 2) * Math.tan(20 * Math.PI / 180);
@@ -958,7 +984,10 @@ const woolBarn: RegionalBuilder = (ctx) => {
  */
 function woolBarnDressing(sink: PartSink, frame: HouseFrame, W: number, D: number, H: number, baseH: number, tin: Rgb, look: () => number): void {
   const rg = frame.roof, y0 = frame.floors[0], wall = H - y0, doorW = Math.min(4.2, W * 0.36);
-  tinCovering(sink, rg, frame.spec.roof, frame.roofPatch, look, 3);
+  // (dome-detail-275) the covering's sheets in the shared relief's lapped courses (its own stream); the old covering's
+  // patch draws still made (three sheets a slope), so the barn's dressing after it lays as before
+  gableRelief(sink, frame, TIN);
+  for (let k = 0; k < 6; k++) { look(); look(); look(); if (look() < 0.35) look(); }
   // the ventilators on the ridge, one or two
   const vents = look() < 0.5 ? [0] : [-D * 0.25, D * 0.25];
   for (const z of vents) ridgeVentilator(sink, rg, z + (look() - 0.5) * 1.2, 1.5, 0.55, 0.75, shade(tin, 0.95));

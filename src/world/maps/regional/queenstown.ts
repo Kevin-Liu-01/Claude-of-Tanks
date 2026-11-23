@@ -9,7 +9,7 @@
 // each with its bullnose verandah, its brick chimney and its picket fence; and the stripped frames of abandoned ones.
 import { PartSink, faceBox, facePanel, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { DOME_MIN_SEGMENTS, smoothProfile } from './domes.ts';
-import { buildHouse, emitRoof, holedPolygon, recordBody, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, layRoofRelief, recordBody, reliefSlope, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
@@ -34,6 +34,13 @@ const ROOF_PAINT: readonly Rgb[] = [0x6e3a2e, 0x4a5e48, 0x9aa09c, 0x7a6458].map(
 const LACE = rgb(0xe6e0cc), ORE = rgb(0x7a4a32), COPPER = rgb(0x4f8a72);
 /** Rust on the west coast's iron: the bleed from the sheets' feet and laps, darker where it runs. */
 const RUST = rgb(0x6e3a24), RUST_DARK = rgb(0x4a2a1c);
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief, layRoofRelief): the west coast's corrugated iron
+ * everywhere, the mine's and the town's alike, in its lapped courses of 8-foot sheets (2.4 m, lapped a corrugation and a
+ * half), two corrugations of each sheet drawn in relief so the profile reads at range; a sheet now and then a cleaner
+ * replacement or rust run down from its lap.
+ */
+const IRON: RoofRelief = { kind: 'sheet', ribs: 2 };
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -268,7 +275,7 @@ const headframe: RegionalBuilder = (ctx) => {
         try {
           frame = buildHouse(sink, {
             w: hw, d: hd, plinth: null, storeys: [{ h: hy - 0.4, wall: 'structureMetal' }],
-            roof: { kind: 'gable', pitchDeg: 22, eave: 0.3, verge: 0.25, thickness: 0.06, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'structureMetal',
+            roof: { kind: 'gable', pitchDeg: 22, eave: 0.3, verge: 0.25, thickness: 0.06, bucket: 'roof', ridge: 'saddle', relief: IRON }, gableBucket: 'structureMetal',
             openings, chimneys: [], gutters: null, verge: null, reveal: 0.12,
           }, {
             window: (s2, face, o, y0) => {
@@ -424,7 +431,8 @@ const concentrator: RegionalBuilder = (ctx) => {
   const W = Math.max(8, R.W - 0.6), D = Math.max(12, R.D - 0.6);
   const sheet = pick(rng, IRON_SHEET);
   const steps = [[1.0, 15.0], [0.66, 10.5], [0.33, 6.5]] as const;
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
+  // (dome-detail-275) the sections', the monitors' and the crusher house's iron in relief
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle', relief: IRON };
   const tan14 = Math.tan(14 * Math.PI / 180);
   const cut = 0.2, back = 0.15;
   const glaze = (f: Face, c: CutRect, bar: Rgb, pitch = 1.3) => cutLight(sink, f, c, bar, back, pitch);
@@ -599,7 +607,7 @@ const hotel: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.08, bucket: CONCRETE }, storeys: [{ h: 4.0, wall: BRICK }, { h: 3.6, wall: BRICK }],
-      roof: { kind: 'hip', pitchDeg: 24, eave: 0.6, verge: 0.6, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      roof: { kind: 'hip', pitchDeg: 24, eave: 0.6, verge: 0.6, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: IRON }, // (dome-detail-275) its iron in relief
       gableBucket: BRICK, openings, chimneys: [{ x: W * 0.28, z: -D * 0.2, sx: 0.6, sz: 0.6, above: 0.9, bucket: BRICK, cap: 'slab' }, { x: -W * 0.28, z: -D * 0.2, sx: 0.6, sz: 0.6, above: 0.9, bucket: BRICK, cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.26, rafters: null,
     }, dialectOf(rng, trim, rgb(0x4a3a2e), 0.45, true));
@@ -645,7 +653,8 @@ const hotel: RegionalBuilder = (ctx) => {
       sink.member('structureMetal', [f.origin[0] + u, yTop - 0.55, f.origin[2] + depth - 0.06], [f.origin[0] + u + side * 0.5, yTop - 0.04, f.origin[2] + depth - 0.06],
         0.05, 0.04, [0, 0, 1], { ...lo, exposed: true }, 0);
     }
-    const verandaRoof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.15, verge: 0.15, thickness: 0.06, bucket: 'structureMetal' };
+    // (dome-detail-275) the verandah's painted iron in relief
+    const verandaRoof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.15, verge: 0.15, thickness: 0.06, bucket: 'structureMetal', relief: IRON };
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, 7.8, verandaRoof), verandaRoof, roofPaint));
     // the name board over the verandah: a cream ground, the name in dark capitals (round 3: two dark bars read as a
     // blank board), a dark rule round it
@@ -676,7 +685,8 @@ const powerHouse: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('back', 0, W, { ...tall, avoid: [[-2.2, 2.2]] })) openings.push({ ...o, arch: {} });
     // (dome-detail-275) a tall light either side of the engine door
     for (const o of windowRhythm('front', 0, W, { ...tall, avoid: [[-3.4, 3.4]] })) openings.push({ ...o, arch: {} });
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.45, verge: 0.35, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
+    // (dome-detail-275) the hall's and the monitor's iron in relief
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.45, verge: 0.35, thickness: 0.08, bucket: 'roof', ridge: 'saddle', relief: IRON };
     const sash = rgb(0x3a3c3e);
     // (dome-detail-275) the cast-iron lights of a works: six-pane sashes on a concrete sill, the round head glazed over the
     // springing transom (the front's new lights draw their panes from the look stream)
@@ -851,6 +861,19 @@ const engineShed: RegionalBuilder = (ctx) => {
       for (const u of doors) lights.push({ face: 0, u0: u - dw / 2, u1: u + dw / 2, y0: 0.3, y1: 0.3 + doorH });
       rustSkin(sink, -W / 2, 0.3, -Dh / 2, W / 2, H, Dh / 2, sheet, look, lights);
       const rg = frame.roof, tanP = Math.tan(18 * Math.PI / 180);
+      // (dome-detail-275) the shed's iron in relief over both slopes (hall.ts lays the slab: eave 0.4, verge 0.3), its
+      // translucent roof lights (every other bay, hall.ts) left open
+      {
+        const X = rg.s + 0.39, Z = rg.halfD + 0.3, yE = rg.topAt(X, 0) ?? H, bays = Math.max(2, Math.round(Dh / 5));
+        for (const s of [-1, 1]) {
+          const holes: Array<{ x0: number; x1: number; z0: number; z1: number }> = [];
+          for (let k = 0; k < bays; k += 2) {
+            const x0 = s > 0 ? 0.6 : -(W / 2 - 0.15), x1 = s > 0 ? W / 2 - 0.15 : -0.6;
+            holes.push({ x0, x1, z0: -Dh / 2 + (k + 0.25) * Dh / bays, z1: -Dh / 2 + (k + 0.75) * Dh / bays });
+          }
+          layRoofRelief(sink, IRON, [reliefSlope([s * X, yE, -Z], [s * X, yE, Z], [-s * X, rg.ridgeTopY - yE, 0])], { bucket: 'roof', holes });
+        }
+      }
       for (const u of doors) {
         for (const rx of [-0.53, 0.53]) sink.span('structureMetal', u + rx - 0.04, 0.3, Dh / 2 - 6.0, u + rx + 0.04, 0.42, Dh / 2 + 1.2, { colour: STEEL, decor: true });
         // (dome-detail-275) the soot up the gable over each road door, darkest at its head
@@ -883,6 +906,9 @@ const engineShed: RegionalBuilder = (ctx) => {
       for (const x of [lx0, lx1]) prismOut(sink, 'structureMetal', [[x, lH, lz0], [x, lH, lz1], [x, lR, lz1]], [x === lx0 ? 1 : -1, 0, 0], 0.1, { colour: ls, decor: true });
       const sl = Math.hypot(lR - lH, lt), n: Vec3 = [0, lt / sl, -(lR - lH) / sl];
       sink.member('roof', [lcx, lR + 0.02, lz1], [lcx, lH - 0.08, lz0 - 0.28], lw + 0.2, 0.07, n, { decor: true, exposed: true }, 0);
+      // (dome-detail-275) the skillion's iron in relief over the member's top, from its eave up to the hall's wall
+      const lo: Vec3 = [lcx, lH - 0.08 + n[1] * 0.07, lz0 - 0.28 + n[2] * 0.07], hw2 = (lw + 0.2) / 2;
+      layRoofRelief(sink, IRON, [reliefSlope([lo[0] - hw2, lo[1], lo[2]], [lo[0] + hw2, lo[1], lo[2]], [0, lR - lH + 0.1, lz1 - lz0 + 0.28], 0.04)], { bucket: 'roof' });
       recordBody(sink, lcx, (lz0 + lz1) / 2, lw, lt, lH, 'structureMetal');
       const chx = lx0 + 1.1, chz = lz1 - 0.8;
       sink.span(BRICK, chx - 0.3, 0.3, chz - 0.35, chx + 0.3, lR + 1.4, chz + 0.35);
@@ -1011,7 +1037,7 @@ const cottageRow: RegionalBuilder = (ctx) => {
       try {
         frame = buildHouse(sink, {
           w: w - 0.05, d, plinth: { h: 0.5, out: 0.04, bucket: CONCRETE }, storeys: [{ h: 2.7, wall: 'structureWood' }],
-          roof: { kind: 'hip', pitchDeg: 26, eave: 0.4, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle' },
+          roof: { kind: 'hip', pitchDeg: 26, eave: 0.4, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle', relief: IRON }, // (dome-detail-275) its iron in relief
           gableBucket: 'structureWood', openings, chimneys: [{ x: w * 0.22, z: -d * 0.12, sx: 0.55, sz: 0.7, above: 0.9, bucket: BRICK, cap: 'slab' }],
           gutters: null, verge: null, reveal: 0.1,
         }, dialectOf(rng, trim, shade(paint, 0.8), 0.4));

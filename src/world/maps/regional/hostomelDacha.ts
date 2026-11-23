@@ -15,7 +15,7 @@
 // under the front window, the winter's firewood stacked under the eave; galvanised or painted gutters and downpipes on a
 // house whose eaves are clear of its veranda; the veranda's lights each in a casing; firewood against the garden shed.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type HoleRect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, wallPolygon, windowRhythm, type HoleRect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, hollyhocks, tvAerial, woodpile } from './dressing.ts';
 import { doorCanopy, facadeOn, facadeRng, plinthPaint, roofDormers, type CrestStyle } from './facade.ts';
@@ -27,6 +27,16 @@ const DACHA_PAINT: readonly Rgb[] = [0x4f7d4a, 0x3f6f9a, 0xc9a24a, 0xd9cfae, 0x7
 /** Their roofs: asbestos-cement sheet greys, sheet painted green, red or brown. */
 const DACHA_SHEET: readonly Rgb[] = [0x9aa0a0, 0x878c8a, 0x4f7a52, 0x8a3a30, 0x6a4a3a].map(rgb);
 const DACHA_TRIM = rgb(0xe3ded2), DACHA_PLANK = rgb(0x7a6048);
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief): shifer, the asbestos-cement sheets 1.75 x 1.13 m lapped
+ * a course (the kit's roof print carries their waves; on a sheet painted in the cooperative's greys two of its waves drawn
+ * in relief), or painted roofing steel in seamed panels 0.7 m wide in courses of 1.4 m (as tselina.ts).
+ */
+const SHIFER: RoofRelief = { kind: 'sheet', gauge: 1.6, pitch: 1.0, ribs: 0 };
+const SHIFER_GREY: RoofRelief = { kind: 'sheet', gauge: 1.6, pitch: 1.0, ribs: 2 };
+const SEAMED: RoofRelief = { kind: 'sheet', gauge: 1.35, pitch: 0.68, ribs: 0 };
+/** (dome-detail-275) A dacha roof's covering: shifer in the kit's roof, else the livery's own (its greys asbestos sheet). */
+const dachaRelief = (sheet: boolean, livery: Rgb): RoofRelief => (!sheet ? SHIFER : livery === DACHA_SHEET[0] || livery === DACHA_SHEET[1] ? SHIFER_GREY : SEAMED);
 /**
  * The tsokol's coats (grey-brown, oxblood, blue-grey, olive), as multipliers over the render's own albedo (~0.54
  * linear: kolkhoz.ts PRYZBA), so the band reads as dark as the paint is.
@@ -199,7 +209,7 @@ export const dacha: RegionalBuilder = (ctx) => {
       { face: 'front', storey: 0, kind: 'window', u: (W - 0.1) * 0.2, w: 0.9, y0: 0.85, h: 1.2 },
       ...windowRhythm('left', 0, D - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 2.4, margin: 1.0, max: 2 }),
       ...windowRhythm('right', 0, D - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 2.4, margin: 1.0, max: 2 })];
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: pitch, eave: 0.35, verge: 0.32, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: 'saddle' };
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: pitch, eave: 0.35, verge: 0.32, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: 'saddle', relief: dachaRelief(sheet, livery) };
   const attic: WindowStyle = { frame: DACHA_TRIM, frameWidth: 0.06, frameOut: 0.03, bars: 'two', surround: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: DACHA_TRIM }, sill: null, shutters: null };
   // the carved verge's towel board hangs a metre from the apex: only over a gable whose attic light it clears
   const rise = (W - 0.1) / 2 * Math.tan(pitch * Math.PI / 180);
@@ -265,7 +275,7 @@ export const dacha: RegionalBuilder = (ctx) => {
   });
   // the veranda: a body of its own under a lean-to rising to the house wall (its local +x out from the house)
   const vH = 2.2, vPlinth = 0.4;
-  const vRoof: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.25, verge: 0.2, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: null };
+  const vRoof: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.25, verge: 0.2, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: null, relief: dachaRelief(sheet, livery) };
   const vLen = sideways ? D : W;
   const vOpen: Opening[] = [
     { face: 'front', storey: 0, kind: 'door', u: sideways ? 0 : (side > 0 ? -1 : 1) * (vD / 2 - 0.6), w: 0.82, y0: 0, h: 1.95 },
@@ -369,7 +379,7 @@ export const gardenShed: RegionalBuilder = (ctx) => {
   const fp = footprint(ctx);
   const W = Math.max(1.8, fp.w - 0.06), D = Math.max(1.6, fp.d - 0.06), h = 2.0 + rng() * 0.25;
   const sheetWall = rng() < 0.3, livery = pick(rng, DACHA_SHEET);
-  const roof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.2, verge: 0.15, thickness: 0.06, bucket: 'structureMetal', ridge: null };
+  const roof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.2, verge: 0.15, thickness: 0.06, bucket: 'structureMetal', ridge: null, relief: dachaRelief(true, livery) };
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const doorU = (rng() - 0.5) * Math.max(0, W - 1.2);
     const frame = buildHouse(sink, {

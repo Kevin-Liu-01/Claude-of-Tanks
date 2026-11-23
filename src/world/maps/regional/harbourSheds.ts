@@ -5,7 +5,8 @@
 // Each kit file keeps one re-pointing line; a builder that needs the kit's own joinery takes its state and dialect from
 // the kit's call (no import back into the kit).
 import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
+import { layRoofRelief, type ReliefOptions, type RoofRelief } from './roofRelief.ts';
 import { doorUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { archHead } from './sarajevoParts.ts';
@@ -29,11 +30,58 @@ const BASKETS: readonly Rgb[] = [0xc0392b, 0x2e6fb8, 0x3a9a5a, 0xd8a028].map(rgb
 const ENGINE: readonly Rgb[] = [0x2f6a4a, 0xa83a2a, 0x5a6064].map(rgb);
 /** (dome-detail-275) the fish crates' plastic: red, blue, green, yellow */
 const CRATES: readonly Rgb[] = [0xb8352a, 0x2e62a8, 0x3a8a52, 0xd0a428].map(rgb);
-/** (dome-detail-275) one sheet's weathering in a textured sheet covering: its grey, rusted through, or a new one put in */
+/**
+ * (dome-detail-275) one sheet's weathering in a textured sheet covering: its grey, rusted, or a new one put in. (The roof
+ * sweep: the wear kept within about ±12 % of the covering's tone, roofRelief.ts's rule; a rusted sheet read as an orange
+ * band.) As many draws as before.
+ */
 function sheetTone(look: () => number): EmitOptions {
   const r = look();
-  return { decor: true, shade: 0.84 + look() * 0.2, ...(r < 0.16 ? { tint: [0.9, 0.74, 0.6] as Rgb } : r < 0.24 ? { shade: 1.16, tint: [0.96, 1, 1.04] as Rgb } : {}) };
+  return { decor: true, shade: 0.9 + look() * 0.16, ...(r < 0.16 ? { tint: [1.04, 0.95, 0.88] as Rgb } : r < 0.24 ? { shade: 1.1, tint: [0.98, 1, 1.03] as Rgb } : {}) };
 }
+
+/**
+ * (dome-detail-275, the roof sweep) A lean-to's covering in relief (roofRelief.ts): house.ts leanTo and vernacular.ts
+ * veranda lay their shed slab smooth and take no RoofRelief, so the kit lays it here over the same slab's top, in the
+ * shed's own frame (house.ts placeShed: +x downhill, out of `face`). `u0`..`u1` the lean-to's run along the wall, `from`
+ * and `depth` its high and low lines out from it (leanTo's), `shed` the shed leanTo returned, `roof` its eave, verge and
+ * thickness. Returns the triangles laid.
+ */
+export function leanToRelief(sink: PartSink, face: Face, u0: number, u1: number, depth: number, shed: { rg: RoofGeometry }, roof: { eave: number; verge: number; thickness: number },
+  relief: RoofRelief, o: ReliefOptions, from = 0): number {
+  const { s, halfD, tanP, eaveY } = shed.rg, e = roof.eave, D = halfD + roof.verge, t = roof.thickness;
+  const lo = eaveY - e * tanP, hi = eaveY + 2 * s * tanP + e * tanP, l = Math.hypot(tanP, 1), n: Vec3 = [tanP / l, 1 / l, 0];
+  const pts = ([[s + e, lo, D], [s + e, lo, -D], [-s - e, hi, -D], [-s - e, hi, D]] as Vec3[]).map((p): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2]]);
+  const mid = facePoint(face, (u0 + u1) / 2, 0, from + (depth - from) / 2);
+  // a painted sheet's livery weathered down the slope as emitRoof weathers the slab under it
+  const c = o.base?.colour, opts: ReliefOptions = c && !o.base?.colourAt ? { ...o, base: { ...o.base, colourAt: weatheredSheet(c, lo, eaveY + 2 * s * tanP + t) } } : o;
+  // a lean-to is seen low and near, over a wall: twice a roof's default allowance a square metre (the default coarsened a
+  // veranda's sheets to two plain plates)
+  const own: RoofRelief = relief.budget ? relief : { ...relief, budget: Math.min(900, Math.max(240, Math.round(4 * (s + e) * D * 12))) };
+  let laid = 0;
+  sink.placed(Math.atan2(-face.out[2], face.out[0]), mid[0], 0, mid[2], () => { laid = layRoofRelief(sink, own, [{ pts, n, top: 0.04 }], opts); });
+  return laid;
+}
+
+/**
+ * (dome-detail-275, the roof sweep) house.ts's weathering of a painted sheet roof down its slope (weatheredSheet, not
+ * exported): the paint faded and chalky toward the ridge, rust and grime along the eave; for a lean-to's relief to match
+ * its slab.
+ */
+function weatheredSheet(c: Rgb, lo: number, hi: number): (p: Vec3) => Rgb {
+  const span = Math.max(0.5, hi - lo), grey = (c[0] + c[1] + c[2]) / 3, R: Rgb = [0.36, 0.2, 0.12];
+  const step = (a: number, b: number, x: number) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  return (p) => {
+    const t = Math.min(1, Math.max(0, (p[1] - lo) / span)), fade = 0.22 * step(0.4, 1, t), rust = 0.42 * (1 - step(0, 0.45, t)), lift = 1 + fade * 0.35;
+    const f = (k: number) => (c[k] + (grey - c[k]) * fade) * lift;
+    return [f(0) + (R[0] - f(0)) * rust, f(1) + (R[1] - f(1)) * rust, f(2) + (R[2] - f(2)) * rust];
+  };
+}
+
+/** (dome-detail-275, the roof sweep) the delta's nipa atap in relief: its rows of leaf panels (pawid) a hand and more apart */
+export const NIPA_RELIEF: RoofRelief = { kind: 'thatch', gauge: 0.28 };
+/** (dome-detail-275, the roof sweep) corrugated iron in relief: sheets 2.4 m long lapped up the slope, 0.8 m cover wide */
+export const TIN_RELIEF: RoofRelief = { kind: 'sheet', gauge: 2.2, pitch: 0.8, ribs: 2 };
 
 // ------------------------------------------------------------------------------------------------ sheets in relief
 
@@ -99,7 +147,8 @@ export function sheetCourses(sink: PartSink, bucket: RegionalBucket, sl: SheetSl
 
 // ------------------------------------------------------------------------------------------------ the Mekong
 
-const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
+// (dome-detail-275, the roof sweep) the nipa in its rows in relief (NIPA_RELIEF); the tole keeps its sheetCourses
+const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa', relief: NIPA_RELIEF });
 const tole = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
 /** A plastic fish basket or a foam ice box on the ground or a deck at y. Dressing. */
@@ -232,8 +281,9 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   // rafters against the squalls, two more along the ridge binding its fold, a newer panel of greener leaf let in and, on
   // some, a blue plastic sheet tied over a leak; on a sheet roof, its sheets in their courses with their laps, a rusted
   // one, a new one put in
-  const xe = rg.s + roof.eave - 0.14, cosP = 1 / Math.hypot(1, rg.tanP);
-  const on = (x: number, z: number, r: number): Vec3 => [x, (rg.topAt(x, z) ?? eaveY) + r * 0.55, z];
+  // (the roof sweep) on the nipa they lie on its rows' butts, a hand over the slab (roofRelief.ts thatch: 7 cm proud)
+  const xe = rg.s + roof.eave - 0.14, cosP = 1 / Math.hypot(1, rg.tanP), onRows = thatched ? 0.065 : 0;
+  const on = (x: number, z: number, r: number): Vec3 => [x, (rg.topAt(x, z) ?? eaveY) + r * 0.55 + onRows / cosP, z];
   const slopeN = (sd: number): Vec3 => [sd * rg.tanP * cosP, cosP, 0];
   if (thatched) {
     const poles = Math.max(2, Math.round(D / 2.6)), cane = { decor: true } as const;
@@ -467,7 +517,9 @@ export function dalmatianBoathouse<S extends { door: Rgb; window: WindowStyle; l
   const base = kit.dialect({ ...kit.st, litShare: 0 });
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'stone' }],
-    roof: { kind: 'gable', pitchDeg: 22, eave: 0.2, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round' }, gableBucket: 'stone',
+    // (dome-detail-275, the roof sweep) its canal tiles in relief (roofRelief.ts), open over a war-stripped patch; an
+    // allowance over its plan's (the default coarsened the rolls to a grid) so the rolls read as rolls
+    roof: { kind: 'gable', pitchDeg: 22, eave: 0.2, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round', relief: { kind: 'canal', budget: 1300 } }, gableBucket: 'stone',
     openings, chimneys: [], gutters: null, verge: null, reveal: 0.42,
   }, {
     ...base,

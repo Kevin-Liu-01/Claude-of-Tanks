@@ -18,7 +18,7 @@
 // What the region never had is not built: no verge boards (the gables are brick fire walls), no window boxes. The
 // horse-head walls, the gate pediments and the tiger windows stay the kit's own (the shared dormer, 1.3 m by 1.25 m, would
 // stand over a lane house's ridge).
-import { LocalFrame, PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { LocalFrame, PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
   DAMP_EDGE_BREAKS, buildHouse, holedPolygon, leanTo, recordBody, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening,
   type RoofSpec, type StoreySpec,
@@ -27,6 +27,7 @@ import { doorUnit, openShop, windowUnit, type DoorStyle, type WindowStyle } from
 import { facadeOn, facadeRng, paintBand, plinthPaint, type HeadStyle } from './facade.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
 import type { RegionalBuildContext } from './types.ts';
+import { layRoofRelief, type ReliefHole, type ReliefPlane, type RoofRelief } from './roofRelief.ts';
 import {
   AWNINGS, CASEMENT, CHAR, GILT, LACQUER, RED_BRICK, SIGN_BOARDS, TEAK, TILE_COPING, archOutline, brickBands, breach, choose, clampTo,
   horseHeadWall, lantern, laundryPoles, nameBoard, pocks, raisedRidge, roofHole, rowFill, sandbags, signboard, soot, streetLifeRng, uvOffset, wallAd,
@@ -59,6 +60,30 @@ function along<T>(sink: PartSink, y: number, zc: number, body: () => T): T {
   let out!: T;
   sink.placed(Math.PI / 2, 0, y, zc, () => { out = body(); });
   return out;
+}
+
+/**
+ * (dome-detail-275, the roof sweep) The lanes' grey canal tiles laid in relief (roofRelief.ts): the cover tiles' rolls a
+ * hand apart down each slope of a house's gable over the pan courses, their mouths dark at the eave; laid over the roof
+ * buildHouse emitted (its frame `frame`, built `along` the row about `hc`), clear of the war's stripped patch and of what
+ * stands in the roof or has fallen through it (`open`: a tiger window, a roof fallen in; in the row's frame, x along it).
+ */
+const CANAL: RoofRelief = { kind: 'canal', pitch: 0.3 };
+const PENT: RoofRelief = { kind: 'canal', pitch: 0.26 };
+function laneTiles(sink: PartSink, frame: HouseFrame, roof: RoofSpec, hc: number, open: readonly ReliefHole[]): void {
+  const rg = frame.roof, b = frame.bodies[frame.bodies.length - 1];
+  const rcx = (b.x0 + b.x1) / 2, rcz = (b.z0 + b.z1) / 2;
+  const X = rg.s + roof.eave - 1e-4, Z = rg.halfD + roof.verge, top = (x: number, z: number) => rg.topAt(x, z) ?? rg.eaveY;
+  const planes = [-1, 1].map((sx): ReliefPlane => {
+    const n = Math.hypot(rg.tanP, 1);
+    return { pts: [[sx * X, top(sx * X, -Z), -Z], [sx * X, top(sx * X, Z), Z], [0, top(0, Z), Z], [0, top(0, -Z), -Z]] as Vec3[], n: [sx * rg.tanP / n, 1 / n, 0], top: 0.12 };
+  });
+  const holes: ReliefHole[] = [];
+  const p = frame.roofPatch;
+  if (p) holes.push({ x0: Math.min(p.side * p.x0, p.side * p.x1), x1: Math.max(p.side * p.x0, p.side * p.x1), z0: p.z0, z1: p.z1 });
+  // the row's (x, z) is the house's (z, hc - x) (along: a quarter turn), and the roof's the house's less its centre
+  for (const o of open) holes.push({ x0: hc - o.z1 - rcx, x1: hc - o.z0 - rcx, z0: o.x0 - rcz, z1: o.x1 - rcz });
+  along(sink, 0, hc, () => sink.placed(0, rcx, 0, rcz, () => { layRoofRelief(sink, CANAL, planes, { bucket: 'roof', holes }); }));
 }
 
 /** The tarred wash over a body's plinth (facade craft, desktop; facade.ts plinthPaint), in the house's own frame. */
@@ -246,6 +271,7 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
     const keep: Array<{ u0: number; u1: number; y0: number; y1: number }> = [];
     const plinthRuns: Array<[number, number]> = [];
     let from = -W / 2;
+    const dormers: ReliefHole[] = [];
     for (let k = 0; k < n; k++) {
       const u = -W / 2 + uw * (k + 0.5);
       shikumenGate(sink, front, u, gw, gh, ped, look, burnt, T);
@@ -256,6 +282,7 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       if (look() < 0.5) {
         const zd = zc + s * 0.42, yb = top(zd + 0.35 - zc) - 0.3, yt = yb + 1.45;
         sink.span(wall, u - 0.62, yb, zd - 0.9, u + 0.62, yt, zd + 0.35, SHADOWED);
+        dormers.push({ x0: u - 0.64, x1: u + 0.64, z0: zd - 0.92, z1: zd + 0.37 });
         sink.prism('roof', [[u - 0.8, yt, zd - 1.0], [u + 0.8, yt, zd - 1.0], [u, yt + 0.55, zd - 1.0]], [0, 0, 1], 1.5, SHADOWED);
         const dorm: Face = { origin: [0, 0, zd + 0.35], u: [1, 0, 0], out: [0, 0, 1], width: 1.24 };
         windowUnit(sink, dorm, u, yb + 0.55, 0.8, 0.75, { ...CASEMENT, bars: 'cross', sill: null }, look, 0.3);
@@ -312,8 +339,9 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
     if (look() < 0.12) sink.dressing(mobile, () => breach(sink, front, (look() - 0.5) * (W - 3), 1.6, 0.6, look));
     if (burnt) {
       for (let k = 0; k < n; k++) soot(sink, front, -W / 2 + uw * (k + 0.5) - 0.9, -W / 2 + uw * (k + 0.5) + 0.9, gh, courtH);
-      if (look() < 0.6) roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look);
+      if (look() < 0.6) dormers.push(roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look));
     }
+    laneTiles(sink, frame, roof, zc, dormers);
   });
   return sink.finish();
 }
@@ -440,7 +468,7 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
     // (looks 227) the pent roof over the shops (the yaoyan of a Jiangnan shop front): a canal-tiled lean-to off the timber
     // front under its first casements, carried on the front's brackets (dressing: the house keeps the collision)
     leanTo(sink, { face: up, u0: -W / 2 + 0.05, u1: W / 2 - 0.05, depth: 0.72, highY: s1 + 0.44,
-      roof: { pitchDeg: 22, eave: 0.12, verge: 0, thickness: 0.07, bucket: 'roof', decor: true }, posts: null, plate: null });
+      roof: { pitchDeg: 22, eave: 0.12, verge: 0, thickness: 0.07, bucket: 'roof', decor: true, relief: PENT }, posts: null, plate: null });
     for (let k = 0; k < n; k++) {
       const u = -W / 2 + uw * (k + 0.5);
       openShop(sink, shop, u, openY, ow, openH, { wall: T, depth: roomD, width: uw - 0.24, height: s1 - openY }, {
@@ -487,7 +515,8 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
     // (on the timber front's boards, 2 cm out of the wall)
     const upBoards: Face = { ...up, origin: [0, 0, zf + 0.02] };
     sink.dressing(mobile, () => pocks(sink, upBoards, -W / 2 + 0.3, W / 2 - 0.3, s1 + 0.2, eaveY - 0.2, (bank === 'zhabei' ? 12 : 4) + Math.floor(look() * 8), look, keepUp, 'plaster3'));
-    if (burnt && look() < 0.7) roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look);
+    const fallen = burnt && look() < 0.7 ? [roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look)] : [];
+    laneTiles(sink, frame, roof, (zb + zr) / 2, fallen);
   });
   return sink.finish();
 }

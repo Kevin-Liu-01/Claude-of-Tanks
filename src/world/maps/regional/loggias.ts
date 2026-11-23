@@ -17,7 +17,9 @@ import type { RegionalBuildContext } from './types.ts';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
-const canalHip = (pitch: number, eave: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave, verge: eave, thickness: 0.15, bucket: 'roof', ridge: 'round' });
+// (dome-detail-275, the roof closeout) the canal tiles in their rolls and courses, in relief (roofRelief.ts): a small roof
+// seen close across the square, so an allowance over the default's (which coarsened its rolls to two-tile strips)
+const canalHip = (pitch: number, eave: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave, verge: eave, thickness: 0.15, bucket: 'roof', ridge: 'round', relief: { kind: 'canal', budget: 900 } });
 const OAK: readonly Rgb[] = [0x5e4a36, 0x6a523a, 0x54412f].map(rgb);
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const neg = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];

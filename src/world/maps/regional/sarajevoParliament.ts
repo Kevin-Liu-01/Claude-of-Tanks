@@ -13,7 +13,7 @@
 import { holedBox, recordBody, type HoleRect } from './house.ts';
 import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import type { RegionalBuildContext } from './types.ts';
-import { CHAR, IRON, clampTo, fillOf, sandbagWindow, shellPocks, sootBand, unhcrSheet } from './sarajevoParts.ts';
+import { CHAR, IRON, clampTo, deckPlane, feltDeck, fillOf, sandbagWindow, shellPocks, sootBand, under, unhcrSheet } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -278,6 +278,10 @@ export function parliament(ctx: RegionalBuildContext): RegionalParts {
     const cz = (tz0 + tz1) / 2, plant = rect(-W * 0.2, cz - 1.8, W * 0.2, cz + 1.8);
     sweep(sink, concrete, plant, [[0, top + 0.6], [0, top + 3.0], [0.12, top + 3.0], [0.12, top + 3.2], [0, top + 3.2]]);
     deck(sink, concrete, plant, top + 3.2);
+    // (dome-detail-275, the roof sweep) the deck inside the parapet round the plant room, and the plant room's roof, under
+    // felt in relief
+    feltDeck(sink, concrete, [deckPlane(insetPlan(plan, 0.12), top + 0.6)], under(-W * 0.2, cz - 1.8, W * 0.2, cz + 1.8));
+    feltDeck(sink, concrete, [deckPlane(insetPlan(plant, 0.12), top + 3.2)]);
     // the assembly wing in front (dome-detail-275; the work list: "its podium a box"): the upper storey carried over the
     // street on a colonnade of pilotis, the ground storey's glazed front set back under it with the entrance's canopy
     // and steps; the upper storey's grid of windows along the front and down the sides over the ground storey's, each
@@ -336,6 +340,12 @@ export function parliament(ctx: RegionalBuildContext): RegionalParts {
         for (const fc of planFaces(hall)) if (fc.width > 3) for (let y = top + 0.55; y < top + 1.25; y += 0.24) faceBox(sink, 'structureMetal', fc, 0, y, 0.04, fc.width - 0.8, 0.05, 0.06, { colour: IRON, decor: true, fine: true });
       }
       const bx = (look() < 0.5 ? -1 : 1) * (hx + (W / 2 - hx) * (0.35 + look() * 0.3)), bz = (wz0 + wz1) / 2 + (look() - 0.5) * wd * 0.3, br = 0.7 + look() * 0.5;
+      // (dome-detail-275, the roof sweep) the wing's roof inside its parapet under felt in relief, open round the breach
+      // and the clerestory; the clerestory's roof
+      const wingHoles = [{ x0: bx - br * 1.1 - 0.1, x1: bx + br * 1.1 + 0.1, z0: bz - br * 1.1 - 0.1, z1: bz + br * 1.1 + 0.1 }];
+      if (hz1 - hz0 > 1.6) wingHoles.push(...under(-hx, hz0, hx, hz1));
+      feltDeck(sink, concrete, [deckPlane(insetPlan(body, 0.24), top)], wingHoles);
+      if (hz1 - hz0 > 1.6) feltDeck(sink, concrete, [deckPlane(rect(-hx, hz0, hx, hz1), top + 1.85)]);
       sink.polygon('dark', Array.from({ length: 9 }, (_, j) => { const a = -j / 9 * Math.PI * 2, rr = br * (0.75 + look() * 0.3); return [bx + Math.cos(a) * rr, top + 0.01, bz + Math.sin(a) * rr] as Vec3; }), { decor: true });
       for (let j = 0; j < 4; j++) {
         const a = j * Math.PI / 2 + look(), s2 = 0.18 + look() * 0.2;

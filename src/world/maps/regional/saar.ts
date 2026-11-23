@@ -248,6 +248,12 @@ const blastFurnace: RegionalBuilder = (ctx) => {
         : [[cx1 + 0.3, ya, za], [cx1 + 0.3, yb, zb], [cx0 - 0.3, yb, zb], [cx0 - 0.3, ya, za]];
       sink.quad('structureMetal', c[0], c[1], c[2], c[3], { colour: shade(OXIDE, 0.85) });
       sink.quad('structureMetal', c[3], c[2], c[1], c[0], { colour: shade(OXIDE, 0.6), decor: true });
+      // (dome-detail-275, the roof sweep) its corrugated sheets in their lapped courses, open round the furnace's shell
+      // where it passes the roof (a lean allowance: the works stands at the cap; the stoves' plate courses paid for it)
+      const hr = fr * 0.9 + 0.3;
+      layRoofRelief(sink, { ...WORKS_SHEET, budget: 200 }, [reliefSlope([cx0 - 0.3, ya, za], [cx1 + 0.3, ya, za], [0, yb - ya, zb - za], 0.2)], {
+        bucket: 'structureMetal', base: { colour: shade(OXIDE, 0.85) }, holes: [{ x0: -hr, x1: hr, z0: fz - hr, z1: fz + hr }],
+      });
     }
     // the gables (each counter-clockwise seen from inside, its outer cap facing out)
     sink.prism('structureMetal', [[cx0, ch, cz1], [cx0, ch, cz0], [cx0, ridge, mid]], [1, 0, 0], 0.08, { colour: SHEET });
@@ -355,7 +361,9 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       sink.revolve('structureMetal', [sx, 0, stz], 'y', [[-0.4, sr * 0.97], ...ellipseCrown(sh, sr * 0.85, sr * 0.97), [sh + sr * 0.85, 0]], DOME_MIN_SEGMENTS,
         { ...plate, colour: STOVE });
       const st = plateProfile(dome, 2.4, false);
-      sink.revolve('structureMetal', [sx, 0, stz], 'y', st.profile, SEG,
+      // (dome-detail-275, the roof sweep's trade: the plate courses turned in the core's 24 sides, not 28, for the casting
+      // house's sheets in relief; the core stays inside every facet)
+      sink.revolve('structureMetal', [sx, 0, stz], 'y', st.profile, Math.min(SEG, DOME_MIN_SEGMENTS),
         { ...plate, colour: STOVE, decor: true, bandColour: shellTones(STOVE, st.kinds, look, sx, stz, sh, sh * 0.45) });
     }
     sink.pipe('structureMetal', [-(sr + 0.3), ringY, stz + sr * 0.9], [-(sr + 0.3) * 0.5, ringY, fz - ringR + 0.2], 0.55, PSEG, { ...plate, colour: OXIDE, decor: true, caps: true });

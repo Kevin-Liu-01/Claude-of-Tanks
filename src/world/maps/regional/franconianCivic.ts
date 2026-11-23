@@ -31,7 +31,7 @@
 import { PartSink, faceBox, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
   buildHouse, emitRoof, roofGeometry, storeyFaces, type FaceName, type HouseDialect, type HouseSpec, type Opening, type RoofGeometry, type RoofPatch,
-  type RoofSpec,
+  layRoofRelief, reliefSlope, type RoofRelief, type RoofSpec,
 } from './house.ts';
 import { dressedQuoin, facadeOn, roofDormers, trimRun, windowHead } from './facade.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -115,6 +115,19 @@ function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec
 
 /** The beavertails' gauge up the slope as the eye reads it (m; dome-detail-275). */
 const BIBER_GAUGE = 0.44;
+/**
+ * (dome-detail-275) The shared roof relief's plain tiles (house.ts RoofSpec.relief) at the beavertails' gauge: the roofs
+ * biberCourses never covered — the wall tower's and the keep's steep caps, the chapel, the palace range, the lanterns'
+ * little roofs.
+ */
+const BIBER: RoofRelief = { kind: 'tile', gauge: BIBER_GAUGE };
+/** (dome-detail-275) Tar felt (Teerpappe) in its laps: the works' engine house's low lean-to, too flat for tiles. */
+const PAPPE: RoofRelief = { kind: 'felt' };
+/**
+ * (dome-detail-275) The town hall's range in the shared relief, its beavertails at the eye's gauge for a roof seen whole
+ * (biberCourses' 0.64 there before), within the triangles those courses took: the range stands at the build cap.
+ */
+const RATHAUS_TILES: RoofRelief = { kind: 'tile', gauge: 0.64, budget: 720 };
 
 /**
  * The beavertail tiles in relief (dome-detail-275; the work list: "plain walls under a smooth roof"; the roof bar: roofs
@@ -267,7 +280,7 @@ const mauerturm: RegionalBuilder = (ctx) => {
   }
   // the wall walk's door on the back, at the first stage
   openings.push({ face: 'back', storey: 1, kind: 'door', u: 0, w: 0.95, y0: 0, h: 1.95 });
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: hoarding ? 0.12 : 0.3, verge: hoarding ? 0.12 : 0.3, thickness: 0.15, bucket: 'roof', ridge: 'round' };
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: hoarding ? 0.12 : 0.3, verge: hoarding ? 0.12 : 0.3, thickness: 0.15, bucket: 'roof', ridge: 'round', relief: BIBER };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.75, out: 0.14, bucket: 'stone' }, storeys: sts, roof,
     gableFramed: false, openings, chimneys: [], gutters: null, verge: null, reveal: 0.32,
@@ -323,7 +336,7 @@ const kapelle: RegionalBuilder = (ctx) => {
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.25, y0: 0, h: 2.5 }];
   for (const face of ['right', 'left'] as const) for (const u of [-D * 0.22, D * 0.18]) openings.push({ face, storey: 0, kind: 'window', u, w: 0.78, y0: 1.75, h: 1.95 });
   openings.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.7, y0: 1.9, h: 1.7 });
-  const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 56, eave: 0.38, verge: 0.22, thickness: 0.17, bucket: 'roof', ridge: 'round', hipFrac: 0.45 };
+  const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 56, eave: 0.38, verge: 0.22, thickness: 0.17, bucket: 'roof', ridge: 'round', hipFrac: 0.45, relief: BIBER };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.55, out: 0.1, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'stone' }], roof,
     gableBucket: 'stone', openings, chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.38,
@@ -609,7 +622,8 @@ const fabrik: RegionalBuilder = (ctx) => {
     for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
       sink.span(SW, sx * 0.76 - 0.02, ly + k * 0.16, -len / 2 + 0.2, sx * 0.76 + 0.02, ly + k * 0.16 + 0.06, len / 2 - 0.2, { colour: rgb(0x40403c), decor: true });
     }
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.25, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'round' };
+    // ((dome-detail-275) its tiles in relief)
+    const cap: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.25, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'round', relief: BIBER };
     sink.placed(0, 0, 0, 0, () => emitRoof(sink, roofGeometry(1.5, len, ly + 0.55, cap), cap));
     const look = ctx.variant, front = frame.faces.front;
     // (dome-detail-275) the string course across the front at the floor, either side of the gate's arch; the cornice at
@@ -639,6 +653,8 @@ const fabrik: RegionalBuilder = (ctx) => {
     const cy0 = sts[0].h + 0.5 - 0.3, cOut = 1.95;
     facing(sink, 'roof', [[dx, cy0, -pl - 0.3], [dx, cy0, pl + 0.3], [dx + cOut, cy0 - 0.45, pl + 0.3], [dx + cOut, cy0 - 0.45, -pl - 0.3]], [0.25, 1, 0], DECOR);
     facing(sink, 'roof', [[dx, cy0 - 0.1, -pl - 0.3], [dx, cy0 - 0.1, pl + 0.3], [dx + cOut, cy0 - 0.55, pl + 0.3], [dx + cOut, cy0 - 0.55, -pl - 0.3]], [-0.25, -1, 0], { decor: true, shade: 0.6 });
+    // ((dome-detail-275) the canopy's tiles in relief, up to the flashing at the wall)
+    layRoofRelief(sink, BIBER, [reliefSlope([dx + cOut, cy0 - 0.45, -pl - 0.3], [dx + cOut, cy0 - 0.45, pl + 0.3], [-cOut, 0.45, 0])], { bucket: 'roof' });
     facing(sink, SW, [[dx + cOut, cy0 - 0.55, -pl - 0.3], [dx + cOut, cy0 - 0.55, pl + 0.3], [dx + cOut, cy0 - 0.45, pl + 0.3], [dx + cOut, cy0 - 0.45, -pl - 0.3]], [1, 0, 0], { colour: rgb(0x4a3a2c), decor: true });
     for (const ez2 of [-1, 1]) {
       const z = ez2 * (pl + 0.3);
@@ -656,7 +672,8 @@ const fabrik: RegionalBuilder = (ctx) => {
   sink.placed(0, ex, 0, ez, () => {
     buildHouse(sink, {
       w: EW, d: ED, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 5.2, wall: 'stone' }],
-      roof: { kind: 'shed', pitchDeg: 14, eave: 0.3, verge: 0.25, thickness: 0.14, bucket: 'roof' },
+      // ((dome-detail-275) its felt in laps)
+      roof: { kind: 'shed', pitchDeg: 14, eave: 0.3, verge: 0.25, thickness: 0.14, bucket: 'roof', relief: PAPPE },
       openings: [{ face: 'left', storey: 0, kind: 'window', u: 0, w: 1.3, y0: 1.2, h: 3.2 }, { face: 'back', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.4 }],
       chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.34,
     }, dialect);
@@ -877,7 +894,7 @@ const bergfried: RegionalBuilder = (ctx) => {
   }
   // (the steep hipped cap straight over the corbel course, as the wall tower's: a cap stood inside a parapet walk read
   // open from above — bld-integrity)
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.4, verge: 0.4, thickness: 0.16, bucket: 'roof', ridge: 'round' };
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.4, verge: 0.4, thickness: 0.16, bucket: 'roof', ridge: 'round', relief: BIBER };
   const frame = buildHouse(sink, {
     w: S, d: S, plinth: { h: 0.9, out: 0.22, bucket: 'stone' }, storeys: sts, roof,
     gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.6,
@@ -935,7 +952,7 @@ const palas: RegionalBuilder = (ctx) => {
     }
   }
   for (const face of ['front', 'back'] as const) for (const i of [1, 2]) for (const u of [-D * 0.22, D * 0.22]) openings.push({ face, storey: i, kind: 'window', u, w: 1.0, y0: 0.85, h: 1.6 });
-  const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 54, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof', ridge: 'round', hipFrac: 0.4 };
+  const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 54, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof', ridge: 'round', hipFrac: 0.4, relief: BIBER };
   const cz = (ctx.bounds.maxZ + ctx.bounds.minZ) / 2 - R / 2;
   sink.placed(Math.PI / 2, 0, 0, cz, () => {
     const frame = buildHouse(sink, {
@@ -1057,7 +1074,7 @@ const rathaus: RegionalBuilder = (ctx) => {
     // (the ends' ground storeys blind behind the court walls)
     for (const u of [-D * 0.22, D * 0.22]) for (const i of [1, 2]) openings.push({ face, storey: i, kind: 'window', u, w: 1.2, y0: 0.85, h: 1.8 });
   }
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 54, eave: 0.45, verge: 0.12, thickness: 0.18, bucket: 'roof', ridge: 'round' };
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 54, eave: 0.45, verge: 0.12, thickness: 0.18, bucket: 'roof', ridge: 'round', relief: RATHAUS_TILES };
   sink.placed(Math.PI / 2, cx, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: D, d: L, plinth: { h: 0.5, out: 0.1, bucket: 'stone' }, storeys: sts, roof, gableBucket: render, openings,
@@ -1084,7 +1101,6 @@ const rathaus: RegionalBuilder = (ctx) => {
       window: (face, u, y, w, h) => windowUnit(sink, face, u, y, w, h, { ...cross, surround: null, head: null, sill: null }, look, 0.2),
     });
     dormer([-L * 0.36, -L * 0.22, L * 0.22, L * 0.36], -1);
-    biberCourses(sink, frame.roof, roof, look, frame.roofPatch, [7, 6], 0.25, 0.64);
     // the ridge turret (Dachreiter): its square foot on the ridge, the octagonal clock stage, the open bell stage on its
     // posts, the spire and its gilt ball and vane
     const rt = frame.roof.ridgeTopY, rz = L * (look() < 0.5 ? 0.17 : -0.17), r = 0.95;
@@ -1305,7 +1321,8 @@ const huettenkontor: RegionalBuilder = (ctx) => {
     for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
       sink.span(SW, sx * 0.61 - 0.02, ly + k * 0.15, l0 + 0.15, sx * 0.61 + 0.02, ly + k * 0.15 + 0.06, l1 - 0.15, { colour: rgb(0x40403c), decor: true });
     }
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.22, verge: 0.18, thickness: 0.1, bucket: 'roof', ridge: 'round' };
+    // ((dome-detail-275) its tiles in relief)
+    const cap: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.22, verge: 0.18, thickness: 0.1, bucket: 'roof', ridge: 'round', relief: BIBER };
     sink.placed(0, 0, 0, (l0 + l1) / 2, () => emitRoof(sink, roofGeometry(1.2, l1 - l0, ly + 0.5, cap), cap));
     biberCourses(sink, rg, hRoof, look, frame.roofPatch, [4, 3], 0.7);
     // the cupola furnace's stack through the left slope: its collar on the tiles, the iron shell in its hoops, the spark

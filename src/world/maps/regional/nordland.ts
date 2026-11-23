@@ -14,7 +14,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm,
-  type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec, type WallRect,
+  type HouseDialect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec, type StoreySpec, type WallRect,
 } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
@@ -234,6 +234,13 @@ function dialect(st: NordState): HouseDialect {
  * the eaves half a metre out, was 0.38; the verges 0.38, was 0.28.) */
 const skifer = (pitch: number, eave = 0.5, verge = 0.38, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
   ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.12, bucket: 'roof', ridge: 'saddle' });
+/**
+ * (dome-detail-275, the roof sweep) The rag slate laid in relief by the shared roof relief (house.ts RoofSpec.relief) on
+ * the roofs slateCourses does not draw (the houses', the store's hip, the fish plant's, the porches' and the lean-tos'):
+ * its courses a little deeper than the shared default, as the Nordland slate is laid, the war's stripped patch left open.
+ */
+const SKIFER: RoofRelief = { kind: 'slate', gauge: 0.32 };
+const laid = (roof: RoofSpec, budget?: number): RoofSpec => ({ ...roof, relief: budget === undefined ? SKIFER : { ...SKIFER, budget } });
 
 /** The granite footing every house stands on. */
 const footing = (h: number) => ({ h, out: 0.06, bucket: 'stone' as const });
@@ -331,7 +338,7 @@ function bislag(sink: PartSink, face: Face, u: number, depth: number, st: NordSt
   }, pl);
   for (const s of [-1, 1]) faceBox(sink, 'structureWood', front, s * (w / 2 - 0.07), pl + h / 2, 0.025, 0.14, h, 0.05, { colour: st.trim, decor: true }, 'caps');
   // its gable roof, the ridge running out from the wall
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.18, verge: 0.12, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+  const roof: RoofSpec = laid({ kind: 'gable', pitchDeg: 40, eave: 0.18, verge: 0.12, thickness: 0.1, bucket: 'roof', ridge: 'saddle' });
   const yaw = Math.atan2(out[0], out[2]);
   sink.placed(yaw, c[0], 0, c[2], () => emitRoof(sink, roofGeometry(w, depth, pl + h, roof), roof));
   const gable: Face = { origin: [front.origin[0], 0, front.origin[2]], u: face.u, out: face.out, width: w };
@@ -380,7 +387,7 @@ function hus(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): RegionalP
     }
     const frame = buildHouse(sink, {
       w: W, d: Db, plinth: footing(two ? 0.7 : 0.55), storeys: sts,
-      roof: skifer(two ? 33 + rng() * 5 : 37 + rng() * 6), gableBucket: st.paint, gableFramed: true, openings,
+      roof: laid(skifer(two ? 33 + rng() * 5 : 37 + rng() * 6)), gableBucket: st.paint, gableFramed: true, openings,
       // (round 5, wave 243: "no ... chimneys" from the chase) the stack broader and a third of a metre taller
       chimneys: [{ x: 0, z: (rng() - 0.5) * Db * 0.3, sx: 0.72, sz: 0.72, above: 1.1, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: { colour: st.trim, bucket: 'structureWood' }, reveal: 0.12, spall: null,
@@ -450,7 +457,7 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
     // (props census #15, Lane C co-hold 2026-10-16: a glazed leaf on the veranda's solid front laid its glass on the wood)
     steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
   }, y0);
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.22, verge: 0.22, thickness: 0.1, bucket: 'roof', ridge: null };
+  const roof: RoofSpec = laid({ kind: 'hip', pitchDeg: 22, eave: 0.22, verge: 0.22, thickness: 0.1, bucket: 'roof', ridge: null });
   const cc = facePoint(face, 0, 0, depth / 2);
   sink.placed(Math.atan2(face.out[0], face.out[2]) + Math.PI / 2, cc[0], 0, cc[2], () => emitRoof(sink, roofGeometry(depth, w, top, roof), roof));
 }
@@ -477,7 +484,7 @@ const landhandel: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: footing(0.6), storeys: [{ h: 3.0, wall: st.paint, framed: true }, { h: 2.6, wall: st.paint, framed: true }],
-      roof: skifer(26 + rng() * 4, 0.45, 0.45, 'hip'), openings,
+      roof: laid(skifer(26 + rng() * 4, 0.45, 0.45, 'hip')), openings,
       chimneys: [{ x: (rng() - 0.5) * W * 0.3, z: -D * 0.15, sx: 0.75, sz: 0.75, above: 1.15, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.12, spall: null,
     }, dialect(st));
@@ -632,6 +639,11 @@ const lager: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * (dome-detail-275, the roof sweep) The fish plant's relief allowances (desktop triangles): its hall's roof and the salting
+ * shed's pent. The plant stands near the 11,500 cap, so its slates coarsen to fit (the shared default would be 1,300 and 260).
+ */
+const FISK_RELIEF = [520, 120] as const;
+/**
  * The fish plant (fiskebruk, the fishery's plot): the two-storey processing hall on the quay, its wide doors and the loft
  * door with the hoist to the deck on piles before it, many windows for the work inside; the low salting shed against its
  * side; on the deck the fish boxes, the barrels and the derrick.
@@ -659,7 +671,7 @@ const fiskebruk: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('front', 1, W, { w: 0.9, h: 1.1, sill: 1.0, spacing: 1.9, margin: 1.0, max: 4, avoid: [[-1.4, 1.4]] })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: footing(0.5), storeys: [{ h: 3.2, wall: st.paint, framed: true }, { h: 2.6, wall: st.paint, framed: true }],
-      roof: skifer(28 + rng() * 4, 0.4, 0.3), gableBucket: st.paint, gableFramed: true, openings,
+      roof: laid(skifer(28 + rng() * 4, 0.4, 0.3), FISK_RELIEF[0]), gableBucket: st.paint, gableFramed: true, openings,
       chimneys: [{ x: W * 0.2, z: -D * 0.25, sx: 0.6, sz: 0.6, above: 0.9, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.1, spall: null,
     }, dialect(st));
@@ -681,7 +693,7 @@ const fiskebruk: RegionalBuilder = (ctx) => {
     sink.placed(Math.PI, -W / 2 - annex / 2, 0, sz0 + sd / 2, () => {
       const shed = buildHouse(sink, {
         w: annex, d: sd, plinth: { h: sill, out: 0.05, bucket: 'stone' }, storeys: [{ h: h0 - sill, wall: 'plaster2', framed: true }],
-        roof: { kind: 'shed', pitchDeg: pitchS, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' }, gableBucket: 'plaster2',
+        roof: laid({ kind: 'shed', pitchDeg: pitchS, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' }, FISK_RELIEF[1]), gableBucket: 'plaster2',
         openings: [{ face: 'right', storey: 0, kind: 'gate', u: -sd * 0.3, w: 1.8, y0: 0, h: Math.min(1.9, h0 - sill - 0.08) },
           { face: 'right', storey: 0, kind: 'loft', u: sd * 0.15, w: 0.55, y0: 1.0, h: 0.45 },
           { face: 'right', storey: 0, kind: 'loft', u: sd * 0.36, w: 0.55, y0: 1.0, h: 0.45 }],
@@ -828,7 +840,7 @@ const naust: RegionalBuilder = (ctx) => {
     sink.placed(0, W / 2 + store / 2, 0, sz0 + sd / 2, () => {
       const shed = buildHouse(sink, {
         w: store, d: sd, plinth: { h: 0.14, out: 0.04, bucket: 'stone', course: false }, storeys: [{ h: h0 - 0.14, wall: st.paint, framed: true }],
-        roof: { kind: 'shed', pitchDeg: pitchS, eave: 0.22, verge: 0.14, thickness: 0.1, bucket: 'roof' }, gableBucket: st.paint,
+        roof: laid({ kind: 'shed', pitchDeg: pitchS, eave: 0.22, verge: 0.14, thickness: 0.1, bucket: 'roof' }), gableBucket: st.paint,
         openings: [{ face: 'front', storey: 0, kind: 'door', u: store * 0.1, w: 0.85, y0: 0, h: h0 - 0.22 },
           { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.5, y0: 0.75, h: 0.42 }],
         chimneys: [], gutters: null, verge: null, reveal: 0.06, spall: null,

@@ -260,6 +260,16 @@ export function patchTin(look: () => number): Rgb {
 }
 
 /**
+ * (dome-detail-275, the roof sweep) A replaced roof sheet's tone against its covering's, within about 12 %: a sheet a
+ * little rustier and browner, one cleaner and fresher, one red-leaded faintly warm, one darker with age (the draws
+ * patchTin made, in its order, so the build's look stream lays as before).
+ */
+function patchTone(look: () => number): Rgb {
+  const c = look();
+  return c < 0.35 ? shade([1.03, 0.97, 0.92], 0.9 + look() * 0.08) : c < 0.6 ? [0.97, 0.99, 1.01] : c < 0.8 ? [1.0, 0.95, 0.92] : [0.88, 0.88, 0.88];
+}
+
+/**
  * (dome-detail-275) A corrugated-iron covering in relief (the work list: "a smooth roof") on a gable, hip or shed roof
  * `rg` (its ridge along z): the sheets' end laps in courses across each slope a sheet's length apart, their side laps
  * down it (fine), and `patches` sheets a slope replaced; left open a hand clear over the patch the war wear stripped
@@ -296,10 +306,13 @@ export function tinCovering(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, ho
     // the sheets replaced, a sheet or two up from the eave or from a lap
     for (let k = 0; k < patches; k++) {
       const len = sheet * (look() < 0.6 ? 1 : 2), rb = R1 - (look() < 0.5 ? 0 : sheet), ra = Math.max(rTop(0) + 0.1, rb - len);
-      const zl = zLim(ra) - 0.45, z = (look() * 2 - 1) * zl, tone = patchTin(look);
+      const zl = zLim(ra) - 0.45, z = (look() * 2 - 1) * zl, tone = patchTone(look);
       if (zl < 0.2 || rb - ra < 0.6) continue;
       if (gap && rb > gap.x0 - pad && ra < gap.x1 + pad && z + 0.4 > gap.z0 - pad && z - 0.4 < gap.z1 + pad) continue;
-      sink.member('structureMetal', on(rb, z), on(ra, z), 0.74, 0.013, n, { colour: tone, decor: true, exposed: true }, 0.003);
+      // (dome-detail-275, the roof sweep: the patches were whole sheets of rust, red lead and oxide, orange blotches on the
+      // galvanised field) a replaced sheet in the covering's own bucket and tone, within about 12 % of it
+      const k: Rgb = colour ? [colour[0] * tone[0], colour[1] * tone[1], colour[2] * tone[2]] : tone;
+      sink.member(colour ? 'structureMetal' : roof.bucket, on(rb, z), on(ra, z), 0.74, 0.013, n, { ...(colour ? { colour: k } : { tint: k }), decor: true, exposed: true }, 0.003);
     }
   }
   if (rg.kind !== 'hip') return;

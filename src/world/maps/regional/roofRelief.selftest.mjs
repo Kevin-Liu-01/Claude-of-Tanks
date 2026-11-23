@@ -10,8 +10,8 @@
 //      MIN_ROOFSCAN roof-bucket triangles a square metre of their plan (notes roofscan.mjs: smooth under 0.5, relief 1.0+),
 //      or lays relief (layRoofRelief) over RELIEF_COVER of its solid roof parts' plan (a slab counts its top and its
 //      underside: a flat roof's felt in relief is sparse by nature and stays honest);
-//   3. a builder failing either stands on NOT_YET_IN_RELIEF, the builders not opted in yet, and a builder on it that
-//      now passes both is an error (the list only shrinks; the next step empties it);
+//   3. a builder failing either stands on SMOOTH_BY_NATURE (an earth or mud roof, with its reason), and a builder on it
+//      that now passes both is an error (the list only shrinks);
 //   4. the law sees what it guards (synthetic): a smooth gable, hip and flat roof fail law 1 and pass it in relief; a
 //      relief keeps to its allowance and leaves the war's stripped patch open; with no relief the slab is the slab.
 import assert from 'node:assert/strict';
@@ -24,42 +24,17 @@ import { INFO } from '../../../../tools/building-detail-census.mjs';
 const PITCHED_MIN_M2 = 8, FLAT_MIN_M2 = 40, BAND_M = 0.3, MIN_RELIEF = 0.8;
 const ROOFSCAN_MIN_M2 = 40, MIN_ROOFSCAN = 0.8, RELIEF_COVER = 0.4;
 
-// ---- 3. the builders not yet in relief (dome-detail-275, 2026-11-22: 171 after the pilot of tselina, saar and the
-// Hessian farmhouse, church, mill and chapel). The next step opts each in (RoofSpec.relief, layRoofRelief) and takes it
-// off. saar/factory (the blast furnace) stands at the 11,500 cap: its casting house's sheet roofs need a triangle trade.
-// NOT_YET_IN_RELIEF: keep this list sorted; empty it.
-const NOT_YET_IN_RELIEF = new Set([
-  'andalusian/church', 'andalusian/cornershop', 'andalusian/cottage', 'andalusian/farmhouse', 'andalusian/rowhouse',
-  'andalusian/schoolhouse', 'andalusian/tavern', 'arctic/foundryoffice', 'arctic/warehouse', 'arctic/woodshed',
-  'bengal/boatshed', 'bengal/cornershop', 'bengal/cottage', 'bengal/depot', 'bengal/farmhouse', 'bengal/fishery',
-  'bengal/woodshed', 'breton/boatshed', 'breton/cornershop', 'breton/cottage', 'breton/fishery', 'breton/granary',
-  'breton/lighthouse', 'breton/market', 'breton/netyard', 'breton/tavern', 'chouf/adobe', 'chouf/barn', 'chouf/bathhouse',
-  'chouf/church', 'chouf/cottage', 'chouf/marketRow', 'chouf/tavern', 'dalmatian/bathhouse', 'dalmatian/boatshed',
-  'dalmatian/cornershop', 'dalmatian/cottage', 'dalmatian/market', 'dalmatian/marketRow', 'dalmatian/tavern',
-  'franconian/bergfried', 'franconian/chapel', 'franconian/civichall', 'franconian/factory', 'franconian/foundryoffice',
-  'franconian/palas', 'franconian/rowhouse', 'franconian/tower', 'glencanyon/arcology', 'glencanyon/broadcasttower',
-  'glencanyon/church', 'glencanyon/civichall', 'glencanyon/containerRow', 'glencanyon/depot', 'glencanyon/factory',
-  'glencanyon/firestation', 'glencanyon/foundryoffice', 'glencanyon/megatower', 'glencanyon/needletower', 'glencanyon/parkingdeck',
-  'glencanyon/shoppingCentre', 'glencanyon/terracetower', 'goral/alpine', 'goral/chapel', 'goral/cottage', 'goral/logcabin',
-  'goral/onionchurch', 'goral/schoolhouse', 'goral/warehouse', 'hostomel/cottage', 'hostomel/depot', 'hostomel/firestation',
-  'hostomel/foundryoffice', 'hostomel/warehouse', 'hostomel/woodshed', 'kohima/bathhouse', 'kohima/cornershop',
-  'kohima/depot', 'kolkhoz/barn', 'kolkhoz/chapel', 'kolkhoz/granary', 'kolkhoz/mill', 'kolkhoz/schoolhouse',
-  'kolkhoz/tavern', 'ksar/adobe', 'kyushu/containerRow', 'kyushu/depot', 'kyushu/factory', 'kyushu/firestation',
-  'kyushu/foundryoffice', 'kyushu/shed', 'kyushu/warehouse', 'longleaf/barn', 'longleaf/church', 'longleaf/farmhouse',
-  'longleaf/logcabin', 'longleaf/rangerlodge', 'longleaf/warehouse', 'longleaf/woodshed', 'lorrain/market', 'lorrain/marketRow',
-  'lorrain/schoolhouse', 'mekong/boatshed', 'mekong/cottage', 'mekong/depot', 'mekong/farmhouse', 'navajo/caravanserai',
-  'navajo/compound', 'navajo/compoundSouk', 'navajo/cottage', 'navajo/factory', 'navajo/warehouse', 'nordland/alpine',
-  'nordland/boatshed', 'nordland/cornershop', 'nordland/cottage', 'nordland/fishery', 'nordland/lighthouse', 'nordland/logcabin',
-  'polder/cottage', 'polder/farmhouse', 'polder/granary', 'polder/tavern', 'polder/woodshed', 'queenstown/containerRow',
-  'queenstown/depot', 'queenstown/factory', 'queenstown/foundryoffice', 'queenstown/gantry', 'queenstown/warehouse',
-  'ruhr/depot', 'ruhr/factory', 'ruhr/rowhouse', 'ruhr/shed', 'ruhr/warehouse', 'saar/factory', 'sarajevo/arcology',
-  'sarajevo/broadcasttower', 'sarajevo/civichall', 'sarajevo/factory', 'sarajevo/firestation', 'sarajevo/megatower',
-  'sarajevo/needletower', 'sarajevo/parkingdeck', 'sarajevo/rowhouse', 'sarajevo/terracetower', 'sarajevo/warehouse',
-  'savoyard/alpine', 'savoyard/granary', 'savoyard/onionchurch', 'savoyard/tavern', 'savoyard/warehouse', 'shanghai/arcology',
-  'shanghai/broadcasttower', 'shanghai/civichall', 'shanghai/factory', 'shanghai/firestation', 'shanghai/foundryoffice',
-  'shanghai/megatower', 'shanghai/needletower', 'shanghai/parkingdeck', 'shanghai/rowhouse', 'shanghai/terracetower',
-  'shanghai/warehouse', 'wadirum/adobe', 'wadirum/caravanserai', 'wadirum/compoundSouk', 'wadirum/depot', 'wadirum/factory',
-  'wadirum/gantry', 'wadirum/warehouse',
+// ---- 3. the roofs smooth by nature (dome-detail-275, 2026-11-22: the sweep opted every other kit roof into relief and
+// emptied the list of builders not yet in relief). An earth or mud roof is a rolled clay or puddled-mud skin over its
+// timbers, smooth by nature: its roller, spouts and parapet carry it (relief courses there would draw tiles that are
+// not there). A builder lands here only for such a roof, with its reason; a builder here that passes is an error.
+const SMOOTH_BY_NATURE = new Map([
+  ['chouf/adobe', 'flat earth roof, rolled clay with its roller and spouts'],
+  ['chouf/barn', 'its earth-roofed variant (the tiled variant is in relief)'],
+  ['chouf/bathhouse', 'the hammam\'s flat earth roof, rolled clay (approved by Kevin 2026-11-22)'],
+  ['chouf/cottage', 'its earth-roofed variant (the tiled variant is in relief)'],
+  ['chouf/marketRow', 'the souk\'s flat earth roofs, rolled clay'],
+  ['navajo/compound', 'the ranch house\'s flat mud roof on vigas (the tin-gable variant is in relief)'],
 ]);
 
 const TWIN = { roof: 'regionalRoof', plaster: 'regionalPlaster', plaster2: 'regionalPlaster2', plaster3: 'regionalPlaster3', stone: 'regionalStone' };
@@ -193,12 +168,12 @@ for (const style of ARCHITECTURE_STYLES) {
   }
 }
 assert.ok(roofsSeen > 300, `the roof log saw the kits' roofs (${roofsSeen})`);
-const fresh = [...failing.keys()].filter((k) => !NOT_YET_IN_RELIEF.has(k)).sort();
-const stale = [...NOT_YET_IN_RELIEF].filter((k) => !failing.has(k)).sort();
+const fresh = [...failing.keys()].filter((k) => !SMOOTH_BY_NATURE.has(k)).sort();
+const stale = [...SMOOTH_BY_NATURE.keys()].filter((k) => !failing.has(k)).sort();
 if (fresh.length || stale.length) {
   for (const k of fresh) console.error(`  ${k}: ${failing.get(k).slice(0, 3).join('; ')}`);
   console.error(`builders failing: ${JSON.stringify([...failing.keys()].sort())}`);
 }
-assert.deepEqual(fresh, [], 'every kit roof is laid in relief, or its builder stands on NOT_YET_IN_RELIEF');
-assert.deepEqual(stale, [], 'a builder in relief now comes off NOT_YET_IN_RELIEF');
-console.log(`roof relief: ${roofsSeen} roofs over ${ARCHITECTURE_STYLES.reduce((a, s) => a + Object.keys(s.builders).length, 0)} kit builders; ${NOT_YET_IN_RELIEF.size} builders not yet in relief`);
+assert.deepEqual(fresh, [], 'every kit roof is laid in relief, or its builder stands on SMOOTH_BY_NATURE with its reason');
+assert.deepEqual(stale, [], 'a builder in relief comes off SMOOTH_BY_NATURE');
+console.log(`roof relief: ${roofsSeen} roofs over ${ARCHITECTURE_STYLES.reduce((a, s) => a + Object.keys(s.builders).length, 0)} kit builders; ${SMOOTH_BY_NATURE.size} builders with a roof smooth by nature`);

@@ -9,7 +9,7 @@
 // railroad's water tank on its trestle; privies and woodsheds; a house burnt to its chimney. Galvanised sheet roofs
 // over everything (the mill's fires took the shingles), the boards weathered silver or whitewashed, the trim painted.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, holedPolygon, layRoofRelief, reliefSlope, roofGeometry, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, mound, washingLine } from './dressing.ts';
 import { DOME_MIN_SEGMENTS, smoothDome, smoothProfile } from './domes.ts';
@@ -83,9 +83,16 @@ function dialect(st: MillState, leaf?: Rgb): HouseDialect {
   };
 }
 
-/** The galvanised sheet roof (a painted or rusted one now and then). */
+/**
+ * (dome-detail-275, the roof sweep) The galvanised corrugated sheet in relief (house.ts RoofSpec.relief): sheets 26 in
+ * (0.66 m) wide and 8 ft (2.4 m) long lapped a course up the slope, two of their corrugations drawn, a sheet now and then
+ * replaced a little brighter or rust run down from the lap over it (the relief's own wear, within its tone).
+ */
+const GALV: RoofRelief = { kind: 'sheet', gauge: 2.4, pitch: 0.66, ribs: 2 };
+
+/** The galvanised sheet roof (a painted or rusted one now and then), its sheets in relief (dome-detail-275). */
 function tin(kind: RoofSpec['kind'], pitch: number, eave = 0.45, verge = 0.35): RoofSpec {
-  return { kind, pitchDeg: pitch, eave, verge, thickness: 0.06, bucket: 'structureMetal', ridge: kind === 'shed' || kind === 'flat' ? null : 'saddle' };
+  return { kind, pitchDeg: pitch, eave, verge, thickness: 0.06, bucket: 'structureMetal', ridge: kind === 'shed' || kind === 'flat' ? null : 'saddle', relief: GALV };
 }
 
 /** The openings cut in a face of a built house, in the face's (u, y) frame. */
@@ -183,6 +190,11 @@ function buildRoofOnly(sink: PartSink, w: number, d: number, eaveY: number, spec
   sink.quad(spec.bucket, bot(x0, z0), bot(x0, z1), top(x0, z1), top(x0, z0), opts);
   sink.quad(spec.bucket, bot(x0, z1), bot(x1, z1), top(x1, z1), top(x0, z1), opts);
   sink.quad(spec.bucket, bot(x1, z0), bot(x0, z0), top(x0, z0), top(x1, z0), opts);
+  // (dome-detail-275) the gallery's and porch's sheets in relief over its top, from the low eave (+x) up
+  if (spec.relief) {
+    const a = top(x1, z0), hi = top(x0, z0);
+    layRoofRelief(sink, spec.relief, [reliefSlope(a, top(x1, z1), [hi[0] - a[0], hi[1] - a[1], hi[2] - a[2]], 0.04)], { bucket: spec.bucket, base: { colour } });
+  }
 }
 
 /** The two triangles a shed roof leaves open over the ±z walls of a w × d body (its slope rises toward -x). */
@@ -488,7 +500,7 @@ const commissary: RegionalBuilder = (ctx) => {
       }
       // the rafter tails under the store's own eaves (clear of the gallery's roof on a turned lot), its patched sheets
       if (!turned) rafterTails(sink, W, D, frame.eaveY, 24, 0.4, 0.9, shade(WEATHERED, 0.75));
-      tinPatches(sink, frame, W, D, 24, 0.4, 0.3, look);
+      tinPatches(frame, W, D, 24, 0.4, 0.3, look);
     });
   });
   return sink.finish();
@@ -530,22 +542,26 @@ function rafterTails(sink: PartSink, W: number, D: number, eaveY: number, pitch:
  * The sheets replaced or rusted through on a gable's slopes (dome-detail-275, the work list: "smooth roof"): a sheet's
  * width laid over the covering, a sheet or two long, from the eave or higher up the run; a new bright one, a rusted
  * one, a red-leaded one. `xIn` keeps them off a monitor or the ridge cap; the look stream picks them.
+ * (dome-detail-275, the roof sweep) The covering's sheets are now in relief (GALV), its replaced and rusted sheets the
+ * relief's own within ±12 % of the covering's tone (these were orange and red slabs over it, outside it): the patches
+ * are no longer laid, their look draws kept so the look stream after them lays as before.
  */
-function tinPatches(sink: PartSink, frame: HouseFrame, W: number, D: number, pitch: number, eave: number, xIn: number, look: () => number): void {
-  const cosP = Math.cos(pitch * Math.PI / 180), sinP = Math.sin(pitch * Math.PI / 180);
+function tinPatches(frame: HouseFrame, W: number, D: number, pitch: number, eave: number, xIn: number, look: () => number): void {
+  const cosP = Math.cos(pitch * Math.PI / 180);
   const n = Math.max(1, Math.round(D / 2.6));
   for (const side of [-1, 1]) {
     for (let k = 0; k < n; k++) {
-      const z = -D / 2 + (k + 0.25 + look() * 0.5) * D / n, w = 0.62 + look() * 0.06;
+      const z = -D / 2 + (k + 0.25 + look() * 0.5) * D / n;
+      look(); // (the sheet's width: the relief's now)
       // a sheet or two (2.4 m each up the slope) from the eave or further up the run
       const run = W / 2 + eave - 0.03 - xIn, len = Math.min(run, (look() < 0.5 ? 2.4 : 4.8) * cosP);
       const from = look() < 0.5 ? 0 : look() * Math.max(0, run - len);
       const x1 = side * (W / 2 + eave - 0.03 - from), x0 = side * (W / 2 + eave - 0.03 - from - len);
       const y1 = frame.roof.topAt(x1, z), y0 = frame.roof.topAt(x0, z);
       if (y1 === null || y0 === null) continue;
+      // (the patch's colour drawn as before: a rusted one's shade a second draw)
       const c = look();
-      const colour = c < 0.3 ? shade(TIN[0], 1.02) : c < 0.85 ? shade(TIN[2], 0.85 + look() * 0.25) : TIN[3];
-      sink.member('structureMetal', [x1, y1 - 0.004, z], [x0, y0 - 0.004, z], w, 0.016, [side * sinP, cosP, 0], { colour, decor: true, exposed: true }, 0);
+      if (c >= 0.3 && c < 0.85) look();
     }
   }
 }
@@ -606,7 +622,9 @@ function roofMonitor(sink: PartSink, frame: HouseFrame, L: number, mw: number, r
  */
 function millShed(sink: PartSink, W: number, D: number, h: number, monitor: boolean, sheet: Rgb, ends: boolean, look: () => number): HouseFrame {
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.6, out: 0.05, bucket: 'stone' }, storeys: [{ h, wall: 'wood' }], roof: tin('gable', 22, 0.6, 0.4),
+    // (dome-detail-275, the roof sweep: its sheets laid from a stream of their own, regionalArchitecture's ray census
+    // caught a sheet's side lap edge-on at the sawmill's seed 29)
+    w: W, d: D, plinth: { h: 0.6, out: 0.05, bucket: 'stone' }, storeys: [{ h, wall: 'wood' }], roof: { ...tin('gable', 22, 0.6, 0.4), relief: { ...GALV, seed: 1 } },
     roofColour: sheet, gableBucket: 'wood',
     openings: [
       ...(ends ? [{ face: 'front' as FaceName, storey: 0, kind: 'gate' as const, u: 0, w: Math.min(4.2, W * 0.45), y0: 0, h: Math.min(4.2, h - 0.6) }] : []),
@@ -637,7 +655,7 @@ function millShed(sink: PartSink, W: number, D: number, h: number, monitor: bool
   if (monitor) roofMonitor(sink, frame, D * 0.7, 1.0, 1.15, sheet);
   // the rafter tails under both eaves and the sheets patched in the covering (dome-detail-275)
   rafterTails(sink, W, D, frame.eaveY, 22, 0.6, 0.9, shade(WEATHERED, 0.75));
-  tinPatches(sink, frame, W, D, 22, 0.6, monitor ? 1.2 : 0.3, look);
+  tinPatches(frame, W, D, 22, 0.6, monitor ? 1.2 : 0.3, look);
   return frame;
 }
 
@@ -827,7 +845,7 @@ const depot: RegionalBuilder = (ctx) => {
       sink.span('stone', bx - 0.6, bt - 0.5, bz - 0.6, bx + 0.6, bt - 0.3, bz + 0.6, { decor: true, shade: 0.7 });
       sink.span('stone', bx - 0.56, bt - 0.12, bz - 0.56, bx + 0.56, bt, bz + 0.56, { decor: true, shade: 0.45 });
       rafterTails(sink, W, D, frame.eaveY, 14, 0.3, 1.0, shade(WEATHERED, 0.7));
-      tinPatches(sink, frame, W, D, 14, 0.3, 0.45, look);
+      tinPatches(frame, W, D, 14, 0.3, 0.45, look);
       return;
     }
     const shop = kind < 0.5;
@@ -855,7 +873,7 @@ const depot: RegionalBuilder = (ctx) => {
     // louvred vent in the front gable's peak
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * W / 2 - 0.07, 0.5, sz * D / 2 - 0.07, sx * W / 2 + 0.07, 0.5 + h, sz * D / 2 + 0.07, { colour: WHITE, decor: true });
     rafterTails(sink, W, D, frame.eaveY, 24, 0.5, 0.9, shade(WEATHERED, 0.72));
-    tinPatches(sink, frame, W, D, 24, 0.5, 0.3, look);
+    tinPatches(frame, W, D, 24, 0.5, 0.3, look);
     const gf: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, vy = frame.roof.ridgeY - 1.3;
     faceBox(sink, 'dark', gf, 0, vy, 0.01, 1.2, 0.9, 0.01, { decor: true });
     for (let k = 0; k < 4; k++) sink.member('structureWood', facePoint(gf, -0.6, vy - 0.36 + k * 0.24, 0.02), facePoint(gf, 0.6, vy - 0.36 + k * 0.24, 0.02), 0.2, 0.02, [0, 0.6, 0.8], { colour: WHITE, decor: true, fine: true, exposed: true }, 0);

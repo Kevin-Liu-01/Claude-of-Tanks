@@ -12,8 +12,12 @@ import { faceSection, steppedPier } from './skylineDeco.ts';
 import { emitRoof, recordBody, roofGeometry, type RoofGeometry, type RoofPatch, type RoofSpec } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
 import { BRONZE, GILT, clampTo, fillOf, planFaces, pocks, rect, uvOffset } from './shanghaiParts.ts';
+import { layRoofRelief, reliefFlat, type RoofRelief } from './roofRelief.ts';
 
 const SHADOWED = { decor: true, shadow: true } as const;
+/** (dome-detail-275) The wings' roof terraces' paving: cement tiles half a metre a course, a grey-buff over the granite's gold. */
+const TERRACE: RoofRelief = { kind: 'tile', gauge: 0.5 };
+const PAVING: Rgb = [0.86, 0.83, 0.8];
 
 // ------------------------------------------------------------------------------------------------ (dome-detail-275) roofs in relief (the kit's: shanghai.ts and the Bank of China)
 
@@ -293,6 +297,10 @@ export const bankOfChina: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureMetal', face, -face.width / 2 + 0.2 + k * (face.width - 0.4) / n, towerTop + 0.08, 0.3, 0.42, 0.2, 0.6, paint);
       }
     }
+    // (dome-detail-275, the roof sweep) the wings' roof terraces behind their railing paved in cement tiles in relief, in
+    // courses round the tower, a course relaid here and there
+    layRoofRelief(sink, TERRACE, [reliefFlat(-W / 2 + 0.3, -D / 2 + 0.3, W / 2 - 0.3, D / 2 - 0.3, wingTop, W < D)],
+      { bucket: 'plaster2', base: { tint: PAVING }, holes: [{ x0: -tx - 0.2, x1: tx + 0.2, z0: -tz - 0.2, z1: tz + 0.2 }], edge: false });
     const rail = { decor: true, shade: 0.96 } as const;
     const wf = tierFaces(-W / 2 + 0.15, W / 2 - 0.15, -D / 2 + 0.15, D / 2 - 0.15);
     for (const face of wf) {

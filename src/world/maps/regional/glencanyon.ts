@@ -9,7 +9,8 @@
 // shingled gables with their carports, the fire station with its hose tower, the water tower on its legs.
 import { PartSink, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { mound, ridge } from './dressing.ts';
-import { buildHouse, holedBox, recordBody, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedBox, layRoofRelief, recordBody, recordShaft, reliefFlat, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type ReliefHole,
+  type RoofRelief } from './house.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -235,6 +236,26 @@ function coping(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
 }
 
 /**
+ * (dome-detail-275, the roof sweep) The roofs in relief (roofRelief.ts): the Bureau's and the town's flat concrete roofs
+ * under built-up roofing, its cap sheet's rolls and laps and patches (a gravel stop round an open edge), a shade greyer
+ * than the town's shingle; the school's and the church's gables in asphalt shingle, the town's covering.
+ */
+const FELT: RoofRelief = { kind: 'felt' }, SHINGLE: RoofRelief = { kind: 'shingle' };
+const FELT_TINT: Rgb = [0.94, 0.94, 0.97];
+
+/** (dome-detail-275) A flat roof's top x0..x1 by z0..z1 at `y` under felt in relief, clear of `holes` (a penthouse, a stair house). */
+function feltRoof(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y: number, holes: readonly ReliefHole[] = [], edge = false): void {
+  layRoofRelief(sink, FELT, [reliefFlat(x0, z0, x1, z1, y, x1 - x0 < z1 - z0)], { bucket: 'roof', base: { tint: FELT_TINT }, holes, edge });
+}
+
+/** (dome-detail-275) A house grammar's flat roof under felt: inside its parapet's ring (emitRoof's 0.22 m), or to its open edge. */
+function houseFelt(sink: PartSink, frame: HouseFrame, holes: readonly ReliefHole[] = []): void {
+  const roof = frame.spec.roof, rg = frame.roof, inset = roof.parapet ? 0.22 : 0;
+  const X = rg.s + roof.eave - inset, Z = rg.halfD + roof.eave - inset;
+  feltRoof(sink, -X, -Z, X, Z, rg.eaveY + roof.thickness, holes, !roof.parapet);
+}
+
+/**
  * (dome-detail-275) A flat roof's drain on face `f` at `u`: the leader head under the roof's edge at `head`, the downpipe
  * to its shoe, the splash block on the ground, and the streak the overflow left down the wall beside it.
  */
@@ -363,6 +384,9 @@ const powerhouse: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [x, H + 1.5, (zb + zf) / 2], 'y', 0.5, 0.45, 10, { colour: shade(STEEL_GREY, 0.85), decor: true }, 0.25);
   }
   for (const sx of [-1, 1]) sink.span('structureMetal', sx * W * 0.12 - 1.6, H, zf - 3.4, sx * W * 0.12 + 1.6, H + 1.9, zf - 1.6, { colour: shade(GALV, 0.92), decor: true });
+  // (dome-detail-275, the roof sweep) the hall's roof under felt over the fascia band's head (the roof the build shows),
+  // its gravel stop round the edge, clear of the stair house
+  feltRoof(sink, -W / 2 - 0.25, zb - 0.25, W / 2 + 0.25, zf + 0.25, H + 0.6, [{ x0: W * 0.22 + 0.3, x1: W * 0.22 + 2.9, z0: zb + 1.5, z1: zb + 4.3 }], true);
   // the anchor block and the penstocks
   const ab0 = -PD / 2 + 0.3, ab1 = ab0 + Math.max(2.8, Math.min(4.0, PD - hallD - 7));
   const abH = 9.5 + rng() * 2;
@@ -464,6 +488,9 @@ const controlBuildingOf = (storeys: 2 | 4): RegionalBuilder => (ctx) => {
     faceBox(sink, 'structureMetal', pf, W * 0.08, top + 2.04, 0.015, 1.8, 1.25, 0.03, { colour: shade(STEEL_GREY, 0.6), decor: true });
     faceBox(sink, 'structureWood', pf, -W * 0.1, top + 1.05, 0.02, 0.95, 2.1, 0.04, { colour: pick(look, DOOR_PAINT), decor: true });
     coping(sink, -W * 0.2, -D * 0.25, W * 0.15, D * 0.15, top + 3.4, ALUMINIUM, 0.2);
+    // (dome-detail-275, the roof sweep) the roof and the penthouse's under felt, the roof's clear of the penthouse
+    houseFelt(sink, frame, [{ x0: -W * 0.2 + 0.3, x1: W * 0.15 - 0.3, z0: -D * 0.25 + 0.3, z1: D * 0.15 - 0.3 }]);
+    feltRoof(sink, -W * 0.2 + 0.2, -D * 0.25 + 0.2, W * 0.15 - 0.2, D * 0.15 - 0.2, top + 3.4);
     roofUnit(sink, -W * 0.32, D * 0.28, top, look);
     roofUnit(sink, W * 0.32, D * 0.05, top, look);
     const cx = -W * 0.35, cz = -D * 0.3;
@@ -572,6 +599,7 @@ const switchyard: RegionalBuilder = (ctx) => {
       // (dome-detail-275: a plain block box) its coping, the door's hood and lamp, the window's sill, the through-wall air
       // conditioner on the back, the cable conduits down from its roof's edge toward the bus
       coping(sink, -3.4, -2.4, 3.4, 2.4, 3.2 + 0.2 + 0.2 + 0.25, ALUMINIUM, 0.24);
+      houseFelt(sink, hf); // (dome-detail-275, the roof sweep) its roof under felt
       const lf = hf.faces.left;
       faceBox(sink, CONCRETE, lf, 0.8, 2.45, 0.28, 1.3, 0.1, 0.56, { decor: true, shadow: true });
       wallPack(sink, lf, -0.05, 2.4);
@@ -606,11 +634,12 @@ const transformerYard: RegionalBuilder = (ctx) => {
       busFrame(sink, x - 1.6, -D / 2 + 1.2, -D / 2 + 3.0, 8.0, GALV);
     }
     sink.placed(0, W / 2 - 3.6, 0, D / 2 - 3.0, () => {
-      buildHouse(sink, {
+      const hf = buildHouse(sink, {
         w: 5.6, d: 4.0, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.0, wall: BLOCK }],
         roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.2, bucket: CONCRETE, parapet: 0.25 }, gableBucket: BLOCK,
         openings: [{ face: 'left', storey: 0, kind: 'door', u: 0.6, w: 0.95, y0: 0, h: 2.1 }], chimneys: [], gutters: null, verge: null, reveal: 0.15,
       }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel', ctx.variant));
+      houseFelt(sink, hf); // (dome-detail-275, the roof sweep) its roof under felt
     });
     yardWall(sink, W, D, -W / 2 + 6.0, 5.0, ctx.tier);
   });
@@ -639,12 +668,13 @@ const relayTower: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [tx, H - 0.2, tz], 'y', 3.2, 0.06, 6, { colour: IRON, decor: true }, 0.03);
     const hw = Math.min(7.0, W * 0.4), hd = Math.min(5.2, D * 0.35);
     sink.placed(0, W / 2 - hw / 2 - 1.0, 0, D / 2 - hd / 2 - 1.2, () => {
-      buildHouse(sink, {
+      const hf = buildHouse(sink, {
         w: hw, d: hd, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.3, wall: BLOCK }],
         roof: { kind: 'flat', pitchDeg: 0, eave: 0.25, verge: 0.25, thickness: 0.2, bucket: CONCRETE, parapet: 0.25 }, gableBucket: BLOCK,
         openings: [{ face: 'left', storey: 0, kind: 'door', u: 0.6, w: 0.95, y0: 0, h: 2.1 }], chimneys: [], gutters: null, verge: null, reveal: 0.15,
       }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel', ctx.variant));
       sink.span('structureMetal', -hw / 2 + 1.0, 3.55, -1.0, -hw / 2 + 2.2, 4.3, 0.2, { colour: rgb(0xc4c0b4), decor: true });
+      houseFelt(sink, hf); // (dome-detail-275, the roof sweep) its roof under felt
     });
     yardWall(sink, W, D, -W * 0.25, 4.2, ctx.tier);
   });
@@ -707,6 +737,8 @@ const civicHall: RegionalBuilder = (ctx) => {
       roofUnit(sink, W * 0.16, -D * 0.18, top, look);
       for (const x of [-W * 0.38, W * 0.36]) turbineVent(sink, x, D * 0.12, top);
       sink.span(CONCRETE, W * 0.02 - 0.5, top - 0.05, D * 0.15 - 0.5, W * 0.02 + 0.5, top + 0.35, D * 0.15 + 0.5, { decor: true });
+      // (dome-detail-275, the roof sweep) the slab under felt, its gravel stop round the open edge
+      feltRoof(sink, -W / 2 - 0.3, -D / 2 - 0.3, W / 2 + 1.5, D / 2 + 1.0, top, [], true);
       // the sand blown along the back wall's foot
       drift(sink, [-W / 2 + 0.6, 0, -D / 2 - 0.1], [du - 1.0, 0, -D / 2 - 0.1], 0.9, 0.22);
     });
@@ -780,7 +812,7 @@ const civicHall: RegionalBuilder = (ctx) => {
     const base = dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.35, 'glazed', ctx.variant);
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.3, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.6, wall }],
-      roof: { kind: 'gable', pitchDeg: 12, eave: 0.7, verge: 0.4, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: PAINTED,
+      roof: { kind: 'gable', pitchDeg: 12, eave: 0.7, verge: 0.4, thickness: 0.12, bucket: 'roof', ridge: 'saddle', relief: SHINGLE }, gableBucket: PAINTED,
       openings, chimneys: [], gutters: { colour: WHITE }, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.2,
     }, withAdded(base, dialectOf(look, ALU, pick(look, DOOR_PAINT), 0.35, 'glazed', look), added));
     // (dome-detail-275) each window's precast sill and over the back's its aluminium sunshade on brackets; a lamp on the
@@ -846,6 +878,7 @@ const civicHall: RegionalBuilder = (ctx) => {
     sink.band(BLOCK, -gw / 2 - 0.07, 0.3, -gD / 2 - 0.07, gw / 2 + 0.07, 1.5, gD / 2 + 0.07, { decor: true, shade: 0.8 });
     sink.band(CONCRETE, -gw / 2 - 0.1, 4.9, -gD / 2 - 0.1, gw / 2 + 0.1, 5.15, gD / 2 + 0.1, { decor: true });
     coping(sink, -ex, -ez, ex, ez, top + 0.6);
+    houseFelt(sink, frame); // (dome-detail-275, the roof sweep) the gym's roof under felt
     // the entrance: the canopy on its posts over the steps, its fascia, the school's name on the wall over it
     const ff = frame.faces.front;
     sink.span(CONCRETE, -2.0, 2.8, gD / 2, 2.0, 3.05, gD / 2 + 2.1, { decor: true, shadow: true });
@@ -903,6 +936,7 @@ const hoistHouse: RegionalBuilder = (ctx) => {
       for (let u = -D / 2; u <= D / 2 + 1e-6; u += 2.8) faceBox(sink, CONCRETE, f, Math.max(-D / 2 + 0.25, Math.min(D / 2 - 0.25, u)), (H - 0.3) / 2 + 0.3, 0.15, 0.5, H - 0.3, 0.3, { decor: true }, 'caps');
     }
     sink.band(CONCRETE, -W / 2 - 0.2, H - 3.9, -D / 2 - 0.2, W / 2 + 0.2, H - 3.6, D / 2 + 0.2, { decor: true });
+    houseFelt(sink, frame); // (dome-detail-275, the roof sweep) the bay's roof under felt
     sink.span('structureMetal', -0.2, H - 1.6, D / 2 - 1.0, 0.2, H - 1.1, D / 2 + 2.4, { colour: rgb(0xc9a24a), decor: true });
     sink.span('structureMetal', -0.5, H - 2.4, D / 2 + 1.7, 0.5, H - 1.6, D / 2 + 2.2, { colour: rgb(0xc9a24a), decor: true });
   });
@@ -1044,6 +1078,7 @@ const fieldOffice: RegionalBuilder = (ctx) => {
       sink.span('structureMetal', -2.1 + pitch * (k + 0.2), 2.93, D / 2 + 2.78, -2.1 + pitch * (k + 0.8), 3.11, D / 2 + 2.8, { colour: ALUMINIUM, decor: true, fine: true });
     }
     const top = frame.eaveY + 0.25;
+    houseFelt(sink, frame); // (dome-detail-275, the roof sweep) the roof under felt
     for (const [x, z] of [[-W * 0.25, 0], [W * 0.2, -D * 0.2]] as const) {
       sink.span(CONCRETE, x - 0.9, top, z - 0.7, x + 0.9, top + 0.15, z + 0.7, { decor: true });
       sink.span('structureMetal', x - 0.8, top + 0.15, z - 0.6, x + 0.8, top + 1.25, z + 0.6, { colour: rgb(0xb8b8b0), decor: true });
@@ -1214,6 +1249,7 @@ const fireStation: RegionalBuilder = (ctx) => {
   sink.span(CONCRETE, yx - 0.04, 1.8, -D / 2 - 0.04, yx + 0.29, 1.88, yz + 0.04, { decor: true });
   const ex = W / 2 + 0.3, ez = D / 2 + 0.3, top = frame.eaveY + 0.25;
   coping(sink, -ex, -ez, ex, ez, top + 0.4);
+  houseFelt(sink, frame); // (dome-detail-275, the roof sweep) the bay's roof under felt
   for (const u of [-D / 2 + 0.6, D / 2 - 0.6]) downpipe(sink, frame.faces.left, u, frame.eaveY, BLOCK);
   downpipe(sink, frame.faces.right, -D / 2 + 0.6, frame.eaveY, BLOCK);
   roofCooler(sink, -W * 0.2, -D * 0.05, top, pick(look, COOLER));
@@ -1259,6 +1295,7 @@ const fireStation: RegionalBuilder = (ctx) => {
     sink.band(CONCRETE, -1.7, 9.75, -1.7, 1.7, 10.0, 1.7, { decor: true });
     sink.band(CONCRETE, -1.72, 7.0, -1.72, 1.72, 7.15, 1.72, { decor: true, shade: 0.85 });
     coping(sink, -1.8, -1.8, 1.8, 1.8, tf.eaveY + 0.4, ALUMINIUM, 0.25);
+    feltRoof(sink, -1.55, -1.55, 1.55, 1.55, tf.eaveY + 0.4); // (dome-detail-275, the roof sweep) the cap under felt inside its coping
     const lf = tf.faces.left;
     for (const s of [-1, 1]) faceBox(sink, 'structureMetal', lf, 0.6 + s * 0.22, 7.6, 0.2, 0.05, 5.0, 0.05, { colour: STEEL_GREY, decor: true });
     for (let y = 5.3; y < 9.9; y += 0.3) faceBox(sink, 'structureMetal', lf, 0.6, y, 0.2, 0.44, 0.03, 0.03, { colour: STEEL_GREY, decor: true, fine: true });
@@ -1389,7 +1426,7 @@ const church: RegionalBuilder = (ctx) => {
     for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.5, h: 1.2, sill: 0.8, spacing: 2.6, margin: 1.4 })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 2.4, wall }],
-      roof: { kind: 'gable', pitchDeg: 60, eave, verge: 0.5, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: wall,
+      roof: { kind: 'gable', pitchDeg: 60, eave, verge: 0.5, thickness: 0.16, bucket: 'roof', ridge: 'saddle', relief: SHINGLE }, gableBucket: wall,
       openings, chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.15, rafters: null,
     }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.6, 'panel', look));
     // the glazed gable over the door, its mullions and the cross on them
@@ -1403,15 +1440,10 @@ const church: RegionalBuilder = (ctx) => {
     const cy = y0 + (yr - y0) * 0.45;
     sink.member('structureWood', [0, cy - 1.6, z + 0.1], [0, cy + 1.9, z + 0.1], 0.16, 0.12, [0, 0, 1], { colour: rgb(0x3a2e26), decor: true, exposed: true }, 0);
     sink.member('structureWood', [-0.95, cy + 0.9, z + 0.1], [0.95, cy + 0.9, z + 0.1], 0.16, 0.12, [0, 0, 1], { colour: rgb(0x3a2e26), decor: true, exposed: true }, 0);
-    // (dome-detail-275: the A-frame's roof a blank slab nearly to the ground) its battens down both slopes in the
-    // covering's own stuff a shade darker; the glulam rafters standing proud at both verges, crossed over the ridge (the
+    // (dome-detail-275: the A-frame's roof a blank slab nearly to the ground; the roof sweep: its shingle in relief, the
+    // battens that stood in for it gone) the glulam rafters standing proud at both verges, crossed over the ridge (the
     // A-frame's mark); the ridge's finial cross over the glazed gable; the slot windows' sills
-    const rg = frame.roof, run = W / 2 + eave, n = Math.max(6, Math.round((D + 1.0) / 1.1)), c60 = 0.5, s60 = Math.sqrt(3) / 2;
-    for (const s of [-1, 1]) for (let k = 1; k < n; k++) {
-      const zz = -D / 2 - 0.5 + (D + 1.0) * k / n, xa = s * (run - 0.08), xb = s * 0.2;
-      const ya = rg.topAt(xa, zz), yb = rg.topAt(xb, zz);
-      if (ya !== null && yb !== null) sink.member('roof', [xa, ya, zz], [xb, yb, zz], 0.07, 0.06, [s * s60, c60, 0], { decor: true, shade: 0.78, ends: true }, 0.01);
-    }
+    const run = W / 2 + eave;
     const glulam = { colour: rgb(0x8a5a32), decor: true, exposed: true } as const;
     for (const sz of [-1, 1]) for (const s of [-1, 1]) {
       const line = (x: number): number => eaveY + (W / 2 - s * x) * tan + 0.42, zz = sz * (D / 2 + 0.5);
@@ -1449,6 +1481,7 @@ const church: RegionalBuilder = (ctx) => {
       wallPack(sink, hfront, -hallW * 0.2 + 0.85, 2.5);
       const ex = hallW / 2 + 0.45, ez = hallD / 2 + 0.45, top = hf.eaveY + 0.22;
       coping(sink, -ex, -ez, ex, ez, top + 0.15, ALUMINIUM, 0.28);
+      houseFelt(sink, hf); // (dome-detail-275, the roof sweep) the hall's roof under felt
       roofCooler(sink, 0, -hallD * 0.15, top, pick(look, COOLER), 1);
       sink.cylinder('structureMetal', [hallW * 0.25, top - 0.05, hallD * 0.2], 'y', 0.9, 0.08, 8, { colour: GALV, decor: true });
       downpipe(sink, hf.faces.right, hallD / 2 - 0.5, hf.eaveY, BLOCK);
@@ -1574,6 +1607,8 @@ const shoppingCentre: RegionalBuilder = (ctx) => {
       turbineVent(sink, x + shopW * 0.28, D * 0.12, top);
     }
     sink.span(CONCRETE, W * 0.05 - 0.5, top - 0.05, -D * 0.4 - 0.5, W * 0.05 + 0.5, top + 0.4, -D * 0.4 + 0.5, { decor: true });
+    // (dome-detail-275, the roof sweep) the roof and the canopy's under felt, inside the parapet and the fascia
+    feltRoof(sink, -W / 2 - 0.1, -D / 2 - 0.1, W / 2 + 0.1, D / 2 + canopy - 0.24, top);
     // the back's service side: each door's leaf, its stoop, hood and lamp, the light's bars, the meters; the drains with
     // their streaks; the bins in their block enclosures and the sand blown along the wall's foot
     const bf = faces.back;

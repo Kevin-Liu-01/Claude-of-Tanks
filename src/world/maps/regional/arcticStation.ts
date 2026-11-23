@@ -3,7 +3,7 @@
 // the Jamesway hut on the container row's plot. The kit's shared parts (the modules, their doors, stairs and windows,
 // the radome, the banks) stay in arctic.ts.
 import { LocalFrame, PartSink, faceBox, facePoint, rgb, shade, type EmitOptions, type Face, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedPolygon, type HoleRect, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedPolygon, layRoofRelief, reliefFlat, type HoleRect, type HouseDialect, type Opening } from './house.ts';
 import { recordLattice, type LatticeReading, type LatticeSpec } from './lattice.ts';
 import { recordShed } from './shedFall.ts';
 import { doorUnit, windowUnit } from './openings.ts';
@@ -11,7 +11,7 @@ import { doorCanopy, facadeOn } from './facade.ts';
 import { wallLantern } from './dressing.ts';
 import type { RegionalBuilder } from './types.ts';
 import { angleMember, bandRing, chamferedSection, iBeam, panelSlab, pier, sectionMember, tubeMember } from './steelMembers.ts';
-import { GALV, OLIVE, PLY, STEEL_DARK, WINDOW, bank, boxFace, clamp, radome, uvOffset, wallsIn, wave } from './arctic.ts';
+import { FELT, GALV, OLIVE, PLY, STEEL_DARK, WINDOW, bank, boxFace, clamp, radome, uvOffset, wallsIn, wave } from './arctic.ts';
 
 /**
  * A four-legged lattice frame (lattice.ts latticeFrame, member for member) in steel sections: the legs, girts and X braces
@@ -338,6 +338,11 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
   }, units));
   // the flat roof in its insulated panels across the module, its eaves 12 cm over the walls
   panelSlab(sink, 'roof', x0 - 0.12, floor + h, z0 - 0.12, x1 + 0.12, floor + h + 0.22, z1 + 0.12, 1.2, () => [1, 1, 1], [1, 1, 1]);
+  // (dome-detail-275, the roof sweep) the membrane over the panels in its rolls and laps, a gravel stop round its edge (a
+  // lean allowance: the train's roofs are long)
+  const fx0 = x0 - 0.12, fx1 = x1 + 0.12, fz0 = z0 - 0.12, fz1 = z1 + 0.12;
+  layRoofRelief(sink, { ...FELT, budget: Math.round((fx1 - fx0) * (fz1 - fz0) * 2.5) }, [reliefFlat(fx0, fz0, fx1, fz1, floor + h + 0.22, fx1 - fx0 < fz1 - fz0)],
+    { bucket: 'roof', edge: true });
   // the fascia band: a ring round the walls (it was a slab through the body)
   bandRing(sink, band, x0, floor + h - 0.5, z0, x1, floor + h - 0.1, z1, 0.03);
   if (facadeOn()) moduleDoorCraft(sink, x0, z0, x1, z1, floor + h - 0.5, holes);

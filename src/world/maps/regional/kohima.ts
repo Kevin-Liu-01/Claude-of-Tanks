@@ -16,6 +16,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { kohimaBazaarRow, kohimaStall } from './marketKits.ts'; // props #23: the bazaar's stall and booths
 import { tinCovering } from './navajoR2.ts'; // (dome-detail-275) the corrugated covering in relief
+import { TIN_RELIEF, leanToRelief } from './harbourSheds.ts'; // (dome-detail-275, the roof sweep) the delta's tin in relief
 import { archGlazing, archHead } from './sarajevoParts.ts';
 import { finialOn } from './domes.ts';
 import { orientedPrism } from './millWorks.ts';
@@ -66,7 +67,8 @@ const bungalow: RegionalBuilder = (ctx) => {
   sink.placed(0, V / 2, 0, -V / 2, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.75, out: 0.1, bucket: 'stone' }, storeys: [{ h: 3.3, wall: 'plaster' }],
-      roof: tin(28, 'hip'), roofColour, gableBucket: 'plaster', openings,
+      // (dome-detail-275, the roof sweep) the painted tin in its lapped courses in relief (roofRelief.ts)
+      roof: { ...tin(28, 'hip'), relief: TIN_RELIEF }, roofColour, gableBucket: 'plaster', openings,
       chimneys: [{ x: -W * 0.25, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.9, bucket: 'stone', cap: 'slab' }], gutters: null, verge: null,
       // Assam-type walls: lime plaster on split-bamboo ekra between timber posts, no masonry under it to show
       spall: null,
@@ -75,8 +77,13 @@ const bungalow: RegionalBuilder = (ctx) => {
     // over the corner to the side one's outer line, the side one stops short of it: one deck round the corner, the
     // front's lean-to over it
     const f = frame.faces.front, l = frame.faces.left;
-    veranda(sink, { ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, 0.75, frame.eaveY - 0.2, W + V, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
-    veranda(sink, { ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 }, 0.75, frame.eaveY - 0.2, D - 0.3, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    const vf: Face = { ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, vl: Face = { ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 };
+    const fl = veranda(sink, vf, 0.75, frame.eaveY - 0.2, W + V, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    const ll = veranda(sink, vl, 0.75, frame.eaveY - 0.2, D - 0.3, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    // (dome-detail-275, the roof sweep) both lean-tos' tin in relief too (veranda's eave 0.3, verge 0.2)
+    for (const [vface, width, lean] of [[vf, W + V, fl], [vl, D - 0.3, ll]] as const) {
+      leanToRelief(sink, vface, -width / 2, width / 2, V - 0.1, lean.shed, { eave: 0.3, verge: 0.2, thickness: 0.07 }, TIN_RELIEF, { bucket: 'structureMetal', base: { colour: roofColour } });
+    }
     // (the integrity check, 2026-10-16: the plinth seen 1 m in under the raised decks, the sky along the open verandas end
     // on) each deck skirted down to the ground in white boards, its open ends hung with split-bamboo chiks from the
     // lean-to down to the rail, as the bungalows kept the sun off theirs

@@ -11,7 +11,7 @@ import {
   type EmitOptions, type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import { DOME_MIN_RINGS, domeSegments } from './domes.ts';
-import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { doorCanopy, facadeOn, pilaster } from './facade.ts';
 import { roofLadder, wallLantern } from './dressing.ts';
@@ -26,6 +26,13 @@ export const STEEL_DARK = rgb(0x34383b);
 const WHITE = rgb(0xe8e9e6), ORANGE = rgb(0xc4602b), BLUE = rgb(0x6f8796);
 export const OLIVE = rgb(0x5a5a3e), PLY = rgb(0xa58a60);
 const RADOME = rgb(0xf0f0ec);
+/**
+ * (dome-detail-275, the roof sweep) The ribbed steel sheets in relief (house.ts RoofSpec.relief): the sheets 0.9 m in
+ * cover lapped in their courses, their ribs drawn across them; the utility shed's and the modules' roofs (FELT, the
+ * modules' membrane over their insulated panels) likewise.
+ */
+export const RIBBED: RoofRelief = { kind: 'sheet', pitch: 0.9, ribs: 2 };
+export const FELT: RoofRelief = { kind: 'felt' };
 /** Snow drawn in steel's coloured bucket on a pinned texel (a tank's skirt of drift; dome-detail-275). */
 const SNOW = rgb(0xf4f5f6);
 /** (round 3, wave 130: the radar tower's dark lattice under its white dome read as "a wooden water tower") hot-dip
@@ -650,7 +657,7 @@ const warehouse: RegionalBuilder = (ctx) => {
       { face: 'back', storey: 0, kind: 'gate', u: 0, w: 3.6, y0: 0, h: 3.6 },
     ];
     for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 1.2, h: 0.6, sill: 4.4, spacing: 3.6, margin: 2.0, max: 7 })) openings.push(o);
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 9, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 9, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle', relief: RIBBED };
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 6.4, wall: paint }], roof, gableBucket: paint, openings,
       // (227, BLD-04: no stack on the station's biggest heated building) the oil-fired unit heaters' flue chase through the
@@ -668,9 +675,10 @@ const warehouse: RegionalBuilder = (ctx) => {
     sink.span('stone', -W / 2, -0.3, D / 2, W / 2, 0.08, D / 2 + apron);
     // the band of the station's colour round the eaves
     sink.span('plaster2', -W / 2 - 0.03, 5.85, -D / 2 - 0.03, W / 2 + 0.03, 6.35, D / 2 + 0.03);
-    // (dome-detail-275) the roof's ribbed sheets in relief and the ridge's ventilators; the gable louvres; the heating-oil
-    // day tank on the apron beside the big door
-    sheetRibs(sink, frame, look);
+    // (dome-detail-275) the roof's ribbed sheets in relief (the roof sweep: the shared relief's courses, RIBBED, where the
+    // ribs alone stood; their two draws still made, so the look after them lays as before) and the ridge's ventilators;
+    // the gable louvres; the heating-oil day tank on the apron beside the big door
+    look(); look();
     ridgeVents(sink, frame, [-D * 0.18, D * 0.26]);
     louvre(sink, frame.faces.back, 0, 5.15, 1.2, 0.8);
     louvre(sink, frame.faces.front, 0, frame.eaveY + 0.42, 1.0, 0.4);

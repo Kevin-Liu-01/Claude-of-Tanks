@@ -11,7 +11,7 @@ import { faceBox, facePanel, facePoint, PartSink, rgb, UV_WORLD, type EmitOption
 import { hash01 } from './facade.ts';
 import { recordBody } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
-import { GILT, WHITE_TRIM, bankOf, glyph, streetLifeRng } from './shanghaiParts.ts';
+import { GILT, WHITE_TRIM, bankOf, feltRoof, glyph, streetLifeRng } from './shanghaiParts.ts';
 import {
   BRONZE, CHAR, COPPER, DECOR, STEEL, cornerBays, cornerCut, damageOf, fit, inset, podium, pyramidCrown, rectFaces, rubble,
   skylineUvOffset as uvOffset, soot, spire, tierDamage, type Rect, type SkylineOptions, type TierDamage, type TowerFacade,
@@ -45,6 +45,21 @@ function clearOf(r: Rect, v: Rect): Rect {
 
 const within = (v: Rect | null, x: number, z: number, m: number) => !!v && x > v.x0 - m && x < v.x1 + m && z > v.z0 - m && z < v.z1 + m;
 
+/** The faces of a tier that carry a centre spine (spine): 10 m wide or more, their middle clear of a collapsed corner's void. */
+const spinedFaces = (faces: readonly Face[], gone: Rect | null): boolean[] => faces.map((f) => {
+  const mid = facePoint(f, 0, 0, 0);
+  return f.width >= 10 && !within(gone, mid[0], mid[2], 4);
+});
+/**
+ * (dome-detail-275, the roof sweep's triangle trade for the setbacks' felt) Whether a pier or a finial at `u` on a face of
+ * `bays` bays stands inside one of its centre spine's two fins (spine: at ±half, 1.4 m wide and 1.5 m out): the regular
+ * pier and the finial stood wholly within the fin, drawn for nothing.
+ */
+const inFin = (u: number, width: number, bay: number): boolean => {
+  const n = Math.max(1, Math.round(width / bay)), half = n % 2 ? width / n / 2 : width / n;
+  return Math.abs(Math.abs(u) - half) < 0.05;
+};
+
 /**
  * The piers carried up past a tier's parapet (`parapet` m over its `top`) as finials, a bay apart round the tier
  * (skyline.ts pierFinials), none over a collapsed corner's void: there they stood on the parapet laid over nothing.
@@ -54,16 +69,17 @@ const within = (v: Rect | null, x: number, z: number, m: number) => !!v && x > v
  * underside, and the corner ones half past the tier's corner on nothing.
  */
 function deckFinials(sink: PartSink, r: Rect, top: number, parapet: number, bay: number, bucket: RegionalBucket, gone: Rect | null): void {
-  for (const face of rectFaces(r)) {
+  const faces = rectFaces(r), spined = spinedFaces(faces, gone);
+  faces.forEach((face, fi) => {
     const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
-    // (dome-detail-275) the corners' finials are the stepped corner crowns now (cornerSteps)
+    // (dome-detail-275) the corners' finials are the stepped corner crowns now (cornerSteps); none inside a spine's fin
     for (let k = 1; k < n; k++) {
       const u = -face.width / 2 + k * bw, p = facePoint(face, u, 0, 0);
-      if (within(gone, p[0], p[2], 0.4)) continue;
+      if (within(gone, p[0], p[2], 0.4) || (spined[fi] && inFin(u, face.width, bay))) continue;
       const h = parapet + 1.0;
       faceBox(sink, bucket, face, u, top + h / 2, 0.26, 0.5, h, 0.5, { ...DECOR, fineSides: true }, { bottom: true });
     }
-  }
+  });
 }
 
 /**
@@ -283,10 +299,13 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     let y = podiumH, left = total;
     const first = Math.round(total * 0.55);
     const dmg = tierDamage(rng, damage, first);
+    // (dome-detail-275, the roof sweep) each setback's terrace (its rect, deck height, collapsed corner) for its felt
+    const decks: Array<{ r: Rect; y: number; gone: Rect | null }> = [];
     for (let t = 0; t < tiers; t++) {
       const n = t === tiers - 1 ? left : t === 0 ? first : Math.round(total * 0.28);
       const tierDmg = t === 0 ? dmg : { ...dmg, corner: null, blown: null, burnt: new Set<number>(), holes: dmg.holes.filter((h) => h.floor < n) };
       const { top, gone, keep } = decoTier(sink, r, y, n, fh, facade, tierDmg, rng);
+      decks.push({ r, y: top + 0.98, gone });
       // the setback: the piers carried up past the parapet as finials, the terrace parapet between them
       // (from the tier's top: run 0.3 m down it stood behind the top floor's glass, the pane on stone instead of the dark)
       // (the owner, 2026-10-21: the towers' "floating parts") over a collapsed corner the parapet and its finials stand on
@@ -298,11 +317,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       // (230, "underdesigned") the Art Deco chevrons along the setback's parapet; up each wide face of the first tier its
       // centre spine
       chevrons(sink, r, top + 0.08, dress.accent, gone, facade.bay);
-      for (const face of rectFaces(r)) {
-        // (never up a face whose middle a collapsed corner's void reaches: its fins would stand before the void)
-        const mid = facePoint(face, 0, 0, 0);
-        if (face.width >= 10 && !within(gone, mid[0], mid[2], 4)) spine(sink, face, y, top, facade.bay, dress.spine, dress.accent);
-      }
+      const tierFaces = rectFaces(r), spined = spinedFaces(tierFaces, gone);
+      // (never up a face whose middle a collapsed corner's void reaches: its fins would stand before the void)
+      tierFaces.forEach((face, fi) => { if (spined[fi]) spine(sink, face, y, top, facade.bay, dress.spine, dress.accent); });
       left -= n; y = top;
       if (left <= 0) break;
       const k = Math.min((r.x1 - r.x0) * 0.16, (r.z1 - r.z0) * 0.16, 3.2);
@@ -320,6 +337,18 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     }
     // the crown
     const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, half = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
+    // (dome-detail-275, the roof sweep) every setback's terrace under felt in relief on its coping's deck, clear of the tier
+    // over it (the last of the crown's footing), its stepped corner crowns and a collapsed corner's void
+    {
+      const foot = damage === 3 ? half * 0.6 : crown === 'pyramid' ? half * 0.86 + 0.2 : crown === 'stepped' ? half * 0.82 + 0.4 : half * 0.5 + 0.1;
+      decks.forEach((d, i) => {
+        const over = decks[i + 1]?.r ?? { x0: cx - foot, x1: cx + foot, z0: cz - foot, z1: cz + foot };
+        const holes = [{ x0: over.x0 - 0.15, x1: over.x1 + 0.15, z0: over.z0 - 0.15, z1: over.z1 + 0.15 },
+          ...[[d.r.x0, d.r.z0], [d.r.x1, d.r.z0], [d.r.x0, d.r.z1], [d.r.x1, d.r.z1]].map(([x, z]) => ({ x0: x - 1.6, x1: x + 1.6, z0: z - 1.6, z1: z + 1.6 })),
+          ...(d.gone ? [{ x0: d.gone.x0 - 0.3, x1: d.gone.x1 + 0.3, z0: d.gone.z0 - 0.3, z1: d.gone.z1 + 0.3 }] : [])];
+        feltRoof(sink, d.r.x0 + 0.1, d.r.z0 + 0.1, d.r.x1 - 0.1, d.r.z1 - 0.1, d.y, { holes });
+      });
+    }
     {
       const r0 = inset(plot, Math.min(1.2, (plot.x1 - plot.x0) * 0.05));
       recordBody(sink, (r0.x0 + r0.x1) / 2, (r0.z0 + r0.z1) / 2, r0.x1 - r0.x0, r0.z1 - r0.z0, y + 0.9, stone, false, true);
@@ -448,17 +477,20 @@ function decoTier(sink: PartSink, r: Rect, y0: number, floors: number, fh: numbe
     }
     rubble(sink, v, yc, 1.4 + (top - yc) * 0.04, rng);
   } else sink.span('dark', r.x0, base, r.z0, r.x1, top, r.z1);
+  const spined = spinedFaces(faces, gone);
   faces.forEach((face, fi) => {
     if (opts.faces && !opts.faces[fi]) return;
-    decoFace(sink, face, fi, bays[fi], y0, floors, fh, facade, dmg, c ? { floor: c.floor, from: cornerBays(c, fi, bays[fi]) } : null);
+    decoFace(sink, face, fi, bays[fi], y0, floors, fh, facade, dmg, c ? { floor: c.floor, from: cornerBays(c, fi, bays[fi]) } : null, spined[fi]);
   });
   return { top, gone, keep };
 }
 
 /** Dress one face of a tier: piers, per-floor spandrels and glass, damage. */
 function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: number, floors: number, fh: number, facade: TowerFacade,
-  dmg: TierDamage, corner: { floor: number; from: { end: 1 | -1; n: number } | null } | null): void {
+  dmg: TierDamage, corner: { floor: number; from: { end: 1 | -1; n: number } | null } | null, spined = false): void {
   const W = face.width, bw = W / bays, sp = facade.spandrel, pier = facade.pier;
+  // (dome-detail-275, the roof sweep's triangle trade) no regular pier (nor its soot) inside a centre spine's fin
+  const hidden = (k: number) => spined && k > 0 && k < bays && inFin(-W / 2 + k * bw, W, facade.bay);
   const glassO = 0.03;
   const cornerGone = (bay: number, floor: number) => !!corner?.from && floor >= corner.floor
     && (corner.from.end > 0 ? bay >= bays - corner.from.n : bay < corner.from.n);
@@ -527,6 +559,7 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       const y1 = Math.min(y + 2.2 * fh, y0 + floors * fh);
       if (pier) {
         for (let k = 0; k <= bays; k++) {
+          if (hidden(k)) continue;
           const p = pierAt(k), top = Math.min(y1, p.top);
           if (top - (y + sp.h) > 0.3) soot(sink, pier.bucket, face, p.u, p.w * 0.9, y + sp.h, top, pier.out + 0.008, pier.colour);
         }
@@ -550,7 +583,7 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
     const pOpts: EmitOptions = { ...DECOR, fineSides: true, ...(pier.colour ? { colour: pier.colour } : {}), ...(pier.shade ? { shade: pier.shade } : {}) };
     for (let k = 0; k <= bays; k++) {
       const p = pierAt(k);
-      if (p.top - y0 < 0.5) continue;
+      if (p.top - y0 < 0.5 || hidden(k)) continue;
       // (looks r2) a deco pier of two orders: its back order the pier's width out to 55 % of its reach, the front order
       // stepped in 9 cm a side (a box before)
       // (dome-detail-275) a full-height pier's head under its finial or its corner's stepped crown (deckFinials,

@@ -219,7 +219,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   }
   // (dome-detail-275, the roof scan: the hall's roof a smooth slab) its corrugated sheets in their lapped courses
   // (regional/roofRelief.ts; dressing, no stream draws)
-  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: 3 }, roofPlanes));
+  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: 3, budget: 500 }, roofPlanes));
   // each window: the glass at the back of the reveal (the core's face behind it), the mullion and transom in the reveal;
   // the brick jambs and lintel round the cut and the stone sill under it
   for (const { side, zz } of bays) {

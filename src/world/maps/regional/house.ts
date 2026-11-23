@@ -1095,7 +1095,10 @@ export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d:
   };
   const none: HouseDialect = { window: () => undefined, door: () => undefined };
   const lay = () => scratch.placed(0, cx, 0, cz, () => { buildHouse(scratch, spec, none); });
-  if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
+  // (dome-detail-275) the recording house is never drawn: its roof stays out of the roof log the relief law reads
+  const prior = roofLog;
+  roofLog = null;
+  try { if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay(); } finally { roofLog = prior; }
   planSink[planSink.length - 1].recorded = true;
   if (shaft) planSink[planSink.length - 1].shaft = true;
   if (open) planSink[planSink.length - 1].open = true;

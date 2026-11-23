@@ -11,13 +11,13 @@
 // houses stand roofless after the April 1945 fighting.
 import { logWork } from './goral.ts';
 import {
-  LocalFrame, PartSink, faceBox, facePanel, facePoint, pick, rgb, shade,
+  LocalFrame, PartSink, faceBox, facePanel, facePoint, hashSeed, pick, rgb, shade, streamFrom,
   type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
 import { bulb } from './domes.ts';
 import {
   buildHouse, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
-  type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec,
+  type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofRelief, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { mound, woodpile } from './dressing.ts';
@@ -313,6 +313,20 @@ function lauzeEdges(sink: PartSink, frame: HouseFrame, look: () => number): void
   }
 }
 
+/**
+ * (dome-detail-275, the roof sweep) The look stream of the lauzes laid on a roof the second wave left smooth (the
+ * house, the mazot, the church, the two hospices): a stream of their own off the building's UV offset (as the shared
+ * relief's), so laying them moves no draw of the build's look stream the woodpiles and drifts after them take.
+ */
+const lauzeLook = (sink: PartSink): (() => number) => streamFrom(hashSeed('savoyard:lauzes', sink.uvOffset[0], sink.uvOffset[1]));
+/**
+ * (dome-detail-275, the roof sweep) The grand hospice's lauzes in the shared relief (house.ts RoofSpec.relief), the
+ * slates' courses at the lauzes' gauge within an allowance: its 365 m² of roof would take the lauze helpers' 3,000 or so
+ * triangles over the build cap (the block and its chapel stand at 10,400 smooth).
+ */
+const LAUZE_BLOCK: RoofRelief = { kind: 'slate', gauge: LAUZE_COURSE, budget: 760 };
+const LAUZE_CHAPEL: RoofRelief = { kind: 'slate', gauge: LAUZE_COURSE, budget: 300 };
+
 /** The lauzes of a shed roof laid in its own roof frame (a porch's lean-to; dome-detail-275): whole courses up its slope. */
 function lauzeShed(sink: PartSink, rg: HouseFrame['roof'], roof: RoofSpec, look: () => number): void {
   const sl = roofSlope(rg, roof, 1), D = rg.halfD + roof.verge;
@@ -432,6 +446,8 @@ const maison: RegionalBuilder = (ctx) => {
       gutters: null, verge: null, reveal: 0.42, spall: null,
     }, dialect(st));
     purlins(sink, frame, LARCH_DARK);
+    // (dome-detail-275, the roof sweep) the lauzes in their courses, as the grange's
+    lauzeEdges(sink, frame, lauzeLook(sink));
     if (ctx.snowCap) drifts(sink, frame, openings, look);
     const f = frame.faces.front;
     gallery(sink, f, frame.floors[1], W - 0.4, 0.95, frame.eaveY + 0.2, shade(LARCH, 0.95), true);
@@ -544,6 +560,8 @@ const mazot: RegionalBuilder = (ctx) => {
         },
       });
       purlins(sink, frame, LARCH_DARK);
+      // (dome-detail-275, the roof sweep) the lauzes in their courses
+      lauzeEdges(sink, frame, lauzeLook(sink));
       // (props census #22, Lane C 2026-10-16: "between the corner stubs every wall is a flat larch print") the walls laid
       // in hewn larch courses, saddle-notched, their ends running past the corners, cut at the door (goral.ts logWork)
       logWork(sink, frame, [0], look, MAZOT_LIGHT, ctx.tier === 'mobile', 0.24);
@@ -856,6 +874,8 @@ const eglise: RegionalBuilder = (ctx) => {
       archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, LARCH_DARK);
     } });
     purlins(sink, frame, LARCH_DARK);
+    // (dome-detail-275, the roof sweep) the nave's lauzes in their courses, as the chapel's
+    lauzeEdges(sink, frame, lauzeLook(sink));
     snowBoards(sink, frame);
     if (ctx.snowCap) drifts(sink, frame, openings, look);
     const y0 = frame.floors[0], eave = frame.eaveY, F = frame.faces;
@@ -1087,6 +1107,8 @@ const hospice: RegionalBuilder = (ctx) => {
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
       ...st.window, surround: { bucket: 'plaster', width: 0.18, out: 0.02, lintel: 0.24 }, shutters: { colour: rgb(0x6a7270), kind: 'louvred', closed: 0.35 },
     }, st.rng, 0.35) });
+    // (dome-detail-275, the roof sweep) the lauzes round its eaves and in its courses, as the barracks'
+    lauzeHip(sink, frame, lauzeLook(sink));
     if (ctx.snowCap) drifts(sink, frame, openings, ctx.variant);
     // the way to the door: a flagged apron swept clear before it, out to the road
     const fa = frame.faces.front;
@@ -1150,7 +1172,7 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w, d, plinth: { h: 0.7, out: 0.08, bucket: 'stone' },
       storeys: [{ h: 3.3, wall: 'stone' }, { h: 2.9, wall: 'stone' }, { h: 2.8, wall: 'stone' }, { h: 2.6, wall: 'stone' }],
-      roof: lauze(27, 0.6, 0.6, 'hip'), openings, gutters: null, verge: null, reveal: 0.45, spall: null,
+      roof: { ...lauze(27, 0.6, 0.6, 'hip'), relief: LAUZE_BLOCK }, openings, gutters: null, verge: null, reveal: 0.45, spall: null,
       chimneys: [{ x: -w * 0.2, z: -d * 0.3, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' },
         { x: w * 0.18, z: 0, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' },
         { x: -w * 0.2, z: d * 0.3, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' }],
@@ -1176,7 +1198,7 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     const cw = clamp(W * 0.58, 6.5, 9.0), H = 5.6;
     const frame = buildHouse(sink, {
       w: cw, d: chapelD + 0.3, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
-      roof: lauze(36, 0.45, 0.5), gableBucket: 'plaster',
+      roof: { ...lauze(36, 0.45, 0.5), relief: LAUZE_CHAPEL }, gableBucket: 'plaster',
       openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.4, y0: 0, h: 2.7 },
         { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.7, h: 1.4, y0: 2.4 }, { face: 'left', storey: 0, kind: 'window', u: 0, w: 0.7, h: 1.4, y0: 2.4 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.4,

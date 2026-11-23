@@ -123,11 +123,20 @@ function slateStep(sink: PartSink, sl: SlateSlope, v: number, t0: number, t1: nu
 const SLATE_COURSE = 0.36;
 /** (dome-detail-275) the shared roof relief's slates in the same courses (house.ts RoofSpec.relief): the terrace rows' roofs */
 const SLATE_RELIEF: RoofRelief = { kind: 'slate', gauge: SLATE_COURSE };
+/**
+ * (dome-detail-275, the roof sweep) The tarred felt of the works' low roofs in its rolls and laps (house.ts
+ * RoofSpec.relief): the goods sheds' dock canopies, the station's platform canopy, the works' boiler house.
+ */
+const TAR_FELT: RoofRelief = { kind: 'felt' };
 
-/** A slate run's tone (dome-detail-275): the soot-dulled field, now and then a run relaid in new slate or one sooted black. */
+/**
+ * A slate run's tone (dome-detail-275): the soot-dulled field, now and then a run relaid in new slate or one sooted
+ * darker. (The roof sweep: the relaid and sooted runs within about 12 % of the field's tone, 0.91; they were 1.08 and
+ * 0.68, pale and black bars across the slope.)
+ */
 function slateTone(look: () => number): number {
   const r = look();
-  return r < 0.05 ? 1.08 : r < 0.1 ? 0.68 : 0.84 + look() * 0.14;
+  return r < 0.05 ? 1.01 : r < 0.1 ? 0.81 : 0.85 + look() * 0.12;
 }
 
 /**
@@ -206,9 +215,10 @@ const cottagePair: RegionalBuilder = (ctx) => {
   for (const i of [0, 1]) for (const o of windowRhythm('back', i, W, { w: 0.8, h: 1.1, sill: 1.0, spacing: 2.4, margin: 1.0 })) openings.push(o);
   // the ridge runs along the street: built along local z and turned a quarter, its local -x side faces the street (+z)
   sink.placed(Math.PI / 2, 0, 0, 0, () => {
+    // (dome-detail-275, the roof sweep) the slates in relief in the terrace rows' courses
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 2.8, wall: 'stone' }, { h: 2.6, wall: 'stone' }],
-      roof: slate(45), gableBucket: 'stone', openings: openings.map((o) => ({ ...o, face: o.face === 'front' ? 'left' : o.face === 'back' ? 'right' : o.face })),
+      roof: { ...slate(45), relief: SLATE_RELIEF }, gableBucket: 'stone', openings: openings.map((o) => ({ ...o, face: o.face === 'front' ? 'left' : o.face === 'back' ? 'right' : o.face })),
       chimneys: [{ x: 0, z: W / 2 - 0.6, sx: 0.6, sz: 0.7, above: 0.9, bucket: 'stone', cap: 'pots' }, { x: 0, z: -W / 2 + 0.6, sx: 0.6, sz: 0.7, above: 0.9, bucket: 'stone', cap: 'pots' }],
       gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, door));
@@ -358,7 +368,8 @@ const goodsShed: RegionalBuilder = (ctx) => {
     for (let z = -D / 2 + 0.9; z < D / 2 - 0.5; z += 2.6) sink.span('structureWood', W / 2 + 2.4, 0.15, z - 0.12, W / 2 + 2.52, 1.06, z + 0.12, { colour: rgb(0x4a3c30), decor: true });
     sink.span('structureWood', W / 2 + 2.4, 0.7, -D / 2 + 0.3, W / 2 + 2.47, 0.85, D / 2 - 0.3, { colour: rgb(0x3e332a), decor: true });
     for (let k = 0; k < 3; k++) sink.span('stone', W / 2 + 2.4 + (2 - k) * 0.25, -0.3, -D / 2 + 0.15, W / 2 + 2.4 + (3 - k) * 0.25, 0.32 + k * 0.26, -D / 2 + 1.35);
-    const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof' };
+    // (dome-detail-275, the roof sweep: its tarred felt in relief)
+    const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof', relief: TAR_FELT };
     const cw = plot.turned ? 2.6 : 3.0;
     const crg = roofGeometry(cw, D + 0.4, 4.9, canopy);
     sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, crg, canopy));
@@ -564,9 +575,10 @@ const station: RegionalBuilder = (ctx) => {
   for (const i of [0, 1]) for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, i, coreD, { w: 1.1, h: 1.7, sill: 0.9, spacing: 2.1, margin: 1.0, avoid: face === 'left' && i === 0 ? [[-1.0, 1.0]] : [] })) coreOpenings.push(o);
   const cx = ctx.bounds.minX + 0.3 + W / 2;
   sink.placed(0, cx, 0, 0, () => {
+    // (dome-detail-275, the roof sweep) the core's and the wings' slates in relief, the platform canopy's tarred felt
     const core = buildHouse(sink, {
       w: W, d: coreD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.8, wall: 'stone' }, { h: 3.2, wall: 'stone' }],
-      roof: slate(42), gableBucket: 'stone', openings: coreOpenings,
+      roof: { ...slate(42), relief: SLATE_RELIEF }, gableBucket: 'stone', openings: coreOpenings,
       chimneys: [{ x: W * 0.25, z: 0, sx: 0.6, sz: 0.6, above: 1.0, bucket: 'stone', cap: 'pots' }], gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, door, true));
     band(sink, core.bodies[0], core.floors[1] - 0.15);
@@ -577,7 +589,7 @@ const station: RegionalBuilder = (ctx) => {
         for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, wingD, { w: 1.1, h: 1.8, sill: 0.8, spacing: 2.2, margin: 0.8 })) wingOpenings.push(o);
         const wing = buildHouse(sink, {
           w: W - 1.2, d: wingD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 4.0, wall: 'stone' }],
-          roof: slate(30, 'hip'), gableBucket: 'stone', openings: wingOpenings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
+          roof: { ...slate(30, 'hip'), relief: SLATE_RELIEF }, gableBucket: 'stone', openings: wingOpenings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
         }, dialect(rng, door));
         band(sink, wing.bodies[0], 3.5);
         if (facadeOn()) trimRing(sink, 'stone', wing.bodies[0], wing.eaveY - 0.24, [{ h: 0.08, out: 0.05 }, { h: 0.08, out: 0.1 }, { h: 0.08, out: 0.14 }]);
@@ -590,7 +602,7 @@ const station: RegionalBuilder = (ctx) => {
     const cols: number[] = [];
     for (let z = -D / 2 + 1.2; z < D / 2; z += 3.4) cols.push(-z);
     leanTo(sink, { face: side, u0: -D / 2, u1: D / 2, depth: 3.3, highY: 4.65,
-      roof: { pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.09, bucket: 'roof' },
+      roof: { pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.09, bucket: 'roof', relief: TAR_FELT },
       posts: { at: cols, size: 0.2, bucket: 'structureMetal', colour: IRON, round: true },
       plate: { h: 0.3, w: 0.16, bucket: 'structureMetal', colour: IRON } });
   });
@@ -669,16 +681,18 @@ const works: RegionalBuilder = (ctx) => {
     for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
       sink.span('structureWood', sx * 0.81 - 0.02, ly + 0.05 + k * 0.2, -len / 2 + 0.2, sx * 0.81 + 0.02, ly + 0.12 + k * 0.2, len / 2 - 0.2, { colour: rgb(0x2e3032), decor: true });
     }
-    const cap = slate(26);
+    // (dome-detail-275, the roof sweep) its slates in relief, on a lean allowance (the works stands near the cap)
+    const cap: RoofSpec = { ...slate(26), relief: { ...SLATE_RELIEF, budget: 60 } };
     emitRoof(sink, roofGeometry(1.7, len + 0.2, ly + 0.7, cap), cap);
   });
   // the boiler house against the hall's back, its shed roof leaning on the hall
   const BW = Math.min(5.4, W - 2), BD = Math.min(4.6, (cz - D / 2) - bb.minZ - 0.4);
   if (boiler && BD >= 3.2) {
     sink.placed(0, cx - W / 2 + BW / 2 + 0.5, 0, cz - D / 2 - BD / 2 + 0.05, () => {
+      // (dome-detail-275, the roof sweep: its shed roof's tarred felt in relief)
       const f2 = buildHouse(sink, {
         w: BW, d: BD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 4.8, wall: 'stone' }],
-        roof: { kind: 'shed', pitchDeg: 14, eave: 0.3, verge: 0.25, thickness: 0.12, bucket: 'roof' }, gableBucket: 'stone',
+        roof: { kind: 'shed', pitchDeg: 14, eave: 0.3, verge: 0.25, thickness: 0.12, bucket: 'roof', relief: TAR_FELT }, gableBucket: 'stone',
         openings: [{ face: 'left', storey: 0, kind: 'window', u: 0, w: 1.4, y0: 1.2, h: 2.8 }, { face: 'back', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.5 }],
         chimneys: [], gutters: { colour: rgb(0x5e6264) }, verge: null, reveal: 0.34,
       }, dialect(rng, DOOR[0]));

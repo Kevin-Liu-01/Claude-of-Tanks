@@ -11,7 +11,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, wallPolygon, windowRhythm,
-  type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofPatch, type RoofSpec,
+  type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofPatch, type RoofRelief, type RoofSpec,
 } from './house.ts';
 import { orientedPrism } from './millWorks.ts';
 import { DOME_MIN_SEGMENTS, smoothDome, smoothProfile } from './domes.ts';
@@ -94,6 +94,13 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 }
 
 const slate = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.1, verge: 0.02, thickness: 0.12, bucket: 'roof', ridge: 'saddle' });
+/**
+ * (dome-detail-275, the roof sweep) The Breton slates laid in relief by the shared roof relief (house.ts RoofSpec.relief):
+ * the houses, the boathouse, the net loft, the granary and the market's hipped roof that the kit's own slates (slates)
+ * did not yet cover; their courses' butts proud, runs of their own tone, the war's stripped patch left open.
+ */
+const SLATES: RoofRelief = { kind: 'slate' };
+const slated = (pitch: number): RoofSpec => ({ ...slate(pitch), relief: SLATES });
 
 /** A gable-end stack: its gable (0 the street's, +z; 1 the back), its offset across the gable from the apex, its height
  * over the ridge and its cap's. */
@@ -216,7 +223,7 @@ function leanTo(sink: PartSink, st: BretonState, W: number, plotBack: number, le
   sink.placed(Math.PI / 2, 0, 0, plotBack + len / 2, () => {
     const frame = buildHouse(sink, {
       w: len, d: wide, plinth: { h: 0.1, out: 0.03, bucket: 'stone' }, storeys: [{ h: lo - 0.1, wall: 'stone' }],
-      roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.1, bucket: 'roof' }, gableBucket: 'stone',
+      roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.1, bucket: 'roof', relief: SLATES }, gableBucket: 'stone',
       openings: [{ face: 'right', storey: 0, kind: 'door', u: (vary() - 0.5) * Math.max(0, wide - 2.0), w: 0.85, y0: 0, h: 1.8 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.3,
     }, dialect({ ...st, rng: vary, litShare: 0 }));
@@ -324,7 +331,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const body = (): void => {
     const frame = buildHouse(sink, {
       w: hw, d: hd, plinth: { h: 0.12, out: 0.03, bucket: 'stone' }, storeys: sts,
-      roof: slate(pitch), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
+      roof: slated(pitch), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
       reveal: 0.34, soot: 'tongue',
     }, dialect(st));
     gableParapets(sink, frame, stacks, rng);
@@ -383,8 +390,9 @@ function quoins(sink: PartSink, frame: HouseFrame, o: { proud?: number; tint?: R
 
 /** The dressed granite of quoins, surrounds and arches: paler and finer than the rubble round it (dome-detail-275). */
 const QUOIN_TINT: Rgb = [1.12, 1.1, 1.05];
-/** The Atlantic's orange-yellow lichen on old slate and granite (dome-detail-275). */
-const LICHEN: Rgb = [1.13, 1.05, 0.74];
+/** The Atlantic's orange-yellow lichen on old slate and granite (dome-detail-275; the roof sweep: a faint warm cast within
+ * ±12 % of the slate's tone, was [1.13, 1.05, 0.74], an orange blotch). */
+const LICHEN: Rgb = [1.1, 1.04, 0.9];
 /** Terracotta ridge tiles and the lime they are bedded in, as tints on the granite (dome-detail-275). */
 const CLAY_TINT: Rgb = [1.08, 0.62, 0.45];
 const LIME_TINT: Rgb = [1.06, 1.05, 1.0];
@@ -659,7 +667,7 @@ const barn: RegionalBuilder = (ctx) => {
 };
 
 /** A small granite outbuilding (the base granary's footprint): bretonGranary.ts, props census #22's. */
-const granary: RegionalBuilder = (ctx) => bretonGranary(ctx, { uvOffset, stateFor, slate, dialect, gableParapets, quoins });
+const granary: RegionalBuilder = (ctx) => bretonGranary(ctx, { uvOffset, stateFor, slate: slated, dialect, gableParapets, quoins });
 
 /**
  * The chapel: granite nave, slate roof, a pierced bell gable on the west front, a porch door. (dome-detail-275) A Breton
@@ -888,7 +896,7 @@ const boathouse: RegionalBuilder = (ctx) => {
   }
   const base = dialect({ ...st, litShare: 0 });
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'stone' }], roof: slate(45 + rng() * 3),
+    w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'stone' }], roof: slated(45 + rng() * 3),
     gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.36,
   }, {
     ...base,
@@ -1080,7 +1088,8 @@ const cannery: RegionalBuilder = (ctx) => {
         sink.span('structureWood', side * lw / 2 - 0.04, y0 + 0.08, z, side * lw / 2 + 0.04, y0 + lh - 0.08, z + 0.1, { colour: rgb(0x4e5154), decor: true });
       }
     }
-    const lantern: RoofSpec = { kind: 'gable', pitchDeg: 36, eave: 0.12, verge: 0.06, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
+    // (dome-detail-275) the lantern's slates in relief
+    const lantern: RoofSpec = { kind: 'gable', pitchDeg: 36, eave: 0.12, verge: 0.06, thickness: 0.08, bucket: 'roof', ridge: 'saddle', relief: SLATES };
     sink.placed(0, 0, 0, 0, () => emitRoof(sink, roofGeometry(lw, len, y0 + lh, lantern), { ...lantern, decor: true }));
     // the pitching door high in the quay gable over the doors (the loft where the empty tins were stored), its plank leaf
     // at the back of its reveal, the granite sill and lintel, the hoist beam out over it with its block and fall
@@ -1198,7 +1207,7 @@ const halles: RegionalBuilder = (ctx) => {
   const look = ctx.variant;
   const W = Math.max(4.8, Math.min(6.4, ctx.info.w - 0.3)), D = Math.max(3.8, Math.min(5.0, ctx.info.d - 0.3));
   const spec: HalleSpec = {
-    W: D + 0.2, D: W + 0.2, H: 2.3, roof: { kind: 'hip', pitchDeg: 47, eave: 0.42, verge: 0.42, thickness: 0.12, bucket: 'roof', ridge: 'saddle' },
+    W: D + 0.2, D: W + 0.2, H: 2.3, roof: { kind: 'hip', pitchDeg: 47, eave: 0.42, verge: 0.42, thickness: 0.12, bucket: 'roof', ridge: 'saddle', relief: SLATES },
     timber: rgb(0x5a4a3a), bays: 2, mobile: ctx.tier === 'mobile', look,
     produce: [rgb(0xe2dcc4), rgb(0x5d7042), rgb(0x4e5e44), rgb(0xb8452e), rgb(0xc89a42)],
   };
@@ -1229,7 +1238,7 @@ const netYard: RegionalBuilder = (ctx) => {
   const LW = Math.min(3.4, W * 0.38), LD = Math.min(3.0, D * 0.45);
   sink.placed(0, bb.minX + 0.3 + LW / 2, 0, bb.minZ + 0.3 + LD / 2, () => {
     const frame = buildHouse(sink, {
-      w: LW, d: LD, plinth: { h: 0.22, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.2, wall: 'stone' }], roof: slate(46), gableBucket: 'stone',
+      w: LW, d: LD, plinth: { h: 0.22, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.2, wall: 'stone' }], roof: slated(46), gableBucket: 'stone',
       openings: [{ face: 'front', storey: 0, kind: 'door', u: -LW * 0.12, w: 0.95, y0: 0, h: 1.95 },
         { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.45, y0: 1.2, h: 0.5 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.32,

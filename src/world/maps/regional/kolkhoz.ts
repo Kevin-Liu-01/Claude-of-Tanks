@@ -10,7 +10,10 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { bulb } from './domes.ts';
-import { buildHouse, emitRoof, holedBox, leanTo, recordShaft, roofCrown, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, holedBox, leanTo, recordShaft, roofCrown, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening,
+  type RoofRelief, type RoofSpec,
+} from './house.ts';
 import { openBelfry } from './sarajevoParts.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, hollyhocks, mound } from './dressing.ts';
@@ -71,6 +74,13 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 
 const thatch = (pitch: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave: 0.5, verge: 0.5, thickness: 0.34, bucket: 'straw', ridge: 'round' });
 const shifer = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' });
+/**
+ * (dome-detail-275) The shared roof relief (house.ts RoofSpec.relief) over the roofs shiferSheets never laid: the asbestos
+ * sheets in the club's measure (1.13 m wide in courses 1.5 m up the slope, lapped), on the cowshed, the granary and the
+ * club's pediment; the church's painted roofing iron in its seamed sheets (a sheet of iron 0.6 m by 1.4 m).
+ */
+const SHIFER: RoofRelief = { kind: 'sheet', gauge: 1.5, pitch: 1.13, ribs: 0 };
+const ROOF_IRON: RoofRelief = { kind: 'sheet', gauge: 1.4, pitch: 0.6, ribs: 0, budget: 520 };
 
 /** The khata: whitewashed walls on a brick plinth, painted joinery, a hipped thatch. */
 function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): RegionalParts {
@@ -282,7 +292,7 @@ const korovnik: RegionalBuilder = (ctx) => {
   };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
-    roof: shifer(26), gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
+    roof: { ...shifer(26), relief: SHIFER }, gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
   }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (_face, poly) => ventHole(poly) });
   if (facadeOn()) shedMasonry(sink, frame, wall);
   // ventilation stacks on the ridge: boarded boxes with little gabled caps
@@ -316,7 +326,7 @@ const ambar: RegionalBuilder = (ctx) => {
   sink.placed(0, 0, lift, 0, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],
-      roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: SHIFER },
       gableBucket: 'wood', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.8 }],
       chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) }, reveal: 0.2,
     }, dialect({ ...st, litShare: 0 }));
@@ -358,7 +368,7 @@ const church: RegionalBuilder = (ctx) => {
   if (!tower) openings.push({ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.4 });
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: tower ? 5.2 : 4.4, wall: 'plaster' }],
-    roof: { kind: 'gable', pitchDeg: 34, eave: 0.35, verge: 0.2, thickness: 0.1, bucket: 'structureMetal', ridge: null },
+    roof: { kind: 'gable', pitchDeg: 34, eave: 0.35, verge: 0.2, thickness: 0.1, bucket: 'structureMetal', ridge: null, relief: ROOF_IRON },
     gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null,
   }, {
     ...dialect(st),
@@ -646,7 +656,7 @@ function club(ctx: RegionalBuildContext, school = false): RegionalParts {
     faceBox(sink, 'structureWood', f, 0, 3.0, 0.03, 2.6, 0.55, 0.04, { colour: school ? rgb(0x8a2e26) : st.paint, decor: true });
     // (dome-detail-275) the pediment over the entrance bay: a gable of the walls' masonry raised over the eave, under a
     // little gable of sheet run back into the hip; a star on a roundel in it (the club) or a round window (the school)
-    const fw = Math.min(4.4, W * 0.46), fp: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.22, verge: 0.28, thickness: 0.1, bucket: 'roof', ridge: 'saddle', decor: true };
+    const fw = Math.min(4.4, W * 0.46), fp: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.22, verge: 0.28, thickness: 0.1, bucket: 'roof', ridge: 'saddle', decor: true, relief: SHIFER };
     const frise = (fw / 2) * Math.tan(Math.PI / 6), Lf = (frise + 0.2) / rg.tanP + 0.3;
     const fg = roofGeometry(fw, Lf, eave, fp);
     sink.placed(0, 0, 0, D / 2 - Lf / 2, () => emitRoof(sink, fg, fp));

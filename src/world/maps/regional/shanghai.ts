@@ -35,7 +35,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AWNINGS, CHAR, CHINA_RED, DEG, GILT, GODOWN_WINDOW, IRON, LACQUER, SASH, SIGN_BOARDS, TEAK, TILE_COPING, WHITE_TRIM,
-  archOutline, bankOf, brickBands, choose, clampTo, fillOf, lantern, nameBoard, pocks, pyramid, raisedRidge, rooftopHoarding, rowFill, sandbags,
+  archOutline, bankOf, brickBands, choose, clampTo, feltRoof, fillOf, lantern, nameBoard, pocks, pyramid, raisedRidge, rooftopHoarding, rowFill, sandbags,
   signboard, streetLifeRng, uvOffset, wallAd,
 } from './shanghaiParts.ts';
 import { SHANGHAI_BUND_BUILDERS } from './shanghaiBund.ts';
@@ -131,6 +131,8 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
     };
     const frame = buildHouse(sink, spec, blockDialect(look));
     const front = frame.faces.front, eaveY = frame.eaveY;
+    // (dome-detail-275, the roof sweep) the flat roof's felt in its rolls, laps and patches inside the parapet
+    feltRoof(sink, -W / 2 + 0.22, -D / 2 + 0.22, W / 2 - 0.22, D / 2 - 0.22, eaveY + 0.3);
     // the string courses, the cornice, the crest panel over the parapet with its date
     for (let st = 1; st < floors; st++) faceBox(sink, 'plaster', front, 0, frame.floors[st] - 0.05, 0.05, W, 0.16, 0.1, { decor: true, fineSides: true });
     faceBox(sink, 'plaster', front, 0, eaveY - 0.12, 0.13, W, 0.34, 0.26, SHADOWED);
@@ -436,6 +438,8 @@ const godown: RegionalBuilder = (ctx) => {
     };
     const frame = buildHouse(sink, spec, godownDialect(look));
     const eaveY = frame.eaveY, front = frame.faces.front;
+    // (dome-detail-275, the roof sweep) the flat roof's felt in its rolls, laps and patches inside the parapet
+    feltRoof(sink, -W / 2 + 0.22, -D / 2 + 0.22, W / 2 - 0.22, D / 2 - 0.22, eaveY + 0.3);
     // the name band under the parapet, the hoist beam and its tackle over the loading doors
     for (const face of [front, frame.faces.right, frame.faces.left]) {
       facePanel(sink, 'plaster', face, 0, eaveY - 0.45, 0.015, face.width - 1.2, 0.7, DEC);
@@ -518,7 +522,7 @@ const cottonMill: RegionalBuilder = (ctx) => {
     sink.dressing(mobile, () => pocks(sink, frame.faces.front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, eaveY, 10 + Math.floor(look() * 12), look));
     // (dome-detail-275, the work list) the brick piers between the window bays up every face, a shade darker than the
     // panels; the corbelled cornice and the parapet's coping round the block (clear of the stair tower); the boiler's
-    // chimney up through the roof at the far corner, its banded shaft and its corbelled head; the roofing felt's laps
+    // chimney up through the roof at the far corner, its banded shaft and its corbelled head
     const faceNames = ['front', 'right', 'back', 'left'] as const;
     for (const name of faceNames) {
       const face = frame.faces[name], us = frame.spec.openings.filter((o) => o.face === name && o.storey === floors - 1 && o.kind === 'window').map((o) => o.u).sort((a, b) => a - b);
@@ -548,10 +552,10 @@ const cottonMill: RegionalBuilder = (ctx) => {
       [stackH, 1.06], [stackH, 0.82]], 16, { ...SHADOWED, shade: 0.85 });
     for (const k of [0.3, 0.62]) sink.revolve('structureMetal', [cx, cy + 1.45 + stackH * k - 0.07, cz], 'y', [[0, rAt(k) + 0.02], [0.14, rAt(k) + 0.02]], 16, { colour: IRON, decor: true });
     sink.polygon('dark', Array.from({ length: 12 }, (_, i): Vec3 => [cx + Math.cos(-i * Math.PI / 6) * 0.82, cy + 1.45 + stackH - 0.3, cz + Math.sin(-i * Math.PI / 6) * 0.82]), DEC);
-    for (let z = -D / 2 + 1.6; z < D / 2 - 0.6; z += 2.3) {
-      const xa = z < tz1 + 0.1 ? Math.min(W / 2 - 0.3, tx0 - 0.1) : W / 2 - 0.3;
-      sink.span('plaster3', -W / 2 + 0.3, eaveY + 0.3, z - 0.04, xa, eaveY + 0.33, z + 0.04, { decor: true, fine: true, shade: 0.8 });
-    }
+    // (dome-detail-275, the roof sweep: the felt's laps were slats laid on a smooth slab) the roof's felt in relief inside
+    // the parapet, clear of the stair tower and the chimney's base, kept up (half the patches: the mill at the cap)
+    feltRoof(sink, -W / 2 + 0.22, -D / 2 + 0.22, W / 2 - 0.22, D / 2 - 0.22, eaveY + 0.3, { wear: 0.06, holes: [
+      { x0: tx0 - 0.1, x1: W / 2, z0: -D / 2, z1: tz1 + 0.1 }, { x0: cx - 1.5, x1: cx + 1.5, z0: cz - 1.5, z1: cz + 1.5 }] });
   });
   return sink.finish();
 };
@@ -677,10 +681,12 @@ const fireStation: RegionalBuilder = (ctx) => {
     faceBox(sink, 'plaster', fr, xm, roofTop + 0.45, 0.04, pw - 0.6, 0.62, 0.08, { decor: true, fineSides: true });
     faceBox(sink, 'structureMetal', fr, xm, roofTop + 0.45, 0.09, pw - 1.2, 0.3, 0.02, { colour: rgb(0x2a2724), decor: true, fine: true });
     sink.span('plaster3', x1, -0.1, D / 2 + 0.02, W / 2, 0.05, D / 2 + 0.6, { decor: true, shade: 0.86, ground: true });
-    // the roofing felt's laps across the station's roof, a roof hatch, the chimney stacks on the back parapet
-    for (let z = -D / 2 + 1.4; z < D / 2 - 0.6; z += 2.0) {
-      sink.span('plaster3', z > z0 - 0.1 ? x1 + 0.1 : -W / 2 + 0.3, eaveY + 0.3, z - 0.04, W / 2 - 0.3, eaveY + 0.33, z + 0.04, { decor: true, fine: true, shade: 0.8 });
-    }
+    // a roof hatch, the chimney stacks on the back parapet; (dome-detail-275, the roof sweep: the felt's laps were slats
+    // laid on a smooth slab) the roof's felt in relief inside the parapet, clear of the tower, the name bay, hatch and stacks
+    feltRoof(sink, -W / 2 + 0.22, -D / 2 + 0.22, W / 2 - 0.22, D / 2 - 0.22, eaveY + 0.3, { holes: [
+      { x0: -W / 2, x1: x1 + 0.1, z0: z0 - 0.1, z1: D / 2 }, { x0: xm - pw / 2 - 0.1, x1: xm + pw / 2 + 0.1, z0: D / 2 - 0.4, z1: D / 2 },
+      { x0: W * 0.15 - 0.7, x1: W * 0.15 + 0.7, z0: -0.7, z1: 0.7 },
+      ...[-0.1, 0.32].map((sx) => ({ x0: sx * W - 0.55, x1: sx * W + 0.55, z0: -D / 2, z1: -D / 2 + 0.85 }))] });
     sink.span('plaster3', W * 0.15 - 0.55, eaveY + 0.3, -0.55, W * 0.15 + 0.55, eaveY + 0.85, 0.55, { decor: true, shade: 0.9 });
     sink.span('structureMetal', W * 0.15 - 0.62, eaveY + 0.85, -0.62, W * 0.15 + 0.62, eaveY + 0.93, 0.62, { colour: IRON, decor: true });
     for (const sx of [-0.1, 0.32]) {

@@ -5,7 +5,7 @@
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
 import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofRelief, type RoofSpec } from './house.ts';
 import { flowerBox } from './dressing.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, hash01, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
@@ -27,6 +27,12 @@ export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
   // the upper storeys' casements two-light, a single mullion (the town's 160 houses carry ~3,000 windows)
   upperBars: 'two',
 });
+
+/**
+ * (dome-detail-275) The town houses' plain tiles in relief (house.ts RoofSpec.relief): the Biberschwanz courses at the
+ * Fachwerk kit's gauge (hessian.ts PLAIN_TILES), so the town's rows read in courses beside its framed houses.
+ */
+const TOWN_TILES: RoofRelief = { kind: 'tile', gauge: 0.3 };
 
 /** The town house: a street front three or four storeys high, framed or rendered, gable- or eaves-fronted. */
 const townHouse: RegionalBuilder = (ctx) => {
@@ -70,7 +76,7 @@ const townHouse: RegionalBuilder = (ctx) => {
       for (const o of windowRhythm(face, i, width, { w: 0.85, h: i === 0 ? 1.3 : 1.25, sill: i === 0 ? 1.0 : 0.8, spacing: street ? 1.55 : 2.2, margin: 0.75, avoid })) openings.push(o);
     }
   });
-  const roof: RoofSpec = { ...roofFor(rng, { halfHip: 0.12, pitch: [50, 58] }), eave: 0.32, verge: 0.18 };
+  const roof: RoofSpec = { ...roofFor(rng, { halfHip: 0.12, pitch: [50, 58] }), eave: 0.32, verge: 0.18, relief: TOWN_TILES };
   const build = () => {
     const frame = buildHouse(sink, {
       w: bw, d: bd, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: sts, roof,

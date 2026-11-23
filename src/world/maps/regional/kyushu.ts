@@ -8,7 +8,7 @@
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
 import { PartSink, bodyFaces, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, layRoofRelief, leanTo, reliefFlat, reliefSlope, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofRelief, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -40,6 +40,32 @@ function slopePatch(sink: PartSink, rg: RoofGeometry, side: number, x0: number, 
   const e1 = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]], e2 = [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]];
   const ny = e1[2] * e2[0] - e1[0] * e2[2];
   sink.quad('structureMetal', ...((ny > 0 ? p : [...p].reverse()) as [Vec3, Vec3, Vec3, Vec3]), { colour, decor: true });
+}
+
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief, layRoofRelief): the minka's and the office's
+ * ibushi-gawara (smoked J-tile, sangawara) in its courses and rolls; the kura's hongawara pans in their courses under the
+ * round tiles (kuraTiles); the minka's miscanthus thatch in its courses; the tin sheathing over thatch (tottan) in seamed
+ * panels; the barns', the co-op's and the works' corrugated tin in lapped courses, its own replaced sheets and thin rust
+ * runs (the old orange slope patches gone); the fire post's flat concrete roof under asphalt felt.
+ */
+const IBUSHI: RoofRelief = { kind: 'pantile', gauge: 0.27, pitch: 0.28 };
+const HONGAWARA_PANS: RoofRelief = { kind: 'tile', gauge: 0.3 };
+const KAYA: RoofRelief = { kind: 'thatch' };
+const TOTTAN: RoofRelief = { kind: 'sheet', gauge: 1.8, pitch: 0.6, ribs: 0 };
+const NAMI: RoofRelief = { kind: 'sheet', gauge: 1.8, pitch: 0.76, ribs: 2 };
+const FELT: RoofRelief = { kind: 'felt' };
+/** asphalt felt's black over the cement render's grey (EmitOptions.tint of the covering's bucket) */
+const FELT_TINT: Rgb = [0.5, 0.5, 0.52];
+
+/**
+ * (dome-detail-275) A sheet hall's gable roof (hall.ts: ridge along z, eave 0.4, verge 0.3) in relief: both slopes'
+ * corrugated sheets over the hall's own slab, in its tin.
+ */
+function hallRelief(sink: PartSink, rg: RoofGeometry, colour: Rgb, budget?: number): void {
+  const X = rg.s + 0.4, Z = rg.halfD + 0.3, yE = rg.topAt(X, 0) ?? rg.eaveY, yR = rg.topAt(0, 0) ?? rg.ridgeTopY;
+  layRoofRelief(sink, { ...NAMI, ...(budget ? { budget } : {}) }, [1, -1].map((s) => reliefSlope([s * X, yE, -Z], [s * X, yE, Z], [-s * X, yR - yE, 0])),
+    { bucket: 'structureMetal', base: { colour } });
 }
 
 /** The base's reach (ctx.bounds): its size, centre and edges. A kit body sized from it opens no lane beside it. */
@@ -143,9 +169,10 @@ function minkaBody(sink: PartSink, rng: () => number, look: () => number, W: num
   openings.push({ face: 'right', storey: 0, kind: 'loft', u: (ua + ub) / 2, w: ub - ua, y0: 0, h: 2.0 });
   for (const o of windowRhythm('left', 0, D, { w: 1.2, h: 0.9, sill: 1.2, spacing: 2.6, margin: 1.4, max: 4 })) openings.push(o);
   for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 0.9, sill: 1.2, spacing: 2.6, margin: 1.4, max: 2 })) openings.push(o);
+  // (dome-detail-275) each covering in relief: the thatch's courses, the J-tile's rolls, the tin's seamed panels
   const roof: RoofSpec = thatch
-    ? { kind: 'hip', pitchDeg: 44, eave: 0.75, verge: 0.75, thickness: 0.42, bucket: 'straw', ridge: 'round' }
-    : { kind: 'hip', pitchDeg: tile ? 30 : 38, eave: 0.8, verge: 0.8, thickness: tile ? 0.14 : 0.1, bucket: tile ? 'roof' : 'structureMetal', ridge: 'saddle' };
+    ? { kind: 'hip', pitchDeg: 44, eave: 0.75, verge: 0.75, thickness: 0.42, bucket: 'straw', ridge: 'round', relief: KAYA }
+    : { kind: 'hip', pitchDeg: tile ? 30 : 38, eave: 0.8, verge: 0.8, thickness: tile ? 0.14 : 0.1, bucket: tile ? 'roof' : 'structureMetal', ridge: 'saddle', relief: tile ? IBUSHI : TOTTAN };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.45, out: 0.05, bucket: STONE }, storeys: [{ h: 2.9, wall: EARTH }], roof, gableBucket: EARTH,
     ...(roof.bucket === 'structureMetal' ? { roofColour: tin } : {}),
@@ -174,7 +201,7 @@ function minkaBody(sink: PartSink, rng: () => number, look: () => number, W: num
   // eave resting on a keta beam over the engawa posts, each post on its stone (tsukaishi)
   leanTo(sink, { face: f, u0: ua - 0.1, u1: ub + 0.1, from: Math.max(0, roof.eave - 0.15), depth: deep - 0.08, highY: frame.eaveY,
     under: { eaveY: frame.eaveY, eave: roof.eave, tanP: frame.roof.tanP },
-    roof: { pitchDeg: thatch ? 10 : 14, eave: 0.25, verge: 0.2, thickness: 0.08, bucket: thatch || tile ? 'roof' : 'structureMetal' },
+    roof: { pitchDeg: thatch ? 10 : 14, eave: 0.25, verge: 0.2, thickness: 0.08, bucket: thatch || tile ? 'roof' : 'structureMetal', relief: thatch || tile ? IBUSHI : TOTTAN },
     ...(thatch || tile ? {} : { roofColour: tin }),
     posts: { at, size: 0.14, bucket: 'structureWood', colour: CEDAR_DARK, foot: 0.12 },
     plate: { h: 0.15, w: 0.15, bucket: 'structureWood', colour: shade(CEDAR_DARK, 0.92) } });
@@ -202,7 +229,7 @@ const minka: RegionalBuilder = (ctx) => {
 function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: number): void {
   const frame = buildHouse(sink, {
     w, d, plinth: { h: 0.5, out: 0.06, bucket: STONE }, storeys: [{ h, wall: SHIKKUI }],
-    roof: { kind: 'gable', pitchDeg: 27, eave: 0.55, verge: 0.5, thickness: 0.22, bucket: 'roof', ridge: 'saddle' }, gableBucket: SHIKKUI,
+    roof: { kind: 'gable', pitchDeg: 27, eave: 0.55, verge: 0.5, thickness: 0.22, bucket: 'roof', ridge: 'saddle', relief: { ...HONGAWARA_PANS, budget: Math.round((w + 1.1) * (d + 1) * 4) } }, gableBucket: SHIKKUI,
     openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 1.9 }, { face: 'back', storey: 0, kind: 'loft', u: 0, w: 0.7, y0: h - 1.3, h: 0.7 }],
     chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: STONE,
   }, {
@@ -379,15 +406,11 @@ const naya: RegionalBuilder = (ctx) => {
         sink.member('structureWood', [side * (W / 2 + 0.42), 3.6 - 0.42 * tanP - 0.12, z], [0, apex + 0.02, z], 0.24, 0.05, [0, 0, name === 'front' ? 1 : -1], { colour: CEDAR_DARK, decor: true }, 0);
       }
     }
-    // (dome-detail-275) the roof's weather: rust up from the eaves and a sheet or two replaced in another tin
-    for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
-      const z0 = -L / 2 + (k + 0.15 + look() * 0.5) * L / 2, len = 0.8 + look() * 1.6, run = 0.5 + look() * 1.1;
-      slopePatch(sink, frame.roof, s, W / 2 + 0.3 - run, W / 2 + 0.3, z0, z0 + len, rusty(tin, 0.6 + look() * 0.3));
-    }
-    {
-      const s = look() < 0.5 ? -1 : 1, z0 = (look() - 0.5) * (L - 2);
-      slopePatch(sink, frame.roof, s, 0.3, W / 2 + 0.3, z0, z0 + 0.9, shade(pick(look, TIN), 0.95), 0.02);
-    }
+    // (dome-detail-275, the roof sweep) the roof's tin in relief, its lapped courses with their own replaced sheets and
+    // thin rust runs (hallRelief: the orange rust patches and the odd sheet of another colour were well outside the
+    // tin's tone); the patches' draws kept so the looks after them stay where they were
+    hallRelief(sink, frame.roof, tin);
+    for (let k = 0; k < 19; k++) look();
     // (dome-detail-275) rice sheaves hung to dry over a pole under the eave of the closed long side (hasa-kake), on its
     // brackets from the wall
     {
@@ -646,7 +669,7 @@ const coopWarehouse: RegionalBuilder = (ctx) => {
       sink.cylinder('structureMetal', [0, rt + 0.82, z], 'y', 0.16, 0.26, 12, { colour: rgb(0xa8acac), decor: true }, 0.04);
     }
     // (dome-detail-275) the co-op's name painted big along the +x wall under the lights (each character a few broad
-    // strokes, a stream of its own), and the roof sheets' rust in patches up from the eaves
+    // strokes, a stream of its own), 
     {
       const g = frame.faces.right, lg = streamFrom(Math.round(W * 131 + D * 17)), n = 4, ch = 1.5, step = 2.1, paint = shade(green, 0.8);
       for (let k = 0; k < n; k++) {
@@ -660,10 +683,10 @@ const coopWarehouse: RegionalBuilder = (ctx) => {
         }
       }
     }
-    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
-      const z0 = -D / 2 + (k + 0.2 + look() * 0.4) * D / 3, len = 0.9 + look() * 1.6, run = 0.6 + look() * 1.2;
-      slopePatch(sink, frame.roof, s, W / 2 + 0.35 - run, W / 2 + 0.35, z0, z0 + len, rusty(shade(roofTin, 0.8), 0.3 + look() * 0.25));
-    }
+    // (dome-detail-275, the roof sweep) the roof's sheets in relief, their own replaced sheets and thin rust runs (the
+    // rust patches were a fifth darker and orange); the patches' draws kept
+    hallRelief(sink, frame.roof, roofTin);
+    for (let k = 0; k < 24; k++) look();
     // (dome-detail-275) the store on the platform: pallets of rice in their paper sacks waiting for the lorry
     for (const x of two ? [-W / 2 + 1.1, 0] : [-W / 2 + 1.1]) {
       const z = D / 2 + 0.75, sack = rgb(0xc8b48a);
@@ -754,7 +777,7 @@ const works: RegionalBuilder = (ctx) => {
   try {
     frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: STONE }, storeys: [{ h: H - 0.4, wall: 'structureWood' }],
-      roof: { kind: 'gable', pitchDeg: 24, eave: 0.5, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: null }, roofColour: tin, gableBucket: 'structureWood',
+      roof: { kind: 'gable', pitchDeg: 24, eave: 0.5, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: null, relief: { ...NAMI, budget: Math.round((W + 1) * (D + 0.8) * 2.6) } }, roofColour: tin, gableBucket: 'structureWood',
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: null,
     }, dialect);
   } finally { sink.paint = null; }
@@ -786,7 +809,7 @@ const works: RegionalBuilder = (ctx) => {
   for (const sx of [-1, 1]) for (let y = ry + 0.12; y < ry + 0.85; y += 0.16) for (let k = 0, nb = Math.max(1, Math.ceil(2 * mz / 6)); k < nb; k++) {
     sink.span('structureWood', sx * 0.9 - 0.04, y, -mz + 2 * mz * k / nb, sx * 0.9 + 0.04, y + 0.03, -mz + 2 * mz * (k + 1) / nb, { colour: shade(board, 0.7), decor: true, fine: true });
   }
-  const cap: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.3, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null };
+  const cap: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.3, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null, relief: { ...NAMI, budget: 160 } };
   emitRoof(sink, roofGeometry(1.8, D - 2, ry + 0.9, cap), cap, tin);
   // the retorts behind the shed: a row of brick melting ovens on a stone bench, each with its iron door and its own
   // flue, the sulphur run into moulds at their feet; vent pipes on the ridge; sulphur heaped by the door
@@ -806,7 +829,7 @@ const works: RegionalBuilder = (ctx) => {
   for (let k = 0; k < 2; k++) sink.cylinder('structureWood', [(k ? 1 : -1) * (W / 2 - 1.3), 0, D / 2 + 0.3], 'y', 0.6 + look() * 0.3, 0.58, 9, { colour: SULPHUR, decor: true }, 0.16);
   // (dome-detail-275) the retorts' shelter: a tin lean-to from the shed's back wall over the ovens on its timber posts, the
   // flues up through it; the roof sheet crusted yellow by the monitor; a plank ramp up to the door over the footing
-  const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.2, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null, decor: true };
+  const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.2, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null, decor: true, relief: { ...NAMI, budget: 140 } };
   const ld = 2.3, ly = 3.3;
   sink.placed(Math.PI / 2, 0, 0, -D / 2 - ld / 2, () => emitRoof(sink, roofGeometry(ld, W - 0.4, ly, lean), lean, rusty(tin, 0.4)));
   for (let k = 0, n = Math.max(3, Math.round(W / 4)); k <= n; k++) {
@@ -816,7 +839,8 @@ const works: RegionalBuilder = (ctx) => {
   sink.member('structureWood', [-W / 2 + 0.2, ly - 0.08, -D / 2 - ld + 0.13], [W / 2 - 0.2, ly - 0.08, -D / 2 - ld + 0.13], 0.16, 0.14, [0, 1, 0], { colour: shade(board, 0.75), decor: true }, 0);
   for (const sx of [-1, 1]) for (let k = 0, n = Math.max(3, Math.round(mz / 2)); k < n; k++) {
     const z0 = -mz + (k + look() * 0.5) * 2 * mz / n, len = 0.5 + look() * 1.3, run = 0.4 + look() * 1.2;
-    slopePatch(sink, rg, sx, 0.95, 0.95 + run, z0, z0 + len, look() < 0.3 ? rgb(0xb8b6a4) : shade(SULPHUR, 0.62 + look() * 0.2));
+    // (dome-detail-275, the roof sweep: lifted over the sheets' relief) the sulphur's crust by the monitor
+    slopePatch(sink, rg, sx, 0.95, 0.95 + run, z0, z0 + len, look() < 0.3 ? rgb(0xb8b6a4) : shade(SULPHUR, 0.62 + look() * 0.2), 0.065);
   }
   sink.prism('structureWood', [[-1.4, 0, D / 2 + 0.85], [1.4, 0, D / 2 + 0.85], [1.4, 0.42, D / 2], [-1.4, 0.42, D / 2]], [0, 1, 0], 0.06, { colour: shade(board, 1.1), decor: true });
   });
@@ -988,7 +1012,7 @@ const worksOffice: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.45, out: 0.05, bucket: STONE }, storeys: [{ h: 3.2, wall: 'wood' }, { h: 3.0, wall: 'wood' }],
-      roof: { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'wood',
+      roof: { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'saddle', relief: IBUSHI }, gableBucket: 'wood',
       openings, chimneys: [], gutters: { colour: rgb(0x5a5a58) }, verge: null, reveal: 0.1, rafters: CEDAR_DARK,
     }, dialectOf(rng, rgb(0x5a6a72), 0.4));
     // the clapboard's laps along the walls, each course stopping at the casings of the openings it meets (props census
@@ -1010,7 +1034,7 @@ const worksOffice: RegionalBuilder = (ctx) => {
       }
     }
     for (const s of [-1, 1]) sink.span('structureWood', s * 1.3 - 0.1, 0, D / 2 + 2.4 - 0.1, s * 1.3 + 0.1, 2.8, D / 2 + 2.4 + 0.1, { colour: CEDAR_GREY });
-    const porch: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.2, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+    const porch: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.2, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle', relief: IBUSHI };
     sink.placed(Math.PI / 2, 0, 0, D / 2 + 1.3, () => emitRoof(sink, roofGeometry(2.6, 3.0, 2.8, porch), porch));
   });
   return sink.finish();
@@ -1108,6 +1132,12 @@ const firePost: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureMetal', g, u, ey + 0.15, 0.17, 0.26, 0.3, 0.34, { colour: grey, decor: true });
         facePanel(sink, CEMENT, g, u, ey - 0.6, 0.004, 0.4, 1.0, { decor: true, shade: 0.72 });
       }
+    }
+    // (dome-detail-275, the roof sweep) the flat roof's asphalt felt in relief inside the parapet (0.22 m, house.ts):
+    // its rolls along the long way, their laps and patches (the parapet's coping is the post's own, above)
+    {
+      const X = W / 2 + 0.3 - 0.22, Z = D / 2 + 0.3 - 0.22;
+      layRoofRelief(sink, FELT, [reliefFlat(-X, -Z, X, Z, ey + 0.2, X < Z)], { bucket: CEMENT, base: { tint: FELT_TINT }, edge: false });
     }
     // (dome-detail-275) the roof: the water tank of panels on its steel stand, two outdoor units, the hatch
     {

@@ -901,7 +901,10 @@ const mairie: RegionalBuilder = (ctx) => {
     for (const i of [0, 1]) for (const o of windowRhythm('back', i, W, { w: 1.0, h: 1.5, sill: 0.9, spacing: 2.6, margin: 1.2, max: 2 })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'stone' }, { h: 3.3, wall: st.wall }],
-      roof: { kind: 'hip', pitchDeg: 30, eave: 0.45, verge: 0.45, thickness: 0.16, bucket: 'roof', ridge: 'round' }, gableBucket: st.wall, openings,
+      // (dome-detail-275, the roof sweep) its canal tiles in relief round the four slopes (roofRelief.ts: the kit's own
+      // canalTiles lays a gable's), at the maisons' rows and courses
+      roof: { kind: 'hip', pitchDeg: 30, eave: 0.45, verge: 0.45, thickness: 0.16, bucket: 'roof', ridge: 'round',
+        relief: { kind: 'canal', pitch: CANAL_ROW, gauge: CANAL_COURSE, budget: 2000 } }, gableBucket: st.wall, openings,
       chimneys: [-1, 1].map((s) => ({ x: s * W * 0.25, z: -D * 0.3, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'stone' as const, cap: 'slab' as const })),
       gutters: { colour: rgb(0x6a6e6c) }, verge: null, reveal: 0.3,
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, school, rng, 0.5) });
@@ -947,7 +950,9 @@ const halle: RegionalBuilder = (ctx) => {
   const fp = footprint(ctx);
   onLot(sink, fp, (W, L) => {
     const spec: HalleSpec = {
-      W, D: L, H: 2.9 + rng() * 0.4, roof: canal(27, 0.55, 0.45), timber: rgb(0x5c4634), bays: Math.max(2, Math.round(L / 3.0)),
+      // (dome-detail-275, the roof sweep) its canal tiles in relief (roofRelief.ts) at the maisons' rows and courses, within
+      // a fixed allowance: a hall on a great lot lays its rolls coarser rather than pass the 11,500 cap
+      W, D: L, H: 2.9 + rng() * 0.4, roof: { ...canal(27, 0.55, 0.45), relief: { kind: 'canal', pitch: CANAL_ROW, gauge: CANAL_COURSE, budget: 560 } }, timber: rgb(0x5c4634), bays: Math.max(2, Math.round(L / 3.0)),
       mobile: ctx.tier === 'mobile', look, boardedGables: shade(PLANK, 1.1),
       produce: [rgb(0x9a2a22), rgb(0xc8a23a), rgb(0x5d7042), rgb(0xd07a2a), rgb(0xd8d2b4)],
     };
@@ -1064,6 +1069,8 @@ const arcades: RegionalBuilder = (ctx) => {
       }, dialect(st));
       sink.band('stone', -Dp / 2 - 0.05, -0.12, -F / 2 - 0.05, Dp / 2 + 0.05, 0.14, F / 2 + 0.05, { decor: true });
       anchors(sink, frame.faces.left, frame.floors[1] - 0.1, us);
+      // (dome-detail-275, the roof sweep) the canal tiles in their courses, as the maisons lay them
+      canalTiles(sink, frame.roof, frame.spec.roof, look, CANAL_ROW, frame.roofPatch);
       return frame;
     });
   });

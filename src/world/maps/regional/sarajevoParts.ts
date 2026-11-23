@@ -5,6 +5,7 @@
 // burnt storey; a cast-iron balcony railing; the white turbaned stones (nišani) of a Muslim graveyard. All dressing (no
 // collision); the kit draws their choices from the building's look stream (ctx.variant), never the build stream.
 import { PartSink, faceBox, facePanel, facePoint, rgb, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { layRoofRelief, type ReliefHole, type ReliefPlane, type RoofRelief } from './roofRelief.ts';
 
 /** The Austro-Hungarian casements, painted cream; the mahala's dark timber; the doors' oil paints. */
 export const AH_FRAME = rgb(0xe2dccb);
@@ -224,4 +225,42 @@ export function pediment(sink: PartSink, face: Face, u: number, y: number, w: nu
   const pts = [[u - w / 2, y], [u + w / 2, y], [u, y + rise]] as const;
   // a prism from the wall plane outward: points ccw seen from outside (+out), extruded along the face's normal
   sink.prism(bucket, pts.map(([uu, yy]) => facePoint(face, uu, yy, 0)), face.out, out, { ...DECOR, fineSides: true });
+}
+
+/**
+ * (dome-detail-275, the roof sweep: "roofs in courses, in relief") The kit's coverings in relief (roofRelief.ts): the
+ * Austro-Hungarian blocks', the mahala houses' and the mosques' plain tiles (Biberschwanz, the kit's beavertail) in their
+ * courses; the zinc of the mansards, the copper of the churches and the lead of the porticoes in seamed bays (a standing
+ * seam every 0.6 m, a cross welt every course); and the flat roofs of the Yugoslav blocks, the towers and the Vijećnica
+ * under bituminous felt in its rolls, its laps and its patches.
+ */
+export const PLAIN_TILES: RoofRelief = { kind: 'tile', gauge: 0.3 };
+export const SEAMED: RoofRelief = { kind: 'sheet', gauge: 2.0, pitch: 0.6, ribs: 0 };
+/** the felt's black over a textured deck's grey (EmitOptions.tint), its paint over a vertex-coloured one */
+const FELT: RoofRelief = { kind: 'felt', gauge: 1.0 };
+const FELT_TINT: Rgb = [0.5, 0.5, 0.52], FELT_PAINT = rgb(0x3f3e3c);
+
+/** (dome-detail-275) A convex plan (x, z) at a deck's top `y` as a flat plane for the relief, its rolls lapping along x. */
+export function deckPlane(plan: ReadonlyArray<readonly [number, number]>, y: number): ReliefPlane {
+  return { pts: plan.map(([x, z]): [number, number, number] => [x, y, z]), n: [0, 1, 0], up: [1, 0, 0], top: 0 };
+}
+
+/**
+ * (dome-detail-275) The felt left out under what stands on a deck (x0..x1, z0..z1 its footprint): the hole a roll
+ * inside the footprint all round, since a roll the hole cuts leaves its whole course bare (a white band round a lift
+ * room); none under a footprint too small to keep one.
+ */
+export function under(x0: number, z0: number, x1: number, z1: number, by = 1.05): ReliefHole[] {
+  return x1 - x0 > 2 * by + 0.2 && z1 - z0 > 2 * by + 0.2 ? [{ x0: x0 + by, x1: x1 - by, z0: z0 + by, z1: z1 - by }] : [];
+}
+
+/**
+ * (dome-detail-275) A flat deck under felt in relief: `planes` its tops (reliefFlat, or a convex outline), `holes` what
+ * stands on it (a lift room, a drum, a breach), in the deck's own bucket; no gravel stop where a parapet rings it; its
+ * rolls `gauge` wide (a wider roll where a build stands at the triangle cap). Returns the triangles laid.
+ */
+export function feltDeck(sink: PartSink, bucket: RegionalBucket, planes: readonly ReliefPlane[], holes: readonly ReliefHole[] = [], edge = false,
+  gauge = FELT.gauge): number {
+  const coloured = bucket === 'structureMetal' || bucket === 'structureWood';
+  return layRoofRelief(sink, { ...FELT, gauge }, planes, { bucket, base: coloured ? { colour: FELT_PAINT } : { tint: FELT_TINT }, holes, edge });
 }

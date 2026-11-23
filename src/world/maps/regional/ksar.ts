@@ -115,6 +115,71 @@ const ghorfaShops: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The mud terrace of a flat roof in relief (dome-detail-275, the roof sweep: a flat earth roof takes no felt; the
+ * terrace is screeded by hand, not rolled): the screed swept up into a cove at the parapet's foot all round, mitred at
+ * the corners (squared off against a stair-head room, `room`, the rectangle it stands on); the patches of fresh mud laid
+ * over the cracks after the rains, a finger proud, each its own ragged outline (their edges fine); the darker runs where
+ * the water stands and drains to each spout at `spouts` (x along the +z parapet). Within +-12 % of the terrace's tone.
+ */
+function mudTerrace(sink: PartSink, frame: HouseFrame, bucket: RegionalBucket, look: () => number, spouts: readonly number[],
+  room: { x0: number; x1: number; z0: number; z1: number } | null): void {
+  const rg = frame.roof, roof = frame.spec.roof;
+  if (rg.kind !== 'flat') return;
+  const X = rg.s + roof.eave - 0.22, Z = rg.halfD + roof.eave - 0.22, y = rg.eaveY + roof.thickness, c = 0.2, ch = 0.09;
+  const face = (pts: Vec3[], toward: Vec3, o: EmitOptions): void => {
+    const [a, b, d] = pts;
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    sink.polygon(bucket, n[0] * toward[0] + n[1] * toward[1] + n[2] * toward[2] >= 0 ? pts : [...pts].reverse(), o);
+  };
+  const cove: EmitOptions = { decor: true, shade: 0.94 };
+  // the cove along each side, k = 0 at the parapet's face (ch up it), k = 1 out on the terrace (c in from it): its run
+  // along the side from lo to hi, mitred at a corner (it meets its neighbour on the diagonal) or squared off at the room
+  const side = (at: (t: number, k: number) => Vec3, inward: Vec3, along: Vec3, lo: number, hi: number, mlo: boolean): void => {
+    const ilo = mlo ? lo + c : lo, ihi = hi - c;
+    if (ihi - ilo < 0.3) return;
+    face([at(lo, 0), at(hi, 0), at(ihi, 1), at(ilo, 1)], [inward[0], 1.2, inward[2]], cove);
+    if (mlo) return;
+    const top = at(lo, 0);
+    face([top, at(lo, 1), [top[0], y, top[2]]], [-along[0], 0, -along[2]], cove);
+  };
+  side((t, k) => [X - k * c, y + (1 - k) * ch, t], [-1, 0, 0], [0, 0, 1], -Z, Z, true);
+  side((t, k) => [-t, y + (1 - k) * ch, Z - k * c], [0, 0, -1], [-1, 0, 0], -X, X, true);
+  side((t, k) => [-X + k * c, y + (1 - k) * ch, t], [1, 0, 0], [0, 0, 1], room ? room.z1 : -Z, Z, !room);
+  side((t, k) => [t, y + (1 - k) * ch, -Z + k * c], [0, 0, 1], [1, 0, 0], room ? room.x1 : -X, X, !room);
+  // the runs of wet to the spouts: a darker tongue back from each spout over the terrace's fall (fine)
+  for (const x of spouts) {
+    const len = 1.2 + look() * 1.0, w0 = 0.32, w1 = 0.12 + look() * 0.1, z0 = Z - c, z1 = Math.max(-Z + 0.5, z0 - len);
+    face([[x - w0 / 2, y + 0.004, z0], [x + w0 / 2, y + 0.004, z0], [x + w1 / 2, y + 0.004, z1], [x - w1 / 2, y + 0.004, z1]], [0, 1, 0],
+      { decor: true, fine: true, shade: 0.89 });
+  }
+  // the fresh patches over the cracks: about one to every 12 m2 of terrace, clear of the cove, the runs and the room
+  const n = Math.max(2, Math.round(4 * X * Z / 12 * (0.7 + look() * 0.6))), h = 0.018, tint: Rgb = [1.02, 0.99, 0.96];
+  const clear = (px: number, pz: number, r: number): boolean =>
+    !(room && px + 1.3 * r > room.x0 - 0.1 && px - 1.3 * r < room.x1 + 0.1 && pz + r > room.z0 - 0.1 && pz - r < room.z1 + 0.1)
+    && !spouts.some((x) => Math.abs(px - x) < 1.3 * r + 0.2 && pz + r > Z - c - 2.3);
+  for (let i = 0; i < n; i++) {
+    const r = 0.35 + look() * 0.45, tone = 0.9 + look() * 0.06, spin = look() * Math.PI, radii = Array.from({ length: 8 }, () => 0.55 + look() * 0.65);
+    // its place: the first of three tries clear of the room and the runs
+    let px = 0, pz = 0, ok = false;
+    for (let k = 0; k < 3 && !ok; k++) {
+      px = (look() * 2 - 1) * (X - c - 1.3 * r - 0.1);
+      pz = (look() * 2 - 1) * (Z - c - r - 0.1);
+      ok = clear(px, pz, r);
+    }
+    if (!ok) continue;
+    const rim = radii.map((k, j): Vec3 => [px + Math.cos(spin + j * Math.PI / 4) * r * k * 1.3, y + h, pz + Math.sin(spin + j * Math.PI / 4) * r * k]);
+    // (ragged: a fan round its middle, the outline star-shaped about it)
+    const mid: Vec3 = [px, y + h, pz];
+    for (let j = 0; j < 8; j++) {
+      const a = rim[j], b = rim[(j + 1) % 8];
+      face([mid, a, b], [0, 1, 0], { decor: true, shade: tone, tint });
+      face([a, b, [b[0], y - 0.004, b[2]], [a[0], y - 0.004, a[2]]], [(a[0] + b[0]) / 2 - px, 0, (a[2] + b[2]) / 2 - pz], { decor: true, fine: true, shade: tone * 0.9, tint });
+    }
+  }
+}
+
+/**
  * The village house: a flat roof behind a parapet, ochre or whitewash, blue door and grilles, a roof stair block.
  * (the looks lane, 2026-10-15; WORKLIST #26, "Ksar adobe (desert, light touch on a ratified look: ... a real roof stair,
  * more openings, palm-beam hoods and spouts)") the look as ratified, and: on most houses the mud stair up the side to the
@@ -187,7 +252,8 @@ const house: RegionalBuilder = (ctx) => {
       for (const sx of [-1, 1]) sink.span('structureWood', x + sx * 0.08 - 0.015, wallH, b.z1 - 0.2, x + sx * 0.08 + 0.015, wallH + 0.09, b.z1 + 0.5, { ...sp, colour: shade(TIMBER, 0.85) });
     }
     // the stair-head room on the roof: its door to the terrace cut through its front wall, its own parapet
-    if (rng() < 0.5) {
+    const headRoom = rng() < 0.5;
+    if (headRoom) {
       const rw = W * 0.35, rd = D * 0.3;
       sink.placed(0, -W / 2 + 0.2 + rw / 2, wallH, -D / 2 + 0.2 + rd / 2, () => buildHouse(sink, {
         w: rw, d: rd, plinth: null, storeys: [{ h: 2.0, wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0.04, verge: 0.04, thickness: 0.15, bucket: wall, parapet: 0.25 },
@@ -202,6 +268,10 @@ const house: RegionalBuilder = (ctx) => {
       const th = Math.atan2(sz, sx);
       sink.cylinder(wall, [sx * (W / 2 - a), y0, sz * (D / 2 - a)], 'y', bodyTop - y0, R, 8, {}, R, true, -(th + Math.PI / 2), Math.PI);
     }
+    // (dome-detail-275, the roof sweep) the mud terrace in relief: its cove, its fresh patches, the wet to the spouts
+    // (the room's rectangle on it as the room above is laid)
+    mudTerrace(sink, frame, wall, look, [-W * 0.3, W * 0.3],
+      headRoom ? { x0: -W / 2 + 0.2, x1: -W / 2 + 0.2 + W * 0.35, z0: -D / 2 + 0.2, z1: -D / 2 + 0.2 + D * 0.3 } : null);
   });
   const body = hs.finish();
   batterParts(body, cx, 0, W / 2, D / 2, bodyTop, batter);

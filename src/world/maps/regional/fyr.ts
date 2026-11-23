@@ -36,7 +36,10 @@ export function fyr<S extends { rng: () => number; look: () => number; window: W
     { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 0.95, h: 1.15 },
     { face: 'back', storey: 0, kind: 'window', u: (look() - 0.5) * 0.8, w: 0.8, y0: 0.95, h: 1.15 },
   ];
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 40 + rng() * 4, eave: 0.45, verge: 0.32, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
+  // (dome-detail-275, the roof sweep) its rag slates laid in relief (house.ts RoofSpec.relief), the courses a little deeper
+  // than the shared default as the Nordland slate is laid
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 40 + rng() * 4, eave: 0.45, verge: 0.32, thickness: 0.12, bucket: 'roof', ridge: 'saddle',
+    relief: { kind: 'slate', gauge: 0.32 } };
   sink.placed(0, cx, 0, cz, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.7, wall: 'plaster', framed: true }],

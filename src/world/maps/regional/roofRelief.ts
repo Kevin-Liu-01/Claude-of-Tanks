@@ -158,7 +158,8 @@ const KINDS: Record<RoofReliefKind, { gauge: number; butt: number; foot: number;
   tile: { gauge: 0.3, butt: 0.035, foot: 0.06, run: 3.2, wear: 0.06, pitch: 0 },
   slate: { gauge: 0.26, butt: 0.024, foot: 0.05, run: 2.6, wear: 0.05, pitch: 0 },
   shingle: { gauge: 0.24, butt: 0.03, foot: 0.05, run: 1.5, wear: 0.08, pitch: 0 },
-  thatch: { gauge: 0.5, butt: 0.07, foot: 0.12, run: 3.6, wear: 0.05, pitch: 0 },
+  // (dome-detail-275, the roof closeout) thatch's run: the span between the nodes its course line wanders through
+  thatch: { gauge: 0.5, butt: 0.05, foot: 0.12, run: 1.5, wear: 0.05, pitch: 0 },
   felt: { gauge: 0.95, butt: 0.012, foot: 0.02, run: 4.4, wear: 0.12, pitch: 0 },
   pantile: { gauge: 0.32, butt: 0.024, foot: 0.04, run: 4, wear: 0.06, pitch: 0.3 },
   canal: { gauge: 0.42, butt: 0.03, foot: 0.05, run: 3.6, wear: 0.06, pitch: 0.42 },
@@ -284,6 +285,7 @@ function layAll(relief: RoofRelief, frames: readonly Frame[], o: ReliefOptions, 
     const top = f.reach - f.top;
     if (top < 0.25) continue;
     if (relief.kind === 'sheet') sheets(f, relief, K, sv, ribs, look, holes, top, paint, emit);
+    else if (relief.kind === 'thatch') thatch(f, relief, K, lv, look, holes, top, paint, emit);
     else {
       if (relief.kind === 'pantile' || relief.kind === 'canal') rolls(f, relief, K, lv, look, holes, top, paint, emit);
       courses(f, relief, K, lv, look, holes, top, paint, emit);
@@ -300,6 +302,7 @@ type Holes = ReadonlyArray<readonly [number, number, number, number]>;
  * let in, the lichen and the wet toward the eave): its butt `butt` proud facing down the slope at its foot, its face
  * thinning up to the course over it; the eave course thicker and out past the edge with its underside seen. Slates and
  * shingles jog their butts run to run, the jog's ends fine. Pantiles and canal tiles: their laps under the rolls.
+ * (Thatch lays its own courses: thatch.)
  */
 function courses(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind], lv: (typeof LEVELS)[number], look: () => number,
   holes: Holes, top: number, paint: Paint, emit: Emit): void {
@@ -324,7 +327,7 @@ function courses(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind]
       const patch = look() < pp, moss = patch && look() < 0.3 + 0.5 * low, fresh = patch && !moss;
       const tone = toneIn((foot ? 0.92 : 0.93 + look() * 0.14) * (fresh ? 1.08 : moss ? 0.96 : 1));
       const tint = kind === 'felt' ? null : kind === 'slate' ? (fresh ? NEW_SLATE : moss ? MOSS : null)
-        : fresh ? (kind === 'shingle' || kind === 'thatch' ? null : RELAID) : moss ? (kind === 'shingle' ? SILVER : MOSS) : null;
+        : fresh ? (kind === 'shingle' ? null : RELAID) : moss ? (kind === 'shingle' ? SILVER : MOSS) : null;
       const b = (foot ? K.foot : K.butt) * (jog ? 0.85 + look() * 0.3 : 1), dv = jog && !foot ? (look() - 0.5) * 0.035 : 0;
       for (const [s0, s1] of cut(t, t + w, v0, v1, holes, 0.15)) {
         // the run's ends at the foot and at the head, inside the chord (a hip closing it)
@@ -345,6 +348,102 @@ function courses(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind]
       t += w;
     }
   }
+}
+
+/**
+ * Thatch in its courses (dome-detail-275, the roof closeout: the first thatch "reads as boards", hard dark joints in
+ * straight rows): a mat, not boards. Each course a strip of bundles whose butts make a soft lip, sloped and only a few
+ * per cent darker than the field, its line wandering up and down the slope and its depth swelling and thinning along it
+ * (a thinner, older stretch; a fuller, newer one; lichen toward the eave), its face passing up under the course over it,
+ * the gauge course to course given or taken a fifth. The eave course thick, cut ragged out past the edge with its
+ * underside seen; under a ridge cap a soft roll swelling up to it. Every strip closed at its ends (no back face seen).
+ */
+function thatch(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind], lv: (typeof LEVELS)[number], look: () => number,
+  holes: Holes, top: number, paint: Paint, emit: Emit): void {
+  // a roof over its allowance gives up its gauge before its nodes' span (the course line's waves straighten past it)
+  const g = (relief.gauge ?? K.gauge) * lv.gauge, step = K.run * Math.min(1.6, lv.run), m = 0.04, wave = Math.min(0.14, g * 0.32);
+  // the butts' depth with the gauge (a fine nipa's rows lie flatter than a long straw's courses)
+  const butt = Math.min(K.butt, g * 0.085);
+  const sc = (k: number): Vec3 => [f.n[0] * k, f.n[1] * k, f.n[2] * k];
+  // the ridge roll's reach down the slope: under a ridge cap only (a lean-to's or a shed's top edge has none)
+  const roll = !f.flat && f.top >= 0.08 ? Math.min(0.55, top * 0.15) : 0, courseTop = top - roll * 0.5;
+  const bases: number[] = [0];
+  for (let v = g * (0.8 + look() * 0.4); v < courseTop - 0.15; v += g * (0.8 + look() * 0.4)) bases.push(v);
+  const pp = patchShare(f, relief, bases.length * Math.max(1, midWidth(f, top) / step));
+  const inHole = (t: number, v0: number, v1: number) => holes.some((h) => v1 > h[0] && v0 < h[1] && t > h[2] && t < h[3]);
+  /** A strip's nodes along t (its ends fixed, the inner ones jittered), the holes' edges among them. */
+  const nodesOf = (a: number, b: number, span: number, v0: number, v1: number): number[] => {
+    const n = Math.max(1, Math.round((b - a) / span)), ss: number[] = [];
+    for (let i = 0; i <= n; i++) ss.push(i === 0 || i === n ? i / n : (i + (look() - 0.5) * 0.5) / n);
+    for (const h of holes) if (v1 > h[0] && v0 < h[1]) for (const t of [h[2], h[3]]) { const s = (t - a) / (b - a); if (s > 0.01 && s < 0.99) ss.push(s); }
+    return ss.sort((x, y) => x - y);
+  };
+  /** Lay a strip's segments (the ones clear of the holes) with `seg`, and close each run of them at both ends with `cap`. */
+  const strip = (count: number, clear: (i: number) => boolean, seg: (i: number) => void, cap: (i: number, dir: number) => void): void => {
+    for (let i = 0; i < count - 1; i++) {
+      if (!clear(i)) continue;
+      seg(i);
+      if (i === 0 || !clear(i - 1)) cap(i, -1);
+      if (i === count - 2 || !clear(i + 1)) cap(i + 1, 1);
+    }
+  };
+  for (let k = 0; k < bases.length; k++) {
+    const eave = k === 0 && !f.flat, vb = bases[k];
+    const vh = k + 1 < bases.length ? Math.min(courseTop, bases[k + 1] + wave + 0.06) : courseTop;
+    const F = chord(f, Math.max(0, vb)), H = chord(f, vh);
+    if (!F || !H || vh - vb < 0.15) continue;
+    const a0 = F[0] + m, b0 = F[1] - m, a1 = H[0] + m, b1 = H[1] - m;
+    if (b0 - a0 < 0.3 || b1 - a1 < 0.1) continue;
+    // the eave's nodes twice as close (its cut edge ragged); a stretch of one to three spans thinner, fuller or lichened
+    const ss = nodesOf(a0, b0, eave ? step * 0.5 : step, vb - wave, vh), ct = 0.98 + look() * 0.04;
+    let left = 0, state = 0;
+    const nodes = ss.map((s, i) => {
+      if (left-- <= 0) {
+        left = look() * 3;
+        const r = look();
+        state = r < pp ? 3 : r < pp + 0.12 ? 1 : r < pp + 0.24 ? 2 : 0;
+      }
+      const end = i === 0 || i === ss.length - 1, thin = state === 1 || state === 3, full = state === 2;
+      const vf = eave ? -(0.05 + look() * 0.13) : vb + (end ? 0 : (look() - 0.5) * 2 * wave), hf = eave ? -0.03 : 0;
+      const b = eave ? K.foot * (0.8 + look() * 0.4) : butt * (0.4 + look() * 1.0) * (thin ? 0.55 : full ? 1.45 : 1);
+      const lip = eave ? 0.07 : Math.min(vh - vf - 0.1, Math.max(0.1, b * 3.5));
+      const tf = a0 + (b0 - a0) * s, th = a1 + (b1 - a1) * s, vc = vf + lip, tc = tf + (th - tf) * Math.max(0, (vc - vb) / (vh - vb));
+      return {
+        tf, th, b, lip, foot: at(f, vf, tf, hf), crest: at(f, vc, tc, b), head: at(f, vh, th, 0.004), inner: at(f, 0.02, tf, hf), base: at(f, vh, th, hf),
+        tone: toneIn(ct * (thin ? 0.96 : full ? 1.04 : 1) * (state === 3 ? 0.97 : 1)), tint: state === 3 ? MOSS : null,
+      };
+    });
+    strip(nodes.length, (i) => !inHole((nodes[i].tf + nodes[i + 1].tf) / 2, vb - wave, vh), (i) => {
+      const p = nodes[i], q = nodes[i + 1];
+      // the lip (the bundles' butts) a few per cent under the field; the face up under the next course; the eave's underside
+      emit([p.foot, q.foot, q.crest, p.crest], add(sc(p.lip), f.up, -p.b), paint(f, p.tone * (eave ? 0.9 : 0.94), p.tint));
+      emit([p.crest, q.crest, q.head, p.head], f.n, paint(f, p.tone, p.tint));
+      if (eave) emit([p.foot, q.foot, q.inner, p.inner], neg(f.n), paint(f, p.tone * 0.62, p.tint));
+    }, (i, dir) => {
+      const p = nodes[i];
+      emit(eave ? [p.foot, p.crest, p.head, p.base] : [p.foot, p.crest, p.head], [f.along[0] * dir, f.along[1] * dir, f.along[2] * dir], paint(f, p.tone * 0.88, p.tint));
+    });
+  }
+  if (roll <= 0) return;
+  // the ridge roll: the straw swelling from the last course up to the ridge cap, its top closed under the cap
+  const v0 = top - roll, v1 = top - roll * 0.45, A = chord(f, v0), B = chord(f, v1), C = chord(f, top);
+  if (!A || !B || !C || C[1] - C[0] < 0.8) return;
+  const ss = nodesOf(A[0] + m, A[1] - m, step, v0, top), ct = 0.98 + look() * 0.04;
+  const lerp = (c: [number, number], s: number) => c[0] + m + (c[1] - c[0] - 2 * m) * s;
+  const nodes = ss.map((s, i) => {
+    const end = i === 0 || i === ss.length - 1, h1 = 0.065 + (end ? 0.015 : look() * 0.03), h2 = 0.095 + (end ? 0.02 : look() * 0.04);
+    return { t: lerp(A, s), h1, h2, p0: at(f, v0, lerp(A, s), 0), p1: at(f, v1, lerp(B, s), h1), p2: at(f, top, lerp(C, s), h2), p3: at(f, top, lerp(C, s), 0) };
+  });
+  const op = paint(f, ct, null);
+  strip(nodes.length, (i) => !inHole((nodes[i].t + nodes[i + 1].t) / 2, v0, top), (i) => {
+    const p = nodes[i], q = nodes[i + 1];
+    emit([p.p0, q.p0, q.p1, p.p1], add(sc(v1 - v0), f.up, -p.h1), paint(f, ct * 0.97, null));
+    emit([p.p1, q.p1, q.p2, p.p2], add(sc(top - v1), f.up, p.h1 - p.h2), op);
+    emit([p.p2, q.p2, q.p3, p.p3], f.up, op);
+  }, (i, dir) => {
+    const p = nodes[i];
+    emit([p.p0, p.p1, p.p2, p.p3], [f.along[0] * dir, f.along[1] * dir, f.along[2] * dir], paint(f, ct * 0.9, null));
+  });
 }
 
 /**
@@ -400,35 +499,52 @@ function rolls(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind], 
  * Sheets in courses up the slope (dome-detail-275, after harbourSheds sheetCourses and navajoR2 tinCovering): each
  * course `gauge` up from the one under it and lapping it, its butt a corrugation's depth proud at its foot and thinning
  * to its head under the next; across, sheets `pitch` wide each its own tone (a galvanised replacement, a rusted one, a
- * painted one gone chalky), `ribs` of its corrugations drawn in relief, its side lap over its neighbour fine. A sheet
- * over a hole is left out.
+ * painted one gone chalky), `ribs` of its corrugations drawn in relief. A sheet over a hole is left out. (The roof
+ * closeout: regionalArchitecture's ray census saw the inside of the sheets through their open ends and the gaps between
+ * a ribbed face and its straight butt.) Each sheet is a closed wedge seen from outside: its foot straight along its
+ * ribs' crests over its butt, its side lapping a hand over its neighbour's edge and a little proud of it (the neighbour's
+ * edge inside it), and a sheet with no neighbour on a side (the verge, a hip, a hole) closed there; its sides fine.
  */
 function sheets(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind], lv: (typeof LEVELS)[number], ribs: number, look: () => number,
   holes: Holes, top: number, paint: Paint, emit: Emit): void {
   const g = (relief.gauge ?? K.gauge) * lv.gauge, W = (relief.pitch ?? K.pitch) * lv.pitch, lap = 0.15, B = K.butt, R = 0.022;
+  const side = 0.05, rise = 0.01, head = -0.008, low = -0.008, nr = 2 * ribs;
   const L0 = chord(f, 0);
   if (!L0) return;
   const shift = look() * W, pp = patchShare(f, relief, Math.ceil(top / g) * midWidth(f, top) / W);
+  const h = (j: number) => (j % 2 ? R : 0);
   for (let v = 0; v < top - 0.25; v += g) {
     const v1 = Math.min(top, v + g + lap), A = chord(f, v), C = chord(f, v1);
     if (!A || !C) continue;
+    // the course's sheets and which of them are laid (a neighbour laid on a side: the lap over it, else that side closed)
+    const row: Array<{ ta: number; tb: number; tc: number; td: number; ok: boolean }> = [];
     for (let t = L0[0] - shift; t < L0[1] - 0.05; t += W) {
       const ta = Math.max(t, A[0]), tb = Math.min(t + W, A[1]), tc = Math.max(t, C[0]), td = Math.min(t + W, C[1]);
-      if (tb - ta < 0.15 || td - tc < 0.02) continue;
-      if (holes.some((h) => v1 > h[0] && v < h[1] && t + W > h[2] && t < h[3])) continue;
+      const ok = tb - ta >= 0.15 && td - tc >= 0.02 && !holes.some((q) => v1 > q[0] && v < q[1] && t + W > q[2] && t < q[3]);
+      row.push({ ta, tb, tc, td, ok });
+    }
+    row.forEach(({ ta, tb, tc, td, ok }, i) => {
+      if (!ok) return;
+      const lapped = i > 0 && row[i - 1].ok && ta > A[0] + side && tc > C[0] + side, closed = !(i + 1 < row.length && row[i + 1].ok);
       // each sheet its own tone; a patch a newer sheet let in (a little cleaner), or rust run down from the lap over it
       const patch = look() < pp, rust = patch && look() < 0.5, fresh = patch && !rust;
       const tone = toneIn((0.93 + look() * 0.1) * (fresh ? 1.08 : 1)), tint = fresh ? CLEAN : null;
-      const op = paint(f, tone, tint), head = -0.008, nr = 2 * ribs;
-      if (nr) {
-        const u = (j: number, a: number, b: number) => a + (b - a) * j / nr, h = (j: number) => (j % 2 ? R : 0);
-        for (let j = 0; j < nr; j++) {
-          emit([at(f, v, u(j, ta, tb), B + h(j)), at(f, v, u(j + 1, ta, tb), B + h(j + 1)), at(f, v1, u(j + 1, tc, td), head + h(j + 1)), at(f, v1, u(j, tc, td), head + h(j))], f.n, op);
-        }
-      } else emit([at(f, v, ta, B), at(f, v, tb, B), at(f, v1, td, head), at(f, v1, tc, head)], f.n, op);
-      emit([at(f, v, ta, -0.008), at(f, v, tb, -0.008), at(f, v, tb, B), at(f, v, ta, B)], neg(f.up), paint(f, tone * 0.68, tint));
-      // the lap down its side over the sheet it was laid on (fine)
-      if (ta > A[0] + 0.05) emit([at(f, v, ta, -0.008), at(f, v1, tc, head), at(f, v, ta, B)], neg(f.along), paint(f, tone * 0.7, tint, true));
+      const op = paint(f, tone, tint), n = Math.max(1, nr);
+      // its columns across, the first over the neighbour's edge when it laps it, a hand proud of it; its foot straight
+      // along the ribs' crests (so the butt under it closes it), the corrugations running out to its head
+      // (the foot's lift falls straight across the sheet to its far edge, so the butt's top is the face's foot)
+      const ua = lapped ? ta - side : ta, uc = lapped ? tc - side : tc;
+      const tf = (j: number) => (j === 0 ? ua : ta + (tb - ta) * j / n);
+      const foot = (j: number) => at(f, v, tf(j), B + (nr ? R : 0) + (lapped ? rise * (tb - tf(j)) / (tb - ua) : 0));
+      const hd = (j: number) => at(f, v1, j === 0 ? uc : tc + (td - tc) * j / n, head + (nr ? h(j) : 0) + (j === 0 && lapped ? rise : 0));
+      for (let j = 0; j < n; j++) emit([foot(j), foot(j + 1), hd(j + 1), hd(j)], f.n, op);
+      // the butt down to the course under it
+      const bl = at(f, v, ua, low), br = at(f, v, tb, low);
+      emit([bl, br, foot(n), foot(0)], neg(f.up), paint(f, tone * 0.68, tint));
+      // its sides (fine, as the lap was): the lap's end over the neighbour, or closed where it has none
+      const sp = paint(f, tone * 0.7, tint, true);
+      emit(lapped ? [bl, hd(0), foot(0)] : [bl, at(f, v1, uc, low), foot(0)], neg(f.along), sp);
+      if (closed) emit([br, at(f, v1, td, low), foot(n)], f.along, sp);
       // the rust: two or three thin runs down the sheet from under the next course's lap, on its face (over its ribs)
       if (rust && v + g < top - 0.1 && tb - ta > 0.4) {
         const vt = v + g - 0.03, face = (vv: number) => B + (head - B) * (vv - v) / (v1 - v) + (nr ? R : 0) + 0.004;
@@ -437,7 +553,7 @@ function sheets(f: Frame, relief: RoofRelief, K: (typeof KINDS)[RoofReliefKind],
           emit([at(f, vb, tt - rw, face(vb)), at(f, vb, tt + rw, face(vb)), at(f, vt, tt + rw, face(vt)), at(f, vt, tt - rw, face(vt))], f.n, paint(f, tone, RUST));
         }
       }
-    }
+    });
   }
 }
 

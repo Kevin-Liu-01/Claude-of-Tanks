@@ -24,14 +24,17 @@
 // climb up the flank — the valley-floor blocks give way to the mahala houses between 70 and 150 m out. Without a place
 // (the receipts) the mix is drawn from the build stream.
 import { PartSink, faceBox, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, layRoofRelief, reliefFlat, reliefSlope, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame,
+  type HouseSpec, type Opening, type ReliefHole, type RoofSpec,
+} from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { tvAerial, woodpile, pottedPlant } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
-  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellPocks, sootBand, unhcrSheet, type Keep,
+  AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, PLAIN_TILES, ROLL_SHUTTER, SEAMED, TIMBER, ZINC,
+  archHead, choose, clampTo, feltDeck, fillOf, pediment, railing, sandbagWindow, shellPocks, sootBand, under, unhcrSheet, type Keep,
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
@@ -278,7 +281,8 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, len, { w: 0.95, h: 1.6, sill: 0.95, spacing: 2.5, margin: 1.0 })) openings.push(o);
   // a burnt top storey (one block in six): every casement of it gutted, the soot up to the cornice
   if (look() < 0.17) for (const o of openings) if (o.storey === n - 1 && o.kind === 'window' && o.face === 'left') o.state = 'burnt';
-  const roof: RoofSpec = roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: over - 0.12, verge: 0, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
+  // (dome-detail-275) the gable's plain tiles in their courses (sarajevoParts PLAIN_TILES)
+  const roof: RoofSpec = roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: over - 0.12, verge: 0, thickness: 0.16, bucket: 'roof', ridge: 'saddle', relief: PLAIN_TILES }
     : { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0, thickness: 0.24, bucket: 'stone' };
   const chimneys: HouseSpec['chimneys'] = roofKind === 'mansard' ? [] : [
     { x: (rng() - 0.5) * 0.8, z: len / 2 - 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
@@ -355,6 +359,17 @@ function mansard(sink: PartSink, frame: HouseFrame, len: number, look: () => num
   sink.prism('structureMetal', [[-a - 0.1, e, -len / 2], [a + 0.1, e, -len / 2], [a - inset, e + rise, -len / 2], [-a + inset, e + rise, -len / 2]],
     [0, 0, 1], len, { colour });
   const count = Math.max(1, Math.floor((len - 1.2) / 2.6));
+  // (dome-detail-275) the zinc in its seamed bays down both slopes and across the top (sarajevoParts SEAMED), clear of
+  // the dormers' cheeks
+  const dormers: ReliefHole[] = Array.from({ length: count }, (_, k) => {
+    const dz = -len / 2 + (k + 0.5) * (len / count);
+    return { x0: -a - 0.2, x1: -a + inset + 0.25, z0: dz - 0.65, z1: dz + 0.65 };
+  });
+  layRoofRelief(sink, { ...SEAMED, budget: 900 }, [
+    reliefSlope([-a - 0.1, e, len / 2], [-a - 0.1, e, -len / 2], [inset + 0.1, rise, 0], 0.05),
+    reliefSlope([a + 0.1, e, -len / 2], [a + 0.1, e, len / 2], [-inset - 0.1, rise, 0], 0.05),
+    reliefFlat(-a + inset, -len / 2, a - inset, len / 2, e + rise),
+  ], { bucket: 'structureMetal', base: { colour }, holes: dormers, edge: false });
   for (let k = 0; k < count; k++) {
     const dz = -len / 2 + (k + 0.5) * (len / count), dw = 1.15, x0 = -a - 0.02, x1 = -a + inset + 0.15;
     mansardDormer(sink, x0, x1, e, dz, dw, look, { ...AH_WINDOW, surround: null, sill: null, bars: mobile ? 'none' : 'cross' }); // (looks r2 forms: sarajevoRoofs.ts)
@@ -459,6 +474,9 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     // the lift room and the aerials on the roof
     const top = frame.eaveY + 0.3;
     sink.span('plaster3', -1.2, top, -1.4, 1.2, top + 2.3, 1.4, { decor: true });
+    // (dome-detail-275) the deck inside the parapet under felt in relief (sarajevoParts feltDeck), round the lift room
+    const rg = frame.roof, fx = rg.s + 0.12 - 0.22, fz = rg.halfD + 0.12 - 0.22;
+    feltDeck(sink, 'plaster3', [reliefFlat(-fx, -fz, fx, fz, top, fx < fz)], under(-1.2, -1.4, 1.2, 1.4));
     sink.dressing(mobile, () => {
       for (let k = 0; k < 2 + Math.floor(look() * 3); k++) {
         const x = (look() - 0.5) * (b.x1 - b.x0 - 1.5), z = (look() - 0.5) * (W - 1.5);
@@ -514,7 +532,8 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
   }
   openings.push({ face: 'back', storey: 0, kind: 'door', u: (rng() - 0.5) * (Wh - 2), w: 0.95, y0: 0, h: 2.0 });
   for (const o of windowRhythm('back', 1, Wh + 2 * sideJet, { w: 0.72, h: 1.0, sill: 0.75, spacing: 1.7, margin: 0.8 })) openings.push(o);
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: pitch, eave, verge: eave, thickness: 0.15, bucket: 'roof', ridge: 'round' };
+  // (dome-detail-275) the steep hip's plain tiles in their courses (sarajevoParts PLAIN_TILES)
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: pitch, eave, verge: eave, thickness: 0.15, bucket: 'roof', ridge: 'round', relief: PLAIN_TILES };
   sink.placed(0, 0, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: Wh, d: Dh, plinth: { h: 0.25, out: 0.04, bucket: 'stone' },

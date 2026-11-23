@@ -15,7 +15,8 @@ import { lightLantern } from './lantern.ts';
 import type { RegionalBuildContext } from './types.ts';
 
 const IRON = rgb(0x26302b), VERDIGRIS = rgb(0x5e8f7b), LIGHT_FRAME = rgb(0x2b2e2c);
-const slate = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.1, verge: 0.02, thickness: 0.12, bucket: 'roof', ridge: 'saddle' });
+// (dome-detail-275, the roof sweep) the keeper's house's slates laid in relief (house.ts RoofSpec.relief)
+const slate = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.1, verge: 0.02, thickness: 0.12, bucket: 'roof', ridge: 'saddle', relief: { kind: 'slate' } });
 
 /** The coped gables of the keeper's house: granite coping riding the rakes on kneelers, a stack on the land gable. */
 function copedGables(sink: PartSink, frame: HouseFrame, rng: () => number): void {

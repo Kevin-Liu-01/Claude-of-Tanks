@@ -5,7 +5,8 @@
 // low corrugated roofs instead of tiles; walled compounds of block houses.
 import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, plotAxes, rgb, shade, streamFrom, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedBox, holedShaft, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec,
+  buildHouse, emitRoof, holedBox, holedShaft, layRoofRelief, recordShaft, reliefSlope, roofGeometry, windowRhythm, type HoleRect, type HouseDialect,
+  type HouseFrame, type Opening, type ReliefHole, type RoofRelief, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -19,6 +20,24 @@ const SAND_SHEET: readonly Rgb[] = [0xc8b48e, 0xbcae96, 0xd6ccb4].map(rgb);
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
+}
+
+/**
+ * (dome-detail-275) The roofs in relief (house.ts RoofSpec.relief, layRoofRelief): the stores' and the lorry shelter's
+ * corrugated sheet in its lapped courses, a corrugation or two drawn across each sheet; the block houses' and the fort's
+ * flat concrete roofs under bitumen felt in rolls with their laps and patches, the screed's gravel stop or the parapet's
+ * coping round them.
+ */
+const SHEET: RoofRelief = { kind: 'sheet', ribs: 2 };
+const FELT: RoofRelief = { kind: 'felt' };
+
+/** (dome-detail-275) A gable's covering in relief over the house frame's roof (the ridge along z), its stripped patch open. */
+function gableRelief(sink: PartSink, frame: HouseFrame, relief: RoofRelief, base: EmitOptions): void {
+  const rg = frame.roof, roof = frame.spec.roof, X = rg.s + roof.eave, Z = rg.halfD + roof.verge;
+  const ye = rg.topAt(X, 0) ?? rg.eaveY, yr = rg.topAt(0, 0) ?? rg.ridgeTopY, p = frame.roofPatch;
+  const holes: ReliefHole[] = p ? [{ x0: Math.min(p.side * p.x0, p.side * p.x1), x1: Math.max(p.side * p.x0, p.side * p.x1), z0: p.z0, z1: p.z1 }] : [];
+  const planes = ([1, -1] as const).map((sx) => reliefSlope([sx * X, ye, -sx * Z], [sx * X, ye, sx * Z], [-sx * X, yr - ye, 0]));
+  layRoofRelief(sink, relief, planes, { bucket: roof.bucket, base, holes });
 }
 
 /** Rooftop furniture: rebar stubs at the corners and columns, one or two black tanks on a steel stand. */
@@ -120,7 +139,7 @@ const blockHouse: RegionalBuilder = (ctx) => {
   sink.placed(0, cx, 0, 0, () => {
     frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.25, out: 0.05, bucket: 'stone' }, storeys: Array.from({ length: count }, () => ({ h: 3.0, wall })),
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.2, bucket: wall, parapet: 0.6 }, gableBucket: wall,
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.2, bucket: wall, parapet: 0.6, relief: FELT }, gableBucket: wall,
       // (Redrock r3, the blind critics on v2: "flat olive and beige house boxes with pasted windows" near the camera) the
       // windows set in their block wall's depth
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.18, core: 'concrete',
@@ -276,9 +295,12 @@ const steelStore: RegionalBuilder = (ctx) => {
   // (props census #4, lane B 2026-10-14; the judges: "a span box with a gate laid on its face and glass strips stuck on")
   // the shared sheet hall (hall.ts): sand-coloured sheet on its block kerb, the apron gate's leaves on their tracks over
   // the cut opening onto the store's floor, its lights under the eaves in their frames, a side door, the gutters
-  sheetHall(sink, { w: W, d: D, eave: 5.2, pitchDeg: 8, kerb: 1.2, livery, doorLivery: rgb(0x8a8e90), trim: rgb(0x6a6e70), doors: 'sliding',
+  const roofSheet = rgb(0xb4b0a6);
+  const frame = sheetHall(sink, { w: W, d: D, eave: 5.2, pitchDeg: 8, kerb: 1.2, livery, doorLivery: rgb(0x8a8e90), trim: rgb(0x6a6e70), doors: 'sliding',
     doorW: Math.min(4.2, W - 2), doorH: 4.0, open: 0.15 + rng() * 0.35, backDoor: null, sideDoor: D * 0.25, clerestory: true, roofLights: false, ridgeVent: false,
-    gutters: true, mobile: ctx.tier === 'mobile', roof: { bucket: 'structureMetal', colour: rgb(0xb4b0a6) } }, ctx.variant);
+    gutters: true, mobile: ctx.tier === 'mobile', roof: { bucket: 'structureMetal', colour: roofSheet } }, ctx.variant);
+  // (dome-detail-275) the roof's corrugated sheets in their lapped courses
+  gableRelief(sink, frame, { ...SHEET, budget: Math.round((W + 0.8) * (D + 0.6) * 3) }, { colour: roofSheet });
   return sink.finish();
 };
 
@@ -322,23 +344,34 @@ const fort: RegionalBuilder = (ctx) => {
     }
     const rows = Math.max(1, Math.round((y1 - y0) / 0.35)), dy = (y1 - y0) / rows;
     const cols = Math.max(1, Math.round((u1 - u0) / 0.2)), du = (u1 - u0) / cols;
+    // (dome-detail-275, a triangle trade for the rooms' felt roofs: the fort stood over the 11,500 cap) the render's lost
+    // cells first (the same draws in the same order), then its runs, each run's top and bottom left out where the course
+    // over or under it covers the run whole (the two faces coplanar inside the render, never seen)
+    const lostAt: boolean[][] = [];
+    for (let r = 0; r < rows; r++) {
+      const y = y0 + (r + 0.5) * dy, row: boolean[] = [];
+      for (let c = 0; c < cols; c++) {
+        let lost = false;
+        const u = u0 + (c + 0.5) * du, edge = 0.7 + 0.6 * rng();
+        // (the render stops at a slit's dressed surround: `keep` its rectangles on the face, u0 u1 y0 y1)
+        if (keep.some(([a, b, c0, c1]) => u > a && u < b && y > c0 && y < c1)) lost = true;
+        for (const [hu, hy, ru, ry] of holes) {
+          const qu = (u - hu) / ru, qy = (y - hy) / ry;
+          if (qu * qu + qy * qy < edge) { lost = true; break; }
+        }
+        row.push(lost);
+      }
+      lostAt.push(row);
+    }
+    const whole = (r: number, c0: number, c1: number) => r >= 0 && r < rows && lostAt[r].slice(c0, c1).every((l) => !l);
     for (let r = 0; r < rows; r++) {
       const y = y0 + (r + 0.5) * dy;
       for (let c = 0, run = -1; c <= cols; c++) {
-        let lost = c === cols;
-        if (!lost) {
-          const u = u0 + (c + 0.5) * du, edge = 0.7 + 0.6 * rng();
-          // (the render stops at a slit's dressed surround: `keep` its rectangles on the face, u0 u1 y0 y1)
-          if (keep.some(([a, b, c0, c1]) => u > a && u < b && y > c0 && y < c1)) lost = true;
-          for (const [hu, hy, ru, ry] of holes) {
-            const qu = (u - hu) / ru, qy = (y - hy) / ry;
-            if (qu * qu + qy * qy < edge) { lost = true; break; }
-          }
-        }
+        const lost = c === cols || lostAt[r][c];
         if (!lost && run < 0) run = c;
         if (lost && run >= 0) {
           const a = u0 + run * du, b = u0 + c * du;
-          faceBox(sink, 'plaster', face, (a + b) / 2, y, 0.04, b - a, dy, 0.08, { tint, shadeAt: scour });
+          faceBox(sink, 'plaster', face, (a + b) / 2, y, 0.04, b - a, dy, 0.08, { tint, shadeAt: scour }, { top: whole(r + 1, run, c), bottom: whole(r - 1, run, c) });
           run = -1;
         }
       }
@@ -520,7 +553,8 @@ const fort: RegionalBuilder = (ctx) => {
   }
   const sideOpenings: Opening[] = [];
   for (let u = -sideL / 2 + 1.6; u < sideL / 2 - 0.8; u += 3.2) sideOpenings.push({ face: 'front', storey: 0, kind: 'door', u, w: 1.0, y0: 0, h: 2.1 });
-  const roomRoof = { kind: 'flat' as const, pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: wall, parapet: 0.5 };
+  // (dome-detail-275) the rooms' concrete roofs under bitumen felt in relief (a lean allowance: the fort is near the cap)
+  const roomRoof = { kind: 'flat' as const, pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: wall, parapet: 0.5, relief: { ...FELT, budget: 110 } };
   sink.placed(0, 0, 0, ri + rd / 2, () => buildHouse(sink, {
     w: W - 2 * t, d: rd, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: rh - 0.35, wall }], roof: roomRoof, gableBucket: wall,
     openings: backOpenings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: 'stone', core: 'rubble',
@@ -758,7 +792,8 @@ const lorryShelter: RegionalBuilder = (ctx) => {
     for (const z of [-D / 2 + 0.25, D / 2 - 0.25]) sink.span('structureMetal', x - 0.12, 0.12, z - 0.12, x + 0.12, H, z + 0.12, { colour: steel });
     sink.span('structureMetal', x - 0.1, H - 0.4, -D / 2 + 0.1, x + 0.1, H, D / 2 - 0.1, { colour: steel });
   }
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
+  // (dome-detail-275) its corrugated sheets in their lapped courses
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle', relief: SHEET };
   sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, H, roof), roof, pick(rng, SAND_SHEET)));
   return sink.finish();
 };

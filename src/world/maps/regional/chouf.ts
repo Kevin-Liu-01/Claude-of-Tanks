@@ -275,7 +275,8 @@ function marseilleTiles(sink: PartSink, frame: HouseFrame, look: () => number): 
         for (let t = c0; t < c1 - 0.2;) {
           const next = stops.find((s) => s > t + 0.2);
           const w = Math.min(c1 - t, 2.0 + look() * 2.4, next !== undefined ? next - t : Infinity);
-          const tone = inRelaid(v, t + w / 2) ? 1.12 + look() * 0.06 : (0.82 + look() * 0.18) * wet;
+          // (the roof sweep: the relaid block within +12 % of the covering's tone, not a bright band)
+          const tone = inRelaid(v, t + w / 2) ? 1.06 + look() * 0.06 : (0.82 + look() * 0.18) * wet;
           tileCourse(sink, sl, v + (look() - 0.5) * 0.02, t, t + w, tone, [t === c0, t + w >= c1]);
           t += w;
         }
@@ -1123,7 +1124,12 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
           { decor: true, fineSides: true, tint: warm ? [1.03, 1.0, 0.95] : [0.94, 0.94, 0.92], shade: 0.96 + look() * 0.08 });
       }
 
-      if (withCampanile) { campanile(sink, tx0, tx1, tz0, tz1, eave, (x) => gableTop(x) + 0.15, look); return; }
+      if (withCampanile) {
+        campanile(sink, tx0, tx1, tz0, tz1, eave, (x) => gableTop(x) + 0.15, look);
+        // (dome-detail-275, the roof sweep) the nave's Marseille tiles in relief, as the dar lays them
+        marseilleTiles(sink, frame, look);
+        return;
+      }
       // the bell arch over the front gable: two piers and their arch, the bell, the cross
       const top = frame.roof.ridgeY, z = L / 2 - 0.3;
       // (props census #5: the bell arch a crown of the roof in the house's plan: it falls with its roof section)
@@ -1149,6 +1155,8 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
         sink.span('structureMetal', -0.035, top + 3.0, z - 0.035, 0.035, top + 4.05, z + 0.035, { colour: IRON, decor: true });
         sink.span('structureMetal', -0.25, top + 3.6, z - 0.03, 0.25, top + 3.68, z + 0.03, { colour: IRON, decor: true });
       });
+      // (dome-detail-275, the roof sweep) the nave's Marseille tiles in relief, as the dar lays them
+      marseilleTiles(sink, frame, look);
     });
   }, -1);
   return sink.finish();
@@ -1319,6 +1327,9 @@ const stable: RegionalBuilder = (ctx) => {
       gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
     }, dialect({ ...st, litShare: 0 }));
     if (!tile) { roller(sink, frame, look); spouts(sink, frame, ['left', 'right'], look); }
+    // (dome-detail-275, the roof sweep) the tile hip's Marseille tiles in relief, as the dar lays them (the earth roof
+    // stays its rolled clay: no courses to lay)
+    else marseilleTiles(sink, frame, look);
   }, -1);
   return sink.finish();
 };

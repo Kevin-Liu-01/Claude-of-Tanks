@@ -5,7 +5,7 @@ import { PartSink, faceBox, rgb, shade } from './geometry.ts';
 import { buildHouse } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuilder } from './types.ts';
-import { PLY, STEEL_DARK, WINDOW, uvOffset, wallsIn } from './arctic.ts';
+import { PLY, RIBBED, STEEL_DARK, WINDOW, uvOffset, wallsIn } from './arctic.ts';
 
 type Paint = 'plaster' | 'plaster2' | 'plaster3';
 const ORANGE = rgb(0xc4602b);
@@ -43,7 +43,8 @@ export const shed: RegionalBuilder = (ctx) => {
     sink.placed(0, bx, skid, 0, () => {
       const frame = buildHouse(sink, {
         w, d: D, plinth: null, storeys: [{ h, wall: paint }],
-        roof: { kind: 'shed', pitchDeg: 4, eave: 0.16, verge: 0.14, thickness: 0.08, bucket: 'roof' }, gableBucket: paint,
+        // (dome-detail-275, the roof sweep) its sheets in relief, lapped in their courses
+        roof: { kind: 'shed', pitchDeg: 4, eave: 0.16, verge: 0.14, thickness: 0.08, bucket: 'roof', relief: RIBBED }, gableBucket: paint,
         openings: [{ face: 'right', storey: 0, kind: 'door', u: -D * 0.15, w: 0.85, y0: 0.05, h: 1.9 },
           { face: 'right', storey: 0, kind: 'window', u: D * 0.25, w: 0.6, y0: 1.0, h: 0.55 }],
         chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,

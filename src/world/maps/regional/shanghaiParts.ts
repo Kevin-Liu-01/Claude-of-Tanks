@@ -1,9 +1,10 @@
 // src/world/maps/regional/shanghaiParts.ts — the Shanghai kit's (shanghai.ts, shanghaiLanes.ts, shanghaiBund.ts) shared
 // parts: the lot's fill and a street row's, the creek's banks, the paints and window styles, the street rows' raised
 // ridges and their stepped party walls, a segmental arch's outline, the war's marks on a wall (shell pocks, a shell's
-// breach, soot, a roof fallen in), the shop signboards, the sandbags at a door.
+// breach, soot, a roof fallen in), the shop signboards, the sandbags at a door; the flat roofs' felt in relief.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import type { RoofSpec } from './house.ts';
+import { layRoofRelief, reliefFlat, type ReliefHole, type RoofRelief } from './roofRelief.ts';
 import type { WindowStyle } from './openings.ts';
 import type { RegionalBuildContext } from './types.ts';
 
@@ -45,10 +46,23 @@ export function archOutline(face: Face, u: number, y: number, r: number, rise: n
 }
 
 /**
- * A roof fallen in where the fire took it: the dark hole on the front slope and the charred rafters across it.
- * Dressing over the roof slab (the slab keeps the building's collision).
+ * (dome-detail-275, the roof sweep) The flat roofs' covering: the concrete deck of a godown, a mill, a station, a bank or
+ * a tower's setback under tarred felt in its rolls, laps and patches (roofRelief.ts), a dark grey over the render it is
+ * laid on (`plaster3`: the kit's roof bucket is the canal tiles' print). Its rolls run the long way.
  */
-export function roofHole(sink: PartSink, ridgeTopY: number, zc: number, s: number, roof: RoofSpec, u: number, look: () => number): void {
+const FELT_TINT: Rgb = [0.6, 0.6, 0.62];
+export function feltRoof(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y: number,
+  o: { holes?: readonly ReliefHole[]; budget?: number; wear?: number; edge?: boolean } = {}): number {
+  const felt: RoofRelief = { kind: 'felt', ...(o.budget ? { budget: o.budget } : {}), ...(o.wear ? { wear: o.wear } : {}) };
+  return layRoofRelief(sink, felt, [reliefFlat(x0, z0, x1, z1, y, x1 - x0 < z1 - z0)],
+    { bucket: 'plaster3', base: { tint: FELT_TINT }, holes: o.holes ?? [], edge: o.edge ?? false });
+}
+
+/**
+ * A roof fallen in where the fire took it: the dark hole on the front slope and the charred rafters across it.
+ * Dressing over the roof slab (the slab keeps the building's collision). Returns the hole's plan (x along the row).
+ */
+export function roofHole(sink: PartSink, ridgeTopY: number, zc: number, s: number, roof: RoofSpec, u: number, look: () => number): ReliefHole {
   const tanP = Math.tan(roof.pitchDeg * DEG), w = 1.6 + look() * 1.4;
   const a0 = s * 0.12, a1 = s * 0.82;
   const y0 = ridgeTopY - a0 * tanP + 0.02, y1 = ridgeTopY - a1 * tanP + 0.02;
@@ -58,6 +72,8 @@ export function roofHole(sink: PartSink, ridgeTopY: number, zc: number, s: numbe
     // (looks 227, the contact audit: the rafters lay 2 cm over the slab, both ends free) bedded on it
     sink.member('structureWood', [x, y0 + 0.02, zc + a0], [x + (look() - 0.5) * 0.3, y1 + 0.02, zc + a1], 0.1, 0.1, [0, 1, 0], { colour: CHAR, decor: true, exposed: true }, 0);
   }
+  // (dome-detail-275, the roof sweep) its plan, for the tiles laid in relief round it
+  return { x0: u - w / 2, x1: u + w / 2, z0: zc + a0, z1: zc + a1 };
 }
 
 

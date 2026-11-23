@@ -20,7 +20,7 @@ import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, recordBody, roofGeo
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
+  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, choose, clampTo, feltRoof, fillOf, planFaces, pocks, pyramid, rect,
   sandbags, uvOffset,
 } from './shanghaiParts.ts';
 import { stationHall } from './skyline.ts';
@@ -29,6 +29,8 @@ import { bankOfChina } from './shanghaiBank.ts'; // (looks r2 b-east, 2026-10-16
 
 const DEC = { decor: true } as const;
 const SHADOWED = { decor: true, shadow: true } as const;
+/** (dome-detail-275) A bank's back windows, to the lane behind it: the Bund's window without its granite surround. */
+const LANE_WINDOW = { ...BUND_WINDOW, surround: null };
 
 /** A tower's facade: window columns between proud piers, per floor a pane over a spandrel panel. */
 interface FacadeStyle {
@@ -267,6 +269,10 @@ const customsHouse: RegionalBuilder = (ctx) => {
       sink.span('plaster3', x0, blockTop, z0, x1, blockTop + 0.85, z1, { decor: true, shade: 0.98 });
       sink.span('plaster3', x0 - 0.06, blockTop + 0.85, z0 - 0.06, x1 + 0.06, blockTop + 0.97, z1 + 0.06, { decor: true, shade: 0.9 });
     }
+    // (dome-detail-275, the roof sweep) the block's roof under felt in relief inside its parapet, clear of the clock tower
+    // and the recess
+    feltRoof(sink, -W / 2 + 0.3, -D / 2 + 0.3, W / 2 - 0.3, D / 2 - 0.3, blockTop, { holes: [
+      { x0: -tx - 0.1, x1: tx + 0.1, z0: tzc - tz - 0.1, z1: tzc + tz + 0.1 }, { x0: -pw / 2 - 0.05, x1: pw / 2 + 0.05, z0: D / 2 - rec - 0.05, z1: D / 2 }] });
     // the Customs' flagstaff over the front's parapet
     sink.cylinder('structureMetal', [0, blockTop + 0.97, D / 2 - 0.15], 'y', 7.0, 0.08, 6, { colour: WHITE_TRIM, decor: true, shadow: true }, 0.05);
     sink.span('plaster3', -0.3, blockTop + 0.97, D / 2 - 0.45, 0.3, blockTop + 1.2, D / 2 + 0.15, { decor: true, shade: 0.92 });
@@ -313,7 +319,9 @@ const bundBank: RegionalBuilder = (ctx) => {
         for (let st = 0; st < 2; st++) {
           const y = ground + st * sh + 0.7, h = st === 0 ? 2.5 : 2.0;
           holes[fi].push({ u0: u - 0.65, u1: u + 0.65, y0: y, y1: y + h });
-          units.push(() => windowUnit(sink, face, u, y, 1.3, h, BUND_WINDOW, look, 0.25));
+          // (dome-detail-275, the roof sweep's trade for the attic's felt: the bank at the cap) the back's to the lane plain
+          // in their reveals, out of their granite surrounds
+          units.push(() => windowUnit(sink, face, u, y, 1.3, h, fi === 2 ? LANE_WINDOW : BUND_WINDOW, look, 0.25));
         }
       }
     });
@@ -496,6 +504,16 @@ const bundBank: RegionalBuilder = (ctx) => {
       }
     }
     const fz = kind === 'dome' ? D / 2 - 1.2 : 0, fx = kind === 'dome' ? 0 : -W * 0.3;
+    // (dome-detail-275, the roof sweep) the attic's roof under felt in relief on its coping's deck, clear of the dome's drum
+    // (its round base ring's square, the corners cut), the skylight's curb, the turrets and the pediment
+    {
+      const r = Math.min(W, D) * 0.19, sw = Math.min(W * 0.36, 11), sd = Math.min(D * 0.34, 7), tw = Math.min(4.2, W * 0.16, D * 0.22), R = r + 0.44;
+      const holes = [...(kind === 'dome' ? [{ x0: -R, x1: R, z0: -R * 0.7, z1: R * 0.7 }, { x0: -R * 0.7, x1: R * 0.7, z0: -R, z1: R }]
+        : [{ x0: -sw / 2 - 0.1, x1: sw / 2 + 0.1, z0: -sd / 2 - 0.1, z1: sd / 2 + 0.1 }]),
+        ...(kind === 'turret' ? [-1, 1].map((side) => ({ x0: side < 0 ? -W / 2 : W / 2 - tw - 0.1, x1: side < 0 ? -W / 2 + tw + 0.1 : W / 2, z0: D / 2 - tw - 0.1, z1: D / 2 })) : []),
+        ...(kind === 'portico' ? [{ x0: -pw / 2 - 0.1, x1: pw / 2 + 0.1, z0: D / 2 - 1.5, z1: D / 2 }] : [])];
+      feltRoof(sink, -W / 2 + 0.28, -D / 2 + 0.28, W / 2 - 0.28, D / 2 - 0.28, top + 1.24, { holes });
+    }
     sink.cylinder('structureMetal', [fx, top + 1.1, fz], 'y', 7.5, 0.07, 6, { colour: WHITE_TRIM, decor: true, shadow: true }, 0.045);
     sink.span('structureMetal', fx + 0.05, top + 6.9, fz - 0.015, fx + 2.05, top + 8.2, fz + 0.015, { colour: rgb(0x7a2a26), decor: true });
     // (dome-detail-275: a wall of bags 8 m by 1.4 m cost a thousand triangles) a breastwork across the doors
@@ -598,9 +616,15 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     if (look() < 0.5) faceBox(sink, 'structureMetal', front, 0, 0.6, 0.6, Math.min(W * 0.3, 7), 1.2, 1.1, { colour: CHAR, decor: true });
     // (dome-detail-275, the work list) the parapet's coping round the roof; over each loading door its concrete canopy on
     // two brackets and the steel shutter half drawn in the doorway's head; the downpipes down the corners; on the roof the
-    // stair house, the felt's laps; the name bay's stepped head; and the flag the defenders raised over the warehouse on
+    // stair house, the felt; the name bay's stepped head; and the flag the defenders raised over the warehouse on
     // 29 October 1937 on its staff (over the name bay, or the front's parapet)
-    sink.band(wall, -W / 2 - 0.06, roofY + 0.9, -D / 2 - 0.06, W / 2 + 0.06, roofY + 1.02, D / 2 + 0.06, { decor: true, shade: 0.88 });
+    // (dome-detail-275, the roof sweep: the coping was one slab over the whole roof, a lid over the parapet's well) the
+    // coping a cap over each run of the parapet, proud of both its faces
+    const cope = { decor: true, shade: 0.88 } as const;
+    sink.band(wall, -W / 2 - 0.06, roofY + 0.9, D / 2 - 0.31, W / 2 + 0.06, roofY + 1.02, D / 2 + 0.06, cope);
+    sink.band(wall, -W / 2 - 0.06, roofY + 0.9, -D / 2 - 0.06, W / 2 + 0.06, roofY + 1.02, -D / 2 + 0.31, cope);
+    sink.band(wall, -W / 2 - 0.06, roofY + 0.9, -D / 2 + 0.31, -W / 2 + 0.31, roofY + 1.02, D / 2 - 0.31, cope);
+    sink.band(wall, W / 2 - 0.31, roofY + 0.9, -D / 2 + 0.31, W / 2 + 0.06, roofY + 1.02, D / 2 - 0.31, cope);
     const conc = { colour: frame, decor: true } as const;
     for (const du of docks) {
       faceBox(sink, 'structureMetal', front, du, 3.38, 0.6, 3.8, 0.16, 1.2, { ...conc, shadow: true });
@@ -618,10 +642,10 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     sink.band(wall, shx - 1.68, roofY + 2.6, shz - 1.48, shx + 1.68, roofY + 2.78, shz + 1.48, { decor: true, shade: 0.88 });
     faceBox(sink, 'structureWood', { origin: [shx, 0, shz + 1.4], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 }, 0.4, roofY + 1.05, 0.025, 0.95, 2.1, 0.05,
       { colour: rgb(0x3b3630), decor: true });
-    for (let z = -D / 2 + 1.5; z < D / 2 - 0.6; z += 2.2) {
-      if (Math.abs(z - shz) < 1.5) continue;
-      sink.span(wall, -W / 2 + 0.3, roofY, z - 0.04, W / 2 - 0.3, roofY + 0.03, z + 0.04, { decor: true, fine: true, shade: 0.8 });
-    }
+    // (dome-detail-275, the roof sweep: the felt's laps were slats laid on a smooth slab) the roof's felt in relief inside
+    // the parapet, clear of the stair house and the name bay
+    feltRoof(sink, -W / 2 + 0.25, -D / 2 + 0.25, W / 2 - 0.25, D / 2 - 0.25, roofY, { holes: [
+      { x0: shx - 1.7, x1: shx + 1.7, z0: shz - 1.5, z1: shz + 1.5 }, ...(tower ? [{ x0: -bw / 2 - 0.1, x1: bw / 2 + 0.1, z0: D / 2 - 4.3, z1: D / 2 }] : [])] });
     const flagY = tower ? roofY + 3.6 : roofY + 0.9, flagZ = tower ? D / 2 - 2.1 : D / 2 - 0.12;
     if (tower) {
       sink.span(wall, -bw / 2 + 0.5, roofY + 3.6, D / 2 - 3.4, bw / 2 - 0.5, roofY + 4.3, D / 2 - 0.25, SHADOWED);

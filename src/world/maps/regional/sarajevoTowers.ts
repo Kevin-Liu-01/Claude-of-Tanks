@@ -15,11 +15,11 @@
 // Collision: every tower's structure is a few prisms (the cores, the slabs, the podium), so its shell bands merge; the
 // facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, recordShaft, type HoleRect, type Stain } from './house.ts';
+import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, recordShaft, reliefFlat, type HoleRect, type ReliefHole, type Stain } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  CHAR, HESSIAN, IRON, PANEL_PAINTS, ROLL_SHUTTER, ZINC, choose, clampTo, fillOf, sandbagWindow, shellPocks, sootBand, unhcrSheet,
+  CHAR, HESSIAN, IRON, PANEL_PAINTS, ROLL_SHUTTER, ZINC, choose, clampTo, deckPlane, feltDeck, fillOf, sandbagWindow, shellPocks, sootBand, under, unhcrSheet,
 } from './sarajevoParts.ts';
 import { parliament } from './sarajevoParliament.ts'; // (looks r2, b-east 2026-10-16: extracted, rebuilt there)
 
@@ -226,6 +226,18 @@ const unisTowers: RegionalBuilder = (ctx) => {
       }
       sink.span(slab, W / 2 - 3.2, lobbyH, z - 0.7, W / 2 - 1.6, lobbyH + 1.2, z + 0.7, { decor: true, shade: 0.86 });
     }
+    // (dome-detail-275, the roof sweep) the lobby's roof inside its coping under felt in relief, left out under the
+    // towers' feet and the rooflights' curbs
+    const lobbyHoles: ReliefHole[] = [];
+    for (const side of [-1, 1]) {
+      const cx = side * (gap / 2 + T / 2), cc = T * 0.17;
+      lobbyHoles.push(...under(cx - T / 2 + cc, -towerHz + cc, cx + T / 2 - cc, towerHz - cc));
+    }
+    if (D / 2 - towerHz > 3) for (const sz of [-1, 1]) {
+      const z = sz * lz, lw = Math.min(W * 0.4, 12), ld = Math.min(2.2, (D / 2 - towerHz) * 0.45);
+      lobbyHoles.push(...under(-lw / 2, z - ld / 2, lw / 2, z + ld / 2, 0.5));
+    }
+    feltDeck(sink, slab, [reliefFlat(-W / 2 + 0.36, -D / 2 + 0.36, W / 2 - 0.36, D / 2 - 0.36, lobbyH)], lobbyHoles);
     for (const side of [-1, 1]) {
       const cx = side * (gap / 2 + T / 2), hz = Math.min(T / 2, D / 2 - 0.4);
       const plan = chamferedSquare(cx, 0, T / 2, hz, c);
@@ -239,6 +251,10 @@ const unisTowers: RegionalBuilder = (ctx) => {
       planPrism(sink, 'structureMetal', chamferedSquare(cx, 0, T * 0.32 + 0.05, hz * 0.64 + 0.05, c * 0.6), top + 1.3, top + 2.7, { colour: shade(bronze, 0.75), decor: true });
       planPrism(sink, slab, chamferedSquare(cx, 0, T * 0.32 + 0.14, hz * 0.64 + 0.14, c * 0.6), top + 3.3, top + 3.55, { decor: true, shade: 0.9 });
       for (const dz of [-0.35, 0.3]) sink.cylinder('structureMetal', [cx + side * T * 0.12, top + 3.55, dz * hz], 'y', 3.5 + look() * 3, 0.07, 6, { colour: IRON, decor: true }, 0.035);
+      // (dome-detail-275, the roof sweep) the deck inside the upstand and the plant storey's roof under felt in relief
+      const px = T * 0.32 + 0.14, pz = hz * 0.64 + 0.14;
+      feltDeck(sink, slab, [deckPlane(chamferedSquare(cx, 0, T / 2 - 0.13, hz - 0.13, c), top + 0.45)], under(cx - px, -pz, cx + px, pz));
+      feltDeck(sink, slab, [deckPlane(chamferedSquare(cx, 0, px, pz, c * 0.6), top + 3.55)]);
       // the fire's floors: a run of gutted floors per tower, a few burnt, the rest glass (lit very rarely)
       const gutFrom = Math.floor(rng() * floors * 0.4), gutTo = Math.min(floors, gutFrom + Math.floor(floors * (0.45 + rng() * 0.4)));
       // (props census #9) the floors: spandrels round the plan, the glazing set back on each floor's core, the gutted
@@ -292,6 +308,14 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
     }
     const mast = 4 + look() * 3;
     sink.cylinder('structureMetal', [armW * 0.25, top + 2.82, 0], 'y', mast, 0.06, 6, { colour: IRON, decor: true }, 0.04);
+    // (dome-detail-275, the roof sweep) the cross's deck inside the coping under felt in relief, round the motor room, and
+    // the motor room's slab
+    const mr = armW / 2 + 0.65, ins = 0.2;
+    const arms = [reliefFlat(-hx + ins, -a + ins, hx - ins, a - ins, top)];
+    if (hz - a > 0.8) for (const s2 of [-1, 1]) arms.push(reliefFlat(-a + ins, s2 > 0 ? a - ins : -hz + ins, a - ins, s2 > 0 ? hz - ins : -a + ins, top, false));
+    // (the tallest of them stand at the triangle cap: the felt in wider rolls, seen from the hills alone)
+    feltDeck(sink, concrete, arms, under(-mr, -mr, mr, mr, 1.55), false, 1.5);
+    feltDeck(sink, concrete, [reliefFlat(-mr, -mr, mr, mr, top + 2.82)], [], false, 1.5);
     for (const k of [0.6, 0.85]) sink.member('structureMetal', [armW * 0.25 - 0.7, top + 2.82 + mast * k, 0], [armW * 0.25 + 0.7, top + 2.82 + mast * k, 0], 0.04, 0.04, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
     // the faces of the cross: the arm ends (loggias) and the arms' sides (windows); a side's wall stops at the arm end's
     // wall (`conv`: its convex end, -1 the start, 1 the end), the arm end's runs across the arm
@@ -441,6 +465,11 @@ const holidayInn: RegionalBuilder = (ctx) => {
     sink.span('structureMetal', -cr * 0.55, top + 3.0, -cr * 0.75, cr * 0.15, top + 5.2, -cr * 0.25, { colour: shade(yellow, 0.9), decor: true });
     sink.span('structureMetal', -cr * 0.58, top + 5.2, -cr * 0.78, cr * 0.18, top + 5.4, -cr * 0.22, { colour: brown, decor: true });
     const ring = (T / 2 + cr) / 2;
+    // (dome-detail-275, the roof sweep) the podium's roof round the cube, the cube's deck round the plant storey and the
+    // plant storey's roof under felt in relief
+    feltDeck(sink, 'structureMetal', [reliefFlat(-W / 2 + 0.3, -D / 2 + 0.3, W / 2 - 0.3, D / 2 - 0.3, podH, W < D)], under(-T / 2 + c, -T / 2 + c, T / 2 - c, T / 2 - c));
+    feltDeck(sink, 'structureMetal', [deckPlane(chamferedSquare(0, 0, T / 2 - 0.13, T / 2 - 0.13, c), deck)], under(-cr + c * 0.7, -cr + c * 0.7, cr - c * 0.7, cr - c * 0.7));
+    feltDeck(sink, 'structureMetal', [deckPlane(chamferedSquare(0, 0, cr + 0.14, cr + 0.14, c * 0.7), top + 3.06)]);
     for (const sx of [-1, 1]) {
       const x = sx * ring, z = -T * 0.24, tr = Math.min(0.9, (T / 2 - cr) * 0.4);
       sink.span('structureMetal', x - tr, deck, z - tr, x + tr, deck + 0.3, z + tr, { colour: shade(yellow, 0.8), decor: true });
@@ -522,6 +551,12 @@ const slabBlock: RegionalBuilder = (ctx) => {
     // (E13) the slab in its storey bands for the damage reading (the annex its own body)
     recordBody(sink, 0, (z0 + z1) / 2, W, sd, top + 0.7, concrete, false, true);
     for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
+    // (dome-detail-275, the roof sweep) the slab's roof under felt in relief to its gravel stop, round the lift rooms,
+    // and theirs; the annex's roof between the slab and its fascia
+    const lifts = [-W * 0.28, W * 0.28].map((x) => [x - 1.3, z0 + sd * 0.25, x + 1.3, z1 - sd * 0.25] as const);
+    feltDeck(sink, concrete, [reliefFlat(-W / 2 - 0.1, z0 - 0.1, W / 2 + 0.1, z1 + 0.1, top + 0.7)], lifts.flatMap((l) => under(...l)), true);
+    feltDeck(sink, concrete, lifts.map(([lx0, lz0, lx1, lz1]) => reliefFlat(lx0, lz0, lx1, lz1, top + 3.0, false)), [], true);
+    if (annex) feltDeck(sink, concrete, [reliefFlat(-W / 2, z1, W / 2, D / 2 - 0.25, gH)]);
     const front: Face = { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: W };
     const back: Face = { origin: [0, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: W };
     const bays = Math.max(2, Math.round(W / 2.9)), bw = W / bays;
@@ -761,6 +796,11 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureMetal', { origin: [x, 0, z + 0.6], u: [1, 0, 0], out: [0, 0, 1], width: 1.6 }, 0, bh + 0.75, 0.02, 1.2, 0.6, 0.04, { decor: true, colour: shade(ZINC, 0.8) });
       }
       sink.cylinder('structureMetal', [W * 0.32, bh + 1.3, bz0 + 1.6], 'y', 2.4, 0.22, 8, { colour: shade(ZINC, 0.6), decor: true }, 0.22);
+      // (dome-detail-275, the roof sweep) the print works' roof inside its parapet under felt in relief, open round the
+      // breach's burnt rim and the housings
+      feltDeck(sink, concrete, [reliefFlat(-W / 2 + 0.28, bz0 + 0.28, W / 2 - 0.28, bz1 - 0.28, bh)], [
+        { x0: hx - r * 1.45, x1: hx + r * 1.45, z0: hz - r * 1.1, z1: hz + r * 1.1 },
+      ]);
     }
     if (stub) {
       // the gutted storeys: their window bays open to the burnt-out dark, the soot up the wall over them

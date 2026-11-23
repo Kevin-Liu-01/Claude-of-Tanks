@@ -18,12 +18,15 @@
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { domeSegments, polygonalDome, smoothDome } from './domes.ts';
-import { buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import {
+  buildHouse, emitRoof, holedBox, holedPolygon, layRoofRelief, recordShaft, reliefFlat, reliefSlope, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame,
+  type Opening, type RoofSpec,
+} from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, HESSIAN, IRON, LEAD, TIMBER, ZINC,
-  archGlazing, archHead, choose, clampTo, fillOf, nisan, openBelfry, pediment, shellPocks,
+  AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, HESSIAN, IRON, LEAD, PLAIN_TILES, SEAMED, TIMBER, ZINC,
+  archGlazing, archHead, choose, clampTo, feltDeck, fillOf, nisan, openBelfry, pediment, shellPocks,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -209,7 +212,8 @@ function roofCourses(sink: PartSink, rg: RoofG, roof: RoofSpec, hole: HouseFrame
       const lv = sl.lim(v), len = course * 1.05;
       const runs: Array<[number, number]> = gap && v + len > gap.v0 && v < gap.v1 ? [[-lv, gap.t0], [gap.t1, lv]] : [[-lv, lv]];
       for (const [c0, c1] of runs) for (let t = c0; t < c1 - 0.2;) {
-        const w = Math.min(c1 - t, 3.5 + look() * 3.5), tone = 0.84 + look() * 0.2, vv = v + (look() - 0.5) * 0.03;
+        // (dome-detail-275, the roof sweep) each run's tone within the covering's ±12 % (it ran to 16 % under)
+        const w = Math.min(c1 - t, 3.5 + look() * 3.5), tone = 0.88 + look() * 0.16, vv = v + (look() - 0.5) * 0.03;
         const l0 = sl.lim(vv), l1 = sl.lim(vv + len), a0 = Math.max(t, -l0), a1 = Math.min(t + w, l0), e0 = Math.max(t, -l1), e1 = Math.min(t + w, l1);
         if (a1 - a0 > 0.2 && e1 - e0 > 0.05) {
           const o: EmitOptions = { decor: true, fine: true, shade: tone };
@@ -244,7 +248,8 @@ function canalTiles(sink: PartSink, rg: RoofG, roof: RoofSpec, hole: HouseFrame[
     const relaid = look() < 0.75 ? { t0: rt - rw / 2, t1: rt + rw / 2, v0: rv, v1: rv + 0.9 + look() * 1.3 } : null;
     const n = Math.max(2, Math.round(span / ROLL_PITCH));
     for (let k = 0; k < n; k++) {
-      const t = -L + 0.08 + (k + 0.5) * span / n + (look() - 0.5) * 0.024, tone = 0.8 + look() * 0.24;
+      // (dome-detail-275, the roof sweep) each row's tone within the covering's ±12 % (it ran to 20 % under)
+      const t = -L + 0.08 + (k + 0.5) * span / n + (look() - 0.5) * 0.024, tone = 0.88 + look() * 0.2;
       const vEnd = sl.closes ? Math.min(top, (L - Math.abs(t) - ROLL_R) / Math.max(1e-3, L - sl.lim(1))) : top;
       if (vEnd < 0.3) continue;
       const spans: Array<[number, number]> = gap && t + ROLL_R > gap.t0 && t - ROLL_R < gap.t1 ? [[-0.05, Math.min(vEnd, gap.v0)], [gap.v1, vEnd]] : [[-0.05, vEnd]];
@@ -467,7 +472,14 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
       // the crenellation along the parapet head
       const ph = eave + 0.35 + 1.0;
       if (!mobile) {
-        const merlon = (x0: number, z0: number, x1: number, z1: number) => sink.span('plaster2', x0, ph, z0, x1, ph + 0.62, z1, { decor: true });
+        // (dome-detail-275, the roof sweep: the felt's triangles) each merlon without its underside, on the parapet's head;
+        // none inside a corner turret (the first and last of each run stood wholly in its shaft)
+        const towers = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx > 0 ? b.x1 - tr * 0.54 : b.x0 + tr * 0.54, sz > 0 ? b.z1 - tr * 0.54 : b.z0 + tr * 0.54]));
+        const inTower = (x0: number, z0: number, x1: number, z1: number) => towers.some(([tx, tz]) =>
+          [[x0, z0], [x1, z0], [x0, z1], [x1, z1]].every(([x, z]) => Math.hypot(x - tx, z - tz) < tr * Math.cos(Math.PI / 8) - 0.02));
+        const merlon = (x0: number, z0: number, x1: number, z1: number) => {
+          if (!inTower(x0, z0, x1, z1)) sink.box('plaster2', [(x0 + x1) / 2, ph + 0.31, (z0 + z1) / 2], [(x1 - x0) / 2, 0.31, (z1 - z0) / 2], { decor: true }, undefined, { ny: true });
+        };
         for (let z = b.z0 + 0.6; z < b.z1 - 0.4; z += 1.1) { merlon(b.x0 - 0.1, z, b.x0 + 0.12, z + 0.5); merlon(b.x1 - 0.12, z, b.x1 + 0.1, z + 0.5); }
         for (let x = b.x0 + 0.6; x < b.x1 - 0.4; x += 1.1) { merlon(x, b.z0 - 0.1, x + 0.5, b.z0 + 0.12); merlon(x, b.z1 - 0.12, x + 0.5, b.z1 + 0.1); }
       }
@@ -496,9 +508,24 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
         sink.member('structureMetal', m, ribTop, 0.12, 0.12, [Math.cos(t), 1, Math.sin(t)], { colour: CHAR, decor: true, exposed: true }, 0);
       }
       sink.cylinder('structureMetal', [0, hy + 3.4, 0], 'y', 0.2, hr * 0.95, 8, { colour: CHAR, decor: true }, hr * 0.95, true, Math.PI / 8);
+      // (dome-detail-275, the roof sweep) the roof inside the parapet under felt in relief (sarajevoParts feltDeck), left
+      // out under the hall's drum and the turrets (well inside them: a roll the hole cuts leaves its whole course bare)
+      const rg = frame.roof, fx = rg.s + 0.1 - 0.22, fz = rg.halfD + 0.1 - 0.22, tq = tr * 0.45, hq = hr * 0.5;
+      const turrets = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => {
+        const x = sx > 0 ? b.x1 - tr * 0.54 : b.x0 + tr * 0.54, z = sz > 0 ? b.z1 - tr * 0.54 : b.z0 + tr * 0.54;
+        return { x0: x - tq, x1: x + tq, z0: z - tq, z1: z + tq };
+      }));
+      // (the hall stands at the triangle cap: the felt in rolls a little wider)
+      feltDeck(sink, 'stone', [reliefFlat(-fx, -fz, fx, fz, hy, fx < fz)], [{ x0: -hq, x1: hq, z0: -hq, z1: hq }, ...turrets], false, 1.3);
       const street = frame.faces.left;
-      sink.dressing(mobile, () => shellPocks(sink, street, { u0: -W / 2 + 1, u1: W / 2 - 1, y0: 0.6, y1: eave - 0.5 }, 30 + Math.floor(look() * 20),
-        openings.filter((o) => o.face === 'left').map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: frame.floors[o.storey] + o.y0 - 0.2, y1: frame.floors[o.storey] + o.y0 + o.h + o.w / 2 + 0.4 })), look, 'stone'));
+      // (dome-detail-275, the roof sweep: the felt's triangles) three in five of the front's pocks drawn (all drawn from the
+      // look stream, as a phone's fewer)
+      sink.dressing(mobile, () => {
+        const pocks = 30 + Math.floor(look() * 20);
+        shellPocks(sink, street, { u0: -W / 2 + 1, u1: W / 2 - 1, y0: 0.6, y1: eave - 0.5 }, pocks,
+          openings.filter((o) => o.face === 'left').map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: frame.floors[o.storey] + o.y0 - 0.2, y1: frame.floors[o.storey] + o.y0 + o.h + o.w / 2 + 0.4 })), look, 'stone',
+          Math.round(pocks * 0.6));
+      });
     });
   });
   return sink.finish();
@@ -550,7 +577,7 @@ const mosque: RegionalBuilder = (ctx) => {
       const frame = buildHouse(sink, {
         w: hs, d: hs, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: hh, wall }],
         roof: domed ? { kind: 'flat', pitchDeg: 0, eave: 0.25, verge: 0.25, thickness: 0.3, bucket: 'stone' }
-          : { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'round' },
+          : { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'round', relief: PLAIN_TILES },
         gableBucket: wall, openings, chimneys: [], gutters: null, verge: null, reveal: 0.36, rafters: null, spall: 'stone',
       }, dialect);
       // (dome-detail-275) the hall's stone cornice under its roof
@@ -632,7 +659,8 @@ const mosque: RegionalBuilder = (ctx) => {
       }
       sink.span(wall, -px - 0.02, eb, cz - 0.22, px + 0.02, ph, cz + 0.22, { decor: true });
       sink.span('stone', -px - 0.08, ph - 0.12, cz - 0.24, px + 0.08, ph + 0.02, cz + 0.34, { decor: true, shade: 0.95 });
-      const lean: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'structureMetal' };
+      // (dome-detail-275, the roof sweep) the lead in its seamed bays (sarajevoParts SEAMED)
+      const lean: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'structureMetal', relief: SEAMED };
       const rd = pz1 - pz0;
       sink.placed(-Math.PI / 2, 0, 0, (pz0 + pz1) / 2, () => emitRoof(sink, roofGeometry(rd, 2 * px, ph + 0.15, lean), { ...lean, decor: true }, LEAD));
     }
@@ -954,10 +982,23 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
           sink.member('structureMetal', p, q, 0.42, 0.02, nrm, { colour: shade(COPPER, 0.62), decor: true, exposed: true }, 0);
         }
       }
+      // (dome-detail-275, the roof sweep) the copper in its long bays from the eave to the ridge, a standing seam every
+      // 0.7 m, each bay its own tone (the pedestal stands over them; the strike's burn lies on them)
+      const ce = 0.4, ct = 0.12, cv = nl / 2 + 0.3, cosP = 1 / Math.hypot(1, rg.tanP), sinP = rg.tanP * cosP, clo = rg.eaveY - ce * rg.tanP;
+      layRoofRelief(sink, { ...SEAMED, gauge: (rg.s + ce) / cosP + 0.2, pitch: 0.7 }, [-1, 1].map((side) => {
+        const lift = (p: [number, number, number]): [number, number, number] => [p[0] + side * sinP * ct, p[1] + cosP * ct, p[2]];
+        return reliefSlope(lift([side * (rg.s + ce), clo, -cv]), lift([side * (rg.s + ce), clo, cv]), [-side * (rg.s + ce), (rg.s + ce) * rg.tanP, 0]);
+      }), { bucket: 'structureMetal', base: { colour: COPPER } });
       // (dome-detail-275) the splinters' pocks down both flanks, clear of the windows
       sink.dressing(mobile, () => {
-        for (const name of ['left', 'right'] as const) shellPocks(sink, fc[name], { u0: -nl / 2 + 0.6, u1: nl / 2 - 0.6, y0: 0.6, y1: eave - 1.0 }, 5 + Math.floor(look() * 6),
-          openings.filter((o) => o.face === name).map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: fl + o.y0 - 0.1, y1: fl + o.y0 + o.h + o.w / 2 + 0.25 })), look, 'stone');
+        // (dome-detail-275, the roof sweep: the copper's triangles) three in five of the pocks drawn (all drawn from the look
+        // stream, as a phone's fewer)
+        for (const name of ['left', 'right'] as const) {
+          const pocks = 5 + Math.floor(look() * 6);
+          shellPocks(sink, fc[name], { u0: -nl / 2 + 0.6, u1: nl / 2 - 0.6, y0: 0.6, y1: eave - 1.0 }, pocks,
+            openings.filter((o) => o.face === name).map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: fl + o.y0 - 0.1, y1: fl + o.y0 + o.h + o.w / 2 + 0.25 })), look, 'stone',
+            Math.round(pocks * 0.6));
+        }
       });
     });
     // the apse: a half drum at the east end under its half cone
@@ -1094,8 +1135,12 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
         });
       }
     }
-    sink.dressing(mobile, () => shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, 7 + Math.floor(look() * 8),
-      [{ u0: -gb - 0.1, u1: gb + 0.1, y0: 0, y1: pTop + 0.3 + gb * 0.42 }, ...tLights.filter((o) => o.face === 'front').map((o) => ({ u0: o.u - o.w / 2 - 0.25, u1: o.u + o.w / 2 + 0.25, y0: o.y0, y1: o.y0 + 0.3 + o.h + o.w / 2 + 0.2 }))], look, 'stone'));
+    sink.dressing(mobile, () => {
+      const pocks = 7 + Math.floor(look() * 8);
+      shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, pocks,
+        [{ u0: -gb - 0.1, u1: gb + 0.1, y0: 0, y1: pTop + 0.3 + gb * 0.42 }, ...tLights.filter((o) => o.face === 'front').map((o) => ({ u0: o.u - o.w / 2 - 0.25, u1: o.u + o.w / 2 + 0.25, y0: o.y0, y1: o.y0 + 0.3 + o.h + o.w / 2 + 0.2 }))], look, 'stone',
+        Math.round(pocks * 0.6));
+    });
   });
   return sink.finish();
 };
@@ -1451,12 +1496,12 @@ const marketHall: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: hH, wall: 'plaster2' }],
-      roof: { kind: 'gable', pitchDeg: 28, eave: 0.6, verge: 0.35, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'plaster2',
+      // (dome-detail-275, the roof sweep) the plain tiles in their courses in the shared relief (sarajevoParts PLAIN_TILES;
+      // they were roofCourses' fine courses, gone on a phone)
+      roof: { kind: 'gable', pitchDeg: 28, eave: 0.6, verge: 0.35, thickness: 0.16, bucket: 'roof', ridge: 'saddle', relief: PLAIN_TILES }, gableBucket: 'plaster2',
       openings, chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.34, rafters: null, spall: 'stone', breaches,
     }, dialect);
     const b = frame.bodies[0], rg = frame.roof, fc = frame.faces;
-    // (dome-detail-275) the plain tiles in courses
-    roofCourses(sink, rg, frame.spec.roof, frame.roofPatch, look, 0.4);
     sink.band('stone', b.x0 - 0.2, hH - 0.15, b.z0 - 0.2, b.x1 + 0.2, hH + 0.4, b.z1 + 0.2, { decor: true });
     // (dome-detail-275) the cornice's lower step
     sink.band('stone', b.x0 - 0.1, hH - 0.4, b.z0 - 0.1, b.x1 + 0.1, hH - 0.15, b.z1 + 0.1, { decor: true, shade: 0.92 });
@@ -1508,10 +1553,9 @@ const marketHall: RegionalBuilder = (ctx) => {
       const f: Face = { origin: [s * lw / 2, 0, 0], u: [0, 0, -s], out: [s, 0, 0], width: ll };
       if (!mobile) for (let y = ly0 + 0.05; y < ly1 - 0.04; y += 0.16) faceBox(sink, 'structureWood', f, 0, y, 0.03, ll - 0.6, 0.04, 0.06, { colour: IRON, decor: true, fine: true });
     }
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.3, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
+    const cap: RoofSpec = { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.3, thickness: 0.12, bucket: 'roof', ridge: 'saddle', relief: PLAIN_TILES };
     const lrg = roofGeometry(lw, ll, rg.ridgeY + 1.1, cap);
     emitRoof(sink, lrg, cap);
-    roofCourses(sink, lrg, cap, null, look, 0.4);
     // (dome-detail-275) the gables: the raking cornice up each verge, the acroterion on the apex; the clock in the front
     // gable (it was a cream 12-gon with one hand), an oculus in the back's
     const clockY = hH + (rg.ridgeY - hH) * 0.42;

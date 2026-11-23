@@ -532,29 +532,38 @@ export function makeWarehouse(
   // lintel over each light; the louvred round vent in each gable under the roof; the roof's ridge roll and the ridge
   // vents capped under their own little gables. A sheet hall keeps its own frame (its trims) and takes the roof's parts.
   if (!steelClad) {
-    const top = wallH - 0.34, py = (0.45 + top) / 2, ph = top - 0.45;
+    const top = wallH - 0.34;
     for (const side of [-1, 1]) {
-      for (let k = 1; k < 5; k++) parts.stone.push(boxAt(0.2, ph, 0.62, side * (w / 2 + 0.09), py, -d / 2 + k * (d / 5), 0.55));
+      // (the Garage's backdrops build this hall up to four times a scene: the faces against the wall are left out)
+      const sx = side > 0 ? 'nx' : 'px';
+      const pier = (cx: number, cz: number, sxw: number, szw: number, skip: 'px' | 'nx' | 'pz' | 'nz') =>
+        parts.stone.push(dressing(worldBox(cx - sxw / 2, 0.45, cz - szw / 2, cx + sxw / 2, top, cz + szw / 2, 0.55, skip)));
+      for (let k = 1; k < 5; k++) pier(side * (w / 2 + 0.09), -d / 2 + k * (d / 5), 0.2, 0.62, sx);
       for (const e of [-1, 1]) {
-        parts.stone.push(boxAt(0.2, ph, 0.66, side * (w / 2 + 0.09), py, e * (d / 2 - 0.33), 0.55));
-        parts.stone.push(boxAt(0.66, ph, 0.2, side * (w / 2 - 0.33), py, e * (d / 2 + 0.09), 0.55));
+        pier(side * (w / 2 + 0.09), e * (d / 2 - 0.33), 0.2, 0.66, sx);
+        pier(side * (w / 2 - 0.33), e * (d / 2 + 0.09), 0.66, 0.2, e > 0 ? 'nz' : 'pz');
       }
       // the cornice: a corbel course under a projecting course, the length of the eave
       parts.stone.push(boxAt(0.14, 0.16, d + 0.04, side * (w / 2 + 0.06), wallH - 0.42, 0, 0.55));
       parts.stone.push(boxAt(0.26, 0.3, d + 0.2, side * (w / 2 + 0.12), wallH - 0.19, 0, 0.55));
-      for (const h of side > 0 ? holes.px : holes.nx) parts.stone.push(boxAt(0.12, 0.22, h.w + 0.36, side * (w / 2 + 0.05), h.y1 + 0.11, h.at, 0.55));
+      for (const h of side > 0 ? holes.px : holes.nx) {
+        const lx = side * (w / 2 + 0.05), lz = h.at;
+        parts.stone.push(dressing(worldBox(lx - 0.06, h.y1, lz - (h.w + 0.36) / 2, lx + 0.06, h.y1 + 0.22, lz + (h.w + 0.36) / 2, 0.55, sx)));
+      }
     }
   }
   for (const e of [-1, 1]) {
     const oy = wallH + roofH * 0.42, oz = e * (d / 2);
-    parts.stone.push(dressing(new THREE.CylinderGeometry(0.62, 0.62, 0.12, 10, 1).rotateX(Math.PI / 2).translate(0, oy, oz + e * 0.06)));
-    parts.dark.push(dressing(new THREE.CircleGeometry(0.46, 10).rotateY(e > 0 ? 0 : Math.PI).translate(0, oy, oz + e * 0.125)));
-    for (const dy of [-0.22, 0, 0.22]) parts.stone.push(boxAt(0.86 - Math.abs(dy) * 1.4, 0.06, 0.08, 0, oy + dy, oz + e * 0.16));
+    // the vent's ring: its rim (open: its back stands on the gable) and its front face round the dark, two louvres
+    parts.stone.push(dressing(new THREE.CylinderGeometry(0.62, 0.62, 0.12, 8, 1, true).rotateX(Math.PI / 2).translate(0, oy, oz + e * 0.06)));
+    parts.stone.push(dressing(new THREE.RingGeometry(0.46, 0.62, 8).rotateY(e > 0 ? 0 : Math.PI).translate(0, oy, oz + e * 0.12)));
+    parts.dark.push(dressing(new THREE.CircleGeometry(0.46, 8).rotateY(e > 0 ? 0 : Math.PI).translate(0, oy, oz + e * 0.125)));
+    for (const dy of [-0.13, 0.13]) parts.stone.push(boxAt(0.86 - Math.abs(dy) * 1.4, 0.06, 0.08, 0, oy + dy, oz + e * 0.16));
   }
   parts.dark.push(dressing(new THREE.CylinderGeometry(0.12, 0.12, d + 0.7, 8, 1).rotateX(Math.PI / 2).translate(0, wallH + roofH + 0.1, 0)));
   // (dome-detail-275, the roof scan: the goods shed's roof a smooth slab) its corrugated sheets in their lapped courses,
   // clear of the skylights (regional/roofRelief.ts; dressing, no stream draws)
-  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: w * 7 + d }, roofPlanes, lights));
+  parts.roof.push(...reliefGeometries({ kind: 'sheet', ribs: 2, seed: w * 7 + d, budget: 300 }, roofPlanes, lights));
   for (let k = 0; k < 3; k++) {
     const cap = dressing(gablePrism(1.25, 0.38, 2.95));
     cap.translate(0, wallH + roofH + 0.22 + 0.275, -d / 3 + k * (d / 3));

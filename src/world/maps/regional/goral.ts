@@ -14,7 +14,7 @@ import {
 import { bulb } from './domes.ts';
 import {
   buildHouse, closeGables, emitRoof, holedBox, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
-  type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec, type StoreySpec,
+  type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofRelief, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { mound, roofLadder, woodpile } from './dressing.ts';
@@ -97,7 +97,8 @@ function roofSnow(sink: PartSink, frame: HouseFrame): void {
   // load on these steep roofs"): a third of a metre of snow, run out past the shingles' eaves and verges as a cornice;
   // its colour is the snow's own (the kit's plaster tone, below), not the slope mask's whitening, which a 45–55° roof
   // only half takes
-  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.32, eave: roof.eave + 0.16, verge: roof.verge + 0.1, decor: true, ridge: null };
+  // ((dome-detail-275) the snow lies smooth over the shingles' relief: none of its own)
+  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.32, eave: roof.eave + 0.16, verge: roof.verge + 0.1, decor: true, ridge: null, relief: undefined };
   const lift = roof.thickness / Math.cos(roof.pitchDeg * Math.PI / 180) + 0.012;
   emitRoof(sink, roofGeometry(frame.spec.w, frame.spec.d, frame.eaveY + lift, snow), snow);
 }
@@ -108,13 +109,19 @@ function roofSnow(sink: PartSink, frame: HouseFrame): void {
  * roof's own geometry.
  */
 function roofSnowOn(sink: PartSink, w: number, d: number, eaveY: number, roof: RoofSpec): void {
-  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.26, eave: roof.eave + 0.12, verge: roof.verge + 0.08, decor: true, ridge: null };
+  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.26, eave: roof.eave + 0.12, verge: roof.verge + 0.08, decor: true, ridge: null, relief: undefined };
   const lift = roof.thickness / Math.cos(roof.pitchDeg * Math.PI / 180) + 0.012;
   emitRoof(sink, roofGeometry(w, d, eaveY + lift, snow), snow);
 }
 
 const gont = (pitch: number, eave: number, verge: number, kind: RoofSpec['kind'] = 'halfhip'): RoofSpec =>
   ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.14, bucket: 'roof', ridge: 'saddle', hipFrac: 0.3, hipPitchDeg: 60 });
+/**
+ * (dome-detail-275, the roof sweep) The gont in the shared relief (house.ts RoofSpec.relief) on the roofs roofCover never
+ * laid — the chałupy, the school, the church's nave, the store's ventilator — at roofCover's course (0.36 m); under
+ * January's snow the relief lies beneath the snow's slab (roofSnow) as the shingles do.
+ */
+const GONT: RoofRelief = { kind: 'shingle', gauge: 0.36 };
 
 /**
  * The hewn logs (the props census, 2026-10-14; the judges: "real log courses — each course its own hewn or round log,
@@ -350,7 +357,7 @@ function chalupa(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Retur
     const plinth = big ? 0.6 : 0.5;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: plinth, out: 0.08, bucket: 'stone' }, storeys: sts,
-      roof: gont(47 + rng() * 6, 0.5, 0.45), gableBucket: 'wood', openings,
+      roof: { ...gont(47 + rng() * 6, 0.5, 0.45), relief: GONT }, gableBucket: 'wood', openings,
       chimneys: [{ x: (rng() - 0.5) * W * 0.3, z: (rng() - 0.5) * D * 0.3, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster', cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.22, spall: null,
     }, dialect(st));
@@ -485,7 +492,7 @@ const szkola: RegionalBuilder = (ctx) => {
   sink.placed(0, (bb.minX + bb.maxX) / 2, 0, bb.minZ + 0.6 + D / 2, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.8, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.0, wall: 'wood' }, { h: 2.9, wall: 'wood' }],
-      roof: gont(45, 0.7, 0.6, 'halfhip'), gableBucket: 'wood', openings, gutters: null, verge: null, reveal: 0.24, spall: null,
+      roof: { ...gont(45, 0.7, 0.6, 'halfhip'), relief: GONT }, gableBucket: 'wood', openings, gutters: null, verge: null, reveal: 0.24, spall: null,
       chimneys: [{ x: 0, z: -D * 0.25, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'slab' }],
     }, dialect(st));
     if (ctx.snowCap) roofSnow(sink, frame);
@@ -581,7 +588,7 @@ const kosciol: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
       // (round 3, wave 128: the church's half-hip gable in shingle read as brick from the street) the gable boarded, as the
       // houses' are
-      roof: gont(55, 0.55, 0.4, 'halfhip'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
+      roof: { ...gont(55, 0.55, 0.4, 'halfhip'), relief: GONT }, gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, naveWindow, st.rng, 0.3) });
     if (ctx.snowCap) roofSnow(sink, frame);
     // (round 4, wave 190: the church's walls "a staggered brown block texture that reads as brickwork"): the nave's hewn
@@ -1179,7 +1186,7 @@ const sklad: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureWood', vf, 0, rt + 0.3, 0.006, Lv - 0.3, 0.4, 0.012, { colour: rgb(0x17120e), decor: true }, 'caps');
         for (const y of [rt + 0.18, rt + 0.36]) faceBox(sink, 'structureWood', vf, 0, y, 0.035, Lv - 0.3, 0.08, 0.05, { colour: LOG_AGED, decor: true, fineSides: true });
       }
-      const vr: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.32, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
+      const vr: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.32, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true, relief: GONT };
       const vg = roofGeometry(1.0, Lv, vy, vr);
       emitRoof(sink, vg, vr);
       closeGables(sink, vg, 'wood');
