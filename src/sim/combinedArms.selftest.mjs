@@ -11,6 +11,7 @@ import { Vector3 } from 'three';
 import { createMatchActor } from '../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { AERIAL_RULES, AIR_SUPPORT_RULES, matchRulesetFor } from './matchRuleset.ts';
+import { AIR_STRIKE_BITS } from './playerActions.ts';
 
 const R = AIR_SUPPORT_RULES;
 const SPEC = 'm1a1_abrams_hc';
@@ -113,6 +114,44 @@ const actorOf = (seed, bots) => createMatchActor({ roomId: `arms-${seed}`, mapId
   assert.ok(callers.size > 0, `bots call strikes in Combined Arms (${[...callers]})`);
   assert.deepEqual(flyingCalls, [], 'no bot called a strike while flying its drone');
   console.log('combinedArms bots', JSON.stringify({ launched: [...launched], callers: [...callers], timeS: Math.round(sim.timeS ?? 0), score: score() }));
+  actor.stop();
+}
+
+// ---- a battle end to end, through the authority, to its verdict (a 250-point target, Deploy's lowest offered): the
+// player calls in with its points, the bots fly drones into the enemy and call strikes, the sectors score, a side wins
+{
+  const bots = [['a1', 'alpha'], ['a2', 'alpha'], ['b1', 'bravo'], ['b2', 'bravo'], ['b3', 'bravo']].map(([id, team]) => ({ playerId: id, name: id, team, specId: SPEC }));
+  const actor = createMatchActor({ roomId: 'arms-e2e', mapId: 'verdant', mode: 'combined_arms', seed: 21,
+    seats: [{ seat: 0, playerId: 'p', name: 'P', team: 'alpha', specId: SPEC }], bots, ruleset: matchRulesetFor('combined_arms', null, { scoreTarget: 250 }),
+    world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: null });
+  const sim = actor.authority; sim.onMatchReady();
+  const air = sim.modeController.airSupport;
+  const tally = { droneKills: 0, kills: 0, playerCalls: 0, botCalls: 0, captures: 0, launches: 0 };
+  const flying = new Map();
+  let verdict = null;
+  for (let n = 0; n < 60 * 900 && !verdict; n++) {
+    let actionBits = 0;
+    // the player's call-in at 15 s: its ledger at the cap, a recon pass at its aim point
+    if (n === 60 * 15) {
+      const saved = air.capture(); saved.points = saved.points.map(([id, value]) => [id, id === 'p' ? R.points.cap : value]); air.restore(saved);
+      actionBits = AIR_STRIKE_BITS.recon;
+    }
+    sim.step({ dt: 1 / 60, inputs: new Map([['p', { ...idle, aimDistance: 200, actionBits }]]) });
+    for (const e of sim.eventsForViewer('p')) {
+      if (e.type === 'tank_destroyed') { tally.kills++; if (e.source === 'drone') tally.droneKills++; }
+      if (e.type === 'mode_strike_called') { if (e.callerId === 'p') tally.playerCalls++; else tally.botCalls++; }
+      if (e.type === 'mode_zone_captured') tally.captures++;
+      if (e.type === 'match_ended') verdict = e;
+    }
+    for (const [id, entity] of sim.entityById) { const on = !!entity.aerial?.active; if (on && !flying.get(id)) tally.launches++; flying.set(id, on); }
+    sim.afterEventBroadcast();
+  }
+  assert.equal(verdict?.reason, 'score_limit', `the battle ends on its sector score (${JSON.stringify(verdict)})`);
+  assert.ok(tally.droneKills >= 1, 'a drone flown into an enemy kills it');
+  assert.ok(tally.playerCalls >= 1 && tally.botCalls >= 1, 'the player and the bots call in');
+  assert.ok(tally.captures >= 1, 'the sectors are taken');
+  assert.ok(tally.launches >= 1, 'drones fly');
+  console.log('combinedArms end to end', JSON.stringify({ timeS: Math.round(verdict.timeS), result: verdict.result, score: sim.modeController.state.score, ...tally }));
   actor.stop();
 }
 
