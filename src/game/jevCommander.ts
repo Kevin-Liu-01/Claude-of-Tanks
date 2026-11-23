@@ -37,6 +37,7 @@
  */
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { roleOf, type AiOrder, type AiOrderPosture } from './ai.ts';
+import * as detMath from '../sim/detMath.ts';
 import {
   bearingWord, jevLocalThreat, JEV_FOCUS_NONE, JEV_LIMITS, JEV_POSTURES, JEV_PROTOCOL_VERSION, JEV_TARGET_NONE, readJevResponse,
   type JevAnswer, type JevBattleState, type JevBotView, type JevEnemyView, type JevObjectiveView, type JevRequestBody,
@@ -249,7 +250,7 @@ function metres(value: number): number {
 }
 
 function bearingFrom(fromX: number, fromZ: number, toX: number, toZ: number): string {
-  return bearingWord(Math.atan2(toX - fromX, toZ - fromZ));
+  return bearingWord(detMath.atan2(toX - fromX, toZ - fromZ));
 }
 
 function wrapAngle(a: number): number {
@@ -317,7 +318,7 @@ export function buildJevTeamState(
   // known opponents, not the first 24 entity IDs. No hidden contact enters it.
   const contactDistance = (enemy: JevCommanderEntity): number => {
     let nearest = Infinity;
-    for (const bot of bots) nearest = Math.min(nearest, Math.hypot(enemy.state!.pos.x - bot.state!.pos.x, enemy.state!.pos.z - bot.state!.pos.z));
+    for (const bot of bots) nearest = Math.min(nearest, detMath.hypot(enemy.state!.pos.x - bot.state!.pos.x, enemy.state!.pos.z - bot.state!.pos.z));
     return nearest;
   };
   const spotted = visible.length <= JEV_LIMITS.enemies ? visible : visible
@@ -342,7 +343,7 @@ export function buildJevTeamState(
   const ownerWord = (owner: string | null): string => (owner === null ? 'nobody' : owner === side ? 'ours' : 'theirs');
   const addObjective = (id: string, kind: string, x: number, z: number, owner: string | null, contested: boolean): void => {
     if (objectivePoints.size >= JEV_LIMITS.objectives) return;
-    objectives[id] = { kind, owner: ownerWord(owner), contested, distance_m: metres(Math.hypot(x - cx, z - cz)), bearing: bearingFrom(cx, cz, x, z) };
+    objectives[id] = { kind, owner: ownerWord(owner), contested, distance_m: metres(detMath.hypot(x - cx, z - cz)), bearing: bearingFrom(cx, cz, x, z) };
     objectivePoints.set(id, { x, z });
   };
   const zones = modeState?.zones ?? null;
@@ -375,7 +376,7 @@ export function buildJevTeamState(
     const reloadT = combat.reload?.t ?? 0;
     const sees: Array<{ id: string; m: number }> = [];
     for (const enemy of spotted) {
-      const distance = Math.hypot(enemy.state!.pos.x - position.x, enemy.state!.pos.z - position.z);
+      const distance = detMath.hypot(enemy.state!.pos.x - position.x, enemy.state!.pos.z - position.z);
       if (distance > 650) continue;
       sees.push({ id: enemyLabel.get(enemy.id)!, m: metres(distance) });
     }
@@ -396,11 +397,11 @@ export function buildJevTeamState(
     let nearestAlly: number | null = null;
     let alliesNearby = 0, enemiesNearby = 0;
     for (const enemy of visible) {
-      if (Math.hypot(enemy.state!.pos.x - position.x, enemy.state!.pos.z - position.z) <= 250) enemiesNearby++;
+      if (detMath.hypot(enemy.state!.pos.x - position.x, enemy.state!.pos.z - position.z) <= 250) enemiesNearby++;
     }
     for (const friend of ours) {
       if (friend === entity) continue;
-      const distance = Math.hypot(friend.state!.pos.x - position.x, friend.state!.pos.z - position.z);
+      const distance = detMath.hypot(friend.state!.pos.x - position.x, friend.state!.pos.z - position.z);
       if (nearestAlly === null || distance < nearestAlly) nearestAlly = distance;
       if (distance <= 200) alliesNearby++;
     }
@@ -435,7 +436,7 @@ export function buildJevTeamState(
       modules_damaged: modules,
       sees,
       nearest_ally_m: nearestAlly === null ? null : metres(nearestAlly),
-      objective: objective ? { bearing: bearingFrom(position.x, position.z, objective.x, objective.z), distance_m: metres(Math.hypot(objective.x - position.x, objective.z - position.z)) } : null,
+      objective: objective ? { bearing: bearingFrom(position.x, position.z, objective.x, objective.z), distance_m: metres(detMath.hypot(objective.x - position.x, objective.z - position.z)) } : null,
       current_target: targetLabel && (sees.some((seen) => seen.id === targetLabel) ? targetLabel : null),
       current_stance: String(entity.aiCtl?.state || 'patrol').slice(0, 16),
       tactics: { allies_nearby: alliesNearby, enemies_nearby: enemiesNearby, abilities,
@@ -448,18 +449,18 @@ export function buildJevTeamState(
   for (const enemy of spotted) {
     const label = enemyLabel.get(enemy.id)!;
     const state = enemy.state!, combat = enemy.combat!;
-    const toUs = Math.atan2(cx - state.pos.x, cz - state.pos.z);
+    const toUs = detMath.atan2(cx - state.pos.x, cz - state.pos.z);
     const aspect = Math.abs(wrapAngle(toUs - state.yaw));
     let onObjective = false;
     for (const point of objectivePoints.values()) {
-      if (Math.hypot(point.x - state.pos.x, point.z - state.pos.z) <= objectiveRadius(view, enemy) + 12) { onObjective = true; break; }
+      if (detMath.hypot(point.x - state.pos.x, point.z - state.pos.z) <= objectiveRadius(view, enemy) + 12) { onObjective = true; break; }
     }
     enemies[label] = {
       vehicle: cleanName(enemy.spec.name),
       class: CLASS_WORDS[String(enemy.spec.role || '')] ?? 'armoured vehicle',
       human_player: !!enemy.isPlayer,
       hp: fraction(combat.hp, combat.maxHp),
-      distance_m: metres(Math.hypot(state.pos.x - cx, state.pos.z - cz)),
+      distance_m: metres(detMath.hypot(state.pos.x - cx, state.pos.z - cz)),
       bearing: bearingFrom(cx, cz, state.pos.x, state.pos.z),
       facing: aspect < Math.PI / 4 ? 'toward us' : aspect > (Math.PI * 3) / 4 ? 'away' : 'side-on',
       moving: Math.abs(state.speed) > 0.5,
@@ -484,7 +485,7 @@ export function buildJevTeamState(
       alive: { ours: ours.length, theirs: theirsAlive },
       human_ally: human && human.state && human.combat ? {
         vehicle: cleanName(human.spec.name), hp: fraction(human.combat.hp, human.combat.maxHp),
-        distance_m: metres(Math.hypot(human.state.pos.x - cx, human.state.pos.z - cz)), bearing: bearingFrom(cx, cz, human.state.pos.x, human.state.pos.z),
+        distance_m: metres(detMath.hypot(human.state.pos.x - cx, human.state.pos.z - cz)), bearing: bearingFrom(cx, cz, human.state.pos.x, human.state.pos.z),
       } : null,
     },
     our_tanks: ourTanks,
@@ -696,7 +697,7 @@ export function createJevCommander({
         for (const friend of ours) {
           if (friend === entity || !friend.state || !friend.combat) continue;
           const friendHp = fraction(friend.combat.hp, friend.combat.maxHp);
-          const distance = Math.hypot(friend.state.pos.x - entity.state!.pos.x, friend.state.pos.z - entity.state!.pos.z);
+          const distance = detMath.hypot(friend.state.pos.x - entity.state!.pos.x, friend.state.pos.z - entity.state!.pos.z);
           const cost = friendHp * 200 + distance + (supported.get(friend.id) ?? 0) * 180;
           if (cost < supportCost) { supportCost = cost; weakest = friend; }
         }
@@ -709,7 +710,7 @@ export function createJevCommander({
         // Stop on our approach side, outside a hull's collision footprint. The
         // regular route planner still owns water, obstacles and ally avoidance.
         const dx = entity.state!.pos.x - weakest.state!.pos.x, dz = entity.state!.pos.z - weakest.state!.pos.z;
-        const length = Math.hypot(dx, dz) || 1;
+        const length = detMath.hypot(dx, dz) || 1;
         point = { x: weakest.state!.pos.x + dx / length * 24, z: weakest.state!.pos.z + dz / length * 24 };
       }
       const fire: AiOrder['fire'] = (entity.combat!.reload?.t ?? 0) > 0.05 ? null : fireAnswer && fireAnswer.type === 'noul'
@@ -753,7 +754,7 @@ export function createJevCommander({
       const count = (failures.get(team) ?? 0) + 1;
       failures.set(team, count);
       const askedS = arrival.result.retryAfterMs ? arrival.result.retryAfterMs / 1000 : 0;
-      const backoffS = Math.max(askedS, Math.min(30, cadenceS * 2 ** (count - 1)));
+      const backoffS = Math.max(askedS, Math.min(30, cadenceS * detMath.pow(2, count - 1)));
       row.backoffS = backoffS;
       nextAtS.set(team, Math.max(nextAtS.get(team) ?? 0, view.timeS + backoffS));
     }

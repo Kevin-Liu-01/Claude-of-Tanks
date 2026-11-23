@@ -9,8 +9,8 @@
 // square; any other exponent goes to the platform's pow). Rendering, effects, audio and UI are outside the graph and
 // keep Math.*.
 //
-// (276, sim-det-trig) A second driver, the local step: src/game/state.ts's graph cut to src/sim and src/game, plus the
-// world collision the authority runs (a solo battle steps the same simulation on the page, and a recording of it is
+// (276, sim-det-trig) A second driver, the local step: src/game/state.ts's graph cut to src/sim, src/game and the
+// modules the authority runs, its world collision among them (a solo battle steps the same simulation on the page, and a recording of it is
 // verified in Node). And three.js's trig: a Quaternion.setFromEuler, Vector3.applyAxisAngle or Matrix4.makeRotationY
 // calls Math.sin and Math.cos inside three, where the native-name rule cannot see it; Node arm64 and Chromium differ in
 // the last bit and chaos turns that into drift by step 600-1800. Those methods are flagged by name, and the sim calls
@@ -43,8 +43,11 @@ const THREE_TRIG = new RegExp(`\\.(${THREE_TRIG_METHODS.join('|')})\\s*\\(`);
 export const LOCAL_STEP_ENTRIES = Object.freeze(['src/game/state.ts']);
 const LOCAL_STEP_DIRS = Object.freeze(['src/sim/', 'src/game/']);
 
-/** The authority's static import graph (relative imports of src/ and server/; type-only imports are not code). */
-export function authorityModules(root = ROOT, entries = AUTHORITY_ENTRIES) {
+/**
+ * The authority's static import graph (relative imports of src/ and server/; type-only imports are not code), or another
+ * entry's, walked only into the modules `follow` admits.
+ */
+export function authorityModules(root = ROOT, entries = AUTHORITY_ENTRIES, follow = () => true) {
   const seen = new Set();
   const queue = entries.map((entry) => path.resolve(root, entry));
   while (queue.length) {
@@ -56,21 +59,22 @@ export function authorityModules(root = ROOT, entries = AUTHORITY_ENTRIES) {
       if (/^(import|export)\s+type\b/.test(match[0]) || !match[1].startsWith('.')) continue;
       let target = path.resolve(path.dirname(file), match[1]);
       if (!existsSync(target) && existsSync(`${target}.ts`)) target = `${target}.ts`;
-      if (!target.endsWith('.json')) queue.push(target);
+      if (!target.endsWith('.json') && follow(target)) queue.push(target);
     }
   }
   return [...seen].sort();
 }
 
 /**
- * The local step's modules: state.ts's graph cut to src/sim and src/game, plus the world collision it shares with the
- * authority (every src/world module state.ts reaches that the authority's graph runs too).
+ * The local step's modules: state.ts's graph cut to src/sim, src/game and the modules the authority runs (its world
+ * collision, specs and rules), walked only through them, so a sim module only presentation reaches (the armour skin's
+ * facets) is outside it, as is everything the page draws, plays or reads from a device.
  */
 export function localStepModules(root = ROOT) {
   const authority = new Set(authorityModules(root));
-  return authorityModules(root, LOCAL_STEP_ENTRIES).filter((file) => {
+  return authorityModules(root, LOCAL_STEP_ENTRIES, (file) => {
     const rel = path.relative(root, file).split(path.sep).join('/');
-    return LOCAL_STEP_DIRS.some((dir) => rel.startsWith(dir)) || (rel.startsWith('src/world/') && authority.has(file));
+    return LOCAL_STEP_DIRS.some((dir) => rel.startsWith(dir)) || authority.has(file);
   });
 }
 

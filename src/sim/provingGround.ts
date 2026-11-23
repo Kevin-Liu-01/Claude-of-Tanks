@@ -23,6 +23,7 @@ import {
 import type { CourseStamp } from './terrainDeformation.ts';
 import type { ProvingGroundRules } from './matchRuleset.ts';
 import type { ProvingOutcome, ProvingShellCard } from './matchModes.ts';
+import * as detMath from './detMath.ts';
 
 const DEG = Math.PI / 180;
 
@@ -123,7 +124,7 @@ function lateralCandidates(preferred: number, step: number, reach: number): numb
 /** The ground between the sight and the target stays below the line of sight by `clearance` (m), sampled every 4 m. */
 function sightlineClear(ground: ProvingGroundView, from: { x: number; y: number; z: number },
   to: { x: number; y: number; z: number }, clearance = 0.35): boolean {
-  const length = Math.hypot(to.x - from.x, to.z - from.z);
+  const length = detMath.hypot(to.x - from.x, to.z - from.z);
   const steps = Math.max(2, Math.ceil(length / 4));
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
@@ -146,8 +147,8 @@ interface AngularSpan { readonly low: number; readonly high: number }
  */
 export function planProvingRange(rules: ProvingGroundRules, ground: ProvingGroundView): ProvingRangeLayout {
   const bearing = rules.firingLine.bearingDeg * DEG;
-  const fx = Math.sin(bearing), fz = Math.cos(bearing);
-  const lx = Math.cos(bearing), lz = -Math.sin(bearing);
+  const fx = detMath.sin(bearing), fz = detMath.cos(bearing);
+  const lx = detMath.cos(bearing), lz = -detMath.sin(bearing);
   const radius = rules.targetRadiusM;
   let origin: ProvingMark | null = null;
   for (const offset of lateralCandidates(0, rules.lateralStepM, rules.lateralReachM)) {
@@ -164,18 +165,18 @@ export function planProvingRange(rules: ProvingGroundRules, ground: ProvingGroun
     let placed: ProvingLaneMark | null = null;
     for (const lateral of lateralCandidates(lane.lateralM, rules.lateralStepM, rules.lateralReachM)) {
       const x = origin.x + fx * lane.rangeM + lx * lateral, z = origin.z + fz * lane.rangeM + lz * lateral;
-      if (marks.some((mark) => Math.hypot(mark.x - x, mark.z - z) < radius * 2 + 3)) continue;
+      if (marks.some((mark) => detMath.hypot(mark.x - x, mark.z - z) < radius * 2 + 3)) continue;
       if (!ground.standable(x, z, radius)) continue;
       const target = { x, y: ground.heightAt(x, z) + rules.targetHeightM, z };
       if (!sightlineClear(ground, sight, target)) continue;
-      const dx = x - origin.x, dz = z - origin.z, distance = Math.hypot(dx, dz);
-      const angle = Math.atan2(dx * lx + dz * lz, dx * fx + dz * fz);
-      const half = Math.asin(Math.min(1, radius / Math.max(distance, radius)));
+      const dx = x - origin.x, dz = z - origin.z, distance = detMath.hypot(dx, dz);
+      const angle = detMath.atan2(dx * lx + dz * lz, dx * fx + dz * fz);
+      const half = detMath.asin(Math.min(1, radius / Math.max(distance, radius)));
       const span = { low: angle - half, high: angle + half };
       if (spans.some((other) => span.low < other.high + separation && span.high > other.low - separation)) continue;
       spans.push(span);
       // nose on is the heading toward the firing line; + presented degrees turn the nose to the hull's left
-      const toShooter = Math.atan2(origin.x - x, origin.z - z);
+      const toShooter = detMath.atan2(origin.x - x, origin.z - z);
       placed = {
         index, x, z, yaw: wrapAngle(toShooter + lane.presentDeg * DEG),
         rangeM: lane.rangeM, measuredM: distance, presentDeg: lane.presentDeg, lateralM: lateral,
@@ -200,8 +201,8 @@ export function planProvingRange(rules: ProvingGroundRules, ground: ProvingGroun
 function planPlateRack(rules: ProvingGroundRules, origin: ProvingMark, ground: ProvingGroundView,
   sight: { x: number; y: number; z: number }): readonly ProvingPlateMark[] {
   const rack = rules.plateRack;
-  const fx = Math.sin(origin.yaw), fz = Math.cos(origin.yaw);
-  const lx = Math.cos(origin.yaw), lz = -Math.sin(origin.yaw);
+  const fx = detMath.sin(origin.yaw), fz = detMath.cos(origin.yaw);
+  const lx = detMath.cos(origin.yaw), lz = -detMath.sin(origin.yaw);
   const halfW = rack.widthM / 2;
   return Object.freeze(rack.plates.map((rule, index) => {
     const halfH = (rule.lengthM ?? rack.heightM) / 2;
@@ -209,9 +210,9 @@ function planPlateRack(rules: ProvingGroundRules, origin: ProvingMark, ground: P
     const footX = origin.x + fx * rack.rangeM + lx * lateral, footZ = origin.z + fz * rack.rangeM + lz * lateral;
     if (!ground.standable(footX, footZ, halfW)) throw new Error(`proving ground: plate ${index + 1} has no standing ground`);
     const groundY = ground.heightAt(footX, footZ);
-    const yaw = Math.atan2(origin.x - footX, origin.z - footZ);
-    const sy = Math.sin(yaw), cy = Math.cos(yaw);
-    const lay = rule.angleDeg * DEG, sl = Math.sin(lay), cl = Math.cos(lay);
+    const yaw = detMath.atan2(origin.x - footX, origin.z - footZ);
+    const sy = detMath.sin(yaw), cy = detMath.cos(yaw);
+    const lay = rule.angleDeg * DEG, sl = detMath.sin(lay), cl = detMath.cos(lay);
     // the face leans back from its foot: up along the face is (-f sin a, cos a), the normal (f cos a, sin a)
     const ux = -sy * sl, uy = cl, uz = -cy * sl;
     const x = footX + ux * halfH, y = groundY + rack.liftM + uy * halfH, z = footZ + uz * halfH;
@@ -221,7 +222,7 @@ function planPlateRack(rules: ProvingGroundRules, origin: ProvingMark, ground: P
     });
     return Object.freeze({
       index, id: `range-plate-${index + 1}`, mm: rule.mm, angleDeg: rule.angleDeg,
-      rangeM: Math.hypot(x - origin.x, z - origin.z), x, y, z, groundY, yaw,
+      rangeM: detMath.hypot(x - origin.x, z - origin.z), x, y, z, groundY, yaw,
       nx: sy * cl, ny: sl, nz: cy * cl, rx: cy, rz: -sy, ux, uy, uz, halfW, halfH, plate,
     });
   }));
@@ -258,7 +259,7 @@ export function provingPlateStrike(plates: readonly ProvingPlateMark[], from: { 
   _strike.t = bestT;
   _strike.point.set(from.x + dir.x * bestT, from.y + dir.y * bestT, from.z + dir.z * bestT);
   _strike.normal.set(best.nx * side, best.ny * side, best.nz * side);
-  _strike.impactAngleDeg = Math.acos(Math.min(1, Math.abs(bestDot))) / DEG;
+  _strike.impactAngleDeg = detMath.acos(Math.min(1, Math.abs(bestDot))) / DEG;
   _strike.plate = best.plate;
   return _strike;
 }
@@ -274,13 +275,13 @@ function featureProfile(feature: ProvingGroundRules['course']['features'][number
   { knots: number[]; lengthM: number; first: number; second: number } {
   switch (feature.kind) {
     case 'ramp': {
-      const up = feature.heightM / Math.tan(feature.upDeg * DEG), down = feature.heightM / Math.tan(feature.downDeg * DEG);
+      const up = feature.heightM / detMath.tan(feature.upDeg * DEG), down = feature.heightM / detMath.tan(feature.downDeg * DEG);
       const lengthM = up + feature.topM + down;
       return { knots: [0, 0, up, feature.heightM, up + feature.topM, feature.heightM, lengthM, 0], lengthM,
         first: feature.upDeg, second: feature.downDeg };
     }
     case 'ditch': {
-      const wall = feature.depthM / Math.tan(feature.wallDeg * DEG);
+      const wall = feature.depthM / detMath.tan(feature.wallDeg * DEG);
       const lengthM = wall * 2 + feature.floorM;
       return { knots: [0, 0, wall, -feature.depthM, wall + feature.floorM, -feature.depthM, lengthM, 0], lengthM,
         first: feature.depthM, second: feature.wallDeg };
@@ -291,7 +292,7 @@ function featureProfile(feature: ProvingGroundRules['course']['features'][number
       const steps = feature.count * 8;
       for (let i = 0; i <= steps; i++) {
         const u = (lengthM * i) / steps;
-        knots.push(u, feature.heightM * 0.5 * (1 - Math.cos((Math.PI * 2 * u) / feature.periodM)));
+        knots.push(u, feature.heightM * 0.5 * (1 - detMath.cos((Math.PI * 2 * u) / feature.periodM)));
       }
       return { knots, lengthM, first: feature.heightM, second: feature.count };
     }
@@ -312,8 +313,8 @@ const SIDE_SLOPE_BACK_DEG = 30;
 export function planProvingCourse(rules: ProvingGroundRules, origin: ProvingMark): ProvingCourseLayout {
   const course = rules.course;
   const yaw = origin.yaw;
-  const fx = Math.sin(yaw), fz = Math.cos(yaw);
-  const lx = Math.cos(yaw), lz = -Math.sin(yaw);
+  const fx = detMath.sin(yaw), fz = detMath.cos(yaw);
+  const lx = detMath.cos(yaw), lz = -detMath.sin(yaw);
   const sx = origin.x + fx * course.startM + lx * course.lateralM, sz = origin.z + fz * course.startM + lz * course.lateralM;
   const half = course.widthM / 2;
   const stamps: CourseStamp[] = [];
@@ -327,16 +328,16 @@ export function planProvingCourse(rules: ProvingGroundRules, origin: ProvingMark
     let profile: number[];
     let stampYaw = yaw, hw = half;
     if (feature.kind === 'sideSlope') {
-      const rise = course.widthM * Math.tan(feature.deg * DEG);
+      const rise = course.widthM * detMath.tan(feature.deg * DEG);
       // across the line toward its left: level at the right edge, `rise` at the left edge, a steeper back face past it
-      profile = [-half, 0, half, rise, half + rise / Math.tan(SIDE_SLOPE_BACK_DEG * DEG), 0];
+      profile = [-half, 0, half, rise, half + rise / detMath.tan(SIDE_SLOPE_BACK_DEG * DEG), 0];
       stampYaw = yaw + Math.PI / 2;
       hw = shape.lengthM / 2;
     } else {
       profile = shape.knots.map((value, k) => (k % 2 === 0 ? value - shape.lengthM / 2 : value));
     }
     stamps.push(Object.freeze({
-      kind: 'course' as const, cx, cz, yaw: stampYaw, c: Math.cos(stampYaw), s: Math.sin(stampYaw), hw,
+      kind: 'course' as const, cx, cz, yaw: stampYaw, c: detMath.cos(stampYaw), s: detMath.sin(stampYaw), hw,
       skirtM: course.skirtM, profile: new Float64Array(profile),
     }));
     features.push(Object.freeze({
@@ -383,13 +384,13 @@ export function provingPatrolInput(
   state: ProvingPatrolState,
   out: { throttle: number; steer: number },
 ): void {
-  const ax = Math.sin(mark.yaw), az = Math.cos(mark.yaw);
+  const ax = detMath.sin(mark.yaw), az = detMath.cos(mark.yaw);
   const along = (pose.pos.x - mark.x) * ax + (pose.pos.z - mark.z) * az;
   if (state.dir > 0 && along >= patrol.halfLengthM) state.dir = -1;
   else if (state.dir < 0 && along <= -patrol.halfLengthM) state.dir = 1;
   const ahead = along + state.dir * patrol.lookaheadM;
   const tx = mark.x + ax * ahead - pose.pos.x, tz = mark.z + az * ahead - pose.pos.z;
-  const travel = Math.atan2(tx, tz);
+  const travel = detMath.atan2(tx, tz);
   const desired = state.dir > 0 ? travel : travel + Math.PI;
   const error = wrapAngle(desired - pose.yaw);
   const reversing = pose.speed < -0.05;

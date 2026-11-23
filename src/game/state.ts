@@ -124,7 +124,7 @@ import {
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
-import { getStoredDifficulty } from './input.ts';
+import { getStoredDifficulty } from './storedDifficulty.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { camoSelectionBonus } from '../sim/camoPaint.ts';
 import { hullReachM, shellMayReachHull } from '../sim/shellHullReach.ts';
@@ -1039,13 +1039,13 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   let arcAllows = true;
   if (actor.volley.traverseDegPerS != null) {
     const from = entity.state.pos, aim = entity.input.aimPoint;
-    const bearing = Math.atan2(aim.x - from.x, aim.z - from.z);
+    const bearing = detMath.atan2(aim.x - from.x, aim.z - from.z);
     const yaws = game._trainingGunYaw ??= new Map();
     const gunYaw = trainingTraverse(yaws.get(actor.key) ?? entity.state.yaw, bearing, SIM_DT, actor.volley.traverseDegPerS);
     yaws.set(actor.key, gunYaw);
-    const reach = Math.hypot(aim.x - from.x, aim.z - from.z);
-    aim.set(from.x + Math.sin(gunYaw) * reach, aim.y, from.z + Math.cos(gunYaw) * reach);
-    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, Math.atan2(pos.x - from.x, pos.z - from.z));
+    const reach = detMath.hypot(aim.x - from.x, aim.z - from.z);
+    aim.set(from.x + detMath.sin(gunYaw) * reach, aim.y, from.z + detMath.cos(gunYaw) * reach);
+    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, detMath.atan2(pos.x - from.x, pos.z - from.z));
     // (S13) the arc held a while before the trigger: a tank clipping its edge is not shot for it
     if (actor.volley.arcDwellS != null) {
       const since = game._trainingArcSince ??= new Map();
@@ -1321,8 +1321,8 @@ export function setupBattle(
     // the bots' grid re-reads the ground round the heap, as the authority's does
     onCollapse: (structure) => {
       const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
-      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
-      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      const ex = Math.abs(detMath.sin(structure.yaw)) * structure.hd + Math.abs(detMath.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(detMath.cos(structure.yaw)) * structure.hd + Math.abs(detMath.sin(structure.yaw)) * structure.hw + reach;
       game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
     onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
@@ -1493,10 +1493,10 @@ export function setupBattle(
     playerSpecId,
     allies: allySet,
     placement,
-    playerPerpendicularX: Math.cos(playerYaw),
-    playerPerpendicularZ: -Math.sin(playerYaw),
-    playerForwardX: Math.sin(playerYaw),
-    playerForwardZ: Math.cos(playerYaw),
+    playerPerpendicularX: detMath.cos(playerYaw),
+    playerPerpendicularZ: -detMath.sin(playerYaw),
+    playerForwardX: detMath.sin(playerYaw),
+    playerForwardZ: detMath.cos(playerYaw),
     obstacles: world.getObstacles(),
     botMatch,
     opening,
@@ -1687,9 +1687,9 @@ function shouldCrushObstacle(
   // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
   // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
   if (isFortifiedCoverRecord(obstacle)) {
-    const length = Math.hypot(pushX, pushZ);
+    const length = detMath.hypot(pushX, pushZ);
     if (length <= 1e-9) return false;
-    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
     return game._fortified?.ram(obstacle, self.spec.weightTons, closing, game.timeS) ?? false;
   }
   // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
@@ -1720,10 +1720,10 @@ const _hardObstacles: SoloObstacle[] = [];
 
 /** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
 function structureYield(game: SoloGameState, entity: SoloEntity, obstacle: SoloObstacle, pushX: number, pushZ: number): number | null {
-  const length = Math.hypot(pushX, pushZ);
+  const length = detMath.hypot(pushX, pushZ);
   if (length <= 1e-9 || !game._destruction) return null;
   const state = entity.state;
-  const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+  const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
   return game._destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
     state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
 }
@@ -2239,7 +2239,7 @@ function recoilLaunchFor(entity: SoloEntity, dir: THREE.Vector3): RecoilLaunch |
 
 /** Impact knock (owner 2026-09-16): the hit hull is shoved along the shell's flight direction. */
 function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
-  const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
+  const speed = detMath.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
   const knock = shellKnockMps(shell.spec.caliberMm, speed, entity.spec.weightTons, entity.modeShellKnockScale ?? 1);
   if (!(knock > 0)) return;
   applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, entity.modeGravityScale ?? 1);
@@ -2709,7 +2709,7 @@ function resolveTankImpacts(
     const closing = prior + impact;
     entity._impactAccumMps = closing;
     if (fresh) entity._impactAccumT = game.timeS;
-    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
     // the struck face looks into the obstacle: opposite the push
     const faceForward = -(state.impactNx * fx + state.impactNz * fz);
     const sideSign = Math.sign(-(state.impactNx * fz - state.impactNz * fx));
@@ -2741,7 +2741,7 @@ function resolveTankImpacts(
   if (landing > 0) {
     // the landing's attitude is the tracks' (the attitude spring's): the posture a hull holds over them on a grade
     // (movement.ts state._hold) is no part of how it meets the ground
-    const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+    const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
     const attitudeFactor = fallAttitudeFactor(state._spring.pitch - state._terr.pitch, state._spring.roll - state._terr.roll, upY);
     const result = resolveHullImpact({
       combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
@@ -3152,7 +3152,7 @@ function soloCounterAir(game: SoloGameState): NonNullable<Parameters<typeof step
       if (!air || !strike) return null;
         const pose = air.aircraftPoseOf(strike, game.timeS, _soloAirPose);
         // led: where the aircraft will be when the round meets it (its flight is the record's: exact)
-        const leadS = Math.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
+        const leadS = detMath.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
         air.aircraftPoseOf(strike, game.timeS + leadS, _soloAirPose);
         out.set(_soloAirPose.x, _soloAirPose.y, _soloAirPose.z);
       return strike;
@@ -3504,11 +3504,11 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
       // a pillbox takes a burst on its face as a hit (crushWorldPropFromShell), never a fall to a burst beside it
       if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
       const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
-      if (Math.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
+      if (detMath.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
     }
     _blastFelled.sort((a, c) => {
-      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
-      const dc = Math.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
+      const da = detMath.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const dc = detMath.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
       return da - dc || obstacles.indexOf(a) - obstacles.indexOf(c);
     });
     const fell = Math.min(_blastFelled.length, PROP_FELL_PER_BLAST, budget);

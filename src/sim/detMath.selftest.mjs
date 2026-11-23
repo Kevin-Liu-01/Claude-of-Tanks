@@ -53,8 +53,8 @@ const plantedTrig = sourceFindings([
   '// q.setFromEuler(e) in a comment', 'v.applyQuaternion(q);',
 ].join('\n'));
 assert.deepEqual(plantedTrig.map((f) => f.line), [1, 2, 3, 4, 5, 6, 7, 8], 'the lint flags exactly the planted three.js trig calls');
-// the local step's cut: state.ts's graph in src/sim and src/game, and the world collision the authority runs too; its
-// effects, rendering and a world module only the page reaches are outside it
+// the local step's cut: state.ts's graph walked only through src/sim, src/game and what the authority runs (its world
+// collision); its effects, a world module only the page reaches, and a sim module only the effects reach are outside it
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-det-math-local-step-'));
   try {
@@ -65,14 +65,15 @@ assert.deepEqual(plantedTrig.map((f) => f.line), [1, 2, 3, 4, 5, 6, 7, 8], 'the 
     ].join('\n'));
     write('src/sim/step.ts', "import { brain } from '../game/brain.ts';\nexport const step = () => brain();\n");
     write('src/game/brain.ts', 'export const brain = () => 0;\n');
-    write('src/fx/burst.ts', "import { step } from '../sim/step.ts';\nexport const burst = () => Math.sin(step());\n");
+    write('src/fx/burst.ts', "import { facets } from '../sim/facets.ts';\nexport const burst = () => Math.sin(facets());\n");
+    write('src/sim/facets.ts', 'export const facets = () => Math.atan2(1, 2);\n');
     write('src/world/collision.ts', 'export const collide = () => 0;\n');
     write('src/world/treeAtlas.ts', 'export const atlas = () => Math.cos(1);\n');
     write('src/engine/pose.ts', 'export type Pose = number;\n');
     write('src/sim/authoritativeMatch.ts', "import { collide } from '../world/collision.ts';\n");
     const rel = (files) => files.map((file) => file.slice(root.length + 1).split('\\').join('/'));
     assert.deepEqual(rel(localStepModules(root)), ['src/game/brain.ts', 'src/game/state.ts', 'src/sim/step.ts', 'src/world/collision.ts'],
-      'the local step is state.ts\'s graph in src/sim and src/game plus the world collision the authority shares');
+      'the local step is state.ts\'s graph walked through src/sim, src/game and the world collision the authority shares');
     assert.deepEqual(rel(simulationModules(root)), ['src/game/brain.ts', 'src/game/state.ts', 'src/sim/authoritativeMatch.ts', 'src/sim/step.ts', 'src/world/collision.ts'],
       'the simulation is both drivers\' modules once each');
   } finally { rmSync(root, { recursive: true, force: true }); }
