@@ -1,7 +1,7 @@
 # Replays: recording, viewer, capture (design, 2026-11-22)
 
-Status: design approved by Kevin (2026-11-22, all four decisions below as recommended). Built so far: two Node
-measurement tools (`tools/replay-measure.mjs`, `tools/replay-measure-local.mjs`). P1 is next.
+Status: design approved by Kevin (2026-11-22, all four decisions below as recommended). P1 (recording) is built on
+`item/replay-system-275`; see "P1 as built" at the end. Its browser check waits for a heavy slot.
 
 Kevin's ask, in his order:
 
@@ -237,3 +237,39 @@ P1 alone is already useful: every solo battle becomes a file that reproduces it 
    Worker (the ARCHITECTURE §1.6 owner's OK for an off-thread local simulation, for replay viewing only). Both approved.
 3. Phase order: recording, viewer, capture, seek polish, multiplayer. Approved.
 4. Version policy: same sim only; a clean refusal that still shows the summary and timeline. Approved.
+
+## P1 as built (2026-11-22)
+
+- `src/sim/gunPose.ts`: the authority's `gunWorldPose`, shared; the solo step's shots leave the simulated barrel.
+- `src/sim/seatControl.ts`: the seat's control quantizers (the wire re-exports them) and `captureSeatControl` /
+  `applySeatControl`. Every step the recorder stages the player's seat through both, so the live step reads exactly
+  what a replay feeds it.
+- `game.tick` beside `game.timeS`.
+- `src/sim/replayFormat.ts`: the file. `src/game/replay/`: the recorder (wired in `main.ts`: round `setupBattle`, the
+  step, the rules port, the bus), the runner (the local driver headless), seat actions, checksum, build digest, store.
+- `tools/replay-verify.mjs` re-simulates a file in Node. `tools/replay-browser-check.mjs` records real browser battles
+  and verifies them (the perf pass rule's harness).
+
+Differences from the plan above, each for a measured or found reason:
+
+- **Setup is captured, not rebuilt from a roster.** The header keeps what setup reads beyond its options (roster seed,
+  battle count, the previous battles' bots, debug roster flags) and every localStorage value read while setting up or
+  stepping. The replayer serves those through a storage stand-in, so `setupBattle` itself did not change, and a new
+  stored choice is covered without touching the recorder. A stored value that changes mid-battle marks the recording
+  staged from that step.
+- **Discrete actions are the rules port's calls.** Every key handler changes the simulation through
+  `playerBattleActions`' `rules` (shell, magazine, special action, consumable, self-right, jump) plus one direct write
+  (`previousShellSlot`); the recorder wraps that port. Lights, smoke, the roof gun, drones and Air Support call-ins
+  ride `auxiliaryBits`, which the seat control already carries.
+- **Footprints are recorded at the step they appear.** A hull's contact footprint is published when its visual streams
+  in, mid-battle; the recorder notes the step, the replayer sets it then. (migration-parity is moving footprints to one
+  data source for both drivers; then they are known at setup.)
+- **Any step the recorder did not see** (a debug fast-forward stepping `simStep` itself) marks the recording staged.
+- **"Download replay" and "Watch replay" move to P2**, where the end screen and Garage list get their one stills
+  round. P1 keeps recordings in IndexedDB; tools read them through `window.__COT_REPLAY`.
+- **P1 limits**: couch and Watch battles, and Jev battles, are not recorded yet.
+
+Receipts (Node): `src/game/replay/replayRoundTrip.selftest.mjs` (MANUAL `sims`): 4,800 steps, 14 hulls, 6 kills; every
+checksum and the final digest match; a throttle unit off at step 500 is caught at step 600; 80 s records to 6.3 KB
+gzipped and re-simulates at 0.57 ms per step. `src/sim/replayFormat.selftest.mjs` (default tier): the stream, the
+sections, refusals, and the seat stage as a fixed point.
