@@ -74,12 +74,34 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
     }
   }
   for (const t of spec.tears ?? []) openings.push({ face: t.face, storey: 0, kind: 'loft', u: t.u, w: t.w, y0: t.y - t.h / 2, h: t.h });
+  // the portal frames: a column each side at each bay line (their u on either long face, the lines symmetric about 0)
+  const bays = Math.max(2, Math.round(d / 5)), iz = d / 2 - 0.06;
+  const frameLines = Array.from({ length: bays - 1 }, (_, k) => -iz + 2 * iz * (k + 1) / bays);
   if (spec.clerestory) {
+    // (inherited-reds-276) a light hangs between the frames, never across a column: its stack (the craft's leaning glass
+    // at the 13 cm recess, the sheet's back, the 0.17 m lining) stands as deep as the column's face, so a light cut
+    // across one showed the column's inward face and its flush stand-in in front of its glass (wadirum/depot,
+    // invertedM2 0.169 since 1ae1deb5f4 laid the glass 2-17 mm off the recess). A light that would cross one moves by the
+    // least distance that clears it (its half-width, the column's 0.11 m and the lining's 2 cm, a hand over), keeping
+    // inside the long wall and clear of the other lights; one that cannot is left out
+    const LIGHT_W = 3.0, CLEAR = LIGHT_W / 2 + 0.11 + 0.02 + 0.03;
+    const clearOfFrames = (u: number) => frameLines.every((z) => Math.abs(u - z) >= CLEAR);
     for (const face of ['left', 'right'] as const) {
+      const lights: number[] = [];
       for (let u = -d / 2 + 2.2; u < d / 2 - 1.6; u += 4.4) {
         if (face === 'right' && spec.sideDoor !== undefined && spec.sideDoor !== null && Math.abs(u - spec.sideDoor) < 2.2) continue;
-        openings.push({ face, storey: 0, kind: 'window', u, w: 3.0, y0: wall - 1.25, h: 0.7 });
+        lights.push(u);
       }
+      for (let i = 0; i < lights.length; i++) {
+        const u = lights[i];
+        if (clearOfFrames(u)) continue;
+        const fits = (c: number) => clearOfFrames(c) && Math.abs(c) + LIGHT_W / 2 <= d / 2 - 0.6
+          && lights.every((o, j) => j === i || !Number.isFinite(o) || Math.abs(c - o) >= LIGHT_W + 0.4)
+          && !(face === 'right' && spec.sideDoor !== undefined && spec.sideDoor !== null && Math.abs(c - spec.sideDoor) < 2.2);
+        const moves = frameLines.flatMap((z) => [z - CLEAR, z + CLEAR]).filter(fits).sort((a, b) => Math.abs(a - u) - Math.abs(b - u));
+        lights[i] = moves.length ? moves[0] : NaN;
+      }
+      for (const u of lights) if (Number.isFinite(u)) openings.push({ face, storey: 0, kind: 'window', u, w: LIGHT_W, y0: wall - 1.25, h: 0.7 });
     }
   }
   let frame!: HouseFrame;
@@ -127,7 +149,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   } finally { sink.paint = null; }
   const y0 = frame.floors[0], rg = frame.roof, tanP = Math.tan(spec.pitchDeg * Math.PI / 180);
   // the inside, seen through the open doors: the floor, the walls' inner faces and the roof's underside, the portal frames
-  const ix = w / 2 - 0.06, iz = d / 2 - 0.06, top = (x: number) => eave + (w / 2 - Math.abs(x)) * tanP - 0.12;
+  const ix = w / 2 - 0.06, top = (x: number) => eave + (w / 2 - Math.abs(x)) * tanP - 0.12;
   sink.quad('structureMetal', [-ix, y0 + 0.01, iz], [ix, y0 + 0.01, iz], [ix, y0 + 0.01, -iz], [-ix, y0 + 0.01, -iz], { colour: FLOOR, decor: true });
   const back = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   // (the inner walls cut where the outer ones are: through a light or a door the hall's space, not a wall behind it; a
@@ -155,9 +177,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
     else sink.quad('structureMetal', f, e, r1, r0, { colour: shade(back, 1.2), decor: true });
 
   }
-  const bays = Math.max(2, Math.round(d / 5));
-  for (let k = 1; k < bays; k++) {
-    const z = -iz + 2 * iz * k / bays;
+  for (const z of frameLines) {
     for (const s of [-1, 1]) {
       // (a framing member shows its face and sides, not its back: the column's face into the hall, its back on the
       // liner; the rafter's face down to the floor, its back up under the roof)
