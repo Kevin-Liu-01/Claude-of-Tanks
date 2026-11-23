@@ -95,7 +95,11 @@ const targets={
   // the hull section's 7 stations became 11 when release 240's engine-block ramp climbed under the turret (9b4d25ad55):
   // (11-1)×6×2 sides + 2×4 caps = 128 triangles, 80 before
   sabra_mk2:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===128)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
-  type96b:{expected:3,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.triangles.length===68)),mirror:true},
+  // release 275 (china-turrets-275, from photographs): the turret shell stops at z .64 (4 hexagon stations, 44 triangles;
+  // 6 and 68 when it ran out to the old pointed nose), and the front is the two add-on modules either side of the
+  // mantlet slot (profiles/type96bX.ts addType96FrontModules, 6 stations of 5, 56 triangles), each the other's mirror
+  type96b:{expected:5,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===44)||(p.site.includes('addType96FrontModules (')&&p.bucket==='turret'&&p.part.vertices.length===30&&p.part.triangles.length===56)),
+    mirror:p=>!p.site.includes('addType96FrontModules (')},
   // release 267: the 10B on the true-size Type 10's welded turret (profiles/type10X.ts turretArmor: the shell, 10 stations
   // of a 12-point ring, 236 triangles, and a cheek nose either side of the boot, 7 stations of 7, 94, measured unequal)
   // with the upgrade's two add-on wedges over the cheeks (japan.ts addType10BWedges, 3 stations of 4, 20, laid in
@@ -158,7 +162,12 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
         const peer=parts.find(p=>p!==entry&&p.bucket==='turretDetail');assert.ok(peer,`${id}/${quality} opposite wedge present`);
         close(mirroredSurfaceError(hullFrame(entry),hullFrame(peer)).maxM,0,`${id}/${quality} paired wedges`);
       }
-      if(config.mirror)close(mirroredSurfaceError(part,part).maxM,0,`${id}/${quality} mirror interiors`);
+      if(id==='type96b'&&entry.site.includes('addType96FrontModules (')){
+        const peer=parts.find(p=>p!==entry&&p.site.includes('addType96FrontModules ('));assert.ok(peer,`${id}/${quality} opposite front module present`);
+        assert.ok(part.bounds.max.x*peer.part.bounds.max.x<0,`${id}/${quality} front modules sit either side of the slot`);
+        close(mirroredSurfaceError(part,peer.part).maxM,0,`${id}/${quality} paired front modules`);
+      }
+      if(typeof config.mirror==='function'?config.mirror(entry):config.mirror)close(mirroredSurfaceError(part,part).maxM,0,`${id}/${quality} mirror interiors`);
       if(config.cap){
         const top=part.bounds.max.y,roof=part.triangles.filter(t=>t.points.every(p=>Math.abs(p[1]-top)<.000001));
         // Base roof is 3.70060687152 m² before the vehicle's authored 1.05 scale.
