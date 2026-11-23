@@ -12,6 +12,7 @@ import {
   normalizeMinimapAngle,
   projectWorldToMinimap,
 } from './minimapOrientation.ts';
+import { drawAircraftGlyph } from './aerialMinimap.ts';
 
 const point = [0, 0];
 assert.strictEqual(projectWorldToMinimap(0, 0, 1000, 220, point), point,
@@ -243,6 +244,23 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   assert.deepEqual(ops.slice(0, 3), [['save', []], ['translate', [40, 50]], ['rotate', [minimapYawForHeading(-Math.PI / 2)]]],
     'an arrow translates to its point and rotates to its own hull heading before its nose is drawn');
   assert.ok(ops.some(([op]) => op === 'moveTo') && ops.at(-1)[0] === 'restore', 'the arrow path is drawn inside the rotated frame');
+}
+{
+  // an aircraft (air-support-275) is a unit with a heading, as a tank's arrow is: its silhouette turns to its nose inside
+  // its own save/restore (aerialMinimap.ts), never in the upright objective set, and leaves the context as it found it
+  const ops = [];
+  const context = new Proxy({}, {
+    get: (target, key) => (key in target ? target[key] : (...args) => { ops.push([key, args]); }),
+    set: (target, key, value) => { target[key] = value; return true; },
+  });
+  drawAircraftGlyph(context, 40, 50, 5.5, 0.7, false, 'enemy', { toX: 90, toY: 60, march: 0.25 });
+  const turn = ops.findIndex(([op]) => op === 'rotate');
+  assert.deepEqual(ops[turn], ['rotate', [0.7]], 'an aircraft turns to its heading');
+  assert.deepEqual(ops[turn - 1], ['translate', [40, 50]], 'about its own point');
+  assert.ok(ops.slice(0, turn).some(([op]) => op === 'lineTo'), 'its approach line is drawn before the turn, in map space');
+  assert.equal(ops[0][0], 'save');
+  assert.equal(ops.at(-1)[0], 'restore', 'the turn ends with the aircraft');
+  assert.equal(ops.filter(([op]) => op === 'save').length, ops.filter(([op]) => op === 'restore').length);
 }
 {
   // objective markers: co-located markers draw at one exact point and the
