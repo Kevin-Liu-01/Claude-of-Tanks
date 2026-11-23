@@ -23,6 +23,7 @@ import {
   releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
+import { auditGarageOrbitClearance, type GarageScenePart } from './garageOrbitClearance.ts';
 import {
   auditGarageHorizonSetPieces, buildGarageHorizonSetPieces, type GarageHorizonSetPiece,
 } from './garageHorizonSetPieces.ts';
@@ -124,6 +125,10 @@ interface GarageEnvironmentStats {
   readonly battleCertifiedStructures: number;
   /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
   readonly horizonSetPieces: readonly GarageHorizonSetPiece[];
+  /** The parts that hold the orbiting camera or block its view of the hero (garageOrbitClearance.ts). */
+  readonly orbitFindings: readonly string[];
+  /** What the orbit audit cost the bake (ms). */
+  readonly orbitAuditMs: number;
   /** What the horizon pieces' audit found (an overlap or a sightline intrusion), by name. */
   readonly horizonFindings: readonly string[];
   readonly facilityProps: number;
@@ -1530,7 +1535,14 @@ export function buildGarageEnvironment(
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   requestRender: () => void = () => {},
-  options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
+  options: Readonly<{
+    kitPlacement?: GarageKitPlacement | null;
+    /**
+     * (garage-env-276) Audit the orbiting camera's clearance (garageOrbitClearance.ts): every part against the orbit's
+     * samples, tens of milliseconds a pack, so the receipts ask for it and a player's bake does not.
+     */
+    auditOrbit?: boolean;
+  }> = {},
 ): GarageEnvironmentBuild {
   // Every material the pack registers with the shadow cascades is noted, and the ones the pack owns (disposes) are
   // released with it: the LRU keeps two packs, but the cascade registry grew on every switch (the garage r9 engineering
@@ -2710,6 +2722,23 @@ export function buildGarageEnvironment(
       root.add(mesh);
     }
   };
+  // (garage-env-276) every part the merge is about to fold away, boxed for the orbit clearance audit (the receipts')
+  const sceneParts: GarageScenePart[] = [];
+  for (const [key, list] of options.auditOrbit ? Object.entries(combined) : []) {
+    if (!Array.isArray(list) || key === APPROACH_BUCKET) continue;
+    for (const geometry of list as THREE.BufferGeometry[]) {
+      geometry.computeBoundingBox();
+      const box = geometry.boundingBox;
+      if (!box || box.isEmpty() || box.max.y < 0.35) continue;
+      const centre = box.getCenter(new THREE.Vector3());
+      sceneParts.push({ label: `${key} part at (${centre.x.toFixed(1)}, ${centre.z.toFixed(1)})`, box: box.clone(), geometry });
+    }
+  }
+  // audited while the parts still stand apart (the merge reshapes and disposes them)
+  const orbitStartedAt = performance.now();
+  const orbitFindings = auditGarageOrbitClearance(sceneParts);
+  let orbitAuditMs = performance.now() - orbitStartedAt;
+  sceneParts.length = 0;
   addMergedStructures();
 
   // One repeated far-tree mesh per species produced the old row of identical
@@ -2852,6 +2881,28 @@ export function buildGarageEnvironment(
   const { detailTier: treeDetailTier, trunkQualities: treeTrunkQualities, points: grovePoints } = addTreeGroves();
   // the horizon set pieces stand clear of the yard's structures, groves and approach, and of the hero in the opening view
   // (garageQualityRubric: placementOverlaps, openingSightlineIntrusions)
+  // the instanced scenery (facility primitives, the groves, the kit's pools), an instance a part
+  if (options.auditOrbit) {
+    root.updateMatrixWorld(true);
+    const instance = new THREE.Matrix4(), box = new THREE.Box3();
+    root.traverse((object) => {
+      const mesh = object as THREE.InstancedMesh;
+      if (!mesh.isInstancedMesh) return;
+      mesh.geometry.computeBoundingBox();
+      if (!mesh.geometry.boundingBox) return;
+      for (let index = 0; index < mesh.count; index += 1) {
+        mesh.getMatrixAt(index, instance);
+        box.copy(mesh.geometry.boundingBox).applyMatrix4(instance.premultiply(mesh.matrixWorld));
+        if (box.isEmpty() || box.max.y < 0.35) continue;
+        const centre = box.getCenter(new THREE.Vector3());
+        sceneParts.push({ label: `${mesh.name || 'instanced'} #${index} at (${centre.x.toFixed(1)}, ${centre.z.toFixed(1)})`, box: box.clone(),
+          geometry: mesh.geometry, matrix: instance.clone() });
+      }
+    });
+  }
+  const instancedStartedAt = performance.now();
+  orbitFindings.push(...auditGarageOrbitClearance(sceneParts));
+  orbitAuditMs += performance.now() - instancedStartedAt;
   const horizonAudit = auditGarageHorizonSetPieces(horizonSetPieces, {
     structures: structureRecords.map((record) => ({
       label: record.placement.label, x: record.x, z: record.z,
@@ -2971,7 +3022,9 @@ export function buildGarageEnvironment(
       (sum, record) => sum + record.assemblyAudit.unsupportedParts, 0,
     ),
     placementOverlaps: placementOverlaps + horizonAudit.overlaps.length,
-    openingSightlineIntrusions: facilityDetails.openingSightlineIntrusions + horizonAudit.sightline.length,
+    openingSightlineIntrusions: facilityDetails.openingSightlineIntrusions + horizonAudit.sightline.length + orbitFindings.length,
+    orbitFindings: Object.freeze(orbitFindings),
+    orbitAuditMs: Number(orbitAuditMs.toFixed(1)),
     horizonFindings: Object.freeze([...horizonAudit.overlaps, ...horizonAudit.sightline]),
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),
