@@ -62,6 +62,7 @@ const ID_LOOP_EXEMPT = Object.freeze({
   'tools/griffin-viper-garage-probe.mjs': 'two fixed vehicles (griffin_viper and griffin50mm) selected in one Garage session',
   'tools/standard-check-stages.selftest.mjs': 'fixture doubles of tank-standard-check\'s stages: it opens no browser',
   'tools/marketing-shots/capture-showcase-r2-ui.mjs': 'its --ids name showcase shots in a fixed config, not tank ids',
+  'tools/genAircraftAssets.mjs': 'its --ids name preview aircraft (previewVehicles.ts PREVIEW_AIRCRAFT_IDS, one airframe), not tank ids',
 });
 const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\'"`])\/\/.*$/gm, '$1');
 /** What one source says about tank ids per browser: { loops, chunked: [tool names it passes eachBrowserChunk] }. */
