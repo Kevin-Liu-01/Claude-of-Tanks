@@ -54,7 +54,7 @@ const count = () => /cot-c-notice__count[^>]*>×(\d+)/.exec(seat.innerHTML)?.[1]
 const { threat, turned, answered, ambient } = NOTICE_PRIORITY;
 
 try {
-  assert.equal(root.children[0], seat, 'the seat mounts in the HUD root');
+  assert.ok(root.children[0] === seat, 'the seat mounts in the HUD root');
   assert.equal(seat.className, 'cot-alert', 'as the planners\' alert seat');
   assert.equal(seat.dataset.datum, 'notices', 'carrying the notices datum');
 

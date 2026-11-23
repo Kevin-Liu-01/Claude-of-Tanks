@@ -107,6 +107,6 @@ assert.ok(edgeRules.includes('var(--dur-stage)'), 'the licks run on the --dur-st
 assert.ok(!/(?:^|[\s,(:])\.?\d+(?:\.\d+)?m?s\b/.test(edgeRules), 'no literal duration in the edge rules');
 assert.ok(!edgeRules.includes('!important'), 'no !important in the edge rules');
 strip.dispose();
-assert.equal(edge.parentNode, null, 'dispose takes the edge down');
+assert.ok(edge.parentNode === null, 'dispose takes the edge down');
 
 console.log('scopeFireEdge.selftest: the sight edge mounts once on the HUD layer, burns with our own fire and goes out with it, at a death, a clear or with no record; shown only scoped and burning, compositor-only, still under reduced motion');
