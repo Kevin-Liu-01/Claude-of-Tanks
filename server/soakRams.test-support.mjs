@@ -9,6 +9,18 @@
 // so a viewer that is not a party reads one only when it sees both (canObserveRam; hiddenWorldEvents.selftest), in the
 // event batch and its snapshot alike.
 
+/**
+ * A teammate's wreck has no right of way: the bots read no wreck as an ally (game/botConstruction.ts, "a wreck is
+ * neither"; ai.ts scanAllyRisk skips a destroyed hull), and a hull may shove one (Delta at the soak's seed 9010 since
+ * bcc6a0a77a: the CV90105 TML pushes the Carro 45t's wreck, 2 s after it died, at 6.8 m/s). A party destroyed now was a
+ * wreck at the ram unless its tank_destroyed comes later in the same batch.
+ */
+function wreckContact(match, events, ram) {
+  const after = events.slice(events.indexOf(ram) + 1);
+  return [ram.aId, ram.bId].some((id) => match.entityById?.get(id)?.combat?.destroyed === true
+    && !after.some((event) => event.type === 'tank_destroyed' && event.id === id));
+}
+
 /** The soak's counts for one battle. */
 export function createRamTally() {
   return { rams: 0, alliedContacts: 0, viewerChecks: 0, viewerFaults: 0 };
@@ -21,7 +33,9 @@ export function createRamTally() {
  */
 export function judgeRams(match, teamById, snapshot, tick, tally) {
   const rams = snapshot.events.filter((event) => event.type === 'tank_ram');
-  for (const event of rams) if (teamById.get(event.aId) === teamById.get(event.bId)) tally.alliedContacts++;
+  for (const event of rams) {
+    if (teamById.get(event.aId) === teamById.get(event.bId) && !wreckContact(match, snapshot.events, event)) tally.alliedContacts++;
+  }
   if (!rams.length) return;
   tally.rams += rams.length;
   for (const viewer of match.entities) {
