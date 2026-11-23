@@ -418,7 +418,6 @@ export interface WarnStrike {
   readonly side: string;
   /** The call-in's kind (sim/matchRuleset.ts AirStrikeKind). */
   readonly status?: string;
-  readonly heading?: number;
   readonly countdownS?: number;
   readonly radiusM?: number;
   readonly halfLengthM?: number;
@@ -428,29 +427,34 @@ export interface WarnStrike {
 const STRIKE_MARGIN_M = 40;
 /** The warning's countdown ring empties over the last this many seconds before the landing. */
 export const STRIKE_RING_S = 10;
-/** A run's jet comes in from this far back along its heading (m) and this high (m): where its bubble points. */
-const APPROACH_BACK_M = 500;
-const APPROACH_UP_M = 120;
-/** The call-ins with an aircraft running in along a heading; the rest (the shells, the orbit) point at their mark. */
-const RUN_IN = new Set(['strafe', 'bomb', 'missile']);
+/** An aircraft in the air from its call (ui/minimapObjectives.ts ObjectiveMarker, kind 'aircraft'): where its run has it now. */
+export interface WarnAircraft {
+  readonly x: number;
+  readonly y?: number;
+  readonly z: number;
+  readonly side: string;
+  /** The call-in's kind, as its strike's. */
+  readonly status?: string;
+  /** While it is inbound on the viewer's side: the mark it is coming for (its strike's). */
+  readonly toX?: number;
+  readonly toZ?: number;
+}
 
 /**
  * The air runs to warn of (Kevin: "incoming air assaults and weaponry"): every enemy call-in still to land whose footprint
- * the tank stands in or near. Its bubble points where its danger comes from: the jet's run-in for a run along a heading,
- * the mark for the rest; its ring is the warning's time left.
+ * the tank stands in or near. Its bubble points where its danger is now: the aircraft flying it (its live pose, so the
+ * bubble moves round the rim as the aircraft does), or the mark for a call-in nothing flies (the shells); its ring is the
+ * warning's time left.
  */
-export function strikeWarnings(player: WorldPoint, strikes: readonly WarnStrike[]): WarnPointer[] {
+export function strikeWarnings(player: WorldPoint, strikes: readonly WarnStrike[], aircraft: readonly WarnAircraft[] = []): WarnPointer[] {
   const out: WarnPointer[] = [];
   strikes.forEach((strike, index) => {
     if (strike.side !== 'enemy' || !(strike.countdownS! > 0) || strike.status === 'recon') return;
     const reach = (strike.radiusM ?? strike.halfLengthM ?? 30) + STRIKE_MARGIN_M;
     const distanceM = Math.hypot(player.x - strike.x, player.z - strike.z);
     if (distanceM > reach) return;
-    const runIn = RUN_IN.has(strike.status ?? '') && Number.isFinite(strike.heading);
-    const heading = strike.heading ?? 0;
-    const from = runIn
-      ? { x: strike.x - Math.sin(heading) * APPROACH_BACK_M, y: player.y + APPROACH_UP_M, z: strike.z - Math.cos(heading) * APPROACH_BACK_M }
-      : { x: strike.x, y: player.y, z: strike.z };
+    const plane = aircraft.find((a) => a.side === 'enemy' && a.status === strike.status && a.toX === strike.x && a.toZ === strike.z);
+    const from = plane ? { x: plane.x, y: plane.y ?? player.y, z: plane.z } : { x: strike.x, y: player.y, z: strike.z };
     out.push({
       id: `air:${index}:${strike.status ?? ''}`, kind: 'air', ...from, priority: NOTICE_PRIORITY.threat, rank: WARN_RANK.air,
       distanceM, countdownS: strike.countdownS, countdownLeft: Math.max(0, Math.min(1, strike.countdownS! / STRIKE_RING_S)),

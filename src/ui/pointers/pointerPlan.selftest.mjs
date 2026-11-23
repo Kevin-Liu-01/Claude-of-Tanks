@@ -12,7 +12,8 @@
 //     shows gets no bubble; the most urgent come first; neighbours on the rim merge; the cap is 4, 3 on a phone; a
 //     bubble slides along the rim off the HUD and keeps pointing at its warning; the sight lets only threats through;
 //  4. the warnings' sources: a spotted enemy with its gun on the tank or close (never an unspotted, dead or friendly one);
-//     an enemy air run the tank stands in, pointing at the jet's run-in, its ring the warning's time left; an enemy
+//     an enemy air run the tank stands in, pointing at the aircraft flying it where it is now (its bubble moves round the
+//     rim as the aircraft flies), its ring the warning's time left; an enemy
 //     missile coming at the tank;
 //  5. the plan is deterministic, and the layer draws in screen space only and never takes the pointer.
 import assert from 'node:assert/strict';
@@ -209,14 +210,26 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 }
 {
   const player = { x: 0, y: 2, z: 0 };
-  const strike = { x: 10, z: 0, side: 'enemy', status: 'strafe', heading: 0, countdownS: 5, halfLengthM: 60 };
+  const strike = { x: 10, z: 0, side: 'enemy', status: 'strafe', countdownS: 5, halfLengthM: 60 };
+  const jet = (x, z, extra = {}) => ({ x, y: 160, z, side: 'enemy', status: 'strafe', toX: 10, toZ: 0, ...extra });
   const warns = strikeWarnings(player, [strike, { ...strike, side: 'own' }, { ...strike, countdownS: 0 }, { ...strike, x: 900 },
-    { ...strike, status: 'recon' }]);
+    { ...strike, status: 'recon' }], [jet(-300, -400)]);
   assert.equal(warns.length, 1, 'an enemy run still to land, the tank in its reach; not an own, landed, far or recon one');
-  assert.ok(warns[0].z < -100 && warns[0].y > player.y + 50, 'a run along a heading points at the jet\'s run-in, up and back');
+  assert.ok(near(warns[0].x, -300) && near(warns[0].y, 160) && near(warns[0].z, -400), 'a run points at its aircraft where it is now');
   assert.ok(near(warns[0].countdownLeft, 5 / STRIKE_RING_S), 'its ring is the warning\'s time left');
+  const others = [jet(500, 500, { status: 'bomb' }), jet(500, 500, { side: 'own' }), jet(500, 500, { toX: 99 })];
+  const unmatched = strikeWarnings(player, [strike], others);
+  assert.ok(near(unmatched[0].x, 10) && near(unmatched[0].z, 0), 'another call\'s aircraft is not this run\'s: no aircraft, the mark');
   const shells = strikeWarnings(player, [{ ...strike, status: 'artillery', radiusM: 40 }]);
   assert.ok(near(shells[0].x, 10) && near(shells[0].z, 0), 'shells point at their mark');
+  // the receipt: as the aircraft flies, its rim bubble moves with it (a jet swinging from behind-left to the right)
+  const view = { width: 1280, height: 720 };
+  const project = (p) => ({ x: 640 + p.x, y: 360 - (p.y - player.y), behind: p.z < 0 });
+  const bubbleAt = (x, z) => planBubbles({ warns: strikeWarnings(player, [strike], [jet(x, z)]), project, view, scoped: false, noCover: [] });
+  const before = bubbleAt(-900, 200), after = bubbleAt(900, 200);
+  assert.equal(before.length, 1);
+  assert.equal(after.length, 1);
+  assert.ok(before[0].x < 100 && after[0].x > view.width - 100, 'a moving aircraft moves its rim bubble: left rim, then right rim');
 }
 {
   const player = { x: 0, y: 0, z: 0 };

@@ -71,6 +71,8 @@ export interface ObjectiveMarker {
    *  running), the mark it is coming for, so the map draws its approach from where it is to there */
   toX?: number;
   toZ?: number;
+  /** aircraft: its altitude (m), where the battle's warnings point (ui/pointers strikeWarnings) */
+  y?: number;
   /** capture / hold progress 0..1 toward `progressSide` */
   progress?: number;
   progressSide?: 'own' | 'enemy';
@@ -243,7 +245,7 @@ function aircraftMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId
     const side = objectiveSide(strike.team, perspective);
     const inbound = side === 'enemy' && air.nowS < strike.landsS;
     out.push({
-      kind: 'aircraft', x: _aircraftPose.x, z: _aircraftPose.z, side, status: strike.kind, heading: _aircraftPose.yaw,
+      kind: 'aircraft', x: _aircraftPose.x, y: _aircraftPose.y, z: _aircraftPose.z, side, status: strike.kind, heading: _aircraftPose.yaw,
       mine: !!strike.mine, pulse: inbound, priority: 4,
       ...(inbound ? { toX: strike.x, toZ: strike.z, countdownS: Math.max(0, strike.landsS - air.nowS) } : {}),
     });
