@@ -18,7 +18,10 @@ interface LauncherMuzzle { readonly x: number; readonly y: number; readonly z: n
 export interface GunPoseEntity {
   readonly spec: {
     readonly dims: { readonly heightM: number };
-    readonly armor?: { readonly turretPivot?: Triple | readonly number[]; readonly gunPivot?: Triple | readonly number[]; readonly gunBarrel?: { readonly lengthM?: number } | null } | null;
+    readonly armor?: { readonly turretPivot?: Triple | readonly number[]; readonly gunPivot?: Triple | readonly number[];
+      readonly gunBarrel?: { readonly lengthM?: number } | null;
+      /** The drawn mouth across the bore from the trunnion at rest (the calibration's measured rig; 276). */
+      readonly gunMouth?: { readonly x: number; readonly y: number } | null } | null;
     readonly gun: Parameters<typeof usesLauncherMuzzles>[0] & Parameters<typeof cannonMouth>[0] & { readonly launcherMuzzles?: readonly LauncherMuzzle[] };
   };
   readonly state: {
@@ -64,9 +67,12 @@ export function gunWorldPose(entity: GunPoseEntity, shellSpec?: DamageShellSpec,
   const sinPitch = detMath.sin(state.gunPitch);
   const cosPitch = detMath.cos(state.gunPitch);
   _direction.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
-  if (cannonMouth(entity.spec.gun, cannonMuzzle, _mouth)) {
-    _muzzle.set(gunPivot[0]! + _mouth.x, gunPivot[1]! + _mouth.y * cosPitch + barrelM * sinPitch,
-      gunPivot[2]! - _mouth.y * sinPitch + barrelM * cosPitch).applyMatrix4(_turretMatrix);
+  const mouth = cannonMouth(entity.spec.gun, cannonMuzzle, _mouth) ? _mouth : armor.gunMouth;
+  if (mouth) {
+    // the mouth carried about the trunnion as the gun pitches: a twin plant's mouth, or a single bore's drawn mouth off
+    // its trunnion's line (the calibration's measured rig, 276: the fired muzzle is the drawn one at every pitch)
+    _muzzle.set(gunPivot[0]! + mouth.x, gunPivot[1]! + mouth.y * cosPitch + barrelM * sinPitch,
+      gunPivot[2]! - mouth.y * sinPitch + barrelM * cosPitch).applyMatrix4(_turretMatrix);
   } else {
     _muzzle.set(gunPivot[0]!, gunPivot[1]!, gunPivot[2]!)
       .applyMatrix4(_turretMatrix)

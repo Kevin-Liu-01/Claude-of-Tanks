@@ -1,4 +1,4 @@
-// 230 gun-barrel alignment: the combat-rig table (combatGunRigs.generated.ts) moves only the combat frame. The drawn tank
+// 230 gun-barrel alignment (276: the calibration's measured rig, applied by finalizeCombatAnatomy) moves only the combat frame. The drawn tank
 // is built in the frame its profile was authored in: builders and the factory's visual passes (the rig seat, the ERA
 // seats, the dirt bake, the bore fallback, the decoration gun guard) read this view, so a measured row never moves a
 // vertex, a seat or a paint value, and a builder that seats its rig from the spec's pivot cannot chase its own row.

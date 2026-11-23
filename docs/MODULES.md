@@ -108,7 +108,7 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   rig_turret seat and the deck round the race, where `turretSeatRace.ts` draws
   the race and a wreck seats its plate) where the generator publishes one, else
   the turret pivot, where the builder seats `rig_turret`
-  (`combatGunRigs.generated.ts` where a builder moves it), at the calibrated
+  (measured into the calibration's `rig`, 276), at the calibrated
   turret bottom. The precise shapes, seated inside the shell cells after it,
   keep their volume-weighted centre within 5.5 cm of the axis (median 1 mm);
   on a receipt's deck they sit under the hull's closed armour, their top at its
