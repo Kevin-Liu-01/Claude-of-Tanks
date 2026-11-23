@@ -3,14 +3,14 @@
 // build, with the structure shells derived in the pool's module workers, gives every collision record and every
 // structure anatomy the inline build gives, byte for byte. Two pages of this checkout (Vite dev server): the default
 // (workers) and ?inlineShells (every structure derived on the main thread); each switches to every map in turn and packs
-// its records the way the collision manifests do (headlessWorldCollision.mjs packCollisionRecord), plus each structure's
+// its records the way the collision manifests do (src/world/collisionRecordPacking.ts packCollisionRecord), plus each structure's
 // anatomy (world.structureDamage(i).anatomy). The worker page must have posted its structures to the pool.
 //
 //   node tools/structure-shell-pool.browser.mjs --no-lock [--maps=urban,foundry,blackglass] [--root=.]   (inside a capture-lock hold)
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { packCollisionRecord } from './headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../src/world/collisionRecordPacking.ts';
 import { openGamePage, withMapProbeSession } from './map-probe-runtime.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => { const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? '1'] : [a, '1']; }));

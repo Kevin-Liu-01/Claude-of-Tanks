@@ -3091,6 +3091,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/felledTreeOwners.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
     'src/world/concealerIndex.selftest.mjs',
+    // 276 (sim-world-packed, Main's ruling B): a solo battle collides on the shards' records, rounded in-page by their packer
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',

@@ -21,7 +21,7 @@ import { fellConcealersAt } from '../sim/spotting.ts';
 import { createHeadlessCollisionWorld } from './headlessCollisionWorld.ts';
 import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape } from './collision.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from './collisionRecordPacking.ts';
 
 const { createConcealerIndex } = concealerIndexModule;
 

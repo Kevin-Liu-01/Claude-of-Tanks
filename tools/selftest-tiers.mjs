@@ -681,6 +681,8 @@ export const MANUAL_SUITES = Object.freeze({
     { idScoped: true }),
   world: suite('world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content', [
     'server/collisionManifestDrift.selftest.mjs',
+    // 276 (sim-world-packed): the page's records rounded as the shards are, on two real map builds
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/ui/minimapLiquidWater.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
