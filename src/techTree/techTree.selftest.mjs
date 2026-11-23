@@ -289,5 +289,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 274.0 (integration): japan-274 and strv103-x-274 merged together; re-pinned once at the merge (9fcd0265ad820a43).
 // 274 (owner 2026-11-21: "strv 122 should be tier x"): the Strv 122 node (its Strv 121 twin with it) at X, the Strv 152
 // one lane up beside it off the same node (was 9fcd0265ad820a43).
-assert.equal(digest, 'd23b6882ac9663e4', `tree content changed: re-pin to ${digest} if deliberate`);
+// 275 (Kevin 2026-11-22: "the fv 4030/6 should be tier 7"): the FV4030/6 at VII on lane 5 (was d23b6882ac9663e4).
+assert.equal(digest, 'acc6a9e1e148949c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

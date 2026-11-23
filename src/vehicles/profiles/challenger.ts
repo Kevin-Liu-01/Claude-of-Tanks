@@ -194,7 +194,6 @@ interface Challenger3XReceipt {
   skirtHangers: number;
   glacisEraCassettes: number;
   skirtEraCassettes: number;
-  cheekEraCassettes: number;
   turretSideEraCassettes: number;
   autocannonStations: number;
   radarArrays: number;
@@ -1449,27 +1448,10 @@ function buildChallenger3XTurretEra(
   receipt: Challenger3XReceipt,
 ): void {
   const { box } = KIT;
-  const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
+  const turretPivotY = P.spec.armor.turretPivot[1], turretPivotZ = P.spec.armor.turretPivot[2];
+  // 2026-11-22 (Kevin's surface markup): the cheek ERA courses were laid into the lower-cheek wedges ahead of the
+  // turret face and went with them.
   for (const side of [-1, 1]) {
-    const frame = cr2SurfaceFrame([side * 0.42, 0.66, 0.62], [side, 0, -0.56]);
-    const sector = `c3x_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(sector, (place) => {
-      const origin = new THREE.Vector3(side * 0.91, 0.22, 1.13);
-      for (let row = 0; row < 4; row++) {
-        for (let station = 0; station < 4; station++) {
-          const point = origin.clone()
-            .addScaledVector(frame.horizontal, (station - 1.5) * 0.285)
-            .addScaledVector(frame.vertical, (row - 1.5) * 0.145)
-            .addScaledVector(frame.normal, 0.018);
-          place(
-            point.x + turretPivotX, point.y + turretPivotY, point.z + turretPivotZ,
-            ...frame.rotation, 0.98, 1.06, 0.82,
-          );
-          receipt.cheekEraCassettes++;
-        }
-      }
-    }, true);
-
     const sideSector = `c3x_turret_side_era_${side > 0 ? 'R' : 'L'}`;
     P.add('turret', box(0.13, 0.67, 3.12), side * 1.49, 0.40, -1.62);
     P.eraCluster(sideSector, (place) => {
@@ -1551,7 +1533,6 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
     skirtHangers: 0,
     glacisEraCassettes: 0,
     skirtEraCassettes: 0,
-    cheekEraCassettes: 0,
     turretSideEraCassettes: 0,
     autocannonStations: 0,
     radarArrays: 0,
@@ -1567,8 +1548,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   // left/right sector names keep the damage and depletion state honest.
   buildChallenger3XGlacisEra(P, receipt);
 
-  // The cheek courses are individual cassettes laid in the ruled cheek
-  // plane, rather than a pair of rectangular applique slabs.
+  // Side courses on the falling turret walls; no cheek courses (they sat in the removed lower-cheek wedges).
   buildChallenger3XTurretEra(P, receipt);
 
   // The owner removed the two nonfunctional shoulder cannons. The live
@@ -1582,7 +1562,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   buildChallenger3XBustle(P, receipt);
 
   receipt.totalEraCassettes = receipt.glacisEraCassettes + receipt.skirtEraCassettes
-    + receipt.cheekEraCassettes + receipt.turretSideEraCassettes;
+    + receipt.turretSideEraCassettes;
   const frozen = Object.freeze(receipt);
   P.hullG.userData.challenger3XReceipt = frozen;
   P.turretG.userData.challenger3XReceipt = frozen;
@@ -3656,19 +3636,14 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       shoulderXF: 1.30, shoulderXR: 1.34, shoulderYF: 0.30, shoulderYR: 0.56,
       roofXF: 0.78, roofXR: 1.15, roofYF: 0.32, roofYR: 0.56,
     });
-    // The oracle's nose is a low armored throat plus independently faceted
-    // lower cheeks, not a second full-height turret box.
+    // The nose is a low armored throat under the gun, not a second full-height turret box.
+    // 2026-11-22 (Kevin's surface markup, faces 215/220/200: "for the challenger 3 get rid of these thing in front of
+    // cheek"): the faceted lower-cheek wedges either side of it are gone from both Challenger 3 builds, so the 1.22
+    // turret face is the front armour.
     P.add('turret', slab(
       [-0.52, 0.02, 1.70], [0.52, 0.02, 1.70], [0.78, 0.02, 1.22], [-0.78, 0.02, 1.22],
       [-0.40, 0.17, 1.60], [0.40, 0.17, 1.60], [0.50, 0.34, 1.22], [-0.50, 0.34, 1.22]));
     for (const s of [-1, 1]) {
-      // A-C folded the low cheek roof inward by 91 degrees. B-D gives the
-      // authored convex ridge and preserves all silhouette datums.
-      P.add('turret', facetedSlab([
-        [0.40, 0.02, 1.70], [0.98, 0.02, 1.52], [1.40, 0.02, 1.22], [0.78, 0.02, 1.22],
-      ],[
-        [0.40, 0.17, 1.60], [0.92, 0.42, 1.43], [1.20, 0.30, 1.22], [0.50, 0.34, 1.22],
-      ],s,'bd'));
       P.add('turretDetail', box(0.025, 0.07, 1.20), s * 1.325, 0.635, -0.84, 0, 0, s * 0.045);
     }
     // embrasure: recessed collar + canvas boot (§B3.1 — no bare notch);
