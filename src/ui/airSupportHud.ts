@@ -7,7 +7,8 @@
  * - At rest, one slot (owner 2026-11-06, of a row of seven down the left: "theres gotta be a better way than presenting
  *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count (no fill meter: gauntlet
  *   g9 read it as an outline edge), at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
- * - The call-ins come up only with the binoculars: the five (1-5: recon, barrage, strafing run, precision bomb, AC-130)
+ * - The call-ins come up only with the binoculars: the six (1-6: recon, barrage, strafing run, precision bomb, the Maverick
+ *   run, AC-130)
  *   in a row centred over the tray, each a slot of the tray's own kind (the ammunition and consumable slots: the key top
  *   left, the price top right, the sprite glyph, the short name along the floor, the consumables' conic cooldown shade,
  *   the tray's one selected state); its hover tip names it in full.
@@ -15,9 +16,12 @@
  *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
  *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
- * - The warning: a strike whose footprint covers the crew raises an INCOMING plate (the HUD alert's form: the alert
- *   glyph in the danger tone, never a coloured edge) with its countdown; every strike's footprint is also on the minimap
- *   and the ground.
+ * - The warning: a strike whose footprint covers the crew is a condition of the battle notices (battleNotices.ts, at
+ *   NOTICE_PRIORITY.threat; the bespoke INCOMING plate folded into it) with its countdown, updated in place and taken
+ *   down when its danger has passed. The condition lane is the page's: a couch pane's HUD is handed a port that raises
+ *   none (hud.ts). Every strike's footprint is also on the minimap and the ground, and its aircraft on the minimap.
+ * - A refused call-in and an aircraft the crew brought down are events (battleNoticeEvents.ts BATTLE_EVENT, at
+ *   NOTICE_PRIORITY.answered), raised on the HUD's own bus, so a couch pane's seat hears its own in its own lane.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { EventBus } from '../game/stateCore.ts';
@@ -33,12 +37,14 @@ import { markDatum } from './dom.ts';
 import { t } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
+import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
+import { BATTLE_EVENT, type BattleEvent } from './battleNoticeEvents.ts';
 
 interface Point { x: number; y: number; z: number }
 
 /** Each call-in's glyph in the sprite (the AC-130's is its mode's). */
 const STRIKE_ICON: Readonly<Record<AirStrikeKind, IconId>> = {
-  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'modeAc130',
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'rocket', gunship: 'modeAc130',
 };
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement): HTMLElementTagNameMap[K] {
@@ -61,7 +67,10 @@ const PLATE_STATE: Readonly<Record<StrikeOrderRefusal, PlateState>> = {
   DESTROYED: 'denied', MARK: 'denied', LOST: 'denied',
 };
 
-export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
+/** The INCOMING notice's id in the battle's region (one at a time: the nearest-landing strike's). */
+export const INCOMING_NOTICE = 'cot-air-incoming';
+
+export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices: BattleNoticePort = battleNotices) {
   // the rest slot: Support (the binoculars) with the points; it joins the battle tray on a desktop (update() re-seats it
   // when the layout turns touch or back), and stands by itself beside the action row on a phone
   const dock = node('div', 'cot-strike-dock', parent);
@@ -144,7 +153,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     return cap;
   };
   hintKey(t('input.mouse.left'), t('airSupport.hint.call'));
-  hintKey('1–5', t('airSupport.hint.pick'));
+  hintKey(`1–${AIR_STRIKE_KINDS.length}`, t('airSupport.hint.pick'));
   const lowerKey = hintKey('', t('airSupport.hint.lower'));
   const call = node('button', 'binocular-call cot-c-btn cot-c-btn--primary cot-c-btn--56', binoculars);
   call.type = 'button';
@@ -156,13 +165,35 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   close.innerHTML = icon('close', { size: 20 });
   close.addEventListener('click', () => bus.emit('ui:strikeViewClose', {}));
 
-  // ---- the warning ----
-  const warning = node('div', 'cot-strike-warning', parent);
-  warning.hidden = true;
-  warning.setAttribute('role', 'alert');
-  node('span', 'glyph', warning).innerHTML = icon('alert', { size: 16 });
-  const warningTitle = node('strong', '', warning);
-  const warningTime = node('span', 'num', warning);
+  // ---- the warning: the battle's notice, shown only when what it says changes (its whole seconds) ----
+  let warningShown = '';
+  function setWarning(text: string | null, detail: string, side: 'own' | 'enemy'): void {
+    const key = text ? `${text}|${detail}|${side}` : '';
+    if (key === warningShown) return;
+    warningShown = key;
+    if (!text) { notices.dismiss(INCOMING_NOTICE); return; }
+    notices.condition({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat, className: 'cot-air-incoming' });
+  }
+
+  // ---- the events (the event lane, battleNoticeEvents.ts: your action answered; "A · B" shows B as the detail; a repeat
+  // while it shows counts on it, and one inside the lane's cooldown is dropped): a refused call-in (sound-only before) and
+  // an aircraft our crew brought down. Raised on this HUD's bus, which its own HUD's lane hears (a couch pane's seat bus too)
+  const isKind = (kind: unknown): kind is AirStrikeKind => AIR_STRIKE_KINDS.includes(kind as AirStrikeKind);
+  const raise = (event: BattleEvent): void => { bus.emit(BATTLE_EVENT, event); };
+  bus.on('ui:strikeRefusal', (payload) => {
+    const { kind, reason } = (payload ?? {}) as { kind?: unknown; reason?: unknown };
+    if (!isKind(kind)) return;
+    const plate = PLATE_STATE[String(reason) as StrikeOrderRefusal] ?? 'denied';
+    raise({ text: `${t(`airSupport.state.${plate}`)} · ${t(`airSupport.kind.${kind}`)}`, priority: NOTICE_PRIORITY.answered,
+      severity: 'warning', icon: STRIKE_ICON[kind] });
+  });
+  bus.on('ui:aircraftDowned', (payload) => {
+    const kind = (payload as { kind?: unknown } | null)?.kind;
+    if (!isKind(kind)) return;
+    raise({ text: `${t('airSupport.downed')} · ${t(`airSupport.kind.${kind}`)}`, priority: NOTICE_PRIORITY.answered,
+      severity: 'success', icon: STRIKE_ICON[kind] });
+  });
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
   bus.on('ui:strikeView', (payload) => {
@@ -186,7 +217,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     setHidden(rack, !shown || !strikeView.open);
     if (!air || !shown) {
       if (strikeView.open) bus.emit('ui:strikeViewClose', {});
-      setHidden(binoculars, true); setHidden(warning, true);
+      setHidden(binoculars, true); setWarning(null, '', 'enemy');
       if (scopedFlag) { scopedFlag = false; document.documentElement.toggleAttribute('data-cot-strike-view', false); }
       strikeView.blend = 0;
       return;
@@ -256,12 +287,11 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
         if (!threat || strike.landsS < threat.landsS) threat = strike;
       }
     }
-    setHidden(warning, !threat);
-    if (threat) {
-      setData(warning, 'side', threat.team === team ? 'own' : 'enemy');
-      setText(warningTitle, t(`airSupport.incoming.${threat.kind}`));
+    if (!threat) setWarning(null, '', 'enemy');
+    else {
       const left = threat.landsS - air.nowS;
-      setText(warningTime, left > 0 ? `${left.toFixed(1)} s` : t('airSupport.incoming.now'));
+      setWarning(t(`airSupport.incoming.${threat.kind}`), left > 0 ? `${Math.ceil(left)} s` : t('airSupport.incoming.now'),
+        threat.team === team ? 'own' : 'enemy');
     }
   }
 

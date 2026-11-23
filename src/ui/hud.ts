@@ -54,7 +54,7 @@ import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset
 import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
+  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, drawAircraftGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
@@ -71,7 +71,7 @@ import type { DamagePanelController } from './damagePanel.ts';
 import type { DriveTelemetry } from './driveTelemetry.ts';
 import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
-import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
+import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
 import { BATTLE_EVENT, createBattleEventLane, type BattleEvent } from './battleNoticeEvents.ts';
 import { formatKeyLineWith, tilePrompt } from './keyPrompt.ts';
 import { flipPicture } from './noticeDiagrams.ts';
@@ -403,7 +403,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   vehicle?: string;
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
   /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
-  source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery';
+  source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'missile' | 'artillery';
   timeS?: number;
   on?: boolean;
   /** ui:reloadIndicators: other tanks' reload strips by side (Settings › Interface, reload-others-275). */
@@ -2512,6 +2512,9 @@ export interface HudView {
   readonly own?: 'frame';
 }
 
+/** A couch pane HUD's battle conditions: none (the condition lane is the page's, battleNotices.ts). */
+const PANE_CONDITIONS: BattleNoticePort = Object.freeze({ condition() {}, dismiss() {} });
+
 export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime {
   // the view's document and window (the page's with no view): the HUD's reads of its layout, its flags and its resize
   const document = view?.mount.ownerDocument ?? globalThis.document;
@@ -3156,8 +3159,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const droneLabel = requireElement<HTMLElement>(droneButton, '.sl'), droneKey = requireElement<HTMLElement>(droneButton, '.sk');
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
-  // Air Support (air-support-270): the call-in strip, the strike view's binoculars and the INCOMING plate
-  const airSupportHud = createAirSupportHud(root, bus);
+  // Air Support (air-support-270): the call-in strip, the strike view's binoculars and the INCOMING warning. The warning is
+  // a battle condition, and the condition lane is the page's (battleNotices.ts): a couch pane's HUD hands it a port that
+  // raises none, so one seat's incoming strike never speaks for every seat (its refusals and shoot-downs stay its own events)
+  const airSupportHud = createAirSupportHud(root, bus, ownsFramePlayer ? PANE_CONDITIONS : battleNotices);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
@@ -8094,6 +8099,22 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
             marker.side, march, urgency, marker.status !== 'recon');
           if (marker.pulse) halo(7, 0.6);
           drawStrikeGlyph(mmCtx, x, y, 5.5, (marker.status ?? 'bomb') as StrikeGlyphKind, marker.side);
+          break;
+        }
+        case 'aircraft': {
+          // Air Support's aircraft (air-support-275): its silhouette where its run has it, its nose along its heading (two
+          // map points give the map's own turn); off the plate it rides the rim (the clamp above), so an inbound one's icon
+          // there is the bearing it comes from, and its approach is drawn to the mark it is coming for
+          const heading = marker.heading ?? 0;
+          const ahead = worldToMap(marker.x + Math.sin(heading), marker.z + Math.cos(heading));
+          const angle = Math.atan2(ahead[0] - point[0], -(ahead[1] - point[1]));
+          let inbound: { toX: number; toY: number; march: number } | null = null;
+          if (marker.toX != null && marker.toZ != null) {
+            const to = worldToMap(marker.toX, marker.toZ);
+            inbound = { toX: Math.max(7, Math.min(MM - 7, to[0])), toY: Math.max(7, Math.min(MM - 7, to[1])), march: (timeS * 1.6) % 1 };
+          }
+          if (marker.pulse) halo(6.5, 0.7);
+          drawAircraftGlyph(mmCtx, x, y, marker.status === 'gunship' ? 6.5 : 5.5, angle, marker.status === 'gunship', marker.side, inbound);
           break;
         }
         default:

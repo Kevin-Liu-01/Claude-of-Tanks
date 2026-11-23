@@ -8,7 +8,7 @@ import { readDestructionEntries, writeDestructionEntries } from './destructionLo
 import { readDestroyedFalls, readDestroyedSet, writeDestroyedFalls, writeDestroyedSet } from './destroyedSet.ts';
 import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
-  CLOSE_REASON, ENTITY_FLAG_BITS, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
+  ACTION_BIT_MASK, CLOSE_REASON, ENTITY_FLAG_BITS, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
   MAX_EVENT_JSON_BYTES, MAX_ID_BYTES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_MOVEMENT_VALUES,
   MAX_NAME_BYTES, MAX_REASON_BYTES, MAX_RULESET_JSON_BYTES, MAX_SEATS, MAX_SHELLS, MAX_TOKEN_BYTES,
@@ -76,8 +76,9 @@ function writeControl(writer: ByteWriter, control: ControlFrame): void {
   writer.u8(control.shellSlot);
   writer.u16(control.fireSeq);
   writer.u16(control.actionSeq);
-  if (control.actionBits > 0xffff) throw new WireError('range', 'action bits exceed sixteen bits');
-  writer.u16(control.actionBits);
+  // (wire 13, air-support-275: seventeen action bits, the sixth call-in's; a u32 for the bits to come)
+  if (!(control.actionBits >= 0 && control.actionBits <= ACTION_BIT_MASK)) throw new WireError('range', 'action bits exceed the action mask');
+  writer.u32(control.actionBits);
 }
 
 function writeInput(writer: ByteWriter, message: InputMessage): void {
@@ -421,11 +422,11 @@ function readControl(reader: ByteReader): ControlFrame {
     shellSlot: reader.u8(),
     fireSeq: reader.u16(),
     actionSeq: reader.u16(),
-    actionBits: reader.u16(),
+    actionBits: reader.u32(),
   };
   if (control.flags > 7) throw new WireError('range', 'control flags exceed three bits');
   if (control.shellSlot > 2) throw new WireError('range', 'shell slot must be 0..2');
-  if (control.actionBits > 0xffff) throw new WireError('range', 'action bits exceed sixteen bits');
+  if (control.actionBits > ACTION_BIT_MASK) throw new WireError('range', 'action bits exceed the action mask');
   return control;
 }
 

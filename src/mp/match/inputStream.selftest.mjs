@@ -64,7 +64,11 @@ assert.equal(seqNewerOrEqual(5, 5), true);
   const decoded = decodeMessage(encodeMessage(message));
   assert.equal(decoded.ok, true);
   assert.deepEqual(decoded.message.controls, message.controls, 'the wire round trip is exact');
-  assert.equal(encodeMessage(message).byteLength, 2 + 4 + 4 + 1 + 1 + 3 * 16, 'a full frame is 60 B');
+  // 18 B a control since wire 13 (air-support-275): actionBits went u16 -> u32 for the seventeenth action bit (Air
+  // Support's Maverick run). Kept as a u32 rather than folding the bit into the 3-bit flags byte (which would hold 60 B):
+  // one field stays one field, and the next fifteen actions fit without another layout change. Cost: +6 B a frame,
+  // 3.6 -> 4.0 KB/s up at 60 frames/s.
+  assert.equal(encodeMessage(message).byteLength, 2 + 4 + 4 + 1 + 1 + 3 * 18, 'a full frame is 66 B');
   assert.equal((decoded.message.controls[2].flags & CONTROL_FLAGS.FIRE_HELD), 0);
 
   // Acknowledgements release bits by their first sequence and measure the ack lag.
@@ -132,4 +136,4 @@ assert.equal(seqNewerOrEqual(5, 5), true);
   assert.throws(() => new InputStream({ redundancy: 4 }));
 }
 
-console.log('mp input stream: 60 Hz scheduling, quantized replay controls, fire/action edges repeated until acknowledged, 60 B frames, lead controller pass');
+console.log('mp input stream: 60 Hz scheduling, quantized replay controls, fire/action edges repeated until acknowledged, 66 B frames, lead controller pass');

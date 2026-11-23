@@ -192,4 +192,31 @@ assert.match(simSource, /spawns: state\.spawns\.map\(\(spawn\) => \(\{ \.\.\.spa
   view.dispose();
 }
 
-console.log('minimapObjectives.selftest: sides, zones, flags, sectors, turbo, horde, spawns and wiring passed; one derivation per mode-state change');
+// Air Support's aircraft (air-support-275; owner: "warnings about where the planes are coming from on minimap"): every
+// flying aircraft is a marker where its run has it (sim/strikeRuns.ts runPose), its nose its heading; an enemy one inbound
+// (its warning running) carries the mark it comes for; a downed one and the battery (no aircraft) leave the map
+{
+  const { AIR_SUPPORT_RULES: R } = await import('../sim/matchRuleset.ts');
+  const { runPose } = await import('../sim/strikeRuns.ts');
+  const strike = (id, kind, team, extra = {}) => ({ id, kind, team, x: 100, y: 0, z: 50, heading: 0.6, calledS: 10,
+    landsS: 10 + R[kind].warningS, endS: 60, downedS: null, ...extra });
+  const air = { nowS: 12, strikes: [strike(1, 'missile', 'bravo'), strike(2, 'strafe', 'alpha', { mine: true }),
+    strike(3, 'artillery', 'bravo'), strike(4, 'bomb', 'bravo', { downedS: 11 })] };
+  const markers = objectiveMarkers({ id: 'air_support', perspectiveTeam: 'alpha', air });
+  const planes = markers.filter((m) => m.kind === 'aircraft');
+  assert.deepEqual(planes.map((m) => m.status).sort(), ['missile', 'strafe'], 'the flying aircraft are on the map (no battery, no wreck)');
+  const enemy = planes.find((m) => m.status === 'missile'), own = planes.find((m) => m.status === 'strafe');
+  const pose = runPose(R, air.strikes[0], 12, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
+  assert.ok(Math.hypot(enemy.x - pose.x, enemy.z - pose.z) < 1e-9 && Math.abs(enemy.heading - pose.yaw) < 1e-9, 'where its run has it, nose on its heading');
+  assert.ok(Math.hypot(enemy.x - 100, enemy.z - 50) > 500, `before it arrives it is far out on its approach (${Math.hypot(enemy.x - 100, enemy.z - 50).toFixed(0)} m)`);
+  assert.equal(enemy.side, 'enemy');
+  assert.ok(enemy.pulse && enemy.toX === 100 && enemy.toZ === 50 && enemy.countdownS > 0, 'an inbound enemy carries its mark and countdown');
+  assert.ok(own.side === 'own' && own.toX == null && !own.pulse, 'our own aircraft is drawn, with no warning line');
+  assert.ok(markers.indexOf(enemy) > markers.findIndex((m) => m.kind === 'strike'), 'aircraft draw over the footprints');
+  // past the warning: still drawn on its run, no longer an approach
+  const later = objectiveMarkers({ id: 'air_support', perspectiveTeam: 'alpha', air: { ...air, nowS: 10 + R.missile.warningS + 0.5 } })
+    .find((m) => m.kind === 'aircraft' && m.status === 'missile');
+  assert.ok(later && later.toX == null && !later.pulse, 'on its run it is drawn without its approach line');
+}
+
+console.log('minimapObjectives.selftest: sides, zones, flags, sectors, turbo, horde, spawns, aircraft and wiring passed; one derivation per mode-state change');

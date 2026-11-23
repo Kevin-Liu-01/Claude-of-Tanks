@@ -89,7 +89,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -118,7 +118,7 @@ export interface PlayerBattleActions {
 const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
 /** The multiplayer command lane's name for each call-in (mp/presentation/controlSampler.ts NAMED_ACTION_BITS). */
 const STRIKE_ACTION_NAMES = Object.freeze({
-  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'strikeGunship',
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'strikeMissile', gunship: 'strikeGunship',
 } as const satisfies Record<AirStrikeKind, string>);
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 
@@ -196,7 +196,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
   };
 
-  // ---- Air Support's strike view (air-support-270): X raises the binoculars; 1-5 pick the call-in; the trigger calls it
+  // ---- Air Support's strike view (air-support-270): X raises the binoculars; 1-6 pick the call-in; the trigger calls it
   // at the reticle (the crew's aim point: the action bit, sim/playerActions.ts AIR_STRIKE_BITS); X, the right button
   // or Esc lowers them. A call locks the reticle a moment, then the binoculars come down.
   const strikeMode = (): boolean => !!game.ruleset?.airSupport;
@@ -234,7 +234,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const blocker = strikes.blocker(airView(), kind, markRangeM(player));
     const pressed = strikeView.order.press(game.timeS, kind, blocker);
     if (pressed === 'busy') return;
-    if (pressed === 'denied') { bus.emit('ui:strikeDenied', { kind, reason: blocker }); return; }
+    if (pressed === 'denied') {
+      bus.emit('ui:strikeDenied', { kind, reason: blocker });
+      // (air-support-275) the refusal's notice: the event lane's P1, your action answered (airSupportHud.ts)
+      bus.emit('ui:strikeRefusal', { kind, reason: blocker });
+      return;
+    }
     if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
     else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | strikes.bit(kind);
   });
@@ -250,6 +255,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = game.player;
     if (!player || refusal?.id !== player.id || !strikes.kinds.includes(refusal.kind as AirStrikeKind)) return;
     strikeView.order.refused(game.timeS, refusal.kind as AirStrikeKind, String(refusal.reason) as StrikeRefusal);
+    bus.emit('ui:strikeRefusal', { kind: refusal.kind, reason: refusal.reason });
+  });
+  // (air-support-275) an aircraft our crew brought down: the event lane's P1 notice (airSupportHud.ts)
+  listen('mode:aircraft_down', (payload) => {
+    const down = payload as { by?: RuntimeValue; kind?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || down?.by !== player.id || !strikes.kinds.includes(down.kind as AirStrikeKind)) return;
+    bus.emit('ui:aircraftDowned', { kind: down.kind });
   });
   onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));
   onAction('fire', () => { if (strikeView.open) bus.emit('ui:strikeCall', {}); });

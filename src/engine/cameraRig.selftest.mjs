@@ -508,4 +508,41 @@ console.log('cameraRig.selftest: close-wall and rear-obstruction aim stability p
   const floor = Math.min(...bands.floor.filter((b) => b.x0 < x1 + 8 && b.x1 > x0 - 8 && b.y0 > bands.height * 0.35).map((b) => b.y0));
   assert.ok(y1 <= floor - chaseFloorMarginPx(bands.height) + 0.5, `the model's own rear clears the band (${y1.toFixed(0)} vs ${floor})`);
 }
-console.log('cameraRig.selftest: chase framing from the HUD bands, lens shift, reticle on the aim, sniper/external/suspend and preview passed');
+// Air Support's binoculars (air-support-275; owner: "when ur in the binoculars, dont be able to zoom all the way out in the
+// tank, the binoculars are a special zoom that is contained to like minimum scope mode"): up, the scope is held at its
+// widest step whatever the crew had; the wheel, Shift and an aim-hold's release never leave it; down, a scope the crew had
+// keeps its own zoom and a chase view returns to the chase
+{
+  const { strikeView } = await import('../game/strikeViewState.ts');
+  const binoRig = createCameraRig(new PerspectiveCamera(60, 16 / 9, 0.1, 2000), {
+    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player,
+  });
+  binoRig.update(1 / 60, idle);
+  assert.equal(binoRig.mode, 'ARCADE');
+  strikeView.open = true;
+  binoRig.update(1 / 60, idle);
+  assert.equal(binoRig.mode, 'SNIPER', 'the binoculars ride the scope');
+  assert.equal(binoRig.zoom, 2, 'at its widest step');
+  for (let i = 0; i < 12; i++) binoRig.update(1 / 60, { ...idle, wheel: -3 });
+  assert.equal(binoRig.mode, 'SNIPER', 'wheeling out never leaves the binoculars for the chase view');
+  for (let i = 0; i < 12; i++) binoRig.update(1 / 60, { ...idle, wheel: 3 });
+  assert.equal(binoRig.zoom, 2, 'nor wheels them in: the binoculars hold one magnification');
+  binoRig.update(1 / 60, { ...idle, shiftPressed: true });
+  binoRig.update(1 / 60, idle);
+  assert.equal(binoRig.mode, 'SNIPER', 'Shift does not take them down');
+  strikeView.open = false;
+  binoRig.update(1 / 60, idle);
+  assert.equal(binoRig.mode, 'ARCADE', 'down, the chase view the crew had');
+  // a crew scoped in at x8 raises them: x2 while up, its x8 back after
+  binoRig.enterSniper();
+  for (let i = 0; i < 3; i++) binoRig.update(1 / 60, { ...idle, wheel: 1 });
+  const scoped = binoRig.zoom;
+  assert.ok(scoped > 2);
+  strikeView.open = true;
+  binoRig.update(1 / 60, idle);
+  assert.equal(binoRig.zoom, 2);
+  strikeView.open = false;
+  binoRig.update(1 / 60, idle);
+  assert.ok(binoRig.mode === 'SNIPER' && binoRig.zoom === scoped, 'down, the scope keeps the zoom the crew had');
+}
+console.log('cameraRig.selftest: chase framing from the HUD bands, lens shift, reticle on the aim, sniper/external/suspend, preview and the binoculars passed');

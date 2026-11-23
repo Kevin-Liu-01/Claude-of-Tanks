@@ -36,6 +36,12 @@ const aircraft = argv.includes('--aircraft');
 const runs = argv.includes('--runs');
 // --frames=close: only the run frames whose label holds that text (a re-shoot of a few frames)
 const framesFilter = arg('frames');
+// (air-support-275) --kinds=missile,bomb: only those runs; 'shootdown' (a strafing jet brought down on its way in, its fall
+// and its burst) and 'warning' (an enemy's Maverick run called on the crew: the HUD on, the minimap's inbound aircraft and
+// the INCOMING notice) are runs of their own. --burst: each run as a frame every 0.1 s across its moments, named
+// <tag>-<kind>-burst-NNN, for a clip (ffmpeg at 10 fps: real time)
+const kindsFilter = arg('kinds')?.split(',') ?? null;
+const burst = argv.includes('--burst');
 // --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
 const gauntlet = argv.includes('--gauntlet');
 const locale = arg('locale', 'en-US');
@@ -269,22 +275,37 @@ async function shootRuns(page, signal, tag, checkpoint) {
   await page.evaluate(stage);
   const battleState = () => page.evaluate(() => {
     const D = window.__DEBUG, g = D.game;
+    // (air-support-275) why a clock stands: the shot mode, the pause veil, the page's visibility and focus, and the
+    // full-screen layers shown
+    const layers = [...document.querySelectorAll('body > *')].filter((el) => {
+      const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+      return r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9 && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0;
+    }).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`).slice(0, 12);
     return { timeS: +g.timeS.toFixed(2), phase: g.phase, result: g.result ?? null, rig: D.rig.mode ?? null,
-      camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)) };
+      camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)),
+      shotMode: D.shotMode, veil: !!document.querySelector('.cot-resume.show'), visibility: document.visibilityState,
+      focus: document.hasFocus(), layers };
   });
   receipt.runStart = await battleState();
+  await sleep(1500);
+  receipt.runStart1500 = await battleState();
+  console.log(`[air-support-shots] the battle at the start: ${JSON.stringify(receipt.runStart)}; 1.5 s later: ${JSON.stringify(receipt.runStart1500)}`);
   await page.evaluate(async () => {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     window.__runs = await import('/src/sim/strikeRuns.ts');
     const style = document.createElement('style');
     style.textContent = 'html.as-hud-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-hints,.cot-medal-toasts,.cot-touch,'
-      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning,.cot-strike-dock){display:none!important}';
+      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning,.cot-strike-dock,.cot-battle-notices){display:none!important}';
     document.head.append(style);
     document.documentElement.classList.add('as-hud-hidden');
     const eye = new V(), at = new V(), dir = new V();
     window.__runCraft = (f) => {
       if (f.kind === 'artillery') return null;
-      if (f.kind !== 'gunship') { const o = D.scene.getObjectByName(`air-support jet ${f.id}`); return o?.visible ? o : null; }
+      if (f.kind !== 'gunship') {
+        // the A-10 (recon, strafe) or the fighter (bomb, missile: air-support-275)
+        const o = D.scene.getObjectByName(`air-support jet ${f.id}`) ?? D.scene.getObjectByName(`air-support fighter ${f.id}`);
+        return o?.visible ? o : null;
+      }
       let craft = null, best = Infinity;
       D.scene.traverseVisible((o) => {
         if (o.name !== 'AC-130 gunship') return;
@@ -300,8 +321,16 @@ async function shootRuns(page, signal, tag, checkpoint) {
     // checked in the simulation's own step (the mode's air step runs every fixed step): a loaded page whose
     // requestAnimationFrame starves is ticked by the frame loop's fallback interval, where a rAF check never runs
     const air = D.game.matchModeController.airSupport, step = air.step;
+    // (air-support-275) the shoot-down run: its strike brought down by the enemy at a set moment of its run
+    window.__downAt = null;
     air.step = (timeS, held) => {
       step(timeS, held);
+      const down = window.__downAt;
+      if (down && timeS >= down.t) {
+        window.__downAt = null;
+        const strike = air.strikes.find((s) => s.id === down.id);
+        if (strike) air.damageAircraft(strike, down.by, strike.hp, timeS);
+      }
       if (window.__runFreezeAt != null && !window.__runFrozen && D.game.timeS >= window.__runFreezeAt) {
         D.shotMode = true; window.__runFrozen = true;
       }
@@ -344,21 +373,35 @@ async function shootRuns(page, signal, tag, checkpoint) {
     };
     requestAnimationFrame(loop);
   });
-  const call = (kind) => page.evaluate((kind) => {
+  const call = (run) => page.evaluate((run) => {
     const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    // 'shootdown' flies a strafing run; 'warning' is an enemy's Maverick run on the crew's own hull
+    const kind = run === 'shootdown' ? 'strafe' : run === 'warning' ? 'missile' : run;
+    const enemy = game.tanks.find((t) => t.team !== game.player.team && !t.combat.destroyed);
+    const caller = run === 'warning' ? enemy : game.player;
+    if (!caller) return null;
     const saved = air.capture();
-    saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
-    saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
+    saved.points = saved.points.map(([id, value]) => [id, id === caller.id ? air.rules.points.cap : value]);
+    saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${caller.id}:`));
     // the side's air cleared of the bots' own calls: the film's one strike is the only one up
     saved.strikes = [];
     air.restore(saved);
     const p = game.player.state.pos, yaw = game.player.state.yaw;
-    const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
-    const ok = air.requestStrike(game.player.id, kind, x, z, game.timeS);
-    const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
-    return ok ? mine[mine.length - 1] : null;
-  }, kind);
-  const release = (kind) => (kind === 'bomb' ? page.evaluate(() => window.__runs.bombReleaseOffsetS(window.__DEBUG.game.matchModeController.airSupport.rules)) : 0);
+    let x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+    if (run === 'warning') {
+      // the enemy 600 m ahead calls on our hull: its fighter comes in over its shoulder, toward us
+      const ex = p.x + Math.sin(yaw) * 600, ez = p.z + Math.cos(yaw) * 600;
+      caller.state.pos.set(ex, D.world.heightField.getHeightAt(ex, ez), ez); caller.state.speed = 0;
+      x = p.x; z = p.z;
+    }
+    const ok = air.requestStrike(caller.id, kind, x, z, game.timeS);
+    const mine = air.capture().strikes.filter((s) => s.callerId === caller.id);
+    const accepted = ok ? mine[mine.length - 1] : null;
+    if (accepted && run === 'shootdown' && enemy) window.__downAt = { id: accepted.id, by: enemy.id, t: accepted.landsS - 1.6 };
+    return accepted;
+  }, run);
+  const release = (kind) => (kind === 'bomb' ? page.evaluate(() => window.__runs.bombReleaseOffsetS(window.__DEBUG.game.matchModeController.airSupport.rules))
+    : kind === 'missile' ? page.evaluate(() => window.__runs.missileLaunchOffsetS(window.__DEBUG.game.matchModeController.airSupport.rules, 0)) : 0);
   // each frame: [label, seconds from the warning's end, camera]
   const chase = { cam: 'chase', back: 70, up: 22, fov: 55 };
   const side = (along) => ({ cam: 'side', along, out: 560, up: 160, fov: 55 });
@@ -373,11 +416,38 @@ async function shootRuns(page, signal, tag, checkpoint) {
     gunship: [['orbit-close', 20, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }], ['inbound', -4, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-in', 0.8, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }],
       ['orbit', 7, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['orbit-chase', 12, { cam: 'chase', back: 60, up: 20, fov: 60 }],
       ['orbit-late', 22, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-out', 31.5, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }]],
+    // (air-support-275) the Maverick run: the fighter close behind as its first missile leaves the rail, the ripple, the
+    // missiles' lines from the side, the hits on the mark
+    missile: [['launch-close', 'release+0.12', { ...close, aimNose: true, back: 26, up: 6 }], ['dive', -5, chase], ['launch', 'release+0.12', chase],
+      ['ripple', 'release+1.25', chase], ['ripple-side', 'release+1.1', side(-500)], ['impact', 0.75, { cam: 'fixed', out: 120, up: 70, fov: 50 }],
+      ['egress', 4.5, chase]],
+    // a strafing A-10 brought down 1.6 s before its gun would open: struck, falling, its burst at the ground
+    shootdown: [['struck', -1.5, { cam: 'chase', back: 60, up: 18, fov: 55 }], ['falling', 0.2, { cam: 'fixed', out: 380, up: 140, fov: 55, aimUp: 40 }],
+      ['falling-late', 1.6, { cam: 'fixed', out: 380, up: 140, fov: 55 }], ['crash', 3.2, { cam: 'fixed', out: 380, up: 140, fov: 55 }],
+      ['wreck', 5, { cam: 'fixed', out: 380, up: 140, fov: 55 }]],
+    // the crew's own view (the HUD on: the minimap's inbound fighter and its approach line, the INCOMING notice)
+    warning: [['called', -5.2, { cam: 'hud' }], ['inbound', -3, { cam: 'hud' }], ['inbound-late', -1, { cam: 'hud' }]],
     artillery: [['warning', -3, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['first', 0.2, { cam: 'fixed', out: 260, up: 160, fov: 45 }],
       ['barrage', 2.5, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['last', 5, { cam: 'fixed', out: 260, up: 160, fov: 45 }]],
   };
+  // --burst: a frame every 0.1 s across each run's moments on one camera (its first frame's), for a clip
+  const BURSTS = {
+    strafe: [-1.2, 2.6, chase], bomb: ['release-0.4', 'release+2.7', { ...chase, back: 90, up: 30 }], missile: ['release-0.6', 'release+4.6', { ...chase, back: 90, up: 26 }],
+    shootdown: [-2.4, 4.6, { cam: 'fixed', out: 380, up: 140, fov: 55, aimUp: 30 }], gunship: [0, 6, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }],
+  };
+  const burstFrames = (kind) => {
+    const [from, to, cam] = BURSTS[kind];
+    const rel = (when) => (typeof when === 'string' ? { base: 'release', dt: Number(when.slice('release'.length)) } : { base: null, dt: when });
+    const a = rel(from), b = rel(to), out = [];
+    for (let i = 0, t = a.dt; t <= b.dt + 1e-9 && i < 80; i++, t = a.dt + i * 0.1) {
+      out.push([`burst-${String(i).padStart(3, '0')}`, a.base ? `release${t >= 0 ? '+' : ''}${t.toFixed(2)}` : +t.toFixed(2), cam]);
+    }
+    return out;
+  };
   receipt.runs = [];
-  for (const [kind, all] of Object.entries(FRAMES)) {
+  for (const [kind, framesOf] of Object.entries(FRAMES)) {
+    if (kindsFilter && !kindsFilter.includes(kind)) continue;
+    const all = burst ? (BURSTS[kind] ? burstFrames(kind) : []) : framesOf;
     const frames = all.filter(([label]) => !framesFilter || label.includes(framesFilter));
     if (!frames.length) continue;
     if (signal.aborted) return;
@@ -385,14 +455,18 @@ async function shootRuns(page, signal, tag, checkpoint) {
     for (let tries = 0; !accepted && tries < 60 && !signal.aborted; tries++) { accepted = await call(kind); if (!accepted) await sleep(1500); }
     receipt.calls.push({ kind, accepted: !!accepted });
     if (!accepted) continue;
-    const releaseOffset = await release(kind);
+    // the warning run is the crew's own view: the HUD on and the battle camera theirs
+    await page.evaluate((on) => { document.documentElement.classList.toggle('as-hud-hidden', !on); }, kind === 'warning');
+    const releaseOffset = await release(kind === 'warning' ? 'missile' : kind === 'shootdown' ? 'strafe' : kind);
     const at = (when) => (typeof when === 'string' ? releaseOffset + Number(when.slice('release'.length)) : when);
     // in time order: the clock only runs forward
     for (const [label, when, cam] of [...frames].sort((a, b) => at(a[1]) - at(b[1]))) {
       if (signal.aborted) return;
       const rel = at(when);
-      await page.evaluate((f) => { window.__runCam = f; }, { ...cam, id: accepted.id, kind, x: accepted.x, y: accepted.y, z: accepted.z, heading: accepted.heading,
-        calledS: accepted.calledS, landsS: accepted.landsS });
+      const runKind = kind === 'shootdown' ? 'strafe' : kind === 'warning' ? 'missile' : kind;
+      await page.evaluate((f) => { window.__runCam = f.cam === 'hud' ? null : f; if (f.cam === 'hud') window.__DEBUG.rig.release(); },
+        { ...cam, id: accepted.id, kind: runKind, x: accepted.x, y: accepted.y, z: accepted.z, heading: accepted.heading,
+          calledS: accepted.calledS, landsS: accepted.landsS });
       try {
         // a thawed page can come back under the pause panel (its visibility changed): resumed, or the clock never runs
         await resume(page);
@@ -422,12 +496,13 @@ async function shootRuns(page, signal, tag, checkpoint) {
           offRunM: w ? +Math.hypot(w.x - pose.x, w.y - pose.y, w.z - pose.z).toFixed(2) : null,
           offAxisM: lateral == null ? null : +lateral.toFixed(2), bank: +(pose.bank * 180 / Math.PI).toFixed(1),
           pitch: +(pose.pitch * 180 / Math.PI).toFixed(1), bomb: b ? [b.x, b.y, b.z].map((v) => +v.toFixed(1)) : null };
-      }, { ...accepted, kind });
+      }, { ...accepted, kind: kind === 'shootdown' ? 'strafe' : kind === 'warning' ? 'missile' : kind });
       await shot(page, name);
       receipt.runs.push({ kind, label, shot: name, cam: cam.cam, ...before });
       await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
     }
-    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.shotMode = false; window.__DEBUG.rig.release(); });
+    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.shotMode = false; window.__DEBUG.rig.release();
+      document.documentElement.classList.add('as-hud-hidden'); });
     await checkpoint?.();
   }
 }
@@ -601,10 +676,10 @@ async function measureMarks(page, tag) {
 }
 
 let server = null;
-const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${burst ? '-burst' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
 process.on('exit', () => { try { writeReceipt(); } catch {} });
 await runWarmHold({
-  label: 'air-support-270',
+  label: 'air-support-275',
   // a film of the runs is a render (it shares the lock with other renders); the perf passes stay exclusive
   ...(runs ? { lockClass: 'render' } : {}),
   place: `air-support-270-shots-${only ?? 'all'}`,

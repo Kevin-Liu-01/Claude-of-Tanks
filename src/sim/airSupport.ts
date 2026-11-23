@@ -135,7 +135,7 @@ export interface AirSupport {
   aircraftPoseOf(strike: AirStrike, timeS: number, out: RunPose): RunPose;
   aircraftWithin(team: ObjectiveTeam, x: number, y: number, z: number, rangeM: number, timeS: number): AirStrike | null;
   /** A bot's seeded preferred call-in (it calls nothing cheaper, recon aside). */
-  botPreference(id: string): 'artillery' | 'strafe' | 'bomb' | 'gunship';
+  botPreference(id: string): BotStrikePreference;
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
   revealed(id: string, side: ObjectiveTeam): boolean;
   evadeTarget(entity: AirSupportEntity, timeS: number): { x: number; z: number; mission: 'evade' } | null;
@@ -147,9 +147,15 @@ export interface AirSupport {
   restore(saved: AirSupportCheckpoint): void;
 }
 
+/** The call-ins a bot may save for (recon is its scouting, never a preference). */
+type BotStrikePreference = 'artillery' | 'strafe' | 'bomb' | 'missile' | 'gunship';
+const BOT_PREFERENCES: readonly BotStrikePreference[] = Object.freeze(['artillery', 'strafe', 'bomb', 'missile', 'gunship'] as const);
+
 /** The strike's flight time after its warning: how long it stays a danger on the ground. */
 export function strikeDangerS(rules: AirSupportRules, kind: AirStrikeKind): number {
   if (kind === 'artillery') return rules.artillery.fireS + 0.6;
+  // the Maverick run: its missiles arrive within (missiles - 1) * everyS of the first (each launched closer than the last)
+  if (kind === 'missile') return Math.max(0, rules.missile.missiles - 1) * rules.missile.everyS + 0.8;
   return kind === 'strafe' ? rules.strafe.fireS + 0.6 : kind === 'bomb' ? 0.6 : kind === 'recon' ? 0 : rules.gunship.orbitS;
 }
 
@@ -159,6 +165,7 @@ function strikeEndS(rules: AirSupportRules, kind: AirStrikeKind, landsS: number)
   if (kind === 'artillery') return landsS + rules.artillery.fireS + 1;
   if (kind === 'strafe') return landsS + rules.strafe.fireS + 5;
   if (kind === 'bomb') return landsS + 4;
+  if (kind === 'missile') return landsS + strikeDangerS(rules, kind) + 3;
   return landsS + rules.gunship.orbitS + 8;
 }
 
@@ -367,14 +374,14 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     return count;
   }
 
-  /** A bot's preferred call-in, seeded by the match and its id (a quarter each of artillery, strafe, bomb, gunship). */
-  const preferences = new Map<string, 'artillery' | 'strafe' | 'bomb' | 'gunship'>();
-  function botPreference(id: string): 'artillery' | 'strafe' | 'bomb' | 'gunship' {
+  /** A bot's preferred call-in, seeded by the match and its id (a fifth each of artillery, strafe, bomb, missile, gunship). */
+  const preferences = new Map<string, BotStrikePreference>();
+  function botPreference(id: string): BotStrikePreference {
     let preferred = preferences.get(id);
     if (!preferred) {
       let hash = 2166136261;
       for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
-      preferred = (['artillery', 'strafe', 'bomb', 'gunship'] as const)[Math.floor(strikeRandom(seed, hash >>> 0, 7) * 4)]!;
+      preferred = BOT_PREFERENCES[Math.floor(strikeRandom(seed, hash >>> 0, 7) * BOT_PREFERENCES.length)]!;
       preferences.set(id, preferred);
     }
     return preferred;
@@ -391,7 +398,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     let anySpotted = false;
     // the bot's seeded preference: it calls nothing cheaper than it (recon aside), so some crews save for the AC-130
     const preferred = botPreference(entity.id);
-    for (const kind of ['gunship', 'bomb', 'strafe', 'artillery'] as const) {
+    for (const kind of ['gunship', 'missile', 'bomb', 'strafe', 'artillery'] as const) {
       if (rules[kind].cost < rules[preferred].cost) continue;
       if (refusal(entity, kind, entity.state.pos.x, entity.state.pos.z, timeS)) continue;
       let bestCount = 0, bestX = 0, bestZ = 0;
@@ -433,7 +440,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
         || timeS > strike.landsS + strikeDangerS(rules, strike.kind)) continue;
       if (!strikeCovers(rules, strike, pos.x, pos.z, rules.bots.evadeMarginM * 0.5)) continue;
       const margin = rules.bots.evadeMarginM;
-      if (strike.kind === 'bomb' || strike.kind === 'artillery') {
+      if (strike.kind === 'bomb' || strike.kind === 'artillery' || strike.kind === 'missile') {
         // out past the footprint's far edge (the bomb's ellipse by its long semi-axis: clear of it in any direction)
         const footprint = runFootprint(rules, strike.kind);
         const radius = (footprint.shape === 'ellipse' ? footprint.alongM : footprint.shape === 'lane' ? footprint.halfLengthM : footprint.radiusM) + margin;

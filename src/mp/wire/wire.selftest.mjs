@@ -345,7 +345,8 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
     type: MESSAGE_TYPE.INPUT, clientTick: 600, snapshotAckTick: 597, interpDelayMs: 100,
     controls: [randomControl(), randomControl(), randomControl()],
   });
-  assert.equal(input.byteLength, 12 + 3 * 16, 'u16 actions make a full input frame 60 bytes');
+  // (wire 13, air-support-275) a control's action bits are a u32: 18 B a control
+  assert.equal(input.byteLength, 12 + 3 * 18, 'u32 actions make a full input frame 66 bytes');
 }
 
 // ------------------------------------------------------------ 4. malformed, oversized, truncated
@@ -737,6 +738,6 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(forgedKey).error?.code, 'invalid_message', 'a keyframe never keeps its smoke text');
   // an empty mode state cannot be written: its length 0 is the marker
   assert.throws(() => encodeSnapshotFrame({ ...bare, modeStateJson: '' }, null), (error) => error instanceof WireError && error.code === 'range');
-  assert.equal(WIRE_VERSION, 12, 'the layout moved: wire 12');
+  assert.equal(WIRE_VERSION, 13, 'the layout moved: wire 13 (air-support-275: u32 action bits)');
   console.log(`wire.selftest: wire 12 keeps an unchanged mode state and smoke text and restores them from the acknowledged baseline (${cases} cases)`);
 }

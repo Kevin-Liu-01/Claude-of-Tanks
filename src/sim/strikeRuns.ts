@@ -17,8 +17,12 @@
  * offset `psi` turns left as it grows (the world yaw is heading + psi, atan2(dx, dz)). The runs:
  *   - strafe (A-10): level ingress from behind the caller, a push-over into a dive whose line meets the lane's start, the
  *     gun open from landsS for fireS while the nose walks the rounds down the lane, a pull-out, a banked climbing egress;
- *   - bomb (a fast jet): level ingress high, a push-over into a steep dive, the release at the point from which a free
- *     fall at the jet's velocity meets the mark fallMarginS after the warning, a pull-out, a banked climbing egress;
+ *   - bomb (a fighter, air-support-275): level ingress high, a push-over into a steep dive, the release at the point from
+ *     which a free fall at the jet's velocity meets the mark fallMarginS after the warning, a pull-out, a banked climbing
+ *     egress;
+ *   - missile (a fighter's Maverick run, air-support-275): level ingress, a push-over into a shallow dive whose line runs
+ *     through the mark (the nose on the mark the whole while), the missiles off alternate wing rails everyS apart from
+ *     the point altitudeM over the mark onward, a pull-out, a banked climbing egress;
  *   - recon: level along the heading over the mark at landsS, a climb-out and a banked egress;
  *   - gunship (AC-130): inbound along a line tangent to its orbit, slowing to orbit speed, then a left-hand pylon turn
  *     centred on the mark (its bank is the pivotal altitude's: the guns' line to the mark lies along the left wing),
@@ -151,6 +155,17 @@ export function bombReleaseOffsetS(rules: AirSupportRules): number {
   return rules.fallMarginS - bombFall(rules).fallS;
 }
 
+/** The Maverick run's slant range (m) from the mark at its first launch: altitudeM up its dive line. */
+export function missileSlantM(rules: AirSupportRules): number {
+  return rules.missile.altitudeM / detMath.sin(rules.missile.diveDeg * DEG);
+}
+
+/** When missile `k` leaves its rail (s from landsS): the first is timed to arrive fallMarginS after the warning has run
+ *  at its round's speed down the dive line; the rest follow everyS apart (each closer, so each arrives a little later). */
+export function missileLaunchOffsetS(rules: AirSupportRules, k: number): number {
+  return rules.fallMarginS - missileSlantM(rules) / AIR_STRIKE_WEAPONS.missile.velocityMps + k * rules.missile.everyS;
+}
+
 /** The strafing run's dive: its line meets the lane's start from the open-fire point altitudeM over the mark. */
 function strafeStandoffM(rules: AirSupportRules): number {
   return rules.strafe.altitudeM / detMath.tan(rules.strafe.diveDeg * DEG);
@@ -180,6 +195,15 @@ function makePlan(rules: AirSupportRules, kind: AirStrikeKind): RunPlan | null {
     return plan(anchor, bombReleaseOffsetS(rules),
       [['line', f.settleS, 0], ['pitch', dive / push, -push], ['line', 1, 0]],
       [['pitch', (dive + climb) / pull, pull], ...egress(v, climb)], true);
+  }
+  if (kind === 'missile') {
+    // the dive line runs through the mark: the nose (the velocity) is on the mark from the settle to the pull-out
+    const m = rules.missile, dive = m.diveDeg * DEG, v = m.speedMps, slant = missileSlantM(rules);
+    const push = f.pushG * g / v, pull = f.pullG * g / v, climb = f.climbDeg * DEG;
+    const anchor = { a: -slant * detMath.cos(dive), l: 0, u: m.altitudeM, psi: 0, gamma: -dive, v };
+    return plan(anchor, missileLaunchOffsetS(rules, 0),
+      [['line', f.settleS, 0], ['pitch', dive / push, -push], ['line', 1, 0]],
+      [['line', Math.max(0, m.missiles - 1) * m.everyS, 0], ['pitch', (dive + climb) / pull, pull], ...egress(v, climb)], true);
   }
   if (kind === 'recon') {
     const r = rules.recon, v = r.speedMps, climb = f.climbDeg * DEG, pull = f.pullG * 0.6 * g / v;
@@ -266,22 +290,27 @@ export function runVelocity(rules: AirSupportRules, strike: RunRecord, timeS: nu
 /**
  * Where a round leaves the aircraft (written into `out`), in the airframe's own frame (nose +Z, port +X, up +Y) turned by
  * the pose's yaw and pitch: the strafing jet's GAU-8 under the nose (strikeJetAirframe.ts muzzle), the bomb from the
- * port wing's pylon (its GBU-12), the AC-130's guns along its left side; the battery's round has no aircraft.
+ * fighter's port wing pylon (its GBU-12, fighterJetAirframe.ts), Maverick `index` from the fighter's port rail when even
+ * and its starboard rail when odd, the AC-130's guns along its left side; the battery's round has no aircraft.
  */
-export function runMuzzle(pose: RunPose, kind: AirStrikeKind, out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
-  const local = kind === 'strafe' ? STRAFE_MUZZLE : kind === 'bomb' ? BOMB_PYLON : kind === 'gunship' ? GUNSHIP_GUNS : null;
+export function runMuzzle(pose: RunPose, kind: AirStrikeKind, out: { x: number; y: number; z: number }, index = 0): { x: number; y: number; z: number } {
+  const local = kind === 'strafe' ? STRAFE_MUZZLE : kind === 'bomb' ? FIGHTER_BOMB_PYLON : kind === 'missile' ? FIGHTER_MISSILE_RAIL
+    : kind === 'gunship' ? GUNSHIP_GUNS : null;
   if (!local) { out.x = pose.x; out.y = pose.y; out.z = pose.z; return out; }
+  const port = kind === 'missile' && (index & 1) ? -local[0] : local[0];
   const sy = detMath.sin(pose.yaw), cy = detMath.cos(pose.yaw), sp = detMath.sin(pose.pitch), cp = detMath.cos(pose.pitch);
   // nose (sy cp, sp, cy cp); body up (-sy sp, cp, -cy sp); port (cy, 0, -sy)
-  out.x = pose.x + sy * cp * local[2] - sy * sp * local[1] + cy * local[0];
+  out.x = pose.x + sy * cp * local[2] - sy * sp * local[1] + cy * port;
   out.y = pose.y + sp * local[2] + cp * local[1];
-  out.z = pose.z + cy * cp * local[2] - cy * sp * local[1] - sy * local[0];
+  out.z = pose.z + cy * cp * local[2] - cy * sp * local[1] - sy * port;
   return out;
 }
-/** (port, up, nose) offsets in the airframe: strikeJetAirframe.ts (its muzzle, the port GBU-12's pylon), the AC-130's
+/** (port, up, nose) offsets in the airframe: strikeJetAirframe.ts (its muzzle), the fighter's (fighterJetAirframe.ts reads
+ *  these for its stores: the port GBU-12's pylon, the port Maverick's rail, mirrored for the starboard one), the AC-130's
  *  side guns. */
 const STRAFE_MUZZLE = Object.freeze([0.1, -0.3, 8.55] as const);
-const BOMB_PYLON = Object.freeze([3.9, -0.78, 1.1] as const);
+export const FIGHTER_BOMB_PYLON = Object.freeze([2.15, -0.95, 0.2] as const);
+export const FIGHTER_MISSILE_RAIL = Object.freeze([3.15, -0.62, 0.9] as const);
 const GUNSHIP_GUNS = Object.freeze([2.2, -0.8, 0] as const);
 
 /** The strafing lane's start: the point the dive's line meets, half the lane short of the mark along the heading. */
@@ -308,6 +337,8 @@ function makeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootp
   if (kind === 'strafe') return { shape: 'lane', halfLengthM: rules.strafe.lengthM * 0.5, halfWidthM: rules.strafe.halfWidthM };
   // the bomb: its blast round every point it can land on (its miss is long along the run, short across it)
   if (kind === 'bomb') return { shape: 'ellipse', alongM: rules.bomb.radiusM + rules.bomb.missAlongM, acrossM: rules.bomb.radiusM + rules.bomb.missAcrossM };
+  // the Maverick run: the circle round the mark its missiles hunt in
+  if (kind === 'missile') return { shape: 'circle', radiusM: rules.missile.radiusM };
   // the AC-130: the ring it flies round the mark, which is also the reach its guns engage in
   if (kind === 'gunship') return { shape: 'orbit', radiusM: rules.gunship.radiusM };
   return { shape: 'circle', radiusM: rules.artillery.radiusM };

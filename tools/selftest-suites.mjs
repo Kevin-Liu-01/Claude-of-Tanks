@@ -96,6 +96,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/strikeOrder.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
     'src/sim/strikeRuns.selftest.mjs',
+    // 2026-11-21 (air-support-275): the strafing run bites: a light vehicle in the lane loses half its hull, an MBT its deck
+    'src/sim/strafeEffect.selftest.mjs',
+    // 2026-11-21 (air-support-275): wire 13's u32 action bits carry the Maverick run's press from a guest to the host
+    'src/mp/host/strikeMissileWire.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
@@ -3149,6 +3153,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudTeamPips.selftest.mjs',
     // couch-split-274: a couch split pane's HUD owns its seat's tank (its own row, side and enemy count), not seat 1's
     'src/ui/hudOwnTank.selftest.mjs',
+    // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
+    // condition in the page's lane
+    'src/ui/airSupportNotices.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

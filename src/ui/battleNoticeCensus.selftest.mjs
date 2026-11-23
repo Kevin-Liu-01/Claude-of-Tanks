@@ -39,7 +39,6 @@ const SURFACES = {
   'src/ui/medalToast.ts#cot-medal-toasts': { kind: 'battle', why: 'a reward card with its art in its own seat, waiting for its place' },
   'src/ui/missionBrief.ts#cot-brief': { kind: 'battle', why: 'the campaign\'s briefing at the countdown' },
   'src/ui/aerialHud.ts#cot-drone-signal-loss': { kind: 'battle', why: 'a full-screen transition as the drone\'s feed drops' },
-  'src/ui/airSupportHud.ts#cot-strike-warning': { kind: 'battle', why: 'the INCOMING plate: air-support-275 folds it into the condition lane (P3)', pending: 'air-support-275' },
   'src/ui/airSupportHud.ts#strike-points': { kind: 'battle', why: 'the call-in points, a standing readout' },
   'src/ui/provingRangeCard.ts#rc-at': { kind: 'battle', why: 'the proving ground\'s range card, an instrument' },
   'src/ui/spectatorSwitcher.ts#identity': { kind: 'battle', why: 'the watched tank\'s plate, standing while spectating' },
@@ -134,6 +133,12 @@ assert.match(hud, /keyLine\('hud\.aimWarning\.flipLine', \{ key: 'selfRight' \}\
 assert.match(read('src/ui/firstUseHints.ts'), /className: `cot-key-hint cot-first-hint/, 'the first-use hints wear the same layout');
 // the condition lane is the page's: a couch pane's HUD never raises one (it would speak for every seat)
 assert.match(hud, /const parked = !ownsFramePlayer && touchWarning && !touchWarningSeated\(\);/, 'a pane HUD never parks its chip into the page\'s conditions');
+// (air-support-275) the INCOMING plate is the condition lane's, at the threat rung, and a pane's HUD hands Air Support a port
+// that raises none; its refusals and shoot-downs are events on the HUD's own bus (airSupportNotices.selftest drives them)
+const air = read('src/ui/airSupportHud.ts');
+assert.match(air, /notices\.condition\(\{ id: INCOMING_NOTICE,[^}]*priority: NOTICE_PRIORITY\.threat/, 'the INCOMING warning is a threat-rung condition');
+assert.doesNotMatch(air, /\bnotices\.show\(/, 'Air Support raises nothing outside the two lanes');
+assert.match(hud, /createAirSupportHud\(root, bus, ownsFramePlayer \? PANE_CONDITIONS : battleNotices\)/, 'a pane HUD raises no Air Support condition');
 
 const counts = { notices: 0, battle: 0, menu: 0 };
 for (const key of found.keys()) counts[SURFACES[key].kind]++;

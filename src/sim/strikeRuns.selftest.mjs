@@ -13,11 +13,16 @@
 //     run's release (0.01 m), with the jet's velocity (within 5 m/s: the solve onto a miss of at most 8 m from a pylon 3.9 m
 //     off the axis over a 2.7 s fall), arrives at
 //     least 40 deg steep, and lands inside the ellipse footprint, which is long along the heading;
+//   - missile (air-support-275: "i need one where theres a jet firing missiles"; "planes must properly line up with firing
+//     directions"): a fighter's dive whose line runs through the mark (its nose within 0.5 deg of the mark while it
+//     launches), each Maverick off its rail (0.01 m, port then starboard) in the step of its launch, along the jet's own line
+//     (within 3 deg of the nose), straight onto its spotted target (0.5 m), arriving no sooner than the warning's end;
 //   - gunship: a left-hand pylon turn centred on the mark at the footprint's radius (0.01 m) and altitude, its bank the
 //     pivotal altitude's, so the line from its guns to the mark lies along its left wing (within 3 deg), and its rounds
 //     leave its left side;
 //   - artillery: no aircraft; its rounds land in its circle;
-//   - the authored round counts (improve-271 plan 007): strafe 28, bomb 1, artillery 10, the AC-130's 30 mm 60 and 152 mm 7.
+//   - the authored round counts (improve-271 plan 007; air-support-275): strafe 60, bomb 1, missile 4, artillery 10, the
+//     AC-130's 30 mm 60 and 152 mm 7.
 import assert from 'node:assert/strict';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, AIR_STRIKE_WEAPONS, airStrikeFlies } from './matchRuleset.ts';
 import { createAirSupport, STRIKE_TICK_HZ, strikeDueTick, strikeTick } from './airSupport.ts';
@@ -26,7 +31,8 @@ import { stepAirSupportFire, strikeRoundPayload } from './airSupportFire.ts';
 import { isFreeFallStore, markFreeFallStore } from '../fx/freeFallStores.ts';
 import { shellGravityMps2 } from './ballistics.ts';
 import {
-  BOMB_GRAVITY_MPS2, bombFall, bombReleaseOffsetS, footprintCovers, runExitS, runFootprint, runMuzzle, runPose, runVelocity,
+  BOMB_GRAVITY_MPS2, bombFall, bombReleaseOffsetS, footprintCovers, missileLaunchOffsetS, runExitS, runFootprint, runMuzzle, runPose,
+  runVelocity,
 } from './strikeRuns.ts';
 
 const DEG = 180 / Math.PI;
@@ -47,7 +53,7 @@ const marks = [
   { x: 0, y: 0, z: 0, heading: 0 }, { x: 310, y: 42, z: -120, heading: 2.2 }, { x: -80, y: 7, z: 455, heading: -1.1 },
 ];
 const stats = {};
-for (const kind of ['recon', 'strafe', 'bomb', 'gunship']) {
+for (const kind of ['recon', 'strafe', 'bomb', 'missile', 'gunship']) {
   for (const [m, mark] of marks.entries()) {
     for (const id of [4, 7]) {
       const strike = { id: id + m * 10, kind, ...mark, calledS: 50, landsS: 50 + R[kind].warningS };
@@ -127,7 +133,7 @@ const landing = (pos, vel, g) => {
 };
 const counts = {};
 for (const heading of [0.35, -2.4]) {
-  for (const kind of ['strafe', 'bomb', 'gunship', 'artillery']) {
+  for (const kind of ['strafe', 'bomb', 'missile', 'gunship', 'artillery']) {
     const { strike, shells } = fireRun(kind, heading);
     const footprint = runFootprint(R, kind);
     (counts[kind] ??= new Set()).add(kind === 'gunship'
@@ -187,6 +193,42 @@ for (const heading of [0.35, -2.4]) {
       assert.ok(footprint.shape === 'ellipse' && footprint.alongM > footprint.acrossM, 'the footprint is an ellipse long along the run');
       const miss = Math.hypot(land.x - strike.x, land.z - strike.z);
       if (heading === 0.35) lines.push(`bomb     released ${(-bombReleaseOffsetS(R)).toFixed(2)} s before the warning's end, ${bombFall(R).throwM.toFixed(0)} m short at ${R.bomb.altitudeM} m; from the pylon ${fromPylon.toFixed(4)} m, ${dv.toFixed(2)} m/s off the jet's ${Math.hypot(jet.x, jet.y, jet.z).toFixed(0)} m/s; lands ${miss.toFixed(1)} m from the mark at ${land.angle.toFixed(1)} deg, inside its ${footprint.alongM} x ${footprint.acrossM} m ellipse`);
+    } else if (kind === 'missile') {
+      assert.equal(shells.length, R.missile.missiles);
+      const speed = AIR_STRIKE_WEAPONS.missile.velocityMps;
+      let rail = 0, nose = 0, line = 0, aim = 0, early = Infinity;
+      shells.forEach(({ shell, pos, vel, t }, k) => {
+        const launchS = strike.landsS + missileLaunchOffsetS(R, k);
+        assert.ok(t >= launchS && t - launchS <= 1 / 60 + 1e-9, `missile ${k} leaves in the step of its launch`);
+        runPose(R, strike, launchS, p);
+        runMuzzle(p, 'missile', at, k);
+        rail = Math.max(rail, Math.hypot(pos.x - at.x, pos.y - at.y, pos.z - at.z));
+        // port (+X in the airframe) when even, starboard when odd
+        const port = (pos.x - p.x) * Math.cos(p.yaw) - (pos.z - p.z) * Math.sin(p.yaw);
+        assert.ok(k % 2 === 0 ? port > 1 : port < -1, `missile ${k} leaves the ${k % 2 === 0 ? 'port' : 'starboard'} rail`);
+        // the jet's line runs through the mark while it launches, and the missile leaves along that line
+        const jet = runVelocity(R, strike, launchS, { x: 0, y: 0, z: 0 }), jv = Math.hypot(jet.x, jet.y, jet.z);
+        const mx = strike.x - p.x, my = strike.y - p.y, mz = strike.z - p.z, mm = Math.hypot(mx, my, mz);
+        nose = Math.max(nose, Math.acos(Math.min(1, (jet.x * mx + jet.y * my + jet.z * mz) / (jv * mm))) * DEG);
+        const sv = Math.hypot(vel.x, vel.y, vel.z);
+        line = Math.max(line, Math.acos(Math.min(1, (jet.x * vel.x + jet.y * vel.y + jet.z * vel.z) / (jv * sv))) * DEG);
+        assert.equal(shell.gravityMps2, 0, 'a powered missile falls no arc');
+        assert.ok(Math.abs(sv - speed) < 1e-6, 'at its round\'s speed');
+        // straight onto the spotted enemy (6, 4): its closest pass to the hull's centre, and when it gets there
+        const ex = 6, ey = ground(6, 4) + 1, ez = 4;
+        const u = { x: vel.x / sv, y: vel.y / sv, z: vel.z / sv };
+        const d = (ex - pos.x) * u.x + (ey - pos.y) * u.y + (ez - pos.z) * u.z;
+        aim = Math.max(aim, Math.hypot(pos.x + u.x * d - ex, pos.y + u.y * d - ey, pos.z + u.z * d - ez));
+        early = Math.min(early, t + d / sv - strike.landsS);
+      });
+      assert.ok(rail < 0.01, `each Maverick leaves its rail (${rail.toFixed(4)} m)`);
+      assert.ok(nose < 0.5, `the fighter's line runs through the mark while it launches (${nose.toFixed(3)} deg)`);
+      assert.ok(line < 3, `each missile leaves along the jet's line (${line.toFixed(2)} deg)`);
+      assert.ok(aim < 0.5, `each flies straight onto its target (${aim.toFixed(3)} m)`);
+      assert.ok(early >= 0, `none arrives before the warning has run (${early.toFixed(3)} s after)`);
+      assert.ok(airStrikeFlies('missile') && footprint.shape === 'circle' && footprint.radiusM === R.missile.radiusM);
+      assert.equal(strikeRoundPayload(shells[0].shell, strike).freeFall, 0, 'a missile is a powered round, its motor drawn');
+      if (heading === 0.35) lines.push(`missile  ${shells.length} Mavericks from ${(-missileLaunchOffsetS(R, 0)).toFixed(2)} s before the warning's end; rails ${rail.toFixed(4)} m; the jet's line ${nose.toFixed(3)} deg off the mark; each ${line.toFixed(2)} deg off the jet's line, ${aim.toFixed(3)} m off its target, the first ${early.toFixed(2)} s after the warning`);
     } else if (kind === 'gunship') {
       let ring = 0, alt = 0, wing = 0, left = Infinity;
       // the settled orbit (the bank rolls in over its first 1.2 s and out over its last)
@@ -224,11 +266,13 @@ for (const heading of [0.35, -2.4]) {
   }
 }
 // the authored counts (improve-271 plan 007), one strike each
-assert.deepEqual([...counts.strafe], ['28']);
+assert.deepEqual([...counts.strafe], [String(R.strafe.rounds)]);
+assert.equal(R.strafe.rounds, 60);
 assert.deepEqual([...counts.bomb], ['1']);
+assert.deepEqual([...counts.missile], ['4']);
 assert.deepEqual([...counts.artillery], ['10']);
 assert.deepEqual([...counts.gunship], ['60+7']);
 assert.ok(AIR_STRIKE_KINDS.every((kind) => runFootprint(R, kind)), 'every kind has its footprint from its run');
 
 console.log(lines.join('\n'));
-console.log(`strikeRuns: every run's flight is continuous and lined up; its footprint and release points lie on it; counts 28 / 1 / 10 / 60+7`);
+console.log(`strikeRuns: every run's flight is continuous and lined up; its footprint and release points lie on it; counts ${R.strafe.rounds} / 1 / 4 / 10 / 60+7`);

@@ -238,8 +238,8 @@ export const PAD_COMMANDS = [
   'spectatePrev', 'spectateNext',
 ] as const;
 export type PadCommand = (typeof PAD_COMMANDS)[number];
-/** The call-ins a strikePick may name (sim/matchRuleset.ts AIR_STRIKE_KINDS has five). */
-export const PAD_STRIKE_PICKS = 5;
+/** The call-ins a strikePick may name (sim/matchRuleset.ts AIR_STRIKE_KINDS has six since air-support-275). */
+export const PAD_STRIKE_PICKS = 6;
 
 /** What the battle tells the phone's hands (desktop → phone, sent the moment it happens; padCues.ts maps the game's
  *  events onto them and names each one's buzz): the gun fired, a hit given that hurt or glanced off, a hit taken that

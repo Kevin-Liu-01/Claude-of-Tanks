@@ -105,10 +105,10 @@ const SCOPE_KEYS: PadControl[] = [
   tap('zoomOut', 'zoomOut', 'pad.zoomOut', { optional: true }),
 ];
 
-const STRIKE_GLYPHS = ['strikeRecon', 'strikeArtillery', 'strikeStrafe', 'strikeBomb', 'modeAc130'] as const;
+const STRIKE_GLYPHS = ['strikeRecon', 'strikeArtillery', 'strikeStrafe', 'strikeBomb', 'rocket', 'modeAc130'] as const;
 // (each name a whole key: the page's catalog carries the keys its modules spell out, tools/i18n-page-catalogs.mjs)
 const STRIKE_NAMES = ['airSupport.short.recon', 'airSupport.short.artillery', 'airSupport.short.strafe', 'airSupport.short.bomb',
-  'airSupport.short.gunship'] as const;
+  'airSupport.short.missile', 'airSupport.short.gunship'] as const;
 
 export const PAD_LAYOUTS: Readonly<Record<PadMode, PadModeLayout>> = Object.freeze({
   // nothing to drive: the menus, the Garage, a battle's report, a pause
