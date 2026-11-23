@@ -68,6 +68,8 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   isometricView: { id: 'map', tone: 'cyan' },
   showDebugHud: { id: 'telemetry', tone: 'violet' },
   showDirectionalHitValues: { id: 'blocked', tone: 'red' },
+  showAllyReload: { id: 'reload', tone: 'green' }, // reload-others-275: Interface › Ally reload indicators
+  showEnemyReload: { id: 'reload', tone: 'red' },
   armorAimOverlay: { id: 'armorFlashlight' },
   showHints: { id: 'lightbulb', tone: 'amber' }, // mobile-hud-274: Interface › First-use hints
   volMaster: { id: 'sound', tone: 'cyan' },

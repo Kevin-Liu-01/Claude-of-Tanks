@@ -13,6 +13,9 @@
 // 61-character Portuguese body fit, a 69-character German one scrolled), and the Skip and Next buttons share one row
 // on the phone card (Einführung überspringen, チュートリアルをスキップ and Пропустить обучение wrapped it to two rows and
 // scrolled the drive card; Omitir tutorial and Pular tutorial fit).
+// Settings rows carry a budget too where a lane asks (reload-others-275): a row label sits beside its On/Off pair, so its
+// budget stays under the longest Interface labels translated so far (es 37, ru 39, ja 14, zh 6 characters), and the note
+// under it keeps to a few short lines.
 //
 //   node tools/i18n-card-budget.mjs           check: every act card body has its context, and every translation fits
 //   node tools/i18n-card-budget.mjs --write   write the act card bodies' context into the metadata file
@@ -30,6 +33,11 @@ const KEY_BUDGET = Object.freeze({
 /** The card's buttons, which share one row on a phone card. */
 const BUTTON_BUDGET = Object.freeze({ 'zh-CN': 6, es: 15, ja: 8, de: 15, 'pt-BR': 15, ru: 14 });
 export const CARD_BUTTON_KEYS = Object.freeze(['tutorial.skip', 'tutorial.next']);
+/** Settings row labels (one line beside the row's On/Off pair) and the note under them. */
+const SETTINGS_ROW_BUDGET = Object.freeze({ 'zh-CN': 10, es: 34, ja: 14, de: 34, 'pt-BR': 34, ru: 34 });
+const SETTINGS_NOTE_BUDGET = Object.freeze({ 'zh-CN': 50, es: 150, ja: 70, de: 150, 'pt-BR': 150, ru: 140 });
+export const SETTINGS_ROW_KEYS = Object.freeze(['settings.interface.allyReload', 'settings.interface.enemyReload']);
+export const SETTINGS_NOTE_KEYS = Object.freeze(['settings.interface.reloadNote']);
 const INPUTS = ['keyboard', 'touch', 'pad'];
 
 /** Every act card's body key, over every chapter (the offer included) and input, in step order. */
@@ -48,6 +56,8 @@ export async function actCardBodyKeys() {
 /** A key's budget per locale: a card button's, a narrower card's, else an act card's. */
 export function budgetFor(key) {
   if (CARD_BUTTON_KEYS.includes(key)) return BUTTON_BUDGET;
+  if (SETTINGS_ROW_KEYS.includes(key)) return SETTINGS_ROW_BUDGET;
+  if (SETTINGS_NOTE_KEYS.includes(key)) return SETTINGS_NOTE_BUDGET;
   return KEY_BUDGET[key] ?? CARD_BUDGET;
 }
 
@@ -55,6 +65,17 @@ const limits = ({ es, ru, ja, 'zh-CN': zh }) => `at most ${es} characters (Russi
 
 /** The translation context a budgeted key carries (the gt CLI reads it per key). */
 export function cardBudgetContext(key) {
+  if (SETTINGS_ROW_KEYS.includes(key)) {
+    return 'A switch label in the Interface settings of Claude of Tanks, a browser tank game. It turns on a thin bar under '
+      + 'other tanks\' health bars showing how far each is through reloading its gun; allies are the player\'s team, '
+      + `enemies the other team. It sits on one line beside an On/Off pair on a phone: hard limit ${limits(SETTINGS_ROW_BUDGET)}. `
+      + 'Never use an em dash.';
+  }
+  if (SETTINGS_NOTE_KEYS.includes(key)) {
+    return 'A short explanatory note under two switches in the Interface settings of Claude of Tanks, a browser tank game. '
+      + 'Amber and gray are the colors the bar is drawn in: amber while the tank reloads, gray once its gun is loaded. '
+      + `Hard limit: ${limits(SETTINGS_NOTE_BUDGET)}. Never use an em dash.`;
+  }
   if (CARD_BUTTON_KEYS.includes(key)) {
     return 'A small text button on a tutorial card in Claude of Tanks, a browser tank game; it shares one row with the card\'s '
       + `other button on a narrow phone screen, so keep it as short as the language allows: hard limit ${limits(BUTTON_BUDGET)}. `
@@ -66,9 +87,10 @@ export function cardBudgetContext(key) {
     + 'ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash.';
 }
 
-/** Every budgeted key: the act card bodies, the narrower bodies and the card buttons. */
+/** Every budgeted key: the act card bodies, the narrower bodies, the card buttons and the budgeted Settings rows. */
 export async function budgetedKeys() {
-  return [...new Set([...await actCardBodyKeys(), ...Object.keys(KEY_BUDGET), ...CARD_BUTTON_KEYS])];
+  return [...new Set([...await actCardBodyKeys(), ...Object.keys(KEY_BUDGET), ...CARD_BUTTON_KEYS, ...SETTINGS_ROW_KEYS,
+    ...SETTINGS_NOTE_KEYS])];
 }
 
 /** What breaks the budget: a budgeted key without its context, or a translation past its locale's budget. */
@@ -99,11 +121,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const keys = await budgetedKeys();
     for (const key of keys) metadata[key] = { context: cardBudgetContext(key) };
     writeFileSync(METADATA, `${JSON.stringify(metadata, null, 2)}\n`);
-    console.log(`i18n-card-budget: ${keys.length} tutorial card keys carry their budget`);
+    console.log(`i18n-card-budget: ${keys.length} budgeted keys carry their budget`);
   } else {
     const failures = await repositoryCardBudgetFailures();
     if (failures.length) console.error(`i18n-card-budget: ${failures.length} failure(s)\n  ${failures.join('\n  ')}`);
-    else console.log('i18n-card-budget: every tutorial card key carries its budget, and every translation fits it');
+    else console.log('i18n-card-budget: every budgeted key carries its budget, and every translation fits it');
     if (failures.length) process.exit(1);
   }
 }

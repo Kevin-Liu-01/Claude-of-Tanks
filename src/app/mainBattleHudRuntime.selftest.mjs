@@ -10,6 +10,7 @@ const hud = {
 const damagePanel = { root: { style: { visibility: '' } } };
 const bundle = { hud, damagePanel };
 let perfMeterEnabled = true;
+let reloadIndicators = { allyReload: false, enemyReload: false };
 const access = {
   current: null,
   async preload() {
@@ -22,6 +23,7 @@ const runtime = createMainBattleHudRuntime({
   engineContext: {},
   perfMeterEnabled: () => perfMeterEnabled,
   directionalHitValuesEnabled: () => true,
+  reloadIndicators: () => reloadIndicators,
   queueMinimap: () => { minimapRequests += 1; },
   access,
 });
@@ -34,16 +36,20 @@ assert.equal(runtime.currentDamagePanel(), damagePanel);
 assert.deepEqual(events, [
   { event: 'ui:perfMeter', payload: { on: true } },
   { event: 'ui:directionalHitValues', payload: { on: true } },
+  { event: 'ui:reloadIndicators', payload: { allyReload: false, enemyReload: false } },
 ]);
 assert.equal(minimapRequests, 1);
 
 // A later battle entry must resynchronize the live preference even though the
 // same demand-loaded HUD instance is reused.
+// (reload-others-275) other tanks' reload strips, off by default, follow the saved rows the same way
 perfMeterEnabled = false;
+reloadIndicators = { allyReload: false, enemyReload: true };
 assert.equal(await runtime.preload(), bundle);
-assert.deepEqual(events.slice(-2), [
+assert.deepEqual(events.slice(-3), [
   { event: 'ui:perfMeter', payload: { on: false } },
   { event: 'ui:directionalHitValues', payload: { on: true } },
+  { event: 'ui:reloadIndicators', payload: { allyReload: false, enemyReload: true } },
 ]);
 assert.equal(minimapRequests, 2);
 
@@ -63,7 +69,7 @@ assert.equal(damagePanel.root.style.visibility, '');
   const owning = { root: { style: { display: 'block' } }, setVeiled: (on) => veils.push(on), shotInfo: { statsRoot: { style: { visibility: '' } } } };
   const owner = createMainBattleHudRuntime({
     bus: { emit() {} }, engineContext: {}, perfMeterEnabled: () => true, directionalHitValuesEnabled: () => true,
-    queueMinimap() {}, access: { current: { hud: owning, damagePanel: null }, async preload() { return this.current; } },
+    reloadIndicators: () => ({ allyReload: false, enemyReload: false }), queueMinimap() {}, access: { current: { hud: owning, damagePanel: null }, async preload() { return this.current; } },
   });
   owner.veil(true);
   owner.veil(false);

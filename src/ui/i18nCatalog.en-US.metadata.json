@@ -250,5 +250,14 @@
   },
   "settings.crew.captions": {
     "context": "A settings row label: on-screen subtitles for the crew's radio voice lines. One word if possible."
+  },
+  "settings.interface.allyReload": {
+    "context": "A switch label in the Interface settings of Claude of Tanks, a browser tank game. It turns on a thin bar under other tanks' health bars showing how far each is through reloading its gun; allies are the player's team, enemies the other team. It sits on one line beside an On/Off pair on a phone: hard limit at most 34 characters (Russian: 34; Japanese: 14; Chinese: 10). Never use an em dash."
+  },
+  "settings.interface.enemyReload": {
+    "context": "A switch label in the Interface settings of Claude of Tanks, a browser tank game. It turns on a thin bar under other tanks' health bars showing how far each is through reloading its gun; allies are the player's team, enemies the other team. It sits on one line beside an On/Off pair on a phone: hard limit at most 34 characters (Russian: 34; Japanese: 14; Chinese: 10). Never use an em dash."
+  },
+  "settings.interface.reloadNote": {
+    "context": "A short explanatory note under two switches in the Interface settings of Claude of Tanks, a browser tank game. Amber and gray are the colors the bar is drawn in: amber while the tank reloads, gray once its gun is loaded. Hard limit: at most 150 characters (Russian: 140; Japanese: 70; Chinese: 50). Never use an em dash."
   }
 }
