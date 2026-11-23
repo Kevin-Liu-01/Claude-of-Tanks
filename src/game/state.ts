@@ -390,6 +390,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   nextShellId: number;
   aerialCallbacks?: { nextId: () => number; launch: (shell: SoloGameState["shells"][number]) => void };
   timeS: number;
+  /** Fixed steps run this battle (replay-system-275): a recording's rows and a replay's seek are keyed by it. */
+  tick: number;
   fireTickAcc: number;
   combatRng: RandomSource;
   /** The battle's seed (resetBattleSession, rosterState soloMatchSeed): every stream of it, the mode's and the wreck turrets' too. */
@@ -787,6 +789,7 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   for (const entity of game.allTanks) entity.spec = getSpec(entity.specId);
   game.nextShellId = 1;
   game.timeS = 0;
+  game.tick = 0;
   // the clock restarts: no press or ram cooldown of the last battle survives into this one (sim/crushPress.ts; the
   // authority's are its match's; 2026-11-02 audit M6)
   game._crushPress?.clear();
@@ -3441,6 +3444,7 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
+  game.tick++;
   // the battle's ground on the battle's clock, as the authority's (sim/authoritativeMatch.ts stepPlaying): a collapsed
   // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the
   // page's own battle stood up whole the instant its building came down, under the falling pieces (2026-10-29)
