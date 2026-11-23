@@ -981,6 +981,23 @@ let COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
 // the 60 s probe tail). 4 columns reads identically in battle — when a 5th
 // kill lands, the column closest to burning out is retired early.
 const MAX_COLUMNS = 4;
+/** (fire-visible-275, Kevin 2026-11-22: "if a tank is on fire or our tank we have to see the fire effects") a burning
+ *  hull's live fire has its own budget, apart from MAX_COLUMNS' wreck and burst smoke: a fire lasts seconds (at most ten
+ *  half-second ticks), and with four wrecks smoking or smouldering in the last 75 s the shared cap refused the burn scan
+ *  every fire it found (a hull spotted mid-fire, a seat its tank_fire edge was withheld from, a late joiner) and let a
+ *  burst of kills evict one just lit. Over this budget the fires farthest from the camera go first. */
+const MAX_LIVE_FIRES = 6;
+/** (fire-visible-275) a live fire's flames are never smaller than this share of the view's height: at 300 m the distance
+ *  boost alone left a lick ~3 px wide. By the view's own field, so a zoomed sight does not blow a far fire up. */
+const LIVE_FIRE_MIN_VIEW = 0.007;
+/** a lick's mean width at scale 1 and no boost (emitColumnTongue's and the night lick's base) */
+const LIVE_FIRE_LICK_W = 0.85;
+/** (fire-visible-275, the look clip: our own tank burning showed smoke and no flame) a column's licks are born ~0.95 m
+ *  over its point, made for a wreck's point on the ground; a live fire with no hit point stood at its hull's origin, on
+ *  the ground, so its licks were born inside the hull. A live fire never burns below its hull's deck (this share of the
+ *  hull's height over its origin), and one with no hit point burns on the rear deck (the engine's, this share of the
+ *  hull's length behind its middle). */
+const LIVE_FIRE_DECK_K = 0.62, LIVE_FIRE_REAR_K = 0.3, LIVE_FIRE_LICK_BASE_M = 0.8;
 
 
 // ---------------------------------------------------------------------------
@@ -2358,6 +2375,7 @@ function* createFxSteps(
    */
   const lastKnownPos = new Map<string, KnownHullPoint>();
   const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
+  const _livePoint: MutableVec3 = [0, 0, 0]; // liveFirePoint's answer (fire-visible-275)
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
   // it was HE (radius-breaks destructible props) — fed by shell:fired,
   // cleared on shell:expired (+ a hard size guard against leaks).
@@ -4788,8 +4806,8 @@ function* createFxSteps(
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
         _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
         _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
+        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * flameBoost(col, dk) * (0.55 + 0.45 * fk);
+        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * flameBoost(col, dk) * (0.55 + 0.45 * fk);
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
         col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
         _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
@@ -4898,8 +4916,8 @@ function* createFxSteps(
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
         _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
         _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk); // shrink as it dies
+        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * flameBoost(col, dk) * (0.55 + 0.45 * fk);
+        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * flameBoost(col, dk) * (0.55 + 0.45 * fk); // shrink as it dies
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
         col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
         _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
@@ -4920,7 +4938,8 @@ function* createFxSteps(
    * alive (`fk`, flameOf). At night the column keeps main's round licks (the integrator's critic on the night tongues: "two
    * pill-shaped sprite blobs").
    */
-  function emitColumnTongue(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
+  function emitColumnTongue(col: SmokeColumn, fk: number, dkIn: number, birthOffset: number): void {
+    const dk = flameBoost(col, dkIn);
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.7 * col.scale;
     _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.4;
     _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.7 * col.scale;
@@ -4976,15 +4995,58 @@ function* createFxSteps(
   // Public API
   // --------------------------------------------------------------------------
 
-  /** Enforce the column cap by retiring the lowest-remaining-ttl emitter. */
+  /** (fire-visible-275) a burning hull's live fire (keyed by its hull, riding no wreck): budgeted apart (MAX_LIVE_FIRES) */
+  function isLiveFire(col: SmokeColumn): boolean {
+    return col.key != null && !col.wreckOf;
+  }
+
+  /** Enforce the smoke cap by retiring the lowest-remaining-ttl wreck or burst emitter; a live fire never counts. */
   function capColumns(): void {
-    while (columns.length > columnCap) {
-      let low = 0;
-      for (let i = 1; i < columns.length; i++) {
-        if (columns[i].ttl < columns[low].ttl) low = i;
+    for (;;) {
+      let low = -1, smoke = 0;
+      for (let i = 0; i < columns.length; i++) {
+        if (isLiveFire(columns[i])) continue;
+        smoke++;
+        if (low < 0 || columns[i].ttl < columns[low].ttl) low = i;
       }
+      if (smoke <= columnCap) return;
       columns.splice(low, 1);
     }
+  }
+
+  function cameraDistanceSq(p: ArrayLike<number>): number {
+    const cam = engineCtx && engineCtx.camera;
+    if (!cam) return 0;
+    const dx = p[0] - cam.position.x, dy = p[1] - cam.position.y, dz = p[2] - cam.position.z;
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  /** (fire-visible-275) the live fires' own budget: over it, the fire farthest from the camera goes first. */
+  function capLiveFires(): void {
+    for (;;) {
+      let far = -1, live = 0, farD = -1;
+      for (let i = 0; i < columns.length; i++) {
+        if (!isLiveFire(columns[i])) continue;
+        live++;
+        const d = cameraDistanceSq(columns[i].pos);
+        if (d > farD) { farD = d; far = i; }
+      }
+      if (live <= MAX_LIVE_FIRES) return;
+      columns.splice(far, 1);
+    }
+  }
+
+  /**
+   * (fire-visible-275) a live fire's flame size: the distance boost, floored so its licks fill at least
+   * LIVE_FIRE_MIN_VIEW of the view's height (by the camera's own field: a zoomed sight's far fire stays its size).
+   * Wreck and car fires keep the boost alone.
+   */
+  function flameBoost(col: SmokeColumn, dk: number): number {
+    if (!isLiveFire(col)) return dk;
+    const cam = engineCtx && engineCtx.camera as THREE.PerspectiveCamera | undefined;
+    if (!cam || !cam.isPerspectiveCamera) return dk;
+    const viewH = 2 * Math.sqrt(cameraDistanceSq(col.pos)) * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+    return Math.max(dk, (viewH * LIVE_FIRE_MIN_VIEW) / (LIVE_FIRE_LICK_W * col.scale));
   }
 
   /** Remove a live subject-following column; wreck columns are world-fixed. */
@@ -5112,20 +5174,38 @@ function* createFxSteps(
   }
 
   /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
-  function startLiveColumn(id: string, p: MutableVec3): void {
+  /** (fire-visible-275) where a live fire burns on its hull: its point, never below the deck; with no hit point (the
+   *  burn scan's, a fire no hit lit) the rear deck. A hull with no dimensions keeps its point. */
+  function liveFirePoint(id: string, p: MutableVec3): MutableVec3 {
+    const ent = decalEntityFor(id) as (FxEntity & { spec?: { dims?: { heightM?: number; hullLengthM?: number } } }) | null;
+    const dims = ent?.spec?.dims, at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
+    if (!ent || !at || !(dims?.heightM && dims.heightM > 0)) return p;
+    _livePoint[0] = p[0]; _livePoint[1] = p[1]; _livePoint[2] = p[2];
+    if (!lastKnownPos.get(id)?.onHull) {
+      const yaw = hullYawOf(ent), back = -LIVE_FIRE_REAR_K * (dims.hullLengthM ?? 6);
+      _livePoint[0] = at.x + Math.sin(yaw) * back;
+      _livePoint[2] = at.z + Math.cos(yaw) * back;
+    }
+    _livePoint[1] = Math.max(_livePoint[1], at.y + LIVE_FIRE_DECK_K * dims.heightM - LIVE_FIRE_LICK_BASE_M);
+    return _livePoint;
+  }
+
+  function startLiveColumn(id: string, pIn: MutableVec3): void {
     for (const col of columns) if (col.key === id) { col.ttl = SMOKE_COLUMN_S; return; }
+    const p = liveFirePoint(id, pIn);
     const col: SmokeColumn = { key: id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
     columns.push(col);
-    emitColumnPuff(col); // ignition is visible even on a frozen frame
-    capColumns();
+    // (fire-visible-275) the live fires' own budget: one past it, the farthest goes (this one, if it is)
+    capLiveFires();
+    if (columns.includes(col)) emitColumnPuff(col); // ignition is visible even on a frozen frame
   }
 
   /**
    * (2026-11-02 audit F10) A burning hull's column from its combat record too, twice a second: a late joiner (no
    * tank:fire edge for a fire already burning), or a fire raised without a hit before it, still smokes. Only a hull this
-   * viewer sees (a hidden one's record is its last sample's: it re-lit a column at its last-seen place for ever), and
-   * only into a free slot: the scan never evicts a column (the cap's eviction stays the tank:fire / kill events' own,
-   * as it was).
+   * viewer sees (a hidden one's record is its last sample's: it re-lit a column at its last-seen place for ever).
+   * (fire-visible-275) A live fire is budgeted apart from the wreck smoke (MAX_LIVE_FIRES): the wrecks never keep the
+   * scan from lighting one, and over the fires' own budget the nearest burn.
    */
   const BURN_SCAN_S = 0.5;
   let burnScanIn = 0;
@@ -5134,7 +5214,6 @@ function* createFxSteps(
     burnScanIn -= tickDt;
     if (burnScanIn > 0) return;
     burnScanIn = BURN_SCAN_S;
-    if (columns.length >= columnCap) return;
     for (const entity of auxiliaryEntities()) {
       const combat = (entity as { combat?: FxEntity['combat'] }).combat;
       if (!combat || combat.destroyed || combat.fire?.burning !== true || typeof entity.id !== 'string') continue;
@@ -5144,7 +5223,6 @@ function* createFxSteps(
       if (has) continue;
       const p = knownPosOf(entity.id);
       if (p) startLiveColumn(entity.id, p);
-      if (columns.length >= columnCap) return;
     }
   }
 
@@ -7095,6 +7173,9 @@ function* createFxSteps(
           pos: [col.pos[0], col.pos[1], col.pos[2]],
           localPos: col.localPos
             ? [col.localPos[0], col.localPos[1], col.localPos[2]] : null,
+          // (fire-visible-275) a live fire's mean lick width now (m), by this frame's camera: a probe asserts it is seen
+          lickW: isLiveFire(col)
+            ? LIVE_FIRE_LICK_W * col.scale * flameBoost(col, distBoost(col.pos[0], col.pos[1], col.pos[2])) : null,
         });
       }
       return {

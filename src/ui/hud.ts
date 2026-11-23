@@ -3024,6 +3024,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   }
 
   const vehicleStatus = createVehicleStatusStrip();
+  vehicleStatus.mountEdge(root);
   // ======================= END SPOTTING SECTION =============================
 
   // --- shell selector + consumables ---
