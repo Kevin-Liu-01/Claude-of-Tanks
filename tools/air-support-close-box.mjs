@@ -23,6 +23,28 @@ export const measureCloseBox = (lower) => {
   };
 };
 
+/** In the page: the negative control. The old standalone close (integ/276 fb0f3aba6a airSupportHud.ts and .css, its
+ *  phone rules shown at every size) put back in the binoculars (`on`), or taken out again; the judge must fail it. This
+ *  module is the one place outside the old tree that names it. */
+export const putBackOldClose = (lower, on) => {
+  const cls = 'binocular-close';
+  document.getElementById('old-close')?.remove();
+  document.querySelector(`.cot-binoculars .${cls}`)?.remove();
+  if (!on) return false;
+  const style = document.createElement('style');
+  style.id = 'old-close';
+  style.textContent = `.cot-binoculars .${cls}{display:inline-flex;position:absolute;pointer-events:auto;`
+    + 'right:calc(max(12px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);'
+    + `background:var(--hud-plate-strong)}@media(orientation:portrait){.cot-binoculars .${cls}{right:auto;left:calc(50% - 88px);bottom:252px}}`;
+  document.head.append(style);
+  const button = document.createElement('button');
+  button.className = `${cls} cot-c-btn cot-c-btn--secondary cot-c-btn--56 cot-c-btn--icon`;
+  button.setAttribute('aria-label', lower);
+  button.textContent = '×';
+  document.querySelector('.cot-binoculars').append(button);
+  return true;
+};
+
 const same = (a, b, tol = 0.5) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(a[k] - b[k]) <= tol);
 const key = (b) => `${b.name}@${Math.round(b.box.x)},${Math.round(b.box.y)}`;
 const fmt = (b) => `${Math.round(b.x)},${Math.round(b.y)} ${Math.round(b.w)}x${Math.round(b.h)}`;

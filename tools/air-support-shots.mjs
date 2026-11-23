@@ -21,7 +21,7 @@ import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture
 import { datumProblems } from './datum-census.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { closeBoxProblems, measureCloseBox } from './air-support-close-box.mjs';
+import { closeBoxProblems, measureCloseBox, putBackOldClose } from './air-support-close-box.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
 const argv = process.argv.slice(2);
@@ -635,12 +635,6 @@ async function shootGauntlet(page, tag) {
   }
 }
 
-/** The old standalone close (integ/276 fb0f3aba6a airSupportHud.ts and .css, its phone rules shown at every size), put
- *  back in the binoculars: the negative control the close-box judge must fail. */
-const OLD_CLOSE_CSS = `.cot-binoculars .binocular-close{display:inline-flex;position:absolute;pointer-events:auto;
- right:calc(max(12px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);background:var(--hud-plate-strong)}
-@media(orientation:portrait){.cot-binoculars .binocular-close{right:auto;left:calc(50% - 88px);bottom:252px}}`;
-
 /** --close-box: at each size, Support's box at rest, raised by its own press and lowered by it again; frames across each
  *  change; the judge, and the judge on the old standalone close (which must fail). */
 async function shootCloseBox(page, tag) {
@@ -692,16 +686,9 @@ async function shootCloseBox(page, tag) {
     await page.evaluate(() => { const air = window.__DEBUG.game.matchModeController.airSupport, s = air.capture(); s.strikes = []; air.restore(s); });
     await sleep(300);
     // the negative control: the old button back in the page, with the binoculars up
-    const negative = await page.evaluate((css, lower) => {
-      const style = document.createElement('style'); style.id = 'old-close'; style.textContent = css; document.head.append(style);
-      const button = document.createElement('button');
-      button.className = 'binocular-close cot-c-btn cot-c-btn--secondary cot-c-btn--56 cot-c-btn--icon';
-      button.setAttribute('aria-label', lower); button.textContent = '×';
-      document.querySelector('.cot-binoculars').append(button);
-      return true;
-    }, OLD_CLOSE_CSS, labels.lower) && await measure();
+    const negative = await page.evaluate(putBackOldClose, labels.lower, true) && await measure();
     await shot(page, `close-${size}-negative-old-button`);
-    await page.evaluate(() => { document.getElementById('old-close')?.remove(); document.querySelector('.cot-binoculars .binocular-close')?.remove(); });
+    await page.evaluate(putBackOldClose, labels.lower, false);
     const lower = await press(`close-${size}-lower`);
     await sleep(300);
     const down = await measure();
