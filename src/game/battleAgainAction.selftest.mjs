@@ -4,10 +4,17 @@ import { createBattleAgainAction } from './battleAgainAction.ts';
 import { createGarageReturnFailurePresenter } from '../ui/garageReturnFailure.ts';
 
 const source = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+// The action's own code, by named anchors: its declaration (createBattleAgainAction through its closing `});`) and
+// each top-level bus registration that names it. Unrelated blocks between them stay out of the snippet.
 const start = source.indexOf('const battleAgainAction = createBattleAgainAction({');
-const end = source.indexOf("bus.on('ui:roomOpen', async", start);
-assert.ok(start > 0 && end > start, 'exercise the actual main action/event composition');
-const wiring = source.slice(start, end);
+const declarationEnd = source.indexOf('\n});\n', start) + '\n});\n'.length;
+assert.ok(start > 0 && declarationEnd > start, 'exercise the actual main action/event composition');
+const registrations = source.slice(declarationEnd).split('\n')
+  .filter((line) => line.startsWith('bus.on(') && line.includes('battleAgainAction.'));
+assert.deepEqual(registrations.map((line) => line.slice('bus.on('.length).split(',')[0]),
+  ["'ui:battleAgain'", "'ui:battleStart'", "'phase:change'", "'ui:roomOpen'", "'network:roomState'"],
+  'every bus registration of the action is exercised');
+const wiring = `${source.slice(start, declarationEnd)}${registrations.join('\n')}\n`;
 assert.equal(wiring.split("import('./ui/garageReturnFailure.ts')").length, 2,
   'exactly one lazy failure import, replaced only with a controlled deferred transfer');
 const compose = new Function('createBattleAgainAction', 'garageReturn', 'game',
