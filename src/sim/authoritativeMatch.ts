@@ -1,5 +1,6 @@
 import type { ModeCheckpoint, ModeLife } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, droneShellId, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { worldImpactSpec } from './airCrash.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
 import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, SMOKE_DURATION_S, type SmokeScreen } from './auxiliarySystems.ts';
@@ -2132,6 +2133,8 @@ export function createAuthoritativeMatch({
 
   function resolveWorldShellHit(shell: DamageShell, worldHit: WorldTrace): void {
     shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
+    // (air-crash-he-276) a drone meeting the ground or a building bursts as its crash round (sim/airCrash.ts)
+    shell.spec = worldImpactSpec(shell.spec);
     if (isHeClass(shell.spec.type)) resolveHeImpact(shell, shell.pos, null, null);
     else shell.dead = true;
     destroyShellObstacle(shell, worldHit);
@@ -2537,7 +2540,8 @@ export function createAuthoritativeMatch({
     // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the authority's drone flight
     counterDrone: ruleset.counterDrone === true,
     droneHit: (carrier: AuthoritativeEntity, chance: number, shooter: AuthoritativeEntity) => {
-      if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id });
+      // (air-crash-he-276) the downed airframe falls on as its crash round: its id, so a client draws it as a falling store
+      if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id, shellId: droneShellId(carrier) });
     },
     // Air Support's counter-air: the stations engage the other side's aircraft (sim/airSupport.ts)
     ...(modeController.airSupport ? { counterAir: counterAirFor(() => timeS + modeTimeOffsetS) } : {}),

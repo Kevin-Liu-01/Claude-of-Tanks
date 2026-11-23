@@ -61,7 +61,7 @@ import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
-import { bombFall, runExitS, runPose } from '../sim/strikeRuns.ts';
+import { bombFall, crashFall, runExitS, runPose } from '../sim/strikeRuns.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import {
   resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type TrackClass, type VehicleAudioIdentity,
@@ -2836,7 +2836,7 @@ export function createAudio({
   /** Our crew is called out of a footprint its hull is this close to. */
   const AIR_COVER_MARGIN_M = 12;
   /** A downed aircraft falls as the world draws it (game/airSupportWorld.ts fallPose): gravity, a sink, 9 s at most. */
-  const AIR_FALL = Object.freeze({ g: 9.81, sinkMps: 6, maxS: 9 });
+  const AIR_FALL = Object.freeze({ g: 9.81, sinkMps: 6, maxS: 12 });
   /** The A-10's burst: its close bank fades out and its distant one in across these ranges (m). */
   const BURST_CLOSE_FADE_M = [450, 1400] as const;
   const BURST_FAR_FADE_M = [300, 1100] as const;
@@ -2866,13 +2866,11 @@ export function createAudio({
   function airAircraftAt(heard: HeardStrike, t: number, out: typeof airPose): boolean {
     const strike = heard.strike;
     if (heard.downedS == null) { runPose(AIR, strike, t, out); return true; }
+    // (air-crash-he-276) on the arc its crash round flies (sim/strikeRuns.ts crashFall), down where it meets the ground
     runPose(AIR, strike, heard.downedS, out);
+    crashFall(AIR, strike, heard.downedS, t, out);
     const dt = Math.max(0, t - heard.downedS);
-    const speed = strike.kind === 'gunship' ? AIR.gunship.speedMps : AIR[strike.kind].speedMps;
-    out.x += Math.sin(out.yaw) * speed * dt;
-    out.z += Math.cos(out.yaw) * speed * dt;
-    out.y -= 0.5 * AIR_FALL.g * dt * dt + AIR_FALL.sinkMps * dt;
-    return out.y > strike.y - 2 && dt < AIR_FALL.maxS;
+    return out.y > groundY(out.x, out.z, strike.y) + 1 && dt < AIR_FALL.maxS;
   }
 
   /** Whether an enemy strike's footprint covers our living hull. */
@@ -2944,6 +2942,16 @@ export function createAudio({
     if (Number.isFinite(shellId)) {
       if (strikeShells.size >= 256) strikeShells.delete(strikeShells.values().next().value as number);
       strikeShells.add(shellId);
+    }
+    // (air-crash-he-276) a downed aircraft's crash round: no round of its kind is heard leaving; it lands on the 500 lb
+    // bomb's blast and its layers (strikeBlastAt), and the HE bank sizes it by its charge where it has none
+    if (payload.crash === 1) {
+      const blast = AIR_STRIKE_SOUND.bomb.blast;
+      if (blast && Number.isFinite(shellId)) {
+        if (airBlasts.size >= 16) airBlasts.delete(airBlasts.keys().next().value as number);
+        airBlasts.set(shellId, blast);
+      }
+      return;
     }
     const sound = AIR_STRIKE_SOUND[kind];
     const strikeId = Number(payload.strikeId);

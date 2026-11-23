@@ -24,11 +24,36 @@ const FIRED_KINDS = new Set(['strafe', 'missile', 'gunship']);
 export const releasedBombs = new Map<number, { x: number; y: number; z: number; vx: number; vy: number; vz: number }>();
 const RELEASED_MAX = 16;
 
+/**
+ * (air-crash-he-276) The crash rounds of downed aircraft (sim/airSupportFire.ts launchCrash), by shell id: their strike's
+ * id. When one meets the world (its shell:expired), its strike is in `crashedStrikes`: the world ends the falling airframe
+ * there (a roof, a wall), not only at the ground.
+ */
+const crashRounds = new Map<string, number>();
+export const crashedStrikes = new Set<number>();
+const CRASH_MAX = 16;
+
 export function installAirSupportBridge(bus: EventBus): () => void {
-  return bus.on('mode:strike_round', (payload) => {
-    const round = payload as (StrikeRoundEvent & { strikeId?: number; freeFall?: number }) | null;
+  const offExpired = bus.on('shell:expired', (payload) => {
+    const id = (payload as { shellId?: unknown } | null)?.shellId;
+    const strikeId = id != null ? crashRounds.get(String(id)) : undefined;
+    if (strikeId === undefined) return;
+    crashRounds.delete(String(id));
+    crashedStrikes.add(strikeId);
+    if (crashedStrikes.size > CRASH_MAX) crashedStrikes.delete(crashedStrikes.values().next().value!);
+  });
+  const offRound = bus.on('mode:strike_round', (payload) => {
+    const round = payload as (StrikeRoundEvent & { strikeId?: number; freeFall?: number; crash?: number }) | null;
     // an unpowered store: the tracer pass never draws it (fx/freeFallStores.ts), the world draws its body falling
     if (round?.freeFall === 1 && round.shellId != null) markFreeFallStore(round.shellId);
+    // a downed aircraft's crash round: the world draws the airframe falling on its arc; no round of its strike's kind
+    if (round?.crash === 1) {
+      if (round.shellId != null && Number.isFinite(round.strikeId)) {
+        crashRounds.set(String(round.shellId), round.strikeId!);
+        if (crashRounds.size > CRASH_MAX) crashRounds.delete(crashRounds.keys().next().value!);
+      }
+      return;
+    }
     if (round?.kind === 'bomb' && Number.isFinite(round.x) && Number.isFinite(round.strikeId)) {
       const speed = round.velocityMps ?? 0;
       releasedBombs.set(round.strikeId!, { x: round.x!, y: round.y!, z: round.z!,
@@ -52,4 +77,5 @@ export function installAirSupportBridge(bus: EventBus): () => void {
       airStrike: round.kind,
     });
   });
+  return () => { offRound(); offExpired(); };
 }

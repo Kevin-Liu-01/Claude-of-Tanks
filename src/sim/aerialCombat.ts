@@ -2,7 +2,7 @@
 import { botDriven } from './botDriven.ts';
 import { Vector3, Quaternion } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
-import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
+import { AERIAL_RULES, AIR_CRASH_RULES, AIR_CRASH_ROUNDS, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { missionAttachmentFor, type MissionCarrierSpec } from './missionAttachment.ts';
 import {droneLaunchHeight} from './droneLaunch.ts';
@@ -30,6 +30,8 @@ interface Flight {
   strikes: number;
   /** A recalled airframe: the sim time it is parked on its dock after flying home and landing (0 when none). */
   dockAt: number;
+  /** (air-crash-he-276) shot down this step: its airframe falls on as its crash round, and the next step ends the flight. */
+  downed?: boolean;
 }
 const flights = new WeakMap<AerialEntity, Flight>();
 const direction = new Vector3();
@@ -152,14 +154,30 @@ export function avoidDroneObstacles(world: AerialWorldQuery, ownerId: string, po
  * flight: `chance`, the round's share of a strike at its range (vehicles/auxiliaryWeapons.ts droneHitAt100). The shares
  * add up (no draw: both authorities agree) and the airframe falls at AERIAL_RULES.drone.hitsToDown, ending the flight
  * as a spent battery does (its cooldown follows). True when this round brought it down.
+ *
+ * (air-crash-he-276) The downed airframe falls: its shell leaves the flight as the drone's crash round (sim/airCrash.ts),
+ * at AIR_CRASH_RULES.fall.carry of its velocity under the fall's gravity, and bursts as HE where it lands. Its id is
+ * droneShellId's, for the drivers' drone_down (a networked client draws no tracer for it: fx/freeFallStores.ts).
  */
 export function strikeDrone(carrier: AerialEntity, chance: number): boolean {
   const flight = flights.get(carrier), shell = flight?.shell;
   if (!flight || !shell || shell.dead || shell.id !== flight.shellId || flight.view.launching) return false;
   flight.strikes += chance;
   if (flight.strikes < AERIAL_RULES.drone.hitsToDown) return false;
-  shell.dead = true;
+  const fall = AIR_CRASH_RULES.fall;
+  shell.spec = AIR_CRASH_ROUNDS.drone;
+  shell.gravityMps2 = fall.gravityMps2;
+  shell.vel.multiplyScalar(fall.carry);
+  shell.vel.y -= fall.sinkMps;
+  // the flight lets it go (nothing steers, recalls or retires it now); the next step ends the flight and its cooldown runs
+  flight.shell = null;
+  flight.downed = true;
   return true;
+}
+/** The id of the carrier's drone's last airframe (its live flight's, or the one just shot down), or null. */
+export function droneShellId(carrier: AerialEntity): number | null {
+  const flight = flights.get(carrier);
+  return flight && flight.shellId >= 0 ? flight.shellId : null;
 }
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
@@ -249,6 +267,10 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     return;
   }
   const rules = AERIAL_RULES.drone;
+  if (flight.downed) {
+    // shot down last step (strikeDrone): the airframe falls on as its crash round; the flight ends as a loss does
+    flight.downed = false; flight.readyAt = timeS + rules.cooldownS; v.active = false; v.launching = false;
+  }
   const toggle = droneToggleRequested(entity,flight,timeS);
   entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) & ~PLAYER_ACTION_BITS.DRONE;
   // A toggle in flight is a recall, accepted only once the pilot is in the drone's own feed (sim/droneRecall.ts); an
@@ -266,7 +288,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     direction.set(detMath.sin(launchYaw), .4, detMath.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
-    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0; flight.strikes = 0;
+    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0; flight.strikes = 0; flight.downed = false;
     v.active = true; v.launching = true; v.yaw = launchYaw; v.pitch = .2;
     launchShell(shell);
   }
@@ -388,8 +410,9 @@ export function killSourceOf(shooter: KillSourceShooter | null | undefined, shel
   // (air-support-275) the Maverick run's missiles
   if (shell?.reloadGroup === 'strike-missile') return 'missile';
   if (shell?.reloadGroup === 'strike-artillery') return 'artillery';
-  // the FPV warhead carries the DRONE tracer (sim/munitionBlast.ts drone_fpv); a hit event carries its name
-  if (shell && (shell.tracer === 'DRONE' || shell.name === DRONE_WARHEAD.name)) return 'drone';
+  // the FPV warhead carries the DRONE tracer (sim/munitionBlast.ts drone_fpv); a hit event carries its name; (air-crash-he-276)
+  // a drone's crash round is still the drone's
+  if (shell && (shell.tracer === 'DRONE' || shell.name === DRONE_WARHEAD.name || shell.reloadGroup === 'drone-crash')) return 'drone';
   return 'vehicle';
 }
 

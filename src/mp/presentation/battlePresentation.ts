@@ -60,6 +60,7 @@ import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
 import { modeEndReport } from '../../sim/modeEndReport.ts';
+import { markFreeFallStore } from '../../fx/freeFallStores.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -1624,7 +1625,9 @@ export function createBattlePresentation({
       case 'drone_down':
         // a drone shot down (the authority's counter-drone strike, sim/aerialCombat.ts strikeDrone), as the solo step
         // raises it: heard breaking up where it flew, and the crew calls its own drone lost to fire or the enemy's our gun downed
-        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
+        // (air-crash-he-276) its airframe falls on as its crash round: a store, never a tracer (fx/freeFallStores.ts)
+        if (typeof payload.shellId === 'number') markFreeFallStore(payload.shellId);
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId, ...(typeof payload.shellId === 'number' ? { shellId: payload.shellId } : {}) });
         return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');
