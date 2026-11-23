@@ -2,16 +2,23 @@
  * The player seat's discrete actions on the local driver (replay-system-275, docs/REPLAY.md §1 "Side stream").
  *
  * A key handler (game/playerBattleActions.ts) changes the simulation between two fixed steps through its `rules` port:
- * a shell selection, a magazine reload, a special action, a consumable, a self-right or a jump. The step never reads those
- * from the seat's controls, so a recording keeps each call as an action before the step that follows it, and a replay
+ * a shell selection, a magazine reload, a special action, a consumable, a self-right, a jump, the self-right key's own
+ * rule, a hull turbo or an air spin. The step never reads those from the seat's controls, so a recording keeps each call as an action before the step that follows it, and a replay
  * makes the same call on the same hull before the same step. `wrapRecordedRules` is the one tap: every mutating rule the
- * handlers call goes through it. `replaySeatAction` is the one replay. Node-runnable.
+ * handlers call goes through it. `replaySeatAction` is the one replay. Node-runnable. Every rule of the port is either
+ * recorded or read-only (RECORDED_RULES, READ_RULES); seatActions.selftest.mjs fails on a rule that is neither, so a new
+ * action cannot reach the step unrecorded. (A held action that sets a seat's action bit, such as the scuttle, is in its
+ * controls already: sim/seatControl.ts captures actionBits.)
  */
 import type { ReplayAction } from '../../sim/replayFormat.ts';
 
 /** The rules the handlers call that change the simulation (the rest of the port only reads). */
 export const RECORDED_RULES = ['selectShell', 'repairAllModules', 'startMagazineReload', 'activateSpecialAction', 'useSoloConsumable',
-  'requestTankSelfRight', 'requestTankJump'] as const;
+  'requestTankSelfRight', 'requestTankJump', 'pressSelfRight', 'requestHullTurbo', 'requestTankAirSpin'] as const;
+
+/** The rules the handlers call that only read (a refusal's reason, a slot, a count, a kind): never recorded. */
+export const READ_RULES = ['magazineReloadDenialReason', 'guidedMissileSlot', 'specialActionKind', 'hasAmmunition', 'shellAmmunitionCapacity',
+  'hasConsumableRule', 'rulesetUnlimitedFor'] as const;
 type RecordedRule = typeof RECORDED_RULES[number];
 
 /** A direct write a handler makes outside the rules: a guided missile's way back to the cannon round. */
@@ -27,6 +34,7 @@ export interface SeatActionEntity {
   specialAction?: object | null;
   modeGravityScale?: number | null;
   modeJumpMps?: number | null;
+  input?: { throttle?: number; steer?: number } | null;
 }
 
 /** The call's numeric arguments, the hull's own objects left out (the replay passes the replayed hull's). */
@@ -37,6 +45,13 @@ function recordedArgs(kind: RecordedRule, args: readonly unknown[]): number[] {
     case 'useSoloConsumable': return [num(args[2])];
     case 'requestTankSelfRight': return [num(args[1] ?? 1)];
     case 'requestTankJump': return [num(args[1]), num(args[2] ?? 1)];
+    // the self-right key's rule reads the seat's throttle and steer as the handler finds them, between two steps (an
+    // air spin's direction), which the seat's quantized controls need not equal; the air spin is handed them
+    case 'pressSelfRight': {
+      const input = (args[0] as SeatActionEntity | null)?.input;
+      return [num(input?.throttle ?? 0), num(input?.steer ?? 0)];
+    }
+    case 'requestTankAirSpin': return [num(args[1]), num(args[2])];
     default: return [];
   }
 }
@@ -88,6 +103,17 @@ export function replaySeatAction(action: ReplayAction, entity: SeatActionEntity 
     case 'useSoloConsumable': call('useSoloConsumable', entity, ports.bus, a, ports.timeS); return;
     case 'requestTankSelfRight': call('requestTankSelfRight', entity.state, a); return;
     case 'requestTankJump': call('requestTankJump', entity.state, a, b); return;
+    case 'pressSelfRight': {
+      // the throttle and steer the handler's call read, for this call only (the step's own come from the seat's row)
+      const input = entity.input;
+      if (!input) { call('pressSelfRight', entity); return; }
+      const throttle = input.throttle, steer = input.steer;
+      input.throttle = a; input.steer = b;
+      try { call('pressSelfRight', entity); } finally { input.throttle = throttle; input.steer = steer; }
+      return;
+    }
+    case 'requestHullTurbo': call('requestHullTurbo', entity, ports.timeS); return;
+    case 'requestTankAirSpin': call('requestTankAirSpin', entity.state, a, b); return;
     case PREVIOUS_SHELL_SLOT: {
       const special = entity.specialAction as { previousShellSlot?: number } | null | undefined;
       if (special) special.previousShellSlot = a;

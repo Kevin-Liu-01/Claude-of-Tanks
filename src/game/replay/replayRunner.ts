@@ -15,7 +15,8 @@ import { applySeatControl } from '../../sim/seatControl.ts';
 import { selectShell, repairAllModules, startMagazineReload } from '../../sim/damage.ts';
 import { activateSpecialAction } from '../../sim/specialActions.ts';
 import { requestTankSelfRight } from '../../sim/rollover.ts';
-import { requestTankJump } from '../../sim/movement.ts';
+import { requestTankAirSpin, requestTankJump } from '../../sim/movement.ts';
+import { pressSelfRight, requestHullTurbo } from '../../sim/modeMoves.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { createBus, createCollider, createGameState, setupBattle, simStep } from '../state.ts';
 import { spawnTanks } from '../rosterState.ts';
@@ -57,8 +58,9 @@ export interface ReplayRun {
   dispose(): void;
 }
 
+/** The recorded rules' implementations (seatActions.ts RECORDED_RULES; seatActions.selftest.mjs keeps the two equal). */
 const RULES = { selectShell, repairAllModules, startMagazineReload, activateSpecialAction, useSoloConsumable, requestTankSelfRight,
-  requestTankJump };
+  requestTankJump, pressSelfRight, requestHullTurbo, requestTankAirSpin };
 
 function stubVisual(): object {
   return { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
