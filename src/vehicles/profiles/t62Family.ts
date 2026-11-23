@@ -483,6 +483,8 @@ function addTurretRail(P: TankBuilderPort, h: number, a0: number, a1: number): v
   }
   const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
   P.add('turretDetail', new THREE.TubeGeometry(curve, P.q ? 24 : 10, 0.014, 6, false));
+  // round end caps: an open tube end shows its inside (tank-sealed-check, 274.1)
+  for (const end of [pts[0], pts[n]]) P.add('turretDetail', new THREE.SphereGeometry(0.0145, 6, 4), end.x, end.y, end.z);
   for (const f of [0.08, 0.5, 0.92]) {
     const t = a0 + (a1 - a0) * f, p = domePoint(t, h), nrm = domeNormal(t, h);
     const mid = p.clone().addScaledVector(nrm, 0.03);
