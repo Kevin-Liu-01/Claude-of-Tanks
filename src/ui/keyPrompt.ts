@@ -37,15 +37,21 @@ export function promptRevision(input: PromptInput): string {
 }
 
 /** An action's HUD tile on a touch layout, and the icon it is drawn with where its own cannot be read. */
-interface TouchTile { readonly selector: string; readonly icon: IconId }
+interface TouchTile {
+  readonly selector: string;
+  readonly icon: IconId;
+  /** Draw `icon`, never the tile's own first glyph (the shell tile's first glyph is its cycle chevron, notices-audit-275's
+   *  phone capture: three "‹" for the three slots). */
+  readonly drawn?: true;
+}
 const ROW = (action: string) => `.cot-vehicle-controls>button:has([data-key-cap="${action}"])`;
 const TOUCH_TILES: Partial<Record<ActionId, TouchTile>> = {
   consumable1: { selector: '.cot-con:has([data-key-cap="consumable1"])', icon: 'repair' },
   consumable2: { selector: '.cot-con:has([data-key-cap="consumable2"])', icon: 'repair' },
   consumable3: { selector: '.cot-con:has([data-key-cap="consumable3"])', icon: 'repair' },
-  shell1: { selector: '.cot-shell:has([data-key-cap="shell1"])', icon: 'shell' },
-  shell2: { selector: '.cot-shell:has([data-key-cap="shell2"])', icon: 'shell' },
-  shell3: { selector: '.cot-shell:has([data-key-cap="shell3"])', icon: 'shell' },
+  shell1: { selector: '.cot-shell:has([data-key-cap="shell1"])', icon: 'shell', drawn: true },
+  shell2: { selector: '.cot-shell:has([data-key-cap="shell2"])', icon: 'shell', drawn: true },
+  shell3: { selector: '.cot-shell:has([data-key-cap="shell3"])', icon: 'shell', drawn: true },
   smoke: { selector: ROW('smoke'), icon: 'smoke' },
   lights: { selector: ROW('lights'), icon: 'lightbulb' },
   roofGun: { selector: ROW('roofGun'), icon: 'roofGun' },
@@ -62,15 +68,12 @@ const TOUCH_TILES: Partial<Record<ActionId, TouchTile>> = {
 /** What to show for an action: a key's or a button's cap, or (touch) the tile that does it; none where nothing does. */
 export type Prompt =
   | { readonly kind: 'key' | 'pad'; readonly label: string }
-  | { readonly kind: 'tile'; readonly selector: string; readonly icon: IconId }
+  | { readonly kind: 'tile'; readonly selector: string; readonly icon: IconId; readonly drawn?: true }
   | { readonly kind: 'none' };
 
 /** The one resolver. */
 export function promptFor(input: PromptInput, action: ActionId, device: InputDevice = inputDevice(input)): Prompt {
-  if (device === 'touch') {
-    const tile = TOUCH_TILES[action];
-    return tile ? { kind: 'tile', selector: tile.selector, icon: tile.icon } : { kind: 'none' };
-  }
+  if (device === 'touch') return tilePrompt(action);
   const label = keyCapFor(input as unknown as KeyCapInput, action as CapAction, device === 'pad');
   return !label || label === '—' ? { kind: 'none' } : { kind: device === 'pad' ? 'pad' : 'key', label };
 }
@@ -92,7 +95,7 @@ export function battleKeycap(label: string, options: { readonly action?: string;
 function promptHtml(prompt: Prompt, root: Pick<Document, 'querySelector'> | null = typeof document === 'undefined' ? null : document): string {
   if (prompt.kind === 'none') return '';
   if (prompt.kind === 'tile') {
-    const own = root?.querySelector(prompt.selector)?.querySelector('svg');
+    const own = prompt.drawn ? null : root?.querySelector(prompt.selector)?.querySelector('svg');
     const svg = own ? own.outerHTML : uiIconSVG(prompt.icon, 16);
     return `<span class="cot-key-prompt cot-key-prompt--tile" aria-hidden="true">${svg}</span>`;
   }
@@ -115,18 +118,30 @@ export function formatPrompt(input: PromptInput, key: string, actions: Readonly<
 export function formatKeyLine(input: PromptInput, key: string, actions: Readonly<Record<string, ActionId>>,
   vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
   const device = inputDevice(input);
+  return formatKeyLineWith((action) => promptFor(input, action, device), key, actions, vars, root);
+}
+
+/** formatKeyLine with the prompts from another resolver: the HUD's event lane, which reads the frame's key caps
+ *  (game/battleKeyCaps.ts, the same caps promptFor reads) and the layout's touch flag, has no input of its own. */
+export function formatKeyLineWith(resolve: (action: ActionId) => Prompt, key: string, actions: Readonly<Record<string, ActionId>>,
+  vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
   const keys: string[] = [];
   const words = fill(key, actions, vars, (action) => {
     // (an action with nothing to press on this device, a pad button left unbound, keeps its tile's icon in the column: a
     // line never loses the thing it names)
-    const tile = TOUCH_TILES[action];
-    const html = promptHtml(promptFor(input, action, device), root)
-      || (tile ? promptHtml({ kind: 'tile', selector: tile.selector, icon: tile.icon }, root) : '');
-    if (html) keys.push(html);
+    const html = promptHtml(resolve(action), root) || promptHtml(tilePrompt(action), root);
+    // (one prompt once: a phone's one shell tile stands for the three slots, notices-audit-275)
+    if (html && !keys.includes(html)) keys.push(html);
     return ' ';
   }).replace(/\s+/g, ' ').trim();
   const text = `<span class="cot-key-line__text">${words}</span>`;
   return keys.length ? `<span class="cot-key-line"><span class="cot-key-line__keys">${keys.join('')}</span>${text}</span>` : text;
+}
+
+/** An action's HUD tile as a prompt (a touch layout's), or none where no tile does it. */
+export function tilePrompt(action: ActionId): Prompt {
+  const tile = TOUCH_TILES[action];
+  return tile ? { kind: 'tile', selector: tile.selector, icon: tile.icon, drawn: tile.drawn } : { kind: 'none' };
 }
 
 /** The catalog line, escaped, each action's placeholder replaced by `draw(action)`. */

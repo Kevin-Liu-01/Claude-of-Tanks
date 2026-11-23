@@ -78,51 +78,46 @@ const advance = (ms) => {
 try {
   const hudRuntime = initHud(bus);
   hudRuntime.setMode('battle');
+  // (notices-audit-275) the HUD's events go through the battle notices' event lane (battleNoticeEvents.ts, whose own receipt
+  // holds its rules): the seat is .cot-alert, drawn in the kit's notice markup
   const alert = created.find((node) => node.classes.has('cot-alert'));
-  const count = created.find((node) => node.classes.has('cot-alert-count'));
-  bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
-  assert.equal(alert.classes.has('show'), true, 'the alert shows');
-  assert.equal(alert.dataset.severity, 'success', 'an engaged suspension is a success');
-  assert.equal(alert.getAttribute('role'), 'status', 'a success is polite');
-  assert.equal(count.textContent, '', 'one alert carries no count');
+  assert.equal(alert.dataset.datum, 'notices', 'the seat carries the notices datum');
+  bus.emit('mode:wave_started', { wave: 2 });
+  assert.equal(alert.classes.has('show'), true, 'the event shows');
+  assert.equal(alert.dataset.severity, 'warning', 'an incoming wave is a warning');
+  assert.equal(alert.getAttribute('role'), 'status', 'a warning is polite');
+  assert.match(alert.innerHTML, /cot-c-notice__text/, 'in the kit\'s notice markup');
+  assert.doesNotMatch(alert.innerHTML, /cot-c-notice__count/, 'one event carries no count');
   advance(1000);
-  bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
-  assert.equal(count.textContent, '×2', 'a repeat while it shows raises its count');
-  advance(2000);
-  assert.equal(alert.classes.has('show'), true, 'a repeat restarts its time');
+  bus.emit('mode:wave_started', { wave: 2 });
+  assert.match(alert.innerHTML, /×2/, 'a repeat while it shows raises its count');
   bus.emit('ui:pause', { on: true });
   advance(10000);
   assert.equal(alert.classes.has('show'), true, 'the game\'s pause holds its time');
   bus.emit('ui:pause', { on: false });
-  advance(500);
-  assert.equal(alert.classes.has('show'), false, 'it leaves with the time it had left');
-  bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
-  assert.equal(count.textContent, '', 'after it leaves, the count starts again');
-  // the band's line (the kit's NoticeQueue): an error takes it from a success, in the sprite's alert glyph and assertive,
-  // and the success it displaced shows again after it, unless it waited too long
-  const glyph = created.find((node) => node.classes.has('cot-alert-icon'));
   advance(100);
   bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
-  assert.equal(alert.dataset.severity, 'error', 'an error takes the band from a success');
+  assert.equal(alert.dataset.severity, 'error', 'a threat takes the seat from the battle\'s turn');
   assert.equal(alert.getAttribute('role'), 'alert', 'an error is assertive');
-  assert.match(glyph.innerHTML, /data-icon="alert"/, 'an error wears the sprite\'s alert glyph');
+  assert.match(alert.innerHTML, /data-icon="alert"/, 'an error wears the sprite\'s alert glyph');
+  assert.match(alert.innerHTML, /cot-key-line/, 'ammunition type empty names the keys that pick another');
   advance(2450);
-  assert.equal(alert.dataset.severity, 'success', 'the success it displaced shows again after it');
-  advance(2500);
+  assert.equal(alert.dataset.severity, 'warning', 'the event it displaced shows again after it');
+  advance(3000);
   assert.equal(alert.classes.has('show'), false, 'and leaves in its own time');
-  bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
-  advance(100);
-  bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
-  advance(1500);
-  bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
-  assert.equal(count.textContent, '×2', 'the error counts its repeat');
-  advance(2450);
-  assert.equal(alert.classes.has('show'), false, 'a success that waited past its staleness is dropped, not shown late');
+  // a module outside the HUD raises its event on the bus (battleNoticeEvents.ts BATTLE_EVENT: air support's refusals)
+  bus.emit('ui:battleEvent', { text: 'NOT ENOUGH POINTS', priority: 1, severity: 'warning' });
+  assert.equal(alert.classes.has('show'), true, 'a bus event reaches the lane');
+  assert.match(alert.innerHTML, /NOT ENOUGH POINTS/);
+  bus.emit('ui:battleEvent', { priority: 1 });
+  advance(3000);
+  bus.emit('ui:battleEvent', { text: 'no rung' });
+  assert.equal(alert.classes.has('show'), false, 'one without its words or its rung raises nothing');
   const sixth = created.find((node) => node.classes.has('cot-sixth'));
   assert.equal(sixth.dataset.severity, 'warning', 'detection is a warning');
 } finally {
   globalThis.setTimeout = realTimeout; globalThis.clearTimeout = realClear; performance.now = realNow;
 }
 
-console.log(`hudNotices.selftest: ${rules} notice rules carry no stripe or one-sided coloured border; the alert names its severity, `
-  + 'counts a repeat and holds its time through the pause, and its band queues by severity and drops a stale wait');
+console.log(`hudNotices.selftest: ${rules} notice rules carry no stripe or one-sided coloured border; the HUD's events reach the `
+  + 'event lane: severity named, a repeat counted, the pause holding its time, a threat taking the seat and a key line drawn');

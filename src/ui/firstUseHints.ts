@@ -13,15 +13,17 @@
  * Event-driven: the bus's moments, and a 400 ms step only while a hint shows or waits.
  */
 import type { ActionId } from '../game/input.ts';
-import { battleNotices } from './battleNotices.ts';
+import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
 import { createHintPolicy, START_DELAY_MS, type HintPolicy } from './firstUseHintPolicy.ts';
 import { formatKeyLine, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
 import { t } from './i18n.ts';
+import { readTutorialRecord } from './tutorial/tutorialRecord.ts';
 import {
   abilityPicture, ammoPicture, autoAimPicture, moduleRepairPicture, reloadPicture, shadedHullPicture, suspensionPicture,
-} from './firstUseHintPictures.ts';
+} from './noticeDiagrams.ts';
 
-type HintId = 'armourShading' | 'moduleRepair' | 'reload' | 'autoAim' | 'suspension' | 'airSupport' | 'drone' | 'roofGun' | 'ammoTypes';
+type HintId = 'armourShading' | 'moduleRepair' | 'reload' | 'autoAim' | 'suspension' | 'airSupport' | 'drone' | 'roofGun' | 'ammoTypes'
+  | 'droneFlight' | 'gunshipFlight';
 
 interface HintDef {
   /** Lower shows first. */
@@ -38,6 +40,8 @@ interface HintDef {
   readonly label?: (vars: Readonly<Record<string, string>>) => string;
   /** Taught by the tutorial's battle chapter: a player who finished it skips the hint. */
   readonly taught?: boolean;
+  /** Its line names keyboard keys only (a flight's controls): a pad or a touch layout is not offered it. */
+  readonly keyboardOnly?: boolean;
 }
 
 const HINTS: Readonly<Record<HintId, HintDef>> = {
@@ -61,6 +65,13 @@ const HINTS: Readonly<Record<HintId, HintDef>> = {
     actions: { roofGun: 'roofGun' }, picture: () => abilityPicture('roofGun') },
   ammoTypes: { urgency: 6, durationMs: 8_000, title: 'hud.hint.ammoTypes.title', line: 'hud.hint.ammoTypes.line',
     actions: { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' }, picture: ammoPicture, taught: true },
+  // (notices-audit-275) a flight's controls, at its first flight: before, the flight console's own line for each kind's
+  // first two flights (aerialHud.ts .flight-hint), hidden on a coarse pointer; still keyboard only, its keys a keyboard's
+  droneFlight: { urgency: 0, durationMs: 10_000, title: 'hud.hint.droneFlight.title', line: 'hud.hint.droneFlight.line',
+    actions: { forward: 'forward', left: 'left', back: 'back', right: 'right' }, picture: () => abilityPicture('modeDrone'),
+    keyboardOnly: true },
+  gunshipFlight: { urgency: 0, durationMs: 10_000, title: 'hud.hint.gunshipFlight.title', line: 'hud.hint.gunshipFlight.line',
+    actions: { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' }, picture: () => abilityPicture('modeAc130'), keyboardOnly: true },
 };
 
 const SEEN_KEY = (id: HintId) => `cot.hint.${id}.v1`;
@@ -85,11 +96,8 @@ function readSeen(): Set<string> {
   catch { /* storage off: every hint is new this page */ }
   return seen;
 }
-function tutorialBattleDone(): boolean {
-  // (274) the journey's training battle (ui/tutorial/tutorialRecord.ts): its lessons teach what the first hints would
-  try { return (JSON.parse(localStorage.getItem('cot.tutorial.v1') || '{}') as { training?: string }).training === 'done'; }
-  catch { return false; }
-}
+/** (274) the journey's training battle is done (ui/tutorial/tutorialRecord.ts): its lessons teach what the first hints would. */
+const tutorialBattleDone = (): boolean => readTutorialRecord()?.training === 'done';
 
 export function createFirstUseHints(host: FirstUseHintsHost) {
   const now = host.now ?? (() => performance.now());
@@ -121,17 +129,17 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     const noPrompt = !!def.lineNoPrompt && device !== 'keyboard';
     const detailHtml = noPrompt ? formatKeyLine(host.input, def.lineNoPrompt!, {}) : formatKeyLine(host.input, def.line, actions);
     const settingsPath = `${t('settings.title')} › ${t('settings.tab.gameplay')} › ${t('settings.interface.armorOverlay')}`;
-    battleNotices.show({
+    battleNotices.condition({
       id: `cot-hint-${id}`,
       severity: 'info',
-      className: `cot-first-hint cot-first-hint--${id}`,
+      className: `cot-key-hint cot-first-hint cot-first-hint--${id}`,
       text: t(def.title),
       detailHtml,
       media: { svg: def.picture(), label: def.label ? def.label({ path: settingsPath }) : t(def.title) },
       // (the hint goes by its time; a keyboard needs no close, its key is the hint's own word; a phone and a pad keep one)
       durationMs: def.durationMs,
       dismissible: device !== 'keyboard',
-      priority: -1,
+      priority: NOTICE_PRIORITY.teaching,
     });
     return actions;
   }
@@ -169,6 +177,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
   function offer(id: HintId) {
     if (!inBattle) return;
     if (HINTS[id].taught && tutorialBattleDone()) return;
+    if (HINTS[id].keyboardOnly && inputDevice(host.input) !== 'keyboard') return;
     if (policy.offer(id, HINTS[id].urgency, now())) wake();
   }
 
@@ -189,6 +198,14 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
   host.bus.on('player:reload', (p: { done?: boolean }) => { if (p.done && fired) offer('reload'); });
   host.bus.on('ui:autoAimState', (p: { on?: boolean }) => { if (p.on) offer('autoAim'); });
   host.bus.on('tank:destroyed', (p: { id?: string }) => { if (p.id && p.id === player()) { dead = true; wake(); } });
+  host.bus.on('ui:flightStarted', (p: { kind?: string }) => { offer(p.kind === 'gunship' ? 'gunshipFlight' : 'droneFlight'); });
+  // (notices-audit-275) the game's pause holds the shown hint's time, as it holds the region's (battleNotices.pause)
+  let pausedAt: number | null = null;
+  host.bus.on('ui:pause', (p: { on?: boolean }) => {
+    if (p.on) { pausedAt ??= now(); return; }
+    if (pausedAt !== null && shown) shown.until += now() - pausedAt;
+    pausedAt = null;
+  });
   for (const type of ['battle:ended', 'battle:presented']) host.bus.on(type, () => end());
 
   function end() {

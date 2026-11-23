@@ -68,7 +68,7 @@ assert.doesNotMatch(main, /from '\.\/ui\/firstUseHints\.ts'/, 'the hints module 
 const hints = read('src/ui/firstUseHints.ts');
 assert.match(hints, /armourShading: \{[^}]*actions: \{ key: 'hitboxOverlay' \}/, 'a keyboard reads its own key (the resolver\'s prompt)');
 assert.match(hints, /t\('settings\.interface\.armorOverlay'\)/, 'the tip names the feature as Settings does');
-const pictures = read('src/ui/firstUseHintPictures.ts');
+const pictures = read('src/ui/noticeDiagrams.ts');
 assert.match(pictures, /from '\.\.\/game\/armorShadeColors\.ts'/, 'the tip draws the overlay\'s own colours');
 assert.doesNotMatch(hints + pictures, /from 'three'/, 'the hints\' chunk never loads three.js');
 const en = JSON.parse(read('src/ui/i18nCatalog.en-US.json'));

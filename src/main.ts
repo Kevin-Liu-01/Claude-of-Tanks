@@ -1172,6 +1172,11 @@ const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts')
   watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
   airSupportMode: () => game.ruleset?.mode === 'air_support',
 })));
+// (notices-audit-275) the crew radio's captions (ui/captionLine.ts): loaded at the first rollout, shown when the setting is on
+const captionLineChunk = createLazyChunk(() => import('./ui/captionLine.ts').then(({ createCaptionLine }) => createCaptionLine({
+  root: document.body, doc: document, bus, enabled: () => !!input.getSettings().crewCaptions,
+})));
+bus.on('battle:rollout', () => { void captionLineChunk.load().catch(() => { /* a failed chunk loses the captions, never the battle */ }); });
 // 273: armour colours on for everyone, once (game/armourOverlayDefault.ts): the first rollout the player drives after the
 // flip offers its one-time tip, now the first-use hints' armourShading (its prompt the player's own key, or on a pad or a
 // touch layout the colours' meaning). A watched or couch battle leaves it for the next; colours turned off again before
@@ -3893,6 +3898,18 @@ const battleAgainAction = createBattleAgainAction({
 bus.on('ui:battleAgain', () => { void battleAgainAction.run(); });
 bus.on('ui:battleStart', battleAgainAction.invalidate);
 bus.on('phase:change', battleAgainAction.invalidate);
+// (notices-audit-275) the menus say when the browser goes offline (every Garage opener is a chunk that cannot arrive
+// offline): the kit's connectivity notice, loaded with the first offline moment, never over a battle (its network has its
+// own banner) and back on the menus while still offline
+let connectivity: { refresh(): void } | null = null;
+const watchOffline = (): void => {
+  if (connectivity) return;
+  void import('./ui/components/notice.ts').then(({ watchConnectivity }) => {
+    connectivity ??= watchConnectivity({ offline: t('notice.offline'), online: t('notice.online') }, { active: () => game.phase !== 'battle' });
+  }, () => { /* the kit did not arrive (offline): the openers' own failure marks stand */ });
+};
+if (navigator.onLine === false) watchOffline(); else window.addEventListener('offline', watchOffline, { once: true });
+bus.on('phase:change', () => { connectivity?.refresh(); });
 bus.on('ui:roomOpen', battleAgainAction.invalidate);
 bus.on('network:roomState', battleAgainAction.onRoomState);
 

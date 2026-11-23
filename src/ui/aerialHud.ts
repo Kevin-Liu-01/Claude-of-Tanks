@@ -18,18 +18,6 @@ const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
   const element=document.createElement(tag);element.className=cls;parent.append(element);return element;
 }
-/** A flight's controls line (owner 2026-10-25: only "when its needed"): each kind's first FLIGHT_HINTS flights show it
- *  for FLIGHT_HINT_S seconds, counted in the browser (cot.flight.hints.v1); the keys are Settings > Controls' after that. */
-const FLIGHT_HINTS=2,FLIGHT_HINT_S=12,FLIGHT_HINTS_KEY='cot.flight.hints.v1';
-function takeFlightHint(kind:string):boolean{
-  try{
-    const seen=JSON.parse(localStorage.getItem(FLIGHT_HINTS_KEY)||'{}') as Record<string,number>;
-    const count=Number(seen[kind])||0;
-    if(count>=FLIGHT_HINTS)return false;
-    seen[kind]=count+1;localStorage.setItem(FLIGHT_HINTS_KEY,JSON.stringify(seen));
-    return true;
-  }catch{return false;}
-}
 function icon(parent:HTMLElement,name:UiIconId,cls='flight-icon'):HTMLElement {
   const host=node('span',cls,parent);host.innerHTML=uiIconSVG(name,22);host.setAttribute('aria-hidden','true');return host;
 }
@@ -133,7 +121,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
     button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship')bus.emit('ui:shellSelect',{slot});});
     return {button,status};
   });
-  const actions=node('div','flight-actions',panel),hint=markDatum(node('span','flight-hint',actions),'hints');
+  const actions=node('div','flight-actions',panel);
   const back=node('button','cot-drone-return',actions);back.type='button';icon(back,'undo');
   const backLabel=node('span','',back);backLabel.textContent=t('flight.return');
   const backKey=node('kbd','flight-key',back);backKey.textContent='V';
@@ -141,7 +129,6 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const reload=createVehicleCooldownReader();
   let priorTime=0,priorX=0,priorY=0,priorZ=0,speed=0,wasActive=false,kind='';
   /** Until when this flight shows its controls line (a first flight's), or -1. */
-  let hintUntil=-1;
   let priorRecallLocked:boolean|null=null;
   let batteryCharge=NaN;
   function updateWeapons(player:HudTank|null|undefined,now:number):void {
@@ -220,7 +207,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       setHidden(designation,!designationLine);setText(designationLabel,title.textContent||'');
       const elapsed=now-priorTime;
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
-      if(!wasActive)hintUntil=takeFlightHint(view.kind)?now+FLIGHT_HINT_S:-1;
+      // (a flight's controls are the first-use hints' droneFlight / gunshipFlight, battleNotices' condition lane: notices-audit-275)
+      if(!wasActive)bus.emit('ui:flightStarted',{kind:view.kind});
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;
       const carrier=player?.state?.pos,range=carrier?Math.hypot(view.x-carrier.x,view.z-carrier.z):0;
       setHidden(timer.host,!drone);setHidden(link.host,!drone);setHidden(speedometer.host,!drone);
@@ -240,8 +228,6 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
         priorRecallLocked=recallLocked;back.disabled=recallLocked;back.classList.toggle('recall-locked',recallLocked);
         back.dataset.tip=t(recallLocked?'flight.return.locked':'flight.return');
       }
-      setText(hint,t(drone?(recallLocked?'flight.hint.recallLocked':'flight.hint.drone'):'flight.hint.gunship'));
-      setHidden(hint,!(now<hintUntil));
       updateWeapons(player,now);
     },
   };

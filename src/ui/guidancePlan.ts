@@ -42,6 +42,8 @@ const GUIDANCE_GAP = 6;
 /** The narrowest a card or a toast may be laid out (px), and the least a card may shrink to (its fit takes the rest). */
 const GUIDANCE_CARD_MIN_W = 200;
 const GUIDANCE_TOAST_MIN_W = 200;
+/** The narrowest a caption line may be laid out (px). */
+const GUIDANCE_CAPTION_MIN_W = 220;
 const GUIDANCE_CARD_MIN_H = 96;
 /** The card's least of all, on the smallest phones only (568 x 290): its words wrap and its fit tightens them. */
 const GUIDANCE_CARD_LEAST = { w: 150, h: 72 } as const;
@@ -73,6 +75,10 @@ export interface GuidanceInput {
   readonly card: GuidanceSize | null;
   /** The toasts' column while one shows. */
   readonly toasts: GuidanceSize | null;
+  /** The crew radio's caption line while one shows (ui/captionLine.ts). */
+  readonly captions?: GuidanceSize | null;
+  /** The sight's keep-out (also among `soft`): the caption line never lies on it (Kevin, 2026-11-21). */
+  readonly sight?: readonly GuidanceBox[];
 }
 
 interface GuidancePlace extends GuidanceBox {
@@ -90,6 +96,11 @@ export interface GuidancePlan {
    *  card, or on the smallest phones while a centre notice shows); they show when one frees. */
   readonly toasts: GuidancePlace | null;
   readonly toastsWait: boolean;
+  /** The caption line's place (notices-audit-275): on the centre line from the window's middle down, so below the sight
+   *  where it can, clear of the card, the toasts, the centre notices (the detection and the event lane, in `never`) and
+   *  every control; null while it waits (where nothing clears those, it shows when one frees). */
+  readonly captions: GuidancePlace | null;
+  readonly captionsWait: boolean;
   /** Every surface placed cleared the hard boxes (toasts that wait are not placed). */
   readonly cleared: boolean;
 }
@@ -215,11 +226,22 @@ function placeGuidanceToasts(input: GuidanceInput, card: GuidanceBox | null): Gu
   return input.toasts ? place(input.toasts, GUIDANCE_TOAST_MIN_W, null, input, card ? [card] : [], input.top) : null;
 }
 
-/** Where the tutorial's card and the battle's toasts stand, the centre notices already placed (see the module comment). */
+/** The caption line's place once the card and the toasts have theirs: from the window's middle down, never on an
+ *  instrument (a caption is the least of the three; it waits rather than lie on one). */
+function placeGuidanceCaptions(input: GuidanceInput, placed: readonly GuidanceBox[]): GuidancePlace | null {
+  if (!input.captions) return null;
+  const keepOut = { ...input, hard: [...input.hard, ...(input.sight ?? [])] };
+  const at = place(input.captions, GUIDANCE_CAPTION_MIN_W, null, keepOut, placed, Math.max(input.top, input.height / 2));
+  return at && at.tier < 2 && !at.offCentre ? at : null;
+}
+
+/** Where the tutorial's card, the battle's toasts and the caption line stand, the centre notices already placed (see the
+ *  module comment). */
 export function planGuidance(input: GuidanceInput, card: GuidancePlace | null = placeGuidanceCard(input)): GuidancePlan {
   const toasts = placeGuidanceToasts(input, card);
+  const captions = placeGuidanceCaptions(input, [card, toasts].filter((box): box is GuidancePlace => !!box));
   return {
-    card, toasts, toastsWait: !!input.toasts && !toasts,
+    card, toasts, toastsWait: !!input.toasts && !toasts, captions, captionsWait: !!input.captions && !captions,
     cleared: (!input.card || (!!card && card.tier < 2)) && (!toasts || toasts.tier < 2),
   };
 }

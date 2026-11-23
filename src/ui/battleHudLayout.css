@@ -191,6 +191,18 @@ body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--h
    card, the centre notices and every control, or their wait while no such box exists (a phone under a card) */
 body[data-cot-battle-layout][data-hud-guidance~=toasts] .cot-battle-notices[data-placement=top]{left:var(--hud-battle-notices-left);top:var(--hud-battle-notices-top);width:var(--hud-battle-notices-width);max-width:none;transform:none}
 body[data-cot-battle-layout][data-hud-guidance~=toasts-wait] .cot-battle-notices:not(:has(.cot-aim-notice)){visibility:hidden}
+/* (notices-audit-275) the crew radio's caption line (captionLine.ts): a subtitle on the HUD's plate, the speaker's role in
+   the accent before the words, at the guidance plan's place (guidancePlan.ts captions: below the sight, off the centre
+   notices and every control); unseen until placed, and while it waits or the killcam runs */
+.cot-caption-line{position:fixed;z-index:var(--hud-layer-controls);left:50%;top:60%;box-sizing:border-box;width:max-content;
+  max-width:min(560px,calc(100vw - 32px));display:flex;justify-content:center;align-items:baseline;gap:var(--s2);
+  padding:var(--s1) var(--s3);border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);
+  font:500 var(--battle-fs-13)/1.35 var(--font-body);text-align:center;pointer-events:none;transform:translateX(-50%);
+  overflow-wrap:anywhere;line-break:strict}
+.cot-caption-line[hidden]{display:none}
+.cot-caption-line__who{flex:none;color:var(--text-accent);font-weight:700}
+body:not([data-hud-guidance~=captions]) .cot-caption-line,body.cot-kc-live .cot-caption-line{visibility:hidden}
+body[data-hud-guidance~=captions] .cot-caption-line{left:var(--hud-caption-left);top:var(--hud-caption-top);width:var(--hud-caption-width);transform:none}
 /* (its notices on the battle's one notice plate, the centre's angled one, their glyph and words centred on their action:
    in the kit's rounded plate a parked gun-limit chip read as another kit beside DETECTED, and the reconnect notice's line
    stood 9 px over its Leave button's middle, gauntlet r18) */
@@ -205,16 +217,19 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 /* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
    notification part maybe on right that shows what it is") every first-use hint (firstUseHints.ts, the armour tip the
-   first of them): its one line and its key's line beside its picture (firstUseHintPictures.ts), no glyph, 56 px tall and at most
+   first of them): its one line and its key's line beside its picture (noticeDiagrams.ts), no glyph, 56 px tall and at most
    260 wide and never wider than the guidance's box (at 255 in a 246 px box it ran onto the ammunition at 390x844), about
-   a third of the tip's old plate; where to turn it off is the picture's label */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__glyph{display:none}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__body{gap:1px}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
+   a third of the tip's old plate; where to turn it off is the picture's label. (notices-audit-275) The layout is every
+   key-hint notice's, .cot-key-hint: the overturned tank's notice (hud.ts) wears it too, its diagram beside its key line */
+/* (notices-audit-275) its own case and height over the aim chip's (.cot-aim-notice: upper case, and a 24 px row on a short
+   phone) when the overturned tank's notice wears it */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px;height:auto;white-space:normal;text-transform:none}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__glyph{display:none}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__body{gap:1px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__media{width:64px;height:48px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-key-hint .cot-c-notice__media{width:64px;height:48px}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -674,12 +689,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert{
     font-size:var(--battle-fs-11);line-height:1.2;letter-spacing:.035em;padding:var(--s1) var(--s3);gap:var(--s1);min-height:28px;
   }
-  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon,
-  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon svg{width:16px;height:16px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert .cot-c-notice__glyph,
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert .cot-c-notice__glyph svg{width:16px;height:16px}
   /* (the 11 px floor, 246) a mouse window this small seats its alert in the 9 px type's reserves (mouseNoticePlan.ts
      ALERT_RESERVE_9): its alert is its glyph, the words in the live region and its title (a touch layout measures its box) */
-  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-alert-icon,.cot-alert-icon svg){width:16px;height:16px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-alert .cot-c-notice__body{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-alert .cot-c-notice__glyph,.cot-alert .cot-c-notice__glyph svg){width:16px;height:16px}
 }
 
 /* Mouse centre notices: battleHudLayout.ts sets each one's top (and the alert's width) from mouseNoticePlan.ts, off
@@ -695,7 +710,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
   white-space:normal;transform:translate(-50%,7px);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert.show{transform:translate(-50%,0)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert-copy{overflow-wrap:anywhere}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert .cot-c-notice__body{overflow-wrap:anywhere}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle{
   top:var(--hud-countdown-top,22%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
 }
@@ -761,6 +776,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
+/* (notices-audit-275) the event's line and its detail side by side in the one row; on touch its words start at the glyph's
+   inset, as the band's single line did */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert .cot-c-notice__body{flex-direction:row;gap:var(--s2)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert .cot-c-notice__body{align-items:flex-start}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-touch-notices~='one-row'],[data-touch-notices~='uncleared']) .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}

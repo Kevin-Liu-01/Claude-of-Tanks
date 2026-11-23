@@ -366,7 +366,7 @@ interface StudioPanelRuntime {
    * What an action did, as the kit's toast over the picture: the sentence, and an optional technical detail on its own
    * line. Information fades after a few seconds; an error stays until dismissed or replaced, and announces as an alert.
    */
-  notice(text: string, tone?: 'info' | 'error', detail?: string): void;
+  notice(text: string, tone?: 'info' | 'success' | 'warning' | 'error', detail?: string): void;
   setPlaceArmed(specId: string | null): void;
   setSelected(actor: StudioActor | null): void;
   setSelectedEffect(effect: StudioEffect | null): void;
@@ -555,7 +555,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     restoreBtn.disabled = true;
     // (round 2 U36) a restore the exit took back resolves false; one that failed says so instead of an unhandled rejection
     void S.restoreAutosave()
-      .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })))
+      .catch((error: RuntimeValue) => say(t('studio.loadFailed', { error: errorMessage(error) }), 'error'))
       .finally(() => { release(); restoreBtn.disabled = restores.held; api.refreshHistory(); });
   });
   const undoBtn = iconButton(t('studio.ws.undoTitle'));
@@ -870,7 +870,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     timeMenu.setDisabled(true);
     S.setTimeOfDay(time)
       // (round 2 U36) a closed session's change ends quietly: its cancel, or a build the next session superseded
-      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(errorMessage(error)); })
+      .catch((error: RuntimeValue) => { if (owner.current()) say(errorMessage(error), 'error'); })
       .finally(() => { release(); timeMenu.setDisabled(panelBusy()); api.refreshMap(); });
   }
   const timeMenu = createPickerMenu(timeHost, {
@@ -964,7 +964,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       while (mine.pending && mine.owner.current()) {
         const next = mine.pending;
         mine.pending = null;
-        try { await S.setLight(next as StudioLight); } catch (error) { if (mine.owner.current()) flashBusy(errorMessage(error as RuntimeValue)); }
+        try { await S.setLight(next as StudioLight); } catch (error) { if (mine.owner.current()) say(errorMessage(error as RuntimeValue), 'error'); }
       }
     };
     void pump().finally(() => { if (lightPump === mine) lightPump = null; refreshSun(); });
@@ -1151,7 +1151,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const release = mapPicks.take(owner);
     setMapLoading();
     Promise.resolve(S.setMap(id))
-      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.mapFailed', { error: errorMessage(error) })); })
+      .catch((error: RuntimeValue) => { if (owner.current()) say(t('studio.mapFailed', { error: errorMessage(error) }), 'error'); })
       .finally(() => {
         release();
         setMapLoading();
@@ -1368,12 +1368,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     fn(S._internal.selected);
   const withSelected = <Result>(fn: (actor: StudioActor) => Result): Result | null => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy(t('studio.selectActorFirst')); return null; }
+    if (!actor) { say(t('studio.selectActorFirst'), 'info'); return null; }
     return fn(actor);
   };
   const atMarker = <Result>(fn: () => Result): Result | null => {
     if (!S._internal.markerActive) {
-      flashBusy(t('studio.clickBattlefieldPlaceMarker'));
+      say(t('studio.clickBattlefieldPlaceMarker'), 'info');
       return null;
     }
     return fn();
@@ -1413,7 +1413,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     [t('studioPanel.fx.recoilFlash'), () => withSelected((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }))],
     [t('studioPanel.fx.tracerMarker'), () => withSelected((a) => {
       if (!S._internal.markerActive) {
-        flashBusy(t('studioPanel.fx.placeTracerOrigin'));
+        say(t('studioPanel.fx.placeTracerOrigin'), 'info');
         return false;
       }
       const m = S._internal.markerPos;
@@ -1550,7 +1550,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const keyActorBtn = kitButton(t('studio.keySelectedTank'));
   keyActorBtn.addEventListener('click', () => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
+    if (!actor) { say(t('studio.selectTankFirst'), 'info'); return; }
     S.keyActor(actor);
   });
   // the timeline's header adds shots and keys tanks (these two stay as the controls it drives, out of the panel)
@@ -1561,7 +1561,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const clearTrackBtn = kitButton(t('studio.clearTankTrack'), 'danger');
   clearTrackBtn.addEventListener('click', () => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
+    if (!actor) { say(t('studio.selectTankFirst'), 'info'); return; }
     S.clearActorTrack(actor);
   });
   railRow.append(railBtn, clearTrackBtn);
@@ -1590,9 +1590,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     try {
       S.directDuel({ variant: duelVariant });
       duelVariant = (duelVariant + 1) % 4;
-      flashBusy(t('studio.duelReady'));
+      say(t('studio.duelReady'), 'success');
     } catch (error) {
-      flashBusy(errorMessage(error));
+      say(errorMessage(error), 'error');
     }
   });
   const resetFxBtn = kitButton(t('studio.clearAllEffects'), 'danger');
@@ -1625,7 +1625,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   globalGroup.body.appendChild(secCam);
   const secPicture = section('picture', t('studioPanel.section.picture'), 'visionThermal');
   const picturePanel = mountStudioPicturePanel(S, secPicture, {
-    sliderRow, selectedActor: () => S._internal.selected, flash: (text) => flashBusy(text),
+    sliderRow, selectedActor: () => S._internal.selected, flash: (text, tone) => say(text, tone),
   });
   globalGroup.body.appendChild(secPicture);
   function orbitCamera(): void {
@@ -1787,10 +1787,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       samples: Number(filmBlur.seg.value),
       shake: Number(filmShake.seg.value),
     })
-      .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
-      .catch((error: RuntimeValue) => flashBusy(aborted(error)
+      .then((result) => say(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) }), 'success'))
+      .catch((error: RuntimeValue) => say(aborted(error)
         ? t('studio.film.cancelled')
-        : t('studio.film.failed', { error: errorMessage(error) })));
+        : t('studio.film.failed', { error: errorMessage(error) }), aborted(error) ? 'info' : 'error'));
   }
   let filmSignature = '';
   function updateFilmSummary(): void {
@@ -1834,8 +1834,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     if (panelBusy()) return; // (audit F9) a take records over nothing else in flight
     S.recordVideo({ fps: Number(fpsSel.seg.value), download: true })
-      .then((result) => flashBusy(t('studio.videoSaved', { size: (result.size / 1048576).toFixed(1) })))
-      .catch((error: RuntimeValue) => flashBusy(t('studio.recordFailed', { error: errorMessage(error) })));
+      .then((result) => say(t('studio.videoSaved', { size: (result.size / 1048576).toFixed(1) }), 'success'))
+      .catch((error: RuntimeValue) => say(t('studio.recordFailed', { error: errorMessage(error) }), 'error'));
     api.refreshStoryboard();
   });
   const recStatus = el('div', 'recStatus', t('studio.recordReady'));
@@ -1870,7 +1870,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const owner = S.sessionToken(); // (audit F9) a file read that lands after an exit never re-enters the Studio
     f.text().then((txt) => (panelBusy() ? undefined : S.load(JSON.parse(txt), { owner })))
       // (round 2 U36) a load its session's exit took back ends quietly, in a Studio entered again too
-      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.loadFailed', { error: errorMessage(error) })); });
+      .catch((error: RuntimeValue) => { if (owner.current()) say(t('studio.loadFailed', { error: errorMessage(error) }), 'error'); });
     fileIn.value = '';
   });
   loadBtn.addEventListener('click', () => fileIn.click());
@@ -1878,7 +1878,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   copyBtn.addEventListener('click', () => {
     const txt = JSON.stringify(S.state());
     if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
-    flashBusy(t('studio.sceneJsonCopied'));
+    say(t('studio.sceneJsonCopied'), 'success');
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
   // the scene's link is the header's Copy scene link (one control, one style: the s13 critic read a capitals twin here)
@@ -1892,18 +1892,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (e.shiftKey) {
         try {
           localStorage.setItem(key, JSON.stringify(S.state()));
-          flashBusy(t('studio.savedSlot', { n: i }));
-        } catch (_) { flashBusy(t('studio.saveFailed')); }
+          say(t('studio.savedSlot', { n: i }), 'success');
+        } catch (_) { say(t('studio.saveFailed'), 'error'); }
       } else {
         const txt = localStorage.getItem(key);
         if (!txt) {
-          flashBusy(t('studio.slotEmpty', { n: i }));
+          say(t('studio.slotEmpty', { n: i }), 'info');
           return;
         }
         if (panelBusy()) return; // (audit F9) a slot replaces the scene
         const owner = S.sessionToken();
         S.load(JSON.parse(txt))
-          .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.loadFailed', { error: errorMessage(error) })); });
+          .catch((error: RuntimeValue) => { if (owner.current()) say(t('studio.loadFailed', { error: errorMessage(error) }), 'error'); });
       }
     });
     slotRow.appendChild(b);
@@ -1918,11 +1918,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // sits above the function: loadFailure.selftest's OPENERS row looks for pressFailed within 300 characters of its head.
   function openArchive(): void {
     if (loadFailed(archiveBtn) && panelBusy()) {
-      flashBusy(t('studio.error.busy'));
+      say(t('studio.error.busy'), 'warning');
       return;
     }
     if (pressFailed(archiveBtn)) {
-      if (navigator.onLine === false) flashBusy(t('loadFailed.generic'));
+      if (navigator.onLine === false) say(t('loadFailed.generic'), 'error');
       return;
     }
     let dialog = document.querySelector<HTMLDialogElement>('.cot-studio-archive');
@@ -1956,10 +1956,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         console.warn('[studio] the field frames archive\'s stylesheet did not load', error);
         shown.close();
         markLoadFailed([archiveBtn]);
-        flashBusy(t('loadFailed.generic'));
+        say(t('loadFailed.generic'), 'error');
       })
       // the archive's own data (its manifest) is asked again by the next press (mediaArchive.ts unmarks a failed mount)
-      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
+      .catch((error: RuntimeValue) => say(errorMessage(error), 'error'));
   }
 
   // --- the shelf (09-studio .shelf): the templates, the sequences then the filmed scenes, each staged by a press; the
@@ -2607,11 +2607,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const a = S._internal.selected;
     if (a) { S.updateActor(a, patch); }
   }
-  let busyTimer: ReturnType<typeof setTimeout> | null = null;
-  function flashBusy(text: string): void {
-    api.setBusy(text);
-    if (busyTimer !== null) clearTimeout(busyTimer);
-    busyTimer = setTimeout(() => api.setBusy(null), 1600);
+  /** A passing word to the director: the Studio's one notice (the kit's, in the viewport's region: api.notice), its tone the
+   *  word's (notices-audit-275: a 1.6 s busy flash said errors too, gone before they were read; an error now stays until
+   *  dismissed). */
+  function say(text: string, tone: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
+    api.notice(text, tone);
   }
   /** warn/danger tint of a tank's silhouette by damage state */
   function stateClass(name: StudioActorState): string {

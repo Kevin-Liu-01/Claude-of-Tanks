@@ -2194,13 +2194,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
     if (customCamoStudioFailed) markLoadFailed([option], t('garage.camo.customStudioRetryTitle'));
-    if (reloadsForFailure(option, 'cot-custom-camo', t('garage.camo.customStudioRetryTitle'))) return;
+    if (reloadsForFailure(option, 'cot-custom-camo-load', t('garage.camo.customStudioRetryTitle'))) return;
     option?.setAttribute('aria-busy', 'true');
     try {
       await customCamoStudioAccess?.open(garageScreen.ticket().current);
     } catch (error) {
       customCamoStudioFailed = true;
-      reportLoadFailure('cot-custom-camo', t('garage.camo.customStudioRetryTitle'), [option]);
+      reportLoadFailure('cot-custom-camo-load', t('garage.camo.customStudioRetryTitle'), [option]);
       console.warn('[garage] custom camouflage studio failed to load', error);
     } finally {
       option?.removeAttribute('aria-busy');
@@ -2998,13 +2998,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
     const loading = facetPanel.load();
     // (audit R6) a failed load marks the button (the toggle goes back to idle; the next press reloads)
-    void loading.then(() => {}, () => reportLoadFailure('cot-facets-load', t('loadFailed.generic'), [facetToggle]));
+    void loading.then(() => {}, () => reportLoadFailure('cot-facets-load', t('garage.loadFailed.filters'), [facetToggle]));
     return loading;
   });
   facetToggle.addEventListener('click', () => {
     emit('ui:click', {});
     // (audit R6) after a failed load the press reloads the page once online
-    if (reloadsForFailure(facetToggle, 'cot-facets-load', t('loadFailed.generic'))) return;
+    if (reloadsForFailure(facetToggle, 'cot-facets-load', t('garage.loadFailed.filters'))) return;
     facetPanelToggle.press();
   });
   // --- END roster filter ------------------------------------------------------
@@ -3514,7 +3514,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(calloutsShown ? hotspotFacts : null);
       opts.onOverlayChange?.();
-    }, () => reportLoadFailure('cot-hotspots-load', t('loadFailed.generic'), [calloutsButton]));
+    }, () => reportLoadFailure('cot-hotspots-load', t('garage.loadFailed.callouts'), [calloutsButton]));
   };
   const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
   function setCallouts(on: boolean): void {
@@ -3528,7 +3528,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   calloutsButton.addEventListener('click', () => {
     emit('ui:click', {});
-    if (!reloadsForFailure(calloutsButton, 'cot-hotspots-load', t('loadFailed.generic'))) setCallouts(!calloutsShown);
+    if (!reloadsForFailure(calloutsButton, 'cot-hotspots-load', t('garage.loadFailed.callouts'))) setCallouts(!calloutsShown);
   });
   if (calloutsShown) setCallouts(true);
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
@@ -4029,7 +4029,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let deployFieldColumnScroll: number | null = null;
   function openDeployField(): void {
     const fieldTrigger = root.querySelector<HTMLElement>('[data-deploy-field]');
-    if (reloadsForFailure(fieldTrigger, 'cot-deploy-field-load', t('loadFailed.generic'))) return;
+    if (reloadsForFailure(fieldTrigger, 'cot-deploy-field-load', t('garage.loadFailed.battlefields'))) return;
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     if (!pop.firstChild) {
       pop.innerHTML = `<div class="cot-deploy-field-head">${uiIconSVG('map', 16)}<span id="cot-deploy-field-label">${t('garage.battlefield.heading')}</span>` +
@@ -4090,7 +4090,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       deployField = { picker, cards };
       if (!pop.hidden) picker.focus();
-    }, () => { closeDeployField(); reportLoadFailure('cot-deploy-field-load', t('loadFailed.generic'), [fieldTrigger]); });
+    }, () => { closeDeployField(); reportLoadFailure('cot-deploy-field-load', t('garage.loadFailed.battlefields'), [fieldTrigger]); });
   }
   /** The cards a mode can play: all of them, or the one its ruleset lays its range on (the proving ground's). */
   const playableFields = (cards: import('./battlefieldPicker.ts').BattlefieldCard[]): import('./battlefieldPicker.ts').BattlefieldCard[] => {
@@ -4389,7 +4389,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // (audit R6) an opener: a chunk that did not arrive marks the corner button, and its next press reloads
   const quickChunk = createLazyChunk(() => import('./battlefieldFacts.ts'), { opener: true });
   function openQuickMenus(): void {
-    if (reloadsForFailure(quickBtn, 'cot-quick-load', t('loadFailed.generic'))) return;
+    if (reloadsForFailure(quickBtn, 'cot-quick-load', t('garage.loadFailed.quickPicker'))) return;
     // (2026-11-02 audit F5) the menus open only while the Garage that asked still shows
     const ticket = garageScreen.ticket();
     void quickChunk.load().then(({ battlefieldFacts }) => {
@@ -4414,7 +4414,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       quickMenus = { mode, field };
-    }, () => reportLoadFailure('cot-quick-load', t('loadFailed.generic'), [quickBtn])).then(() => {
+    }, () => reportLoadFailure('cot-quick-load', t('garage.loadFailed.quickPicker'), [quickBtn])).then(() => {
       if (!quickMenus || !ticket.current()) return;
       quickMenus.mode.setValue(battleGameMode);
       quickMenus.mode.open(quickBtn);
@@ -4485,7 +4485,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const openCouch = (): boolean => {
     const onCouch = opts.onCouch;
     if (setupCouch.disabled || !selectedId || !onCouch) return false;
-    if (reloadsForFailure(setupCouch, 'cot-couch-load', t('loadFailed.generic'))) return false;
+    if (reloadsForFailure(setupCouch, 'cot-couch-load', t('garage.loadFailed.couch'))) return false;
     const opening = couchOpener.press({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
     if (!opening) return true;
     const request = {
@@ -4499,7 +4499,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     void Promise.resolve().then(() => onCouch(request))
       .catch((error: unknown) => {
         if (!(error instanceof CouchChunkError)) { console.error('[couch] the lobby failed to open', error); return; }
-        reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]);
+        reportLoadFailure('cot-couch-load', t('garage.loadFailed.couch'), [setupCouch]);
         console.warn('[couch] a couch chunk did not arrive', error);
       })
       .finally(() => { couchOpener.settle(opening); });
@@ -4962,7 +4962,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let closePhoto: (() => void) | null = null;
   function openPhoto(): void {
     if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
-    if (reloadsForFailure(photoButton, 'cot-photo-load', t('loadFailed.generic'))) return;
+    if (reloadsForFailure(photoButton, 'cot-photo-load', t('garage.loadFailed.photo'))) return;
     const control = photo;
     const ticket = garageScreen.ticket();
     emit('ui:click', {});
@@ -4974,7 +4974,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
         click: () => emit('ui:click', {}), onClose: () => { closePhoto = null; if (garageScreen.isOpen) photoButton.focus(); },
       });
-    }, () => reportLoadFailure('cot-photo-load', t('loadFailed.generic'), [photoButton]));
+    }, () => reportLoadFailure('cot-photo-load', t('garage.loadFailed.photo'), [photoButton]));
   }
   photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {

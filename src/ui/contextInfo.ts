@@ -214,6 +214,11 @@ export function createInfoButton({
         }).catch(() => {
           const labelElement = copyButton?.querySelector('span');
           if (labelElement) labelElement.textContent = t('contextInfo.copyFailed');
+          // (notices-audit-275) the refusal returns to the button's own word too, as the success does
+          window.setTimeout(() => {
+            const connectedLabel = copyButton?.isConnected ? copyButton.querySelector('span') : null;
+            if (connectedLabel) connectedLabel.textContent = t('contextInfo.copyJson');
+          }, 2000);
         });
       });
       modal.footer.appendChild(copyButton);

@@ -30,7 +30,7 @@ const GLYPH: Readonly<Record<NoticeSeverity, IconId>> = { info: 'info', success:
 /** How long a toast stays by severity, in ms; null: until it is dismissed (an error, a progress). */
 const DURATION: Readonly<Record<NoticeSeverity, number | null>> = { info: 4500, success: 4500, warning: 7000, error: null, progress: null };
 
-interface NoticeContent {
+export interface NoticeContent {
   readonly severity?: NoticeSeverity;
   /** The one line that says what happened. */
   readonly text: string;
@@ -54,7 +54,9 @@ interface StaticAction {
   readonly attrs?: Attrs;
 }
 
-function content(options: NoticeContent): string {
+/** A notice's inner markup (glyph, words, detail line, picture), for a surface that keeps its own plate and seat: the battle's
+ *  event lane (battleNoticeEvents.ts) draws its events with it inside the planners' alert seat. */
+export function noticeContentHtml(options: NoticeContent): string {
   const severity = options.severity ?? 'info';
   return `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
     + `<span class="cot-c-notice__body"><span class="cot-c-notice__text">${esc(options.text)}</span>`
@@ -79,7 +81,7 @@ export function notice(options: NoticeContent & { readonly actions?: readonly St
   const acts = options.actions?.length
     ? `<span class="cot-c-notice__acts">${options.actions.map((a) => actionButton(a.label, a.primary, a.attrs)).join('')}</span>` : '';
   return `<div class="cot-c-notice${options.className ? ` ${options.className}` : ''}" data-severity="${severity}"${role}>`
-    + `${content(options)}${acts}</div>`;
+    + `${noticeContentHtml(options)}${acts}</div>`;
 }
 
 /** A notice across its container's width (offline, a version refusal). */
@@ -332,7 +334,7 @@ function render(region: Region, toast: QueuedToast, el: HTMLElement): void {
   const close = dismissible
     ? `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost cot-c-notice__close" data-notice-close `
       + `aria-label="${esc(t('notice.dismiss'))}">${icon('close', { size: 16 })}</button>` : '';
-  el.innerHTML = `${content(o)}${count}${progress}${acts}${close}`;
+  el.innerHTML = `${noticeContentHtml(o)}${count}${progress}${acts}${close}`;
   el.onclick = (event) => {
     const target = (event.target as Element | null)?.closest<HTMLElement>('[data-notice-action],[data-notice-close]');
     if (!target) return;
@@ -459,13 +461,28 @@ export function pauseNotices(paused: boolean): void {
   applyPause();
 }
 
-/** One offline notice while the browser is offline, replaced by a short "back online" when it returns. */
-export function watchConnectivity(text: { readonly offline: string; readonly online: string }, region = 'menu'): () => void {
-  if (typeof window === 'undefined') return () => {};
-  const offline = (): void => { notify({ id: 'cot-connectivity', severity: 'warning', text: text.offline, durationMs: null, dismissible: false, priority: 10, region }); };
-  const online = (): void => { notify({ id: 'cot-connectivity', severity: 'success', text: text.online, durationMs: undefined, dismissible: true, region }); };
+/** One offline notice while the browser is offline, replaced by a short "back online" when it returns. `active` gates it
+ *  (the game's menus, never over a battle, whose network has its own banner); `refresh` re-reads the gate (a phase
+ *  change): the notice leaves where it may not show and comes back where it may, while the browser is still offline. */
+export function watchConnectivity(text: { readonly offline: string; readonly online: string },
+  options: { readonly region?: string; readonly active?: () => boolean } = {}): { stop(): void; refresh(): void } {
+  if (typeof window === 'undefined') return { stop: () => {}, refresh: () => {} };
+  const region = options.region ?? 'menu';
+  const active = options.active ?? (() => true);
+  const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.onLine === false;
+  const offline = (): void => {
+    if (!active()) return;
+    notify({ id: 'cot-connectivity', severity: 'warning', text: text.offline, durationMs: null, dismissible: false, priority: 10, region });
+  };
+  const online = (): void => {
+    if (!active()) { dismissNotice('cot-connectivity'); return; }
+    notify({ id: 'cot-connectivity', severity: 'success', text: text.online, durationMs: undefined, dismissible: true, region });
+  };
   window.addEventListener('offline', offline);
   window.addEventListener('online', online);
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) offline();
-  return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
+  if (isOffline()) offline();
+  return {
+    stop: () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); },
+    refresh: () => { if (!active()) dismissNotice('cot-connectivity'); else if (isOffline()) offline(); },
+  };
 }
