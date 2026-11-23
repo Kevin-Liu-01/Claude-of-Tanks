@@ -19,7 +19,7 @@ import { guideFollow } from './pointerBoard.ts';
 import { createPointerLayer, type PointerLayer, type PointerSnapshot } from './pointerLayer.ts';
 import {
   missileWarnings, objectiveFollow, pickFollow, strikeWarnings, tankWarnings, type FollowPointer, type ScreenBox, type ScreenPoint,
-  type WarnMissile, type WarnPointer, type WarnStrike, type WarnTank, type WorldPoint,
+  type WarnAircraft, type WarnMissile, type WarnPointer, type WarnStrike, type WarnTank, type WorldPoint,
 } from './pointerPlan.ts';
 import { GUIDANCE_CARD, GUIDANCE_CONTROLS, GUIDANCE_HARD } from '../battleHudLayout.ts';
 
@@ -154,7 +154,8 @@ export function createBattlePointers(groundAt: () => ((x: number, z: number) => 
       }
       warns.push(...tankWarnings(player, hulls));
       const strikes = markers.filter((marker) => marker.kind === 'strike') as readonly WarnStrike[];
-      if (strikes.length) warns.push(...strikeWarnings(player, strikes));
+      const aircraft = markers.filter((marker) => marker.kind === 'aircraft') as readonly WarnAircraft[];
+      if (strikes.length) warns.push(...strikeWarnings(player, strikes, aircraft));
       const missiles: WarnMissile[] = [];
       for (const value of frame.shells ?? []) {
         const shell = value as PointerShell;
