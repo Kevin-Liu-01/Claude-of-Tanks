@@ -188,7 +188,7 @@
   "namer_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b73e1c67718cb552","gun":"7839a02cdf0464ae"}},
   "object148_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"90a29dfca36de810","gun":"db9c56bf1384b697"}},
   "object195": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"23fa99e7879d609d","gun":"bc54d7abbd9db6df"}},
-  "object292": {"status":"gap","kind":"turret","mouths":1,"worstMm":156,"openings":4,"geometry":{"turret":"b9f632ee85d485c2","gun":"664ba75fcd0df1cf"}},
+  "object292": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b9f632ee85d485c2","gun":"5201ae7defa6ca85"}},
   "object477_molot": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fd4c66967aa1ad27","gun":"17a221519ec0585c"}},
   "object695": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"254ed784121a66c7","gun":"2a91b32ea38edb1a"}},
   "olifant_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2153e69778c0cf47","gun":"6cb513123aa0e407"}},

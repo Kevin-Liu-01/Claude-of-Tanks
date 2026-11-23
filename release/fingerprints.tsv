@@ -577,7 +577,7 @@ file	gate	docs/geometry-gate/ztz100_prototype.json	6db27603016d9c37
 file	gate	docs/geometry-gate/ztz85_iii.json	a2b6b1985e5f375e
 file	gate	docs/geometry-gate/ztz99_longwei.json	009852eda62f87db
 file	gate	docs/geometry-gate/ztz99a2.json	5158653d8b9c615e
-file	gunLines	docs/geometry-gate/gun-junction.json	095f37dab9080fe7
+file	gunLines	docs/geometry-gate/gun-junction.json	5a198d0bd3311e8d
 file	icons	public/icons/tank-assets/index.json	46881c9fd0046165
 file	icons	public/icons/tank-assets/tanks/abramsx.json	a5c0df73dff70c8f
 file	icons	public/icons/tank-assets/tanks/aft10.json	5aea45cf26a6c426
@@ -749,7 +749,7 @@ file	icons	public/icons/tank-assets/tanks/merkava4b.json	ca07a0e28ed09e68
 file	icons	public/icons/tank-assets/tanks/namer_ifv.json	344aa8c3e962b3dc
 file	icons	public/icons/tank-assets/tanks/object148_proto.json	a7766ad7252b8dc6
 file	icons	public/icons/tank-assets/tanks/object195.json	9ae8b6ef017e990c
-file	icons	public/icons/tank-assets/tanks/object292.json	4ab2d0b5505adefe
+file	icons	public/icons/tank-assets/tanks/object292.json	25b3e27883bc5940
 file	icons	public/icons/tank-assets/tanks/object477_molot.json	45639eaf988da3ec
 file	icons	public/icons/tank-assets/tanks/object695.json	0154f9fc0fc6d0e5
 file	icons	public/icons/tank-assets/tanks/olifant_mk1.json	825b375731512042
@@ -892,7 +892,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	ea5c81ebdeecf7f1
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	466836cc3350419e
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	917527dd3a22ada4
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	e991aaf48e08c04c
-file	ledger	docs/references/fleet-geometry-ledger.json	00fafda46353af9f
+file	ledger	docs/references/fleet-geometry-ledger.json	e0a62502bca24cb8
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	e8eed0cfc487b040
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	890cf11e8a4996f5
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -996,9 +996,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	b6694e88
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	7fb0d925d0c87540
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	0a5919efdde7c859
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	bbe8e989b5cc7271
-file	seats	src/sim/missionAttachmentSeats.generated.ts	7ff64bf427a73b6e
+file	seats	src/sim/missionAttachmentSeats.generated.ts	05a9d6c0cb857d27
 file	seats	src/sim/missionDockSeats.generated.ts	e5153bd9a4776893
-file	spareTrack	docs/geometry-gate/spare-track.json	ceb352bad359c6b7
+file	spareTrack	docs/geometry-gate/spare-track.json	9c8da921cb62689a
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	bfd962f3ae1d788c
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	57e3f04eec042e38
@@ -1070,7 +1070,7 @@ group	patton	c3f4492b6eed581e
 group	poland	2f1de0b42d65f538
 group	pumaS1SourceX	b76c9d271e2abf5f
 group	russia	c4bb0bc4a04989a4
-group	russia152	c94161f6b17a2c8e
+group	russia152	9b3692d09b586fb0
 group	sabraMk2SourceX	e8f0be07cc4d4a37
 group	sheridan	781fc0af84158a4d
 group	sinoSovietConcepts	5a1c0ed191200945
@@ -1272,9 +1272,9 @@ key	anatomy	merkava4_trophy	e613b1ecece5e4ea	656c13837e73410e
 key	anatomy	merkava4b	9edf6030a8716ffe	df03e8cfc408a07c
 key	anatomy	namer_ifv	4c3e200fa2348682	434765d57df66790
 key	anatomy	object148_proto	3da69a482d322346	3dd318e689260b3b
-key	anatomy	object195	c6b3d22b14737052	2ad95b1bdf2f318c
-key	anatomy	object292	331e4251fea4b01b	5f60d8296a7edeb0
-key	anatomy	object477_molot	2bc8436e4e35de8f	41dcabf1a5385360
+key	anatomy	object195	ca8d08c179559a8a	2ad95b1bdf2f318c
+key	anatomy	object292	438bf5da75773ab4	5f60d8296a7edeb0
+key	anatomy	object477_molot	b53fa2911f99b22a	41dcabf1a5385360
 key	anatomy	object695	b5b77f0698dcc8b8	53be7414cb0bb034
 key	anatomy	olifant_mk1	84c24af73f5a91fc	bb81b7245dfc5942
 key	anatomy	olifant_mk1a	6ee8efccfbc8f533	bff625095f5613ad
@@ -1312,7 +1312,7 @@ key	anatomy	strv121	25f45932cb003e76	d57e80d60268d6a3
 key	anatomy	strv122	67d992d825200fe5	f78f1ace934f5cd2
 key	anatomy	strv152	17e82da89b5d54d9	b540dd379c0c5110
 key	anatomy	strv81	d4920b357a61d473	0231a2f2cd0d9be6
-key	anatomy	t14_152	a53fc5e0756611bb	06c1a3e594bc4d80
+key	anatomy	t14_152	801f172242587415	06c1a3e594bc4d80
 key	anatomy	t14_armata	cf010e8bb42e8bc2	fb59f47f0295419b
 key	anatomy	t49	4aa74cfb5f250ea8	174dcdcaae577d6a
 key	anatomy	t55a	9b9890c050d1b010	405a35cb290e0629
@@ -1585,9 +1585,9 @@ key	centering	merkava4_trophy	f24f8e7819dbe6e8	44234595c7a04756
 key	centering	merkava4b	244fcad01e6d0f66	f8eeee4ff7b60874
 key	centering	namer_ifv	f74da13501b32955	d2fed46b1309eebe
 key	centering	object148_proto	c87445afa44b6196	86ebcae4449db848
-key	centering	object195	bd560a409ac78dce	57e4d2936cdf1f45
-key	centering	object292	a331c9b038e24eef	5b44e7e44e812887
-key	centering	object477_molot	689b61c17ea2cbed	99485be00b8551f8
+key	centering	object195	f6dde895c230d4cd	57e4d2936cdf1f45
+key	centering	object292	751f4d32b5acd11c	5b44e7e44e812887
+key	centering	object477_molot	c7b9755fe883b050	99485be00b8551f8
 key	centering	object695	d48d381a30aaf8f5	dcdf681044a7f875
 key	centering	olifant_mk1	58fe2a3a24b1b5ef	14388a3478fbf87b
 key	centering	olifant_mk1a	a82238414c89d5d9	b441272f86faf4a1
@@ -1625,7 +1625,7 @@ key	centering	strv121	134c17e36154c566	030040a71e217567
 key	centering	strv122	802be158fd875d1e	691c31338884506f
 key	centering	strv152	120d4bcf9486e488	8fcc9d6c06bc14c8
 key	centering	strv81	7d8813276e1d5207	3b3a14a4647d72ee
-key	centering	t14_152	6afa20799cf45b6c	f0e975e4e941914e
+key	centering	t14_152	daa47bcb662eff08	f0e975e4e941914e
 key	centering	t14_armata	6419f5f04389ff0f	7ee1a8d644c19157
 key	centering	t49	b283dc46c88265e1	df77d650f5f7464b
 key	centering	t55a	14245d61bc90d367	a4a71c4fc0965598
@@ -1931,9 +1931,9 @@ key	controls	merkava4_trophy	9ee16b3c523d8b67	36f41b7df1e4d53a
 key	controls	merkava4b	0b374143bca1a77b	338ab45400a3d681
 key	controls	namer_ifv	bf51311d4b4475ac	700e32b4e7b637c4
 key	controls	object148_proto	3a1de2712505fcb3	ed7d880ec1ef3cfe
-key	controls	object195	07e09a51672d31a7	5a244b73f7ca56a8
-key	controls	object292	2bfd87e96cf6fd24	7fa577cd2a8affae
-key	controls	object477_molot	d080ef9765f979b8	5ff58c2aecfe23ad
+key	controls	object195	1e06e6872bb436e0	5a244b73f7ca56a8
+key	controls	object292	902ce18f45aa8807	7fa577cd2a8affae
+key	controls	object477_molot	6d7ba1b8fb14db91	5ff58c2aecfe23ad
 key	controls	object695	18b6136df2c3b603	c917c260e9c068e9
 key	controls	olifant_mk1	eab8a210dd96ec38	a5fdaf4a64cc1f92
 key	controls	olifant_mk1a	0ce7ddac8179a60a	a5fdaf4a64cc1f92
@@ -1971,7 +1971,7 @@ key	controls	strv121	e5de76c6fd1b10a6	48f7006afa77f24c
 key	controls	strv122	1d1d01f22839beff	13953e13727e16c0
 key	controls	strv152	af13c6059738d05d	ee5f9fe319305675
 key	controls	strv81	3f3fca37e4b5d93b	a97690cc6514e064
-key	controls	t14_152	2e1916fa9907053a	607fd4c3f67d1e16
+key	controls	t14_152	727df8bfded12786	607fd4c3f67d1e16
 key	controls	t14_armata	0c69a755db9888a8	e8a126d32d753f0c
 key	controls	t49	e65ef969c989937f	8fca232906352f15
 key	controls	t55a	6fa166aa49027cc0	82a4b857bc0b265d
@@ -2244,9 +2244,9 @@ key	fills	merkava4_trophy	f8fc0f30d6f29ce8	f3c6a20c9a220a78
 key	fills	merkava4b	7803822343394afa	65b5011850f827f1
 key	fills	namer_ifv	aa253473243cdefa	3f21a0d8893b2b89
 key	fills	object148_proto	939ac6be73e5f6a7	c928ae8acfdb72cd
-key	fills	object195	d2f609e8aba58ba1	dd05bd540583a969
-key	fills	object292	21162dd628669f38	818bad76fa9f8748
-key	fills	object477_molot	08bb8210baaab740	683de3b3dfb22310
+key	fills	object195	bf16cbb453c5cf4d	dd05bd540583a969
+key	fills	object292	ec122cc377286e4d	818bad76fa9f8748
+key	fills	object477_molot	4757ee2a2472215a	683de3b3dfb22310
 key	fills	object695	6984e8bfb1334275	8b6b1508e1ca6d41
 key	fills	olifant_mk1	fcf0544900eaca8a	0cfcd7610070eee0
 key	fills	olifant_mk1a	58e046d8fc5c4cfc	f04ff83a501e05a7
@@ -2284,7 +2284,7 @@ key	fills	strv121	97441e9d5a50176c	d8e970d30f65406d
 key	fills	strv122	b4709f3148ea6c4a	fb638f125c91b7e8
 key	fills	strv152	1aa9fc50bdddc3c7	33563c8dc3bdb020
 key	fills	strv81	0355cdb5f7314651	64d058b2abf59a95
-key	fills	t14_152	241d70159062afe3	ffe935b5bbf30f00
+key	fills	t14_152	6640bc156649600b	ffe935b5bbf30f00
 key	fills	t14_armata	69f574ab8656a8d5	903744f5e1e86ed3
 key	fills	t49	e570971004805d92	5fd784a28c6a37b4
 key	fills	t55a	5028fd20bc595ed5	52fde1ea2361bbf6
@@ -2851,9 +2851,9 @@ key	gunLines	merkava4_trophy	deb22d51727de29e	d82168d6651c17d4
 key	gunLines	merkava4b	ea870bf1a2d94bf3	06b7b821ddaa8d3e
 key	gunLines	namer_ifv	97c34dcdceef318c	43bddd77972e60d3
 key	gunLines	object148_proto	c303a67f5864cfd2	267a4846b2ef8d1b
-key	gunLines	object195	4d140630e1b874b0	81a072cb426f77f0
-key	gunLines	object292	5f43dd8bef56d562	c6e1f025f44c9816
-key	gunLines	object477_molot	ad3d218e424bc126	0fd2c6962c1862f4
+key	gunLines	object195	3d4c0f10d2b82e12	81a072cb426f77f0
+key	gunLines	object292	33243bc49616cefb	fadaa15c87459e24
+key	gunLines	object477_molot	2a743068724be460	0fd2c6962c1862f4
 key	gunLines	object695	689e4452767deb7e	1ddc17b3a87dea73
 key	gunLines	olifant_mk1	9825e0aa1f9eeac5	480aca1c25716d88
 key	gunLines	olifant_mk1a	d14108f5be2dcfd4	ada0a0f7139dc090
@@ -2891,7 +2891,7 @@ key	gunLines	strv121	709dbf74745910e9	a42cc45e44815556
 key	gunLines	strv122	9ea9557762cb8764	a51198d60842eab5
 key	gunLines	strv152	d2d3efc3f1f46444	4b7ba255768d0b51
 key	gunLines	strv81	c947e75bd837ec4a	98171417982ece90
-key	gunLines	t14_152	33aad9d20320fcd4	72e93537f777bb0a
+key	gunLines	t14_152	20255181033143b5	72e93537f777bb0a
 key	gunLines	t14_armata	a5b8d55992d33309	4badcf81ddaac752
 key	gunLines	t49	c3126cb42e43fbc2	f29e4cd4bcf01e78
 key	gunLines	t55a	3e92deabb0eda489	48740e3a0b3110df
@@ -3164,9 +3164,9 @@ key	icons	merkava4_trophy	6cd65c4b33955305	79e0c5fa701cdb02
 key	icons	merkava4b	f9523a3e0671550c	33c0b93e78daa562
 key	icons	namer_ifv	78b1ade8d32966b2	ec5812e43e99cb3c
 key	icons	object148_proto	026c7782250f964f	e7bb6ed2a172c09f
-key	icons	object195	d63ca7e8a0c6e307	e23563dc9da4ff71
-key	icons	object292	df61f6b44ed821be	03a7fd273a9c387d
-key	icons	object477_molot	ab3148a2f014ca2e	4cdf130976945d80
+key	icons	object195	998ada61392c1ca2	e23563dc9da4ff71
+key	icons	object292	032ced2cc82e1368	1d6a69ba72d8afcb
+key	icons	object477_molot	35ad5b4297ada378	4cdf130976945d80
 key	icons	object695	fb9ec694703da9c8	f4d3b5b5e474fe69
 key	icons	olifant_mk1	276ae6b68b59177b	913dadc99e4bed50
 key	icons	olifant_mk1a	cec1eb1b9ea7fea8	358daad80d6b2ff5
@@ -3204,7 +3204,7 @@ key	icons	strv121	5900572e80abb132	577a714da1a9ab15
 key	icons	strv122	971315c41368d114	c6899dc1b5484de5
 key	icons	strv152	df29bb66e09d1fd1	b2553b4a322601cb
 key	icons	strv81	69883b1816d23607	01e7bb946ea01c3a
-key	icons	t14_152	798ef2dcc83716e3	48a97130063985b3
+key	icons	t14_152	d5f83e7dd919f1d8	48a97130063985b3
 key	icons	t14_armata	bd6e5b2318d3752e	561dc6747d3d6ac7
 key	icons	t49	9372c8f31550453e	7ef1f6d2c598b167
 key	icons	t55a	9a6140b5cfcfb16a	03d3395ba10b5616
@@ -3477,9 +3477,9 @@ key	ledger	merkava4_trophy	44f9789ed8f39833	4fa13fff77b565d9
 key	ledger	merkava4b	46337aa85cf7c2d2	4c8d0f84cb6e186f
 key	ledger	namer_ifv	ae7ad88ef27f3af3	e70e254d014f4219
 key	ledger	object148_proto	de445483dcfd1f2b	2059c84124bdddb4
-key	ledger	object195	c61374a225e8aba5	435495647140f391
-key	ledger	object292	52bede757da8e817	d5c18e31700dd081
-key	ledger	object477_molot	d1322349a5090786	e1bba99258ad48db
+key	ledger	object195	32bafedfdcfde741	435495647140f391
+key	ledger	object292	2c0c2450bd54a675	d1a8cd4548f0e988
+key	ledger	object477_molot	0ef82cb720775269	e1bba99258ad48db
 key	ledger	object695	ab098c7cc472b88b	589fcc94b2c88642
 key	ledger	olifant_mk1	38134d8dfb6d61cb	d108813b84c4cd05
 key	ledger	olifant_mk1a	eafc44d458c91b79	9bd47259b414e88d
@@ -3517,7 +3517,7 @@ key	ledger	strv121	ad5bda2f5d4c1d9f	3c83e303230a0615
 key	ledger	strv122	c130607f28834644	701b4cb718b4547d
 key	ledger	strv152	0a31dc72dad3f2df	182984db99a53589
 key	ledger	strv81	352b7018f236c566	988430ac5adf474b
-key	ledger	t14_152	65e1a98df56c1797	9a444d2f0fa5d988
+key	ledger	t14_152	47a22636f6be3630	9a444d2f0fa5d988
 key	ledger	t14_armata	51ef1fd59b009c18	0cca708902e70654
 key	ledger	t49	8e993e066d3432cf	e4550505c168c095
 key	ledger	t55a	0e9d79bef20dc656	b50d6c6463e45529
@@ -3790,9 +3790,9 @@ key	marking	merkava4_trophy	7f8a163231bc3f98	a164a4b7b905a455
 key	marking	merkava4b	0249b1d17a39934b	684f91c3eed6f7d1
 key	marking	namer_ifv	78f6ba41b218f7fa	6f56874b8dfbd3c9
 key	marking	object148_proto	88f83215864fefd2	d344b8c88a2c0e9e
-key	marking	object195	73fcb2f15db474f5	e16a3690f037a550
-key	marking	object292	e949099791e0a4c5	e1307cc345ff36df
-key	marking	object477_molot	ff031d21782a1224	42a794c245f1a9c0
+key	marking	object195	c7a2c7ad3468ece5	e16a3690f037a550
+key	marking	object292	6b0325b9b2226324	e1307cc345ff36df
+key	marking	object477_molot	091b5860b51adfeb	42a794c245f1a9c0
 key	marking	object695	d6d7a24a61952ba3	bf4be4684b6a95ca
 key	marking	olifant_mk1	9cb025f6d98c2388	c2a6812231ec10c5
 key	marking	olifant_mk1a	23d4fa29c0d50805	fd928574f377768b
@@ -3830,7 +3830,7 @@ key	marking	strv121	92e7056ff9642ecd	6cfad7c9060358f5
 key	marking	strv122	46fb694135c4903e	a745977caae8ab34
 key	marking	strv152	bb1f6bf93d36c483	b3255f3074668db3
 key	marking	strv81	d8950e32a183cb1c	a1106b535a63f71f
-key	marking	t14_152	baee4441e7758382	c5e8b741ff9c58a5
+key	marking	t14_152	0f5484c7f3777176	c5e8b741ff9c58a5
 key	marking	t14_armata	8a320b5c94d80e26	f519b7ca8f628563
 key	marking	t49	649bbe5232b7ef63	e077ef7582c9051f
 key	marking	t55a	b9b26bd04b50dc8f	d710383901b3488d
@@ -4103,9 +4103,9 @@ key	seats	merkava4_trophy	c2cc73fea8e1ba32	fc4f4284a8202b15
 key	seats	merkava4b	a5a407c77fd685a9	f10b32c9a492b5a8
 key	seats	namer_ifv	bd1e466810483ea4	e82e884c4df5fbd4
 key	seats	object148_proto	c68d97488d862b7b	d009528584a89f82
-key	seats	object195	b35adbb6a57b94f3	71ce0352f84477a8
-key	seats	object292	e94d0c11d19b15ba	d381b3195b299b9b
-key	seats	object477_molot	0640f81e4b3140cf	f0531d39b771f5ba
+key	seats	object195	9fde0ddd21a08014	71ce0352f84477a8
+key	seats	object292	1b9bdfadd8a29771	bb900172141eff80
+key	seats	object477_molot	6b9b8b3ffc4f40b7	f0531d39b771f5ba
 key	seats	object695	42a3a29998c0c44b	8cb0ab1bf6c5b4cf
 key	seats	olifant_mk1	37868e933310df21	5ddda02c48058da9
 key	seats	olifant_mk1a	c7d8b2ba13ca30e4	0dc31d2c60cef75d
@@ -4143,7 +4143,7 @@ key	seats	strv121	9d8018de652b6403	2d0dfb845bc7833b
 key	seats	strv122	85d8599640aa11f9	aa7eeda201eecd77
 key	seats	strv152	b5cbc214dc32b1db	9b69c053a1c01f98
 key	seats	strv81	3bea2d6de0f2e788	9dbf968837c086ee
-key	seats	t14_152	b88b39875d264a18	ebf21f0e792c6ed2
+key	seats	t14_152	936102f6bd1142b2	ebf21f0e792c6ed2
 key	seats	t14_armata	079a39b210d34ebd	5bc8066e41432c85
 key	seats	t49	00a3cafa65481037	e8892f33acbeaf3a
 key	seats	t55a	dc8f42438535702a	e42cac614b9b28a6
@@ -4416,9 +4416,9 @@ key	spareTrack	merkava4_trophy	3b64cceb50249292	ede56e85223322e9
 key	spareTrack	merkava4b	67af9dbf12efcd8f	52b618050b1859b0
 key	spareTrack	namer_ifv	69be30d010f5661f	799ce69689d612d4
 key	spareTrack	object148_proto	ad66b92d46c173c3	fd464c2a176c183c
-key	spareTrack	object195	d01b698e9af35edd	50769c3869335e06
-key	spareTrack	object292	b123a5cf4a38af35	484f2989474eb4e1
-key	spareTrack	object477_molot	a942dd3e2e19ba34	97e812ab313c09f3
+key	spareTrack	object195	d952a75bdad2d389	50769c3869335e06
+key	spareTrack	object292	c684c27c9ce9e1d5	67b65c6f6f86b120
+key	spareTrack	object477_molot	655aee09e43838b2	97e812ab313c09f3
 key	spareTrack	object695	54892d154be7c060	3cbc97e3449e39aa
 key	spareTrack	olifant_mk1	3632ee49248c1246	cda83071fa870de2
 key	spareTrack	olifant_mk1a	c3d563a4235e35af	6c9ed4679c85108d
@@ -4456,7 +4456,7 @@ key	spareTrack	strv121	722200f83ee54c3e	1e1a10922aabdf9c
 key	spareTrack	strv122	3fcc56570e356300	19b195d017d3837a
 key	spareTrack	strv152	666f4b0743b76e41	5cacfd86539a1521
 key	spareTrack	strv81	486766eea89296a7	94e7957d44b3ff40
-key	spareTrack	t14_152	7d0cf69ef583e577	a34ceec0daeb3010
+key	spareTrack	t14_152	9294fe00d68513bd	a34ceec0daeb3010
 key	spareTrack	t14_armata	7519cace552a8612	e5e3644a29f0406c
 key	spareTrack	t49	b9857cf4dc038ec2	1e406645b48af6c4
 key	spareTrack	t55a	a9fa03afc3f8ddbb	179177765c666203
@@ -6407,7 +6407,7 @@ row	geometryLedger	merkava4b	502c4118807469aa
 row	geometryLedger	namer_ifv	ae518b5f6f12f72c
 row	geometryLedger	object148_proto	eca7ba91852b0d96
 row	geometryLedger	object195	4531081cce622fe5
-row	geometryLedger	object292	8e240053efdc952a
+row	geometryLedger	object292	e05fef24c366964d
 row	geometryLedger	object477_molot	f8ad8aa7531b9e08
 row	geometryLedger	object695	12bc6e4e72b2b75c
 row	geometryLedger	olifant_mk1	11befe2f5f021fcf
@@ -6720,7 +6720,7 @@ row	gunJunction	merkava4b	4c3c31181a92b887
 row	gunJunction	namer_ifv	11be19549f8ea9c9
 row	gunJunction	object148_proto	260a9eada17c3ae1
 row	gunJunction	object195	3e4dab0797f17e5d
-row	gunJunction	object292	db12f4575db0e1a5
+row	gunJunction	object292	bf9eadfb11524cd2
 row	gunJunction	object477_molot	6d16f8a73dcef1ae
 row	gunJunction	object695	417adca86fe844dc
 row	gunJunction	olifant_mk1	623fa6af2b1482e9
@@ -7658,7 +7658,7 @@ row	missionAttachmentSeats	merkava4_trophy	54e22d8ff8054188
 row	missionAttachmentSeats	namer_ifv	093fc11b31d9cf93
 row	missionAttachmentSeats	object148_proto	19a156514e3e8984
 row	missionAttachmentSeats	object195	9e60078a8f10005c
-row	missionAttachmentSeats	object292	63ee920dd36eae76
+row	missionAttachmentSeats	object292	9616848674876d30
 row	missionAttachmentSeats	object477_molot	98a62d1b652e1b92
 row	missionAttachmentSeats	object695	598f3c8095af39df
 row	missionAttachmentSeats	olifant_mk1	f7ef584c1b3b9454
@@ -9225,7 +9225,7 @@ row	spareTrackLedger	merkava4b	f462c4cb2853d95d
 row	spareTrackLedger	namer_ifv	79ee6352e5291b1f
 row	spareTrackLedger	object148_proto	fc964acb6a9a8603
 row	spareTrackLedger	object195	1517778bd368969c
-row	spareTrackLedger	object292	285ba022189b44ee
+row	spareTrackLedger	object292	9afbf699dc4c8ae5
 row	spareTrackLedger	object477_molot	6819caa56eaf4833
 row	spareTrackLedger	object695	2b0e1c65d5c017fa
 row	spareTrackLedger	olifant_mk1	a26e337388bf680d
@@ -10181,7 +10181,7 @@ row	tankAssets	merkava4b	3d3a4c44ad2e97b7
 row	tankAssets	namer_ifv	f00f1515eab5012b
 row	tankAssets	object148_proto	e88fbc8ed284143d
 row	tankAssets	object195	a488179af4043a4d
-row	tankAssets	object292	80d6a59e2e06e7a8
+row	tankAssets	object292	bb4ec4a85375c2fb
 row	tankAssets	object477_molot	24978cc78a22bbe3
 row	tankAssets	object695	acf5540ad61a3039
 row	tankAssets	olifant_mk1	b8fb38684424b664
