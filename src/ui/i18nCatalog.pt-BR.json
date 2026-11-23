@@ -1496,6 +1496,7 @@
   "hud.alert.autoAimOn": "MIRA AUTOMÁTICA: {name}",
   "hud.alert.autoAimTarget": "MIRA AUTOMÁTICA: ALVO",
   "hud.alert.ammoTypeEmpty": "MUNIÇÃO DESTE TIPO ESGOTADA · SELECIONE OUTRO TIPO",
+  "hud.alert.droneDowned": "Drone inimigo abatido",
   "hud.alert.missilesDepletedNext": "MÍSSEIS ESGOTADOS · PRÓXIMA MUNIÇÃO SELECIONADA",
   "hud.alert.ammoDepletedNext": "MUNIÇÃO ESGOTADA · PRÓXIMO TIPO SELECIONADO",
   "hud.alert.allAmmoDepleted": "TODA A MUNIÇÃO ESGOTADA",

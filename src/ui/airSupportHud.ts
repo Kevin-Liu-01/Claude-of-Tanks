@@ -40,12 +40,19 @@ import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './d
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
 import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
 import { BATTLE_EVENT, type BattleEvent } from './battleNoticeEvents.ts';
+import type { NoticeArtId } from './components/noticeArt.ts';
 
 interface Point { x: number; y: number; z: number }
 
 /** Each call-in's glyph in the sprite (the AC-130's is its mode's). */
 const STRIKE_ICON: Readonly<Record<AirStrikeKind, IconId>> = {
   recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'rocket', gunship: 'modeAc130',
+};
+
+/** Each call-in's aircraft as the notices picture it (components/noticeArt.ts; Kevin and Main 2026-11-23): the A-10 flies the
+ *  recon pass and the strafing run, the F-16 the bomb and the Maverick run, the AC-130 itself; the barrage has no aircraft. */
+const STRIKE_ART: Readonly<Record<AirStrikeKind, NoticeArtId | undefined>> = {
+  recon: 'a10', artillery: undefined, strafe: 'a10', bomb: 'f16', missile: 'f16', gunship: 'ac130',
 };
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement): HTMLElementTagNameMap[K] {
@@ -170,13 +177,13 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
 
   // ---- the warning: the battle's notice, shown only when what it says changes (its whole seconds) ----
   let warningShown = '';
-  function setWarning(text: string | null, detail: string, side: 'own' | 'enemy'): void {
+  function setWarning(text: string | null, detail: string, side: 'own' | 'enemy', art?: NoticeArtId): void {
     const key = text ? `${text}|${detail}|${side}` : '';
     if (key === warningShown) return;
     warningShown = key;
     if (!text) { notices.dismiss(INCOMING_NOTICE); return; }
     notices.condition({ id: INCOMING_NOTICE, severity: side === 'own' ? 'info' : 'warning', icon: 'alert', text, detail,
-      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat, className: 'cot-air-incoming' });
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat, className: 'cot-air-incoming', art });
   }
 
   // ---- the events (the event lane, battleNoticeEvents.ts: your action answered; "A · B" shows B as the detail; a repeat
@@ -195,7 +202,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     const kind = (payload as { kind?: unknown } | null)?.kind;
     if (!isKind(kind)) return;
     raise({ text: `${t('airSupport.downed')} · ${t(`airSupport.kind.${kind}`)}`, priority: NOTICE_PRIORITY.answered,
-      severity: 'success', icon: STRIKE_ICON[kind] });
+      severity: 'success', icon: STRIKE_ICON[kind], art: STRIKE_ART[kind] });
   });
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
@@ -295,7 +302,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     else {
       const left = threat.landsS - air.nowS;
       setWarning(t(`airSupport.incoming.${threat.kind}`), left > 0 ? `${Math.ceil(left)} s` : t('airSupport.incoming.now'),
-        threat.team === team ? 'own' : 'enemy');
+        threat.team === team ? 'own' : 'enemy', STRIKE_ART[threat.kind]);
     }
   }
 

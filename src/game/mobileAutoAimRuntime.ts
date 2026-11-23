@@ -82,6 +82,8 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
       on: target !== null,
       targetId,
       targetName: target?.spec.name ?? '',
+      // (notices-276) the target's render on the lock's notice (components/noticeArt.ts)
+      targetSpecId: target?.spec.id ?? '',
       reason,
     });
   };

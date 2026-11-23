@@ -1496,6 +1496,7 @@
   "hud.alert.autoAimOn": "自動照準：{name}",
   "hud.alert.autoAimTarget": "自動照準：目標",
   "hud.alert.ammoTypeEmpty": "この弾種は弾切れ · 別の弾種を選択",
+  "hud.alert.droneDowned": "敵ドローン撃墜",
   "hud.alert.missilesDepletedNext": "ミサイル切れ · 次の弾種を選択済み",
   "hud.alert.ammoDepletedNext": "弾切れ · 次の弾種を選択済み",
   "hud.alert.allAmmoDepleted": "全弾種が弾切れ",

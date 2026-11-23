@@ -432,6 +432,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   items?: readonly string[];
   remainingS?: number;
   targetName?: string;
+  targetSpecId?: string;
   by?: string;
   ammoAdded?: number;
   wave?: number;
@@ -8621,6 +8622,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const riddenId = (): string | null => watchSide !== null && !watchDrone ? playerRef?.id ?? null : null;
   const allyLabel = (): string => t(watchSide !== null ? 'hud.side.alpha' : 'hud.allies');
   const enemyLabel = (): string => t(watchSide !== null ? 'hud.side.bravo' : 'hud.enemy');
+  // (notices-276; Main 2026-11-23: drones read like the other aircraft) an enemy drone the player brought down: the event
+  // lane's notice, as Air Support's "Aircraft down", with the drone's render (state.ts strikeDrone raises drone:down with
+  // its carrier and the shooter)
+  on('drone:down', ({ id, killerId }) => {
+    if (!playerId || killerId !== playerId || !id || teamById.get(id) === teamById.get(playerId)) return;
+    events.raise({ text: t('hud.alert.droneDowned'), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: 'modeDrone', art: 'drone' });
+  });
   on('tank:destroyed', (p) => {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
@@ -8783,9 +8791,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       icon: 'armorFlashlight', slot: 'armorOverlay',
       keys: { line: on ? 'hud.alert.line.armorOff' : 'hud.alert.line.armorOn', actions: { key: 'hitboxOverlay' } } });
   });
-  on('ui:autoAimState', ({ on, targetName, reason }) => {
+  on('ui:autoAimState', ({ on, targetName, targetSpecId, reason }) => {
     if (on) {
+      // (notices-276) the lock shows its target's render (components/noticeArt.ts)
       events.raise({ text: t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
+        art: targetSpecId ? `tank:${String(targetSpecId)}` : undefined,
         priority: NOTICE_PRIORITY.answered, severity: 'success', icon: 'autoAim', keys: { line: 'hud.alert.line.autoAimRelease', actions: { autoAim: 'autoAim' } } });
     } else if (reason) events.raise({ text: reason, priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'autoAim' });
   });
