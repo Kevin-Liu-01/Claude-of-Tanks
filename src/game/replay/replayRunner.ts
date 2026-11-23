@@ -24,6 +24,7 @@ import { replayStateDigest } from './replayChecksum.ts';
 import { replayRefusal } from './replayBuild.ts';
 import { FOOTPRINT_ACTION } from './replayRecorder.ts';
 import { replaySeatAction } from './seatActions.ts';
+import { ensureAuthorityFleet, requireAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
 /* The page's battle types are wide; the runner reads them through these. */
 type RunGame = ReturnType<typeof createGameState> & Record<string, RuntimeValue>;
@@ -103,6 +104,15 @@ export function withLayoutSpawnPoints<TWorld extends { heightField: { getHeightA
   return world;
 }
 
+/**
+ * The recording's fleet, its combat anatomy finalized (the published track contact the movement solve reads, the derived
+ * modules, the roof gun): what the page's hulls carried. A spec left unfinalized steps differently from the first settle
+ * on (the first browser check's drift: a Node replay that finalized three ids). Await before createReplayRun.
+ */
+export function ensureReplayFleet(recording: ReplayRecording): Promise<void> {
+  return ensureAuthorityFleet(recording.header.roster.map((entry) => entry.specId));
+}
+
 /** A diagnostic's look at each step as the core meets it: its actions applied and its seats staged (tools/replay-diff.mjs). */
 export interface ReplayRunHooks {
   beforeSimStep?(game: RunGame, tick: number): void;
@@ -114,6 +124,8 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
   const refusal = replayRefusal(header.replayDigest, header.build);
   if (refusal) throw new ReplayMismatch('refused', `replay recorded on ${refusal.recordedOn || 'another version'}`);
   const setup = header.setup as Record<string, RuntimeValue> & { options?: Record<string, RuntimeValue> };
+  // every hull's spec finalized as the page's were, or no run (ensureReplayFleet loads them)
+  requireAuthorityFleet(header.roster.map((entry) => entry.specId));
   const releaseStorage = installStorage((setup.storage ?? {}) as Record<string, string | null>);
   try {
     const game = createGameState({ rosterSeed: Number(setup.rosterSeed) }) as RunGame;

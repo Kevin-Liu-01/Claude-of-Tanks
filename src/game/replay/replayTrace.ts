@@ -18,7 +18,9 @@ const DUMP_ITEMS = 48;
 /** Keys a dump never walks: render objects, static tables, the world, and the battle's own indexes of hulls. */
 const SKIP_KEYS = new Set(['visual', 'root', 'scene', 'mesh', 'parent', 'children', 'spec', 'world', 'heightField', 'allTanks', 'tanks',
   'tankById', 'player', 'spotting', 'jev', '_jevView', '_obstacleQuery', '_obstacleWorld', '_supportField', 'matchModeController',
-  'openingRouteJobs', 'ruleset', 'combatRng']);
+  'openingRouteJobs', 'ruleset', 'combatRng', '_engineCtx', '_battleVisualPool']);
+/** Render objects a page's battle may hold (three.js marks each with one of these). */
+const RENDER_MARKS = ['isObject3D', 'isWebGLRenderer', 'isMaterial', 'isTexture', 'isBufferGeometry', 'isRenderTarget'];
 
 interface TraceHull {
   id: string;
@@ -58,6 +60,7 @@ export function dumpValue(value: unknown, depth = DUMP_DEPTH, ancestors: object[
   if (typeof value !== 'object') return undefined;
   if (ancestors.includes(value)) return '[cycle]';
   if (ancestors.length && isHull(value)) return { hull: value.id };
+  if (RENDER_MARKS.some((mark) => (value as Record<string, unknown>)[mark] === true)) return '[render]';
   if (depth <= 0) return '[deep]';
   const next = [...ancestors, value];
   if (value instanceof Map) return { map: [...value].slice(0, DUMP_ITEMS).map(([k, v]) => [String(k), dumpValue(v, depth - 1, next)]), size: value.size };

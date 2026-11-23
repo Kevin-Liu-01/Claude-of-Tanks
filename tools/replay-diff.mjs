@@ -12,10 +12,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
-import { TANK_IDS } from '../src/vehicles/specs.ts';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
-import { createReplayRun, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
+import { createReplayRun, ensureReplayFleet, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
 import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, traceRows } from '../src/game/replay/replayTrace.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 
@@ -32,7 +30,7 @@ try {
   console.error(`replay-diff: cannot read the inputs: ${error.message}`);
   process.exit(2);
 }
-await ensureAuthorityFleet([...TANK_IDS]);
+await ensureReplayFleet(recording);
 const world = withLayoutSpawnPoints(createDedicatedWorldCollision(recording.header.setup.mapId, { retain: true }));
 const trace = createReplayTrace();
 const run = createReplayRun(recording, world, { beforeSimStep: (game, tick) => { if (tick === 1) trace.begin(game); } });
@@ -42,11 +40,14 @@ run.dispose();
 world.release?.();
 const replay = trace.export();
 
-const show = (title, paths) => {
-  console.log(`${title}: ${paths.length ? `${paths.length}${paths.length >= PATHS ? '+' : ''} differing path(s)` : 'identical'}`);
-  for (const line of paths) console.log(`  ${line}`);
+// a page's dump may predate the render filter (replayTrace.ts SKIP_KEYS, RENDER_MARKS): compare what both sides can hold
+const RENDER_PATH = /\._engineCtx\b|\._battleVisualPool\b/;
+const show = (title, all) => {
+  const paths = all.filter((line) => !RENDER_PATH.test(line.split(':')[0]));
+  console.log(`${title}: ${paths.length ? `${paths.length}${all.length >= PATHS * 20 ? '+' : ''} differing path(s)` : 'identical'}`);
+  for (const line of paths.slice(0, PATHS)) console.log(`  ${line.length > 300 ? `${line.slice(0, 300)}…` : line}`);
 };
-show('before step 1', diffDumps(page.snapshots['0'], replay.snapshots['0'], PATHS));
+show('before step 1', diffDumps(page.snapshots['0'], replay.snapshots['0'], PATHS * 20));
 
 const width = TRACE_GAME_FIELDS.length + page.ids.length * TRACE_HULL_FIELDS.length;
 const a = traceRows(page), b = traceRows(replay);
@@ -71,6 +72,6 @@ if (!first) {
 for (const key of Object.keys(page.snapshots).map(Number).filter((k) => k > 0).sort((x, y) => x - y)) {
   if (first && key > first.step + 60) break;
   if (!replay.snapshots[key]) { console.log(`after step ${key}: the replay has no dump (it stopped at ${stoppedAt})`); break; }
-  show(`after step ${key}`, diffDumps(page.snapshots[key], replay.snapshots[key], PATHS));
+  show(`after step ${key}`, diffDumps(page.snapshots[key], replay.snapshots[key], PATHS * 20));
 }
 process.exitCode = first ? 1 : 0;

@@ -11,10 +11,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
-import { TANK_IDS } from '../src/vehicles/specs.ts';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
-import { createReplayRun, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
+import { createReplayRun, ensureReplayFleet, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 
 const file = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
@@ -28,7 +26,7 @@ try {
   console.error(`replay-verify: cannot read ${file}: ${error.message}`);
   process.exit(2);
 }
-await ensureAuthorityFleet([...TANK_IDS]);
+await ensureReplayFleet(recording);
 const setup = recording.header.setup;
 const world = withLayoutSpawnPoints(createDedicatedWorldCollision(setup.mapId, { retain: true }));
 const started = performance.now();

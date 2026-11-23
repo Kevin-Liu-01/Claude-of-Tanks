@@ -10,7 +10,6 @@ import { writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { Group, Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
-import { TANK_IDS } from '../../vehicles/specs.ts';
 import { createBus, createCollider, createGameState, setupBattle, simStep } from '../state.ts';
 import { spawnTanks } from '../rosterState.ts';
 import { useSoloConsumable } from '../soloConsumables.ts';
@@ -25,7 +24,9 @@ import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCol
 const MAP = 'verdant';
 const SPEC = 'm1a1_abrams_hc';
 const TICKS = 4800;
-await ensureAuthorityFleet([...TANK_IDS]);
+// every saved spec finalized, as a page's are once its fleet loads: the roster is drawn at setup (a replay that finalized
+// only TANK_IDS, the three starters, stepped every other hull on an unfinished spec and drifted from the page)
+await ensureAuthorityFleet();
 
 const worldFor = () => withLayoutSpawnPoints(createDedicatedWorldCollision(MAP, { retain: true }));
 
