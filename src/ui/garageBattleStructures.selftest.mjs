@@ -7,7 +7,8 @@
 // 4. negative control: a pack whose structure draw wears a Garage-made material fails check 1;
 // 5. the surface cache paints each map once;
 // 6. the map's set pieces stand on the horizon at their true bearing with their angular size kept;
-// 7. a horizon piece is part for part the piece the world's composer merges.
+// 7. a horizon piece is part for part the piece the world's composer merges;
+// 8. the horizon pieces stand clear of the yard and the hero (rubric overlap and sightline), planted ones are caught.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -20,6 +21,7 @@ import { buildLandmarkPiece, composeLandmarks } from '../world/landmarks/compose
 import { LANDMARK_BUILDERS } from '../world/landmarks/index.ts';
 import { resolveLandmarkParams } from '../world/landmarks/plan.ts';
 import { resolveRegionalArchitecture } from '../world/maps/regional/index.ts';
+import { auditGarageHorizonSetPieces } from './garageHorizonSetPieces.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const recipeSource = await readFile(new URL('./garageEnvironmentRecipes.ts', import.meta.url), 'utf8');
@@ -71,6 +73,7 @@ for (const variant of outdoor) {
     assert.ok(Math.abs(piece.scale - piece.ringM / piece.distM) < 0.002, `${variant.id}: ${piece.kind} keeps its angular size`);
     assert.ok(piece.ringM >= 58 && piece.ringM <= 116 && piece.triangles > 0, `${variant.id}: ${piece.kind} stands on the ring`);
   }
+  assert.deepEqual(stats.horizonFindings, [], `${variant.id}: its horizon pieces stand clear of the yard and the hero`);
   horizonRows.push(`${variant.mapId} ${stats.horizonSetPieces.length}`);
 
   // (4) negative control, on this pack: a Garage-made material on one structure draw is caught
@@ -109,6 +112,34 @@ controller.dispose?.();
   assert.equal(hashOf(own.parts), hashOf(merged), 'the horizon gate is the composer\'s gate, part for part');
 }
 
+// (8) negative controls for the horizon audit: a planted piece on a structure, a grove or the approach is an overlap; one
+// nearer the opening camera than the hero, or behind the hero on the view axis, is a sightline intrusion; both reach the
+// rubric's failures through the pack's placementOverlaps and openingSightlineIntrusions
+{
+  const piece = (name, x, z, footprintM, min, max) => ({ kind: 'church', name, bearingDeg: 0, distM: 400, ringM: 70, scale: 0.17,
+    triangles: 1, x, z, footprintM, min, max });
+  const scenery = { structures: [{ label: 'the depot', x: -40, z: 30, radiusM: 9 }], trees: [{ x: 50, z: -40 }],
+    route: [{ x: -10, z: -10 }, { x: -60, z: -60 }], routeHalfWidthM: 4 };
+  const clear = piece('clear', 70, 60, 3, [67, -0.6, 57], [73, 4, 63]);
+  assert.deepEqual(auditGarageHorizonSetPieces([clear], scenery), { overlaps: [], sightline: [] }, 'a clear piece passes');
+  const planted = auditGarageHorizonSetPieces([
+    piece('on the depot', -45, 34, 3, [-48, -0.6, 31], [-42, 4, 37]),
+    piece('in the grove', 52, -43, 3, [49, -0.6, -46], [55, 4, -40]),
+    piece('on the road', -40, -38, 3, [-43, -0.6, -41], [-37, 4, -35]),
+  ], scenery);
+  assert.deepEqual(planted.overlaps, ['on the depot meets the depot', 'in the grove meets a tree grove', 'on the road meets the approach']);
+  const view = auditGarageHorizonSetPieces([
+    piece('before the hero', 5, 5, 1, [4, 0, 4], [6, 3, 6]),
+    // (at the ring's 58 m and more a piece's foot already stands above the hero's top in the opening view, which looks
+    // down 14 degrees: the control stands one 30 m out on the view axis)
+    piece('behind the hero', -20.4, -22.1, 3, [-23.4, -0.6, -25.1], [-17.4, 8, -19.1]),
+  ], { structures: [], trees: [], route: [], routeHalfWidthM: 0 });
+  assert.deepEqual(view.sightline, ['before the hero stands nearer than the hero', 'behind the hero stands behind the hero in the opening view']);
+  assert.match(kitSource, /placementOverlaps: placementOverlaps \+ horizonAudit\.overlaps\.length/, 'overlaps reach the rubric');
+  assert.match(kitSource, /openingSightlineIntrusions: facilityDetails\.openingSightlineIntrusions \+ horizonAudit\.sightline\.length/,
+    'intrusions reach the rubric');
+}
+
 // (5) the surface cache paints a map once: a prepare that stops part-way leaves its build where it stood, the next one
 // resumes it, a later one takes the painted set as it is; unheld maps past two are disposed
 const adapter = await import('./garageBattleStructures.ts');
@@ -127,5 +158,5 @@ adapter.releaseGarageStructureSurfaces(again);
 assert.ok(adapter.garageStructureSurfaceCache().filter((entry) => entry.holds === 0).length <= 2,
   'no more than two unheld maps stay painted');
 console.log(`garageBattleStructures.selftest: ${outdoor.length} packs wear their battlefield materials and kits `
-  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes); set pieces on the horizon (${horizonRows.join(', ')}), the composer's own PASS`);
+  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes); set pieces on the horizon (${horizonRows.join(', ')}), the composer's own, clear of the yard and the hero (planted overlaps and intrusions caught) PASS`);
 process.exit(0);

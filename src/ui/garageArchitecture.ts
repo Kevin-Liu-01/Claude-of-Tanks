@@ -62,6 +62,8 @@ export interface GarageArchitectureStats {
   /** The structures its map's regional kit rebuilt (garageBattleStructures.ts). */
   regionalKitStructures: number;
   /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
+  /** What the horizon pieces' audit found (garageHorizonSetPieces.ts). */
+  horizonFindings: readonly string[];
   horizonSetPieces: ReadonlyArray<Readonly<{ kind: string; bearingDeg: number; distM: number; ringM: number; scale: number; triangles: number }>>;
   wrecks: number;
   facilityProps: number;
@@ -262,6 +264,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     structures: 1,
     regionalKitStructures: 0,
     horizonSetPieces: [],
+    horizonFindings: [],
     facilityProps: 0,
     facilityStations: 4,
     approachLabel: 'original enclosed workshop floor',
@@ -490,6 +493,7 @@ export function createGarageArchitectureController(
       groundCover: numericStat(data.groundCover),
       structures: numericStat(data.structures),
       regionalKitStructures: numericStat(data.regionalKitStructures),
+      horizonFindings: Array.isArray(data.horizonFindings) ? data.horizonFindings as string[] : [],
       horizonSetPieces: Array.isArray(data.horizonSetPieces) ? data.horizonSetPieces as GarageArchitectureStats['horizonSetPieces'] : [],
       wrecks: numericStat(data.wrecks),
       facilityProps: numericStat(data.facilityProps),

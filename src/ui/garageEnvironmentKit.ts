@@ -23,7 +23,9 @@ import {
   releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
-import { buildGarageHorizonSetPieces, type GarageHorizonSetPiece } from './garageHorizonSetPieces.ts';
+import {
+  auditGarageHorizonSetPieces, buildGarageHorizonSetPieces, type GarageHorizonSetPiece,
+} from './garageHorizonSetPieces.ts';
 import {
   GARAGE_ENVIRONMENT_RECIPES,
   type GarageEnvironmentRecipe,
@@ -118,6 +120,8 @@ interface GarageEnvironmentStats {
   readonly regionalKitStructures: number;
   /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
   readonly horizonSetPieces: readonly GarageHorizonSetPiece[];
+  /** What the horizon pieces' audit found (an overlap or a sightline intrusion), by name. */
+  readonly horizonFindings: readonly string[];
   readonly facilityProps: number;
   readonly facilityStations: number;
   readonly approachLabel: string;
@@ -2711,6 +2715,7 @@ export function buildGarageEnvironment(
   const addTreeGroves = (): {
     detailTier: GarageEnvironmentStats['treeDetailTier'];
     trunkQualities: ReadonlyArray<{ radialSegments?: number; rootFlare?: boolean } | undefined>;
+    points: ReadonlyArray<{ x: number; z: number }>;
   } => {
     const treeKits = recipe.treeSpecies.map((species) => (
       assets.treeGrove(species as TreeSpecies)
@@ -2830,6 +2835,7 @@ export function buildGarageEnvironment(
       }
     });
     return {
+      points: grovePoints,
       detailTier: treeKits[0]?.detailTier || 'none',
       trunkQualities: treeKits.map((kit) => (
         kit.trunk.userData.trunkQuality as {
@@ -2839,7 +2845,18 @@ export function buildGarageEnvironment(
       )),
     };
   };
-  const { detailTier: treeDetailTier, trunkQualities: treeTrunkQualities } = addTreeGroves();
+  const { detailTier: treeDetailTier, trunkQualities: treeTrunkQualities, points: grovePoints } = addTreeGroves();
+  // the horizon set pieces stand clear of the yard's structures, groves and approach, and of the hero in the opening view
+  // (garageQualityRubric: placementOverlaps, openingSightlineIntrusions)
+  const horizonAudit = auditGarageHorizonSetPieces(horizonSetPieces, {
+    structures: structureRecords.map((record) => ({
+      label: record.placement.label, x: record.x, z: record.z,
+      radiusM: Math.hypot(record.dimensions.w * record.placement.scale, record.dimensions.d * record.placement.scale) * 0.48,
+    })),
+    trees: grovePoints,
+    route: recipe.approach.waypoints.map(([side, depth]) => cameraPoint(side, depth)),
+    routeHalfWidthM: recipe.approach.width / 2,
+  });
 
   root.updateMatrixWorld(true);
   let objects = 0;
@@ -2940,7 +2957,9 @@ export function buildGarageEnvironment(
     unsupportedParts: facilityDetails.unsupportedParts + structureRecords.reduce(
       (sum, record) => sum + record.assemblyAudit.unsupportedParts, 0,
     ),
-    placementOverlaps,
+    placementOverlaps: placementOverlaps + horizonAudit.overlaps.length,
+    openingSightlineIntrusions: facilityDetails.openingSightlineIntrusions + horizonAudit.sightline.length,
+    horizonFindings: Object.freeze([...horizonAudit.overlaps, ...horizonAudit.sightline]),
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),
     triangles: Math.round(triangles),
