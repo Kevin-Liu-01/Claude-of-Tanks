@@ -91,6 +91,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/strikeSignatures.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
+    // combined-arms-276 (Kevin 2026-11-23: "lets add a mode with drone AND air support"): a composed mode is its rule parts,
+    // never a fork, and no reader asks a part's mode by its id
+    'src/sim/modeComposition.selftest.mjs',
+    // combined-arms-276: the sector battle with the ledger and a drone on every crew; bots use both, one control seat
+    'src/sim/combinedArms.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
     'src/game/strikeOrder.selftest.mjs',

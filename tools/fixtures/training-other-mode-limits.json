@@ -45,6 +45,19 @@
    "rulesetEnemies": null,
    "respawnS": 6
   },
+  "combined_arms": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 8
+  },
   "drone": {
    "allies": [
     0,
