@@ -183,9 +183,12 @@ try {
   // ai.ts and 266's gunFaceSplit (through armor.ts) select it; a UI module outside the graph does not. Control: without
   // the entry, neither selects it. (267: 265's castle painter, vehicleMarkings.ts, left the graph; the lint's
   // presentation guard names the marking modules and reads src/vehicles/ by prefix, so a vehicle module selects detMath
-  // by name with or without the entry.)
-  const detMath = 'src/sim/detMath.selftest.mjs', graphPaths = ['src/game/ai.ts', 'src/sim/armor.ts'];
-  for (const path of graphPaths) assert.equal(selftestReadOf(cache, detMath, path, REPO_ROOT), 'named', `a change to ${path} selects detMath`);
+  // by name with or without the entry. 276: the local step's cut reads src/sim, src/game and src/world by prefix the same
+  // way, so the entry's own control is an authority module outside them, three's sky in src/engine.)
+  const detMath = 'src/sim/detMath.selftest.mjs', graphPaths = ['src/engine/atmosphere.ts'];
+  for (const path of [...graphPaths, 'src/game/ai.ts', 'src/sim/armor.ts', 'src/game/state.ts']) {
+    assert.equal(selftestReadOf(cache, detMath, path, REPO_ROOT), 'named', `a change to ${path} selects detMath`);
+  }
   assert.equal(selftestReadOf(cache, detMath, 'src/ui/hud.ts', REPO_ROOT), null, 'control: a module outside the authority graph does not');
   const withoutLint = Object.fromEntries(Object.entries(SELFTEST_SCANS).filter(([path]) => path !== 'tools/det-math-lint.mjs'));
   const bare = createSelftestCache({ cacheDir: selftestCacheLocations(REPO_ROOT, process.env).dir, env: {}, argv: [], scans: withoutLint,
