@@ -5,6 +5,7 @@
  * motion's 1 ms never strobes), none under reduced motion. A warning is a bubble on the screen's rim in the enemy's colour:
  * its arrow at the threat, its glyph, its distance or an air run's seconds and countdown ring; a new one pulses twice.
  * Loaded beside the HUD by its bundle (battleHudAccess.ts). */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 .cot-ptr{position:fixed;inset:0;pointer-events:none;display:none;contain:strict;}
 .cot-ptr.is-on{display:block;}
