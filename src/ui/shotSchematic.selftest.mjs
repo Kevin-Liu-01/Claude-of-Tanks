@@ -42,6 +42,8 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
     MissileBlastLedger, clearCardTimers() { cardTimerClears++; },
     // brand-ui 242: reset() also clears the end screen's battle timeline (battleBeats.ts)
     beatLog: { clear() {} },
+    // endscreen-modes-275: reset() also restarts the player's mode facts and the objective tally by entity
+    facts: null, newFacts: () => ({}), objectivesBy: new Map(),
     shotLog: [], allShots: [], receivedLog: [], combatants: new Map(), tg: new Map(),
     endRoster: null, endInfo: null, spotWindow: new Map(), spottedSet: new Set(), spotAttributed: false,
     stats: {}, newStats: () => ({}), logOpen: false, logPanel: surface,
