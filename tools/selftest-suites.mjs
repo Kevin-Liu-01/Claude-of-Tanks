@@ -2527,6 +2527,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // inherited-reds-276: a source slice closes over what it reads (imports, declarations, inert locals) and a name nothing
     // declares fails before it runs, named (tools/source-slice.test-support.mjs; five receipts' ReferenceErrors on c7d111fad4)
     'tools/source-slice.selftest.mjs',
+    // inherited-reds-276 (owner 2026-11-23): the balance matchup receipt is a fresh generation, never stale or hand-edited
+    'tools/balance-matchups.selftest.mjs',
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
