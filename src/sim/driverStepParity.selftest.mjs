@@ -6,8 +6,8 @@
 // crashing, both hulls laying their guns and trading shots (hits, damage, modules, the shell's knock, bloom, reload).
 // Every tick the two sides' hulls are compared as Float64 bytes. The page's driver applies the own hull's controls
 // through the authority's own input stage (sim/playerInputStage.ts applyPlayerInput, 268: the local seats' stage, the
-// aim intent decoded where the authority decodes it), and the gun's muzzle and bore are posed as the authority poses
-// them (its visual stands in for the drawn barrel). The hostile is a bot on both drivers (268): one scripted controller
+// aim intent decoded where the authority decodes it), and the gun's muzzle and bore come from the one pose both drivers
+// fire from (sim/gunPose.ts, 276: the page no longer reads its visual's barrel, so this runs the real solo fire path). The hostile is a bot on both drivers (268): one scripted controller
 // sits in each driver's bot slot and each driver stages it through its bot path (applyBotInput); it lays on the own
 // hull, fires, and switches its ammunition without firing, holding the same slot on both sides every tick. The own hull switches its ammunition, asks for a slot emptied on both sides
 // and pulls the trigger on it: the same refusal, once, on the same tick, and no shot. Given a fourth shell (no playable
@@ -28,13 +28,11 @@
 // first one's own error (round 5 S1). The two Mars sections red on 268 run last (round 6 V8), so a new red elsewhere
 // is the first failure and keys apart from the inherited one.
 import assert from 'node:assert/strict';
-import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
+import { Group, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { botCamoRoll } from './camoPaint.ts';
 import { encodeAimIntent } from './aimIntent.ts';
 import { applyPlayerInput } from './playerInputStage.ts';
-import * as detMath from './detMath.ts';
-import { matrixRotationY, quaternionFromEuler } from './detRotation.ts';
 import { createBus, createCollider, createGameState, mulberry32, setupBattle, simStep } from '../game/state.ts';
 import { spawnTanks } from '../game/rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
@@ -44,26 +42,6 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
 const MAP = 'verdant';
 const SEED = 7;
 await ensureFullFleet();
-
-const _euler = new Euler(), _quat = new Quaternion(), _unit = new Vector3(), _hull = new Matrix4(), _local = new Matrix4();
-const _turret = new Matrix4(), _bore = new Vector3();
-/** The gun's muzzle and bore as the authority poses them (authoritativeMatch.ts gunWorldPose; a single-barrel gun). */
-function authorityGunPose(entity, muzzleOut, dirOut) {
-  const s = entity.state, armor = entity.spec.armor || {};
-  const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
-  const gunPivot = armor.gunPivot || [0, entity.spec.dims.heightM * 0.15, 0];
-  const barrelM = Math.max(0.5, Number.isFinite(armor.gunBarrel?.lengthM) ? armor.gunBarrel.lengthM : 3);
-  _euler.set(-s.visualPitch, s.yaw, s.visualRoll, 'YXZ');
-  quaternionFromEuler(_quat, _euler);
-  _unit.setScalar(s.modeScale ?? 1);
-  _hull.compose(s.pos, _quat, _unit);
-  matrixRotationY(_local, s.turretYaw);
-  _local.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
-  _turret.multiplyMatrices(_hull, _local);
-  _bore.set(0, detMath.sin(s.gunPitch), detMath.cos(s.gunPitch)).transformDirection(_turret).normalize();
-  if (dirOut) dirOut.copy(_bore);
-  if (muzzleOut) muzzleOut.set(gunPivot[0], gunPivot[1], gunPivot[2]).applyMatrix4(_turret).addScaledVector(_bore, barrelM * (s.modeScale ?? 1));
-}
 
 const STATE_FIELDS = ['yaw', 'speed', 'verticalSpeed', 'yawRate', 'turretYaw', 'turretYawRate', 'gunPitch', 'visualPitch', 'visualRoll', 'bloomF'];
 const hex = (value) => Buffer.from(new Float64Array([Number(value)]).buffer).toString('hex');
@@ -157,8 +135,8 @@ async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, auth
   // t0: the page's hulls take the authority's settled state; the support samples are re-read on both sides
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
-      gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
+    // (276) the page fires from sim/gunPose.ts as the authority does: the visual draws, it poses no round
+    entity.visual = { root: new Group(), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
     pos.copy(authority.state.pos);
@@ -277,8 +255,8 @@ async function realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord
   const authorityOf = (entity) => match.entityById.get(entity.id);
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
-      gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
+    // (276) the page fires from sim/gunPose.ts as the authority does: the visual draws, it poses no round
+    entity.visual = { root: new Group(), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
     pos.copy(authority.state.pos);
@@ -491,8 +469,8 @@ async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
   }
   for (const entity of game.tanks) {
     const authority = authorityOf(entity);
-    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
-      gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
+    // (276) the page fires from sim/gunPose.ts as the authority does: the visual draws, it poses no round
+    entity.visual = { root: new Group(), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
     const pos = entity.state.pos;
     Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
     pos.copy(authority.state.pos);
