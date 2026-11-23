@@ -138,7 +138,9 @@ export function makeGantry(
   // trolley + cable + hook block
   const tx = (rng() - 0.5) * span * 0.6;
   // the trolley's frame (on four wheels on the girder's top)
-  mk(bar(chamferSec(1.9, 0.6, 0.08), [tx - 0.75, top + 0.4, 0], [tx + 0.75, top + 0.4, 0], [0, 1, 0]));
+  // (dome-detail-275) 2.2 m long under its hoist house, raised onto the crane rails along the girder's top (12 cm)
+  const rh = top + 0.12;
+  mk(bar(chamferSec(1.9, 0.6, 0.08), [tx - 1.1, rh + 0.4, 0], [tx + 1.1, rh + 0.4, 0], [0, 1, 0]));
   const drop = 2.2 + rng() * 2.6;
   mk(rod([tx, legH - drop, 0], [tx, legH, 0], 0.025));
   // the hook block: a cast block, its corners dressed
@@ -199,10 +201,10 @@ export function makeGantry(
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const w = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 10);
     w.rotateX(Math.PI / 2);
-    w.translate(tx + sx * 0.55, top + 0.12, sz * 0.62);
+    w.translate(tx + sx * 0.85, rh + 0.12, sz * 0.62);
     mk(dressing(w));
   }
-  mk(dressing(rod([tx - 0.3, top + 0.85, -0.6], [tx - 0.3, top + 0.85, 0.6], 0.2, 12)));
+  mk(dressing(rod([tx - 0.62, rh + 0.85, -0.6], [tx - 0.62, rh + 0.85, 0.6], 0.2, 12)));
   mk(dressing(rod([tx + 0.3, legH - drop, 0], [tx + 0.3, legH, 0], 0.025)));
   for (const sx of [-1, 1]) mk(dressing(bar(chamferSec(0.42, 0.5, 0.05), [tx + sx * 0.3 - 0.03, legH - drop - 0.2, 0], [tx + sx * 0.3 + 0.03, legH - drop - 0.2, 0], [0, 1, 0])));
   const crook = new THREE.TorusGeometry(0.18, 0.05, 6, 10, Math.PI * 1.4);
@@ -210,7 +212,118 @@ export function makeGantry(
   // (its eye up in the block's cheeks: the integrity gate found it 9 cm clear of them)
   crook.translate(tx, legH - drop - 0.84, 0);
   mk(dressing(crook));
+  gantryDetail(buckets, mk, { span, legH, girderH, top, rh, tx, drop });
   return { w: span + 5, d: 5.4, h: legH + girderH + 0.8 };
+}
+
+/** (dome-detail-275) A part painted one colour (a vertex colour, no draws), new to the stream. */
+function painted(geo: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
+  const c = new THREE.Color(hex), n = geo.getAttribute('position').count, col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return dressing(geo);
+}
+
+/** (dome-detail-275) A square bar `s` across from a to b (a cage hoop's flat, a strap). */
+function flat(a: P3, b: P3, s: number, up: P3 = [0, 1, 0]): THREE.BufferGeometry {
+  return dressing(bar([[-s / 2, -s / 2], [s / 2, -s / 2], [s / 2, s / 2], [-s / 2, s / 2]], a, b, up));
+}
+
+// the Ironworks' paint (dome-detail-275): the hoist house's oxide red as the works' lattices wear it, its roof's
+// weathered grey, the capacity board's cream and its black, the hazard yellow
+const OXIDE = 0x6e2f22, OXIDE_ROOF = 0x4a4643, CREAM = 0xd8ceb0, BLACK = 0x1b1a18, HAZARD = 0xc9a227;
+
+/**
+ * (dome-detail-275, the Ironworks' gantry: its approved sheets' lattice, landings and paint) What makeGantry's frame
+ * lacked, every part new to the stream: the portal's knee braces from the legs up to the bridge's underside (none
+ * through the cab), gusset plates at the legs' heads under the crossheads and an X of angles in each leg tower's head
+ * panel; the crane rails along the girder's top under the trolley's wheels; the trolley's hoist house in oxide red
+ * (a gabled sheet house, its roof, door, side light and louvres) behind its drum; the capacity board on the girder's
+ * open face; the hook block's hazard plates; the end carriages' buffers; the cable reel on the far leg tower with its
+ * cable down to the ground; the ladder's safety cage. `mk` the steel (dark) bucket.
+ */
+function gantryDetail(buckets: GeometryBuckets, mk: (g: THREE.BufferGeometry) => void,
+  g: { span: number; legH: number; girderH: number; top: number; rh: number; tx: number; drop: number }): void {
+  const { span, legH, girderH, top, rh, tx, drop } = g;
+  const paint = (geo: THREE.BufferGeometry, hex: number): void => {
+    const into = buckets.structureMetal;
+    if (into) into.push(painted(geo, hex)); else mk(dressing(geo));
+  };
+  for (const s of [-1, 1]) {
+    const lx = s * span / 2;
+    for (const dz of [-1.7, 1.7]) {
+      // the knee brace: a rolled I from the leg at four fifths of its height to the bridge's underside, 2.4 m in
+      // (none on the cab's side of the near leg: the cab hangs there)
+      if (!(s < 0 && dz > 0)) mk(dressing(bar(iSec(0.2, 0.2, 0.018, 0.012), [lx, legH * 0.8, dz], [lx - s * 2.4, legH + 0.04, Math.sign(dz) * 0.62], [0, 1, 0])));
+      // the gusset under the crosshead at the leg's head (a plate across the A-frame)
+      const zz = Math.sign(dz);
+      mk(dressing(bar([[-dz, legH - 0.95], [-dz, legH - 0.02], [-(dz - zz * 0.95), legH - 0.02]], [lx - 0.015, 0, 0], [lx + 0.015, 0, 0], [0, 1, 0])));
+    }
+    // the head panel's X of angles, from the legs at the X's head up to the crosshead
+    for (const dir of [-1, 1]) mk(dressing(bar(angleSec(0.12, 0.014), [lx, legH * 0.725, -dir * 1.6], [lx, legH - 0.1, dir * 1.6], [1, 0, 0])));
+    // the end carriage's buffers at both ends, their heads in hazard yellow
+    for (const sz of [-1, 1]) {
+      mk(dressing(rod([lx, 0.925, sz * 2.15], [lx, 0.925, sz * 2.27], 0.09, 8)));
+      paint(rod([lx, 0.925, sz * 2.27], [lx, 0.925, sz * 2.31], 0.16, 10), HAZARD);
+    }
+  }
+  // the crane rails along the girder's top, under the trolley's wheels
+  for (const sz of [-1, 1]) mk(dressing(bar(RAIL_SEC, [-span / 2 - 1.3, top, sz * 0.62], [span / 2 + 2.9, top, sz * 0.62], [0, 1, 0])));
+  // the trolley's hoist house on its frame's far half: a gabled sheet house in oxide red, its roof's verges and eaves
+  // past it, the door at its end, a light on its open side, louvres on the walkway's
+  const h0 = rh + 0.7, hx0 = tx - 0.3, hx1 = tx + 1.05;
+  paint(bar([[-0.85, 0], [0.85, 0], [0.85, 1.25], [0, 1.6], [-0.85, 1.25]], [hx0, h0, 0], [hx1, h0, 0], [0, 1, 0], 0.6), OXIDE);
+  paint(bar([[-1.0, 1.17], [0, 1.6], [1.0, 1.17], [1.0, 1.25], [0, 1.68], [-1.0, 1.25]], [hx0 - 0.12, h0, 0], [hx1 + 0.12, h0, 0], [0, 1, 0], 0.6), OXIDE_ROOF);
+  mk(boxAt(0.03, 1.05, 0.7, hx1 + 0.015, h0 + 0.55, 0.3));
+  if (buckets.glass) buckets.glass.push(dressing(box(0.6, 0.42, 0.02).translate((hx0 + hx1) / 2, h0 + 0.85, -0.86)));
+  for (let k = 0; k < 3; k++) paint(boxAt(0.7, 0.05, 0.05, (hx0 + hx1) / 2, h0 + 0.55 + k * 0.16, 0.86), OXIDE_ROOF);
+  // the capacity board on the girder's open face (the walkway's side carries the brackets): cream, its figures black
+  const by = legH + girderH / 2, bz = -0.76, bx = (span / 2 + 3.05 - span / 2 - 1.45) / 2;
+  paint(boxAt(3.0, 0.8, 0.02, bx, by, bz), CREAM);
+  // (u from the board's centre as read from its side, -x; y from its centre)
+  const stroke = (u0: number, y0: number, u1: number, y1: number): void => paint(boxAt(Math.max(0.09, u1 - u0), Math.max(0.09, y1 - y0), 0.012, bx - (u0 + u1) / 2, by + (y0 + y1) / 2, bz - 0.014), BLACK);
+  // "25 t": a 2, a 5 and a t in strokes
+  const digit = (u: number, segs: string): void => {
+    const w = 0.28, h = 0.26;
+    if (segs.includes('a')) stroke(u - w / 2, h, u + w / 2, h);
+    if (segs.includes('d')) stroke(u - w / 2, -h, u + w / 2, -h);
+    if (segs.includes('g')) stroke(u - w / 2, 0, u + w / 2, 0);
+    if (segs.includes('b')) stroke(u + w / 2, 0, u + w / 2, h);
+    if (segs.includes('c')) stroke(u + w / 2, -h, u + w / 2, 0);
+    if (segs.includes('e')) stroke(u - w / 2, -h, u - w / 2, 0);
+    if (segs.includes('f')) stroke(u - w / 2, 0, u - w / 2, h);
+  };
+  digit(-0.75, 'abged');
+  digit(-0.3, 'afgcd');
+  stroke(0.45, -0.26, 0.45, 0.26);
+  stroke(0.3, 0.1, 0.62, 0.1);
+  // the hook block's hazard plates on both faces, two black chevrons on each
+  const hy = legH - drop - 0.35;
+  for (const sz of [-1, 1]) {
+    paint(boxAt(0.5, 0.62, 0.012, tx, hy, sz * 0.206), HAZARD);
+    for (const k of [-1, 1]) {
+      const st = box(0.07, 0.42, 0.012);
+      st.rotateZ(Math.PI / 4).translate(tx + k * 0.12, hy, sz * 0.214);
+      paint(st, BLACK);
+    }
+  }
+  // the cable reel on the far leg tower: a girt between its legs, the axle out to the drum and its flanges, the cable
+  // from the drum's foot down into its trough on the ground
+  const lx = span / 2, ry = 2.4;
+  mk(dressing(bar(angleSec(0.12, 0.014), [lx, ry, -1.5], [lx, ry, 1.5], [1, 0, 0])));
+  mk(dressing(rod([lx, ry, 0], [lx + 0.78, ry, 0], 0.06, 8)));
+  paint(rod([lx + 0.38, ry, 0], [lx + 0.66, ry, 0], 0.55, 16), OXIDE);
+  for (const x of [lx + 0.36, lx + 0.66]) paint(rod([x - 0.02, ry, 0], [x + 0.02, ry, 0], 0.72, 16), OXIDE_ROOF);
+  mk(dressing(rod([lx + 0.52, ry - 0.55, 0.0], [lx + 0.9, 0.12, 0.0], 0.035, 6)));
+  buckets.stone.push(dressing(bar(chamferSec(0.5, 0.24, 0.03), [lx + 0.9, 0.12, -0.6], [lx + 0.9, 0.12, 0.6], [0, 1, 0], 0.8)));
+  // the ladder's safety cage from 2.4 m up to its head: flat hoops off its stiles every 0.9 m and three straps
+  const lz = -1.7, lxl = -span / 2 - 0.235, c0 = 2.4, c1 = legH + 0.1;
+  for (let y = c0; y <= c1 + 1e-6; y += Math.max(0.6, (c1 - c0) / Math.round((c1 - c0) / 0.9))) {
+    mk(flat([lxl, y, lz - 0.21], [lxl - 0.68, y, lz - 0.34], 0.035));
+    mk(flat([lxl - 0.68, y, lz - 0.36], [lxl - 0.68, y, lz + 0.36], 0.035));
+    mk(flat([lxl, y, lz + 0.21], [lxl - 0.68, y, lz + 0.34], 0.035));
+  }
+  for (const z of [lz - 0.3, lz, lz + 0.3]) mk(flat([lxl - 0.68, c0, z], [lxl - 0.68, c1, z], 0.03, [1, 0, 0]));
 }
 
 // ------------------------------------------------------------------------------------------------ the halls' r2 parts

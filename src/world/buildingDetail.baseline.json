@@ -7,7 +7,7 @@
    "mid": 3,
    "fine": 7,
    "trisPerWallM2": 31.47,
-   "fineShare": 0.531,
+   "fineShare": 0.498,
    "facePass": 1
   },
   "savoyard": {
@@ -60,8 +60,8 @@
    "silhouette": 4,
    "mid": 4,
    "fine": 5,
-   "trisPerWallM2": 13.81,
-   "fineShare": 0.609,
+   "trisPerWallM2": 13.91,
+   "fineShare": 0.594,
    "facePass": 1
   },
   "eifel": {
@@ -69,8 +69,8 @@
    "silhouette": 5,
    "mid": 3,
    "fine": 7,
-   "trisPerWallM2": 25.41,
-   "fineShare": 0.508,
+   "trisPerWallM2": 25.42,
+   "fineShare": 0.476,
    "facePass": 1
   },
   "mekong": {
@@ -79,7 +79,7 @@
    "mid": 5,
    "fine": 3,
    "trisPerWallM2": 25.7,
-   "fineShare": 0.417,
+   "fineShare": 0.401,
    "facePass": 0.667
   },
   "nordland": {
@@ -106,7 +106,7 @@
    "mid": 3,
    "fine": 7,
    "trisPerWallM2": 26.35,
-   "fineShare": 0.559,
+   "fineShare": 0.526,
    "facePass": 1
   },
   "ksar": {
@@ -123,8 +123,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 5,
-   "trisPerWallM2": 8.93,
-   "fineShare": 0.276,
+   "trisPerWallM2": 10.31,
+   "fineShare": 0.264,
    "facePass": 0.875
   },
   "siwa": {
@@ -150,8 +150,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 4,
-   "trisPerWallM2": 9.64,
-   "fineShare": 0.702,
+   "trisPerWallM2": 9.69,
+   "fineShare": 0.692,
    "facePass": 1
   },
   "kohima": {
@@ -159,7 +159,7 @@
    "silhouette": 4,
    "mid": 4,
    "fine": 3,
-   "trisPerWallM2": 14.42,
+   "trisPerWallM2": 20.33,
    "fineShare": 0.345,
    "facePass": 0.75
   },
@@ -258,7 +258,7 @@
    "silhouette": 3,
    "mid": 5,
    "fine": 3,
-   "trisPerWallM2": 16.52,
+   "trisPerWallM2": 22.31,
    "fineShare": 0.335,
    "facePass": 1
   },

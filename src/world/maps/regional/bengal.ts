@@ -16,7 +16,9 @@ import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, ladder, veranda } from './vernacular.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, hash01, pilaster, plinthPaint, trimRun, windowHead } from './facade.ts';
-import { bench, bicycle, clayPot, dungCakes, handPump, tvAerial, washingLine } from './dressing.ts';
+import { bench, bicycle, clayPot, dungCakes, handPump, mound, tvAerial, washingLine } from './dressing.ts';
+import { facing, sheetCourses, type SheetSlope } from './harbourSheds.ts'; // (dome-detail-275) the sheet courses in relief
+import { roundPole } from './waterfront.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { bengalBazaar } from './marketKits.ts'; // props #23: the char bazaar
 
@@ -855,21 +857,41 @@ const wrecked: RegionalBuilder = (ctx) => {
 /**
  * A bazaar stall (the base market plot): a raised earthen platform, bamboo posts carrying a tin roof that falls to the
  * lane, a tin back wall, a plank counter with sacks of rice and lentils and baskets of produce.
+ * (dome-detail-275; the work list: "a slab roof on poles over a counter. It needs awning cloth, goods and structure") the
+ * haat's stall as it stands: the bamboo frame lashed together (plates on the posts, rafters on the plates, the posts'
+ * nodes, a brick under each foot), the roof's corrugated sheets laid in courses with their laps, each its own rust or
+ * galvanising, a brick or two weighting them; a painted tin signboard along the front, a striped cloth flap hung from the
+ * eave over the lane; one side screened with a woven bamboo mat (bera) in its frame; the sacks rolled down to show the
+ * rice, lentils, chillies and turmeric heaped in their mouths, the bamboo winnowing trays (kula) of produce, the hanging
+ * balance (daripalla) over the counter, a hand of bananas from the plate, the seller's cane stool (morha) and his water
+ * pot; the platform's trodden apron and its mud step.
  */
 const bazaarStall: RegionalBuilder = (ctx) => {
   // (props census r2 sweep, Lane C 2026-10-16: the stall's box-only share 99 %) its parts in their own forms: the mud
   // plinth's corners worn round, the bamboo posts round, the back wall of corrugated tin, the counter's plank eased, the
   // tin roof's front edge turned down into a drip, the jute sacks round; the draws as before
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
   const floor = 0.35, back = 2.95, front = 2.4;
   const px = W / 2 + 0.25, pz = D / 2 + 0.25, wear = 0.35;
   const plinth: Vec3[] = [[px, -0.3, -pz + wear], [px, -0.3, pz - wear], [px - wear, -0.3, pz], [-px + wear, -0.3, pz], [-px, -0.3, pz - wear],
     [-px, -0.3, -pz + wear], [-px + wear, -0.3, -pz], [px - wear, -0.3, -pz]];
   orientedPrism(sink, 'plaster3', plinth, [0, 1, 0], floor + 0.3, {});
+  // (dome-detail-275) the platform's trodden apron, a hand wider and darker where the rain splashes its foot, and the mud
+  // step up from the lane
+  const ax = px + 0.14, az = pz + 0.14, aw = wear + 0.1;
+  orientedPrism(sink, 'plaster3', [[ax, -0.3, -az + aw], [ax, -0.3, az - aw], [ax - aw, -0.3, az], [-ax + aw, -0.3, az], [-ax, -0.3, az - aw],
+    [-ax, -0.3, -az + aw], [-ax + aw, -0.3, -az], [ax - aw, -0.3, -az]], [0, 1, 0], 0.4, { decor: true, shade: 0.7 });
+  const stepU = (look() - 0.5) * W * 0.3;
+  bevelSpan(sink, 'plaster3', stepU - 0.55, -0.3, pz - 0.05, stepU + 0.55, floor * 0.5, pz + 0.38, 0.05, { decor: true, shade: 0.82 });
+  const bamboo = (k: number): Rgb => shade(BAMBOO, 0.88 + hash01(k, W, 5.3) * 0.2);
   for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
     sink.cylinder('structureWood', [x * (W / 2 - 0.15), floor, z * (D / 2 - 0.15)], 'y', h - floor, 0.07, 8, { colour: BAMBOO_MAT });
+    // (dome-detail-275) the brick it stands on, and its nodes up the cane
+    const cx = x * (W / 2 - 0.15), cz = z * (D / 2 - 0.15);
+    sink.span('structureWood', cx - 0.13, floor, cz - 0.13, cx + 0.13, floor + 0.08, cz + 0.13, { colour: rgb(0x8a4a36), decor: true });
+    for (let k = 1; k <= 2; k++) sink.cylinder('structureWood', [cx, floor + (h - floor) * k / 3 - 0.02, cz], 'y', 0.04, 0.078, 6, { colour: shade(BAMBOO_MAT, 0.78), decor: true, fine: 'near' }, 0.078, false);
   }
   // the back wall: corrugated tin, its facets welded into one sheet, its outer face a sheet's thickness behind the inner
   // (regionalArchitecture's ray audit: the two faces laid on one plane read as inverted from either side)
@@ -888,6 +910,10 @@ const bazaarStall: RegionalBuilder = (ctx) => {
   sink.quad('structureMetal', [xa, floor, zb - t], [xa, floor, zb], [xa, back - 0.12, zb], [xa, back - 0.12, zb - t], { colour: shade(tin, 0.85) });
   const zEnd = zb + (ribs % 2 ? 0.03 : 0);
   sink.quad('structureMetal', [xb, floor, zEnd], [xb, floor, zEnd - t], [xb, back - 0.12, zEnd - t], [xb, back - 0.12, zEnd], { colour: shade(tin, 0.85) });
+  // (dome-detail-275) the bamboo rails the tin is nailed to, inside it, and the rust run up from its foot outside
+  for (const y of [floor + 0.55, back - 0.55]) roundPole(sink, 'structureWood', [xa - 0.05, y, zb + 0.07], [xb + 0.05, y, zb + 0.07], 0.04, { colour: bamboo(y), decor: true });
+  sink.quad('structureMetal', [xb, floor, zb - t - 0.004], [xa, floor, zb - t - 0.004], [xa, floor + 0.32, zb - t - 0.004], [xb, floor + 0.32, zb - t - 0.004],
+    { colour: shade(pick(look, RUSTED), 0.8), decor: true });
   // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z), its
   // front edge turned down in a drip welded to the sheet
   const roofColour = sheetColour(rng);
@@ -896,20 +922,109 @@ const bazaarStall: RegionalBuilder = (ctx) => {
   const tan = (back - front) / D, ze = D / 2 + 0.35, ye = front - 0.35 * tan;
   sink.quad('structureMetal', [-W / 2 - 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye + 0.01, ze], [-W / 2 - 0.3, ye + 0.01, ze], { colour: shade(roofColour, 0.85), decor: true });
   sink.quad('structureMetal', [W / 2 + 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye + 0.01, ze - 0.01], [W / 2 + 0.3, ye + 0.01, ze - 0.01], { colour: shade(roofColour, 0.7), decor: true });
-  bevelSpan(sink, 'structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, 0.04, { colour: pick(rng, WEATHERED_PLANK) });
+  // (dome-detail-275) the frame under the sheet: a bamboo plate on each pair of posts, the rafters on the plates, each
+  // under the slab's soffit where it runs (`under` the soffit's height at z)
+  const under = (z: number): number => front + (D / 2 - z) * tan;
+  const zf = D / 2 - 0.15, zk = -D / 2 + 0.15, rr = 0.045;
+  for (const z of [zf, zk]) roundPole(sink, 'structureWood', [-W / 2 - 0.12, under(z) - 2 * rr - 0.055, z], [W / 2 + 0.12, under(z) - 2 * rr - 0.055, z], 0.055, { colour: bamboo(z), decor: true }, 8);
+  const rafters = Math.max(4, Math.round(W / 1.1) + 1), rafterX = (k: number): number => -W / 2 + 0.05 + (W - 0.1) * k / (rafters - 1);
+  for (let k = 0; k < rafters; k++) {
+    const x = rafterX(k), z0 = -D / 2 - 0.25, z1 = D / 2 + 0.28;
+    roundPole(sink, 'structureWood', [x, under(z0) - rr, z0], [x, under(z1) - rr, z1], rr, { colour: bamboo(k + 9), decor: true });
+  }
+  // the sheets in their courses, two up the run, and a brick or two weighting them against the nor'westers
+  const cosP = 1 / Math.hypot(1, tan), run = (D + 0.66) / cosP, roofOpts = (c: number, k: number): EmitOptions => {
+    const roll = look();
+    const colour = roll < 0.16 ? shade(pick(look, RUSTED), 0.9 + look() * 0.2) : roll < 0.24 ? shade(pick(look, GALVANISED), 1.06) : shade(roofColour, 0.86 + look() * 0.2 - c * 0.04 + (k % 2) * 0.03);
+    return { colour, decor: true };
+  };
+  const slope: SheetSlope = { eave: [-W / 2 - 0.28, ye + 0.05, D / 2 + 0.33], along: [1, 0, 0], up: [0, tan * cosP, -cosP], n: [0, cosP, tan * cosP], run, t1: W + 0.56 };
+  sheetCourses(sink, 'structureMetal', slope, { sheetW: 0.82, sheetL: 3.0, lap: 0.22, ribs: 3, shift: look() * 0.8, paint: roofOpts });
+  for (let k = 0, n = 1 + Math.floor(look() * 3); k < n; k++) {
+    const v = run * (0.3 + look() * 0.5), u = (look() - 0.5) * W;
+    const p: Vec3 = [u, ye + 0.05 + v * tan * cosP + 0.06, D / 2 + 0.33 - v * cosP];
+    sink.member('structureWood', [p[0] - 0.12, p[1], p[2]], [p[0] + 0.12, p[1], p[2]], 0.11, 0.07, slope.n, { colour: shade(rgb(0x9a4a34), 0.85 + look() * 0.2), decor: true, exposed: true, fine: 'near' }, 0.03);
+  }
+  // the painted tin signboard along the front edge, its ground a shop's yellow or white, a red band, the lettering
+  const signW = Math.min(2.6, W * 0.5), signU = (look() - 0.5) * (W - signW) * 0.6, ground = pick(look, SIGN_GROUND);
+  const sign: Face = { origin: [0, 0, ze], u: [1, 0, 0], out: [0, 0, 1], width: W }, signFront: Face = { ...sign, origin: [0, 0, ze + 0.023] };
+  faceBox(sink, 'structureMetal', sign, signU, ye + 0.1, 0.013, signW, 0.48, 0.02, { colour: ground, decor: true });
+  faceBox(sink, 'structureMetal', signFront, signU, ye - 0.06, 0.005, signW, 0.06, 0.01, { colour: rgb(0xb03028), decor: true });
+  for (let k = 0, n = 3 + Math.floor(look() * 3); k < n; k++) {
+    const w = 0.18 + look() * 0.22, u = signU - signW / 2 + 0.2 + (signW - 0.4) * (k + 0.5) / n;
+    faceBox(sink, 'structureMetal', signFront, u, ye + 0.16, 0.005, Math.min(w, (signW - 0.4) / n - 0.04), 0.16, 0.01, { colour: shade(rgb(0x1e3a8a), 0.8 + look() * 0.4), decor: true, fine: 'near' });
+  }
+  // the cloth flap from the eave over the lane: its stripes, its hem scalloped where it hangs between the ties
+  const cloth = pick(look, AWNING), strip = Math.max(6, Math.round((W + 0.4) / 0.5)), drop = 0.42 + look() * 0.12;
+  for (let k = 0; k < strip; k++) {
+    const x0 = -W / 2 - 0.2 + (W + 0.4) * k / strip, x1 = -W / 2 - 0.2 + (W + 0.4) * (k + 1) / strip;
+    const hem = (x: number) => ye - 0.12 - drop + 0.06 * Math.abs(Math.sin(Math.PI * (x + W / 2 + 0.2) / ((W + 0.4) / 3)));
+    const c = k % 2 ? cloth[0] : cloth[1];
+    const a: Vec3 = [x0, ye - 0.11, ze + 0.02], b: Vec3 = [x1, ye - 0.11, ze + 0.02], cc: Vec3 = [x1, hem(x1), ze + 0.2], d: Vec3 = [x0, hem(x0), ze + 0.2];
+    facing(sink, 'structureWood', [a, b, cc, d], [0, -0.4, 1], { colour: c, decor: true });
+    facing(sink, 'structureWood', [a, b, cc, d].map((p): Vec3 => [p[0], p[1], p[2] - 0.009]), [0, 0.4, -1], { colour: shade(c, 0.6), decor: true });
+  }
+  // one side screened by a woven bamboo mat in its frame of canes, the other open to the next stall
+  const sx = look() < 0.5 ? -1 : 1, mx = sx * (W / 2 - 0.15);
+  const matFace: Face = { origin: [mx, 0, 0], u: [0, 0, -sx], out: [sx, 0, 0], width: D };
+  const m0 = -D / 2 + 0.25, m1 = D / 2 - 0.25, mTop = Math.min(under(m1), 2.2);
+  sink.member('structureWood', facePoint(matFace, m0 - 0.1, floor + 0.035, 0), facePoint(matFace, m1 + 0.1, floor + 0.035, 0), 0.06, 0.06, matFace.out, { colour: bamboo(1), decor: true, exposed: true }, 0.03);
+  const panes = 3;
+  for (let k = 0; k < panes; k++) {
+    const u0 = m0 + (m1 - m0) * k / panes + 0.02, u1 = m0 + (m1 - m0) * (k + 1) / panes - 0.02;
+    faceBox(sink, 'structureWood', matFace, (u0 + u1) / 2, (floor + 0.065 + mTop) / 2, 0.015, u1 - u0, mTop - floor - 0.065, 0.025, { colour: shade(BAMBOO_MAT, 0.86 + look() * 0.2), decor: true });
+  }
+  for (const y of [floor + 0.85, mTop]) roundPole(sink, 'structureWood', facePoint(matFace, m0 - 0.1, y, 0.04), facePoint(matFace, m1 + 0.1, y, 0.04), 0.035, { colour: bamboo(y + 3), decor: true });
+  for (let k = 1; k < panes; k++) roundPole(sink, 'structureWood', facePoint(matFace, m0 + (m1 - m0) * k / panes, floor + 0.065, 0.04), facePoint(matFace, m0 + (m1 - m0) * k / panes, mTop, 0.04), 0.035, { colour: bamboo(k + 5), decor: true });
+  const counter = pick(rng, WEATHERED_PLANK);
+  bevelSpan(sink, 'structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, 0.04, { colour: counter });
+  // (dome-detail-275) the counter's top board standing proud of its front, the battens down its boarded front
+  sink.span('structureWood', -W / 2 + 0.3, floor + 0.8, D / 2 - 1.04, W / 2 - 0.3, floor + 0.84, D / 2 - 0.4, { colour: shade(counter, 1.15), decor: true });
+  for (let k = 0; k < 4; k++) {
+    const x = -W / 2 + 0.45 + (W - 0.9) * k / 3;
+    sink.span('structureWood', x - 0.05, floor, D / 2 - 0.45, x + 0.05, floor + 0.78, D / 2 - 0.42, { colour: shade(counter, 0.78), decor: true });
+  }
   // the goods: jute sacks on the counter and the floor, flat baskets of produce
   const jute = rgb(0xa08a62), produce: readonly Rgb[] = [0x8a3a2a, 0xc0902a, 0x5a7a3a, 0xb8b0a0].map(rgb);
   for (let k = 0, n = 3 + Math.floor(rng() * 3); k < n; k++) {
     const x = -W / 2 + 0.7 + rng() * (W - 1.4), onCounter = rng() < 0.5;
     const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8, h = 0.42 + rng() * 0.16;
     sink.cylinder('structureWood', [x, y0, z], 'y', h, 0.2, 8, { colour: jute, decor: true }, 0.16);
+    // (dome-detail-275) its mouth rolled down in a fat rim, and the grain heaped in it
+    sink.cylinder('structureWood', [x, y0 + h - 0.07, z], 'y', 0.08, 0.185, 8, { colour: shade(jute, 0.84), decor: true }, 0.175);
+    sink.cylinder('structureWood', [x, y0 + h - 0.03, z], 'y', 0.12, 0.165, 8, { colour: pick(look, GRAIN), decor: true }, 0.02, false);
   }
   for (let k = 0; k < 3; k++) {
-    const x = -W / 2 + 0.8 + k * (W - 1.6) / 2;
-    sink.cylinder('structureWood', [x, floor + 0.8, D / 2 - 0.72], 'y', 0.12, 0.28, 8, { colour: pick(rng, produce), decor: true });
+    const x = -W / 2 + 0.8 + k * (W - 1.6) / 2, colour = pick(rng, produce);
+    // (dome-detail-275) a bamboo winnowing tray (kula) on the counter, its produce heaped on it
+    sink.cylinder('structureWood', [x, floor + 0.8, D / 2 - 0.72], 'y', 0.06, 0.26, 10, { colour: shade(BAMBOO, 0.95), decor: true }, 0.3);
+    mound(sink, [x, floor + 0.85, D / 2 - 0.72], [1, 0, 0], [0, 0, 1], 0.22, 0.2, 0.13 + look() * 0.06, colour, { decor: true }, look() * 2);
   }
+  // (dome-detail-275) the hanging balance over the counter, from the middle rafter: its cord, the beam, the two brass pans
+  const kMid = Math.round((rafters - 1) / 2), bx = rafterX(kMid), bz = D / 2 - 0.72, beamY = floor + 0.8 + 0.62, brass = rgb(0xa8823a);
+  const cords = { colour: rgb(0x3a3228), decor: true, exposed: true, fine: 'near' } as const;
+  sink.member('structureWood', [bx, under(bz) - 2 * rr + 0.01, bz], [bx, beamY + 0.02, bz], 0.014, 0.014, [0, 0, 1], cords, 0);
+  sink.member('structureMetal', [bx - 0.3, beamY, bz], [bx + 0.3, beamY, bz], 0.03, 0.03, [0, 1, 0], { colour: shade(brass, 0.8), decor: true, exposed: true }, 0.015);
+  for (const s of [-1, 1]) {
+    sink.member('structureWood', [bx + s * 0.28, beamY - 0.01, bz], [bx + s * 0.28, beamY - 0.36, bz], 0.012, 0.012, [0, 0, 1], cords, 0);
+    sink.cylinder('structureMetal', [bx + s * 0.28, beamY - 0.4, bz], 'y', 0.04, 0.09, 10, { colour: brass, decor: true }, 0.15);
+  }
+  // a hand of bananas hung from the front plate by a post, and the seller's cane stool and water pot at the back
+  const hx = sx * -(W / 2 - 0.55), hy = under(zf) - 2 * rr - 0.11;
+  sink.member('structureWood', [hx, hy, zf], [hx, hy - 0.25, zf], 0.014, 0.014, [0, 0, 1], cords, 0);
+  sink.cylinder('structureWood', [hx, hy - 0.7, zf], 'y', 0.45, 0.07, 8, { colour: rgb(0x8a9a3a), decor: true }, 0.16);
+  const stoolX = (look() - 0.5) * (W - 1.6), stoolZ = D / 2 - 1.45;
+  sink.revolve('structureWood', [stoolX, floor, stoolZ], 'y', [[0, 0.17], [0.12, 0.12], [0.24, 0.11], [0.34, 0.14], [0.4, 0.18]], 10, { colour: rgb(0x9a7a48), decor: true });
+  sink.cylinder('structureWood', [stoolX, floor + 0.4, stoolZ], 'y', 0.04, 0.19, 10, { colour: rgb(0x6a4a2e), decor: true });
+  clayPot(sink, sx * (W / 2 - 0.5), floor, -D / 2 + 0.5, 0.2, pick(look, TERRACOTTA));
   return sink.finish();
 };
+/** (dome-detail-275) the signboards' painted grounds: a shop yellow, a white, a sky blue */
+const SIGN_GROUND: readonly Rgb[] = [0xe0b830, 0xe8e4d8, 0x5a9ad0].map(rgb);
+/** (dome-detail-275) the stall's cloth flap: its two stripes (a red and white, a blue and yellow, a green and white) */
+const AWNING: ReadonlyArray<readonly [Rgb, Rgb]> = [[rgb(0xb83a2e), rgb(0xe0d8c8)], [rgb(0x2e5aa0), rgb(0xd8b030)], [rgb(0x2e7a4a), rgb(0xe0dccc)]];
+/** (dome-detail-275) what a sack's mouth shows: rice, red lentils, chillies, turmeric, potatoes */
+const GRAIN: readonly Rgb[] = [0xe8e2d0, 0xd07040, 0xa82a1e, 0xd8a028, 0x9a7a52].map(rgb);
 
 export const BENGAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => tinHouse(ctx),

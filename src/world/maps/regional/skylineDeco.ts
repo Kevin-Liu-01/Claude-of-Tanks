@@ -56,14 +56,41 @@ const within = (v: Rect | null, x: number, z: number, m: number) => !!v && x > v
 function deckFinials(sink: PartSink, r: Rect, top: number, parapet: number, bay: number, bucket: RegionalBucket, gone: Rect | null): void {
   for (const face of rectFaces(r)) {
     const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
-    for (let k = 0; k <= n; k++) {
-      const at = -face.width / 2 + k * bw, corner = k === 0 || k === n, p = facePoint(face, at, 0, 0);
+    // (dome-detail-275) the corners' finials are the stepped corner crowns now (cornerSteps)
+    for (let k = 1; k < n; k++) {
+      const u = -face.width / 2 + k * bw, p = facePoint(face, u, 0, 0);
       if (within(gone, p[0], p[2], 0.4)) continue;
-      const w = corner ? 0.8 : 0.5, u = corner ? at - Math.sign(at) * w / 2 : at, h = parapet + (corner ? 1.6 : 1.0);
-      // (an underside where it overhangs its pier's head: the corner pier's front order is narrower than the finial)
-      faceBox(sink, bucket, face, u, top + h / 2, 0.26, w, h, 0.5, { ...DECOR, fineSides: true }, corner ? undefined : { bottom: true });
+      const h = parapet + 1.0;
+      faceBox(sink, bucket, face, u, top + h / 2, 0.26, 0.5, h, 0.5, { ...DECOR, fineSides: true }, { bottom: true });
     }
   }
+}
+
+/**
+ * (dome-detail-275) A setback's stepped corner crown: over each corner's piers a ziggurat of two stone blocks rising past
+ * the parapet, the accent's cap on the last -- the stepped silhouette every Bund tower of the thirties carried at its
+ * setbacks (Broadway Mansions, the Park Hotel), where a single finial stood. None over a collapsed corner's void.
+ */
+function cornerSteps(sink: PartSink, r: Rect, top: number, parapet: number, bucket: RegionalBucket, accent: Rgb, gone: Rect | null): void {
+  for (const [x, z] of [[r.x0, r.z0], [r.x1, r.z0], [r.x0, r.z1], [r.x1, r.z1]] as const) {
+    if (within(gone, x, z, 0.4)) continue;
+    const sx = x > (r.x0 + r.x1) / 2 ? 1 : -1, sz = z > (r.z0 + r.z1) / 2 ? 1 : -1;
+    // each block from the corner piers' faces (0.5 m out) back over the tier's top
+    // (the upper two seated on the block under them: no underside)
+    const block = (out: number, back: number, y0: number, y1: number, b: RegionalBucket, o: EmitOptions, seated: boolean) => {
+      const xa = x + sx * out, xb = x - sx * back, za = z + sz * out, zb = z - sz * back;
+      sink.box(b, [(xa + xb) / 2, (y0 + y1) / 2, (za + zb) / 2], [Math.abs(xa - xb) / 2, (y1 - y0) / 2, Math.abs(za - zb) / 2], o, undefined, { ny: seated });
+    };
+    const y1 = top + parapet + 1.5, y2 = y1 + 1.2;
+    block(0.5, 1.5, top, y1, bucket, { ...DECOR, shadow: true }, false);
+    block(0.25, 1.1, y1, y2, bucket, { ...DECOR, shadow: true }, true);
+    block(0.08, 0.75, y2, y2 + 0.35, 'structureMetal', { ...DECOR, colour: accent }, true);
+  }
+}
+
+/** (dome-detail-275) A setback's parapet coping: a cap course proud of it all round, its drip over the piers' heads. */
+function coping(sink: PartSink, part: Rect, y: number, bucket: RegionalBucket): void {
+  sink.span(bucket, part.x0 - 0.14, y - 0.12, part.z0 - 0.14, part.x1 + 0.14, y + 0.08, part.z1 + 0.14, DECOR);
 }
 
 /**
@@ -78,7 +105,8 @@ function chevrons(sink: PartSink, r: Rect, y: number, accent: Rgb, gone: Rect | 
   const chevron = (points: readonly Vec3[], dir: Vec3, depth: number): void => {
     const far = points.map((p): Vec3 => [p[0] + dir[0] * depth, p[1] + dir[1] * depth, p[2] + dir[2] * depth]);
     sink.polygon('structureMetal', far, opts);
-    for (let i = 0; i < points.length; i++) {
+    // (dome-detail-275, the kit's budget) no underside: 14 cm deep along the parapet's foot, never seen
+    for (let i = 1; i < points.length; i++) {
       const j = (i + 1) % points.length;
       sink.quad('structureMetal', points[i], points[j], far[j], far[i], { ...opts, uv: UV_WORLD });
     }
@@ -132,6 +160,88 @@ function bladeSign(sink: PartSink, face: Face, u: number, y0: number, h: number,
   for (const y of [y0 + 0.3, y0 + h - 0.3]) faceBox(sink, 'structureMetal', face, u, y, out + 0.15, 0.08, 0.08, 0.3, { ...DECOR, colour: STEEL });
 }
 
+/** (dome-detail-275) A convex polygon facing `out` (its winding turned to face it). */
+function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], out: Vec3, opts: EmitOptions): void {
+  const [a, b, c] = pts, e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+  const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+  sink.polygon(bucket, n[0] * out[0] + n[1] * out[1] + n[2] * out[2] >= 0 ? pts : [...pts].reverse(), opts);
+}
+
+/**
+ * (dome-detail-275) The tower's entrance on its street front, in the podium's door bay (skyline.ts podium: its middle
+ * bay): a granite frontispiece standing proud through the podium's cornice -- two stepped jambs of two orders on
+ * polished plinths, the attic over them stepped up twice past the cornice (the deco ziggurat), the gilt sunburst over
+ * the door and the house's name in gilt on the attic's step; the bronze screen over the doors (the transom's grille), the
+ * bronze canopy hung on its two rods with its gilt fascia, and a bronze lantern on each jamb. `look` the name's strokes.
+ */
+function portal(sink: PartSink, plot: Rect, podiumH: number, look: () => number): void {
+  const face = rectFaces(plot)[0], W = face.width, n = Math.max(1, Math.round(W / 4.2)), bw = W / n;
+  const u = -W / 2 + (Math.floor(n / 2) + 0.5) * bw, ow = bw * 0.62, oh = podiumH * 0.72;
+  const dh = Math.min(3.4, oh * 0.8), cx = face.origin[0] + u, z = face.origin[2];
+  const ju = ow / 2 + 0.5, jw = 0.9, jo = 0.62, a0 = 0.5 + oh + 0.38, a1 = podiumH + 1.2;
+  const stone: EmitOptions = { ...DECOR, shadow: true };
+  for (const s of [-1, 1]) {
+    // the jamb of two orders up to the attic, on its polished plinth
+    steppedPier(sink, 'plaster3', face, u + s * ju, 0.6, a0, jw, jo, stone, false);
+    sink.box('plaster3', [cx + s * ju, 0.15, z + 0.4], [0.58, 0.45, 0.4], { ...stone, shade: 0.7 }, undefined, { nz: true });
+    // its bronze lantern, the lamp lit
+    faceBox(sink, 'structureMetal', face, u + s * ju, 3.0, jo + 0.14, 0.3, 0.55, 0.28, { ...DECOR, colour: BRONZE, fine: 'near' });
+    facePanel(sink, 'curtain', face, u + s * ju, 3.0, jo + 0.29, 0.2, 0.38, { ...DECOR, window: face.out, fine: 'near' });
+  }
+  // the attic, back into the podium's cornice, and its two steps past it
+  const half = ju + jw / 2;
+  sink.span('plaster3', cx - half, a0, z - 0.6, cx + half, a1, z + 0.7, stone);
+  sink.box('plaster3', [cx, a1 + 0.45, z], [half * 0.62, 0.45, 0.55], stone, undefined, { ny: true });
+  sink.box('plaster3', [cx, a1 + 1.25, z - 0.05], [half * 0.3, 0.35, 0.4], stone, undefined, { ny: true });
+  // the gilt sunburst over the doors: seven rays fanned from the attic's foot
+  const gilt: EmitOptions = { ...DECOR, colour: GILT };
+  for (let k = 0; k < 7; k++) {
+    const t = Math.PI * (0.12 + 0.76 * k / 6), r = k % 2 ? 1.25 : 1.75, c = [cx, a0 + 0.06, z + 0.71] as const;
+    const tip: Vec3 = [cx + Math.cos(t) * r, Math.min(a1 - 0.15, a0 + 0.06 + Math.sin(t) * r), c[2]];
+    const px = -Math.sin(t) * 0.11, py = Math.cos(t) * 0.11;
+    facing(sink, 'structureMetal', [[c[0] + px, c[1] + py, c[2]], [c[0] - px, c[1] - py, c[2]], tip], [0, 0, 1], gilt);
+  }
+  // the name in gilt on the first step
+  const step = { ...face, origin: [face.origin[0], 0, z + 0.55] as Vec3 };
+  for (let k = -1; k <= 1; k++) {
+    glyph(u + k * 0.85, a1 + 0.45, 0.62, look, (u0, u1, y0, y1) => facePanel(sink, 'structureMetal', step, (u0 + u1) / 2, (y0 + y1) / 2, 0.008, u1 - u0, y1 - y0, gilt));
+  }
+  // the bronze screen in the transom over the doors (the podium's light at the back of its reveal)
+  const t0 = 0.4 + dh + 0.6, t1 = 0.5 + oh, tw = ow - 0.2, bronze: EmitOptions = { ...DECOR, colour: BRONZE };
+  for (let k = 1; k <= 3; k++) facePanel(sink, 'structureMetal', face, u - tw / 2 + tw * k / 4, (t0 + t1) / 2, -0.3, 0.09, t1 - t0, bronze);
+  facePanel(sink, 'structureMetal', face, u, t0 + (t1 - t0) * 0.36, -0.29, tw, 0.09, bronze);
+  // the bronze canopy over the doors between the jambs, its gilt fascia, its two rods up to the opening's surrounds
+  const ci = ju - jw / 2, cy = 0.4 + dh + 0.24;
+  // (its reach within the plot's 0.6 m of decor past it: the podium stands 0.4 m in)
+  sink.span('structureMetal', cx - ci, cy - 0.12, z, cx + ci, cy + 0.12, z + 0.9, { ...bronze, shadow: true });
+  sink.box('structureMetal', [cx, cy, z + 0.925], [ci, 0.17, 0.025], gilt, undefined, { nz: true });
+  for (const s of [-1, 1]) sink.pipe('structureMetal', [cx + s * (ci - 0.15), cy + 0.12, z + 0.8], [cx + s * (ow / 2 + 0.12), t1 - 0.3, z + 0.16], 0.03, 6, { ...bronze, fine: 'near' });
+}
+
+/**
+ * (dome-detail-275) The copper pyramid laid in relief (skyline.ts pyramidCrown draws its four planes): standing seams up
+ * each plane square to its eave, stopped at the hips, and a roll down each hip.
+ */
+function copperSeams(sink: PartSink, cx: number, cz: number, h: number, y: number, rise: number): void {
+  const apex: Vec3 = [cx, y + rise, cz], corners: Vec3[] = [[cx - h, y, cz + h], [cx + h, y, cz + h], [cx + h, y, cz - h], [cx - h, y, cz - h]];
+  const seam: EmitOptions = { ...DECOR, colour: rgb(0x4f7d68) };
+  for (let i = 0; i < 4; i++) {
+    const p = corners[i], q = corners[(i + 1) % 4], m: Vec3 = [(p[0] + q[0]) / 2, y, (p[2] + q[2]) / 2];
+    const up: Vec3 = [apex[0] - m[0], apex[1] - m[1], apex[2] - m[2]], along: Vec3 = [(q[0] - p[0]) / (2 * h), 0, (q[2] - p[2]) / (2 * h)];
+    const out: Vec3 = [m[0] - cx, 0, m[2] - cz], ol = Math.hypot(out[0], out[2]);
+    // the plane's outward normal (out tipped up by the pitch)
+    const nrm: Vec3 = [out[0] / ol * rise, h, out[2] / ol * rise], nl = Math.hypot(...nrm), n: Vec3 = [nrm[0] / nl, nrm[1] / nl, nrm[2] / nl];
+    const at = (t: number, s: number, side: number, raise: number): Vec3 => [
+      p[0] + (q[0] - p[0]) * t + up[0] * s + along[0] * side + n[0] * raise, y + up[1] * s + n[1] * raise, p[2] + (q[2] - p[2]) * t + up[2] * s + along[2] * side + n[2] * raise];
+    const count = Math.max(4, Math.round(2 * h / 0.95));
+    for (let k = 1; k < count; k++) {
+      const t = k / count, top = 0.97 * (1 - 2 * Math.abs(t - 0.5));
+      for (const side of [-1, 1]) facing(sink, 'structureMetal', [at(t, 0, side * 0.05, 0), at(t, top, side * 0.05, 0), at(t, top, 0, 0.05), at(t, 0, 0, 0.05)], [n[0] + along[0] * side, n[1], n[2] + along[2] * side], seam);
+    }
+    sink.pipe('structureMetal', [p[0], p[1] + 0.04, p[2]], [apex[0], apex[1] - 0.25, apex[2]], 0.09, 6, { ...seam, caps: false });
+  }
+}
+
 /**
  * The art-deco tower of the Bund: a granite podium, a shaft of continuous piers over recessed spandrels in two or three
  * setbacks, the crown a copper pyramid (Sassoon House), a stepped crown with a flagstaff (Broadway Mansions) or a needle.
@@ -150,6 +260,8 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     // (230) the podium in the granite every Bund tower stood on, its cornice proud over the street (the brick before)
     podium(sink, plot, podiumH, 'plaster3', rng, { arcade: rng() < 0.5 });
     sink.span('plaster3', plot.x0 - 0.3, podiumH - 0.45, plot.z0 - 0.3, plot.x1 + 0.3, podiumH + 0.05, plot.z1 + 0.3, { ...DECOR, shadow: true });
+    // (dome-detail-275) the entrance's granite frontispiece and its bronze (the name's strokes from a stream of its own)
+    portal(sink, plot, podiumH, (() => { let k = 0; return () => hash01(plot.x0, plot.z1, 27.5, k++); })());
     // (props census #9, E13: the tower reader) the podium and the shaft (its first tier's plan, to the crown, in storey
     // bands) as bodies for the damage reading: the podium breaks as a house, the shaft topples
     recordBody(sink, (plot.x0 + plot.x1) / 2, (plot.z0 + plot.z1) / 2, plot.x1 - plot.x0, plot.z1 - plot.z0, podiumH, stone);
@@ -159,7 +271,8 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       bay: 2.2, lit: 0.32, glazing: 'bays', mullions: 1, mullion: BRONZE,
       // (251, the kit's 12k budget) the windows' bronze mullion and transom (5 cm) on the storeys over the podium a
       // street reads, not on the shaft's 60 m where they draw under a pixel
-      joineryTop: podiumH + 3 * 3.6,
+      // (dome-detail-275, the kit's budget: the portal and the crowns) on the two storeys over the podium
+      joineryTop: podiumH + 2 * 3.6,
     };
     const total = opts.floors ?? Math.max(6, Math.min(22, Math.round((ctx.info.h > 20 ? ctx.info.h : 48) / 3.6)));
     const fh = 3.6;
@@ -178,8 +291,10 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       // (from the tier's top: run 0.3 m down it stood behind the top floor's glass, the pane on stone instead of the dark)
       // (the owner, 2026-10-21: the towers' "floating parts") over a collapsed corner the parapet and its finials stand on
       // the tier's standing L only: they were laid across the void, a roof and its finials over nothing
-      for (const part of keep ?? [r]) sink.span(wall, part.x0, top, part.z0, part.x1, top + 0.9, part.z1);
+      for (const part of keep ?? [r]) { sink.span(wall, part.x0, top, part.z0, part.x1, top + 0.9, part.z1); coping(sink, part, top + 0.9, wall); }
       deckFinials(sink, r, top, 0.9, facade.bay, wall, gone);
+      // (dome-detail-275) the setback's corners stepped up past its parapet (the crown's last tier steps under the crown)
+      cornerSteps(sink, r, top, 0.9, wall, dress.accent, gone);
       // (230, "underdesigned") the Art Deco chevrons along the setback's parapet; up each wide face of the first tier its
       // centre spine
       chevrons(sink, r, top + 0.08, dress.accent, gone, facade.bay);
@@ -222,10 +337,12 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       // (230) the drum's clerestory under its band, the pyramid steeper: Sassoon House's rises near twice its half
       for (const face of rectFaces(dr)) {
         const n = Math.max(2, Math.round(face.width / 1.5)), w = face.width / n;
-        for (let k = 0; k < n; k++) facePanel(sink, k % 2 ? 'glass' : 'curtain', face, -face.width / 2 + (k + 0.5) * w, y + 2.45, 0.02, w * 0.55, 1.8, { ...DECOR, window: face.out });
+        // (dome-detail-275) the lit crown: every light of the clerestory lit (one in two before)
+        for (let k = 0; k < n; k++) facePanel(sink, 'curtain', face, -face.width / 2 + (k + 0.5) * w, y + 2.45, 0.02, w * 0.55, 1.8, { ...DECOR, window: face.out });
       }
       band(dr, y + 3.95);
       pyramidCrown(sink, cx, cz, half * 0.92, y + 4.1, half * 2.0, COPPER);
+      copperSeams(sink, cx, cz, half * 0.92, y + 4.1, half * 2.0);
     } else if (crown === 'stepped') {
       // the ziggurat crown: three stepped drums, each ringed by fins, a flagstaff on the last
       let s = half * 0.82, yy = y + 0.9;
@@ -233,11 +350,18 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
         sink.span(wall, cx - s, yy, cz - s, cx + s, yy + 2.6, cz + s);
         for (const face of rectFaces({ x0: cx - s, x1: cx + s, z0: cz - s, z1: cz + s })) {
           // (the fins stand 0.6 m over the drum: their backs drawn, a centimetre off it)
-          for (let f = -1; f <= 1; f++) faceBox(sink, wall, face, f * s * 0.55, yy + 1.6, 0.19, 0.28, 3.2, 0.36, { ...DECOR, fineSides: true });
+          // (dome-detail-275: no underside, it stands on the drum's foot)
+          for (let f = -1; f <= 1; f++) faceBox(sink, wall, face, f * s * 0.55, yy + 1.6, 0.19, 0.28, 3.2, 0.36, { ...DECOR, fineSides: true }, { bottom: true });
+          // (dome-detail-275) the lit crown: a tall light between each pair of fins
+          for (const g of [-1, 1]) facePanel(sink, 'curtain', face, g * s * 0.275, yy + 1.25, 0.02, s * 0.3, 1.7, { ...DECOR, window: face.out });
         }
         band({ x0: cx - s, x1: cx + s, z0: cz - s, z1: cz + s }, yy + 2.45);
         yy += 2.6; s *= 0.7;
       }
+      // (dome-detail-275) the lit lantern on the last drum under its stone cap, the flagstaff on the cap
+      sink.box('curtain', [cx, yy + 0.8, cz], [s * 0.7, 0.8, s * 0.7], DECOR, undefined, { ny: true });
+      sink.box(wall, [cx, yy + 1.75, cz], [s * 0.9, 0.15, s * 0.9], { ...DECOR, shadow: true });
+      yy += 1.9;
       sink.cylinder('structureMetal', [cx, yy, cz], 'y', 9, 0.1, 6, { ...DECOR, colour: STEEL }, 0.05);
       // (230) the beacon at the staff's head
       sink.cylinder('structureMetal', [cx, yy + 8.95, cz], 'y', 0.6, 0.26, 8, { ...DECOR, colour: dress.accent }, 0.1);
@@ -255,8 +379,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
  * the wall) and its two end caps (the section fanned; convex).
  */
 export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, sec: ReadonlyArray<readonly [number, number]>, opts: EmitOptions,
-  caps: readonly [boolean, boolean] = [true, true]): void {
-  for (let i = 0; i + 1 < sec.length; i++) {
+  caps: readonly [boolean, boolean] = [true, true], from = 0): void {
+  // (dome-detail-275) `from`: the section's first segments left open (a spandrel's underside, 7 cm over the glass)
+  for (let i = from; i + 1 < sec.length; i++) {
     const [oa, ya] = sec[i], [ob, yb] = sec[i + 1];
     if (oa < 1e-6 && ob < 1e-6) continue;
     sink.quad(bucket, facePoint(face, u0, ya, oa), facePoint(face, u1, ya, oa), facePoint(face, u1, yb, ob), facePoint(face, u0, yb, ob), opts);
@@ -270,7 +395,7 @@ export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, 
  * front order 9 cm narrower a side out to `out`; its sides and front, its head
  * capped (the foot stands on the podium or the setback).
  */
-export function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, w: number, out: number, opts: EmitOptions): void {
+export function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, w: number, out: number, opts: EmitOptions, head = true): void {
   const h = w / 2, f = Math.max(0.08, h - 0.09), o1 = out * 0.55;
   // the plan section round the pier (u, o), from the wall on its left round to the wall on its right
   const sec: Array<[number, number]> = [[-h, 0], [-h, o1], [-f, o1], [-f, out], [f, out], [f, o1], [h, o1], [h, 0]];
@@ -278,6 +403,8 @@ export function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, 
   for (let i = 0; i + 1 < sec.length; i++) sink.quad(bucket, at(sec[i], y0), at(sec[i + 1], y0), at(sec[i + 1], y1), at(sec[i], y1), opts);
   // the head: the section's plan fanned (two convex parts: the back order, the front order)
   // (counter-clockwise from above: the face's u turned toward its out is clockwise, so the sections run back)
+  // (dome-detail-275) none under a finial or a stepped corner crown standing on it (`head` false)
+  if (!head) return;
   sink.polygon(bucket, [at([-h, o1], y1), at([h, o1], y1), at([h, 0], y1), at([-h, 0], y1)], opts);
   sink.polygon(bucket, [at([-f, out], y1), at([f, out], y1), at([f, o1], y1), at([-f, o1], y1)], opts);
 }
@@ -361,7 +488,7 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       // (looks r2) the spandrel panel with its sill: a weathered sill course along its head, its nose 5 cm proud of the panel
       // (251) a run's end at the face's edge stands in its corner pier's side, its cap drawn there for nothing
       faceSection(sink, sp.bucket, face, u0, u1, [[0, y], [sp.out, y], [sp.out, y + sp.h - 0.12], [sp.out + 0.05, y + sp.h - 0.1], [0, y + sp.h]],
-        { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) }, [!(pier && run0 === 0), !(pier && b === bays)]);
+        { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) }, [!(pier && run0 === 0), !(pier && b === bays)], 1);
       run0 = -1;
     };
     for (let b = 0; b <= bays; b++) {
@@ -426,7 +553,9 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       if (p.top - y0 < 0.5) continue;
       // (looks r2) a deco pier of two orders: its back order the pier's width out to 55 % of its reach, the front order
       // stepped in 9 cm a side (a box before)
-      steppedPier(sink, pier.bucket, face, p.u, y0, p.top, p.w, pier.out, pOpts);
+      // (dome-detail-275) a full-height pier's head under its finial or its corner's stepped crown (deckFinials,
+      // cornerSteps: every tier carries them) is left open
+      steppedPier(sink, pier.bucket, face, p.u, y0, p.top, p.w, pier.out, pOpts, p.top < y0 + floors * fh - 1e-6);
     }
   }
 }

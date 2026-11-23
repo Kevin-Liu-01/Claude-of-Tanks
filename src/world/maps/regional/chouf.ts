@@ -7,8 +7,8 @@
 // souk's vaulted shops behind their arches; the sabil fountain under its dome; a stone church with its open bell arch;
 // the terraces' vaulted stone stores and stables; a shelled house.
 import {
-  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
-  type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
+  LocalFrame, PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
+  type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, recordBody, recordShaft, roofCrown, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
@@ -168,6 +168,130 @@ function dialect(st: ChoufState): HouseDialect {
 
 /** The red Marseille-tile hip of the 19th-century house. */
 const tileHip = (pitch: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave: 0.5, verge: 0.5, thickness: 0.12, bucket: 'roof', ridge: 'saddle' });
+
+// ---- (dome-detail-275) the Marseille tiles in relief ----
+
+const lerp3 = (a: Vec3, ka: number, b: Vec3, kb: number): Vec3 => [a[0] * ka + b[0] * kb, a[1] * ka + b[1] * kb, a[2] * ka + b[2] * kb];
+const cross3 = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/** A convex polygon wound to face `toward` (dome-detail-275). */
+function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec3, opts: EmitOptions): void {
+  const n = cross3(lerp3(pts[1], 1, pts[0], -1), lerp3(pts[2], 1, pts[0], -1));
+  sink.polygon(bucket, n[0] * toward[0] + n[1] * toward[1] + n[2] * toward[2] >= 0 ? pts : [...pts].reverse(), opts);
+}
+
+/**
+ * A roof slope in its own terms (dome-detail-275, as dalmatian.ts lays its canal tiles): a point `v` up the slope from
+ * the eave's edge, `t` along it, `h` off the covering; `lim(v)` how far either way the slope reaches at `v` (a hip
+ * closing it: `closes`); `reach` its run to the ridge.
+ */
+interface TileSlope {
+  at: (v: number, t: number, h: number) => Vec3; n: Vec3; up: Vec3; along: Vec3; lim: (v: number) => number;
+  reach: number; side: 1 | -1; end: boolean; closes: boolean;
+}
+
+function tileSlope(rg: HouseFrame['roof'], roof: RoofSpec, side: 1 | -1, end: boolean): TileSlope {
+  const cosP = 1 / Math.hypot(1, rg.tanP), sinP = rg.tanP * cosP, xe = rg.s + roof.eave;
+  const D = rg.halfD + (rg.hipVerge ?? roof.verge), hip = rg.kind === 'hip';
+  if (end) {
+    const ye = rg.topAt(0, side * D) ?? rg.eaveY;
+    return {
+      at: (v, t, h) => [t, ye + sinP * v + cosP * h, side * (D - cosP * v + sinP * h)], n: [0, cosP, side * sinP], up: [0, sinP, -side * cosP],
+      along: [1, 0, 0], lim: (v) => xe - cosP * v, reach: (D - rg.ridgeHalf) / cosP, side, end, closes: true,
+    };
+  }
+  const ye = rg.topAt(side * xe, 0) ?? rg.eaveY;
+  const up: Vec3 = [-side * cosP, sinP, 0], n: Vec3 = [side * sinP, cosP, 0];
+  return {
+    at: (v, t, h) => [side * xe + up[0] * v + n[0] * h, ye + up[1] * v + n[1] * h, t], n, up, along: [0, 0, 1],
+    lim: (v) => (hip ? rg.ridgeHalf + xe - cosP * v : D), reach: xe / cosP, side, end, closes: hip,
+  };
+}
+
+/** The Marseille tile's course up the slope (its visible length) and its width across it (dome-detail-275). */
+const MARS_COURSE = 0.36, MARS_ROW = 0.23;
+
+/**
+ * One row of Marseille tiles' interlock (dome-detail-275): the raised roll where each tile's edge locks over its
+ * neighbour's, run down the slope from `v0` to `v1` at `t`, closed at both ends (near joinery: at range the courses
+ * carry the roof).
+ */
+function tileRib(sink: PartSink, sl: TileSlope, t: number, v0: number, v1: number, tone: number): void {
+  const w = 0.045, hh = 0.034, o: EmitOptions = { decor: true, fine: true, shade: tone };
+  const A0 = sl.at(v0, t - w, -0.006), B0 = sl.at(v0, t, hh), C0 = sl.at(v0, t + w, -0.006);
+  const A1 = sl.at(v1, t - w, -0.006), B1 = sl.at(v1, t, hh), C1 = sl.at(v1, t + w, -0.006);
+  facing(sink, 'roof', [A0, B0, B1, A1], lerp3(sl.along, -1, sl.n, 0.7), o);
+  facing(sink, 'roof', [B0, C0, C1, B1], lerp3(sl.along, 1, sl.n, 0.7), o);
+  facing(sink, 'roof', [A0, B0, C0], lerp3(sl.up, -1, sl.n, 0), { ...o, shade: tone * 0.7 });
+  facing(sink, 'roof', [A1, B1, C1], sl.up, o);
+}
+
+/**
+ * A course's butt across the slope (dome-detail-275): the tiles' noses a finger high at `v`, the course thinning up
+ * the slope to the next; `ends` closes its ends (a run's first and last length: the lengths between abut).
+ */
+function tileCourse(sink: PartSink, sl: TileSlope, v: number, t0: number, t1: number, tone: number, ends: readonly [boolean, boolean]): void {
+  const len = MARS_COURSE * 1.08, b = 0.032;
+  const l0 = sl.lim(v), l1 = sl.lim(v + len);
+  const a0 = Math.max(t0, -l0), a1 = Math.min(t1, l0), c0 = Math.max(t0, -l1), c1 = Math.min(t1, l1);
+  if (a1 - a0 < 0.2 || c1 - c0 < 0.05) return;
+  const o: EmitOptions = { decor: true, shade: tone };
+  const A0 = sl.at(v, a0, -0.01), A1 = sl.at(v, a1, -0.01), B0 = sl.at(v, a0, b), B1 = sl.at(v, a1, b), C0 = sl.at(v + len, c0, -0.01), C1 = sl.at(v + len, c1, -0.01);
+  facing(sink, 'roof', [A0, A1, B1, B0], lerp3(sl.up, -1, sl.n, 0), { ...o, shade: tone * 0.72 });
+  facing(sink, 'roof', [B0, B1, C1, C0], sl.n, o);
+  if (ends[0] || a0 > t0 || c0 > t0) facing(sink, 'roof', [A0, B0, C0], lerp3(sl.along, -1, sl.n, 0), { ...o, fine: true });
+  if (ends[1] || a1 < t1 || c1 < t1) facing(sink, 'roof', [A1, B1, C1], sl.along, { ...o, fine: true });
+}
+
+/**
+ * The red Marseille tiles of a hip in relief (dome-detail-275; the roof bar: "roofs in courses, in relief"): on each
+ * slope the courses' butts across it a tile's length apart, each length of a course its own fired tone, the eave's
+ * courses darker with the wet and the lichen, a block of newer tiles relaid brighter; the rows' interlocking rolls down
+ * the slope a tile's width apart, cut at the hips (near joinery). Dressing: the slab keeps the collision. Left open (a
+ * hand clear all round) over the stripped patch the war wear opened (HouseFrame.roofPatch).
+ */
+function marseilleTiles(sink: PartSink, frame: HouseFrame, look: () => number): void {
+  const rg = frame.roof, roof = frame.spec.roof, hole = frame.roofPatch, pad = 0.06;
+  if (rg.kind !== 'gable' && rg.kind !== 'hip') return;
+  const cosP = 1 / Math.hypot(1, rg.tanP), xe = rg.s + roof.eave;
+  const slopes = [tileSlope(rg, roof, 1, false), tileSlope(rg, roof, -1, false)];
+  if (rg.kind === 'hip' && rg.hipTan === undefined && rg.ridgeHalf < rg.halfD + roof.verge - 0.05) slopes.push(tileSlope(rg, roof, 1, true), tileSlope(rg, roof, -1, true));
+  for (const sl of slopes) {
+    const top = sl.reach - 0.12 / cosP;
+    const gap = hole && !sl.end && hole.side === sl.side ? { v0: (xe - hole.x1 - pad) / cosP, v1: (xe - hole.x0 + pad) / cosP, t0: hole.z0 - pad, t1: hole.z1 + pad } : null;
+    const L = sl.lim(0), span = 2 * L - 0.16;
+    // the relaid block: a few square metres of newer, brighter tiles
+    const rw = 1.0 + look() * 1.6, rv = 0.6 + look() * top * 0.4, rt = (look() - 0.5) * Math.max(0, span - rw - 2);
+    const relaid = !sl.end && look() < 0.7 ? { t0: rt - rw / 2, t1: rt + rw / 2, v0: rv, v1: rv + 0.8 + look() * 1.2 } : null;
+    const inRelaid = (v: number, t: number) => !!relaid && v >= relaid.v0 && v < relaid.v1 && t > relaid.t0 && t < relaid.t1;
+    // the courses' butts across the slope, a few metres a length, left out over the patch
+    for (let v = 0.02; v < top - 0.25; v += MARS_COURSE) {
+      const lv = sl.lim(v), len = MARS_COURSE * 1.08;
+      const runs: Array<[number, number]> = gap && v + len > gap.v0 && v < gap.v1 ? [[-lv, gap.t0], [gap.t1, lv]] : [[-lv, lv]];
+      const wet = v < 0.8 ? 0.8 : v < 1.6 ? 0.9 : 1;
+      for (const [c0, c1] of runs) {
+        // the lengths break at the relaid block's edges so it reads as a patch
+        const stops = relaid && v >= relaid.v0 && v < relaid.v1 ? [relaid.t0, relaid.t1].filter((s) => s > c0 + 0.25 && s < c1 - 0.25) : [];
+        for (let t = c0; t < c1 - 0.2;) {
+          const next = stops.find((s) => s > t + 0.2);
+          const w = Math.min(c1 - t, 2.0 + look() * 2.4, next !== undefined ? next - t : Infinity);
+          const tone = inRelaid(v, t + w / 2) ? 1.12 + look() * 0.06 : (0.82 + look() * 0.18) * wet;
+          tileCourse(sink, sl, v + (look() - 0.5) * 0.02, t, t + w, tone, [t === c0, t + w >= c1]);
+          t += w;
+        }
+      }
+    }
+    // the rows' rolls down the slope (near), cut at the hips and round the patch
+    const n = Math.max(2, Math.round(span / MARS_ROW));
+    for (let k = 0; k < n; k++) {
+      const t = -L + 0.08 + (k + 0.5) * span / n;
+      const vEnd = sl.closes ? Math.min(top, (L - Math.abs(t) - 0.08) / cosP) : top;
+      if (vEnd < 0.3) continue;
+      const spans: Array<[number, number]> = gap && t + 0.05 > gap.t0 && t - 0.05 < gap.t1 ? [[0.02, Math.min(vEnd, gap.v0)], [gap.v1, vEnd]] : [[0.02, vEnd]];
+      for (const [a, b] of spans) if (b - a > 0.2) tileRib(sink, sl, t, a, b, 0.86 + look() * 0.16);
+    }
+  }
+}
 /** The rolled clay-lime of an earth roof: the domes' limewash canvas painted down to the packed earth's grey-brown. */
 const CLAY_LIME: Rgb = [0.7, 0.62, 0.52];
 /**
@@ -215,7 +339,7 @@ function roller(sink: PartSink, frame: HouseFrame, look: () => number): void {
  * together, two slender marble columns between them, a balcony slab and its iron rail under them (dressing; the
  * three openings are the house's own, cut into the wall).
  */
-function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number, reveal = 0): void {
+function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number, reveal = 0, top = Infinity): void {
   const w = 0.82, h = 2.0, step = 0.98, sill = 0.35;
   // (the r2 sweep: the lights are cut with their arches, `reveal` deep: the fanlights at the back of it)
   for (const k of [-1, 0, 1]) {
@@ -225,6 +349,22 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
   for (const k of [-0.5, 0.5]) {
     sink.cylinder('stone', facePoint(face, u + k * step, floorY + sill, 0.1), 'y', h + 0.05, 0.075, 8, { colour: MARBLE, decor: true });
     faceBox(sink, 'stone', face, u + k * step, floorY + sill + h + 0.08, 0.1, 0.24, 0.14, 0.2, { decor: true });
+    // (dome-detail-275) the column's base block on the sill
+    faceBox(sink, 'stone', face, u + k * step, floorY + sill - 0.05, 0.1, 0.22, 0.1, 0.2, { decor: true, shade: 1.04 });
+  }
+  // (dome-detail-275) the arcade framed as the Chouf's houses frame it: a dressed pilaster either side standing proud to
+  // the cornice, a keystone in each arch, a marble roundel in each spandrel between the arches
+  const crown = floorY + sill + h + w / 2 + 0.1, pu = 1.5 * step + 0.12;
+  const pTop = Math.min(top, crown + 0.3);
+  for (const e of [-1, 1]) faceBox(sink, 'stone', face, u + e * pu, (floorY + 0.02 + pTop) / 2, 0.04, 0.24, pTop - floorY - 0.02, 0.08, { decor: true, shade: 1.04 }, { back: true });
+  for (const k of [-1, 0, 1]) {
+    const kTop = Math.min(pTop, crown + 0.16);
+    if (kTop - (crown - 0.14) > 0.18) faceBox(sink, 'stone', face, u + k * step, (crown - 0.14 + kTop) / 2, 0.05, 0.16, kTop - crown + 0.14, 0.1, { decor: true, shade: 1.07 }, { back: true });
+  }
+  for (const k of [-0.5, 0.5]) {
+    const cy = floorY + sill + h + w / 2 + 0.08, rr = 0.11, disc: Vec3[] = [];
+    for (let i = 0; i < 8; i++) { const a = Math.PI * 2 * i / 8; disc.push(facePoint(face, u + k * step + Math.cos(a) * rr, cy + Math.sin(a) * rr, 0.015)); }
+    sink.polygon('stone', disc, { decor: true, fine: 'near', tint: [1.12, 1.1, 1.06] });
   }
   // the balcony: a slab on corbels, the iron rail
   faceBox(sink, 'stone', face, u, floorY - 0.06, 0.45, step * 3 + 0.5, 0.16, 0.9, { decor: true });
@@ -237,6 +377,57 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
 }
 
 interface DarOpts { storeys: 1 | 2; roof: 'tile' | 'earth'; qanatir?: boolean; stair?: boolean }
+
+/**
+ * The dar dressed to the hammam's and the church's vocabulary (dome-detail-275; the work list: "a dome on a building
+ * that's just so low detailed", the house beside it plain): the base course capped by its chamfered coping; the dressed
+ * quoins up the four corners (the stair's corner from its head); the moulded cornice in two steps under the eaves; on
+ * the tile hip the Marseille tiles in relief; on the earth roof the parapet's coping; the weather on the sandstone — the
+ * rain's grey run down from the cornice between the lights, stones patched in another quarry's shade low on the side and
+ * back walls.
+ */
+function darDress(sink: PartSink, frame: HouseFrame, openings: readonly Opening[],
+  o: { W: number; D: number; stairTop: number | null; tile: boolean; street: FaceName }, look: () => number): void {
+  const { W, D } = o, y0 = frame.floors[0], eave = frame.eaveY, cb = eave - 0.28, F = frame.faces;
+  // the base course's coping, the cornice
+  sink.band('stone', -W / 2 - 0.16, y0 - 0.07, -D / 2 - 0.16, W / 2 + 0.16, y0 + 0.03, D / 2 + 0.16, { decor: true, shade: 1.05 });
+  sink.band('stone', -W / 2 - 0.05, cb, -D / 2 - 0.05, W / 2 + 0.05, cb + 0.1, D / 2 + 0.05, { decor: true, shade: 0.96 });
+  sink.band('stone', -W / 2 - 0.13, cb + 0.1, -D / 2 - 0.13, W / 2 + 0.13, eave, D / 2 + 0.13, { decor: true, shade: 1.05 });
+  // the quoins (the right face's back corner from the outside stair's head)
+  for (const [f1, f2] of [['front', 'right'], ['right', 'back'], ['back', 'left'], ['left', 'front']] as const) {
+    quoinRun(sink, F[f1], 1, f1 === 'right' && o.stairTop !== null ? o.stairTop + 0.1 : y0 + 0.03, cb, 0, look, 0.45);
+    quoinRun(sink, F[f2], -1, y0 + 0.03, cb, 1, look, 0.45);
+  }
+  // the stone bench (mastaba) against the base course on the door's free side, where the front has room for it
+  const sf = F[o.street];
+  if (sf.width / 2 > 3.4) faceBox(sink, 'stone', sf, -2.45, 0.21, 0.12 + 0.21, 1.3, 0.46, 0.42, { decor: true, shade: 0.94 }, { back: true });
+  if (o.tile) marseilleTiles(sink, frame, look);
+  else {
+    // the parapet's coping, a hand proud of it all round
+    const roof = frame.spec.roof, P = eave + roof.thickness + (roof.parapet ?? 0), ox = W / 2 + roof.eave + 0.04, oz = D / 2 + roof.eave + 0.04;
+    const ix = W / 2 + roof.eave - 0.26, iz = D / 2 + roof.eave - 0.26, oo: EmitOptions = { decor: true, shade: 1.06 };
+    sink.span('stone', -ox, P - 0.02, iz, ox, P + 0.07, oz, oo);
+    sink.span('stone', -ox, P - 0.02, -oz, ox, P + 0.07, -iz, oo);
+    sink.span('stone', -ox, P - 0.02, -iz, -ix, P + 0.07, iz, oo);
+    sink.span('stone', ix, P - 0.02, -iz, ox, P + 0.07, iz, oo);
+  }
+  // the weather: the rain's grey down from the cornice, clear of the openings; patched stones low on the side and back
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const f = F[name], clear = openings.filter((p) => p.face === name).map((p) => [p.u - p.w / 2 - 0.45, p.u + p.w / 2 + 0.45] as const);
+    for (let k = 0; k < 2; k++) {
+      const u = (look() - 0.5) * (f.width - 1.6), w = 0.35 + look() * 0.35, len = 1.0 + look() * 1.4;
+      if (look() > 0.7 || clear.some(([a, b]) => u + w / 2 > a && u - w / 2 < b) || (o.stairTop !== null && name === 'right')) continue;
+      faceBox(sink, 'stone', f, u, cb - len / 2, 0.004, w, len, 0.008,
+        { decor: true, tint: [0.86, 0.85, 0.83], shadeAt: (p: Vec3) => Math.min(1, 0.76 + 0.24 * (cb - p[1]) / len) });
+    }
+    if (name === o.street) continue;
+    for (let k = 0; k < 3; k++) {
+      const u = (look() - 0.5) * (f.width - 1.6), y = y0 + 0.18 + look() * 0.55, warm = look() < 0.5;
+      faceBox(sink, 'stone', f, u, y, 0.006, 0.42 + look() * 0.4, 0.3, 0.012,
+        { decor: true, fineSides: true, tint: warm ? [1.03, 1.0, 0.95] : [0.93, 0.93, 0.91], shade: 0.96 + look() * 0.08 });
+    }
+  }
+}
 
 /**
  * The village house: one or two storeys of dressed sandstone, round-headed windows, the arched door; the dar's upper
@@ -258,6 +449,8 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
     // the face toward the lot's +z — the end (front) on a deep lot, the long side (left) on a wide one
     const sw = stair ? 1.05 : 0;
     const W = Math.max(4.2, Wf - sw - 0.1), D = Math.max(5.5, Df - 0.1), shift = -sw / 2;
+    // (dome-detail-275) the chimney stands a little higher, under its cap on stubs
+    const chX = -W * 0.2, chZ = -D * 0.2, chAbove = 0.95;
     const street: FaceName = turned ? 'left' : 'front', rear: FaceName = turned ? 'right' : 'back';
     const sides: FaceName[] = turned ? ['front', 'back'] : ['left', 'right'];
     const streetLen = turned ? D : W, sideLen = turned ? W : D;
@@ -286,7 +479,7 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       const frame = buildHouse(sink, {
         // (round 2, wave 123: "no plinths"): the mountain house's high base course, standing proud of the walls
         w: W, d: D, plinth: { h: 0.85, out: 0.12, bucket: 'stone' }, storeys, roof, gableBucket: 'stone', openings,
-        chimneys: opts.roof === 'tile' ? [{ x: -W * 0.2, z: -D * 0.2, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'stone', cap: 'slab' }] : [],
+        chimneys: opts.roof === 'tile' ? [{ x: chX, z: chZ, sx: 0.55, sz: 0.55, above: chAbove, bucket: 'stone', cap: 'none' }] : [],
         gutters: null, verge: null, reveal: 0.3, spall: null,
       }, {
         ...plain,
@@ -296,11 +489,39 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
             return;
           }
           plain.window(s, face, o, y0, frame);
+          // (dome-detail-275) the keystone at the round head's crown, where the cornice leaves it room
+          if (o.kind === 'window' && o.arch) {
+            const crown = y0 + o.y0 + (o.arch.spring ?? o.h) + o.w / 2 + 0.13, kTop = Math.min(crown + 0.08, frame.eaveY - 0.3);
+            if (kTop - crown + 0.16 > 0.2) faceBox(s, 'stone', face, o.u, (crown - 0.16 + kTop) / 2, 0.05, 0.17, kTop - crown + 0.16, 0.1, { decor: true, shade: 1.07 }, { back: true });
+          }
+        },
+        door: (s, face, o, y0, frame) => {
+          plain.door(s, face, o, y0, frame);
+          if (o.storey !== 0 || o.kind !== 'door') return;
+          const base = y0 + o.y0;
+          // (dome-detail-275) the Levant's ablaq at the door: an arched door's archivolt in voussoirs of the dark stone
+          // between the cream, standing proud of its ring; a square-headed door's joggled lintel in the two stones, its
+          // middle block keyed up and down into its neighbours
+          if (o.arch) {
+            const sp = base + (o.arch.spring ?? o.h), r0 = o.w / 2 - 0.01, r1 = o.w / 2 + 0.22, n = 9;
+            for (let j = 0; j < n; j++) {
+              const a = Math.PI * j / n, b = Math.PI * (j + 1) / n, P = (t: number, rr: number) => facePoint(face, o.u + Math.cos(t) * rr, sp + Math.sin(t) * rr, 0.03);
+              orientedPrism(s, 'stone', [P(a, r0), P(a, r1), P(b, r1), P(b, r0)], face.out, 0.035,
+                { decor: true, ...(j % 2 ? { tint: [0.62, 0.58, 0.54] as Rgb, shade: 0.92 } : { shade: 1.05 }) });
+            }
+          } else {
+            const lw = o.w + 0.56, yb = base + o.h + 0.2, nb = 5, bw = lw / nb;
+            for (let j = 0; j < nb; j++) {
+              const key = j === (nb - 1) / 2, ya = yb - (key ? 0.06 : 0), yt = yb + 0.36 + (key ? 0.08 : 0);
+              faceBox(s, 'stone', face, o.u - lw / 2 + (j + 0.5) * bw, (ya + yt) / 2, 0.035, bw - 0.012, yt - ya, 0.07,
+                { decor: true, ...(j % 2 ? { tint: [0.62, 0.58, 0.54] as Rgb, shade: 0.92 } : { shade: 1.05 }) }, { back: true });
+            }
+          }
         },
       });
       // a string course between the storeys and the cornice under the eaves
       if (opts.storeys > 1) sink.band('stone', -W / 2 - 0.05, frame.floors[1] - 0.12, -D / 2 - 0.05, W / 2 + 0.05, frame.floors[1] + 0.06, D / 2 + 0.05, { decor: true });
-      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng, 0.3);
+      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng, 0.3, frame.eaveY - 0.28);
       if (opts.roof === 'earth') { roller(sink, frame, look); spouts(sink, frame, ['left', 'back'], look); }
       // the outside stair up the +x side to the upper floor (or the roof), its parapet (structural wedge, dressed treads)
       if (stair) {
@@ -322,6 +543,14 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       if (look() < 0.5 && opts.storeys > 1) washingLine(sink, rf, -rf.width / 2 + 0.6, Math.min(rf.width / 2 - 0.6, -rf.width / 2 + 3.4), frame.floors[1] + 2.1, look);
       // (beside the door on the side its flight leaves free)
       if (look() < 0.6) { const p = facePoint(sf, doorU - 1.0, 0.1, 0.5); pottedPlant(sink, p[0], p[1], p[2], 0.42, look); }
+      darDress(sink, frame, openings, { W, D, stairTop: stair ? (opts.storeys > 1 ? frame.floors[1] : frame.eaveY) : null, tile: opts.roof === 'tile', street }, look);
+      // (dome-detail-275) the chimney's cap on four stubs over the smoke's gaps, the oversailing course under it
+      if (opts.roof === 'tile') {
+        const t = (frame.roof.topAt(chX, chZ) ?? frame.roof.ridgeTopY) + chAbove, h = 0.275, c = 0.14;
+        sink.span('stone', chX - h - 0.05, t - 0.34, chZ - h - 0.05, chX + h + 0.05, t - 0.22, chZ + h + 0.05, { decor: true, shade: 0.9 });
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('stone', chX + sx * h - (sx > 0 ? c : 0), t, chZ + sz * h - (sz > 0 ? c : 0), chX + sx * h + (sx < 0 ? c : 0), t + 0.26, chZ + sz * h + (sz < 0 ? c : 0), { shade: 0.62 });
+        sink.span('stone', chX - h - 0.08, t + 0.26, chZ - h - 0.08, chX + h + 0.08, t + 0.36, chZ + h + 0.08, { shade: 0.58 });
+      }
     });
   }, -1);
   return sink.finish();
@@ -927,9 +1156,14 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
 
 /**
  * The terrace store (qabu): a vaulted stone room half into the slope, a flat roof, a low arched door. (Props census #22,
- * Lane C 2026-10-16: "three blank walls, no plinth, no lintel".) The terrace's rubble bank now rises against its back
- * and sides to the roof's edge, held at the front corners by two dry-stone wing walls; the front carries the dressed
- * quoins, the arched door cut through it under its ring of voussoirs and keystone, and two vents cut high either side.
+ * Lane C 2026-10-16: "three blank walls, no plinth, no lintel".) The front carries the dressed quoins, the arched door cut
+ * through it under its ring of voussoirs and keystone, and two vents cut high either side. (dome-detail-275, the work
+ * list: the store as plain as a box beside the hammam) The vault's own arch shows on the front as the masons left it: a
+ * relieving arch of dressed voussoirs on its imposts over the door, the walling under it on a footing course; the
+ * terrace's earth and rubble banked against the back and sides (within the plot's slack), held at the front corners by
+ * dry-stone wing walls under their coping, stones fallen out of it and the weeds in it; the earth roof's parapet under its
+ * coping with grass in the rolled earth; the quoins up all four corners over the bank; before the door the worn flags,
+ * the stone mortar (jurn) and the firewood stacked against the wall.
  */
 const store: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -953,35 +1187,119 @@ const store: RegionalBuilder = (ctx) => {
         leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.12, out: 0.04 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
       }, 0),
     });
-    const f = frame.faces.front;
-    // the ring of voussoirs over the door's arch and its keystone; the dressed quoins up the front corners
+    const F = frame.faces, f = F.front, top = frame.eaveY;
+    // the ring of voussoirs over the door's arch and its keystone
     archHead(sink, f, 0, spring, dw / 2, 'stone', 0.2, 7);
     faceBox(sink, 'stone', f, 0, spring + dw / 2 + 0.12, 0.05, 0.24, 0.3, 0.1, { decor: true, fineSides: true });
-    for (const s2 of [-1, 1]) for (let y = 0, k = 0; y < h - 0.2; y += 0.38, k++) {
-      const long = k % 2 === 0;
-      faceBox(sink, 'stone', f, s2 * (W / 2 - (long ? 0.26 : 0.16)), y + 0.18, 0.025, long ? 0.52 : 0.32, 0.34, 0.05, { decor: true, fineSides: true, shade: 1.06 });
+    // (dome-detail-275) the vault's relieving arch over the door: dressed voussoirs a hand proud, each its own shade, the
+    // keystone at its crown, the imposts it springs from; the footing course along the front's foot
+    const c = W / 2 - 0.75, ring = 0.22, ys = spring + 0.08, crownY = top - 0.08 - ring;
+    if (c > dw / 2 + 0.4 && crownY - ys > 0.5) {
+      const rise = crownY - ys, R = (c * c + rise * rise) / (2 * rise), yc = crownY - R, a0 = Math.atan2(ys - yc, c);
+      const n = 9, P = (t: number, rr: number) => facePoint(f, Math.cos(t) * rr, yc + Math.sin(t) * rr, 0);
+      for (let j = 0; j < n; j++) {
+        // (each voussoir a joint's width short of its neighbours, alternate ones a shade apart)
+        const jt = 0.012 / R, a = a0 + (Math.PI - 2 * a0) * j / n + jt, b = a0 + (Math.PI - 2 * a0) * (j + 1) / n - jt, key = j === (n - 1) / 2;
+        orientedPrism(sink, 'stone', [P(a, R), P(a, R + ring + (key ? 0.08 : 0)), P(b, R + ring + (key ? 0.08 : 0)), P(b, R)], f.out, key ? 0.1 : 0.06,
+          { decor: true, shade: key ? 1.08 : (j % 2 ? 0.86 : 1.0) + look() * 0.06 });
+      }
+      for (const e of [-1, 1]) faceBox(sink, 'stone', f, e * (c + 0.1), ys - 0.06, 0.045, 0.36, 0.12, 0.09, { decor: true, shade: 1.05 }, { back: true });
     }
-    // the terrace: its rubble bank up the back and sides to the wall heads, the wing walls holding it at the front
-    const top = frame.eaveY, g = -0.25, o = 1.8, zf = D / 2 - 0.35;
-    const bank = (pts: Vec3[], want: Vec3) => {
-      const [p0, p1, p2] = pts;
-      const ux = p1[0] - p0[0], uy = p1[1] - p0[1], uz = p1[2] - p0[2], vx = p2[0] - p0[0], vy = p2[1] - p0[1], vz = p2[2] - p0[2];
-      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
-      sink.polygon('stone', n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 ? pts : [...pts].reverse(), { decor: true, tint: [0.92, 0.88, 0.8] });
-    };
-    const T = (x: number, z: number): Vec3 => [x, top, z], B = (x: number, z: number): Vec3 => [x, g, z];
-    bank([T(-W / 2, -D / 2), T(W / 2, -D / 2), B(W / 2 + o, -D / 2 - o), B(-W / 2 - o, -D / 2 - o)], [0, 1, -1]);
+    courseRun(sink, f, -0.1, 0.42, 0.07, [[-dw / 2 - 0.2, dw / 2 + 0.2]]);
+    // (dome-detail-275) the drip course under the parapet and the parapet's coping
+    sink.band('stone', -W / 2 - 0.07, top - 0.16, -D / 2 - 0.07, W / 2 + 0.07, top - 0.02, D / 2 + 0.07, { decor: true, shade: 1.04 });
+    {
+      const roof = frame.spec.roof, Py = top + roof.thickness + (roof.parapet ?? 0), ox = W / 2 + roof.eave + 0.04, oz = D / 2 + roof.eave + 0.04;
+      const ix = W / 2 + roof.eave - 0.26, iz = D / 2 + roof.eave - 0.26, oo: EmitOptions = { decor: true, shade: 1.06 };
+      sink.span('stone', -ox, Py - 0.02, iz, ox, Py + 0.07, oz, oo);
+      sink.span('stone', -ox, Py - 0.02, -oz, ox, Py + 0.07, -iz, oo);
+      sink.span('stone', -ox, Py - 0.02, -iz, -ix, Py + 0.07, iz, oo);
+      sink.span('stone', ix, Py - 0.02, -iz, ox, Py + 0.07, iz, oo);
+      // the grass come up in the rolled earth along the parapet's foot
+      const ry = top + roof.thickness;
+      for (let k = 0; k < 6; k++) {
+        const side = k % 2 ? 1 : -1, x = side * (ix - 0.12 - look() * 0.15), z = (look() - 0.5) * (2 * iz - 0.6);
+        tuft(sink, [x, ry - 0.01, z], 0.18 + look() * 0.12, 0.12 + look() * 0.12, look);
+      }
+    }
+    // (dome-detail-275) the terrace's bank against the back and sides, from the wall to its toe within the plot's slack,
+    // the dry-stone wing walls holding it at the front corners under their coping
+    const hb = Math.min(top - 0.5, 1.05 + look() * 0.35), o = 0.55, g = -0.25, zf = D / 2 - 0.35;
+    const earth: EmitOptions = { decor: true, tint: [0.66, 0.58, 0.47], shade: 0.9 };
+    const T = (x: number, z: number): Vec3 => [x, hb, z], B = (x: number, z: number): Vec3 => [x, g, z];
+    facing(sink, 'plaster', [T(-W / 2, -D / 2), T(W / 2, -D / 2), B(W / 2, -D / 2 - o), B(-W / 2, -D / 2 - o)], [0, o, -(hb - g)], earth);
     for (const s2 of [-1, 1]) {
-      bank([T(s2 * W / 2, -D / 2), T(s2 * W / 2, zf), B(s2 * (W / 2 + o), zf), B(s2 * (W / 2 + o), -D / 2 - o)], [s2, 1, 0]);
-      sink.span('stone', s2 > 0 ? W / 2 : -W / 2 - 0.65, -0.3, zf - 0.02, s2 > 0 ? W / 2 + 0.65 : -W / 2, top, zf + 0.38);
-      // the bank's face over the wing wall's back, down to the ground at its end
-      bank([T(s2 * W / 2, zf), B(s2 * (W / 2 + 0.65), zf), B(s2 * (W / 2 + o), zf)], [0, 0, 1]);
+      facing(sink, 'plaster', [T(s2 * W / 2, -D / 2), T(s2 * W / 2, zf), B(s2 * (W / 2 + o), zf), B(s2 * (W / 2 + o), -D / 2)], [s2 * (hb - g), o, 0], earth);
+      facing(sink, 'plaster', [T(s2 * W / 2, -D / 2), B(s2 * (W / 2 + o), -D / 2), B(s2 * W / 2, -D / 2 - o)], [s2, 1, -1], earth);
+      const wx0 = s2 > 0 ? W / 2 : -W / 2 - o, wx1 = s2 > 0 ? W / 2 + o : -W / 2;
+      sink.span('stone', wx0, -0.3, zf - 0.02, wx1, hb + 0.2, zf + 0.38, { decor: true, shade: 0.9, tint: [0.94, 0.92, 0.88] });
+      sink.span('stone', wx0 - 0.03, hb + 0.2, zf - 0.05, wx1 + 0.03, hb + 0.32, zf + 0.41, { decor: true, shade: 1.04 });
+      // the bank's end over the wing wall's back
+      facing(sink, 'plaster', [T(s2 * W / 2, zf), B(s2 * (W / 2 + o), zf), B(s2 * W / 2, zf)], [0, 0, 1], earth);
+    }
+    // stones worked out of the bank and the weeds in it
+    for (let k = 0; k < 12; k++) {
+      const side = k % 3 - 1, along = look(), up = 0.3 + look() * 0.6, sz = 0.12 + look() * 0.09;
+      const on = side === 0 ? { x: (along - 0.5) * (W - 0.4), z: -D / 2 - o * (1 - up) } : { x: side * (W / 2 + o * (1 - up)), z: -D / 2 + along * (zf + D / 2 - 0.3) };
+      const y = g + (hb - g) * up;
+      rubble(sink, [on.x, y, on.z], sz, look);
+      if (look() < 0.45) tuft(sink, [on.x + (look() - 0.5) * 0.3, y - 0.02, on.z + (look() - 0.5) * 0.3], 0.16 + look() * 0.1, 0.18 + look() * 0.12, look);
+    }
+    // (dome-detail-275) the quoins: up the front corners, and up the back corners over the bank
+    quoinRun(sink, f, 1, 0, top - 0.18, 0, look, 0.38);
+    quoinRun(sink, f, -1, 0, top - 0.18, 1, look, 0.38);
+    quoinRun(sink, F.right, -1, hb + 0.34, top - 0.18, 1, look, 0.38);
+    quoinRun(sink, F.left, 1, hb + 0.34, top - 0.18, 1, look, 0.38);
+    for (const [f1, f2] of [['right', 'back'], ['back', 'left']] as const) {
+      quoinRun(sink, F[f1], 1, hb + 0.04, top - 0.18, 0, look, 0.38);
+      quoinRun(sink, F[f2], -1, hb + 0.04, top - 0.18, 1, look, 0.38);
+    }
+    // (dome-detail-275) before the door: the worn flags, the stone mortar (jurn) with its pestle, the firewood stacked
+    // against the wall
+    for (let i = 0; i < 3; i++) {
+      const u = (i - 1) * 0.62 + (look() - 0.5) * 0.06, w = 0.56 + look() * 0.06;
+      const a = facePoint(f, u - w / 2, 0, 0.06), b = facePoint(f, u + w / 2, 0, 0.5);
+      sink.span('stone', a[0], -0.06, a[2], b[0], 0.015 + look() * 0.012, b[2], { decor: true, fine: 'near', shade: 0.8 + look() * 0.16 });
+    }
+    if (W >= 2.6) {
+      const ju = -(W / 2 - 0.75), m = facePoint(f, ju, 0, 0.3);
+      sink.span('stone', m[0] - 0.24, -0.05, m[2] - 0.22, m[0] + 0.24, 0.42, m[2] + 0.22, { decor: true, shade: 0.92 });
+      sink.polygon('dark', [[m[0] - 0.14, 0.422, m[2] + 0.13], [m[0] + 0.14, 0.422, m[2] + 0.13], [m[0] + 0.14, 0.422, m[2] - 0.13], [m[0] - 0.14, 0.422, m[2] - 0.13]], { decor: true });
+      sink.member('structureWood', [m[0] + 0.02, 0.4, m[2]], [m[0] + 0.16, 1.05, m[2] - 0.1], 0.045, 0.045, [0, 0, 1], { colour: TIMBER, decor: true, exposed: true }, 0);
+      const wu = W / 2 - 0.72;
+      for (let k = 0; k < 6; k++) {
+        const row = k < 3 ? 0 : k < 5 ? 1 : 2, i = row === 0 ? k : row === 1 ? k - 3 : 0;
+        const y = 0.07 + row * 0.122, o2 = 0.09 + i * 0.14 + row * 0.07;
+        const p = facePoint(f, wu - 0.35 + (look() - 0.5) * 0.06, y, o2);
+        sink.cylinder('structureWood', [p[0], p[1], p[2]], 'x', 0.7, 0.07, 6, { colour: shade(TIMBER, 0.7 + look() * 0.35), decor: true });
+      }
     }
     if (!small) roller(sink, frame, look);
     spouts(sink, frame, ['back'], look);
   });
   return sink.finish();
 };
+
+/** A stone fallen out of a dry-stone bank or wall (dome-detail-275), bedded a third into what it lies on. */
+function rubble(sink: PartSink, at: Vec3, size: number, look: () => number): void {
+  const a = look() * Math.PI, ax: Vec3 = [Math.cos(a), 0, Math.sin(a)], az: Vec3 = [-Math.sin(a), 0, Math.cos(a)];
+  const hy = size * (0.3 + look() * 0.15);
+  sink.box('stone', [at[0], at[1] + hy * 0.4, at[2]], [size * (0.7 + look() * 0.4), hy, size * (0.5 + look() * 0.3)], { decor: true, shade: 0.8 + look() * 0.22 },
+    new LocalFrame(ax, [0, 1, 0], az, [0, 0, 0]), { ny: true });
+}
+
+/** A tuft of grass or weed (dome-detail-275): a low four-sided spire of blades from `at`, `r` across and `h` high. */
+function tuft(sink: PartSink, at: Vec3, r: number, h: number, look: () => number): void {
+  const colour = shade(GRASS[Math.floor(look() * GRASS.length) % GRASS.length], 0.85 + look() * 0.3), a = look() * Math.PI;
+  const apex: Vec3 = [at[0] + (look() - 0.5) * r * 0.4, at[1] + h, at[2] + (look() - 0.5) * r * 0.4];
+  const ring: Vec3[] = Array.from({ length: 4 }, (_, k) => [at[0] + Math.cos(a + k * Math.PI / 2) * r, at[1], at[2] + Math.sin(a + k * Math.PI / 2) * r]);
+  for (let k = 0; k < 4; k++) {
+    const p = ring[k], q = ring[(k + 1) % 4], m: Vec3 = [(p[0] + q[0]) / 2 - at[0], 0.3, (p[2] + q[2]) / 2 - at[2]];
+    facing(sink, 'structureWood', [p, q, apex], m, { decor: true, colour: shade(colour, k % 2 ? 0.9 : 1.05) });
+  }
+}
+/** The dry grass and the green weeds of the terraces in summer (dome-detail-275). */
+const GRASS: readonly Rgb[] = [0x8a9448, 0x9a9452, 0x7a8a42, 0xa89c5c].map(rgb);
 
 /** The stable: a long stone barn under a flat roof (or a tile one), its arched doors and slit windows. */
 const stable: RegionalBuilder = (ctx) => {

@@ -5,13 +5,13 @@
 // Each kit file keeps one re-pointing line; a builder that needs the kit's own joinery takes its state and dialect from
 // the kit's call (no import back into the kit).
 import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { archHead } from './sarajevoParts.ts';
 import { dressedQuoin } from './facade.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK } from './vernacular.ts';
-import { boatHull, bollard, hungNet, leantPole, slipway } from './waterfront.ts';
+import { boatHull, bollard, hungNet, leantPole, roundPole, slipway } from './waterfront.ts';
 import type { RegionalBuildContext } from './types.ts';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -25,6 +25,77 @@ const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7
 const IRON: Rgb = [0.16, 0.16, 0.16];
 const FOAM = rgb(0xe9e8e1), TARP = rgb(0x2f6db0);
 const BASKETS: readonly Rgb[] = [0xc0392b, 0x2e6fb8, 0x3a9a5a, 0xd8a028].map(rgb);
+/** (dome-detail-275) the long-tail engines' paint: a Koler green, a red, a grey */
+const ENGINE: readonly Rgb[] = [0x2f6a4a, 0xa83a2a, 0x5a6064].map(rgb);
+/** (dome-detail-275) the fish crates' plastic: red, blue, green, yellow */
+const CRATES: readonly Rgb[] = [0xb8352a, 0x2e62a8, 0x3a8a52, 0xd0a428].map(rgb);
+/** (dome-detail-275) one sheet's weathering in a textured sheet covering: its grey, rusted through, or a new one put in */
+function sheetTone(look: () => number): EmitOptions {
+  const r = look();
+  return { decor: true, shade: 0.84 + look() * 0.2, ...(r < 0.16 ? { tint: [0.9, 0.74, 0.6] as Rgb } : r < 0.24 ? { shade: 1.16, tint: [0.96, 1, 1.04] as Rgb } : {}) };
+}
+
+// ------------------------------------------------------------------------------------------------ sheets in relief
+
+const cross3 = (p: Vec3, q: Vec3): Vec3 => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+const unit3 = (p: Vec3): Vec3 => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
+/** A planar polygon wound to face `toward` (dome-detail-275). */
+export function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec3, opts: EmitOptions): void {
+  let nx = 0, ny = 0, nz = 0;
+  pts.forEach((p, i) => { const c = cross3(p, pts[(i + 1) % pts.length]); nx += c[0]; ny += c[1]; nz += c[2]; });
+  sink.polygon(bucket, nx * toward[0] + ny * toward[1] + nz * toward[2] >= 0 ? pts : [...pts].reverse(), opts);
+}
+
+/**
+ * One slope of a sheet roof in its own terms (dome-detail-275): `eave` the eave's edge on the covering's top at t = 0,
+ * `along` the way t runs down the eave, `up` up the slope, `n` its outward normal; `run` the slope's length to where the
+ * sheets stop under the ridge, `t1` the eave's length.
+ */
+export interface SheetSlope { eave: Vec3; along: Vec3; up: Vec3; n: Vec3; run: number; t1: number }
+
+/** The ±x slope of a gable roof (house.ts roofGeometry, its ridge along z) `rg` under `roof`, for sheetCourses. */
+export function gableSlope(rg: { s: number; tanP: number; halfD: number; topAt(x: number, z: number): number | null }, roof: { eave: number; verge: number }, side: 1 | -1, cap = 0.12): SheetSlope {
+  const xe = rg.s + roof.eave - 0.02, cosP = 1 / Math.hypot(1, rg.tanP), zv = rg.halfD + roof.verge - 0.02;
+  return {
+    eave: [side * xe, rg.topAt(side * xe, 0) ?? 0, -zv], along: [0, 0, 1], up: unit3([-side, rg.tanP, 0]), n: unit3([side * rg.tanP, 1, 0]),
+    run: xe / cosP - cap, t1: 2 * zv,
+  };
+}
+
+/**
+ * Corrugated sheets laid on a slope in relief (dome-detail-275; the roof bar: "sheets with laps"): courses of sheets
+ * `sheetL` long up the slope, each lapping `lap` over the one under it, its butt standing a corrugation's depth proud at
+ * its foot and thinning to its head under the next course; across the eave `sheetW` wide, each lapping its neighbour at
+ * a side, `ribs` corrugations rolled into its face; the slope's covering under them only an underlay. `paint` gives each
+ * sheet its livery (a rusted one, a galvanised replacement, a painted one); `skip` leaves a sheet out (a stripped patch,
+ * a hole the shelling tore). Dressing: the slab under them keeps the collision.
+ */
+export function sheetCourses(sink: PartSink, bucket: RegionalBucket, sl: SheetSlope, o: { sheetW: number; sheetL: number; lap: number; ribs: number; shift: number;
+  paint: (course: number, k: number) => EmitOptions; skip?: (v0: number, v1: number, t0: number, t1: number) => boolean; rib?: number; butt?: number }): void {
+  const R = o.rib ?? 0.025, B = o.butt ?? 0.035;
+  const at = (v: number, t: number, h: number): Vec3 => [sl.eave[0] + sl.along[0] * t + sl.up[0] * v + sl.n[0] * h, sl.eave[1] + sl.along[1] * t + sl.up[1] * v + sl.n[1] * h,
+    sl.eave[2] + sl.along[2] * t + sl.up[2] * v + sl.n[2] * h];
+  const down: Vec3 = [-sl.up[0], -sl.up[1], -sl.up[2]], back: Vec3 = [-sl.along[0], -sl.along[1], -sl.along[2]];
+  for (let c = 0, v = 0; v < sl.run - 0.25; c++, v += o.sheetL - o.lap) {
+    const v1 = Math.min(sl.run, v + o.sheetL);
+    for (let k = 0, t = -o.shift; t < sl.t1 - 0.05; k++, t += o.sheetW) {
+      const ta = Math.max(0, t), tb = Math.min(sl.t1, t + o.sheetW);
+      if (tb - ta < 0.12 || o.skip?.(v, v1, ta, tb)) continue;
+      const opts = o.paint(c, k), n = 2 * o.ribs, foot = B, head = -0.008;
+      const u = (j: number) => ta + (tb - ta) * j / n, r = (j: number) => (j % 2 ? R : 0);
+      // the face: its corrugations from butt to head
+      for (let j = 0; j < n; j++) {
+        facing(sink, bucket, [at(v, u(j), foot + r(j)), at(v, u(j + 1), foot + r(j + 1)), at(v1, u(j + 1), head + r(j + 1)), at(v1, u(j), head + r(j))], sl.n, opts);
+      }
+      // the butt across its foot: the sheet's edge, a crest's tooth over every corrugation
+      const dim = { ...opts, ...(opts.shade !== undefined ? { shade: opts.shade * 0.68 } : {}), ...(opts.colour ? { colour: shade(opts.colour, 0.68) } : {}) };
+      facing(sink, bucket, [at(v, ta, -0.008), at(v, tb, -0.008), at(v, tb, foot), at(v, ta, foot)], down, dim);
+      for (let j = 1; j < n; j += 2) facing(sink, bucket, [at(v, u(j - 1), foot), at(v, u(j + 1), foot), at(v, u(j), foot + R)], down, dim);
+      // the lap down its side over the sheet it was laid on
+      if (t > 0) facing(sink, bucket, [at(v, ta, -0.008), at(v1, ta, head), at(v, ta, foot)], back, { ...dim, decor: true, fine: 'near' });
+    }
+  }
+}
 
 // ------------------------------------------------------------------------------------------------ the Mekong
 
@@ -107,6 +178,9 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
         const a = u + 0.1, b = Math.min(u1, u + 2.0) - 0.1, top = Math.min(y1(a), y1(b));
         freeBox(sink, face, (a + b) / 2, (0.18 + top) / 2, 0, b - a, top - 0.18, 0.035, { colour: shade(wallTone, 0.86 + look() * 0.22) });
         for (const y of [0.24, top - 0.06]) faceBox(sink, 'structureWood', face, (a + b) / 2, y, 0.035, b - a + 0.08, 0.06, 0.05, { colour: shade(BAMBOO_MAT, 0.75), decor: true });
+        // (dome-detail-275) the split-cane batten clamping the panel across its middle (nẹp), and its two lashed uprights
+        faceBox(sink, 'structureWood', face, (a + b) / 2, (0.24 + top) / 2, 0.035, b - a + 0.08, 0.05, 0.04, { colour: shade(BAMBOO_MAT, 0.7), decor: true });
+        for (const uu of [a + (b - a) / 3, a + 2 * (b - a) / 3]) faceBox(sink, 'structureWood', face, uu, (0.24 + top) / 2, 0.03, 0.045, top - 0.3, 0.03, { colour: shade(BAMBOO_MAT, 0.68), decor: true, fine: 'near' });
       }
     } else {
       for (let u = u0 + 0.14; u < u1 - 0.12; u += 0.29) {
@@ -139,12 +213,64 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
     const len = Math.min(6.2, D * 0.72), bz = Math.min(D / 2 - len / 2 + 0.6, z1 - len / 2 - 0.1);
     boatHull(sink, [0, yAt(bz) + 0.06, bz], -Math.PI / 2, { length: len, beam: 1.35, depth: 0.55, sheer: 0.38, stern: 'double', flat: 0.45,
       colour: shade(rgb(0x6a4a30), 0.85 + look() * 0.2), inside: rgb(0x8a6a48), gunwale: rgb(0x2e5a7a), thwarts: 2, hood: BAMBOO_MAT });
+    // (dome-detail-275) the delta's long-tail engine (máy đuôi tôm) on its pivot post in the stern, the shaft run back
+    // and down onto the slip, the propeller at its end
+    const keel = yAt(bz) + 0.06, zE = bz - len / 2 + 0.55, engine = pick(look, ENGINE);
+    sink.span('structureWood', -0.05, keel + 0.03, zE - 0.05, 0.05, keel + 0.62, zE + 0.05, { colour: shade(timber, 0.8), decor: true });
+    sink.span('structureMetal', -0.19, keel + 0.62, zE - 0.32, 0.19, keel + 0.96, zE + 0.2, { colour: engine, decor: true });
+    sink.span('structureMetal', -0.13, keel + 0.96, zE - 0.2, 0.13, keel + 1.08, zE + 0.1, { colour: shade(engine, 0.7), decor: true, fine: 'near' });
+    const tail: Vec3 = [0.05, yAt(zE - 2.5) + 0.08, zE - 2.5];
+    roundPole(sink, 'structureMetal', [0, keel + 0.7, zE - 0.3], tail, 0.03, { colour: IRON, decor: true, fine: 'near' });
+    sink.span('structureMetal', tail[0] - 0.16, tail[1] - 0.05, tail[2] - 0.03, tail[0] + 0.16, tail[1] + 0.05, tail[2] + 0.03, { colour: shade(IRON, 1.6), decor: true, fine: 'near' });
     const wf: Face = { origin: [px + 0.06, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
     for (const k of [0, 1]) leantPole(sink, { ...wf, out: [-1, 0, 0], u: [0, 0, 1] }, -D * 0.3 + k * 0.25, 0.35 + k * 0.05, 2.3, 0.2, shade(timber, 1.1), true);
     // the cast net hung to dry over the tie beam nearest the creek end
     const tz = zs[n - 2];
     hungNet(sink, -px * 0.7, -px * 0.1, plate + 0.2, tz, rgb(0x2e6a5a), look, { floats: rgb(0xd8a028), foot: 1.2 });
   });
+  // (dome-detail-275) the covering in relief: on the nipa, the bamboo poles laid down both slopes and lashed through to the
+  // rafters against the squalls, two more along the ridge binding its fold, a newer panel of greener leaf let in and, on
+  // some, a blue plastic sheet tied over a leak; on a sheet roof, its sheets in their courses with their laps, a rusted
+  // one, a new one put in
+  const xe = rg.s + roof.eave - 0.14, cosP = 1 / Math.hypot(1, rg.tanP);
+  const on = (x: number, z: number, r: number): Vec3 => [x, (rg.topAt(x, z) ?? eaveY) + r * 0.55, z];
+  const slopeN = (sd: number): Vec3 => [sd * rg.tanP * cosP, cosP, 0];
+  if (thatched) {
+    const poles = Math.max(2, Math.round(D / 2.6)), cane = { decor: true } as const;
+    for (const sd of [-1, 1]) for (let k = 0; k < poles; k++) {
+      const z = -D / 2 + (k + 0.5) * D / poles + (look() - 0.5) * 0.4;
+      roundPole(sink, 'structureWood', on(sd * xe, z, 0.04), on(sd * 0.3, z + (look() - 0.5) * 0.25, 0.04), 0.04, { ...cane, colour: shade(BAMBOO_MAT, 0.78 + look() * 0.16) });
+    }
+    for (const sd of [-1, 1]) roundPole(sink, 'structureWood', on(sd * 0.34, -D / 2 - roof.verge + 0.25, 0.045), on(sd * 0.34, D / 2 + roof.verge - 0.25, 0.045), 0.045, { ...cane, colour: shade(BAMBOO_MAT, 0.72) });
+    const sd = look() < 0.5 ? -1 : 1, pz = (look() - 0.5) * (D - 2.4), v0 = 0.4 + look() * 0.8;
+    sink.member('straw', on(sd * (xe - v0 * cosP), pz, 0.02), on(sd * (xe - (v0 + 1.3) * cosP), pz, 0.02), 1.5, 0.05, slopeN(sd), { decor: true, exposed: true, shade: 1.1, tint: [0.92, 1.02, 0.82] }, 0.02);
+    if (look() < 0.4) {
+      const tz = (look() - 0.5) * (D - 2.6);
+      sink.member('structureWood', on(-sd * 0.5, tz, 0.015), on(-sd * (xe - 0.4), tz, 0.015), 1.8, 0.012, slopeN(-sd), { decor: true, exposed: true, colour: shade(TARP, 0.9) }, 0.006);
+    }
+  } else {
+    for (const sd of [-1, 1] as const) sheetCourses(sink, 'roof', gableSlope(rg, roof, sd), { sheetW: 0.86, sheetL: 2.4, lap: 0.2, ribs: 3, shift: look() * 0.86, paint: () => sheetTone(look) });
+  }
+  // the creek end's gable closed over the tie beam: a nipa panel, or boards, to the rafters
+  const zg = zs[n - 1] + 0.07, ug = px + 0.06, yg = plate + 0.26;
+  const gableTop = (u: number) => rg.ridgeY - Math.abs(u) * rg.tanP - 0.1;
+  sink.prism(thatched ? 'straw' : 'structureWood', [[-ug, yg, zg], [ug, yg, zg], [ug, gableTop(ug), zg], [0, gableTop(0), zg], [-ug, gableTop(ug), zg]], [0, 0, 1], 0.05,
+    thatched ? { decor: true, shade: 0.9 } : { decor: true, colour: shade(wallTone, 0.95) });
+  // the gear round the shelter: a stack of bamboo fish traps (lờ) against the outside of a wall, a blue fuel drum and a
+  // jerrycan inside the back corner, the mooring stakes either side of the slip's foot
+  const trapX = (look() < 0.5 ? -1 : 1) * (px + 0.4);
+  for (let k = 0; k < 3; k++) {
+    const z = -D / 2 + 1.0 + k * 0.5 + look() * 0.2, y = k === 2 ? 0.42 : 0.2, x = trapX + (k === 2 ? 0 : (k - 0.5) * 0.42) * Math.sign(trapX);
+    sink.cylinder('structureWood', [x, y, z], 'z', 1.0, 0.2, 8, { decor: true, colour: shade(BAMBOO_MAT, 0.85 + look() * 0.2) }, 0.12);
+    sink.cylinder('structureWood', [x, y, z + 1.0], 'z', 0.3, 0.12, 8, { decor: true, colour: shade(BAMBOO_MAT, 0.8) }, 0.03, false);
+  }
+  const dx = -Math.sign(trapX) * (px - 0.5), dz = -D / 2 + 0.6;
+  sink.cylinder('structureMetal', [dx, 0, dz], 'y', 0.9, 0.29, 12, { decor: true, colour: rgb(0x2a5aa8) });
+  sink.span('structureMetal', dx + Math.sign(dx) * -0.55 - 0.1, 0, dz - 0.17, dx + Math.sign(dx) * -0.55 + 0.1, 0.42, dz + 0.17, { decor: true, colour: pick(look, [rgb(0xc8a020), rgb(0xb83020), rgb(0x2a7a4a)]) });
+  for (const sd of [-1, 1]) {
+    const x = sd * (1.45 + look() * 0.3), z = Math.min(bb.maxZ - 0.3, z1 - 0.5);
+    roundPole(sink, 'structureWood', [x, -0.4, z], [x + sd * 0.08, 1.3 + look() * 0.5, z + 0.1], 0.06, { decor: true, colour: shade(timber, 0.75) });
+  }
   recordLattice(sink, legs, [plate], 0.17, 'structureWood', timber, {
     x0: -1.2, x1: 1.2, y0: eaveY, y1: eaveY + 2.2, z0: -1.2, z1: 1.2, bucket: roof.bucket, tint: thatched ? [0.62, 0.52, 0.34] : [0.55, 0.42, 0.32],
   });
@@ -238,6 +364,31 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
           const face = faces[name];
           boards(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
         }
+        // (dome-detail-275; the work list: a plain sheet roof) the roof's sheets in their courses with their laps, a
+        // rusted one here and there and a new one put in; the stripped patch the war wear opened left open
+        const rg = frame.roof, spec = frame.spec.roof, hole = frame.roofPatch, cosP = 1 / Math.hypot(1, rg.tanP);
+        const xe = rg.s + spec.eave - 0.02, zv = rg.halfD + spec.verge - 0.02;
+        for (const sd of [-1, 1] as const) {
+          sheetCourses(sink, 'roof', gableSlope(rg, spec, sd), {
+            sheetW: 0.92, sheetL: 2.44, lap: 0.2, ribs: 2, shift: look() * 0.92, paint: () => sheetTone(look),
+            skip: (v0, v1, t0, t1) => !!hole && hole.side === sd && v1 > (xe - hole.x1 - 0.08) / cosP && v0 < (xe - hole.x0 + 0.08) / cosP && t1 - zv > hole.z0 - 0.08 && t0 - zv < hole.z1 + 0.08,
+          });
+        }
+        // the corner posts standing proud of the boards, and the buyer's signboard on two battens on the landing's gable:
+        // VỰA CÁ in red over the owner's name and his number
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+          sink.span('structureWood', sx * W / 2 - 0.09, 0, sz * D / 2 - 0.09, sx * W / 2 + 0.09, body.y1, sz * D / 2 + 0.09, { colour: shade(timber, 0.85), decor: true });
+        }
+        const gab: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, signY = body.y1 + 0.55, signW = Math.min(4.2, W * 0.36);
+        for (const u of [-signW * 0.35, signW * 0.35]) faceBox(sink, 'structureWood', gab, u, signY, 0.015, 0.08, 0.9, 0.03, { colour: timber, decor: true });
+        const gi = Math.min(2, Math.floor(look() * 3)), ground = [rgb(0xe8e6de), rgb(0x3a78c0), rgb(0xe0c040)][gi], ink = gi === 1 ? rgb(0xf0ece0) : rgb(0xb02a22);
+        faceBox(sink, 'structureWood', gab, 0, signY, 0.05, signW, 0.78, 0.04, { colour: ground, decor: true });
+        const front: Face = { ...gab, origin: [0, 0, D / 2 + 0.07] };
+        for (let k = 0; k < 6; k++) {
+          if (k === 3) continue;
+          faceBox(sink, 'structureWood', front, -signW * 0.36 + k * signW * 0.144, signY + 0.12, 0.005, signW * 0.11, 0.3, 0.01, { colour: ink, decor: true, fine: 'near' });
+        }
+        faceBox(sink, 'structureWood', front, 0, signY - 0.22, 0.005, signW * 0.7, 0.1, 0.01, { colour: shade(ink, 0.7), decor: true, fine: 'near' });
       });
     } finally { sink.paint = null; }
   });
@@ -255,10 +406,17 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
     // the tarpaulin on its poles over the landing, sloping back to the hall's eave
     const yH = floorY + 2.75, yF = floorY + 2.2;
     for (const x of [cx - dw / 2 + 0.4, cx, cx + dw / 2 - 0.4]) sink.cylinder('structureWood', [x, floorY - 0.04, dz1 - 0.3], 'y', yF - floorY + 0.04, 0.04, 6, { colour: timber, decor: true });
-    const a: Vec3 = [cx - dw / 2 + 0.3, yH, dz0 + 0.1], b: Vec3 = [cx + dw / 2 - 0.3, yH, dz0 + 0.1], c: Vec3 = [cx + dw / 2 - 0.3, yF, dz1 - 0.3], d: Vec3 = [cx - dw / 2 + 0.3, yF, dz1 - 0.3];
-    sink.quad('structureWood', d, c, b, a, { colour: TARP, decor: true });
-    const dn = (v: Vec3): Vec3 => [v[0], v[1] - 0.012, v[2]];
-    sink.quad('structureWood', dn(a), dn(b), dn(c), dn(d), { colour: shade(TARP, 0.6), decor: true });
+    // (dome-detail-275; a flat blue plane) the tarpaulin sagging between its ties: taut along its edges, slack across each
+    // bay between the poles and down the middle of its run, its two faces a hand apart
+    const tx0 = cx - dw / 2 + 0.3, tx1 = cx + dw / 2 - 0.3, tz0 = dz0 + 0.1, tz1 = dz1 - 0.3, NX = 8, NZ = 3, sag = 0.16 + look() * 0.1;
+    const tarp = (i: number, j: number, off: number): Vec3 => {
+      const u = i / NX, v = j / NZ, bay = Math.abs(Math.sin(u * Math.PI * 2));
+      return [tx0 + (tx1 - tx0) * u, yH + (yF - yH) * v - sag * bay * Math.sin(v * Math.PI) - 0.04 * Math.sin(u * Math.PI) - off, tz0 + (tz1 - tz0) * v];
+    };
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
+      sink.quad('structureWood', tarp(i, j + 1, 0), tarp(i + 1, j + 1, 0), tarp(i + 1, j, 0), tarp(i, j, 0), { colour: shade(TARP, 0.96 + ((i + j) % 2) * 0.06), decor: true });
+      sink.quad('structureWood', tarp(i, j + 1, 0.012), tarp(i, j, 0.012), tarp(i + 1, j, 0.012), tarp(i + 1, j + 1, 0.012), { colour: shade(TARP, 0.6), decor: true });
+    }
     sink.member('structureWood', [cx - dw / 2 + 0.3, yF - 0.02, dz1 - 0.3], [cx + dw / 2 - 0.3, yF - 0.02, dz1 - 0.3], 0.05, 0.05, [0, 1, 0], { colour: timber, decor: true, exposed: true }, 0.025);
     for (let k = 0; k < 9; k++) foamBox(sink, cx - dw / 2 + 0.7 + (k % 3) * 0.66, floorY - 0.04 + Math.floor(k / 3) * 0.36, dz0 + 0.8, look);
     for (let k = 0; k < 5; k++) basket(sink, cx + dw * 0.15 + k * 0.62, floorY - 0.04, dz0 + 1.2 + (k % 2) * 0.5, BASKETS[k % BASKETS.length]);
@@ -266,8 +424,17 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
     sink.span('structureMetal', cx - 0.35, floorY - 0.04, dz0 + 1.8, cx + 0.35, floorY + 0.08, dz0 + 2.35, { colour: rgb(0x4a5052), decor: true, fine: true });
     sink.span('structureMetal', cx - 0.03, floorY + 0.08, dz0 + 2.3, cx + 0.03, floorY + 1.05, dz0 + 2.36, { colour: rgb(0x3a3e40), decor: true, fine: true });
     // the sampan drawn up on the bank beside the landing's end
+    // (dome-detail-275) the plastic fish crates stacked by the hall's door, a blue drum of ice water, the fluorescent tube
+    // under the tarpaulin's head
+    for (let k = 0; k < 7; k++) {
+      const col = Math.floor(k / 3), lvl = k % 3, x = cx - dw / 2 + 0.55 + col * 0.66 + (lvl % 2) * 0.04, y = floorY - 0.04 + lvl * 0.3, z = dz0 + 2.0;
+      sink.span('structureWood', x - 0.3, y, z - 0.2, x + 0.3, y + 0.29, z + 0.2, { colour: shade(pick(look, CRATES), 0.9 + look() * 0.15), decor: true, fine: 'near' });
+    }
+    sink.cylinder('structureMetal', [cx + dw / 2 - 0.6, floorY - 0.04, dz0 + 0.6], 'y', 0.9, 0.29, 12, { colour: rgb(0x2a5aa8), decor: true });
+    sink.span('structureMetal', cx - 0.6, yH - 0.08, dz0 + 0.2, cx + 0.6, yH - 0.03, dz0 + 0.26, { colour: rgb(0xeef2f0), decor: true, fine: 'near' });
     const room = bb.maxX - (cx + dw / 2);
-    if (room > 1.6) boatHull(sink, [cx + dw / 2 + room / 2, 0.02, dz1 - 2.0], 0.04, { length: Math.min(5.2, dz1 - dz0 + 1.5), beam: Math.min(1.35, room - 0.2), depth: 0.5, sheer: 0.34,
+    // (dome-detail-275: it reached 1.2 m past the plot's side) the sampan drawn up along the landing's side
+    if (room > 1.6) boatHull(sink, [cx + dw / 2 + room / 2, 0.02, Math.min(dz1 - 2.7, bb.maxZ - 2.7)], Math.PI / 2 + 0.04, { length: Math.min(5.2, dz1 - dz0 + 1.5), beam: Math.min(1.35, room - 0.2), depth: 0.5, sheer: 0.34,
       stern: 'double', flat: 0.45, colour: rgb(0x5a6a7a), inside: rgb(0x8a6a48), gunwale: rgb(0xb8452e), thwarts: 2, hood: null }, { heel: 0.12 });
   });
   return sink.finish();
@@ -386,7 +553,7 @@ export function dalmatianBoathouse<S extends { door: Rgb; window: WindowStyle; l
  * brick, the fish crates and mussel baskets stacked, a handcart, the cast-iron bollard at the quay's edge.
  */
 export function polderPakhuis<S extends { door: Rgb; green: Rgb; window: WindowStyle; litShare: number; rng: () => number }>(
-  ctx: RegionalBuildContext, kit: KitJoinery<S>): RegionalParts {
+  ctx: RegionalBuildContext, kit: KitJoinery<S>, more?: (sink: PartSink, frame: HouseFrame) => void): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant, mobile = ctx.tier === 'mobile', bb = ctx.bounds;
   const W = clamp(ctx.info.w - 7.5, 7, 9), D = clamp(bb.maxZ - bb.minZ - 4.0, 12, 16);
@@ -444,6 +611,8 @@ export function polderPakhuis<S extends { door: Rgb; green: Rgb; window: WindowS
     const rg = frame.roof;
     sink.span('stone', -0.4, rg.ridgeY - 1.2, -D / 2 + 0.05, 0.4, rg.ridgeTopY + 0.9, -D / 2 + 0.6);
     sink.span('stone', -0.48, rg.ridgeTopY + 0.9, -D / 2 - 0.03, 0.48, rg.ridgeTopY + 1.02, -D / 2 + 0.68, { decor: true });
+    // (dome-detail-275) a kit's own dressing of the body, in its frame (the roof, its stripped patch, the faces)
+    more?.(sink, frame);
   });
   // the yard beside it, paved in brick to the plot's +x edge; the crates, the baskets, the handcart, the bollard
   const yx0 = cx + W / 2 + 0.05, yx1 = bb.maxX - 0.2;

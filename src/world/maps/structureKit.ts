@@ -2003,6 +2003,8 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
   const un = style?.mark === 'un';
   const w = 4.5, d = 8.8, wall = 1.05, rise = 2.0, bays = 4, bay = d / bays, rope = 0xb0a68a, red = 0x7b2c28, white = 0xd8d0ba;
   const dark = 0x2c2a24;
+  // (dome-detail-275) the roof's tapes and valances are drawn and no collision part
+  const uncollided = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.noCollision = true; return geo; };
   for (const X of [-2.7, 2.7]) {
     const so = Math.sign(X);
     // the wall cloth, a length over two bays, the uprights outside it at every bay line
@@ -2064,6 +2066,31 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
       const ua = 0.3, ub = 0.68;
       stroke(ua, -1.0, ub, -1.0, 2); stroke(ua, -0.35, ub, -0.35, 2); stroke(ua, -0.98, ua, -0.37, 2);
       stroke(ua, 0.35, ub, 0.35, 2); stroke(ua, 1.0, ub, 1.0, 2); stroke(ub, 0.37, ua, 0.98, 3);
+    }
+    // (dome-detail-275) the roof's own make: the webbing tapes over each slope at the inner bay lines, where the uprights
+    // pull the cloth taut, and the valance hanging along each eave; on the outer slope of a marked ward (the fly's, where
+    // it has one) the red cross in its white field, laid out for the air as the field hospitals painted them. Each on the
+    // cloth's own sag (clothPatch); the valance and the tapes drawn, no collision part
+    const hsRoof = style?.hospital ?? {};
+    for (const side of [-1, 1]) {
+      tagParts('roof', `roof|${X}|${side}`);
+      const panel: ClothCorners = [[X + side * eaveX, eaveY, z0], [X, ridgeY, z0], [X, ridgeY, z1], [X + side * eaveX, eaveY, z1]];
+      if (!hsRoof.fly) for (let k = 1; k < bays; k++) {
+        const v = k / bays, hw = 0.04 / (z1 - z0);
+        uncollided(colored(out, clothPatch(...panel, 2, 3 * bays, 0.09, [0, -1, 0], bays, [0.02, 0.98, v - hw, v + hw], 2, 1, 0.02, [0, 1, 0]), toneOf(p[1], 0.8), r, 0.02));
+      }
+      uncollided(colored(out, box(0.03, 0.2, z1 - z0).translate(X + side * (eaveX + 0.015), eaveY - 0.08, 0), side > 0 ? p[1] : p[0], r, 0.03));
+      if (un || side !== so) continue;
+      // the field 2 m square and the cross 1.6 m over it, centred on the slope
+      const fly = !!hsRoof.fly, on: ClothCorners = fly ? [[X + side * (eaveX + 0.18), eaveY + 0.16, z0 - 0.05], [X, ridgeY + 0.26, z0 - 0.05],
+        [X, ridgeY + 0.26, z1 + 0.05], [X + side * (eaveX + 0.18), eaveY + 0.16, z1 + 0.05]] : panel;
+      const slopeL = Math.hypot(on[0][0] - on[1][0], on[0][1] - on[1][1]), span = on[2][2] - on[1][2];
+      const cu = (m: number): [number, number] => [0.5 - m / 2 / slopeL, 0.5 + m / 2 / slopeL], cv = (m: number): [number, number] => [0.5 - m / 2 / span, 0.5 + m / 2 / span];
+      const sheet = (u: [number, number], v: [number, number], nu: number, nv: number, lift: number, col: number) => colored(out,
+        clothPatch(...on, 2, (fly ? 2 : 3) * bays, fly ? 0.07 : 0.09, [0, -1, 0], bays, [u[0], u[1], v[0], v[1]], nu, nv, lift, [0, 1, 0]), col, r, 0.02);
+      sheet(cu(2.0), cv(2.0), 4, 4, 0.03, white);
+      sheet(cu(1.6), cv(0.5), 4, 1, 0.04, red);
+      sheet(cu(0.5), cv(1.6), 1, 4, 0.045, red);
     }
     tagParts('wall', `end|${X}|1`);
     if (!un) {
@@ -3088,20 +3115,78 @@ function toneOf(hex: number, k: number): number {
   return _color.getHex();
 }
 
+/** (dome-detail-275) The Quonset's arch in 18 facets (it was 10: the hut read as a polygon at 30 m), its ribs and ends on it; at 12-16 its 1.5-2 m collision band certified under 90 (structureCollision), at 18 over 91. */
+const QUONSET_SEGS = 18;
+
 /**
- * The Quonset's skin: the corrugated sheet round the arch as a band `skin` thick (the arch's polygon, archShell's), open
- * at its ends to the end walls set in it; its sides' UVs run the sheet's ribs across the length (archShellSheet's).
+ * The Quonset's skin: the corrugated sheet round the arch as a band `skin` thick (the arch's polygon in `segs` facets),
+ * open at its ends to the end walls set in it; its UVs run the sheet's ribs across the length. (dome-detail-275) Its outer
+ * face laid sheet by sheet — `zs` the sheets' joints along the hut, `rows` the laps' angles up the arch — each sheet its
+ * own facets and `tone(row, sheet)` its own paint factor (in userData.sheetTone, a factor a vertex, for the caller to lay
+ * over its paint); its normals the arch's own, so it shades round. Non-indexed, wound outward.
  */
-function quonsetShell(R: number, H: number, skin: number, d: number): THREE.BufferGeometry {
-  const pts: THREE.Vector2[] = [];
-  for (let i = 0; i <= 10; i++) { const a = Math.PI - i * Math.PI / 10; pts.push(new THREE.Vector2(Math.cos(a) * R, Math.sin(a) * H)); }
-  for (let i = 10; i >= 0; i--) { const a = Math.PI - i * Math.PI / 10; pts.push(new THREE.Vector2(Math.cos(a) * (R - skin), Math.sin(a) * (H - skin))); }
-  const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: d, bevelEnabled: false, curveSegments: 1 });
-  geo.translate(0, 0, -d / 2);
-  scaleUV(geo, 0.55, 0.55);
-  const sides = geo.groups.find((group) => group.materialIndex === 1), uv = geo.attributes.uv;
-  if (sides) for (let i = sides.start; i < sides.start + sides.count; i++) uv.setXY(i, uv.getY(i), uv.getX(i));
-  geo.clearGroups();
+function quonsetShell(R: number, H: number, skin: number, d: number, segs: number, zs: readonly number[], rows: readonly number[],
+  tone: (row: number, sheet: number) => number): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], uvs: number[] = [], k: number[] = [];
+  const angle = (i: number): number => Math.PI - i * Math.PI / segs;
+  // the arch's arc length to each facet's foot (the sheet's v), the outer ellipse's normal at an angle
+  const arc: number[] = [0];
+  for (let i = 0; i < segs; i++) arc.push(arc[i] + Math.hypot(R * (Math.cos(angle(i + 1)) - Math.cos(angle(i))), H * (Math.sin(angle(i + 1)) - Math.sin(angle(i)))));
+  const nAt = (a: number, rr: number, hh: number, sgn: number): [number, number, number] => {
+    const nx = Math.cos(a) / rr, ny = Math.sin(a) / hh, l = Math.hypot(nx, ny);
+    return [sgn * nx / l, sgn * ny / l, 0];
+  };
+  type V = { p: [number, number, number]; n: [number, number, number]; uv: [number, number] };
+  /** a triangle, turned to face `out` (its winding read from its own normal) */
+  const tri = (a: V, b: V, c: V, out: [number, number, number], f: number): void => {
+    const ux = b.p[0] - a.p[0], uy = b.p[1] - a.p[1], uz = b.p[2] - a.p[2], vx = c.p[0] - a.p[0], vy = c.p[1] - a.p[1], vz = c.p[2] - a.p[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const order = nx * out[0] + ny * out[1] + nz * out[2] >= 0 ? [a, b, c] : [a, c, b];
+    for (const q of order) { pos.push(...q.p); nor.push(...q.n); uvs.push(...q.uv); k.push(f); }
+  };
+  const quad = (a: V, b: V, c: V, e: V, out: [number, number, number], f = 1): void => { tri(a, b, c, out, f); tri(a, c, e, out, f); };
+  const ring = (i: number, rr: number, hh: number, z: number, sgn: number): V => {
+    const a = angle(i);
+    return { p: [Math.cos(a) * rr, Math.sin(a) * hh, z], n: nAt(a, rr, hh, sgn), uv: [z * 0.55, arc[i] * 0.55] };
+  };
+  const rowOf = (a: number): number => rows.filter((r) => r < Math.PI - a).length;
+  for (let i = 0; i < segs; i++) {
+    const am = (angle(i) + angle(i + 1)) / 2, out = nAt(am, R, H, 1), row = rowOf(am);
+    // the outer sheet, a sheet at a time along the hut
+    for (let j = 0; j + 1 < zs.length; j++) {
+      quad(ring(i, R, H, zs[j], 1), ring(i + 1, R, H, zs[j], 1), ring(i + 1, R, H, zs[j + 1], 1), ring(i, R, H, zs[j + 1], 1), out, tone(row, j));
+    }
+    // the inner face whole, the rims at the two mouths
+    const inn: [number, number, number] = [-out[0], -out[1], 0];
+    quad(ring(i, R - skin, H - skin, -d / 2, -1), ring(i + 1, R - skin, H - skin, -d / 2, -1), ring(i + 1, R - skin, H - skin, d / 2, -1), ring(i, R - skin, H - skin, d / 2, -1), inn, 0.85);
+    for (const zz of [-1, 1]) {
+      const z = zz * d / 2;
+      const o0 = ring(i, R, H, z, 1), o1 = ring(i + 1, R, H, z, 1), i0 = ring(i, R - skin, H - skin, z, 1), i1 = ring(i + 1, R - skin, H - skin, z, 1);
+      const nz: [number, number, number] = [0, 0, zz];
+      for (const v of [o0, o1, i0, i1]) { v.n = nz; v.uv = [v.p[0] * 0.55, v.p[1] * 0.55]; }
+      quad(o0, o1, i1, i0, nz, 0.9);
+    }
+  }
+  // the two feet on the ground
+  for (const [i, sx] of [[0, -1], [segs, 1]] as const) {
+    const dn: [number, number, number] = [0, -1, 0];
+    const v = (rr: number, z: number): V => ({ p: [sx * rr, Math.sin(angle(i)) * H, z], n: dn, uv: [z * 0.55, rr * 0.55] });
+    quad(v(R, -d / 2), v(R - skin, -d / 2), v(R - skin, d / 2), v(R, d / 2), dn, 0.8);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.userData.sheetTone = Float32Array.from(k);
+  return g;
+}
+
+/** (dome-detail-275) Lay a part's per-vertex paint factors (userData.sheetTone) over the paint colored() gave it. */
+function toneSheets<T extends THREE.BufferGeometry>(geo: T): T {
+  const f = geo.userData.sheetTone as Float32Array | undefined, col = geo.getAttribute('color') as THREE.BufferAttribute | undefined;
+  if (!f || !col) return geo;
+  for (let i = 0; i < col.count; i++) col.setXYZ(i, Math.min(1, col.getX(i) * f[i]), Math.min(1, col.getY(i) * f[i]), Math.min(1, col.getZ(i) * f[i]));
+  delete geo.userData.sheetTone;
   return geo;
 }
 
@@ -3109,12 +3194,12 @@ function quonsetShell(R: number, H: number, skin: number, d: number): THREE.Buff
  * A rib round the Quonset's arch, `width` along the hut and standing `proud` off the sheet: its crown and its two flanks
  * on the arch's own polygon (the sheet's face under it is the shell's), non-indexed.
  */
-function archBand(R: number, H: number, width: number, proud: number): THREE.BufferGeometry {
+function archBand(R: number, H: number, width: number, proud: number, segs = QUONSET_SEGS): THREE.BufferGeometry {
   const pos: number[] = [], z0 = -width / 2, z1 = width / 2;
   const at = (a: number, k: number): [number, number] => [Math.cos(a) * (R + k), Math.sin(a) * (H + k)];
   const quad = (a: number[], b: number[], c: number[], e: number[]) => pos.push(...a, ...b, ...c, ...a, ...c, ...e);
-  for (let i = 0; i < 10; i++) {
-    const a0 = Math.PI - i * Math.PI / 10, a1 = Math.PI - (i + 1) * Math.PI / 10;
+  for (let i = 0; i < segs; i++) {
+    const a0 = Math.PI - i * Math.PI / segs, a1 = Math.PI - (i + 1) * Math.PI / segs;
     const [ox0, oy0] = at(a0, proud), [ox1, oy1] = at(a1, proud), [ix0, iy0] = at(a0, 0), [ix1, iy1] = at(a1, 0);
     quad([ox0, oy0, z1], [ox1, oy1, z1], [ox1, oy1, z0], [ox0, oy0, z0]);
     quad([ix0, iy0, z1], [ix1, iy1, z1], [ox1, oy1, z1], [ox0, oy0, z1]);
@@ -3194,16 +3279,26 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
   const hull = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.collisionHull = true; return geo; };
   const archY = (x: number) => H * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
   const innerY = (x: number) => Hi * Math.sqrt(Math.max(0, 1 - (x / Ri) ** 2));
-  colored(out, quonsetShell(R, H, skin, d), p[0], r, 0.1);
-  for (let k = 0; k < 7; k++) colored(out, archBand(R, H, 0.13, 0.06).translate(0, 0, -d / 2 + 1.0 + k * (d - 2.0) / 6), rib, r, 0.04);
+  // (dome-detail-275) the sheets: their joints under the ribs and midway between them, their laps at the seams; each
+  // sheet its own shade, the rows at the foot dulled by the splash and the crown's bleached by the sun, a patched sheet here
+  // and there a shade off its neighbours (a hash of its place: no stream draw)
+  const ribZ = Array.from({ length: 7 }, (_, k) => -d / 2 + 1.0 + k * (d - 2.0) / 6), laps = [0.42, 0.85, 1.25, 1.57, 1.89, 2.29, 2.72];
+  const sheetZ = [-d / 2, ...ribZ.flatMap((z, k) => (k < 6 ? [z, (z + ribZ[k + 1]) / 2] : [z])), d / 2];
+  const rowTone = [0.84, 0.93, 1.0, 1.04, 1.04, 1.0, 0.93, 0.84];
+  const sheetTone = (row: number, sheet: number): number => {
+    const h0 = cellHash(row * 31 + 7, sheet), patch = cellHash(sheet * 17 + 3, row) > 0.94 ? (h0 > 0.5 ? 1.14 : 0.8) : 1;
+    return rowTone[row] * (1 + (h0 - 0.5) * 0.12) * patch;
+  };
+  toneSheets(colored(out, quonsetShell(R, H, skin, d, QUONSET_SEGS, sheetZ, laps, sheetTone), p[0], r, 0.04));
+  for (const z of ribZ) colored(out, archBand(R, H, 0.13, 0.06).translate(0, 0, z), rib, r, 0.04);
   for (const zs of [-1, 1]) colored(out, archBand(R, H, 0.16, 0.08).translate(0, 0, zs * (d / 2 - 0.08)), frame, r, 0.02);
-  for (const a of [0.42, 0.85, 1.25, 1.57, 1.89, 2.29, 2.72]) {
+  for (const a of laps) {
     colored(out, mbox(0.05, 0.05, d - 0.05).translate(Math.cos(a) * (R + 0.02), Math.sin(a) * (H + 0.02), 0), p[1], r, 0.02);
   }
   // the ends: each a wall set `recess` into the arch's mouth, cut for its openings, `t` thick
   const t = s.ends === 'brick' ? 0.34 : s.ends === 'block' ? 0.26 : 0.2, set = t * 0.55, at = d / 2 - s.recess;
   const top: Array<[number, number]> = [];
-  for (let i = 1; i < 10; i++) { const a = i * Math.PI / 10; top.push([Math.cos(a) * Ri, Math.sin(a) * Hi]); }
+  for (let i = 1; i < QUONSET_SEGS; i++) { const a = i * Math.PI / QUONSET_SEGS; top.push([Math.cos(a) * Ri, Math.sin(a) * Hi]); }
   const DOORS = { double: { u: 0, w: 2.5, h: 2.5 }, sliding: { u: -1.0, w: 2.0, h: 2.3 }, wicket: { u: 0, w: 0.95, h: 2.1 }, roller: { u: 0, w: 3.0, h: 2.8 } };
   const dr = DOORS[s.door], door: WallOpening = { u: dr.u, y: dr.h / 2, w: dr.w, h: dr.h };
   const lights = (n: number, front: boolean): WallOpening[] => (n === 1 ? [{ u: 2.3, y: 1.6, w: 0.6, h: 0.7 }]
@@ -3312,6 +3407,16 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
     colored(out, cylinder(0.2, 0.24, 0.27, 8).translate(0, H + 0.105, z), p[2], r, 0.03);
     colored(out, cylinder(0.32, 0.32, 0.06, 8).translate(0, H + 0.27, z), p[1], r, 0.03);
   }
+  if (s.extra !== 'drifts') {
+    // (dome-detail-275) the hut on its concrete pad, proud of the sheet's foot all round (drawn, no collision part), and the
+    // stove's oil drums against the back end
+    dressing(colored(out, mslab(w + 0.5, 0.12, d + 0.3).translate(0, 0.01, 0), 0x8a8780, r, 0.06));
+    for (const [u, c] of [[-0.34, 0x4c5a3c], [0.34, 0x6a4a32]] as const) {
+      // (against the end's face, inside the family's 0.4 m margin: regionalArchitecture)
+      dressing(colored(out, cylinder(0.29, 0.29, 0.88, 12).translate(u, 0.07 + 0.44, -(at + 0.24)), c, r, 0.05));
+      for (const y of [0.3, 0.6]) dressing(colored(out, cylinder(0.3, 0.3, 0.035, 12).translate(u, 0.07 + y, -(at + 0.24)), toneOf(c, 0.8), r, 0.03));
+    }
+  }
   const bag = 0x8e7f5e;
   if (s.extra === 'blastwalls') {
     // the blast walls: sandbags three courses high either side of the doors, and along the door half's flanks
@@ -3360,6 +3465,54 @@ function clothPanel(a0: readonly number[], a1: readonly number[], b1: readonly n
   return both;
 }
 
+/** (dome-detail-275) A clothPanel's four corners (a0, a1, b1, b0), as clothPatch takes them. */
+type ClothCorners = readonly [readonly number[], readonly number[], readonly number[], readonly number[]];
+
+/**
+ * (dome-detail-275) A patch laid on a clothPanel's upper face (its `up` side) — a tape, a seam's band, a painted field —
+ * over the panel's (u, v) area [u0, u1] x [v0, v1] in `nu` x `nv` cells, each vertex on the panel's own triangles (its
+ * nu0 x nv0 grid, the sag at its nodes as clothPanel lays it) and `lift` off them along the panel's plane normal, so it
+ * neither sinks into the cloth's folds nor floats over its sag. One face, wound to `up`.
+ */
+function clothPatch(a0: readonly number[], a1: readonly number[], b1: readonly number[], b0: readonly number[], nu0: number, nv0: number,
+  sag: number, down: readonly number[], bays: number, area: readonly [number, number, number, number], nu: number, nv: number,
+  lift: number, up: readonly number[]): THREE.BufferGeometry {
+  const node = (u: number, v: number): number[] => {
+    const f = sag * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.abs(Math.sin(Math.PI * v * bays)));
+    return [0, 1, 2].map((k) => (1 - v) * ((1 - u) * a0[k] + u * a1[k]) + v * ((1 - u) * b0[k] + u * b1[k]) + f * down[k]);
+  };
+  // the panel's plane normal, turned to `up`
+  const e1 = [a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]], e2 = [b0[0] - a0[0], b0[1] - a0[1], b0[2] - a0[2]];
+  let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+  const nl = Math.hypot(n[0], n[1], n[2]) || 1, ns = n[0] * up[0] + n[1] * up[1] + n[2] * up[2] >= 0 ? 1 / nl : -1 / nl;
+  n = n.map((c) => c * ns);
+  /** the cloth's point at (u, v) on its triangles (PlaneGeometry's cells, split on their b-d diagonal) */
+  const on = (u: number, v: number): number[] => {
+    const ix = Math.min(nu0 - 1, Math.max(0, Math.floor(u * nu0))), iy = Math.min(nv0 - 1, Math.max(0, Math.floor((1 - v) * nv0)));
+    const ua = ix / nu0, ub = (ix + 1) / nu0, vt = 1 - iy / nv0, vb = 1 - (iy + 1) / nv0;
+    const sx = (u - ua) * nu0, q = (vt - v) * nv0;
+    const A = node(ua, vt), B = node(ua, vb), C = node(ub, vb), D = node(ub, vt);
+    const p = sx + q <= 1 ? A.map((c, k) => c + sx * (D[k] - c) + q * (B[k] - c)) : C.map((c, k) => c + (1 - sx) * (B[k] - c) + (1 - q) * (D[k] - c));
+    return p.map((c, k) => c + lift * n[k]);
+  };
+  const [u0, u1, v0, v1] = area, pos: number[] = [], nor: number[] = [], uvs: number[] = [];
+  const put = (q: number[]): void => { pos.push(q[0], q[1], q[2]); nor.push(n[0], n[1], n[2]); uvs.push(q[0] * 0.5 + q[2] * 0.5, q[1] * 0.5); };
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    const ua = u0 + (u1 - u0) * i / nu, ub = u0 + (u1 - u0) * (i + 1) / nu, va = v0 + (v1 - v0) * j / nv, vb = v0 + (v1 - v0) * (j + 1) / nv;
+    const P = [on(ua, va), on(ub, va), on(ub, vb), on(ua, vb)];
+    for (const [a, b, c] of [[0, 1, 2], [0, 2, 3]]) {
+      const x = [P[b][0] - P[a][0], P[b][1] - P[a][1], P[b][2] - P[a][2]], y = [P[c][0] - P[a][0], P[c][1] - P[a][1], P[c][2] - P[a][2]];
+      const tn = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+      for (const k of tn[0] * n[0] + tn[1] * n[1] + tn[2] * n[2] >= 0 ? [a, b, c] : [a, c, b]) put(P[k]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
+}
+
 /**
  * The desert tent: canvas on its frame, held taut where it is held — the ridge pole on its two uprights, the eave poles
  * and the guys at every bay line pulling the cloth there, the roof and the walls sagging between them; the webbing over
@@ -3388,6 +3541,13 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
     const z0 = -d / 2 + k * bay, z1 = z0 + bay, ex = side * (w / 2), wx = side * (w / 2 + 0.05);
     // the roof cloth from the eave to the ridge, sagging between the bay lines
     colored(out, clothPanel([ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1], 4, 6, 0.12, [0, -1, 0]), k % 2 ? p[1] : p[0], r, 0.012);
+    // (dome-detail-275) the cloth's make on its face: the seams between its widths down the slope, the doubled band along
+    // the ridge (clothPatch, on its sag; drawn, no collision part)
+    const roofPanel: ClothCorners = [[ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1]];
+    for (const v of [1 / 3, 2 / 3]) {
+      dress(colored(out, clothPatch(...roofPanel, 4, 6, 0.12, [0, -1, 0], 1, [0.03, 0.97, v - 0.025 / bay, v + 0.025 / bay], 4, 1, 0.015, [0, 1, 0]), toneOf(p[k % 2 ? 1 : 0], 0.86), r, 0.02));
+    }
+    dress(colored(out, clothPatch(...roofPanel, 4, 6, 0.12, [0, -1, 0], 1, [0.9, 1, 0.0, 1.0], 1, 6, 0.015, [0, 1, 0]), toneOf(p[1], 0.82), r, 0.02));
     // the wall cloth pegged out, leaning a little from the eave to its foot (a panel a bay; the end bays' cut round their
     // windows, the gauze set back in each)
     const zc = (z0 + z1) / 2, bw = bay - 0.03;
@@ -3477,6 +3637,21 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
     colored(out, cylinder(0.16, 0.16, 0.04, 8).translate(sx, roofY + 0.02, sz), 0x8a8478, r, 0.03);
     colored(out, cylinder(0.13, 0.09, 0.1, 6).translate(sx, roofY + 0.95, sz), 0x3a3a38, r, 0.03);
     colored(out, box(0.5, 0.4, 0.4).translate(sx, 0.2 + (ds.platform ? 0.12 : 0), sz), 0x2e2e2c, r, 0.03);
+  }
+  // (dome-detail-275) the tent set into its ground: the sand shovelled onto the sod cloth along its lee wall's foot (a
+  // tent on its platform has none), and the camp's water by the door — a drum and the jerrycans (drawn, no collision part)
+  if (!ds.platform) {
+    const sx = w / 2 + 0.03, berm = new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.5, 0),
+      new THREE.Vector2(0.3, 0.12), new THREE.Vector2(0.1, 0.2), new THREE.Vector2(0, 0.22)]), { depth: d - 0.2, bevelEnabled: false });
+    dress(colored(out, scaleUV(berm, 0.5, 0.5).translate(0, -0.03, -(d - 0.2) / 2).translate(sx, 0, 0), toneOf(0xc2ae84, 0.95), r, 0.08));
+  }
+  const zd = d / 2 + 0.4;
+  dress(colored(out, cylinder(0.29, 0.29, 0.88, 12).translate(1.6, 0.44, zd), 0x5a6448, r, 0.04));
+  dress(colored(out, cylinder(0.3, 0.3, 0.04, 12).translate(1.6, 0.88, zd), 0x4a5240, r, 0.03));
+  for (const [x, yaw] of [[-1.45, 0.2], [-1.85, -0.15]] as const) {
+    const can = mbox(0.17, 0.47, 0.35, 0.02);
+    can.rotateY(yaw);
+    dress(colored(out, can.translate(x, 0.235, zd - 0.05), 0x5c5a3c, r, 0.04));
   }
   return mergeConnectedStructure('deserttent', out);
 }
@@ -3752,6 +3927,10 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
       const f = onFace(face.axis, face.side, face.at);
       // (the door's lintel is behind its frame's head and canopy)
       for (const o of face.holes) put(f(o.w + 0.4, 0.2, 0.12, o.u, o.y + o.h / 2 + 0.1, 0.06), toneOf(p[0], 0.9), 'hut-walls', 0.03);
+      // (dome-detail-275) the wall head's corbelled course between the piers, two steps out under the eaves
+      const run = 2 * face.half - 0.6 + (face.axis === 'z' ? 0 : 2 * t);
+      put(f(run, 0.14, 0.06, 0, h - 0.38, 0.03), toneOf(p[0], 0.86), 'hut-walls', 0.03);
+      put(f(run, 0.1, 0.1, 0, h - 0.26, 0.05), toneOf(p[0], 0.92), 'hut-walls', 0.03);
     }
   }
   // the front's louvres: the frame, three blades tipped out and down in the cut, the insect mesh at its back
@@ -3786,11 +3965,14 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
   // the roof: the deck with its eaves 0.3 m out, its ribs along the fall, the fascia round the edge
   const roofTop = h + 0.1;
   put(mslab(w + 0.6, 0.1, d + 0.6).translate(0, h + 0.05, 0), RELAY_ROOF, 'hut-roof', 0.05);
-  const ribs = 3;
+  // (dome-detail-275) the deck laid in relief: the trapezoidal sheet's ribs along the fall every 0.46 m (it carried three),
+  // the sheets' end lap a step across it, the drip flashing's lip along each side
+  const ribs = Math.round((w + 0.6) / 0.46);
   for (let r = 0; r < ribs; r++) {
     const x = -(w + 0.6) / 2 + 0.15 + r * ((w + 0.3) / (ribs - 1));
-    put(box(0.06, 0.035, d + 0.6).translate(x, roofTop + 0.0175, 0), RELAY_ROOF_RIB, 'hut-roof', 0.03);
+    put(box(0.07, 0.04, d + 0.6).translate(x, roofTop + 0.02, 0), RELAY_ROOF_RIB, 'hut-roof', 0.03);
   }
+  put(box(w + 0.6, 0.012, 0.09).translate(0, roofTop + 0.006, 0.55), RELAY_ROOF_RIB, 'hut-roof', 0.03);
   for (const sz of [-1, 1]) put(box(w + 0.65, 0.3, 0.05).translate(0, h + 0.0, sz * (d / 2 + 0.325)), p[2], 'hut-roof', 0.02);
   for (const sx of [-1, 1]) put(box(0.025, 0.17, d + 0.65).translate(sx * (w / 2 + 0.3125), h + 0.04, 0), p[1], 'hut-roof', 0.02);
   // the conduit from the eave down the front to the entry box (the cable runs in the roof: props #1's 2.5k); a tower's
@@ -3864,6 +4046,17 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
     put(panel.translate(-1.9, roofTop + 0.6, 1.65), 0x24304a, 'site-solar', 0.02);
     for (const x of [-2.75, -1.05]) for (const [z, hgt] of [[1.25, 0.8], [2.05, 0.36]] as const) put(box(0.05, hgt, 0.05).translate(x, roofTop + hgt / 2, z), steel, 'site-solar', 0.02);
   }
+  // (dome-detail-275) the cat ladder up the -x wall to the deck, outside its eave on two stand-off brackets, and the
+  // downpipe from the deck's outlet at the back corner (drawn, no collision part)
+  const clear = (geo: THREE.BufferGeometry): THREE.BufferGeometry => { geo.userData.noCollision = true; return geo; };
+  const lx = -(w / 2 + 0.36), lz = -d / 2 + 0.8, railTop = roofTop + 0.55;
+  for (const sz of [-1, 1]) put(clear(box(0.05, railTop, 0.05).translate(lx, railTop / 2, lz + sz * 0.21)), p[2], 'hut-ladder', 0.02);
+  for (let y = 0.3; y < railTop - 0.15; y += 0.3) put(clear(box(0.03, 0.03, 0.42).translate(lx, y, lz)), p[2], 'hut-ladder', 0.02);
+  for (const y of [1.3, h - 0.45]) for (const sz of [-1, 1]) put(clear(box(0.38, 0.04, 0.04).translate(lx + 0.19, y, lz + sz * 0.21)), p[2], 'hut-ladder', 0.02);
+  const px = w / 2 + 0.22, pz = -d / 2 + 0.5;
+  put(clear(box(0.09, h - 0.05, 0.09).translate(px, (h - 0.05) / 2 + 0.05, pz)), p[2], 'hut-pipe', 0.02);
+  for (const y of [1.2, h - 0.5]) put(clear(box(0.22, 0.04, 0.04).translate(px - 0.11, y, pz)), p[2], 'hut-pipe', 0.02);
+  put(clear(box(0.3, 0.05, 0.3).translate(px + 0.05, 0.025, pz)), RELAY_CONCRETE, 'hut-pipe', 0.03);
   if (tower) relayTower(out, put, w, form);
   // (props #1: the merge's own anatomy stands — the version-0 hooks were read over the parts in their build order, which
   // the merge's pieces reorder)
@@ -4468,13 +4661,20 @@ function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
   const r = spentDraws(makeSavoyardCasemateLegacy, rng, 0xca5e);
   const out: THREE.BufferGeometry[] = [], c = REGIONAL_PAL.concrete, steel = 0x44494a, dark = 0x1b1c1d;
   const w = 5.8, d = 6.0, h = 2.6;
+  const dress = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.noCollision = true; return geo; };
   // the body on its footing course (sunk into the scree), the roof slab oversailing it, the rock cover over the slab
   colored(out, mbox(w + 0.3, 0.42, d + 0.3, 0.06).translate(0, 0.16, 0), c[2], r, 0.05);
   colored(out, mbox(w, h - 0.37, d, 0.03).translate(0, 0.37 + (h - 0.37) / 2, 0), c[0], r, 0.05);
   colored(out, mslab(w + 0.5, 0.6, d + 0.5).translate(0, h + 0.3, 0), c[1], r, 0.05);
+  // (dome-detail-275) the rock cover bedded in a low mound of earth and scree on the slab (they lay on its bare top)
+  const v = kindStream('alpinerefuge@savoyard:cover'), slabTop = h + 0.6, moundH = 0.22;
+  const mound = new THREE.CylinderGeometry(0.82, 1, moundH, 4, 1).rotateY(Math.PI / 4).scale((w - 0.1) / 2 / Math.SQRT1_2, 1, (d - 0.1) / 2 / Math.SQRT1_2);
+  colored(out, scaleUV(mound.translate(0, slabTop + moundH / 2 - 0.01, 0), 1.2, 0.6), 0x8a8674, r, 0.1);
   for (let k = 0; k < 9; k++) {
     const x = (r() - 0.5) * (w - 0.6), z = (r() - 0.5) * (d - 0.6), s = 0.35 + r() * 0.35;
-    colored(out, mbox(s * 1.4, 0.18 + r() * 0.2, s).translate(x, h + 0.68, z), 0x6f6c66, r, 0.12);
+    const sh = 0.18 + r() * 0.2, stone = mbox(s * 1.4, sh, s);
+    stone.rotateY((v() - 0.5) * 1.6).rotateZ((v() - 0.5) * 0.3);
+    colored(out, stone.translate(x, slabTop + moundH * 0.55 + sh * 0.25, z), toneOf(0x8a867c, 0.85 + v() * 0.3), r, 0.12);
   }
   // an embrasure on a face: the splayed outer frame (four cast members round its throat, 26 cm proud), the inner step
   // inside it on the wall, the steel plate at the back with its slit
@@ -4498,6 +4698,14 @@ function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
   };
   for (const x of [-1.5, 1.5]) embrasure('z', 1, d / 2, x, 1.65);
   embrasure('x', 1, w / 2, 0.6, 1.65);
+  // (dome-detail-275) each embrasure's visor: a cast hood on its frame's head, oversailing it against the rain and the
+  // plunging fire (drawn, no collision part)
+  const visor = (axis: 'x' | 'z', at: number, u: number, y: number): void => {
+    const g = axis === 'z' ? mbox(1.75, 0.12, 0.44, 0.03).translate(u, y + 0.49, at + 0.22) : mbox(0.44, 0.12, 1.75, 0.03).translate(at + 0.22, y + 0.49, u);
+    dress(colored(out, g, c[1], r, 0.04));
+  };
+  for (const x of [-1.5, 1.5]) visor('z', d / 2, x, 1.65);
+  visor('x', w / 2, 0.6, 1.65);
   // the entrance at the back: the armoured door set back in its reveal (the frame's jambs and lintel 28 cm proud), its
   // hinges and bar, the step; the blast wall before it on its footing
   const dz = -d / 2, dw = 0.95, dh = 1.9, fd = 0.28, dx = -1.2, sole = 0.37;
@@ -4514,6 +4722,27 @@ function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
   colored(out, mbox(0.5, 0.12, 0.5, 0.02).translate(1.6, h + 0.6 + 0.96, -1.4), steel, r, 0.03);
   colored(out, cylinder(0.08, 0.08, 0.6, 8).translate(-1.4, h + 0.6 + 0.3, 1.2), steel, r, 0.03);
   colored(out, mbox(0.22, 0.14, 0.12, 0.02).translate(-1.4, h + 0.6 + 0.67, 1.24), steel, r, 0.03);
+  // (dome-detail-275) the body's board-formed lifts: a cast joint round it at each lift, a shade darker (drawn, no collision
+  // part)
+  for (const y of [0.93, 1.49, 2.05]) {
+    for (const sz of [-1, 1]) dress(colored(out, box(w + 0.02, 0.05, 0.03).translate(0, y, sz * (d / 2 + 0.005)), toneOf(c[0], 0.8), r, 0.03));
+    for (const sx of [-1, 1]) dress(colored(out, box(0.03, 0.05, d + 0.02).translate(sx * (w / 2 + 0.005), y, 0), toneOf(c[0], 0.8), r, 0.03));
+  }
+  // (dome-detail-275) the casemate set into the pass: the scree glacis banked against its front to under the embrasures, the
+  // earth banked along both flanks; each a profile drawn out along its face, its crest a little ragged (drawn, no
+  // collision part: the bands keep the cast body's)
+  const bank = (profile: Array<[number, number]>, length: number): THREE.ExtrudeGeometry => {
+    const shape = new THREE.Shape(profile.map(([o, y], i) => new THREE.Vector2(o, i < 2 ? y : Math.max(0.02, y + (v() - 0.5) * 0.08))));
+    const g = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: false });
+    return scaleUV(g.translate(0, -0.03, -length / 2), 0.6, 0.6);
+  };
+  const glacis = bank([[0, 0], [1.55, 0], [1.25, 0.2], [0.85, 0.46], [0.45, 0.72], [0, 0.95]], w + 0.3);
+  dress(colored(out, glacis.rotateY(-Math.PI / 2).translate(0, 0, d / 2), 0x8e8a7e, r, 0.1));
+  for (const sx of [-1, 1] as const) {
+    const flank = bank([[0, 0], [0.72, 0], [0.55, 0.22], [0.32, 0.55], [0, 0.85]], d - 0.2);
+    if (sx < 0) flank.rotateY(Math.PI);
+    dress(colored(out, flank.translate(sx * w / 2, 0, 0), 0x86826e, r, 0.1));
+  }
   return mergeConnectedStructure('alpinerefuge', out);
 }
 

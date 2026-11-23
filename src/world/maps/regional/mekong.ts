@@ -3,7 +3,7 @@
 // iron, with a front veranda, a rail and a ladder; ground houses of rendered brick painted pale blue, green or yellow
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
-import { PartSink, alongPlot, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
 import { mekongChoStall, mekongMarketHall } from './marketKits.ts'; // props #23: the chợ stall and the market hall
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec, type WallRect } from './house.ts';
@@ -14,6 +14,7 @@ import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
 import { orientedPrism } from './millWorks.ts';
+import { DOME_MIN_SEGMENTS, smoothProfile } from './domes.ts';
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -337,7 +338,7 @@ const unit3 = (p: Vec3): Vec3 => { const l = Math.hypot(p[0], p[1], p[2]) || 1; 
 
 const collapsed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(4.6, ctx.info.w - 1.0), D = Math.max(6, ctx.info.d - 2.0);
   const post = shade(pick(rng, WEATHERED_PLANK), 0.75);
   // (props census r2 sweep, Lane C 2026-10-16: the ruin's box-only share 72 %) the stilts left standing are round poles,
@@ -346,23 +347,102 @@ const collapsed: RegionalBuilder = (ctx) => {
     const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, h = 0.6 + rng() * 1.8;
     roundPole(sink, [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.085, { colour: post, exposed: true });
   }
-  // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
-  // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
-  // (the thatch's mound under them: its slope's height where they reach it, the ground elsewhere)
+  // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
+  // under the sheets, its ends ragged
+  // (dome-detail-275; the dome law: a heap is a smooth revolve) the mound turned round from a soft profile, darker and
+  // wetter at its foot; `under` reads its height off the same profile, so what lies on it lies on it
   const moundR = Math.min(W * 0.32, D * 0.27), moundTop = Math.min(W, D) * 0.1;
+  const heap = smoothProfile([[-0.1, moundR + 0.06], [0.12, moundR * 0.85], [moundTop + 0.03, moundR * 0.38], [moundTop + 0.12, 0]], 3);
   const under = (px: number, pz: number): number => {
     const r = Math.hypot(px, pz);
-    return r >= moundR ? 0.02 : r <= moundTop ? 0.47 : 0.02 + 0.45 * (moundR - r) / (moundR - moundTop);
+    for (let i = 1; i < heap.length; i++) {
+      const [y0, r0] = heap[i - 1], [y1, r1] = heap[i];
+      if (r <= r0 && r >= r1) return Math.max(0.02, y0 + (y1 - y0) * (r0 - r) / Math.max(1e-6, r0 - r1) - 0.012);
+    }
+    return r < moundR ? moundTop + 0.1 : 0.02;
   };
+  // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
+  // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
   for (let k = 0; k < 4; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
     const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
     const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
     corrugatedSheet(sink, [ax, under(ax, az) + 0.02, az], [bx, under(bx, bz) + 0.02, bz], 1.6, { decor: true, exposed: true });
   }
-  // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
-  // under the sheets, its ends ragged
-  sink.cylinder('straw', [0, -0.1, 0], 'y', 0.57, moundR, 9, { decor: true }, moundTop, true, rng() * 3);
+  rng();
+  sink.revolve('straw', [0, 0, 0], 'y', heap, DOME_MIN_SEGMENTS, { decor: true, shadeAt: (p) => 0.62 + 0.38 * Math.min(1, Math.max(0, (p[1] + 0.1) / (moundTop + 0.2))) });
+  sink.polygon('straw', Array.from({ length: DOME_MIN_SEGMENTS }, (_, k): Vec3 => [Math.cos(k * Math.PI * 2 / DOME_MIN_SEGMENTS) * (moundR + 0.06), -0.1, Math.sin(k * Math.PI * 2 / DOME_MIN_SEGMENTS) * (moundR + 0.06)]), { decor: true, shade: 0.5 });
+  // (dome-detail-275; the work list: posts, a few sheets and a heap) the house's one corner still standing where the shell
+  // spared it: three stilts to the floor's height with the bearers on their heads, the corner post broken off above, a
+  // run of the wall's boards standing ragged on the bearer, the floor's planks torn away and slid down from it to the mud
+  const sx = look() < 0.5 ? -1 : 1, sz = look() < 0.5 ? -1 : 1, lift = 1.5 + look() * 0.3;
+  const P0: Vec3 = [sx * (W / 2 - 0.3), 0, sz * (D / 2 - 0.3)], reach = 2.3 + look() * 0.4;
+  const plank = pick(look, WEATHERED_PLANK), charred = shade(post, 0.5);
+  roundPole(sink, [P0[0], -0.3, P0[2]], [P0[0], lift + 1.1 + look() * 1.0, P0[2]], 0.1, { colour: shade(post, 0.9), exposed: true });
+  roundPole(sink, [P0[0] - sx * reach, -0.3, P0[2]], [P0[0] - sx * reach, lift, P0[2]], 0.09, { colour: post, exposed: true });
+  roundPole(sink, [P0[0], -0.3, P0[2] - sz * reach], [P0[0], lift + 0.07, P0[2] - sz * reach], 0.09, { colour: post, exposed: true });
+  const bear = { colour: shade(post, 0.85), exposed: true } as const;
+  sink.member('structureWood', [P0[0] + sx * 0.1, lift, P0[2]], [P0[0] - sx * (reach + 0.1), lift, P0[2]], 0.14, 0.16, [0, 0, sz], bear, 0.08);
+  sink.member('structureWood', [P0[0], lift + 0.14, P0[2] + sz * 0.1], [P0[0], lift + 0.14, P0[2] - sz * (reach + 0.1)], 0.14, 0.16, [sx, 0, 0], bear, 0.08);
+  // the planks from the bearer down the slide, one or two gone, each its own length and weathering
+  const top = lift + 0.08;
+  for (let k = 0, n = Math.round(reach / 0.27); k < n; k++) {
+    if (look() < 0.18) continue;
+    const x = P0[0] - sx * (0.15 + k * 0.27), len = 2.0 + look() * 0.9, zl = P0[2] - sz * len, yl = under(x, zl) + 0.03;
+    const hi: Vec3 = [x, top + 0.02, P0[2]], lo: Vec3 = [x, yl, zl], d = Math.hypot(top - yl, len);
+    sink.member('structureWood', hi, lo, 0.24, 0.035, [0, len / d, -sz * (top - yl) / d], { colour: shade(plank, 0.8 + look() * 0.3), decor: true, exposed: true }, 0.035);
+  }
+  // the wall's boards along the x bearer, standing to ragged heights, a window's gap among them
+  const wallFace: Face = { origin: [P0[0], 0, P0[2] + sz * 0.02], u: [sz, 0, 0], out: [0, 0, sz], width: reach };
+  const gapAt = 0.8 + look() * (reach - 1.6);
+  for (let u = 0.1; u < reach; u += 0.26) {
+    const at = -sx * sz * u;
+    if (Math.abs(u - gapAt) < 0.35) continue;
+    const h = 0.3 + look() * (u < 0.6 ? 1.9 : 1.2);
+    faceBox(sink, 'structureWood', wallFace, at, lift + 0.07 + h / 2, 0.06, 0.24, h, 0.03, { colour: shade(plank, 0.78 + look() * 0.3), decor: true });
+  }
+  // the roof's one slope slid off whole on the far side: its nipa slab, its lower edge in the mud, its upper on the heap,
+  // the bamboo rafters run out from under it
+  const zA = -sz * (D / 2 - 0.35), zB = -sz * (moundR * 0.55), xc = -sx * (0.3 + look() * 0.5), half = 1.3 + look() * 0.3;
+  // (the rafters' feet in the mud past the slab's edge, their heads on the heap; the slab laid on them)
+  const z0 = zA - sz * 0.35, yH = Math.max(under(xc - half, zB), under(xc, zB), under(xc + half, zB)) + 0.03;
+  const rafterY = (z: number): number => 0.04 + (yH - 0.04) * (z - z0) / (zB - z0);
+  for (let k = 0; k < 4; k++) {
+    const x = xc - half + 0.25 + k * (2 * half - 0.5) / 3;
+    roundPole(sink, [x, 0.04, z0], [x, yH, zB], 0.04, { colour: shade(BAMBOO_MAT, 0.75), decor: true, exposed: true });
+  }
+  const ya = rafterY(zA) + 0.12, yb = yH + 0.12, run = Math.hypot(yb - ya, zB - zA), sn: Vec3 = [0, Math.abs(zB - zA) / run, -sz * (yb - ya) / run];
+  const along = (t: number, o: number): Vec3 => [xc, ya + (yb - ya) * t + sn[1] * o, zA + (zB - zA) * t + sn[2] * o];
+  // the slab torn across a third of the way up, its upper piece slewed; the eave course's thick frayed lip along its foot;
+  // the bamboo poles that held it down still lashed across it
+  const tear = 0.34 + look() * 0.1, slew = (look() - 0.5) * 0.5;
+  sink.member('straw', along(0, 0), along(tear, 0), 2 * half, 0.16, sn, { decor: true, exposed: true, shade: 0.8 }, 0.08);
+  sink.member('straw', [along(tear + 0.04, 0)[0] + slew, along(tear + 0.04, 0)[1], along(tear + 0.04, 0)[2]], along(1, 0), 2 * half - 0.3, 0.16, sn, { decor: true, exposed: true, shade: 0.86 }, 0.08);
+  sink.member('straw', along(0, 0.06), along(0.1, 0.06), 2 * half + 0.12, 0.12, sn, { decor: true, exposed: true, shade: 0.7 }, 0.02);
+  for (const t of [-0.55, 0.45]) {
+    const x = xc + t * half;
+    roundPole(sink, [x, along(0.02, 0.09)[1], along(0.02, 0.09)[2]], [x + slew * 0.5, along(0.95, 0.09)[1], along(0.95, 0.09)[2]], 0.035, { colour: shade(BAMBOO_MAT, 0.7), decor: true, exposed: true });
+  }
+  // what the house held: its glazed water jar (khạp) by the standing corner, a mat wall panel flat in the mud, loose boards,
+  // a charred post, and the shell's crater filled with rain
+  const jx = P0[0] - sx * 0.6, jz = P0[2] - sz * (reach + 0.55);
+  sink.revolve('structureWood', [jx, 0, jz], 'y', [[0, 0.2], [0.12, 0.3], [0.34, 0.36], [0.56, 0.3], [0.68, 0.2], [0.72, 0.22]], 12, { colour: rgb(0x5a3a22), decor: true });
+  sink.cylinder('structureWood', [jx, 0.66, jz], 'y', 0.02, 0.19, 12, { colour: [0.05, 0.05, 0.045], decor: true });
+  sink.polygon('structureWood', Array.from({ length: 12 }, (_, k): Vec3 => [jx + Math.cos(k * Math.PI / 6) * 0.2, 0, jz + Math.sin(k * Math.PI / 6) * 0.2]), { colour: rgb(0x3a2616), decor: true });
+  const mx = -sx * (W / 2 - 1.2), mz = sz * (D / 2 - 1.3);
+  sink.member('structureWood', [mx - 0.8, 0, mz], [mx + 0.8, 0, mz + 0.3], 1.9, 0.04, [0, 1, 0], { colour: shade(BAMBOO_MAT, 0.8), decor: true, exposed: true }, 0);
+  for (let k = 0; k < 4; k++) {
+    const a = look() * Math.PI, x = (look() - 0.5) * W * 0.9, z = (look() - 0.5) * D * 0.9, l = 1.2 + look() * 1.2;
+    const p: Vec3 = [x - Math.cos(a) * l / 2, under(x - Math.cos(a) * l / 2, z - Math.sin(a) * l / 2) - 0.015, z - Math.sin(a) * l / 2];
+    const q: Vec3 = [x + Math.cos(a) * l / 2, under(x + Math.cos(a) * l / 2, z + Math.sin(a) * l / 2) - 0.015, z + Math.sin(a) * l / 2];
+    sink.member('structureWood', p, q, 0.22, 0.04, [0, 1, 0], { colour: k === 0 ? charred : shade(plank, 0.7 + look() * 0.3), decor: true, exposed: true }, 0);
+  }
+  const cx = -sx * (W / 2 - 1.0), cz = -sz * 0.2 + sz * look() * 0.6, cr = 0.9 + look() * 0.3, pool: Vec3[] = [];
+  for (let k = 0; k < 10; k++) {
+    const t = -k * Math.PI * 2 / 10, f = 0.8 + hash01(cx, cz, k, 4.4) * 0.3;
+    pool.push([cx + Math.cos(t) * cr * f, 0.02, cz + Math.sin(t) * cr * f * 0.8]);
+  }
+  sink.prism('structureWood', pool.map((p): Vec3 => [p[0], 0, p[2]]), [0, 1, 0], 0.025, { colour: rgb(0x3a4038), decor: true, ...(ctx.ground ? { ground: true } : {}) });
   return sink.finish();
 };
 

@@ -7,8 +7,8 @@
 // insulated sheds with their overhead doors; the arched Jamesway huts of the construction camps; the plywood utility
 // sheds on skids; a module stripped and left to the wind.
 import {
-  PartSink, faceBox, facePoint, rgb, shade,
-  type Face, type Rgb, type Vec3,
+  PartSink, faceBox, facePoint, normalize3, rgb, shade,
+  type EmitOptions, type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import { DOME_MIN_RINGS, domeSegments } from './domes.ts';
 import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
@@ -26,6 +26,8 @@ export const STEEL_DARK = rgb(0x34383b);
 const WHITE = rgb(0xe8e9e6), ORANGE = rgb(0xc4602b), BLUE = rgb(0x6f8796);
 export const OLIVE = rgb(0x5a5a3e), PLY = rgb(0xa58a60);
 const RADOME = rgb(0xf0f0ec);
+/** Snow drawn in steel's coloured bucket on a pinned texel (a tank's skirt of drift; dome-detail-275). */
+const SNOW = rgb(0xf4f5f6);
 /** (round 3, wave 130: the radar tower's dark lattice under its white dome read as "a wooden water tower") hot-dip
  * galvanised steel, the pale grey the line's towers weathered to */
 export const GALV = rgb(0xa3aaae);
@@ -183,7 +185,8 @@ const YELLOW = rgb(0xd2a62a);
  * overhead door and the concrete-filled guard posts at its jambs, the flue pipe and its rain cap over each chimney chase,
  * and the roof ladder up to the first flue from the eave on its side.
  */
-function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], band: readonly [number, number] | null = null): void {
+function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], band: readonly [number, number] | null = null,
+  porched: readonly Opening[] = []): void {
   if (!facadeOn()) return;
   const y0 = frame.floors[0] + 0.02, y1 = frame.eaveY - 0.02;
   const runs: Array<[number, number]> = band ? [[y0, band[0] - 0.02], [band[1] + 0.02, y1]] : [[y0, y1]];
@@ -212,6 +215,8 @@ function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Openin
   for (const o of openings) {
     if (o.storey !== 0) continue;
     const face = frame.faces[o.face], top = frame.floors[0] + o.y0 + o.h, half = face.width / 2;
+    // (dome-detail-275: a door behind an arctic entry takes no hood or lamp of its own; the porch carries them)
+    if (porched.includes(o)) continue;
     if (o.kind === 'door') {
       doorCanopy(sink, face, o.u, top, o.w, { kind: 'shed', bucket: 'structureMetal', colour: STEEL, timber: STEEL_DARK, depth: 0.9 });
       // the lamp beside the hood, on the side clearer of the face's other openings (and inside the face)
@@ -250,6 +255,68 @@ function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Openin
       }
     }
   });
+}
+
+/**
+ * The ribbed steel sheets of a gable roof in relief (dome-detail-275; the roof guidance: "sheets with laps"): the
+ * standing ribs at the sheets' side laps every 0.9 m from the eave to the ridge cap, and the end lap across each slope
+ * where the upper sheet runs over the lower one. Dressing on the slab (house.ts roofGeometry: the ridge along z); over the
+ * war's stripped patch (HouseFrame.roofPatch) the ribs crossing it stop at its edges and the lap with them.
+ */
+function sheetRibs(sink: PartSink, frame: HouseFrame, look: () => number): void {
+  const rg = frame.roof, roof = frame.spec.roof;
+  if (rg.kind !== 'gable') return;
+  const cosP = 1 / Math.hypot(1, rg.tanP), sinP = rg.tanP * cosP, xe = rg.s + roof.eave;
+  const yEave = rg.ridgeY + roof.thickness / cosP - xe * rg.tanP;
+  const D = rg.halfD + roof.verge - 0.08, n = Math.max(4, Math.round((2 * D) / 0.9)), L = xe / cosP - 0.14;
+  const patch = frame.roofPatch;
+  for (const side of [1, -1] as const) {
+    const up: Vec3 = [-side * cosP, sinP, 0], nrm: Vec3 = [side * sinP, cosP, 0];
+    const P = (v: number, z: number): Vec3 => [side * xe + up[0] * v, yEave + up[1] * v, z];
+    const hole: [number, number] | null = patch && patch.side === side ? [(xe - patch.x1) / cosP - 0.05, (xe - patch.x0) / cosP + 0.05] : null;
+    const lay = (v0: number, v1: number, z: number, w: number, h: number, shadeK: number, fine = false): void => {
+      if (v1 - v0 > 0.1) sink.member('roof', P(v0, z), P(v1, z), w, h, nrm, { decor: true, shade: shadeK, ...(fine ? { fine: true } : {}) });
+    };
+    for (let k = 0; k <= n; k++) {
+      const z = -D + (k * 2 * D) / n;
+      if (hole && patch && z > patch.z0 - 0.05 && z < patch.z1 + 0.05) { lay(0.02, hole[0], z, 0.06, 0.04, 0.86); lay(hole[1], L, z, 0.06, 0.04, 0.86); }
+      else lay(0.02, L, z, 0.06, 0.04, 0.86);
+    }
+    const vl = L * (0.42 + look() * 0.16);
+    if (!(hole && vl > hole[0] && vl < hole[1])) sink.member('roof', P(vl, -D), P(vl, D), 0.04, 0.018, nrm, { decor: true, shade: 0.78, fine: true });
+  }
+}
+
+/** Gravity ventilators straddling the ridge (dome-detail-275): a sheet box on the ridge cap, its louvre band and hood. */
+function ridgeVents(sink: PartSink, frame: HouseFrame, zs: readonly number[]): void {
+  const top = frame.roof.ridgeTopY;
+  for (const z of zs) {
+    sink.span('structureMetal', -0.36, top - 0.3, z - 0.36, 0.36, top + 0.32, z + 0.36, { colour: STEEL, decor: true });
+    sink.span('structureMetal', -0.33, top + 0.32, z - 0.33, 0.33, top + 0.5, z + 0.33, { colour: STEEL_DARK, decor: true });
+    sink.span('structureMetal', -0.5, top + 0.5, z - 0.5, 0.5, top + 0.58, z + 0.5, { colour: STEEL, decor: true });
+  }
+}
+
+/** A gable louvre (dome-detail-275): the sheet frame, the dark behind, its blades (fine). */
+function louvre(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+  faceBox(sink, 'structureMetal', face, u, y, 0.03, w + 0.12, h + 0.12, 0.06, { colour: STEEL, decor: true });
+  faceBox(sink, 'structureMetal', face, u, y, 0.065, w, h, 0.01, { colour: STEEL_DARK, decor: true });
+  for (let k = 0; k < Math.round(h / 0.12); k++) faceBox(sink, 'structureMetal', face, u, y - h / 2 + 0.06 + k * 0.12, 0.09, w, 0.03, 0.05, { colour: STEEL, decor: true, fine: true });
+}
+
+/**
+ * A heating-oil day tank on its saddles (dome-detail-275): a horizontal white drum along x from x0 to x1, its bands, the
+ * gauge and vent on its crown, and the feed line from under it to the wall at `feed`.
+ */
+function dayTank(sink: PartSink, x0: number, x1: number, z: number, r: number, feed: Vec3): void {
+  for (const x of [x0 + 0.25, x1 - 0.25]) sink.span('structureMetal', x - 0.08, 0, z - r * 0.8, x + 0.08, r * 0.85, z + r * 0.8, { colour: STEEL_DARK });
+  sink.revolve('structureMetal', [x0, r + 0.25, z], 'x', [[0, 0.05], [0.06, r * 0.8], [0.14, r], [x1 - x0 - 0.14, r], [x1 - x0 - 0.06, r * 0.8], [x1 - x0, 0.05]], 16,
+    { colour: WHITE, colourAt: (p) => shade(WHITE, p[1] < r * 0.6 ? 0.84 : 0.97), uvPin: [0.5, 0.5] });
+  for (const x of [x0 + 0.25, x1 - 0.25]) sink.revolve('structureMetal', [x - 0.04, r + 0.25, z], 'x', [[0, r + 0.015], [0.08, r + 0.015]], 16, { colour: STEEL_DARK, decor: true, uvPin: [0.5, 0.5] });
+  const xm = (x0 + x1) / 2;
+  sink.span('structureMetal', xm - 0.12, 2 * r + 0.2, z - 0.12, xm + 0.12, 2 * r + 0.42, z + 0.12, { colour: STEEL_DARK, decor: true });
+  sink.pipe('structureMetal', [xm + 0.4, 2 * r + 0.2, z], [xm + 0.4, 2 * r + 0.75, z], 0.04, 6, { colour: STEEL, decor: true });
+  sink.pipe('structureMetal', [xm, feed[1], z], feed, 0.04, 6, { colour: STEEL_DARK, decor: true });
 }
 
 function dialect(rng: () => number, paint: Paint): HouseDialect {
@@ -327,45 +394,241 @@ const garage: RegionalBuilder = (ctx) => {
     }
     // the apron along the doors
     sink.span('stone', W / 2, -0.3, -D / 2, W / 2 + apron, 0.08, D / 2);
+    // (dome-detail-275) the roof's ribbed sheets in relief and the ridge's two gravity ventilators; the intake louvre high
+    // on the back wall; the heating-oil day tank on the apron's -z end; the block-heater posts along the apron's edge
+    // between the doors, where the vehicles are plugged in against the cold
+    sheetRibs(sink, frame, look);
+    ridgeVents(sink, frame, [-D * 0.22, D * 0.22]);
+    louvre(sink, frame.faces.back, W * 0.15, 4.15, 1.0, 0.6);
+    dayTank(sink, W / 2 + 0.3, W / 2 + Math.min(1.6, apron - 0.4), -D / 2 + 0.55, 0.42, [W / 2 - 0.01, 0.42, -D / 2 + 0.55]);
+    for (let k = 1; k < n; k++) {
+      const z = -D / 2 + (D * k) / n, x = W / 2 + apron - 0.35;
+      rod(sink, [x, 0, z], [x, 1.15, z], 0.1, YELLOW);
+      sink.span('structureMetal', x - 0.09, 0.85, z - 0.11, x + 0.09, 1.1, z + 0.11, { colour: STEEL_DARK, decor: true });
+      sink.span('structureMetal', x - 0.11, 1.15, z - 0.07, x + 0.11, 1.19, z + 0.07, { colour: shade(YELLOW, 0.8), decor: true });
+    }
   });
   return sink.finish();
 };
 
+/** A straight steel member from a to b, `t` square, every face kept (a stringer, a post, a rail). (dome-detail-275) */
+function rod(sink: PartSink, a: Vec3, b: Vec3, t: number, colour: Rgb, extra: EmitOptions = {}): void {
+  const d = normalize3([b[0] - a[0], b[1] - a[1], b[2] - a[2]]);
+  const ref: Vec3 = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const out = normalize3([d[1] * ref[2] - d[2] * ref[1], d[2] * ref[0] - d[0] * ref[2], d[0] * ref[1] - d[1] * ref[0]]);
+  sink.member('structureMetal', a, b, t, t, out, { colour, decor: true, ...extra, exposed: true }, t / 2);
+}
+
+/** A convex polygon's corners in the order that faces `want` (Newell's normal). (dome-detail-275) */
+function facing(pts: readonly Vec3[], want: Vec3): Vec3[] {
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    nx += (p[1] - q[1]) * (p[2] + q[2]); ny += (p[2] - q[2]) * (p[0] + q[0]); nz += (p[0] - q[0]) * (p[1] + q[1]);
+  }
+  return nx * want[0] + ny * want[1] + nz * want[2] >= 0 ? [...pts] : [...pts].reverse();
+}
+
 /**
- * The fuel tank farm (on some of the depots' plots): two vertical tanks of white steel under shallow cones inside the
- * gravel berm that would hold a spill, their ladders and the walkway between their tops, the pump house in a corner and
- * the pipe run from the tanks to it.
+ * One fuel tank of the farm (dome-detail-275; the work list: the farm's tanks were sixteen-sided drums under faceted
+ * cones on a ruled box berm): the concrete ringwall, the shell in four welded plate courses each its own tone, the top
+ * curb, the cone roof of ribbed sheet with its standing seams run to the crown, the vent and the roof hatch, the
+ * station's orange band, the shell's manway, rust run down from the curb and the snow banked round its foot. Returns
+ * the roof's height at a radius (for what lands on it).
+ */
+function fuelTank(sink: PartSink, cx: number, tz: number, R: number, H: number, look: () => number): (r: number) => number {
+  const segs = domeSegments(R), rise = R * 0.2, eave = H + 0.12, crown = 0.35;
+  sink.cylinder('stone', [cx, -0.3, tz], 'y', 0.55, R + 0.3, segs, { shade: 0.86 });
+  // (welded plate, plain: the steel tile pinned; each of the four plate courses its own tone of the white, the grime of
+  // the camp's dust and exhaust on the lowest)
+  const tones = [0.88, 0.97 + look() * 0.03, 0.93 + look() * 0.04, 0.98];
+  sink.revolve('structureMetal', [cx, 0.2, tz], 'y', [0, 1, 2, 3, 4].map((k): [number, number] => [k ? (H * k) / 4 - 0.2 : 0, R]), segs,
+    { colour: WHITE, bandColour: (band) => shade(WHITE, tones[band]), uvPin: [0.5, 0.5] });
+  sink.revolve('structureMetal', [cx, H - 0.02, tz], 'y', [[0, R + 0.05], [0.14, R + 0.05]], segs, { colour: STEEL, decor: true, uvPin: [0.5, 0.5] });
+  sink.revolve('roof', [cx, eave, tz], 'y', [[-0.04, R + 0.12], [0, R + 0.12], [rise, crown]], segs, {});
+  sink.cylinder('structureMetal', [cx, eave + rise - 0.05, tz], 'y', 0.2, crown + 0.04, 12, { colour: STEEL_DARK, decor: true });
+  const roofAt = (r: number): number => eave + rise * (1 - (r - crown) / (R + 0.12 - crown));
+  // the standing seams of the cone's sheets from the curb to the crown ring
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2 + 0.13, c = Math.cos(a), s = Math.sin(a), r0 = R + 0.06, r1 = crown + 0.05;
+    const n = normalize3([c * rise, R + 0.12 - crown, s * rise]);
+    sink.member('roof', [cx + c * r0, roofAt(r0), tz + s * r0], [cx + c * r1, roofAt(r1), tz + s * r1], 0.05, 0.035, n, { decor: true, shade: 0.8 });
+  }
+  // the station's orange band under the curb; the gooseneck vent and the roof hatch
+  sink.revolve('structureMetal', [cx, H - 1.25, tz], 'y', [[0, R + 0.014], [0.55, R + 0.014]], segs, { colour: ORANGE, decor: true, uvPin: [0.5, 0.5] });
+  const va = 2.2, vr = R * 0.45, vx = cx + Math.cos(va) * vr, vz = tz + Math.sin(va) * vr;
+  sink.pipe('structureMetal', [vx, roofAt(vr) - 0.05, vz], [vx, roofAt(vr) + 0.55, vz], 0.1, 8, { colour: STEEL, decor: true });
+  sink.pipe('structureMetal', [vx, roofAt(vr) + 0.5, vz], [vx + 0.32, roofAt(vr) + 0.32, vz], 0.1, 8, { colour: STEEL, decor: true, caps: true });
+  const ha = va + 1.4, hr = R * 0.55, hx = cx + Math.cos(ha) * hr, hzz = tz + Math.sin(ha) * hr;
+  sink.span('structureMetal', hx - 0.35, roofAt(hr) - 0.1, hzz - 0.35, hx + 0.35, roofAt(hr) + 0.12, hzz + 0.35, { colour: STEEL_DARK, decor: true });
+  // the shell's manway low on its -x side: the neck, the bolted cover
+  sink.cylinder('structureMetal', [cx - R - 0.2, 0.95, tz], 'x', 0.25, 0.32, 12, { colour: WHITE, decor: true });
+  sink.cylinder('structureMetal', [cx - R - 0.26, 0.95, tz], 'x', 0.07, 0.4, 12, { colour: STEEL, decor: true });
+  // rust run from the curb, each run its own length and place (tangent to the shell)
+  // (each on a facet's middle, a hair off its chord: kitConnectivity)
+  const chord = R * Math.cos(Math.PI / segs) + 0.007;
+  for (let k = 0; k < 6; k++) {
+    const a = ((Math.floor(look() * segs) + 0.5) / segs) * Math.PI * 2, run = 0.8 + look() * 2.2, w = 0.04 + look() * 0.05;
+    sink.placed(Math.PI / 2 - a, cx + Math.cos(a) * chord, 0, tz + Math.sin(a) * chord, () => {
+      sink.span('structureMetal', -w / 2, H - 0.05 - run, -0.004, w / 2, H - 0.05, 0.006, { colour: shade(RUST, 0.8 + look() * 0.4), decor: true, fine: true });
+    });
+  }
+  // the snow banked round the foot, up to the ringwall's lip
+  sink.revolve('structureMetal', [cx, -0.3, tz], 'y', [[0, R + 1.3], [0.25, R + 0.85], [0.42, R + 0.5], [0.5, R + 0.32]], segs,
+    { colour: SNOW, uvPin: [0.5, 0.5], decor: true });
+  return roofAt;
+}
+
+/**
+ * The fuel tank farm (on some of the depots' plots; dome-detail-275): two vertical tanks of white steel (fuelTank) inside
+ * a gravel dike that would hold a spill, sloped both sides and capped with snow, a steel stair over its -z end; the
+ * spiral stair up the first tank's shell to its roof rail, the walkway between the two roofs; the pump house between them
+ * on the +x side (its shed roof, its door, lamp and louvre, its flue, its drifts and rust), the tanks' draw-off lines and
+ * valves into it, and the fill line out of it over the dike on its support to the coupling at the plot's edge; a
+ * floodlight mast on the dike's corner and the hazard board by the stair.
  */
 const tankFarm: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const mobile = ctx.tier === 'mobile';
+  const look = ctx.variant;
   const bb = ctx.bounds;
   const x0 = bb.minX + 0.15, x1 = bb.maxX - 0.15, z0 = bb.minZ + 0.15, z1 = bb.maxZ - 0.15;
-  const t = 1.2, bh = 1.1;
-  // the berm: four gravel banks round the plot
-  sink.span('stone', x0, -0.3, z0, x1, bh, z0 + t);
-  sink.span('stone', x0, -0.3, z1 - t, x1, bh, z1);
-  sink.span('stone', x0, -0.3, z0 + t, x0 + t, bh, z1 - t);
-  sink.span('stone', x1 - t, -0.3, z0 + t, x1, bh, z1 - t);
-  const iw = x1 - x0 - 2 * t, id = z1 - z0 - 2 * t, cx = (x0 + x1) / 2;
-  const R = clamp(Math.min(iw / 2 - 0.5, id / 4 - 0.6), 2.2, 4.4), H = 6.2;
+  // the dike: the outer toe on the plot's edge, the crest from 0.6 m in, 0.5 m across, the inner toe 1.7 m in
+  const t = 1.7, bh = 1.1;
+  const section = (o: number, sgn: 1 | -1): Array<[number, number]> => [[o, -0.3], [o, 0], [o + sgn * 0.6, bh], [o + sgn * 1.1, bh], [o + sgn * t, 0], [o + sgn * t, -0.3]];
+  for (const [o, sgn] of [[x0, 1], [x1, -1]] as const) {
+    sink.prism('stone', facing(section(o, sgn).map(([x, y]): Vec3 => [x, y, z0]), [0, 0, 1]), [0, 0, 1], z1 - z0);
+  }
+  for (const [o, sgn] of [[z0, 1], [z1, -1]] as const) {
+    sink.prism('stone', facing(section(o, sgn).map(([z, y]): Vec3 => [x0 + 0.6, y, z]), [1, 0, 0]), [1, 0, 0], x1 - x0 - 1.2);
+  }
+  // the snow lying along the dike's crest in drifts, each its own depth
+  const cap = (a: number, b: number, along: 'x' | 'z', o: number, sgn: 1 | -1): void => {
+    const n = Math.max(1, Math.round((b - a) / 4));
+    for (let k = 0; k < n; k++) {
+      const d = 0.08 + look() * 0.14, s0 = a + ((b - a) * k) / n, s1 = a + ((b - a) * (k + 1)) / n + (k < n - 1 ? 0.05 : 0);
+      const pts: Array<[number, number]> = [[o + sgn * 0.42, bh * 0.7 - 0.02], [o + sgn * 0.62, bh + d], [o + sgn * 1.08, bh + d * 0.8], [o + sgn * 1.3, bh * 0.66 - 0.02]];
+      if (along === 'z') sink.prism('plaster', facing(pts.map(([x, y]): Vec3 => [x, y, s0]), [0, 0, 1]), [0, 0, 1], s1 - s0, { decor: true });
+      else sink.prism('plaster', facing(pts.map(([z, y]): Vec3 => [s0, y, z]), [1, 0, 0]), [1, 0, 0], s1 - s0, { decor: true });
+    }
+  };
+  cap(z0, z1, 'z', x0, 1); cap(z0, z1, 'z', x1, -1); cap(x0 + 1.2, x1 - 1.2, 'x', z0, 1); cap(x0 + 1.2, x1 - 1.2, 'x', z1, -1);
+  const iw = x1 - x0 - 2 * t, id = z1 - z0 - 2 * t, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const R = clamp(Math.min(iw / 2 - 0.5, id / 4 - 0.6), 2.2, 4.4);
   const zs = [z0 + t + 0.5 + R, z1 - t - 0.5 - R];
-  for (const tz of zs) {
-    sink.cylinder('plaster', [cx, -0.2, tz], 'y', H + 0.2, R, 16, {});
-    sink.cylinder('roof', [cx, H, tz], 'y', 0.9, R + 0.08, 16, {}, 0.35);
-    // the ladder up the side to the roof and the walkway rail
-    if (!mobile) {
-      for (const s of [-1, 1]) sink.span('structureMetal', cx + R + 0.05, 0.2, tz + s * 0.25 - 0.03, cx + R + 0.11, H + 0.6, tz + s * 0.25 + 0.03, { colour: STEEL_DARK, decor: true });
-      for (let y = 0.5; y < H; y += 0.4) sink.span('structureMetal', cx + R + 0.05, y, tz - 0.25, cx + R + 0.11, y + 0.04, tz + 0.25, { colour: STEEL_DARK, decor: true, fine: true });
+  const Hs = [6.2 + (look() - 0.5) * 0.9, 6.2 + (look() - 0.5) * 0.9];
+  const roofs = zs.map((tz, i) => fuelTank(sink, cx, tz, R, Hs[i], look));
+  // the spiral stair up the first tank: its treads off the shell (grating: their tops and edges), the outer stringer and
+  // its handrail on posts, from the floor between the tanks round the -x side to the roof on the -z side
+  {
+    const tz = zs[0], H = Hs[0], n = 18, a0 = Math.PI / 2 + 0.3 + look() * 0.15, sweep = 3.4, ro = R + 0.8;
+    const ang = (k: number): number => a0 + (sweep * k) / (n - 1), lvl = (k: number): number => 0.3 + ((H - 0.3) * k) / (n - 1);
+    const at = (k: number, r: number, dy = 0): Vec3 => [cx + Math.cos(ang(k)) * r, lvl(k) + dy, tz + Math.sin(ang(k)) * r];
+    for (let k = 0; k < n; k++) sink.member('structureMetal', at(k, R + 0.01), at(k, ro), 0.3, 0.05, [0, 1, 0], { colour: GALV, decor: true, fine: true });
+    const nodes = [0, 3, 6, 9, 12, 15, 17];
+    rod(sink, [at(0, ro)[0], 0, at(0, ro)[2]], at(0, ro, -0.05), 0.08, GALV);
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      rod(sink, at(nodes[i], ro + 0.04, -0.05), at(nodes[i + 1], ro + 0.04, -0.05), 0.08, GALV);
+      rod(sink, at(nodes[i], ro + 0.04, 1.0), at(nodes[i + 1], ro + 0.04, 1.0), 0.045, YELLOW);
+    }
+    for (const k of nodes) rod(sink, at(k, ro + 0.04, -0.05), at(k, ro + 0.04, 1.02), 0.045, YELLOW, { fine: true });
+    // the roof rail round the stair's head
+    const roofAt = roofs[0], aEnd = ang(n - 1), rr = R - 0.1;
+    const rail = (a: number, dy: number): Vec3 => [cx + Math.cos(a) * rr, roofAt(rr) + dy, tz + Math.sin(a) * rr];
+    for (let k = 0; k < 5; k++) {
+      const a = aEnd - 0.55 + k * 0.275;
+      rod(sink, rail(a, -0.05), rail(a, 1.05), 0.045, YELLOW, { fine: true });
+      if (k < 4) rod(sink, rail(a, 1.05), rail(a + 0.275, 1.05), 0.045, YELLOW);
     }
   }
-  // the walkway between the tops
-  if (!mobile) sink.span('structureMetal', cx - 0.5, H + 0.3, zs[0], cx + 0.5, H + 0.42, zs[1], { colour: STEEL, decor: true });
-  // the pump house in a corner inside the berm, the pipe run along the tanks to it
-  const px0 = x1 - t - 2.4, pz0 = (zs[0] + zs[1]) / 2 - 1.3;
-  sink.span('plaster2', px0, 0, pz0, x1 - t - 0.1, 2.5, pz0 + 2.6);
-  sink.span('roof', px0 - 0.1, 2.5, pz0 - 0.1, x1 - t, 2.65, pz0 + 2.7);
-  if (!mobile) sink.cylinder('structureMetal', [px0 - 0.2, 0.6, zs[0]], 'z', zs[1] - zs[0], 0.14, 8, { colour: STEEL, decor: true });
+  // the walkway between the two roofs: its deck from roof to roof, the rails on both sides
+  {
+    const za = zs[0] + R - 0.7, zb = zs[1] - R + 0.7, ya = roofs[0](R - 0.7) + 0.06, yb = roofs[1](R - 0.7) + 0.06;
+    const L = Math.hypot(zb - za, yb - ya), out: Vec3 = [0, (zb - za) / L, -(yb - ya) / L];
+    sink.member('structureMetal', [cx, ya, za], [cx, yb, zb], 0.9, 0.12, out, { colour: GALV, decor: true, exposed: true }, 0.06);
+    for (const dx of [-0.42, 0.42]) {
+      for (const f of [0, 0.5, 1]) rod(sink, [cx + dx, ya + (yb - ya) * f + 0.04, za + (zb - za) * f], [cx + dx, ya + (yb - ya) * f + 1.05, za + (zb - za) * f], 0.045, YELLOW);
+      rod(sink, [cx + dx, ya + 1.05, za], [cx + dx, yb + 1.05, zb], 0.045, YELLOW);
+    }
+  }
+  // the pump house between the tanks on the +x side: its body in the station's orange on a footing, the shed roof falling
+  // to the dike, the steel door to the -x with its lamp, the louvre, the flue through the roof, the drifts against it
+  const px1 = x1 - t - 0.05, px0 = px1 - 2.3, pz0 = cz - 1.2, pz1 = cz + 1.2, ph = 2.5;
+  sink.span('stone', px0 - 0.08, -0.3, pz0 - 0.08, px1 + 0.08, 0.15, pz1 + 0.08, { shade: 0.85 });
+  sink.span('plaster2', px0, 0.15, pz0, px1, ph, pz1);
+  sink.prism('roof', facing([[px0 - 0.25, ph + 0.32, pz0 - 0.2], [px1 + 0.22, ph - 0.05, pz0 - 0.2], [px1 + 0.22, ph + 0.07, pz0 - 0.2], [px0 - 0.25, ph + 0.44, pz0 - 0.2]], [0, 0, 1]),
+    [0, 0, 1], pz1 - pz0 + 0.4);
+  // (the roof's wedge over the walls: the gap under the slope closed in the walls' paint)
+  sink.prism('plaster2', facing([[px0, ph - 0.01, pz0], [px1, ph - 0.01, pz0], [px0, ph + 0.33, pz0]], [0, 0, 1]), [0, 0, 1], pz1 - pz0);
+  const west = boxFace(px0, pz0, px1, pz1, 'w'), east = boxFace(px0, pz0, px1, pz1, 'e');
+  const north = boxFace(px0, pz0, px1, pz1, 'n'), south = boxFace(px0, pz0, px1, pz1, 's');
+  doorUnit(sink, west, 0.3, 0.15, 0.95, 2.05, { leaf: STEEL, frame: { bucket: 'structureMetal', width: 0.1, out: 0.04, colour: STEEL_DARK }, steps: null, leafKind: 'panel', transom: false });
+  wallLantern(sink, west, -0.55, 2.0);
+  faceBox(sink, 'structureMetal', south, 0.4, 1.7, 0.03, 0.8, 0.55, 0.06, { colour: STEEL_DARK, decor: true });
+  for (let k = 0; k < 5; k++) faceBox(sink, 'structureMetal', south, 0.4, 1.48 + k * 0.1, 0.07, 0.76, 0.03, 0.04, { colour: STEEL, decor: true, fine: true });
+  sink.cylinder('structureMetal', [px0 + 0.6, ph + 0.1, pz1 - 0.5], 'y', 1.3, 0.12, 8, { colour: STEEL_DARK, decor: true });
+  sink.cylinder('structureMetal', [px0 + 0.6, ph + 1.4, pz1 - 0.5], 'y', 0.14, 0.24, 8, { colour: STEEL_DARK, decor: true }, 0.05);
+  const seed = px0 * 0.37 + pz0 * 0.61;
+  bank(sink, west, -1.2 - 1.2, -0.45, 0.5, 0.7, 1.1, -0.3, seed);
+  bank(sink, north, -1.4, 1.4, 0.6 + look() * 0.3, 0.5 + look() * 0.3, 1.0, -0.3, seed + 1);
+  bank(sink, south, -1.4, -0.15, 0.5, 0.4, 0.9, -0.3, seed + 2);
+  for (const f of [west, north, south, east]) rustStreaks(sink, f, ph - 0.1, rustStream(seed + f.width * 3.1 + f.origin[2]), 0.6);
+  // the draw-off line from each tank's foot into the pump house, its gate valve and handwheel
+  for (const [i, s] of [[0, -1], [1, 1]] as const) {
+    const xn = px0 + 0.55, zShell = zs[i] - s * Math.sqrt(Math.max(0, R * R - (xn - cx) ** 2)), zWall = s < 0 ? pz0 : pz1;
+    sink.pipe('structureMetal', [xn, 0.6, zShell + s * 0.05], [xn, 0.6, zWall - s * 0.02], 0.09, 8, { colour: STEEL, decor: true });
+    const vz = (zShell + zWall) / 2;
+    sink.span('structureMetal', xn - 0.14, 0.45, vz - 0.12, xn + 0.14, 0.75, vz + 0.12, { colour: STEEL_DARK, decor: true });
+    rod(sink, [xn, 0.75, vz], [xn, 1.05, vz], 0.03, STEEL_DARK, { fine: true });
+    sink.cylinder('structureMetal', [xn, 1.05, vz], 'y', 0.04, 0.17, 10, { colour: ORANGE, decor: true });
+  }
+  // the fill line out of the pump house over the dike on its support to the coupling at the plot's edge
+  {
+    const fz = cz + 0.4, fy = bh + 0.4, xe = bb.maxX - 0.25;
+    sink.pipe('structureMetal', [px1 - 0.05, fy, fz], [xe, fy, fz], 0.08, 8, { colour: STEEL, decor: true });
+    sink.pipe('structureMetal', [xe, fy + 0.08, fz], [xe, 0.75, fz], 0.08, 8, { colour: STEEL, decor: true });
+    rod(sink, [x1 - 0.85, bh - 0.05, fz], [x1 - 0.85, fy - 0.08, fz], 0.08, STEEL_DARK);
+    rod(sink, [x1 - 0.85, fy - 0.1, fz - 0.2], [x1 - 0.85, fy - 0.1, fz + 0.2], 0.06, STEEL_DARK);
+    sink.cylinder('structureMetal', [xe, 0.55, fz], 'y', 0.22, 0.12, 8, { colour: YELLOW, decor: true });
+    rod(sink, [xe, 0, fz], [xe, 0.55, fz], 0.07, STEEL_DARK);
+    sink.cylinder('structureMetal', [xe - 0.06, fy, fz - 0.14], 'z', 0.28, 0.13, 8, { colour: STEEL_DARK, decor: true });
+  }
+  // the steel stair over the dike's -z end, near its -x corner: the flight up the outer slope, the landing on the crest,
+  // the flight down inside; its stringers, treads and rails
+  {
+    const sx = x0 + t + 0.9, zA = z0 - 0.45, zB = z0 + 0.55, zC = z0 + 1.15, zD = z0 + t + 0.45, top = bh + 0.12;
+    const flight = (za: number, ya: number, zb: number, yb: number): void => {
+      for (const dx of [-0.42, 0.42]) {
+        rod(sink, [sx + dx, ya, za], [sx + dx, yb, zb], 0.07, GALV);
+        rod(sink, [sx + dx, ya + 0.95, za], [sx + dx, yb + 0.95, zb], 0.04, YELLOW);
+        rod(sink, [sx + dx, ya, za], [sx + dx, ya + 0.97, za], 0.04, YELLOW, { fine: true });
+      }
+      const steps = Math.max(3, Math.round(Math.abs(yb - ya) / 0.24));
+      for (let k = 1; k < steps; k++) {
+        const f = k / steps, y = ya + (yb - ya) * f, z = za + (zb - za) * f;
+        sink.member('structureMetal', [sx - 0.4, y, z], [sx + 0.4, y, z], 0.26, 0.04, [0, 1, 0], { colour: GALV, decor: true, fine: true });
+      }
+    };
+    flight(zA, 0, zB, top);
+    flight(zD, 0, zC, top);
+    // (the rails' heads on the landing's posts, the rail across it)
+    for (const dx of [-0.42, 0.42]) {
+      for (const z of [zB, zC]) rod(sink, [sx + dx, top - 0.06, z], [sx + dx, top + 0.97, z], 0.04, YELLOW);
+      rod(sink, [sx + dx, top + 0.95, zB], [sx + dx, top + 0.95, zC], 0.04, YELLOW);
+    }
+    sink.span('structureMetal', sx - 0.45, top - 0.06, zB - 0.02, sx + 0.45, top, zC + 0.02, { colour: GALV, decor: true });
+    // the hazard board beside the stair's foot: no smoking, diesel arctic grade
+    const bx = sx + 1.0, bz = z0 - 0.3;
+    for (const dx of [-0.35, 0.35]) rod(sink, [bx + dx, 0, bz], [bx + dx, 1.55, bz], 0.06, STEEL_DARK);
+    sink.span('structureMetal', bx - 0.48, 0.95, bz - 0.06, bx + 0.48, 1.55, bz - 0.03, { colour: WHITE, decor: true });
+    sink.span('structureMetal', bx - 0.48, 1.32, bz - 0.075, bx + 0.48, 1.47, bz - 0.06, { colour: rgb(0xa8302a), decor: true });
+  }
+  // the floodlight mast on the dike's (-x, +z) corner crest, its head turned in over the farm
+  {
+    const mx = x0 + 0.85, mz = z1 - 0.85;
+    rod(sink, [mx, bh - 0.1, mz], [mx, 7.5, mz], 0.14, GALV);
+    sink.span('structureMetal', mx - 0.05, 7.2, mz - 0.25, mx + 0.4, 7.55, mz + 0.25, { colour: STEEL_DARK, decor: true });
+    sink.span('structureMetal', mx + 0.4, 7.24, mz - 0.21, mx + 0.42, 7.51, mz + 0.21, { colour: WHITE, decor: true, fine: true });
+  }
   return sink.finish();
 };
 
@@ -396,7 +659,7 @@ const warehouse: RegionalBuilder = (ctx) => {
       gutters: null, verge: { colour: STEEL, bucket: 'structureMetal' }, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
-    steelCraft(sink, frame, openings, [5.85, 6.35]);
+    steelCraft(sink, frame, openings, [5.85, 6.35], [openings[1]]);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
@@ -405,6 +668,30 @@ const warehouse: RegionalBuilder = (ctx) => {
     sink.span('stone', -W / 2, -0.3, D / 2, W / 2, 0.08, D / 2 + apron);
     // the band of the station's colour round the eaves
     sink.span('plaster2', -W / 2 - 0.03, 5.85, -D / 2 - 0.03, W / 2 + 0.03, 6.35, D / 2 + 0.03);
+    // (dome-detail-275) the roof's ribbed sheets in relief and the ridge's ventilators; the gable louvres; the heating-oil
+    // day tank on the apron beside the big door
+    sheetRibs(sink, frame, look);
+    ridgeVents(sink, frame, [-D * 0.18, D * 0.26]);
+    louvre(sink, frame.faces.back, 0, 5.15, 1.2, 0.8);
+    louvre(sink, frame.faces.front, 0, frame.eaveY + 0.42, 1.0, 0.4);
+    dayTank(sink, -W / 2 + 0.35, -W / 2 + 2.2, D / 2 + Math.min(1.55, apron - 0.55), 0.48, [-W / 2 + 1.27, 0.45, D / 2 - 0.01]);
+    // the arctic entry before the man door: an insulated porch on the apron that keeps the drift and the cold out, on its
+    // footing, its mono-pitch roof falling to the apron, its own door with the hood and lamp over it, a window in its side
+    const vu = openings[1].u, vw = 1.9, vd = 1.6, vh = 2.75, vx0 = vu - vw / 2, vx1 = vu + vw / 2, vz0 = D / 2 - 0.02, vz1 = D / 2 + vd;
+    sink.span('stone', vx0 - 0.06, -0.3, vz0, vx1 + 0.06, 0.2, vz1 + 0.06, { shade: 0.88 });
+    sink.span(paint, vx0, 0.2, vz0, vx1, vh, vz1);
+    sink.prism('roof', facing([[vx0 - 0.15, vh + 0.28, vz0], [vx0 - 0.15, vh, vz1 + 0.25], [vx0 - 0.15, vh + 0.12, vz1 + 0.25], [vx0 - 0.15, vh + 0.4, vz0]], [1, 0, 0]),
+      [1, 0, 0], vw + 0.3);
+    sink.prism(paint, facing([[vx0, vh - 0.01, vz0], [vx0, vh - 0.01, vz1], [vx0, vh + 0.03, vz1], [vx0, vh + 0.29, vz0]], [1, 0, 0]), [1, 0, 0], vw);
+    const vf = boxFace(vx0, vz0, vx1, vz1, 's'), vs = boxFace(vx0, vz0, vx1, vz1, vu > 0 ? 'e' : 'w');
+    doorUnit(sink, vf, -0.2, 0.2, 0.95, 2.05, {
+      leaf: STEEL, frame: { bucket: 'structureMetal', width: 0.1, out: 0.04, colour: STEEL_DARK }, steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
+    });
+    doorCanopy(sink, vf, -0.2, 2.25, 0.95, { kind: 'shed', bucket: 'structureMetal', colour: STEEL, timber: STEEL_DARK, depth: 0.7 });
+    wallLantern(sink, vf, 0.62, 2.05);
+    windowUnit(sink, vs, 0, 1.25, 0.6, 0.6, WINDOW, look, 0.5);
+    for (const side of [-1, 1]) pilaster(sink, 'structureMetal', vf, side * (vw / 2 - 0.05), 0.22, vh - 0.02, 0.1, 0.025, { colour: STEEL });
+    for (const f of [vf, vs]) rustStreaks(sink, f, vh - 0.1, rustStream(vh * 7.7 + f.width * 3.3 + f.origin[0]), 0.5);
   });
   return sink.finish();
 };

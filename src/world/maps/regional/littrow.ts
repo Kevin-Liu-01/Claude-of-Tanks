@@ -31,6 +31,8 @@ import { EARTH_SKY } from '../earthriseStation.ts';
 const MLI = rgb(0xdedcd6), DUSTED = rgb(0xb9b4aa), PANEL = rgb(0xeceae4), GOLD = rgb(0xc49a46), ORANGE = rgb(0xd46f2a);
 const DARK = rgb(0x3e4349), STEEL = rgb(0x8d8a84), BLACK = rgb(0x24262a), O2_BLUE = rgb(0x4a7fb4);
 const H2_RED = rgb(0xb4453a), RADIATOR = rgb(0xe4e6e6);
+/** (dome-detail-275) the cells of a solar panel (the relay mast's wing). */
+const SOLAR = rgb(0x1c2740);
 const M = 'structureMetal' as const;
 
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -493,14 +495,41 @@ const tankFarm: RegionalBuilder = (ctx) => {
   const tx0 = cx - L / 2 + 0.6;
   for (const s of [1, -1]) {
     const z = cz + s * (Rt + 0.55);
-    for (const t of [0.15, 0.5, 0.85]) sink.span(M, tx0 + L * t - 0.25, 0, z - Rt * 0.75, tx0 + L * t + 0.25, ay - Rt * 0.6, z + Rt * 0.75, { colour: DARK });
-    sink.cylinder(M, [tx0, ay, z], 'x', L - 1.2, Rt, 18, { colour: MLI }, Rt, false);
-    sink.revolve(M, [tx0 - 0.6, ay, z], 'x', [[0, 0.05], [0.16, Rt * 0.6], [0.4, Rt * 0.9], [0.6, Rt]], 18, { colour: MLI });
-    sink.revolve(M, [tx0 + L - 1.2, ay, z], 'x', [[0, Rt], [0.2, Rt * 0.9], [0.44, Rt * 0.6], [0.6, 0.05]], 18, { colour: MLI });
+    // the saddles, each with its wear pad hugging the shell's underside and its anchor plate on the pad
+    for (const t of [0.15, 0.5, 0.85]) {
+      const x = tx0 + L * t;
+      sink.span(M, x - 0.25, 0, z - Rt * 0.75, x + 0.25, ay - Rt * 0.6, z + Rt * 0.75, { colour: DARK });
+      sink.cylinder(M, [x - 0.3, ay, z], 'x', 0.6, Rt + 0.03, 8, { colour: shade(DARK, 1.2), decor: true }, Rt + 0.03, false, (2 * Math.PI) / 3, (2 * Math.PI) / 3);
+      sink.span(M, x - 0.36, -0.05, z - Rt * 0.85, x + 0.36, 0.05, z + Rt * 0.85, { colour: STEEL, decor: true });
+    }
+    // (dome-detail-275: was a drum of eighteen flat facets between two faceted cones) the tank in one smooth turning, its
+    // barrel and its two semi-ellipsoidal heads, the MLI dusted from the knees down
+    const head = [0.45, 0.8, 1.15, Math.PI / 2].map((a): [number, number] => [0.6 * (1 - Math.cos(a)), Rt * Math.sin(a)]);
+    const hull: Array<[number, number]> = [[0, 0.04], ...head, ...head.slice().reverse().map(([t, r]): [number, number] => [L - t, r]), [L, 0.04]];
+    sink.revolve(M, [tx0 - 0.6, ay, z], 'x', hull, 24, { colourAt: (p) => (p[1] < ay - Rt * 0.15 ? DUSTED : MLI), colour: MLI });
     sink.dressing(mobile, () => {
-      sink.cylinder(M, [tx0 + L * 0.42, ay, z], 'x', 0.5, Rt + 0.02, 18, { colour: band, decor: true });
-      for (const t of [0.1, 0.9]) sink.cylinder(M, [tx0 + (L - 1.2) * t, ay, z], 'x', 0.12, Rt + 0.025, 18, { colour: GOLD, decor: true, fine: true });
+      sink.revolve(M, [tx0 + L * 0.42, ay, z], 'x', [[0, Rt + 0.02], [0.5, Rt + 0.02]], 24, { colour: band, decor: true });
+      for (const t of [0.1, 0.9]) sink.revolve(M, [tx0 + (L - 1.2) * t, ay, z], 'x', [[0, Rt + 0.025], [0.12, Rt + 0.025]], 24, { colour: GOLD, decor: true, fine: true });
     });
+    // (dome-detail-275) the manway on the far head, the relief valve's stack, the zero-boil-off cryocooler on the outer
+    // shoulder with its fin, the blanket's two quilting seams, the coolant line to the radiator wing
+    const tip = tx0 - 0.6 + L;
+    sink.cylinder(M, [tip - 0.1, ay, z], 'x', 0.26, 0.32, 12, { colour: PANEL, decor: true });
+    sink.cylinder(M, [tip + 0.1, ay, z], 'x', 0.07, 0.4, 12, { colour: ORANGE, decor: true });
+    const vx = tx0 + L - 2.0, vz = z - s * 0.4;
+    sink.pipe(M, [vx, ay + Rt - 0.1, vz], [vx, ay + Rt + 0.75, vz], 0.06, 8, { colour: STEEL, decor: true });
+    sink.span(M, vx - 0.1, ay + Rt + 0.68, vz - 0.1, vx + 0.1, ay + Rt + 0.86, vz + 0.1, { colour: H2_RED, decor: true });
+    const kx = tx0 + L * 0.68, kz = z + s * 0.6;
+    sink.span(M, kx - 0.45, ay + Rt - 0.3, kz - 0.32, kx + 0.45, ay + Rt + 0.32, kz + 0.32, { colour: PANEL, decor: true });
+    sink.span(M, kx - 0.4, ay + Rt + 0.32, kz - 0.02, kx + 0.4, ay + Rt + 0.95, kz + 0.02, { colour: RADIATOR, decor: true });
+    sink.span(M, kx - 0.2, ay + Rt + 0.1, kz + s * 0.32, kx + 0.2, ay + Rt + 0.22, kz + s * 0.34, { colour: GOLD, decor: true, fine: true });
+    sink.dressing(mobile, () => {
+      for (const a of [-0.62, 0.62]) {
+        const r = Rt + 0.01;
+        bar(sink, [tx0, ay + Math.cos(a) * r, z + Math.sin(a) * r], [tx0 + L - 1.2, ay + Math.cos(a) * r, z + Math.sin(a) * r], 0.025, { colour: shade(MLI, 0.82), decor: true, fine: true });
+      }
+    });
+    bar(sink, [tx0 + L - 1.6, ay + Rt + 0.06, z], [cx + L / 2 + 0.2, 2.1, cz + s * 1.6], 0.08, { colour: STEEL, decor: true });
     // the transfer line along the tank's crown to the filling station
     bar(sink, [tx0 - 0.1, ay + Rt + 0.06, z], [tx0 + L - 1.6, ay + Rt + 0.06, z], 0.1, { colour: STEEL, decor: true });
     bar(sink, [tx0 - 0.1, ay + Rt + 0.06, z], [tx0 - 1.0, ay + Rt + 0.06, z], 0.1, { colour: STEEL, decor: true });
@@ -527,23 +556,33 @@ const tankFarm: RegionalBuilder = (ctx) => {
     }
   });
   // the filling station at the -x end between the tanks: its cabinet, the coupling arm
-  sink.span(M, tx0 - 1.6, 0, cz - 0.6, tx0 - 0.4, 1.7, cz + 0.6, { colour: PANEL });
+  sink.span(M, tx0 - 1.6, 0, cz - 0.6, tx0 - 0.4, 1.7, cz + 0.6, { colourAt: (p) => (p[1] < 0.6 ? DUSTED : PANEL), colour: PANEL });
   sink.span(M, tx0 - 1.62, 1.0, cz - 0.62, tx0 - 1.0, 1.4, cz + 0.62, { colour: ORANGE, decor: true });
-  // the low berm round the farm (its toe on the plot's sides), gapped at the filling station's end
+  // (dome-detail-275) its status lamp, the hose reel on its side, and the loading arm: the riser off its top, the boom
+  // out over the low -x berm where a rover tanker stands to couple, the hose hanging from its knuckle to the coupling
+  sink.span(M, tx0 - 0.75, 1.7, cz - 0.45, tx0 - 0.55, 1.86, cz - 0.25, { colour: GOLD, decor: true });
+  sink.cylinder(M, [tx0 - 1.1, 0.75, cz + 0.6], 'z', 0.3, 0.42, 14, { colour: DARK, decor: true });
+  sink.cylinder(M, [tx0 - 1.1, 0.75, cz + 0.9], 'z', 0.04, 0.46, 14, { colour: ORANGE, decor: true });
+  const ax = Math.max(cx - P.w / 2 + 0.8, tx0 - 2.6);
+  bar(sink, [tx0 - 1.0, 1.65, cz + 0.2], [tx0 - 1.0, 2.75, cz + 0.2], 0.16, { colour: ORANGE, decor: true });
+  bar(sink, [tx0 - 1.0, 2.7, cz + 0.2], [ax, 2.45, cz + 0.45], 0.12, { colour: ORANGE, decor: true });
+  sink.span(M, ax - 0.12, 2.3, cz + 0.33, ax + 0.12, 2.56, cz + 0.57, { colour: DARK, decor: true });
+  bar(sink, [ax, 2.32, cz + 0.45], [ax + 0.05, 1.45, cz + 0.45], 0.09, { colour: BLACK, decor: true });
+  sink.span(M, ax - 0.1, 1.25, cz + 0.35, ax + 0.15, 1.47, cz + 0.55, { colour: STEEL, decor: true });
+  // the low berm round the farm (its toe on the plot's sides), gapped at the filling station's end (dome-detail-275: the
+  // ruled prisms dozed as the habitat's berm is, berm(): the outer face in facets rounding to a crest that rises and
+  // falls, segment by segment, on the look stream)
   const h = clamp(Rt + 0.2, 1.4, 1.9);
   for (const s of [1, -1] as const) {
-    sink.placed(s > 0 ? 0 : Math.PI, cx, 0, cz, () => {
-      sink.prism('stone', [[-P.w / 2 + 2.2, -0.15, P.d / 2 - 0.08], [-P.w / 2 + 2.2, -0.15, P.d / 2 - 1.5], [-P.w / 2 + 2.2, h, P.d / 2 - 1.1], [-P.w / 2 + 2.2, h, P.d / 2 - 0.62]], [1, 0, 0], P.w - 4.4);
-    });
+    // (turned a quarter: the helper runs its bank along local z, here the plot's x; its +x flank the plot's -z side. Its
+    // segments' crest heights kept, for the bag coping laid on each)
+    const crests: number[] = [], look = (): number => { const v = ctx.variant(); crests.push(h * (0.93 + v * 0.12)); return v; };
+    sink.placed(Math.PI / 2, cx, 0, cz, () => berm(sink, s > 0 ? -1 : 1, 0, -P.w / 2 + 2.2, P.w / 2 - 2.2, P.d / 2 - 0.08, P.d / 2 - 1.1, P.d / 2 - 1.5, h, 3, look));
+    const run = (P.w - 4.4) / 3, bz = cz + s * (P.d / 2 - 1.04);
+    crests.forEach((hk, k) => bagCourse(sink, [cx - P.w / 2 + 2.3 + k * run, bz], [cx - P.w / 2 + 2.1 + (k + 1) * run, bz], hk - 0.17, 0.3, 0.45, rng, mobile));
   }
   // the berm's ends (+x and -x) across the plot's depth, the -x end low where the station's pipework passes over it
-  for (const e of [1, -1]) {
-    const xe = cx + e * (P.w / 2 - 0.08), xi = cx + e * (P.w / 2 - 1.5), hh = e > 0 ? h : h * 0.6;
-    const [xa, xb] = e > 0 ? [xi, xe] : [xe, xi];
-    sink.prism('stone', [[xa, -0.15, cz - P.d / 2 + 0.6], [xb, -0.15, cz - P.d / 2 + 0.6], [xb - 0.45, hh, cz - P.d / 2 + 0.6], [xa + 0.45, hh, cz - P.d / 2 + 0.6]],
-      [0, 0, 1], P.d - 1.2);
-  }
-  for (const s of [1, -1]) bagCourse(sink, [cx - P.w / 2 + 2.4, cz + s * (P.d / 2 - 0.85)], [cx + P.w / 2 - 2.4, cz + s * (P.d / 2 - 0.85)], h - 0.1, 0.3, 0.45, rng, mobile);
+  for (const e of [1, -1] as const) berm(sink, e, cx, cz - P.d / 2 + 0.6, cz + P.d / 2 - 0.6, P.w / 2 - 0.08, P.w / 2 - 1.05, P.w / 2 - 1.5, e > 0 ? h : h * 0.6, 2, ctx.variant);
   // the radiator wing on its frame over the +x berm (edge-on to the low sun, so it reads as a white blade)
   const wx = cx + L / 2 + 0.2;
   for (const z of [cz - 1.6, cz + 1.6]) bar(sink, [wx, 0, z], [wx, 4.6, z], 0.1, { colour: STEEL, decor: true });
@@ -814,30 +853,91 @@ const logistics: RegionalBuilder = (ctx) => {
 
 // ----------------------------------------------------------------------------------------------------- EVA tool locker
 
-/** The EVA tool locker of a yard: a cabinet on a sintered pad under a flat canopy, its tool rack beside it. */
+/**
+ * The EVA tool locker of a yard (dome-detail-275; the work list: a blank box under a slab): the stainless cabinet on its
+ * plinth under its lid, its two panelled doors on their hinges with the latch bar, the placard and the status lamp, a
+ * vent louvre in its flank; the canopy over it framed in steel and carrying its solar panel, on two posts braced to it and
+ * on brackets off the cabinet's top, a regolith bag on each post's foot; the tool rack on the cabinet's flank with the
+ * station's hand tools hung on it head down (the scoop, the rake, the tongs, the hammer, the core tube), the boot grate
+ * and dust brush before the doors, a sample container on the pad, the power cable off the pad's back edge.
+ */
 const toolLocker: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, mobile = ctx.tier === 'mobile', P = plot(ctx);
+  const look = ctx.variant, P = plot(ctx);
   const cx = P.cx, cz = P.cz, w = P.w - 0.3, d = P.d - 0.3, h = clamp(P.d * 0.62, 1.9, 2.4);
+  const x0 = cx - w / 2 + 0.05, x1 = cx + w / 2 - 0.05, z0 = cz - d / 2 + 0.05, zf = cz + d / 2 - 0.6, foot = 0.3;
   sink.span('stone', P.x0 + 0.1, -0.15, P.z0 + 0.1, P.x1 - 0.1, 0.15, P.z1 - 0.1);
-  sink.span(M, cx - w / 2 + 0.05, 0.15, cz - d / 2 + 0.05, cx + w / 2 - 0.05, h, cz + d / 2 - 0.6, { colourAt: (p) => (p[1] < 0.7 ? DUSTED : PANEL), colour: PANEL });
-  // its canopy over the front on two posts (flat: a landing hull finds no spike)
-  for (const s of [-1, 1]) bar(sink, [cx + s * (w / 2 - 0.15), 0.15, cz + d / 2 - 0.15], [cx + s * (w / 2 - 0.15), h + 0.25, cz + d / 2 - 0.15], 0.08, { colour: STEEL, decor: true });
-  sink.span(M, cx - w / 2, h + 0.18, cz - d / 2 + 0.05, cx + w / 2, h + 0.3, cz + d / 2, { colour: shade(PANEL, 0.92), decor: true });
-  // its doors, their joint and handles; the tool rack (a shovel, a rake, the tongs and a core tube) on its side
-  const front: Face = { origin: [cx, 0, cz + d / 2 - 0.6], u: [1, 0, 0], out: [0, 0, 1], width: w - 0.1 };
-  faceBox(sink, M, front, 0, h / 2 + 0.1, 0.01, 0.03, h - 0.4, 0.02, { colour: DARK, decor: true, fine: true });
-  for (const u of [-0.12, 0.12]) faceBox(sink, M, front, u, h / 2 + 0.1, 0.03, 0.04, 0.3, 0.04, { colour: ORANGE, decor: true, fine: true });
-  faceBox(sink, M, front, 0, h - 0.25, 0.01, w * 0.6, 0.12, 0.02, { colour: ORANGE, decor: true, fine: true });
-  sink.dressing(mobile, () => {
-    const x = cx + w / 2 - 0.03, z0 = cz - d / 2 + 0.3;
-    bar(sink, [x, 1.2, z0], [x, 1.2, z0 + d - 1.2], 0.04, { colour: STEEL, decor: true, fine: true });
-    for (let k = 0; k < 4; k++) {
-      const z = z0 + 0.2 + k * (d - 1.6) / 3;
-      bar(sink, [x + 0.035, 0.2, z], [x + 0.035, 1.3, z], 0.035, { colour: k === 2 ? ORANGE : STEEL, decor: true, fine: true });
-    }
-  });
-  void rng;
+  // the plinth, the body (dusted to the knee) and the lid overhanging it
+  sink.span(M, x0 + 0.05, 0.12, z0 + 0.05, x1 - 0.05, foot, zf - 0.05, { colour: DARK });
+  sink.span(M, x0, foot, z0, x1, h - 0.06, zf, { colourAt: (p) => (p[1] < 0.75 ? DUSTED : PANEL), colour: PANEL });
+  sink.span(M, x0 - 0.04, h - 0.06, z0 - 0.04, x1 + 0.04, h + 0.04, zf + 0.04, { colour: shade(PANEL, 0.9), decor: true });
+  // the doors: two leaves standing proud, each with its sunk panel, its hinges at the outer edge and its handle by the
+  // joint; the latch bar across both, the placard on the left leaf, the status lamp over the right
+  const front: Face = { origin: [cx, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: w - 0.1 };
+  const dw = (w - 0.1) / 2 - 0.07, dh = h - foot - 0.22, dy = foot + 0.08 + dh / 2;
+  for (const s of [-1, 1]) {
+    const u = s * (dw / 2 + 0.03);
+    faceBox(sink, M, front, u, dy, 0.015, dw, dh, 0.03, { colour: shade(PANEL, 0.97), colourAt: (p) => (p[1] < 0.75 ? DUSTED : shade(PANEL, 0.97)), decor: true });
+    faceBox(sink, M, front, u, dy, 0.032, dw - 0.16, dh - 0.2, 0.006, { colour: shade(PANEL, 0.88), decor: true, fine: true });
+    for (const y of [foot + 0.35, foot + dh - 0.2]) faceBox(sink, M, front, s * (dw + 0.04), y, 0.03, 0.04, 0.16, 0.05, { colour: DARK, decor: true, fine: true });
+    faceBox(sink, M, front, s * 0.1, dy, 0.05, 0.04, 0.3, 0.04, { colour: ORANGE, decor: true, fine: true });
+  }
+  faceBox(sink, M, front, 0, h - 0.3, 0.035, w * 0.62, 0.1, 0.03, { colour: ORANGE, decor: true });
+  faceBox(sink, M, front, -dw / 2 - 0.03, dy + 0.25, 0.034, Math.min(0.42, dw * 0.6), 0.3, 0.008, { colour: RADIATOR, decor: true, fine: true });
+  faceBox(sink, M, front, -dw / 2 - 0.03, dy + 0.33, 0.04, Math.min(0.36, dw * 0.5), 0.05, 0.006, { colour: ORANGE, decor: true, fine: true });
+  faceBox(sink, M, front, dw / 2 + 0.03, h - 0.15, 0.03, 0.12, 0.08, 0.06, { colour: GOLD, decor: true });
+  // the vent louvre in the -x flank: its frame and dark, its blades
+  const flank: Face = { origin: [x0, 0, (z0 + zf) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: zf - z0 };
+  faceBox(sink, M, flank, 0, h - 0.55, 0.02, Math.min(0.6, zf - z0 - 0.3), 0.4, 0.04, { colour: DARK, decor: true });
+  for (let k = 0; k < 4; k++) faceBox(sink, M, flank, 0, h - 0.7 + k * 0.1, 0.045, Math.min(0.56, zf - z0 - 0.34), 0.025, 0.03, { colour: STEEL, decor: true, fine: true });
+  // the canopy: its panel, the steel frame round its edge, the solar panel on it and its cells; the brackets off the
+  // cabinet's lid, the front posts with their knee braces (flat: a landing hull finds no spike)
+  const cz0 = cz - d / 2 + 0.05, cz1 = cz + d / 2, cy = h + 0.18, px = w / 2 - 0.15, pz = cz + d / 2 - 0.15;
+  for (const s of [-1, 1]) {
+    bar(sink, [cx + s * px, 0.15, pz], [cx + s * px, cy + 0.02, pz], 0.08, { colour: STEEL, decor: true });
+    bar(sink, [cx + s * px, cy - 0.55, pz], [cx + s * (px - 0.45), cy - 0.02, pz], 0.05, { colour: STEEL, decor: true });
+    sink.span(M, cx + s * (w / 2 - 0.55) - 0.08, h + 0.04, z0 + 0.25, cx + s * (w / 2 - 0.55) + 0.08, cy, z0 + 0.45, { colour: DARK, decor: true });
+    // (a geotextile bag of regolith on the post's foot)
+    sink.span('plaster', cx + s * px - 0.24, 0.15, pz - 0.2, cx + s * px + 0.24, 0.36 + look() * 0.06, pz + 0.18, { decor: true });
+  }
+  sink.span(M, cx - w / 2, cy, cz0, cx + w / 2, cy + 0.08, cz1, { colour: shade(PANEL, 0.92), decor: true });
+  for (const [ax0, az0, ax1, az1] of [[cx - w / 2, cz0, cx + w / 2, cz0 + 0.08], [cx - w / 2, cz1 - 0.08, cx + w / 2, cz1],
+    [cx - w / 2, cz0, cx - w / 2 + 0.08, cz1], [cx + w / 2 - 0.08, cz0, cx + w / 2, cz1]] as const) {
+    sink.span(M, ax0, cy - 0.1, az0, ax1, cy + 0.12, az1, { colour: STEEL, decor: true });
+  }
+  const sx0 = cx - w / 2 + 0.18, sx1 = cx + w / 2 - 0.18, sz0 = cz0 + 0.18, sz1 = cz1 - 0.18;
+  sink.span(M, sx0, cy + 0.08, sz0, sx1, cy + 0.11, sz1, { colour: SOLAR, decor: true });
+  for (let k = 1; k < 4; k++) {
+    const x = sx0 + ((sx1 - sx0) * k) / 4;
+    sink.span(M, x - 0.012, cy + 0.11, sz0, x + 0.012, cy + 0.115, sz1, { colour: shade(SOLAR, 1.7), decor: true, fine: true });
+  }
+  // the tool rack on the +x flank: the rail on its two brackets, the tools hung head down from it, each its own
+  const rx = x1 + 0.04, rz0 = z0 + 0.2, rz1 = zf - 0.15, ry = Math.min(1.35, h - 0.35);
+  for (const z of [rz0, rz1]) bar(sink, [x1 - 0.01, ry, z], [rx + 0.03, ry, z], 0.04, { colour: STEEL, decor: true });
+  bar(sink, [rx + 0.03, ry, rz0 - 0.02], [rx + 0.03, ry, rz1 + 0.02], 0.04, { colour: STEEL, decor: true });
+  const tools = Math.max(3, Math.min(5, Math.floor((rz1 - rz0) / 0.24)));
+  for (let k = 0; k < tools; k++) {
+    if (look() < 0.15) continue; // (one out on the yard's work)
+    const z = rz0 + 0.12 + (k * (rz1 - rz0 - 0.24)) / Math.max(1, tools - 1), x = rx + 0.07, low = 0.28 + look() * 0.1;
+    bar(sink, [x, low + 0.12, z], [x, ry + 0.08, z], 0.03, { colour: k === 2 ? ORANGE : STEEL, decor: true, fine: true });
+    if (k === 0) sink.span(M, x - 0.02, low - 0.08, z - 0.1, x + 0.03, low + 0.14, z + 0.1, { colour: STEEL, decor: true, fine: true });
+    else if (k === 1) sink.span(M, x - 0.015, low, z - 0.14, x + 0.03, low + 0.13, z + 0.14, { colour: DARK, decor: true, fine: true });
+    else if (k === 2) for (const dz of [-0.035, 0.035]) bar(sink, [x, low + 0.13, z], [x, low - 0.12, z + dz], 0.02, { colour: STEEL, decor: true, fine: true });
+    else if (k === 3) sink.span(M, x - 0.03, low + 0.05, z - 0.07, x + 0.05, low + 0.13, z + 0.07, { colour: DARK, decor: true, fine: true });
+    else sink.cylinder(M, [x, low - 0.15, z], 'y', 0.3, 0.035, 8, { colour: GOLD, decor: true, fine: true });
+  }
+  // the boot grate and the dust brush before the doors, the sample container on the pad's front corner
+  if (cz + d / 2 - zf > 0.45) {
+    sink.span(M, cx - 0.55, 0.15, zf + 0.05, cx + 0.55, 0.19, zf + 0.42, { colour: STEEL, decor: true });
+    sink.span(M, cx + 0.62, 0.15, zf + 0.12, cx + 0.92, 0.27, zf + 0.3, { colour: BLACK, decor: true });
+    const sx = cx - w / 2 + 0.38, sz = cz + d / 2 - 0.3;
+    sink.span(M, sx - 0.22, 0.15, sz - 0.14, sx + 0.22, 0.42, sz + 0.14, { colour: PANEL, decor: true });
+    sink.span(M, sx - 0.23, 0.33, sz - 0.15, sx + 0.23, 0.37, sz + 0.15, { colour: ORANGE, decor: true, fine: true });
+  }
+  // the power cable from the cabinet's back over the pad's edge to the ground
+  bar(sink, [cx + w * 0.25, foot + 0.05, z0 + 0.02], [cx + w * 0.25, foot + 0.05, z0 - 0.06], 0.06, { colour: BLACK, decor: true });
+  bar(sink, [cx + w * 0.25, foot + 0.05, z0 - 0.06], [cx + w * 0.25, 0.16, z0 - 0.16], 0.05, { colour: BLACK, decor: true });
+  bar(sink, [cx + w * 0.25, 0.17, z0 - 0.16], [cx + w * 0.25 + 0.1, 0.0, P.z0 + 0.02], 0.05, { colour: BLACK, decor: true });
   return sink.finish();
 };
 

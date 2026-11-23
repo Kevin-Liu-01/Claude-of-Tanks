@@ -6,19 +6,19 @@
 // the village church has a rendered nave and a west tower with a slate-hung belfry and a needle spire; the mills on
 // the river are timber-framed water mills with an overshot wheel.
 import {
-  PartSink, faceBox, facePanel, hashSeed, pick, rgb, shade, UV_MEMBER,
-  type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
+  PartSink, bodyFaces, faceBox, facePanel, hashSeed, pick, rgb, shade, UV_MEMBER,
+  type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type UvMode, type Vec3,
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
-  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type WallRect,
+  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofGeometry, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import { openShed } from './outbuildings.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { launder, millAxle, trestle, waterWheel } from './millWorks.ts';
-import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
+import { launder, millAxle, orientedPrism, trestle, waterWheel } from './millWorks.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, hash01, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { HESSIAN_COURT_TYPES } from './hessianCourt.ts';
 import { registerBuildScope } from '../buildScopes.ts';
@@ -420,8 +420,9 @@ export function hessianDialect(st: HessianState): HouseDialect {
     gableOpenings: (_face, poly, frame) => (frame.spec.gableFramed ? gableWindowHoles(poly) : []),
     dressJetty: (sink, face, u0, u1, y, depth) => {
       if (st.mobile) return;
-      for (let u = u0 + 0.35; u < u1 - 0.2; u += 0.62) {
-        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER, fineSides: true });
+      // (dome-detail-275) the joists' heads at a joist's pitch, their tops under the jettied storey's sill (never seen)
+      for (let u = u0 + 0.35; u < u1 - 0.2; u += 0.7) {
+        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER, fineSides: true }, { top: true });
       }
     },
   };
@@ -455,17 +456,19 @@ export function roofFor(rng: () => number, opts: { halfHip?: number; pitch?: [nu
 
 /** Openings of a house body: the street gable (front), the eaves sides and the back. */
 function houseOpenings(w: number, d: number, sts: HouseSpec['storeys'], door: { face: Opening['face']; u: number } | null,
-  st: HessianState, extra: Opening[] = []): Opening[] {
+  st: HessianState, extra: Opening[] = [], sides = 1.75, ground: readonly [number, number, number] = [0.78, 1.08, 0.92]): Opening[] {
   const out: Opening[] = [...extra];
   const doorW = 1.0, doorH = 2.12;
   if (door) out.push({ face: door.face, storey: 0, kind: 'door', u: door.u, w: doorW, y0: 0, h: doorH });
   sts.forEach((storey, i) => {
-    const ww = i === 0 ? 0.78 : 0.74, wh = i === 0 ? 1.08 : 1.0, sill = i === 0 ? 0.92 : 0.78;
+    // (dome-detail-275) the ground storey's lights as the house is used (`ground`: a schoolroom's taller)
+    const ww = i === 0 ? ground[0] : 0.74, wh = i === 0 ? ground[1] : 1.0, sill = i === 0 ? ground[2] : 0.78;
     for (const face of ['front', 'right', 'back', 'left'] as const) {
       const width = face === 'front' || face === 'back' ? w : d;
       const avoid: Array<[number, number]> = out.filter((o) => o.face === face && o.storey === i && o.kind !== 'window')
         .map((o) => [o.u - o.w / 2, o.u + o.w / 2]);
-      const spacing = face === 'back' ? 2.3 : 1.75;
+      // (dome-detail-275) a long eaves side's windows at the house's own bay (`sides`: an inn's and a lodge's wider)
+      const spacing = face === 'back' ? 2.3 : face === 'front' ? 1.75 : sides;
       for (const o of windowRhythm(face, i, width, { w: ww, h: Math.min(wh, storey.h - sill - 0.3), sill, spacing, margin: 0.85, avoid })) {
         if (face === 'back' && st.rng() < 0.3) continue;
         out.push(o);
@@ -483,8 +486,288 @@ export function houseUvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
+// ---- (dome-detail-275) the roof in its courses and the yard's small works, shared by the kit's builders
+const vsub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const vcross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const vdot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/** A planar polygon wound so its normal looks toward `toward` (dome-detail-275). */
+function facing(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], toward: Vec3, opts: EmitOptions): void {
+  const n = vcross(vsub(pts[1], pts[0]), vsub(pts[2], pts[0]));
+  sink.polygon(bucket, vdot(n, toward) >= 0 ? pts : [...pts].reverse(), opts);
+}
+
+/**
+ * A roof slope in its own terms (dome-detail-275, after eifel.ts): `P(v, t, h)` a point `v` up it from its eave's edge
+ * on the covering's top, `t` along it, `h` off it; `lim(v)` how far either way along it the covering reaches at `v` (a
+ * half-hip's hip line closing it); `reach` its run to the ridge.
+ */
+interface TileSlope { P: (v: number, t: number, h: number) => Vec3; n: Vec3; down: Vec3; along: Vec3; lim: (v: number) => number; reach: number }
+
+/**
+ * The +x (side 1) or -x slope of a gable, half-hip or shed roof in the house's roof frame (house.ts roofGeometry: the
+ * ridge along z, a shed rising toward -x), on the covering's top from its eave's edge (dome-detail-275).
+ */
+function sideSlope(rg: RoofGeometry, roof: RoofSpec, side: 1 | -1): TileSlope {
+  const cosP = 1 / Math.hypot(1, rg.tanP), sinP = rg.tanP * cosP, xe = rg.s + roof.eave;
+  const ye = rg.eaveY - roof.eave * rg.tanP + roof.thickness / cosP, D = rg.halfD + roof.verge;
+  // a half-hip's side slope reaches the verge's plane to the hip's foot (xC), then closes along the hip line to the ridge
+  let xC = 0;
+  if (rg.kind === 'halfhip' && rg.hipTan === undefined && rg.ridgeHalf < D - 1e-6) {
+    const yC = rg.ridgeY - (D - rg.ridgeHalf) * Math.tan((roof.hipPitchDeg ?? 62) * Math.PI / 180);
+    xC = Math.min(xe, (rg.ridgeY - yC) / rg.tanP);
+  }
+  return {
+    P: (v, t, h) => [side * (xe - cosP * v + sinP * h), ye + sinP * v + cosP * h, t],
+    n: [side * sinP, cosP, 0], down: [side * cosP, -sinP, 0], along: [0, 0, 1],
+    lim: (v) => {
+      const x = xe - cosP * Math.max(0, v);
+      return xC > 0 && x < xC ? rg.ridgeHalf + (D - rg.ridgeHalf) * Math.max(0, x) / xC : D;
+    },
+    reach: (rg.kind === 'shed' ? 2 * xe : xe) / cosP,
+  };
+}
+
+/** A half-hip's end slope at +z (1) or -z (-1): the triangle from the hip's foot on the verge plane to the ridge's end (dome-detail-275). */
+function hipSlope(rg: RoofGeometry, roof: RoofSpec, end: 1 | -1): TileSlope | null {
+  const D = rg.halfD + roof.verge, xe = rg.s + roof.eave;
+  if (rg.kind !== 'halfhip' || rg.hipTan !== undefined || rg.ridgeHalf >= D - 1e-6) return null;
+  const yC = rg.ridgeY - (D - rg.ridgeHalf) * Math.tan((roof.hipPitchDeg ?? 62) * Math.PI / 180);
+  const xC = Math.min(xe, (rg.ridgeY - yC) / rg.tanP);
+  const rise = rg.ridgeY - yC, run = D - rg.ridgeHalf, len = Math.hypot(rise, run);
+  const n: Vec3 = [0, run / len, end * rise / len], up: Vec3 = [0, rise / len, -end * run / len], t = roof.thickness;
+  const foot: Vec3 = [0, yC + n[1] * t, end * D + n[2] * t];
+  return {
+    P: (v, a, h) => [a, foot[1] + up[1] * v + n[1] * h, foot[2] + up[2] * v + n[2] * h],
+    n, down: [0, -up[1], -up[2]], along: [1, 0, 0], lim: (v) => xC * Math.max(0, 1 - v / len), reach: len,
+  };
+}
+
+/** The plain tiles' gauge up the slope (m): a Biberschwanz roof's courses as they read from the lane (dome-detail-275). */
+const TILE_GAUGE = 0.3;
+
+/**
+ * A covering laid in its courses over a TileSlope (dome-detail-275; the work list: "a large smooth roof"; the roof bar:
+ * "roofs in courses, in relief"): each course a run of tiles a finger proud at its butt and thinning up to the course
+ * over it, the course broken into runs of their own tone (old tiles and replaced ones, the wet's dark and the lichen's
+ * grey-green toward the eave), the eave's double course thick and out past the edge with its underside seen; the holes
+ * (the war's stripped patch) left open. Dressing: the slab keeps the collision.
+ */
+function tileCourses(sink: PartSink, sl: TileSlope, look: () => number, o: {
+  run: number; gauge?: number; top?: number; foot?: boolean; holes?: ReadonlyArray<readonly [number, number, number, number]>;
+}): void {
+  const g = o.gauge ?? TILE_GAUGE, top = o.top ?? sl.reach - 0.12;
+  const uv: UvMode = { kind: 'plane', origin: sl.P(0, 0, 0), u: sl.along, v: sl.down };
+  for (let k = 0; ; k++) {
+    const foot = !!o.foot && k === 0;
+    const v0 = foot ? -0.05 : k * g, v1 = Math.min(top, (k + 1) * g);
+    if (v1 - Math.max(0, v0) < 0.1) break;
+    const L0 = sl.lim(Math.max(0, v0)), L1 = sl.lim(v1);
+    if (L1 < 0.15) break;
+    const b = foot ? 0.06 : 0.035;
+    const cuts = (o.holes ?? []).filter((h) => v1 > h[0] && v0 < h[1]);
+    // the lichen and the wet keep to the eave's courses; the ridge's courses stay the clay's own
+    const low = Math.max(0, 1 - k * g / 2.4);
+    const lay = (t0: number, t1: number, tone: number, tint: Rgb | null) => {
+      let segs: Array<[number, number]> = [[t0, t1]];
+      for (const h of cuts) segs = segs.flatMap(([s0, s1]): Array<[number, number]> => [[s0, Math.min(s1, h[2])], [Math.max(s0, h[3]), s1]]).filter(([s0, s1]) => s1 - s0 > 0.15);
+      for (const [s0, s1] of segs) {
+        const a0 = Math.max(s0, -L0), a1 = Math.min(s1, L0), c0 = Math.max(s0, -L1), c1 = Math.min(s1, L1);
+        if (a1 - a0 < 0.12 || c1 - c0 < 0.06) continue;
+        const P = sl.P, A0 = P(v0, a0, 0), A1 = P(v0, a1, 0), B0 = P(v0, a0, b), B1 = P(v0, a1, b), C0 = P(v1, c0, 0.006), C1 = P(v1, c1, 0.006);
+        // each corner its own shade of the run's tone: the clay mottles along the course
+        const em: EmitOptions = { decor: true, uv, ...(tint ? { tint } : {}), shadeAt: (p: Vec3) => tone * (0.92 + 0.16 * hash01(p[0], p[1], p[2])) };
+        facing(sink, 'roof', [A0, A1, B1, B0], sl.down, { ...em, shadeAt: (p: Vec3) => tone * 0.74 * (0.92 + 0.16 * hash01(p[0], p[2])) });
+        facing(sink, 'roof', [B0, B1, C1, C0], sl.n, em);
+        if (foot) facing(sink, 'roof', [A0, A1, P(0, a1, 0), P(0, a0, 0)], [-sl.n[0], -sl.n[1], -sl.n[2]], { ...em, shadeAt: () => tone * 0.55 });
+      }
+    };
+    for (let t = -L0; t < L0 - 0.05;) {
+      let w = o.run * (0.45 + look() * 1.1);
+      if (L0 - t - w < o.run * 0.35) w = L0 - t;
+      const r = look();
+      // a run of new tiles laid where a storm took the old (redder, cleaner), or the lichen and the wet near the eave
+      const fresh = r < 0.06, moss = !fresh && r < 0.06 + 0.3 * low;
+      const tone = (foot ? 0.78 : 0.86 + look() * 0.16) * (fresh ? 1.12 : 1) * (moss ? 0.9 : 1);
+      lay(t, t + w, tone, fresh ? [1.08, 0.94, 0.88] : moss ? [0.86, 0.95, 0.8] : null);
+      t += w;
+    }
+  }
+}
+
+/**
+ * A house's tiled roof in its courses (dome-detail-275): a gable's or half-hip's two slopes, a half-hip's end slopes
+ * cut at their hips, laid in the top body's frame (house.ts lays its roof there); the war's stripped patch
+ * (HouseFrame.roofPatch) left open with its battens. `run` the mean run of one tone along a course.
+ */
+function tiledRoof(sink: PartSink, frame: HouseFrame, look: () => number, run: number): void {
+  const rg = frame.roof, roof = frame.spec.roof;
+  if (rg.kind !== 'gable' && rg.kind !== 'halfhip') return;
+  const top = frame.bodies[frame.bodies.length - 1], cosP = 1 / Math.hypot(1, rg.tanP), xe = rg.s + roof.eave, p = frame.roofPatch;
+  sink.placed(0, (top.x0 + top.x1) / 2, 0, (top.z0 + top.z1) / 2, () => {
+    for (const side of [1, -1] as const) {
+      const holes: Array<[number, number, number, number]> = [];
+      if (p && p.side === side) holes.push([(xe - p.x1) / cosP - 0.06, (xe - p.x0) / cosP + 0.06, p.z0 - 0.06, p.z1 + 0.06]);
+      tileCourses(sink, sideSlope(rg, roof, side), look, { run, foot: true, holes });
+      const hs = hipSlope(rg, roof, side);
+      if (hs) tileCourses(sink, hs, look, { run, foot: true, top: hs.reach - 0.2 });
+    }
+  });
+}
+
+/**
+ * A weather gable hung with the roof's tile or slate in its courses (dome-detail-275): the gable polygon on its face
+ * from its sill to under the verge, each course a finger proud at its foot. Dressing over the gable wall.
+ */
+function hungGableCourses(sink: PartSink, face: Face, poly: Array<[number, number]>, look: () => number, run: number): void {
+  const base = poly[0][1], s = Math.abs(poly[1][0]), top = Math.max(...poly.map(([, y]) => y));
+  const apexY = poly.length === 3 ? poly[2][1] : base + (top - base) * s / Math.max(0.01, s - Math.abs(poly[2][0]));
+  const sl: TileSlope = {
+    P: (v, t, h) => H.facePoint(face, t, base + 0.05 + v, h), n: face.out, down: [0, -1, 0], along: face.u,
+    lim: (v) => Math.max(0, s * (1 - (base + 0.05 + v - base) / Math.max(0.01, apexY - base)) - 0.2), reach: top - base - 0.05,
+  };
+  tileCourses(sink, sl, look, { run, gauge: 0.24, top: top - base - 0.25 });
+}
+
+/**
+ * Long and short dressed stones up a body's corners from y0 to y1 (dome-detail-275, after the church's quoins): a
+ * course each about `course` tall, each its own height, standing `proud` of both faces, paler than the walling.
+ */
+function cornerStones(sink: PartSink, x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, look: () => number,
+  course = 0.34, proud = 0.035): void {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const X = sx > 0 ? x1 : x0, Z = sz > 0 ? z1 : z0;
+    for (let y = y0, k = 0; y < y1 - 0.12; k++) {
+      const h = y1 - y < course * 1.5 ? y1 - y : course * (0.88 + look() * 0.24);
+      const long = (k + (sx * sz > 0 ? 0 : 1)) % 2 === 0, xIn = long ? 0.52 : 0.3, zIn = long ? 0.3 : 0.52;
+      dressedQuoin(sink, 'stone', X - sx * xIn, y, Z - sz * zIn, X + sx * proud, y + h - 0.014, Z + sz * proud, sx, sz,
+        { decor: true, tint: DRESSING_TINT, shade: 0.93 + look() * 0.12 });
+      y += h;
+    }
+  }
+}
+
+/**
+ * A carved inscription (dome-detail-275; a Hessian builder cuts the owners' names, the year and a blessing into the
+ * beam or the lintel over the door): the carved ground `w` x `h` a shade darker than what it is cut in, its letters
+ * picked out in paint, word by word; near the camera only. `ground` and `paint` the emit options of each.
+ */
+function inscription(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, w: number, h: number, o: number,
+  ground: EmitOptions, paint: EmitOptions, look: () => number): void {
+  facePanel(sink, bucket, face, u, y, o, w, h, { ...ground, decor: true });
+  const lh = h * 0.56, pad = h * 0.4;
+  for (let t = u - w / 2 + pad; t < u + w / 2 - pad - lh * 0.4;) {
+    const word = 2 + Math.floor(look() * 5);
+    for (let k = 0; k < word && t < u + w / 2 - pad - lh * 0.4; k++) {
+      const lw = lh * (0.32 + look() * 0.42);
+      facePanel(sink, bucket, face, t + lw / 2, y, o + 0.003, lw, lh, { ...paint, decor: true, fine: 'near' });
+      t += lw + lh * 0.16;
+    }
+    t += lh * 0.55;
+  }
+}
+
+/**
+ * A hoist beam out of a gable or a wall (dome-detail-275; a barn's, a granary's, a storehouse's Aufzug): the oak beam
+ * `len` out of the face at (u, y), its sheave in an iron strap under its end, the rope from the sheave back to its
+ * cleat on the wall at (ru, ry).
+ */
+function hoistBeam(sink: PartSink, face: Face, u: number, y: number, len: number, ru: number, ry: number, timber: Rgb): void {
+  faceBox(sink, SW, face, u, y, len / 2 - 0.03, 0.17, 0.2, len + 0.06, { colour: timber, decor: true, uv: UV_MEMBER });
+  const iron: Rgb = [0.16, 0.15, 0.14], tip = len - 0.16, axis = Math.abs(face.u[0]) > 0.5 ? 'x' : 'z';
+  // the strap down either side of the sheave, the sheave turned on its pin
+  for (const side of [-1, 1]) faceBox(sink, SW, face, u + side * 0.07, y - 0.2, tip, 0.015, 0.24, 0.05, { colour: iron, decor: true }, { top: true });
+  const ca = H.facePoint(face, u - 0.05, y - 0.26, tip), cb = H.facePoint(face, u + 0.05, y - 0.26, tip);
+  sink.cylinder(SW, (axis === 'x' ? ca[0] < cb[0] : ca[2] < cb[2]) ? ca : cb, axis, 0.1, 0.11, 10, { colour: shade(timber, 0.8), decor: true });
+  // the rope from under the sheave down and back to the cleat beside the opening
+  const ropeTop = H.facePoint(face, u, y - 0.37, tip), cleat = H.facePoint(face, ru, ry, 0.03);
+  sink.member(SW, ropeTop, cleat, 0.024, 0.024, face.u, { colour: rgb(0x8a7a5e), decor: true, exposed: true }, 0);
+  faceBox(sink, SW, face, ru, ry, 0.03, 0.2, 0.05, 0.06, { colour: iron, decor: true });
+}
+
+/** A wheel guard (Prellstein) at a gate's jamb (dome-detail-275): a dressed sandstone post, its head rounded off. */
+function wheelGuard(sink: PartSink, p: Vec3): void {
+  sink.cylinder('stone', [p[0], -0.05, p[2]], 'y', 0.6, 0.17, 8, { decor: true, tint: DRESSING_TINT }, 0.11);
+}
+
+/**
+ * The barn's dialect (dome-detail-275): the Hessian house's, but its narrow lofts are the stone storey's air slits (the
+ * reveal's dark, a dressed lintel and sill) and its wide loft the hay door (one plank leaf shut at the back of the
+ * reveal, the other folded back on the wall).
+ */
+function barnDialect(st: HessianState): HouseDialect {
+  const base = hessianDialect(st);
+  return {
+    ...base,
+    window: (sink, face, o, y0, frame) => {
+      if (o.kind !== 'loft') { base.window(sink, face, o, y0, frame); return; }
+      const y = y0 + o.y0, r = sink.recess;
+      if (o.w < 0.3) {
+        faceBox(sink, 'stone', face, o.u, y + o.h + 0.09, 0.02, o.w + 0.3, 0.18, 0.04, { decor: true, tint: DRESSING_TINT });
+        faceBox(sink, 'stone', face, o.u, y - 0.05, 0.035 - r / 2, o.w + 0.2, 0.1, 0.07 + r, { decor: true, tint: DRESSING_TINT, fineSides: true });
+        return;
+      }
+      const leaf = o.w / 2, plank = shade(GATE, 0.9);
+      // the shut leaf at the back of the reveal, its boards each a tone
+      for (let k = 0; k < 3; k++) {
+        faceBox(sink, SW, face, o.u - leaf + (k + 0.5) * leaf / 3, y + o.h / 2, -r + 0.03, leaf / 3 - 0.01, o.h - 0.02, 0.035,
+          { colour: shade(plank, 0.9 + ((k * 7) % 3) * 0.06), decor: true, uv: UV_MEMBER });
+      }
+      // the open leaf folded back on the wall beside the opening, on the timber's face
+      for (let k = 0; k < 3; k++) {
+        faceBox(sink, SW, face, o.u + o.w / 2 + 0.02 + (k + 0.5) * leaf / 3, y + o.h / 2, OUT + 0.035, leaf / 3 - 0.01, o.h, 0.035,
+          { colour: shade(plank, 0.95 + ((k * 5) % 3) * 0.05), decor: true, uv: UV_MEMBER });
+      }
+      for (const ly of [0.18, o.h - 0.18]) faceBox(sink, SW, face, o.u + o.w / 2 + 0.02 + leaf / 2, y + ly, OUT + 0.06, leaf, 0.05, 0.015, { colour: [0.16, 0.15, 0.14], decor: true, fine: 'near' });
+    },
+  };
+}
+
+/**
+ * A clock in a street gable (dome-detail-275; a village school's): the white dial in its dark ring on the king post, the
+ * hours marked, the hands at a quarter to twelve; near the camera the marks and the hands.
+ */
+function gableClock(sink: PartSink, face: Face, y: number): void {
+  const r = 0.36, c = H.facePoint(face, 0, y, 0.06), axis = Math.abs(face.out[0]) > 0.5 ? 'x' : 'z';
+  const k = (axis === 'x' ? face.out[0] : face.out[2]) > 0 ? 0 : 1;
+  const start: Vec3 = k ? H.facePoint(face, 0, y, 0.11) : c;
+  sink.cylinder(SW, start, axis, 0.05, r + 0.05, 16, { colour: rgb(0x2a2a28), decor: true });
+  const dial = Array.from({ length: 16 }, (_, i): Vec3 => H.facePoint(face, Math.cos(i * Math.PI / 8) * r, y + Math.sin(i * Math.PI / 8) * r, 0.112));
+  facing(sink, SW, dial, face.out, { colour: rgb(0xe8e2d2), decor: true });
+  const ink = { colour: rgb(0x1c1c1c), decor: true, fine: 'near' as const };
+  for (let h = 0; h < 12; h += 3) {
+    const a = h * Math.PI / 6;
+    facePanel(sink, SW, face, Math.sin(a) * r * 0.62, y + Math.cos(a) * r * 0.62, 0.115, 0.04, 0.04, ink);
+  }
+  // the hands: the hour's short toward eleven, the minute's long toward nine
+  sink.member(SW, H.facePoint(face, 0, y, 0.117), H.facePoint(face, -r * 0.25, y + r * 0.42, 0.117), 0.035, 0.006, face.out, ink, 0);
+  sink.member(SW, H.facePoint(face, 0, y, 0.12), H.facePoint(face, -r * 0.66, y, 0.12), 0.022, 0.006, face.out, ink, 0);
+}
+
+/**
+ * A stag's antlers on their shield board (dome-detail-275; a forester's lodge's Geweih over its gable): the board on the
+ * wall, the skull's frontal bone pale on it, each beam sweeping up and out in three lengths with its tines turned
+ * forward.
+ */
+function antlers(sink: PartSink, face: Face, y: number, board: Rgb): void {
+  faceBox(sink, SW, face, 0, y, 0.03, 0.36, 0.48, 0.06, { colour: board, decor: true, uv: UV_MEMBER });
+  faceBox(sink, SW, face, 0, y + 0.08, 0.09, 0.16, 0.18, 0.06, { colour: rgb(0xd8ccb4), decor: true });
+  const horn = { colour: rgb(0x6a5640), decor: true, exposed: true }, tip = { colour: rgb(0xcfc2a6), decor: true, exposed: true };
+  for (const side of [-1, 1]) {
+    // the beam's points (u, y, out) from the burr to the crown
+    const beam: Array<[number, number, number]> = [[0.07, 0.14, 0.11], [0.34, 0.42, 0.16], [0.5, 0.82, 0.2], [0.42, 1.2, 0.18]];
+    const P = ([u, dy, o]: [number, number, number]): Vec3 => H.facePoint(face, side * u, y + dy, o);
+    for (let i = 0; i + 1 < beam.length; i++) sink.member(SW, P(beam[i]), P(beam[i + 1]), 0.055 - i * 0.008, 0.055 - i * 0.008, face.out, horn, 0);
+    // the tines from the beam forward and up, their points pale
+    for (const [i, du, dy, dout] of [[0, 0.02, 0.12, 0.26], [1, -0.04, 0.2, 0.24], [2, 0.02, 0.24, 0.2], [3, -0.12, 0.2, 0.06]] as const) {
+      const a = beam[i];
+      sink.member(SW, P(a), P([a[0] + du, a[1] + dy, a[2] + dout]), 0.035, 0.035, face.out, i === 3 ? tip : horn, 0);
+    }
+  }
+}
+
 /** The Hessian dwelling: cottage, tavern, schoolhouse and shop variants. */
-function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: boolean; tavern?: boolean; school?: boolean } = {}): RegionalParts {
+function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: boolean; tavern?: boolean; school?: boolean; lodge?: boolean } = {}): RegionalParts {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
   const W = Math.max(5.0, ctx.info.w - 0.3), D = Math.max(6.6, ctx.info.d - 0.3);
@@ -503,13 +786,35 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
     // a weather gable hung with the roof's own slate or tile, or framed like the walls below
     gableFramed: !hung,
     gableBucket: hung ? 'roof' : st.infill,
-    openings: houseOpenings(W, D, sts, { face: 'front', u: doorU }, st, extra),
+    openings: houseOpenings(W, D, sts, { face: 'front', u: doorU }, st, extra, opts.tavern ? 2.2 : opts.lodge ? 2.05 : 1.75,
+      opts.school ? [0.92, 1.42, 0.72] : undefined),
     chimneys: chimneyFor(st.rng, D, st.rng() < 0.5 ? 'stone' : 'plaster'),
     gutters: st.rng() < 0.7 ? { colour: ZINC } : null,
     verge: { colour: st.timber, bucket: SW },
     rafters: st.mobile ? null : shade(st.timber, 0.92),
   };
   const frame = buildHouse(sink, spec, hessianDialect(st));
+  const look = st.look, top = frame.bodies[frame.bodies.length - 1];
+  // (dome-detail-275) the plain tiles in their courses; a weather gable's hung tiles or slates in theirs
+  tiledRoof(sink, frame, look, opts.tavern ? 8 : opts.lodge ? 6 : 4);
+  if (hung && frame.roof.gable) {
+    const gf = bodyFaces(top.x1 - top.x0, top.z1 - top.z0), poly = frame.roof.gable.map(([u, y]): [number, number] => [u, y]);
+    sink.placed(0, (top.x0 + top.x1) / 2, 0, (top.z0 + top.z1) / 2, () => { for (const g of [gf.front, gf.back]) hungGableCourses(sink, g, poly, look, 3); });
+  }
+  // (dome-detail-275) the door's lintel cut with the builders' names and the year, the letters dark in the stone
+  const door = spec.openings.find((o) => o.kind === 'door');
+  if (door) {
+    inscription(sink, 'stone', frame.faces[door.face], door.u, frame.floors[0] + door.y0 + door.h + 0.1, door.w + 0.22, 0.14, 0.104,
+      { tint: DRESSING_TINT, shade: 0.9 }, { shade: 0.42 }, look);
+  }
+  // (dome-detail-275) a school's sandstone storey dressed at its corners, and the clock in its street gable; a forester's
+  // lodge's antlers on its street gable
+  const b0 = frame.bodies[0];
+  if (opts.school && spec.storeys[0].wall === 'stone') cornerStones(sink, b0.x0, b0.x1, b0.z0, b0.z1, b0.y0, b0.y1, look);
+  if ((opts.school || opts.lodge) && frame.roof.gable) {
+    const gf = bodyFaces(top.x1 - top.x0, top.z1 - top.z0).front, gy = frame.eaveY + (opts.school ? 1.78 : 1.45);
+    sink.placed(0, (top.x0 + top.x1) / 2, 0, (top.z0 + top.z1) / 2, () => (opts.school ? gableClock(sink, gf, gy) : antlers(sink, gf, gy, shade(st.timber, 0.85))));
+  }
   if (opts.tavern) innSign(sink, frame, st);
   if (opts.school) roofTurret(sink, frame, st, 0.3);
   // an inn's and a school's big roof carries a dormer on each eaves slope (facade craft, desktop)
@@ -523,7 +828,7 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
       }));
     }
   }
-  dressHessianHouse(sink, frame, st, { aerial: opts.school ? 0.2 : 0.45, boxes: opts.school ? 0.2 : 0.6 });
+  dressHessianHouse(sink, frame, st, { aerial: opts.school ? 0.2 : 0.45, boxes: opts.school ? 0.2 : 0.6, boxCap: opts.tavern ? 6 : opts.lodge ? 8 : 12, barrels: opts.tavern });
   return sink.finish();
 }
 
@@ -540,7 +845,7 @@ const BOX_COLOURS: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30].map(rgb);
  * hangs no flower box, which would stand in that body's wall.
  */
 function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
-  opts: { aerial?: number; boxes?: number; clear?: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }> } = {}): void {
+  opts: { aerial?: number; boxes?: number; clear?: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }>; boxCap?: number; barrels?: boolean } = {}): void {
   const rng = st.rng;
   const boxes = rng() < (opts.boxes ?? 0.55), bloom = pick(rng, BLOOMS), boxColour = pick(rng, BOX_COLOURS);
   const aerial = rng() < (opts.aerial ?? 0.45), aerialZ = (rng() - 0.5) * frame.roof.halfD;
@@ -548,7 +853,7 @@ function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
   const picks = frame.spec.openings.map(() => rng());
   // the dressing draws the build stream (flower boxes, the woodpile, the aerial): a phone draws it as the desktop does
   // and keeps none of it (PartSink.dressing)
-  sink.dressing(st.mobile, () => houseDressing(sink, frame, st, rng, { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear: opts.clear ?? [] }));
+  sink.dressing(st.mobile, () => houseDressing(sink, frame, st, rng, { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear: opts.clear ?? [], boxCap: opts.boxCap ?? 12, barrels: !!opts.barrels }));
 }
 
 /**
@@ -557,15 +862,17 @@ function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
  */
 function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng: () => number, c: {
   boxes: boolean; bloom: Rgb; boxColour: Rgb; aerial: boolean; aerialZ: number; ladder: boolean; pile: boolean; seat: boolean;
-  lantern: boolean; picks: number[]; clear: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }>;
+  lantern: boolean; picks: number[]; clear: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }>; boxCap: number; barrels: boolean;
 }): void {
-  const { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear } = c;
+  const { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear, boxCap, barrels } = c;
   const spec = frame.spec;
   // (props census r2 sweep, Lane C 2026-10-16: a farmhouse's upper window over its stable wing hung its box into the
   // wing's framed wall, an iron bracket lying flat on its post) a box that would stand in a body built against the face
   // is drawn into a sink that is thrown away: its draws are spent as before, so the stream's later choices never move
   const scratch = new PartSink();
-  const boxSink = (o: Opening): PartSink => (clear.some((s) => s.face === o.face && o.u + o.w / 2 + 0.16 > s.u0 && o.u - o.w / 2 - 0.16 < s.u1) ? scratch : sink);
+  // (dome-detail-275) past the house's cap (a big inn's or lodge's triangle budget) a box is drawn into the scratch sink too
+  let hung = 0;
+  const boxSink = (o: Opening): PartSink => (clear.some((s) => s.face === o.face && o.u + o.w / 2 + 0.16 > s.u0 && o.u - o.w / 2 - 0.16 < s.u1) || hung++ >= boxCap ? scratch : sink);
   // the canopy over the front door (facade craft: its own stream, the build stream draws as before)
   if (facadeOn()) {
     const f = facadeRng();
@@ -608,7 +915,19 @@ function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng:
   if (pile) {
     const face = frame.faces.back;
     const blocked = spec.openings.some((o) => o.face === 'back' && o.storey === 0 && o.kind !== 'window' && o.u < -face.width / 2 + 3.4);
-    if (!blocked) woodpile(sink, face, -face.width / 2 + 0.4, Math.min(face.width / 2 - 0.4, -face.width / 2 + 2.9), 1.15, rng);
+    // (dome-detail-275) an inn stacks its barrels by the cellar door where a house stacks its wood (the pile's draws kept)
+    if (!blocked) woodpile(barrels ? scratch : sink, face, -face.width / 2 + 0.4, Math.min(face.width / 2 - 0.4, -face.width / 2 + 2.9), 1.15, rng);
+    if (!blocked && barrels) {
+      const oak = shade(st.timber, 1.45);
+      for (let k = 0; k < 3; k++) {
+        const u = -face.width / 2 + 0.75 + k * 0.72, r = 0.29, h = 0.84, o = r + 0.04 + (k % 2) * 0.12;
+        const p = H.facePoint(face, u, 0, o);
+        // the staves bellied out between the heads, the hoops dark at the heads and the bilge
+        sink.cylinder(SW, p, 'y', h / 2, r * 0.86, 10, { colour: shade(oak, 0.95 + k * 0.05), decor: true }, r, false);
+        sink.cylinder(SW, [p[0], h / 2, p[2]], 'y', h / 2, r, 10, { colour: shade(oak, 0.95 + k * 0.05), decor: true }, r * 0.86, false);
+        sink.cylinder(SW, [p[0], h - 0.03, p[2]], 'y', 0.035, r * 0.88, 10, { colour: shade(oak, 0.7), decor: true });
+      }
+    }
   }
   const stack = spec.chimneys[0];
   if (ladder && stack) roofLadder(sink, frame, stack.x >= 0 ? 1 : -1, stack.z - 0.7, 0.85, [0.36, 0.3, 0.24]);
@@ -707,11 +1026,19 @@ const farmhouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The Hessian barn: a sandstone ground storey with the planked gate in the street gable, a framed loft. */
+/**
+ * The Hessian barn: a sandstone ground storey with the planked gate in the street gable, a framed loft. (dome-detail-275,
+ * the work list: "the Fachwerk gable reads; a large smooth roof") Its plain tiles in their courses; the sandstone's
+ * corners dressed long and short; air slits through its long walls; the loft's hay door with its leaves, the hoist beam
+ * over it in the gable; the inscribed sill beam over the gate; the wheel guards at the gate's jambs and the setts of
+ * the drive before it.
+ */
 const barn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
   const W = Math.max(7.0, ctx.info.w - 0.3), D = Math.max(10.4, ctx.info.d - 0.3);
+  // (dome-detail-275) the air slits through the sandstone: narrow lofts the barn's dialect leaves to the reveal's dark
+  const slit = (face: Opening['face'], u: number): Opening => ({ face, storey: 0, kind: 'loft', u, w: 0.16, y0: 1.25, h: 1.05 });
   const spec: HouseSpec = {
     w: W, d: D, plinth: { h: 0.25, out: 0.05, bucket: 'stone' },
     storeys: [{ h: 3.5, wall: 'stone' }, { h: 1.9, wall: st.infill, framed: true, jetty: [0.18, 0, 0, 0] }],
@@ -723,20 +1050,40 @@ const barn: RegionalBuilder = (ctx) => {
       { face: 'left', storey: 0, kind: 'window', u: -D * 0.18, w: 0.6, y0: 2.05, h: 0.6 },
       { face: 'left', storey: 0, kind: 'window', u: D * 0.2, w: 0.6, y0: 2.05, h: 0.6 },
       { face: 'front', storey: 1, kind: 'loft', u: 0, w: 1.1, y0: 0.35, h: 1.15 },
+      slit('right', -D * 0.05), slit('right', D * 0.33), slit('left', -D * 0.37), slit('left', D * 0.01), slit('left', D * 0.37),
+      slit('back', -W * 0.25), slit('back', W * 0.25),
     ],
     chimneys: [], gutters: st.rng() < 0.5 ? { colour: ZINC } : null, verge: { colour: st.timber, bucket: SW },
   };
-  buildHouse(sink, spec, hessianDialect({ ...st, crosses: false, litShare: 0.05 }));
+  const frame = buildHouse(sink, spec, barnDialect({ ...st, crosses: false, litShare: 0.05 }));
+  const look = st.look, b0 = frame.bodies[0], f1 = storeyFaces(frame, 1).front, gateFace = frame.faces.front;
+  // (dome-detail-275) the plain tiles in their courses
+  tiledRoof(sink, frame, look, 3);
+  // (dome-detail-275) the sandstone storey's corners dressed long and short
+  cornerStones(sink, b0.x0, b0.x1, b0.z0, b0.z1, b0.y0, b0.y1, look);
+  // (dome-detail-275) the loft's sill beam over the gate carved with the builder's names and the year, picked out in white
+  inscription(sink, SW, f1, 0, frame.floors[1] + 0.09, 3.2, 0.13, OUT - 0.008, { colour: shade(st.timber, 0.78) }, { colour: rgb(0xd8d0b8) }, look);
+  // (dome-detail-275) the hoist beam out of the gable over the hay door, its rope back to the cleat beside the door
+  hoistBeam(sink, f1, 0, frame.eaveY + 1.35, 0.55, 0.85, frame.floors[1] + 1.0, shade(st.timber, 1.05));
+  // (dome-detail-275) the wheel guards at the gate's jambs; the drive's setts worn into the threshold
+  for (const side of [-1, 1]) wheelGuard(sink, H.facePoint(gateFace, side * 1.95, 0, 0.19));
+  sink.span('stone', -1.85, -0.08, b0.z1, 1.85, 0.035, b0.z1 + 0.66, { decor: true, shade: 0.78, tint: [0.92, 0.9, 0.88] });
   return sink.finish();
 };
 
-/** A small timber-framed granary (Speicher) on a high sandstone plinth, door up a flight of steps. */
+/**
+ * A small timber-framed granary (Speicher) on a high sandstone plinth, door up a flight of steps. (dome-detail-275; the
+ * work list's density) Its plain tiles in their courses; the plinth's corners dressed long and short; the flight between
+ * its sandstone cheek walls; the plank door under its lintel cut with the year; the air vents barred with oak; the
+ * grain sacks waiting at the foot of the steps.
+ */
 const granary: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
   const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.3, ctx.info.d - 1.6);
+  const plinth = 0.95;
   const spec: HouseSpec = {
-    w: W, d: D, plinth: { h: 0.95, out: 0.08, bucket: 'stone' },
+    w: W, d: D, plinth: { h: plinth, out: 0.08, bucket: 'stone' },
     storeys: [{ h: 2.35, wall: st.infill, framed: true }],
     roof: roofFor(st.rng, { halfHip: 0.35, pitch: [50, 56] }), gableFramed: true, gableBucket: st.infill,
     openings: [
@@ -745,8 +1092,48 @@ const granary: RegionalBuilder = (ctx) => {
       { face: 'left', storey: 0, kind: 'loft', u: 0, w: 0.5, y0: 1.2, h: 0.5 },
     ],
     chimneys: [], gutters: null, verge: { colour: st.timber, bucket: SW },
+    // (dome-detail-275) the rafters' feet under the eaves (dressing, on every tier)
+    rafters: shade(st.timber, 0.92),
   };
-  buildHouse(sink, spec, hessianDialect({ ...st, litShare: 0 }));
+  const gst: HessianState = { ...st, litShare: 0 };
+  const base = hessianDialect(gst);
+  const frame = buildHouse(sink, spec, {
+    ...base,
+    // (dome-detail-275) the store's vents: the reveal's dark behind three oak bars, never glass
+    window: (s, face, o, y0) => {
+      const y = y0 + o.y0, r = s.recess;
+      for (const du of [-0.13, 0, 0.13]) faceBox(s, SW, face, o.u + du, y + o.h / 2, -r + 0.05, 0.05, o.h, 0.05, { colour: shade(st.timber, 1.1), decor: true, uv: UV_MEMBER }, 'caps');
+    },
+    // (dome-detail-275) a store's door is planked (the build stream's draw for the leaf's kind kept)
+    door: (s, face, o, y0, fr) => {
+      gst.rng();
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: st.door, frame: { bucket: 'stone', width: 0.2, out: 0.1, ...(facadeOn() ? { tint: DRESSING_TINT } : {}) }, transom: false,
+        steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, fr.floors[o.storey] + o.y0);
+    },
+  });
+  const look = st.look, f0 = frame.faces.front, po = spec.plinth!.out;
+  // (dome-detail-275) the plain tiles in their courses
+  tiledRoof(sink, frame, look, 2.5);
+  // (dome-detail-275) the plinth's corners dressed long and short, under its water table
+  cornerStones(sink, -W / 2 - po, W / 2 + po, -D / 2 - po, D / 2 + po, -0.04, plinth - 0.07, look, 0.3, 0.03);
+  // (dome-detail-275) the door's lintel cut with the year and the owners' initials, the letters dark in the stone
+  inscription(sink, 'stone', f0, 0, plinth + 1.85 + 0.1, 1.0, 0.15, 0.104, { tint: DRESSING_TINT, shade: 0.9 }, { shade: 0.45 }, look);
+  // (dome-detail-275) the flight's cheek walls of sandstone either side, their copings sloping with the steps
+  const run = Math.min(6, Math.ceil(plinth / 0.19)) * 0.3, cheek = 0.9 + 0.4 + 0.3;
+  for (const side of [-1, 1]) {
+    const u0 = side * cheek / 2, pts: Vec3[] = [[0, -0.05], [run + 0.06, -0.05], [run + 0.06, 0.26], [0.22, plinth + 0.14], [0, plinth + 0.14]]
+      .map(([o, y]) => H.facePoint(f0, u0, y, o));
+    orientedPrism(sink, 'stone', pts, [f0.u[0] * side, 0, f0.u[2] * side], 0.2, { decor: true, tint: DRESSING_TINT });
+  }
+  // (dome-detail-275) the sacks of grain at the foot of the steps, slumped against the plinth
+  const jute: Rgb = rgb(0xc9b58c);
+  for (let k = 0; k < 3; k++) {
+    const side = k === 2 ? -1 : 1, u = side * (cheek / 2 + 0.5 + (k === 1 ? 0.48 : 0)), r = 0.2 + look() * 0.04;
+    const p = H.facePoint(f0, u, 0, po + r + 0.02 + look() * 0.06);
+    sink.cylinder(SW, p, 'y', 0.5 + look() * 0.12, r, 8, { colour: shade(jute, 0.88 + look() * 0.2), decor: true }, r * 0.7);
+  }
   return sink.finish();
 };
 
@@ -771,7 +1158,14 @@ const woodshed: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A long timber-framed storehouse with a loading platform and canopy on +x (the base depot's footprint). */
+/**
+ * A long timber-framed storehouse with a loading platform and canopy on +x (the base depot's footprint). (dome-detail-275,
+ * the work list's density) Its plain tiles in their courses, the canopy's too; the sandstone's corners dressed long and
+ * short; air slits through its blind back; the loading door in the street gable under its hoist beam; the co-operative's
+ * name board over the platform; the platform's dressed coping, its fender beam and its steps; the canopy carried on a
+ * purlin over the posts with their knee braces, its rafters back to the wall plate, the posts on stone bases; the goods
+ * waiting on the platform.
+ */
 const depot: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
@@ -788,24 +1182,82 @@ const depot: RegionalBuilder = (ctx) => {
       : { face: 'right', storey: 0, kind: 'window', u, w: 0.9, y0: 1.6, h: 0.9 });
   }
   openings.push({ face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.6, y0: 0, h: 2.9 });
+  // (dome-detail-275) the air slits through the blind back and the back gable (the barn's dialect: the reveal's dark);
+  // the loading door in the framed storey of the street gable
+  for (let k = 0; k < 5; k++) openings.push({ face: 'left', storey: 0, kind: 'loft', u: -D / 2 + (k + 0.5) * D / 5, w: 0.16, y0: 1.3, h: 1.05 });
+  for (const u of [-W * 0.25, W * 0.25]) openings.push({ face: 'back', storey: 0, kind: 'loft', u, w: 0.16, y0: 1.3, h: 1.05 });
+  openings.push({ face: 'front', storey: 1, kind: 'loft', u: 0, w: 1.1, y0: 0.2, h: 1.2 });
+  const look = st.look, timber = st.timber;
   sink.placed(0, cx, 0, 0, () => {
-    buildHouse(sink, {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.75, out: 0.05, bucket: 'stone' }, storeys: sts,
       roof: { kind: 'gable', pitchDeg: 42, eave: 0.45, verge: 0.3, thickness: 0.16, bucket: 'roof', ridge: 'round' },
       gableFramed: true, gableBucket: st.infill, openings, chimneys: [], gutters: { colour: ZINC },
       verge: { colour: st.timber, bucket: SW },
-    }, hessianDialect({ ...st, crosses: false, litShare: 0.1 }));
+    }, barnDialect({ ...st, crosses: false, litShare: 0.1 }));
+    const b0 = frame.bodies[0], f1 = storeyFaces(frame, 1);
+    // (dome-detail-275) the plain tiles in their courses; the sandstone's corners dressed long and short
+    tiledRoof(sink, frame, look, 3.5);
+    cornerStones(sink, b0.x0, b0.x1, b0.z0, b0.z1, b0.y0, b0.y1, look);
+    // (dome-detail-275) the hoist beam out of the street gable over the loading door, its rope to the cleat beside it
+    hoistBeam(sink, f1.front, 0, frame.eaveY + 1.45, 0.55, 0.95, frame.floors[1] + 0.9, shade(timber, 1.05));
+    // (dome-detail-275) the co-operative's name board over the platform: a board on the framing, its letters in cream
+    const nb = f1.right, ny = frame.floors[1] + 1.02, nw = Math.min(6.4, D * 0.4);
+    faceBox(sink, SW, nb, 0, ny, 0.045, nw + 0.12, 0.44, 0.09, { colour: rgb(0x2f4a3a), decor: true, uv: UV_MEMBER });
+    inscription(sink, SW, nb, 0, ny, nw, 0.34, 0.091, { colour: rgb(0x34503f) }, { colour: rgb(0xe2d8bc) }, look);
   });
   // the loading platform along +x, its canopy posts and the canopy
   const px0 = cx + W / 2;
   sink.span('stone', px0, -0.4, -D / 2 - 0.6, px0 + pw, 0.95, D / 2 + 0.6);
-  for (let k = 0, n = Math.max(3, Math.round(D / 4.5)); k <= n; k++) {
-    const z = -D / 2 + k * (D / n);
-    sink.span(SW, px0 + pw - 0.32, 0.95, z - 0.08, px0 + pw - 0.16, 4.0, z + 0.08, { colour: st.timber });
+  // (dome-detail-275) the platform's dressed coping along its edge and the oak fender beam under it; the steps up at -z
+  const pz = D / 2 + 0.6, dressed: EmitOptions = { decor: true, tint: DRESSING_TINT };
+  sink.span('stone', px0 + pw - 0.34, 0.88, -pz - 0.04, px0 + pw + 0.05, 0.99, pz + 0.04, dressed);
+  sink.span(SW, px0 + pw, 0.42, -pz + 0.3, px0 + pw + 0.13, 0.7, pz - 0.3, { colour: shade(timber, 1.12), decor: true, uv: UV_MEMBER });
+  for (let k = 1; k <= 4; k++) {
+    sink.span('stone', px0 + pw - 1.6, -0.05, -pz - k * 0.28, px0 + pw - 0.1, 0.95 * (1 - k / 5) + 0.02, -pz - (k - 1) * 0.28 + 0.01, { ...dressed, shade: 0.92 + (k % 2) * 0.05 });
   }
+  const posts: number[] = [];
+  for (let k = 0, n = Math.max(3, Math.round(D / 4.5)); k <= n; k++) posts.push(-D / 2 + k * (D / n));
+  const xp = px0 + pw - 0.24, tanC = Math.tan(9 * Math.PI / 180);
   const canopy = { kind: 'shed' as const, pitchDeg: 9, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof' as const };
+  const ccx = px0 + pw / 2 + 0.05, sC = (pw + 0.3) / 2;
+  // the canopy's underside over x (its frame: rising toward -x from 4.0 at its +x wall line)
+  const under = (x: number): number => 4.0 + (sC - (x - ccx)) * tanC;
+  for (const z of posts) {
+    sink.span(SW, xp - 0.08, 0.95, z - 0.08, xp + 0.08, 4.0, z + 0.08, { colour: timber });
+    // (dome-detail-275) the post's stone base, and its knee braces up to the purlin along the platform
+    sink.span('stone', xp - 0.14, 0.9, z - 0.14, xp + 0.14, 1.16, z + 0.14, dressed);
+    for (const dz of [-1, 1]) {
+      if (Math.abs(z + dz * 0.75) > D / 2 + 0.45) continue;
+      sink.member(SW, [xp, 3.25, z + dz * 0.04], [xp, 3.86, z + dz * 0.7], 0.11, 0.11, [1, 0, 0], { colour: shade(timber, 0.95), decor: true, uv: UV_MEMBER }, 0.055);
+    }
+  }
+  // (dome-detail-275) the purlin on the posts' heads up to the canopy, the wall plate on the storehouse, the rafters
+  // between them under the covering
+  sink.span(SW, xp - 0.1, 3.86, -D / 2 - 0.45, xp + 0.1, under(xp + 0.1) + 0.01, D / 2 + 0.45, { colour: shade(timber, 0.92), decor: true, uv: UV_MEMBER });
+  sink.span(SW, px0, under(px0 + 0.14) - 0.2, -D / 2 - 0.45, px0 + 0.14, under(px0 + 0.14) + 0.01, D / 2 + 0.45, { colour: shade(timber, 0.92), decor: true, uv: UV_MEMBER });
+  for (let z = -D / 2 - 0.3; z <= D / 2 + 0.31; z += (D + 0.6) / Math.round((D + 0.6) / 1.1)) {
+    const a: Vec3 = [xp + 0.25, under(xp + 0.25) - 0.05, z], b: Vec3 = [px0 + 0.07, under(px0 + 0.07) - 0.05, z];
+    sink.member(SW, a, b, 0.07, 0.1, [0, 1, 0], { colour: shade(timber, 0.85), decor: true, uv: UV_MEMBER, exposed: true }, 0.05);
+  }
   // a shed roof rises toward -x: its high side meets the storehouse wall
-  sink.placed(0, px0 + pw / 2 + 0.05, 0, 0, () => emitRoof(sink, roofGeometry(pw + 0.3, D + 1.2, 4.0, canopy), canopy));
+  sink.placed(0, ccx, 0, 0, () => {
+    const rg = roofGeometry(pw + 0.3, D + 1.2, 4.0, canopy);
+    emitRoof(sink, rg, canopy);
+    // (dome-detail-275) the canopy's tiles in their courses, up to where it meets the wall
+    tileCourses(sink, sideSlope(rg, canopy, 1), look, { run: 3, foot: true, top: (pw + 0.05) / Math.cos(9 * Math.PI / 180) });
+  });
+  // (dome-detail-275) the goods waiting on the platform by the windows: crates, sacks and a barrel, against the wall
+  const jute = rgb(0xc9b58c), crate = shade(timber, 1.5);
+  openings.filter((o) => o.face === 'right' && o.kind === 'window').forEach((o) => {
+    const z = -o.u, kind = look();
+    for (let k = 0; k < 2; k++) {
+      const zz = z + (k - 0.5) * 0.75, x = px0 + 0.4 + look() * 0.15;
+      if (kind < 0.4) sink.span(SW, x - 0.3, 0.95, zz - 0.3, x + 0.3, 1.45 + look() * 0.1, zz + 0.3, { colour: shade(crate, 0.85 + look() * 0.2), decor: true, uv: UV_MEMBER });
+      else if (kind < 0.75) sink.cylinder(SW, [x, 0.95, zz], 'y', 0.55 + look() * 0.1, 0.22, 8, { colour: shade(jute, 0.88 + look() * 0.2), decor: true }, 0.16);
+      else sink.cylinder(SW, [x, 0.95, zz], 'y', 0.85, 0.28, 10, { colour: shade(timber, 1.3 + look() * 0.2), decor: true }, 0.28);
+    }
+  });
   return sink.finish();
 };
 
@@ -1024,7 +1476,7 @@ const FACHWERK_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.free
   tavern: (ctx) => hessianDwelling(ctx, { storeys: 3, tavern: true }),
   schoolhouse: (ctx) => hessianDwelling(ctx, { school: true }),
   cornershop: (ctx) => hessianDwelling(ctx, { shop: true }),
-  rangerlodge: (ctx) => hessianDwelling(ctx, { school: false, tavern: false }),
+  rangerlodge: (ctx) => hessianDwelling(ctx, { lodge: true }),
   farmhouse, barn, granary, woodshed, depot, ruin, church, chapel, mill,
 });
 
