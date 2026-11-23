@@ -306,6 +306,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/twinMuzzleParity.selftest.mjs',
     // round 8 Y1 s5-01 (review r1): the same mouths on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/twinMuzzleSolo.selftest.mjs',
+    // replay-system-275 (docs/REPLAY.md): the recording's bytes and the seat stage (no world)
+    'src/sim/replayFormat.selftest.mjs',
+    // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
+    'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',

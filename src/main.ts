@@ -264,6 +264,8 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { createReplayRecorder, type RecorderGame, type ReplaySetupOptions } from './game/replay/replayRecorder.ts';
+import { saveReplay } from './game/replay/replayStore.ts';
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
@@ -747,7 +749,15 @@ const devTrace = traceRequested
     traceMode: import.meta.env.DEV ? 'development' : 'production-qa',
   })
   : null;
-const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+// the battle recorder (docs/REPLAY.md): every solo battle's seat controls, actions and timeline marks, saved on leaving it
+const replayRecorder = createReplayRecorder();
+const finishReplay = (): void => {
+  const done = replayRecorder.finish();
+  if (done) void saveReplay(done.bytes, done.header, done.end);
+};
+const bus = createBus(devTrace
+  ? (ev, payload) => { devTrace.event(ev, payload); replayRecorder.onEvent(ev, payload); }
+  : (ev, payload) => replayRecorder.onEvent(ev, payload));
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
 installBattleRecords(bus);
@@ -2533,6 +2543,8 @@ playerBattleActions = createPlayerBattleActions({
   bus,
   input,
   isSettingsOpen: () => settings.isOpen(),
+  // the seat's discrete actions for the battle's recording (game/replay/seatActions.ts)
+  recordSeatWrite: (kind, args) => replayRecorder.recordSeatWrite(kind, args),
   network: {
     isActive: onlineMatchActive,
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
@@ -2542,7 +2554,7 @@ playerBattleActions = createPlayerBattleActions({
   scuttle: { bit: PLAYER_ACTION_BITS.SCUTTLE, holdS: SCUTTLE_HOLD_S },
   strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
     blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
-  rules: {
+  rules: replayRecorder.wrapRules({
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
     magazineReloadDenialReason: battleClientAccess.magazineReloadDenialReason,
@@ -2560,7 +2572,7 @@ playerBattleActions = createPlayerBattleActions({
     pressSelfRight: battleClientAccess.pressSelfRight,
     requestHullTurbo: battleClientAccess.requestHullTurbo,
     requestHullAirSpin: battleClientAccess.requestHullAirSpin,
-  },
+  }),
 });
 const playerFrameInput = createPlayerFrameInput({
   input,
@@ -2808,7 +2820,13 @@ const soloBattleStart = createSoloBattleStartAccess({
       setCamoBiome,
       // the hero leaves for battle in the paint it wears, never a try-on's tile
       lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
-      setupBattle,
+      // the battle's recording opens round its setup (game/replay/replayRecorder.ts: what setup reads beyond its options)
+      setupBattle: (battle: Parameters<typeof setupBattle>[0], specId: string, world: Parameters<typeof setupBattle>[2],
+        options: Parameters<typeof setupBattle>[3]) => {
+        finishReplay();
+        replayRecorder.beginSetup(battle as unknown as RecorderGame, specId, (options ?? {}) as ReplaySetupOptions);
+        try { return setupBattle(battle, specId, world, options); } finally { replayRecorder.endSetup(); }
+      },
       combatWarm,
       presentation: battlePresentation,
       applyPlayerCamo: (specId: string) => applyCamoPatterns(specId),
@@ -4207,7 +4225,11 @@ const battleFrame = createBattleFrameRuntime({
   stepSimulation: () => {
     // a couch battle's seats: each phone's controls onto its tank, once per fixed step (docs/COUCH-MODE.md)
     couchOwner.current?.beforeStep();
-    return simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
+    // the recorder stages the seat as the replay will (sim/seatControl.ts) and keeps the step (docs/REPLAY.md §2)
+    replayRecorder.beforeStep();
+    const stepped = simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
+    replayRecorder.afterStep();
+    return stepped;
   },
   // (who paused: a tutorial card's hold, or the pause menu; the tutorial's own card stays up under its own hold)
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused, by: paused && !settings.isOpen() && tutorialHolds() ? 'tutorial' : 'menu' }),
@@ -4342,6 +4364,8 @@ invalidateGaragePresentation = () => {
 // Quality changes mutate shadow projections and post targets even in a sleeping Garage.
 onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier(); });
 bus.on('phase:change', () => {
+  // a battle left (the garage, a studio, a room) closes its recording and saves it
+  if (game.phase !== 'battle') finishReplay();
   if (game.phase === 'garage') {
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
     // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows; round 8 Y4

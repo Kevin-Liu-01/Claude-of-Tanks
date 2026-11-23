@@ -118,6 +118,8 @@ interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
   /** (death-flow-275 R7) The scuttle: its action bit (sim/playerActions.ts SCUTTLE) and how long its key is held
    *  (sim/matchRuleset.ts SCUTTLE_HOLD_S): a port, so the policy stays free of the sim. Absent: no scuttle. */
   scuttle?: { readonly bit: number; readonly holdS: number };
+  /** A simulation write the handlers make outside `rules`, for the battle's recording (game/replay/seatActions.ts). */
+  recordSeatWrite?(kind: string, args: number[]): void;
 }
 
 export interface PlayerBattleActions {
@@ -157,6 +159,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   strikes,
   isSettingsOpen,
   scuttle = undefined,
+  recordSeatWrite,
 }: PlayerBattleActionsOptions<TEntity>): PlayerBattleActions {
   if (!game || !bus || !input || !rules || !network || !strikes
       || typeof isSettingsOpen !== 'function') {
@@ -432,6 +435,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
         && current !== action.missileSlot
         && player.spec.gun.shells[current]?.guided !== true) {
       action.previousShellSlot = current;
+      // the one simulation write here outside the rules: a recording keeps it (game/replay/seatActions.ts)
+      recordSeatWrite?.('previousShellSlot', [current]);
     }
     if (rules.selectShell(player.combat, slot, player.spec) === false) {
       bus.emit('ui:ammoSelectionDenied', {
