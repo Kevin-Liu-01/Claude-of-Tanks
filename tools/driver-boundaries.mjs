@@ -325,3 +325,68 @@ export function mainDriverViolations({ root = process.cwd(), read = checkoutRead
   }
   return violations;
 }
+
+/** The presentation: what the page draws, plays and shows, and the online client's presentation of a room's battle. */
+const PRESENTATION_DIRS = Object.freeze(['src/fx', 'src/ui', 'src/engine', 'src/mp/presentation']);
+/**
+ * Presentation modules that write a `.state.` or `.combat.` record on purpose, each with its reason. Shrink-only: a listed
+ * module that no longer writes one is reported.
+ */
+const PRESENTATION_STATE_WRITERS = Object.freeze({
+  // the online client mirrors the room's samples into the hulls it draws (it steps nothing)
+  'src/mp/presentation/battlePresentation.ts': 'the online client mirrors the authority\'s samples',
+  // a frame loop's own scheduling record (`owned.state.active`), no hull's
+  'src/engine/frameLoopScheduler.ts': 'a frame loop\'s own scheduling record',
+});
+/** Methods that change the vector, array or map they are called on. */
+const MUTATORS = new Set(['set', 'copy', 'add', 'sub', 'addScaledVector', 'multiplyScalar', 'applyQuaternion', 'applyMatrix4', 'normalize',
+  'lerp', 'setScalar', 'fromArray', 'push', 'pop', 'splice', 'shift', 'unshift', 'clear', 'delete']);
+
+/** A member expression's segments below its root ('[]' for a computed one): `a.state.pos.x` -> ['state', 'pos', 'x']. */
+function memberSegments(node) {
+  const segments = [];
+  while (node && (node.type === 'MemberExpression' || node.type === 'TSNonNullExpression' || node.type === 'ChainExpression')) {
+    if (node.type === 'MemberExpression') { segments.unshift(node.computed ? '[]' : node.property.name); node = node.object; }
+    else node = node.expression;
+  }
+  return segments;
+}
+/**
+ * True when the segments write into a `.state` or `.combat` record (`entity.state.pos`): a cell array indexed as
+ * `grid.state[i]`, and a UI object's own `state` field replaced whole (`panel.state = 'open'`, `el.dataset.state`), are not.
+ */
+const writesSimRecord = (segments) => segments.some((segment, index) => (segment === 'state' || segment === 'combat')
+  && index + 1 < segments.length && segments[index + 1] !== '[]');
+
+/**
+ * (d, 276 sim-det-trig) The presentation never writes simulation state: an assignment, update, delete or mutating call
+ * into a `.state.` or `.combat.` record from src/fx, src/ui, src/engine or src/mp/presentation, outside the listed
+ * writers. The step owns those records; a frame-rate write lands between steps on the page and nowhere in Node, so a page
+ * recording no longer verifies (2026-11-22: fx/auxiliaryPresentation.ts wrote the roof gun's pose, which armor.ts traces).
+ */
+export function presentationWriteViolations({ root = process.cwd(), read = checkoutReader(root), files = null, writers = PRESENTATION_STATE_WRITERS } = {}) {
+  const listed = files ?? execFileSync('git', ['ls-files', ...PRESENTATION_DIRS], { cwd: root, encoding: 'utf8' }).split('\n')
+    .filter((file) => file.endsWith('.ts') && !/\.(?:selftest|test-support)\./.test(file));
+  const violations = [];
+  const writing = new Set();
+  for (const file of listed) {
+    const source = read(file);
+    if (!/\.(?:state|combat)\b/.test(source)) continue;
+    const program = parseAst(source, { lang: 'ts' }, file);
+    const lineOf = (offset) => source.slice(0, offset).split('\n').length;
+    walk(program, (node) => {
+      let target = null;
+      if (node.type === 'AssignmentExpression') target = node.left;
+      else if (node.type === 'UpdateExpression') target = node.argument;
+      else if (node.type === 'UnaryExpression' && node.operator === 'delete') target = node.argument;
+      else if (node.type === 'CallExpression' && node.callee?.type === 'MemberExpression' && !node.callee.computed && MUTATORS.has(node.callee.property.name)) target = node.callee.object;
+      if (!target) return;
+      const segments = memberSegments(target);
+      if (!writesSimRecord(segments)) return;
+      writing.add(file);
+      if (!Object.hasOwn(writers, file)) violations.push(`the presentation writes simulation state: ${file}:${lineOf(node.start)} (${segments.join('.')})`);
+    });
+  }
+  if (!files) for (const file of Object.keys(writers)) if (!writing.has(file)) violations.push(`listed state writer no longer writes one (unlist it): ${file}`);
+  return { violations, writing };
+}

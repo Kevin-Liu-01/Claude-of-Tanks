@@ -390,7 +390,6 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const root=entity.visual?.root;if(!root)return;
     const actor=actors.get(entity.id)?.root===root?actors.get(entity.id)!:prepare(entity,root);
     const state=entity.combat?.auxiliary;
-    if (entity.state) { entity.state.roofGunYaw=state?.gunYaw ?? 0; entity.state.roofGunPitch=state?.gunPitch ?? 0; }
     if(!state){
       restStation(actor);for(let i=0;i<actor.stations.length;i++)restStation(actor.stations[i]!);
       actor.smokeBorn=-1;
