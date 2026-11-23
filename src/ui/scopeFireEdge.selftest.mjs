@@ -95,10 +95,17 @@ for (const [, body] of css.matchAll(/@keyframes cot-scope-lick[\w-]*\{((?:[^{}]*
   }
 }
 assert.equal(frames, 2, 'two licks, offset');
-assert.ok(/:root\[data-motion=reduce\] \.cot-scope-fire::before,:root\[data-motion=reduce\] \.cot-scope-fire::after\{animation:none/.test(css),
+// still under reduced motion: the loop stops (the --dur tokens fall to 1ms there, which would strobe), and the reduce
+// selectors outrank the burning ones by one attribute instead of by !important
+assert.ok(/:root\[data-motion=reduce\] \.cot-scope-fire\[data-burning\]::before,:root\[data-motion=reduce\] \.cot-scope-fire\[data-burning\]::after\{animation:none\}/.test(css),
   'still under the reduced-motion setting');
-assert.ok(/@media \(prefers-reduced-motion:reduce\)\{:root:not\(\[data-motion\]\) \.cot-scope-fire::before/.test(css),
+assert.ok(/@media \(prefers-reduced-motion:reduce\)\{:root:not\(\[data-motion\]\) \.cot-scope-fire\[data-burning\]::before,:root:not\(\[data-motion\]\) \.cot-scope-fire\[data-burning\]::after\{animation:none\}/.test(css),
   'and under the OS switch');
+// its motion on the shared tokens: no literal time and no !important in the edge's rules
+const edgeRules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/[^{}]*\.cot-scope-fire[^{}]*\{[^{}]*\}/g)].map((m) => m[0]).join('\n');
+assert.ok(edgeRules.includes('var(--dur-stage)'), 'the licks run on the --dur-stage token');
+assert.ok(!/(?:^|[\s,(:])\.?\d+(?:\.\d+)?m?s\b/.test(edgeRules), 'no literal duration in the edge rules');
+assert.ok(!edgeRules.includes('!important'), 'no !important in the edge rules');
 strip.dispose();
 assert.equal(edge.parentNode, null, 'dispose takes the edge down');
 
