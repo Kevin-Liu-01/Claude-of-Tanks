@@ -91,7 +91,7 @@ import {
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { isSupportedLocale, LOCALE_RECORDS, localeRecord } from './localePrefix.ts';
-import { DEPLOY_MODE_ORDER, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { DEPLOY_MODE_ORDER, GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   GUNSHIP_WEAPONS, isCouchMode, isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
@@ -314,13 +314,10 @@ export interface GarageRuntime {
   setSelectedMap(mapId: string): void;
 }
 
-/** Each battle rule's glyph (src/ui/icons): the Deploy screen's choices and the Deploy button read this one table. */
-const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze({
-  zone_control: 'modeZones', capture_the_flag: 'modeFlag', frontline_assault: 'modeFrontline', turbo_ball: 'modeTurbo',
-  gun_game: 'modeGunGame', mars: 'modeMars', juggernaut: 'modeJuggernaut', infected: 'modeInfected',
-  endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130', proving_ground: 'modeProving',
-  air_support: 'modeAirSupport',
-});
+/** Each battle rule's glyph (src/ui/icons): the Deploy screen's choices and the Deploy button read the definitions' own
+ *  icon (combined-arms-276: one table), Standard's own choice aside (battleModeMeta.solo). */
+const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(Object.fromEntries(DEPLOY_MODE_ORDER
+  .filter((id) => id !== 'standard').map((id) => [id, GAME_MODE_DEFINITIONS[id].icon])));
 
 /** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.
  *  The paint left the stations for the band under the name, where it is always in view. */

@@ -928,7 +928,7 @@ export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly not
   juggernaut: { note: 'juggernaut' },
   // the escorts are the player's country, the ground force one enemy country
   ac130: { note: 'ac130' },
-  air_support: { note: null },
+  air_support: { note: null }, combined_arms: { note: null },
   // the proving ground is a solo range against static target hulls: no team fiction applies (230 x gameplay-modes union)
   proving_ground: { note: null },
   // the training battle's hulls are the scenes' own (273): no team fiction applies
@@ -1161,13 +1161,13 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
-    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES,
+    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES, combined_arms: SYMMETRIC_ALLIES,
     proving_ground: PROVING_ALLIES, training: TRAINING_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
-    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES,
+    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES, combined_arms: SYMMETRIC_ENEMIES,
     proving_ground: PROVING_TARGETS, training: TRAINING_ACTORS,
   }),
   waveSize: range(2, 12),
@@ -1423,7 +1423,7 @@ export interface WatchRules {
 }
 export const WATCH_RULES: WatchRules = Object.freeze({
   modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault',
-    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'air_support'] as const),
+    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'air_support', 'combined_arms'] as const),
   takeControl: true,
   deathHoldS: 1.6,
   takenDeathS: 3.5,
@@ -1432,6 +1432,27 @@ export const WATCH_RULES: WatchRules = Object.freeze({
   openBackM: 140,
   openPitchDeg: -24,
 });
+
+const baseRulesetOf = (mode: unknown): MatchRuleset | null =>
+  typeof mode === 'string' && Object.hasOwn(BASE_RULESETS, mode) ? BASE_RULESETS[mode as GameModeId] : null;
+/**
+ * A mode's facets, for the readers that hold only its id (the HUD, the audio, the presentation, the wire's mode state).
+ * Each reads the rule part the mode's ruleset spreads, never the id, so a mode composed of parts (COMPOSED_MODES) has
+ * every reader of every part (sim/modeComposition.selftest.mjs fails on a new id check for a part's mode).
+ */
+/** Every crew launches an FPV drone (DRONE_LAUNCH_PART: Drone, Combined Arms). */
+export function modeLaunchesDrones(mode: unknown): boolean {
+  return baseRulesetOf(mode)?.aerial === 'drone';
+}
+/** Every crew earns and spends support points on call-ins (AIR_SUPPORT_BATTLE_PART: Air Support, Combined Arms). */
+export function modeCallsAirSupport(mode: unknown): boolean {
+  return !!baseRulesetOf(mode)?.airSupport;
+}
+/** The battle is the three sectors (matchModes.ts's 'zone_control' objective): Zone Control, Gravity Mode and every mode
+ *  with Air Support's battle. */
+export function modePlaysSectors(mode: unknown): boolean {
+  return mode === 'zone_control' || mode === 'mars' || modeCallsAirSupport(mode);
+}
 
 /** A mode a battle can be watched in. */
 export function isWatchableMode(mode: GameModeId | string | null | undefined): boolean {
@@ -1627,6 +1648,45 @@ const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   offensiveJump: true, hitReactions: 'angle',
 });
 
+/**
+ * Rule parts (combined-arms-276): the named pieces more than one mode plays, each declared once here and spread into
+ * every mode that has it, so a rule two modes share is one object and cannot drift. The readers never ask which mode
+ * this is; they read the facet a part sets (`ruleset.aerial`, `ruleset.counterDrone`, `ruleset.airSupport`), so a mode
+ * composed of parts plays every part by construction.
+ */
+/** Drone's launch: every crew's FPV drone on Drone mode's cooldown (AERIAL_RULES.drone) and the roof stations that
+ *  engage enemy drones in flight (VH.15 counter-drone). */
+const DRONE_LAUNCH_PART = Object.freeze({ aerial: 'drone', counterDrone: true } as const satisfies Partial<MatchRuleset>);
+/** Air Support's score target (air-support-270's first seeded run: at 750 the side that took the sectors first won in
+ *  under three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one split. */
+const AIR_SUPPORT_SCORE_TARGET = 2000;
+/** Air Support's battle: Zone Control's three sectors (matchModes.ts plays them wherever `airSupport` is set), confirmed
+ *  kills scoring, 8 s respawns, a twelve-minute clock, and the support ledger with its call-ins; the vehicle's own loadout
+ *  (the strikes are the mode's firepower, not the guns). */
+const AIR_SUPPORT_BATTLE_PART = Object.freeze({
+  scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES,
+} as const satisfies Partial<MatchRuleset>);
+/** The rule parts by name, for the composition receipt (sim/modeComposition.selftest.mjs). */
+export const MODE_RULE_PARTS = Object.freeze({ droneLaunch: DRONE_LAUNCH_PART, airSupportBattle: AIR_SUPPORT_BATTLE_PART });
+export type ModeRulePartId = keyof typeof MODE_RULE_PARTS;
+/**
+ * The modes declared as nothing but rule parts over STANDARD, with the parts in spread order (a later part's field wins,
+ * though no two parts set the same field). The receipt holds each one to exactly this: every field of its ruleset is
+ * STANDARD's or a part's, no field is redefined, and its declaration names only its parts.
+ */
+export const COMPOSED_MODES: Readonly<Partial<Record<GameModeId, readonly ModeRulePartId[]>>> = Object.freeze({
+  // Combined Arms (owner 2026-11-23: "lets add a mode with drone AND air support"): Air Support's sector battle, its score
+  // target and its call-ins, with every crew also holding Drone's launch. The drone is not a call-in: points stay for the
+  // air menu. One control seat at a time (game/playerBattleActions.ts, sim/airSupport.ts botCall): the binoculars and a
+  // drone in flight exclude each other wherever both facets are on.
+  combined_arms: Object.freeze(['airSupportBattle', 'droneLaunch'] as const),
+});
+/** A composed mode's ruleset: STANDARD, its parts in order, its id. Nothing else (COMPOSED_MODES). */
+function composedRuleset(mode: GameModeId): MatchRuleset {
+  const parts = COMPOSED_MODES[mode] ?? [];
+  return Object.freeze(Object.assign({}, STANDARD, ...parts.map((part) => MODE_RULE_PARTS[part]), { mode }) as MatchRuleset);
+}
+
 // Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
 // realistic modes (Standard, Capture the Flag, Zone Control, Realistic) and Drone (owner 2026-11-02: "drone mode
 // shouldnt have infinite ammo") keep the vehicle's own loadout; every other special and arcade mode plays unlimited
@@ -1800,14 +1860,15 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', elimination: true, scoresKills: true, alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', scoresKills: true, respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, ...DRONE_LAUNCH_PART, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', scoresKills: true,
     middleReserve: Object.freeze({ kind: 'extraction', radiusM: 30, reliefM: 7 }), aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
-  // Air Support (air-support-270): Zone Control's three sectors, 8 s respawns and a twelve-minute clock, with the support
-  // ledger and the three airstrikes; the vehicle's own loadout (the strikes are the mode's firepower, not the guns)
-  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
+  // Air Support (air-support-270): its battle part alone (AIR_SUPPORT_BATTLE_PART)
+  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', ...AIR_SUPPORT_BATTLE_PART }),
+  // Combined Arms (combined-arms-276): Air Support's battle and Drone's launch, declared as its parts (COMPOSED_MODES)
+  combined_arms: composedRuleset('combined_arms'),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
   // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
@@ -1839,9 +1900,8 @@ export function rulesetObjectiveAxisM(ruleset: Pick<MatchRuleset, 'flagPitch' | 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
   capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20,
-  // Air Support plays to 2000 (air-support-270's first seeded run: at 750 the side that took the sectors first won in under
-  // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
-  air_support: 2000,
+  // Air Support's battle part plays to its own target (AIR_SUPPORT_SCORE_TARGET), and so does every mode composed with it
+  air_support: AIR_SUPPORT_SCORE_TARGET, combined_arms: AIR_SUPPORT_SCORE_TARGET,
 });
 /** The arrangement fields Deploy offers beyond the sides, and which modes take each (improve-271 plan 027). */
 export type ArrangementChoiceField = 'scoreTarget' | 'respawnS' | 'waveSize' | 'waveStep' | 'holdS' | 'juggernautRole';

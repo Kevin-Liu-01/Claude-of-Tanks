@@ -32,6 +32,8 @@ export const MODE_OPENER: Readonly<Record<GameModeId, string | null>> = Object.f
   training: 'mode_range_opener',
   // Air Support opens on a strike jet's low pass over the field (air-support-270)
   air_support: 'jet_flyover',
+  // Combined Arms opens as the Air Support battle it plays (combined-arms-276)
+  combined_arms: 'jet_flyover',
 });
 
 /** A mode's opener (an id the table does not name opens on the battle horn, as the standard battle does). */

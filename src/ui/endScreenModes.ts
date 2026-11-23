@@ -67,6 +67,9 @@ export const END_SCREEN_MODES: Readonly<Record<GameModeId, EndScreenModeView>> =
     vehicle: 'aircraft' }),
   air_support: view({ tiles: ['zones', 'kills', 'callIns', 'strikeKills', 'aircraftDown', 'dealt'], details: ['accuracy', 'pens', 'received'],
     headline: 'mode' }),
+  // Combined Arms (combined-arms-276): Air Support's sector battle, with the drone's kills beside the call-ins'
+  combined_arms: view({ tiles: ['zones', 'kills', 'callIns', 'droneKills', 'strikeKills', 'dealt'], details: ['accuracy', 'pens', 'received'],
+    headline: 'mode' }),
   // a practice or tutorial session keeps no record; when one does show the report it reads as a standard battle's
   proving_ground: view({ tiles: ['dealt', 'kills', 'accuracy', 'pens', 'fired', 'blocked'], details: ['modules', 'received'] }),
   training: view({ tiles: ['dealt', 'kills', 'accuracy', 'spotted', 'assist', 'blocked'] }),

@@ -104,6 +104,8 @@ export interface AirSupportEntity {
   state: { pos: Point3 };
   combat: { destroyed: boolean };
   modeActive?: boolean;
+  /** The crew's drone (sim/aerialCombat.ts), where the mode launches one: `active` while it flies. */
+  aerial?: { readonly kind?: string; readonly active?: boolean } | null;
 }
 
 interface AirSupportOptions<Entity extends AirSupportEntity> {
@@ -392,6 +394,9 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
    * enemy; with nobody spotted in reach, a recon pass toward its scout point.
    */
   function botCall(entity: Entity, timeS: number): void {
+    // one control seat (combined-arms-276): a crew flying its drone calls nothing until it is back in its tank, as a
+    // player's binoculars wait for theirs (game/playerBattleActions.ts)
+    if (entity.aerial?.kind === 'drone' && entity.aerial.active) return;
     const team = teamOf(entity);
     // the side's last air slots stay free for its crews' own calls
     if (teamAir(team, timeS) >= rules.teamAirCap - rules.bots.leaveSlots) return;

@@ -2958,7 +2958,7 @@ export function createAuthoritativeMatch({
           gameMode: normalizedGameMode,
           modeState: {
             ...modeController.serialize(viewerId),
-            ...(normalizedGameMode === 'drone' ? {missionPayloads: entities
+            ...(ruleset.aerial === 'drone' ? {missionPayloads: entities
               .filter(entity => canObserveEntity(viewer,entity.id))
               .map(entity => ({id:entity.id,ready:!entity.aerial?.active && (entity.aerial?.cooldownS ?? 0)<=0}))} : {}),
           },

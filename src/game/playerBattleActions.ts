@@ -69,7 +69,7 @@ interface BattleActionEntity extends Omit<
   /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
   modeGravityScale?: number;
   /** Drone and AC-130 modes: the gunship this entity is (sim/aerialCombat); unlimited rounds are the gunship's only. */
-  aerial?: { readonly kind?: string } | null;
+  aerial?: { readonly kind?: string; readonly active?: boolean } | null;
 }
 
 interface BattleActionGame<TEntity extends BattleActionEntity> {
@@ -218,16 +218,30 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     strikeView.open = open;
     bus.emit('ui:strikeView', { open });
   };
+  // One control seat at a time (combined-arms-276): the binoculars and a drone in flight exclude each other wherever both
+  // facets are on (the ruleset's airSupport and its drone launch), Combined Arms today. With our drone aloft the
+  // binoculars are refused (ui:seatBusy: a sound and the event lane's notice, aerialHud.ts); a drone press with the
+  // binoculars up lowers them, then launches (the 'drone' action below). Bots hold the same seat in sim/airSupport.ts.
+  const droneAloft = (player: TEntity | null): boolean => player?.aerial?.kind === 'drone' && !!player.aerial.active;
+  const raiseBinoculars = (): boolean => {
+    const player = battleInputAllowed() ? livePlayer() : null;
+    if (!player) return false;
+    if (droneAloft(player)) { bus.emit('ui:seatBusy', { seat: 'drone' }); return false; }
+    setStrikeView(true);
+    return true;
+  };
   listen('ui:strikeViewToggle', () => {
-    if (!strikeView.open && (!strikeMode() || !battleInputAllowed() || !livePlayer())) return;
-    setStrikeView(!strikeView.open);
+    if (strikeView.open) setStrikeView(false);
+    else if (!strikeMode() || !raiseBinoculars()) return;
     bus.emit('ui:click', {});
   });
   listen('ui:strikePick', (payload) => {
     const kind = (payload as { kind?: RuntimeValue } | null)?.kind;
     if (!strikeMode() || !strikes.kinds.includes(kind as AirStrikeKind)) return;
+    // a pick raises the binoculars too: with our drone aloft it is refused, the pick with it
+    if (!strikeView.open && droneAloft(livePlayer())) { bus.emit('ui:seatBusy', { seat: 'drone' }); return; }
     strikeView.kind = kind as AirStrikeKind;
-    if (!strikeView.open && battleInputAllowed() && livePlayer()) setStrikeView(true);
+    if (!strikeView.open) raiseBinoculars();
     bus.emit('ui:click', {});
   });
   // The order (game/strikeOrder.ts owns its transitions): a press the authority's own rule refuses is refused at the
@@ -513,6 +527,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     listen(`ui:${action}`, () => {
       const player = battleInputAllowed() ? livePlayer() : null;
       if (!player) return;
+      // one control seat (above): the drone's press takes the seat from the binoculars, which come down first
+      if (action === 'drone' && strikeView.open) setStrikeView(false);
       if (network.isActive()) network.queueAction(action);
       else {
         let pending=player.input.auxiliaryBits||0;

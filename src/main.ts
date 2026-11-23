@@ -278,7 +278,7 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, modeLaunchesDrones, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
 import { trainingRulesFor } from './sim/trainingGround.ts';
 import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
@@ -1179,7 +1179,7 @@ const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts')
   bus, input,
   playerId: () => game.player?.id ?? null,
   watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
-  airSupportMode: () => game.ruleset?.mode === 'air_support',
+  airSupportMode: () => !!game.ruleset?.airSupport,
 })));
 // (notices-audit-275) the crew radio's captions (ui/captionLine.ts): loaded at the first rollout, shown when the setting is on
 const captionLineChunk = createLazyChunk(() => import('./ui/captionLine.ts').then(({ createCaptionLine }) => createCaptionLine({
@@ -1952,7 +1952,7 @@ const showroom = createGarageShowroomRuntime({
   // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : modeLaunchesDrones(garagePreviewMode) ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
   getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
