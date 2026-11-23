@@ -407,8 +407,18 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   (+1 request) and vehicleAuxiliaryGeometry's chunk goes. Requests: game and cn +2, gallery +1. The entry fell 1,282 B
   //   and keeps its pin. home +754, docs +755, notFound +710: locales-275b's localePrefix.ts in the shared chunk (+382 B)
   //   and its five new locales' hreflang links and i18n catalog entries in each page.
-  game: { brotliBytes: 1271554, requests: 153, entryBrotliBytes: 252459 },
-  cn: { brotliBytes: 1318726, requests: 154, entryBrotliBytes: 252459 },
+  // 2026-11-23 (integrator 275.0, coordinator ruling, at the release build of integ/275.0 b16cb3e7e6): six pins re-set at
+  //   their measure, attributed per module (sourcemapped builds of 274.0 as shipped, 01658c0d75, and the head). game
+  //   +4,646 B brotli over its pin (+4,723 over 274.0's build), cn +5,875, entry +425 (both), requests +3 (game, cn):
+  //   turbo-spin-275 (hullFlight.ts and turboCooldown.ts new chunks, +2 requests; shellLabels.ts splits into its own
+  //   chunk as its pad, couch and HUD importers changed, +1; input, vehicleActions, matchRuleset), death-flow-275
+  //   (battleEnding ~0.3 KB, battleResultPresentationRuntime ~0.2 KB, matchRuleset), endscreen-modes-275's previews
+  //   (garage.ts ~0.6 KB with the garage's rounds-carried row, previewVehicles.ts new ~0.2 KB), main.ts ~0.5 KB and
+  //   playerBattleActions ~0.4 KB (notices, death-flow, turbo-spin, air-support together); phonePause.ts splits into its
+  //   own chunk (+1 request; main.ts and settings.ts changed by those lanes) and aerialVision's chunk goes (-1; notices'
+  //   aerialHud). fix/minimap-aircraft-glyph-275's move is chunk-neutral. The other rows hold their pins.
+  game: { brotliBytes: 1276200, requests: 156, entryBrotliBytes: 252884 },
+  cn: { brotliBytes: 1324601, requests: 157, entryBrotliBytes: 252884 },
   gallery: { brotliBytes: 802120, requests: 85 },
   home: { brotliBytes: 30144, requests: 8 },
   docs: { brotliBytes: 38686, requests: 12 },
