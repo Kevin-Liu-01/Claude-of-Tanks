@@ -9,7 +9,13 @@
 //
 // The lint fails on node:assert equality calls (equal, strictEqual, deepEqual, deepStrictEqual, partialDeepStrictEqual
 // and their not* forms) whose actual or expected operand is a three.js graph object: an Object3D (and lists of them), a
-// BufferGeometry or BufferAttribute, a Material or a Texture. Assert a boolean (`assert.ok(a === b, ...)`) or compare
+// BufferGeometry or BufferAttribute, a Material or a Texture.
+//
+// And (replay-system-275, 2026-11-22) whose operand is a typed array or a buffer, or an object conventionally holding
+// them (a replay track or trace, a `.buffer`): one failed `assert.equal(refused.track, null)` on a 246k-element
+// Float32Array took a receipt to 14 GiB resident and pushed the Mac into 43 GB of swap. Compare such data in the receipt
+// (Buffer.equals over the bytes) and assert the boolean. Those findings carry a `typed:` reason and only their identity
+// forms are rewritten (`--fix` never wraps a typed array in graphLabels). Assert a boolean (`assert.ok(a === b, ...)`) or compare
 // graphLabels(...) from tools/receipt-kit.test-support.mjs (identity labels such as `Mesh "hull" #12`), uuids or names.
 // It reads syntax plus local data flow (a variable's initializer and assignments, destructured tuples, for-of and
 // traverse/forEach callback items, local helpers' return values); `--types` asks the TypeScript checker for every
@@ -62,6 +68,24 @@ const CHAIN_METHODS = new Set(['clone', 'add', 'remove', 'at', 'find', 'findLast
   'sort', 'toSorted', 'toReversed', 'flat', 'deref', 'values', 'get', 'pop', 'shift']);
 const ITEM_CALLBACKS = new Set(['traverse', 'traverseVisible', 'traverseAncestors', 'forEach', 'map', 'filter', 'find',
   'findLast', 'some', 'every', 'flatMap', 'findIndex']);
+// Typed arrays and buffers: constructors and their static makers, helpers that return bytes, and the conventional names of
+// what holds them (a replay track's columns, a trace, a buffer).
+const TYPED_CLASS = /^(?:Int8|Uint8|Uint8Clamped|Int16|Uint16|Int32|Uint32|Float16|Float32|Float64|BigInt64|BigUint64)Array$|^(?:ArrayBuffer|SharedArrayBuffer|DataView)$/;
+const TYPED_STATIC = new Set(['from', 'of', 'alloc', 'allocUnsafe', 'allocUnsafeSlow', 'concat']);
+const TYPED_FUNCTIONS = new Set(['gzipSync', 'gunzipSync', 'deflateSync', 'inflateSync', 'deflateRawSync', 'inflateRawSync',
+  'brotliCompressSync', 'brotliDecompressSync', 'encodeReplay', 'traceRows']);
+// (names only where they are unambiguous: a tank's tracks and a timing trace are no typed arrays; --types reads the rest)
+const TYPED_PROP = /^(?:track|buffer|buffers|shellData|shellOffsets)$/;
+// A typed array whose size the call shows to be small (a literal length or literal elements) dumps harmlessly.
+const SMALL_TYPED = 1024;
+const smallTyped = args => {
+  const first = args[0] && unwrap(args[0]);
+  if (!first) return true;
+  if (ts.isNumericLiteral(first)) return Number(first.text) <= SMALL_TYPED;
+  if (ts.isArrayLiteralExpression(first)) return first.elements.length <= SMALL_TYPED && !first.elements.some(ts.isSpreadElement);
+  return false;
+};
+const TYPED_REASON = /\btyped:/;
 const GRAPH_CLASS = /^(?:Object3D|Group|Scene|Mesh|InstancedMesh|SkinnedMesh|BatchedMesh|Line|LineSegments|LineLoop|Points|Sprite|LOD|Bone|Skeleton|\w*Camera|\w*Light|\w*Geometry|\w*Material|\w*Texture|\w*BufferAttribute|InterleavedBuffer\w*)$/;
 const LOW_PRECEDENCE = new Set([ts.SyntaxKind.BinaryExpression, ts.SyntaxKind.ConditionalExpression,
   ts.SyntaxKind.ArrowFunction, ts.SyntaxKind.YieldExpression, ts.SyntaxKind.FunctionExpression,
@@ -274,6 +298,7 @@ function makeClassifier(checker, source) {
         if (VALUE_HOLDERS.has(propName(unwrap(node.expression)) ?? '')) return null; // el.dataset.group, process.env.scene
         if (STRONG_PROPS.has(name)) return `.${name}`;
         if (GRAPH_NAME.test(name)) return `.${name}`;
+        if (TYPED_PROP.test(name)) return `typed: .${name}`;
         if (RECEIVER_PROPS.has(name) && (GRAPH_RECEIVER.test(receiverName(node.expression)) || classify(node.expression, seen))) {
           return `.${name} of a graph object`;
         }
@@ -298,14 +323,22 @@ function makeClassifier(checker, source) {
         }
         if (CHAIN_METHODS.has(method)) { const of = classify(callee.expression, seen); return of ? `${method}() of ${of}` : null; }
         if (method === 'from' && ts.isIdentifier(callee.expression) && callee.expression.text === 'Array' && node.arguments[0]) return classify(node.arguments[0], seen);
+        const owner = unwrap(callee.expression);
+        if (TYPED_STATIC.has(method) && ts.isIdentifier(owner) && (TYPED_CLASS.test(owner.text) || owner.text === 'Buffer')) {
+          const small = method === 'of' ? node.arguments.length <= SMALL_TYPED && !node.arguments.some(ts.isSpreadElement) : smallTyped(node.arguments);
+          return small ? null : `typed: ${owner.text}.${method}()`;
+        }
+        if (method === 'subarray') { const of = classify(callee.expression, seen); return of ? `subarray() of ${of}` : null; }
         return null;
       }
+      if (ts.isIdentifier(callee) && TYPED_FUNCTIONS.has(callee.text)) return `typed: ${callee.text}()`;
       if (ts.isIdentifier(callee)) { const reason = localFunction(callee, seen); return reason ? `${callee.text}() returns ${reason}` : null; }
       return null;
     }
     if (ts.isNewExpression(node)) {
       const callee = unwrap(node.expression);
       const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : '';
+      if (TYPED_CLASS.test(name)) return smallTyped(node.arguments ?? []) ? null : `typed: new ${name}()`;
       return GRAPH_CLASS.test(name) ? `new ${name}()` : null;
     }
     if (ts.isArrayLiteralExpression(node)) {
@@ -484,7 +517,7 @@ function rewrite(node, call, source, reason, plan) {
     for (const arg of [a, b]) if (LOW_PRECEDENCE.has(unwrap(arg) === arg ? arg.kind : -1)) edits.push(...wrap(arg, '(', ')'));
     return { kind: 'identity', edits };
   }
-  if (ATTRIBUTE_REASON.test(reason)) return null;
+  if (ATTRIBUTE_REASON.test(reason) || TYPED_REASON.test(reason)) return null;
   return { kind: 'labels', edits: [...wrap(a, 'graphLabels(', ')'), ...wrap(b, 'graphLabels(', ')')], importEdit: plan.edit };
 }
 
@@ -514,9 +547,32 @@ const RESULT_KEYS = ['findings', 'allowed', 'stale', 'badAllow'];
 const lintCachePath = (env = process.env) => env.COT_OBJECT3D_LINT_CACHE
   ?? join(tmpdir(), `cot-object3d-assert-lint-${process.getuid?.() ?? 'user'}`, 'results-v1.json');
 
+/**
+ * The typed-operand findings that predate the rule (2026-11-22), pinned per file by count: a file may not gain one, and a
+ * file whose count fell must shrink its pin (a stale pin fails), so the list only burns down. Graph findings have no pin.
+ */
+export const TYPED_PIN_PATH = resolve(REPO_ROOT, 'tools/object3d-assert-lint.typed-pin.json');
+export function readTypedPin(path = TYPED_PIN_PATH) {
+  try { return JSON.parse(readFileSync(path, 'utf8')).files ?? {}; } catch { return {}; }
+}
+/** Moves pinned typed findings out of `findings`; returns { pinned, stalePins }. */
+function applyTypedPin(result, listed, pin) {
+  const byFile = Map.groupBy(result.findings.filter(row => TYPED_REASON.test(row.reason) && !result.findings.some(other => other !== row
+    && other.file === row.file && other.line === row.line && !TYPED_REASON.test(other.reason))), row => row.file);
+  const pinnedRows = [], stalePins = [];
+  for (const file of new Set(listed)) {
+    const rows = byFile.get(file) ?? [], allowed = pin[file] ?? 0;
+    if (rows.length && rows.length <= allowed) pinnedRows.push(...rows);
+    if (allowed > rows.length) stalePins.push({ file, pinned: allowed, found: rows.length });
+  }
+  const moved = new Set(pinnedRows);
+  result.findings = result.findings.filter(row => !moved.has(row));
+  return { pinned: pinnedRows, stalePins };
+}
+
 /** Read and lint receipt files under root (all receipts when `files` is omitted). */
 export function lintRepo({ root = REPO_ROOT, files, force, cache = !force && process.env.COT_SELFTEST_CACHE !== '0',
-  cachePath = lintCachePath() } = {}) {
+  cachePath = lintCachePath(), pin = readTypedPin() } = {}) {
   const list = files ?? listReceiptFiles(root);
   let store = {};
   if (cache) try { store = JSON.parse(readFileSync(cachePath, 'utf8')).entries ?? {}; } catch {}
@@ -554,7 +610,8 @@ export function lintRepo({ root = REPO_ROOT, files, force, cache = !force && pro
   }
   const at = row => `${row.file}:${String(row.line).padStart(6, '0')}`;
   for (const name of RESULT_KEYS) result[name].sort((a, b) => at(a) < at(b) ? -1 : at(a) > at(b) ? 1 : 0);
-  return { ...result, files: list.length, reused };
+  const pinned = applyTypedPin(result, list.map(file => relative(root, resolve(root, file))), pin);
+  return { ...result, ...pinned, files: list.length, reused };
 }
 
 /** The checker audit: the TypeScript checker types every operand over the whole import graph (slow; not a suite step). */
@@ -575,6 +632,17 @@ function typeAudit({ root = REPO_ROOT, files } = {}) {
       return members.length && marks.every(Boolean) ? marks[0] : null;
     }
     for (const name of MARKS) if (checker.getPropertyOfType(type, name)) return name;
+    const symbolName = (type.getSymbol() ?? type.aliasSymbol)?.getName() ?? '';
+    if (TYPED_CLASS.test(symbolName) || symbolName === 'Buffer') return `typed: ${symbolName}`;
+    // an object that holds one (a replay track's columns): its dump is the array's
+    if (depth === 0 && type.flags & ts.TypeFlags.Object && !checker.isArrayType(type) && !checker.isTupleType(type)) {
+      for (const property of checker.getPropertiesOfType(type).slice(0, 40)) {
+        const declaration = property.valueDeclaration ?? property.declarations?.[0];
+        if (!declaration) continue;
+        const held = (checker.getTypeOfSymbolAtLocation(property, declaration).getSymbol())?.getName() ?? '';
+        if (TYPED_CLASS.test(held) || held === 'Buffer') return `typed: holds ${held} (.${property.getName()})`;
+      }
+    }
     if (checker.isArrayType(type) || checker.isTupleType(type)) {
       for (const t of checker.getTypeArguments(type)) { const m = mark(t, depth + 1); if (m) return `${m}[]`; }
     }
@@ -633,13 +701,14 @@ function main(argv) {
   }
   if (json) console.log(JSON.stringify(result, null, 1));
   else {
-    for (const row of result.findings) console.log(`${row.file}:${row.line}:${row.column}\tassert.${row.op} on a three.js graph object (${row.reason})\t${row.text}`);
+    for (const row of result.findings) console.log(`${row.file}:${row.line}:${row.column}\tassert.${row.op} on a large operand: a three.js graph object or a typed array (${row.reason})\t${row.text}`);
     for (const row of result.badAllow) console.log(`${row.file}:${row.line}\t${ALLOW_MARK} needs a reason\t${row.text}`);
     for (const row of result.stale) console.log(`${row.file}:${row.line}\tstale ${ALLOW_MARK} marker (no flagged assert on this or the next line)`);
+    for (const row of result.stalePins) console.log(`${row.file}\tstale typed pin: ${row.pinned} pinned, ${row.found} found (shrink tools/object3d-assert-lint.typed-pin.json)`);
   }
-  const bad = result.findings.length + result.badAllow.length + result.stale.length;
-  console.error(`object3d-assert-lint: ${result.files} receipt files (${result.reused} unchanged since a cached lint), ${result.findings.length} graph-object equality asserts, `
-    + `${result.allowed.length} allowlisted, ${result.stale.length} stale and ${result.badAllow.length} reasonless markers`);
+  const bad = result.findings.length + result.badAllow.length + result.stale.length + result.stalePins.length;
+  console.error(`object3d-assert-lint: ${result.files} receipt files (${result.reused} unchanged since a cached lint), ${result.findings.length} large-operand equality asserts, `
+    + `${result.pinned.length} typed ones pinned, ${result.stalePins.length} stale pins, ${result.allowed.length} allowlisted, ${result.stale.length} stale and ${result.badAllow.length} reasonless markers`);
   if (bad) console.error('Compare booleans, uuids, names or ids: a failing equality assert on a scene graph dumps and diffs both graphs (the 226 T-72 receipts reached 40 GB).');
   return bad ? 1 : 0;
 }
