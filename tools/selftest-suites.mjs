@@ -1454,6 +1454,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
+    // inherited-reds-276 (Main 2026-11-23): the S-tanks' front zoned by height, the beak's underside the wedge's
+    'src/vehicles/sTankWedgeZoning.selftest.mjs',
     'src/vehicles/fleetOrder.selftest.mjs',
     'src/vehicles/profiles/abramsRoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/abramsTurretLift.selftest.mjs',

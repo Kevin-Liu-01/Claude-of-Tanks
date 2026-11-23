@@ -226,9 +226,10 @@ function siegeArmor(
     },
     hullPlates: [
       frontPlate('upper_glacis', ratings.frontPhysicalMm, bodyW, trackTop * 0.57,
-        bowZ, roofY, roofNoseZ, plateRatings(ratings.frontKeMm, ratings.frontCeMm)),
+        bowZ, roofY, roofNoseZ, { ...plateRatings(ratings.frontKeMm, ratings.frontCeMm), frontZone: 'upper' }),
+      // (inherited-reds-276) the wedge is zoned by height: a beak's underside over the lower plate's edge is the wedge's
       frontPlate('lower_front', ratings.lowerPhysicalMm, bodyW, floor, hl * 0.86,
-        trackTop * 0.57, bowZ, plateRatings(ratings.lowerKeMm, ratings.lowerCeMm)),
+        trackTop * 0.57, bowZ, { ...plateRatings(ratings.lowerKeMm, ratings.lowerCeMm), frontZone: 'lower' }),
       rightSidePlate('hull_side_upper_R', ratings.sideMm, bodyW, trackTop * 0.70,
         bodyW * 0.96, roofY, -hl * 0.96, roofNoseZ,
         plateRatings(ratings.sideKeMm, ratings.sideCeMm)),

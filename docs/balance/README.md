@@ -10,6 +10,11 @@ fire, ammunition, reloads, and destruction remain active.
 - `npm run balance:update` deliberately records an approved tuning pass.
 - `npm run balance:check` fails when canonical stats and the recorded receipt
   disagree.
+- Changing a tank's stats or a scenario means running `npm run balance:update`
+  and committing `docs/balance/deterministic-matchups.json` with the change:
+  `tools/balance-matchups.selftest.mjs` runs `--check` in the default tier
+  (`npm test`), so a stale or hand-edited receipt fails there. A scenario whose
+  band is not the reviewed 0.2-0.8 carries a `ruling` saying why and since when.
 
 Run any two saved vehicles against each other with the same authoritative
 range model:
