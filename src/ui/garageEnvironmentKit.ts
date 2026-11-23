@@ -10,10 +10,7 @@ import {
   garageWorldPointToView,
   legacyGaragePointToView,
 } from '../game/garagePresentationPose.ts';
-import {
-  addCatalogExterior,
-  type GeometryBuckets,
-} from '../world/maps/exteriorDetailKit.ts';
+import type { GeometryBuckets } from '../world/maps/exteriorDetailKit.ts';
 import {
   auditStructureCollision,
   structureCollisionOpenIds,
@@ -21,6 +18,12 @@ import {
 import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts';
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
+import {
+  buildGarageStructureSteps, buildGarageStructureSurfacesNow, disposeGarageStructureSurfaces,
+  garageStructureSurfaceTextures, loadGarageMapStructures, prepareGarageStructureSurfaces, resolveGarageMapStructures,
+  startGarageSurfacePaints,
+  type GarageMapStructures, type GarageStructureSurfaces,
+} from './garageBattleStructures.ts';
 import {
   GARAGE_ENVIRONMENT_RECIPES,
   type GarageEnvironmentRecipe,
@@ -111,6 +114,8 @@ interface GarageEnvironmentStats {
   readonly kitSkylineLandmarks: readonly string[];
   readonly groundCover: number;
   readonly structures: number;
+  /** The structures its map's regional architecture kit rebuilt, as the world build rebuilds them (garage-env-276). */
+  readonly regionalKitStructures: number;
   readonly facilityProps: number;
   readonly facilityStations: number;
   readonly approachLabel: string;
@@ -227,6 +232,8 @@ export interface GarageEnvironmentAssetLibrary {
   /** Asks again for every failed set a pack still holds (a selection runs it: switching between cached packs bakes none). */
   retryFailed(): void;
   diagnostics(): Readonly<{ residentSets: number; referencedSets: number; failedSets: number }>;
+  /** The texture anisotropy the packs' structure surfaces paint at (the engine's, clamped as the Garage's own sets). */
+  readonly anisotropy: number;
   dispose(): void;
 }
 
@@ -293,10 +300,10 @@ function proceduralSandAlbedo(): HTMLCanvasElement | null {
   g.putImageData(image, 0, 0);
   return canvas;
 }
-const BUCKET_KEYS = [
-  'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'baked', 'route',
-] as const;
-type BucketKey = typeof BUCKET_KEYS[number];
+/** The approach's own bucket: the one pack bucket no battlefield structure draws (its ribbons, kerbs and rails). */
+const APPROACH_BUCKET = 'route';
+/** The buckets whose merged draws cast into the cascades: the walls, roofs and the baked masses (see the merge). */
+const CASTING_BUCKETS = new Set(['baked', 'stone', 'roof', 'regionalStone', 'regionalRoof']);
 
 function buildSharedGarageTreeGrove(
   engineCtx: GarageEnvironmentEngineContext,
@@ -566,6 +573,7 @@ export function createGarageEnvironmentAssetLibrary(
       for (const [key, entry] of entries) if (entry.references > 0) retry(key, entry);
     },
     retainedTextures: () => retainedTextures,
+    anisotropy: Math.min(8, Math.max(1, engineCtx.anisotropy || 4)),
     diagnostics: () => Object.freeze({
       residentSets: entries.size,
       referencedSets: [...entries.values()].filter((entry) => entry.references > 0).length,
@@ -1232,23 +1240,6 @@ function decodePatch(patch: GarageTerrainPatch): Float32Array {
  * of the way to its grey and darkened, the dirt rising up the bottom 1.2 m. Fresh geometry per build (railKit's
  * pushContainer), so the pass never compounds.
  */
-function weatherLiveries(buckets: GeometryBuckets): void {
-  for (const value of Object.values(buckets)) {
-    if (!Array.isArray(value)) continue;
-    for (const geometry of value as THREE.BufferGeometry[]) {
-      const color = geometry.getAttribute('color'), position = geometry.getAttribute('position');
-      if (!color || !position) continue;
-      for (let i = 0; i < color.count; i += 1) {
-        const r = color.getX(i), g = color.getY(i), b = color.getZ(i);
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-        const k = 0.86 * (1 - 0.18 * Math.max(0, 1 - position.getY(i) / 1.2));
-        color.setXYZ(i, (r + (luma - r) * 0.4) * k, (g + (luma - g) * 0.4) * k, (b + (luma - b) * 0.4) * k);
-      }
-      color.needsUpdate = true;
-    }
-  }
-}
-
 function samplePatch(
   patch: GarageTerrainPatch,
   values: Float32Array,
@@ -1420,27 +1411,27 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean, 
   return geometry;
 }
 
-/** One authored structure of a Garage pack: its geometry buckets, footprint audits and seat on the shaped patch. */
-function buildStructureRecord(
+/**
+ * One authored structure of a Garage pack, built the battlefield's way (garageBattleStructures.ts: the map's bucket set,
+ * build context, catalog cuts and regional kit), with its footprint audits and seat on the shaped patch. In slices: the
+ * prepare awaits a frame between them, the bake with nothing prepared drains them.
+ */
+function* buildStructureRecordSteps(
   placement: GarageEnvironmentRecipe['structures'][number],
   structureIndex: number,
   rng: () => number,
   patch: GarageTerrainPatch,
   heights: Float32Array,
+  map: GarageMapStructures,
 ) {
   // These are authored world-space perimeter stations, not five buildings
   // squeezed into one camera-facing strip. The shared coordinates keep
   // every footprint inside the compact patch while giving the environment
   // a readable 220-degree built horizon from both the hero view and orbit.
   const { x, z } = cameraPoint(placement.side, placement.depth);
-  const local = createBuckets();
-  const dimensions = placement.builder(rng, local);
-  addCatalogExterior(local, {
-    id: placement.catalogId,
-    info: dimensions,
-    variant: structureIndex,
-  });
-  if (placement.catalogId === 'containerrow') weatherLiveries(local);
+  const { buckets: local, dimensions, rebuilt } = yield* buildGarageStructureSteps(map, {
+    builder: placement.builder, catalogId: placement.catalogId, index: structureIndex, x, z, yaw: placement.yaw,
+  }, rng);
   const supports: Array<{ gap: number }> = [];
   for (const value of Object.values(local)) {
     if (!Array.isArray(value)) continue;
@@ -1458,8 +1449,14 @@ function buildStructureRecord(
   const y = samplePatch(patch, heights, x, z);
   return {
     placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap,
-    collisionAudit, assemblyAudit,
+    collisionAudit, assemblyAudit, regionalKit: rebuilt,
   };
+}
+function buildStructureRecord(...args: Parameters<typeof buildStructureRecordSteps>) {
+  const steps = buildStructureRecordSteps(...args);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 type GarageStructureRecord = ReturnType<typeof buildStructureRecord>;
 
@@ -1476,6 +1473,9 @@ interface PreparedGarageStructures {
   readonly records: readonly GarageStructureRecord[];
   readonly rngDraws: number;
   readonly backdrop: THREE.BufferGeometry | null;
+  /** The source map as its world build reads it, and its structure surfaces (garageBattleStructures.ts). */
+  readonly map: GarageMapStructures;
+  readonly surfaces: GarageStructureSurfaces;
 }
 const preparedStructures = new Map<string, PreparedGarageStructures>();
 // (2026-11-02 audit R5) the holds on each variant's prepared structures, refcounted like the kit and skyline pins: the
@@ -1495,6 +1495,7 @@ function disposePreparedStructures(id: string): void {
   if (!prepared) return;
   preparedStructures.delete(id);
   disposeStructureGeometry(prepared.records, prepared.backdrop);
+  disposeGarageStructureSurfaces(prepared.surfaces);
 }
 
 function disposeStructureGeometry(records: readonly GarageStructureRecord[], backdrop: THREE.BufferGeometry | null): void {
@@ -1624,12 +1625,20 @@ export function buildGarageEnvironment(
   }
 
   const combined = createBuckets();
+  // the source map's structures and surfaces, prepared ahead (prepareGarageEnvironmentAssets) or, with nothing prepared
+  // (the receipts under Node), built here; the pack owns the surfaces from here
+  const map = prepared?.map ?? resolveGarageMapStructures(variant.mapId);
+  const structureSurfaces = prepared?.surfaces
+    ?? buildGarageStructureSurfacesNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
+  for (const [material, hook] of structureSurfaces.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
+  for (const material of structureSurfaces.materials) track(material);
+  for (const texture of garageStructureSurfaceTextures(structureSurfaces)) track(texture);
   const rng = mulberry32(seed);
   // the structures prepared ahead of the bake (prepareGarageEnvironmentAssets, in slices) are taken whole, and the
   // seeded sequence steps past the draws they made, so everything after them builds exactly as before
   const structureRecords = prepared
     ? (skipDraws(rng, prepared.rngDraws), prepared.records)
-    : recipe.structures.map((placement, structureIndex) => buildStructureRecord(placement, structureIndex, rng, patch, heights));
+    : recipe.structures.map((placement, structureIndex) => buildStructureRecord(placement, structureIndex, rng, patch, heights, map));
 
   // Cut a compact, feathered service terrace beneath each real structure.
   // This preserves the sampled battlefield relief between buildings while
@@ -2269,25 +2278,18 @@ export function buildGarageEnvironment(
 
   const mergeStructureRecords = (): void => {
     for (const { placement, local, x, z, y } of structureRecords) {
-      // A desert minaret is mud-plastered to its dome (2026-10-10, waves 338 and 357: the white shaft under a red tiled
-      // cap read as "a red-capped lighthouse standing among the dunes"): on sand packs its dome and lantern take the
-      // shaft's adobe, one shade deeper than the courts' lime wash.
-      if (placement.catalogId === 'minaret' && recipe.terrainSurface === 'sand') {
-        local.plaster2 = [...(local.plaster2 || []), ...(local.roof || []), ...(local.plaster || []), ...(local.stone || [])];
-        local.roof = [];
-        local.plaster = [];
-        local.stone = [];
-      }
       const uniformScale = placement.scale;
       const transform = new THREE.Matrix4().compose(
         new THREE.Vector3(x, y, z),
         new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.yaw),
         new THREE.Vector3(uniformScale, uniformScale, uniformScale),
       );
-      for (const key of BUCKET_KEYS) {
-        for (const geometry of local[key] || []) {
+      // every bucket the battlefield's pipeline filled, under the material of the same name (buildStructureSurfaces)
+      for (const [key, list] of Object.entries(local)) {
+        if (!Array.isArray(list)) continue;
+        for (const geometry of list as THREE.BufferGeometry[]) {
           geometry.applyMatrix4(transform);
-          combined[key]!.push(geometry);
+          (combined[key] ||= []).push(geometry);
         }
       }
     }
@@ -2542,53 +2544,20 @@ export function buildGarageEnvironment(
     for (const material of kit.materials) track(material);
   }
 
-  const materialForBucket = (key: BucketKey): THREE.Material => {
-    // Source albedo already contains its own value range. Keep the material
-    // multiplier close to white so shaded facades retain readable PBR detail.
-    // Redrock's compounds are Rum's sand-coloured block walls, not white boxes (garage r9, the audit's "white box walls"):
-    // its render keeps more of the valley's own tint. Sirocco's courts are mud plaster, not whitewash (the r1 frames
-    // still read the lightened tint as white under the desert sun): the wadi's own mud, no white in it
-    const building = variant.architecture === 'shade_depot'
-      ? new THREE.Color(0xa88a64)
-      : new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), variant.architecture === 'recovery_yard' ? 0 : 0.62);
-    switch (key) {
-      case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
-      case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
-      case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 1 });
-      // Saltmere's walls are whitewashed granite render, not red brick (garage r9, the per-garage brief 5)
-      case 'stone': return variant.architecture === 'naval_drydock'
-        ? texturedMaterial('plaster', { color: new THREE.Color(0xf2f0ea), roughness: 1 })
-        : texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
-      // dry-country roofs are flat earth-plastered decks, not European red tiles (wave 377: "a European red-tile house in
-      // the badlands")
-      // the snowbound yards' roofs lie under snow (the re-judge, 2026-10-15: "the roofs carry no snow ... bare saturated
-      // orange roofs in a snowbound yard"), on the yard's own resident snow texture
-      case 'roof': return recipe.terrainSurface === 'snow'
-        ? texturedMaterial('snow', { color: 0xf1f5f7, roughness: 0.9 })
-        : variant.architecture === 'shade_depot' || variant.architecture === 'recovery_yard'
-          ? texturedMaterial('plaster', { color: new THREE.Color(recipe.buildingTint).multiplyScalar(0.78), roughness: 1 })
-          // Steinburg's clay is weathered and sooted down, not the frame's most saturated plane over the tank (the
-          // re-judge, 2026-10-15): a cool grey multiplier draws its orange toward brown
-          : variant.architecture === 'brick_arsenal'
-            ? texturedMaterial('roof', { color: 0x8c949b, roughness: 0.96 })
-            // Breton slate over Saltmere's whitewash (garage r9): a cold blue-grey multiplier takes the tile's red out
-            : variant.architecture === 'naval_drydock'
-              ? texturedMaterial('plaster', { color: 0x5a636c, roughness: 0.82 })
-            : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
-      // Saltmere's sheds are whitewashed (garage r9: the brief's "red-roof brick sheds" were brown weatherboard)
-      case 'wood': return variant.architecture === 'naval_drydock'
-        ? texturedMaterial('plaster', { color: 0xe4e1d8, roughness: 1 })
-        : texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
-      case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
-      case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
-      case 'route': return texturedMaterial(recipe.approach.surface, {
+  // The approach is the Garage's own (its ribbons, kerbs and rails on the drawn terrain), on the approach surface's own
+  // set; every structure bucket draws under its battlefield's material (buildStructureSurfaces), never a Garage re-skin
+  // (garage-env-276: the old switch here re-tinted nine buckets and drew `dark` as flat grey metal).
+  const approachMaterial = (): THREE.Material => texturedMaterial(recipe.approach.surface, {
         color: new THREE.Color(recipe.hardstandTint).lerp(new THREE.Color(0xffffff), 0.10)
           .multiplyScalar(rainSoaked ? 0.84 : 1),
         roughness: rainSoaked ? 0.62 : 0.94,
         metalness: recipe.approach.style === 'drydock-lane' ? 0.08 : 0.01,
-      });
-      default: return plainMaterial({ color: 0x55595a, roughness: 0.68, metalness: 0.30 });
-    }
+  });
+  const structureMaterial = (key: string): THREE.Material => {
+    if (key === APPROACH_BUCKET) return approachMaterial();
+    const material = structureSurfaces.surfaces.mats[key];
+    if (!material) throw new Error(`Garage environment ${variant.id}: no battlefield material for bucket ${key}`);
+    return material;
   };
 
   // The turntable's plinth meets loose ground with a drift banked against it (the re-judge, 2026-10-15, Sirocco: "the
@@ -2673,31 +2642,17 @@ export function buildGarageEnvironment(
     }
   };
   foldTinyPlasterBuckets();
-  // Saltmere's whitewashed walls and its render share the plaster texture: the render's few fixtures ride the walls'
-  // draw (garage r9: the kit's display, decal and atmosphere draws are paid for here)
-  // (Ironworks and Cinder: their few render fixtures, about a hundred triangles, ride the brick: Ironworks' clad crane bay
-  // draws instead, and Cinder's hero frame holds the brief's +3 calls with its kit)
-  if (variant.architecture === 'naval_drydock' || variant.architecture === 'factory_line' || variant.architecture === 'rail_roundhouse') {
-    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
-      (combined.stone ||= []).push(...(combined[key] || []));
-      combined[key] = [];
-    }
-  }
-  // Sirocco's adobe is shuttered, not glazed (garage r9): its few panes join the dark openings, paying one of the kit's
-  // draws
-  if (variant.architecture === 'shade_depot' && (combined.glass || []).length) {
-    (combined.dark ||= []).push(...(combined.glass || []));
-    combined.glass = [];
-  }
   const addMergedStructures = (): void => {
     // every source is this pack's own (all are disposed below) and is reshaped in place, unless it was pushed more than
     // once (twice into a bucket, or into two): then each use takes its own copy, as before
     const uses = new Map<THREE.BufferGeometry, number>();
-    for (const key of BUCKET_KEYS) for (const geometry of combined[key] || []) uses.set(geometry, (uses.get(geometry) ?? 0) + 1);
-    for (const key of BUCKET_KEYS) {
+    const keys = Object.keys(combined).filter((key) => (combined[key] || []).length);
+    for (const key of keys) for (const geometry of combined[key] || []) uses.set(geometry, (uses.get(geometry) ?? 0) + 1);
+    for (const key of keys) {
       const sources = combined[key] || [];
-      if (!sources.length) continue;
-      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked', uses.get(geometry) === 1));
+      const material = structureMaterial(key);
+      const vertexColors = (material as THREE.MeshStandardMaterial).vertexColors === true;
+      const normalized = sources.map((geometry) => normalizeGeometry(geometry, vertexColors, uses.get(geometry) === 1));
       const merged = mergeGeometries(normalized, false);
       for (const geometry of normalized) geometry.dispose();
       for (const geometry of sources) geometry.dispose();
@@ -2705,8 +2660,7 @@ export function buildGarageEnvironment(
       track(merged);
       merged.computeBoundingBox();
       merged.computeBoundingSphere();
-      const material = materialForBucket(key);
-      material.name = `garage:${key}`;
+      if (key === APPROACH_BUCKET) material.name = `garage:${key}`;
       const mesh = new THREE.Mesh(merged, material);
       mesh.name = `authored_structures_${key}`;
       // Garage scenery is static and carries textured/vertex-colour contact definition; most of it stays out of the
@@ -2716,7 +2670,8 @@ export function buildGarageEnvironment(
       // bucket (the sail, the rock faces, the mounds, the drifts), the brick and stone walls and the clay roofs. The
       // night switch ABBA (02:20, A main / V GA.05 on GA.03 / C = V with these casters, A V C C V A A V C) measured
       // C within noise of V: Sirocco cold 796 vs 790 ms, the winter yard 531 vs 536 ms, Verdant warm 55 vs 57 ms.
-      mesh.castShadow = key === 'baked' || key === 'stone' || key === 'roof';
+      // (garage-env-276: a regional kit's walls and roofs are its stone and roof)
+      mesh.castShadow = CASTING_BUCKETS.has(key);
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
@@ -2915,6 +2870,7 @@ export function buildGarageEnvironment(
     treeDetailTier,
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
+    regionalKitStructures: structureRecords.filter((record) => record.regionalKit).length,
     ...facilityDetails,
     // the kit's working cells carry stocked spares and secured stores of their own (garage r9)
     looseParts: facilityDetails.looseParts + (kit?.stats.looseParts ?? 0),
@@ -3035,6 +2991,8 @@ export async function prepareGarageEnvironmentAssets(
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
   if (!stillWanted()) return false;
+  // the source map's structure prints start in the surface paint worker now, beside the slices below (garage-env-276)
+  startGarageSurfacePaints(variant.mapId);
   await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[], stillWanted);
   // (round 3 B12) a cancel during the trees stops here on every map: only the skyline's slice below asked before, so a
   // map with no skyline went on into the kit's first pieces
@@ -3053,7 +3011,7 @@ export async function prepareGarageEnvironmentAssets(
   await nextSlice();
   if (!stillWanted()) return false;
   prepareGarageAtmosphere();
-  return prepareGarageStructures(variant, recipe, stillWanted);
+  return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted);
 }
 
 const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
@@ -3062,6 +3020,7 @@ const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeo
 async function prepareGarageStructures(
   variant: GarageVariant,
   recipe: GarageEnvironmentRecipe,
+  anisotropy: number,
   stillWanted: () => boolean,
 ): Promise<boolean> {
   if (preparedStructures.has(variant.id)) return true;
@@ -3069,7 +3028,7 @@ async function prepareGarageStructures(
   if (inFlight) { inFlight.wanted.add(stillWanted); return inFlight.task; }
   const wanted = new Set<() => boolean>([stillWanted]);
   // it stops only once no caller that joined it wants it any more
-  const task = buildPreparedStructures(variant, recipe, () => [...wanted].some((wants) => wants()));
+  const task = buildPreparedStructures(variant, recipe, anisotropy, () => [...wanted].some((wants) => wants()));
   preparingStructures.set(variant.id, { task, wanted });
   const clear = (): void => { if (preparingStructures.get(variant.id)?.task === task) preparingStructures.delete(variant.id); };
   task.then(clear, clear);
@@ -3079,6 +3038,7 @@ async function prepareGarageStructures(
 async function buildPreparedStructures(
   variant: GarageVariant,
   recipe: GarageEnvironmentRecipe,
+  anisotropy: number,
   wanted: () => boolean,
 ): Promise<boolean> {
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -3095,14 +3055,30 @@ async function buildPreparedStructures(
   const sequence = mulberry32(seed);
   let rngDraws = 0;
   const rng = (): number => { rngDraws += 1; return sequence(); };
+  // the source map's kits load as a battle entry loads them, then its structure surfaces paint in slices
+  const map = await loadGarageMapStructures(variant.mapId);
+  if (!wanted()) { backdrop?.dispose(); return false; }
+  const surfaces = await prepareGarageStructureSurfaces(map, anisotropy, wanted);
+  if (!surfaces) { backdrop?.dispose(); return false; }
   const records: GarageStructureRecord[] = [];
   for (let index = 0; index < recipe.structures.length; index += 1) {
-    await nextSlice();
-    // a stopped preparation keeps nothing half made: the next one builds the structures from the pack's seed again
-    if (!wanted()) { disposeStructureGeometry(records, backdrop); return false; }
-    records.push(buildStructureRecord(recipe.structures[index], index, rng, patch, heights));
+    // each structure's base and its kit rebuild in slices of their own
+    const steps = buildStructureRecordSteps(recipe.structures[index], index, rng, patch, heights, map);
+    let step = steps.next();
+    while (!step.done) {
+      await nextSlice();
+      // a stopped preparation keeps nothing half made: the next one builds the structures from the pack's seed again
+      if (!wanted()) {
+        steps.return(undefined as never);
+        disposeStructureGeometry(records, backdrop);
+        disposeGarageStructureSurfaces(surfaces);
+        return false;
+      }
+      step = steps.next();
+    }
+    records.push(step.value);
   }
   disposePreparedStructures(variant.id);
-  preparedStructures.set(variant.id, { records, rngDraws, backdrop });
+  preparedStructures.set(variant.id, { records, rngDraws, backdrop, map, surfaces });
   return true;
 }

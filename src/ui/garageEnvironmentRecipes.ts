@@ -73,7 +73,6 @@ export interface GarageEnvironmentRecipe {
   readonly terrainSurface: GarageSurfaceKey;
   readonly terrainTint: number;
   readonly hardstandTint: number;
-  readonly buildingTint: number;
   readonly structures: readonly GarageStructurePlacement[];
   readonly treeSpecies: readonly string[];
   readonly treeCount: number;
@@ -146,7 +145,7 @@ const atView = (builder: StructureBuilder, label: string, side: number, depth: n
 
 export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnvironmentRecipe>>({
   field_shed: {
-    terrainSurface: 'grass', terrainTint: 0xb1bd83, hardstandTint: 0x8d8a78, buildingTint: 0xd2c8a4,
+    terrainSurface: 'grass', terrainTint: 0xb1bd83, hardstandTint: 0x8d8a78,
     structures: [
       at(makeFarmhouse, 'field farmhouse', -36, -6, 0.88),
       at(makeTavern, 'village tavern', -30, -30, 0.76),
@@ -169,7 +168,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     distinctiveElements: ['real grass PBR', 'field farmhouse', 'connected loading shed', 'oak and poplar line'],
   },
   shade_depot: {
-    terrainSurface: 'sand', terrainTint: 0xc7a06e, hardstandTint: 0xa99071, buildingTint: 0xcbb58c,
+    terrainSurface: 'sand', terrainTint: 0xc7a06e, hardstandTint: 0xa99071,
     structures: [
       at(makeCaravanserai, 'wadi caravanserai', -36, -6, 0.84),
       // a water tower, not a minaret, behind the hero (2026-10-10, waves 338, 357, 377: the round white tower with
@@ -200,7 +199,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'covered quartermaster souk', 'convoy compound wall', 'wadi water tower and route watchtower'],
   },
   repair_bunker: {
-    terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3, buildingTint: 0xc2c8c6,
+    terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3,
     structures: [
       at(makeRangerLodge, 'winter ranger lodge', -36, -6, 0.82),
       // (the re-judge, 2026-10-15: the chalet stood square behind the turret, the chapel half cut by the frame's right
@@ -230,7 +229,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   brick_arsenal: {
     // the banks round the arsenal are dusty grass embankments; only its boulevard is cobbled (waves 408 and 419: "a huge
     // cobblestone embankment curls up around the bay like the inside of a bowl")
-    terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
+    terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79,
     structures: [
       at(makeFactory, 'urban factory', -39, -6, 0.76), // 2.1 m out: clear of the Zeughaus
       // off the frame's left, so the Zeughaus has the sky over its roof (the garage critic panel, 2026-10-14: "move the
@@ -261,7 +260,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   },
   naval_drydock: {
     // (garage r9: granite grey quay paving, not a blue plane; healthy maritime pines and oaks on the downs)
-    terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x8e8f88, buildingTint: 0xc8d2cd,
+    terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x8e8f88,
     structures: [
       at(makeFishery, 'working fishery', -36, -6, 0.78),
       // off the hero's axis to the far left (it rose out of the turret: the garage critic panel, 2026-10-14)
@@ -292,7 +291,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     // cinder ballast ground, not a paved hillside (2026-10-10, wave 377: "a vast, empty cobbled slope")
     // soot-dark railway brick (the garage critic panel, 2026-10-14: "clean brick ... darker engineering brick")
     // (garage r9: ash and cinder underfoot, the yard's scrub mounds levelled to a working yard's grade)
-    terrainSurface: 'rock', terrainTint: 0x58534d, hardstandTint: 0x625d56, buildingTint: 0x86735f, reliefScale: 0.45,
+    terrainSurface: 'rock', terrainTint: 0x58534d, hardstandTint: 0x625d56, reliefScale: 0.45,
     structures: [
       at(makeWarehouse, 'freight warehouse', -38, -6, 0.78), // 1.4 m further out: clear of the engine shed (GA.04)
       // (garage r9: the rail gantry behind the shed and the container rank right of it gave way to a goods shed, 10k
@@ -321,7 +320,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'signal box and semaphores'],
   },
   rain_canopy: {
-    terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079, buildingTint: 0xa4af99,
+    terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079,
     structures: [
       at(makeBathhouse, 'monsoon bathhouse', -38.2, -5.66, 0.8), // clear of the wider covered bay
       at(makeDepot, 'ridge field depot', -33, -33, 0.8), // behind the covered bay (garage round 7)
@@ -354,7 +353,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'flood-response boathouse', 'drainage causeway', 'cable and manifold yard'],
   },
   rock_cavern: {
-    terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
+    terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8,
     structures: [
       // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
       // at the cliff's foot, clear of its face (the cliff now runs 46 m across the frame: the garage critic panel)
@@ -385,7 +384,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'cliff rescue station', 'avalanche portal', 'high-pass chapel cluster'],
   },
   recovery_yard: {
-    terrainSurface: 'rock', terrainTint: 0xb16d4f, hardstandTint: 0x8d6e5e, buildingTint: 0xb69678,
+    terrainSurface: 'rock', terrainTint: 0xb16d4f, hardstandTint: 0x8d6e5e,
     structures: [
       at(makeCaravanserai, 'redrock compound', -36, -6, 0.74),
       // the warehouse stood square behind the turret, its dark roof against the hero's outline (the re-judge, 2026-10-15):
@@ -417,7 +416,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   factory_line: {
     // slag and cinder ground round the works (wave 377: "a paved hillside rather than a workshop yard")
     // (garage r9: the works' scrub mounds levelled toward the yard's grade)
-    terrainSurface: 'rock', terrainTint: 0x5a544e, hardstandTint: 0x65615b, buildingTint: 0x91857b, reliefScale: 0.5,
+    terrainSurface: 'rock', terrainTint: 0x5a544e, hardstandTint: 0x65615b, reliefScale: 0.5,
     structures: [
       at(makeFoundryOffice, 'foundry office', -37.8, -4.6, 0.8), // clear of the wider crane bay
       at(makeFactory, 'heavy factory', -31, -31, 0.76), // 1.4 m back: clear of the crane bay (garage round 7)

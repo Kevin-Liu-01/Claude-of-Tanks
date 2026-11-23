@@ -256,6 +256,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     kitSkylineLandmarks: [],
     groundCover: 0,
     structures: 1,
+    regionalKitStructures: 0,
     facilityProps: 0,
     facilityStations: 4,
     approachLabel: 'original enclosed workshop floor',
