@@ -675,6 +675,22 @@ async function shootCloseBox(page, tag) {
     await sleep(300);
     const up = await measure();
     await shot(page, `close-${size}-up`);
+    // (Main 2026-11-23: Kevin saw "gunship overhead" over the old X) the binoculars up with an enemy AC-130 over the crew,
+    // so the notices lane's placement and Support's box are checked in one frame; struck off again after it
+    const gunship = await page.evaluate(() => {
+      const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport, p = game.player.state.pos;
+      return game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).some((foe) => {
+        const s = air.capture();
+        s.points = s.points.filter(([id]) => id !== foe.id).concat([[foe.id, air.rules.points.cap]]);
+        s.cooldowns = s.cooldowns.filter(([k]) => !k.startsWith(`${foe.id}:`));
+        air.restore(s);
+        return !!air.requestStrike(foe.id, 'gunship', p.x, p.z, game.timeS);
+      });
+    });
+    await sleep(900);
+    await shot(page, `close-${size}-up-gunship`);
+    await page.evaluate(() => { const air = window.__DEBUG.game.matchModeController.airSupport, s = air.capture(); s.strikes = []; air.restore(s); });
+    await sleep(300);
     // the negative control: the old button back in the page, with the binoculars up
     const negative = await page.evaluate((css, lower) => {
       const style = document.createElement('style'); style.id = 'old-close'; style.textContent = css; document.head.append(style);
@@ -695,7 +711,7 @@ async function shootCloseBox(page, tag) {
     const negativeProblems = closeBoxProblems(rest, negative, labels);
     receipt.closeBox[size] = {
       pass: !problems.length && !downProblems.length && negativeProblems.length > 0,
-      problems, downProblems, negativeProblems, support: { rest: rest.support, up: up.support, down: down.support },
+      problems, downProblems, negativeProblems, gunship, support: { rest: rest.support, up: up.support, down: down.support },
       frames: { raise, lower },
     };
   }
