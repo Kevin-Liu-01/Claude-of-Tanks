@@ -11,10 +11,9 @@
 // distance; there is no looser bound and no tracer blend. Recoil starts after the shot leaves, so the barrel is at rest.
 // Roof stations and coaxials fire from the sim's own pose already (sim/auxiliarySystems.ts auxiliaryShot) and are not
 // rows here.
-// Ids beyond the bound today are pinned (KNOWN_STRAYS, Main's ruling): a spec whose hand-kept armor.gunBarrel.lengthM or
-// armor.gunPivot drifts from the built rig is one class, fixed by deriving those fields from the rig at regen time (a 276
-// tank-tooling item), not by hand here. The pin is shrink-only: an id that grows past its pinned worst, a new id beyond
-// 3 cm, or a pinned id now within it (unpin it) fails. The bound applies to every other row.
+// No id is pinned: the combat frame is the rig measured on each build (276: the calibration's rig, finalizeCombatAnatomy),
+// which took the 18 strays of the first fleet pass (up to 196 cm, the Olifant Mk1B's hand-kept pivots and barrel) to 0.
+// The bound applies to every row of every id; a stray is a stale calibration or a builder the measurement misses.
 // Builds the fleet: MANUAL suite 'fleet' (tools/selftest-tiers.mjs). `--ids=a,b` measures those ids only.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
@@ -32,33 +31,6 @@ import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 installCanvasFixture();
 
 const P99_M = 0.03, MAX_M = 0.10;
-/** Ids whose worst row is beyond 3 cm today: id -> that worst distance (cm), measured on the full fleet pass. */
-const KNOWN_STRAYS = Object.freeze({
-  // seeded from the full fleet pass of 2026-11-22 (313 ids, 10,028 shots; the other 295 ids: p99 1.40 cm, max 2.00 cm).
-  // Each is spec drift from the built rig (armor.turretPivot, armor.gunPivot or armor.gunBarrel.lengthM against the drawn
-  // ring, trunnion and barrel): olifant_mk1b's ring 37 cm forward of its spec pivot and its barrel 4.74 m against 6.13,
-  // ua_m1a1's ring 55 cm and trunnion 81 cm off, the M1A1 family's barrel 23 cm long. Online has always fired from the spec.
-  olifant_mk1b: 196.1,
-  centurion5_2dk: 193.7,
-  olifant_mk1a: 193.7,
-  semel: 170.7,
-  olifant_mk1: 170.7,
-  ua_m1a1: 99.8,
-  m1a1_aim_sa_aus: 90.8,
-  leopard_as1: 84.4,
-  cv9040c: 49.3,
-  m1a1: 25.6,
-  m1a1ha: 25.6,
-  m1a1_abrams_hc: 25.6,
-  m1a1_abrams_sa: 25.6,
-  m1a1_abrams_aim: 25.6,
-  m1a1_abrams_fep: 25.6,
-  kf41_lynx: 8.3,
-  fv510: 3.6,
-  fv510_milan: 3.6,
-});
-/** How far a pinned id's worst row may move before it counts as growth (the measurement's own repeatability is exact). */
-const PIN_SLACK_CM = 0.1;
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const ids = idsArg ? idsArg.slice(6).split(',').filter(Boolean) : PRODUCTION_TANK_IDS;
 const DEG = Math.PI / 180;
@@ -137,39 +109,20 @@ const worstById = new Map();
 for (const row of rows) if (!worstById.has(row.id) || row.d > worstById.get(row.id).d) worstById.set(row.id, row);
 const describe = (row) => `${row.id} ${(row.d * 100).toFixed(1)} cm (${row.kind} ${row.mount}, ${row.pose})`;
 const beyond = [...worstById.values()].filter((row) => row.d > P99_M).sort((a, b) => b.d - a.d);
-/** The pin's verdicts on `worst` (id -> its worst row): a new stray, a pinned one grown, a pinned one now within bound or gone. */
-function strayFailures(worst, pins, wholeFleet) {
-  const out = [];
-  for (const row of [...worst.values()].filter((r) => r.d > P99_M).sort((a, b) => b.d - a.d)) {
-    const pinned = pins[row.id];
-    if (pinned == null) out.push(`new stray beyond ${P99_M * 100} cm: ${describe(row)}`);
-    else if (row.d * 100 > pinned + PIN_SLACK_CM) out.push(`pinned stray grew past ${pinned} cm: ${describe(row)}`);
-  }
-  for (const [id, pinned] of Object.entries(pins)) {
-    const row = worst.get(id);
-    if (row && row.d <= P99_M) out.push(`pinned stray ${id} (${pinned} cm) is now ${(row.d * 100).toFixed(1)} cm: unpin it`);
-    if (!row && wholeFleet) out.push(`pinned stray ${id} is no production id: unpin it`);
-  }
-  return out;
-}
-// planted: a new stray, a pinned one grown, a pinned one fixed, one gone, and a pinned one holding its distance
-{
-  const row = (id, cm) => [id, { id, kind: 'single', mount: 'bore', pose: 'planted', d: cm / 100 }];
-  const planted = strayFailures(new Map([row('a', 4), row('b', 12.5), row('c', 1), row('e', 7.05)]), { b: 12, c: 9, d: 5, e: 7 }, true);
-  assert.deepEqual(planted.map((line) => line.split(':')[0]), ['pinned stray grew past 12 cm', 'new stray beyond 3 cm', 'pinned stray c (9 cm) is now 1.0 cm',
-    'pinned stray d is no production id'], 'the pin catches growth, a new stray and a stale or vanished pin, and holds a steady one');
-}
-const failures = strayFailures(worstById, KNOWN_STRAYS, !idsArg);
-// the bound, over every row of an unpinned id
-const sorted = rows.filter((row) => KNOWN_STRAYS[row.id] == null).map((row) => row.d).sort((a, b) => a - b);
-const all = rows.map((row) => row.d).sort((a, b) => a - b);
 const quantile = (list, q) => list.length ? list[Math.min(list.length - 1, Math.floor(list.length * q))] : 0;
-const p99 = quantile(sorted, 0.99), max = sorted.at(-1) ?? 0;
+/** The rule over every shot of every id (276: the combat frame is the measured rig, so no id is pinned): p99 and max. */
+function bound(distances) {
+  const sorted = [...distances].sort((x, y) => x - y);
+  const p99 = quantile(sorted, 0.99), max = sorted.at(-1) ?? 0;
+  return { p99, max, ok: p99 <= P99_M && max <= MAX_M };
+}
+// planted: ninety-nine shots on their mouth and one 12 cm off fail the max; a hundred at 2 cm hold
+assert.equal(bound([...Array(99).fill(0.001), 0.12]).ok, false, 'control: one shot 12 cm off fails the rule');
+assert.equal(bound(Array(100).fill(0.02)).ok, true, 'control: every shot within 2 cm holds');
+const { p99, max, ok } = bound(rows.map((row) => row.d));
 const kinds = Object.entries(rows.reduce((count, row) => ({ ...count, [row.kind]: (count[row.kind] ?? 0) + 1 }), {}))
   .map(([kind, count]) => `${count} ${kind}`).join(', ');
-console.log(`gunPoseVisualFit: ${built} ids, ${rows.length} shots (${kinds}); unpinned p99 ${(p99 * 100).toFixed(2)} cm, max ${(max * 100).toFixed(2)} cm; `
-  + `all rows p99 ${(quantile(all, 0.99) * 100).toFixed(2)} cm, max ${((all.at(-1) ?? 0) * 100).toFixed(2)} cm; `
+console.log(`gunPoseVisualFit: ${built} ids, ${rows.length} shots (${kinds}); p99 ${(p99 * 100).toFixed(2)} cm, max ${(max * 100).toFixed(2)} cm; `
   + `${beyond.length} id(s) beyond 3 cm, ${beyond.filter((row) => row.d > MAX_M).length} beyond 10 cm`
   + `${beyond.length ? `:\n  ${beyond.map(describe).join('\n  ')}` : ''}`);
-assert.deepEqual(failures, [], `the drawn muzzle strays from the fired one:\n${failures.join('\n')}`);
-assert.ok(p99 <= P99_M && max <= MAX_M, `the drawn muzzle strays from the fired one (unpinned p99 ${(p99 * 100).toFixed(2)} cm, max ${(max * 100).toFixed(2)} cm; rule p99 <= 3 cm, max <= 10 cm)`);
+assert.ok(ok, `the drawn muzzle strays from the fired one (p99 ${(p99 * 100).toFixed(2)} cm, max ${(max * 100).toFixed(2)} cm; rule p99 <= 3 cm, max <= 10 cm):\n  ${beyond.map(describe).join('\n  ')}`);

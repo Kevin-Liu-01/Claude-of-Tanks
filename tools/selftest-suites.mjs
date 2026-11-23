@@ -653,6 +653,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 276 (sim-det-trig, Main's gap-3 rule): every id's drawn muzzle within p99 3 cm / max 10 cm of the pose both drivers
     // fire from (sim/gunPose.ts); ids beyond are listed by distance
     'src/vehicles/gunPoseVisualFit.selftest.mjs',
+    'src/vehicles/combatRigFromBuild.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
     // 2026-11-08 round 8 s5-04: the Redback's gun is the Puma S1's registration-time gun, whenever its pack evaluates
     'src/vehicles/redbackRegistrationGun.selftest.mjs',
