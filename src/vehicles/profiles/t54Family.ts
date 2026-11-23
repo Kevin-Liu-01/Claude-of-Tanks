@@ -417,18 +417,28 @@ function addHullRear(P: TankBuilderPort): void {
 // Turret
 // ---------------------------------------------------------------------------
 
-/** Handrails standing 6 cm off the casting at h, between plan angles a0..a1 (radians), with stanchions. */
-function addTurretRail(P: TankBuilderPort, h: number, a0: number, a1: number): void {
+/** A cast turret's skin: the point and outward normal at plan angle t (radians) and height h. */
+export interface DomeSkin {
+  point(t: number, h: number): THREE.Vector3;
+  normal(t: number, h: number): THREE.Vector3;
+}
+const T54_SKIN: DomeSkin = { point: domePoint, normal: domeNormal };
+
+/** Handrails standing 6 cm off the casting at h, between plan angles a0..a1 (radians), with stanchions. The T-54/55
+ *  and T-62 families share this one helper, so their rails and end caps cannot diverge. */
+export function addTurretRail(P: TankBuilderPort, skin: DomeSkin, h: number, a0: number, a1: number): void {
   const pts: THREE.Vector3[] = [];
   const n = 10;
   for (let i = 0; i <= n; i++) {
-    const t = a0 + (a1 - a0) * i / n, p = domePoint(t, h), nrm = domeNormal(t, h);
+    const t = a0 + (a1 - a0) * i / n, p = skin.point(t, h), nrm = skin.normal(t, h);
     pts.push(p.addScaledVector(nrm, 0.06));
   }
   const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
   P.add('turretDetail', new THREE.TubeGeometry(curve, P.q ? 24 : 10, 0.014, 6, false));
+  // round end caps: an open tube end shows its inside (tank-sealed-check, 274.1)
+  for (const end of [pts[0], pts[n]]) P.add('turretDetail', new THREE.SphereGeometry(0.0145, 6, 4), end.x, end.y, end.z);
   for (const f of [0.08, 0.5, 0.92]) {
-    const t = a0 + (a1 - a0) * f, p = domePoint(t, h), nrm = domeNormal(t, h);
+    const t = a0 + (a1 - a0) * f, p = skin.point(t, h), nrm = skin.normal(t, h);
     const mid = p.clone().addScaledVector(nrm, 0.03);
     const geo = KIT.cylY(0.011, 0.011, 0.075, 6);
     geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm));
@@ -595,9 +605,9 @@ function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.turretG.position.set(...TURRET_PIVOT);
   P.gunG.position.set(...TRUNNION);
   P.add('turret', castDome());
-  addTurretRail(P, 0.30, 40 * D2R, 140 * D2R);
-  addTurretRail(P, 0.30, -40 * D2R, -140 * D2R);
-  addTurretRail(P, 0.34, 158 * D2R, 202 * D2R);
+  addTurretRail(P, T54_SKIN, 0.30, 40 * D2R, 140 * D2R);
+  addTurretRail(P, T54_SKIN, 0.30, -40 * D2R, -140 * D2R);
+  addTurretRail(P, T54_SKIN, 0.34, 158 * D2R, 202 * D2R);
   addTurretRoof(P, v);
   addMantletCover(P);
   addMainGun(P);
