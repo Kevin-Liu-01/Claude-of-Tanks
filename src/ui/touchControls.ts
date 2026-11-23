@@ -120,7 +120,8 @@ html[data-cot-scoped] .cot-touch .round.scope{border-color:var(--accent);backgro
 /* turbo-spin-275: Turbo and the air spin, the jump's kind on a phone's survival edge (battleHudLayout.ts --hud-turbo-*,
    --hud-spin-*); the air spin greys out whole on the ground, Turbo while it cools */
 .cot-touch .round.turbo,.cot-touch .round.air-spin{width:58px;height:58px;color:var(--accent-hi);border-color:oklch(from var(--accent-hi) l c h / .5);}
-.cot-touch .round.turbo[hidden],.cot-touch .round.air-spin[hidden]{display:none!important;}
+/* (their [hidden] outranks the kit's .cot-touch .round display:flex by its class and attribute, so it needs no importance flag) */
+.cot-touch .round.turbo[hidden],.cot-touch .round.air-spin[hidden]{display:none;}
 .cot-touch .round.turbo svg,.cot-touch .round.air-spin svg{width:28px;height:28px;}
 .cot-touch .round[data-unavailable]{opacity:.38;filter:grayscale(1);}
 .cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
