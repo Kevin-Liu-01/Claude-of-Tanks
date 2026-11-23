@@ -1,7 +1,7 @@
 # Replays: recording, viewer, capture (design, 2026-11-22)
 
-Status: design for Kevin's OK. Nothing here is built yet except two Node measurement tools
-(`tools/replay-measure.mjs`, `tools/replay-measure-local.mjs`).
+Status: design approved by Kevin (2026-11-22, all four decisions below as recommended). Built so far: two Node
+measurement tools (`tools/replay-measure.mjs`, `tools/replay-measure-local.mjs`). P1 is next.
 
 Kevin's ask, in his order:
 
@@ -230,10 +230,10 @@ Each phase ships on its own.
 
 P1 alone is already useful: every solo battle becomes a file that reproduces it exactly, for bug reports.
 
-## Decisions for Kevin
+## Decisions (Kevin, 2026-11-22)
 
-1. The shape: seed plus controls, re-simulated into a track the viewer draws from.
-2. The two core changes it needs: shots from the simulated barrel (centimetres, same as online), and the off-thread
-   re-simulator (§1.6 asks for your OK).
-3. Phase order: capture third, before seek polish and multiplayer.
-4. Version policy: same sim only, clean refusal, timeline still shown.
+1. Shape: seed plus controls, re-simulated into a track the viewer draws from. Approved.
+2. Core changes: shots from the simulated barrel (centimetres, same as online), and the off-thread re-simulator in a
+   Worker (the ARCHITECTURE §1.6 owner's OK for an off-thread local simulation, for replay viewing only). Both approved.
+3. Phase order: recording, viewer, capture, seek polish, multiplayer. Approved.
+4. Version policy: same sim only; a clean refusal that still shows the summary and timeline. Approved.
