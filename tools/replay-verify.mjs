@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Re-simulate a battle recording in Node and check it (replay-system-275, docs/REPLAY.md §4 and P1): the recording's own
- * map as a dedicated collision world with the page's spawn points, its fleet's combat anatomy, the local driver's
+ * map's world as the page builds it (tools/replay-world.mjs: full precision, not the 0.1 mm shard), its fleet's combat anatomy, the local driver's
  * replayer (src/game/replay/replayRunner.ts) stepping every recorded step, every checksum compared. No browser, no GPU.
  *
  *   node tools/replay-verify.mjs <battle.cotreplay>            # gzipped or raw
@@ -12,8 +12,8 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
-import { createReplayRun, ensureReplayFleet, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
-import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
+import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
+import { createReplayWorld } from './replay-world.mjs';
 
 const file = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 const asJson = process.argv.includes('--json');
@@ -28,7 +28,7 @@ try {
 }
 await ensureReplayFleet(recording);
 const setup = recording.header.setup;
-const world = withLayoutSpawnPoints(createDedicatedWorldCollision(setup.mapId, { retain: true }));
+const world = await createReplayWorld(setup.mapId);
 const started = performance.now();
 let run = null, error = null;
 try {
@@ -46,7 +46,6 @@ const receipt = {
   wallMs, msPerStep: run?.tick ? Math.round((wallMs / run.tick) * 1000) / 1000 : null,
 };
 run?.dispose();
-world.release?.();
 if (asJson) console.log(JSON.stringify(receipt, null, 2));
 else console.log(receipt.holds
   ? `replay-verify: HOLDS ${receipt.replayedSteps}/${receipt.recordedSteps} steps on ${receipt.map} (${receipt.hulls} hulls, ${receipt.checksums} checksums, ${receipt.marks} marks) in ${wallMs} ms${receipt.stagedAtTick ? `; staged from step ${receipt.stagedAtTick}` : ''}`

@@ -265,6 +265,36 @@ collision world's precision (a full-precision Verdant gives the same drifted dig
 (WASM gives the same digests as TypeScript) and opening routes planned during the countdown. The drift's cause is still
 open; the next run carries the trace, and the cost is measured in 600-step blocks (rule re-registered first).
 
+### The second browser check (2026-11-22): FAIL on replays only
+
+Cost passed (0.0010 ms per step, largest block 0.0015) and frame time was unchanged. The trace named two causes:
+
+- **Fixed: the replay tools finalized three specs.** They loaded combat anatomy for `TANK_IDS` (the three starters),
+  so every other hull stepped without its published track contact, derived modules and roof gun. `ensureReplayFleet`
+  now loads the recording's roster and `createReplayRun` refuses one that is not loaded.
+- **Open (276, item/sim-det-trig): native trig inside three.js.** The sim calls `Quaternion.setFromEuler`,
+  `Vector3.applyAxisAngle` and their kin, which use `Math.sin`/`Math.cos`; Node and Chromium differ in the last bit and
+  the battle's chaos grows it. `det-math-lint` walks only relative imports and only the authority's graph (the local
+  step's own native trig in `state.ts` is outside it too). The fix and its lint are their own branch.
+- **World precision (276, item/sim-world-packed).** A five-minute Verdant battle recorded on the page's world replays to
+  its last step on the page's world and on the headless world built from the same records at full precision, and
+  drifts at step 1200 on the committed 0.1 mm shard. Ruling (B): solo collides on records rounded by the shards'
+  packer, built in-page from its own records. Until then `tools/replay-world.mjs` builds the page's own world in Node
+  (`world/map.ts createMap`, ~6.6 s) for `replay-verify` and `replay-diff`; after (B) they return to the shard.
+
+## P2 as built so far (source only, no UI)
+
+- `src/game/replay/replayTrack.ts`: the viewer's track, every hull's pose and state (position, yaw, pitch, roll,
+  turret, gun, speed, hp, destroyed/burning) and every live shell, sampled every 3 steps (20 Hz) as Float32.
+  `trackPose` gives the kill cam's `ReplayPose` for any moment (angles blended the short way round), so playing,
+  scrubbing and seeking never simulate.
+- `src/game/replay/replayIndexer.ts`: the recording re-simulated once into its track; a refused recording keeps its
+  header and marks for the timeline, a drifting one keeps its track up to the checksum that caught it.
+- `replayIndexerWorker.ts` / `replayIndexerClient.ts`: the indexer in a Worker of its own per job. The page sends the
+  file and its battle's packed collision records (no fetch, and never `src/mp`); the track's buffers come back
+  transferred. The round-trip receipt runs the Worker's job and requires the track sampled live during recording,
+  number for number.
+
 Differences from the plan above, each for a measured or found reason:
 
 - **Setup is captured, not rebuilt from a roster.** The header keeps what setup reads beyond its options (roster seed,

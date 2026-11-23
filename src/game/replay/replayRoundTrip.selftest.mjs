@@ -19,6 +19,10 @@ import { createReplayRecorder } from './replayRecorder.ts';
 import { createReplayRun, ReplayMismatch, withLayoutSpawnPoints } from './replayRunner.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { createReplayTrace, diffDumps, traceRows } from './replayTrace.ts';
+import { createReplayTrackBuilder } from './replayTrack.ts';
+import { indexReplay } from './replayIndexer.ts';
+import { runReplayIndexJob } from './replayIndexerWorker.ts';
+import { createCollisionManifestLoader } from '../../../server/collisionManifestLoader.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
 
 const MAP = 'verdant';
@@ -68,6 +72,7 @@ function recordBattle() {
     const bot = game.tanks.find((hull) => !hull.isPlayer);
     let kills = 0;
     bus.on('tank:destroyed', () => { kills++; });
+    const liveTrack = createReplayTrackBuilder(game); // the viewer's track as the battle itself ran
     for (let tick = 0; tick < TICKS; tick++) {
       // the frame's controls (playerFrameInput, the camera rig): floats, the aim a world point, as the page writes them
       const target = game.tanks.filter((hull) => hull.team !== player.team && !hull.combat?.destroyed)
@@ -89,10 +94,11 @@ function recordBattle() {
       recorder.beforeStep();
       simStep(game, bus, world, null, collider);
       recorder.afterStep();
+      liveTrack.afterStep(game);
     }
     const finished = recorder.finish();
     assert.ok(finished, 'the battle produced a recording');
-    return { finished, digest: replayStateDigest(game), tick: game.tick, kills, roster: game.tanks.map((hull) => hull.specId) };
+    return { finished, digest: replayStateDigest(game), tick: game.tick, kills, roster: game.tanks.map((hull) => hull.specId), track: liveTrack.finish() };
   } finally {
     world.release?.();
     if (previous) Object.defineProperty(globalThis, 'localStorage', previous); else delete globalThis.localStorage;
@@ -137,6 +143,32 @@ for (const key of Object.keys(pageTrace.snapshots)) {
   assert.deepEqual(diffDumps(pageTrace.snapshots[key], again.trace.snapshots[key], 5), [], `the trace's dump after step ${key} matches`);
 }
 
+// the viewer's index (replayIndexer.ts) through the Worker's own job (replayIndexerWorker.ts, minus the message port): the
+// file gzipped as a page saves it, the battle's collision records packed as a page sends them (here the committed shard
+// the battle stepped on), the fleet loaded for the roster; its track is the one sampled live, number for number
+const loader = createCollisionManifestLoader();
+const progress = [];
+const job = await runReplayIndexJob({ file: new Uint8Array(gzipSync(live.finished.bytes)).buffer, manifest: loader.get(MAP), terrainSeed: loader.terrainSeed },
+  (reply) => progress.push(reply));
+assert.equal(job.index.problem, null, `the index runs to the end: ${job.index.problem?.message}`);
+assert.equal(job.index.indexedSteps, TICKS);
+assert.ok(progress.length >= TICKS / 600 && progress.every((reply) => reply.type === 'progress'), 'the job reports its progress');
+assert.deepEqual(job.index.track.hulls, live.track.hulls, 'the same hulls');
+assert.equal(job.index.track.samples, live.track.samples, 'the same samples');
+assert.ok(Buffer.from(job.index.track.data.buffer).equals(Buffer.from(live.track.data.buffer)), 'every hull\'s sampled pose and state matches the battle\'s');
+assert.ok(Buffer.from(job.index.track.shellData.buffer).equals(Buffer.from(live.track.shellData.buffer))
+  && Buffer.from(job.index.track.shellOffsets.buffer).equals(Buffer.from(live.track.shellOffsets.buffer)), 'every shell in flight matches');
+assert.equal(job.transfer.length, 3, 'the track\'s three buffers are handed over, not copied');
+// a recording from another build: refused before it runs, the timeline kept (Kevin's choice)
+const foreign = decodeReplay(live.finished.bytes);
+foreign.header.replayDigest = 'f00dfeedbeef';
+foreign.header.build = 'v0.9.0+other';
+// (Node is a 'dev' build, which admits every recording: the indexer stands for a release here)
+const refused = indexReplay(foreign, worldFor(), { localDigest: '0123456789ab' });
+assert.equal(refused.track, null, 'another build\'s recording has no track');
+assert.equal(refused.problem?.code, 'refused');
+assert.equal(refused.events.length, recording.events.length, 'and keeps its marks for the timeline');
+
 // negative control: the throttle one unit (1/127) off at step 500 (an aim unit off while the turret slews at its rate
 // limit changes nothing, rightly)
 const bent = decodeReplay(live.finished.bytes);
@@ -148,4 +180,4 @@ assert.ok(caught.mismatch instanceof ReplayMismatch && caught.mismatch.code === 
 const bytes = live.finished.bytes.length;
 console.log(`replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
   + `${recording.events.length} marks) recorded in ${bytes} bytes (seats ${live.finished.seatBytes}); the replay matches every checksum and `
-  + `ends on ${live.digest}; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}`);
+  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}`);

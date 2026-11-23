@@ -113,15 +113,17 @@ export function ensureReplayFleet(recording: ReplayRecording): Promise<void> {
   return ensureAuthorityFleet(recording.header.roster.map((entry) => entry.specId));
 }
 
-/** A diagnostic's look at each step as the core meets it: its actions applied and its seats staged (tools/replay-diff.mjs). */
 export interface ReplayRunHooks {
+  /** A diagnostic's look at each step as the core meets it: its actions applied and its seats staged (tools/replay-diff.mjs). */
   beforeSimStep?(game: RunGame, tick: number): void;
+  /** The build this replayer stands for (replayBuild.ts; its own define by default): a receipt or tool acting as a release. */
+  localDigest?: string;
 }
 
 /** A replay of `recording` on `world` (the recording's map, built by the caller), set up and ready for step 1. */
 export function createReplayRun(recording: ReplayRecording, world: RunWorld, hooks: ReplayRunHooks = {}): ReplayRun {
   const { header } = recording;
-  const refusal = replayRefusal(header.replayDigest, header.build);
+  const refusal = replayRefusal(header.replayDigest, header.build, hooks.localDigest);
   if (refusal) throw new ReplayMismatch('refused', `replay recorded on ${refusal.recordedOn || 'another version'}`);
   const setup = header.setup as Record<string, RuntimeValue> & { options?: Record<string, RuntimeValue> };
   // every hull's spec finalized as the page's were, or no run (ensureReplayFleet loads them)

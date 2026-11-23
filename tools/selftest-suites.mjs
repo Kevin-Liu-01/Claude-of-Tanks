@@ -308,6 +308,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/twinMuzzleSolo.selftest.mjs',
     // replay-system-275 (docs/REPLAY.md): the recording's bytes and the seat stage (no world)
     'src/sim/replayFormat.selftest.mjs',
+    // replay-system-275 (P2): the viewer's track, sampled and posed between samples (no world)
+    'src/game/replay/replayTrack.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',

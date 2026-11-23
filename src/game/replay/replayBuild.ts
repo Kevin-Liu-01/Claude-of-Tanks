@@ -12,7 +12,7 @@ export const REPLAY_DIGEST: string = typeof __COT_REPLAY_DIGEST__ === 'string' &
 
 /** The version a recording of `digest` came from when this build cannot replay it, or null when it can ('dev' on either
  *  side is admitted: the checksums still stop a replay that drifts). The viewer words the refusal. */
-export function replayRefusal(digest: string, build: string): { recordedOn: string } | null {
-  if (digest === 'dev' || REPLAY_DIGEST === 'dev' || digest === REPLAY_DIGEST) return null;
+export function replayRefusal(digest: string, build: string, local: string = REPLAY_DIGEST): { recordedOn: string } | null {
+  if (digest === 'dev' || local === 'dev' || digest === local) return null;
   return { recordedOn: build.split(' ')[0] || '' };
 }

@@ -13,9 +13,9 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
-import { createReplayRun, ensureReplayFleet, withLayoutSpawnPoints } from '../src/game/replay/replayRunner.ts';
+import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
+import { createReplayWorld } from './replay-world.mjs';
 import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, traceRows } from '../src/game/replay/replayTrace.ts';
-import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 
 const [file, traceFile] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const pathsArg = process.argv.find((arg) => arg.startsWith('--paths='));
@@ -31,13 +31,12 @@ try {
   process.exit(2);
 }
 await ensureReplayFleet(recording);
-const world = withLayoutSpawnPoints(createDedicatedWorldCollision(recording.header.setup.mapId, { retain: true }));
+const world = await createReplayWorld(recording.header.setup.mapId);
 const trace = createReplayTrace();
 const run = createReplayRun(recording, world, { beforeSimStep: (game, tick) => { if (tick === 1) trace.begin(game); } });
 while (run.step()) trace.afterStep(run.game);
 const stoppedAt = run.tick;
 run.dispose();
-world.release?.();
 const replay = trace.export();
 
 // a page's dump may predate the render filter (replayTrace.ts SKIP_KEYS, RENDER_MARKS): compare what both sides can hold
