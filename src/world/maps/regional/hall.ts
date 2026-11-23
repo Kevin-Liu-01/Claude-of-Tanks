@@ -53,6 +53,47 @@ interface HallSpec {
 
 const INSIDE = rgb(0x2c2e2f), FLOOR = rgb(0x4a4844), FRAME = rgb(0x3c4144);
 
+/** A hall's portal frames: the bay count, the inner half-depth and each column's u on the long faces (symmetric about 0). */
+export function hallFrameLines(d: number): { bays: number; iz: number; frameLines: number[] } {
+  const bays = Math.max(2, Math.round(d / 5)), iz = d / 2 - 0.06;
+  return { bays, iz, frameLines: Array.from({ length: bays - 1 }, (_, k) => -iz + 2 * iz * (k + 1) / bays) };
+}
+
+/** The clerestory band's height under the eave (the lights' y0 is wall - this; their height 0.7 m). */
+const LIGHT_TOP_BELOW_EAVE = 0.55, LIGHT_H = 0.7, LIGHT_W = 3.0;
+/** A light's clearance to a column: its 0.11 m face, the lining's 2 cm and a hand over; to the gable wall 0.6 m. */
+const COLUMN_CLEAR = 0.11 + 0.02 + 0.03, GABLE_CLEAR = 0.6;
+
+/**
+ * (inherited-reds-276; Main 2026-11-23) The clerestory: one whole light centred in every bay of each long side, between
+ * its two columns (or a column and the gable), so the band reads evenly. A light laid on its own 4.4 m grid crossed
+ * columns, and its stack (the craft's leaning glass at the 13 cm recess, the sheet's back, the 0.17 m lining) showed the
+ * column's inward face in front of its glass (wadirum/depot, invertedM2 0.169 since 1ae1deb5f4). A bay is left blank
+ * only where the side has a door or gate in it, or another opening crosses the band (an open side's bays, a tear).
+ */
+export function clerestoryLights(
+  spec: Pick<HallSpec, 'w' | 'd' | 'eave' | 'kerb'>,
+  openings: readonly Opening[],
+): Array<{ face: 'left' | 'right'; bay: number; u: number; w: number }> {
+  const { d, eave } = spec, wall = eave - spec.kerb;
+  const { bays, iz, frameLines } = hallFrameLines(d);
+  const edges = [-iz, ...frameLines, iz];
+  const bandLo = wall - LIGHT_TOP_BELOW_EAVE - LIGHT_H, bandHi = wall - LIGHT_TOP_BELOW_EAVE;
+  const out: Array<{ face: 'left' | 'right'; bay: number; u: number; w: number }> = [];
+  for (const face of ['left', 'right'] as const) {
+    for (let k = 0; k < bays; k++) {
+      const lo = Math.max(edges[k] + (k === 0 ? 0 : COLUMN_CLEAR), -d / 2 + GABLE_CLEAR);
+      const hi = Math.min(edges[k + 1] - (k === bays - 1 ? 0 : COLUMN_CLEAR), d / 2 - GABLE_CLEAR);
+      const w = Math.min(LIGHT_W, hi - lo), u = (lo + hi) / 2;
+      if (w < 1.0) continue;
+      const blocked = openings.some((o) => o.face === face && Math.abs(o.u - u) < (o.w + w) / 2
+        && (o.kind === 'door' || o.kind === 'gate' || (o.y0 < bandHi && o.y0 + o.h > bandLo)));
+      if (!blocked) out.push({ face, bay: k, u, w });
+    }
+  }
+  return out;
+}
+
 /**
  * Lay a sheet hall at the emitting frame's origin (its floor at y = 0 on the kerb's top when it has one). Returns the
  * house frame (its faces, eave and roof) for a kit's own additions.
@@ -75,34 +116,9 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   }
   for (const t of spec.tears ?? []) openings.push({ face: t.face, storey: 0, kind: 'loft', u: t.u, w: t.w, y0: t.y - t.h / 2, h: t.h });
   // the portal frames: a column each side at each bay line (their u on either long face, the lines symmetric about 0)
-  const bays = Math.max(2, Math.round(d / 5)), iz = d / 2 - 0.06;
-  const frameLines = Array.from({ length: bays - 1 }, (_, k) => -iz + 2 * iz * (k + 1) / bays);
-  if (spec.clerestory) {
-    // (inherited-reds-276) a light hangs between the frames, never across a column: its stack (the craft's leaning glass
-    // at the 13 cm recess, the sheet's back, the 0.17 m lining) stands as deep as the column's face, so a light cut
-    // across one showed the column's inward face and its flush stand-in in front of its glass (wadirum/depot,
-    // invertedM2 0.169 since 1ae1deb5f4 laid the glass 2-17 mm off the recess). A light that would cross one moves by the
-    // least distance that clears it (its half-width, the column's 0.11 m and the lining's 2 cm, a hand over), keeping
-    // inside the long wall and clear of the other lights; one that cannot is left out
-    const LIGHT_W = 3.0, CLEAR = LIGHT_W / 2 + 0.11 + 0.02 + 0.03;
-    const clearOfFrames = (u: number) => frameLines.every((z) => Math.abs(u - z) >= CLEAR);
-    for (const face of ['left', 'right'] as const) {
-      const lights: number[] = [];
-      for (let u = -d / 2 + 2.2; u < d / 2 - 1.6; u += 4.4) {
-        if (face === 'right' && spec.sideDoor !== undefined && spec.sideDoor !== null && Math.abs(u - spec.sideDoor) < 2.2) continue;
-        lights.push(u);
-      }
-      for (let i = 0; i < lights.length; i++) {
-        const u = lights[i];
-        if (clearOfFrames(u)) continue;
-        const fits = (c: number) => clearOfFrames(c) && Math.abs(c) + LIGHT_W / 2 <= d / 2 - 0.6
-          && lights.every((o, j) => j === i || !Number.isFinite(o) || Math.abs(c - o) >= LIGHT_W + 0.4)
-          && !(face === 'right' && spec.sideDoor !== undefined && spec.sideDoor !== null && Math.abs(c - spec.sideDoor) < 2.2);
-        const moves = frameLines.flatMap((z) => [z - CLEAR, z + CLEAR]).filter(fits).sort((a, b) => Math.abs(a - u) - Math.abs(b - u));
-        lights[i] = moves.length ? moves[0] : NaN;
-      }
-      for (const u of lights) if (Number.isFinite(u)) openings.push({ face, storey: 0, kind: 'window', u, w: LIGHT_W, y0: wall - 1.25, h: 0.7 });
-    }
+  const { bays, iz, frameLines } = hallFrameLines(d);
+  if (spec.clerestory) for (const light of clerestoryLights(spec, openings)) {
+    openings.push({ face: light.face, storey: 0, kind: 'window', u: light.u, w: light.w, y0: wall - LIGHT_TOP_BELOW_EAVE - LIGHT_H, h: LIGHT_H });
   }
   let frame!: HouseFrame;
   sink.paint = spec.livery;
