@@ -166,6 +166,21 @@ function externalPoseScript(pose) {
   })()`;
 }
 
+/**
+ * The composer's receipt (props.ts group.userData.landmarks) and the props' pier clearance, for the stills' receipt: each
+ * piece's status, its refusal and its ground to the nearest bridge pier (compose.ts keepOut) (page side).
+ */
+function pageLandmarkReceipt() {
+  let found = null;
+  window.__DEBUG.scene.traverse((o) => { if (!found && o.userData?.landmarks?.pieces) found = o.userData; });
+  if (!found) return null;
+  return {
+    pieces: found.landmarks.pieces.map((p) => ({ name: p.name, kind: p.kind, status: p.status, reason: p.reason ?? null,
+      x: p.x, z: p.z, keepOut: p.keepOut ?? null })),
+    bridgePierClearance: found.bridgePierClearance ?? null,
+  };
+}
+
 /** Every hull's AI and inputs frozen and the track prints cleared, before a map's poses (page side). */
 function pageQuiet() {
   const D = window.__DEBUG;
@@ -225,7 +240,7 @@ async function shootMap(entry, options, frames) {
     options.posesStore[mapId] = plan;
     writeFileSync(options.posesFile, `${JSON.stringify(options.posesStore, null, 1)}\n`);
   }
-  const receipt = { buildings: stage.buildings.length, targets: plan.targets, poses: {} };
+  const receipt = { buildings: stage.buildings.length, targets: plan.targets, landmarks: await page.evaluate(pageLandmarkReceipt), poses: {} };
   for (const name of options.poses) {
     const p = plan[name];
     if (!p) { receipt.poses[name] = { skipped: true }; continue; }
