@@ -62,7 +62,7 @@ const { decodeReplay } = await import('../../sim/replayFormat.ts');
 const { createReplayRecorder } = await import('./replayRecorder.ts');
 const { createReplayRun, ReplayMismatch, withLayoutSpawnPoints } = await import('./replayRunner.ts');
 const { replayStateDigest } = await import('./replayChecksum.ts');
-const { createReplayTrace, diffDumps, traceRows } = await import('./replayTrace.ts');
+const { createReplayTrace, diffDumps, traceRows, traceRounds, firstRoundDifference, TRACE_ROUND_FIELDS } = await import('./replayTrace.ts');
 const { createReplayTrackBuilder } = await import('./replayTrack.ts');
 const { indexReplay } = await import('./replayIndexer.ts');
 const { runReplayIndexJob } = await import('./replayIndexerWorker.ts');
@@ -198,6 +198,23 @@ assert.ok(sameBytes(traceRows(again.trace), traceRows(pageTrace)), 'the trace\'s
 for (const key of Object.keys(pageTrace.snapshots)) {
   assert.deepEqual(diffDumps(pageTrace.snapshots[key], again.trace.snapshots[key], 5), [], `the trace's dump after step ${key} matches`);
 }
+// (276 sim-det-trig, Main's ruling (a)) every live round's numbers after every step match too, and a round that parts is
+// named at the step it parts, by field: a velocity one ulp off and a round only one side has, planted
+const pageRounds = traceRounds(pageTrace), replayRounds = traceRounds(again.trace);
+const ROUND_WIDTH = TRACE_ROUND_FIELDS.length;
+assert.ok(pageRounds.length >= ROUND_WIDTH * 100, `the trace keeps the live rounds (${pageRounds.length / ROUND_WIDTH} records)`);
+assert.ok(sameBytes(replayRounds, pageRounds), `every live round's numbers match step for step (${firstRoundDifference(pageRounds, replayRounds)})`);
+assert.equal(firstRoundDifference(pageRounds, replayRounds), null, 'no round parts');
+const plantAt = Math.floor(pageRounds.length / ROUND_WIDTH / 2) * ROUND_WIDTH;
+const nudged = pageRounds.slice();
+const vx = TRACE_ROUND_FIELDS.indexOf('vx');
+nudged[plantAt + vx] = nudged[plantAt + vx] + Math.abs(nudged[plantAt + vx]) * Number.EPSILON || Number.MIN_VALUE;
+const plantedStep = pageRounds[plantAt], plantedId = pageRounds[plantAt + 1];
+const named = firstRoundDifference(pageRounds, nudged) ?? '';
+assert.ok(named.startsWith(`after step ${plantedStep}: round ${plantedId}: vx`), `control: a velocity one ulp off is named at its step (${named})`);
+const dropped = new Float64Array([...pageRounds.subarray(0, plantAt), ...pageRounds.subarray(plantAt + ROUND_WIDTH)]);
+const missing = firstRoundDifference(pageRounds, dropped) ?? '';
+assert.ok(missing === `after step ${plantedStep}: round ${plantedId} is only on the page`, `control: a round only one side has is named (${missing})`);
 
 // the viewer's index (replayIndexer.ts) through the Worker's own job (replayIndexerWorker.ts, minus the message port): the
 // file gzipped as a page saves it, the battle's collision records packed as a page sends them (here the committed shard
@@ -241,5 +258,5 @@ assert.ok(caught.mismatch instanceof ReplayMismatch && caught.mismatch.code === 
 const bytes = live.finished.bytes.length;
 parentPort.postMessage({ summary: `replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
   + `${recording.events.length} marks) recorded in ${bytes} bytes (seats ${live.finished.seatBytes}); the replay matches every checksum and `
-  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}` });
+  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}; every live round matches step for step (${pageRounds.length / ROUND_WIDTH} records) and a round one ulp off or missing is named at its step` });
 }

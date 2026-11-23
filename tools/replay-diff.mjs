@@ -15,7 +15,7 @@ import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
 import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
 import { createReplayWorldFor } from './replay-world.mjs';
-import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, traceRows } from '../src/game/replay/replayTrace.ts';
+import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, firstRoundDifference, traceRounds, traceRows } from '../src/game/replay/replayTrace.ts';
 
 const [file, traceFile] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const pathsArg = process.argv.find((arg) => arg.startsWith('--paths='));
@@ -68,9 +68,14 @@ if (!first) {
   console.log(`steps: first difference after step ${first.step} (${first.fields.length} number(s)):`);
   for (const line of first.fields.slice(0, PATHS)) console.log(`  ${line}`);
 }
+// (276) every live round, step by step: the first round that parts from the page, by field
+if (page.rounds) {
+  const round = firstRoundDifference(traceRounds(page), traceRounds(replay), stoppedAt);
+  console.log(`rounds: ${round ?? `every live round matches the page for all ${steps} compared steps`}`);
+} else console.log('rounds: the page\'s trace predates the round stream');
 for (const key of Object.keys(page.snapshots).map(Number).filter((k) => k > 0).sort((x, y) => x - y)) {
   if (first && key > first.step + 60) break;
   if (!replay.snapshots[key]) { console.log(`after step ${key}: the replay has no dump (it stopped at ${stoppedAt})`); break; }
   show(`after step ${key}`, diffDumps(page.snapshots[key], replay.snapshots[key], PATHS * 20));
 }
-process.exitCode = first ? 1 : 0;
+process.exitCode = first || (page.rounds && firstRoundDifference(traceRounds(page), traceRounds(replay), stoppedAt)) ? 1 : 0;

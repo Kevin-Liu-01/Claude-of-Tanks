@@ -28,6 +28,12 @@ interface TraceHull {
   combat: { hp: number; destroyed?: boolean } | null;
 }
 
+interface TraceRound {
+  id: number; pos: { x: number; y: number; z: number }; vel: { x: number; y: number; z: number }; distM: number; ageS: number;
+  penRollDone?: boolean; remainingPenMm?: number; freshPenRollMm?: number; dmgRoll?: number; bounces?: number;
+  carriedThrough?: boolean; dead?: boolean;
+}
+
 export interface TraceGame {
   tanks: readonly TraceHull[];
   shells: readonly unknown[];
@@ -39,11 +45,22 @@ export interface TraceGame {
 /** The numbers one step keeps: the battle's three, then nine a hull (the digest's, sim/replayChecksum.ts). */
 export const TRACE_GAME_FIELDS = ['timeS', 'shells', 'nextShellId'] as const;
 export const TRACE_HULL_FIELDS = ['x', 'y', 'z', 'yaw', 'speed', 'turretYaw', 'gunPitch', 'hp', 'destroyed'] as const;
+/**
+ * (276 sim-det-trig, Main's ruling (a)) every live round's numbers after each step, so a round that parts from the page
+ * is named at the step it parts, not hundreds of steps later when a grazing outcome flips (the first 5-minute Verdant
+ * trace saw only a shell count at step 3077 and a checksum at 3600). One record per live round: the step, then these.
+ * The pen roll's inputs are the flight (distM) and the battle's combat stream; its results remainingPenMm, freshPenRollMm
+ * and dmgRoll; the outcome is the round's end (dead) and its screens and bounces on the way.
+ */
+export const TRACE_ROUND_FIELDS = ['step', 'id', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'distM', 'ageS', 'penRollDone', 'remainingPenMm',
+  'freshPenRollMm', 'dmgRoll', 'bounces', 'carriedThrough', 'dead'] as const;
 
 export interface ReplayTraceExport {
   ids: string[];
   /** Every step's numbers, step 1 first, as little-endian Float64 in base64. */
   rows: string;
+  /** Every live round's numbers after each step (TRACE_ROUND_FIELDS per record), Float64 in base64; absent in older traces. */
+  rounds?: string;
   /** Deep dumps keyed by the step they were taken after ('0' is before step 1). */
   snapshots: Record<string, unknown>;
 }
@@ -114,10 +131,22 @@ export function createReplayTrace(): ReplayTrace {
   let ids: string[] = [];
   let rows = new Float64Array(0);
   let used = 0;
+  let rounds = new Float64Array(0);
+  let roundsUsed = 0;
   const snapshots: Record<string, unknown> = {};
   const push = (value: number) => {
     if (used === rows.length) { const grown = new Float64Array(Math.max(4096, rows.length * 2)); grown.set(rows); rows = grown; }
     rows[used++] = value;
+  };
+  const pushRound = (value: number | boolean | undefined) => {
+    if (roundsUsed === rounds.length) { const grown = new Float64Array(Math.max(4096, rounds.length * 2)); grown.set(rounds); rounds = grown; }
+    rounds[roundsUsed++] = typeof value === 'boolean' ? (value ? 1 : 0) : value ?? Number.NaN;
+  };
+  const toBase64 = (values: Float64Array, count: number) => {
+    const bytes = new Uint8Array(values.buffer, 0, count * 8);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
   };
   return {
     begin(game) {
@@ -132,15 +161,55 @@ export function createReplayTrace(): ReplayTrace {
         push(s.pos.x); push(s.pos.y); push(s.pos.z); push(s.yaw); push(s.speed); push(s.turretYaw); push(s.gunPitch); push(c.hp);
         push(c.destroyed ? 1 : 0);
       }
+      for (const shell of game.shells as readonly TraceRound[]) {
+        pushRound(game.tick); pushRound(shell.id);
+        pushRound(shell.pos.x); pushRound(shell.pos.y); pushRound(shell.pos.z); pushRound(shell.vel.x); pushRound(shell.vel.y); pushRound(shell.vel.z);
+        pushRound(shell.distM); pushRound(shell.ageS); pushRound(shell.penRollDone); pushRound(shell.remainingPenMm); pushRound(shell.freshPenRollMm);
+        pushRound(shell.dmgRoll); pushRound(shell.bounces); pushRound(shell.carriedThrough); pushRound(shell.dead);
+      }
       if (game.tick <= SNAPSHOT_UNTIL && (game.tick === 1 || game.tick % SNAPSHOT_EVERY === 0)) snapshots[String(game.tick)] = snapshotBattle(game);
     },
     export() {
-      const bytes = new Uint8Array(rows.buffer, 0, used * 8);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      return { ids, rows: btoa(binary), snapshots };
+      return { ids, rows: toBase64(rows, used), rounds: toBase64(rounds, roundsUsed), snapshots };
     },
   };
+}
+
+/** The live rounds of an export as numbers (TRACE_ROUND_FIELDS per record; empty for a trace that predates them). */
+export function traceRounds(trace: ReplayTraceExport): Float64Array {
+  return trace.rounds ? traceRows({ ...trace, rows: trace.rounds }) : new Float64Array(0);
+}
+
+/**
+ * The first round that differs between two traces' round streams, step by step: a round only one side has, or the first
+ * field that differs (Object.is, so NaN for an absent field matches NaN). Null when every compared step agrees.
+ */
+export function firstRoundDifference(page: Float64Array, replay: Float64Array, untilStep = Infinity): string | null {
+  const width = TRACE_ROUND_FIELDS.length;
+  const byStep = (values: Float64Array) => {
+    const out = new Map<number, Map<number, Float64Array>>();
+    for (let at = 0; at + width <= values.length; at += width) {
+      const step = values[at]!, id = values[at + 1]!;
+      if (step > untilStep) break;
+      let rounds = out.get(step);
+      if (!rounds) out.set(step, rounds = new Map());
+      rounds.set(id, values.subarray(at, at + width));
+    }
+    return out;
+  };
+  const a = byStep(page), b = byStep(replay);
+  const steps = [...new Set([...a.keys(), ...b.keys()])].sort((x, y) => x - y);
+  for (const step of steps) {
+    const ra = a.get(step) ?? new Map(), rb = b.get(step) ?? new Map();
+    for (const id of [...new Set([...ra.keys(), ...rb.keys()])].sort((x, y) => x - y)) {
+      const x = ra.get(id), y = rb.get(id);
+      if (!x || !y) return `after step ${step}: round ${id} is only on the ${x ? 'page' : 'replay'}`;
+      const fields: string[] = [];
+      for (let i = 2; i < width; i++) if (!Object.is(x[i], y[i])) fields.push(`${TRACE_ROUND_FIELDS[i]} page ${x[i]} replay ${y[i]} (Δ ${y[i]! - x[i]!})`);
+      if (fields.length) return `after step ${step}: round ${id}: ${fields.join('; ')}`;
+    }
+  }
+  return null;
 }
 
 /** The rows of an export as numbers. */
