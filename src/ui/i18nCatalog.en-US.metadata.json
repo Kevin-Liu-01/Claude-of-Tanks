@@ -213,40 +213,40 @@
     "context": "A small text button on a tutorial card in Claude of Tanks, a browser tank game; it shares one row with the card's other button on a narrow phone screen, so keep it as short as the language allows: hard limit at most 15 characters (Russian: 14; Japanese: 8; Chinese: 6). Never use an em dash."
   },
   "hud.alert.line.pickRound": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: press one of these keys to choose another ammunition type."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: press one of these keys to choose another ammunition type. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.alert.line.fireMissile": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key fires the guided missile now selected."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key fires the guided missile now selected. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.alert.line.armorOff": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay off."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay off. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.alert.line.armorOn": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay on."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay on. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.alert.line.autoAimRelease": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key releases the auto-aim lock."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key releases the auto-aim lock. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.aimWarning.flipTitle": {
     "context": "A battle notice title: the player's tank has rolled over. Two or three words."
   },
   "hud.aimWarning.flipLine": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key flips the overturned tank back onto its tracks."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key flips the overturned tank back onto its tracks. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.status.fireLine": {
-    "context": "A battle key line under the 'On fire' notice: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key uses the fire extinguisher and puts out the fire on your own tank."
+    "context": "A battle key line under the 'On fire' notice: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key uses the fire extinguisher and puts out the fire on your own tank. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.hint.droneFlight.title": {
     "context": "A first-use hint title for flying the drone. Two words at most."
   },
   "hud.hint.droneFlight.line": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The four keys move the drone; keep the three short phrases separated by ' · '."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The four keys move the drone; keep the three short phrases separated by ' · '. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "hud.hint.gunshipFlight.title": {
     "context": "A first-use hint title for flying the gunship aircraft (AC-130). One or two words."
   },
   "hud.hint.gunshipFlight.line": {
-    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The three keys pick the gunship's weapons; keep the three short phrases separated by ' · '."
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The three keys pick the gunship's weapons; keep the three short phrases separated by ' · '. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },
   "settings.crew.captions": {
     "context": "A settings row label: on-screen subtitles for the crew's radio voice lines. One word if possible."
@@ -259,5 +259,35 @@
   },
   "settings.interface.reloadNote": {
     "context": "A short explanatory note under two switches in the Interface settings of Claude of Tanks, a browser tank game. Amber and gray are the colors the bar is drawn in: amber while the tank reloads, gray once its gun is loaded. Hard limit: at most 150 characters (Russian: 140; Japanese: 70; Chinese: 50). Never use an em dash."
+  },
+  "hud.hint.moduleRepair.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.reload.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.autoAim.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.suspension.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.turbo.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.airSpin.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.airSupport.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.drone.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.roofGun.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "hud.hint.ammoTypes.line": {
+    "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   }
 }

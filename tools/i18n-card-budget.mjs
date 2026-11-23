@@ -16,6 +16,11 @@
 // Settings rows carry a budget too where a lane asks (reload-others-275): a row label sits beside its On/Off pair, so its
 // budget stays under the longest Interface labels translated so far (es 37, ru 39, ja 14, zh 6 characters), and the note
 // under it keeps to a few short lines.
+// Battle key lines (275: hud.alert.line.*, hud.hint.<x>.line, the flip and fire lines) draw their {placeholder} key caps
+// first and must stay one line on a phone. Their budget counts the words alone, key caps left out, and sits at the longest
+// line already shipped in every locale (the turbo hint: es 54, de and ru 55, ja 22, zh 13 characters); no fit walk covers
+// the HUD yet, so it is a ceiling from shipped text, not a measurement. A lane's own context for these keys stays: the
+// budget sentence is appended to it.
 //
 //   node tools/i18n-card-budget.mjs           check: every act card body has its context, and every translation fits
 //   node tools/i18n-card-budget.mjs --write   write the act card bodies' context into the metadata file
@@ -38,6 +43,15 @@ const SETTINGS_ROW_BUDGET = Object.freeze({ 'zh-CN': 10, es: 34, ja: 14, de: 34,
 const SETTINGS_NOTE_BUDGET = Object.freeze({ 'zh-CN': 50, es: 150, ja: 70, de: 150, 'pt-BR': 150, ru: 140 });
 export const SETTINGS_ROW_KEYS = Object.freeze(['settings.interface.allyReload', 'settings.interface.enemyReload']);
 export const SETTINGS_NOTE_KEYS = Object.freeze(['settings.interface.reloadNote']);
+/** Battle key lines: key caps first, one phone line; the budget counts the words without the {placeholder} key caps. */
+const HUD_LINE_BUDGET = Object.freeze({ 'zh-CN': 20, es: 56, ja: 24, de: 56, 'pt-BR': 56, ru: 56 });
+const HUD_LINE = /^hud\.alert\.line\.|^hud\.aimWarning\.flipLine$|^hud\.status\.fireLine$|^hud\.hint\.[^.]+\.line$/;
+export const isHudLineKey = (key) => HUD_LINE.test(key);
+const hudLineSentence = () => `Budget: the words after the key caps run ${limits(HUD_LINE_BUDGET)}, key caps not counted.`;
+const HUD_LINE_DEFAULT = 'A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, '
+  + 'so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash.';
+/** How long a budgeted text runs: a key line's words alone, else the whole text. */
+const measure = (key, text) => (isHudLineKey(key) ? text.replace(/\{\w+\}/g, '').replace(/\s+/g, ' ').trim().length : text.length);
 const INPUTS = ['keyboard', 'touch', 'pad'];
 
 /** Every act card's body key, over every chapter (the offer included) and input, in step order. */
@@ -58,13 +72,18 @@ export function budgetFor(key) {
   if (CARD_BUTTON_KEYS.includes(key)) return BUTTON_BUDGET;
   if (SETTINGS_ROW_KEYS.includes(key)) return SETTINGS_ROW_BUDGET;
   if (SETTINGS_NOTE_KEYS.includes(key)) return SETTINGS_NOTE_BUDGET;
+  if (isHudLineKey(key)) return HUD_LINE_BUDGET;
   return KEY_BUDGET[key] ?? CARD_BUDGET;
 }
 
 const limits = ({ es, ru, ja, 'zh-CN': zh }) => `at most ${es} characters (Russian: ${ru}; Japanese: ${ja}; Chinese: ${zh})`;
 
-/** The translation context a budgeted key carries (the gt CLI reads it per key). */
-export function cardBudgetContext(key) {
+/** The translation context a budgeted key carries (the gt CLI reads it per key); a key line keeps its lane's context. */
+export function cardBudgetContext(key, current = '') {
+  if (isHudLineKey(key)) {
+    const base = (current || HUD_LINE_DEFAULT).replace(/\s*Budget: the words after the key caps run [^.]*\.(?: key caps not counted\.)?/, '').trim();
+    return `${base} ${hudLineSentence()}`;
+  }
   if (SETTINGS_ROW_KEYS.includes(key)) {
     return 'A switch label in the Interface settings of Claude of Tanks, a browser tank game. It turns on a thin bar under '
       + 'other tanks\' health bars showing how far each is through reloading its gun; allies are the player\'s team, '
@@ -87,20 +106,22 @@ export function cardBudgetContext(key) {
     + 'ground; Sentry and Bulwark name practice targets. Keep every {placeholder} exactly as written. Never use an em dash.';
 }
 
-/** Every budgeted key: the act card bodies, the narrower bodies, the card buttons and the budgeted Settings rows. */
-export async function budgetedKeys() {
+/** Every budgeted key: the act card bodies, the narrower bodies, the card buttons, the budgeted Settings rows and the
+ *  battle key lines the English catalog holds. */
+export async function budgetedKeys(en = readJson(resolve(ROOT, 'src/ui/i18nCatalog.en-US.json'))) {
   return [...new Set([...await actCardBodyKeys(), ...Object.keys(KEY_BUDGET), ...CARD_BUTTON_KEYS, ...SETTINGS_ROW_KEYS,
-    ...SETTINGS_NOTE_KEYS])];
+    ...SETTINGS_NOTE_KEYS, ...Object.keys(en).filter(isHudLineKey)])];
 }
 
 /** What breaks the budget: a budgeted key without its context, or a translation past its locale's budget. */
 export function cardBudgetFailures(keys, metadata, catalogs) {
   const failures = [];
   for (const key of keys) {
-    if (metadata[key]?.context !== cardBudgetContext(key)) failures.push(`${key}: the metadata lacks the card budget (node tools/i18n-card-budget.mjs --write)`);
+    const current = metadata[key]?.context ?? '';
+    if (current !== cardBudgetContext(key, current)) failures.push(`${key}: the metadata lacks the card budget (node tools/i18n-card-budget.mjs --write)`);
     for (const [locale, budget] of Object.entries(budgetFor(key))) {
       const text = catalogs[locale]?.[key];
-      if (typeof text === 'string' && text.length > budget) failures.push(`${locale} ${key}: ${text.length} characters, over ${budget}`);
+      if (typeof text === 'string' && measure(key, text) > budget) failures.push(`${locale} ${key}: ${measure(key, text)} characters, over ${budget}`);
     }
   }
   return failures;
@@ -119,7 +140,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes('--write')) {
     const metadata = readJson(METADATA);
     const keys = await budgetedKeys();
-    for (const key of keys) metadata[key] = { context: cardBudgetContext(key) };
+    for (const key of keys) metadata[key] = { context: cardBudgetContext(key, metadata[key]?.context ?? '') };
     writeFileSync(METADATA, `${JSON.stringify(metadata, null, 2)}\n`);
     console.log(`i18n-card-budget: ${keys.length} budgeted keys carry their budget`);
   } else {
