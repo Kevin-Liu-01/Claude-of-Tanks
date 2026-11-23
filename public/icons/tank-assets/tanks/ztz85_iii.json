@@ -1098,15 +1098,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25754,
-      "sha256": "7d123e7a51076067f188c0fb7014942f65fa9db0bfa28d62d96c257d57dc2fe0",
+      "bytes": 25758,
+      "sha256": "9773adadbbbe94a3ab1cfd516f44b500a5341741cfa5dda449b6f6d308f9b2ee",
       "thumbnail": {
         "file": "thumbs/ztz85_iii_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10458,
-        "sha256": "49d3d6f99d48f92dbc4ce21d3f1523b51e1cc3cdfb7a84cf0e04f762e2bee2a0",
+        "bytes": 10460,
+        "sha256": "0695699150086c6962d770ad515af263749da5c814a7a8e4aeba6f25ab7f5000",
         "frame": [2,120,224,249]
       }
     },
@@ -1123,8 +1123,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8402,
-      "sha256": "38511d7c5eecbc555bc3a33bd5d1f29c671426b738b3045ae569480e2613fcd3"
+      "bytes": 8400,
+      "sha256": "78e00f72d5fa7a35599bb5fbb73393a536e75c90d77c8d6be7da55d4ad8930b5"
     },
     "topSilhouette": {
       "file": "ztz85_iii_top_silhouette.png",
@@ -1148,7 +1148,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 19060,
-      "sha256": "6ee35cd704b661eb8ef8ad7550c5cab59bfbb2c56891415dac7ab005f341855f"
+      "sha256": "2d43085a61ec88b35cee915171135f936384c8fffc5f8179ae71a4ce10c2615e"
     },
     "modulesSide": {
       "file": "ztz85_iii_modules_side.webp",
@@ -1156,7 +1156,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 18756,
-      "sha256": "35d62fdf7301abd4fab0c75de231a4ae5c4c7bd70b1e30e03b905f1a9094339c"
+      "sha256": "67a65e63490a232bcd65bba1c88d4a4e0a95d8a76fab683e4847cf9b93332a29"
     },
     "crewSide": {
       "file": "ztz85_iii_crew_side.webp",
@@ -1164,7 +1164,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 17344,
-      "sha256": "82166685b387214fef67e9e0304c2c9a7165810ae1d8c28d18fcd8fae0023258"
+      "sha256": "de4624efa79c5c08b3c25800c0032cecf41f8e00b24728ceaea8a165181ef2fd"
     },
     "markings": {
       "file": "ztz85_iii_markings.png",

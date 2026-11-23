@@ -677,7 +677,7 @@
       }
     ]
   },
-  "geometryHash": "15e46605",
+  "geometryHash": "3daafe27",
   "metadataHash": "ae13c6e4",
   "presentationAnchor": {
     "xM": -0.0039,
@@ -737,15 +737,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25256,
-      "sha256": "823cefcefa7a0f03d0bd4a46bb2679a7b8fd7d360bff3c030b134fab133acd5e",
+      "bytes": 25398,
+      "sha256": "cd15ec08bcf883c6b937872998d19d353fef3b9c8a17a2a0501b268b10a49888",
       "thumbnail": {
         "file": "thumbs/hayate_ifv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10448,
-        "sha256": "1198700382238902a79f8bde6a304eb039f07515526aa1ba6e575c82100b5bc4",
+        "bytes": 10416,
+        "sha256": "4e811ca8dccd4c276ffeef2ddce5bf2e1bb0e68faa4f443f7b8652310cfac16f",
         "frame": [26,89,226,247]
       }
     },
@@ -754,16 +754,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13924,
-      "sha256": "6a5b06fab2657c02dffbbae802ee1227cfdd4c63cbcf4cab7715001554a9a933"
+      "bytes": 13496,
+      "sha256": "921c552b8149b6cb437e4146cee7bb9a2ccf50c7910364696c24b822e68f7d3d"
     },
     "side": {
       "file": "hayate_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13870,
-      "sha256": "021071e6d5660dcee0ee9aa11249c228261487781b10638becffd931f3f88ca3"
+      "bytes": 13814,
+      "sha256": "053e124ff078a4dde27ec5cdb2b2f516c46f660bdbada3fa256cb43a2c5ca128"
     },
     "topSilhouette": {
       "file": "hayate_ifv_top_silhouette.png",
@@ -778,32 +778,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5926,
-      "sha256": "186c2d380391920833bda82f6a20151918e223755872fe28097d88b7c4f3b24d"
+      "bytes": 5868,
+      "sha256": "6404dec824743a335773a1a2a82c38f39fbc376326f6c19648f523be67499762"
     },
     "armorSide": {
       "file": "hayate_ifv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30810,
-      "sha256": "bc78820f2c8a700a040975b8dee8099638bd256981dae1ab3f81616c6b334882"
+      "bytes": 30546,
+      "sha256": "1d30bdc8802a205bfa70cfc9cd82a5bf7e0577d3831a3b063f8b4e99552f6b4b"
     },
     "modulesSide": {
       "file": "hayate_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33650,
-      "sha256": "b9bd70ec9f9126b0c1337462c3b7b16a0c65a716b23f0908b0c83544ea5df764"
+      "bytes": 33440,
+      "sha256": "1c3e69d0c1ac85385b64991fdfc696270b20a69ebf9bfcd092ef9e94ebab2ddd"
     },
     "crewSide": {
       "file": "hayate_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31408,
-      "sha256": "f142fb365a707b51e2a9d1e8cb3a80514066a09463df5122d85c05198277ac9f"
+      "bytes": 31144,
+      "sha256": "c75f43173c169991ca5b58b2dd9237562619886088db5ba18b17687656c293b0"
     },
     "markings": {
       "file": "hayate_ifv_markings.png",

@@ -495,17 +495,17 @@
       }
     ]
   },
-  "geometryHash": "04b56cb2",
+  "geometryHash": "2ff2b893",
   "metadataHash": "1e17f946",
   "presentationAnchor": {
-    "xM": 0.0008,
-    "zM": -0.0773
+    "xM": 0.0006,
+    "zM": -0.0772
   },
-  "presentationHash": "0063036b",
+  "presentationHash": "29f5fdf4",
   "presentationProjection": {
     "centerYM": 1.9716,
-    "topHalfM": 4.412,
-    "sideHalfM": 2.206
+    "topHalfM": 4.4121,
+    "sideHalfM": 2.2061
   },
   "appearance": {
     "version": 1,
@@ -557,15 +557,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27926,
-      "sha256": "595eb63ebfe8dc23b2700b8ccb2e2d1dba365963674c4fe39f98e87bcece4222",
+      "bytes": 27800,
+      "sha256": "366f60d503dfe7f3743faf742979449f68eeac2027fd77d7e916e5bc66820fa8",
       "thumbnail": {
         "file": "thumbs/spz_puma_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11240,
-        "sha256": "d7582c982cd1b389de60a0b3f9932d3fb50b8ee35cf8f133b7ba61ce23d285c7",
+        "bytes": 11194,
+        "sha256": "7b9cb56e0a5aea015b37c5512fb1237b0ddad23c25f01e5547f940f6ac4640a8",
         "frame": [30,93,225,247]
       }
     },
@@ -574,56 +574,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20308,
-      "sha256": "b40a67f41ee6f83ed4a4a86a7ab37be978352ca0d67824028fc88c0057dc04ae"
+      "bytes": 20250,
+      "sha256": "e54b6a070c62de58abaeaec4a36fcaffcdf8bb5975dee47d400c070e0ccc1df1"
     },
     "side": {
       "file": "spz_puma_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17162,
-      "sha256": "00a23f6f1f9542dfbfbfabd46e1034bd58dfaa968fb963a94199f757833efe95"
+      "bytes": 17134,
+      "sha256": "ba78ba2c8e9ff7946109bb3cde83b8d6c05648e32aba7f38df7626683e5b970e"
     },
     "topSilhouette": {
       "file": "spz_puma_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1427,
-      "sha256": "bf888180e448092dab8a3cd84a39fa2383415c946b3491ec20c2d7bc37a7930c"
+      "bytes": 1422,
+      "sha256": "34c3ed79d91919b2fc1208283966432e0058b016b5abf49c7abadf9e5c6e46a2"
     },
     "sideSilhouette": {
       "file": "spz_puma_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5454,
-      "sha256": "c87bbfac789cf9a19e05b3378e050724296f318354dabcbc7393cd48a5de60a2"
+      "bytes": 5416,
+      "sha256": "fcbdf4014c59160b32ca1dc30926a358aa096f33dcad0e72aebff7c4be1abcb8"
     },
     "armorSide": {
       "file": "spz_puma_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42780,
-      "sha256": "0bd12d85db1c9b105398a37ed73e0163aa7b21b4052bce04c03ebaa9049f5ef1"
+      "bytes": 42472,
+      "sha256": "0393b6db0e311835ed23145976f5ffa861ac42ec2a85b51ef0c16702f4ec6a72"
     },
     "modulesSide": {
       "file": "spz_puma_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41156,
-      "sha256": "5db5190c559522fa93bac162bd6650249104854584620d86a21248372e89dbd0"
+      "bytes": 40876,
+      "sha256": "d3158baec18065fbc435998bfb3cef0fe5330bfc1085ad80dfe7ac6e562142aa"
     },
     "crewSide": {
       "file": "spz_puma_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39734,
-      "sha256": "02d60db1ea9232e1e8df467e84b9c18127f0eecdcfda6602f422ff2cd0ca81f3"
+      "bytes": 39438,
+      "sha256": "5833d144a5bd8d09f5faa817463fe3385f3c04d66fbda4b75641a2a779aaaef5"
     },
     "markings": {
       "file": "spz_puma_markings.png",
@@ -636,8 +636,8 @@
     "technicalLabels": {
       "file": "spz_puma_technical.json",
       "mime": "application/json",
-      "bytes": 3498,
-      "sha256": "9b2027288691bbf1d7de067e77d3482a1961191fbf967eef34ed3b2319bed001"
+      "bytes": 3499,
+      "sha256": "7cfb07c1666ed5e63006e17e3044f71b417d8c3f4b0de54402705bc65af38d51"
     }
   }
 }

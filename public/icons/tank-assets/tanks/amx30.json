@@ -497,17 +497,17 @@
       }
     ]
   },
-  "geometryHash": "7b28200c",
+  "geometryHash": "953985cc",
   "metadataHash": "e31af7b5",
   "presentationAnchor": {
     "xM": -0.0034,
-    "zM": -0.0429
+    "zM": -0.0427
   },
-  "presentationHash": "59778ba7",
+  "presentationHash": "5d9a2435",
   "presentationProjection": {
     "centerYM": 1.9989,
-    "topHalfM": 6.6955,
-    "sideHalfM": 3.3477
+    "topHalfM": 6.6952,
+    "sideHalfM": 3.3476
   },
   "appearance": {
     "version": 1,
@@ -559,16 +559,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25370,
-      "sha256": "381c1741369e5db314b23cc96a7da9a53b5fd6ed0136d230dddd56932dd81c3c",
+      "bytes": 24900,
+      "sha256": "4683da771c1cdd84eaa3b85c9240dac9cdd1f49ff7a02be2fb952db6715713de",
       "thumbnail": {
         "file": "thumbs/amx30_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10272,
-        "sha256": "e353dcb41023729ac4f8da2852e08679743d56b76dec9957c2c719a689c32026",
-        "frame": [14,83,224,248]
+        "bytes": 10206,
+        "sha256": "c92b44a942f05578ea88aa5ebf2755d773bd5a66af54e1a358e05d75050fab52",
+        "frame": [15,84,224,248]
       }
     },
     "top": {
@@ -576,56 +576,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9458,
-      "sha256": "af1e3bab3d3f7673d6fde7f3e62bb0dded304622614a3b6be83978cf2fae0d3b"
+      "bytes": 9370,
+      "sha256": "0f216853750b1f19c9267e7e9254dd1a295d134d6d346b34626283d8d1229fbf"
     },
     "side": {
       "file": "amx30_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9804,
-      "sha256": "a4be856b897df4d3623e32b30580fef97bc17e8baa1f249dbb2a09b06fed6820"
+      "bytes": 9844,
+      "sha256": "dd4840a6df40292a6d623635773de028701fd32dee6f0e8c86e042811f5f3e21"
     },
     "topSilhouette": {
       "file": "amx30_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1259,
-      "sha256": "425b0451da72dff9e225520598c5ca3577588e88513c323bda1a5f5f1192c6e2"
+      "bytes": 1257,
+      "sha256": "825a9d8ea0b6353b14167e80ba831070889f32f153c4368c6ebe8fd7355f10e5"
     },
     "sideSilhouette": {
       "file": "amx30_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4386,
-      "sha256": "a164f04d370a0978cc6ca18840442b8bd7471abaaf884067f4981af067dcf558"
+      "bytes": 4398,
+      "sha256": "83e4d5fff31bcd6a29a8230885de64c85c5cec007e486bb26b92369e96bcffcb"
     },
     "armorSide": {
       "file": "amx30_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27286,
-      "sha256": "cb564bfea51111bab91726bd72858de620c4ec7b006828477d2507916c3ac3d8"
+      "bytes": 27122,
+      "sha256": "cabf8136f2d24ec827c3e325f6d5162bb3bf69e05e5112316675ac48da1c1e9e"
     },
     "modulesSide": {
       "file": "amx30_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24178,
-      "sha256": "f880bb19aeb940312b9ebb7528fe19ca20c8a1836e73f55bbec69e8828633bd2"
+      "bytes": 24080,
+      "sha256": "db109547658728f52361ecd6909ae2c403122a6e5907b18f1aedb661976c32a4"
     },
     "crewSide": {
       "file": "amx30_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21616,
-      "sha256": "3bfef772c4a7a88a2aad3de3515e43b173fe5ae5551e8db94bb1a5a15bdfac62"
+      "bytes": 21624,
+      "sha256": "19fb369ef1720e4c509e4dc970e623d2998ba395801ab1e6991f21331bf55994"
     },
     "markings": {
       "file": "amx30_markings.png",
@@ -638,8 +638,8 @@
     "technicalLabels": {
       "file": "amx30_technical.json",
       "mime": "application/json",
-      "bytes": 4288,
-      "sha256": "ec1dddb7e3c51a13685a66e0c22fba8ab859070a3d1f87d63542fc985cdcc2f9"
+      "bytes": 4289,
+      "sha256": "1cd1d934b91b15ec96235ecd6da24d678c3b283d1d99c6d83afe37a306c9ebfc"
     }
   }
 }

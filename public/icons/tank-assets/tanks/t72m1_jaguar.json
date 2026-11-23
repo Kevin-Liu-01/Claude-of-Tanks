@@ -3577,13 +3577,13 @@
       }
     ]
   },
-  "geometryHash": "15e2f486",
+  "geometryHash": "1b271460",
   "metadataHash": "b519ff3a",
   "presentationAnchor": {
-    "xM": 0.0108,
+    "xM": 0.0109,
     "zM": -0.1259
   },
-  "presentationHash": "d741285e",
+  "presentationHash": "4a23f091",
   "presentationProjection": {
     "centerYM": 2.7285,
     "topHalfM": 6.3394,
@@ -3605,7 +3605,7 @@
       "armorPaint": 12,
       "hullRubber": 1,
       "gunmetal": 5,
-      "unclassified": 19,
+      "unclassified": 18,
       "gearShadow": 1,
       "machineGun": 4,
       "opticGlass": 1,
@@ -3636,15 +3636,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27530,
-      "sha256": "b32339d6f9e07f7541bc1a6eff4914d12d5c0fc88f4f0ce55326157249d376a3",
+      "bytes": 27428,
+      "sha256": "08f80a18c005b519522684fcd938a97e129c32a8a695a6aff9d9b39c2257145a",
       "thumbnail": {
         "file": "thumbs/t72m1_jaguar_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11034,
-        "sha256": "c6ba361fba700964e79bfe4f1cf46edab7e2fd347f6f5e535fa39406fcbeeceb",
+        "bytes": 10986,
+        "sha256": "2fd212e5bc53774d8f5c54f40f0ba6fe4b0d6d2df09408198887b8f0ad6daafd",
         "frame": [24,109,225,249]
       }
     },
@@ -3653,56 +3653,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10568,
-      "sha256": "e5e3ec06797e61d1a54e4b36d0a2904af9870c782c356e3566aa228beeecbe82"
+      "bytes": 10460,
+      "sha256": "54c132d71ae23ddfb298149d8994acfea4706627c685b8af3326c99f4df4a08f"
     },
     "side": {
       "file": "t72m1_jaguar_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11040,
-      "sha256": "25d02067dae030a66fd31c4de68f1561bc193a786e86f2be376b467876e7666c"
+      "bytes": 11092,
+      "sha256": "a9c77f7d76f5820c01668ee522ebd039e210f73b31065c8efeb07fc1c93018b1"
     },
     "topSilhouette": {
       "file": "t72m1_jaguar_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1251,
-      "sha256": "3b9352f56e470e45a976be725bd57f9c60d08075010207cb22c29e4f57bee5a4"
+      "bytes": 1237,
+      "sha256": "a9c3dddeacde0ebc06f5e4cf437568b81ad7b3a63c45f0d9f911483d760b9d7d"
     },
     "sideSilhouette": {
       "file": "t72m1_jaguar_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4767,
-      "sha256": "f7e647c9ee5c64fba8b1baed1c3bb5e7fe6f3cfaaf2b238f6347c58624f00c29"
+      "bytes": 4757,
+      "sha256": "1129ffbfd37959946b2406cecec66dac60e2eea42902c04f4b61d85a36732ed8"
     },
     "armorSide": {
       "file": "t72m1_jaguar_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27610,
-      "sha256": "ca2625397a8506688130916f317eb19cb595fb6d92c9ac7158a573749399ec52"
+      "bytes": 27696,
+      "sha256": "5be24a48cb5abff6c6296288e99b9ebe6f422d8404a238b32a2fdea804078388"
     },
     "modulesSide": {
       "file": "t72m1_jaguar_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24454,
-      "sha256": "62e4fd09d6f5415e3d9baf1dbb9c6734198803b0cd508f2c6470590eda5e92e2"
+      "bytes": 24582,
+      "sha256": "af913f2ea8086824cf1dd17e4dedf35d79993ef49ad816eecfb3f59835cf1f34"
     },
     "crewSide": {
       "file": "t72m1_jaguar_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21350,
-      "sha256": "9924d076d69e636845501cc30cd2b71ecc5cfc295cd11f960ca13bf48501d5af"
+      "bytes": 21650,
+      "sha256": "5648db57ffbf902da5fc51a049174e7b0816d95ed7eaeb90cdc5ec509b5e8077"
     },
     "markings": {
       "file": "t72m1_jaguar_markings.png",

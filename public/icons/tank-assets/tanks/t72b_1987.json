@@ -26609,7 +26609,7 @@
       }
     ]
   },
-  "geometryHash": "7cca9387",
+  "geometryHash": "ef92f13f",
   "metadataHash": "55a6b4e4",
   "presentationAnchor": {
     "xM": 0.0088,
@@ -26665,40 +26665,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26916,
-      "sha256": "b0e36797ac828bb58e86078f7ad2b6e37566d2c2a83d802e6f72227fb9985940"
+      "bytes": 26692,
+      "sha256": "65c76a29d27a8b03743fab2bf6f4851ddaa51f7a9a293631bf6b1859dd5fec75"
     },
     "modulesSide": {
       "file": "t72b_1987_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23198,
-      "sha256": "ac76fb3e8b5302ae91834388d766d1195d95f39f2252845e2f8fa6227a71fdec"
+      "bytes": 23122,
+      "sha256": "9dcba67148ef7b68a299c9183946c8e3303350dd9ba7d0922e2868184cafaab9"
     },
     "crewSide": {
       "file": "t72b_1987_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20226,
-      "sha256": "cb4868999868d03c4bfed61a4c9bf74f2600d7dd6a4fd72c2bd81f6affbe3757"
+      "bytes": 20094,
+      "sha256": "10b5a86660a63e994b1a3da680c84aac00e581834b75b4b416028117d43da949"
     },
     "angle": {
       "file": "t72b_1987_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27250,
-      "sha256": "35fd332b36fac6901090301a2d50e2d2ceaeb8f406b99e17d46bd081eb5116c6",
+      "bytes": 27088,
+      "sha256": "c6d69a275e4d612f1e9444d7f140b19122dbc8c8743bec4f8a0b973c941f17d5",
       "thumbnail": {
         "file": "thumbs/t72b_1987_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10874,
-        "sha256": "b9aeb3cb9c9865b5d0f4a0008bc8654c10e313964af11772d8c5d0d137582407",
-        "frame": [24,108,225,249]
+        "bytes": 10842,
+        "sha256": "0830442578bf514f4599006e0fb1d3bd34da5ba03d07471fcadfe908d420ae21",
+        "frame": [25,109,225,249]
       }
     },
     "top": {
@@ -26706,16 +26706,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11218,
-      "sha256": "aff60c9a5c81529046f67eb016baa982cb3ae6b816fe2fcaa9aac29dc0a33f59"
+      "bytes": 10804,
+      "sha256": "f4e93ede66ea0b1c3b0a96bc64b77d8d04931f7d58a6934a00195a4f49ca4f50"
     },
     "side": {
       "file": "t72b_1987_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10596,
-      "sha256": "b9434b73b4767c35ce4a0ccbaa477bd30f83e010b4468dd72a783c7d7c2119bd"
+      "bytes": 10574,
+      "sha256": "a2b7c290bc5571009e2b62e46215fcc3903620adf730196dfa101f83de7e3897"
     },
     "topSilhouette": {
       "file": "t72b_1987_top_silhouette.png",

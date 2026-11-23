@@ -763,7 +763,7 @@
       }
     ]
   },
-  "geometryHash": "5c4e53c3",
+  "geometryHash": "a2e5e978",
   "metadataHash": "fcf4d902",
   "presentationAnchor": {
     "xM": 0,
@@ -791,7 +791,7 @@
       "opticGlass": 4,
       "gunmetal": 17,
       "hullRubber": 1,
-      "unclassified": 20,
+      "unclassified": 19,
       "gearShadow": 2,
       "fittingPaint": 7,
       "canvas": 1
@@ -821,15 +821,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25570,
-      "sha256": "35a7455c7e23cb6be4c5f2a168c5089bf97f5236215c25cd122520bd692288f7",
+      "bytes": 25526,
+      "sha256": "1f652bf783ff38a1e2f23ab5b153be7284f897e9be03e8ee0bd8f63254cc5171",
       "thumbnail": {
         "file": "thumbs/leopard2_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10634,
-        "sha256": "78890f47846c64af2fd059c62c385b48c34f38a39c6149f2e6532d62722a0c4b",
+        "bytes": 10600,
+        "sha256": "6f57d94b4d0c04e9e865161233212a6eef09f104df122db7ccf9a3270d9a4647",
         "frame": [24,117,226,249]
       }
     },
@@ -838,16 +838,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12090,
-      "sha256": "54e7d99bdd143d4e0e954520ffec841e5282347078eb6a37a05f05597281460d"
+      "bytes": 12026,
+      "sha256": "1e4f47a2d81e88d382e353f786987d9aa2d7cb5194acb427ebf3cea5abb821ba"
     },
     "side": {
       "file": "leopard2_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12400,
-      "sha256": "a931f5006e22c73844c0c4ebbc7391b338d711834cfde27884c440ab89cb58f4"
+      "bytes": 12506,
+      "sha256": "5aacd4f7b184e7d871917ba6cdcb8f85d541fd7eaffb92c59059ea9e5bf1481a"
     },
     "topSilhouette": {
       "file": "leopard2_proto_top_silhouette.png",
@@ -870,24 +870,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24880,
-      "sha256": "d88aba0d569a56edb79d1a361456ac5d12e347ae06307c089f4622eb6694866f"
+      "bytes": 24680,
+      "sha256": "4f8a08e51a487974240cd2b21f99e86f0e6ed37486be059d96cc7dd40e9f8809"
     },
     "modulesSide": {
       "file": "leopard2_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26690,
-      "sha256": "c3f157ec318f4e4631253e054ccf48c992a3d22d8b0d64ecc9ebd84eb3345bd9"
+      "bytes": 26638,
+      "sha256": "a64b9f39e8d8ba1d0d56366c89cf06ecf3da59647601dc8e511da8535455574b"
     },
     "crewSide": {
       "file": "leopard2_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24272,
-      "sha256": "0fc75d35a35920401b9b1e2ae714687c316a9f854353e17583c92010327017c0"
+      "bytes": 24024,
+      "sha256": "a939a574af075c71346cc763da9a0eacf905a8453a716be625edcee370597335"
     },
     "markings": {
       "file": "leopard2_proto_markings.png",

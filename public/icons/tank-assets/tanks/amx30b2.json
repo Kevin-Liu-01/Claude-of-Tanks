@@ -1757,13 +1757,13 @@
       }
     ]
   },
-  "geometryHash": "e08664c8",
+  "geometryHash": "a4500b04",
   "metadataHash": "d735ebbc",
   "presentationAnchor": {
-    "xM": -0.0014,
+    "xM": -0.0013,
     "zM": -0.0493
   },
-  "presentationHash": "998e999a",
+  "presentationHash": "e4a99193",
   "presentationProjection": {
     "centerYM": 1.753,
     "topHalfM": 6.7029,
@@ -1788,7 +1788,7 @@
       "armorPaint": 11,
       "wood": 1,
       "hullRubber": 1,
-      "unclassified": 20,
+      "unclassified": 22,
       "gearShadow": 2,
       "machineGun": 4,
       "canvas": 1
@@ -1818,16 +1818,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26866,
-      "sha256": "8c0d5330cb00d73f30ec51c3a5b87549be3dfd506581b20890effd27322f4dc6",
+      "bytes": 26660,
+      "sha256": "1d166212c55001876120c372763f7970fa0906643e89c6ddcf7ec3b84ee88d78",
       "thumbnail": {
         "file": "thumbs/amx30b2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10788,
-        "sha256": "0d5f15a14c716658ff6e609c9efd54bc06529e3612aa0facfd89ac6de3290a76",
-        "frame": [14,98,224,248]
+        "bytes": 10772,
+        "sha256": "bf248bc7fe6beaabebc648964286025d5a6e3e6ba5fd0705ab5df49b576c9524",
+        "frame": [14,99,224,248]
       }
     },
     "top": {
@@ -1835,24 +1835,24 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9536,
-      "sha256": "01b4826d9f0c40ed3ada6a10e427a41077ab05baff414d2c314a4b7aba438482"
+      "bytes": 9542,
+      "sha256": "34ec08cbb28fb335351715c573f8b2fd3ffb90a8b867557e01656d8523e730da"
     },
     "side": {
       "file": "amx30b2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9768,
-      "sha256": "417555cbd4164ccf7649161de113075192e9ecb75fa46afb5f56cd0c07eb3bbb"
+      "bytes": 9718,
+      "sha256": "3607ccddf4f403436182691cb5a93caf7f786e3320f4b3ca7b5ffbbcade165a5"
     },
     "topSilhouette": {
       "file": "amx30b2_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1194,
-      "sha256": "ce27f503c186ab31c4beff42280c13dc553d86be607652357a1a883b610e82ba"
+      "bytes": 1190,
+      "sha256": "72700df3f8f209cce46e7605d2a86ebc98a5506adf419d7fcead0add28fd0ac3"
     },
     "sideSilhouette": {
       "file": "amx30b2_side_silhouette.png",
@@ -1867,24 +1867,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27772,
-      "sha256": "c505954ef69f3ce846b5280ad2246a3b298444c79ab7929a5f87ae0cfcb80b87"
+      "bytes": 27474,
+      "sha256": "9372ce8528ec7db0c9fab5376cc62fe33dba27e7642ea24eab40f3c4b21a6d5f"
     },
     "modulesSide": {
       "file": "amx30b2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23734,
-      "sha256": "88ea7f6bfcbc20c59c24a7edf92fca033c5166aa8e370c17e15a7282d73f17bb"
+      "bytes": 23600,
+      "sha256": "9976550fcd63d2fb3473b9996e43e71933e17bc787610eaeeec1b55870a483a7"
     },
     "crewSide": {
       "file": "amx30b2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21542,
-      "sha256": "064cc74cd3f9ac5feb20967e5d303260b9fa97022e9be4b49a2fd5446d8d97cd"
+      "bytes": 21398,
+      "sha256": "0de461eaf88e8fe4a542a9a416b92b979486cf6d2de6b02b40c08f882e0b56df"
     },
     "markings": {
       "file": "amx30b2_markings.png",

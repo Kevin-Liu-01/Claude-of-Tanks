@@ -561,14 +561,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 25410,
-      "sha256": "c6fef08454b33cd5eb62496157446d2beeb3f1fcd1c3cdab618273f3c555432b",
+      "sha256": "ceb8e8356799564b452166dcc0bdd2ffe7e3cd7f75a675f9ef535989795865be",
       "thumbnail": {
         "file": "thumbs/chieftain3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 9940,
-        "sha256": "4cd3d5f7c4cbab9abfb5ec81453efd33948652aa030c48a70f71fcd96df4d1a9",
+        "sha256": "dd937d2afe32b2916a83f314698971a08426d56f373ad2ffb7e662598ba43617",
         "frame": [17,91,225,249]
       }
     },
@@ -577,8 +577,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12656,
-      "sha256": "b37585ab7486df72ff2514231958cb72025d2e2c240ff353bc5b93d3b433571f"
+      "bytes": 12668,
+      "sha256": "b60502399154a734a176bc62a57ac2ae13cc3df93fecec82b57bea5158e7c588"
     },
     "side": {
       "file": "chieftain3_side.webp",
@@ -586,7 +586,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 8658,
-      "sha256": "f9d7e3f5bb23018be302bfe347cde26129de6ff5819d75b1b3e0670965a8398d"
+      "sha256": "aa4995a5c13f34b96afa08958a2329d6e72f3c8348d54a8141b9fac0e7a4d70f"
     },
     "topSilhouette": {
       "file": "chieftain3_top_silhouette.png",
@@ -610,23 +610,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 24188,
-      "sha256": "2fc4fd8e2868b15a0680296dd220cd218c6621bf4b83dcd70d96b50b85890c88"
+      "sha256": "1a58df4aae2e3409d855a2cab3e6a454357befdd920f81818e9618c4343bac92"
     },
     "modulesSide": {
       "file": "chieftain3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23510,
-      "sha256": "d763d025221f2cc51eb78bdd1f11961fac5c0ef905526c829705a473e5fafe41"
+      "bytes": 23508,
+      "sha256": "dc046658faa391bdf9a02b05fb13d6f6c6df5013ba1fb70b4871bce6038ca547"
     },
     "crewSide": {
       "file": "chieftain3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22718,
-      "sha256": "25b459f99b7eaa4b6db0ce7b76a8492e0e590f9dbed6c822b289e6674369164a"
+      "bytes": 22720,
+      "sha256": "fc321138cd66e13037db62a4bad400dfd00c9b9f0312cf3d4e34574a4eccf440"
     },
     "markings": {
       "file": "chieftain3_markings.png",

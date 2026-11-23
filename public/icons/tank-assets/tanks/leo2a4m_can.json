@@ -740,17 +740,17 @@
       }
     ]
   },
-  "geometryHash": "e6dcaecf",
+  "geometryHash": "d08168ea",
   "metadataHash": "d25eb4b9",
   "presentationAnchor": {
     "xM": 0,
-    "zM": -0.262
+    "zM": -0.2466
   },
-  "presentationHash": "fc603c9a",
+  "presentationHash": "439a1274",
   "presentationProjection": {
     "centerYM": 2.0212,
-    "topHalfM": 6.5945,
-    "sideHalfM": 3.2973
+    "topHalfM": 6.5781,
+    "sideHalfM": 3.289
   },
   "appearance": {
     "version": 1,
@@ -801,16 +801,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28736,
-      "sha256": "1225c9783bbe4fff6bbc619b0942612eb4aed46be1c3c1041419ad0885ffecb5",
+      "bytes": 28924,
+      "sha256": "8bb9837849eb7e8506bde4c654fd2b8d37a95fd61c6bb267c8dab909299dd87b",
       "thumbnail": {
         "file": "thumbs/leo2a4m_can_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11348,
-        "sha256": "a82d03b9114447dd69d2bdca0f4d6daa0a53ca43ea5eda71269118db1a9d0db0",
-        "frame": [23,105,225,249]
+        "bytes": 11568,
+        "sha256": "a47f986c79d839c273513bfa5fefa071a0d0a30c5b7e42b99bd5dd710b063808",
+        "frame": [23,107,225,249]
       }
     },
     "top": {
@@ -818,56 +818,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13074,
-      "sha256": "2ae0cfc3c66c95234366b052e4b44ade09744b5fcecb94883a5a8354ead1d06a"
+      "bytes": 13518,
+      "sha256": "56be487475749246ac6634468706154d5c8fae7454b31126a322fece01014d8e"
     },
     "side": {
       "file": "leo2a4m_can_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12528,
-      "sha256": "6f6bec3f5a9f7f9078f64014edc278d210f5412dbb9ffbd36d69272bed3b0977"
+      "bytes": 10896,
+      "sha256": "a99dfb02d77c07d5fd7af84d088da6ec8494a224598298fbf3ece6c516b7b309"
     },
     "topSilhouette": {
       "file": "leo2a4m_can_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1184,
-      "sha256": "3c6148da496b17d81851bc93edc978bc7c5a6a456312bc88a10c15003670aa2a"
+      "bytes": 1323,
+      "sha256": "c7ad5f7974a9c57f8a0d19929b3617236163dba5e799aaa88267ebe39fe83296"
     },
     "sideSilhouette": {
       "file": "leo2a4m_can_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4765,
-      "sha256": "2cce3e6b33926e70ccf8bc5f0c434d596f8b12cd4b70116d559cefe64cae3b2f"
+      "bytes": 5047,
+      "sha256": "3db4121768f29fc39053b207621b41398cd3620d7c0562084af1c61f64a36091"
     },
     "armorSide": {
       "file": "leo2a4m_can_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29510,
-      "sha256": "766503663f04c9f3126aa9d4858a026bfe7348839bc7ca5994a67bed55c0e0cc"
+      "bytes": 29792,
+      "sha256": "19dc7876cd2cfe4b3dfce35cf65a43d98b0474ed0ac01a8609f914cd86cbd0ef"
     },
     "modulesSide": {
       "file": "leo2a4m_can_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27914,
-      "sha256": "3ce17db5ea1ff86cde2f666bbebf3d6a01c0cabf6c4360e1fcdcf81fbf9d14de"
+      "bytes": 27882,
+      "sha256": "cb63ab2f838ac85abe28a26a2825ee8a9755819da9e9b6eb661aa5c1ba5c8ead"
     },
     "crewSide": {
       "file": "leo2a4m_can_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26486,
-      "sha256": "bdcb0747446e0b067f04975c67827c6bfc21c0dc8911cd83e6d0b5ad952727b3"
+      "bytes": 26390,
+      "sha256": "68a67b9838089210c17e3d3cc47b044efc1b61a3e24390a815546a238a22d053"
     },
     "markings": {
       "file": "leo2a4m_can_markings.png",
@@ -880,8 +880,8 @@
     "technicalLabels": {
       "file": "leo2a4m_can_technical.json",
       "mime": "application/json",
-      "bytes": 4427,
-      "sha256": "3a744cf17815bf20c359506f7d50fa21a053a9c1ece70d8f80c4aeb1a87520cb"
+      "bytes": 4424,
+      "sha256": "3d7f66547efb170b1010c38f0788caf707f4b597b1e45df75ab4084a674d5d35"
     }
   }
 }

@@ -740,7 +740,7 @@
       }
     ]
   },
-  "geometryHash": "c315146e",
+  "geometryHash": "c691f792",
   "metadataHash": "5b41449d",
   "presentationAnchor": {
     "xM": 0.0082,
@@ -799,8 +799,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23780,
-      "sha256": "cbda67cadedadf034eec4d07273ea0ec13416fb3881423bd3552c9fecb2b62b6",
+      "bytes": 23782,
+      "sha256": "a55bfa6fecfbe31318d549fabc443ffb6dc8c75f564d98435752b51b156de13d",
       "thumbnail": {
         "file": "thumbs/t55a_angle.webp",
         "width": 256,
@@ -816,16 +816,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9846,
-      "sha256": "c71b85f9861767d3a04c01f5db80880fe1f5764960243083ca66e94e366473bf"
+      "bytes": 9874,
+      "sha256": "c8d9f3cc66597df849a526257a0797d513f79a5f7633ee362b464364f64b5ad8"
     },
     "side": {
       "file": "t55a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9058,
-      "sha256": "388cc3b1c26bda51c3a8433b339e23a9875bdd7ca9163e1508bdff097a1d6ec7"
+      "bytes": 9092,
+      "sha256": "e40ad83233e072b09bdfd28ef7357129e607690e24d9f8933cbd99d830da03b2"
     },
     "topSilhouette": {
       "file": "t55a_top_silhouette.png",
@@ -848,24 +848,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20970,
-      "sha256": "a1153157c17881525b851ac105900bcda836a19167110bfc747e459f76d22603"
+      "bytes": 20960,
+      "sha256": "ce575839797434f2f479472013f881b4fc285aa0080e9c5ce7aac773a002d8de"
     },
     "modulesSide": {
       "file": "t55a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22456,
-      "sha256": "d0f458d46625e73f514bc536ed9ba954b85d111c9dedd208517bbc19e7ef69ae"
+      "bytes": 22436,
+      "sha256": "b678682e9bb61254ba8e19df0b1c0a7eb747d5476a7c5762d40ac7cab4023c68"
     },
     "crewSide": {
       "file": "t55a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20604,
-      "sha256": "9da919c87fc98258cc47a98b86358a2041c022ba21fa8f912f61fc5ce36d889e"
+      "bytes": 20590,
+      "sha256": "7b6a02eaed4b47d30d65ccec355fa5c4f64652223dc64f526a8609afe0dd3985"
     },
     "markings": {
       "file": "t55a_markings.png",

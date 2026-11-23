@@ -48783,7 +48783,7 @@
       }
     ]
   },
-  "geometryHash": "42a6511f",
+  "geometryHash": "ea63c8cf",
   "metadataHash": "2ce9236b",
   "presentationAnchor": {
     "xM": -0.0004,
@@ -48812,7 +48812,7 @@
       "gunmetal": 8,
       "armorPaint": 14,
       "hullRubber": 1,
-      "unclassified": 22,
+      "unclassified": 24,
       "canvasPale": 1,
       "gearShadow": 1,
       "machineGun": 7,
@@ -48843,15 +48843,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28328,
-      "sha256": "2735c46281aae88eeabda12dc89a91bbb931e531ea2a2a54d734b08ee7fddc37",
+      "bytes": 28316,
+      "sha256": "cc9a1e8cb56a8a19a170ab0b3d3e93e8d36a9d530c2e691e13969d8993d1f8d8",
       "thumbnail": {
         "file": "thumbs/t80u_kursk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11182,
-        "sha256": "c9f88cf87ef67bdb436d5b660252e8552038eff59c163be1f0346241b4965fe2"
+        "bytes": 11162,
+        "sha256": "d7ae58fe4f09d5be40f8d686a817f84f247d993ab958bd89ec46205b57d56989"
       }
     },
     "top": {
@@ -48859,16 +48859,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13312,
-      "sha256": "252e922f65969655e053d72116a733ab80b7fbeb1db74d7cb16b05539c599be5"
+      "bytes": 13252,
+      "sha256": "31fb50fece8baa66ef1019d8f749530ec5ec1beb20e679fdf7c2089246c384a4"
     },
     "side": {
       "file": "t80u_kursk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11710,
-      "sha256": "e8dccc97e94e908f48f5a57b21cff61c336cd54c1cba080ad2d262814efde3c7"
+      "bytes": 11738,
+      "sha256": "a5890eba5d2fd76475e9c22ff3d16fde12642d81330ddc8f408bbcb642445923"
     },
     "topSilhouette": {
       "file": "t80u_kursk_top_silhouette.png",
@@ -48891,24 +48891,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33414,
-      "sha256": "2fbdb2057846b67bdd35b5b75968fe5784959d79949261017c4dbbec2a5cc5f4"
+      "bytes": 33504,
+      "sha256": "390f5a7f8014c0455a5a54fb0abdcb06f396794678890391b3153d2970a729a9"
     },
     "modulesSide": {
       "file": "t80u_kursk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26072,
-      "sha256": "80860cb0426e4cc9392a3f4e4e9738fef53d9078ecf0eac1e3f5270b61adc91c"
+      "bytes": 26030,
+      "sha256": "10dc49f9db8cf39881265b666c818682016cef8cbe1a5338ecb86789bfdd7962"
     },
     "crewSide": {
       "file": "t80u_kursk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23790,
-      "sha256": "b874c45c7b13d4b7ce95ad4a5de4fae401d77a85d8b5adba1aba17d7976f3036"
+      "bytes": 23900,
+      "sha256": "5caad3f01a0d58b9ad6aec6d1901d7b2feccb30101bcc1f4320e8d9c30965ede"
     },
     "markings": {
       "file": "t80u_kursk_markings.png",

@@ -13953,7 +13953,7 @@
       }
     ]
   },
-  "geometryHash": "05fdc8fb",
+  "geometryHash": "df0935fd",
   "metadataHash": "cf036bf5",
   "presentationAnchor": {
     "xM": 0.0083,
@@ -14011,39 +14011,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25938,
-      "sha256": "4f4a3112a4db3a6f2e24cf84d6e20a9d32bd078149a11cad90adca2c9157481b"
+      "bytes": 25930,
+      "sha256": "e35560eed9f7308650e0091c99d788b1b50ab59e4684c635232be1aa3b7b8698"
     },
     "modulesSide": {
       "file": "t64bv_donbas_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27982,
-      "sha256": "ea581ee6c18d2b9945709f9681b6402a4dc7eb530d1f07372295bd8daef8c4b9"
+      "bytes": 28002,
+      "sha256": "76848dca47f50ee214e0eac37be30fceb570dd2710dd08e7e1175e9c056efc29"
     },
     "armorSide": {
       "file": "t64bv_donbas_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30656,
-      "sha256": "1583ccf97d4db953a9efe77d54e8215509a951e9ac966263fb6b46e1908366e0"
+      "bytes": 30658,
+      "sha256": "19643d98ef478611c0f891c86df21e88c7b8cddc47c88f2a4daa38db0e3704b7"
     },
     "angle": {
       "file": "t64bv_donbas_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28990,
-      "sha256": "0f45d27646549e64bdf2663bedabb9fb3467b90b89094bde836c2ec82a6115ff",
+      "bytes": 28954,
+      "sha256": "981a4eb8c480f2419ebc0caa3d371089d93b4b734e4e7d210fa66dece79d4761",
       "thumbnail": {
         "file": "thumbs/t64bv_donbas_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11438,
-        "sha256": "077769ef9018615d18e05dad5c8b4096ff2a645dab3c041c6c19064f8d9ababc",
+        "bytes": 11372,
+        "sha256": "ead130597f5473c5b6ccd08abbcb9a49c2ab09ce616418c90f6f9a57b9693501",
         "frame": [24,103,225,249]
       }
     },
@@ -14052,16 +14052,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13244,
-      "sha256": "dd2746a24cd393f65c0f7d4c924877da01128a8b59e248ce4651111c39468bd0"
+      "bytes": 13156,
+      "sha256": "24a81cf08b7db01388bfaba00cb490dbf5111c742ed7db4867b154e3da06b889"
     },
     "sideSilhouette": {
       "file": "t64bv_donbas_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4660,
-      "sha256": "5c0dd75ef23ffce70684e058223a9353089dcb0f1345a3f420a4be53d2b0e5f7"
+      "bytes": 4653,
+      "sha256": "039c01547cecedd173cd2e2d6e3ffd35a49f0fc7a31f5957ed0ca990d5a58668"
     },
     "topSilhouette": {
       "file": "t64bv_donbas_top_silhouette.png",
@@ -14084,8 +14084,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12584,
-      "sha256": "f0e4f03025c0b94611157cf135dcb43b453b2eea487dba080106f9913bfb4dd4"
+      "bytes": 12558,
+      "sha256": "a98ca2ccab37c03e4b3a7ffd0264721f6bf9fa17578e5434cd49f780c29d0401"
     },
     "technicalLabels": {
       "file": "t64bv_donbas_technical.json",

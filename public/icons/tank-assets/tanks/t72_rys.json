@@ -14497,7 +14497,7 @@
       }
     ]
   },
-  "geometryHash": "eb098269",
+  "geometryHash": "c5e11241",
   "metadataHash": "1313ef97",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -14556,39 +14556,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29552,
-      "sha256": "b6362f08d43af1afe1cf0ae7b729cba446b85c4f38d4260e36b93d5cfffde10b"
+      "bytes": 29886,
+      "sha256": "d72da6880476ef93770d0600494df21bf7286dc1dc2032749ef8762f9d0cc462"
     },
     "modulesSide": {
       "file": "t72_rys_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23582,
-      "sha256": "048889ba98264561caeb7d86b7709e6ae78549e1ae009dced79a646a3a24f232"
+      "bytes": 24098,
+      "sha256": "fb8c36efe950eafa73b82b0169620486f0ff354e4c0364d78ce17a19b84ec88c"
     },
     "crewSide": {
       "file": "t72_rys_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21342,
-      "sha256": "a1fa1a35ad3ed21b74e02a800a44b969a5d5a8b3272ad131a5374b25d937a64a"
+      "bytes": 21592,
+      "sha256": "c7160551bcfa96801296feaca006cbc62fc0c6632235259b503332ac5d5f7b40"
     },
     "angle": {
       "file": "t72_rys_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25632,
-      "sha256": "b1e176d694d5d30e2f481157da7fc871d4a7d97faf2f152ab212566aa7687273",
+      "bytes": 25636,
+      "sha256": "cb63a34a51f7aeed1fe907adc7d3f996e75d20f26d5fadf522873db6420b8851",
       "thumbnail": {
         "file": "thumbs/t72_rys_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10444,
-        "sha256": "4cf0c72483bca319c606af640fa380f46931ea6de83959b9ed5e6dbf8ece4ded"
+        "bytes": 10406,
+        "sha256": "8a3c856c5ee33ad5564645dde7571f0a07cd9bd5a0de36c68327286a9a042495"
       }
     },
     "top": {
@@ -14596,16 +14596,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11580,
-      "sha256": "f20069875b4e077c1d11cd01f04c44bd81b3dd03292c1438a58f5e3416c8cfc8"
+      "bytes": 11494,
+      "sha256": "2cb626afbfcd5dddd346c0ec69ab1c5632fc867c15023380ba7158707e021c6b"
     },
     "side": {
       "file": "t72_rys_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9154,
-      "sha256": "2398c6bac8ee9c49b2042094ccce3599692eb7f0269f34f09f91fcb97c6c19e3"
+      "bytes": 9282,
+      "sha256": "de27ec00dc3803d52d6590c2e8c5f289cc9b66e8e34bddff68ab9b3dae10e7bf"
     },
     "topSilhouette": {
       "file": "t72_rys_top_silhouette.png",
@@ -14620,8 +14620,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4251,
-      "sha256": "acb2d68d7a22874ab9ef12f3b470556389da4f40c3479c131741d521036c202b"
+      "bytes": 4275,
+      "sha256": "1bbd0bac61cf9fd2333e19c1f195ad1823eb58bf22e095838e8c950ac8ce4aeb"
     },
     "markings": {
       "file": "t72_rys_markings.png",

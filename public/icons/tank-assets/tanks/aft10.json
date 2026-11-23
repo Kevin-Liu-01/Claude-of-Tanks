@@ -2500,7 +2500,7 @@
       }
     ]
   },
-  "geometryHash": "3fa00b08",
+  "geometryHash": "3725ca74",
   "metadataHash": "6ba29b75",
   "presentationAnchor": {
     "xM": -0.0011,
@@ -2529,7 +2529,7 @@
       "gunmetal": 7,
       "opticGlass": 2,
       "fittingPaint": 1,
-      "unclassified": 15
+      "unclassified": 14
     }
   },
   "muzzleBore": {
@@ -2556,39 +2556,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23266,
-      "sha256": "84ee9e2e982dd09fa60bf39f9896e08ad351ca9abed647cb4b45dc0071f6b9e6"
+      "bytes": 23188,
+      "sha256": "32cc142b517f8a0e702cce13efa266df47bbb34e9a84eb1ff8e9f3df2a1e8e81"
     },
     "modulesSide": {
       "file": "aft10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25146,
-      "sha256": "a0e46ce0ca3c85964cccbf8573a5eb8f7c113afac53b16cfb8c4946edabedda1"
+      "bytes": 25182,
+      "sha256": "b22d14bae557e737d0c1c7e67abf69b51dd5d10fea9fbda7f8cfa6cfa66f76e2"
     },
     "crewSide": {
       "file": "aft10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25388,
-      "sha256": "a7eb05b2777ff8ac1669684d6dfda7190c6f114d0e3dea340cfcf4326bf01e63"
+      "bytes": 25272,
+      "sha256": "c775f1be70aea2d7e1c01387109e57f2b004860976570b2fd3de5625946fb4b4"
     },
     "angle": {
       "file": "aft10_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30780,
-      "sha256": "3ef22ddd63571377a77c8befa31f46ab6b702ab1b5ec8738cba5db3e92e9e0a8",
+      "bytes": 30772,
+      "sha256": "3f7d3c83d8af005640485a17633c5bab475a2dd004f065d8f5f19dbf427be086",
       "thumbnail": {
         "file": "thumbs/aft10_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 12362,
-        "sha256": "ef6b978d1c8473817bab70dc4ecddee1aa920a5092847b95ce68c1602c1b5188",
+        "sha256": "49270762f1fe6101e3d5fee6ec354ebc0628eaa95c045c68caf7d30cadd62397",
         "frame": [22,84,224,250]
       }
     },
@@ -2597,16 +2597,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17160,
-      "sha256": "6cff133d08afd5debcf377b688e6868b967edbf1bad58b19cc22a4e425f008fc"
+      "bytes": 17100,
+      "sha256": "e067d5fe64360e5f43ea60a9853d3b4eed80a16bdef9cf4889fe788c80e2349e"
     },
     "side": {
       "file": "aft10_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12450,
-      "sha256": "4198ae748273204635e58a7be4ed86d722b1003621548e5da33befdb672b12a5"
+      "bytes": 12442,
+      "sha256": "bab82d70fb87a660f08b038d540eca61db279d388a2cfd02f4031468a1a672ed"
     },
     "topSilhouette": {
       "file": "aft10_top_silhouette.png",
@@ -2621,8 +2621,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4745,
-      "sha256": "5caaaa29faa7ca4d95a41bb84ceeb01fde1dce69ff85b9ac8294467b5cc5e522"
+      "bytes": 4751,
+      "sha256": "676b4ff85b5a31d574f655f4ca5e5de473917d3ec1e192993634b9ee5dd8e631"
     },
     "markings": {
       "file": "aft10_markings.png",

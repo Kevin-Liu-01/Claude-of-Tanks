@@ -6887,7 +6887,7 @@
       }
     ]
   },
-  "geometryHash": "60625cfc",
+  "geometryHash": "83d5b40e",
   "metadataHash": "25fd81b4",
   "presentationAnchor": {
     "xM": 0.0022,
@@ -6946,15 +6946,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26700,
-      "sha256": "6359b826feea639e6ea5d0afb71433583138dd60d8dfd0cbc886043bac57645d",
+      "bytes": 26630,
+      "sha256": "b8a2def544985cd34f99ba9398424dace1a2b8e30c9cc8348f2ee53b4ad35796",
       "thumbnail": {
         "file": "thumbs/pt84_sokol_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10978,
-        "sha256": "2b5e1eb1d6c2d5ab2fecddcb6ba52d5a2095de2470117ee234849ae0ddb32532",
+        "bytes": 10960,
+        "sha256": "7e7ddd2384f6ca94097fc401d36cec3296ce21fa39a930e60834adf80a4930e2",
         "frame": [22,107,229,249]
       }
     },
@@ -6963,16 +6963,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12854,
-      "sha256": "da4fc4fdc872c9b5011973129147e3c306fa50cfc7942200f753e9d1dea9ebb7"
+      "bytes": 12758,
+      "sha256": "9ce420b7757c453fc9ce9ef0a7f30655abfa474b1f0b159c296e5f157f2f697c"
     },
     "side": {
       "file": "pt84_sokol_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10238,
-      "sha256": "fc5d5d879ece0f2b2e7f6172aa60b20286d2fa5b55bc24a8150cdce0da45ecbc"
+      "bytes": 10192,
+      "sha256": "c7b42357209491215007da8673ee40d5c5fd91980e7c621e44ec561be479b6a0"
     },
     "topSilhouette": {
       "file": "pt84_sokol_top_silhouette.png",
@@ -6995,24 +6995,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24618,
-      "sha256": "25d11b3174b4118ec08a3f7468fcd611f4f0a2aa8d413cbb01b3a5953baa5a2b"
+      "bytes": 24562,
+      "sha256": "197ed84b6691109ede62d2fb32ea74414cae147eb33041d3584abba4b17d054e"
     },
     "modulesSide": {
       "file": "pt84_sokol_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22952,
-      "sha256": "33998cdc35d6aef4943dd655e333bdf6e6deb7c83611da34b97b76c3c838f92f"
+      "bytes": 22980,
+      "sha256": "ab34dcc6348a8d472f58062e927cdbf6c1c3713779f8f54e02ed144a33ede200"
     },
     "crewSide": {
       "file": "pt84_sokol_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20892,
-      "sha256": "1dcfc63d2d25d77ab440e4c7d6b2a418a7376d148d6cc2ff8da2b09bb0a1caf6"
+      "bytes": 20858,
+      "sha256": "041d44553d0ee8dc0eab6202da60e0b641be6248dedff59ca960da31c7f2b0dd"
     },
     "markings": {
       "file": "pt84_sokol_markings.png",

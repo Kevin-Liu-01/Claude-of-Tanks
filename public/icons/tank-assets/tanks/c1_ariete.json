@@ -3626,17 +3626,17 @@
       }
     ]
   },
-  "geometryHash": "d5785d73",
+  "geometryHash": "750e0ed0",
   "metadataHash": "550edaec",
   "presentationAnchor": {
     "xM": -0.0019,
-    "zM": 0.2196
+    "zM": 0.2194
   },
-  "presentationHash": "806d0568",
+  "presentationHash": "8466fb86",
   "presentationProjection": {
     "centerYM": 2.1958,
-    "topHalfM": 6.3933,
-    "sideHalfM": 3.1966
+    "topHalfM": 6.3935,
+    "sideHalfM": 3.1967
   },
   "appearance": {
     "version": 1,
@@ -3683,39 +3683,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26080,
-      "sha256": "3439d0bcffadd3663b767df8dccf1effb8a6b4c3ec20996ec42c256bc5e8c40b"
+      "bytes": 26010,
+      "sha256": "1f652c6ab59731aa90902c25920de6dd95417c7956461410c78579762d44d1c0"
     },
     "modulesSide": {
       "file": "c1_ariete_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26700,
-      "sha256": "489f9fd5f12983dea52c1739937c67765d4656d54248e9bd85fbaf799d022306"
+      "bytes": 26688,
+      "sha256": "100ecdcd1d9458293c3c800f596cc615d431333190f20d7a9390b29723934f1f"
     },
     "crewSide": {
       "file": "c1_ariete_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24556,
-      "sha256": "87604b6d879e975e7ec13abaed8b65bb42e8999524c97045033709a9dfe8a0ee"
+      "bytes": 24474,
+      "sha256": "35359be93f165d1299a2c92bc7051dc17e8be117c840c61f8b418911eb4bbb30"
     },
     "angle": {
       "file": "c1_ariete_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23902,
-      "sha256": "9fd2d800aba466a781e8236464455d7d586c7251c745dd8362e8bd0abae7f289",
+      "bytes": 23882,
+      "sha256": "914c1460b6b5773931276fbf7bcc013fad6251148d40837789a1896ef74847c0",
       "thumbnail": {
         "file": "thumbs/c1_ariete_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9998,
-        "sha256": "b68a3a7b97e212f9910c5d2ae0d1237a10136fba542b8dea535cb3d07a4c5865",
+        "bytes": 9954,
+        "sha256": "6573701dbcfe3a1c19043c31350ba90165b03921d0bfa64d794cff8a85691b2a",
         "frame": [25,94,225,249]
       }
     },
@@ -3724,32 +3724,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12386,
-      "sha256": "eb5cf6623abe4499063c535e017da5c3fce7e6b3e04067925aa956afabaf8ef8"
+      "bytes": 12342,
+      "sha256": "6ae3901742a41be9e89771adeb6bacbf9f209449e3ba8ee8d207d6c51822ec07"
     },
     "side": {
       "file": "c1_ariete_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10808,
-      "sha256": "6caf652fcc42f150608af27081dea2b439123797fb66d4c8ca9c652fb4e665a8"
+      "bytes": 12142,
+      "sha256": "ee5433d9ef08542cedbcb8ce7430003923d285c6062aaf97ad27b1edaeb6909f"
     },
     "topSilhouette": {
       "file": "c1_ariete_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1394,
-      "sha256": "526bbe7ede58d26546ea2ef3c62e75509f3a9ac4a9394e62d61d8cdb7f53fa0f"
+      "bytes": 1401,
+      "sha256": "e0887e839b6e7ed4d21f2b45467cef783903b15d1059811d62507846a94a2e9e"
     },
     "sideSilhouette": {
       "file": "c1_ariete_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4952,
-      "sha256": "8d1f7e5ef0a8688433e2fb61aaea73b2b8d7aa7bca51557420ad5cda20ab21d6"
+      "bytes": 4929,
+      "sha256": "89c9648b67ef39526ac9a9bbc1465e7a9eccc66d737fb0e10a402425322ce172"
     },
     "markings": {
       "file": "c1_ariete_markings.png",
@@ -3762,8 +3762,8 @@
     "technicalLabels": {
       "file": "c1_ariete_technical.json",
       "mime": "application/json",
-      "bytes": 5342,
-      "sha256": "939a401da877dc541a48ded6e5358a27f46f7e09f06d7102ff5722558f246413"
+      "bytes": 5344,
+      "sha256": "d86bf76920b57820b52a29ea398bef50e22f96d74835572b2183229e28d83994"
     }
   }
 }

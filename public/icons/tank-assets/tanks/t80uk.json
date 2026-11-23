@@ -12873,13 +12873,13 @@
       }
     ]
   },
-  "geometryHash": "dc68dd43",
+  "geometryHash": "f6e3a740",
   "metadataHash": "41bdf039",
   "presentationAnchor": {
-    "xM": 0.0023,
+    "xM": 0.0024,
     "zM": -0.0776
   },
-  "presentationHash": "f2a66be9",
+  "presentationHash": "c5df2658",
   "presentationProjection": {
     "centerYM": 2.7014,
     "topHalfM": 6.506,
@@ -12901,7 +12901,7 @@
       "armorPaint": 13,
       "hullRubber": 1,
       "gunmetal": 7,
-      "unclassified": 16,
+      "unclassified": 18,
       "gearShadow": 1,
       "machineGun": 4,
       "canvas": 1
@@ -12931,15 +12931,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27832,
-      "sha256": "55e595389ccf1f3ad0933a62bb1c5a1d1d3d99813062e57ec53e6530ab1de84d",
+      "bytes": 27740,
+      "sha256": "31e8c90c9b62e3408ce85adfb96ea469fc4a78c6261e7cf02ca2755a9bcbbecb",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11278,
-        "sha256": "bca3d76839cdfad724944ced1205744395cf44edbc257bc22c58da908f4763a5",
+        "bytes": 11274,
+        "sha256": "54012e7838b2ea3d53cfd3d317774d43e06b84acc1079bbfda965faf60a44650",
         "frame": [21,85,225,247]
       }
     },
@@ -12948,24 +12948,24 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10206,
-      "sha256": "575dd9fe24d9958da03705b86beb58ff09ada8d005199d2736c99ff826c7d797"
+      "bytes": 9992,
+      "sha256": "8a222d09170bcf4c2684c2188abc2a8891263df4e0f63fd0ffc3b7b3d71f6e91"
     },
     "side": {
       "file": "t80uk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10990,
-      "sha256": "fbd50bc3c76c1c15d7a1b2410810ef7859eaeb6bb0519617cb515249fe21b2ce"
+      "bytes": 10992,
+      "sha256": "b3c1a541ba122949a11ae3ad0063454c16f85972c725c1e9a18c07dc2d954e8f"
     },
     "topSilhouette": {
       "file": "t80uk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1416,
-      "sha256": "a75d63a0ffdc8a81260267afe35c6d7c0695ca999b59e87e0aaf2cb728761074"
+      "bytes": 1424,
+      "sha256": "cb41ab4bc6d9e6c8ae323d131fb840d4c5ad0a39fee786bd76faa29c959afa0a"
     },
     "sideSilhouette": {
       "file": "t80uk_side_silhouette.png",
@@ -12980,24 +12980,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30310,
-      "sha256": "a482dc6509d8558b374238e9bedf01eaaa00074dfffd7e3217e7e4dec1042817"
+      "bytes": 30260,
+      "sha256": "daaef6e0d75b1fca0923bceb59cf89888d14a190b05a797e2c5a399ff4d1d333"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24254,
-      "sha256": "59d1d83c4b5cb27c5b10481c0fdc48383d8c507e0af035c752179e5baf2449f5"
+      "bytes": 24214,
+      "sha256": "b755600a6b5f5223e4dc4c8c6ba38203ab00db511ff2d23b07e56276164fe178"
     },
     "crewSide": {
       "file": "t80uk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20716,
-      "sha256": "37000525d045dd9f1ccc59529406ab138e696143d29ce5bf05066cafa7d2b779"
+      "bytes": 20632,
+      "sha256": "6d967342f0e19f5b18de5c23229c9d8b2ec443d6a63e90a89871718351733ebf"
     },
     "markings": {
       "file": "t80uk_markings.png",

@@ -5374,7 +5374,7 @@
       }
     ]
   },
-  "geometryHash": "3e1e563c",
+  "geometryHash": "831c8a58",
   "metadataHash": "6c0ce592",
   "presentationAnchor": {
     "xM": -0.0017,
@@ -5404,7 +5404,7 @@
       "gunmetal": 9,
       "opticGlass": 1,
       "canvasPale": 2,
-      "unclassified": 15,
+      "unclassified": 14,
       "gearShadow": 1,
       "machineGun": 6,
       "fittingPaint": 4
@@ -5434,15 +5434,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33572,
-      "sha256": "4c3fa65c02d196d266dc3dd5b4df76723308fdf8823761ccf656b0f756ff72ab",
+      "bytes": 33460,
+      "sha256": "8a4a2e374f983bd034309f91876d90ea91ac841d01783d5f07c26ea82ad12826",
       "thumbnail": {
         "file": "thumbs/merkava2b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13124,
-        "sha256": "724f663d434980ee3525e29e0677daa9bfb2828c83c922d7ea0618e18d4fd5be",
+        "bytes": 13038,
+        "sha256": "8baea59e911af87410a3beea98ed4bbf19bcc58d510b16c6a1866bb9fb5a3f4d",
         "frame": [24,100,227,249]
       }
     },
@@ -5451,16 +5451,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20376,
-      "sha256": "24d26b4174656c1fb81ac9952214994a5c0473a0b75ee3e7e1ed24eaa6c2b014"
+      "bytes": 20256,
+      "sha256": "096622169b72f8b7c1c91b5a51acbfbf2bdc3d7123e1dabebe64b8c6e5f1b922"
     },
     "side": {
       "file": "merkava2b_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17504,
-      "sha256": "c6755b094ba0aa4b326dabf1f80997a88967dc811934eece8c6eaf5a89d455a6"
+      "bytes": 17510,
+      "sha256": "16692c7a724e2d84620d53b91979d03c41de28ec195b36ab76aad985863d8b37"
     },
     "topSilhouette": {
       "file": "merkava2b_top_silhouette.png",
@@ -5483,24 +5483,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43524,
-      "sha256": "d98cd77ebc1e1bb11b5be36f518ca8eecdb8db21e521fd2c3d15a43123b5fd6f"
+      "bytes": 43358,
+      "sha256": "82e29a74aeb3d1201cbbfa292f2d12fd8aeb044060c750f768dc86d6d776d4b9"
     },
     "modulesSide": {
       "file": "merkava2b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39628,
-      "sha256": "eaf0beae97ffbca648dc410df74d4a97acfcf0b36e44bea07f17dffeeb8a498d"
+      "bytes": 39586,
+      "sha256": "8b26666c68ceed92731f220d8f44e6ac16e20710f8e5fcc62ef9db22b971e135"
     },
     "crewSide": {
       "file": "merkava2b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38634,
-      "sha256": "15594148ce62d779440214a4801ee1d98df99a009d100d442ce4bc94da2f70a2"
+      "bytes": 38516,
+      "sha256": "29bcba1d9042b8164d6435a8e8048fa13656a60b845718c5a55d76f55d21e427"
     },
     "markings": {
       "file": "merkava2b_markings.png",

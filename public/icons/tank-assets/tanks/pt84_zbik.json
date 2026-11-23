@@ -3995,17 +3995,17 @@
       }
     ]
   },
-  "geometryHash": "19c46029",
+  "geometryHash": "c36a4b99",
   "metadataHash": "d46c5cee",
   "presentationAnchor": {
     "xM": -0.0001,
-    "zM": 0.27
+    "zM": 0.2908
   },
-  "presentationHash": "a6470bb0",
+  "presentationHash": "39d2a41a",
   "presentationProjection": {
     "centerYM": 1.9936,
-    "topHalfM": 6.7389,
-    "sideHalfM": 3.3694
+    "topHalfM": 6.7166,
+    "sideHalfM": 3.3583
   },
   "appearance": {
     "version": 1,
@@ -4054,15 +4054,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28586,
-      "sha256": "86fb7ceb78ebd5d49f510471f08b788a469143bce3edb135f64f811a1fcf8448",
+      "bytes": 28746,
+      "sha256": "7e67d2592af6530a15df48d15cb33c8da5081423d7b7f29f256685d66637fec4",
       "thumbnail": {
         "file": "thumbs/pt84_zbik_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11494,
-        "sha256": "ac34a76350228e8c06063d713708d3bb0097c516fb5b75db75f0faf2f722ff15",
+        "bytes": 11530,
+        "sha256": "e276fe0206072e13374c8a11bcc3f46750ec2f61cd17297ea397ef771e557600",
         "frame": [26,108,227,249]
       }
     },
@@ -4071,56 +4071,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12266,
-      "sha256": "6ce5b73d820e452994e70470957f5131f1a1428655a55a3918e42d2c41714ca2"
+      "bytes": 12478,
+      "sha256": "23e2a96a3dd1810b7dcfa07adacdeadeacc32b2ab252ef13a96b8069036090b0"
     },
     "side": {
       "file": "pt84_zbik_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10460,
-      "sha256": "bc674e78f364ffbb5549934310a0074c8c272f01b750a37b70c971fc3322ab0c"
+      "bytes": 10508,
+      "sha256": "0d3925b23b0e2d97d84654647eee67745b8d88fe3f969589b39350b3655a63f0"
     },
     "topSilhouette": {
       "file": "pt84_zbik_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1179,
-      "sha256": "dbffe57910e681e6908d3895ef8c036e36d388ec231eaeeb2dd3a3132cb36f9b"
+      "bytes": 1310,
+      "sha256": "2841ca77e2e3c1a0712c9fcb65519e0ff2be85a07ebaa951aa546e15ef009eea"
     },
     "sideSilhouette": {
       "file": "pt84_zbik_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4640,
-      "sha256": "a995503fa256f03cf95cb316b23ada4a728690281581f1dfac85a8d2e9efe4dc"
+      "bytes": 4668,
+      "sha256": "4cb059c5e6b9351473f415e12df895660cf6f98e83a932e94bb4faa77cd0b38a"
     },
     "armorSide": {
       "file": "pt84_zbik_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26298,
-      "sha256": "c30e5ab757d19c896fc0d31d9361e44e6258207b858c11bffd138f68213ec076"
+      "bytes": 26930,
+      "sha256": "8d0d3f6ed3d2dcd3a686eaa084152111e772c33599c1dba3315e163837a6bbd9"
     },
     "modulesSide": {
       "file": "pt84_zbik_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23396,
-      "sha256": "52095695554d82e47c193076dbf0b185407dcdf0f76778c4824b6aef68f3efbe"
+      "bytes": 23272,
+      "sha256": "943a2917bf73322cd4d9a08f51d1877f30fba6e0b199f6a45d0f6793c84bbcbb"
     },
     "crewSide": {
       "file": "pt84_zbik_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21336,
-      "sha256": "72a249cbb521d95ae72dba5cf85909861860209a75b973d5cd4dbc571e2244ec"
+      "bytes": 21054,
+      "sha256": "b4983996b59a315aa6b7e99662ce0b56e64949b9a13d9305af7483218732259e"
     },
     "markings": {
       "file": "pt84_zbik_markings.png",
@@ -4133,8 +4133,8 @@
     "technicalLabels": {
       "file": "pt84_zbik_technical.json",
       "mime": "application/json",
-      "bytes": 5436,
-      "sha256": "b172cf585ac6f78b3d220ee4151dfd4f031b7966de7909e24c7576f7bc3ca29e"
+      "bytes": 5449,
+      "sha256": "ee12c758686e9b3b43e41445782c14ed47b58d704a0ee6466f94c9d1da86a40c"
     }
   }
 }

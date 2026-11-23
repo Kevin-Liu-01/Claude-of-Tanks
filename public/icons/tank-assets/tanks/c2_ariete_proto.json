@@ -3425,17 +3425,17 @@
       }
     ]
   },
-  "geometryHash": "abfdf79a",
+  "geometryHash": "9f85dc97",
   "metadataHash": "ba469a33",
   "presentationAnchor": {
     "xM": 0.0021,
-    "zM": 0.0809
+    "zM": 0.0811
   },
-  "presentationHash": "5517d8a1",
+  "presentationHash": "e89893b2",
   "presentationProjection": {
     "centerYM": 2.0296,
-    "topHalfM": 6.8342,
-    "sideHalfM": 3.4171
+    "topHalfM": 6.834,
+    "sideHalfM": 3.417
   },
   "appearance": {
     "version": 1,
@@ -3485,15 +3485,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25878,
-      "sha256": "e7434e2e4654cd81f32e763b4a478a53baf5eeef511e412a5e52c518ab2b42f5",
+      "bytes": 25834,
+      "sha256": "885b7fd62f0789e075d88451c79cf7293ff9e8981346647846b17d4623bbca17",
       "thumbnail": {
         "file": "thumbs/c2_ariete_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10356,
-        "sha256": "8902efb33f760887ae04e6c8de4bb1db7a923c7bdac7697f198afefe6ef771ea",
+        "bytes": 10392,
+        "sha256": "a8134c0e81c0d49ff722a6bec015486b26059ef8942ee23ceff6e51ccba7a87e",
         "frame": [24,99,226,249]
       }
     },
@@ -3502,56 +3502,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14424,
-      "sha256": "133d5f9f18cdae0b8536cd90de1a7000db3baf0471fe90b55ddc66d20ebfabbd"
+      "bytes": 14388,
+      "sha256": "d0b862bbae7dba1da3a2f9974fc4831b43d9e27d73fe1e3115d6dbb92de21252"
     },
     "side": {
       "file": "c2_ariete_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11412,
-      "sha256": "66c12bb16fcbe9cb5cbb26b09eb5075fd627e42cc1484d1a5e306f431d13571e"
+      "bytes": 11460,
+      "sha256": "4d16addc3d21bf46972290da9a97d027cf7ae19751c4922acc7e3cac99426b72"
     },
     "topSilhouette": {
       "file": "c2_ariete_proto_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1490,
-      "sha256": "fbbddcbec5f569e1cc08de36ac23174d2cea376b7f9d4f15958689a9cc9d5054"
+      "bytes": 1492,
+      "sha256": "65b9129ad992ded5a12045f351406276b8b589755290f21d684b786f7e45da60"
     },
     "sideSilhouette": {
       "file": "c2_ariete_proto_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4520,
-      "sha256": "4f7948a697c09039e693ac5bfd401b029a811331f023207a7c8ac5a1525478f1"
+      "bytes": 4534,
+      "sha256": "ee52c81a99ea030aeb1565a8caa8c66b84a8fcb9f334c6585e613854fafb5cbc"
     },
     "armorSide": {
       "file": "c2_ariete_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30762,
-      "sha256": "2cb0e702a0e50c3832b54e8a8f347be12916e763fb8889dfc1d73d5e0e30ca2f"
+      "bytes": 30720,
+      "sha256": "ee8a3e02810845efa080c1fe1629a8e46451945a7459b18566020f96fef15400"
     },
     "modulesSide": {
       "file": "c2_ariete_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27864,
-      "sha256": "3395e09524a2f9a89be39cdc6792c25fb12d2ef5977760fcdd9f8a66ebcb37eb"
+      "bytes": 27930,
+      "sha256": "f7e21c76d9427a01d2537f1677e01a8d071fbbc16ef73271c530f331010f2212"
     },
     "crewSide": {
       "file": "c2_ariete_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24156,
-      "sha256": "fc93ede6522e6c2153efa9d19a5b45a6cdae73769a142bcccf764d22f052cc18"
+      "bytes": 24260,
+      "sha256": "9dbae2dead8cf6c4973ad8a65f57c95a64f870343aa64e2248c177e52dd10e48"
     },
     "markings": {
       "file": "c2_ariete_proto_markings.png",
@@ -3564,8 +3564,8 @@
     "technicalLabels": {
       "file": "c2_ariete_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5297,
-      "sha256": "07fd19d26ba7cf89552f45189600c16bb04479416c2425ce4d9219d8a98b034c"
+      "bytes": 5294,
+      "sha256": "8a85432ed773f0c6e37ee0992283268d3edf1be7e762318ff01ecfe0cf3a90a8"
     }
   }
 }

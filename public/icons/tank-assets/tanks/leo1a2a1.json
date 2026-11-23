@@ -827,17 +827,17 @@
       }
     ]
   },
-  "geometryHash": "dbb2b856",
+  "geometryHash": "b58b70e3",
   "metadataHash": "62bd91f6",
   "presentationAnchor": {
     "xM": 0,
-    "zM": 0.0246
+    "zM": 0.0244
   },
-  "presentationHash": "be59ce23",
+  "presentationHash": "c25e519d",
   "presentationProjection": {
     "centerYM": 2.2118,
-    "topHalfM": 6.4017,
-    "sideHalfM": 3.2009
+    "topHalfM": 6.4019,
+    "sideHalfM": 3.201
   },
   "appearance": {
     "version": 1,
@@ -885,16 +885,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27986,
-      "sha256": "986c30fdd05aa2051c8255ac760a017c6d62366aec2d96f2e134ad26ced3f206",
+      "bytes": 27624,
+      "sha256": "0de2eb5b779dac81e6b283373f9d518044bb582f571388df4f57e3b40915b2df",
       "thumbnail": {
         "file": "thumbs/leo1a2a1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11566,
-        "sha256": "c2a0752abfb11982a226f9fe5b84edb4e7bdb7c02fd6508821036d9f4a0cad85",
-        "frame": [23,97,226,250]
+        "bytes": 11302,
+        "sha256": "c0a4e48b62fb3e8d5eb24cb2b085cbca50a960f03a4b17a0388ed5dfc7ca3ae1",
+        "frame": [23,97,225,250]
       }
     },
     "top": {
@@ -902,56 +902,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11218,
-      "sha256": "187d1d60c4e56a1f693d878154f42f54edd24261808d7fb295c2557979562dcb"
+      "bytes": 11154,
+      "sha256": "e661aaee01c3e081c3a19acfdaaefccc64d40b834344e4aedbf5de6058c47502"
     },
     "side": {
       "file": "leo1a2a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10116,
-      "sha256": "8668380fc4629fa3af96697d21a249cac54eff3fe79d668f427180e128e78aab"
+      "bytes": 10050,
+      "sha256": "9df7767fde764915535f128016a40a7acca919acf7a3a719b9bde444a3e01f1f"
     },
     "topSilhouette": {
       "file": "leo1a2a1_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 970,
-      "sha256": "5fb6870091c2fd80f4fbe5a9861ebc70320d3b020e4639ccd895279e09212c74"
+      "bytes": 947,
+      "sha256": "6c962695bd55d239e599c367fe0d273d89a6eb8959fae938bf2956812f35ad7c"
     },
     "sideSilhouette": {
       "file": "leo1a2a1_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4386,
-      "sha256": "948445028086030b1b04a83dad0ed1a7297136d9ba3f5319d426957b3851c771"
+      "bytes": 4311,
+      "sha256": "0f0808bd55f203ce8a662a6b0efecd4c0e6b5ed6414ebba13cd92f3bea7cf96f"
     },
     "armorSide": {
       "file": "leo1a2a1_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25278,
-      "sha256": "98a4f34b2498aabf0e290b6916b89fabcafaf4e6600ec4983a69d1e736d1f7ba"
+      "bytes": 25258,
+      "sha256": "d3480b2af954508e5c43f3056748880bc0bf1f88920137fba67f964260a67ae1"
     },
     "modulesSide": {
       "file": "leo1a2a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26660,
-      "sha256": "42a5b4dfb06434fa36a21e49ab5086f0af1484f99cfd9b0c1ba4b7fc4fc73657"
+      "bytes": 26678,
+      "sha256": "ecffa3dbeb0ce7c6c28c10fee16942288f869aa633e42a419d17639294a8b757"
     },
     "crewSide": {
       "file": "leo1a2a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23758,
-      "sha256": "7c5b64478d11c9482127e0fe6cd5037048cea64b56e9ece75ffe8db458975117"
+      "bytes": 23708,
+      "sha256": "d52a724ccf730a72bfe5df5dc13d8e408228df2b4ffa118e3c3416ff3766f988"
     },
     "markings": {
       "file": "leo1a2a1_markings.png",
@@ -964,8 +964,8 @@
     "technicalLabels": {
       "file": "leo1a2a1_technical.json",
       "mime": "application/json",
-      "bytes": 5517,
-      "sha256": "8315f7f733c0c2348730b10927e46690f882b1a520c471b76762747251626d0e"
+      "bytes": 5518,
+      "sha256": "1c8f40b54574aa81c1d671371a962f4ef92e8e278941a7d31d6d7c6c6a22dcb1"
     }
   }
 }

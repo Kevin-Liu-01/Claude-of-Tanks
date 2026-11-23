@@ -886,17 +886,17 @@
       }
     ]
   },
-  "geometryHash": "9886e1d1",
+  "geometryHash": "1b140c88",
   "metadataHash": "26779e14",
   "presentationAnchor": {
-    "xM": 0,
-    "zM": -0.0232
+    "xM": 0.0018,
+    "zM": -0.0236
   },
-  "presentationHash": "3eb0411f",
+  "presentationHash": "8817fe2e",
   "presentationProjection": {
     "centerYM": 2.3293,
-    "topHalfM": 6.1823,
-    "sideHalfM": 3.0911
+    "topHalfM": 6.1827,
+    "sideHalfM": 3.0913
   },
   "appearance": {
     "version": 1,
@@ -945,16 +945,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23648,
-      "sha256": "28139f27514227c07a21e3206fc467e8464fee1b45820d5a6f119b8af5f5c471",
+      "bytes": 23574,
+      "sha256": "ab520a998fffbc05a80c42c8bd7cb2a35020b42133876d2409a8ce805d68c382",
       "thumbnail": {
         "file": "thumbs/type90b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10002,
-        "sha256": "d4d6372f8bab4c83ec169df7be659d4297556180224427b449ace5cfb3770855",
-        "frame": [23,91,225,248]
+        "bytes": 10086,
+        "sha256": "7be04a05625afb51295d3d22e3b237bfb4e5b46bfb6da07064f00e72994211dc",
+        "frame": [23,91,225,249]
       }
     },
     "top": {
@@ -962,56 +962,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9200,
-      "sha256": "647aab2a78627d69abd4e0e89e1daba35c906872136d2cb2fb2050ea99130e7b"
+      "bytes": 9252,
+      "sha256": "2f7a8a026a4cf747f0af2db3ff82dde7a6db2c9f40f0a19dcf2d9537dac5c253"
     },
     "side": {
       "file": "type90b_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12104,
-      "sha256": "4838e609ff3dacae197d38a6eb1f92ee1c1e69a87edc3c27088d4435c543bbee"
+      "bytes": 12062,
+      "sha256": "93fc9b51c13bcc38730b237fbfde984138a802afc7df32f40baa5685aa85f0dc"
     },
     "topSilhouette": {
       "file": "type90b_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1165,
-      "sha256": "b4b6dac22f651e6867927e77d8d63362403a21a5539e132e751cafdbc01ae692"
+      "bytes": 1182,
+      "sha256": "1488cfc8fb54997bd777221f54b920ba6ec92472d08cdbbc08d63a21103129df"
     },
     "sideSilhouette": {
       "file": "type90b_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5562,
-      "sha256": "bfb4fbf38437aac6096c8748e31b952d1e4d4998f0eedea21234f747435c1b01"
+      "bytes": 5573,
+      "sha256": "965d5d8c548901a85a3389d7b6a03b59008f8a2656585aee76662d4f53130a10"
     },
     "armorSide": {
       "file": "type90b_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27126,
-      "sha256": "b1cd68cfa04ba53fe54977facb85abcad4eda528249889adf46ba564ff2b8f4c"
+      "bytes": 27152,
+      "sha256": "39c4ae4466d987e89fb97b5f76fa436d2f8fa380d5b724024bb9e41dc488244f"
     },
     "modulesSide": {
       "file": "type90b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26308,
-      "sha256": "aeb34ccf3d8049f3407a9104f749e478985fbefdb95fa2d390f698c710d8df86"
+      "bytes": 26162,
+      "sha256": "412ae1011b635508b773c05cfe7ae04a2526f99fdb4042180060d6906fb257cc"
     },
     "crewSide": {
       "file": "type90b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21686,
-      "sha256": "7c672eb5d990cf543b7f0d828d83c94fd59ed7de17402d310bdc361694315518"
+      "bytes": 21672,
+      "sha256": "f692c92fb761a40a3cd010393338fb581aa0992440b8dbe34a5688b91bc93fd1"
     },
     "markings": {
       "file": "type90b_markings.png",
@@ -1024,8 +1024,8 @@
     "technicalLabels": {
       "file": "type90b_technical.json",
       "mime": "application/json",
-      "bytes": 5350,
-      "sha256": "f5084c237e58e5c85220ae4d57d5fb4794229b63d07adf8c182cc584dc07e862"
+      "bytes": 5353,
+      "sha256": "900436fff61386f183f202de7bbb22c1d333db86b87e905bddf9ac2736cc872a"
     }
   }
 }

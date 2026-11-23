@@ -564,7 +564,7 @@
       }
     ]
   },
-  "geometryHash": "29f6ccc0",
+  "geometryHash": "37c6c1ab",
   "metadataHash": "829fa725",
   "presentationAnchor": {
     "xM": 0.0009,
@@ -622,40 +622,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29594,
-      "sha256": "63dd999198b9f9f037666e1f14c6eb8ddda83c1050dfe8a196d3f98ec54c3a09"
+      "bytes": 29356,
+      "sha256": "fa61da2a7006dde710d1d5b321aa303a8df153a35629a648cb7ce6e0f517f0f7"
     },
     "modulesSide": {
       "file": "sabra_mk2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33204,
-      "sha256": "51a9b192908414934a31cc2dfbd35f1871f681303e2a1d87b51c08e6e9bc3789"
+      "bytes": 33080,
+      "sha256": "3baf49af8603328ec943320503cdb96cadb071f0324e861ebc80f5fd9687a2df"
     },
     "crewSide": {
       "file": "sabra_mk2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30598,
-      "sha256": "cfcc9010ed68672c0e6d12a1458e8791c410e8fd033c3396b5499056b9ead6e7"
+      "bytes": 30446,
+      "sha256": "ec19d9e1f08ba7369f7e52bea12edb1a0d9a47b0af11a94982aff4f96de48dde"
     },
     "angle": {
       "file": "sabra_mk2_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30714,
-      "sha256": "2e7e8d221e32b5e657d1ec00856b543d0173a797c7d513283dacf647d52c70de",
+      "bytes": 30526,
+      "sha256": "c18fad3fb4f6a0f416bf46cabe6e0e42fd6c7a0e01eb63e46c9b1d91d24b822b",
       "thumbnail": {
         "file": "thumbs/sabra_mk2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12556,
-        "sha256": "a30ec03d3b3a4cfd2f6469590439dc8a5106dd1ce021b03897659aa40fe486e8",
-        "frame": [23,91,227,250]
+        "bytes": 12328,
+        "sha256": "973fec0b28b3509fdfb5cd1bfa6133112b16d848a0d1d46debd6e39e16930408",
+        "frame": [23,93,226,250]
       }
     },
     "top": {
@@ -663,16 +663,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15644,
-      "sha256": "d94564046af090f51709dad1201bd6893a2f6f506ef5ae0f8b4463bc832680cd"
+      "bytes": 15418,
+      "sha256": "fe38779e87d1de266839f28dbabcb39eb8622a253684ea5157ae07ab39f0da6e"
     },
     "side": {
       "file": "sabra_mk2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15796,
-      "sha256": "a4a1525a738c331ce3afa3c07aed31f3eb64757302d052fc19b572ffc231dc6e"
+      "bytes": 15842,
+      "sha256": "52325e5eff96372afa1d1e50c7148d9a8edb434419ae491fdfb6b77e70be1164"
     },
     "topSilhouette": {
       "file": "sabra_mk2_top_silhouette.png",

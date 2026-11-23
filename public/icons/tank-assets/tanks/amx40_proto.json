@@ -483,17 +483,17 @@
       }
     ]
   },
-  "geometryHash": "0765207e",
+  "geometryHash": "d7f5e5b7",
   "metadataHash": "9a35971a",
   "presentationAnchor": {
-    "xM": 0.0006,
-    "zM": -0.0049
+    "xM": 0.0004,
+    "zM": -0.0061
   },
-  "presentationHash": "30b6851d",
+  "presentationHash": "b4d5dbc9",
   "presentationProjection": {
     "centerYM": 1.4865,
-    "topHalfM": 7.11,
-    "sideHalfM": 3.555
+    "topHalfM": 7.1113,
+    "sideHalfM": 3.5557
   },
   "appearance": {
     "version": 1,
@@ -545,15 +545,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22880,
-      "sha256": "2e4add452c62912ba361779e2232de927757224dee0cb20670964ea3cfb53e54",
+      "bytes": 22968,
+      "sha256": "3e6e698308de7a781a7493d3b5dce87d600447d2ff88f1e6b22096609eb0ed61",
       "thumbnail": {
         "file": "thumbs/amx40_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9428,
-        "sha256": "77f1fc8d4be993bd9b2b07430392925c528a4249c3fb97dfba256183c1287227",
+        "bytes": 9436,
+        "sha256": "57f5dfb780ba72c0ede1e3fdc279d2a7e5796564c5f8cbb436220c5c4c84593d",
         "frame": [14,121,225,249]
       }
     },
@@ -562,56 +562,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 7630,
-      "sha256": "86c98f5bff9873beeaaba7d53e989bf4917dfea9e8042b2989275041378422e5"
+      "bytes": 7530,
+      "sha256": "f9759a207bf46f80b7fcdcb83d84d2f8ea26df38a3cb8b956fabbcc56200dab5"
     },
     "side": {
       "file": "amx40_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8586,
-      "sha256": "dcbabc5e19329956c6db6dc023015301ecf763efea7293c625ce1b81164ff802"
+      "bytes": 8588,
+      "sha256": "4be792e25405f44b0ff290d6cc964ee4af56fbb0aa10c5ad1f0180df021f3065"
     },
     "topSilhouette": {
       "file": "amx40_proto_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1101,
-      "sha256": "d281de1b3ac89e669689a3d263d271278270b906d23106a5ad5d823a4d8e93d9"
+      "bytes": 1052,
+      "sha256": "f4ed8bc2f9ff82450b3be55e1e314c87635f7c39577e3ac9b830de0a113de1a3"
     },
     "sideSilhouette": {
       "file": "amx40_proto_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3781,
-      "sha256": "3d9dd392b19a68d52299f72c6d36d462c15ece248dcbc224bdb44286ef8ce6e4"
+      "bytes": 3738,
+      "sha256": "02627a8e9ea988781b2ed361a54d67ebbc59e9a23635d8bdd0e9f61d7956fd2c"
     },
     "armorSide": {
       "file": "amx40_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20640,
-      "sha256": "9d4bdbcba06a26174627220a0de4c181dfa9dd9f1d9c9a9699eb3654d46c409e"
+      "bytes": 20726,
+      "sha256": "20db92ac217793623af72fe8612e1f2d515b156e829b597caeb69d0cecc0ed58"
     },
     "modulesSide": {
       "file": "amx40_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21346,
-      "sha256": "c3376b7b08ad4ea9e55c032f954eaa9e3c8c4b04f76c961706c3297e64afa1bc"
+      "bytes": 20656,
+      "sha256": "6fcd3e1d6cd60775654ed01db60e7f9d267393de0d38bdd9105a19f80a167ea4"
     },
     "crewSide": {
       "file": "amx40_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18468,
-      "sha256": "0946bc22df4d88006d9b9bee09c900e892fba3b4d79566c02f237a6d4287823f"
+      "bytes": 18448,
+      "sha256": "9c440ad05b40a15059ebbaaec1348b6a1410575903670fd05edead24d12629ec"
     },
     "markings": {
       "file": "amx40_proto_markings.png",
@@ -624,8 +624,8 @@
     "technicalLabels": {
       "file": "amx40_proto_technical.json",
       "mime": "application/json",
-      "bytes": 4289,
-      "sha256": "6df4208520f4ba6c044877d7e5f5b760f1a22064938d95321d634e5eeeb26361"
+      "bytes": 4290,
+      "sha256": "6311c79132bbb26a2780abcce33f3337514605113e6a281de64b5044a098e077"
     }
   }
 }

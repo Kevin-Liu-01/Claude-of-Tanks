@@ -769,7 +769,7 @@
       }
     ]
   },
-  "geometryHash": "e3bc761e",
+  "geometryHash": "31d7c2c5",
   "metadataHash": "aa1c362d",
   "presentationAnchor": {
     "xM": 0.0011,
@@ -830,15 +830,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24396,
-      "sha256": "6dc0f91bdf25e95a19c0728ded2043f9d573e43bcb338c46be98e02c2683c934",
+      "bytes": 24404,
+      "sha256": "49666e32ca2311d50d3430cfe22e21e4f3229e69d9391e62f3cfb9dc2edc6ce5",
       "thumbnail": {
         "file": "thumbs/t62_1975_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9928,
-        "sha256": "10195e3dd1ecacc22770da05a885055a3a352e6cfad9d40f22f2e396d2f517ad",
+        "bytes": 9922,
+        "sha256": "28da0f9e3cb746e7e12e240e653db48736bd754c6a4798be4e93af0daa79e753",
         "frame": [20,128,223,249]
       }
     },
@@ -847,8 +847,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9450,
-      "sha256": "ff47ce9ed4e239c8f4c4b46ed76cdb190c239d56763c5d625bf0c6ec19903582"
+      "bytes": 9444,
+      "sha256": "33ce5d982d1ba453d2180ca75d092e6375eee7b88b946b1c72e682cdc9df3ad6"
     },
     "side": {
       "file": "t62_1975_side.webp",
@@ -879,24 +879,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20382,
-      "sha256": "840ba6a6920b8c033f66c615c6d54bfc13df52539cc5f6b440b0ce1a53e42b52"
+      "bytes": 20374,
+      "sha256": "7cb6109e6d8520a39466c6794d05b3883225c24cbc376e235b10052daac33c58"
     },
     "modulesSide": {
       "file": "t62_1975_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21536,
-      "sha256": "ae5198aa625f9eaaa7a7fa21c54e6473133f88297a06906db10b9a10424f9a1a"
+      "bytes": 21570,
+      "sha256": "7fd80e8d31491f9e26066d650416009343bdcabbcd9ff9df983378ac4111f7c4"
     },
     "crewSide": {
       "file": "t62_1975_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20366,
-      "sha256": "f48a95a06a4cd0dabe5d98266fe7769dba8b289437f19faf422118e7ef56bfdf"
+      "bytes": 20404,
+      "sha256": "bf6b8503207c3b642f403e294246026beb135b4422a9f8e206316c9e33e215e5"
     },
     "markings": {
       "file": "t62_1975_markings.png",

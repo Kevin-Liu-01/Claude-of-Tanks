@@ -912,7 +912,7 @@
       }
     ]
   },
-  "geometryHash": "0fa5d162",
+  "geometryHash": "b45b8439",
   "metadataHash": "83dc3c0f",
   "presentationAnchor": {
     "xM": 0.0021,
@@ -970,39 +970,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47166,
-      "sha256": "01f9e1e5b475ef16025894f5eac4f39d4bbfc846eed7e5099a491cb0cce7ef3e"
+      "bytes": 47038,
+      "sha256": "0c7e376d103a0bc49d0ea5e4174fb05df6d2efd9801b4a9ec68587a84fbec2ac"
     },
     "modulesSide": {
       "file": "cv9040c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44028,
-      "sha256": "bca062be15ab5fcd8b5820177a559dee5d34c30e9c890e2dbd8cb7e4a7df1cb5"
+      "bytes": 43918,
+      "sha256": "1ef594150aed916f6090418056635f8aa626066678fe9e1a5e757cd16be41bbd"
     },
     "crewSide": {
       "file": "cv9040c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40942,
-      "sha256": "3a0e9965092c806f191ec0766493769ccd77cd6b1509975ccb7a754a3930ce12"
+      "bytes": 40886,
+      "sha256": "c991011ef6f86cdaf60746fed5b97f42c1b197d4c9255675c953602484643d74"
     },
     "angle": {
       "file": "cv9040c_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30418,
-      "sha256": "8b696488d39dcd8cbc7e8197f5ca03231bcdd739ed93b90904321c2c80e1213e",
+      "bytes": 30350,
+      "sha256": "227078da7c09eacd2ff96d70954962d423340ca23214f3665cad6f99b71cbe13",
       "thumbnail": {
         "file": "thumbs/cv9040c_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11630,
-        "sha256": "4da752da5f6f1e3fdee0778836f9af0554577bde7c23784d85d5beca6ca6ab1c",
+        "bytes": 11486,
+        "sha256": "edac7336b0bccf74cacdb0cbdf9a809da410af28cb849c0efb00ad06b1251d93",
         "frame": [28,82,227,249]
       }
     },
@@ -1011,16 +1011,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29796,
-      "sha256": "2ba8ed811cef00336071701b5480c3c6a8614d61647e52dcf59533fd54c54164"
+      "bytes": 29678,
+      "sha256": "44f34f5eefb6f16d9a44436f8d0d943d604a5c41a99c74a2d7c1abe5957763cd"
     },
     "side": {
       "file": "cv9040c_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18328,
-      "sha256": "4f878fab6f25250f4914daa421de4b1520efe348235089df895161a352491e7c"
+      "bytes": 18256,
+      "sha256": "77f5724542ee024fc29fe88b96acfea6000627201688bcf4917d263e98e96707"
     },
     "topSilhouette": {
       "file": "cv9040c_top_silhouette.png",

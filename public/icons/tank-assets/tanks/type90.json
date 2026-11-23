@@ -863,17 +863,17 @@
       }
     ]
   },
-  "geometryHash": "79650074",
+  "geometryHash": "f1b95caa",
   "metadataHash": "ba5adadf",
   "presentationAnchor": {
-    "xM": 0.0023,
-    "zM": -0.0436
+    "xM": 0,
+    "zM": -0.0398
   },
-  "presentationHash": "36c42c32",
+  "presentationHash": "4a1e2daa",
   "presentationProjection": {
     "centerYM": 2.3293,
-    "topHalfM": 6.2041,
-    "sideHalfM": 3.102
+    "topHalfM": 6.2,
+    "sideHalfM": 3.1
   },
   "appearance": {
     "version": 1,
@@ -890,7 +890,7 @@
       "armorPaint": 12,
       "hullRubber": 1,
       "opticGlass": 2,
-      "unclassified": 17,
+      "unclassified": 19,
       "gunmetal": 6,
       "gearShadow": 1,
       "fittingPaint": 6
@@ -920,39 +920,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26288,
-      "sha256": "8e070c4be63a944b4f79de34453d590be37a2c6c75a8417cca33843555aaa7be"
+      "bytes": 26678,
+      "sha256": "1874ffc018fb27bf16a32678b13abf690ced4e40e0c09d82e0c6c1982c0c6600"
     },
     "modulesSide": {
       "file": "type90_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26090,
-      "sha256": "1f7bcb5be6b3de2f7465e602b2dce0e40c6fb407613e930c2bc0b8c6b579d7b3"
+      "bytes": 26534,
+      "sha256": "05cd7fd89500450c312f17fc833d052c6597e116911dbca6822e31071bcfe123"
     },
     "crewSide": {
       "file": "type90_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21924,
-      "sha256": "94161f85d1287c8887515f7cec64e88a8647422f0cbc7b2eb712d253cf55d261"
+      "bytes": 22218,
+      "sha256": "7aeada7cb549c72d8c01d70f07322b8d676d449f3d30ce293991feb32280a33d"
     },
     "angle": {
       "file": "type90_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23550,
-      "sha256": "ffcf8e3a254f2c33d22b4ca0328de07c7f1fcdf87c614d53bb27f6b8a722cb3c",
+      "bytes": 23710,
+      "sha256": "b8650b95d01c8f6ecc26294363c3dd1e4f1ef5b77e6b6c57de32e12fd4f56017",
       "thumbnail": {
         "file": "thumbs/type90_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9822,
-        "sha256": "bb3989ec4c580c3d3f27d71cf6201ac3641e07001ea9bb3fab2125ae5bb9f57e",
+        "bytes": 9802,
+        "sha256": "839603124289f3ee9d47730de9ef72bd0a6b28cb78c7e0f00b55b61ec0981bc4",
         "frame": [24,103,225,248]
       }
     },
@@ -961,32 +961,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10134,
-      "sha256": "b82bfb0f164f5d080344b331d0c38394f178b3113c243c7cde5c29cd5675d83b"
+      "bytes": 10262,
+      "sha256": "33182b9e62e7ce461eb6c04b4ea4b7a6fb6532e0f1df5f28a1dc30e17aacde7c"
     },
     "side": {
       "file": "type90_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12296,
-      "sha256": "e13c72164ad668470233407b94ffcc204f717ceb0abbc3535749bcdc6adf7a42"
+      "bytes": 10788,
+      "sha256": "fd2c8abff93736499b283b8d8b8603a8128446984359b91441b5956e96b5a4c1"
     },
     "topSilhouette": {
       "file": "type90_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1160,
-      "sha256": "e6ff491e8c3b301e5f207efcea40e656da0d853fa59193937db72edfb8909bb1"
+      "bytes": 1124,
+      "sha256": "34b84c7463df8d1425282af3e3cb633c0dd8692bede909fd4d72741f911b06f2"
     },
     "sideSilhouette": {
       "file": "type90_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5333,
-      "sha256": "2456c08b2db083bd5012f5c4e763458b20f1f606b625380ac900b098e80785cd"
+      "bytes": 5539,
+      "sha256": "92a0dcc16b35f2a1f804a7cefea48465bcc0670c2886167d52fd7ffcc8b4cdbb"
     },
     "markings": {
       "file": "type90_markings.png",
@@ -999,8 +999,8 @@
     "technicalLabels": {
       "file": "type90_technical.json",
       "mime": "application/json",
-      "bytes": 5355,
-      "sha256": "960038c111eb46340939713feab635c859cd466056504c04cc68e86c64338235"
+      "bytes": 5325,
+      "sha256": "afecdef70f26f91d03d4ef7cefbd5b7ef1a65b68f6f94d51f0b8f60502b4087a"
     }
   }
 }

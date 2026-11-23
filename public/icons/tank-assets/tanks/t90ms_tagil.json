@@ -15077,7 +15077,7 @@
       }
     ]
   },
-  "geometryHash": "04eb9cb0",
+  "geometryHash": "20232199",
   "metadataHash": "098695e2",
   "presentationAnchor": {
     "xM": 0.0028,
@@ -15134,39 +15134,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29266,
-      "sha256": "58e2e2e701a9a69ed01c6b353bfba4bd48667e63422d6fc9470058276632b868"
+      "bytes": 29234,
+      "sha256": "a13668a2a7b0a0b045457576cffc343fecdfc7410dadc87069e9a2993aaff61c"
     },
     "modulesSide": {
       "file": "t90ms_tagil_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23334,
-      "sha256": "ec664e1ac204bde4fd2b622e2d4d2fe5e21f3cd3c1ca2acb8937c514e48f101a"
+      "bytes": 23318,
+      "sha256": "8a03a3802050ac5ca0970a6699c28ccf185219aeeed11cf4ddc28037a3df97ca"
     },
     "crewSide": {
       "file": "t90ms_tagil_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21728,
-      "sha256": "9af2b4c799697e755bc2873bd6604788be880cd3eeef59b4ce2da13195b85ce4"
+      "bytes": 21784,
+      "sha256": "e403bb2cdd9c37c723b330996ec8f2d6b8fe7f79c76e6b9e6b5d97b3099e5ce6"
     },
     "angle": {
       "file": "t90ms_tagil_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29654,
-      "sha256": "ee6fbb15e2abaa26c1e4aa345a6eb3433ae55cb4d166fbd9d404019e0e4dfc09",
+      "bytes": 29562,
+      "sha256": "539fef308e8e0ca648b68bb3cd2fbca05575662400834556d8a0b248891c7cbb",
       "thumbnail": {
         "file": "thumbs/t90ms_tagil_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11626,
-        "sha256": "f5546d9c62095606f44aef01058d40e00ba085dc8d7d245d649b6358d5205565",
+        "bytes": 11608,
+        "sha256": "c628ef7033c45c6a380993d68c22f77171401a48a52ac496b9c43e3496387ed8",
         "frame": [23,103,228,250]
       }
     },
@@ -15175,16 +15175,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11486,
-      "sha256": "7d0a0b3dd0d520e325cedfe788cd282703849f3e64dd7057278239a74e93d833"
+      "bytes": 11694,
+      "sha256": "8f84f33d99820b35ce5e0857ab8b67ccb44a3e097c09e4af3bea37b31b8360da"
     },
     "side": {
       "file": "t90ms_tagil_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10742,
-      "sha256": "061f080a0ca8ac8c3ad930b2d9291e2ceb8363ea304d8082f81744c4da7021df"
+      "bytes": 10748,
+      "sha256": "b3c75a1480447c01357519f1a5b2b3614e439638087f02c677d650f039691b2e"
     },
     "topSilhouette": {
       "file": "t90ms_tagil_top_silhouette.png",

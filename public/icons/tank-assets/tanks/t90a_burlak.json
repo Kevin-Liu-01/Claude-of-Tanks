@@ -5699,7 +5699,7 @@
       }
     ]
   },
-  "geometryHash": "aa25d074",
+  "geometryHash": "aa852af3",
   "metadataHash": "1bbc4f9b",
   "presentationAnchor": {
     "xM": 0.0026,
@@ -5728,7 +5728,7 @@
       "hullRubber": 1,
       "gunmetal": 6,
       "canvas": 4,
-      "unclassified": 12,
+      "unclassified": 11,
       "gearShadow": 1,
       "machineGun": 4
     }
@@ -5757,39 +5757,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30884,
-      "sha256": "1dee7e215e03134d104c9877ac2e82f6bf573a0bb77c3899370c13c5ea029a67"
+      "bytes": 31730,
+      "sha256": "23d6accdc1106d93c3d0d6012f20355e5832e5c2baf232c4b711b3db04dfb0b9"
     },
     "modulesSide": {
       "file": "t90a_burlak_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29456,
-      "sha256": "dfcfb4acb27f29a379eafc0407af1a9f0d5e9edfacd676e80e70881b882448b3"
+      "bytes": 29540,
+      "sha256": "051f05d34b3f9b666365c1fbceaf79279faf0a26b129c27a877d9ff7842a1e4c"
     },
     "crewSide": {
       "file": "t90a_burlak_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26768,
-      "sha256": "b9ca64ad66f8b0d0320852a10c49833ae5e818e7c4f1a3868d84d1d150718b27"
+      "bytes": 26746,
+      "sha256": "8488fca499797d1c585dbcbe18e865c09b570bc5a56b02283960a4b4acb300a7"
     },
     "angle": {
       "file": "t90a_burlak_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30720,
-      "sha256": "7ba308dbaeac5e2813a1d200fda2ed4ba8577d1b75f3957a3e4a622c9d5c21d7",
+      "bytes": 30770,
+      "sha256": "c091648beabdc041112b620bb598c03f723384515055d3175cdabd83e3b44e12",
       "thumbnail": {
         "file": "thumbs/t90a_burlak_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11666,
-        "sha256": "0c4d7f3eafb2310cc12ccf969a91e2d10da2d5a5d19e3e6f64aa77f34acd1b0a",
+        "bytes": 11660,
+        "sha256": "dc6b8e418bc6803e422f3ee47505052582ff4b0648f3899a9b17b6eaec406a9d",
         "frame": [23,112,228,250]
       }
     },
@@ -5798,16 +5798,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17376,
-      "sha256": "9dce84cdde6426861fa61c25281b9c25338f3e583cf451416e35a4ec31bb3458"
+      "bytes": 17890,
+      "sha256": "659fb4fda124a2b121645f67369c96862a88b7708f842f9966b2eeece9372ed9"
     },
     "side": {
       "file": "t90a_burlak_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12296,
-      "sha256": "b0fc28b7ac0fc06272c92889da3c6a84e24a77d7b2d538903f0c6614c8d08fa7"
+      "bytes": 12362,
+      "sha256": "a466a912b42c9d5b0e0c53e12435cf3fbc1e389797124e0f0406fe0826ca7660"
     },
     "topSilhouette": {
       "file": "t90a_burlak_top_silhouette.png",

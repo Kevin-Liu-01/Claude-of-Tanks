@@ -1091,16 +1091,16 @@
       }
     ]
   },
-  "geometryHash": "662f7865",
+  "geometryHash": "8c152617",
   "metadataHash": "fc49b1c7",
   "presentationAnchor": {
-    "xM": 0.0001,
-    "zM": -0.001
+    "xM": -0.0007,
+    "zM": -0.0013
   },
-  "presentationHash": "30f53694",
+  "presentationHash": "f13c0b56",
   "presentationProjection": {
     "centerYM": 2.229,
-    "topHalfM": 3.6857,
+    "topHalfM": 3.686,
     "sideHalfM": 2.385
   },
   "appearance": {
@@ -1148,40 +1148,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28722,
-      "sha256": "df570e14e9cc286e1b7411aeeea675b87778c1f1d98301e6479ea67ffeb32453"
+      "bytes": 28936,
+      "sha256": "db4417fe122009c33512d1dd051eadaae098edf0e883abe34214ec55f8418648"
     },
     "modulesSide": {
       "file": "borsuk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29564,
-      "sha256": "4203a1d4ba4aa64f676888595a8500bd185eb1b924556a26ff42003e0e7cc24a"
+      "bytes": 29736,
+      "sha256": "fb0f8d2e7ed60293ac9b6802eb9f9aa4d376b86376b42dc38c7c5e8e24c7fe8f"
     },
     "crewSide": {
       "file": "borsuk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24916,
-      "sha256": "26e9d6cb05b91e587574e01448f835edc1870bd3105b4c023e006519fe68701f"
+      "bytes": 24984,
+      "sha256": "6475f473142de82cd18f416e5a1aea1f979cdfe7074cd1623495d4a11710fbd3"
     },
     "angle": {
       "file": "borsuk_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24538,
-      "sha256": "9bc083bb9eb8b1abd4ab505dc24631f439cce0892ff4553e02eaa49fe2c60514",
+      "bytes": 24640,
+      "sha256": "78ac5bddb769cb6e454b10d3078f208f82be78c12593faed4ec94a90fa06f2ff",
       "thumbnail": {
         "file": "thumbs/borsuk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10430,
-        "sha256": "4b80dd10d8c94bfcd31c82487d70bc25a1354e8eda5bdd629205ce69a474f30c",
-        "frame": [25,62,226,250]
+        "bytes": 10292,
+        "sha256": "4588434b446b0297389a0cbc0e2d33e9d4a75c14377b9cbe2068c9aa4fc660be",
+        "frame": [25,64,226,250]
       }
     },
     "top": {
@@ -1189,32 +1189,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14902,
-      "sha256": "db33fe0873fe2bad4cf37c128858e8376858ca82ae508fabe6dc8df7295393c5"
+      "bytes": 15020,
+      "sha256": "e68ddf74aaad919eeaa004e4198498a8a5e255c536ef7d5cae9657aee8c67571"
     },
     "side": {
       "file": "borsuk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12070,
-      "sha256": "684c6308bef6fa5429aa915778e8f5717ef178f74e711e4c51f6836b795f266d"
+      "bytes": 10926,
+      "sha256": "e499723ebbebc4d9e97e441dab1e5fecb7ab814ef35acfee6322b34f4cef6da2"
     },
     "topSilhouette": {
       "file": "borsuk_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1749,
-      "sha256": "4be62af6502b5a1ba60f8f5070070c8f1aec7cd4564af56d9d243732f45935d5"
+      "bytes": 1760,
+      "sha256": "309b4f143b1b4add52e5724f63f25f1c5dc102f64fe554446659dab854b0cf3b"
     },
     "sideSilhouette": {
       "file": "borsuk_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4657,
-      "sha256": "7033354fa4fdac7bdf078fb1f54a635a670911953ce40caba2893c159d597bbf"
+      "bytes": 4644,
+      "sha256": "7b03211a9ef357ae6b68dbbb966ada8757a12996279d9e7d04851855460779b4"
     },
     "markings": {
       "file": "borsuk_markings.png",
@@ -1227,8 +1227,8 @@
     "technicalLabels": {
       "file": "borsuk_technical.json",
       "mime": "application/json",
-      "bytes": 5359,
-      "sha256": "7022a5b9b168d73fd42219a349c219166f5c53f9c494bd6a00c5dbfedb238364"
+      "bytes": 5360,
+      "sha256": "17046971db95b5559b9a64244194debf5082f838a77c6087d2b24d89e64aad89"
     }
   }
 }

@@ -639,7 +639,7 @@
       }
     ]
   },
-  "geometryHash": "7be30066",
+  "geometryHash": "7320e2b2",
   "metadataHash": "51afcb94",
   "presentationAnchor": {
     "xM": -0.0088,
@@ -696,39 +696,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37990,
-      "sha256": "e14e4ddf6fee6d11a3037d5ced6f1fbce536ecbcac270c29d9f7c6615bc03c21"
+      "bytes": 37728,
+      "sha256": "ab9e30aed40aec1da77f6030b368c6bf6982961fc190abd4f189807d64e867ad"
     },
     "modulesSide": {
       "file": "warrior_tes_h_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35244,
-      "sha256": "f98e7bea2067fe7e0a25d4ff2fef7d0b15217b735f8d8ddb6fc18a1ad2b5e91c"
+      "bytes": 35234,
+      "sha256": "4c1a5f13dd0318ad5f83da22aa8e463522f6500b52ef7fc886613d77684edc82"
     },
     "crewSide": {
       "file": "warrior_tes_h_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33590,
-      "sha256": "a04469e21349b35d12a8ccf9d040cd89ac234a42c818f97d7960ee70ab96157d"
+      "bytes": 33526,
+      "sha256": "ec2e988f6c51a13d1b4c01b17c3608ce377e0b669371b8a321d134855229ab06"
     },
     "angle": {
       "file": "warrior_tes_h_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28268,
-      "sha256": "dcace1eb95abc1efe6922eff9f1a5b4f445bb6fe23dd9a7cec85379db09c0b2d",
+      "bytes": 28274,
+      "sha256": "c6bceae955bb506576dea130ea031e748d76d120a849ce06e1f23cd954e910e9",
       "thumbnail": {
         "file": "thumbs/warrior_tes_h_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10808,
-        "sha256": "6d901bd07334205de3b8ae11621f5e3beaf082ca66e12e2c141e645b6e392fe0",
+        "bytes": 10860,
+        "sha256": "29490bd77f53fabfbc3445f53795a6b47978ab4159adbb36a4cc51725c854ed9",
         "frame": [28,107,225,248]
       }
     },
@@ -737,16 +737,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21594,
-      "sha256": "e5e41eeba89e29183289aa03dc1df1830af2f5063eb5f425ee2620a17b2fcb0a"
+      "bytes": 21384,
+      "sha256": "aa432504e7a74fc706b530daaf74eb6db5e7980cd0129c37746b60099be05840"
     },
     "side": {
       "file": "warrior_tes_h_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13846,
-      "sha256": "393a2679ae7ce57ca7d07ee63815a454961e0004f207021c74c9f3044ee0a4af"
+      "bytes": 13680,
+      "sha256": "d46307bbfb67d257099c82be13abe303ec7e94bac4f6712f84e70d201762d733"
     },
     "topSilhouette": {
       "file": "warrior_tes_h_top_silhouette.png",
@@ -761,8 +761,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5668,
-      "sha256": "2062f56fd4058defcc3de5ca6da63f345e797590fb52a6583828a6890790f76e"
+      "bytes": 5648,
+      "sha256": "eecb37788fcfd93ad3b25969431d523b23a5ec7064047714ed43cf319294d0bf"
     },
     "markings": {
       "file": "warrior_tes_h_markings.png",

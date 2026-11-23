@@ -486,7 +486,7 @@
       }
     ]
   },
-  "geometryHash": "9db8cc16",
+  "geometryHash": "2e3f129b",
   "metadataHash": "a4ae2907",
   "presentationAnchor": {
     "xM": -0.0003,
@@ -514,7 +514,7 @@
       "hullRubber": 1,
       "gunmetal": 4,
       "opticGlass": 2,
-      "unclassified": 17,
+      "unclassified": 16,
       "machineGun": 3,
       "fittingPaint": 1
     }
@@ -543,39 +543,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35034,
-      "sha256": "2feed3b43a3d69e8e5e1702a9f224d01ee9a3cb32327d750720accea77633abd"
+      "bytes": 34946,
+      "sha256": "6f69f4ae31175561fe6ebe8801d841ac7537ff73f64663ff2d24748140ed1cae"
     },
     "modulesSide": {
       "file": "bmp3m_dragun125_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36250,
-      "sha256": "7f39fb202605199075a463a15216975615e6060f422fd4f050a0c7214c1255c0"
+      "bytes": 36218,
+      "sha256": "2fc21f0abbc2cf8a0cdfd8a762ef1f8fad49cdc4f0a63e0ab76e9a7cd23097a7"
     },
     "crewSide": {
       "file": "bmp3m_dragun125_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31802,
-      "sha256": "214310c5483fcd94d0328bb173b19dd6cc59ec958bcbbb914e6da78a4aa2f3db"
+      "bytes": 31650,
+      "sha256": "6a752ba85480fd7c91b687fdd47444e074f4399c6604055f9cc758a62d09aca3"
     },
     "angle": {
       "file": "bmp3m_dragun125_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28646,
-      "sha256": "cb210e9dfef4e7573acb0146b210faf2dc8886fda691b633de0846cd37a61308",
+      "bytes": 28576,
+      "sha256": "e00a931f2d8acd2dd9bf64d6d00137bafd843ec23d5b207aafdafa48a50f00e9",
       "thumbnail": {
         "file": "thumbs/bmp3m_dragun125_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11642,
-        "sha256": "7e6565981417eb2213d2cb5814fe674c4c26f21e9c5d28cbb5f5725d5a23eb95",
+        "bytes": 11622,
+        "sha256": "58f0320f2fd31a2e2bc59d1882e3edcee98f04a8ae6957a5b7f7a76fc5e8ec90",
         "frame": [24,108,228,249]
       }
     },
@@ -584,16 +584,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17346,
-      "sha256": "d12e7bfd17efb3d5d624b4c58fd96e63f664594ed81423998ce23898d0efd9f0"
+      "bytes": 16704,
+      "sha256": "270d198f46eb7f7a5e07c745115f5937946e64f6ba977e03c959deb9992b9b75"
     },
     "side": {
       "file": "bmp3m_dragun125_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15754,
-      "sha256": "75648a6cbabcc118afa07d7d45dc44b904f7d0d65dcd2d2adf8171b4a2d70a2f"
+      "bytes": 15678,
+      "sha256": "9f95b0247e7aee0a4fc963887279f97720e7aaa50e7a4af825519cc79f57cb55"
     },
     "topSilhouette": {
       "file": "bmp3m_dragun125_top_silhouette.png",
