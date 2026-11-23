@@ -191,6 +191,23 @@ assert.equal(target.uniforms.uApOn.value, 0, 'the setting turns the paint off at
   panels.dispose();
 }
 
+// (274 fix) a scoped update whose muzzle sits at exactly the world origin (a muzzle nobody filled) warns once
+{
+  const guard = createArmorAimOverlay();
+  const lone = makeTarget('overlay-origin', 0);
+  const warned = [];
+  const realWarn = console.warn;
+  console.warn = (...args) => warned.push(args.join(' '));
+  try {
+    guard.update({ enabled: true, scoped: true, targets: [lone], shellSpec, muzzle: new THREE.Vector3(0, 1, 6), nowMs: 0 });
+    assert.equal(warned.length, 0, 'a real muzzle: no warning');
+    guard.update({ enabled: true, scoped: true, targets: [lone], shellSpec, muzzle: new THREE.Vector3(), nowMs: 1000 });
+    guard.update({ enabled: true, scoped: true, targets: [lone], shellSpec, muzzle: new THREE.Vector3(), nowMs: 2000 });
+    assert.equal(warned.length, 1, 'the origin: one warning, once');
+    assert.match(warned[0], /muzzle at the world origin/);
+  } finally { console.warn = realWarn; guard.dispose(); }
+}
+
 const restoreWarm = overlay.warm();
 restoreWarm();
 overlay.clear();

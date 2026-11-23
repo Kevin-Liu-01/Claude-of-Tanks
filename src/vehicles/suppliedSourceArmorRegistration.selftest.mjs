@@ -56,7 +56,12 @@ for (const {id, spec, donor} of cases) {
   for (const owner of owners) {
     const permanent = (frame ? frame[`${owner}Plates`] : withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]))
       .filter(p => p.kind !== 'era');
-    const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]);
+    // 274 (hitbox-fit-274): a plate the donor's own build does not draw is dropped from the donor by its plate fit
+    // (combatAnatomy plateFits action 'drop', why 'notDrawn': the M551's track_R/track_L). That is the donor's build, not
+    // its permanent protection, so a supplied vehicle that keeps the plate is held to every other plate.
+    const droppedOnDonor = frame ? new Set() : new Set((combatAnatomyCalibration(donor.id)?.plateFits ?? [])
+      .filter((fit) => fit.owner === owner && fit.action === 'drop').map((fit) => fit.name));
+    const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]).filter((p) => !droppedOnDonor.has(p.name));
     assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
       permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
       `${id}/${owner}: permanent donor protection retained apart from each vehicle's own calibrated roof structures`);

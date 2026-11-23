@@ -712,7 +712,7 @@
       }
     ]
   },
-  "geometryHash": "c4e2603d",
+  "geometryHash": "914aec39",
   "metadataHash": "a7937366",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -798,8 +798,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10158,
-      "sha256": "9b83e96d3c2350b2ed1a7bd3060f88d25c316028a1bad75f1e5781a54dbf92c9"
+      "bytes": 10146,
+      "sha256": "9345c0b27e844d5b0aa3c2cf57bda2bb0d91594609cd58253e7137d7709d82ce"
     },
     "topSilhouette": {
       "file": "k1e1_top_silhouette.png",
@@ -814,32 +814,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4325,
-      "sha256": "40c0252a8af574c1d498bdde3736f416a89ed63b217ff915e831bee833314874"
+      "bytes": 4320,
+      "sha256": "afa2d9431e727f18235503a6414ba03507a85c6ff69e4cf378a95ba398baf87c"
     },
     "armorSide": {
       "file": "k1e1_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23870,
-      "sha256": "4a5243fe1ae2f4caec37a7220695f54b83bfb1de874798060a18cbe8bd9266fd"
+      "bytes": 23778,
+      "sha256": "846e8cc7b8799aac018540d5fc1ccc8a793a4413ef98b76ad1a2c071c25fae5b"
     },
     "modulesSide": {
       "file": "k1e1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24988,
-      "sha256": "77cbeaa464792609fea70e93234c181b920a4bf1c80e8284b73bab0279a5b4ba"
+      "bytes": 24986,
+      "sha256": "b8d2e31ea90ab337949e00089b2ee924b93a4d4a7455e7b0016b5586e5fe4a59"
     },
     "crewSide": {
       "file": "k1e1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21848,
-      "sha256": "3f45961d7a1ba27218bcba0217e5b24ac9996853a6fa48cc6f2576d7701ff0b4"
+      "bytes": 21862,
+      "sha256": "bf5e519c7c0e6df08552d2ac8c331b9a334d6100695bf003c5bc64ba95f82fe8"
     },
     "markings": {
       "file": "k1e1_markings.png",
@@ -853,7 +853,7 @@
       "file": "k1e1_technical.json",
       "mime": "application/json",
       "bytes": 4884,
-      "sha256": "b8823e3146cc2473f71d3fdecc9a2e03d7f431e604111676604ad674feb5ce87"
+      "sha256": "e80da469714cc1c6c0d5c05da3216f3cadec50f29cf0793121fb00c173de067a"
     }
   }
 }

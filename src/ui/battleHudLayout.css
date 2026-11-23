@@ -837,6 +837,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed;
   left:var(--hud-smoke-left);top:var(--hud-smoke-top);--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);min-width:0;min-height:0;margin:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none}
+/* (phone-jump-274) a wider touch layout shows the row's jump tile, so its touch kit shows no round jump: one of each */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:not([data-cot-width='phone']):not([data-cot-height='short']) .cot-touch .round.jump{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump{left:var(--hud-jump-left);top:var(--hud-jump-top);right:auto;bottom:auto;
   width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}

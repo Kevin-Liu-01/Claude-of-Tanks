@@ -8657,7 +8657,7 @@
       }
     ]
   },
-  "geometryHash": "de11fb48",
+  "geometryHash": "532b9fce",
   "metadataHash": "32ae4d61",
   "presentationAnchor": {
     "xM": 0.0095,
@@ -8716,8 +8716,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31514,
-      "sha256": "60ac3d5c4acc41269d432fd67c392d08c26d8cacc4760579cc9d32d3e47c7072",
+      "bytes": 31512,
+      "sha256": "a87109ffd08a3510aff33e8a2bd4838843cc59a583401bc83ae6e558a7ac9b2a",
       "thumbnail": {
         "file": "thumbs/bm_oplot_t_angle.webp",
         "width": 256,

@@ -280,8 +280,8 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   sniper: Object.freeze([
     'aft10', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'challenger2',
     'challenger2e', 'challenger3', 'challenger3_proto', 'challenger3_td', 'challenger3_td_rws', 'challenger_x', 'challenger_x_sleek', 'chieftain3',
-    'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'christian2', 'fv4034', 'object292', 'pt84_sokol', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv121', 'strv152',
-    'strv122', 'strv81', 'ua_challenger2', 'udes03',
+    'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'christian2', 'fv4034', 'object292', 'pt84_sokol', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv121', 'strv122',
+    'strv152', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'gepard_1a2',

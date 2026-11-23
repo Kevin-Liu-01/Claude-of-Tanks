@@ -14,6 +14,7 @@ import type { TankBuildStep } from '../vehicles/tankFactoryCore.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS, readTeamArrangement } from './teamArrangement.ts';
+import { trainingRulesFor } from '../sim/trainingGround.ts';
 import { TEAM_NATIONS_RULES, matchRulesetFor, rulesetAllyCap, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
@@ -778,8 +779,9 @@ export function splitBattleAllies<T extends Pick<RosterEntity, 'id' | 'specId' |
   },
 ): T[] {
   // the training battle (273): S14's allied bots, and no other
-  if (ruleset.training) {
-    const allies = new Set(ruleset.training.skirmish.allies.map((bot) => bot.specId));
+  const training = trainingRulesFor(ruleset);
+  if (training) {
+    const allies = new Set(training.skirmish.allies.map((bot) => bot.specId));
     return candidates.filter((entity) => allies.has(entity.specId));
   }
   if (!randomBattle) {

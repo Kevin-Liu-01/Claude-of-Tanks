@@ -1567,7 +1567,7 @@
       }
     ]
   },
-  "geometryHash": "c9d47880",
+  "geometryHash": "15225729",
   "metadataHash": "ea5bd9a5",
   "presentationAnchor": {
     "xM": -0.0009,
@@ -1627,8 +1627,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36568,
-      "sha256": "8ca6a8db8917a956670f139a1c3a1c505721a697cdadee623f03c89844f64d17",
+      "bytes": 36538,
+      "sha256": "3ab009176f0c4cf1949fb9ea89ac04790a54d7f07bd006ea1536bd976751a9a2",
       "thumbnail": {
         "file": "thumbs/m3a3_bradley_angle.webp",
         "width": 256,
@@ -1652,8 +1652,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17538,
-      "sha256": "e114003a5fd66d7af2b59d62f934a59d3a5c5aea8423c1e61516cd0b428ff6b8"
+      "bytes": 17490,
+      "sha256": "32fab0e15f76b339bd3b7c1934759819e363eeabfe757aa217195a0d0ae65281"
     },
     "topSilhouette": {
       "file": "m3a3_bradley_top_silhouette.png",
@@ -1676,24 +1676,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39236,
-      "sha256": "a9d2f95aaa6fd2a75567ef6e67216a2146e7176242d8489b340327c234a904e7"
+      "bytes": 39308,
+      "sha256": "e19d4d378810983c3824aa62b712d54e89fe5400bbfbc0431c0fd7754beb3430"
     },
     "modulesSide": {
       "file": "m3a3_bradley_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40512,
-      "sha256": "75ed2eb1f58e47147359767e95439f2e529a2034e9a7afc1a891f3cdfda6f6bc"
+      "bytes": 40524,
+      "sha256": "b0b28ab538757b605aa58033fda59278923aff30a83f128d0ae5dd1bc1416619"
     },
     "crewSide": {
       "file": "m3a3_bradley_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38704,
-      "sha256": "944268ce3fb9d5354c6bb6ddf4b968c9dffd5e61e26e8823c712e6b29d672e7c"
+      "bytes": 38732,
+      "sha256": "ab9bd4dba6793b297fc4fe41c38e876d90e460d6b43ec623307e788b1e7d8ef9"
     },
     "markings": {
       "file": "m3a3_bradley_markings.png",

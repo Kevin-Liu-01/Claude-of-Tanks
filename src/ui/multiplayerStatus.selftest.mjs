@@ -254,7 +254,8 @@ const live = (patch = {}) => ({
   surface.togglePanel(false);
   assert.ok(notice, 'and closing it puts it back');
   assert.equal(strip.className, 'cot-mp-strip bad');
-  assert.equal(panel.className, 'cot-mp-panel bad');
+  // ui-motion-275: the panel wears its motion class (cot-m-*); the status is read by identity
+  assert.equal(panel.className.split(' ').filter((name) => !name.startsWith('cot-m-')).join(' '), 'cot-mp-panel bad');
   assert.equal(rows.children.filter((row) => !row.hidden)[0].children[1].textContent, 'Reconnecting · attempt 2');
   // degraded: the banner explains, the leave stays out of the way
   surface.set(live({ rttMs: 210, health: 'degraded', healthReason: 'rtt' }), { kind: 'degraded', reason: 'rtt' }, at);

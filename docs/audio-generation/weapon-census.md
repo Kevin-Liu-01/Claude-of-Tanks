@@ -11,9 +11,9 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 |---|---|---|---|---|---|---|---|---|
 | `100/unitary_brass` | 100 mm D-10T2S (T-55A) and the Type 59's 100 mm | rifled | long (L/53.5) | none | unitary_brass | manual | `gun_100_close` / `gun_100_own` / `gun_100_interior` / `gun_100_far` | 2 |
 | `100lp/unitary_brass` | 100 mm 2A70 low-pressure gun-launcher (BMP-3) | rifled | short, low pressure | none | unitary_brass | ifv_autoloader | `gun_100lp_close` / `gun_100lp_own` / `gun_100lp_interior` / `gun_100lp_far` | 2 |
-| `105/unitary_brass` | L7/M68 family, CN-105-F1, kan m/59 and the Strv 103's L/62, Type 74, the ZTZ-20/100 105 mm | rifled | long (L/51–L/62) | none | unitary_brass | manual | `gun_105_close` / `gun_105_own` / `gun_105_interior` / `gun_105_far` | 42 |
-| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 145 |
-| `120/combustible` | Rh-120 L/44 and L/55, M256, CN120-26, Type 90/10, K2 CN08, OTO 120/44, MG251/253, the Osório's 120 mm | smoothbore | long (L/44–L/55) | none | combustible | manual | `gun_120_close` / `gun_120_own` / `gun_120_interior` / `gun_120_far` | 85 |
+| `105/unitary_brass` | L7/M68 family, CN-105-F1, kan m/59 and the Strv 103's L/62, Type 74, the ZTZ-20/100 105 mm | rifled | long (L/51–L/62) | none | unitary_brass | manual | `gun_105_close` / `gun_105_own` / `gun_105_interior` / `gun_105_far` | 43 |
+| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 146 |
+| `120/combustible` | Rh-120 L/44 and L/55, M256, CN120-26, Type 90/10, K2 CN08, OTO 120/44, MG251/253, the Osório's 120 mm | smoothbore | long (L/44–L/55) | none | combustible | manual | `gun_120_close` / `gun_120_own` / `gun_120_interior` / `gun_120_far` | 86 |
 | `120/separate_bag` | L11 and L30 rifled (Chieftain, Challenger 1 and 2) | rifled | long (L/55) | none | separate_bag | manual | `gun_120r_close` / `gun_120r_own` / `gun_120r_interior` / `gun_120r_far` | 13 |
 | `125/two_piece` | 2A46M family and 2A82 (T-64, T-72, T-80, T-84, T-90, T-14, PT-91, Type 96/99, VT4) | smoothbore | long (L/48–L/56) | none | two_piece | manual | `gun_125_close` / `gun_125_own` / `gun_125_interior` / `gun_125_far` | 73 |
 | `130/combustible` | Rh-130 L/51 (KF51 Panther family), the EE-T4's 130 mm | smoothbore | long (L/51) | none | combustible | manual | `gun_130_close` / `gun_130_own` / `gun_130_interior` / `gun_130_far` | 4 |
@@ -21,18 +21,18 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | `152-2a83/two_piece` | 2A83 152 mm smoothbore (Object 195, T-14 152) | smoothbore | long (about L/52) | none | two_piece | manual | `gun_152_2a83_close` / `gun_152_2a83_own` / `gun_152_2a83_interior` / `gun_152_2a83_far` | 2 |
 | `152-lp83/two_piece` | LP-83 152.4 mm smoothbore (Object 292) | smoothbore | long, no fume extractor | none | two_piece | manual | `gun_152lp83_close` / `gun_152lp83_own` / `gun_152lp83_interior` / `gun_152lp83_far` | 1 |
 | `152/caseless` | 152 mm M81, M162 and XM150 gun-launchers (M551, M60A2, MBT-70, T49) | rifled | short (L/17.5–L/30) | none | caseless | manual | `gun_152gl_close` / `gun_152gl_own` / `gun_152gl_interior` / `gun_152gl_far` | 3 |
-| `152/separate_case` | 152 mm M-10T howitzer (KV-2), the Gun Game's 152 mm howitzer | rifled | short (L/24.6) | none | separate_case | manual | `gun_152h_close` / `gun_152h_own` / `gun_152h_interior` / `gun_152h_far` | 2 |
+| `152/separate_case` | 152 mm M-10T howitzer (KV-2), the Gun Game's 152 mm howitzer | rifled | short (L/24.6) | none | separate_case | manual | `gun_152h_close` / `gun_152h_own` / `gun_152h_interior` / `gun_152h_far` | 3 |
 | `152n/separate_case` | 152 mm on the 6"/47 Mark 16 (T95, fictional) | rifled | long (L/47) | none | separate_case | manual | `gun_152n_close` / `gun_152n_own` / `gun_152n_interior` / `gun_152n_far` | 1 |
 | `165/separate_bag` | 165 mm L9A1 demolition gun (Centurion AVRE) | rifled | short | none | separate_bag | manual | `gun_165_close` / `gun_165_own` / `gun_165_interior` / `gun_165_far` | 1 |
 | `170/separate_case` | 17 cm gun (Jagdpanzer E-100) | rifled | long | double_baffle | separate_case | manual | `gun_170_close` / `gun_170_own` / `gun_170_interior` / `gun_170_far` | 1 |
-| `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 4 |
+| `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 5 |
 | `220/rocket` | 220 mm rockets (TOS-1A) | none | launcher tubes | none | rocket | rocket_rack | `rocket_salvo` / `—` / `—` / `rocket_salvo_far` | 1 |
 | `25/belt` | M242 Bushmaster chain gun (Bradley, Dardo, AMX-10P 25, Linebacker) | rifled | long | flash_hider | belt | autocannon | `ac_25_close` / `ac_25_own` / `ac_25_interior` / `ac_25_far` | 8 |
 | `30/belt` | 2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons | rifled | long | multi_baffle | belt | autocannon | `ac_30_close` / `ac_30_own` / `ac_30_interior` / `ac_30_far` | 38 |
 | `35/belt` | Oerlikon KDE 35 (CV9035, Lynx KF41, Type 89, the ZTZ-100 prototype) | rifled | long | multi_baffle | belt | autocannon | `ac_35_close` / `ac_35_own` / `ac_35_interior` / `ac_35_far` | 12 |
 | `40/belt` | Bofors 40/70 (CV9040, Ajax, K21) | rifled | long | multi_baffle | belt | autocannon | `ac_40_close` / `ac_40_own` / `ac_40_interior` / `ac_40_far` | 6 |
 | `50/belt` | XM913, Rh 503 (CV90 Mk IV, Griffin, Marder 2) | rifled | long | multi_baffle | belt | autocannon | `ac_50_close` / `ac_50_own` / `ac_50_interior` / `ac_50_far` | 4 |
-| `7.62/belt` | PKT, M240, MG3, FN MAG, L37/L94, Ksp 58, UKM-2000 (roof, loader and remote stations) | rifled | long | flash_hider | belt | autocannon | `mg_rifle_close` / `mg_rifle_own` / `mg_rifle_interior` / `mg_rifle_far` | 133 |
+| `7.62/belt` | PKT, M240, MG3, FN MAG, L37/L94, Ksp 58, UKM-2000 (roof, loader and remote stations) | rifled | long | flash_hider | belt | autocannon | `mg_rifle_close` / `mg_rifle_own` / `mg_rifle_interior` / `mg_rifle_far` | 138 |
 | `76/unitary_brass` | 76 mm M32 (the M41 Walker Bulldog family) | rifled | long (L/60) | deflector | unitary_brass | manual | `gun_76_close` / `gun_76_own` / `gun_76_interior` / `gun_76_far` | 6 |
 | `84/unitary_brass` | OQF 20-pounder (Centurion 3, Strv 81) | rifled | long (L/66.7) | none | unitary_brass | manual | `gun_84_close` / `gun_84_own` / `gun_84_interior` / `gun_84_far` | 5 |
 | `90/unitary_brass` | 90 mm M3A1 and M41 (M46 to M48A3), the Brazilian 90 mm (X1, X1A2, Tamoyo 1) | rifled | long (L/48–L/50) | deflector | unitary_brass | manual | `gun_90_close` / `gun_90_own` / `gun_90_interior` / `gun_90_far` | 6 |
@@ -154,7 +154,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Leopard 2A6M (`leo2a6m`) | 120 mm | `120/combustible`: DM63 APFSDS, DM12A2 HEAT-MP, DM11 HE-ABM | manual | yes | 7.62 mm `7.62/belt` |
 | Leopard 2A7 DK (`leo2a7dk`) | 120 mm | `120/combustible`: DM63 APFSDS, DM12A2 HEAT-MP, DM11 HE | manual | yes | 7.62 mm `7.62/belt` |
 | Leopard 2A7V (`leo2a7v`) | 120 mm | `120/combustible`: DM63 APFSDS, DM12A2 HEAT-MP, DM11 HE | manual | yes | 30 mm `30/belt`, 7.62 mm `7.62/belt` |
-| Leopard 2 Prototype (`leopard2_proto`) | 120 mm | `120/combustible`: DM33 APFSDS, DM12 HEAT-MP, DM12 HE proxy | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
+| Leopard 2 Prototype (`leopard2_proto`) | 120 mm | `120/combustible`: DM13 APFSDS-T, DM12 HEAT-MP, DM12 HE proxy | manual | yes | 20 mm `20/belt` |
 | Leopard AS1 (`leopard_as1`) | 105 mm | `105/unitary_brass`: DM23 APFSDS, DM512 HEAT, DM21 HE | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | LRMV Lynx (`lrmv_lynx`) | 30 mm | `30/belt`: 30 mm APFSDS, 30 mm HE | manual | no | — |
 | Lvkv 9040 (`lvkv9040`) | 40 mm | `40/belt`: 40 mm APFSDS-T, 40 mm 3P HE-T | manual | no | — |
@@ -246,17 +246,20 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | SPz Wotan (`spz_wotan`) | 30 mm | `guided/missile`: Spike LR2 MELLS<br>`30/belt`: MK30 APFSDS-T S1, KETF ABM S1 | manual | no | — |
 | STB-1 (`stb1`) | 105 mm | `105/unitary_brass`: Type 93 APFSDS, Type 91 HEAT-MP, M393 HEP | manual | no | 12.7 mm `12.7/belt` |
 | Stridsvagn 103A (`strv103a`) | 105 mm | `105/unitary_brass`: 10,5 cm kan Strv 103 L/74 APDS, 10,5 cm kan Strv 103 L/74 HEAT, 10,5 cm kan Strv 103 L/74 HE | fixed_ram | no | 7.62 mm `7.62/belt` |
-| Stridsvagn 103B (`strv103b`) | 105 mm | `105/unitary_brass`: 10,5 cm kan Strv 103 L/74B APDS, 10,5 cm kan Strv 103 L/74B HEAT, 10,5 cm kan Strv 103 L/74B HE | fixed_ram | no | 7.62 mm `7.62/belt` |
+| Stridsvagn 103B (`strv103b`) | 105 mm | `105/unitary_brass`: 10,5 cm kan Strv 103 L/74B APDS, 10,5 cm kan Strv 103 L/74B HEAT, 10,5 cm kan Strv 103 L/74B HE | fixed_ram | no | 7.62 mm `7.62/belt`, 7.62 mm `7.62/belt` |
+| Stridsvagn 103B (Netted) (`strv103b_net`) | 105 mm | `105/unitary_brass`: 10,5 cm kan Strv 103 L/74B APDS, 10,5 cm kan Strv 103 L/74B HEAT, 10,5 cm kan Strv 103 L/74B HE | fixed_ram | no | 7.62 mm `7.62/belt`, 7.62 mm `7.62/belt` |
+| Stridsvagn 103E (`strv103e`) | 120 mm | `120/combustible`: 12 cm slpprj APFSDS, 12 cm HEAT-MP, 12 cm HE | fixed_ram | no | 12.7 mm `12.7/belt` |
 | Strv 105 (`strv105`) | 105 mm | `105/unitary_brass`: L23A1 APFSDS, L31A7 HESH, L34 WP Smoke | manual | no | 7.62 mm `7.62/belt` |
 | Stridsvagn 121 (`strv121`) | 120 mm | `120/combustible`: DM53 APFSDS, DM12A2 HEAT-MP, DM11 HE-ABM | manual | yes | 7.62 mm `7.62/belt` |
 | Stridsvagn 122 (`strv122`) | 120 mm | `120/combustible`: DM53 APFSDS, DM12A2 HEAT-MP, DM11 HE-ABM | manual | yes | 7.62 mm `7.62/belt` |
+| Stridsvagn 152 (`strv152`) | 152 mm | `152/separate_case`: 15,2 cm slpprj APFSDS, 15,2 cm HEAT-MP, 15,2 cm HE | fixed_ram | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt`, 7.62 mm `7.62/belt` |
 | Stridsvagn 81 (`strv81`) | 84 mm | `84/unitary_brass`: L23A1 APFSDS, L31A7 HESH, L34 WP Smoke | manual | no | 7.62 mm `7.62/belt` |
 | T-14 152 (`t14_152`) | 152 mm | `152-2a83/two_piece`: 2A83 APFSDS, 2A83 HEAT-FS, 2A83 HE-FRAG | carousel_unmanned | no | 12.7 mm `12.7/belt` |
 | T-14 Armata (`t14_armata`) | 125 mm | `125/two_piece`: Vacuum-1 APFSDS, 3VBK27 HEAT, Telnik HE-Frag | carousel_unmanned | no | 7.62 mm `7.62/belt` |
 | T49 (`t49`) | 152 mm | `guided/missile` (through the gun): MGM-51C Shillelagh ATGM | manual | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | T-55A (`t55a`) | 100 mm | `100/unitary_brass`: 3BM8 APDS, 3BK5M HEAT, 3OF10 HE | manual | no | — |
 | T-62 obr. 1975 (`t62_1975`) | 105 mm | `105/unitary_brass`: DM63 (105) APFSDS, DM512 HEAT, DM21 HE | manual | no | 12.7 mm `12.7/belt` |
-| T-62MV-1 (`t62mv1`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29 HEAT, 3OF26 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
+| T-62MV-1 (`t62mv1`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29 HEAT, 3OF26 HE-Frag | manual | no | 12.7 mm `12.7/belt` |
 | T-64B1V mod. 2022 (`t64b1v_2022`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29 HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |
 | T-64BM1M (`t64bm1m`) | 125 mm | `125/two_piece`: 3BM42 Mango APFSDS, 3BK29 HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |
 | T-64BV (`t64bv`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29 HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |
@@ -288,7 +291,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | T-80U (`t80u`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29M HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |
 | T-80U Bars-M (`t80u_bars_m`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | T-80U Husarz (`t80u_husarz`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
-| T-80U Kursk (`t80u_kursk`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29M HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |
+| T-80U Kursk (`t80u_kursk`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29M HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | T-80U Yun (`t80u_yun`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | T-80U Zoria (`t80u_zoria`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | T-80UK (`t80uk`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29M HEAT, 3OF26 HE-Frag | basket_mz | no | 12.7 mm `12.7/belt` |

@@ -155,6 +155,7 @@ export function ventilation(P: TankBuilderPort, mark: Strv103Mark): void {
   // the S-tank's ribbed glacis across its outer strips (the concept marks carry appliqué there)
   if (mark === 'a' || mark === 'b' || mark === 'p') for (const s of [-1, 1]) for (let k = 0; k < 10; k++) {
     const z = 0.82 + k * 0.205;
+    if (mark === 'a' && s > 0 && k >= 6 && k <= 8) continue;                       // the A's spare links lie there
     P.add('hullPaintedDetail', box(0.58, 0.028, 0.05), s * 1.25, glacisY(z) + 0.012, z, GLACIS_PITCH, 0, 0);
   }
 }

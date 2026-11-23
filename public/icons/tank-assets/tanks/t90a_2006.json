@@ -6167,7 +6167,7 @@
       }
     ]
   },
-  "geometryHash": "18a3f0f3",
+  "geometryHash": "3e038019",
   "metadataHash": "1cc20a6b",
   "presentationAnchor": {
     "xM": 0,
@@ -6244,8 +6244,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13262,
-      "sha256": "dac8da3e2c995e5a5c0622071c7af7633ebec1390e3e906947ac788d41202029"
+      "bytes": 13248,
+      "sha256": "18ba7414e987490bf4857c580b3cb0732b7e26562610dc3ca684b7e1ca0d18c0"
     },
     "side": {
       "file": "t90a_2006_side.webp",

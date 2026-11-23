@@ -1067,7 +1067,7 @@
       }
     ]
   },
-  "geometryHash": "00c061d7",
+  "geometryHash": "eef22aba",
   "metadataHash": "2b88191a",
   "presentationAnchor": {
     "xM": 0,
@@ -1125,39 +1125,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31334,
-      "sha256": "3d3a23d6e86701693ba1046508b9a5536b7b27ba9c0c9203aa65cac1e036ea70"
+      "bytes": 31286,
+      "sha256": "5ac56db693ba554f657a2ad39855429b8f1d91ca0ad224910f4030319fb26edc"
     },
     "modulesSide": {
       "file": "amx10p_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30728,
-      "sha256": "f4a60857ab1e6934648f6c1d65e81d1426a476fa3fd1db3928133f143862cea6"
+      "bytes": 30686,
+      "sha256": "c104cfcc10ec598e53ad6bb1a9d19a0ca73d60b2c73f63c2b6b4d26b0e1bf1e4"
     },
     "crewSide": {
       "file": "amx10p_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28020,
-      "sha256": "5699559ba37a41d52d78df21c891b95874102510e8454f678a7429057ae2eb00"
+      "bytes": 28022,
+      "sha256": "41422817b63d5511c08d93d7540da4f3e13b4ad87315a9e45dd943eb31804984"
     },
     "angle": {
       "file": "amx10p_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25730,
-      "sha256": "e44cc089f19e89bba549508970f4b54dddedf71f97fdbc3ec32060ba7ef0c0a1",
+      "bytes": 25770,
+      "sha256": "1ce4aa23db89d85ecebf356bfa6a03f7e53967a1a4f8a3b7cba0fdae30c268d6",
       "thumbnail": {
         "file": "thumbs/amx10p_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10534,
-        "sha256": "93ab27a92680cecf6945a72046d8507c973a10a75f3e1fbd50a23878d2dbe672",
+        "bytes": 10524,
+        "sha256": "b6fe7c9b46cc77682cb63dac221446494407c8dc7cd5ddfbcd74ae84123d1900",
         "frame": [28,107,223,250]
       }
     },
@@ -1174,8 +1174,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12406,
-      "sha256": "3abbd970a59e0be3271ab48e0b5ef0b4fc44a3ff7f73d3a218416e2c7bb6ec03"
+      "bytes": 12384,
+      "sha256": "7605fc7ebf98d120478209b1d1f50e0719602171c2a009ae57d09100d9aca30a"
     },
     "topSilhouette": {
       "file": "amx10p_top_silhouette.png",
@@ -1204,8 +1204,8 @@
     "technicalLabels": {
       "file": "amx10p_technical.json",
       "mime": "application/json",
-      "bytes": 4755,
-      "sha256": "3a7a86339dedf83be876a116135069f5188db2d88450672c26f0f60f0222676f"
+      "bytes": 4752,
+      "sha256": "f45c1cc672d9a9e8a92b954181d7bf94786caa53129df88ba64daa5c51ac9dc8"
     }
   }
 }

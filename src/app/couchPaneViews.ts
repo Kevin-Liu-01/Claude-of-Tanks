@@ -548,7 +548,6 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       aimController: aim,
       armorAimOverlay: { update() {}, hide() {} } as never,
       killcam: { isActive: () => false, spectate: { active: false, targetId: null } },
-      muzzleScratch: new Vector3(),
       getHud: () => view.hud,
       getDamagePanel: () => view.damagePanel,
     });

@@ -278,6 +278,7 @@ import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { trainingRulesFor } from './sim/trainingGround.ts';
 import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
@@ -409,7 +410,6 @@ const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 /** The camera's view for the night lamps (nightLightingAccess getCameraForward). */
 const _nightCameraForward = new THREE.Vector3();
-const _rayO = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.ts)
@@ -3945,7 +3945,6 @@ const battleHudFrame = createBattleHudFrameRuntime({
   aimController,
   armorAimOverlay,
   killcam,
-  muzzleScratch: _rayO,
   getHud: currentHud,
   getDamagePanel: currentDamagePanel,
   // A v2 round's measured round trip feeds the HUD's ping cell from the status model (no per-frame copy).
@@ -4878,7 +4877,7 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   isTrainingBattle: () => game.phase === 'battle' && !onlineMatchActive() && !!game.ruleset?.training && !game.watch && !game.couch,
   // 274: the Garage chapter's Deploy and the offer's Start: the loaner on the training ground's battlefield, the training mode
   launchTraining: () => {
-    const rules = matchRulesetFor('training').training;
+    const rules = trainingRulesFor(matchRulesetFor('training'));
     if (rules) beginLocalBattle({ specId: rules.loanerSpecId, mapId: rules.mapId, gameMode: 'training' });
   },
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },

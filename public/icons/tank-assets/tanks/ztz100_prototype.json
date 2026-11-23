@@ -1840,7 +1840,7 @@
       }
     ]
   },
-  "geometryHash": "5a808dc8",
+  "geometryHash": "30a957eb",
   "metadataHash": "383af6bc",
   "presentationAnchor": {
     "xM": 0,
@@ -1895,39 +1895,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36556,
-      "sha256": "8b729f23776486133e36f32efaa72d043caea59b5d01913f32d9cb9792e74bcf"
+      "bytes": 36572,
+      "sha256": "1a7940681c2892bea8531c494e3ef9f7b09e832f06cc7f9c1670bcbc63c03f47"
     },
     "modulesSide": {
       "file": "ztz100_prototype_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36320,
-      "sha256": "32bb4dfd081cb95aa7d674c53c6173ebf90dbf84c64b8d979a2dd4d7dae3805c"
+      "bytes": 36254,
+      "sha256": "8fcf2250a4aafa1ac51a9e08da6ecaa9a06798e700ba9d4636a4ba50f85e14d4"
     },
     "crewSide": {
       "file": "ztz100_prototype_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35096,
-      "sha256": "7dede5ac3abc36d71cf61d36105917185fc5e1887eb3d8cc6df761b2b038b6d5"
+      "bytes": 35036,
+      "sha256": "f055672bb343beda8d285afddf35565414395e73f002780cbea09e96a993190c"
     },
     "angle": {
       "file": "ztz100_prototype_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27378,
-      "sha256": "28a3915032252029618884cb733d6264800b42f01300805677d1ac73069c47ad",
+      "bytes": 27384,
+      "sha256": "89177b7cc14e63bcf23c9c7b7147cef9b80d52ea62a090936c4b654e192a2ffb",
       "thumbnail": {
         "file": "thumbs/ztz100_prototype_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10888,
-        "sha256": "3e26c8d597ad65455926af2afd80d58b1d18a94549bf5c473551c2fc9aa93ce3"
+        "bytes": 10876,
+        "sha256": "8fa61ba75155920f72ab5f665639ab3a7a6c9fb97c6d0fdd1d741747c9673fad"
       }
     },
     "top": {
@@ -1943,8 +1943,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15898,
-      "sha256": "3a88cf07591d6d494262ed44b831ba674f055965a75b86b501b74e90472792a4"
+      "bytes": 15864,
+      "sha256": "7aaeaf90ec02d62c2146c63fea41db6799384df8079f0b866799ab16e86fd44a"
     },
     "topSilhouette": {
       "file": "ztz100_prototype_top_silhouette.png",
@@ -1959,8 +1959,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4683,
-      "sha256": "9ac62e624fd6e2f244c6fac68a5c4ed5be28e844e3a123c217b43041f5bf3b19"
+      "bytes": 4678,
+      "sha256": "24d0fad003c7967dfdc2a997f22de1ef611bf65e73bb51624d8692a78d72c38b"
     },
     "markings": {
       "file": "ztz100_prototype_markings.png",

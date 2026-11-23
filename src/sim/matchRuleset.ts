@@ -11,7 +11,6 @@ import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
-import { TRAINING_RULES, type TrainingRules } from './trainingGround.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
 import type { ConsumableGateContext, ConsumableId, ConsumableTiming } from './consumableRules.ts';
 
@@ -1112,8 +1111,11 @@ const COOP_ALLIES = range(0, 6);
 const PROVING_ALLIES = range(0, 0), PROVING_TARGETS = range(PROVING_GROUND_RULES.lanes.length, PROVING_GROUND_RULES.lanes.length);
 // the training battle fields exactly its scenes' hulls (273)
 // (and S14's skirmish: its allied bots on the player's side, its enemies with the actors)
-const TRAINING_ALLY_COUNT = TRAINING_RULES.skirmish.allies.length;
-const TRAINING_ENEMY_COUNT = TRAINING_RULES.actors.length + TRAINING_RULES.skirmish.enemies.length;
+// The counts of sim/trainingGround.ts TRAINING_RULES (its skirmish's allies; its actors and the skirmish's enemies), held
+// here as numbers so the rooms Worker's program, which reads this table, carries none of the training ground's data
+// (274; tutorialGuide.selftest holds them to the rules).
+const TRAINING_ALLY_COUNT = 2;
+const TRAINING_ENEMY_COUNT = 10;
 const TRAINING_ALLIES = range(TRAINING_ALLY_COUNT, TRAINING_ALLY_COUNT), TRAINING_ACTORS = range(TRAINING_ENEMY_COUNT, TRAINING_ENEMY_COUNT);
 export const TEAM_ARRANGEMENT_LIMITS: {
   readonly field: number;
@@ -1315,8 +1317,10 @@ export interface MatchRuleset {
   readonly routePush?: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
-  /** The training battle's ground (273, sim/trainingGround.ts): the loaner, the seed, the start and the scenes' hulls. */
-  readonly training?: TrainingRules;
+  /** The training battle (273): its ground, loaner, seed, start and scenes' hulls are sim/trainingGround.ts TRAINING_RULES,
+   *  which the solo battle reads through sim/trainingGround.ts trainingRulesFor (274: the mark only, never the data, so
+   *  the rooms Worker's program stays clear of it). */
+  readonly training?: true;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
   readonly watch?: WatchRules;
   /** A couch battle (COUCH_RULES): phones drive seats of the roster, shown under one shared camera. */
@@ -1757,7 +1761,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // record. The standard physics, damage and destruction apply unchanged: every outcome the scenes teach is a battle's.
   training: Object.freeze({
     ...STANDARD, mode: 'training', ammo: 'unlimited', allies: TRAINING_ALLY_COUNT, enemies: TRAINING_ENEMY_COUNT, respawnS: 3,
-    respawnSafeM: null, timeLimitS: null, records: false, training: TRAINING_RULES,
+    respawnSafeM: null, timeLimitS: null, records: false, training: true,
   }),
 });
 

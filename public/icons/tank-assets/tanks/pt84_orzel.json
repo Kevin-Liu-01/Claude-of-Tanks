@@ -7903,7 +7903,7 @@
       }
     ]
   },
-  "geometryHash": "43fcbe5c",
+  "geometryHash": "484cc851",
   "metadataHash": "b5c91dd7",
   "presentationAnchor": {
     "xM": 0,
@@ -8011,8 +8011,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28312,
-      "sha256": "e596d681cbb0ecc214321344666ebe4266a4d86529f9ed30289f354244ebbb7e"
+      "bytes": 28276,
+      "sha256": "d6429009d9bf8914ba102c26b2b8b074febb1034c12e59119e370cc579736e4a"
     },
     "modulesSide": {
       "file": "pt84_orzel_modules_side.webp",

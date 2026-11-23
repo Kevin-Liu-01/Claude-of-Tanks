@@ -185,8 +185,10 @@ export function scanSource(path, raw) {
     syncKeys.add(key);
     add('bespoke', key, match.index);
   }
-  // a markup builder handed the selected state as a comparison: facetButton(attrs, selected === code, …)
-  for (const match of text.matchAll(/\b([\w$]*(?:Button|Chip|Option|Tile|Card|Swatch|Item|button|chip|option|tile|card|swatch|item))\((?:[^;()]|\([^()]*\))*?,\s*([\w$.?!]+\s*(?:===|!==)\s*[\w$.?]+)\s*[,)]/g)) {
+  // a markup builder handed the selected state as a comparison: facetButton(attrs, selected === code, …). The builder's
+  // name ends in the word (a capital starts it: facetButton) or is the word (button): arriveHostile(pick, risen !== null),
+  // the Horde's respawn in the simulation, ends in the letters "tile" only (274: a false choose-one in src/sim)
+  for (const match of text.matchAll(/\b([\w$]*(?:Button|Chip|Option|Tile|Card|Swatch|Item)|button|chip|option|tile|card|swatch|item)\((?:[^;()]|\([^()]*\))*?,\s*([\w$.?!]+\s*(?:===|!==)\s*[\w$.?]+)\s*[,)]/g)) {
     // new Option(label, value, false, value === current) is an <option>: it belongs to its <select>
     if (match[1] === 'Option') continue;
     const key = compared(match[2]);

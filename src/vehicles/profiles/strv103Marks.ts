@@ -24,9 +24,11 @@ export function kitA(P: TankBuilderPort): void {
     P.add('hullDetail', cylZ(0.085, 0.15, 16), s * 0.62, 1.615, 3.29);
     P.add('hullDark', cylZ(0.072, 0.012, 16), s * 0.62, 1.615, 3.371);
   }
+  // the A-era spare links on the right glacis shoulder, on bare plate where its ribs stop (spareTrackSeat: at x 0.98
+  // they overhung the louvre bank's frame and the seat pass racked them off a grille host)
   mount(P, 'hull', FITTINGS.spareTrackLinks({
     mats: P.mats, links: 3, width: 0.60, pitch: 0.17, seed: 10420,
-  }), 0.98, glacisY(2.30) + 0.03, 2.30, [GLACIS_PITCH, 0, 0]);
+  }), 1.28, glacisY(2.30) + 0.03, 2.30, [GLACIS_PITCH, 0, 0]);
   mount(P, 'hull', FITTINGS.stowageRack({
     mats: P.mats, w: 1.86, d: 0.42, h: 0.24, fill: 0.35, rails: 3, seed: 10460,
   }), 0, 1.90, -2.62);
@@ -89,6 +91,12 @@ export function kitB(P: TankBuilderPort): void {
     // from above in the contiguity check)
     P.add('hullDetail', box(0.12, 0.10, 0.08), s * 0.95, 1.30, 3.48);
     P.add('hullDark', box(0.05, 0.14, 0.07), s * 0.95, 1.18, 3.48);
+  }
+  // the spare links on the nose's vertical face either side of the gun, under the grilles: one clamped two-link course a
+  // side, its rails' feet on the 3.52 face (base 4.05 cm under its origin), kept where authored (spareTrackSeat)
+  for (const s of [-1, 1]) {
+    mount(P, 'hull', FITTINGS.spareTrackLinks({ mats: P.mats, links: 2, width: 0.26, seed: s < 0 ? 31 : 32 }),
+      s * 0.30, 1.26, 3.52 + 0.0405, [Math.PI / 2, 0, 0]);
   }
   // the stowage boxes on the nose corners ahead of the screen housings, sloped with the nose, orange marker lamps
   for (const s of [-1, 1]) {

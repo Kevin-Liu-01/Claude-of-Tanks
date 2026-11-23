@@ -7,7 +7,7 @@ import { assertStrv103Rope } from './strv103TowRope.test-support.mjs';
 if (import.meta.url === `file://${process.argv[1]}`) {
   assertStrv103Rope('strv103b');
   const concept = createTank('strv103e', null, { proceduralOnly: true, quality: 'high', geometryReceipt: true });
-  assert.equal(concept.root.getObjectByName('strv103_side_tow_rope'), undefined,
+  assert.equal(!!concept.root.getObjectByName('strv103_side_tow_rope'), false,
     'the concept carries composite modules where the bins and their rope stand');
   console.log('strv103TowRope.selftest: the 103B rope is seated on its fender, the concept carries none');
 }

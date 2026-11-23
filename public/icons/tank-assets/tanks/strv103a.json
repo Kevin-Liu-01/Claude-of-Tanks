@@ -318,17 +318,17 @@
       }
     ]
   },
-  "geometryHash": "1f0f2644",
+  "geometryHash": "ec632f74",
   "metadataHash": "f5bf2b50",
   "presentationAnchor": {
-    "xM": 0.0007,
-    "zM": 0.0834
+    "xM": 0.001,
+    "zM": 0.0832
   },
-  "presentationHash": "67fe034d",
+  "presentationHash": "ab15c493",
   "presentationProjection": {
     "centerYM": 1.4967,
-    "topHalfM": 5.7966,
-    "sideHalfM": 2.8983
+    "topHalfM": 5.7968,
+    "sideHalfM": 2.8984
   },
   "appearance": {
     "version": 1,
@@ -338,7 +338,7 @@
       "gearShadow": 2,
       "armorPaint": 7,
       "machineGun": 4,
-      "fittingPaint": 6,
+      "fittingPaint": 5,
       "wheelTire": 2,
       "wheelDish": 8,
       "suspensionLink": 2,
@@ -380,15 +380,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28556,
-      "sha256": "61a48a470e44e04cafce5358120e2889c5ed69269188cb072d43c8be01decd87",
+      "bytes": 28532,
+      "sha256": "99c6bfd8f36e25fbf5eaf4e6cfa96d95b148f3c1e9bfb97eef283c2e80b9a2a6",
       "thumbnail": {
         "file": "thumbs/strv103a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10692,
-        "sha256": "0938a29f36d4181c9d48e1e869ccfcfd5d4e7d8b0dbde7aff43b3f0ffe9732c2",
+        "bytes": 10694,
+        "sha256": "44f86e6caec85791126488fba7c32559465049334caff4583f9a0af92ca6c573",
         "frame": [25,126,224,249]
       }
     },
@@ -397,56 +397,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18704,
-      "sha256": "2ecbd8c1d157d26e11c06fcfd499c3777751565e5f33299541b51cf933e64c84"
+      "bytes": 18702,
+      "sha256": "f52f12c272d9b71c95f27d5ce31dd41c8484c4ac656c6d5b2bf2cfd0859911a2"
     },
     "side": {
       "file": "strv103a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10544,
-      "sha256": "607b59eaf7239edeaf7e56d80050d8cf95408aaa0de294356c64ec969eb353f6"
+      "bytes": 10612,
+      "sha256": "371ede6086b17b57f824fe7fffce38ec2de6f9c4f84cd88fb59bc0af30e29cbd"
     },
     "topSilhouette": {
       "file": "strv103a_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1508,
-      "sha256": "5b35625f624d50f8055adc28e8c9679aab65b4f15086fac7095366cc052662b2"
+      "bytes": 1496,
+      "sha256": "88f9211dbfd6bf8da906034c5b6f0bcea4c18920bcbf487ec298b88277c34c06"
     },
     "sideSilhouette": {
       "file": "strv103a_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3752,
-      "sha256": "97c79f69fff24af5b2e409c5e8af12f8c8604fedaf84be541f0f8e985dd8406e"
+      "bytes": 3758,
+      "sha256": "8ed38f0d2326f257c634898b4d9cf7d0d917d1169f6dab9219c4075ae059755f"
     },
     "armorSide": {
       "file": "strv103a_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29340,
-      "sha256": "2c05d9f9ed1b142154489f83b22e99431461af1e5648aa4d0bcfebcf0ea86921"
+      "bytes": 29394,
+      "sha256": "612197d0460000df95b686da13109103ae9af322a50cd282dfd6147925e5808c"
     },
     "modulesSide": {
       "file": "strv103a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27684,
-      "sha256": "5240de2dd838c3a1db7992756f99f2e3871725a304e630bccc85a02c816a46f3"
+      "bytes": 27810,
+      "sha256": "6270b819be259a20180b84fec161e4efa948472be7bf031620e9e0fd9fbeaf03"
     },
     "crewSide": {
       "file": "strv103a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27074,
-      "sha256": "b584f29a1f93c03c5feff401c5bdedde904616fdc3eb4bc724bf31197d314892"
+      "bytes": 27048,
+      "sha256": "b24f801db66cd71b9a65dcbf954ada038fa9b505705b47ceec3ae62714b9a774"
     },
     "markings": {
       "file": "strv103a_markings.png",
@@ -459,8 +459,8 @@
     "technicalLabels": {
       "file": "strv103a_technical.json",
       "mime": "application/json",
-      "bytes": 3084,
-      "sha256": "341dc9ea7ef153d2096a1e9eee7e2314f58fd29fb493644031c28f6ea44e7aba"
+      "bytes": 3085,
+      "sha256": "5043008c4f2cc7806d166bbbc932aa5b9f9ce5da8bf03125d63549091ef91de7"
     }
   }
 }

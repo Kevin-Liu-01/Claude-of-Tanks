@@ -329,6 +329,7 @@ function phaseListener(game, battleEntryIntent) {
     onlineMatchActive: () => false,
     onlinePump: { pump() {} },
     battleWarmHold: { pending: true },
+    tutorialHolds: () => false, // tutorial-journey-273: the frame also pauses while the tutorial holds the battle
     currentHud: () => null,
     bus: { emit: (type, payload) => events.push([type, payload]) },
     console: { warn: (message) => warnings.push(message), error() {}, info() {} },
