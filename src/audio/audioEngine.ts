@@ -3650,6 +3650,8 @@ export function createAudio({
       if (thinkRandom() < THINK_FIRST_SHOT_P) requestThink();
     });
     on<{ id?: string }>('tank:jump', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own' })); });
+    // turbo-spin-275: Turbo's leap is the jump's rocket fired along the hull
+    on<{ id?: string }>('tank:turbo', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own', gainDb: -3 })); });
     const righted = (e: { id?: string } | undefined) => {
       const id = e?.id ?? null;
       const info = id ? tanks.get(id) : null;

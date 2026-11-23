@@ -28,6 +28,10 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   STRIKE_MISSILE: 1 << 16,
   // death-flow-275 R7: the crew scuttles its tank (held SCUTTLE_HOLD_S on the client; sim/hullActions.ts host.scuttle)
   SCUTTLE: 1 << 17,
+  // turbo-spin-275 (Turbo Ball and Gravity): the forward leap, and a flip or roll that never jumps (the air spin's own key,
+  // pad tile and touch button; F's SELF_RIGHT spins too while the hull is in flight)
+  TURBO: 1 << 18,
+  AIR_SPIN: 1 << 19,
 } as const);
 
 /**

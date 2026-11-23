@@ -28,6 +28,7 @@ import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import { encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -935,6 +936,12 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         tank._spool = Math.max(0, Math.min(1, motion[0]));
         tank.yawRate = motion[1];
       }
+      // Turbo's cooldown runs on through the gap to the resume frame; a flip or roll turns on from the row's attitude
+      // (turbo-spin-275: a migration mid-spin finished the turn the old host owed; without it the hull stopped turning)
+      if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
+        entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
+      }
+      if (lifeGoesOn && typeof extras.airSpin === 'number') restoreAirSpin(tank, extras.airSpin, gapS);
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
     }
@@ -1035,6 +1042,11 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     if (!combat.destroyed) {
       const spool = entity.state._spool ?? 0, yawRate = entity.state.yawRate ?? 0;
       if ((spool !== 0 || yawRate !== 0) && Number.isFinite(spool) && Number.isFinite(yawRate)) extras.motion = [spool, yawRate];
+      // Turbo's cooldown and a flip or roll still turning (turbo-spin-275): a fresh host has both at rest
+      const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
+      if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
+      const airSpin = encodeAirSpin(entity.state._airSpinAxis ?? 0, entity.state._airSpinLeft ?? 0);
+      if (airSpin !== 0) extras.airSpin = airSpin;
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {

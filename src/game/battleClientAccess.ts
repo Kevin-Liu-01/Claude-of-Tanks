@@ -48,6 +48,9 @@ export interface BattleClientAccess {
   readonly pickMobileAutoAimTarget: RuntimeModule['pickMobileAutoAimTarget'];
   readonly requestTankSelfRight: RuntimeModule['requestTankSelfRight'];
   readonly requestTankJump: RuntimeModule['requestTankJump'];
+  readonly pressSelfRight: RuntimeModule['pressSelfRight'];
+  readonly requestHullTurbo: RuntimeModule['requestHullTurbo'];
+  readonly requestTankAirSpin: RuntimeModule['requestTankAirSpin'];
 }
 
 /**
@@ -134,5 +137,8 @@ export function createBattleClientAccess(
     pickMobileAutoAimTarget: (...args) => requireRuntime().pickMobileAutoAimTarget(...args),
     requestTankSelfRight: (...args) => requireRuntime().requestTankSelfRight(...args),
     requestTankJump: (...args) => requireRuntime().requestTankJump(...args),
+    pressSelfRight: (...args) => requireRuntime().pressSelfRight(...args),
+    requestHullTurbo: (...args) => requireRuntime().requestHullTurbo(...args),
+    requestTankAirSpin: (...args) => requireRuntime().requestTankAirSpin(...args),
   };
 }

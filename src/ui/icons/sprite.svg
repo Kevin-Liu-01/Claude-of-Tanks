@@ -120,6 +120,8 @@
 <symbol id="i-scope"><path d="M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 1 1 17 0ZM12 3.5v6M12 14.5v6M3.5 12h6M14.5 12h6"/></symbol>
 <symbol id="i-scope-s"><path d="M14 8a6 6 0 1 1-12 0 6 6 0 1 1 12 0ZM8 2v4M8 10v4M2 8h4M10 8h4"/></symbol>
 <symbol id="i-rocket"><path d="M12 2.5l3 4V16H9V6.5ZM9 11l-3 3v5l3-2M15 11l3 3v5l-3-2M10.5 19.5h3"/></symbol>
+<symbol id="i-turbo"><path d="M9 5.5 15.5 12 9 18.5M14 5.5 20.5 12 14 18.5M2.5 9H6M2 12h4.5M2.5 15H6"/></symbol>
+<symbol id="i-airSpin"><path d="M19.5 9.5A8 8 0 1 0 20 13M20.5 4.5v5h-5M9 10.5h6V14H9ZM12 10.5v-2h3"/></symbol>
 <symbol id="i-autoAim"><path d="M4 8.5V4h4.5M15.5 4H20v4.5M20 15.5V20h-4.5M8.5 20H4v-4.5M12 8.5v2M12 13.5v2M8.5 12h2M13.5 12h2"/></symbol>
 <symbol id="i-autoAim-s"><path d="M2 5.5V2h3.5M10.5 2H14v3.5M14 10.5V14h-3.5M5.5 14H2v-3.5M8 5.5V7M8 9v1.5M5.5 8H7M9 8h1.5"/></symbol>
 <symbol id="i-crewCommander"><path d="M6.5 8 12 5l5.5 3-1 2.5h-9Zm-1 2.5h13m-10 1a3.5 3.5 0 0 0 7 0M5 20.5c0-3 3-5 7-5s7 2 7 5"/></symbol>

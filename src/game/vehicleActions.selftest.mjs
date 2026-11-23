@@ -18,9 +18,9 @@ const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const ALL = [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS];
 
 // --- the table: its order, unique ids, bindings and keys, each the input layer's default ---
-assert.deepEqual(VEHICLE_ACTIONS.map((def) => def.id), ['jump', 'suspension', 'atgm', 'reload', 'drone', 'smoke', 'lights', 'roofGun']);
-assert.deepEqual(VEHICLE_ACTIONS.map((def) => def.key), ['KeyF', 'KeyE', 'KeyQ', 'KeyC', 'KeyV', 'KeyG', 'KeyN', 'KeyB'],
-  'F jump, E suspension, Q ATGM, C reload, V drone, G smoke, N lights, B roof gun');
+assert.deepEqual(VEHICLE_ACTIONS.map((def) => def.id), ['jump', 'turbo', 'airSpin', 'suspension', 'atgm', 'reload', 'drone', 'smoke', 'lights', 'roofGun']);
+assert.deepEqual(VEHICLE_ACTIONS.map((def) => def.key), ['KeyF', 'KeyZ', '', 'KeyE', 'KeyQ', 'KeyC', 'KeyV', 'KeyG', 'KeyN', 'KeyB'],
+  'F jump, Z Turbo, the air spin on F in flight (no key of its own), E suspension, Q ATGM, C reload, V drone, G smoke, N lights, B roof gun');
 assert.deepEqual(FLIGHT_ACTIONS.map((def) => [def.id, def.key]), [['vision', 'KeyI'], ['supplyAmmo', 'KeyJ'], ['supplyHeal', 'KeyK']]);
 for (const field of ['id', 'binding', 'key']) assert.equal(new Set(ALL.map((def) => def[field])).size, ALL.length, `every action has its own ${field}`);
 for (const def of ALL) {

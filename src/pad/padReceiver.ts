@@ -16,6 +16,7 @@ import { shellIconId } from '../ui/shellIcons.ts';
 import { GARAGE_AUXILIARY_SUMMARY } from '../ui/garageAuxiliarySummary.generated.ts';
 import { availableVehicleActions, vehicleAction } from '../game/vehicleActions.ts';
 import { createShotCadence } from '../game/shotCadence.ts';
+import type { HullFlightState } from '../sim/hullFlight.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
 interface PadPlayer {
@@ -24,7 +25,7 @@ interface PadPlayer {
   combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
   spec: { id?: string; topSpeedKmh?: number; hydropneumaticAim?: unknown;
     gun: { autoloader?: unknown; shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
-  state?: { turretYaw: number; speed?: number } | null;
+  state?: ({ turretYaw: number; speed?: number } & HullFlightState) | null;
 }
 
 /** What the composition root hands over (main.ts): the raw facts, so the mapping rides in this lazy chunk. The shell
@@ -44,12 +45,18 @@ export interface PadStatusSource {
   /** What decides the optional controls this player has in that mode (padGrants): the battle's grants and where the
    *  player stands in Watch and after death. */
   facts?: PadModeFacts;
+  /** The granted controls unavailable this moment (padLayout.ts PAD_ACTS ids; turbo-spin-275): the air spin on the ground,
+   *  Turbo while it cools. The phone greys their keys (PadStatus.u). */
+  unavailable?: readonly string[];
 }
 
 /** The facts the phone's optional controls follow (padLayout.ts PAD_ACTS). */
 export interface PadModeFacts {
-  /** The battle's mode grants a jump, the drone, Air Support, consumables, the Proving Ground's range keys. */
+  /** The battle's mode grants a jump, Turbo and the air spin, the drone, Air Support, consumables, the Proving Ground's
+   *  range keys. */
   jump?: boolean;
+  turbo?: boolean;
+  airSpin?: boolean;
   drone?: boolean;
   airSupport?: boolean;
   consumables?: boolean;
@@ -66,8 +73,8 @@ export interface PadModeFacts {
 
 /** What a couch seat's controls honour beyond the drive, aim, fire, brake, look, rounds and scope (couchSeats.ts
  *  TAP_BITS), and its camera's zoom. */
-const COUCH_GRANTS = new Set(['consumable1', 'consumable2', 'consumable3', 'smoke', 'selfRight', 'specialAction', 'reloadMagazine',
-  'zoomIn', 'zoomOut']);
+const COUCH_GRANTS = new Set(['consumable1', 'consumable2', 'consumable3', 'smoke', 'selfRight', 'turbo', 'airSpin', 'specialAction',
+  'reloadMagazine', 'zoomIn', 'zoomOut']);
 
 /** The optional controls a player has in a mode, as padLayout.ts PAD_ACTS ids: the vehicle's own kit by the table the HUD
  *  and the Garage read (game/vehicleActions.ts, the fitted kit from the Garage's light summary), the mode's grants, and
@@ -79,7 +86,7 @@ export function padGrants(mode: PadMode, source: PadStatusSource): string[] {
     if (facts.consumables !== false) out.push('consumable1', 'consumable2', 'consumable3');
     const spec = source.player?.spec;
     const [smoke = 0, lights = 0, guns = 0] = (spec?.id && GARAGE_AUXILIARY_SUMMARY[spec.id]) || [];
-    for (const id of availableVehicleActions(spec, { smoke, lights: lights === 1, guns }, { jump: facts.jump, drone: facts.drone })) {
+    for (const id of availableVehicleActions(spec, { smoke, lights: lights === 1, guns }, { jump: facts.jump, turbo: facts.turbo, airSpin: facts.airSpin, drone: facts.drone })) {
       out.push(vehicleAction(id).binding);
     }
     if (source.lockable) out.push('autoAim');
@@ -108,7 +115,9 @@ export function padStatusOf(source: PadStatusSource | null, locked = false): Pad
   const player = source.player;
   const combat = player?.combat;
   const mode: PadMode = source.mode ?? (combat?.destroyed ? 'dead' : 'tank');
-  const grants = { m: mode, a: padActsMask(padGrants(mode, source)) };
+  const mask = padActsMask(padGrants(mode, source));
+  const unavailable = source.unavailable?.length ? padActsMask(source.unavailable) & mask : 0;
+  const grants = { m: mode, a: mask, ...(unavailable ? { u: unavailable } : {}) };
   // Watch's camera and a destroyed player's killcam drive no tank of their own: the mode and its keys are the readout
   if (!player || !combat) {
     if (mode !== 'watch' && mode !== 'dead') return null;

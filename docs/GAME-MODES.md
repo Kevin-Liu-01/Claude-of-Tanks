@@ -579,13 +579,30 @@ Ram damage keeps its kinetic law (closing speed squared × reduced mass) multipl
 damage needs to scale a lot more").
 
 Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
-every entity by the mode controller: **F** launches an upright hull 13 m/s upward — a rocket that boosts
-again after 0.35 s of flight (round 30, owner 2026-09-20) — (the key
+every entity by the mode controller: **F** launches an upright hull 13 m/s upward — a rocket that boosted
+again after 0.35 s of flight (round 30, owner 2026-09-20; since turbo-spin-275 F in flight spins instead, below) — (the key
 still self-rights an overturned hull), the firing recoil becomes a real launch opposite the muzzle
 (×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5 —
 eight times the ×0.3 baseline. The
 HUD shows a rocket · JUMP · F keycap only in rulesets with a jump; the touch layer shows a rocket button there,
 which also flips an overturned hull.
+
+**Turbo and the air spin** (turbo-spin-275, owner 2026-11-22: "for turbo ball and gravity mode add another thing with
+going up called turbo - it makes you go launch forward for a short bit ... f should also be an official command so u can
+literally spin in air but only if ur in air (gray if ur not)"). Turbo Ball and Gravity (Mars) only (`turbo`, `airSpin`
+in `sim/matchRuleset.ts`):
+
+- **Turbo** (Z; gamepad LS; action bit 18): a forward leap along the hull, +12 m/s and a 2.5 m/s hop in Turbo Ball (+9
+  and 2.2 on Mars), a fall stopped in flight, so the jump then Turbo is an air dash; a 3 s cooldown
+  (`sim/modeMoves.ts requestHullTurbo`). The two modes' physics carry a launch ceiling (`launchCeilingMps`, 45 m/s) past
+  the drivetrain's 1.2 × top speed: held in flight, bled off on the ground at 14 m/s² (the recoil launch shares it).
+- **Air spin** (F in flight; its own action, unbound by default, and action bit 19 for the tile, the phone key and the
+  touch button, which never jump): one whole flip or roll in 0.9 s, the axis from the drive at the press (W or nothing a
+  front flip, S a back flip, A or D a roll). The rocket's mid-air re-boost gives way to it in these modes. The ground ends
+  a turn; the movement checkpoint (version 10) and the migration extras carry one in progress.
+- The air spin greys out on the ground everywhere (the HUD tile, the phone controller's key, the touch button); the jump
+  dims in flight; Turbo shows its cooldown. A phone's survival edge seats the jump, Turbo and the air spin as round buttons.
+- Checks by hand: `node tools/turbo-spin-clip.mjs --out=DIR` films them in real time through the real keys (render lock).
 
 ### Speed-based damage, falls and rebounds (owner 2026-09-25)
 

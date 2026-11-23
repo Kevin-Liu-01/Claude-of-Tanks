@@ -293,6 +293,7 @@ const VERDICT_RESULTS: Readonly<Record<number, string>> = Object.freeze({ [VERDI
 const LOCAL_PLAYER_EVENT_KINDS: ReadonlySet<string> = new Set([
   'consumable_used', 'consumable_denied', 'magazine_reload', 'magazine_reload_denied', 'special_action',
   'special_action_denied', 'ammo_empty', 'ammo_selection_denied', 'ammo_depleted', 'tank_self_right',
+  'tank_turbo', 'tank_air_spin',
 ]);
 
 function hashString(value: string): number {
@@ -1546,6 +1547,8 @@ export function createBattlePresentation({
       case 'ammo_selection_denied': bus.emit('ui:ammoSelectionDenied', { type: kind, ...payload }); break;
       case 'ammo_depleted': bus.emit('ammo:depleted', { type: kind, ...payload }); break;
       case 'tank_self_right': bus.emit('tank:selfRight', { type: kind, ...payload }); break;
+      case 'tank_turbo': bus.emit('tank:turbo', { type: kind, ...payload }); break;
+      case 'tank_air_spin': bus.emit('tank:airSpin', { type: kind, ...payload }); break;
       default: break;
     }
   }

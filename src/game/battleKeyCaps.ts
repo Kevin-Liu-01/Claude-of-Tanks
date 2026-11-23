@@ -11,7 +11,7 @@
 // turns pad or keyboard, or the hull's system changes: a frame otherwise reads the same object. DOM-free, Node-runnable.
 
 /** Every action the battle shows a cap for. */
-export const CAP_ACTIONS = Object.freeze(['selfRight', 'specialAction', 'atgm', 'reloadMagazine', 'drone', 'smoke', 'lights',
+export const CAP_ACTIONS = Object.freeze(['selfRight', 'turbo', 'airSpin', 'specialAction', 'atgm', 'reloadMagazine', 'drone', 'smoke', 'lights',
   'roofGun', 'aerialVision', 'supplyAmmo', 'supplyHeal', 'strikeView', 'rangeReset', 'rangeMoving', 'minimapZoom', 'settingsMenu',
   'shell1', 'shell2', 'shell3', 'consumable1', 'consumable2', 'consumable3',
   // (notices-audit-275) the keys the battle's event lane names in its key lines (battleNoticeEvents.ts)
@@ -35,6 +35,9 @@ export type BattleKeyCaps = Readonly<Record<CapAction, string>>;
 /** One action's cap: its keyboard key, or on a pad layout its pad button (LB for the hull's system, where its action
  *  has none of its own; nothing where no button fires it). */
 export function keyCapFor(input: KeyCapInput, action: CapAction, pad: boolean, padSystem: PadSystem = null): string {
+  // the air spin rides F (selfRight) in flight unless it has a key of its own (turbo-spin-275: its own is unbound by default)
+  if (action === 'airSpin' && (pad ? input.getPadBinding('airSpin') == null
+    : !input.getBinding('airSpin', 0) && !input.getBinding('airSpin', 1))) return keyCapFor(input, 'selfRight', pad, padSystem);
   if (!pad) return input.labelFor(input.getBinding(action, 0) ?? input.getBinding(action, 1));
   const index = input.getPadBinding(action) ?? (action === padSystem ? input.getPadBinding('specialAction') : null);
   return index == null ? '' : input.padLabelFor(index);

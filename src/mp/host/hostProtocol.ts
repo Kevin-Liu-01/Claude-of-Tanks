@@ -74,6 +74,10 @@ export interface MigrationEntityExtras {
   /** A live hull's drive as its integrator holds it and no row carries (gaps 274, G3): the engine's torque spool (0..1)
    *  and the hull's turn rate (rad/s); absent at rest (both 0), as a fresh host builds it. */
   motion?: [spool: number, yawRate: number];
+  /** Turbo's cooldown left (s; turbo-spin-275); absent when ready or the mode has none. */
+  turboReadyIn?: number;
+  /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. */
+  airSpin?: number;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the

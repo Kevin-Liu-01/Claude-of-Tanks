@@ -144,6 +144,8 @@ const TAP_BITS: Partial<Record<PadTapAction, number>> = {
   reloadMagazine: PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: PLAYER_ACTION_BITS.SPECIAL_ACTION,
   selfRight: PLAYER_ACTION_BITS.SELF_RIGHT,
+  turbo: PLAYER_ACTION_BITS.TURBO,
+  airSpin: PLAYER_ACTION_BITS.AIR_SPIN,
   smoke: PLAYER_ACTION_BITS.SMOKE,
 };
 const SHELL_TAPS: Partial<Record<PadTapAction, number>> = { shell1: 0, shell2: 1, shell3: 2 };

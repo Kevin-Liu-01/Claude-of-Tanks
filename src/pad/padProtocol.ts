@@ -222,6 +222,8 @@ export const PAD_TAP_ACTIONS = [
   'reloadMagazine', 'specialAction', 'selfRight', 'smoke', 'autoAim', 'atgm', 'drone', 'lights', 'roofGun', 'strikeView',
   'aerialVision', 'supplyAmmo', 'supplyHeal', 'hitboxOverlay', 'rangeReset', 'rangeMoving', 'minimapZoom', 'shotLog',
   'networkPanel',
+  // turbo-spin-275: Turbo and the air spin (Turbo Ball and Gravity)
+  'turbo', 'airSpin',
 ] as const;
 export type PadHoldAction = (typeof PAD_HOLD_ACTIONS)[number];
 export type PadTapAction = (typeof PAD_TAP_ACTIONS)[number];
@@ -313,6 +315,8 @@ export interface PadStatus {
    *  (padLayout.ts PAD_ACTS bits): a vehicle's kit, a mode's grants. */
   m?: PadMode;
   a?: number;
+  /** The granted controls unavailable this moment (PAD_ACTS bits; turbo-spin-275): the phone greys them. Absent: none. */
+  u?: number;
   /** Couch mode's briefing, while the big screen shows it (src/game/couchBriefing.ts): its step `s` of `n`, and whether
    *  this seat is ready (`r`). The phone shows its Ready and Skip over the panel. */
   b?: { s: number; n: number; r: boolean };
