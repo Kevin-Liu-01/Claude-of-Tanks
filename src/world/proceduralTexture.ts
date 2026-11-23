@@ -17,16 +17,6 @@ export function textureFromRgbaPixels(
   size: number,
   { srgb = false, anisotropy = 4, repeat = true }: ProceduralTextureOptions = {},
 ): THREE.CanvasTexture {
-  // (garage-env-276) with no DOM (the Garage's scene-pack receipts under Node build their battlefield surfaces) the same
-  // texels ride a DataTexture: the defaults below are the same, and no canvas exists to paint
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-    const data = new THREE.DataTexture(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength), size, size);
-    data.needsUpdate = true;
-    data.wrapS = data.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-    data.anisotropy = anisotropy;
-    if (srgb) data.colorSpace = THREE.SRGBColorSpace;
-    return data as unknown as THREE.CanvasTexture;
-  }
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const context = canvas.getContext('2d');

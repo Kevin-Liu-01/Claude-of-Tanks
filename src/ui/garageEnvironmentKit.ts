@@ -19,9 +19,8 @@ import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts'
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
-  buildGarageStructureSteps, buildGarageStructureSurfacesNow, disposeGarageStructureSurfaces,
-  garageStructureSurfaceTextures, loadGarageMapStructures, prepareGarageStructureSurfaces, resolveGarageMapStructures,
-  startGarageSurfacePaints,
+  buildGarageStructureSteps, holdGarageStructureSurfacesNow, loadGarageMapStructures, prepareGarageStructureSurfaces,
+  releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
 import {
@@ -1495,7 +1494,7 @@ function disposePreparedStructures(id: string): void {
   if (!prepared) return;
   preparedStructures.delete(id);
   disposeStructureGeometry(prepared.records, prepared.backdrop);
-  disposeGarageStructureSurfaces(prepared.surfaces);
+  releaseGarageStructureSurfaces(prepared.surfaces);
 }
 
 function disposeStructureGeometry(records: readonly GarageStructureRecord[], backdrop: THREE.BufferGeometry | null): void {
@@ -1628,11 +1627,12 @@ export function buildGarageEnvironment(
   // the source map's structures and surfaces, prepared ahead (prepareGarageEnvironmentAssets) or, with nothing prepared
   // (the receipts under Node), built here; the pack owns the surfaces from here
   const map = prepared?.map ?? resolveGarageMapStructures(variant.mapId);
+  // (the surface cache owns the materials and textures, painted once per map: the pack holds them until it is disposed,
+  // and registers them with the cascades for its own lifetime)
   const structureSurfaces = prepared?.surfaces
-    ?? buildGarageStructureSurfacesNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
+    ?? holdGarageStructureSurfacesNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
   for (const [material, hook] of structureSurfaces.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
-  for (const material of structureSurfaces.materials) track(material);
-  for (const texture of garageStructureSurfaceTextures(structureSurfaces)) track(texture);
+  track({ dispose: () => releaseGarageStructureSurfaces(structureSurfaces) });
   const rng = mulberry32(seed);
   // the structures prepared ahead of the bake (prepareGarageEnvironmentAssets, in slices) are taken whole, and the
   // seeded sequence steps past the draws they made, so everything after them builds exactly as before
@@ -2937,7 +2937,7 @@ export function buildGarageEnvironment(
       for (const handle of handles) handle.release();
       handles.length = 0;
       if (outerEngineCtx.releaseShadowMaterial) {
-        const owned = new Set<unknown>(disposables);
+        const owned = new Set<unknown>([...disposables, ...structureSurfaces.materials]);
         for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
       }
       cascadeMaterials.clear();
@@ -3071,7 +3071,7 @@ async function buildPreparedStructures(
       if (!wanted()) {
         steps.return(undefined as never);
         disposeStructureGeometry(records, backdrop);
-        disposeGarageStructureSurfaces(surfaces);
+        releaseGarageStructureSurfaces(surfaces);
         return false;
       }
       step = steps.next();

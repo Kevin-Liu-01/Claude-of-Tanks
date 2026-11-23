@@ -128,67 +128,40 @@ export function* buildGarageStructureSteps(
 
 /** A map's structure surfaces, prepared ahead of the pack's bake. */
 export interface GarageStructureSurfaces {
+  readonly mapId: string;
   readonly surfaces: StructureSurfaces;
-  /** The materials and shader-only textures the surfaces own (the pack disposes them). */
+  /** The materials and shader-only textures the surfaces own (the surface cache disposes them). */
   readonly materials: readonly THREE.Material[];
   readonly textures: readonly THREE.Texture[];
   /**
-   * The shadow-cascade registrations the surfaces asked for while they were prepared, replayed by the pack's bake on its
-   * own engine context (which notes them for release with the pack).
+   * The shadow-cascade registrations the surfaces asked for while they were painted, replayed by each bake on its pack's
+   * engine context (which releases them with the pack; a later bake registers them again).
    */
   readonly shadowRegistrations: ReadonlyArray<readonly [THREE.Material, ShaderHook | null | undefined]>;
 }
 
-const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
-/** A prepare slice's budget: the surfaces' checkpoints run until it is spent, then the frame gets the thread. */
-const SLICE_MS = 6;
-
 /**
- * Paint a map's structure surfaces in slices (the world build's own checkpoints, gathered into ~6 ms slices). Resolves
- * null when `wanted` turns false part-way: what it made is disposed.
+ * The surface cache: one entry per map, painted once. A prepare steps its entry's build; one that stops part-way leaves
+ * the build where it stood, and the next prepare of that map resumes it (nothing is painted twice). A pack holds its
+ * map's entry from its prepare to its disposal; the two most recent maps stay painted when nothing holds them (a Garage
+ * and the one it replaced, as the packs' own cache keeps two), a third unheld one is disposed.
  */
-export async function prepareGarageStructureSurfaces(
-  map: GarageMapStructures,
-  anisotropy: number,
-  wanted: () => boolean,
-): Promise<GarageStructureSurfaces | null> {
-  const { steps, shadowRegistrations, retained } = startStructureSurfaces(map, anisotropy);
-  const prefetch = surfacePaints.get(map.mapId) ?? null;
-  let sliceStart = performance.now();
-  let step = steps.next();
-  while (!step.done) {
-    // a print the worker painted ahead, as the world build takes it (props.ts createPropsAsync); a failed one is painted
-    // where it stands
-    const request = (step.value as { surfacePaint?: { key: string; result: Record<string, unknown> | null } } | undefined)
-      ?.surfacePaint;
-    const ahead = request && prefetch ? prefetch.take(request.key) : null;
-    if (ahead && request) {
-      try { request.result = await ahead; } catch { request.result = null; }
-      sliceStart = performance.now();
-    }
-    if (performance.now() - sliceStart >= SLICE_MS) {
-      await nextSlice();
-      if (!wanted()) {
-        steps.return(undefined as never);
-        disposeMaterials(retained.materials, retained.textures);
-        return null;
-      }
-      sliceStart = performance.now();
-    }
-    step = steps.next();
-  }
-  return { surfaces: step.value, materials: retained.materials, textures: retained.textures, shadowRegistrations };
+interface SurfaceEntry {
+  readonly mapId: string;
+  readonly steps: ReturnType<typeof buildStructureSurfaces>;
+  readonly shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]>;
+  readonly retained: { materials: THREE.Material[]; textures: THREE.Texture[] };
+  /** The step the build stopped at (taken but not yet run on), or null before the first. */
+  pending: IteratorResult<unknown, StructureSurfaces> | null;
+  done: GarageStructureSurfaces | null;
+  holds: number;
 }
+const surfaceCache = new Map<string, SurfaceEntry>();
+const KEPT_UNHELD_SURFACES = 2;
 
-/** The same surfaces in one go (a bake with nothing prepared: the receipts under Node). */
-export function buildGarageStructureSurfacesNow(map: GarageMapStructures, anisotropy: number): GarageStructureSurfaces {
-  const { steps, shadowRegistrations, retained } = startStructureSurfaces(map, anisotropy);
-  let step = steps.next();
-  while (!step.done) step = steps.next();
-  return { surfaces: step.value, materials: retained.materials, textures: retained.textures, shadowRegistrations };
-}
-
-function startStructureSurfaces(map: GarageMapStructures, anisotropy: number) {
+function surfaceEntry(map: GarageMapStructures, anisotropy: number): SurfaceEntry {
+  let entry = surfaceCache.get(map.mapId);
+  if (entry) { surfaceCache.delete(map.mapId); surfaceCache.set(map.mapId, entry); return entry; } // most recent last
   const shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]> = [];
   const retained: { materials: THREE.Material[]; textures: THREE.Texture[] } = { materials: [], textures: [] };
   const noi = new SimplexNoise({ random: mulberry32(WORLD_PROPS_SEED + 7) });
@@ -202,19 +175,101 @@ function startStructureSurfaces(map: GarageMapStructures, anisotropy: number) {
       },
     },
     // (no DOM, the receipts under Node: no photographed sets to fetch; the procedural prints are the fallback of record)
-    sourceApplication: typeof document === 'undefined' ? { signal: AbortSignal.abort() } : {},
+    sourceApplication: headless() ? { signal: AbortSignal.abort() } : {},
     onRetained: (materials, textures) => { retained.materials = materials; retained.textures = textures; },
   });
-  return { steps, shadowRegistrations, retained };
+  entry = { mapId: map.mapId, steps, shadowRegistrations, retained, pending: null, done: null, holds: 0 };
+  surfaceCache.set(map.mapId, entry);
+  trimSurfaceCache();
+  return entry;
 }
 
-/** Every texture a map's prepared surfaces draw (the pack disposes them with its materials). */
-export function garageStructureSurfaceTextures(prepared: GarageStructureSurfaces): Set<THREE.Texture> {
-  const owned = new Set<THREE.Texture>(prepared.textures);
-  for (const material of prepared.materials) {
-    for (const value of Object.values(material)) if ((value as THREE.Texture | null)?.isTexture) owned.add(value as THREE.Texture);
+/** One step of an entry's build (under the headless canvas when there is no DOM); its result when it is the last. */
+function stepEntry(entry: SurfaceEntry): IteratorResult<unknown, StructureSurfaces> {
+  entry.pending = withHeadlessCanvas(() => entry.steps.next());
+  if (entry.pending.done) {
+    entry.done = {
+      mapId: entry.mapId, surfaces: entry.pending.value, materials: entry.retained.materials,
+      textures: entry.retained.textures, shadowRegistrations: entry.shadowRegistrations,
+    };
   }
-  return owned;
+  return entry.pending;
+}
+
+const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+/** A prepare slice's budget: the surfaces' checkpoints run until it is spent, then the frame gets the thread. */
+const SLICE_MS = 6;
+
+/**
+ * A map's structure surfaces, painted in slices (the world build's own checkpoints, gathered into ~6 ms slices), or at
+ * once from the cache. Resolves null when `wanted` turns false part-way: the build waits in the cache where it stopped.
+ * A resolved surface set is held for the caller (releaseGarageStructureSurfaces).
+ */
+export async function prepareGarageStructureSurfaces(
+  map: GarageMapStructures,
+  anisotropy: number,
+  wanted: () => boolean,
+): Promise<GarageStructureSurfaces | null> {
+  const entry = surfaceEntry(map, anisotropy);
+  entry.holds += 1; // held while it paints, so a trim never disposes a build in flight
+  try {
+    const prefetch = surfacePaints.get(map.mapId) ?? null;
+    let sliceStart = performance.now();
+    while (!entry.done) {
+      // a print the worker painted ahead, as the world build takes it (props.ts createPropsAsync); a failed one is
+      // painted where it stands
+      const request = (entry.pending?.value as { surfacePaint?: { key: string; result: Record<string, unknown> | null } }
+        | undefined)?.surfacePaint;
+      const ahead = request && !request.result && prefetch ? prefetch.take(request.key) : null;
+      if (ahead && request) {
+        try { request.result = await ahead; } catch { request.result = null; }
+        sliceStart = performance.now();
+      }
+      if (performance.now() - sliceStart >= SLICE_MS) {
+        await nextSlice();
+        if (!wanted()) return null;
+        sliceStart = performance.now();
+      }
+      stepEntry(entry);
+    }
+    entry.holds += 1; // the caller's hold
+    return entry.done;
+  } finally {
+    entry.holds -= 1;
+    trimSurfaceCache();
+  }
+}
+
+/** The same surfaces at once (a bake with nothing prepared: the receipts under Node), held for the caller. */
+export function holdGarageStructureSurfacesNow(map: GarageMapStructures, anisotropy: number): GarageStructureSurfaces {
+  const entry = surfaceEntry(map, anisotropy);
+  while (!entry.done) stepEntry(entry);
+  entry.holds += 1;
+  return entry.done;
+}
+
+/** A hold on a map's surfaces ends (its pack is disposed, or its prepare was never baked). */
+export function releaseGarageStructureSurfaces(prepared: GarageStructureSurfaces): void {
+  const entry = surfaceCache.get(prepared.mapId);
+  if (!entry || entry.done !== prepared) return;
+  entry.holds = Math.max(0, entry.holds - 1);
+  trimSurfaceCache();
+}
+
+function trimSurfaceCache(): void {
+  let unheld = [...surfaceCache.values()].filter((entry) => entry.holds === 0);
+  while (unheld.length > KEPT_UNHELD_SURFACES) {
+    const oldest = unheld.shift()!;
+    surfaceCache.delete(oldest.mapId);
+    if (!oldest.done) oldest.steps.return(undefined as never);
+    disposeMaterials(oldest.retained.materials, oldest.retained.textures);
+    unheld = [...surfaceCache.values()].filter((entry) => entry.holds === 0);
+  }
+}
+
+/** Diagnostics: the maps whose surfaces the cache holds, and whether each is painted. */
+export function garageStructureSurfaceCache(): ReadonlyArray<{ mapId: string; painted: boolean; holds: number }> {
+  return [...surfaceCache.values()].map((entry) => ({ mapId: entry.mapId, painted: !!entry.done, holds: entry.holds }));
 }
 
 function disposeMaterials(materials: readonly THREE.Material[], textures: readonly THREE.Texture[]): void {
@@ -226,7 +281,45 @@ function disposeMaterials(materials: readonly THREE.Material[], textures: readon
   for (const texture of owned) texture.dispose();
 }
 
-/** Release a map's prepared surfaces (its materials and every texture they draw). */
-export function disposeGarageStructureSurfaces(prepared: GarageStructureSurfaces): void {
-  disposeMaterials(prepared.materials, prepared.textures);
+// ---- no DOM (the receipts under Node) ------------------------------------------------------------------------------
+
+function headless(): boolean {
+  return typeof document === 'undefined' || typeof (document as { createElement?: unknown }).createElement !== 'function';
+}
+
+/**
+ * Run one synchronous step of the surface build with a stand-in canvas when there is no DOM: the world's painters write
+ * their texels into a canvas (proceduralTexture.ts), which Node lacks. The stand-in is in place only for the step, so
+ * every other `typeof document` test in the Garage still sees what the receipt set up. In a browser it is never used.
+ */
+function withHeadlessCanvas<T>(step: () => T): T {
+  if (!headless()) return step();
+  const scope = globalThis as { document?: unknown; ImageData?: unknown };
+  const hadDocument = 'document' in scope, savedDocument = scope.document;
+  const hadImageData = 'ImageData' in scope, savedImageData = scope.ImageData;
+  scope.document = { createElement: () => headlessCanvas() };
+  if (!hadImageData) {
+    scope.ImageData = class {
+      data: Uint8ClampedArray; width: number; height: number;
+      constructor(data: Uint8ClampedArray, width: number, height: number) { this.data = data; this.width = width; this.height = height; }
+    };
+  }
+  try { return step(); } finally {
+    if (hadDocument) scope.document = savedDocument; else delete scope.document;
+    if (hadImageData) scope.ImageData = savedImageData; else delete scope.ImageData;
+  }
+}
+
+function headlessCanvas(): { width: number; height: number; getContext(): unknown } {
+  const canvas = { width: 0, height: 0, getContext: (): unknown => context };
+  const context: unknown = new Proxy({
+    canvas,
+    createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
+    getImageData: (_x: number, _y: number, w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4).fill(128), width: w, height: h }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createPattern: () => ({}),
+    measureText: () => ({ width: 0 }),
+  }, { get: (target, key) => (target as Record<PropertyKey, unknown>)[key] ?? (() => {}) });
+  return canvas;
 }

@@ -4,7 +4,8 @@
 //    the bucket's name and its program is the world props' own), never a Garage re-skin; only the approach keeps its own;
 // 2. each pack's source map rebuilds its buildings through its regional architecture kit, as the world build does;
 // 3. the kit's re-skin switch and the recipes' building tint are gone (cutover, not a fallback);
-// 4. negative control: a pack whose structure draw wears a Garage-made material fails check 1.
+// 4. negative control: a pack whose structure draw wears a Garage-made material fails check 1;
+// 5. the surface cache paints each map once.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -68,6 +69,24 @@ for (const variant of outdoor) {
   }
 }
 controller.dispose?.();
+
+// (5) the surface cache paints a map once: a prepare that stops part-way leaves its build where it stood, the next one
+// resumes it, a later one takes the painted set as it is; unheld maps past two are disposed
+const adapter = await import('./garageBattleStructures.ts');
+const fresh = adapter.resolveGarageMapStructures('steppe');
+let slices = 0;
+const stopped = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => (slices += 1) < 2);
+assert.equal(stopped, null, 'a prepare nobody wants any more stops');
+assert.deepEqual(adapter.garageStructureSurfaceCache().find((entry) => entry.mapId === 'steppe'),
+  { mapId: 'steppe', painted: false, holds: 0 }, 'and its build waits in the cache, half painted');
+const resumed = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true);
+const again = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true);
+assert.ok(resumed && again === resumed, 'the next prepare resumes it; a later one takes the same painted set');
+assert.equal(adapter.garageStructureSurfaceCache().find((entry) => entry.mapId === 'steppe')?.holds, 2);
+adapter.releaseGarageStructureSurfaces(resumed);
+adapter.releaseGarageStructureSurfaces(again);
+assert.ok(adapter.garageStructureSurfaceCache().filter((entry) => entry.holds === 0).length <= 2,
+  'no more than two unheld maps stay painted');
 console.log(`garageBattleStructures.selftest: ${outdoor.length} packs wear their battlefield materials and kits `
-  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught PASS`);
+  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes) PASS`);
 process.exit(0);
