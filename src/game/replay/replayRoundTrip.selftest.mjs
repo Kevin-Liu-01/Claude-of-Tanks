@@ -5,32 +5,74 @@
 // arriving), a shell selection, a consumable, a stored difficulty and loadout read through localStorage.
 // Negative control: one seat control's throttle one unit off at step 500 is caught at the next checksum.
 // A page import, a world and a fleet: MANUAL suite 'sims' (tools/selftest-tiers.mjs), beside twinMuzzleSolo.
+//
+// Bounded (2026-11-22: an unbounded run reached 14 GiB resident and pushed the Mac into 43 GB of swap): the body runs in
+// a worker_threads Worker with an old-generation limit, the main thread samples the whole process's resident memory every
+// 100 ms and stops the Worker past RSS_CAP (typed arrays and buffers live outside the heap limit), and the body checks
+// its own array buffers and external memory at every phase. The receipt prints the peak.
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { gzipSync } from 'node:zlib';
-import { Group, Vector3 } from 'three';
-import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
-import { createBus, createCollider, createGameState, setupBattle, simStep } from '../state.ts';
-import { spawnTanks } from '../rosterState.ts';
-import { useSoloConsumable } from '../soloConsumables.ts';
-import { selectShell } from '../../sim/damage.ts';
-import { decodeReplay } from '../../sim/replayFormat.ts';
-import { createReplayRecorder } from './replayRecorder.ts';
-import { createReplayRun, ReplayMismatch, withLayoutSpawnPoints } from './replayRunner.ts';
-import { replayStateDigest } from './replayChecksum.ts';
-import { createReplayTrace, diffDumps, traceRows } from './replayTrace.ts';
-import { createReplayTrackBuilder } from './replayTrack.ts';
-import { indexReplay } from './replayIndexer.ts';
-import { runReplayIndexJob } from './replayIndexerWorker.ts';
-import { createCollisionManifestLoader } from '../../../server/collisionManifestLoader.ts';
-import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
+import { isMainThread, parentPort, Worker } from 'node:worker_threads';
+
+const RSS_CAP = 1 * 2 ** 30;
+const BUFFER_CAP = 0.5 * 2 ** 30;
+const HEAP_MB = 1024;
+const gib = (bytes) => `${(bytes / 2 ** 30).toFixed(2)} GiB`;
+
+if (isMainThread) {
+  const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: HEAP_MB } });
+  let peak = process.memoryUsage.rss(), peakPhase = 'start', phase = 'start', summary = null, failure = null;
+  const phases = [];
+  const sampler = setInterval(() => {
+    const rss = process.memoryUsage.rss();
+    if (rss > peak) { peak = rss; peakPhase = phase; }
+    if (rss > RSS_CAP && !failure) { failure = `resident memory ${gib(rss)} passed the cap ${gib(RSS_CAP)} during '${phase}'`; void worker.terminate(); }
+  }, 100);
+  worker.on('message', (message) => {
+    if (message.phase) { phase = message.phase; phases.push(`${message.phase} rss ${gib(message.rss)} buffers ${gib(message.arrayBuffers + message.external)}`); }
+    if (message.summary) summary = message.summary;
+  });
+  worker.on('error', (error) => { failure ??= error.stack ?? String(error); });
+  await new Promise((resolve) => worker.on('exit', resolve));
+  clearInterval(sampler);
+  if (failure || !summary) {
+    console.error(phases.join('\n'));
+    throw new Error(`replayRoundTrip.selftest: ${failure ?? 'the body ended without a summary'}`);
+  }
+  console.log(`${summary}; peak resident memory ${gib(peak)} (during '${peakPhase}', cap ${gib(RSS_CAP)})`);
+} else {
+  const mark = (phase) => {
+    const usage = process.memoryUsage();
+    if (usage.arrayBuffers + usage.external > BUFFER_CAP) throw new Error(`array buffers and external memory ${gib(usage.arrayBuffers + usage.external)} passed ${gib(BUFFER_CAP)} at '${phase}'`);
+    parentPort.postMessage({ phase, rss: usage.rss, arrayBuffers: usage.arrayBuffers, external: usage.external });
+  };
+  await body(mark);
+}
+
+async function body(mark) {
+const { writeFileSync } = await import('node:fs');
+const { gzipSync } = await import('node:zlib');
+const { Group } = await import('three');
+const { ensureAuthorityFleet } = await import('../../vehicles/authorityFleet.ts');
+const { createBus, createCollider, createGameState, setupBattle, simStep } = await import('../state.ts');
+const { planBattleParticipantIds, spawnTanks } = await import('../rosterState.ts');
+const { soloRosterPlan } = await import('../soloRosterPlan.ts');
+const { useSoloConsumable } = await import('../soloConsumables.ts');
+const { selectShell } = await import('../../sim/damage.ts');
+const { decodeReplay } = await import('../../sim/replayFormat.ts');
+const { createReplayRecorder } = await import('./replayRecorder.ts');
+const { createReplayRun, ReplayMismatch, withLayoutSpawnPoints } = await import('./replayRunner.ts');
+const { replayStateDigest } = await import('./replayChecksum.ts');
+const { createReplayTrace, diffDumps, traceRows } = await import('./replayTrace.ts');
+const { createReplayTrackBuilder } = await import('./replayTrack.ts');
+const { indexReplay } = await import('./replayIndexer.ts');
+const { runReplayIndexJob } = await import('./replayIndexerWorker.ts');
+const { createCollisionManifestLoader } = await import('../../../server/collisionManifestLoader.ts');
+const { createDedicatedWorldCollision } = await import('../../../server/dedicatedWorldCollision.ts');
+mark('imports');
 
 const MAP = 'verdant';
 const SPEC = 'm1a1_abrams_hc';
 const TICKS = 4800;
-// every saved spec finalized, as a page's are once its fleet loads: the roster is drawn at setup (a replay that finalized
-// only TANK_IDS, the three starters, stepped every other hull on an unfinished spec and drifted from the page)
-await ensureAuthorityFleet();
 
 const worldFor = () => withLayoutSpawnPoints(createDedicatedWorldCollision(MAP, { retain: true }));
 
@@ -45,7 +87,7 @@ const storage = new FakeStorage({ 'cot.settings.v1': JSON.stringify({ aiDifficul
 
 const FOOTPRINT = { halfLenM: 3.1, halfWidM: 1.6, zCenterM: 0.05, bottomYM: 0.42, panYM: null, endRise: { dzM: 0.4, frontM: 0.2, rearM: 0.15 } };
 
-function recordBattle() {
+async function recordBattle() {
   const world = worldFor();
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true, writable: true });
@@ -59,12 +101,20 @@ function recordBattle() {
     // a page's second battle: the bot memory rosterState keeps as two Sets (arm 3 of the first browser check failed on it)
     game.previousBotSpecIds = new Set(['t72b3', 'leopard_2a6']);
     game.recentBotSpecIds = new Set(['t72b3']);
+    // the roster's anatomy, planned as battle entry plans it before setup (main.ts planRoster), and only its: every saved
+    // spec's was 0.41 GiB of this receipt's 1.05 GiB peak. (A replay that finalized only TANK_IDS, the three starters,
+    // stepped every other hull on an unfinished spec and drifted from the page; the replayer refuses an unloaded roster.)
+    const plan = soloRosterPlan(null, null, true);
+    const planned = planBattleParticipantIds(game, SPEC, true, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact);
+    await ensureAuthorityFleet([SPEC, ...planned]);
+    mark('fleet');
     const options = { random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false };
     recorder.trace = true; // the divergence trace (replayTrace.ts): the replay's must match it number for number, dump for dump
     recorder.beginSetup(game, SPEC, options);
     setupBattle(game, SPEC, world, options);
     recorder.endSetup();
     assert.ok(recorder.active, 'the recorder armed for the battle');
+    assert.ok(game.tanks.every((hull) => planned.includes(hull.specId)), 'setup seated the planned roster');
     const bus = createBus((type, payload) => recorder.onEvent(type, payload));
     const collider = createCollider(game, world);
     const rules = recorder.wrapRules({ selectShell, useSoloConsumable });
@@ -95,6 +145,7 @@ function recordBattle() {
       simStep(game, bus, world, null, collider);
       recorder.afterStep();
       liveTrack.afterStep(game);
+      if (tick % 600 === 599) mark(`recording step ${tick + 1}`);
     }
     const finished = recorder.finish();
     assert.ok(finished, 'the battle produced a recording');
@@ -112,7 +163,7 @@ function replay(recording) {
   let kills = 0;
   run.bus.on('tank:destroyed', () => { kills++; });
   try {
-    while (run.step()) trace.afterStep(run.game);
+    while (run.step()) { trace.afterStep(run.game); if (run.tick % 1200 === 0) mark(`replay step ${run.tick}`); }
     return { mismatch: run.mismatch, digest: replayStateDigest(run.game), tick: run.tick, kills, trace: JSON.parse(JSON.stringify(trace.export())) };
   } finally {
     run.dispose();
@@ -120,7 +171,8 @@ function replay(recording) {
   }
 }
 
-const live = recordBattle();
+const live = await recordBattle();
+mark('recorded');
 // REPLAY_OUT=<path> keeps the recording, gzipped as a page saves it (tools/replay-verify.mjs reads it)
 if (process.env.REPLAY_OUT) writeFileSync(process.env.REPLAY_OUT, gzipSync(live.finished.bytes));
 const recording = decodeReplay(live.finished.bytes);
@@ -132,13 +184,17 @@ assert.equal(recording.seatSteps.length, TICKS, 'one seat row per step');
 assert.equal(recording.checksums.length, TICKS / 600, 'a checksum every 600 steps');
 
 const again = replay(recording);
-assert.equal(again.mismatch, null, `the replay holds: ${again.mismatch?.message}`);
+mark('replayed');
+assert.ok(again.mismatch === null, `the replay holds: ${again.mismatch?.message}`);
 assert.equal(again.tick, live.tick, 'the replay runs every recorded step');
 assert.equal(again.digest, live.digest, 'the replay ends where the battle ended');
 assert.equal(again.kills, live.kills, 'the same kills');
 // the trace: a page's arrives as JSON; the replay's, taken at the same points, matches it in every number and every dump
 const pageTrace = JSON.parse(JSON.stringify(live.finished.trace));
-assert.deepEqual(traceRows(again.trace), traceRows(pageTrace), 'the trace\'s numbers match step for step');
+// (big arrays compared here, a boolean asserted: a failing assert inspects its operands with no array-length limit and
+// diffs them, which turned one failure on a whole track into 14 GiB resident)
+const sameBytes = (a, b) => a.byteLength === b.byteLength && Buffer.from(a.buffer, a.byteOffset, a.byteLength).equals(Buffer.from(b.buffer, b.byteOffset, b.byteLength));
+assert.ok(sameBytes(traceRows(again.trace), traceRows(pageTrace)), 'the trace\'s numbers match step for step');
 for (const key of Object.keys(pageTrace.snapshots)) {
   assert.deepEqual(diffDumps(pageTrace.snapshots[key], again.trace.snapshots[key], 5), [], `the trace's dump after step ${key} matches`);
 }
@@ -146,26 +202,30 @@ for (const key of Object.keys(pageTrace.snapshots)) {
 // the viewer's index (replayIndexer.ts) through the Worker's own job (replayIndexerWorker.ts, minus the message port): the
 // file gzipped as a page saves it, the battle's collision records packed as a page sends them (here the committed shard
 // the battle stepped on), the fleet loaded for the roster; its track is the one sampled live, number for number
+mark('indexing');
 const loader = createCollisionManifestLoader();
 const progress = [];
 const job = await runReplayIndexJob({ file: new Uint8Array(gzipSync(live.finished.bytes)).buffer, manifest: loader.get(MAP), terrainSeed: loader.terrainSeed },
-  (reply) => progress.push(reply));
-assert.equal(job.index.problem, null, `the index runs to the end: ${job.index.problem?.message}`);
+  (reply) => { progress.push(reply); mark(`index step ${reply.tick}`); });
+assert.ok(job.index.problem === null, `the index runs to the end: ${job.index.problem?.message}`);
 assert.equal(job.index.indexedSteps, TICKS);
 assert.ok(progress.length >= TICKS / 600 && progress.every((reply) => reply.type === 'progress'), 'the job reports its progress');
 assert.deepEqual(job.index.track.hulls, live.track.hulls, 'the same hulls');
 assert.equal(job.index.track.samples, live.track.samples, 'the same samples');
-assert.ok(Buffer.from(job.index.track.data.buffer).equals(Buffer.from(live.track.data.buffer)), 'every hull\'s sampled pose and state matches the battle\'s');
-assert.ok(Buffer.from(job.index.track.shellData.buffer).equals(Buffer.from(live.track.shellData.buffer))
-  && Buffer.from(job.index.track.shellOffsets.buffer).equals(Buffer.from(live.track.shellOffsets.buffer)), 'every shell in flight matches');
+assert.ok(sameBytes(job.index.track.data, live.track.data), 'every hull\'s sampled pose and state matches the battle\'s');
+assert.ok(sameBytes(job.index.track.shellData, live.track.shellData) && sameBytes(job.index.track.shellOffsets, live.track.shellOffsets),
+  'every shell in flight matches');
 assert.equal(job.transfer.length, 3, 'the track\'s three buffers are handed over, not copied');
+mark('indexed');
 // a recording from another build: refused before it runs, the timeline kept (Kevin's choice)
 const foreign = decodeReplay(live.finished.bytes);
 foreign.header.replayDigest = 'f00dfeedbeef';
 foreign.header.build = 'v0.9.0+other';
 // (Node is a 'dev' build, which admits every recording: the indexer stands for a release here)
-const refused = indexReplay(foreign, worldFor(), { localDigest: '0123456789ab' });
-assert.equal(refused.track, null, 'another build\'s recording has no track');
+const refusedWorld = worldFor();
+const refused = indexReplay(foreign, refusedWorld, { localDigest: '0123456789ab' });
+refusedWorld.release?.();
+assert.ok(refused.track === null, `another build's recording has no track (it indexed ${refused.indexedSteps} steps)`);
 assert.equal(refused.problem?.code, 'refused');
 assert.equal(refused.events.length, recording.events.length, 'and keeps its marks for the timeline');
 
@@ -174,10 +234,12 @@ assert.equal(refused.events.length, recording.events.length, 'and keeps its mark
 const bent = decodeReplay(live.finished.bytes);
 bent.seatSteps[499][0].throttle -= 1;
 const caught = replay(bent);
+mark('negative control');
 assert.ok(caught.mismatch instanceof ReplayMismatch && caught.mismatch.code === 'checksum' && caught.mismatch.tick <= 1200,
   `the throttle one unit off at step 500 is caught by the next checksum (${caught.mismatch?.message ?? 'not caught'})`);
 
 const bytes = live.finished.bytes.length;
-console.log(`replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
+parentPort.postMessage({ summary: `replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
   + `${recording.events.length} marks) recorded in ${bytes} bytes (seats ${live.finished.seatBytes}); the replay matches every checksum and `
-  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}`);
+  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}` });
+}

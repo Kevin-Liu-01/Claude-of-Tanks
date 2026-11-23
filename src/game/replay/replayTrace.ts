@@ -51,6 +51,12 @@ export interface ReplayTraceExport {
 const isHull = (value: object): value is { id: string } => typeof (value as { id?: unknown }).id === 'string'
   && 'specId' in value && 'state' in value;
 
+function firstItems<T>(iterator: IterableIterator<T>, map: (item: T) => unknown): unknown[] {
+  const out: unknown[] = [];
+  for (const item of iterator) { if (out.length >= DUMP_ITEMS) break; out.push(map(item)); }
+  return out;
+}
+
 /** A JSON-safe dump of `value`: bounded, cycle-free, another hull by its id, non-finite numbers as strings. */
 export function dumpValue(value: unknown, depth = DUMP_DEPTH, ancestors: object[] = []): unknown {
   if (value === null || value === undefined) return null;
@@ -63,17 +69,26 @@ export function dumpValue(value: unknown, depth = DUMP_DEPTH, ancestors: object[
   if (RENDER_MARKS.some((mark) => (value as Record<string, unknown>)[mark] === true)) return '[render]';
   if (depth <= 0) return '[deep]';
   const next = [...ancestors, value];
-  if (value instanceof Map) return { map: [...value].slice(0, DUMP_ITEMS).map(([k, v]) => [String(k), dumpValue(v, depth - 1, next)]), size: value.size };
-  if (value instanceof Set) return { set: [...value].slice(0, DUMP_ITEMS).map((v) => dumpValue(v, depth - 1, next)), size: value.size };
+  // the first DUMP_ITEMS only, read in place: a battle holds grids of millions of cells, and copying one whole to keep 48
+  // (Array.from, a spread) allocated hundreds of MB a dump
+  if (value instanceof Map) return { map: firstItems(value.entries(), ([k, v]) => [String(k), dumpValue(v, depth - 1, next)]), size: value.size };
+  if (value instanceof Set) return { set: firstItems(value.values(), (v) => dumpValue(v, depth - 1, next)), size: value.size };
   if (ArrayBuffer.isView(value)) {
     const items = value as unknown as ArrayLike<number>;
-    return { typed: Array.from(items).slice(0, DUMP_ITEMS).map((v) => dumpValue(v)), length: items.length };
+    const typed: unknown[] = [];
+    for (let i = 0; i < Math.min(items.length ?? 0, DUMP_ITEMS); i++) typed.push(dumpValue(items[i]));
+    return { typed, length: items.length };
   }
-  if (Array.isArray(value)) return { items: value.slice(0, DUMP_ITEMS).map((v) => dumpValue(v, depth - 1, next)), length: value.length };
+  if (Array.isArray(value)) {
+    const items: unknown[] = [];
+    for (let i = 0; i < Math.min(value.length, DUMP_ITEMS); i++) items.push(dumpValue(value[i], depth - 1, next));
+    return { items, length: value.length };
+  }
   const out: Record<string, unknown> = {};
   let keys = 0;
-  for (const key of Object.keys(value)) {
-    if (SKIP_KEYS.has(key)) continue;
+  // (for-in, not Object.keys: a dictionary of a million keys is not listed whole to keep DUMP_KEYS)
+  for (const key in value) {
+    if (!Object.hasOwn(value, key) || SKIP_KEYS.has(key)) continue;
     const dumped = dumpValue((value as Record<string, unknown>)[key], depth - 1, next);
     if (dumped === undefined) continue;
     out[key] = dumped;

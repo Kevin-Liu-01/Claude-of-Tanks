@@ -26,6 +26,7 @@ import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 const TOOL = 'replay-browser-check';
 const SPEC = 'm1a1_abrams_hc';
 const MAP = 'verdant';
+const CAPPED = ['tools/memory-capped.mjs', '--cap-gib=2', '--', process.execPath];
 const RULE = 'perf-rule-2.md sha256 64283aa6e39cb158';
 /** The arms in order: the recorder on or off, and the diagnostic trace (its arm left out of the cost and frame verdict). */
 const ARMS = [{ on: true }, { on: false }, { on: true }, { on: false }, { on: true, trace: true }];
@@ -180,7 +181,8 @@ async function main(argv) {
   for (const arm of receipt.arms.filter((a) => a.on)) {
     if (!arm.replayFile) { arm.replay = { holds: false, mismatch: { message: 'no saved recording' } }; continue; }
     try {
-      arm.replay = JSON.parse(execFileSync(process.execPath, ['tools/replay-verify.mjs', arm.replayFile, '--json'], { cwd: options.root, encoding: 'utf8',
+      // every Node replay under a resident-memory cap (tools/memory-capped.mjs; a replay builds the page's world, ~1 GiB)
+      arm.replay = JSON.parse(execFileSync(process.execPath, [...CAPPED, 'tools/replay-verify.mjs', arm.replayFile, '--json'], { cwd: options.root, encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'] }));
     } catch (error) {
       try { arm.replay = JSON.parse(String(error.stdout)); } catch { arm.replay = { holds: false, mismatch: { message: String(error.message).slice(0, 300) } }; }
@@ -189,7 +191,7 @@ async function main(argv) {
     if (arm.traceFile) {
       let report;
       try {
-        report = execFileSync(process.execPath, ['tools/replay-diff.mjs', arm.replayFile, arm.traceFile], { cwd: options.root, encoding: 'utf8',
+        report = execFileSync(process.execPath, [...CAPPED, 'tools/replay-diff.mjs', arm.replayFile, arm.traceFile], { cwd: options.root, encoding: 'utf8',
           stdio: ['ignore', 'pipe', 'pipe'] });
       } catch (error) { report = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
       arm.diffFile = arm.traceFile.replace(/\.trace\.json$/, '.diff.txt');
