@@ -248,6 +248,58 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
     band.userData.damageBody = 'shaft';
     parts.dark.push(band);
   }
+  // (dome-detail-275: "a plain hall and stack"; every part new to the stream, none taking a draw) the hall's brick order:
+  // its corners' piers from the plinth to the eave, the corbelled cornice along each eave; a louvred round vent in each
+  // gable under the roof; the ridge roll and two ventilators on the ridge under their caps; the stack's crown
+  // corbelled out in two courses under its cap, a fourth band, the lightning conductor down its back (the stack's parts
+  // the shaft the damage reading falls from the hall)
+  const top = wallH - 0.34, py = (0.5 + top) / 2, ph = top - 0.5;
+  for (const sx of [-1, 1]) {
+    for (const e of [-1, 1]) {
+      parts.stone.push(none(box(0.2, ph, 0.66).translate(sx * (w / 2 + 0.09), py, e * (d / 2 - 0.33))));
+      parts.stone.push(none(box(0.66, ph, 0.2).translate(sx * (w / 2 - 0.33), py, e * (d / 2 + 0.09))));
+    }
+    parts.stone.push(none(box(0.14, 0.16, d + 0.04).translate(sx * (w / 2 + 0.06), wallH - 0.42, 0)));
+    parts.stone.push(none(box(0.26, 0.3, d + 0.2).translate(sx * (w / 2 + 0.12), wallH - 0.19, 0)));
+  }
+  // each window's segmental relieving arch in three voussoirs over its lintel, the sill course along the long walls
+  for (const { side, zz } of bays) {
+    const half = win.w / 2 + 0.2, rise = 0.26, yh = win.y + win.h / 2 + 0.18;
+    const R = (half * half + rise * rise) / (2 * rise), a0 = Math.asin(half / R);
+    for (let k = 0; k < 3; k++) {
+      const a = -a0 + (2 * a0) * (k + 0.5) / 3;
+      const v = none(box(0.16, 0.3, 2 * (R + 0.15) * Math.sin(a0 / 3) + 0.02));
+      v.rotateX(a);
+      v.translate(side * (w / 2 + 0.06), yh - (R - rise) + (R + 0.15) * Math.cos(a), zz + (R + 0.15) * Math.sin(a));
+      parts.stone.push(v);
+    }
+  }
+  for (const sx of [-1, 1]) parts.stone.push(none(box(0.14, 0.16, d - 0.6).translate(sx * (w / 2 + 0.06), win.y - win.h / 2 - 0.2, 0)));
+  for (const e of [-1, 1]) {
+    const oy = wallH + roofH * 0.42, oz = e * (d / 2);
+    parts.stone.push(none(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 10, 1).rotateX(Math.PI / 2).translate(0, oy, oz + e * 0.06)));
+    parts.dark.push(none(new THREE.CircleGeometry(0.44, 10).rotateY(e > 0 ? 0 : Math.PI).translate(0, oy, oz + e * 0.125)));
+    for (const dy of [-0.2, 0, 0.2]) parts.stone.push(none(box(0.82 - Math.abs(dy) * 1.4, 0.06, 0.08).translate(0, oy + dy, oz + e * 0.16)));
+  }
+  parts.dark.push(none(new THREE.CylinderGeometry(0.12, 0.12, d + 0.7, 8, 1).rotateX(Math.PI / 2).translate(0, wallH + roofH + 0.1, 0)));
+  for (const vz of [-d * 0.22, d * 0.22]) {
+    parts.dark.push(none(box(0.9, 0.7, 2.2).translate(0, wallH + roofH + 0.2, vz)));
+    parts.roof.push(none(gablePrism(1.3, 0.4, 2.5).translate(0, wallH + roofH + 0.55, vz)));
+  }
+  const shaftPart = <T extends THREE.BufferGeometry>(g: T): T => { g.userData.damageBody = 'shaft'; return none(g); };
+  for (const [r0, r1, y] of [[0.68, 0.74, stackH - 0.35], [0.76, 0.82, stackH - 0.12]] as const) parts.stone.push(shaftPart(new THREE.CylinderGeometry(r1, r0, 0.22, 10, 1).translate(cx, y, cz)));
+  {
+    const y = wallH + 9.0, r = 0.95 - (0.95 - 0.62) * y / stackH + 0.03;
+    parts.dark.push(shaftPart(new THREE.CylinderGeometry(r, r, 0.14, 10, 1).translate(cx, y, cz)));
+  }
+  const rAt = (y: number): number => 0.95 - (0.95 - 0.62) * y / stackH;
+  const rod = (a: [number, number, number], b: [number, number, number]) => {
+    const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = dir.length();
+    const g = box(0.03, 0.03, len).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize()));
+    parts.dark.push(shaftPart(g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2)));
+  };
+  rod([cx, wallH + 0.6, cz - rAt(wallH + 0.6) * 0.97 - 0.01], [cx, stackH, cz - rAt(stackH) * 0.97 - 0.01]);
+  rod([cx, stackH, cz - rAt(stackH) * 0.97 - 0.01], [cx, stackH + 0.95, cz - 0.86]);
   for (const key of Object.keys(cat)) parts[key]!.push(...cat[key]!);
   // the body's marker for the catalog pass props.ts lays after the builder (it reads the solid's bounds), and the cut hall's
   // tag for settleCatalogCuts, which cuts that pass's openings too

@@ -84,11 +84,59 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 
 /** The gate post's measures (m): its body, its parapet, its corner merlons. */
 const W = 4.2, D = 5.4, WALL = 2.75, PARAPET = 0.4, MERLON = 0.15, THICK = 0.32;
+/** (dome-detail-275) the rubble under a fallen render, a weathered plank leaf, a clay jar's terracotta, wind-blown sand. */
+const STONE: readonly [number, number, number] = [0.74, 0.66, 0.55];
+const LEAF: readonly [number, number, number] = [0.5, 0.37, 0.25];
+const CLAY: readonly [number, number, number] = [0.68, 0.42, 0.28];
+const SAND: readonly [number, number, number] = [0.96, 0.88, 0.74];
+
+/** Any geometry as one of the post's parts (dome-detail-275): non-indexed, all one colour. */
+function painted(g: THREE.BufferGeometry, colour: readonly [number, number, number], rng: Rng, shade = 0.06): THREE.BufferGeometry {
+  const out = g.index ? g.toNonIndexed() : g;
+  if (out !== g) g.dispose();
+  const p = out.attributes.position as THREE.BufferAttribute, jitter = 1 + (rng() - 0.5) * 2 * shade;
+  const colours = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    colours[i * 3] = colour[0] * jitter; colours[i * 3 + 1] = colour[1] * jitter; colours[i * 3 + 2] = colour[2] * jitter;
+  }
+  out.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+  return out;
+}
+
+/** A palm log `len` long along x or z, its middle at (x, y, z), its end a little thinner (dome-detail-275). */
+function palmLog(len: number, r: number, x: number, y: number, z: number, axis: 'x' | 'z', rng: Rng, sides = 7): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(r * 0.92, r, len, sides, 1);
+  if (axis === 'x') g.rotateZ(Math.PI / 2); else g.rotateX(Math.PI / 2);
+  g.translate(x, y, z);
+  return painted(g, TIMBER, rng, 0.12);
+}
+
+/**
+ * A block whose outer face leans in to its top (a buttress, a splash skirt, a drift; dome-detail-275): the top's
+ * vertices on its `side` of the block (x+ / x- / z+ / z-) drawn back toward the wall by `lean`.
+ */
+function talus(w: number, h: number, d: number, x: number, y0: number, z: number, colour: readonly [number, number, number], rng: Rng,
+  side: 'x+' | 'x-' | 'z+' | 'z-', lean: number): THREE.BufferGeometry {
+  const g = block(w, h, d, x, y0, z, colour, rng, 0.03), p = g.attributes.position as THREE.BufferAttribute;
+  const ax = side[0] === 'x' ? 0 : 2, sg = side[1] === '+' ? 1 : -1, c = ax === 0 ? x : z;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) < y0 + h - 1e-4 || (p.getComponent(i, ax) - c) * sg <= 0) continue;
+    p.setComponent(i, ax, p.getComponent(i, ax) - sg * lean);
+  }
+  g.computeVertexNormals();
+  return g;
+}
 
 /**
  * The gate post standing: its door on +z (the road side, where the steel hut had its porch), a window in each side
  * wall, the parapet's merlons at the corners, two rain spouts on the back. About 4.2 x 5.4 m, 3.3 m to the merlons'
  * tops: inside the checkpoint hut's footprint (2.4 x 3.7 half extents, 3.3 m), whose key and ground fit it keeps.
+ * (dome-detail-275: "a plain crenellated block with a door and two beam ends") The parapet crowned all round with the
+ * ksar's merlons, stepped pinnacles at its corners; the palm-trunk beam ends (toron) through the walls under it; battered
+ * buttresses at the corners and a sloped splash skirt along the foot; the doorway framed in timber under a palm-log
+ * lintel, one plank leaf shut at the back of the reveal with its battens, a threshold stone, a mud bench (dokkana) by it and a clay jar; the
+ * windows barred with palm ribs under palm-log lintels; the spouts open palm channels, the rain's stain down the wall
+ * under each; the render fallen off the rubble in patches; sand drifted against the back corner.
  */
 export function buildKsarGatePost(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
@@ -96,6 +144,8 @@ export function buildKsarGatePost(rng: Rng): THREE.BufferGeometry {
   // standard, props #1), the dark of the room behind them, its foot damp
   const wall = (w: number, h: number, d: number, x: number, y0: number, z: number) =>
     parts.push(dampFoot(batter(block(w, h, d, x, y0, z, RENDER, rng, 0.02), 0, WALL, 0.09, W / 2, D / 2), 0.45));
+  // (dome-detail-275) a thin part laid on a wall, leaned with it
+  const onWall = (g: THREE.BufferGeometry) => parts.push(batter(g, 0, WALL, 0.09, W / 2, D / 2));
   const DOOR_W = 1.0, DOOR_H = 2.12, WIN_Z = 0.6, WIN_D = 0.45, WIN_Y0 = 1.65, WIN_Y1 = 2.2;
   wall(W, WALL, THICK, 0, 0, -D / 2 + THICK / 2);
   for (const sx of [-1, 1]) wall(W / 2 - DOOR_W / 2, WALL, THICK, sx * (W / 2 + DOOR_W / 2) / 2, 0, D / 2 - THICK / 2);
@@ -107,29 +157,86 @@ export function buildKsarGatePost(rng: Rng): THREE.BufferGeometry {
     wall(THICK, WALL, w1, x, 0, z1 + w1 / 2);
     wall(THICK, WIN_Y0, WIN_D, x, 0, WIN_Z);
     wall(THICK, WALL - WIN_Y1, WIN_D, x, WIN_Y1, WIN_Z);
+    // (dome-detail-275) two palm ribs barring the window, in the wall's thickness
+    for (const dz of [-0.09, 0.09]) onWall(block(0.04, WIN_Y1 - WIN_Y0 + 0.04, 0.04, x, WIN_Y0 - 0.02, WIN_Z + dz, TIMBER, rng, 0.1));
+    // a palm-log lintel over it, half bedded in the wall
+    parts.push(palmLog(0.8, 0.07, sx * (W / 2 - 0.09 * (WIN_Y1 + 0.08) / WALL + 0.01), WIN_Y1 + 0.08, WIN_Z, 'z', rng));
   }
   // the room's dark behind the openings, a hand inside the walls
   parts.push(block(W - 2 * THICK - 0.04, WALL - 0.12, D - 2 * THICK - 0.04, 0, 0.02, 0, OPENING, rng, 0));
-  // the parapet round the roof, set on the battered wall's top, and a merlon at each corner
-  const tw = W - 0.18, td = D - 0.18;
-  parts.push(block(tw, PARAPET, THICK, 0, WALL, td / 2 - THICK / 2, RENDER, rng));
-  parts.push(block(tw, PARAPET, THICK, 0, WALL, -(td / 2 - THICK / 2), RENDER, rng));
-  parts.push(block(THICK, PARAPET, td - 2 * THICK, tw / 2 - THICK / 2, WALL, 0, RENDER, rng));
-  parts.push(block(THICK, PARAPET, td - 2 * THICK, -(tw / 2 - THICK / 2), WALL, 0, RENDER, rng));
+  // the parapet round the roof, set on the battered wall's top
+  const tw = W - 0.18, td = D - 0.18, PH = PARAPET - 0.1, top = WALL + PH;
+  parts.push(block(tw, PH, THICK, 0, WALL, td / 2 - THICK / 2, RENDER, rng));
+  parts.push(block(tw, PH, THICK, 0, WALL, -(td / 2 - THICK / 2), RENDER, rng));
+  parts.push(block(THICK, PH, td - 2 * THICK, tw / 2 - THICK / 2, WALL, 0, RENDER, rng));
+  parts.push(block(THICK, PH, td - 2 * THICK, -(tw / 2 - THICK / 2), WALL, 0, RENDER, rng));
+  // (dome-detail-275) a stepped pinnacle at each corner and the merlons between them along every side
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    parts.push(block(0.5, MERLON, 0.5, sx * (tw / 2 - 0.25), WALL + PARAPET, sz * (td / 2 - 0.25), RENDER, rng));
+    const cx = sx * (tw / 2 - 0.25), cz = sz * (td / 2 - 0.25);
+    // (to the checkpoint hut's 3.3 m: the post keeps its envelope)
+    parts.push(block(0.5, MERLON - 0.05, 0.5, cx, top, cz, RENDER, rng));
+    parts.push(block(0.32, 0.08, 0.32, cx, top + MERLON - 0.05, cz, RENDER, rng));
+    parts.push(block(0.16, 0.07, 0.16, cx, top + MERLON + 0.03, cz, RENDER, rng));
+  }
+  for (const [len, along] of [[tw, 'x'], [td, 'z']] as const) {
+    const m = along === 'x' ? 3 : 4;
+    for (let k = 1; k <= m; k++) for (const s of [-1, 1]) {
+      const u = -len / 2 + 0.25 + (len - 0.5) * k / (m + 1), o = s * (along === 'x' ? td : tw) / 2 - s * THICK / 2;
+      parts.push(along === 'x' ? block(0.36, 0.17, THICK - 0.04, u, top, o, RENDER, rng) : block(THICK - 0.04, 0.17, 0.36, o, top, u, RENDER, rng));
+    }
   }
   // the roof inside the parapet, a hand under its top
   parts.push(block(tw - 2 * THICK, 0.12, td - 2 * THICK, 0, WALL - 0.1, 0, RENDER, rng));
-  // the door on the road side, open and unglazed: a timber lintel over it, a worn sill before it
+  // (dome-detail-275) the toron: palm-trunk beam ends through the walls under the parapet (the front's clear of the
+  // door's lintel)
+  const yb = WALL - 0.3, fx = W / 2 - 0.09 * yb / WALL, fz = D / 2 - 0.09 * yb / WALL;
+  for (const z of [-1.5, 1.5]) for (const sx of [-1, 1]) parts.push(palmLog(0.4, 0.075, sx * (fx + 0.03), yb, z, 'x', rng, 5));
+  for (const x of [-1.4, 0, 1.4]) parts.push(palmLog(0.4, 0.075, x, yb, -(fz + 0.03), 'z', rng, 5));
+  for (const x of [-1.45, 1.45]) parts.push(palmLog(0.4, 0.075, x, yb, fz + 0.03, 'z', rng, 5));
+  // the door on the road side: its timber frame in the reveal, a palm-log lintel over it, one blue plank leaf shut at the
+  // back of the reveal (its battens on it) and the other open on the room's dark; a threshold stone before it
   const front = D / 2 - 0.09 * 0.25; // (the battered face at a quarter of the wall's height)
-  parts.push(block(1.45, 0.16, 0.22, 0, 2.12, front + 0.04, TIMBER, rng, 0.08));
+  // (the jambs in the reveal clear of the doorway itself, the leaf and its battens behind the reveal's mouth: the opening
+  // stays open through the wall)
+  for (const sx of [-1, 1]) onWall(block(0.065, DOOR_H, 0.12, sx * (DOOR_W / 2 - 0.0225), 0, D / 2 - 0.08, TIMBER, rng, 0.08));
+  onWall(block(DOOR_W, 0.1, 0.12, 0, DOOR_H - 0.1, D / 2 - 0.08, TIMBER, rng, 0.08));
+  onWall(block(DOOR_W / 2 - 0.07, DOOR_H - 0.12, 0.04, -DOOR_W / 4 + 0.035, 0.02, D / 2 - THICK + 0.03, LEAF, rng, 0.05));
+  for (const y of [0.45, 1.6]) onWall(block(DOOR_W / 2 - 0.11, 0.09, 0.025, -DOOR_W / 4 + 0.035, y, D / 2 - THICK + 0.055, LEAF.map((c) => c * 0.82) as [number, number, number], rng, 0.05));
+  parts.push(palmLog(1.55, 0.095, 0, DOOR_H + 0.1, D / 2 - 0.09 * (DOOR_H + 0.1) / WALL + 0.02, 'x', rng));
   parts.push(block(1.5, 0.12, 0.6, 0, 0, front + 0.25, DAMP, rng, 0.03));
-  // a small window in each side wall, high, under its own lintel
-  const side = W / 2 - 0.09 * 0.65;
-  for (const sx of [-1, 1]) parts.push(block(0.2, 0.12, 0.75, sx * (side + 0.03), 2.22, 0.6, TIMBER, rng, 0.08));
-  // two rain spouts through the back parapet's foot
-  for (const x of [-1.1, 1.1]) parts.push(block(0.12, 0.12, 0.55, x, WALL + 0.04, -(td / 2 + 0.12), TIMBER, rng, 0.1));
+  // the mud bench (dokkana) along the front to the door's left, and a clay jar to its right
+  parts.push(dampFoot(block(1.3, 0.42, 0.46, -1.35, 0, D / 2 + 0.2, RENDER, rng, 0.03), 0.3));
+  parts.push(block(1.38, 0.07, 0.52, -1.35, 0.42, D / 2 + 0.21, RENDER.map((c) => c * 0.96) as [number, number, number], rng, 0.02));
+  const jar = new THREE.LatheGeometry([[0.001, 0], [0.15, 0.03], [0.23, 0.24], [0.19, 0.48], [0.1, 0.58], [0.001, 0.6]].map(([r, y]) => new THREE.Vector2(r, y)), 8);
+  jar.translate(1.25, 0, D / 2 + 0.32);
+  parts.push(painted(jar, CLAY, rng));
+  // the sloped splash skirt along the foot (clear of the door and the bench), the battered buttresses at the corners
+  for (const sx of [-1, 1]) {
+    parts.push(talus(0.3, 0.45, D - 0.6, sx * (W / 2 + 0.1), 0, 0, DAMP, rng, sx > 0 ? 'x+' : 'x-', 0.24));
+    for (const sz of [-1, 1]) parts.push(dampFoot(talus(0.42, 1.9, 0.62, sx * (W / 2 + 0.08), 0, sz * (D / 2 - 0.36), RENDER, rng, sx > 0 ? 'x+' : 'x-', 0.28), 0.45));
+  }
+  parts.push(talus(W - 0.4, 0.45, 0.3, 0, 0, -(D / 2 + 0.1), DAMP, rng, 'z-', 0.24));
+  parts.push(talus(1.0, 0.45, 0.3, 1.45, 0, D / 2 + 0.1, DAMP, rng, 'z+', 0.24));
+  // two rain spouts through the back parapet's foot, each an open palm channel, and the rain's stain down the wall
+  for (const x of [-1.1, 1.1]) {
+    const zc = -(td / 2 + 0.12);
+    parts.push(block(0.16, 0.03, 0.55, x, WALL + 0.02, zc, TIMBER, rng, 0.1));
+    for (const s of [-1, 1]) parts.push(block(0.03, 0.09, 0.55, x + s * 0.07, WALL + 0.05, zc, TIMBER, rng, 0.1));
+    for (const [y0, y1, w, k] of [[1.95, WALL - 0.02, 0.32, 0.72], [1.3, 1.95, 0.24, 0.8], [0.75, 1.3, 0.14, 0.88]] as const) {
+      onWall(block(w, y1 - y0, 0.012, x, y0, -D / 2 - 0.006, RENDER.map((c) => c * k) as [number, number, number], rng, 0.01));
+    }
+  }
+  // the render fallen off the rubble in patches: the stones bare, a few standing proud
+  for (const [x, z, y0, w, h, side] of [[1.5, 0, 1.25, 0.6, 0.55, 'z'], [0, -1.5, 0.55, 0.8, 0.6, 'x']] as const) {
+    const px = side === 'z' ? x : -W / 2 - 0.006, pz = side === 'z' ? D / 2 + 0.006 : z;
+    onWall(block(side === 'z' ? w : 0.012, h, side === 'z' ? 0.012 : w, px, y0, pz, STONE, rng, 0.04));
+    for (let k = 0; k < 3; k++) {
+      const a = (rng() - 0.5) * (w - 0.2), b = y0 + 0.08 + rng() * (h - 0.2), sw = 0.14 + rng() * 0.08;
+      onWall(block(side === 'z' ? sw : 0.04, 0.09, side === 'z' ? 0.04 : sw, side === 'z' ? px + a : px, b, side === 'z' ? pz : pz + a, STONE.map((c) => c * 0.92) as [number, number, number], rng, 0.08));
+    }
+  }
+  // the sand drifted against the back corner
+  parts.push(talus(1.7, 0.3, 0.7, -W / 2 + 0.9, 0, -D / 2 - 0.3, SAND, rng, 'z-', 0.55));
   return merge(parts);
 }
 

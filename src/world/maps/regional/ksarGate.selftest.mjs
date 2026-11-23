@@ -20,7 +20,9 @@ for (const seed of [1, 7, 2024]) {
   const p = g.attributes.position, c = g.attributes.color;
   assert.ok(g.attributes.normal && g.attributes.uv && c && c.itemSize === 3, 'position, normal, uv and a colour per vertex');
   const tris = (g.index ? g.index.count : p.count) / 3;
-  assert.ok(tris <= 400, `within its budget (${tris} triangles)`);
+  // (dome-detail-275, Kevin 2026-11-22: every building to the bar) 400 -> 1600: the post's merlons, buttresses, framed door,
+  // bench, barred lights and spouts, at the light posts' density elsewhere (1,300-1,700); still one vertex-coloured mesh
+  assert.ok(tris <= 1600, `within its budget (${tris} triangles)`);
   g.computeBoundingBox();
   const b = g.boundingBox;
   assert.ok(Math.max(-b.min.x, b.max.x) <= hut.hw + 1e-6 && Math.max(-b.min.z, b.max.z) <= hut.hl + 1e-6 && b.max.y <= hut.h + 1e-6 && b.min.y >= -1e-6,

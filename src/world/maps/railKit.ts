@@ -523,6 +523,36 @@ export function makeWarehouse(
       parts.baked!.push(ledge);
     }
   }
+  // (dome-detail-275: "blank walls and a plain roof"; all new to the stream, no draws) a goods shed's brick order: the
+  // piers between the clerestory's bays and at the corners from the plinth to the eave's corbelled cornice, a brick
+  // lintel over each light; the louvred round vent in each gable under the roof; the roof's ridge roll and the ridge
+  // vents capped under their own little gables. A sheet hall keeps its own frame (its trims) and takes the roof's parts.
+  if (!steelClad) {
+    const top = wallH - 0.34, py = (0.45 + top) / 2, ph = top - 0.45;
+    for (const side of [-1, 1]) {
+      for (let k = 1; k < 5; k++) parts.stone.push(boxAt(0.2, ph, 0.62, side * (w / 2 + 0.09), py, -d / 2 + k * (d / 5), 0.55));
+      for (const e of [-1, 1]) {
+        parts.stone.push(boxAt(0.2, ph, 0.66, side * (w / 2 + 0.09), py, e * (d / 2 - 0.33), 0.55));
+        parts.stone.push(boxAt(0.66, ph, 0.2, side * (w / 2 - 0.33), py, e * (d / 2 + 0.09), 0.55));
+      }
+      // the cornice: a corbel course under a projecting course, the length of the eave
+      parts.stone.push(boxAt(0.14, 0.16, d + 0.04, side * (w / 2 + 0.06), wallH - 0.42, 0, 0.55));
+      parts.stone.push(boxAt(0.26, 0.3, d + 0.2, side * (w / 2 + 0.12), wallH - 0.19, 0, 0.55));
+      for (const h of side > 0 ? holes.px : holes.nx) parts.stone.push(boxAt(0.12, 0.22, h.w + 0.36, side * (w / 2 + 0.05), h.y1 + 0.11, h.at, 0.55));
+    }
+  }
+  for (const e of [-1, 1]) {
+    const oy = wallH + roofH * 0.42, oz = e * (d / 2);
+    parts.stone.push(dressing(new THREE.CylinderGeometry(0.62, 0.62, 0.12, 10, 1).rotateX(Math.PI / 2).translate(0, oy, oz + e * 0.06)));
+    parts.dark.push(dressing(new THREE.CircleGeometry(0.46, 10).rotateY(e > 0 ? 0 : Math.PI).translate(0, oy, oz + e * 0.125)));
+    for (const dy of [-0.22, 0, 0.22]) parts.stone.push(boxAt(0.86 - Math.abs(dy) * 1.4, 0.06, 0.08, 0, oy + dy, oz + e * 0.16));
+  }
+  parts.dark.push(dressing(new THREE.CylinderGeometry(0.12, 0.12, d + 0.7, 8, 1).rotateX(Math.PI / 2).translate(0, wallH + roofH + 0.1, 0)));
+  for (let k = 0; k < 3; k++) {
+    const cap = dressing(gablePrism(1.25, 0.38, 2.95));
+    cap.translate(0, wallH + roofH + 0.22 + 0.275, -d / 3 + k * (d / 3));
+    parts.roof.push(cap);
+  }
   const pieces: THREE.BufferGeometry[] = [];
   cutWalls(pieces, w, d, wallH, t, holes);
   const pieceRng = forkRng(0.731);
@@ -706,6 +736,17 @@ export function makeStack(
   for (let y = 2.5; y < top; y += 2.5) buckets.dark.push(boxAt(0.26, 0.04, 0.5, rAt(y) + 0.05, y, 0));
   buckets.dark.push(memberGeo([-(rAt(1.6) * 0.95 + 0.015), 1.6, 0], [-(rAt(top) * 0.95 + 0.015), top, 0], 0.025));
   buckets.dark.push(memberGeo([-(rAt(top) * 0.95 + 0.015), top, 0], [-(rAt(top) * 1.1), top + 1.6, 0], 0.025));
+  // (dome-detail-275, new to the stream) the shaft's moulded foot on the plinth in two courses; the soot blackening the
+  // last metres under the crown; the conductor's clips down the shaft
+  for (const [r0, r1, y, h] of [[rAt(1.4) + 0.16, rAt(1.4) + 0.12, 1.5, 0.3], [rAt(1.8) + 0.1, rAt(1.8) + 0.07, 1.8, 0.24]] as const) {
+    const course = new THREE.CylinderGeometry(r1, r0, h, 10, 1);
+    course.translate(0, y + h / 2 - 0.02, 0);
+    buckets.stone.push(dressing(course));
+  }
+  const soot = new THREE.CylinderGeometry(rAt(top - 0.45) + 0.012, rAt(top - 2.2) + 0.012, 1.75, 10, 1, true);
+  soot.translate(0, top - 0.45 - 0.875, 0);
+  buckets.dark.push(dressing(soot));
+  for (let y = 3.75; y < top - 0.5; y += 2.5) buckets.dark.push(boxAt(0.08, 0.06, 0.16, -(rAt(y) * 0.95 + 0.01), y, 0));
   return { w: 3.4, d: 3.4, h: stackH + 2.6 };
 }
 

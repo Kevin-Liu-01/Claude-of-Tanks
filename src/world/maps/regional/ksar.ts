@@ -326,12 +326,14 @@ function tileRun(sink: PartSink, face: Face, u0: number, u1: number, y0: number,
 }
 
 /** The rain's stain under a spout or a ledge: bands narrowing and fading down the wall from yTop to yBot. */
-function rainStreak(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, yTop: number, yBot: number, w: number, k0: number): void {
-  const n = 6;
+function rainStreak(sink: PartSink, bucket: RegionalBucket, face: Face | ((y: number) => Face), u: number, yTop: number, yBot: number, w: number, k0: number): void {
+  // (dome-detail-275) on a battered wall the face its height's (slumpedMass's sideAt)
+  const n = 6, F = typeof face === 'function' ? face : () => face;
   for (let b = 0; b < n; b++) {
     const t0 = b / n, t1 = (b + 1) / n, ya = yTop - (yTop - yBot) * t1 - 0.001, yb = yTop - (yTop - yBot) * t0 + 0.001;
     const h0 = w * (1 - 0.6 * t1) / 2, h1 = w * (1 - 0.6 * t0) / 2, o = b % 2 ? 0.0065 : 0.004, k = k0 + (0.76 - k0) * Math.pow((t0 + t1) / 2, 1.4);
-    sink.polygon(bucket, [facePoint(face, u - h0, ya, o), facePoint(face, u + h0, ya, o), facePoint(face, u + h1, yb, o), facePoint(face, u - h1, yb, o)],
+    const fa = F(ya), fb = F(yb);
+    sink.polygon(bucket, [facePoint(fa, u - h0, ya, o), facePoint(fa, u + h0, ya, o), facePoint(fb, u + h1, yb, o), facePoint(fb, u - h1, yb, o)],
       { decor: true, tint: [k, k * 0.95, k * 0.86] });
   }
 }
@@ -485,56 +487,125 @@ const minaret: RegionalBuilder = (ctx) => {
  * talus round its foot; the shaft in two stages, the upper set back over a band, its walls cut: the door raised over the
  * talus with its steps up, loopholes in every face of both stages and a lookout window under the parapet; the palm-trunk
  * beam ends (toron) through the walls under the parapet, its merlons over a parapet band. The shaft is a tower body
- * (it topples in its courses).
+ * (it topples in its courses). (dome-detail-275: "stepped plain blocks with slit windows") The shaft battered as a
+ * whole as the hammam's walls are, its arrises worked round; founded on a course of rubble under the talus; the setback
+ * a ledge of flat stones over the upper floor's palm joists; a timber lintel over every loophole and a palm log over the
+ * door, stone steps up to it; the bretèche (a box machicolation) corbelled out over the door at the roof; the parapet a
+ * wall round the roof terrace with the Jerid's rounded merlons and the corner horns, a palm spout through each side and
+ * the rain's stain under it; the render fallen in patches off the rubble, stones at the foot.
  */
 const borj: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
   const S = Math.max(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.6), H = Math.max(7.5, ctx.info.h - 1.5);
   const t = 0.55, cut = 0.42, reveal = 0.34, mid = Math.round(H * 0.55 * 10) / 10, S2 = S - 0.4;
-  // the talus, its foot sunk
-  sink.cylinder(MUD, [0, -0.3, 0], 'y', 0.8 + 0.3, (S / 2 + 0.3) * Math.SQRT2, 4, {}, (S / 2 + 0.02) * Math.SQRT2, true, Math.PI / 4);
+  const RUBBLE = { tint: [0.92, 0.86, 0.76] as Rgb };
+  // (dome-detail-275) the rubble footing course under the talus, its stones showing at the foot
+  sink.span('stone', -S / 2 - 0.28, -0.3, -S / 2 - 0.28, S / 2 + 0.28, 0.14, S / 2 + 0.28, RUBBLE);
+  // the talus, its foot on the footing, the dust darker at it
+  sink.cylinder(MUD, [0, 0.12, 0], 'y', 0.68, (S / 2 + 0.2) * Math.SQRT2, 4, { shadeAt: (p: Vec3) => (p[1] < 0.3 ? 0.86 : 0.97) }, (S / 2 + 0.02) * Math.SQRT2, true, Math.PI / 4);
   const loop = (y: number, u = 0): HoleRect => ({ u0: u - 0.09, u1: u + 0.09, y0: y, y1: y + 0.7 });
   const door: HoleRect = { u0: -0.45, u1: 0.45, y0: t + 0.25, y1: t + 0.25 + 1.85 };
-  const low = holedBox(sink, MUD, -S / 2, -S / 2, S / 2, S / 2, t, mid, {
-    front: [door, loop(mid - 1.4, 0.95)], right: [loop(2.2), loop(mid - 1.2, -0.6)], back: [loop(2.8)], left: [loop(2.0, 0.5), loop(mid - 1.3)],
-  }, cut, reveal);
-  // the band at the setback
-  sink.span(MUD, -S / 2 - 0.05, mid, -S / 2 - 0.05, S / 2 + 0.05, mid + 0.18, S / 2 + 0.05);
-  const look: HoleRect = { u0: -0.3, u1: 0.3, y0: H - 1.5, y1: H - 0.65 };
-  const high = holedBox(sink, MUD, -S2 / 2, -S2 / 2, S2 / 2, S2 / 2, mid + 0.18, H, {
-    front: [look, loop(mid + 1.0, -0.7)], right: [loop(mid + 1.4)], back: [loop(mid + 0.9, 0.4), loop(H - 1.6, -0.4)], left: [loop(mid + 1.2)],
-  }, cut - 0.06, reveal - 0.06);
-  // the parapet: its band and the merlons along it, corner horns taller
-  sink.span(MUD, -S2 / 2 - 0.06, H, -S2 / 2 - 0.06, S2 / 2 + 0.06, H + 0.3, S2 / 2 + 0.06);
-  const e = S2 / 2 + 0.06 - 0.15;
-  for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]] as const) {
-    for (let k = -2; k <= 2; k++) {
-      const c = k * e / 2, tall = Math.abs(k) === 2 ? 0.85 : 0.55;
-      if (ax === 'x') sink.span(MUD, sgn * e - 0.15, H + 0.3, c - 0.2, sgn * e + 0.15, H + 0.3 + tall, c + 0.2);
-      else if (Math.abs(k) < 2) sink.span(MUD, c - 0.2, H + 0.3, sgn * e - 0.15, c + 0.2, H + 0.3 + tall, sgn * e + 0.15);
+  const lookout: HoleRect = { u0: -0.3, u1: 0.3, y0: H - 2.3, y1: H - 1.45 };
+  const lowHoles = { front: [door, loop(mid - 1.4, 0.95)], right: [loop(2.2), loop(mid - 1.2, -0.6)], back: [loop(2.8)], left: [loop(2.0, 0.5), loop(mid - 1.3)] };
+  const highHoles = { front: [lookout, loop(mid + 1.0, -0.7)], right: [loop(mid + 1.4)], back: [loop(mid + 0.9, 0.4), loop(H - 1.6, -0.4)], left: [loop(mid + 1.2)] };
+  // (dome-detail-275) the shaft in a sink of its own, battered as a whole to the parapet (batterParts)
+  const ts = new PartSink(sink.uvOffset), inset = 0.2 + look() * 0.08, pt = H + 0.65;
+  const low = holedBox(ts, MUD, -S / 2, -S / 2, S / 2, S / 2, t, mid, lowHoles, cut, reveal);
+  // the setback: a ledge of flat stones over the upper floor's palm joists, their ends through the wall under it
+  ts.span('stone', -S / 2 - 0.1, mid, -S / 2 - 0.1, S / 2 + 0.1, mid + 0.18, S / 2 + 0.1, RUBBLE);
+  const high = holedBox(ts, MUD, -S2 / 2, -S2 / 2, S2 / 2, S2 / 2, mid + 0.18, H, highHoles, cut - 0.06, reveal - 0.06);
+  for (const name of SIDES) for (let k = 0; k < 4; k++) {
+    const u = -S * 0.36 + k * S * 0.24 + (look() - 0.5) * 0.12;
+    if (name === 'front' && Math.abs(u - 0.95) < 0.3) continue;
+    trunkEnd(ts, low[name], u, mid - 0.16, 0.075, 0.3, 0.16 + look() * 0.08, shade(TIMBER, 0.62 + look() * 0.2), look());
+  }
+  // the arrises worked round: a quarter round of mud at each corner of both stages
+  for (const [a0, y0, y1, R] of [[S / 2, t - 0.02, mid, 0.22], [S2 / 2, mid + 0.18, pt, 0.2]] as const) {
+    const a = R * Math.SQRT1_2;
+    for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+      ts.cylinder(MUD, [sx * (a0 - a), y0, sz * (a0 - a)], 'y', y1 - y0, R, 8, {}, R, false, -(Math.atan2(sz, sx) + Math.PI / 2), Math.PI);
     }
   }
-  // the toron: palm-trunk beam ends through the upper walls under the parapet
-  const beam = { colour: shade(TIMBER, 0.7), decor: true } as const;
-  for (const name of ['front', 'right', 'back', 'left'] as const) {
-    for (const u of [-S2 * 0.3, 0, S2 * 0.3]) faceBox(sink, 'structureWood', high[name], u, H - 0.3, 0.2, 0.14, 0.14, 0.4, beam);
+  // a timber lintel over each loophole, bedded in the mud
+  for (const [faces, holes] of [[low, lowHoles], [high, highHoles]] as const) for (const name of SIDES) for (const h of holes[name]) {
+    if (h.u1 - h.u0 > 0.3) continue;
+    faceBox(ts, 'structureWood', faces[name], (h.u0 + h.u1) / 2, h.y1 + 0.05, 0.02, 0.42, 0.08, 0.05, { colour: shade(TIMBER, 0.7), decor: true, fineSides: true });
   }
-  // the door at the back of its reveal (the steps up from the talus), the loopholes' dark frames
-  sink.recess = reveal;
+  // the door at the back of its reveal under a palm-log lintel, the lookout under the parapet
+  ts.recess = reveal;
   try {
-    doorUnit(sink, low.front, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: TIMBER, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(TIMBER, 0.8) },
+    doorUnit(ts, low.front, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: TIMBER, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(TIMBER, 0.8) },
       steps: null, leafKind: 'plank' }, door.y0);
-  } finally { sink.recess = 0; }
-  // its two steps up from the talus, inside the plot
-  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.02, S / 2 + 0.42, { decor: true });
-  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.25, S / 2 + 0.16, { decor: true });
-  sink.recess = reveal - 0.06;
+  } finally { ts.recess = 0; }
+  palmLog(ts, low.front, -0.72, 0.72, door.y1 + 0.1, 0.09, shade(TIMBER, 0.75));
+  ts.recess = reveal - 0.06;
   try {
-    windowUnit(sink, high.front, 0, look.y0, look.u1 - look.u0, look.y1 - look.y0, { frame: shade(TIMBER, 0.8), frameWidth: 0.05, frameOut: 0.03, bars: 'none',
+    windowUnit(ts, high.front, 0, lookout.y0, lookout.u1 - lookout.u0, lookout.y1 - lookout.y0, { frame: shade(TIMBER, 0.8), frameWidth: 0.05, frameOut: 0.03, bars: 'none',
       surround: null, sill: { bucket: MUD, out: 0.06 }, shutters: null }, ctx.rng, 0.15);
-  } finally { sink.recess = 0; }
+  } finally { ts.recess = 0; }
+  // the parapet: a wall round the roof terrace, a hand proud of the shaft, its rounded merlons and the corner horns
+  const P = S2 / 2 + 0.06, pw = 0.24;
+  ts.span(MUD, -P, H, P - pw, P, pt, P);
+  ts.span(MUD, -P, H, -P, P, pt, -P + pw);
+  ts.span(MUD, P - pw, H, -P + pw, P, pt, P - pw);
+  ts.span(MUD, -P, H, -P + pw, -P + pw, pt, P - pw);
+  const PF = bodyFaces(2 * P, 2 * P);
+  for (const name of SIDES) {
+    for (const u of [-P * 0.42, 0, P * 0.42]) roundMerlon(ts, MUD, PF[name], u + (look() - 0.5) * 0.06, pt - 0.01, 0.4, 0.3, -pw + 0.02, pw - 0.04, { decor: true });
+    // a palm spout through the parapet's foot, open along its top, and the rain's stain down the shaft under it
+    const u = (name === 'front' ? -1.0 : 0) + (look() - 0.5) * 0.4, sp = { colour: TIMBER, decor: true, uv: UV_MEMBER } as const;
+    faceSpan(ts, 'structureWood', PF[name], u - 0.08, u + 0.08, H + 0.02, H + 0.05, -0.2, 0.5, sp);
+    for (const s of [-1, 1]) faceSpan(ts, 'structureWood', PF[name], u + s * 0.08 - 0.015, u + s * 0.08 + 0.015, H + 0.05, H + 0.13, -0.2, 0.5, { ...sp, colour: shade(TIMBER, 0.85) });
+    rainStreak(ts, MUD, high[name], u, H - 0.02, mid + 0.6 + look() * 1.2, 0.36, 0.62);
+    // the toron: palm-trunk beam ends through the walls under the parapet (clear of the spout and the bretèche)
+    for (const tu of [-S2 * 0.32, S2 * 0.32]) {
+      if (Math.abs(tu - u) < 0.3 || (name === 'front' && Math.abs(tu) < 0.85)) continue;
+      trunkEnd(ts, high[name], tu, H - 0.3, 0.08, 0.55, 0.3 + look() * 0.12, shade(TIMBER, 0.6 + look() * 0.2), look());
+    }
+  }
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+    ts.revolve(MUD, [sx * (P - 0.12), pt - 0.01, sz * (P - 0.12)], 'y', [[0, 0.21], [0.22, 0.2], [0.44, 0.13], [0.6, 0.05], [0.68, 0]], 8, { decor: true });
+  }
+  // the bretèche over the door at the roof: a box of mud corbelled out on three stepped brackets, a loophole through its
+  // front, its floor open over the door (the dark of its slot), two merlons on its head
+  const fb = high.front, bw = 0.72, bo = 0.7, by = H - 0.42;
+  for (const u of [-bw + 0.1, 0, bw - 0.1]) for (let k = 0; k < 3; k++) {
+    faceSpan(ts, MUD, fb, u - 0.09, u + 0.09, by - 0.6 + k * 0.2, by - 0.4 + k * 0.2, 0, 0.2 + k * 0.2, { decor: true, shade: 0.94 });
+  }
+  faceSpan(ts, MUD, fb, -bw, bw, by - 0.02, by + 0.14, 0, bo, { decor: true });
+  faceSpan(ts, 'dark', fb, -0.38, 0.38, by - 0.035, by - 0.02, 0.18, bo - 0.12, { decor: true });
+  faceSpan(ts, MUD, fb, -bw, bw, by + 0.14, pt, bo - 0.16, bo, { decor: true });
+  for (const s of [-1, 1]) faceSpan(ts, MUD, fb, s > 0 ? bw - 0.16 : -bw, s > 0 ? bw : -bw + 0.16, by + 0.14, pt, 0, bo - 0.16, { decor: true });
+  faceSpan(ts, 'dark', fb, -0.07, 0.07, by + 0.5, by + 0.95, bo + 0.003, bo + 0.008, { decor: true });
+  const BF: Face = { ...fb, origin: facePoint(fb, 0, 0, bo) };
+  for (const u of [-0.36, 0.36]) roundMerlon(ts, MUD, BF, u, pt - 0.01, 0.34, 0.26, -0.16, 0.14, { decor: true });
+  // the render fallen in patches off the rubble it was laid on: the stones bare, a lip of render round them
+  for (const [name, u, y, w, h] of [['left', -0.75, 0.95, 0.9, 0.7], ['back', 0.65, mid - 1.0, 0.7, 0.55], ['right', 0.75, 1.2, 0.6, 0.8]] as const) {
+    const f = low[name], du = (look() - 0.5) * 0.2, dy = (look() - 0.5) * 0.3;
+    // (two overlapping lumps of loss, so the bare patch has no plaque's straight edges)
+    faceBox(ts, 'stone', f, u + du, y + dy, 0.006, w, h, 0.012, { decor: true, tint: [0.84, 0.78, 0.68] });
+    faceBox(ts, 'stone', f, u + du + w * 0.32, y + dy - h * 0.3, 0.007, w * 0.5, h * 0.55, 0.014, { decor: true, tint: [0.84, 0.78, 0.68] });
+    for (let k = 0; k < 3; k++) {
+      faceBox(ts, 'stone', f, u + du + (look() - 0.5) * (w - 0.2), y + dy + (look() - 0.5) * (h - 0.16), 0.02, 0.18 + look() * 0.1, 0.1 + look() * 0.05, 0.035,
+        { decor: true, fine: 'near', tint: [0.86, 0.8, 0.7] });
+    }
+  }
+  const body = ts.finish();
+  batterParts(body, 0, 0, S / 2, S / 2, pt, inset, t);
+  // stone steps up from the talus to the door's sill, inside the plot
+  for (let k = 0; k < 3; k++) {
+    sink.span('stone', -0.58, 0.1, S / 2 - 0.1, 0.58, (door.y0 + 0.01) * (k + 1) / 3, S / 2 + 0.14 + (2 - k) * 0.26, { decor: true, ...RUBBLE, shade: 0.96 - k * 0.03 });
+  }
+  // the stones fallen at the foot and the sand drifted against the talus on the windward side
+  for (let k = 0; k < 6; k++) {
+    const side = SIDES[1 + (k % 3)], f = bodyFaces(S + 0.5, S + 0.5)[side], u = (look() - 0.5) * S, sz = 0.14 + look() * 0.14;
+    const c = facePoint(f, u, 0, 0.05 + look() * 0.3);
+    sink.span('stone', c[0] - sz, -0.05, c[2] - sz * 0.8, c[0] + sz, sz * 0.8, c[2] + sz * 0.8, { decor: true, tint: [0.88, 0.82, 0.72] });
+  }
+  sink.cylinder(MUD, [-S / 2 - 0.05, -0.2, -S * 0.15], 'y', 0.5, 0.75, 9, { decor: true, tint: [0.98, 0.92, 0.82] }, 0.18, true, look() * 3);
   recordShaft(sink, 0, 0, S, H + 1.15, MUD, true);
-  return sink.finish();
+  return withParts(sink.finish(), [body]);
 };
 
 /**
@@ -796,27 +867,123 @@ const hammam: RegionalBuilder = (ctx) => {
   return parts;
 };
 
-/** A collapsed ghorfa range: broken vault stubs and a slump of mud rubble. */
+/**
+ * A collapsed ghorfa range: broken vault stubs and a slump of mud rubble. (dome-detail-275: two whole cells and two
+ * cones of mud) A row of cells side by side, each fallen its own way: some still under the front of their vault, its
+ * shell broken off ragged where the crown fell first and the rubble core showing in the break, the hoisting beam still
+ * through its front; some open to the sky, their fronts broken off slanting and only the springers of the vault left;
+ * some down to stubs of wall either side of the doorway. The party walls broken down in courses toward the back, the
+ * fallen vaults heaped inside them, the render off the rubble here and there, a door leaf still hanging in some, a palm
+ * beam leant against a front and the spill of mud and stone before the range.
+ */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(6, ctx.info.d - 0.3);
   const blue = pick(rng, BLUES);
-  const n = Math.max(2, Math.floor(W / 2.5));
+  const cw = 2.1, n = Math.max(2, Math.floor(W / cw)), r = cw / 2, t = 0.32, fw = 0.42, shell = 0.26, zf = D / 2 - 1.0, zs = zf - fw;
+  const core = { decor: true, tint: [0.9, 0.84, 0.74] as Rgb }, heap = { decor: true, shadow: true, tint: [0.95, 0.9, 0.82] as Rgb };
+  const door: HoleRect = { u0: -0.36, u1: 0.36, y0: 0.15, y1: 1.15 };
+  const fates: string[] = [];
   for (let i = 0; i < n; i++) {
-    if (rng() < 0.35) continue;
-    ghorfa(sink, -W / 2 + 2.5 * (i + 0.5), 0, D / 2, 2.4, 1.6 + rng() * 0.5, D * (0.4 + rng() * 0.5), rng, blue);
-  }
-  // (props census #7, lane B 2026-10-14; the judges: "the slump a box") the fallen vaults' mud slumped in two low
-  // mounds across the range's front, the broken mud bricks of the vaults on them
-  const look = ctx.variant;
-  for (const [mx, mz, mr, mh] of [[-W * 0.22, -D * 0.12, Math.min(W, D) * 0.3, 0.85], [W * 0.18, -D * 0.05, Math.min(W, D) * 0.22, 0.6]] as const) {
-    sink.cylinder(MUD, [mx, -0.2, mz], 'y', mh + 0.2, mr, 9, { decor: true, shadow: true }, mr * 0.4, true, look() * 3);
-    for (let k = 0; k < 4; k++) {
-      const a = look() * Math.PI * 2, rr = mr * (0.2 + look() * 0.5), sz = 0.22 + look() * 0.18;
-      const hy = mh * (1 - (rr / mr) * (rr / mr)) * 0.9;
-      sink.span(MUD, mx + Math.cos(a) * rr - sz, hy - 0.06, mz + Math.sin(a) * rr - sz * 0.7, mx + Math.cos(a) * rr + sz, hy + sz * 0.6, mz + Math.sin(a) * rr + sz * 0.7, { decor: true, shade: 0.85 });
-    }
+    const fate = rng(), h = 1.6 + rng() * 0.5, d = Math.min(D - 1.6, D * (0.5 + rng() * 0.3));
+    // (every range keeps one cell under the front of its vault and has one fallen open)
+    let state = fate < 0.3 ? 'stub' : fate < 0.65 ? 'broken' : 'vault';
+    if (i === n - 1 && !fates.includes('vault')) state = 'vault';
+    else if (i === n - 1 && fates.every((f) => f === 'vault')) state = 'broken';
+    fates.push(state);
+    sink.placed(0, -n * cw / 2 + cw * (i + 0.5), 0, 0, () => {
+      const zb = zf - d, run = d - fw, front: Face = { origin: [0, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: cw };
+      // how far back the vault still stands; the party walls (each cell its right one, the first its left too) full
+      // height under it and broken down in courses behind it
+      const keep = state === 'vault' ? 0.3 + look() * 0.3 : state === 'broken' ? 0.12 + look() * 0.12 : 0;
+      // (each length of wall its top sloping down from its last, a broken course stepping it here and there: spaced
+      // blocks read as battlements)
+      const sk = state === 'stub' ? 0 : Math.min(0.9, keep + 0.25 / run), m = Math.max(2, Math.round(run * (1 - sk) / 1.9));
+      const cuts = [...(sk > 0 ? [0] : []), ...Array.from({ length: m + 1 }, (_, k) => sk + (1 - sk) * k / m)];
+      for (const sx of i === 0 ? [-1, 1] : [1]) {
+        let y = state === 'stub' ? 0.7 + look() * 0.5 : h;
+        for (let k = 0; k + 1 < cuts.length; k++) {
+          const flat = sk > 0 && k === 0, f = (cuts[k + 1] - sk) / (1 - sk);
+          const y0 = flat ? h : Math.max(0.4, y + (look() - 0.5) * 0.24);
+          const y1 = flat ? h : state === 'stub' ? 0.45 + look() * 0.6 : Math.max(0.45, h - f * (h - 0.55) * (0.8 + look() * 0.3) + (look() - 0.5) * 0.25);
+          const za = zs - run * cuts[k], zc = zs - run * cuts[k + 1];
+          sink.prism(MUD, [[0, -0.2, za], [0, -0.2, zc], [0, y1, zc], [0, y0, za]].map(([, py, pz]): Vec3 => [sx < 0 ? -r : r - t, py, pz]), [1, 0, 0], t);
+          y = y1;
+        }
+      }
+      // the back wall, broken lower
+      for (const e of [-1, 1]) sink.span(MUD, e < 0 ? -r : 0, -0.2, zb, e < 0 ? 0 : r, 0.45 + look() * 0.7, zb + t);
+      // the front: whole to the vault's springing under its tympanum, broken off slanting, or two stubs by the doorway
+      if (state === 'stub') {
+        for (const e of [-1, 1]) sink.span(MUD, e < 0 ? -r : door.u1 + 0.02, -0.2, zs, e < 0 ? door.u0 - 0.02 : r, 0.6 + look() * 0.5, zf);
+      } else {
+        const hl = state === 'vault' ? h : h + (look() - 0.3) * 0.6, hr = state === 'vault' ? h : Math.max(1.4, h * 0.75 + look() * 0.4);
+        // (the cell behind it open to the sky: the wall's back drawn and no room's dark at the back of the doorway)
+        holedPolygon(sink, MUD, front, [[-r, -0.2], [r, -0.2], [r, hr], [-r, hl]], [door], fw, 0, {}, [], [], true);
+        faceBox(sink, 'structureWood', front, 0, door.y1 + 0.07, 0.03, 0.95, 0.1, 0.06, { colour: shade(TIMBER, 0.75), decor: true, fineSides: true });
+        if (state === 'vault' || look() < 0.5) {
+          // (a whole board: the cell behind it is open, its back seen)
+          const la = facePoint(front, 0.05 - 0.31, door.y0 + 0.03, -fw + 0.08), lb = facePoint(front, 0.05 + 0.31, door.y1 - 0.03, -fw + 0.12);
+          sink.span('structureWood', la[0], la[1], la[2], lb[0], lb[1], lb[2], { colour: look() < 0.5 ? shade(blue, 0.8) : shade(TIMBER, 0.85), decor: true, uv: UV_MEMBER });
+        }
+        // the render fallen off the rubble beside the door
+        const su = (look() < 0.5 ? -1 : 1) * (0.68 + look() * 0.12);
+        faceBox(sink, 'stone', front, su, 0.55 + look() * 0.5, 0.006, 0.42, 0.5 + look() * 0.3, 0.012, core);
+      }
+      if (state !== 'stub') {
+        // the vault: its shell broken off where it fell, ragged (the crown first), the rubble core in the break; a broken
+        // cell keeps only its springers
+        const P = (a: number, rr: number, z: number): Vec3 => [Math.cos(a) * rr, h + Math.sin(a) * rr, z], N = 8;
+        const len = Array.from({ length: N }, (_, j) => {
+          const m = Math.sin(Math.PI * (j + 0.5) / N);
+          const L = state === 'vault' ? (keep * run + 0.2) * (1 - m * (0.2 + look() * 0.3)) : (0.5 + look() * 0.6) * (1 - m * 1.6);
+          return L < 0.15 ? 0 : L;
+        });
+        for (let j = 0; j < N; j++) {
+          const a0 = Math.PI * j / N, a1 = Math.PI * (j + 1) / N, am = (a0 + a1) / 2, rad: Vec3 = [Math.cos(am), Math.sin(am), 0];
+          if (len[j] > 0) {
+            const ze = zs - len[j];
+            facing(sink, MUD, [P(a0, r, zs), P(a1, r, zs), P(a1, r, ze), P(a0, r, ze)], rad, { decor: true });
+            facing(sink, MUD, [P(a0, r - shell, zs), P(a1, r - shell, zs), P(a1, r - shell, ze), P(a0, r - shell, ze)], [-rad[0], -rad[1], 0], { decor: true, shade: 0.78 });
+            facing(sink, 'stone', [P(a0, r - shell, ze), P(a0, r, ze), P(a1, r, ze), P(a1, r - shell, ze)], [0, 0, -1], core);
+            if (state === 'broken') facing(sink, MUD, [P(a0, r - shell, zs), P(a0, r, zs), P(a1, r, zs), P(a1, r - shell, zs)], [0, 0, 1], { decor: true });
+          }
+          if (j + 1 < N && Math.abs(len[j] - len[j + 1]) > 0.01) {
+            const zA = zs - Math.min(len[j], len[j + 1]), zB = zs - Math.max(len[j], len[j + 1]), tg: Vec3 = [-Math.sin(a1), Math.cos(a1), 0];
+            facing(sink, 'stone', [P(a1, r - shell, zA), P(a1, r, zA), P(a1, r, zB), P(a1, r - shell, zB)], len[j] > len[j + 1] ? tg : [-tg[0], -tg[1], 0], core);
+          }
+        }
+        if (state === 'vault') {
+          // the tympanum over the front wall, and the hoisting beam still through it
+          const arc = Array.from({ length: 9 }, (_, k): Vec3 => P(Math.PI * k / 8, r, zs));
+          sink.prism(MUD, arc, [0, 0, 1], fw);
+          trunkEnd(sink, front, (look() - 0.5) * 0.6, h + r * 0.5, 0.06, 0.8, 0.45 + look() * 0.2, shade(TIMBER, 0.7 + look() * 0.2), look());
+        }
+      }
+      // the fallen vault heaped inside the walls, and its broken bricks on the heap
+      const zm = zs - run * (keep + (1 - keep) * 0.5), mh = state === 'stub' ? 0.9 + look() * 0.3 : 0.6 + look() * 0.3;
+      sink.cylinder(MUD, [0, -0.2, zm], 'y', mh + 0.2, r - 0.12, 9, heap, 0.3, true, look() * 3);
+      if (run * (1 - keep) > 2.6) sink.cylinder(MUD, [0, -0.2, zm - run * (1 - keep) * 0.3], 'y', mh * 0.8, r - 0.2, 9, heap, 0.25, true, look() * 3);
+      for (let k = 0; k < 2; k++) {
+        // (each seated in the heap's slope where it lies)
+        const bx = (look() - 0.5) * (r - 0.4), bz = zm + (look() - 0.5) * 0.8, sz = 0.16 + look() * 0.14, R0 = r - 0.12;
+        const by = -0.2 + (mh + 0.2) * Math.max(0, Math.min(1, (R0 - Math.hypot(bx, bz - zm)) / (R0 - 0.3)));
+        sink.span(look() < 0.5 ? 'stone' : MUD, bx - sz, by - 0.1, bz - sz * 0.7, bx + sz, by + sz * 0.6, bz + sz * 0.7, { decor: true, shade: 0.88, ...(look() < 0.5 ? { tint: core.tint } : {}) });
+      }
+      // the spill before the front: a low slump of mud and stones, a palm beam leant against the front on some
+      if (state !== 'vault') {
+        sink.cylinder(MUD, [(look() - 0.5) * 0.6, -0.2, zf + 0.35], 'y', 0.55 + look() * 0.2, 0.95, 9, heap, 0.3, true, look() * 3);
+        for (let k = 0; k < 2; k++) {
+          const bx = (look() - 0.5) * 1.6, bz = zf + 0.2 + look() * 0.8, sz = 0.12 + look() * 0.12;
+          sink.span('stone', bx - sz, -0.05, bz - sz * 0.8, bx + sz, sz * 0.9, bz + sz * 0.8, { decor: true, tint: [0.88, 0.82, 0.72] });
+        }
+        if (state === 'broken' && look() < 0.7) {
+          const u = (look() < 0.5 ? -1 : 1) * (0.55 + look() * 0.25);
+          sink.pipe('structureWood', [u + 0.2, 0.07, zf + 1.05], [u, 1.25 + look() * 0.1, zf - 0.03], 0.075, 6, { colour: shade(TIMBER, 0.6 + look() * 0.2), decor: true, caps: true });
+        }
+      }
+    });
   }
   return sink.finish();
 };
@@ -953,14 +1120,30 @@ type Side = 'front' | 'right' | 'back' | 'left';
  * radius shrinking with the inset), where the dressing stands.
  */
 function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, yb: number, top: number,
-  rc: number, batter: number, ph: number, t = 0.32): (name: Side, y: number) => Face {
-  const base = roundedRing(x0, z0, x1, z1, rc, 0, yb), crown = roundedRing(x0, z0, x1, z1, rc, batter, top);
-  ringBand(sink, bucket, base, crown, false, {}, new Set());
+  rc: number, batter: number, ph: number, t = 0.32, more: { horn?: number; vented?: readonly Side[]; ledge?: number; salt?: number } = {}): (name: Side, y: number) => Face {
+  // (dome-detail-275) `more`: the parapet's horns and vents (kershefParapet); a `ledge` corbelled out that far round the
+  // crown on a sloped course under it (a gallery's floor); the salt's pale crust `salt` metres up the foot
+  const ring = (inset: number, y: number) => roundedRing(x0, z0, x1, z1, rc, inset, y), at = (y: number) => batter * (y - yb) / (top - yb);
+  const ledge = more.ledge ?? 0, wallTop = ledge > 0 ? top - 0.42 : top;
+  const base = ring(0, yb), wallCrown = ring(at(wallTop), wallTop);
+  if (more.salt) {
+    const ys = yb + more.salt, foot = ring(at(ys), ys);
+    ringBand(sink, bucket, base, foot, false, { tintAt: (p: Vec3): Rgb => (p[1] < ys - 0.01 ? [1.1, 1.1, 1.09] : [1, 1, 1]) });
+    ringBand(sink, bucket, foot, wallCrown);
+  } else ringBand(sink, bucket, base, wallCrown, false, {}, new Set());
+  let inset = at(wallTop);
+  if (ledge > 0) {
+    inset = at(top) - ledge;
+    const lip = ring(inset, top - 0.2);
+    ringBand(sink, bucket, wallCrown, lip, false, { shade: 0.9 });
+    ringBand(sink, bucket, lip, ring(inset, top));
+  }
+  const crown = ring(inset, top);
   sink.polygon(bucket, crown);
   sink.polygon(bucket, [...base].reverse());
-  kershefParapet(sink, bucket, x0, z0, x1, z1, rc, batter, top, ph, t, 0, []);
+  kershefParapet(sink, bucket, x0, z0, x1, z1, rc, inset, top, ph, t, more.horn ?? 0, more.vented ?? []);
   const sideAt = (name: Side, y: number): Face => {
-    const i = batter * (y - yb) / (top - yb);
+    const i = at(Math.min(y, wallTop));
     const fx0 = x0 + rc, fx1 = x1 - rc, fz0 = z0 + rc, fz1 = z1 - rc;
     if (name === 'front') return { origin: [(fx0 + fx1) / 2, 0, z1 - i], u: [1, 0, 0], out: [0, 0, 1], width: fx1 - fx0 };
     if (name === 'back') return { origin: [(fx0 + fx1) / 2, 0, z0 + i], u: [-1, 0, 0], out: [0, 0, -1], width: fx1 - fx0 };
@@ -1057,7 +1240,7 @@ const RING_ARC = 5;
 const SIDE_SEGMENT: Readonly<Record<Side, number>> = Object.freeze({ left: RING_ARC - 1, front: 2 * RING_ARC - 1, right: 3 * RING_ARC - 1, back: 4 * RING_ARC - 1 });
 
 /** A quad wound to face `n` (the side its normal must point to). */
-function facing(sink: PartSink, bucket: RegionalBucket, q: readonly Vec3[], n: Vec3, opts: { decor?: boolean; shade?: number } = {}): void {
+function facing(sink: PartSink, bucket: RegionalBucket, q: readonly Vec3[], n: Vec3, opts: EmitOptions = {}): void {
   const [a, b, c] = q;
   const cx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), cy = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
     cz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
@@ -1472,31 +1655,106 @@ function slitIn(sink: PartSink, f: Face, u: number, y: number, w: number, h: num
   for (const s of [-1, 1]) faceBox(sink, MUD, f, u, y + s * (h / 2 + t / 2), 0.12, w, t, 0.24, o, 'ends');
 }
 
-function mudTower(sink: PartSink, S: number, H: number, rng: () => number, minaret: boolean): void {
+function mudTower(sink: PartSink, S: number, H: number, rng: () => number, minaret: boolean, look: () => number): void {
   // (round 2, the gauntlet's wave 125: "a straight-sided, crenellated castle keep") the tower is battered to its head —
   // two fifths in on a minaret, three tenths on a watch tower — its arrises rounded, a flat parapet head with a
   // bevelled crest, not merlons
-  const a0 = S * 0.5, batter = a0 * (minaret ? 0.4 : 0.3), rc = batter + a0 * 0.14;
-  const sideAt = slumpedMass(sink, MUD, -a0, -a0, a0, a0, -0.3, H, rc, batter, minaret ? 0.7 : 0.55, 0.26);
-  const sides: Side[] = ['front', 'right', 'back', 'left'];
-  if (minaret) {
-    // the gallery's palm beams and the slit openings under the head, on all four faces
-    for (const name of sides) {
-      const f = sideAt(name, H - 1.6);
-      for (const u of [-0.32, 0.32]) slitIn(sink, f, u * f.width, H - 2.1 + 0.37, 0.2, 0.74);
-      const g = sideAt(name, H - 0.75);
-      for (let k = -2; k <= 2; k++) faceBox(sink, 'structureWood', g, k * g.width / 5.5, H - 0.75, 0.1, 0.11, 0.11, 0.22, { colour: PALM, decor: true, uv: UV_MEMBER });
+  const a0 = S * 0.5, batter = a0 * (minaret ? 0.34 : 0.3), rc = batter + a0 * 0.14;
+  const decor = { decor: true } as const, palm = (k: number) => shade(PALM, k + look() * 0.2);
+  // (dome-detail-275: "a plain tapered shaft with slit openings") the tower founded on a course of the salt rock the town
+  // stands on, a hand proud of its foot; the kershef's pale salt crust up the foot
+  const foot = (y: number) => roundedRing(-a0, -a0, a0, a0, rc, -0.07, y);
+  ringBand(sink, 'stone', foot(-0.3), foot(0.2), false, { tintAt: () => [0.96, 0.92, 0.84] });
+  sink.polygon('stone', foot(0.2), { tint: [0.96, 0.92, 0.84] });
+  sink.polygon('stone', [...foot(-0.3)].reverse());
+  // the minaret's gallery: the shaft's head corbelled out on a sloped course over the stair's palm joists, its parapet
+  // horned at the corners and pierced with Siwa's triangular vents; the watch tower's parapet horned too, vented on its
+  // flanks
+  const top = minaret ? H - 3.2 : H, ledge = minaret ? 0.16 : 0;
+  const sideAt = slumpedMass(sink, MUD, -a0, -a0, a0, a0, 0.2, top, rc, batter, minaret ? 0.95 : 0.6, minaret ? 0.22 : 0.26,
+    { horn: minaret ? 0.32 : 0.26, vented: minaret ? SIDES : ['left', 'right'], ledge, salt: 0.9 });
+  const inset = batter - ledge;
+  // palm spouts through the parapet's foot and the rain's runnels down the battered wall under them; the palm trunks'
+  // ends through the wall in rows (a floor's beams, the joists under the gallery)
+  const spouts: readonly Side[] = minaret ? ['right', 'left', 'back'] : ['left', 'right'];
+  for (const name of spouts) {
+    const pf = runFace(-a0, -a0, a0, a0, rc, name, -inset), u = (look() - 0.5) * pf.width * 0.5, sp = { colour: PALM, decor: true, uv: UV_MEMBER } as const;
+    faceSpan(sink, 'structureWood', pf, u - 0.08, u + 0.08, top + 0.02, top + 0.05, -0.2, 0.55, sp);
+    for (const s of [-1, 1]) faceSpan(sink, 'structureWood', pf, u + s * 0.08 - 0.015, u + s * 0.08 + 0.015, top + 0.05, top + 0.13, -0.2, 0.55, { ...sp, colour: shade(PALM, 0.85) });
+    rainStreak(sink, MUD, (y) => sideAt(name, y), u, top - (ledge ? 0.44 : 0.02), top - 2.6 - look() * 1.6, 0.42, 0.6);
+  }
+  const rows = minaret ? [[top - 0.6, 4], [top * 0.52, 2]] as const : [[top - 0.42, 3], [H * 0.56, 2]] as const;
+  for (const [y, n] of rows) for (const name of SIDES) {
+    const f = sideAt(name, y);
+    for (let k = 0; k < n; k++) {
+      const u = (k - (n - 1) / 2) * f.width / n + (look() - 0.5) * 0.12;
+      if (!minaret && name === 'front' && Math.abs(u) < 0.75) continue;
+      trunkEnd(sink, f, u, y, 0.07 + look() * 0.02, 0.35, 0.18 + look() * 0.14, palm(0.65), look());
     }
+  }
+  // the clods the rain has brought down off the walls, slumped at the foot
+  for (let k = 0; k < 3; k++) {
+    const f = runFace(-a0, -a0, a0, a0, rc, SIDES[1 + (k % 3)], 0), c = facePoint(f, (look() - 0.5) * f.width, 0, 0.1 + look() * 0.15);
+    sink.cylinder(MUD, [c[0], 0.1, c[2]], 'y', 0.16 + look() * 0.12, 0.22 + look() * 0.12, 7, { decor: true, tint: [0.95, 0.92, 0.86] }, 0.07, true, look());
+  }
+  // the slits and small windows (each its face's u and height), and the salt-rock lumps standing proud of the render clear
+  // of them
+  const slits: Array<[Side, number, number, number, number]> = [];
+  if (minaret) {
+    for (let k = 0; k < 5; k++) slits.push([SIDES[(k + 1) % 4], (look() - 0.5) * 0.7, 2.4 + k * (top - 3.9) / 4, 0.16, 0.56]);
+    for (const name of SIDES) slits.push([name, (look() - 0.5) * 0.3, top - 1.5, 0.22, 0.62]);
+  } else if (rng() < 0.5) for (const name of SIDES) slits.push([name, 0, H * 0.68 + 0.25, 0.3, 0.5]);
+  else for (const name of ['back', 'left', 'right'] as const) slits.push([name, (look() - 0.5) * 0.6, H * 0.55, 0.18, 0.55]);
+  for (const [name, u, y, w, h] of slits) slitIn(sink, sideAt(name, y), u, y, w, h);
+  for (const name of SIDES) for (let k = 0; k < 2; k++) {
+    const y = 1.4 + look() * (top - 2.8), f = sideAt(name, y), u = (look() - 0.5) * (f.width - 0.6), sz = 0.1 + look() * 0.1;
+    if (slits.some(([n, su, sy]) => n === name && Math.abs(su - u) < 0.5 && Math.abs(sy - y) < 0.7) || (name === 'front' && y < H * 0.3 + 2.3 && Math.abs(u) < 0.8)) continue;
+    faceBox(sink, MUD, f, u, y, 0.02, sz * 1.4, sz, 0.05, { decor: true, shade: 0.9 + look() * 0.15 });
+  }
+  if (minaret) {
+    // the stair's door at the foot under a palm-log lintel, a step of the rock before it; the stair's slits climbing
+    // round the shaft, a window under the gallery on every face
+    const fd = sideAt('front', 1.0);
+    doorUnit(sink, fd, 0, 0.2, 0.85, 1.8, { leaf: PALM_GREY, frame: { bucket: MUD, width: 0.2, out: 0.22 }, steps: null, leafKind: 'plank' });
+    palmLog(sink, sideAt('front', 2.34), -0.66, 0.66, 2.34, 0.085, palm(0.7));
+    sink.span('stone', -0.62, -0.1, a0 - 0.02, 0.62, 0.2, a0 + 0.36, { decor: true, tint: [0.92, 0.88, 0.8] });
+    // the lantern on the gallery: four piers of kershef, an arch each side between them round the stair head's dark, its
+    // head and cornice, the little pointed cap of the same mud and its knob (no cap of another colour)
+    const Lh = 0.78, pp = 0.36, rr = Lh - pp, ls = top + 1.25, crown = ls + rr, lt = crown + 0.36;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      sink.span(MUD, sx < 0 ? -Lh : Lh - pp, top, sz < 0 ? -Lh : Lh - pp, sx < 0 ? -Lh + pp : Lh, crown, sz < 0 ? -Lh + pp : Lh);
+    }
+    sink.span(MUD, -Lh, crown, -Lh, Lh, lt, Lh);
+    sink.span('dark', -0.3, top, -0.3, 0.3, crown, 0.3, decor);
+    const LF = bodyFaces(2 * Lh, 2 * Lh);
+    for (const fn of SIDES) {
+      spandrels(sink, MUD, LF[fn], 0, ls, rr, -0.3, 0.3, {}, 4);
+      trunkEnd(sink, LF[fn], 0, lt - 0.16, 0.055, 0.25, 0.16, palm(0.6), look());
+    }
+    sink.band(MUD, -Lh - 0.08, lt, -Lh - 0.08, Lh + 0.08, lt + 0.12, Lh + 0.08);
+    sink.span(MUD, -Lh - 0.14, lt + 0.12, -Lh - 0.14, Lh + 0.14, lt + 0.22, Lh + 0.14);
+    const cap = smoothDome(sink, MUD, 0, lt + 0.22, 0, 0.7, { form: 'pointed', stilt: 0.14, haunch: true });
+    sink.revolve(MUD, [0, cap.top - 0.04, 0], 'y', [[0, 0.1], [0.12, 0.13], [0.24, 0.07], [0.32, 0]], 10, decor);
   } else {
-    // the watch tower's door, high in its front wall, and a beam over it
+    // the watch tower's door, high in its front wall under a palm-log lintel, and the palm-trunk ladder up to it
     const f = sideAt('front', H * 0.35);
     // (the frame 22 cm proud: the leaf at the back of its reveal, not laid on the wall)
     doorUnit(sink, f, 0, H * 0.3, 0.8, 1.6, { leaf: PALM, frame: { bucket: MUD, width: 0.2, out: 0.22 }, steps: null, leafKind: 'plank' });
-    faceBox(sink, 'structureWood', f, 0, H * 0.3 + 1.75, 0.14, 1.2, 0.12, 0.28, { colour: PALM, decor: true, uv: UV_MEMBER });
-    if (rng() < 0.5) for (const name of sides) {
-      const g = sideAt(name, H * 0.7);
-      slitIn(sink, g, 0, H * 0.68 + 0.25, 0.3, 0.5);
+    palmLog(sink, sideAt('front', H * 0.3 + 1.92), -0.72, 0.72, H * 0.3 + 1.92, 0.085, palm(0.7));
+    const zt = sideAt('front', H * 0.3 + 0.2).origin[2] + 0.2, zg = Math.min(a0 + 0.62, zt + 0.75), lad = { colour: palm(0.75), decor: true } as const;
+    for (const x of [-0.5, 0.5]) sink.pipe('structureWood', [x, -0.05, zg], [x, H * 0.3 + 0.2, zt], 0.05, 6, { ...lad, caps: true });
+    for (let k = 1; k * 0.36 < H * 0.3; k++) {
+      const y = k * 0.36, z = zg + (zt - zg) * (y + 0.05) / (H * 0.3 + 0.25);
+      sink.pipe('structureWood', [-0.5, y, z], [0.5, y, z], 0.03, 5, { ...lad, fine: 'near' });
     }
+    // the lookout's shade on the roof terrace: four palm posts, their beams and a mat of palm ribs over them, screened
+    // with jerid on the windward side
+    const sh = a0 - batter - 0.06 - 0.26 - 0.22, hs = 1.75, pm = { colour: palm(0.8), decor: true, uv: UV_MEMBER } as const;
+    for (const [px, pz] of [[-sh, -sh], [sh, -sh], [-sh, sh], [sh, sh]] as const) sink.span('structureWood', px - 0.06, H - 0.02, pz - 0.06, px + 0.06, H + hs, pz + 0.06, pm);
+    for (const pz of [-sh, sh]) sink.span('structureWood', -sh - 0.12, H + hs - 0.02, pz - 0.06, sh + 0.12, H + hs + 0.1, pz + 0.06, pm);
+    const mat = shade(PALM_GREY, 0.92 + look() * 0.12);
+    sink.span('structureWood', -sh - 0.3, H + hs + 0.1, -sh - 0.25, sh + 0.3, H + hs + 0.16, sh + 0.25, { colour: mat, decor: true });
+    sink.span('structureWood', -sh - 0.02, H + 0.6, -sh - 0.04, sh + 0.02, H + hs + 0.1, -sh, { colour: shade(mat, 0.9), decor: true });
   }
 }
 
@@ -1507,7 +1765,7 @@ const shaliMinaret: RegionalBuilder = (ctx) => {
   const S = Math.max(2.6, Math.min(R.W, R.D) - 0.2);
   const H = Math.max(11, Math.min(15, ctx.info.h - 0.5));
   // (props census #5) the minaret recorded as a shaft body (it topples in its courses)
-  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, true); recordShaft(sink, 0, 0, S, H, MUD); });
+  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, true, ctx.variant); recordShaft(sink, 0, 0, S, H, MUD); });
   return sink.finish();
 };
 
@@ -1517,7 +1775,7 @@ const siwaTower: RegionalBuilder = (ctx) => {
   const R = reach(ctx);
   const S = Math.max(3.0, Math.min(R.W, R.D) - 0.2);
   const H = Math.max(7.5, ctx.info.h - 1.5);
-  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, false); recordShaft(sink, 0, 0, S, H, MUD); });
+  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, false, ctx.variant); recordShaft(sink, 0, 0, S, H, MUD); });
   return sink.finish();
 };
 

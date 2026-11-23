@@ -195,6 +195,11 @@ export interface HouseFrame {
   reveal: number;
   /** the gable openings' reveal depth (HouseDialect.gableOpenings): the reveal's, within the gable wall's 0.32 m */
   gableReveal: number;
+  /**
+   * (dome-detail-275) the roof patch war wear stripped, or null: a kit laying courses over the covering leaves it open
+   * (two kits intercepted the patch's draw calls to find it)
+   */
+  roofPatch: RoofPatch | null;
 }
 
 export interface HouseDialect {
@@ -278,7 +283,12 @@ export function withWear<T>(wear: WearContext | null, build: () => T): T {
   try { return wear?.facade ? withFacade(wear.facade, build) : build(); } finally { wearContext = prior; }
 }
 
-interface RoofPatch { side: 1 | -1; z0: number; z1: number; x0: number; x1: number }
+/**
+ * A stripped roof patch on a war-worn house (wearHouse): on the slope of `side` (the +x or -x slope of the house frame),
+ * x0..x1 its horizontal run measured from the ridge line out toward the eave, z0..z1 its reach along the ridge. A kit
+ * that lays its own roof courses (tile rolls, slates in relief) leaves this rectangle open (HouseFrame.roofPatch).
+ */
+export interface RoofPatch { side: 1 | -1; z0: number; z1: number; x0: number; x1: number }
 
 /** Mark a damaged house's openings (burnt, boarded) and pick its stripped roof patch. */
 function wearHouse(spec: HouseSpec, rg: RoofGeometry): RoofPatch | null {
@@ -1128,11 +1138,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     return f;
   };
   const faces = frameFaces(bodies[0]);
-  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal, gableReveal: Math.min(0.28, Math.max(0.12, reveal)) };
+  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal, gableReveal: Math.min(0.28, Math.max(0.12, reveal)), roofPatch: null };
   const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null, crowns: [] } : null;
   if (plan) planSink!.push(plan);
   if (facadeOn()) groundSkirt(sink, spec, faces);
   const roofPatch = wearHouse(spec, rg);
+  frame.roofPatch = roofPatch;
   // the rain shadow under the eaves (facade craft, desktop): the top storey's eaves faces darken toward the soffit, by
   // the overhang's depth; a gable, a flat roof's parapet or a bare eave casts none
   const rainShadow: Record<FaceName, number> = { front: 1, right: 1, back: 1, left: 1 };

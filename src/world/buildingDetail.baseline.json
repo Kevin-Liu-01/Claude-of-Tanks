@@ -24,8 +24,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 3,
-   "trisPerWallM2": 20.46,
-   "fineShare": 0.483,
+   "trisPerWallM2": 23.07,
+   "fineShare": 0.469,
    "facePass": 0.833
   },
   "breton": {
@@ -88,7 +88,7 @@
    "mid": 4,
    "fine": 4,
    "trisPerWallM2": 23.06,
-   "fineShare": 0.629,
+   "fineShare": 0.622,
    "facePass": 1
   },
   "bengal": {
@@ -133,7 +133,7 @@
    "mid": 6,
    "fine": 5,
    "trisPerWallM2": 18.5,
-   "fineShare": 0.162,
+   "fineShare": 0.155,
    "facePass": 0.75
   },
   "wadirum": {
@@ -168,8 +168,8 @@
    "silhouette": 5,
    "mid": 5,
    "fine": 5,
-   "trisPerWallM2": 29.32,
-   "fineShare": 0.67,
+   "trisPerWallM2": 29.49,
+   "fineShare": 0.663,
    "facePass": 1
   },
   "kyushu": {
@@ -213,8 +213,8 @@
    "silhouette": 3,
    "mid": 4,
    "fine": 4,
-   "trisPerWallM2": 7.16,
-   "fineShare": 0.558,
+   "trisPerWallM2": 7.25,
+   "fineShare": 0.547,
    "facePass": 1
   },
   "shanghai": {
@@ -231,8 +231,8 @@
    "silhouette": 5,
    "mid": 1,
    "fine": 4,
-   "trisPerWallM2": 9.41,
-   "fineShare": 0.619,
+   "trisPerWallM2": 10.36,
+   "fineShare": 0.564,
    "facePass": 1
   },
   "sarajevo": {
@@ -267,8 +267,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 4,
-   "trisPerWallM2": 17.54,
-   "fineShare": 0.629,
+   "trisPerWallM2": 22.7,
+   "fineShare": 0.48,
    "facePass": 1
   },
   "tselina": {
