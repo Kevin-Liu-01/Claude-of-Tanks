@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
 import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
-import { createReplayWorld } from './replay-world.mjs';
+import { createReplayWorldFor } from './replay-world.mjs';
 
 const file = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 const asJson = process.argv.includes('--json');
@@ -28,7 +28,7 @@ try {
 }
 await ensureReplayFleet(recording);
 const setup = recording.header.setup;
-const world = await createReplayWorld(setup.mapId);
+const world = await createReplayWorldFor(setup.mapId);
 const started = performance.now();
 let run = null, error = null;
 try {

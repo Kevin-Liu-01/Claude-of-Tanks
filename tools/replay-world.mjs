@@ -8,6 +8,16 @@ import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 
 const worlds = new Map();
 
+/** (276 sim-det-trig (f)) `--world=shard`: the dedicated server's world, inflated from the committed 0.1 mm shard, with
+ *  the page's spawn points: what an online battle collides on. A solo recording on the 276 page (sim-world-packed)
+ *  must hold on it to its last step. */
+export async function createReplayWorldFor(mapId, argv = process.argv) {
+  if (!argv.includes('--world=shard')) return createReplayWorld(mapId);
+  const [{ createDedicatedWorldCollision }, { withLayoutSpawnPoints }] = await Promise.all([
+    import('../server/dedicatedWorldCollision.ts'), import('../src/game/replay/replayRunner.ts')]);
+  return withLayoutSpawnPoints(createDedicatedWorldCollision(mapId, { retain: true }));
+}
+
 /** The page's world for `mapId` (with its own spawn points), built on first use. */
 export async function createReplayWorld(mapId) {
   if (worlds.has(mapId)) return worlds.get(mapId);

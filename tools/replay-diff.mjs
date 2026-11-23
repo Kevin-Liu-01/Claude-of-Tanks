@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
 import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
-import { createReplayWorld } from './replay-world.mjs';
+import { createReplayWorldFor } from './replay-world.mjs';
 import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, traceRows } from '../src/game/replay/replayTrace.ts';
 
 const [file, traceFile] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
@@ -31,7 +31,7 @@ try {
   process.exit(2);
 }
 await ensureReplayFleet(recording);
-const world = await createReplayWorld(recording.header.setup.mapId);
+const world = await createReplayWorldFor(recording.header.setup.mapId);
 const trace = createReplayTrace();
 const run = createReplayRun(recording, world, { beforeSimStep: (game, tick) => { if (tick === 1) trace.begin(game); } });
 while (run.step()) trace.afterStep(run.game);
