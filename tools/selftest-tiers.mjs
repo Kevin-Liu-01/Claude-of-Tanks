@@ -207,6 +207,8 @@ export const MANUAL_SUITES = Object.freeze({
     // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
     'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 276 (sim-det-trig): the drawn muzzle against the fired one (sim/gunPose.ts) on every production id
+    'src/vehicles/gunPoseVisualFit.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/interiorFillSurface.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
