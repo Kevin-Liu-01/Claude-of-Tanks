@@ -127,7 +127,7 @@ function assertSharing(palette) {
 }
 
 const materialStage = section(source, '  const windowStyle = resolveStructureWindowStyle(mapId);',
-  '  const buckets: CompletePropsBuckets =');
+  '  if (fortPrint) {');
 const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
   'function makeRoofMaterial(', 'function buildStoneCourseEdges('))}\nreturn makeRoofMaterial;`)(THREE);
 // round 75 (2026-09-26): the 'steel' atlas family joins the material stage (propsSteelAtlas.ts)
@@ -139,6 +139,8 @@ const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'ma
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
     const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
     const bridgeAshlar = null; // (world 240, 71aaa6e0c3) the bridge ashlar is cliffbridge's regional kit's alone
+    // (garage-env-276) the stage declares its materials through its owner's callback (props.ts buildStructureSurfaces)
+    const onRetained = (materials, textures) => registerRetainedObject3DResources(group, { materials, textures });
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,

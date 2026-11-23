@@ -3647,347 +3647,11 @@ function hullSeparation(a: number[], b: number[]): { depth: number; ax: number; 
   return depth === Infinity ? null : { depth, ax: bx, az: bz };
 }
 
-export function createProps(
-  heightField: HeightField,
-  engineCtx: EngineContext,
-  seed = 2002,
-  cfg: PropsMapConfig | null = null,
-  vegetation: FisheryVegetation | null = null,
-): PropsRuntime {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
-  let r = g.next();
-  while (!r.done) r = g.next();
-  return r.value;
-}
-
-/** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
-interface WreckBakeRequestRecord { specId: string; seed: number; state: WreckState }
-
 /**
- * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
- * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes),
- * up to the end of the wreck pass ('wrecks-finalized': nothing after it asks for a bake). tools/wreck-bake-plan.mjs
- * records them per map so the browser can start those bakes when the world build starts, beside the terrain and
- * vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ * (garage-env-276) A map's props settings as its world build reads them: the defaults, the map's own, its rocks' soil tone
+ * and its civic plan's overlay. The Garage's scene packs build their structures and surfaces from the same settings.
  */
-export async function recordWreckBakeRequests(
-  heightField: HeightField,
-  engineCtx: EngineContext,
-  seed: number,
-  cfg: PropsMapConfig | null,
-  vegetation: FisheryVegetation | null,
-  bake: (specId: string, options: { seed: number; state: WreckState }) => Promise<WreckBake | null>,
-): Promise<WreckBakeRequestRecord[]> {
-  const requests: WreckBakeRequestRecord[] = [];
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
-  let r = g.next();
-  try {
-    while (!r.done) {
-      const request = r.value?.wreckBake;
-      if (request) {
-        requests.push({ specId: request.specId, seed: request.options.seed, state: request.options.state });
-        request.result = await bake(request.specId, request.options);
-      }
-      if (r.value?.stage === 'wrecks-finalized') break;
-      r = g.next();
-    }
-  } finally {
-    if (!r.done) g.return(undefined as never);
-  }
-  return requests;
-}
-
-/**
- * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
- * one-call build was a single ~1.6 s task behind the loading bar. Awaits
- * `tick(done, total)` between placement families (buildings, rowhouses,
- * walls, trucks, crops, street furniture, wrecks, pool finalization) so the
- * loading screen keeps painting. Byte-identical output: both wrappers drain
- * the same generator, same rng draw order.
- * @param {?function(number, number): (Promise<void>|void)} tick
- */
-export async function createPropsAsync(
-  heightField: HeightField,
-  engineCtx: EngineContext,
-  seed = 2002,
-  cfg: PropsMapConfig | null = null,
-  tick: ((done: number, total: number) => Promise<void> | void) | null = null,
-  fineSlices = false,
-  vegetation: FisheryVegetation | null = null,
-  wreckPrefetch: WreckBakePrefetch | null = null,
-  surfacePrefetch: SurfacePaintPrefetch | null = null,
-): Promise<PropsRuntime> {
-  // IteratorClose must reach delegated builders when an awaited import/tick
-  // rejects. Use the standard iterator return() contract: no final runtime is
-  // published on cancellation, and nested builders release partial owners.
-  const wreckWorker = createPropsWreckWorker(cfg);
-  const sourceAbort = new AbortController();
-  const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
-    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null,
-      { worker: true, signal: sourceAbort.signal });
-  const slices: Array<{ stage: string; ms: number }> = [];
-  const awaitTimings: PropsBuildDetail['awaitTimings'] = {
-    clock: 'performance.now',
-    sliceTicks: { count: 0, totalMs: 0, maxMs: 0 },
-    wreckCheckpoints: { count: 0, totalMs: 0, maxMs: 0 },
-    builderImports: { count: 0, totalMs: 0, maxMs: 0 },
-    wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
-    structureShells: { count: 0, totalMs: 0, maxMs: 0 },
-    structureShellWaits: { count: 0, totalMs: 0, maxMs: 0 },
-    brokenVehicles: { count: 0, totalMs: 0, maxMs: 0 },
-    brokenVehicleWaits: { count: 0, totalMs: 0, maxMs: 0 },
-    wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
-  };
-  const wreckFallbacks = { count: 0, missing: 0 };
-  let synchronousMs = 0;
-  let nextStartedAt = performance.now();
-  let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
-  let i = 0;
-  const total = fineSlices ? 180 : 9;
-  // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
-  // that rejects after one is never taken for a worker failure and baked again
-  let tickFailed = false;
-  const observeTick = (timing: PropsAwaitTiming): Promise<void> | void => {
-    if (!tick) return;
-    const startedAt = performance.now();
-    const settled = (): void => { recordPropsAwait(timing, startedAt); };
-    try {
-      const pending = tick?.(i, total);
-      // Observe settlement without wrapping the returned promise or inserting
-      // another awaited hop into the caller's original pacing continuation.
-      if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
-      else settled();
-      return pending;
-    } catch (error) {
-      tickFailed = true;
-      settled();
-      throw error;
-    }
-  };
-  // (the wreck-worker lane) once a worker bake fails (the prefetch's or this build's: a worker that failed to start,
-  // went silent or reported an error), the rest of this build bakes its wrecks on the main thread
-  let wreckWorkerFailure: unknown = null;
-  const wreckCheckpoint = (): Promise<void> | void => observeTick(awaitTimings.wreckCheckpoints);
-  /** A pool's join: its workers' answers awaited at the build's pacing, the newest unanswered job taken meanwhile. */
-  const awaitPoolJoin = async (
-    join: Promise<void>, steal: (() => boolean) | undefined, ticks: PropsAwaitTiming, waits: PropsAwaitTiming,
-  ): Promise<void> => {
-    const startedAt = performance.now();
-    let settled = false;
-    void join.then(() => { settled = true; });
-    while (!settled) {
-      // (2026-10-15) work at the other end of the queue instead of idling, one job a turn
-      if (steal?.()) {
-        await observeTick(ticks);
-        continue;
-      }
-      await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
-      if (!settled) await observeTick(ticks);
-    }
-    recordPropsAwait(waits, startedAt);
-  };
-  try {
-    r = g.next();
-    // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
-    // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
-    // builders up front
-    if (!wreckPrefetch) wreckWorker?.prepare();
-    while (!r.done) {
-      // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
-      assertNoBuildScopeOpen('props build');
-      const sliceMs = performance.now() - nextStartedAt;
-      synchronousMs += sliceMs;
-      const step = r.value;
-      slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
-      if (step?.surfacePaint && surfacePrefetch) {
-        // (the time-to-battle lane) a print painted ahead with the terrain; a failed one is painted where it stands
-        const ahead = surfacePrefetch.take(step.surfacePaint.key);
-        if (ahead) {
-          try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
-        }
-      }
-      // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
-      if (step?.structureShells) {
-        await awaitPoolJoin(step.structureShells, step.stealStructureShell, awaitTimings.structureShells, awaitTimings.structureShellWaits);
-      }
-      // (perf-248) and the broken-vehicle pool's workers its bodies, the same way
-      if (step?.brokenVehicles) {
-        await awaitPoolJoin(step.brokenVehicles, step.stealBrokenVehicle, awaitTimings.brokenVehicles, awaitTimings.brokenVehicleWaits);
-      }
-      if (step?.tankBuilder && !wreckWorker) {
-        const startedAt = performance.now();
-        await ensureTankBuilder(step.tankBuilder);
-        recordPropsAwait(awaitTimings.builderImports, startedAt);
-      }
-      if (step?.wreckBake && wreckWorker) {
-        const request = step.wreckBake;
-        const startedAt = performance.now();
-        const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
-        // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
-        // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
-        const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
-        let baked = false;
-        if (planned) {
-          let settled = false;
-          let value: WreckBake | null = null, failure: unknown = null;
-          planned.then((result) => { settled = true; value = result; }, (error) => { settled = true; failure = error ?? 'failed'; });
-          while (!settled) {
-            await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
-            if (!settled) await wreckCheckpoint();
-          }
-          if (failure === null) { request.result = value; baked = true; } else wreckWorkerFailure ??= failure;
-        }
-        if (!baked && wreckWorkerFailure === null) {
-          try {
-            request.result = await wreckWorker.bake(request.specId, request.options, wreckCheckpoint);
-            baked = true;
-          } catch (error) {
-            // a cancelled build stays cancelled; only the worker's own failure falls back
-            if (tickFailed) throw error;
-            wreckWorkerFailure = error ?? 'failed';
-          }
-        }
-        if (!baked) {
-          // (the wreck-worker lane, 2026-10-09) the worker never decides whether a battle starts: the same request is
-          // baked here, on the main thread (bakeWreckOnMainThread)
-          if (!wreckFallbacks.count++) {
-            console.warn(`[props] the wreck worker failed (${describePropsFailure(wreckWorkerFailure)}); `
-              + 'this map\'s wrecks are baked on the main thread');
-          }
-          request.result = await bakeWreckOnMainThread(request, wreckCheckpoint);
-          if (!request.result) wreckFallbacks.missing++;
-        }
-        const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
-        // Inclusive elapsed time includes nested checkpoints, worker transfer
-        // and main-thread hydration. It is not worker CPU time or network time.
-        if (awaitTimings.wreckRows.length < awaitTimings.wreckRowsLimit) {
-          awaitTimings.wreckRows.push({ specId: request.specId, startMs: startedAt, endMs,
-            elapsedMs: endMs - startedAt,
-            includedCheckpointMs: awaitTimings.wreckCheckpoints.totalMs - checkpointsBefore });
-        } else awaitTimings.wreckRowsDropped++;
-      }
-      if (tick && (fineSlices || !step || !step.fine)) {
-        if (step?.progress !== false) i++;
-        await observeTick(awaitTimings.sliceTicks);
-      }
-      nextStartedAt = performance.now();
-      r = g.next();
-    }
-    const finalMs = performance.now() - nextStartedAt;
-    synchronousMs += finalMs;
-    slices.push({ stage: 'finalize', ms: finalMs });
-    const runtime = r.value;
-    const slowest = slices.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
-    runtime._buildDetail = {
-      sliceCount: slices.length,
-      synchronousMs,
-      maxSliceMs: slowest[0]?.ms || 0,
-      slowest,
-      awaitTimings,
-      ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
-      ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
-      ...(runtime.structureShellStats ? { structureShells: runtime.structureShellStats } : {}),
-      ...(runtime.brokenVehicleStats ? { brokenVehicles: runtime.brokenVehicleStats } : {}),
-      ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
-        reason: describePropsFailure(wreckWorkerFailure) } } : {}),
-    };
-    return runtime;
-  } finally {
-    closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
-    wreckWorker?.dispose();
-  }
-}
-
-function describePropsFailure(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
-}
-
-/**
- * (the wreck-worker lane, 2026-10-09) A wreck bake the worker could not deliver — a worker that failed to start or to
- * load its donor, went silent past its timeout, or replied with an error — baked on the main thread: the worker's own
- * bake (wreckBakeWorker.ts: the donor's builder, then bakeTankWreck with an empty engine context) through its
- * cooperative twin, the same donor, seed, pop and remnant paint, so the same wreck. The wait between its slices is the
- * worker wait's checkpoint (pacing, cancellation). A donor that cannot be built here either places no wreck at that
- * site (null, as a failed bake always has).
- */
-async function bakeWreckOnMainThread(
-  request: NonNullable<PropsBuildSlice['wreckBake']>,
-  checkpoint: () => Promise<void> | void,
-): Promise<WreckBake | null> {
-  try {
-    await ensureTankBuilder(request.specId);
-  } catch (error) {
-    console.warn(`[props] no wreck of ${request.specId}: its builder did not load (${describePropsFailure(error)})`);
-    return null;
-  }
-  const steps = bakeTankWreckSteps({}, request.specId, request.options);
-  let completed = false;
-  try {
-    let step = steps.next();
-    while (!step.done) {
-      await checkpoint();
-      step = steps.next();
-    }
-    completed = true;
-    return step.value;
-  } finally {
-    // a cancelled build closes the bake: its temporary tank and partial geometry are released
-    if (!completed) steps.return(null);
-  }
-}
-
-function recordPropsAwait(timing: PropsAwaitTiming, startedAt: number): number {
-  const endedAt = performance.now();
-  const elapsedMs = endedAt - startedAt;
-  timing.count++;
-  timing.totalMs += elapsedMs;
-  timing.maxMs = Math.max(timing.maxMs, elapsedMs);
-  return endedAt;
-}
-
-function createPropsWreckWorker(cfg: PropsMapConfig | null): ReturnType<typeof createWreckBakeClient> | null {
-  const wreckCount = cfg?.props?.tankWrecks
-    ? (cfg.props.tankWrecks.count ?? 3) : (cfg?.props?.wrecks ?? 4);
-  return typeof Worker === 'undefined' || wreckCount <= 0 ? null : createWreckBakeClient();
-}
-
-function closeIncompletePropsBuild(
-  completed: boolean,
-  iterator: Iterator<PropsBuildSlice | undefined, PropsRuntime, void>,
-  sourceAbort: AbortController,
-): void {
-  if (completed) return;
-  // Cancel this build's consumer only. Successful runtimes retain their
-  // intentionally nonblocking sourcedTexturesReady owner after return.
-  sourceAbort.abort();
-  // IteratorClose cleanup must not replace the failed import/tick/build.
-  try { iterator.return?.(); } catch (_) { /* retain the original failure */ }
-}
-
-/** A pooled structure's place in the colliders until joinStructureShells (Plan W): any read of it before then throws. */
-function pendingShellRecord(id: string): CollisionRecord {
-  return new Proxy({} as CollisionRecord, {
-    get(_target, key) {
-      if (typeof key === 'symbol') return undefined;
-      throw new Error(`${id}: structure shell record read (${key}) before the build joined the pool`);
-    },
-    set(_target, key) { throw new Error(`${id}: structure shell record written (${String(key)}) before the build joined the pool`); },
-  });
-}
-/** How long the async build waits at the join for the pool's answers before deriving the rest itself (ms). */
-const STRUCTURE_SHELL_WAIT_MS = 15000;
-/** (perf-248) And at the broken vehicles' join before building the rest itself (ms). */
-const BROKEN_VEHICLE_WAIT_MS = 15000;
-
-function* propsBuildSteps(
-  heightField: HeightField,
-  engineCtx: EngineContext,
-  seed: number,
-  cfg: PropsMapConfig | null,
-  vegetation: FisheryVegetation | null,
-  workerWrecks = false,
-  sourceApplication: SourcedTextureApplicationOptions = {},
-): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
+export function resolvePropsSettings(cfg: PropsMapConfig | null): PropsSettings {
   const P: PropsSettings = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
       'cottage', 'barn', 'cottage', 'cottage'],
@@ -4014,67 +3678,49 @@ function* propsBuildSteps(
   // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
-  const mapId = cfg ? cfg.id : 'verdant';
-  // (2026-11-02 audit R2) the world's own identity, its map and its terrain variant: the trench variant of a map is another
-  // world (its destructible registration, its deferred structure measures), never the standard world's replacement
-  const worldKey = worldBuildKey(cfg);
-  // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
-  // build describes its first building and the queue would take them all in one go
-  while (measureOtherMapStructures(worldKey, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
   // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
-  const civicPlan = civicPlanFor(mapId);
+  const civicPlan = civicPlanFor(cfg ? cfg.id : 'verdant');
   if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
-  // (the maps lane, 228) the main stream's draws counted (the civic receipts hold a plan's build to the map's own: every
-  // seeded pass draws as on the map without it)
-  const mainStream = mulberry32(seed);
-  let mainDraws = 0;
-  const rng: Rng = () => { mainDraws++; return mainStream(); };
-  const detailUvRng = () => 0.5;
-  const L = heightField._layout;
-  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
-  // (sim/matchPlacement.ts deploymentClearings). The seeded passes test the pads as before; the scatter a pass would
-  // stand round a slot is left out AFTER its draws (addDestructible's veto, tryRock), so nothing else moves.
-  const deploymentSlots = deploymentClearings(heightField);
-  // (bridge-footings-275) the bridges' piers (mapKits.ts bridgeSupportFootprints): a prop the scatter would stand inside
-  // one is left out after its draws, as a slot's clearing, so nothing else moves
-  const bridgePiers = bridgeSupportFootprints(mapId, P.extraKits ?? null, P.riverLandings, heightField);
-  const bridgePierVetoed: Record<string, number> = {};
-  const inBridgePier = (x: number, z: number, r: number): boolean => bridgePiers.some((p) => {
-    const dx = x - p.x, dz = z - p.z;
-    return Math.abs(dx * p.c - dz * p.s) < p.hw + r && Math.abs(dx * p.s + dz * p.c) < p.hd + r;
-  });
-  const noVeg = heightField._noVeg || (() => false);
-  const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
-  registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
-  // (the time-to-battle lane, 2026-10-08) the near terrain mesh's vertex heights, each asked of the field once per build:
-  // the rock beds, the ground contact patches and the wall turf all conform to that grid (terrain.ts
-  // terrainNearMeshHeightAt) and asked its vertices 182 k times on Verdant, 174 k of them again. The field's own heights
-  // by their exact coordinates (the build changes no height), so the same values; released when the build returns.
-  let nearMeshVertexHeights: Map<number, Map<number, number>> | null = new Map();
-  const nearMeshVertexHeight = (px: number, pz: number): number => {
-    if (!nearMeshVertexHeights || px === 0 || pz === 0) return heightField.getHeightAt(px, pz);
-    let row = nearMeshVertexHeights.get(px);
-    if (!row) nearMeshVertexHeights.set(px, row = new Map());
-    let h = row.get(pz);
-    if (h === undefined) row.set(pz, h = heightField.getHeightAt(px, pz));
-    return h;
-  };
-  const aniso = engineCtx.anisotropy ?? 4;
-  const group = new THREE.Group();
-  group.name = 'props';
-  const offerPrograms = (root: THREE.Object3D): void => {
-    try { engineCtx.submitBuiltPrograms?.(root); } catch { /* the activation's compile and the first frame remain */ }
-  };
-  const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
-  const v = L.village;
-  // maps lane B (2026-10-03): the settlement the props dress (P.town, default the village rect); the scatter below keeps
-  // off the whole graded village ground (v) as before
-  const town = P.town ? { ...v, ...P.town } : v;
+  return P;
+}
 
+/** (garage-env-276) One placed building's bucket set, as the props build and the Garage's scene packs build it. */
+export function createStructureBuckets(): PropsBuckets {
+  return {
+    plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+  };
+}
+
+/** (garage-env-276) What a map's structure builders may read about it (exteriorDetailKit.ts StructureBuildContext). */
+export function structureBuildContextFor(mapId: string, P: PropsSettings, seed: number): StructureBuildContext {
+  return { mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick' };
+}
+
+/** What the battlefield's structure surfaces are built from (buildStructureSurfaces). */
+export interface StructureSurfaceInputs {
+  readonly mapId: string;
+  readonly cfg: PropsMapConfig | null;
+  /** The map's props settings (resolvePropsSettings); the kit's tones and relief are written into them. */
+  readonly P: PropsSettings;
+  readonly noi: SimplexNoise;
+  readonly aniso: number;
+  readonly engineCtx: Pick<EngineContext, 'setupShadowMaterial'>;
+  readonly sourceApplication: SourcedTextureApplicationOptions;
+  /** Declares the surfaces' materials and shader-only textures on their owner, before the build's next checkpoint. */
+  readonly onRetained: (materials: THREE.Material[], textures: THREE.Texture[]) => void;
+}
+
+/**
+ * (garage-env-276) A battlefield's structure surfaces: its regional kit, the procedural and sourced prints, the material
+ * table every structure bucket draws with, the weathering, rust and snow hooks, and the on-demand steel atlas. The props
+ * build and the Garage's scene packs both build their structures' looks here, so a map's buildings read the same in
+ * either (the Garage once re-skinned them with its own nine surfaces and a grey `dark`).
+ */
+export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
+  const { mapId, cfg, P, noi, aniso, engineCtx, sourceApplication, onRetained } = inputs;
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
-  // (buildings-270) this build's look ledger: no two neighbouring buildings share every feature (regional/appearance.ts)
-  const lookLedger = new AppearanceLedger();
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
   // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
   // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
@@ -4409,9 +4055,7 @@ function* propsBuildSteps(
   // both on their world owner so eviction releases every shadow registration
   // and texture, while GPU suspension retains the same reusable CPU objects.
   const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
-  registerRetainedObject3DResources(group, {
-    materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
-  });
+  onRetained(retainedSurfaceMaterials, [grimeTex, rockDetail.lichen]);
   yield { fine: true, stage: 'grime-texture' };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
   // material whitens its UP-FACING fragments toward drifted snow (clumpy,
@@ -4586,14 +4230,6 @@ ${snowCap ? `
   if (regionalArchitecture?.surfaces.woodAo === 0) { mats.wood.aoMap = null; mats.structureWood.aoMap = null; }
   installSurfaceShaderHooks();
 
-  const buckets: CompletePropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
-    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
-    regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
-    ...(mats.bridgeStone ? { bridgeStone: [] } : {}),
-    // (the phones keep the rail bed on the baked material: no ballast program there)
-    ...(mobileProps ? {} : { ballast: [] }),
-  };
   // the fortifications lane (2026-10-09): the pillbox's concrete (maps/fortKit.ts), made here, outside the shared material
   // stage (whose receipts evaluate it over their own atlas families): the board-formed print under the kit's vertex
   // weather, the props' weathering hook, its own program, owned with the rest. A map whose pillbox is not the kit's (the
@@ -4615,7 +4251,6 @@ ${snowCap ? `
   // paints its own masonry there (the Dalmatian limestone under the tint burned out white)
   const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
   if (masonryTint) mats.fieldStone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
-  group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
     for (const _ of ensureSteelAtlasSteps(reason)) { /* one task: a recorded building's */ }
@@ -4644,6 +4279,450 @@ ${snowCap ? `
     mats.steel.aoMap = steel.surface;
     mats.steel.needsUpdate = true;
   }
+  return {
+    T,
+    adobeWallBucket,
+    brickWalls,
+    ensureSteelAtlas,
+    ensureSteelAtlasSteps,
+    fieldWallBucket,
+    fort,
+    grimeHook,
+    grimeTex,
+    isKitWall,
+    mats,
+    mobileProps,
+    mudShape,
+    regionalArchitecture,
+    retainedSurfaceMaterials,
+    rockDressing,
+    snowCap,
+    sourcedTexturesReady,
+    steelAtlas,
+    stoneShape,
+    wallGrimeHook,
+  };
+}
+export type StructureSurfaces = ReturnType<typeof buildStructureSurfaces> extends Generator<unknown, infer R, unknown> ? R : never;
+
+export function createProps(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed = 2002,
+  cfg: PropsMapConfig | null = null,
+  vegetation: FisheryVegetation | null = null,
+): PropsRuntime {
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+/** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
+interface WreckBakeRequestRecord { specId: string; seed: number; state: WreckState }
+
+/**
+ * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
+ * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes),
+ * up to the end of the wreck pass ('wrecks-finalized': nothing after it asks for a bake). tools/wreck-bake-plan.mjs
+ * records them per map so the browser can start those bakes when the world build starts, beside the terrain and
+ * vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ */
+export async function recordWreckBakeRequests(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
+  bake: (specId: string, options: { seed: number; state: WreckState }) => Promise<WreckBake | null>,
+): Promise<WreckBakeRequestRecord[]> {
+  const requests: WreckBakeRequestRecord[] = [];
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
+  let r = g.next();
+  try {
+    while (!r.done) {
+      const request = r.value?.wreckBake;
+      if (request) {
+        requests.push({ specId: request.specId, seed: request.options.seed, state: request.options.state });
+        request.result = await bake(request.specId, request.options);
+      }
+      if (r.value?.stage === 'wrecks-finalized') break;
+      r = g.next();
+    }
+  } finally {
+    if (!r.done) g.return(undefined as never);
+  }
+  return requests;
+}
+
+/**
+ * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
+ * one-call build was a single ~1.6 s task behind the loading bar. Awaits
+ * `tick(done, total)` between placement families (buildings, rowhouses,
+ * walls, trucks, crops, street furniture, wrecks, pool finalization) so the
+ * loading screen keeps painting. Byte-identical output: both wrappers drain
+ * the same generator, same rng draw order.
+ * @param {?function(number, number): (Promise<void>|void)} tick
+ */
+export async function createPropsAsync(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed = 2002,
+  cfg: PropsMapConfig | null = null,
+  tick: ((done: number, total: number) => Promise<void> | void) | null = null,
+  fineSlices = false,
+  vegetation: FisheryVegetation | null = null,
+  wreckPrefetch: WreckBakePrefetch | null = null,
+  surfacePrefetch: SurfacePaintPrefetch | null = null,
+): Promise<PropsRuntime> {
+  // IteratorClose must reach delegated builders when an awaited import/tick
+  // rejects. Use the standard iterator return() contract: no final runtime is
+  // published on cancellation, and nested builders release partial owners.
+  const wreckWorker = createPropsWreckWorker(cfg);
+  const sourceAbort = new AbortController();
+  const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
+    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null,
+      { worker: true, signal: sourceAbort.signal });
+  const slices: Array<{ stage: string; ms: number }> = [];
+  const awaitTimings: PropsBuildDetail['awaitTimings'] = {
+    clock: 'performance.now',
+    sliceTicks: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckCheckpoints: { count: 0, totalMs: 0, maxMs: 0 },
+    builderImports: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShells: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShellWaits: { count: 0, totalMs: 0, maxMs: 0 },
+    brokenVehicles: { count: 0, totalMs: 0, maxMs: 0 },
+    brokenVehicleWaits: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
+  };
+  const wreckFallbacks = { count: 0, missing: 0 };
+  let synchronousMs = 0;
+  let nextStartedAt = performance.now();
+  let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
+  let i = 0;
+  const total = fineSlices ? 180 : 9;
+  // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
+  // that rejects after one is never taken for a worker failure and baked again
+  let tickFailed = false;
+  const observeTick = (timing: PropsAwaitTiming): Promise<void> | void => {
+    if (!tick) return;
+    const startedAt = performance.now();
+    const settled = (): void => { recordPropsAwait(timing, startedAt); };
+    try {
+      const pending = tick?.(i, total);
+      // Observe settlement without wrapping the returned promise or inserting
+      // another awaited hop into the caller's original pacing continuation.
+      if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
+      else settled();
+      return pending;
+    } catch (error) {
+      tickFailed = true;
+      settled();
+      throw error;
+    }
+  };
+  // (the wreck-worker lane) once a worker bake fails (the prefetch's or this build's: a worker that failed to start,
+  // went silent or reported an error), the rest of this build bakes its wrecks on the main thread
+  let wreckWorkerFailure: unknown = null;
+  const wreckCheckpoint = (): Promise<void> | void => observeTick(awaitTimings.wreckCheckpoints);
+  /** A pool's join: its workers' answers awaited at the build's pacing, the newest unanswered job taken meanwhile. */
+  const awaitPoolJoin = async (
+    join: Promise<void>, steal: (() => boolean) | undefined, ticks: PropsAwaitTiming, waits: PropsAwaitTiming,
+  ): Promise<void> => {
+    const startedAt = performance.now();
+    let settled = false;
+    void join.then(() => { settled = true; });
+    while (!settled) {
+      // (2026-10-15) work at the other end of the queue instead of idling, one job a turn
+      if (steal?.()) {
+        await observeTick(ticks);
+        continue;
+      }
+      await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
+      if (!settled) await observeTick(ticks);
+    }
+    recordPropsAwait(waits, startedAt);
+  };
+  try {
+    r = g.next();
+    // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
+    // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
+    // builders up front
+    if (!wreckPrefetch) wreckWorker?.prepare();
+    while (!r.done) {
+      // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
+      assertNoBuildScopeOpen('props build');
+      const sliceMs = performance.now() - nextStartedAt;
+      synchronousMs += sliceMs;
+      const step = r.value;
+      slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
+      if (step?.surfacePaint && surfacePrefetch) {
+        // (the time-to-battle lane) a print painted ahead with the terrain; a failed one is painted where it stands
+        const ahead = surfacePrefetch.take(step.surfacePaint.key);
+        if (ahead) {
+          try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
+        }
+      }
+      // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
+      if (step?.structureShells) {
+        await awaitPoolJoin(step.structureShells, step.stealStructureShell, awaitTimings.structureShells, awaitTimings.structureShellWaits);
+      }
+      // (perf-248) and the broken-vehicle pool's workers its bodies, the same way
+      if (step?.brokenVehicles) {
+        await awaitPoolJoin(step.brokenVehicles, step.stealBrokenVehicle, awaitTimings.brokenVehicles, awaitTimings.brokenVehicleWaits);
+      }
+      if (step?.tankBuilder && !wreckWorker) {
+        const startedAt = performance.now();
+        await ensureTankBuilder(step.tankBuilder);
+        recordPropsAwait(awaitTimings.builderImports, startedAt);
+      }
+      if (step?.wreckBake && wreckWorker) {
+        const request = step.wreckBake;
+        const startedAt = performance.now();
+        const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
+        // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
+        // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
+        const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
+        let baked = false;
+        if (planned) {
+          let settled = false;
+          let value: WreckBake | null = null, failure: unknown = null;
+          planned.then((result) => { settled = true; value = result; }, (error) => { settled = true; failure = error ?? 'failed'; });
+          while (!settled) {
+            await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
+            if (!settled) await wreckCheckpoint();
+          }
+          if (failure === null) { request.result = value; baked = true; } else wreckWorkerFailure ??= failure;
+        }
+        if (!baked && wreckWorkerFailure === null) {
+          try {
+            request.result = await wreckWorker.bake(request.specId, request.options, wreckCheckpoint);
+            baked = true;
+          } catch (error) {
+            // a cancelled build stays cancelled; only the worker's own failure falls back
+            if (tickFailed) throw error;
+            wreckWorkerFailure = error ?? 'failed';
+          }
+        }
+        if (!baked) {
+          // (the wreck-worker lane, 2026-10-09) the worker never decides whether a battle starts: the same request is
+          // baked here, on the main thread (bakeWreckOnMainThread)
+          if (!wreckFallbacks.count++) {
+            console.warn(`[props] the wreck worker failed (${describePropsFailure(wreckWorkerFailure)}); `
+              + 'this map\'s wrecks are baked on the main thread');
+          }
+          request.result = await bakeWreckOnMainThread(request, wreckCheckpoint);
+          if (!request.result) wreckFallbacks.missing++;
+        }
+        const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
+        // Inclusive elapsed time includes nested checkpoints, worker transfer
+        // and main-thread hydration. It is not worker CPU time or network time.
+        if (awaitTimings.wreckRows.length < awaitTimings.wreckRowsLimit) {
+          awaitTimings.wreckRows.push({ specId: request.specId, startMs: startedAt, endMs,
+            elapsedMs: endMs - startedAt,
+            includedCheckpointMs: awaitTimings.wreckCheckpoints.totalMs - checkpointsBefore });
+        } else awaitTimings.wreckRowsDropped++;
+      }
+      if (tick && (fineSlices || !step || !step.fine)) {
+        if (step?.progress !== false) i++;
+        await observeTick(awaitTimings.sliceTicks);
+      }
+      nextStartedAt = performance.now();
+      r = g.next();
+    }
+    const finalMs = performance.now() - nextStartedAt;
+    synchronousMs += finalMs;
+    slices.push({ stage: 'finalize', ms: finalMs });
+    const runtime = r.value;
+    const slowest = slices.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+    runtime._buildDetail = {
+      sliceCount: slices.length,
+      synchronousMs,
+      maxSliceMs: slowest[0]?.ms || 0,
+      slowest,
+      awaitTimings,
+      ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
+      ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
+      ...(runtime.structureShellStats ? { structureShells: runtime.structureShellStats } : {}),
+      ...(runtime.brokenVehicleStats ? { brokenVehicles: runtime.brokenVehicleStats } : {}),
+      ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
+        reason: describePropsFailure(wreckWorkerFailure) } } : {}),
+    };
+    return runtime;
+  } finally {
+    closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
+    wreckWorker?.dispose();
+  }
+}
+
+function describePropsFailure(failure: unknown): string {
+  return failure instanceof Error ? failure.message : String(failure);
+}
+
+/**
+ * (the wreck-worker lane, 2026-10-09) A wreck bake the worker could not deliver — a worker that failed to start or to
+ * load its donor, went silent past its timeout, or replied with an error — baked on the main thread: the worker's own
+ * bake (wreckBakeWorker.ts: the donor's builder, then bakeTankWreck with an empty engine context) through its
+ * cooperative twin, the same donor, seed, pop and remnant paint, so the same wreck. The wait between its slices is the
+ * worker wait's checkpoint (pacing, cancellation). A donor that cannot be built here either places no wreck at that
+ * site (null, as a failed bake always has).
+ */
+async function bakeWreckOnMainThread(
+  request: NonNullable<PropsBuildSlice['wreckBake']>,
+  checkpoint: () => Promise<void> | void,
+): Promise<WreckBake | null> {
+  try {
+    await ensureTankBuilder(request.specId);
+  } catch (error) {
+    console.warn(`[props] no wreck of ${request.specId}: its builder did not load (${describePropsFailure(error)})`);
+    return null;
+  }
+  const steps = bakeTankWreckSteps({}, request.specId, request.options);
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      await checkpoint();
+      step = steps.next();
+    }
+    completed = true;
+    return step.value;
+  } finally {
+    // a cancelled build closes the bake: its temporary tank and partial geometry are released
+    if (!completed) steps.return(null);
+  }
+}
+
+function recordPropsAwait(timing: PropsAwaitTiming, startedAt: number): number {
+  const endedAt = performance.now();
+  const elapsedMs = endedAt - startedAt;
+  timing.count++;
+  timing.totalMs += elapsedMs;
+  timing.maxMs = Math.max(timing.maxMs, elapsedMs);
+  return endedAt;
+}
+
+function createPropsWreckWorker(cfg: PropsMapConfig | null): ReturnType<typeof createWreckBakeClient> | null {
+  const wreckCount = cfg?.props?.tankWrecks
+    ? (cfg.props.tankWrecks.count ?? 3) : (cfg?.props?.wrecks ?? 4);
+  return typeof Worker === 'undefined' || wreckCount <= 0 ? null : createWreckBakeClient();
+}
+
+function closeIncompletePropsBuild(
+  completed: boolean,
+  iterator: Iterator<PropsBuildSlice | undefined, PropsRuntime, void>,
+  sourceAbort: AbortController,
+): void {
+  if (completed) return;
+  // Cancel this build's consumer only. Successful runtimes retain their
+  // intentionally nonblocking sourcedTexturesReady owner after return.
+  sourceAbort.abort();
+  // IteratorClose cleanup must not replace the failed import/tick/build.
+  try { iterator.return?.(); } catch (_) { /* retain the original failure */ }
+}
+
+/** A pooled structure's place in the colliders until joinStructureShells (Plan W): any read of it before then throws. */
+function pendingShellRecord(id: string): CollisionRecord {
+  return new Proxy({} as CollisionRecord, {
+    get(_target, key) {
+      if (typeof key === 'symbol') return undefined;
+      throw new Error(`${id}: structure shell record read (${key}) before the build joined the pool`);
+    },
+    set(_target, key) { throw new Error(`${id}: structure shell record written (${String(key)}) before the build joined the pool`); },
+  });
+}
+/** How long the async build waits at the join for the pool's answers before deriving the rest itself (ms). */
+const STRUCTURE_SHELL_WAIT_MS = 15000;
+/** (perf-248) And at the broken vehicles' join before building the rest itself (ms). */
+const BROKEN_VEHICLE_WAIT_MS = 15000;
+
+
+function* propsBuildSteps(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
+  workerWrecks = false,
+  sourceApplication: SourcedTextureApplicationOptions = {},
+): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
+  const P = resolvePropsSettings(cfg);
+  const mapId = cfg ? cfg.id : 'verdant';
+  // (2026-11-02 audit R2) the world's own identity, its map and its terrain variant: the trench variant of a map is another
+  // world (its destructible registration, its deferred structure measures), never the standard world's replacement
+  const worldKey = worldBuildKey(cfg);
+  // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
+  // build describes its first building and the queue would take them all in one go
+  while (measureOtherMapStructures(worldKey, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
+  // (the maps lane, 228) a map's civic plan (its overlay is in P: resolvePropsSettings)
+  const civicPlan = civicPlanFor(mapId);
+  // (the maps lane, 228) the main stream's draws counted (the civic receipts hold a plan's build to the map's own: every
+  // seeded pass draws as on the map without it)
+  const mainStream = mulberry32(seed);
+  let mainDraws = 0;
+  const rng: Rng = () => { mainDraws++; return mainStream(); };
+  const detailUvRng = () => 0.5;
+  const L = heightField._layout;
+  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
+  // (sim/matchPlacement.ts deploymentClearings). The seeded passes test the pads as before; the scatter a pass would
+  // stand round a slot is left out AFTER its draws (addDestructible's veto, tryRock), so nothing else moves.
+  const deploymentSlots = deploymentClearings(heightField);
+  // (bridge-footings-275) the bridges' piers (mapKits.ts bridgeSupportFootprints): a prop the scatter would stand inside
+  // one is left out after its draws, as a slot's clearing, so nothing else moves
+  const bridgePiers = bridgeSupportFootprints(mapId, P.extraKits ?? null, P.riverLandings, heightField);
+  const bridgePierVetoed: Record<string, number> = {};
+  const inBridgePier = (x: number, z: number, r: number): boolean => bridgePiers.some((p) => {
+    const dx = x - p.x, dz = z - p.z;
+    return Math.abs(dx * p.c - dz * p.s) < p.hw + r && Math.abs(dx * p.s + dz * p.c) < p.hd + r;
+  });
+  const noVeg = heightField._noVeg || (() => false);
+  const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
+  registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
+  // (the time-to-battle lane, 2026-10-08) the near terrain mesh's vertex heights, each asked of the field once per build:
+  // the rock beds, the ground contact patches and the wall turf all conform to that grid (terrain.ts
+  // terrainNearMeshHeightAt) and asked its vertices 182 k times on Verdant, 174 k of them again. The field's own heights
+  // by their exact coordinates (the build changes no height), so the same values; released when the build returns.
+  let nearMeshVertexHeights: Map<number, Map<number, number>> | null = new Map();
+  const nearMeshVertexHeight = (px: number, pz: number): number => {
+    if (!nearMeshVertexHeights || px === 0 || pz === 0) return heightField.getHeightAt(px, pz);
+    let row = nearMeshVertexHeights.get(px);
+    if (!row) nearMeshVertexHeights.set(px, row = new Map());
+    let h = row.get(pz);
+    if (h === undefined) row.set(pz, h = heightField.getHeightAt(px, pz));
+    return h;
+  };
+  const aniso = engineCtx.anisotropy ?? 4;
+  const group = new THREE.Group();
+  group.name = 'props';
+  const offerPrograms = (root: THREE.Object3D): void => {
+    try { engineCtx.submitBuiltPrograms?.(root); } catch { /* the activation's compile and the first frame remain */ }
+  };
+  const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
+  const v = L.village;
+  // maps lane B (2026-10-03): the settlement the props dress (P.town, default the village rect); the scatter below keeps
+  // off the whole graded village ground (v) as before
+  const town = P.town ? { ...v, ...P.town } : v;
+
+  // (buildings-270) this build's look ledger: no two neighbouring buildings share every feature (regional/appearance.ts)
+  const lookLedger = new AppearanceLedger();
+  // (garage-env-276) the structure surfaces, shared with the Garage's scene packs (buildStructureSurfaces)
+  const {
+    T, adobeWallBucket, brickWalls, ensureSteelAtlas, ensureSteelAtlasSteps, fieldWallBucket, fort, grimeHook, grimeTex,
+    isKitWall, mats, mobileProps, mudShape, regionalArchitecture, retainedSurfaceMaterials, rockDressing, snowCap,
+    sourcedTexturesReady, steelAtlas, stoneShape, wallGrimeHook,
+  } = yield* buildStructureSurfaces({ mapId, cfg, P, noi, aniso, engineCtx, sourceApplication,
+    onRetained: (materials, textures) => registerRetainedObject3DResources(group, { materials, textures }) });
+  group.userData.steelAtlas = steelAtlas;
+
+  const buckets: CompletePropsBuckets = {
+    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
+    regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
+    ...(mats.bridgeStone ? { bridgeStone: [] } : {}),
+    // (the phones keep the rail bed on the baked material: no ballast program there)
+    ...(mobileProps ? {} : { ballast: [] }),
+  };
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
@@ -5599,9 +5678,7 @@ ${snowCap ? `
     }
   }
   // Round 75: what a plan builder may read about this battlefield (maps/exteriorDetailKit.ts StructureBuildContext).
-  const structureContext: StructureBuildContext = {
-    mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
-  };
+  const structureContext = structureBuildContextFor(mapId, P, seed);
   /** A building stands in a carriageway when its footprint comes within the road core (the layout brief's 3.5 m,
    * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
   const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
@@ -5657,10 +5734,7 @@ ${snowCap ? `
   function* placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
     fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
     kitPose?: { x: number; z: number; rot: number }): Generator<PropsBuildSlice, boolean, void> {
-    let tmp: PropsBuckets = {
-      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-    };
+    let tmp = createStructureBuckets();
     const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
     attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
@@ -5879,10 +5953,7 @@ ${snowCap ? `
   // A recorded town plan: every building from its own stream at its recorded pose, and nothing generated after it.
   function placeRecordedBuilding(entry: TownPlanEntry): void {
     const stream = mulberry32(entry.rng);
-    let tmp: PropsBuckets = {
-      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-    };
+    let tmp = createStructureBuckets();
     attachStructureBuildContext(tmp, structureContext);
     const builder = BUILDER_BY_NAME[entry.structure] || makeCottage;
     const info = builder(stream, tmp, entry.wall);
@@ -6040,10 +6111,7 @@ ${snowCap ? `
       for (const { entry, added } of rows) {
         if (added && (footprintWet(entry.x, entry.z, entry.w, entry.d, entry.rot) || !townRowPlotClear(entry, heightField._roadDist, obstacles))) continue;
         const stream = mulberry32(entry.rng);
-        let tmp: PropsBuckets = {
-          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-        };
+        let tmp = createStructureBuckets();
         const info = entry.ruined ? makeRuin(stream, tmp)
           : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
         const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
@@ -6157,10 +6225,7 @@ ${snowCap ? `
       const hx = (width * cs + depth * sn) / 2, hz = (width * sn + depth * cs) / 2;
       if (intersectsStreetRow(x, z, hx, hz)) return distance + width * 0.6;
       const ruined = roll < (P.ruinChance ?? 0.24);
-      let tmp: PropsBuckets = {
-        plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-        glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-      };
+      let tmp = createStructureBuckets();
       // the wall draw stays where the rowhouse call evaluated it (a ruin draws none)
       const rowWall = ruined ? 'stone' : pickWall(srng);
       const info = ruined
