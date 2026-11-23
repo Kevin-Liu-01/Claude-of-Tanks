@@ -23,6 +23,10 @@ tanks' pins, each with its reason and a negative control; `test-diff.mjs` holds 
 changed-only fleet and world partitions in reverse, the balance inputs per id); `test-audit.mjs --write` regenerates
 `docs/TEST-AUDIT.md`, never edited by hand. `selftest-tiers.selftest.mjs` compares the page's counts with the tiers and
 holds the callers: nothing but test:heavy (and tank:release:check's `tanks --ids` step) runs a manual suite.
+`phone-smoke-reach.browser.mjs` (Puppeteer, an existing dev server or served dist: `--url=`; 274.0) boots a solo Standard battle in a
+390x844 touch window and hit-tests the centre of the smoke, the jump and each item tile on the left edge, then taps the
+smoke and requires a charge spent. It guards the rack (`.cot-cons`) taking taps only on its tiles (mobile-hud-274b).
+
 `deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
 every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
 cases:

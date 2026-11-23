@@ -848,6 +848,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:i
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{display:grid;
   grid-template-columns:repeat(2,52px);grid-auto-rows:52px;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;top:auto;
   bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 86px)}
+/* (274.0: the rack takes taps on its tiles only. 274b seats the smoke in the cell the last item leaves, inside the rack's
+   box, and the rack, fixed over the vehicle controls, took the tap there: smoke could not fire on a portrait phone.
+   Credit mobile-hud-274b 114f25ecbb; receipt tools/phone-smoke-reach.browser.mjs. Watch's ride keeps the tiles inert.) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{pointer-events:none}
+html:not([data-watch=ride]) body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons>.cot-con{pointer-events:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}
