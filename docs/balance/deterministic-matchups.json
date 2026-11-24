@@ -5150,8 +5150,8 @@
       "id": "nextgen-abrams-peer",
       "purpose": "next-generation US peer ceiling",
       "band": [
-        0.833,
-        0.833
+        0.75,
+        0.75
       ],
       "aId": "m1a3",
       "bId": "abramsx",
@@ -5178,8 +5178,8 @@
       "id": "t90-export-step",
       "purpose": "Tier VII T-90 against a K2 prototype peer",
       "band": [
-        0,
-        0
+        0.083,
+        0.083
       ],
       "aId": "t90_1992",
       "bId": "k2b",
@@ -5622,8 +5622,8 @@
       "id": "leopard-tier9-peer",
       "purpose": "Tier VIII modern MBT peers",
       "band": [
-        1,
-        1
+        0.917,
+        0.917
       ],
       "aId": "leo2a4m_can",
       "bId": "m1a1",
