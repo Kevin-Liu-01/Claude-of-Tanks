@@ -124,7 +124,7 @@ let house = null;
 {
   const { setCompoundShape, setObbShape } = await import('../world/collision.ts');
   const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
-  const { packCollisionRecord } = await import('../../tools/headlessWorldCollision.mjs');
+  const { packCollisionRecord } = await import('../world/collisionRecordPacking.ts');
   const probe = createAuthoritativeMatch({ mapId: 'verdant', seed: 1, countdownS: 0,
     players: [{ id: 'probe', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
   let base = Infinity;
