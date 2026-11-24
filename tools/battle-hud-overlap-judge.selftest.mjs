@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { VIEW_CONTROLS, VIEW_CONTROL_PARTS, VIEW_CONTROL_SELECTOR } from '../src/ui/hudViewControls.ts';
 import { GUIDANCE_CONTROLS, TOUCH_NOTICE_OBSTACLES } from '../src/ui/battleHudLayout.ts';
-import { INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, overlapProblems } from './battle-hud-overlap-judge.mjs';
+import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, overlapProblems } from './battle-hud-overlap-judge.mjs';
 
 // ---- one list, every planner
 {
@@ -27,9 +27,14 @@ import { INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, overlapPr
     assert.ok(selectors(VIEW_CONTROL_PARTS).includes(`.${own}`), `the layout observes .${own}`);
   }
   for (const notice of NOTICES) assert.ok(INSTRUMENTS.includes(notice), `the probe measures ${notice}`);
+  for (const feed of FEED) assert.ok(INSTRUMENTS.includes(feed), `the probe measures ${feed}`);
   const layout = readFileSync('src/ui/battleHudLayout.ts', 'utf8');
   assert.match(layout, /for \(const node of hudQueryAll\(VIEW_CONTROL_SELECTOR\)\) add\(shownBox\(node\)\);/, 'the mouse plan measures every view control');
   assert.match(layout, /observe\(VIEW_CONTROL_PARTS\);/, 'the layout observes the view controls');
+  // the feed against the same boxes: each kill lane's floor, and the ribbon's top
+  assert.match(layout, /controlFloor\(leftAnchor, 0, leftReach\)/, 'the left kill lane ends over a view control');
+  assert.match(layout, /controlFloor\(rightAnchor, rightReach, width\)/, 'the right kill lane ends over a view control');
+  assert.match(layout, /for \(const box of \[\.\.\.viewControls\]\.sort[\s\S]{0,240}ribbonTop = box\.top;/, 'the ribbon rests over a view control');
   // (the old escape: the flight console dropped where keeping off it cost the reticle clearance)
   assert.doesNotMatch(layout, /plainObstacles|obstacles\.slice\(0, plain/, 'no plan drops a view control to keep the reticle clear');
   assert.ok(VIEW_CONTROL_SELECTOR.includes('.binocular-readout'), 'the binoculars\' readout is a view control');
@@ -80,6 +85,12 @@ import { INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, overlapPr
   // a condition the guidance plan holds back is waiting, not missing; an event lane with nothing shown is missing
   assert.deepEqual(noticeCoverage([top, readout, alertClear], 'card toasts-wait'), { event: 'shown', condition: 'waits' });
   assert.deepEqual(noticeCoverage([top, readout], ''), { event: 'missing', condition: 'missing' });
+
+  // the feed on a control, as the probe found it before notices-276 seated the lanes (390x844, the binoculars up)
+  const laneL = box('.cot-kill-lane.l', 'div.cot-kill-lane.l', 0, 222, 330, 84);
+  const phoneRack = box('.cot-strike-rack:not([hidden])', 'section.cot-strike-rack', 51, 228, 279, 44);
+  assert.deepEqual(overlapProblems([laneL, phoneRack], 390, 844), ['feed div.cot-kill-lane.l on section.cot-strike-rack (279 x 44 px)']);
+  assert.deepEqual(overlapProblems([box('.cot-kill-lane.l', 'div.cot-kill-lane.l', 0, 222, 330, 0.5), phoneRack], 390, 844), [], 'a lane holding no rows');
 
   // off screen, and the deliberate layering
   assert.deepEqual(overlapProblems([box('.cot-dp', 'div.cot-dp', 1900, 1000, 60, 60)], 1920, 1080), ['offscreen: div.cot-dp']);

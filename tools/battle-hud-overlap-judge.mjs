@@ -6,6 +6,10 @@ import { VIEW_CONTROLS } from '../src/ui/hudViewControls.ts';
 /** The battle's notices, in both lanes (battleNotices.ts): the event lane's seat and the condition lane's notice. */
 export const NOTICES = ['.cot-alert.show', '.cot-battle-notices .cot-c-notice'];
 
+/** The battle's feed (notices-276): the kill lanes and the player's kill ribbon, seated against the same control boxes as the
+ *  notices (battleHudLayout.ts controlFloor, the ribbon's top). */
+export const FEED = ['.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-ribbon.on'];
+
 /** The HUD's instruments, each a box another may not cross: the panels and controls, the notices, and the controls a view
  *  brings (src/ui/hudViewControls.ts, the list every notice planner keeps off), and Air Support's Support slot wherever it
  *  is seated (the tray's end on a desktop, its own dock on a touch layout). */
@@ -31,6 +35,7 @@ export const PLANT_SELECTOR = `.${PLANTS.unseen}`;
 
 const allowed = (a, b) => ALLOWED.some(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
 const isNotice = (box) => NOTICES.includes(box.selector);
+const isFeed = (box) => FEED.includes(box.selector);
 
 /** In the page: every visible instrument's box ({ selector, name, x, y, right, bottom }), nested ones folded into their
  *  outermost. */
@@ -50,7 +55,7 @@ export function measureInstruments(instruments) {
 }
 
 /** The problems with one state's boxes in a width x height window: off screen, or two instruments crossing (a pair with a
- *  notice in it says so first: "notice ... on ..."). Empty is a pass. */
+ *  notice in it says so first, "notice ... on ...", and a feed row on anything else "feed ... on ..."). Empty is a pass. */
 export function overlapProblems(rects, width, height) {
   const problems = [];
   for (let i = 0; i < rects.length; i++) {
@@ -59,9 +64,11 @@ export function overlapProblems(rects, width, height) {
     for (const b of rects.slice(i + 1)) {
       const w = Math.min(a.right, b.right) - Math.max(a.x, b.x), h = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y);
       if (!(w > 1 && h > 1) || allowed(a, b)) continue;
+      const size = `(${Math.round(w)} x ${Math.round(h)} px)`;
       const [n, o] = isNotice(b) && !isNotice(a) ? [b, a] : [a, b];
-      problems.push(isNotice(n) ? `notice ${n.name} on ${o.name} (${Math.round(w)} x ${Math.round(h)} px)`
-        : `${a.name} overlaps ${b.name} (${Math.round(w)} x ${Math.round(h)} px)`);
+      const [f, c] = isFeed(b) && !isFeed(a) ? [b, a] : [a, b];
+      problems.push(isNotice(n) ? `notice ${n.name} on ${o.name} ${size}`
+        : isFeed(f) && !isFeed(c) ? `feed ${f.name} on ${c.name} ${size}` : `${a.name} overlaps ${b.name} ${size}`);
     }
   }
   return problems;

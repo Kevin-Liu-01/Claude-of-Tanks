@@ -110,9 +110,9 @@ try {
       await settleFrames(page, 600);
       const rects = await settledRects(page, INSTRUMENTS);
       const all = overlapProblems(rects, width, height);
-      // (a <state>+notices run judges the notices; the state's own control-on-control overlaps are its plain run's verdict,
-      // reported here as `others`)
-      const problems = notices ? all.filter((p) => p.startsWith('notice ') || p.startsWith('offscreen: div.cot-alert')
+      // (a <state>+notices run judges the notices and the feed against everything; the state's own control-on-control
+      // overlaps are its plain run's verdict, reported here as `others`)
+      const problems = notices ? all.filter((p) => p.startsWith('notice ') || p.startsWith('feed ') || p.startsWith('offscreen: div.cot-alert')
         || p.startsWith('offscreen: div.cot-c-notice')) : all;
       const others = notices ? all.filter((p) => !problems.includes(p)) : [];
       let coverage = null;

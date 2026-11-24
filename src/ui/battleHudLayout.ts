@@ -1721,7 +1721,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // The kill ribbon's place (it shows on a mouse layout from 768 px wide and not short): the right column ends over it
     // where it reaches under the column (a small map's column ran the open log 10 px onto it at 1024x600, the layout
     // receipt's returned-combined).
-    const ribbonTop = Math.min(ribbonGap.bottom + RIBBON_LIFT, flightConsole?.top ?? Infinity);
+    // (notices-276) and over every control a view brings in its column (hudViewControls.ts, the boxes where they stand this
+    // pass: the binoculars' call-in rack stood 15 px under the ribbon at 1920x1080), as over the flight's console
+    const viewControls = hudQueryAll(VIEW_CONTROL_SELECTOR).map((node) => shownBox(node)).filter((box): box is DOMRect => !!box);
+    let ribbonTop = Math.min(ribbonGap.bottom + RIBBON_LIFT, flightConsole?.top ?? Infinity);
+    for (const box of [...viewControls].sort((a, b) => b.top - a.top)) {
+      if (box.right > ribbon.x - ribbon.width / 2 && box.left < ribbon.x + ribbon.width / 2 && box.top < ribbonTop
+        && box.bottom > ribbonTop - RIBBON_LIFT - RIBBON_H - 8) ribbonTop = box.top;
+    }
     const ribbonShows = !touch && document.body.dataset.cotHeight !== 'short'
       && ['tablet', 'laptop', 'desktop'].includes(document.body.dataset.cotWidth ?? '');
     const ribbonFloor = ribbonShows && ribbon.width >= RIBBON_LEAST && ribbon.x + ribbon.width / 2 > width - sideWidth - 12
@@ -1922,10 +1929,21 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const sightFloor = (anchor: number, crosses: boolean) =>
       sight && crosses && sight.bottom + 8 > anchor ? sight.top - 8 : Infinity;
     const leftReach = touch && width < height ? Math.max(sideWidth, wideFeed ? wideLeftFeed : besideColumn) : sideWidth;
+    // (notices-276) a lane ends 8 px over the first control a view brings under its anchor within its reach (hudViewControls.ts:
+    // the binoculars' call-in rack and readout ran under the left lane at 390x844, the rack under the right one at 844x390);
+    // one that covers the anchor holds the lane's rows until it goes
+    const controlFloor = (anchor: number, x0: number, x1: number): number => {
+      let floor = Infinity;
+      for (const box of viewControls) {
+        if (box.right <= x0 || box.left >= x1 || box.bottom <= anchor) continue;
+        floor = Math.min(floor, box.top <= anchor ? anchor : box.top - 8);
+      }
+      return floor;
+    };
     // (on mouse the plan's countdown band above already keeps the lanes off it)
     const leftKillBottom = Math.min(!plan && countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd,
-    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach));
+    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach), controlFloor(leftAnchor, 0, leftReach));
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -1950,7 +1968,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const rightReach = wideFeed ? width - wideFeedWidth : width - sideWidth;
     const rightKillEnd = Math.min(rightKillBottom, rightKillFloor, rightEnd,
-      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach));
+      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach), controlFloor(rightAnchor, rightReach, width));
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
       battleNotificationRows(rightKillEnd - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);
