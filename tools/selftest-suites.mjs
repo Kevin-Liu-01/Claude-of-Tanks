@@ -1037,6 +1037,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 276 (sim-det-trig-c): the chain measures the combat rig before any tool loads the fleet (the bootstrap first)
+    'tools/combat-rig-bootstrap.selftest.mjs',
     // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
     // before the unlock, and a budget that tears down before it exits
     'tools/chain-lifecycle.selftest.mjs',

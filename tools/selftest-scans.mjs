@@ -138,6 +138,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
+  // 276 (sim-det-trig-c): the merge drops a group file no row names any more (combat-rig-bootstrap runs it as a child)
+  'tools/gen-combat-anatomy.mjs': lists('src/vehicles/combatAnatomyGroups/*.generated.ts'),
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
   'tools/hero-cards-check.mjs': lists('public/icons/hero/*'),

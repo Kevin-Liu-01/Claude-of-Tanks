@@ -657,6 +657,16 @@ export const STEPS = Object.freeze([
 export const CPU_FIXPOINT_STEPS = Object.freeze(STEPS.filter((step) => step.device === 'cpu' && !step.after).map((step) => step.name));
 export const stepByName = (name) => STEPS.find((step) => step.name === name);
 
+/**
+ * (276 sim-det-trig-c) Run before anything else: every tool that loads the fleet finalizes each saved id at import, and
+ * finalize refuses a drawn weapon whose calibration has no measured rig. This measures the rig of exactly the ids whose
+ * row has none (gen-combat-anatomy in measurement mode, which needs none); with every row rigged it does nothing. It runs
+ * ahead of the aggregates and the CPU steps (controls, fills, seats and spare-track build tanks before the anatomy step):
+ * tools/combat-rig-bootstrap.selftest.mjs holds the order. A present but stale rig needs no reorder: those steps load,
+ * and the fixpoint re-runs them once the anatomy step moves a row.
+ */
+export const RIG_BOOTSTRAP = Object.freeze(['tools/combat-rig-bootstrap.mjs']);
+
 /** Whole-fleet aggregates the chain regenerates before resolving (they feed the shared core) and after the CPU pass. */
 export const PRE_AGGREGATES = Object.freeze([
   ['tools/gen-authored-paint-catalog.mjs'],
