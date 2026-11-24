@@ -7,6 +7,7 @@ import type {
   GarageEnvironmentBuild,
 } from './garageEnvironmentKit.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createGarageSlicer, nextGarageFrame } from './garageSlicer.ts';
 
 interface ArchitectureEngineContext {
   anisotropy?: number;
@@ -179,8 +180,6 @@ interface GaragePackRecord {
   holds: number;
 }
 const TEXTURE_READY_TIMEOUT_MS = 600;
-/** The texture uploads a warm makes in one frame before it yields to the next (garage-env-276: the cold first visit). */
-const WARM_UPLOAD_FRAME_MS = 6;
 const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
 type GarageEnvironmentKitLoader = typeof loadEnvironmentKit;
 
@@ -697,10 +696,8 @@ export function createGarageArchitectureController(
       // the same library objects, so reinitializing all twelve images on every
       // switch only stretched a cheap 8-15 ms geometry build across hundreds
       // of milliseconds of redundant presentation frames.
-      // (garage-env-276, the cold first visit) the uploads fill a frame's budget, then yield to the next frame: one
-      // upload a frame left the switch waiting 27 frames on main's Urban (450 ms of 912, ab10/switch) while each upload
-      // took a fraction of its frame
-      let frameStartedAt = performance.now();
+      // (garage-env-276, the cold first visit) the uploads fill a slice, then yield to the next frame (garageSlicer.ts)
+      const slicer = createGarageSlicer(nextGarageFrame);
       for (const texture of textures) {
         // a cancelled prewarm stops between uploads; it stays built, and a later request warms it
         if (record.cancelled) { advance(record, 'attached'); return null; }
@@ -710,10 +707,9 @@ export function createGarageArchitectureController(
         if (texture.version === 0) continue;
         renderer.initTexture(texture);
         initializedTextures.add(texture);
-        if (performance.now() - frameStartedAt < WARM_UPLOAD_FRAME_MS) continue;
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        if (!slicer.due()) continue;
+        await slicer.yield();
         if (!live()) return null;
-        frameStartedAt = performance.now();
       }
       // garageStage submits exact opaque, transparent, instanced, alpha-test,
       // vertex-color, and CSM program seeds during the covered Verdant boot.

@@ -22,6 +22,7 @@ import {
 import { armGarageDisplayAtlas, createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRect } from './garageDisplayAtlas.ts';
 import { createGarageAtmosphere, type GarageAtmosphereRecipe } from './garageAtmosphereKit.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
+import { createGarageSlicer, type GarageSlicer } from './garageSlicer.ts';
 import { auditGarageOrbitClearance, garageOrbitRelocations, garageStandsLevel, type GarageScenePart } from './garageOrbitClearance.ts';
 
 /**
@@ -290,21 +291,19 @@ function hash(text: string): number {
 /**
  * Build a Garage's kit pieces into the session cache ahead of its pack (garage r9 K0.3: "build each kit geometry once
  * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
- * work yields to the event loop every few pieces, so a cold visit never builds the whole table inside one frame.
+ * work yields to the event loop when its slice is spent (garageSlicer.ts), so a cold visit never builds the whole table
+ * inside one frame, nor waits a timer tick on every few pieces.
  */
 export async function prepareGarageKitPieces(
   variant: GarageVariant,
   placement: GarageKitPlacement,
-  piecesPerSlice = 4,
+  slicer: GarageSlicer = createGarageSlicer(),
   stillWanted: () => boolean = () => true,
 ): Promise<boolean> {
-  let built = 0;
   for (const item of garageKitItems(variant, placement)) {
     buildGarageKitPiece(item, variant.architecture, variant.mapId);
-    built += 1;
-    // a few pieces a slice (each is a few milliseconds cold), then the event loop runs: no clock decides the slices
-    if (built % piecesPerSlice === 0) {
-      await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    if (slicer.due()) {
+      await slicer.yield();
       // (2026-11-02 audit R5, round 2) a cancelled prewarm stops here; the pieces it built stay cached for the next one
       if (!stillWanted()) return false;
     }

@@ -26,6 +26,7 @@ import {
 } from '../world/maps/exteriorDetailKit.ts';
 import { settleCatalogCuts } from '../world/maps/railKit.ts';
 import { rebuildRegionalStructureSteps, resolveRegionalArchitecture } from '../world/maps/regional/index.ts';
+import { createGarageSlicer, type GarageSlicer } from './garageSlicer.ts';
 
 /** The props seed every battlefield's world build uses (map.ts createProps / createPropsAsync). */
 const WORLD_PROPS_SEED = 2002;
@@ -223,9 +224,6 @@ function stepEntry(entry: SurfaceEntry): IteratorResult<unknown, StructureSurfac
   return entry.pending;
 }
 
-const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
-/** A prepare slice's budget: the surfaces' checkpoints run until it is spent, then the frame gets the thread. */
-const SLICE_MS = 6;
 
 /**
  * A map's structure surfaces, painted in slices (the world build's own checkpoints, gathered into ~6 ms slices), or at
@@ -237,12 +235,12 @@ export async function prepareGarageStructureSurfaces(
   anisotropy: number,
   wanted: () => boolean,
   drawn: ReadonlySet<string>,
+  slicer: GarageSlicer = createGarageSlicer(),
 ): Promise<GarageStructureSurfaces | null> {
   const entry = surfaceEntry(map, anisotropy, drawn);
   entry.holds += 1; // held while it paints, so a trim never disposes a build in flight
   try {
     const prefetch = surfacePaints.get(map.mapId) ?? null;
-    let sliceStart = performance.now();
     while (!entry.done) {
       // a print the worker painted ahead, as the world build takes it (props.ts createPropsAsync); a failed one is
       // painted where it stands
@@ -251,12 +249,11 @@ export async function prepareGarageStructureSurfaces(
       const ahead = request && !request.result && prefetch ? prefetch.take(request.key) : null;
       if (ahead && request) {
         try { request.result = await ahead; } catch { request.result = null; }
-        sliceStart = performance.now();
+        slicer.restart();
       }
-      if (performance.now() - sliceStart >= SLICE_MS) {
-        await nextSlice();
+      if (slicer.due()) {
+        await slicer.yield();
         if (!wanted()) return null;
-        sliceStart = performance.now();
       }
       stepEntry(entry);
     }
@@ -360,11 +357,11 @@ export async function prepareGarageTerrainSurface(
   map: GarageMapStructures,
   anisotropy: number,
   wanted: () => boolean,
+  slicer: GarageSlicer = createGarageSlicer(),
 ): Promise<GarageTerrainSurface | null> {
   const entry = terrainEntry(map, anisotropy);
   entry.holds += 1;
   try {
-    let sliceStart = performance.now();
     while (!entry.done) {
       // the worker's layer, awaited off the thread (a failed decode leaves the fallback to paint), then a fresh slice
       const checkpoint = entry.checkpoint;
@@ -372,12 +369,11 @@ export async function prepareGarageTerrainSurface(
         entry.checkpoint = null;
         try { await checkpoint(); } catch { /* the layer's fallback paints */ }
         if (!wanted()) return null;
-        sliceStart = performance.now();
+        slicer.restart();
       }
-      if (performance.now() - sliceStart >= SLICE_MS) {
-        await nextSlice();
+      if (slicer.due()) {
+        await slicer.yield();
         if (!wanted()) return null;
-        sliceStart = performance.now();
       }
       stepTerrain(entry);
     }

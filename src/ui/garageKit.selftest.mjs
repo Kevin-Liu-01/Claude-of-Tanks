@@ -28,6 +28,7 @@ import { GARAGE_KIT_CELL_ARCHITECTURES, GARAGE_KIT_FLANK_ARCHITECTURES } from '.
 import { GARAGE_SLIDESHOW_PLACEMENTS, garageSlideshowPose } from './garageSlideshowPlacement.ts';
 import { armGarageDisplayAtlas } from './garageDisplayAtlas.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
+import { createGarageSlicer } from './garageSlicer.ts'; // (a zero budget: every piece yields, the prepares interleave)
 import {
   buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets,
 } from './garageEnvironmentKit.ts';
@@ -250,7 +251,7 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
     variant: GARAGE_VARIANTS.find((v) => v.architecture === architecture), placement: GARAGE_KIT_PLACEMENTS[architecture],
   }));
   const releases = picks.map(({ variant }) => pinGarageKitMap(variant.mapId));
-  await Promise.all(picks.map(({ variant, placement }) => prepareGarageKitPieces(variant, placement, 2)));
+  await Promise.all(picks.map(({ variant, placement }) => prepareGarageKitPieces(variant, placement, createGarageSlicer(undefined, 0))));
   for (const [index, { variant, placement }] of picks.entries()) {
     const before = garageKitCacheStats().misses;
     const kit = buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });

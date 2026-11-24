@@ -86,6 +86,7 @@ import {
 } from './garageSkyline.ts';
 import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
 import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
+import { createGarageSlicer, type GarageSlicer } from './garageSlicer.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -284,8 +285,8 @@ interface SharedGarageTreeGrove {
 export interface GarageEnvironmentAssetLibrary {
   acquire(key: GarageSurfaceKey, requestRender: () => void): TextureHandle;
   treeGrove(species: TreeSpecies): SharedGarageTreeGrove;
-  /** Each species' grove in a slice of its own; (round 3 B12) none started once `stillWanted` says no. */
-  prepareTreeGroves(species: readonly TreeSpecies[], stillWanted?: () => boolean): Promise<void>;
+  /** Each species' grove, yielding when the slice is spent (garageSlicer.ts); (round 3 B12) none started once `stillWanted` says no. */
+  prepareTreeGroves(species: readonly TreeSpecies[], stillWanted?: () => boolean, slicer?: GarageSlicer): Promise<void>;
   warmAll(requestRender: () => void): void;
   retainedTextures(): Iterable<THREE.Texture>;
   /** Asks again for every failed set a pack still holds (a selection runs it: switching between cached packs bakes none). */
@@ -599,7 +600,7 @@ export function createGarageEnvironmentAssetLibrary(
       }
       return grove;
     },
-    async prepareTreeGroves(species, stillWanted = () => true) {
+    async prepareTreeGroves(species, stillWanted = () => true, slicer = createGarageSlicer()) {
       for (const treeSpecies of species) {
         if (treeGroves.has(treeSpecies)) continue;
         // (round 3 B12) a cancelled prewarm starts no further grove (one in flight is shared: it builds for its joiners)
@@ -607,9 +608,8 @@ export function createGarageEnvironmentAssetLibrary(
         let pending = treeGrovePending.get(treeSpecies);
         if (!pending) {
           pending = (async () => {
-            if (typeof requestAnimationFrame === 'function') {
-              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-            }
+            // (garage-env-276) a grove waits for the next frame only when the slice is spent, not one frame a species
+            if (slicer.due()) await slicer.yield();
             if (!disposed && !treeGroves.has(treeSpecies)) this.treeGrove(treeSpecies);
           })().finally(() => treeGrovePending.delete(treeSpecies));
           treeGrovePending.set(treeSpecies, pending);
@@ -3318,28 +3318,29 @@ export async function prepareGarageEnvironmentAssets(
   if (!stillWanted()) return false;
   // the source map's structure prints start in the surface paint worker now, beside the slices below (garage-env-276)
   startGarageSurfacePaints(variant.mapId);
-  await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[], stillWanted);
+  // (garage-env-276, the cold first visit) one slicer for the whole prepare: every stage below runs until its slice is
+  // spent, then yields (garageSlicer.ts), rather than waiting a timer tick or a frame on each item
+  const slicer = createGarageSlicer();
+  await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[], stillWanted, slicer);
   // (round 3 B12) a cancel during the trees stops here on every map: only the skyline's slice below asked before, so a
   // map with no skyline went on into the kit's first pieces
   if (!stillWanted()) return false;
   // the map's skyline bakes here, in its own slice before the synchronous pack bake (4-45 ms on a first visit: garage
   // r9 g1 r4, the switch's long task); the build then takes a copy of the cached bake
   if (garageSkylineEnabled(variant.mapId)) {
-    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    if (slicer.due()) await slicer.yield();
     if (!stillWanted()) return false;
     prepareGarageSkyline(variant.mapId);
   }
   // its kit's pieces into the session cache, in slices, so the pack's bake only places them (garage r9)
   const kitPlacement = GARAGE_KIT_PLACEMENTS[variant.architecture];
-  if (kitPlacement && !(await prepareGarageKitPieces(variant, kitPlacement, undefined, stillWanted))) return false;
-  // the shared atmosphere strips paint once, in their own slice, rather than inside the first bake that shows them
-  await nextSlice();
+  if (kitPlacement && !(await prepareGarageKitPieces(variant, kitPlacement, slicer, stillWanted))) return false;
+  // the shared atmosphere strips paint once, before the bake rather than inside the first bake that shows them
+  if (slicer.due()) await slicer.yield();
   if (!stillWanted()) return false;
   prepareGarageAtmosphere();
-  return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted);
+  return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted, slicer);
 }
-
-const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
 
 /** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
 async function prepareGarageStructures(
@@ -3347,13 +3348,14 @@ async function prepareGarageStructures(
   recipe: GarageEnvironmentRecipe,
   anisotropy: number,
   stillWanted: () => boolean,
+  slicer: GarageSlicer,
 ): Promise<boolean> {
   if (preparedStructures.has(variant.id)) return true;
   const inFlight = preparingStructures.get(variant.id);
   if (inFlight) { inFlight.wanted.add(stillWanted); return inFlight.task; }
   const wanted = new Set<() => boolean>([stillWanted]);
   // it stops only once no caller that joined it wants it any more
-  const task = buildPreparedStructures(variant, recipe, anisotropy, () => [...wanted].some((wants) => wants()));
+  const task = buildPreparedStructures(variant, recipe, anisotropy, () => [...wanted].some((wants) => wants()), slicer);
   preparingStructures.set(variant.id, { task, wanted });
   const clear = (): void => { if (preparingStructures.get(variant.id)?.task === task) preparingStructures.delete(variant.id); };
   task.then(clear, clear);
@@ -3365,13 +3367,14 @@ async function buildPreparedStructures(
   recipe: GarageEnvironmentRecipe,
   anisotropy: number,
   wanted: () => boolean,
+  slicer: GarageSlicer,
 ): Promise<boolean> {
   const patch = getGarageTerrainPatch(variant.mapId);
   const heights = garageEnvironmentHeights(recipe, patch);
   const seed = hashVariant(variant.id);
   let backdrop: THREE.BufferGeometry | null = null;
   if (!garageSkylineEnabled(variant.mapId)) {
-    await nextSlice();
+    if (slicer.due()) await slicer.yield();
     if (!wanted()) return false;
     backdrop = createBackdropGeometry(patch, heights, seed, atmospherePalette(variant.weather), recipe,
       GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture);
@@ -3386,11 +3389,11 @@ async function buildPreparedStructures(
   if (!wanted()) { backdrop?.dispose(); return false; }
   const records: GarageStructureRecord[] = [];
   for (let index = 0; index < recipe.structures.length; index += 1) {
-    // each structure's base and its kit rebuild in slices of their own
+    // each structure's base and its kit rebuild step by step, yielding when the slice is spent
     const steps = buildStructureRecordSteps(recipe.structures[index], index, rng, patch, heights, map);
     let step = steps.next();
     while (!step.done) {
-      await nextSlice();
+      if (slicer.due()) await slicer.yield();
       // a stopped preparation keeps nothing half made: the next one builds the structures from the pack's seed again
       if (!wanted()) {
         steps.return(undefined as never);
@@ -3401,12 +3404,12 @@ async function buildPreparedStructures(
     }
     records.push(step.value);
   }
-  // the map's set pieces on the horizon, a piece a slice
+  // the map's set pieces on the horizon, a piece a step
   const horizonBuckets: GeometryBuckets = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   const horizonSteps = buildGarageHorizonSetPieces(map, patch.sourceAnchor, horizonBuckets);
   let horizonStep = horizonSteps.next();
   while (!horizonStep.done) {
-    await nextSlice();
+    if (slicer.due()) await slicer.yield();
     if (!wanted()) {
       horizonSteps.return([]);
       disposeBuckets(horizonBuckets);
@@ -3416,14 +3419,14 @@ async function buildPreparedStructures(
     horizonStep = horizonSteps.next();
   }
   const surfaces = await prepareGarageStructureSurfaces(map, anisotropy, wanted,
-    garageDrawnKinds(...records.map((record) => record.local), horizonBuckets));
+    garageDrawnKinds(...records.map((record) => record.local), horizonBuckets), slicer);
   if (!surfaces) {
     disposeBuckets(horizonBuckets);
     disposeStructureGeometry(records, backdrop);
     return false;
   }
   // (garage-env-276, class 2) the map's battle ground material, built as its world build builds it, in slices
-  const terrain = await prepareGarageTerrainSurface(map, anisotropy, wanted);
+  const terrain = await prepareGarageTerrainSurface(map, anisotropy, wanted, slicer);
   if (!terrain) {
     releaseGarageStructureSurfaces(surfaces);
     disposeBuckets(horizonBuckets);
