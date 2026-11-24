@@ -31,8 +31,10 @@ import { LANDMARK_KINDS } from './plan.ts';
 import { isLandmarkParts, landmarkPiecesOf, pieceGroundAt, type LandmarkPiece } from './pieces.ts';
 import { toppleHingeM } from '../toppleHinge.ts'; // (227, lane B co-hold: the mask's hinge and this one, one rule)
 
-/** The set pieces that are open frames (members, not walls). */
-export const LATTICE_LANDMARKS: ReadonlySet<string> = new Set(['guyedMast', 'fireLookout', 'headframe', 'troposcatter', 'conveyor']);
+/** The set pieces that are open frames (members, not walls). (landmarks-275b, destruction-slab-kinds: the gasholder's
+ *  guide frame round a drum of gas and the cableway's steel tower declared no pieces, so the default read them as
+ *  houses of walls and laid rooms behind their hits — dark plates past the frame, in the open) */
+export const LATTICE_LANDMARKS: ReadonlySet<string> = new Set(['guyedMast', 'fireLookout', 'headframe', 'troposcatter', 'conveyor', 'gasholder', 'cablewayTower']);
 /** The shaft topple's hinge and lie (fx/structureStages TOPPLE_HINGE_M, fx/structureMask TOPPLE_LIE): the lying frame
  *  matches where the mask laid the standing one down. */
 const TOPPLE_LIE = 1.5;
