@@ -4,6 +4,8 @@
 // kills. Exercises what the page does besides the controls: a footprint streamed in mid-battle (a bot's visual
 // arriving), a shell selection, a consumable, a stored difficulty and loadout read through localStorage.
 // Negative control: one seat control's throttle one unit off at step 500 is caught at the next checksum.
+// Then a training battle the tutorial changes between steps (battleActions.ts): whenSeen Sentry 3 cued, a checkpoint, the
+// chapter's end, replayed round for round; the recording without its cue parts from the battle (its control).
 // A page import, a world and a fleet: MANUAL suite 'sims' (tools/selftest-tiers.mjs), beside twinMuzzleSolo.
 //
 // Bounded (2026-11-22: an unbounded run reached 14 GiB resident and pushed the Mac into 43 GB of swap): the body runs in
@@ -53,7 +55,8 @@ const { writeFileSync } = await import('node:fs');
 const { gzipSync } = await import('node:zlib');
 const { Group } = await import('three');
 const { ensureAuthorityFleet } = await import('../../vehicles/authorityFleet.ts');
-const { createBus, createCollider, createGameState, setupBattle, simStep } = await import('../state.ts');
+const { createBus, createCollider, createGameState, cueTrainingActor, finishTrainingBattle, setTrainingCheckpoint, setupBattle, simStep } = await import('../state.ts');
+const { TRAINING_RULES, trainingActor } = await import('../../sim/trainingGround.ts');
 const { planBattleParticipantIds, spawnTanks } = await import('../rosterState.ts');
 const { soloRosterPlan } = await import('../soloRosterPlan.ts');
 const { useSoloConsumable } = await import('../soloConsumables.ts');
@@ -256,8 +259,115 @@ mark('negative control');
 assert.ok(caught.mismatch instanceof ReplayMismatch && caught.mismatch.code === 'checksum' && caught.mismatch.tick <= 1200,
   `the throttle one unit off at step 500 is caught by the next checksum (${caught.mismatch?.message ?? 'not caught'})`);
 
+// a training battle (docs/REPLAY.md §2, battleActions.ts): the tutorial's calls change it between steps. Sentry 3 is a
+// whenSeen shooter: cued (through the recorder's wrapper, as main.ts's tutorial port cues it) it fires only once it has
+// seen the player for its seenS, so the cue, the sight clock the step runs on the battle's ground, and its rounds must
+// all replay. The player drives toward it until it fires, a ring reached is the checkpoint, and the chapter's end is the
+// battle's quiet verdict. Without the cue in the recording the replay parts from the battle (the control).
+const TRAINING_TICKS = 3000;
+const SENTRY3 = trainingActor(TRAINING_RULES, 'sentry3');
+async function recordTraining() {
+  const world = worldFor();
+  const recorder = createReplayRecorder({ storageProto: FakeStorage.prototype, storage: new FakeStorage({}), now: () => 0 });
+  try {
+    const game = createGameState({ rosterSeed: TRAINING_RULES.seed });
+    game.mapId = TRAINING_RULES.mapId;
+    game.gameMode = 'training';
+    spawnTanks(game, { scene: { remove() {} } });
+    for (const hull of game.allTanks) if (hull) hull.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
+    const spec = TRAINING_RULES.loanerSpecId;
+    const plan = soloRosterPlan('training', null, true);
+    const planned = planBattleParticipantIds(game, spec, true, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact);
+    await ensureAuthorityFleet([spec, ...planned]);
+    mark('training fleet');
+    const options = { gameMode: 'training', random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false };
+    recorder.beginSetup(game, spec, options);
+    setupBattle(game, spec, world, options);
+    recorder.endSetup();
+    game.phase = 'battle';
+    assert.ok(game.ruleset.training && recorder.active, 'a training battle, recorded');
+    const bus = createBus((type, payload) => recorder.onEvent(type, payload));
+    const collider = createCollider(game, world);
+    const tutorial = recorder.wrapBattleRules({ cueTrainingActor, setTrainingCheckpoint, finishTrainingBattle });
+    const player = game.player;
+    const sentry = game.tanks.find((hull) => hull.specId === SENTRY3.specId);
+    assert.ok(sentry, 'Sentry 3 is on the roster');
+    const fired = [];
+    bus.on('shell:fired', (event) => { if (event.shooterId === sentry.id) fired.push(game.tick); });
+    let seenFrom = null, checkpointAt = null;
+    for (let tick = 0; tick < TRAINING_TICKS; tick++) {
+      if (tick === 60) assert.ok(tutorial.cueTrainingActor(game, 'sentry3', true), 'Sentry 3 takes its cue');
+      const toSentry = Math.hypot(sentry.state.pos.x - player.state.pos.x, sentry.state.pos.z - player.state.pos.z);
+      if (!player.combat.destroyed) {
+        let error = Math.atan2(sentry.state.pos.x - player.state.pos.x, sentry.state.pos.z - player.state.pos.z) - player.state.yaw;
+        error = Math.atan2(Math.sin(error), Math.cos(error));
+        const closing = fired.length === 0 && toSentry > 45;
+        player.input.throttle = tick > 90 && closing ? 1 : 0;
+        player.input.brake = !closing;
+        player.input.steer = closing ? Math.max(-1, Math.min(1, error * 1.7)) : 0;
+        player.input.fire = false;
+      }
+      // a ring reached: the tutorial hands the battle its checkpoint (the ring's own point)
+      if (checkpointAt === null && tick > 90 && toSentry < 90) {
+        checkpointAt = tick;
+        assert.ok(tutorial.setTrainingCheckpoint(game, Math.round(player.state.pos.x), Math.round(player.state.pos.z)), 'the checkpoint is set');
+      }
+      if (tick === TRAINING_TICKS - 30) assert.ok(tutorial.finishTrainingBattle(game), 'the chapter ends the battle');
+      recorder.beforeStep();
+      simStep(game, bus, world, null, collider);
+      recorder.afterStep();
+      if (seenFrom === null && game._trainingSeenSince?.has('sentry3')) seenFrom = tick;
+      if (tick % 600 === 599) mark(`training step ${tick + 1}`);
+    }
+    const finished = recorder.finish();
+    assert.ok(finished, 'the training battle produced a recording');
+    return { finished, digest: replayStateDigest(game), tick: game.tick, fired, seenFrom, checkpointAt, result: game.result, sentryId: sentry.id };
+  } finally {
+    world.release?.();
+  }
+}
+function replayTraining(recording, sentryId) {
+  const world = worldFor();
+  const run = createReplayRun(recording, world);
+  const fired = [];
+  run.bus.on('shell:fired', (event) => { if (event.shooterId === sentryId) fired.push(run.game.tick); });
+  try {
+    while (run.step()) { if (run.tick % 1200 === 0) mark(`training replay step ${run.tick}`); }
+    return { mismatch: run.mismatch, digest: replayStateDigest(run.game), tick: run.tick, fired, result: run.game.result };
+  } finally {
+    run.dispose();
+    world.release?.();
+  }
+}
+const training = await recordTraining();
+mark('training recorded');
+const trainingRecording = decodeReplay(training.finished.bytes);
+const battleActions = trainingRecording.actions.filter((action) => action.seat === -1 && action.kind !== 'footprint');
+assert.deepEqual(battleActions.map((action) => action.kind), ['cueTrainingActor', 'setTrainingCheckpoint', 'finishTrainingBattle'],
+  'the cue, the checkpoint and the end are kept as the battle\'s own actions');
+assert.deepEqual([battleActions[0].key, battleActions[0].args, battleActions[0].tick], ['sentry3', [1], 61], 'the cue keeps its actor and its step');
+assert.ok(training.seenFrom !== null && training.seenFrom > 60, `Sentry 3's sight clock ran once cued (from step ${training.seenFrom})`);
+assert.ok(training.fired.length >= 1 && training.fired[0] - training.seenFrom >= SENTRY3.volley.seenS * 60 - 1,
+  `and it fired only after ${SENTRY3.volley.seenS} s in sight (rounds at ${training.fired.join(', ')})`);
+assert.equal(training.result, 'victory', 'the chapter\'s end is the battle\'s verdict');
+const trainingAgain = replayTraining(trainingRecording, training.sentryId);
+mark('training replayed');
+assert.ok(trainingAgain.mismatch === null, `the training replay holds: ${trainingAgain.mismatch?.message}`);
+assert.equal(trainingAgain.tick, training.tick, 'every recorded step');
+assert.equal(trainingAgain.digest, training.digest, 'the training replay ends where the battle ended');
+assert.deepEqual(trainingAgain.fired, training.fired, 'Sentry 3 fires the same rounds at the same steps');
+assert.equal(trainingAgain.result, 'victory', 'and the replay reaches the same verdict');
+// the control: the recording without its cue never wakes Sentry 3, and the replay parts from the battle
+const uncued = decodeReplay(training.finished.bytes);
+uncued.actions = uncued.actions.filter((action) => action.kind !== 'cueTrainingActor');
+const uncuedRun = replayTraining(uncued, training.sentryId);
+mark('training control');
+assert.ok(uncuedRun.mismatch !== null || uncuedRun.digest !== training.digest, 'control: without its cue the replay parts from the battle');
+assert.deepEqual(uncuedRun.fired, [], 'control: and Sentry 3 never fires');
+
 const bytes = live.finished.bytes.length;
 parentPort.postMessage({ summary: `replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
   + `${recording.events.length} marks) recorded in ${bytes} bytes (seats ${live.finished.seatBytes}); the replay matches every checksum and `
-  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}; every live round matches step for step (${pageRounds.length / ROUND_WIDTH} records) and a round one ulp off or missing is named at its step` });
+  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}; every live round matches step for step (${pageRounds.length / ROUND_WIDTH} records) and a round one ulp off or missing is named at its step; `
+  + `a training battle (Sentry 3 cued, seen from step ${training.seenFrom}, ${training.fired.length} round(s), a checkpoint, the chapter's end) replays round for round, and without its cue parts (${uncuedRun.mismatch?.message ?? 'a different end'})` });
 }

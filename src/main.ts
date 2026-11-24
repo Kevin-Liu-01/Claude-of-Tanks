@@ -381,6 +381,8 @@ const isShotViewName = (value: string): value is ShotViewName => (
   SHOT_VIEWS.some((name) => name === value)
 );
 
+const soloBattleRuntime = createSoloBattleRuntimeAccess();
+// (its calls that change a battle between steps are taken through the battle recorder below: game/replay/battleActions.ts)
 const {
   preload: preloadSoloBattleRuntime,
   isReady: isSoloBattleRuntimeReady,
@@ -388,15 +390,10 @@ const {
   simStep,
   createCollider,
   prepareNextOpeningRoute,
-  resetProvingRange,
-  setProvingTargetsMoving,
-  cueTrainingActor,
   trainingSightFor,
   trainingThreatFor,
-  finishTrainingBattle,
-  setTrainingCheckpoint,
   recordBattleLeft,
-} = createSoloBattleRuntimeAccess();
+} = soloBattleRuntime;
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
 
@@ -757,6 +754,16 @@ const devTrace = traceRequested
   : null;
 // the battle recorder (docs/REPLAY.md): every solo battle's seat controls, actions and timeline marks, saved on leaving it
 const replayRecorder = createReplayRecorder();
+// the solo runtime's calls that change a battle between two steps (a training cue, its checkpoint and end, the proving
+// ground's reset and moving targets): recorded as the battle's own actions, so its replay runs them before the same step
+const { resetProvingRange, setProvingTargetsMoving, cueTrainingActor, finishTrainingBattle, setTrainingCheckpoint } =
+  replayRecorder.wrapBattleRules({
+    resetProvingRange: soloBattleRuntime.resetProvingRange,
+    setProvingTargetsMoving: soloBattleRuntime.setProvingTargetsMoving,
+    cueTrainingActor: soloBattleRuntime.cueTrainingActor,
+    finishTrainingBattle: soloBattleRuntime.finishTrainingBattle,
+    setTrainingCheckpoint: soloBattleRuntime.setTrainingCheckpoint,
+  });
 // a battle recorded with the divergence trace keeps it here for the tools (game/replay/replayTrace.ts; off unless they ask)
 let lastReplayTrace: unknown = null;
 // (the save resolves once the store has it: the end screen's Watch and Download wait on it)

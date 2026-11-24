@@ -18,13 +18,15 @@ import { requestTankSelfRight } from '../../sim/rollover.ts';
 import { requestTankJump } from '../../sim/movement.ts';
 import { pressSelfRight, requestHullAirSpin, requestHullTurbo } from '../../sim/modeMoves.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
-import { createBus, createCollider, createGameState, setupBattle, simStep } from '../state.ts';
+import { createBus, createCollider, createGameState, cueTrainingActor, finishTrainingBattle, resetProvingRange, setProvingTargetsMoving,
+  setTrainingCheckpoint, setupBattle, simStep } from '../state.ts';
 import { spawnTanks } from '../rosterState.ts';
 import { useSoloConsumable } from '../soloConsumables.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { replayRefusal } from './replayBuild.ts';
 import { FOOTPRINT_ACTION } from './replayRecorder.ts';
 import { replaySeatAction } from './seatActions.ts';
+import { isBattleAction, replayBattleAction } from './battleActions.ts';
 import { installRecordedStorage, rosterMismatch, runRecordedSetup } from './replaySetup.ts';
 import { ensureAuthorityFleet, requireAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
@@ -62,6 +64,10 @@ export interface ReplayRun {
 /** The recorded rules' implementations (seatActions.ts RECORDED_RULES; seatActions.selftest.mjs keeps the two equal). */
 const RULES = { selectShell, repairAllModules, startMagazineReload, activateSpecialAction, useSoloConsumable, requestTankSelfRight,
   requestTankJump, pressSelfRight, requestHullTurbo, requestHullAirSpin };
+
+/** The recorded battle actions' implementations (battleActions.ts RECORDED_BATTLE_RULES; battleActions.selftest.mjs keeps
+ *  the two equal). */
+const BATTLE_RULES = { cueTrainingActor, setTrainingCheckpoint, finishTrainingBattle, resetProvingRange, setProvingTargetsMoving };
 
 function stubVisual(): object {
   return { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
@@ -158,6 +164,7 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
         const k = game.tick + 1;
         for (const action of actionsByTick.get(k) ?? []) {
           if (action.kind === FOOTPRINT_ACTION) applyFootprint(game, action);
+          else if (isBattleAction(action.kind)) replayBattleAction(action, game, BATTLE_RULES as never);
           else replaySeatAction(action, seats[action.seat] as never, { rules: RULES, bus, timeS: game.timeS });
         }
         const row = recording.seatSteps[k - 1]!;

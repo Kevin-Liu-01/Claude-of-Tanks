@@ -42,12 +42,15 @@ export interface ReplayHeader {
   seats: string[];
 }
 
-/** A seat's discrete action the step does not read from its controls (game/replay/seatActions.ts), before step `tick`. */
+/** A seat's discrete action the step does not read from its controls (game/replay/seatActions.ts), before step `tick`;
+ *  seat -1 is the battle's own (a footprint, or game/replay/battleActions.ts: a training cue, the proving ground's reset). */
 export interface ReplayAction {
   tick: number;
   seat: number;
   kind: string;
   args: number[];
+  /** A battle action's name argument: a training cue's actor key. */
+  key?: string;
 }
 
 /** One timeline mark: [tick, type, subject id, actor id or '', x, z]. */

@@ -11,6 +11,8 @@
  *    back as the step reads them) and appends them to the SEATS stream; `afterStep` notes a hull's contact footprint
  *    the step published (a visual streamed in) and seals a checksum every REPLAY_CHECKSUM_EVERY steps;
  *  - the seat's discrete actions: `wrapRules` around game/playerBattleActions.ts's rules port and its `recordSeatWrite`;
+ *  - the battle's own actions: `wrapBattleRules` around the solo runtime's calls that change it between steps (a training
+ *    cue, its checkpoint and end, the proving ground's reset and moving targets: battleActions.ts);
  *  - the bus: `onEvent` keeps the timeline's marks (createBus's recorder hook in main.ts).
  *
  * Couch and Watch seats (phones, a taken bot) are P1 limits: such a battle is not recorded. Node-runnable.
@@ -22,6 +24,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { REPLAY_BUILD, REPLAY_DIGEST } from './replayBuild.ts';
 import { PREVIOUS_SHELL_SLOT, wrapRecordedRules } from './seatActions.ts';
+import { wrapBattleRules } from './battleActions.ts';
 import { createReplayTrace, type ReplayTrace, type ReplayTraceExport } from './replayTrace.ts';
 
 /** A footprint as state.ts validatedContactGeometry leaves it. */
@@ -109,6 +112,9 @@ export interface ReplayRecorder {
   beforeStep(): void;
   afterStep(): void;
   wrapRules<TRules extends object>(rules: TRules): TRules;
+  /** The solo runtime's calls that change the battle between steps (battleActions.ts): a training cue, its checkpoint
+   *  and end, the proving ground's reset and moving targets. Recorded as the battle's own actions before the next step. */
+  wrapBattleRules<TRules extends object>(rules: TRules): TRules;
   recordSeatWrite(kind: string, args: number[]): void;
   onEvent(type: string, payload: unknown): void;
   /** A debug intervention wrote simulation state: the recording replays only up to this step. */
@@ -299,6 +305,11 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
     wrapRules(rules) {
       return wrapRecordedRules(rules as never, seatOf, (seat, kind, args) => {
         if (stream && game) actions.push({ tick: game.tick + 1, seat, kind, args });
+      }) as typeof rules;
+    },
+    wrapBattleRules(rules) {
+      return wrapBattleRules(rules as never, (owner) => !!game && owner === game, (kind, args, key) => {
+        if (stream && game) actions.push({ tick: game.tick + 1, seat: -1, kind, args, ...(key !== undefined ? { key } : {}) });
       }) as typeof rules;
     },
     recordSeatWrite(kind, args) {

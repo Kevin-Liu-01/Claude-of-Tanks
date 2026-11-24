@@ -312,6 +312,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayTrack.selftest.mjs',
     // replay-system-276: every rule of the handlers' port is recorded or read-only, and each recorded one replays (no world)
     'src/game/replay/seatActions.selftest.mjs',
+    // replay-system: every solo runtime call is recorded or unrecorded with its reason; a training cue, its checkpoint and
+    // end and the proving ground's reset replay as main.ts made them (no world)
+    'src/game/replay/battleActions.selftest.mjs',
     // replay-system (P2): the viewer's timeline marks, transport clock and posing step (no DOM, no world)
     'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted

@@ -346,6 +346,13 @@ frames of the first uncovered one).
   `ui:replayDownload`; from an end screen it saves the recording first and returns to the Garage before entering.
 - A recording this build cannot replay never enters a battle: the bar shows its timeline alone with the refusal line.
 
+The battle's own actions (`battleActions.ts`): the solo runtime's calls that change a battle between steps from outside
+its seats (a training step's cue, the training checkpoint and end, the proving ground's reset and moving-target switch)
+are taken by main.ts only through the recorder's `wrapBattleRules` and kept as seat -1 actions (a cue's actor as the
+action's `key`) before the next step; the runner calls the same rule there. `battleActions.selftest.mjs` classifies
+every call of the runtime (recorded, or the step, the setup, a read, the Leave), and the round trip replays a training
+battle with whenSeen Sentry 3 cued round for round (without its cue, it parts).
+
 Known gaps after the browser round: the HUD's top band (score, clock) is not driven by the track and stays as setup left
 it; world changes (felled trees, structures, craters) are not replayed; effects and sounds other than the kill feed do
 not replay; a mode's battlefield variant is not passed to the indexer; watching a replay sets the Garage's selected
