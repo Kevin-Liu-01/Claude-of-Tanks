@@ -50,16 +50,19 @@ interface StrikeShotFraming {
   readonly trimM: number;
 }
 
-/** Each kind's framing (the one planner's parameters). */
+/** Each kind's framing (the one planner's parameters). The run shot holds its aircraft at about a fifth of a 16:9 frame's
+ *  width with the mark in frame throughout (Main 2026-11-24: 15-25 %), on a 40 degree lens; the receipt measures it. */
 export const STRIKE_SHOT_FRAMING: Readonly<Record<AirStrikeKind, StrikeShotFraming>> = Object.freeze({
-  // the A-10's dive down the lane: from behind and beside, the lane rising into the frame as the gun opens
-  strafe: Object.freeze({ leadS: 1.5, back: 26, up: 6, side: 10, lookAhead: 70, toMark: 0.75, fov: 50, trimM: Infinity }),
-  // the fighter's steep dive and the release: from above and behind on its starboard side, the mark below the nose
-  bomb: Object.freeze({ leadS: 1.5, back: 30, up: 9, side: -12, lookAhead: 90, toMark: 0.7, fov: 50, trimM: Infinity }),
-  // the Maverick run's shallow dive, the nose on the mark the whole while
-  missile: Object.freeze({ leadS: 1.4, back: 28, up: 7, side: 11, lookAhead: 90, toMark: 0.7, fov: 50, trimM: Infinity }),
-  // the AC-130's pylon turn: outside its starboard wing and above, looking past the airframe down onto the mark
-  gunship: Object.freeze({ leadS: 1.6, back: 18, up: 12, side: -34, lookAhead: 0, toMark: 0.55, fov: 46, trimM: 260 }),
+  // the A-10's dive down the lane: dead astern and a little above on a long lens, the lane rising into the frame as the gun
+  // opens (astern keeps the airframe whole in a portrait frame, which shares this lens's height but not its width)
+  strafe: Object.freeze({ leadS: 1.5, back: 57, up: 9, side: 0, lookAhead: 70, toMark: 0.75, fov: 40, trimM: Infinity }),
+  // the fighter's steep dive and the release: astern and above, the mark beyond the nose
+  bomb: Object.freeze({ leadS: 1.5, back: 32, up: 6, side: 0, lookAhead: 90, toMark: 0.7, fov: 40, trimM: Infinity }),
+  // the Maverick run's shallow dive, astern, the nose on the mark the whole while
+  missile: Object.freeze({ leadS: 1.4, back: 34, up: 5, side: 0, lookAhead: 90, toMark: 0.7, fov: 40, trimM: Infinity }),
+  // the AC-130's pylon turn (the mark off its port wing): outside the orbit off its starboard wing and above, in the plane
+  // across its flight, looking through the airframe down onto the mark
+  gunship: Object.freeze({ leadS: 1.6, back: 10, up: 50, side: -108, lookAhead: 0, toMark: 0.45, fov: 40, trimM: 260 }),
   // the recon pass fires nothing; kept for the table's completeness
   recon: Object.freeze({ leadS: 0, back: 30, up: 8, side: 10, lookAhead: 90, toMark: 0.5, fov: 50, trimM: Infinity }),
   // the battery is off the map: no run shot, the round's last plunge onto the mark

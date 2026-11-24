@@ -13,7 +13,9 @@
 //   4. the aircraft on screen is on its recorded run at the replay's clock: on frame i of the run shot at the run's time
 //      (the release less the kind's lead, plus i frames), on every later frame at the clock the replay stages, and never
 //      at its live pose; the battery's kill shows no aircraft;
-//   5. no snap in the first 10 frames (the camera moves less than a frame's worth between them).
+//   5. no snap in the first 10 frames (the camera moves less than a frame's worth between them);
+//   6. the run shot reads: the aircraft's drawn silhouette is 15-25 % of a 16:9 frame's width, whole, with the strike's
+//      mark in frame on every run frame, and whole with the mark in frame in a phone's portrait frame.
 // One kind also dies with the binoculars up. The planted control: the same kill with no shot (its round never
 // announced: no strike record, no trace) falls back to the card alone, and the receipt must fail it on every kind.
 // Before this item an airstrike kill replayed no shot of its own: the bomb's and the battery's had none at all (the card
@@ -227,8 +229,44 @@ function battle({ kind, binoculars = false, announce = true }) {
     update: (dt) => killcam.update(dt),
   };
   // the aircraft on screen: the world's visible airframe (a jet's root, or the gunship's model beside its anchor)
-  const drawnAircraft = () => worldRoot.children.filter((child) => child.visible && !/bomb/.test(child.name)
-    && child.position.y > 20).map((child) => child.position.clone());
+  const aircraftObjects = () => worldRoot.children.filter((child) => child.visible && !/bomb/.test(child.name)
+    && child.position.y > 20);
+  const drawnAircraft = () => aircraftObjects().map((child) => child.position.clone());
+  // the run shot's framing at an aspect: the aircraft's share of the frame's width (its drawn bounds projected) and
+  // whether the strike's mark is inside the frame
+  const corner = new THREE.Vector3(), lens = new THREE.PerspectiveCamera();
+  const framingAt = (aspect) => {
+    lens.position.copy(camera.position); lens.quaternion.copy(camera.quaternion);
+    lens.fov = camera.fov; lens.aspect = aspect; lens.near = 0.1; lens.far = 6000;
+    lens.updateProjectionMatrix(); lens.updateMatrixWorld(true);
+    const craft = aircraftObjects();
+    let width = 0, whole = false;
+    if (craft.length === 1) {
+      // the silhouette's own extent: every drawn vertex projected (a world box over a banked airframe overstates it)
+      let lo = Infinity, hi = -Infinity, bottom = Infinity, top = -Infinity;
+      craft[0].updateMatrixWorld(true);
+      const visit = (node) => {
+        if (!node.visible) return;
+        const position = node.isMesh && node.geometry?.attributes?.position;
+        if (position) {
+          for (let v = 0; v < position.count; v++) {
+            corner.fromBufferAttribute(position, v).applyMatrix4(node.matrixWorld).project(lens);
+            if (corner.z < 1) {
+              lo = Math.min(lo, corner.x); hi = Math.max(hi, corner.x);
+              bottom = Math.min(bottom, corner.y); top = Math.max(top, corner.y);
+            }
+          }
+        }
+        for (const child of node.children) visit(child);
+      };
+      visit(craft[0]);
+      if (hi > lo) width = (Math.min(1, hi) - Math.max(-1, lo)) / 2;
+      whole = lo >= -1 && hi <= 1 && bottom >= -1 && top <= 1;
+    }
+    corner.set(record.x, record.y, record.z).project(lens);
+    const markIn = Math.abs(corner.x) <= 1 && Math.abs(corner.y) <= 1 && corner.z < 1;
+    return { width, whole, markIn };
+  };
   const main = createMainFrameRuntime({
     scene: new THREE.Scene(), camera, game,
     scheduleFrame() {}, isGraphicsContextLost: () => false, syncViewportPixelRatio: () => false,
@@ -246,7 +284,9 @@ function battle({ kind, binoculars = false, announce = true }) {
           active: killcam.isActive(), phase: killcam.phase, pos: camera.position.clone(), dir: dir.clone(), fov: camera.fov,
           victim: player.visual.root.position.clone(),
           died: killcam.replayInfo?.targetPrePose ? new THREE.Vector3(...killcam.replayInfo.targetPrePose) : null,
-          aircraft: drawnAircraft(), stagedS: strikeReplay.record ? strikeReplay.timeS : null, liveS: game.timeS,
+          aircraft: drawnAircraft(),
+          framing: killcam.phase === 'strike' ? { wide: framingAt(16 / 9), tall: framingAt(390 / 844) } : null,
+          stagedS: strikeReplay.record ? strikeReplay.timeS : null, liveS: game.timeS,
           card: !!globalThis.document.body.classList.contains('cot-kc-live') && !killcam.isActive(),
         });
       },
@@ -350,12 +390,25 @@ function judge(label, kind, run) {
     // a frame's worth: the run shot rides an aircraft at up to 220 m/s (under 4 m a frame) and the flight's handoff
     if (jump > 6 || turn > 8) wrong.push(`${label}: replay frame ${k} -> ${k + 1} snaps (camera ${jump.toFixed(2)} m, ${turn.toFixed(1)} deg)`);
   }
+  // 6. the run shot reads: the aircraft is a fifth of a 16:9 frame's width (15-25 %), whole, with the mark in frame, and
+  //    in a phone's portrait frame (the same lens's height) it stays whole with the mark in frame
+  const runFrames = replay.filter((f) => f.framing);
+  const misframed = runFrames.filter((f) => !(f.framing.wide.width >= 0.15 && f.framing.wide.width <= 0.25 && f.framing.wide.whole
+    && f.framing.wide.markIn && f.framing.tall.whole && f.framing.tall.markIn));
+  if (misframed.length) {
+    const f = misframed[0].framing;
+    wrong.push(`${label}: ${misframed.length} of ${runFrames.length} run frames misframe the aircraft (16:9 width `
+      + `${(100 * f.wide.width).toFixed(0)} %, whole ${f.wide.whole}, mark ${f.wide.markIn}; portrait whole ${f.tall.whole}, mark ${f.tall.markIn})`);
+  }
   return wrong;
 }
 
 const KINDS = ['strafe', 'bomb', 'missile', 'gunship', 'artillery'];
 const failures = [];
-for (const kind of KINDS) failures.push(...judge(kind, kind, battle({ kind })));
+for (const kind of KINDS) {
+  const run = battle({ kind });
+  failures.push(...judge(kind, kind, run));
+}
 failures.push(...judge('bomb, binoculars up', 'bomb', battle({ kind: 'bomb', binoculars: true })));
 // the planted control: the kill with no shot (its round never announced) falls back to the card alone and must fail
 for (const kind of KINDS) {
