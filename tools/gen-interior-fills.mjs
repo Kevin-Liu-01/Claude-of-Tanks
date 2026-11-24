@@ -30,7 +30,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { collectTriangles } from './tank-surface-collect.mjs';
+import { collectTriangles, drainNativeFinalizers } from './tank-surface-collect.mjs';
 import { readdirSync, unlinkSync } from 'node:fs';
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
@@ -306,6 +306,9 @@ for (const id of ids) {
   stats.push(row);
   console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L${boreAir ? `, declared bore air left open ${row.boreAirL} L` : ''} (${row.ms} ms)`);
   tank.dispose?.();
+  // Free this build's native canvases before the next id (tank-surface-collect.mjs drainNativeFinalizers): without the
+  // yield the loop never leaves its turn and every build's pixels stayed resident (~120 MB an id, 31 GB for --all).
+  await drainNativeFinalizers();
 }
 if (!flag('stats')) {
   const groupDir = resolve(opt('out-dir', 'src/vehicles/interiorFillGroups'));
