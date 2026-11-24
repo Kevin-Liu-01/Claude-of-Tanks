@@ -5,7 +5,7 @@ import {getSpec} from './specs.ts';
 import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts';
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
-import {COMBAT_GUN_RIGS} from './combatGunRigs.generated.ts';
+import {combatAnatomyCalibration} from './combatAnatomyCalibrationRegistry.ts';
 
 // 267: the BMPT-72 (bmpt_terminator2) rides the T-72B3M (2016) X hull (it was the T-80U's)
 // 274: the T-84 left this list with its Oplot concept; it draws the T-80U X hull (t80Marks.selftest.mjs holds it)
@@ -41,14 +41,11 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     const spec=getSpec(id);
     turret.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.turretPivot[i])<.001,`${id}: installed ring matches hit frame`));
-    // 230: a combat-rig row (combatGunRigs.generated.ts) is the hit frame, and its trunnion is rig_gun projected onto the
-    // drawn bore line (the T-80UK's sits 8.7 mm over rig_gun): the trunnion is drawn on the hit frame's bore, not at it
-    const row=COMBAT_GUN_RIGS[id];
-    if(row){
-      assert.deepEqual([...spec.armor.turretPivot,...spec.armor.gunPivot],[...row.turretPivot,...row.gunPivot],`${id}: the hit frame is its combat-rig row`);
-      [0,2].forEach(i=>assert(Math.abs(gun.position.getComponent(i)-row.gunPivot[i])<.001,`${id}: installed trunnion on the hit frame's bore`));
-      assert(Math.abs(gun.position.y-row.gunPivot[1])<.01,`${id}: installed trunnion within 1 cm of the drawn bore`);
-    } else gun.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.gunPivot[i])<.001,`${id}: installed trunnion matches hit frame`));
+    // (276) the hit frame is the calibration's measured rig: rig_turret and the drawn trunnion themselves
+    const rig=combatAnatomyCalibration(id)?.rig;
+    assert(rig,`${id}: its calibration carries the measured rig`);
+    assert.deepEqual([...spec.armor.turretPivot,...spec.armor.gunPivot],[...rig.turretPivot,...rig.gunPivot],`${id}: the hit frame is its measured rig`);
+    gun.position.toArray().forEach((v,i)=>assert(Math.abs(v-rig.gunPivot[i])<.001,`${id}: installed trunnion on the hit frame`));
     for(const yaw of [-1.47,0,1.47]) {
       turret.rotation.y=yaw;gun.rotation.x=-.15;tank.root.updateMatrixWorld(true);
       assert(tank.gunMuzzleWorld(new Vector3()).toArray().every(Number.isFinite));

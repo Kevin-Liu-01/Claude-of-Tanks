@@ -53,6 +53,11 @@ for (const { seed, fireByS } of SEEDS) {
   match.onMatchReady();
   const bot = match.entityById.get('b1'), inputs = new Map();
   const start = { x: bot.state.pos.x, z: bot.state.pos.z };
+  // 268 (dfde71267f, one bot construction for both drivers): the authority's bot takes the solo battle's opening doctrine,
+  // whose first waypoint from the north-east deployment is (200, 350), south and 10 m east of the deployment, where the
+  // 225-267 authority's lane went west to (175, 375). The opening may reach that waypoint's x, never chase a corner past it.
+  const firstWaypointX = bot.aiCtl.debugInfo().waypointX;
+  assert.ok(Number.isFinite(firstWaypointX), `seed ${seed}: the bot has an opening waypoint`);
   assert.ok(Math.hypot(start.x - 190, start.z - 390) < 2, `the bot deploys in the north-east (${start.x.toFixed(1)}, ${start.z.toFixed(1)})`);
   let fireAt = null, eastmost = start.x;
   for (let tick = 1; tick <= 60 * fireByS; tick++) {
@@ -65,7 +70,8 @@ for (const { seed, fireByS } of SEEDS) {
   }
   world.release?.();
   // on 226 unfixed the bot reached x 255 in its first 14 s, chasing a corner round the mill's needle
-  assert.ok(eastmost < start.x + 3, `seed ${seed}: the opening heads west for the first waypoint (eastmost x ${eastmost.toFixed(1)})`);
+  assert.ok(eastmost < Math.max(start.x, firstWaypointX) + 3,
+    `seed ${seed}: the opening heads for its first waypoint (x ${firstWaypointX.toFixed(1)}), no further east (eastmost x ${eastmost.toFixed(1)})`);
   assert.ok(fireAt !== null, `seed ${seed}: the hard bot reaches a gun solution inside ${fireByS} s`);
   console.log(`botVerdantApproach: seed ${seed} gun solution at ${fireAt.toFixed(1)} s (window ${fireByS} s)`);
 }

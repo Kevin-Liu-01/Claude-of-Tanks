@@ -117,8 +117,10 @@ assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.exactHullCloneOf, 'ztz
 assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.sourceGeometryImported, false,
   'VT-4A1: no external geometry is imported as playable geometry');
 
-// The VT turret remains independent: its chevrons form the complete front
-// while the canonical A2 now owns a separate production-arrow architecture.
+// The three turrets are independent. Release 276 (Kevin 2026-11-24: "clean up and redesign the vt 4a1 ztz 99a2 and
+// ztz99a turrets ... esp with cheeks"): each lofts its whole shell, body and cheek modules, as one closed solid from its
+// own plan outline (chineseTurretOutlines.ts): the VT-4A1 flat-faced box modules, the production ZTZ-99A2 and the early
+// ZTZ-99A arrowhead modules; the Leopard-style chevrons they wore before are retired.
 assert.notEqual(vt4a1.turretSignature, ztz99a2.turretSignature,
   'VT-4A1: new turret does not reuse ZTZ-99A2 turret geometry');
 assert.deepEqual(vt4a1.turretRig.position.toArray(), [0, 1.56, 0.40],
@@ -128,73 +130,43 @@ assert.deepEqual(vt4a1.gunRig.position.toArray(), [0, 0.3198, 0.75],
 assert.notEqual(vt4a1.turretRig.userData.vtFamilyTurretReceipt?.architecture,
   ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.architecture,
   'VT-4A1 and production ZTZ-99A2 retain independent turret architectures');
-assert(vt4a1.chevrons, 'VT-4A1: raised chevron ERA faces exist');
-assert(vt4a1.chevrons.geometry.attributes.position.count >= 180,
-  'VT-4A1: both chevron carriers retain complete raised ERA face courses');
-const chevronBounds = new Box3().setFromObject(vt4a1.turret);
+const vtReceipt = vt4a1.turretRig.userData.vt4a1TurretReceipt;
+assert(vt4a1.chevrons, 'VT-4A1: the bolted cheek panels exist');
+assert.equal(vtReceipt?.cheekPanels, 8, 'VT-4A1: three panels on each module front and one on each chamfer');
+const vtTurretBounds = new Box3().setFromObject(vt4a1.turret);
 const gunWorld = vt4a1.gunRig.getWorldPosition(new Vector3());
-assert(chevronBounds.max.x >= 1.67 && chevronBounds.min.x <= -1.67,
-  'VT-4A1: permanent chevrons terminate inside both full-width turret shoulders');
-assert(chevronBounds.max.z >= gunWorld.z + 0.60,
-  'VT-4A1: permanent chevrons close the gun-throat/front-shell junction');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.integratedChevronFront, true,
-  'VT-4A1: turret receipt records the merged chevron front');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale, 0.82,
-  'VT-4A1: primary turret shell is raised slightly from its old 0.75 scale');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.legacyFrontalWedgeRemoved, true,
-  'VT-4A1: legacy protruding frontal shell is absent');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronsArePrimaryFront, true,
-  'VT-4A1: chevrons are the primary front rather than applique');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.permanentChevronCarriers, 2,
-  'VT-4A1: both closed structural chevron carriers remain part of the turret');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.detonatingChevronFacePanels, 8,
-  'VT-4A1: only eight raised face cassettes are assigned to ERA depletion');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.spentStateRetainsClosedFront, true,
-  'VT-4A1: ERA depletion retains a complete armored front');
-assert(vt4a1.turretRig.userData.vt4a1TurretReceipt.primaryShellHeightM
-    > vt4a1.turretRig.userData.vt4a1TurretReceipt.previousPrimaryShellHeightM,
+assert(vtTurretBounds.max.x >= 1.59 && vtTurretBounds.min.x <= -1.59,
+  'VT-4A1: the box modules run out to both full-width side walls');
+assert(vtTurretBounds.max.z >= gunWorld.z + 0.60,
+  'VT-4A1: the modules close the gun-throat/front-shell junction');
+assert.equal(vtReceipt?.outlineLofted, true, 'VT-4A1: shell and cheeks are one solid from one outline');
+assert.equal(vtReceipt?.cheekModules, 'flat-box', 'VT-4A1: flat-faced box cheek modules, as photographed');
+assert.equal(vtReceipt?.legacyChevronsRetired, true, 'VT-4A1: the Leopard-style chevrons are gone');
+assert.equal(vtReceipt?.turretHeightScale, 0.82, 'VT-4A1: the r5 height scale holds');
+assert.equal(vtReceipt?.legacyFrontalWedgeRemoved, true, 'VT-4A1: legacy protruding frontal shell is absent');
+assert.equal(vtReceipt?.spentStateRetainsClosedFront, true, 'VT-4A1: ERA depletion retains a complete armored front');
+assert(vtReceipt.primaryShellHeightM > vtReceipt.previousPrimaryShellHeightM,
   'VT-4A1: primary shell is measurably taller than the previous revision');
-assert(vt4a1.turretRig.userData.vt4a1TurretReceipt?.armoredBustleRearZM <= -2.68,
-  'VT-4A1: integral armored bustle reaches the requested deep rear station');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.giantIntegratedBustle, true,
-  'VT-4A1: receipt records the giant integrated bustle');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronProfile,
-  'leopard-2a6-derived',
-  'VT-4A1: front uses the Leopard 2A6 cheek architecture');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.upperSlopeDeg, 19,
-  'VT-4A1: dominant upper cheek keeps the Leopard 2A6 19-degree section');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.sharedPhysicalRidge, true,
-  'VT-4A1: upper and lower cheek faces meet at one physical ridge');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.surfacePanelsPerSide, 4,
-  'VT-4A1: each cheek carries four broad Leopard-style face cassettes');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.compoundShoulderTerminal, true,
-  'VT-4A1: roof, ridge and wall terminate on the compound turret shoulder');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronLiftM, 0.07,
-  'VT-4A1: complete chevron line rises 0.07 m into the turret shoulder datum');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.mirroredChevronSideJoins, true,
-  'VT-4A1: chevron-to-turret closure is authored symmetrically');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronSideJoinGapM, 0,
-  'VT-4A1: terminal caps close both visible turret-side seams');
-assert(
-  vt4a1.turretRig.userData.vt4a1TurretReceipt.upperRootSetbackM
-    > vt4a1.turretRig.userData.vt4a1TurretReceipt.lowerReturnMaxSetbackM,
-  'VT-4A1: upper wedge dominates the side section instead of forming a diamond',
-);
+assert(vtReceipt?.armoredBustleRearZM <= -2.68, 'VT-4A1: integral armored bustle reaches the requested deep rear station');
+assert.equal(vtReceipt?.giantIntegratedBustle, true, 'VT-4A1: receipt records the giant integrated bustle');
 
-assert.equal(ztz99a2Prototype.turretRig.userData.ztz99a2TurretIntegrationReceipt?.selectedArmorAttached, true,
-  'ZTZ-99A2 Prototype: preserved side armor and seam pieces remain attached');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.integratedChevronFront, true,
-  'ZTZ-99A2: canonical production turret carries an integrated chevron front');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.chevronProfile,
-  'vt4a1-leopard-2a6-derived',
-  'ZTZ-99A2: prominent front uses the VT-4A1 Leopard-style chevron grammar');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.surfacePanelsPerSide, 4,
-  'ZTZ-99A2: each closed cheek has four raised face cassettes');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.fullHeightFrontCoverage, true,
-  'ZTZ-99A2: chevrons cover the complete roof-to-chin frontal height');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.bustleExtensionM, 0.50,
+const protoReceipt = ztz99a2Prototype.turretRig.userData.ztz99a2TurretIntegrationReceipt;
+assert.equal(protoReceipt?.selectedArmorAttached, true,
+  'ZTZ-99A: preserved side armor and seam pieces remain attached');
+assert.equal(protoReceipt?.outlineLofted, true, 'ZTZ-99A: shell and cheeks are one solid from one outline');
+assert.equal(protoReceipt?.cheekModules, 'arrowhead', 'ZTZ-99A: arrowhead cheek modules');
+assert.equal(protoReceipt?.bareWeldedSlope, true, 'ZTZ-99A: the early turret keeps bare welded slopes');
+assert.equal(protoReceipt?.detonatingCheekTiles, 8, 'ZTZ-99A: one row of two large tiles on each band');
+const a2Receipt = ztz99a2.turretRig.userData.ztz99a2ProductionReceipt;
+assert.equal(a2Receipt?.outlineLofted, true, 'ZTZ-99A2: shell and cheeks are one solid from one outline');
+assert.equal(a2Receipt?.cheekModules, 'arrowhead', 'ZTZ-99A2: arrowhead cheek modules, as photographed');
+assert.equal(a2Receipt?.detonatingCheekTiles, 36,
+  'ZTZ-99A2: a band row and two slope rows of three tiles on each face of both modules');
+assert(a2Receipt.cheekTipZM >= 1.6,
+  'ZTZ-99A2: the arrowhead tips stand well ahead of the ring');
+assert.equal(a2Receipt?.bustleExtensionM, 0.50,
   'ZTZ-99A2: production bustle extension is exact');
-assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.bustleUndersideRiseM, 0.42,
+assert.equal(a2Receipt?.bustleUndersideRiseM, 0.42,
   'ZTZ-99A2: production bustle underside rise is exact');
 assert.notEqual(ztz99a2.turretSignature, ztz99a2Prototype.turretSignature,
   'ZTZ-99A2: production turret is geometrically distinct from the preserved prototype');
@@ -203,4 +175,4 @@ ztz99_longwei.tank.dispose();
 ztz99a2Prototype.tank.dispose();
 ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: forward/taller VT-4A1, the A2 family and the Longwei\'s own arrowhead turret verified');
+console.log('type99AAngularTurret.selftest: the VT-4A1 box-module, ZTZ-99A2 and ZTZ-99A arrowhead turrets (one outline each) and the Longwei\'s own turret verified');

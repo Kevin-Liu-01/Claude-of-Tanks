@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.7437,0.1005],
+    "turretPivot": [0,1.7,0.47],
     "plates": [
       {
         "hitboxId": "H01",
@@ -795,14 +795,14 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.2423,-0.7951,-0.3697],
-        "max": [0.652,0.9369,0.088],
+        "min": [0.2423,-0.7287,-0.4114],
+        "max": [0.632,0.9368,0.045],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "6b2caa44",
-  "metadataHash": "b8582099",
+  "metadataHash": "00262bd5",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.0417
@@ -927,8 +927,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22302,
-      "sha256": "3e13e2a4cad7c998d5e573f6e9b278180f9081933a129f525cf92ecc0f1297d5"
+      "bytes": 22152,
+      "sha256": "58391fe6080227779bf3ece1013c00b750a04fda2d0eb86e500c7803aa20f0c1"
     },
     "markings": {
       "file": "centurion5_2dk_markings.png",
@@ -942,7 +942,7 @@
       "file": "centurion5_2dk_technical.json",
       "mime": "application/json",
       "bytes": 5471,
-      "sha256": "b4319f82d8db4f723a731b7c43d9c0b57ab5c824e8870b4d5f288497651dfbc1"
+      "sha256": "5e6ff3ae985eda9355f651e18441a33817a3bfb5ed206f786d4af836af3964cc"
     }
   }
 }

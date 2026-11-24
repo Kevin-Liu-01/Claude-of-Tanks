@@ -4,7 +4,7 @@ import { buildingRoadStationIndices } from './maps/roadStations.ts';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { loadSourceSlice } from '../../tools/source-slice.test-support.mjs';
 import * as THREE from 'three';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeBathhouse, makeTimberBathhouse } from './maps/structureKit.ts';
 import { addCatalogExterior, addConnectedExterior, attachStructureBuildContext, carryExteriorChimneyTops } from './maps/exteriorDetailKit.ts';
@@ -335,12 +335,10 @@ function assertExplicitFrontageOwner() {
 // exterior, UV, collision and world-transform stages at an explicit RNG
 // checkpoint. Unselected legacy house constructors fail loudly if reached.
 // This is not a DOM/GPU/full-world census or a duplicate placement algorithm.
-const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-function section(start, end) {
-  const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
-  assert.ok(a >= 0 && b > a, `actual production stage found: ${start}`);
-  return source.slice(a, b);
-}
+// (inherited-reds-276) props.ts as a slice (tools/source-slice.test-support.mjs): the stages close over the module's
+// imports and the build's inert locals they read (withContacts, 00fb16fc78, was missing), and name any other it gains
+const props = await loadSourceSlice(new URL('./props.ts', import.meta.url));
+const section = (start, end) => props.section(start, end);
 const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoadStationIndices,
   // Plan W (2026-10-13): the structure shell pool belongs to the browser's async build; this Node build derives every
   // structure's shells inline, as the manifests and hosts do (no pool, no sourced-texture worker)
@@ -364,7 +362,7 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
 // placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry
 // envelope with them). This receipt holds the variant's own contract on the base pipeline, so the fixture places it with
 // the kit off; the kit's rebuild — placements, stream and contacts on today's Orchard — is regionalArchitecture's.
-const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
+const makePlacement = props.compile(dependencies, `return function* build(config, heightField, seed) {
   // (2026-10-07, Orchard round 4: the square's closers are the Chouf kit's planned sites; this fixture places the bathhouse alone)
   const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'], plannedSites: undefined };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
@@ -382,11 +380,16 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   const makeAdobe = unexpected, makeRowhouse = unexpected, URBAN_BUILDERS = {}, VILLAGE_BUILDERS = {};
   const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  // the build's locals the stages read, as props.ts declares them per build (the slice names any they gain): its group,
+  // this build's look ledger (buildings-270), the desktop's contacts, the surface materials it keeps, no steel atlas
+  const group = new THREE.Group(), lookLedger = new AppearanceLedger(), mobileProps = false, retainedSurfaceMaterials = [];
+  const ensureSteelAtlas = () => {}, ensureSteelAtlasSteps = function* () {};
+  ${props.LOCALS}
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };")}
   ${section('  const roads = L.roads;', '  // heaped masonry chunks')}
   return { buckets, obstacles, colliders, buildingFeatures, placedB, next: rng(), detail: detailUvRng() };
-}`)}`)(...Object.values(dependencies));
+}`);
 
 /**
  * (physics stream F2, 2026-10-14; the coordinator's ruling (B)) The ground-contact band without its decks: the footprint

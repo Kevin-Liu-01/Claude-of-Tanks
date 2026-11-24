@@ -67,7 +67,7 @@ function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGara
 /** main's phase:change listener (a Garage phase clears the solo intent, keeping watched); returns its handler. */
 function phaseListener(game, battleEntryIntent) {
   let handler = null;
-  runMainStatements(mainStatement("bus.on('phase:change', () => {"), {
+  runMainStatements(mainStatement("bus.on('phase:change', () => {\n  if (game.phase === 'garage') {"), {
     bus: { on: (type, listener) => { if (type === 'phase:change') handler = listener; } },
     game, battleEntryIntent, clearMatchSession() {}, frameLoop: { restart() {} },
   }, 'null');

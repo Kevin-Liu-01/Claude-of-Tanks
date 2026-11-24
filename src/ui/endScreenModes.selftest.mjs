@@ -14,7 +14,7 @@ import { createBus } from '../game/stateCore.ts';
 import { createShotInfo } from './shotInfo.ts';
 import { rosterCallsigns } from './botCallsigns.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
-import { END_SCREEN_MODES, OUTCOME_REASONS, endScreenModeView, endStatValue, headlineScore } from './endScreenModes.ts';
+import { END_SCREEN_MODES, OUTCOME_REASONS, OUTCOME_SHARED_LINES, endScreenModeView, endStatValue, headlineScore, outcomeKey } from './endScreenModes.ts';
 import { modeEndReport } from '../sim/modeEndReport.ts';
 
 const source = readFileSync(new URL('./endScreen.ts', import.meta.url), 'utf8');
@@ -46,6 +46,28 @@ for (const [reason, results] of Object.entries(OUTCOME_REASONS)) for (const resu
   const key = `endScreen.outcome.${reason}.${result}`;
   assert.ok(en[key] && zh[key], `the ${reason} ${result} line in en-US and zh-CN`);
 }
+for (const [reason, lines] of Object.entries(OUTCOME_SHARED_LINES)) for (const [result, key] of Object.entries(lines)) {
+  assert.ok(en[key] && zh[key], `the ${reason} ${result} line (${key}) in en-US and zh-CN`);
+  assert.equal(outcomeKey(reason, result), key);
+}
+// every mode ending the sim decides (matchModes.ts finish(team, reason), the escort's verdicts) reads its own line on the
+// side that can meet it, past the generic endings the report words by result (elimination, the battle clock)
+const GENERIC_REASONS = new Set(['elimination', 'time_limit']);
+const modesText = readFileSync(new URL('../sim/matchModes.ts', import.meta.url), 'utf8');
+const escortText = readFileSync(new URL('../sim/gunshipEscort.ts', import.meta.url), 'utf8');
+const endings = [...modesText.matchAll(/\bfinish\(\s*'(alpha|bravo)'\s*,\s*'(\w+)'\s*\)/g)].map((m) => [m[1], m[2]])
+  .concat([...escortText.matchAll(/result:\s*'(alpha|bravo)'\s*,\s*reason:\s*'(\w+)'/g)].map((m) => [m[1], m[2]]));
+const anySide = [...modesText.matchAll(/\bfinish\(\s*[a-zA-Z(][^,']*,\s*'(\w+)'\s*\)/g)].map((m) => m[1]);
+assert.ok(endings.length >= 8 && anySide.length >= 6, `the sim's mode endings parse (${endings.length} fixed-side, ${anySide.length} either side)`);
+const missing = [];
+// a fixed-side ending is a defeat for the side that loses it and a victory for the winner; the humans' side is alpha
+for (const [winner, reason] of endings) if (!GENERIC_REASONS.has(reason)) {
+  for (const result of winner === 'alpha' ? ['victory'] : ['defeat']) if (!outcomeKey(reason, result)) missing.push(`${reason} ${result}`);
+}
+for (const reason of anySide) if (!GENERIC_REASONS.has(reason)) {
+  for (const result of ['victory', 'defeat']) if (!outcomeKey(reason, result)) missing.push(`${reason} ${result}`);
+}
+assert.deepEqual(missing, [], 'every mode ending has its end-screen line (OUTCOME_REASONS or OUTCOME_SHARED_LINES in endScreenModes.ts)');
 for (const key of ['endScreen.role.juggernaut', 'endScreen.role.hunter', 'endScreen.role.survivor', 'endScreen.role.infected',
   'endScreen.class.gunship', 'endScreen.beat.downed']) assert.ok(en[key] && zh[key], `${key} in en-US and zh-CN`);
 // the AC-130's pilot: no armour blocks a round, nothing is spotted from the orbit, splash makes "on target" meaningless

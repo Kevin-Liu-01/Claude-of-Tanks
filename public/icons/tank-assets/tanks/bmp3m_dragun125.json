@@ -166,6 +166,21 @@
       },
       {
         "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.5672,0.1482,-3.6675],
+          [-1.5672,0.1482,3.6675],
+          [-1.5672,1.4823,3.6675],
+          [-1.5672,1.4823,-3.6675]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 20,
         "keMm": 20,
@@ -180,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H09",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 18,
         "keMm": 18,
@@ -487,7 +502,7 @@
     ]
   },
   "geometryHash": "2e3f129b",
-  "metadataHash": "a4ae2907",
+  "metadataHash": "1db8b086",
   "presentationAnchor": {
     "xM": -0.0003,
     "zM": 0.2982
@@ -543,8 +558,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34946,
-      "sha256": "6f69f4ae31175561fe6ebe8801d841ac7537ff73f64663ff2d24748140ed1cae"
+      "bytes": 31576,
+      "sha256": "c342d445a11df5bbf5fbd1139f219014dff7430b5e2c6814e7c10015c356e0d3"
     },
     "modulesSide": {
       "file": "bmp3m_dragun125_modules_side.webp",
@@ -622,8 +637,8 @@
     "technicalLabels": {
       "file": "bmp3m_dragun125_technical.json",
       "mime": "application/json",
-      "bytes": 3431,
-      "sha256": "a5f1f3014cb303d8c935d0b29db2bb7d7614486ff3dd2444b66ef976508f8e3b"
+      "bytes": 3428,
+      "sha256": "6038133b9646f5307c9fed86e8bb3c19a7477f38706c3670826859c314eb177c"
     }
   }
 }

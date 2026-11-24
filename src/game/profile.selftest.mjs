@@ -48,7 +48,9 @@ assert.deepEqual(getPlayerRecord(), {
 });
 
 recordBattleResult({ result: 'draw', kills: 2, damage: 1000, completedAt: 42 });
-recordBattleResult({ result: 'unknown', damage: -10, completedAt: 43 });
+// (leave-no-loss-276) a result outside the closed set (game/battleOutcome.ts) is refused: it never reads as a defeat
+assert.throws(() => recordBattleResult({ result: 'unknown', damage: -10, completedAt: 43 }), /must name an outcome/);
+recordBattleResult({ result: 'defeat', damage: -10, completedAt: 43 });
 const defeat = { result: 'defeat', kills: 0, damage: 0, vehicleId: '', mapId: '', durationS: 0, completedAt: 43 };
 assert.deepEqual(getPlayerRecord(), {
   version: 2, matches: 3, wins: 1, losses: 1, draws: 1,
@@ -123,5 +125,33 @@ assert.match(entry, /beginSelected\(\{[\s\S]{0,500}return run\(selected, selecte
   'beginSelected\'s start is announced by the entry');
 assert.match(main, /triggerBattle: \(\) => replayBattleEntry\(battleEntryIntent, \{\s*replay: \(entry\) => garage\.replayEntry\(entry\),/,
   'Battle Again replays the Garage press');
+
+// (leave-no-loss-276) stored rows naming no outcome of the closed set (a later version's 'retreat', a bad import's) are
+// kept as read: not shown, not counted, never read as a defeat, and saved back byte for byte in their place
+const foreignLast = { result: 'retreat', kills: 4, damage: 900, vehicleId: 'future_tank', completedAt: 90, future: { field: [1, 2.5, 'x'], note: null } };
+const foreignOlder = { result: 'surrendered', completedAt: 80 };
+const knownRow = { result: 'victory', kills: 2, damage: 1200, vehicleId: 'leo2a6', mapId: 'amberford', durationS: 100, completedAt: 85 };
+store.set('cot.profile.v2', JSON.stringify({ version: 2, matches: 7, wins: 4, losses: 3, draws: 0, kills: 20, damage: 9000, bestDamage: 3000,
+  lastBattle: foreignLast, recentBattles: [foreignLast, knownRow, foreignOlder] }));
+const kept = await import('./profile.ts?kept');
+assert.deepEqual(kept.getRecentBattles().map((battle) => battle.completedAt), [85], 'only the readable row is shown');
+assert.equal(kept.getLastBattleRecord(), null, 'a kept last battle is not shown as one');
+const keptView = kept.getPlayerRecord();
+assert.deepEqual([keptView.matches, keptView.wins, keptView.losses, keptView.kills, keptView.damage], [7, 4, 3, 20, 9000], 'kept rows count in no total');
+assert.equal(keptView.lastBattle, null);
+// the round trip: the next battle saves the profile; the kept rows are written back exactly as stored, in their places
+kept.recordBattleResult({ result: 'draw', kills: 1, damage: 100, completedAt: 95 });
+const resaved = JSON.parse(store.get('cot.profile.v2'));
+assert.deepEqual(resaved.recentBattles.map((row) => row.completedAt), [95, 90, 85], 'the newest three, the kept row in its place');
+assert.equal(JSON.stringify(resaved.recentBattles[1]), JSON.stringify(foreignLast), 'the kept row survives a load and save byte for byte');
+assert.ok(store.get('cot.profile.v2').includes(JSON.stringify(foreignLast)), 'byte for byte in the stored text');
+assert.deepEqual([resaved.matches, resaved.draws, resaved.losses], [8, 1, 3], 'the new draw counts; the kept rows still do not');
+// loading alone rewrites nothing: the stored text is the planted text after every getter has read it
+const planted = JSON.stringify({ version: 2, matches: 1, wins: 1, losses: 0, draws: 0, kills: 0, damage: 0, bestDamage: 0,
+  lastBattle: foreignLast, recentBattles: [foreignLast] });
+store.set('cot.profile.v2', planted);
+const keptTwice = await import('./profile.ts?kept2');
+keptTwice.getPlayerRecord(); keptTwice.getRecentBattles(); keptTwice.getLastBattleRecord(); keptTwice.battleOrdinalBase();
+assert.equal(store.get('cot.profile.v2'), planted, 'loading alone rewrites nothing');
 
 console.log('profile.selftest: real local match history passed; battles begun from the report or the ladder announced and counted once, a quit drops its tally');

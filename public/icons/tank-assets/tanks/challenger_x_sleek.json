@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.733,0.523,-3.048],
-          [1.73,1.161,-3.048],
-          [1.72,1.161,4.155],
-          [1.723,0.523,4.155]
+          [1.52,0.1626,4.155],
+          [1.52,0.1626,-4.155],
+          [1.52,1.1614,-4.155],
+          [1.52,1.1614,4.155]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.723,0.523,4.155],
-          [-1.719,1.161,4.155],
-          [-1.73,1.161,-3.003],
-          [-1.733,0.523,-3.003]
+          [-1.52,0.1626,-4.155],
+          [-1.52,0.1626,4.155],
+          [-1.52,1.1614,4.155],
+          [-1.52,1.1614,-4.155]
         ]
       },
       {
@@ -591,7 +591,7 @@
     ]
   },
   "geometryHash": "6dc8160f",
-  "metadataHash": "e057067a",
+  "metadataHash": "6d96efe0",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0085
@@ -699,8 +699,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19576,
-      "sha256": "2c943d9ea878ba4f70c01e621d298578fba86769766e348993cf320c084390af"
+      "bytes": 20262,
+      "sha256": "685c0c706260596739c406df848fdc2788d0065a94a82071b3ab5ee7a784f299"
     },
     "modulesSide": {
       "file": "challenger_x_sleek_modules_side.webp",
@@ -730,7 +730,7 @@
       "file": "challenger_x_sleek_technical.json",
       "mime": "application/json",
       "bytes": 5003,
-      "sha256": "efe116b7367e4f296563791e2e60c66b934e626712db206d839e20f29e1dee11"
+      "sha256": "07054fff77891745509c4b7631fa25bccd86e3a8f889527072469903ea5e9b87"
     }
   }
 }

@@ -8,7 +8,7 @@
 
 <p align="center">
 <!-- product-summary:start -->
-A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 313 vehicles, 33 destructible battlefields, and 14 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
+A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 313 vehicles, 33 destructible battlefields, and 15 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
 <!-- product-summary:end -->
 </p>
 
@@ -65,7 +65,7 @@ Every picture here is captured in the game engine. The four above come from the
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | **14 battle modes** and the Proving Ground, solo bots, Watch, couch play on phones, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
+| Play | **15 battle modes** and the Proving Ground, solo bots, Watch, couch play on phones, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse and keyboard, standard controllers, and full touch controls with safe-area layout and device-adaptive rendering |
 | Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; crew radio in 38 voice packs |
 | Security | An enforced Content Security Policy that names every inline script on the production pages by hash |

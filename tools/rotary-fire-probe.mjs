@@ -9,7 +9,7 @@
 // their encoded bytes a second for an alpha and a bravo viewer, and the
 // authority's step and per-viewer observation cost in this thread's CPU time (process.threadCpuUsage: a busy machine's
 // preemption stays out of it). Node only; no browser, no lock.
-//   node --max-old-space-size=4096 tools/rotary-fire-probe.mjs [--m163=1,4] [--aim=ground,sky] [--seconds=12] [--json]
+//   node --max-old-space-size=4096 tools/rotary-fire-probe.mjs [--id=m163_vads] [--m163=1,4] [--aim=ground,sky] [--seconds=12] [--json]
 // First-party: Kevin B. Liu (NOTICE.md).
 const cpuUs = () => { const usage = process.threadCpuUsage(); return usage.user + usage.system; };
 
@@ -23,6 +23,8 @@ const SECONDS = Number(args.seconds ?? 12);
 const WARM_S = 2;
 const MAP = String(args.map ?? 'verdant');
 const SEED = Number(args.seed ?? 11);
+// 276: any rotary gun (--id=m6_linebacker, the GAU-12/U); the M163's Vulcan by default
+const ROTARY_ID = String(args.id ?? 'm163_vads');
 
 await import('../src/vehicles/tankFactory.ts');
 const { getSpec } = await import('../src/vehicles/specs.ts');
@@ -35,7 +37,8 @@ const { MAX_EVENTS_PER_MESSAGE } = await import('../src/mp/wire/constants.ts');
 const SHELL_ROW_BYTES = 23, MAX_VIEW_SHELLS = 256, SNAPSHOT_EVERY = 3, EVENT_FRAME_BYTES = 2;
 const BOTS = ['m1a1_abrams_hc', 't90am', 'leo2_improved', 'bmp2', 'gepard_1a2', 'm2a2_bradley', 'type90'];
 const world = createDedicatedWorldCollision(MAP, { retain: true });
-const m163 = getSpec('m163_vads');
+const m163 = getSpec(ROTARY_ID);
+if (m163.gun.autoloader?.rotary !== true) throw new Error(`${ROTARY_ID}: not a rotary gun`);
 const rotaryAutoloader = { ...m163.gun.autoloader };
 const ROUND_FLIGHT_S = Number(m163.gun.shells[0].maxLifetimeS ?? 6);
 
@@ -49,7 +52,7 @@ function run(count, aim, rotary) {
   m163.gun.autoloader = rotary ? { ...rotaryAutoloader } : { ...rotaryAutoloader, rotary: false };
   const players = [];
   for (let i = 0; i < 7; i++) {
-    players.push(i < count ? { id: `a${i}`, specId: 'm163_vads', team: 'alpha', bot: false }
+    players.push(i < count ? { id: `a${i}`, specId: ROTARY_ID, team: 'alpha', bot: false }
       : { id: `a${i}`, specId: BOTS[i % BOTS.length], team: 'alpha', bot: true, difficulty: 'normal' });
     players.push(i === 0 ? { id: 'v0', specId: 'm1a1_abrams_hc', team: 'bravo', bot: false }
       : { id: `b${i}`, specId: BOTS[(i + 3) % BOTS.length], team: 'bravo', bot: true, difficulty: 'normal' });

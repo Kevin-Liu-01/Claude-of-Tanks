@@ -18,6 +18,7 @@ import { staticImportClosure } from '../../tools/static-import-closure.mjs';
 import { buildGunshipAirframe } from './gunshipAirframe.ts';
 import { createGunshipBattleVisual, hideGunshipVisual, loadGunshipAirframe, stageGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
 import { createMatchModeWorldPresentation, stageMatchModeObjectives } from './matchModeWorldPresentation.ts';
+import { createCameraRig } from '../engine/cameraRig.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -133,11 +134,37 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   assert.match(src('src/game/battlePresentationRuntime.ts'), /syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible, camera\.position\)/,
     'the battle passes its camera');
   anchor.dispose();
-  const rig = src('src/engine/cameraRig.ts');
-  assert.match(rig, /if \(aerialCamera\.update\(player, camInput, dt\)\) \{[\s\S]{0,400}applyPlayerVisibility\(player, player\.aerial\?\.kind !== 'gunship'\);/,
-    "the rig hides the gunship pilot's own vehicle on every lens frame");
-  assert.match(rig.slice(rig.indexOf('setExternalPose(pos: THREE.Vector3')), /^[\s\S]{0,600}applyPlayerVisibility\(getPlayer\(\), true\);/,
-    'an external pose (the ending, a replay) shows it');
+  // the rig itself (cameraRig.ts), driven: its own-vehicle visibility is what the anchor above passes on
+  {
+    const root = new THREE.Object3D();
+    root.updateMatrixWorld(true);
+    const flight = (kind) => ({ kind, active: true, launching: false, x: 0, y: 240, z: 90, yaw: 0, pitch: 0, batteryS: 30, cooldownS: 0 });
+    const player = {
+      state: { pos: root.position.clone(), yaw: 0, turretYaw: 0 }, input: { aimPoint: new THREE.Vector3() },
+      combat: { destroyed: false }, aerial: null,
+      visual: { root, turretTopWorld: (out) => out.set(0, 2, 0), gunPivotWorld: (out) => out.set(0, 1.7, 0.2) },
+    };
+    const rigCamera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 2000);
+    const cameraRig = createCameraRig(rigCamera, { heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player });
+    const idle = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
+    cameraRig.snapArcade(2, 0, -0.1);
+    cameraRig.update(1 / 60, idle);
+    assert.equal(root.visible, true, 'on the ground the pilot sees their own vehicle');
+    player.aerial = flight('gunship');
+    for (let frame = 0; frame < 3; frame++) {
+      root.visible = true; // whatever showed it between frames (a pose, the presentation)
+      cameraRig.update(1 / 60, idle);
+      assert.equal(root.visible, false, `the rig hides the gunship pilot's own vehicle on every lens frame (frame ${frame})`);
+    }
+    player.aerial = flight('drone');
+    cameraRig.update(1 / 60, idle);
+    assert.equal(root.visible, true, "a drone pilot's own vehicle stays drawn (only the gunship's lens hides it)");
+    player.aerial = flight('gunship');
+    cameraRig.update(1 / 60, idle);
+    assert.equal(root.visible, false);
+    cameraRig.setExternalPose(new THREE.Vector3(60, 250, 40), new THREE.Vector3(0, 240, 90), 50);
+    assert.equal(root.visible, true, 'an external pose (the ending, a replay) shows it');
+  }
   assert.match(src('src/game/battlePresentationRuntime.ts'),
     /if \(entity\.aerial\?\.kind === 'gunship'\) syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible, camera\.position\);/,
     "the presentation passes the rig's visibility straight on (the lens is the rig's call), with its camera for the hull test only");

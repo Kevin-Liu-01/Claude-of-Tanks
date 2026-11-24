@@ -36,7 +36,7 @@
 // writes the rows for --ids (or --all); --check re-measures them and compares, failing on a moved reading or a stale
 // binding. --gate exits non-zero when a measured tank is not aligned. --seed-pivot-m=<m> raises the combat trunnion by
 // m metres in the census's copy (the negative control): it must read as a ~m offset.
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim: builders paint their canvas textures as in the browser
@@ -49,7 +49,6 @@ const flag = (name) => args.includes(`--${name}`);
 const LEDGER_PATH = opt('ledger', '');
 const FLEET_LEDGER_PATH = 'docs/references/fleet-geometry-ledger.json';
 const SEED_PIVOT_M = Number(opt('seed-pivot-m', '0'));
-const RIGS_PATH = opt('rigs', '');
 // A gun fixed in the hull: its smallest main-gun bore is 15 mm, so a hull machine gun's mouth is never taken for it.
 const HULL_GUN_MIN_BORE_M = 0.015;
 const STATION_STEP_M = 0.04, FIRST_STATION_M = 0.03;
@@ -64,8 +63,6 @@ const { authoringRigSpec } = await import('../src/vehicles/combatGunRigSeat.ts')
 const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', '').split(',').map((s) => s.trim()).filter(Boolean), 'gun-barrel-align-census --ids');
 if (!ids.length) { console.error('gun-barrel-align-census: pass --ids=<a,b> or --all'); process.exit(2); }
 if (LEDGER_PATH && flag('update') === flag('check')) { console.error('gun-barrel-align ledger: pass exactly one of --update or --check'); process.exit(2); }
-if (RIGS_PATH && !flag('update')) { console.error('gun-barrel-align --rigs: pass --update'); process.exit(2); }
-const { COMBAT_GUN_RIGS } = await import('../src/vehicles/combatGunRigs.generated.ts');
 const ledger = LEDGER_PATH && existsSync(resolve(LEDGER_PATH)) ? JSON.parse(readFileSync(resolve(LEDGER_PATH), 'utf8')) : null;
 const DEG = Math.PI / 180;
 
@@ -419,58 +416,9 @@ function censusOne(id) {
 
 const report = ids.map(censusOne);
 
-// --rigs: the combat-rig table (src/vehicles/combatGunRigs.generated.ts). A tank gets a row when it is not aligned, or
-// keeps one it has, and its drawn gun is one turret bore measured at rest along the hull's +Z; the radius joins the row
-// when the authored one is off by more than the tolerance (or the row already carries one). The rows written are
-// applied in-process and those tanks measured again: a row must reproduce itself (the builder's rig never follows the
-// combat frame), so a regenerated table is a fixpoint.
-if (RIGS_PATH) {
-  const { applyCombatGunRig } = await import('../src/vehicles/combatAnatomy.ts');
-  const rows = { ...COMBAT_GUN_RIGS };
-  const combat = (r) => { const a = getSpec(r.id).armor; return { turretPivot: a.turretPivot, gunPivot: a.gunPivot, lengthM: a.gunBarrel.lengthM }; };
-  const rowFor = (r) => {
-    const m = r.measuredRig, held = rows[r.id];
-    if (!m || r.kind !== 'turret') return { skip: m ? `${r.kind} gun` : 'no measured bore (launcher or unmeasured tube)' };
-    // A tube drawn askew on its own rig_gun (a visual fault the combat barrel cannot follow) still takes its measured
-    // pivots and length; past 2 deg the measurement itself is not trusted.
-    if (m.restAngleDeg > 2) return { skip: `drawn bore ${m.restAngleDeg} deg off the hull's +Z at rest` };
-    const combatRadius = r.detail?.[0]?.combatRadiusMm / 1000;
-    const radius = m.radiusM !== null && (held?.radiusM !== undefined || Math.abs(combatRadius - m.radiusM) > T.radiusM);
-    const row = { turretPivot: m.turretPivot, gunPivot: m.gunPivot, lengthM: m.lengthM, ...(radius ? { radiusM: m.radiusM } : {}) };
-    // a row that would only restate the combat frame (within a millimetre) is not written
-    const same = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.001);
-    if (!held && !radius && same(row.turretPivot, combat(r).turretPivot) && same(row.gunPivot, combat(r).gunPivot)
-      && Math.abs(row.lengthM - combat(r).lengthM) < 0.001) return { skip: 'the measured frame is the combat frame (the mismatch is the drawn tube)' };
-    return { row };
-  };
-  const written = [], skipped = [];
-  for (const r of report) {
-    if (!rows[r.id] && (r.status === 'aligned' || !['mismatch', 'skewed'].includes(r.status))) continue;
-    const { row, skip } = rowFor(r);
-    if (skip) { skipped.push(`${r.id}: ${skip}`); continue; }
-    if (JSON.stringify(rows[r.id]) !== JSON.stringify(row)) written.push(r.id);
-    rows[r.id] = row;
-  }
-  const lines = Object.keys(rows).sort().map((id) => `  ${JSON.stringify(id)}: ${JSON.stringify(rows[id])},`);
-  const head = readFileSync(resolve(RIGS_PATH), 'utf8').split('export const COMBAT_GUN_RIGS')[0];
-  // written whole and renamed into place: a census starting meanwhile imports the old table or the new one, never half
-  writeFileSync(`${resolve(RIGS_PATH)}.tmp`, `${head}export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.freeze({\n${lines.join('\n')}\n});\n`);
-  renameSync(`${resolve(RIGS_PATH)}.tmp`, resolve(RIGS_PATH));
-  console.log(`gun-barrel-align rigs: ${written.length} row(s) written to ${RIGS_PATH} (${Object.keys(rows).length} held)${written.length ? ': ' + written.join(', ') : ''}`);
-  for (const line of skipped) console.log(`  no row: ${line}`);
-  let drift = 0;
-  for (const id of written) {
-    applyCombatGunRig(getSpec(id).armor, rows[id]);
-    const again = censusOne(id);
-    report[report.findIndex((r) => r.id === id)] = again;
-    const { row } = rowFor(again);
-    if (row && JSON.stringify(row) !== JSON.stringify(rows[id])) {
-      drift++;
-      console.log(`${id}: the row is not a fixpoint (the build follows the combat frame): wrote ${JSON.stringify(rows[id])}, re-measured ${JSON.stringify(row)}`);
-    }
-  }
-  if (drift) process.exitCode = 1;
-}
+// (276) The combat frame is no longer written here: tools/gen-combat-anatomy.mjs measures every id's drawn rig into its
+// calibration (tools/combat-rig-measure.mjs), so this census only reports alignment (the --rigs table it wrote went stale
+// as tanks changed, and is deleted).
 const jsonPath = opt('json', '');
 if (jsonPath) { writeFileSync(resolve(jsonPath), JSON.stringify({ generated: new Date().toISOString(), tolerance: ALIGN_TOLERANCE, seedPivotM: SEED_PIVOT_M, tanks: report }, null, 1) + '\n'); console.log(`wrote ${jsonPath}`); }
 const off = report.filter((r) => !['aligned', 'launcher', 'no-barrel'].includes(r.status)).map((r) => `${r.id}${r.status === 'skewed' ? ' (skewed)' : ''}`);

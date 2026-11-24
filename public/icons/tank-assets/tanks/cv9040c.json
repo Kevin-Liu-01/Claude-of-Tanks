@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.78,-0.76],
+    "turretPivot": [0,1.69,-0.48],
     "plates": [
       {
         "hitboxId": "H01",
@@ -899,21 +899,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.6797,-0.5929,-0.3018],
-        "max": [-0.2512,0.7592,0.4659],
+        "min": [-0.6951,-0.5743,-0.3114],
+        "max": [-0.2357,0.7778,0.4331],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.5822,-0.6212,-0.5731],
-        "max": [-0.1779,0.7666,0.2592],
+        "min": [-0.5722,-0.7029,-0.5835],
+        "max": [-0.1625,0.6848,0.2592],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "b45b8439",
-  "metadataHash": "83dc3c0f",
+  "metadataHash": "48211f1b",
   "presentationAnchor": {
     "xM": 0.0021,
     "zM": -0.0437
@@ -986,8 +986,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40886,
-      "sha256": "c991011ef6f86cdaf60746fed5b97f42c1b197d4c9255675c953602484643d74"
+      "bytes": 41076,
+      "sha256": "b01a87f2facb9e768dd53500e04ac44b6644a0e4c2bec7893ed4e8b68c45fe66"
     },
     "angle": {
       "file": "cv9040c_angle.webp",
@@ -1050,7 +1050,7 @@
       "file": "cv9040c_technical.json",
       "mime": "application/json",
       "bytes": 4447,
-      "sha256": "1fb7544b06e888a1ea26efe78e1dd00f91ced4bfe1c4aef1116a54e1d4b00880"
+      "sha256": "3f1171561569daf98f5f0337ceebe57573377198bf393d147e435bce06aa44a9"
     }
   }
 }

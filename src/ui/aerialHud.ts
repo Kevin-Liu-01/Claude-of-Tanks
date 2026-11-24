@@ -13,6 +13,8 @@ import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cyc
 import { segmented, setRoving, wireRoving } from './components/components.ts';
 import type { IconId } from './icons/icon.ts';
 import { scratchCanvas } from './uiCanvas.ts';
+import { BATTLE_EVENT, type BattleEvent } from './battleNoticeEvents.ts';
+import { NOTICE_PRIORITY } from './battleNotices.ts';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
@@ -42,6 +44,9 @@ export function formatDroneAltitude(heightM:number):string{
 const SCOPE_VIEWS=['daylight','infrared','thermal','night'] as const satisfies readonly AerialVision[];
 /** Mode-specific instruments keep the shared amber/slate HUD language and real controls. */
 export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGround=()=>null){
+  // One control seat (combined-arms-276, game/playerBattleActions.ts): the binoculars refused while our drone is aloft are
+  // answered on the event lane, with the drone's glyph (the audio engine sounds it)
+  bus.on('ui:seatBusy',()=>{bus.emit(BATTLE_EVENT,{kind:'seatBusy',text:t('flight.seatBusy'),priority:NOTICE_PRIORITY.answered,severity:'warning',icon:'modeDrone'} satisfies BattleEvent);});
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
   signal.setAttribute('role','status');signal.textContent=t('flight.signalLost');
   const transition=createDroneFeedTransition();

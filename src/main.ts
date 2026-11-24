@@ -265,6 +265,14 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { createReplayRecorder, type RecorderGame, type ReplaySetupOptions } from './game/replay/replayRecorder.ts';
+import { listReplays, loadReplayFile, saveReplay, unpackReplay } from './game/replay/replayStore.ts';
+import { decodeReplay, type ReplayRecording } from './sim/replayFormat.ts';
+import { recordedBattle, runRecordedSetup } from './game/replay/replaySetup.ts';
+// (the replay bar's segmented filter: the kit is already in the boot chunk with the Garage; the lazy bar takes it as a port)
+import { segmented, wireRoving } from './ui/components/components.ts';
+import type { replayCollisionManifest } from './game/replay/replayWorldManifest.ts';
+type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
@@ -279,7 +287,7 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, modeLaunchesDrones, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
 import { trainingRulesFor } from './sim/trainingGround.ts';
 import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
@@ -374,6 +382,8 @@ const isShotViewName = (value: string): value is ShotViewName => (
   SHOT_VIEWS.some((name) => name === value)
 );
 
+const soloBattleRuntime = createSoloBattleRuntimeAccess();
+// (its calls that change a battle between steps are taken through the battle recorder below: game/replay/battleActions.ts)
 const {
   preload: preloadSoloBattleRuntime,
   isReady: isSoloBattleRuntimeReady,
@@ -381,15 +391,10 @@ const {
   simStep,
   createCollider,
   prepareNextOpeningRoute,
-  resetProvingRange,
-  setProvingTargetsMoving,
-  cueTrainingActor,
   trainingSightFor,
   trainingThreatFor,
-  finishTrainingBattle,
-  setTrainingCheckpoint,
   recordBattleLeft,
-} = createSoloBattleRuntimeAccess();
+} = soloBattleRuntime;
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
 
@@ -528,7 +533,7 @@ const scene = new THREE.Scene();
 /** The point an aircraft's smoke or burst is drawn at (airSupportWorld.ts aircraftFx), reused. */
 const _aircraftFxAt = new THREE.Vector3();
 const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
-  groundHeight: (x, z) => groundSampler(x, z),
+  groundHeight: (x, z, ceiling) => groundSampler(x, z, ceiling),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
@@ -539,6 +544,13 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   aircraftFx: {
     smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
     crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
+  },
+  // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)
+  hullPosition: (id) => {
+    const tank = game.tanks.find((entity) => entity.id === id);
+    if (!tank?.state || tank.combat?.destroyed || tank === game.player) return null;
+    const seen = !game.spotting || game.spotting.isSpotted(id, game.player?.team ?? 'player', game.player);
+    return seen ? tank.state.pos : null;
   },
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
@@ -750,7 +762,37 @@ const devTrace = traceRequested
     traceMode: import.meta.env.DEV ? 'development' : 'production-qa',
   })
   : null;
-const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+// the battle recorder (docs/REPLAY.md): every solo battle's seat controls, actions and timeline marks, saved on leaving it
+const replayRecorder = createReplayRecorder();
+// the solo runtime's calls that change a battle between two steps (a training cue, its checkpoint and end, the proving
+// ground's reset and moving targets): recorded as the battle's own actions, so its replay runs them before the same step
+const { resetProvingRange, setProvingTargetsMoving, cueTrainingActor, finishTrainingBattle, setTrainingCheckpoint } =
+  replayRecorder.wrapBattleRules({
+    resetProvingRange: soloBattleRuntime.resetProvingRange,
+    setProvingTargetsMoving: soloBattleRuntime.setProvingTargetsMoving,
+    cueTrainingActor: soloBattleRuntime.cueTrainingActor,
+    finishTrainingBattle: soloBattleRuntime.finishTrainingBattle,
+    setTrainingCheckpoint: soloBattleRuntime.setTrainingCheckpoint,
+  });
+// a battle recorded with the divergence trace keeps it here for the tools (game/replay/replayTrace.ts; off unless they ask)
+let lastReplayTrace: unknown = null;
+// (the save resolves once the store has it: the end screen's Watch and Download wait on it)
+let replaySaving: Promise<unknown> = Promise.resolve();
+const finishReplay = (): Promise<unknown> => {
+  const done = replayRecorder.finish();
+  if (!done) return replaySaving;
+  if (done.trace) lastReplayTrace = done.trace;
+  replaySaving = saveReplay(done.bytes, done.header, done.end);
+  return replaySaving;
+};
+// a saved replay the page is entering as a battle (watchSavedReplay below): setupBattle takes it (once)
+let pendingReplay: { recording: ReplayRecording; file: Uint8Array } | null = null;
+const bus = createBus(devTrace
+  ? (ev, payload) => { devTrace.event(ev, payload); replayRecorder.onEvent(ev, payload); }
+  : (ev, payload) => replayRecorder.onEvent(ev, payload));
+// the tools' read of the recorder and the saved battles (tools/replay-browser-check.mjs), as __COT_COUCH publishes the couch's
+(globalThis as { __COT_REPLAY?: unknown }).__COT_REPLAY = { recorder: replayRecorder, finish: finishReplay, list: listReplays, load: loadReplayFile,
+  lastTrace: () => lastReplayTrace };
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
 installBattleRecords(bus);
@@ -1185,7 +1227,7 @@ const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts')
   bus, input,
   playerId: () => game.player?.id ?? null,
   watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
-  airSupportMode: () => game.ruleset?.mode === 'air_support',
+  airSupportMode: () => !!game.ruleset?.airSupport,
 })));
 // (notices-audit-275) the crew radio's captions (ui/captionLine.ts): loaded at the first rollout, shown when the setting is on
 const captionLineChunk = createLazyChunk(() => import('./ui/captionLine.ts').then(({ createCaptionLine }) => createCaptionLine({
@@ -1975,7 +2017,7 @@ const showroom = createGarageShowroomRuntime({
   // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : modeLaunchesDrones(garagePreviewMode) ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
   getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
@@ -2432,9 +2474,6 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  // (death-flow-275 R6) a Leave before the verdict of a battle that keeps records is a defeat (recordBattleLeft)
-  leaveCountsAsDefeat: () => game.phase === 'battle' && !game.result && !!game.ruleset?.records
-    && !game.ruleset?.watch && !game.ruleset?.couch,
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -2464,13 +2503,14 @@ function phoneMode(): 'tank' | 'strike' | 'drone' | 'gunship' | 'watch' | 'dead'
 }
 /** The seat's Turbo cooldown for the phone's key (turbo-spin-275), from its own tank:turbo events as the HUD reads it. */
 const phoneTurbo = createTurboCooldown(bus, () => game.player?.id, () => game.timeS);
+const phoneAirSpin = createTurboCooldown(bus, () => game.player?.id, () => game.timeS, 'tank:airSpin');
 function phoneSource() {
   const watch = watchOwner.current?.controller;
   const ruleset = game.ruleset;
   return { battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
     shellCode: shellTypeCode, lockable: true, mode: phoneMode(),
     // turbo-spin-275: a jump mode's Turbo and air spin, greyed while unavailable (game/turboCooldown.ts)
-    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS)) : undefined,
+    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS), phoneAirSpin.readyIn(game.timeS)) : undefined,
     facts: { jump: ruleset?.jumpMps != null, turbo: !!ruleset?.turbo, airSpin: !!ruleset?.airSpin, drone: game.player?.aerial?.kind === 'drone', airSupport: !!ruleset?.airSupport,
       consumables: ruleset?.consumables !== false, range: !!ruleset?.provingGround,
       watchRiding: watch?.active === true && watch.view === 'ride',
@@ -2560,6 +2600,8 @@ playerBattleActions = createPlayerBattleActions({
   bus,
   input,
   isSettingsOpen: () => settings.isOpen(),
+  // the seat's discrete actions for the battle's recording (game/replay/seatActions.ts)
+  recordSeatWrite: (kind, args) => replayRecorder.recordSeatWrite(kind, args),
   network: {
     isActive: onlineMatchActive,
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
@@ -2569,7 +2611,7 @@ playerBattleActions = createPlayerBattleActions({
   scuttle: { bit: PLAYER_ACTION_BITS.SCUTTLE, holdS: SCUTTLE_HOLD_S },
   strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
     blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
-  rules: {
+  rules: replayRecorder.wrapRules({
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
     magazineReloadDenialReason: battleClientAccess.magazineReloadDenialReason,
@@ -2586,8 +2628,8 @@ playerBattleActions = createPlayerBattleActions({
     requestTankJump: battleClientAccess.requestTankJump,
     pressSelfRight: battleClientAccess.pressSelfRight,
     requestHullTurbo: battleClientAccess.requestHullTurbo,
-    requestTankAirSpin: battleClientAccess.requestTankAirSpin,
-  },
+    requestHullAirSpin: battleClientAccess.requestHullAirSpin,
+  }),
 });
 const playerFrameInput = createPlayerFrameInput({
   input,
@@ -2835,7 +2877,26 @@ const soloBattleStart = createSoloBattleStartAccess({
       setCamoBiome,
       // the hero leaves for battle in the paint it wears, never a try-on's tile
       lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
-      setupBattle,
+      // the battle's recording opens round its setup (game/replay/replayRecorder.ts: what setup reads beyond its options)
+      setupBattle: (battle: Parameters<typeof setupBattle>[0], specId: string, world: Parameters<typeof setupBattle>[2],
+        options: Parameters<typeof setupBattle>[3]) => {
+        void finishReplay();
+        const replay = pendingReplay;
+        pendingReplay = null;
+        // a saved replay: set up as recorded (replaySetup.ts), never recorded itself, then posed by the viewer
+        if (replay) {
+          currentHud()?.shotInfo.setReplayProbe(() => false);
+          const result = runRecordedSetup(battle as unknown as Parameters<typeof runRecordedSetup>[0], replay.recording.header,
+            (playerSpecId, recorded) => setupBattle(battle, playerSpecId, world, { ...options, ...recorded }));
+          if (!replayViewerOwner.current?.attach(replay.recording, replay.file, world as unknown as ReplayManifestWorld)) {
+            console.error('[replay] the replay could not be attached to its battle');
+          }
+          return result;
+        }
+        currentHud()?.shotInfo.setReplayProbe(() => replayRecorder.active);
+        replayRecorder.beginSetup(battle as unknown as RecorderGame, specId, (options ?? {}) as ReplaySetupOptions);
+        try { return setupBattle(battle, specId, world, options); } finally { replayRecorder.endSetup(); }
+      },
       combatWarm,
       presentation: battlePresentation,
       applyPlayerCamo: (specId: string) => applyCamoPatterns(specId),
@@ -3628,6 +3689,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       watchOwner.current?.stop();
+      replayViewerOwner.current?.stop();
       currentDamagePanel()?.release();
       if (keepScreens) return;
       currentDamagePanel()?.clear();
@@ -3842,8 +3904,9 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
-  // (death-flow-275 R6; Kevin approved 2026-11-21) a local battle left before its verdict is recorded as a defeat
-  // (game/state.ts recordBattleLeft: the records hear it, no report or ending follows); the Esc menu said so
+  // (leave-no-loss-276; Kevin 2026-11-24 "leaving battles early should not count as a loss") a battle left before its
+  // verdict has no result: the records stand it in the history as "Left" and count it toward no total
+  // (game/battleOutcome.ts; game/state.ts recordBattleLeft, the room's presentation recordLeft); no report or ending follows
   if (game.phase === 'battle' && !game.result) {
     if (v2?.active) v2.recordLeft();
     else if (isSoloBattleRuntimeReady()) recordBattleLeft(game, bus);
@@ -4065,6 +4128,73 @@ const watchOwner = createLazyRuntimeOwner(
       || (target instanceof Element && !!target.closest('.cot-touch-aim')),
   }),
 );
+// The replay viewer (docs/REPLAY.md §5): a saved battle watched as a battle, posed from its track. Its chunk loads the
+// first time a replay is watched; nothing of it is on the boot graph.
+const replayViewerOwner = createLazyRuntimeOwner(
+  () => import('./app/replayViewerRuntime.ts'),
+  (module) => module.createReplayViewerRuntime({
+    game: game as unknown as Parameters<typeof module.createReplayViewerRuntime>[0]['game'],
+    watch: () => watchOwner.current?.controller ?? null,
+    hud: { root: () => currentHud()?.root ?? null, replayKill: (kill) => currentHud()?.replayKill(kill) },
+    leave: () => { void leaveBattleToGarage().catch((error) => console.error('[replay] leave failed', error)); },
+    isInputHeld: () => settings.isOpen(),
+    reportError: (message, error) => console.error(message, error),
+    kit: { segmented, wireRoving },
+  }),
+);
+/** The saved replay `id`'s stored bytes (the battle just ended when null, saved first), or null. */
+async function savedReplayFile(id: number | null): Promise<{ id: number; data: Uint8Array } | null> {
+  if (id == null) {
+    await finishReplay();
+    id = (await listReplays())[0]?.id ?? null;
+  }
+  if (id == null) return null;
+  const data = await loadReplayFile(id);
+  return data ? { id, data } : null;
+}
+/** Watch a saved replay: a recording this build cannot replay shows its timeline alone; else the page enters its battle
+ *  (from the Garage: an end screen returns there first) and setupBattle hands it to the viewer. */
+async function watchSavedReplay(id: number | null): Promise<void> {
+  const stored = await savedReplayFile(id);
+  if (!stored) return;
+  const file = await unpackReplay(stored.data);
+  const recording = decodeReplay(file);
+  const [viewer] = await Promise.all([replayViewerOwner.preload(), watchOwner.preload()]);
+  const refusal = viewer.refusal(recording);
+  if (refusal) {
+    viewer.showTimeline({ header: recording.header, end: recording.end, events: recording.events, track: null, indexedSteps: 0,
+      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` } });
+    return;
+  }
+  if (game.phase === 'battle') await leaveBattleToGarage();
+  const battle = recordedBattle(recording.header);
+  pendingReplay = { recording, file };
+  try {
+    await beginLocalBattleEntry(battle.playerSpecId, battle.mapId,
+      { randomRoster: battle.randomRoster, gameMode: battle.gameMode, campaignOperationId: battle.campaignOperationId });
+  } finally {
+    // setupBattle took it; a refused or failed entry must not hand it to the next battle
+    pendingReplay = null;
+  }
+}
+/** Save a replay's file (as stored: gzipped where the browser could) under its battle's date. */
+async function downloadSavedReplay(id: number | null): Promise<void> {
+  const stored = await savedReplayFile(id);
+  if (!stored) return;
+  const stamp = new Date(stored.id).toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const url = URL.createObjectURL(new Blob([stored.data as BlobPart], { type: 'application/octet-stream' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `claude-of-tanks-${stamp}.cotreplay`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+const replayIdOf = (payload: unknown): number | null => {
+  const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
+  return typeof id === 'number' && Number.isFinite(id) ? id : null;
+};
+bus.on('ui:replayWatch', (payload) => { void watchSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] watch failed', error)); });
+bus.on('ui:replayDownload', (payload) => { void downloadSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] download failed', error)); });
 // Couch mode (docs/COUCH-MODE.md): the lobby that seats the phones, each seat's controls, the per-tick input stage and
 // the shared camera. Its chunk loads when the host opens Couch on the Deploy screen; nothing of it is on the boot graph.
 const couchOwner = createLazyRuntimeOwner(
@@ -4233,10 +4363,19 @@ const battleFrame = createBattleFrameRuntime({
   stepSimulation: () => {
     // a couch battle's seats: each phone's controls onto its tank, once per fixed step (docs/COUCH-MODE.md)
     couchOwner.current?.beforeStep();
-    return simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
+    // the recorder stages the seat as the replay will (sim/seatControl.ts) and keeps the step (docs/REPLAY.md §2)
+    replayRecorder.beforeStep();
+    const stepped = simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
+    replayRecorder.afterStep();
+    return stepped;
   },
   // (who paused: a tutorial card's hold, or the pause menu; the tutorial's own card stays up under its own hold)
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused, by: paused && !settings.isOpen() && tutorialHolds() ? 'tutorial' : 'menu' }),
+  // a replay being watched is posed from its track each frame, never stepped (app/replayViewerRuntime.ts)
+  replay: {
+    isActive: () => replayViewerOwner.current?.isActive() === true,
+    advance: (dt: number) => replayViewerOwner.current?.advance(dt),
+  },
   simulationDt: SIM_DT,
 });
 const pauseInfo = battleFrame.pauseInfo;
@@ -4368,6 +4507,8 @@ invalidateGaragePresentation = () => {
 // Quality changes mutate shadow projections and post targets even in a sleeping Garage.
 onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier(); });
 bus.on('phase:change', () => {
+  // a battle left (the garage, a studio, a room) closes its recording and saves it
+  if (game.phase !== 'battle') finishReplay();
   if (game.phase === 'garage') {
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
     // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows; round 8 Y4

@@ -13,7 +13,7 @@ import { PROP_FELL_PER_BLAST, munitionChargeKg, propFellRadiusM } from '../sim/m
 import { setCompoundShape, setObbShape } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
 import { createTerrainDeformation } from '../sim/terrainDeformation.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../world/collisionRecordPacking.ts';
 
 const field = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => new Vector3(0, 1, 0), maxY: 0 };
 const he125 = { type: 'HE', caliberMm: 125 };

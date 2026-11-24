@@ -65,6 +65,11 @@ function airframeOf(tankRoot: THREE.Object3D): Airframe | null {
   return model;
 }
 
+/** The gunship's drawn airframe for an anchor (null until it is built): Air Support seats a downed one's wreck by it. */
+export function gunshipModelRoot(tankRoot: THREE.Object3D): THREE.Object3D | null {
+  return aircraft.get(tankRoot)?.root ?? null;
+}
+
 /** An orbiting four-engine gunship replaces the tank exterior in aerial mode, drawn while `visible`. (ac130-fx-228 r2)
  *  The anchor (`tankRoot`, an empty group) keeps the visibility the camera rig and the streamer give it: the rig hides
  *  the pilot's own vehicle on every frame its gimbal lens (inside the airframe, at the orbit centre) is the camera and

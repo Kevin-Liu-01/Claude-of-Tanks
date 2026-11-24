@@ -46,6 +46,9 @@ const NAMED_COLOURS = new Set(('aliceblue antiquewhite aqua aquamarine azure bei
   + 'slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke '
   + 'yellow yellowgreen').split(' '));
 const COLOUR_PROPERTY = /^(?:--|.*colou?r|background|border(?!-(?:radius|width|style|image-(?:width|slice|outset|repeat)|collapse|spacing))|outline(?!-(?:width|style|offset))|.*shadow|fill|stroke(?!-(?:width|linecap|linejoin|dasharray|dashoffset|miterlimit))|caret|accent|text-decoration|column-rule|filter|-webkit-text-stroke|mask)/;
+// a mask's keywords are alpha stops, not colours: black/transparent in a mask or mask-image only say how much shows
+// through (Main 2026-11-24, notices-276's art fade); a hex or colour function there still counts
+const ALPHA_MASK = /^(?:-webkit-)?mask(?:-image)?$/;
 const COLOUR_FUNCTION = /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
 const HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![0-9a-z_-])/gi;
 const LENGTH = /(?:^|[^\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%|pt|pc|vw|vh|vmin|vmax|dvh|svh|lvh|dvw|ch|ex|cap|ic|lh|rlh|cqw|cqh|cqi|cqb|cqmin|cqmax|q|mm|cm|in)\b/i;
@@ -65,7 +68,7 @@ export function declarationLiterals(property, rawValue, important = false) {
   const prop = property.toLowerCase();
   if (!/^(?:font-family|content|grid-template-areas|quotes|src|unicode-range|font-feature-settings|font-variation-settings)$/.test(prop)) {
     add('colour', (value.match(HEX) ?? []).length + (value.match(COLOUR_FUNCTION) ?? []).length);
-    if (COLOUR_PROPERTY.test(prop)) {
+    if (COLOUR_PROPERTY.test(prop) && !ALPHA_MASK.test(prop)) {
       // words only: custom-property names and function names (tan(), drop-shadow()) are not colours
       const words = value.toLowerCase().replace(/--[\w-]+/g, ' ').replace(/[a-z-]+\(/g, '(');
       for (const word of words.match(/[a-z]+(?:-[a-z]+)*/g) ?? []) if (NAMED_COLOURS.has(word)) add('colour');

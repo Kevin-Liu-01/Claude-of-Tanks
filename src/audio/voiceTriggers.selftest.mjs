@@ -285,10 +285,11 @@ moment('smoke_out', () => bus.emit('auxiliary:smokeScreens', { screens: [{ born:
 moment('roof_gun_on', () => { me.combat.auxiliary = { ...me.combat.auxiliary, gunOn: true }; frame(); });
 {
   const since = probe.sfxLog.at(-1)?.seq ?? 0;
+  // (276) each switch sounds once it has settled (toggleSettle.ts): a frame is 0.25 s here
   me.combat.auxiliary = { ...me.combat.auxiliary, lights: 1 };
-  frame();
+  frame(); frame();
   me.combat.auxiliary = { ...me.combat.auxiliary, lights: 0, gunOn: false };
-  frame();
+  frame(); frame();
   const names = probe.sfxLog.filter((e) => e.seq > since).map((e) => e.n);
   assert.ok(names.includes('lights_on') && names.includes('switch_toggle'), `the lights clunk on and click off, the gun station switches off (${names})`);
 }

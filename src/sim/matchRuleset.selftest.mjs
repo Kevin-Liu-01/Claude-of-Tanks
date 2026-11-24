@@ -31,7 +31,7 @@ assert.equal(standard.timeLimitS, 900); assert.equal(standard.respawnS, null); a
 // owner 2026-09-21: the battle report reads this split — deaths are a stat and `dead` the state at the end
 // only where the ruleset revives
 assert.deepEqual(GAME_MODE_IDS.filter((mode) => matchRulesetFor(mode).respawnS != null).sort(),
-  ['air_support', 'capture_the_flag', 'drone', 'gun_game', 'infected', 'juggernaut', 'mars', 'proving_ground', 'training', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
+  ['air_support', 'capture_the_flag', 'combined_arms', 'drone', 'gun_game', 'infected', 'juggernaut', 'mars', 'proving_ground', 'training', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
 
 const turbo = matchRulesetFor('turbo_ball');
 assert.equal(turbo.gravityScale, 0.6, 'Turbo Ball plays at 0.6 g');
@@ -404,7 +404,7 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
 
 // improve-271 plan 012: the rules the mode-id literals used to decide, read from the ruleset (the old literals' values)
 {
-  const kills = ['zone_control', 'mars', 'air_support', 'drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'];
+  const kills = ['zone_control', 'mars', 'air_support', 'combined_arms', 'drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'];
   const footprints = { capture_the_flag: { radiusM: 12 }, turbo_ball: { radiusM: 18, arena: true } };
   const middles = { turbo_ball: { kind: 'kickoff', radiusM: 12, reliefM: 3, arena: true }, ac130: { kind: 'extraction', radiusM: 30, reliefM: 7 } };
   for (const mode of GAME_MODE_IDS) {

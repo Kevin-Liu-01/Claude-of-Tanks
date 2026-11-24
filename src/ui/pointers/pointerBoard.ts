@@ -4,7 +4,8 @@
  *
  * The tutorial's guide (ui/tutorial/tutorialGuide.ts) loads with the tutorial's chunk and the pointer layer with the HUD's
  * (pointerLayer.ts, drawn by hud.ts), so neither imports the other: the guide posts its step's place here while it shows,
- * and the HUD reads it each frame beside the mode's own (pointerPlan.ts pickFollow puts the tutorial's first). Tiny and
+ * and the HUD reads it each frame. It is the battle's only follow pointer (Kevin, 2026-11-23: the ground arrows are for what
+ * the player could not otherwise know; pointerPlan.selftest holds that nothing outside the tutorial posts one). Tiny and
  * dependency-free, so either chunk may carry it.
  */
 import type { FollowPointer } from './pointerPlan.ts';

@@ -26,6 +26,14 @@ export const AUTHORITY_ENTRIES: readonly string[] = Object.freeze([
   'src/mp/host/matchHostCore.ts',
 ]);
 
+/**
+ * What a replay re-simulates with (replay-system-275, docs/REPLAY.md §7): the local driver's replayer and everything it
+ * steps. A recording carries this digest; a build whose digest differs refuses it cleanly.
+ */
+export const REPLAY_ENTRIES: readonly string[] = Object.freeze([
+  'src/game/replay/replayRunner.ts',
+]);
+
 const IMPORT_RE = /(?:^|\n)\s*(?:import|export)\s+(type\s+)?(?:[^'"`;]*?\s+from\s+)?['"]([^'"\n]+)['"]|import\(\s*['"]([^'"\n]+)['"]\s*\)/g;
 const SOURCE_RE = /\.(?:ts|mts|mjs|js|json)$/;
 
@@ -76,4 +84,9 @@ export function resolveMatchBuild(root: string, appVersion: string, read?: ReadS
     prediction: closureDigest(root, sourceClosure(root, PREDICTION_ENTRIES, read), read),
     authority: closureDigest(root, sourceClosure(root, AUTHORITY_ENTRIES, read), read),
   });
+}
+
+/** This tree's replay digest, defined as `__COT_REPLAY_DIGEST__` (src/game/replay/replayBuild.ts). */
+export function resolveReplayDigest(root: string, read?: ReadSource): string {
+  return closureDigest(root, sourceClosure(root, REPLAY_ENTRIES, read), read);
 }

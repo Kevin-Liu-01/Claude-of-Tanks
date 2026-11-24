@@ -24,6 +24,7 @@ import { floorShotShare, type GunAutoloader } from './fireCycleFloor.ts';
 
 import { Euler, Quaternion, Vector3 } from 'three';
 import { AIR_SPIN_RATE, canTankAirSpin, tankAirborne } from './hullFlight.ts';
+import { quaternionFromEuler, applyAxisAngle } from './detRotation.ts';
 import { HULL_STEP_UP_M } from '../world/collision.ts';
 import { CLIFF_GRADE,
   DRIVE_ACCEL_PER_HPT as K_ACCEL,
@@ -35,7 +36,7 @@ import { CLIFF_GRADE,
   uphillDriveMargin,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
-import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
+import { STANDARD_PHYSICS, type AirSpinRules, type RulesetPhysics } from './matchRuleset.ts';
 import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 import { publishedTrackContact } from './trackContact.ts';
 
@@ -413,6 +414,9 @@ export interface TankState {
    * (rad). Part of the integrator: the prediction checkpoint (version 10) and a migrated host carry it. */
   _airSpinAxis: number;
   _airSpinLeft: number;
+  /** The flight's dodge is spent (flip-boost-276): one air spin a flight, a ground dodge's included; the ground clears
+   * it. The prediction checkpoint (version 11, flag bit 13) carries it. */
+  _flipUsed: boolean;
   _groundType: string;
   _debuff: MovementDebuffs;
   _sup: SupportCache;
@@ -1504,6 +1508,10 @@ const JUMP_AIR_REPEAT_S = 0.35;
 const JUMP_CEILING_APEXES = 2;
 /** A stick or key past this share of its throw picks the spin's axis. */
 const AIR_SPIN_PICK = 0.3;
+/** The ground clearance a flip or roll waits for before it turns, in the swept half extent (flip-boost-276): the hull
+ *  turns about its base, so a turn begun lower lands a 50 t fixture on its roof (1.0 at Mars's 9.5 m/s ground dodge was
+ *  the edge of clean landings; 0.6-0.8 overturned at every hop up to 7 m/s). */
+const AIR_SPIN_CLEAR_SCALE = 1.2;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
 const RECOIL_KICK_MAX_DEGS = 15; // spring pitch-rate kick, heavy gun
 /** The share of the recoil kick an airborne hull takes as rotation (fireRecoil). */
@@ -2188,6 +2196,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _rollover: { elapsedS: 0, expired: false },
     _airSpinAxis: 0,
     _airSpinLeft: 0,
+    _flipUsed: false,
     _groundType: 'medium',
     _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
       immobile: false,
@@ -2244,9 +2253,10 @@ export function resetTankVerticalState(
   // an upright hull on the ground is supported, its tumble and any righting with it (audit M8: the righting latch
   // outlived a reset that cleared only the tumble)
   if (grounded !== false) resetHullBodyMode(state);
-  // a reset pose owes no spin (a respawn mid-flip, a teleport)
+  // a reset pose owes no spin (a respawn mid-flip, a teleport), and has its dodge
   state._airSpinAxis = 0;
   state._airSpinLeft = 0;
+  state._flipUsed = false;
 }
 
 function initializeRideState(state: TankState, supportY: number): RideState {
@@ -2957,14 +2967,14 @@ function solveGunLay(
   // Exact inverse YXZ composition keeps the articulated bore, shell origin,
   // reticle, and authoritative hit ray on one pose even on compound slopes.
   _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _hullQuat.setFromEuler(_hullEuler);
+  quaternionFromEuler(_hullQuat, _hullEuler);
   const turretPivot = spec.armor?.turretPivot;
   const gunPivot = spec.armor?.gunPivot;
-  _gunOriginWorld.set(
+  applyAxisAngle(_gunOriginWorld.set(
     gunPivot?.[0] ?? 0,
     gunPivot?.[1] ?? spec.dims.heightM * 0.15,
     gunPivot?.[2] ?? 0,
-  ).applyAxisAngle(_worldUp, state.turretYaw).add(_turretPivotLocal.set(
+  ), _worldUp, state.turretYaw).add(_turretPivotLocal.set(
     turretPivot?.[0] ?? 0,
     turretPivot?.[1] ?? spec.dims.heightM * 0.7,
     turretPivot?.[2] ?? 0,
@@ -3209,7 +3219,8 @@ function integrateHorizontalMotion(
   state.impactMps = cliffImpact;
   state.pos.x += (forwardX * state.speed + spring.recoilVX) * dt;
   state.pos.z += (forwardZ * state.speed + spring.recoilVZ) * dt;
-  const recoilDecay = detMath.exp(-dt / RECOIL_DECAY_TAU);
+  // a barrel roll's shove carries while it rolls (flip-boost-276; requestTankAirSpin): the dodge, not a knock's twitch
+  const recoilDecay = Math.abs(state._airSpinAxis) === 2 ? 1 : detMath.exp(-dt / RECOIL_DECAY_TAU);
   spring.recoilVX *= recoilDecay;
   spring.recoilVZ *= recoilDecay;
   if (!collide) return;
@@ -3443,7 +3454,7 @@ function fixedHydraulicPitchRequest(
   dt: number,
 ): number {
   _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _hullQuat.setFromEuler(_hullEuler);
+  quaternionFromEuler(_hullQuat, _hullEuler);
   const turretPivot = spec.armor?.turretPivot;
   const gunPivot = spec.armor?.gunPivot;
   _gunOriginWorld.set(
@@ -3676,8 +3687,12 @@ function updateHullAttitude(
     landingImpact,
     upYAtStart,
   );
-  // a flip or roll ends where the hull meets the ground: the landing takes the attitude it has (turbo-spin-275)
-  if (groundedAtStart) endAirSpin(state);
+  // a flip or roll ends where the hull meets the ground: the landing takes the attitude it has (turbo-spin-275); the
+  // ground gives the next flight its dodge (flip-boost-276)
+  if (groundedAtStart) {
+    endAirSpin(state);
+    state._flipUsed = false;
+  }
   if (!groundedAtStart || body.tumbling) {
     updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt, drive);
   } else {
@@ -5790,35 +5805,76 @@ export const AIR_SPIN_AXES = Object.freeze({ NONE: 0, BACK_FLIP: 1, FRONT_FLIP: 
 interface AirSpinState extends LiftableState {
   _airSpinAxis?: number;
   _airSpinLeft?: number;
+  _flipUsed?: boolean;
   _body?: { autoRighting?: boolean };
+  yaw: number;
+  speed: number;
+  _spring: { recoilVX: number; recoilVZ: number };
 }
 
-/** The axis a press picks from the drive it was pressed with: A/D (steer, + is left) a roll, S a back flip, else a front flip. */
+/** The axis a press picks from the drive it was pressed with: A/D (steer, + is left) a roll, S a back flip, else a front
+ *  flip. A steer as strong as the throttle rolls (flip-boost-276: W is held through a run, so W with A or D is the barrel
+ *  roll the owner asked A and D for; 275 gave the tie to the flip). */
 export function airSpinAxisFor(throttle: number, steer: number): number {
   const t = Number.isFinite(throttle) ? throttle : 0;
   const s = Number.isFinite(steer) ? steer : 0;
-  if (Math.abs(s) >= AIR_SPIN_PICK && Math.abs(s) > Math.abs(t)) return s > 0 ? AIR_SPIN_AXES.ROLL_LEFT : AIR_SPIN_AXES.ROLL_RIGHT;
+  if (Math.abs(s) >= AIR_SPIN_PICK && Math.abs(s) >= Math.abs(t)) return s > 0 ? AIR_SPIN_AXES.ROLL_LEFT : AIR_SPIN_AXES.ROLL_RIGHT;
   return t <= -AIR_SPIN_PICK ? AIR_SPIN_AXES.BACK_FLIP : AIR_SPIN_AXES.FRONT_FLIP;
 }
 
 /**
  * Air spin (turbo-spin-275; owner 2026-11-22: "f should also be an official command so u can literally spin in air but only
- * if ur in air (gray if ur not)"; he picked flips and rolls): a hull in flight turns one whole flip or roll about the axis
- * its drive picks (airSpinAxisFor), at AIR_SPIN_RATE, then stops turning on that axis. Refused on the ground, while the
- * righting torque holds the hull, and while a spin is still turning. The ground ends a spin where the hull meets it.
+ * if ur in air (gray if ur not)"; he picked flips and rolls): the hull turns one whole flip or roll about the axis its drive
+ * picks (airSpinAxisFor), at AIR_SPIN_RATE, then stops turning on that axis. The ground ends a spin where the hull meets it.
+ *
+ * A dodge since flip-boost-276 (owner 2026-11-24: "make the flip work a lot better as an actual boost", "doing a and d and s
+ * should do barrel rolls and a reverse flip too"): the press shoves the hull at once along its move (AirSpinRules). The
+ * front flip adds `forwardMps` to the run speed, the back flip takes `backMps` off it, and the barrel roll shoves the hull
+ * `sideMps` toward the side its steer turns to (the translation impulse, held while it rolls: moveTank). In flight the
+ * dodge also stops the fall, so a flip at the ball keeps its height; on the ground (a ground dodge) it hops the hull at
+ * `hopMps`. One a flight (`_flipUsed`, cleared on the ground), a ground dodge's flight included. Refused while the righting
+ * torque holds the hull, while a spin is still turning, and on the ground on its roof or side (hullFlight.ts
+ * canTankAirSpin). The cooldown is the caller's (sim/modeMoves.ts requestHullAirSpin). The axis taken, or 0.
  */
-export function requestTankAirSpin(state: AirSpinState | null | undefined, throttle: number, steer: number): boolean {
-  if (!state || !canTankAirSpin(state)) return false;
-  state._airSpinAxis = airSpinAxisFor(throttle, steer);
+export function requestTankAirSpin(
+  state: AirSpinState | null | undefined, throttle: number, steer: number, rules: AirSpinRules,
+): number {
+  if (!state || !canTankAirSpin(state)) return 0;
+  const airborne = tankAirborne(state);
+  const axis = airSpinAxisFor(throttle, steer);
+  if (axis === AIR_SPIN_AXES.FRONT_FLIP || axis === AIR_SPIN_AXES.BACK_FLIP) {
+    const shove = axis === AIR_SPIN_AXES.FRONT_FLIP ? rules.forwardMps : -rules.backMps;
+    state.speed = clamp(state.speed + shove, -LAUNCH_SPEED_CAP_MPS, LAUNCH_SPEED_CAP_MPS);
+  } else {
+    // the side a positive steer turns the hull to (+ is left: the yaw grows toward +x at heading 0)
+    const side = axis === AIR_SPIN_AXES.ROLL_LEFT ? rules.sideMps : -rules.sideMps;
+    state._spring.recoilVX += detMath.cos(state.yaw) * side;
+    state._spring.recoilVZ -= detMath.sin(state.yaw) * side;
+  }
+  if (airborne) {
+    state.verticalSpeed = Math.max(state.verticalSpeed || 0, 0);
+    if (state._ride) state._ride.v = Math.max(state._ride.v || 0, 0);
+  } else liftTankRide(state, rules.hopMps);
+  state._airSpinAxis = axis;
   state._airSpinLeft = 2 * Math.PI;
-  return true;
+  state._flipUsed = true;
+  return axis;
 }
 
 
-/** The spin's turn this step on its axis's rate; true when this step completes the turn. */
+/** The spin's turn this step on its axis's rate; true when this step completes the turn. A turn not yet begun waits until
+ *  the hull is clear of the ground by what the turn sweeps (flip-boost-276: AIR_SPIN_CLEAR_SCALE of the track contact's
+ *  half length for a flip, half width for a roll, `_landingTurn` this step): a ground dodge's hop, or a press just off the
+ *  ground, turns once it can, never planting the nose or a side on its first tick (which ended it on the ground). */
 function driveAirSpin(state: TankState, spring: AttitudeSpringState, dt: number): boolean {
   const axis = state._airSpinAxis;
   if (!axis || !(dt > 0)) return false;
+  if (state._airSpinLeft >= 2 * Math.PI - 1e-9) {
+    const ride = state._ride;
+    const clear = Number.isFinite(ride.supportY) ? ride.y - ride.supportY : Infinity;
+    const sweep = Math.abs(axis) === 1 ? _landingTurn.halfLength : _landingTurn.halfWidth;
+    if (clear < sweep * AIR_SPIN_CLEAR_SCALE) return false;
+  }
   const step = Math.min(state._airSpinLeft, AIR_SPIN_RATE * dt);
   const rate = Math.sign(axis) * step / dt;
   if (Math.abs(axis) === 1) spring.pitchV = rate;

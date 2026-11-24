@@ -5,6 +5,7 @@ import { killSourceIdentity } from './killSourceIdentity.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
+import { battleOutcomeOf, type BattleOutcome } from '../game/battleOutcome.ts';
 import {
   MEDALS, getServiceRecord,
   type AchievementProgress, type MedalGroup, type ServiceBattle, type ServiceRecordView,
@@ -13,17 +14,22 @@ import { formatDate, formatNumber, t } from './i18n.ts';
 import { datumAttr } from './dom.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { emptyState, statTile, tag } from './components/components.ts';
+import { button, emptyState, skeleton, statTile, tag } from './components/components.ts';
 import type { IconId } from './icons/icon.ts';
+import type { SavedReplaySummary } from '../game/replay/replayStore.ts';
 // The garage's Service Record: career totals, the medal case, achievement
 // tiers and the last battles, each with its kills laid out as a chain of
 // thought. Rendered on demand into the record dialog (serviceRecordDialog.ts
 // owns the dialog, its header plate, tabs and focus); everything here reads
 // local records only. The last battle heads the dialog as a plate: its map
-// behind, its tank's render beside the result.
+// behind, its tank's render beside the result. The replays tab lists the saved recordings (replayStore.ts), which the
+// dialog loads as the tab opens.
 
-export type RecordTab = 'overview' | 'medals' | 'achievements' | 'history';
-export const RECORD_TABS: readonly RecordTab[] = ['overview', 'medals', 'achievements', 'history'];
+export type RecordTab = 'overview' | 'medals' | 'achievements' | 'history' | 'replays';
+export const RECORD_TABS: readonly RecordTab[] = ['overview', 'medals', 'achievements', 'history', 'replays'];
+
+/** The replays tab's list: the saved recordings newest first, or 'loading' while the store answers. */
+export type RecordReplays = readonly SavedReplaySummary[] | 'loading';
 
 /** The tab an arrow, Home or End key moves to from `current` (roving focus), or null for any other key. */
 export function recordTabForKey(key: string, current: RecordTab): RecordTab | null {
@@ -94,12 +100,14 @@ function medalName(id: string): string {
   return t(`service.medal.${id}.name`);
 }
 
-function resultLabel(result: string): string {
-  return result === 'victory' ? t('garage.record.victory') : result === 'draw' ? t('garage.record.draw') : t('garage.record.defeat');
+/** (leave-no-loss-276) one label per outcome of the closed set (a left battle reads "Left", never a defeat). */
+function resultLabel(result: BattleOutcome): string {
+  return t(`garage.record.${result}`);
 }
 
 /** The header plate (the last battle: its tank, result, map and time) and the tab counts for the current record. */
-export function recordSummary(names: RecordViewNames, view: ServiceRecordView = getServiceRecord()): { plate: string; counts: Record<RecordTab, string> } {
+export function recordSummary(names: RecordViewNames, view: ServiceRecordView = getServiceRecord(),
+  saved: RecordReplays = 'loading'): { plate: string; counts: Record<RecordTab, string> } {
   const distinct = Object.keys(view.medals).length;
   const last = getPlayerRecord().lastBattle;
   const plate = last
@@ -113,6 +121,7 @@ export function recordSummary(names: RecordViewNames, view: ServiceRecordView = 
       medals: `${num(distinct)}/${num(MEDALS.length)}`,
       achievements: `${num(view.tiersReached)}/${num(view.achievements.length * 3)}`,
       history: num(view.history.length),
+      replays: saved === 'loading' ? '' : num(saved.length),
     },
   };
 }
@@ -294,12 +303,37 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
   return `<ol class="cot-record-history">${rows}</ol>`;
 }
 
-/** The markup for one tab of the record. */
-export function recordTabMarkup(tab: RecordTab, names: RecordViewNames, view: ServiceRecordView = getServiceRecord()): string {
+/** The saved recordings, each with Watch and Download (the dialog emits ui:replayWatch / ui:replayDownload by its id). */
+function replays(list: RecordReplays, names: RecordViewNames): string {
+  if (list === 'loading') return `<div class="cot-record-replays" aria-busy="true">${skeleton('cot-record-replay-skel')}</div>`;
+  if (!list.length) return emptyState({ text: t('garage.record.replaysEmpty'), icon: 'film', className: 'cot-record-empty' });
+  const rows = list.map((entry) => {
+    const mode = entry.gameMode ?? '';
+    // (leave-no-loss-276) a recording's result as the records name it; one outside the set shows none, never a defeat
+    const outcome = battleOutcomeOf(entry.result);
+    const place = mode
+      ? `<span data-mode-tone="${safe(mode)}">${uiIconSVG(names.modeIcon(mode), 11)}${safe(names.map(entry.mapId ?? ''))}&nbsp;·</span> <span>${safe(t(`playMenu.matchMode.${mode}.label`))}</span>`
+      : `<span>${safe(names.map(entry.mapId ?? ''))}</span>`;
+    return `<li class="cot-record-replay${outcome ? ` result-${outcome}` : ''}">${vehicleArt(entry.playerSpecId ?? '')}` +
+      `<span class="cot-record-battle-what">${outcome ? `<span class="cot-record-result">${resultLabel(outcome)}</span>` : ''}` +
+      `<b>${safe(names.vehicle(entry.playerSpecId ?? ''))}</b><small>${place}</small><time>${safe(when(entry.recordedAtMs))}</time></span>` +
+      `<span class="cot-record-battle-num"><b>${clock(entry.ticks / 60)}</b><small>${statLabel(t('garage.record.duration'), 'clock')}</small></span>` +
+      `<span class="cot-record-replay-actions">` +
+      button({ label: t('garage.record.replayWatch'), icon: 'film', size: 36, attrs: { 'data-replay-watch': entry.id } }) +
+      button({ label: t('garage.record.replayDownload'), icon: 'moveBack', size: 36, attrs: { 'data-replay-download': entry.id } }) +
+      `</span></li>`;
+  }).join('');
+  return `<ol class="cot-record-replays">${rows}</ol>`;
+}
+
+/** The markup for one tab of the record (`saved`: the replays tab's list, empty until the dialog has loaded it). */
+export function recordTabMarkup(tab: RecordTab, names: RecordViewNames, view: ServiceRecordView = getServiceRecord(),
+  saved: RecordReplays = []): string {
   switch (tab) {
     case 'medals': return medals(view);
     case 'achievements': return achievements(view);
     case 'history': return history(view, names);
+    case 'replays': return replays(saved, names);
     default: return overview(view);
   }
 }

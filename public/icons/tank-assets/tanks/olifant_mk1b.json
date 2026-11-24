@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.7437,0.1005],
+    "turretPivot": [0,1.7,0.47],
     "plates": [
       {
         "hitboxId": "H01",
@@ -690,8 +690,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.5908,-0.7747,-0.4644],
-        "max": [-0.2011,0.4777,0.2697],
+        "min": [-0.6108,-0.728,-0.4468],
+        "max": [-0.2011,0.4791,0.2665],
         "turretLocal": true
       },
       {
@@ -704,14 +704,14 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.251,-0.7951,-0.3348],
-        "max": [0.6708,0.8704,0.1243],
+        "min": [0.251,-0.7007,-0.3547],
+        "max": [0.6608,0.8754,0.1436],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "ac456d25",
-  "metadataHash": "6d8432a9",
+  "metadataHash": "a3c6353b",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": -0.0132
@@ -836,8 +836,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27658,
-      "sha256": "391e8b9389f7a86ee3f5f28e4a39b4efcca8505cebc468ff516cccda040d3386"
+      "bytes": 27646,
+      "sha256": "1f286dfc5cae3b0c985579feab97eb66ac0a36da61050caac9057183414ca963"
     },
     "markings": {
       "file": "olifant_mk1b_markings.png",
@@ -851,7 +851,7 @@
       "file": "olifant_mk1b_technical.json",
       "mime": "application/json",
       "bytes": 5348,
-      "sha256": "649189b604df81178865a6ce7833e8768e79eb6b953759f098d2340348d0eeb3"
+      "sha256": "2823015b30b29c602ce7160fc17cf61b2a13d197768fc6f2bf92f81c54d9be5d"
     }
   }
 }

@@ -155,6 +155,8 @@ export interface EndScreenSummary {
   watched?: boolean;
   /** A watched battle's mode score by side; absent where the battle is scored by its kills. */
   score?: { readonly alpha: number; readonly bravo: number } | null;
+  /** (replay-system-275) the battle was recorded: the actions offer Watch replay and Download replay. */
+  replay?: boolean;
 }
 
 interface EndScreenRuntime {
@@ -1131,11 +1133,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.reason === 'network_disconnect') {
       return t('endScreen.outcome.disconnect');
     }
-    // Infected's own endings (the outbreak took every survivor; the survivors held out to extraction)
-    if (sum.reason === 'outbreak_complete') return t('endScreen.outcome.outbreak');
-    if (sum.reason === 'survivors_extracted') return t('endScreen.outcome.extracted');
-    // (endscreen-modes-275) a mode's own ending (flags home, the score reached, the troops out): "Enemy force destroyed"
-    // read under every points win
+    // (endscreen-modes-275) a mode's own ending (flags home, the score reached, the troops out, the outbreak, the sortie
+    // out of time): "Enemy force destroyed" read under every points win
     const reasonKey = outcomeKey(sum.reason, result);
     if (reasonKey) return t(reasonKey);
     if (result === 'victory') {
@@ -1657,6 +1656,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       });
     }
     adoptEndOverlay(actions);
+    if (sum?.replay) {
+      // (replay-system-275) the recording, after the report's own actions and never its primary: a phone wraps the pair to
+      // a line of its own (endScreenPresentation.css)
+      const replay = el('div', 'es-replay-actions', actions);
+      action(replay, 'secondary', 'replay', 'film', t('endScreen.watchReplay')).addEventListener('click', () => {
+        bus.emit('ui:click', {});
+        bus.emit('ui:replayWatch', { id: null });
+      });
+      action(replay, 'secondary', 'replayDownload', 'moveBack', t('endScreen.downloadReplay')).addEventListener('click', () => {
+        bus.emit('ui:click', {});
+        bus.emit('ui:replayDownload', { id: null });
+      });
+    }
     // the commander mark signs the report at the row's far end: the brand's own still master (tools/brand-marks.mjs),
     // sized and lazy (imported, brandMark.ts's chunk would split off the boot graph)
     const mark = el('img', 'es-mark', actions);

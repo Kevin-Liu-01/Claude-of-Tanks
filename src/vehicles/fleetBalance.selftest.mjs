@@ -122,8 +122,24 @@ for (const id of SAVED_TANK_IDS) {
 // held as known until progression re-measures Tier X on the merged tree (TESTS-OWED "Integrator 263"). Nothing else.
 const PENDING_TIER_X_RULING = (o) => o.id === 'challenger3' && o.metric === 'fireControl' && o.group === 'modern/10/mbt'
   && o.direction === 'high' && o.ratio < 1.6;
+// Owner ruling 2026-11-23 (Kevin, relayed by Main to inherited-reds-276): "update the target ranges, keep the stats". Each
+// outlier below is accepted by name, at its measured ratio, and no further: a ratio that drifts further out, or any other
+// tank, still fails. Red on main c7d111fad4.
+// - x1_pioneiro, x1a2_carcara (OCC 90 HEAT-T, 480 / 470 mm): stats unchanged; the group reached the audit's 4-vehicle
+//   floor when 860653b716 (denmark-c-265 into integ/266) added the M41A3 / M41 BW / M41 JGSDF (215 mm HVAP)
+// - m113a1_fsv, m113a1_mrv (L29 / L32 HESH, 110 mm): 8e4e6e41ca (269 AUS tree) set them to tier 1, into this group
+// - redback (the Puma S1's pre-rebalance gun, 0.28 s / 95): e96b9bd483 (269 AUS), pinned by 58d8cd7f3a
+const OWNER_ACCEPTED_OUTLIERS = [
+  { id: 'x1_pioneiro', group: 'cold-war/1/light', metric: 'penetration', direction: 'high', ratio: 2.233 },
+  { id: 'x1a2_carcara', group: 'cold-war/1/light', metric: 'penetration', direction: 'high', ratio: 2.187 },
+  { id: 'm113a1_fsv', group: 'cold-war/1/light', metric: 'penetration', direction: 'low', ratio: 0.511 },
+  { id: 'm113a1_mrv', group: 'cold-war/1/light', metric: 'penetration', direction: 'low', ratio: 0.511 },
+  { id: 'redback', group: 'modern/6/ifv', metric: 'dpm', direction: 'high', ratio: 1.573 },
+];
+const ownerAccepted = (o) => OWNER_ACCEPTED_OUTLIERS.some((a) => a.id === o.id && a.group === o.group && a.metric === o.metric
+  && a.direction === o.direction && (o.direction === 'high' ? o.ratio <= a.ratio : o.ratio >= a.ratio));
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
-  .filter((o) => !PENDING_TIER_X_RULING(o)), [],
+  .filter((o) => !PENDING_TIER_X_RULING(o) && !ownerAccepted(o)), [],
   'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
 // 2026-09-23: 54 -> 50 when the m26_pershing / m45_patton / is7 / object279 notes retired with their hulls.
 // 2026-10-13: 50 -> 51 with the Tier X Warrior TES(H) envelope (coordinator ruling on VEH-11).
@@ -154,7 +170,11 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
 // 125 -> 128 (265, FAIRNESS-265 P1/P2 on the rebuilt 2A4 family): leo2_improved and leo2a4_otco take their mantlet entries
 // back, re-measured on the 27-degree fronts, and leo2a4_v carries the 2A4's main plates.
 // 128 -> 130 (266, m60-family-265): the new Magach 6B and 7C take the M60A1's.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 130,
+// 130 -> 142 (269/274, re-pinned by inherited-reds-276; red on main c7d111fad4): the Semel and the Olifant Mk 1, 1A and 1B
+// (3a8e9cb27f) and the TTD (aab7d35149), South Africa; the Australia tree's Leopard AS1, M113A1 FSV and MRV, M113AS4,
+// M1A1 AIM SA and M1A2 SEPv3 (AUS) and Redback (8e4e6e41ca, merged f53b1b154c); the M113A3 (7d21ca3e4b, merged
+// 9860fc070b); less the Type 90 (B) Kyumaru's row, retired with the STC-1 (166533e7bc, Release 274).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 142,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -247,6 +267,12 @@ const missileVelocityByVehicle = new Map([
   ['m6_linebacker', 750], // 2026-10-04: the compact-pod M6 Linebacker's FIM-92 Stinger
   // 268: the twin-cannon air defence's SAMs at their published peak speeds (the 9M311M, the 57E6, the QW-2)
   ['tunguska_m', 900], ['pantsir_s1', 1300], ['pgz95', 650],
+  // (inherited-reds-276; red on main c7d111fad4, behind the outlier assert) the guided rounds added since, each at its
+  // authored speed: the BMPT Terminator's Ataka-T at the BMPT-72's (2d3199bcae), the M3A2's TOW-2A at the Bradleys'
+  // (6da16eebc0), the Australian M113s' twin TOWs (d0a344095a, 456ecdd124) and the Redback's Spike LR2 at the Borsuk's
+  // Spike LR (e96b9bd483)
+  ['bmpt_terminator', 357.5], ['m3a2_bradley', 195], ['m113a1_fsv', 195], ['m113a1_mrv', 195], ['m113as4', 195],
+  ['redback', 180],
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([

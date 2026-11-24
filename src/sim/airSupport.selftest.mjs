@@ -33,7 +33,8 @@ const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, ge
   for (const bit of bits) assert.equal(bit & (bit - 1), 0, 'one-hot');
   for (const mode of GAME_MODE_IDS) {
     const rules = matchRulesetFor(mode);
-    assert.ok(!(rules.airSupport && (mode === 'ac130' || rules.aerial)), `${mode}: never both supply drops and call-ins`);
+    // (the supply drops are the AC-130 gunship's alone, matchModes.ts requestSupply: Combined Arms' drone drops nothing)
+    assert.ok(!(rules.airSupport && (mode === 'ac130' || rules.aerial === 'gunship')), `${mode}: never both supply drops and call-ins`);
   }
   assert.equal(matchRulesetFor('air_support').airSupport, R);
   assert.equal(PLAYER_ACTION_BITS.STRIKE_GUNSHIP, 1 << 15, 'the u16 is full, never wider');
@@ -241,7 +242,10 @@ assert.equal(digest(second.log), digest(first.log), 'a replay fires the same str
 {
   const downed = run({ shootDown: true });
   const strafe = downed.log.find((e) => e.type === 'mode_strike_called' && e.kind === 'strafe');
-  assert.equal(downed.log.filter((e) => e.type === 'mode_strike_round' && e.strikeId === strafe.strikeId).length, 0, 'a downed jet fires nothing');
+  const ofStrafe = downed.log.filter((e) => e.type === 'mode_strike_round' && e.strikeId === strafe.strikeId);
+  assert.equal(ofStrafe.filter((e) => e.crash !== 1).length, 0, 'a downed jet fires nothing');
+  // (air-crash-he-276) it falls as its one crash round (airCrash.selftest pins its burst)
+  assert.deepEqual(ofStrafe.map((e) => [e.crash, e.shellName]), [[1, 'A-10 crash']], 'a downed jet falls as one crash round');
 }
 // migration: the ledger, the cooldowns and a strike in the air carry across a host change
 run({ migrateAt: 'bomb' });

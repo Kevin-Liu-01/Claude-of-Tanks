@@ -1,11 +1,11 @@
-// airSupportNotices.selftest.mjs — Air Support's three battle notices on notices-audit-275's two lanes (air-support-275):
-// - INCOMING (a strike whose footprint covers the crew): a condition (battleNotices.ts) at NOTICE_PRIORITY.threat, its
-//   countdown updated in place only when its whole seconds change, taken down when the danger has passed;
-// - a refused call-in and an aircraft the crew brought down: events (battleNoticeEvents.ts BATTLE_EVENT) at
-//   NOTICE_PRIORITY.answered, "line · call-in", on the HUD's own bus;
+// airSupportNotices.selftest.mjs — Air Support's air lane (air-support-275; notices-276b, Kevin 2026-11-24: "should we
+// combine stuff"): every live air event one plate of the condition lane (battleNotices.ts), never an event:
+// - INCOMING (a strike whose footprint covers the crew): airIncoming at NOTICE_PRIORITY.threat, its countdown updated in
+//   place only when its whole seconds change, taken down when the danger has passed;
+// - the crew's own call-in (airOrder, answered): the refusal it met, the order under way, then its run's countdown;
+// - an aircraft the crew brought down (airDown, answered), for the event lane's time, with its aircraft's render;
 // - the condition lane is the page's: driven through the real battle HUD (initHud) over the recording DOM, the page's HUD
-//   raises the INCOMING condition and a couch pane's HUD (view.own 'frame', couchPaneViews.ts) raises none, while the
-//   pane still hears its own seat's events on its own bus.
+//   raises the plates and a couch pane's HUD (view.own 'frame', couchPaneViews.ts) raises none.
 import { created } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -16,8 +16,8 @@ import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { AIR_SUPPORT_RULES as R } from '../sim/matchRuleset.ts';
 import { createBus } from '../game/stateCore.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
-import { BATTLE_EVENT } from './battleNoticeEvents.ts';
-import { createAirSupportHud, INCOMING_NOTICE } from './airSupportHud.ts';
+import { BATTLE_EVENT, EVENT_HOLD_MS } from './battleNoticeEvents.ts';
+import { createAirSupportHud, DOWN_NOTICE, INCOMING_NOTICE, ORDER_NOTICE } from './airSupportHud.ts';
 import { initHud } from './hud.ts';
 import { t } from './i18n.ts';
 
@@ -51,6 +51,8 @@ function recordingPort() {
   assert.equal(raised.detail, '4 s', 'its countdown');
   assert.equal(raised.durationMs, null, 'it holds until the danger passes');
   assert.equal(raised.severity, 'warning', "the other side's strike");
+  assert.equal(raised.kind, 'airIncoming', 'a declared kind (noticeKinds.ts)');
+  assert.equal(raised.art, 'f16', 'with its aircraft\'s render');
   hud.update(view(11.1, [strike()]), ORIGIN, ORIGIN, 'alpha', 11.1, true, 'X');
   assert.deepEqual(port.calls.slice(1).map((call) => [call.op, call.id, call.detail]), [['condition', INCOMING_NOTICE, '3 s']], 'updated in place');
   // a strike of our own side over us (friendly fire is on) is told, in the quieter severity
@@ -62,17 +64,34 @@ function recordingPort() {
   assert.deepEqual(port.calls.at(-1), { op: 'dismiss', id: INCOMING_NOTICE }, 'taken down when the danger has passed');
   assert.equal(events.length, 0, 'the warning raises no event');
 
-  // the events: a refused call-in and an aircraft brought down, "line · call-in", at the answered rung, on this bus
+  // a refused call-in: the crew's plate says so (airOrder, answered, its aircraft's render), never an event; an unknown
+  // call-in raises nothing
+  const at = port.calls.length;
   bus.emit('ui:strikeRefusal', { kind: 'missile', reason: 'POINTS' });
-  bus.emit('ui:aircraftDowned', { kind: 'bomb' });
   bus.emit('ui:strikeRefusal', { kind: 'nonsense', reason: 'POINTS' });
-  assert.deepEqual(events.map((event) => [event.text, event.priority, event.severity]), [
-    [`${t('airSupport.state.points')} · ${t('airSupport.kind.missile')}`, NOTICE_PRIORITY.answered, 'warning'],
-    [`${t('airSupport.downed')} · ${t('airSupport.kind.bomb')}`, NOTICE_PRIORITY.answered, 'success'],
-  ], 'a refusal and a shoot-down are answered events; an unknown call-in raises nothing');
-  assert.ok(events.every((event) => typeof event.icon === 'string'), 'each with its call-in\'s glyph');
-  assert.ok(port.calls.every((call) => call.id === INCOMING_NOTICE), 'the events never touch the condition lane');
+  hud.update(view(pastS + 0.1, []), ORIGIN, ORIGIN, 'alpha', pastS + 0.1, true, 'X');
+  const order = port.calls.slice(at).filter((call) => call.op === 'condition');
+  assert.deepEqual(order.map((call) => [call.kind, call.id, call.text, call.detail, call.severity, call.priority, call.art]), [
+    ['airOrder', ORDER_NOTICE, t('airSupport.kind.missile'), t('airSupport.state.points'), 'warning', NOTICE_PRIORITY.answered, 'f16'],
+  ], 'the refusal is the crew\'s plate');
+  // it holds the event lane's time, then the plate goes
+  const later = pastS + 0.1 + EVENT_HOLD_MS / 1000 + 0.1;
+  hud.update(view(later, []), ORIGIN, ORIGIN, 'alpha', later, true, 'X');
+  assert.deepEqual(port.calls.at(-1), { op: 'dismiss', id: ORDER_NOTICE }, 'and goes after its time');
+  // the crew's own run in the air (not over the crew): the same plate, its countdown
+  const far = { x: 900, y: 0, z: 900 };
+  hud.update(view(later + 1, [strike({ id: 2, kind: 'strafe', team: 'alpha', mine: true, landsS: later + 4.5 })]), far, far, 'alpha', later + 1, true, 'X');
+  const run = port.calls.at(-1);
+  assert.deepEqual([run.kind, run.id, run.text, run.detail, run.art], ['airOrder', ORDER_NOTICE, t('airSupport.kind.strafe'), '4 s', 'a10'],
+    'the crew\'s run counts down on the same plate');
+  // an aircraft brought down: its own plate for the event lane's time
+  bus.emit('ui:aircraftDowned', { kind: 'bomb' });
+  const down = port.calls.at(-1);
+  assert.deepEqual([down.kind, down.id, down.text, down.detail, down.durationMs, down.art],
+    ['airDown', DOWN_NOTICE, t('airSupport.downed'), t('airSupport.kind.bomb'), EVENT_HOLD_MS, 'f16'], 'a shoot-down is a timed plate');
+  assert.equal(events.length, 0, 'Air Support raises no event: the air lane is the condition lane\'s');
 }
+
 
 // ---- through the real HUD: the page's HUD raises the condition, a couch pane's raises none
 const SPEC = 'm1a1_abrams_hc';
@@ -113,20 +132,23 @@ function runHud(hudView, player) {
       matchModeState: { id: 'air_support', perspectiveTeam: 'alpha', air: view(timeS, [strike()]) } });
   }
   bus.emit('ui:aircraftDowned', { kind: 'strafe' });
-  return { incoming: pageLane.calls.slice(from).filter((call) => call.id === INCOMING_NOTICE && call.op === 'condition'), events };
+  const raised = pageLane.calls.slice(from).filter((call) => call.op === 'condition');
+  return { incoming: raised.filter((call) => call.id === INCOMING_NOTICE), down: raised.filter((call) => call.id === DOWN_NOTICE), events };
 }
 try {
   const pane = runHud({ mount: globalThis.document.body, own: 'frame' }, seat2);
   assert.equal(pane.incoming.length, 0, "a couch pane's HUD raises no INCOMING condition in the page's lane");
-  assert.equal(pane.events.length, 1, "the pane's seat still hears its own shoot-down on its own bus");
+  assert.equal(pane.down.length, 0, "nor its seat's shoot-down");
+  assert.equal(pane.events.length, 0, 'and no event for it');
   const page = runHud(null, seat1);
   assert.equal(page.incoming.length, 1, "the page's HUD raises the INCOMING condition");
   assert.equal(page.incoming[0].priority, NOTICE_PRIORITY.threat);
+  assert.equal(page.down.length, 1, "and its crew's shoot-down");
 } finally {
   battleNotices.condition = realCondition;
   battleNotices.dismiss = realDismiss;
 }
 
-console.log('airSupportNotices.selftest: INCOMING is a threat-rung condition updated in place and taken down after its danger; '
-  + 'a refused call-in and a shoot-down are answered events on the HUD\'s bus; through the real HUD the page raises the '
-  + 'condition and a couch pane raises none: PASS');
+console.log('airSupportNotices.selftest: the air lane: INCOMING a threat-rung plate updated in place and taken down after its '
+  + 'danger; the crew\'s call-in one plate from its refusal or order to its run\'s countdown; a shoot-down a timed plate; no '
+  + 'event; through the real HUD the page raises them and a couch pane raises none: PASS');

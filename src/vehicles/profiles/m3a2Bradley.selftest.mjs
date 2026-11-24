@@ -43,7 +43,7 @@ assert.equal(m3.gunPitchByYawDeg, undefined, `${ID}'s source turret depresses it
 assert.deepEqual(m3.gun.launcherMuzzles, getSpec('ua_m2a3_bradley').gun.launcherMuzzles,
   `${ID} fires TOW from the source turret's pod, as the Ukrainian M2A3 does`);
 assert.deepEqual(m2.armor.gunPivot, [...CLASSIC_GUN_PIVOT], `${CLASSIC} carries the classic turret's gun pivot`);
-// 269 (2026-11-06): the combat-rig census (combatGunRigs.generated.ts) seats the combat barrel on the drawn 25 mm, whose
+// 269 (2026-11-06): the combat-rig census (the calibration's measured rig, 276) seats the combat barrel on the drawn 25 mm, whose
 // suppressor mouth is CLASSIC_MUZZLE_Z (2.23), not the spec's 2.30; the swap had left the source turret's row on the M2A2.
 assert.equal(m2.armor.gunBarrel.lengthM, CLASSIC_MUZZLE_Z, `${CLASSIC}'s combat barrel ends at the drawn muzzle`);
 assert.deepEqual(m2.gunPitchByYawDeg, CLASSIC_GUN_PITCH_BY_YAW_DEG, `${CLASSIC} keeps the classic turret's rear stops`);

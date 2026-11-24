@@ -41,7 +41,7 @@ import {
   assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries, readCollisionManifestVariants,
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
-import { packCollisionRecord } from './headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../src/world/collisionRecordPacking.ts';
 import { AUTOMATION_PATH_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));

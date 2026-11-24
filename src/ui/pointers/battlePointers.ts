@@ -4,11 +4,16 @@
  *
  * hud.ts hands this its frame every rendered battle frame. It gathers what the client already draws (it reads nothing the
  * HUD does not, so a pointer reveals nothing hidden: AGENTS.md, spotting filters snapshots before a client sees them):
- * - follow: the tutorial's place (pointerBoard.ts), and the mode's objective that matters now from the one marker
- *   derivation the minimap and the world read (minimapObjectives.ts objectiveMarkersFor; Kevin: "the ball in turbo ball");
+ * - follow: the tutorial's place (pointerBoard.ts), and nothing else (Kevin, 2026-11-23: "remove the arrows on ground for
+ *   obvious stuff. like capturing bases": a mode's objective has its own disc, beacon and icon);
  * - warn: the spotted enemies with their gun on the player's tank or close (Kevin: "tanks to your flank or in your rear"),
- *   the enemy air runs the tank stands in from the same markers ("incoming air assaults and weaponry"), and the enemy
- *   guided rounds in flight coming at it from the frame's shells ("incoming missile");
+ *   the enemy air runs the tank stands in and the aircraft flying them from the one marker derivation the minimap and the
+ *   world read (minimapObjectives.ts objectiveMarkersFor; "incoming air assaults and weaponry"), the enemy guided rounds in
+ *   flight coming at it from the frame's shells ("incoming missile"), and the spotted enemies' drones in the air near it
+ *   ("warnings for drones");
+ * - indicate: the moving objectives while the camera does not show them, from the same markers and the mode's boss: the
+ *   Turbo Ball ball, a carried flag, the juggernaut ("add that for the ball too if it out of view", "same for flag holders
+ *   and juggernaut");
  * and draws them through pointerLayer.ts. It runs only for the local player's own tank (a watched seat has no warnings
  * of its own), and the HUD clears it whenever it stops drawing a battle frame.
  */
@@ -18,16 +23,17 @@ import { objectiveMarkersFor, type ObjectiveStateView } from '../minimapObjectiv
 import { guideFollow } from './pointerBoard.ts';
 import { createPointerLayer, type PointerLayer, type PointerSnapshot } from './pointerLayer.ts';
 import {
-  missileWarnings, objectiveFollow, pickFollow, strikeWarnings, tankWarnings, type FollowPointer, type ScreenBox, type ScreenPoint,
-  type WarnAircraft, type WarnMissile, type WarnPointer, type WarnStrike, type WarnTank, type WorldPoint,
+  droneWarnings, missileWarnings, objectiveIndicators, strikeWarnings, tankWarnings, type RimBoss, type ScreenBox, type ScreenPoint,
+  type WarnAircraft, type WarnDrone, type WarnMissile, type WarnPointer, type WarnStrike, type WarnTank, type WorldPoint,
 } from './pointerPlan.ts';
-import { GUIDANCE_CARD, GUIDANCE_CONTROLS, GUIDANCE_HARD } from '../battleHudLayout.ts';
+import { GUIDANCE_CARD, GUIDANCE_CONTROLS, GUIDANCE_HARD, TOUCH_NOTICE_OBSTACLES } from '../battleHudLayout.ts';
 
 /** A hull as the HUD's frame carries it (hud.ts HudTank): the fields the sources read. */
 interface PointerTank {
   readonly id: string;
   readonly team?: string;
   readonly isPlayer?: boolean;
+  readonly aerial?: { readonly kind: string; readonly active: boolean; readonly x: number; readonly y: number; readonly z: number } | null;
   readonly state?: { readonly pos: { readonly x: number; readonly y: number; readonly z: number }; readonly yaw: number;
     readonly turretYaw?: number } | null;
   readonly combat?: { readonly destroyed?: boolean } | null;
@@ -51,7 +57,8 @@ interface BattlePointerFrame {
   readonly player?: PointerTank | null;
   readonly tanks?: readonly PointerTank[];
   readonly spotting?: { isSpotted(id: string): boolean } | null;
-  readonly matchModeState?: ObjectiveStateView | null;
+  /** The mode's state: its objectives, and Juggernaut's boss (sim/matchModes.ts MatchModePresentationState boss). */
+  readonly matchModeState?: (ObjectiveStateView & { readonly boss?: { readonly id?: string } | null }) | null;
   readonly shells?: readonly unknown[];
 }
 
@@ -62,10 +69,12 @@ interface BattlePointers {
   destroy(): void;
 }
 
-/** What a bubble never covers: the guidance's instruments and controls (battleHudLayout.ts, the classes the tutorial's card
- *  and the toasts keep off), the map, the tutorial's card and the battle's notices. Measured again at most every
- *  NO_COVER_MS, or at once on the HUD's relayout. */
-const NO_COVER = `${GUIDANCE_HARD},${GUIDANCE_CONTROLS},${GUIDANCE_CARD},.cot-minimap,.cot-battle-notices`;
+/** What a bubble or the turn arrow never covers: the guidance's instruments and controls (battleHudLayout.ts, the classes
+ *  the tutorial's card and the toasts keep off, the touch clusters and the controls a view brings, hudViewControls.ts),
+ *  what a touch layout's notices keep off (TOUCH_NOTICE_OBSTACLES), the map, the tutorial's card and the battle's notices:
+ *  the same live boxes the notice planners read, never a list of their own. Measured again at most every NO_COVER_MS, or
+ *  at once on the HUD's relayout. */
+const NO_COVER = `${GUIDANCE_HARD},${GUIDANCE_CONTROLS},${TOUCH_NOTICE_OBSTACLES},${GUIDANCE_CARD},.cot-minimap,.cot-battle-notices`;
 const NO_COVER_MS = 500;
 /** The hull box when a spec gives no measures (m): about a main battle tank's. */
 const HULL_FALLBACK = Object.freeze({ hullLengthM: 7, widthM: 3.6, heightM: 2.6 });
@@ -131,16 +140,11 @@ export function createBattlePointers(groundAt: () => ((x: number, z: number) => 
       camera = frame.camera;
       const player: WorldPoint = { x: pos.x, y: pos.y, z: pos.z };
 
-      // follow: the tutorial's, then the mode's objective
+      // follow: the tutorial's alone
+      const follow = guideFollow();
       const markers = frame.matchModeState ? objectiveMarkersFor(frame.matchModeState, frame.timeS) : [];
-      const guide = guideFollow();
-      const mode = markers.length ? objectiveFollow(markers, player) : null;
-      const follows: FollowPointer[] = [];
-      if (guide) follows.push(guide);
-      if (mode) follows.push(mode);
-      const follow = pickFollow(follows, player);
 
-      // warn: tanks, air runs, missiles
+      // warn: tanks, air runs, missiles, drones
       const warns: WarnPointer[] = [];
       const tanks = frame.tanks ?? [];
       const hulls: WarnTank[] = [];
@@ -165,13 +169,32 @@ export function createBattlePointers(groundAt: () => ((x: number, z: number) => 
           enemy: !!shooter && !!shooter.team && shooter.team !== me.team });
       }
       if (missiles.length) warns.push(...missileWarnings(player, missiles));
+      const drones: WarnDrone[] = [];
+      for (const tank of tanks) {
+        const aerial = tank.aerial;
+        if (tank === me || aerial?.kind !== 'drone' || !aerial.active || tank.combat?.destroyed) continue;
+        drones.push({ id: tank.id, x: aerial.x, y: aerial.y, z: aerial.z, enemy: !!tank.team && tank.team !== me.team,
+          spotted: frame.spotting?.isSpotted(tank.id) ?? true });
+      }
+      if (drones.length) warns.push(...droneWarnings(player, drones));
+
+      // indicate: the ball, a carried flag, the juggernaut
+      const ground = groundAt() ?? flatGround;
+      const bossId = frame.matchModeState?.boss?.id;
+      const bossTank = bossId ? tanks.find((tank) => tank.id === bossId) : null;
+      const boss: RimBoss | null = bossTank?.state ? {
+        id: bossTank.id, x: bossTank.state.pos.x, y: bossTank.state.pos.y, z: bossTank.state.pos.z,
+        enemy: !!bossTank.team && bossTank.team !== me.team, alive: !bossTank.combat?.destroyed,
+        spotted: bossTank === me || (frame.spotting?.isSpotted(bossTank.id) ?? true),
+      } : null;
+      warns.push(...objectiveIndicators({ ...player, id: me.id }, markers, boss, ground));
 
       if (!follow && !warns.length) { clear(); return; }
       frame.camera.getWorldDirection(look);
       layer ??= createPointerLayer();
       layer.draw({
         follow, warns, player, viewYaw: Math.atan2(look.x, look.z), scoped: frame.mode === 'sniper',
-        project, groundY: groundAt() ?? flatGround, noCover: measure(), hull: follow ? hullBox(me) : null,
+        project, groundY: ground, noCover: measure(), hull: follow ? hullBox(me) : null,
         metres: (m) => t('battle.pointer.distance', { m }), seconds: (s) => t('battle.pointer.seconds', { s }),
       });
     },

@@ -421,6 +421,9 @@ listener.scoped = true;
 ctx.advance(0.1);
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.snapshot, 'scoped');
+// (276) the lens sounds once the scope has settled (toggleSettle.ts)
+ctx.advance(0.15);
+audio.update(1 / 60, listener, tanks);
 assert.ok(logSince(since).some((e) => e.n === 'scope_in'));
 listener.scoped = false;
 

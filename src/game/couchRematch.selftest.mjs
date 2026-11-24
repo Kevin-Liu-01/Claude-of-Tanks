@@ -41,7 +41,7 @@ const recordSource = mainSource.match(/\n {2}recordIntent: (\(options\) => battl
 assert.ok(recordSource, "main binds the solo entry's recordIntent");
 const recordIntent = runMainStatements(`const recordIntent = ${recordSource};`, { battleEntryIntent: intent, terrainVariantFor }, 'recordIntent');
 let onPhase = null;
-runMainStatements(mainStatement("bus.on('phase:change', () => {"), {
+runMainStatements(mainStatement("bus.on('phase:change', () => {\n  if (game.phase === 'garage') {"), {
   bus: { on: (type, listener) => { if (type === 'phase:change') onPhase = listener; } },
   game, battleEntryIntent: intent, clearMatchSession, frameLoop: { restart() {} },
 }, 'null');

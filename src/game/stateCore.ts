@@ -46,6 +46,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   shells: RuntimeValue[];
   nextShellId: number;
   timeS: number;
+  /** Fixed steps run this battle (replay-system-275): a recording's rows and a replay's seek are keyed by it. */
+  tick: number;
   fireTickAcc: number;
   combatRng: RandomSource;
   result: 'victory' | 'defeat' | 'draw' | null;
@@ -176,6 +178,7 @@ export function createGameState<
     shells: [],
     nextShellId: 1,
     timeS: 0,
+    tick: 0,
     fireTickAcc: 0,
     combatRng: mulberry32(6000),
     result: null,

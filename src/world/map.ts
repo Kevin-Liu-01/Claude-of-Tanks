@@ -64,6 +64,7 @@ import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
 import { buildVisibleWaterRaster, type VisibleWaterRaster } from './visibleWater.ts';
+import { quantizeWorldCollision } from './collisionRecordPacking.ts';
 import {
   createObstacleGrid,
   shellPassesThroughCollisionRecord,
@@ -792,6 +793,10 @@ function* assembleWorldSteps(
   // DST-04 (2026-10-15): the map's pre-placed craters as bowls, decided once on this build's own records
   // (world/mapCraters.ts); every match on this world lays them first, and the shards carry them for the authority
   const mapCraters = mapCraterStamps(props.mapCraterSites, obstacles, heightField);
+  // (276, sim-world-packed) the records rounded as the shards round them (world/collisionRecordPacking.ts), before any
+  // grid or step reads them: a solo battle collides on what the server and a Node replay do (the craters, as the capture
+  // decides them, from the full-precision build)
+  quantizeWorldCollision(obstacles, colliders, vegetation.concealers || []);
   yield;
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry

@@ -15,6 +15,8 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
+// (Air Support's surfaces, which battleHudAccess loads with the HUD: ?state=binoculars)
+import '../../src/ui/airSupportHud.css';
 // the tablet layer (main.ts loads it at boot): the touch HUD's tablet sizes, item 262
 import '../../src/ui/tablet.css';
 import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
@@ -40,6 +42,10 @@ import {createMultiplayerStatusSurface} from '../../src/ui/multiplayerStatus.ts'
 import {NetworkStatusModel} from '../../src/mp/session/networkStatus.ts';
 import { setLocale, t } from '../../src/ui/i18n.ts';
 import { battleNotices } from '../../src/ui/battleNotices.ts';
+import { BATTLE_EVENT } from '../../src/ui/battleNoticeEvents.ts';
+import { NOTICE_PRIORITY } from '../../src/ui/battleNotices.ts';
+import { strikeView } from '../../src/game/strikeViewState.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES } from '../../src/sim/matchRuleset.ts';
 import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
 
 // the catalog lands before the HUD builds (the game awaits it too), and a zh-CN capture carries the label floor its /cn/
@@ -235,6 +241,7 @@ function multiplayer(kind='healthy', role='host') {
   network.set(snapshot,kind==='healthy'?null:{kind:'reconnecting',scope:'match',attempt:2,nextRetryS:3});
   return network;
 }
+const params0 = new URLSearchParams(location.search);
 function state(name) {
   network?.dispose();network=null;
   battleNotices.dismiss('cot-pointer-lock');
@@ -284,7 +291,7 @@ function state(name) {
   // options on a durable denial; a touch layout never takes the pointer)
   if(name==='notices'){
     multiplayer('offline');
-    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.condition({id:'cot-pointer-lock',className:'cot-lock-notice',
+    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.condition({kind:'pointerLock',id:'cot-pointer-lock',className:'cot-lock-notice',
       severity:'warning',text:t('pointerLock.toast.unavailable'),durationMs:null,dismissible:false});
     for(let i=0;i<3;i++)hud.update(frame);
   }
@@ -331,6 +338,56 @@ function state(name) {
     flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
     frame.camera=flightCamera;
     for(let i=0;i<5;i++)hud.update(frame);
+  }
+  // ?state=binoculars (notices-276; Kevin 2026-11-23: "gunship overhead with X binoculars in air support"): Air Support's
+  // binoculars up (the readout, the hint, the call-ins, Support as the close, a phone's CALL) with an enemy AC-130 over the
+  // crew, so its INCOMING notice ("Gunship overhead") holds in the condition lane over them
+  strikeView.open=false;
+  if(name==='binoculars'){
+    const p=player.state.pos, cooldowns=Object.fromEntries(AIR_STRIKE_KINDS.map((kind)=>[kind,0]));
+    frame.matchModeState={...frame.matchModeState,id:'air_support',air:{nowS:frame.timeS,points:420,cooldowns,
+      strikes:[{id:1,kind:'gunship',team:'bravo',x:p.x,y:0,z:p.z,heading:0,calledS:frame.timeS-6,landsS:frame.timeS+4,
+        endS:frame.timeS+4+AIR_SUPPORT_RULES.gunship.orbitS,hp:1,maxHp:1,downedS:null,downedBy:null,mine:false}]}};
+    frame.aim.point={x:p.x+40,y:0,z:p.z+180};
+    strikeView.open=true;strikeView.kind='strafe';strikeView.blend=1;
+    for(let i=0;i<4;i++)hud.update(frame);
+  }
+  // ?state=mode-combined_arms | combined-drone | combined-binoculars (combined-arms-276): Combined Arms' two controls
+  // together, the drone's tile in the systems and Air Support's Support slot heading them, with the drone docked, the
+  // drone flying (the Support slot steps aside: one control seat) and the binoculars up (never both at once)
+  if(name==='mode-combined_arms'||name.startsWith('combined-')){
+    const p=player.state.pos, flying=name==='combined-drone', cooldowns=Object.fromEntries(AIR_STRIKE_KINDS.map((kind)=>[kind,0]));
+    player.aerial={kind:'drone',active:flying,launching:false,x:p.x,y:flying?40:p.y,z:p.z,yaw:0,pitch:-0.5,batteryS:flying?30:0,
+      cooldownS:0,recallS:0,returnS:0};
+    frame.matchModeState={...frame.matchModeState,id:'combined_arms',target:2000,perspectiveTeam:'alpha',
+      zones:[{x:-150,z:90,control:1,owner:'alpha',contested:false},{x:0,z:0,control:.4,owner:null,contested:true},
+        {x:150,z:-90,control:-1,owner:'bravo',contested:false}],
+      air:{nowS:frame.timeS,points:240,cooldowns,strikes:[]}};
+    if(name==='combined-binoculars'){frame.aim.point={x:p.x+40,y:0,z:p.z+180};strikeView.open=true;strikeView.kind='strafe';strikeView.blend=1;}
+    if(flying){
+      flightCamera.aspect=innerWidth/innerHeight;flightCamera.position.set(player.aerial.x,player.aerial.y,player.aerial.z);
+      flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
+      frame.camera=flightCamera;
+    }
+    for(let i=0;i<5;i++)hud.update(frame);
+  }
+  // &notices=1 (notices-276): both lanes hold a notice over the state, as a battle raises them, so the probe measures each
+  // lane's box against the state's controls: an event at the threat rung (it shows through a scope) and a condition.
+  // (notices-276b) the event is the tank's own (noticeKinds.ts), with the battle's turn under it: from the tank the tank's
+  // shows; off it (the binoculars, the drone, the gunship) it is held and the battle's shows. A planted tank condition at
+  // the top rung, raised in every view, must never show there (the probe's hold check, data-probe-tank-*).
+  if(params0.has('notices')){
+    bus.emit(BATTLE_EVENT,{kind:'ammoTypeEmpty',text:t('hud.alert.ammoTypeEmpty'),priority:NOTICE_PRIORITY.threat,severity:'error',icon:'shell'});
+    bus.emit(BATTLE_EVENT,{kind:'objective',text:t('hud.alert.alliedFlagCapture'),priority:NOTICE_PRIORITY.turned,severity:'success',icon:'flag'});
+    document.body.dataset.probeTankEvent=t('hud.alert.ammoTypeEmpty');
+    if(name!=='binoculars')battleNotices.condition({kind:'airIncoming',id:'cot-air-incoming',className:'cot-air-incoming',severity:'warning',icon:'alert',
+      text:t('airSupport.incoming.gunship'),detail:'4 s',art:'ac130',durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.threat});
+    if(name==='binoculars'||name==='drone'||name==='gunship'||name==='combined-drone'){
+      battleNotices.condition({kind:'aimLimit',id:'cot-probe-tank-hold',className:'cot-probe-tank-hold',severity:'error',icon:'alert',
+        text:t('hud.alert.ammoTypeEmpty'),durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.lost});
+      document.body.dataset.probeTankCondition='cot-probe-tank-hold';
+    }
+    for(let i=0;i<3;i++)hud.update(frame);
   }
   if(name==='markers'||name==='watch-markers')markers();
   // ?state=proving | proving-moving: the proving ground's range (sim/matchModes.ts ProvingRangePresentation), its lanes'

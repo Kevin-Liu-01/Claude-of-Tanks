@@ -3308,10 +3308,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.867,0.439,-1.262],
-          [1.867,0.914,-1.262],
-          [1.836,0.914,4.293],
-          [1.836,0.439,4.293]
+          [1.8,0.1044,4.4266],
+          [1.8,0.1044,-4.4266],
+          [1.8,0.9138,-4.4266],
+          [1.8,0.9138,4.4266]
         ]
       },
       {
@@ -3323,10 +3323,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.837,0.439,4.34],
-          [-1.837,0.914,4.34],
-          [-1.866,0.914,-1.214],
-          [-1.866,0.439,-1.214]
+          [-1.8,0.1044,-4.4266],
+          [-1.8,0.1044,4.4266],
+          [-1.8,0.9138,4.4266],
+          [-1.8,0.9138,-4.4266]
         ]
       },
       {
@@ -3608,7 +3608,7 @@
     ]
   },
   "geometryHash": "49774416",
-  "metadataHash": "790c977a",
+  "metadataHash": "56be2726",
   "presentationAnchor": {
     "xM": -0.003,
     "zM": 0.1243
@@ -3667,8 +3667,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23880,
-      "sha256": "cdcea68c9717822b5bc2db66ab39b5928c6ed195174b40679107ec929ec6a388"
+      "bytes": 23516,
+      "sha256": "b6f72d1a1f25470f89d760b4d8fd7389142744b4b3647208fe7a28679d40ddcd"
     },
     "modulesSide": {
       "file": "t14_armata_modules_side.webp",
@@ -3746,8 +3746,8 @@
     "technicalLabels": {
       "file": "t14_armata_technical.json",
       "mime": "application/json",
-      "bytes": 4298,
-      "sha256": "6ddd810aba44403f208481ee09d4d48e49a8cf35a4df1611fc545294a0cac5a5"
+      "bytes": 4299,
+      "sha256": "364f984c70ee57dc3fd30ea32abfcae62d90c1431c9b439bf0e3936b191aed08"
     }
   }
 }

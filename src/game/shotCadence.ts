@@ -1,10 +1,14 @@
 // The presentation's cadence for fast guns (release 272, the owner: "debounce some things like fire sounds ... for super
 // fast fire rates sound effects, muzzle flashes, etc"). Every air-defence cannon now cycles at the simulation's floor
-// (vehicles/airDefenseFirepower.ts: 1,200 rounds a minute), and each of its rounds used to raise a full report stack, a
-// full muzzle flash with its smoke and light, a camera kick and a phone buzz. This is the one shared cap the audio, the
-// effects, the camera and the phone read: a channel takes a weapon's round only when the channel's window has passed
-// since the last round it took, and the round it takes stands for those it folded. A gun that cycles at or above every
-// window (a tank at its 6-8 s reload, an autocannon's single shots) passes straight through, unchanged.
+// (vehicles/airDefenseFirepower.ts: 1,200 rounds a minute), and each of its rounds used to raise a full muzzle flash with
+// its smoke and light, a camera kick and a phone buzz. This is the one shared cap the effects, the camera and the phone
+// read: a channel takes a weapon's round only when the channel's window has passed since the last round it took, and the
+// round it takes stands for those it folded. A gun that cycles at or above every window (a tank at its 6-8 s reload, an
+// autocannon's single shots) passes straight through, unchanged.
+// (276) The sound of a gun is its fire-rate regime (fireRegime below), keyed on the gun's real cadence and on `rotary`:
+// a slow gun's report round by round, a fast gun's short cracks over a held body, and past 20 rounds a second (or a
+// rotary gun) no rounds at all but one roar (src/audio/audioEngine.ts burstRound). Its rounds still arrive on the same
+// clock the flash and the kick read, so sight and sound stay one event.
 // Presentation only: the simulation, the authority, damage, ammunition, reload timing and the wire never read it.
 // Dependency-free and allocation-free once a weapon is known (one small typed array per shooter and weapon).
 // First-party: Kevin B. Liu (NOTICE.md).
@@ -19,13 +23,9 @@ export const SHOT_FLOOR_S = 0.05;
  * barrels round by round shows its flash at each barrel in turn rather than always at one.
  */
 export const SHOT_CADENCE_WINDOW_S = Object.freeze({
-  /** a round's crack and its muzzle's core flicker: at most the floor's 20 a second (a rotary gun's rounds between the
-   *  floor's are silent and dark: the M163's Vulcan, release 270's in-between rounds) */
-  report: SHOT_FLOOR_S,
-  /** the report's body: the punch of the blast, the distant boom, the feed, the breech */
-  body: 0.15,
-  /** the map's echo of the report: a second or two of ringing, so once in nine floor rounds */
-  tail: 0.45,
+  /** a muzzle's core flicker: at most the floor's 20 a second (a rotary gun's rounds between the floor's are dark: the
+   *  M163's Vulcan, release 270's in-between rounds) */
+  core: SHOT_FLOOR_S,
   /** the whole muzzle flash: its jets, sparks, fire, propellant smoke, wisps, ground blast, and the muzzle light */
   flash: 0.15,
   /** the camera's kick and shake for the player's own gun, and the paired phone's buzz */
@@ -151,15 +151,36 @@ export function shotShakeScale(rounds: number, perRoundTrauma: number): number {
   return Math.min(Math.sqrt(rounds), Math.max(1, ceiling));
 }
 
-/**
- * How long one crack of a sustained gun may ring (s): long enough for its attack and the first of its decay, short enough
- * that one weapon holds a handful of voices rather than every voice the mix has (the next rounds' cracks and the echo,
- * one each tail window, carry the burst's body). Null for a gun that is not firing sustained: its report rings in full.
- */
-export function sustainedGrainS(gapS: number): number | null {
-  if (!(gapS < SHOT_SUSTAIN_GAP_S)) return null;
-  return Math.min(1, Math.max(0.3, 6 * Math.max(gapS, SHOT_FLOOR_S)));
-}
-
 /** A gun cycling at least this slowly passes every channel round by round, unchanged (the longest window). */
 export const SHOT_SLOW_S = Math.max(...Object.values(SHOT_CADENCE_WINDOW_S));
+
+/**
+ * (276) How a gun is heard, by its rounds a second (its real cadence: the spec's cycle, else the gap between its rounds)
+ * and whether it is rotary:
+ *  - 'single' under SUSTAINED_RPS: each round its own report (its variants round-robin, its pitch jittered);
+ *  - 'sustained' from SUSTAINED_RPS to ROAR_RPS (the machine guns, the fast autocannons): a short crack each round over a
+ *    body that swells in while the trigger is held, and one echo at the release;
+ *  - 'roar' from ROAR_RPS (every air-defence cannon at the floor, the Gepard's class) or any rotary gun (the M163's
+ *    Vulcan, the M6's GAU-12): no rounds, one burst pitched to the gun's rate, spun up and down if it is rotary.
+ */
+export type FireRegime = 'single' | 'sustained' | 'roar';
+export const SUSTAINED_RPS = 8;
+export const ROAR_RPS = 20;
+
+export function fireRegime(cycleS: number, rotary = false): FireRegime {
+  if (rotary) return 'roar';
+  if (!(cycleS > 0) || !Number.isFinite(cycleS)) return 'single';
+  const rps = 1 / cycleS;
+  if (rps >= ROAR_RPS * (1 - 1e-6)) return 'roar';
+  return rps >= SUSTAINED_RPS * (1 - 1e-6) ? 'sustained' : 'single';
+}
+
+/**
+ * (276) How long a held gun may go without a round before its trigger counts as released (s): two and a half of its
+ * cycles or of the gaps its rounds are heard at, whichever is longer (a viewer hears a rotary gun's full rounds alone,
+ * every third, sim/fireCycleFloor.ts), never under 0.1 s (a frame's jitter) nor over 0.6 s (a slow sustained gun).
+ */
+export function burstReleaseS(cycleS: number, heardGapS: number): number {
+  const finite = (value: number): number => (Number.isFinite(value) && value > 0 ? value : 0);
+  return Math.min(0.6, Math.max(0.1, 2.5 * Math.max(finite(cycleS), finite(heardGapS))));
+}

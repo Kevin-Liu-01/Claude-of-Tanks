@@ -213,6 +213,8 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before{inset:0;b
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{inset:1px;background:var(--notice-fill)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong))}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong))}
+/* (notices-276b) a one-line status kind's pill (noticeKinds.ts data-shape; the HUD's own lanes by hud.ts's rule) */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-shape=pill]{--notice-cut:inset(0 round 999px)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box-shadow:var(--focus-ring)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 /* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
@@ -780,6 +782,15 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (a one-line alert as tall as the detection's 32 px beside it, one notice height on touch: 28 against 32 read as two
    kits, gauntlet r8) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
+/* (notices-276) a notice's art (components/noticeArt.ts) stands in its seat's empty side. A compact seat has none: the touch
+   alert's 136 px (there the art's room wrapped the auto-aim lock to five lines, onto the damage panel at 844x390), the
+   smallest windows' 134 px and a short mouse window's glyph-only alert show their words alone; the touch seat keeps a
+   narrower picture */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{--notice-art-room:28px;--notice-art-w:96px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{--notice-art:none;--notice-art-room:0px}
+@media (max-height:299px) and (orientation:landscape),(max-width:340px) and (orientation:portrait),(max-height:550px),(max-width:480px){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:is(.cot-touch-layout:not([data-touch-notices]),:not(.cot-touch-layout)) .cot-alert{--notice-art:none;--notice-art-room:0px}
+}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
 /* (notices-audit-275) the event's line and its detail side by side in the one row; on touch its words start at the glyph's

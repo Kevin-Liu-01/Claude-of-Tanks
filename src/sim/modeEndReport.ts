@@ -4,9 +4,10 @@
  * the viewer's own mode state (MatchModePresentationState, the HUD's) held them when the battle ended. Both drivers put it
  * on `battle:ended` (the solo sim's state.ts emitBattleEnded, a room's battlePresentation.ts endMatch), and the end screen
  * reads it through its mode descriptor (ui/endScreenModes.ts). Nothing here is recomputed: it copies the figures the HUD
- * already showed. Pure, no DOM, no wall clock; imports types only.
+ * already showed. Pure, no DOM, no wall clock; imports types and the ruleset's facets only.
  */
 import type { MatchModePresentationState } from './matchModes.ts';
+import { modePlaysSectors } from './matchRuleset.ts';
 
 type Side = 'alpha' | 'bravo';
 
@@ -33,14 +34,15 @@ export interface ModeEndReport {
 
 const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
-/** The modes scored by their own score rather than by kills (the HUD's score bar shows it). */
-const SCORED_MODES: ReadonlySet<string> = new Set(['capture_the_flag', 'zone_control', 'turbo_ball', 'mars', 'air_support']);
+/** The modes scored by their own score rather than by kills (the HUD's score bar shows it): the flags, the ball and every
+ *  sector battle (matchRuleset.ts modePlaysSectors). */
+const scoredMode = (mode: string): boolean => mode === 'capture_the_flag' || mode === 'turbo_ball' || modePlaysSectors(mode);
 
 /** The end report of the viewer's mode state; null without one. */
 export function modeEndReport(state: Partial<MatchModePresentationState> | null | undefined, viewerId: string | null | undefined): ModeEndReport | null {
   if (!state || typeof state.id !== 'string') return null;
   const perspectiveTeam: Side = state.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
-  const scored = SCORED_MODES.has(state.id) && !!state.score;
+  const scored = scoredMode(state.id) && !!state.score;
   const report: { -readonly [K in keyof ModeEndReport]: ModeEndReport[K] } = {
     id: state.id,
     perspectiveTeam,
