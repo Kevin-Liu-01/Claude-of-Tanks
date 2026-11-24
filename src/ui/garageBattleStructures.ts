@@ -148,6 +148,8 @@ export interface GarageStructureSurfaces {
  */
 interface SurfaceEntry {
   readonly mapId: string;
+  /** The material kinds it was painted for (a print none of them wears is a stand-in: buildStructureSurfaces' drawn). */
+  readonly drawn: ReadonlySet<string>;
   readonly steps: ReturnType<typeof buildStructureSurfaces>;
   readonly shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]>;
   readonly retained: { materials: THREE.Material[]; textures: THREE.Texture[] };
@@ -159,8 +161,15 @@ interface SurfaceEntry {
 const surfaceCache = new Map<string, SurfaceEntry>();
 const KEPT_UNHELD_SURFACES = 2;
 
-function surfaceEntry(map: GarageMapStructures, anisotropy: number): SurfaceEntry {
+function surfaceEntry(map: GarageMapStructures, anisotropy: number, drawn: ReadonlySet<string>): SurfaceEntry {
   let entry = surfaceCache.get(map.mapId);
+  // an entry painted for fewer kinds than now drawn is painted again (a map's packs draw the same kinds, so this is rare)
+  if (entry && ![...drawn].every((kind) => entry!.drawn.has(kind)) && entry.holds === 0) {
+    surfaceCache.delete(map.mapId);
+    if (!entry.done) entry.steps.return(undefined as never);
+    disposeMaterials(entry.retained.materials, entry.retained.textures);
+    entry = undefined;
+  }
   if (entry) { surfaceCache.delete(map.mapId); surfaceCache.set(map.mapId, entry); return entry; } // most recent last
   const shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]> = [];
   const retained: { materials: THREE.Material[]; textures: THREE.Texture[] } = { materials: [], textures: [] };
@@ -177,8 +186,9 @@ function surfaceEntry(map: GarageMapStructures, anisotropy: number): SurfaceEntr
     // (no DOM, the receipts under Node: no photographed sets to fetch; the procedural prints are the fallback of record)
     sourceApplication: headless() ? { signal: AbortSignal.abort() } : {},
     onRetained: (materials, textures) => { retained.materials = materials; retained.textures = textures; },
+    drawn,
   });
-  entry = { mapId: map.mapId, steps, shadowRegistrations, retained, pending: null, done: null, holds: 0 };
+  entry = { mapId: map.mapId, drawn, steps, shadowRegistrations, retained, pending: null, done: null, holds: 0 };
   surfaceCache.set(map.mapId, entry);
   trimSurfaceCache();
   return entry;
@@ -209,8 +219,9 @@ export async function prepareGarageStructureSurfaces(
   map: GarageMapStructures,
   anisotropy: number,
   wanted: () => boolean,
+  drawn: ReadonlySet<string>,
 ): Promise<GarageStructureSurfaces | null> {
-  const entry = surfaceEntry(map, anisotropy);
+  const entry = surfaceEntry(map, anisotropy, drawn);
   entry.holds += 1; // held while it paints, so a trim never disposes a build in flight
   try {
     const prefetch = surfacePaints.get(map.mapId) ?? null;
@@ -241,8 +252,12 @@ export async function prepareGarageStructureSurfaces(
 }
 
 /** The same surfaces at once (a bake with nothing prepared: the receipts under Node), held for the caller. */
-export function holdGarageStructureSurfacesNow(map: GarageMapStructures, anisotropy: number): GarageStructureSurfaces {
-  const entry = surfaceEntry(map, anisotropy);
+export function holdGarageStructureSurfacesNow(
+  map: GarageMapStructures,
+  anisotropy: number,
+  drawn: ReadonlySet<string>,
+): GarageStructureSurfaces {
+  const entry = surfaceEntry(map, anisotropy, drawn);
   while (!entry.done) stepEntry(entry);
   entry.holds += 1;
   return entry.done;
@@ -322,4 +337,22 @@ function headlessCanvas(): { width: number; height: number; getContext(): unknow
     measureText: () => ({ width: 0 }),
   }, { get: (target, key) => (target as Record<PropertyKey, unknown>)[key] ?? (() => {}) });
   return canvas;
+}
+
+/**
+ * The material kinds a Garage pack draws besides its structures' and set pieces' own buckets: its kit, facility and
+ * approach builders' (garage-env-276: none of them wears a print buildStructureSurfaces may leave undrawn).
+ */
+export const GARAGE_OWN_KINDS: ReadonlySet<string> = new Set([
+  'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel',
+  'structureMetal', 'structureWood',
+]);
+
+/** The kinds a pack draws: its own, and every bucket its structures and set pieces filled. */
+export function garageDrawnKinds(...bucketSets: ReadonlyArray<Readonly<Record<string, unknown>>>): ReadonlySet<string> {
+  const drawn = new Set(GARAGE_OWN_KINDS);
+  for (const buckets of bucketSets) {
+    for (const [key, list] of Object.entries(buckets)) if (Array.isArray(list) && list.length) drawn.add(key);
+  }
+  return drawn;
 }

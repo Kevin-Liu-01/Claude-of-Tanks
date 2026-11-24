@@ -139,7 +139,8 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
   // the straw destructibles wear the hay print on their own material (sharing the straw's program); the straw bucket
   // (thatched roofs, reeds: their UVs tile the whole tile) keeps the straw print's uniform stalks
   assert.match(props, /const straw = makeStraw\(noi, aniso, T\.straw \|\| null\);/, 'the roofs and reeds keep the straw print');
-  assert.match(props, /const hay = yield\* makeHay\(aniso, T\.straw \|\| null, getDeviceTier\(\) === 'mobile' \? 256 : 512\);/, 'the hay print, half size on phones');
+  // (garage-env-276: a consumer that never draws hay, a Garage pack, takes a stand-in: buildStructureSurfaces' drawn)
+  assert.match(props, /const hay = (?:drawn\('hay'\) \? )?yield\* makeHay\(aniso, T\.straw \|\| null, getDeviceTier\(\) === 'mobile' \? 256 : 512\)/, 'the hay print, half size on phones');
   assert.match(props, /hay: new THREE\.MeshStandardMaterial\(\{ map: hay\.albedo, normalMap: hay\.normal,/, 'the hay material');
   assert.match(props, /let material = \(meta\.mat === 'straw' \? mats\.hay : mats\[meta\.mat\]\) \|\| mats\.baked;/, 'a straw destructible wears the hay material');
   // (2026-10-15) props program keys name the hook family: the hay and the straw both wear the grime hook (no special case

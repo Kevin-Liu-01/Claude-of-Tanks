@@ -3709,6 +3709,22 @@ export interface StructureSurfaceInputs {
   readonly sourceApplication: SourcedTextureApplicationOptions;
   /** Declares the surfaces' materials and shader-only textures on their owner, before the build's next checkpoint. */
   readonly onRetained: (materials: THREE.Material[], textures: THREE.Texture[]) => void;
+  /**
+   * (garage-env-276) The material kinds its consumer draws. Absent (the world build), every print is painted; given (a
+   * Garage pack), a print no drawn kind wears (the rock tile, the hay, the field stone and mud, the vehicle paint, the
+   * hessian, the fort's concrete, the structure canvas) is a neutral stand-in and its photographed set is not fetched.
+   */
+  readonly drawn?: ReadonlySet<string>;
+}
+
+/** A print a consumer never draws, as a one-texel neutral set (buildStructureSurfaces' `drawn`). */
+function undrawnPrint(): GeneratedSurfaceTextures & { lichen: THREE.Texture } {
+  const texel = (r: number, g: number, b: number) => {
+    const texture = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1);
+    texture.needsUpdate = true;
+    return texture;
+  };
+  return { albedo: texel(128, 128, 128), normal: texel(128, 128, 255), surface: texel(255, 255, 0), lichen: texel(0, 0, 0) };
 }
 
 /**
@@ -3719,6 +3735,7 @@ export interface StructureSurfaceInputs {
  */
 export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
   const { mapId, cfg, P, noi, aniso, engineCtx, sourceApplication, onRetained } = inputs;
+  const drawn = (kind: string): boolean => !inputs.drawn || inputs.drawn.has(kind);
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
@@ -3813,12 +3830,12 @@ export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
   yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
   yield { fine: true };
-  const hay = yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512);
+  const hay = drawn('hay') ? yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512) : undrawnPrint();
   yield { fine: true };
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
-  const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
-  const burlap = makeBurlapDetail(aniso); // the sandbags' hessian (the scenery lane, wave 52)
+  const structureCanvas = drawn('structureCanvas') ? makeStructureDetail(noi, aniso, 'canvas') : undrawnPrint();
+  const burlap = drawn('burlap') ? makeBurlapDetail(aniso) : undrawnPrint(); // the sandbags' hessian (the scenery lane, wave 52)
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
@@ -3826,9 +3843,9 @@ export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
   // lift lines and tie holes) lifted to a neutral mean the pillbox's vertex colours divide by (maps/fortKit.ts)
   const fort = fortFor(mapId);
   // (round 2: the relics' worn print, the boards a third as strong: wave 370 read them as timber)
-  const fortPrint = fort ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED, true) : null;
+  const fortPrint = fort && drawn('fortConcrete') ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED, true) : null;
   yield { fine: true };
-  const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
+  const vehiclePaint = drawn('vehicle') ? makeVehiclePaint(noi, Math.min(aniso, 4)) : undrawnPrint();
   yield { fine: true };
 
   // Paint before allocating materials or starting sourced replacements: new
@@ -3864,19 +3881,19 @@ export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
   }
   // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint; the map's
   // lithology draws it, and its lichen colonies come with it (the scenery lane, 2026-10-04).
-  const rockDetail = yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId));
+  const rockDetail = drawn('rock') ? yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId)) : undrawnPrint();
   // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
   // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
   // (buildings-272) a lava wall is never the coursed brick module, though its map's stone print is brick (Caldera's is)
   const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';
   const fieldWallBucket = P.wallStyle === 'adobe' || brickWalls ? 'stone' : 'fieldStone';
-  const fieldStone = fieldWallBucket === 'fieldStone'
+  const fieldStone = fieldWallBucket === 'fieldStone' && drawn('fieldStone')
     ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
     : stone;
   // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
   const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
-  const fieldMud = adobeWallBucket === 'fieldMud'
+  const fieldMud = adobeWallBucket === 'fieldMud' && drawn('fieldMud')
     ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512,
       mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex))
     : plaster;
@@ -3899,9 +3916,9 @@ export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
         : { plaster, roof: roofT, wood, stone },
       mapId, P, sourceApplication,
     ),
-    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
+    drawn('rock') ? applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
       (cfg as { splat?: SourcedTerrainSettings } | null)?.splat ?? {}, sourceApplication,
-      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])),
+      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])) : Promise.resolve([]),
   ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
 
   const windowStyle = resolveStructureWindowStyle(mapId);

@@ -182,18 +182,33 @@ const adapter = await import('./garageBattleStructures.ts');
 
 const fresh = adapter.resolveGarageMapStructures('steppe');
 let slices = 0;
-const stopped = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => (slices += 1) < 2);
+const stopped = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => (slices += 1) < 2, adapter.GARAGE_OWN_KINDS);
 assert.equal(stopped, null, 'a prepare nobody wants any more stops');
 assert.deepEqual(adapter.garageStructureSurfaceCache().find((entry) => entry.mapId === 'steppe'),
   { mapId: 'steppe', painted: false, holds: 0 }, 'and its build waits in the cache, half painted');
-const resumed = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true);
-const again = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true);
+const resumed = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true, adapter.GARAGE_OWN_KINDS);
+const again = await adapter.prepareGarageStructureSurfaces(fresh, 4, () => true, adapter.GARAGE_OWN_KINDS);
 assert.ok(resumed && again === resumed, 'the next prepare resumes it; a later one takes the same painted set');
+// (10) a print no drawn kind wears is a one-texel stand-in (the Garage never draws the rock tile, the hay, the vehicles'
+// paint...), and a drawn one is painted in full; the world build, drawing everything, paints every print
+const texels = (material) => material.map?.image?.width ?? material.map?.image?.data?.length ?? 0;
+assert.equal(resumed.surfaces.mats.rock.map.image.width, 1, 'the rock tile is a stand-in in a Garage');
+assert.equal(resumed.surfaces.mats.hay.map.image.width, 1, 'the hay is a stand-in in a Garage');
+assert.ok(texels(resumed.surfaces.mats.plaster) > 1 && texels(resumed.surfaces.mats.structureWood) > 1, 'drawn kinds are painted');
+{
+  // the world build passes no drawn set, and every gate draws when there is none (its own receipts paint the stage:
+  // propsResources, plasterSurfaceSharing)
+  const props = await readFile(new URL('../world/props.ts', import.meta.url), 'utf8');
+  assert.match(props, /const drawn = \(kind: string\): boolean => !inputs\.drawn \|\| inputs\.drawn\.has\(kind\);/,
+    'no drawn set: every print painted');
+  const worldCall = props.match(/= yield\* buildStructureSurfaces\(\{[\s\S]*?\) \}\);/)?.[0] ?? '';
+  assert.ok(worldCall.includes('onRetained') && !/\bdrawn\b/.test(worldCall), 'the world build never passes a drawn set');
+}
 assert.equal(adapter.garageStructureSurfaceCache().find((entry) => entry.mapId === 'steppe')?.holds, 2);
 adapter.releaseGarageStructureSurfaces(resumed);
 adapter.releaseGarageStructureSurfaces(again);
 assert.ok(adapter.garageStructureSurfaceCache().filter((entry) => entry.holds === 0).length <= 2,
   'no more than two unheld maps stay painted');
 console.log(`garageBattleStructures.selftest: ${outdoor.length} packs wear their battlefield materials and kits `
-  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes); set pieces on the horizon (${horizonRows.join(', ')}), the composer's own, clear of the yard and the hero (planted overlaps and intrusions caught); ${certRow} PASS`);
+  + `(${rows.join(', ')}); the re-skin is gone; a re-skinned draw is caught; a map is painted once (a stopped prepare resumes), undrawn prints are stand-ins; set pieces on the horizon (${horizonRows.join(', ')}), the composer's own, clear of the yard and the hero (planted overlaps and intrusions caught); ${certRow} PASS`);
 process.exit(0);

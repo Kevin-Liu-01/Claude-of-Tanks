@@ -19,7 +19,8 @@ import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts'
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
-  buildGarageStructureSteps, holdGarageStructureSurfacesNow, loadGarageMapStructures, prepareGarageStructureSurfaces,
+  buildGarageStructureSteps, garageDrawnKinds, holdGarageStructureSurfacesNow, loadGarageMapStructures,
+  prepareGarageStructureSurfaces,
   releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
@@ -1657,12 +1658,6 @@ export function buildGarageEnvironment(
   // the source map's structures and surfaces, prepared ahead (prepareGarageEnvironmentAssets) or, with nothing prepared
   // (the receipts under Node), built here; the pack owns the surfaces from here
   const map = prepared?.map ?? resolveGarageMapStructures(variant.mapId);
-  // (the surface cache owns the materials and textures, painted once per map: the pack holds them until it is disposed,
-  // and registers them with the cascades for its own lifetime)
-  const structureSurfaces = prepared?.surfaces
-    ?? holdGarageStructureSurfacesNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
-  for (const [material, hook] of structureSurfaces.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
-  track({ dispose: () => releaseGarageStructureSurfaces(structureSurfaces) });
   const rng = mulberry32(seed);
   // the structures prepared ahead of the bake (prepareGarageEnvironmentAssets, in slices) are taken whole, and the
   // seeded sequence steps past the draws they made, so everything after them builds exactly as before
@@ -2686,6 +2681,13 @@ export function buildGarageEnvironment(
     }
   };
   foldTinyPlasterBuckets();
+  // (the surface cache owns the materials and textures, painted once per map: the pack holds them until it is disposed,
+  // and registers them with the cascades for its own lifetime; with nothing prepared they are painted here, for the
+  // kinds the pack ends up drawing)
+  const structureSurfaces = prepared?.surfaces
+    ?? holdGarageStructureSurfacesNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)), garageDrawnKinds(combined));
+  for (const [material, hook] of structureSurfaces.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
+  track({ dispose: () => releaseGarageStructureSurfaces(structureSurfaces) });
   const addMergedStructures = (): void => {
     // every source is this pack's own (all are disposed below) and is reshaped in place, unless it was pushed more than
     // once (twice into a bucket, or into two): then each use takes its own copy, as before
@@ -3167,11 +3169,10 @@ async function buildPreparedStructures(
   const sequence = mulberry32(seed);
   let rngDraws = 0;
   const rng = (): number => { rngDraws += 1; return sequence(); };
-  // the source map's kits load as a battle entry loads them, then its structure surfaces paint in slices
+  // the source map's kits load as a battle entry loads them; its structures and set pieces build, then the surfaces they
+  // draw paint (garage-env-276: a print no drawn kind wears is never painted)
   const map = await loadGarageMapStructures(variant.mapId);
   if (!wanted()) { backdrop?.dispose(); return false; }
-  const surfaces = await prepareGarageStructureSurfaces(map, anisotropy, wanted);
-  if (!surfaces) { backdrop?.dispose(); return false; }
   const records: GarageStructureRecord[] = [];
   for (let index = 0; index < recipe.structures.length; index += 1) {
     // each structure's base and its kit rebuild in slices of their own
@@ -3183,7 +3184,6 @@ async function buildPreparedStructures(
       if (!wanted()) {
         steps.return(undefined as never);
         disposeStructureGeometry(records, backdrop);
-        releaseGarageStructureSurfaces(surfaces);
         return false;
       }
       step = steps.next();
@@ -3200,10 +3200,16 @@ async function buildPreparedStructures(
       horizonSteps.return([]);
       disposeBuckets(horizonBuckets);
       disposeStructureGeometry(records, backdrop);
-      releaseGarageStructureSurfaces(surfaces);
       return false;
     }
     horizonStep = horizonSteps.next();
+  }
+  const surfaces = await prepareGarageStructureSurfaces(map, anisotropy, wanted,
+    garageDrawnKinds(...records.map((record) => record.local), horizonBuckets));
+  if (!surfaces) {
+    disposeBuckets(horizonBuckets);
+    disposeStructureGeometry(records, backdrop);
+    return false;
   }
   disposePreparedStructures(variant.id);
   preparedStructures.set(variant.id, {
