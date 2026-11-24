@@ -312,6 +312,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayTrack.selftest.mjs',
     // replay-system-276: every rule of the handlers' port is recorded or read-only, and each recorded one replays (no world)
     'src/game/replay/seatActions.selftest.mjs',
+    // replay-system (P2): the viewer's timeline marks, transport clock and posing step (no DOM, no world)
+    'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
