@@ -1275,10 +1275,24 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     pageErrors: errors };
 }
 
+/** (tree-breakdown-277) A slot's tree peak for its log line: the largest staging's peak, then what it was made of at
+ *  that sample (GB per process type, largest first) and the vite server's RSS, e.g.
+ *  `9.22 GB (gpu-process 4.71, renderer 4.12, browser 0.28, utility 0.11; vite 0.41)`. */
+export function formatTreePeak(browsers) {
+  const watched = browsers.filter((b) => b.peakTreeMb != null);
+  if (!watched.length) return 'unwatched';
+  const peak = watched.reduce((a, b) => (b.peakTreeMb > a.peakTreeMb ? b : a));
+  const gb = (mb) => (mb / 1024).toFixed(2);
+  const parts = Object.entries(peak.peakBreakdown?.byType ?? {}).sort((a, b) => b[1] - a[1]).map(([type, mb]) => `${type} ${gb(mb)}`);
+  const vite = peak.peakBreakdown?.companionsMb?.vite;
+  const tail = [parts.join(', '), vite != null ? `vite ${gb(vite)}` : ''].filter(Boolean).join('; ');
+  return `${gb(peak.peakTreeMb)} GB${tail ? ` (${tail})` : ''}`;
+}
+
 /** One probe run over the slots still to measure. `deps` (round 3 A5) are the run's outside world, for a receipt that
  *  drives it without a browser: the locks, the browser launch, the preview server, the slot's measurement
  *  (`measure(openBrowser, options, slot, gate)`) and the guard record of a launched browser (its peaks). */
-export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions),
+export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions, guardOptions) => launchGuardedBrowser(puppeteer, launchOptions, guardOptions),
   openServer = openPreview, measure = measureSlot, guardOf = browserGuardOf } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${line}`);
@@ -1345,16 +1359,16 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
     await closing.close().catch(() => {});
     const guard = guardOf(closing);
     slotBrowsers.push(guard ? { peakTreeMb: Math.round(guard.peakTreeMb), peakRendererMb: Math.round(guard.peakRendererMb),
-      samples: guard.samples, tripped: guard.tripped?.why ?? null } : { peakTreeMb: null, unwatched: true });
+      samples: guard.samples, tripped: guard.tripped?.why ?? null, peakBreakdown: guard.peakBreakdown ?? null,
+      peakCompanionsMb: guard.peakCompanionsMb ?? {} } : { peakTreeMb: null, unwatched: true });
   };
+  // (tree-breakdown-277) vite preview runs in this process: its RSS (the probe's own, server included) is sampled beside
+  // the browser's tree, so a climb can be told apart from the server's
+  const guardOptions = { companions: { vite: () => process.memoryUsage.rss() / (1024 * 1024) } };
   const openBrowser = async () => {
     await closeBrowser();
-    browser = await launchBrowser(launchOptions);
+    browser = await launchBrowser(launchOptions, guardOptions);
     return browser;
-  };
-  const treePeak = (browsers) => {
-    const peaks = browsers.map((b) => b.peakTreeMb).filter((mb) => mb != null);
-    return peaks.length ? `${(Math.max(...peaks) / 1024).toFixed(2)} GB` : 'unwatched';
   };
   try {
     const queue = [...todo];
@@ -1393,7 +1407,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
           record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
           if (record.void) {
             voided++;
-            log(`${slot.key} VOID: ${record.void} | tree peak ${treePeak(browsers)}`);
+            log(`${slot.key} VOID: ${record.void} | tree peak ${formatTreePeak(browsers)}`);
             writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
             continue;
           }
@@ -1416,11 +1430,11 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
             record.void = `the scene changed mid-run: ${fs.calls} draws / ${fs.tris} triangles measured against ${record.scene.calls} / ${record.scene.tris} staged`;
             voided++;
           }
-          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s | tree peak ${treePeak(browsers)}${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
+          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s | tree peak ${formatTreePeak(browsers)}${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
         } catch (error) {
           ok = false;
           record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId, browsers };
-          log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)} | tree peak ${treePeak(browsers)}`);
+          log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)} | tree peak ${formatTreePeak(browsers)}`);
         }
         writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
       } finally {

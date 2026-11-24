@@ -138,7 +138,7 @@ try {
     const ledger = [];
     const launcher = standInLauncher(ledger);
     const { result, staged, records, said } = await probeRun({
-      launchBrowser: (launchOptions) => launchGuardedBrowser(launcher, launchOptions, guardOptions), guardOf: browserGuardOf });
+      launchBrowser: (launchOptions, extra) => launchGuardedBrowser(launcher, launchOptions, { ...guardOptions, ...extra }), guardOf: browserGuardOf });
     assert.deepEqual(result, { ok: false, remaining: 0 }, `the run finishes; the planted page crash makes it FAILED (${said})`);
     assert.deepEqual(staged.map((s) => s.split('@')[0].replace('ruinspires-', '')),
       ['s0-base', 's1-new', 's1-new', 's2-new', 's3-base'], 'ABBA order, the restage staged again within its slot');
@@ -156,7 +156,13 @@ try {
     assert.match(records[2].failed ?? '', /page crashed \(receipt\)/, 'the failed slot is recorded FAILED, with its browser\'s peaks');
     const flat = judgeFlatTree(records);
     assert.deepEqual(flat.failures, [], `the tree stays flat across slots (${flat.peaks.join(', ')} MB)`);
-    assert.match(said, /ruinspires-s0-base VOID: .* \| tree peak \d+\.\d\d GB/, 'the slot\'s log line names its tree peak');
+    assert.match(said, /ruinspires-s0-base VOID: .* \| tree peak \d+\.\d\d GB \(browser \d+\.\d\d; vite \d+\.\d\d\)/,
+      'the slot\'s log line names its tree peak, what it was made of and the vite server (tree-breakdown-277)');
+    // (tree-breakdown-277) the probe's vite companion and the tree-peak breakdown reach every staging's record
+    for (const b of records.flatMap((r) => r.browsers)) {
+      assert.ok(b.peakBreakdown?.byType?.browser > 0 && b.peakBreakdown.treeMb === b.peakTreeMb, `breakdown at the tree peak (${JSON.stringify(b)})`);
+      assert.ok(b.peakBreakdown.companionsMb?.vite > 0 && b.peakCompanionsMb?.vite >= b.peakBreakdown.companionsMb.vite, `vite sampled (${JSON.stringify(b)})`);
+    }
     console.log(`  peaks per slot: ${flat.peaks.join(', ')} MB`);
   });
 

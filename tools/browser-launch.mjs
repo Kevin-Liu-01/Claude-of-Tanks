@@ -222,6 +222,28 @@ export function measureTree(rows, rootPid, footprintMb = new Map()) {
   return { pids: [...members.keys()], rendererMb, rendererPid, gpuMb, treeMb, processes };
 }
 
+/**
+ * (tree-breakdown-277) What a tree sample is made of: MB per Chrome process type (browser, gpu-process, renderer,
+ * utility, ...) and the `top` largest processes. The guard keeps it for its tree-peak sample, so a climb outside the
+ * renderer has a name (probe-fresh-browser-276's A/A: fresh trees' peaks rose 8.7 -> 9.4 GB, renderers flat).
+ */
+export function treeBreakdown(sample, { top = 3 } = {}) {
+  const byType = {};
+  for (const item of sample.processes) byType[item.type] = (byType[item.type] ?? 0) + item.mb;
+  for (const type of Object.keys(byType)) byType[type] = Math.round(byType[type]);
+  return { treeMb: Math.round(sample.treeMb), byType,
+    top: [...sample.processes].sort((a, b) => b.mb - a.mb).slice(0, top).map(({ pid, type, mb }) => ({ pid, type, mb: Math.round(mb) })) };
+}
+
+/** One guard sample into the guard's peaks: renderer, tree, each companion's, and the breakdown of the tree-peak sample
+ *  (kept from the sample with the largest tree, with that sample's companions). */
+export function notePeakSample(guard, sample, companionsMb = {}) {
+  guard.peakRendererMb = Math.max(guard.peakRendererMb, sample.rendererMb);
+  for (const [name, mb] of Object.entries(companionsMb)) guard.peakCompanionsMb[name] = Math.max(guard.peakCompanionsMb[name] ?? 0, mb);
+  if (!guard.peakBreakdown || sample.treeMb > guard.peakTreeMb) guard.peakBreakdown = { ...treeBreakdown(sample), companionsMb };
+  guard.peakTreeMb = Math.max(guard.peakTreeMb, sample.treeMb);
+}
+
 /** `footprint --noCategories -f bytes` output as pid -> phys_footprint MB. */
 export function parseFootprint(text) {
   const out = new Map();
@@ -360,9 +382,20 @@ function hookProcess() {
 
 const fmt = (mb) => `${(mb / 1024).toFixed(2)} GB`;
 
+/** The guard's `companions` ({ name: () => MB }: processes outside the browser's tree, such as the caller's own vite
+ *  server) read on each sample, rounded; one that throws is left out of that sample. */
+function readCompanions(companions = null) {
+  const out = {};
+  for (const [name, read] of Object.entries(companions ?? {})) {
+    try { const mb = Number(read()); if (Number.isFinite(mb)) out[name] = Math.round(mb); } catch { /* left out */ }
+  }
+  return out;
+}
+
 /**
  * Watch the process tree of a browser already launched (rootPid leads its process group). Returns the guard record:
- * { label, rootPid, peakRendererMb, peakTreeMb, tripped (null, or the trip report), stop(), finish() }.
+ * { label, rootPid, peakRendererMb, peakTreeMb, peakBreakdown (treeBreakdown of the tree-peak sample, with its companionsMb),
+ *   peakCompanionsMb, tripped (null, or the trip report), stop(), finish() }.
  */
 function watchBrowserTree(target, rootPid, guardOptions = {}) {
   const config = { ...browserGuardConfig(guardOptions), ...guardOptions.resolved };
@@ -377,7 +410,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
   if (whole) root = sampleGroupSync(rootPid, true).find((row) => row.pid === rootPid);
   const guard = {
     label, rootPid, config, whole, prefix: root ? browserInstallPrefix(root.command) : null,
-    peakRendererMb: 0, peakTreeMb: 0, samples: 0, tripped: null,
+    peakRendererMb: 0, peakTreeMb: 0, samples: 0, tripped: null, peakBreakdown: null, peakCompanionsMb: {},
     stop() {
       stopped = true;
       if (timer) clearTimeout(timer);
@@ -405,7 +438,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
       at: new Date().toISOString(), label, hold, why, pid: process.pid, rootPid,
       rendererMb: Math.round(sample.rendererMb), rendererPid: sample.rendererPid, treeMb: Math.round(sample.treeMb),
       peakRendererMb: Math.round(guard.peakRendererMb), peakTreeMb: Math.round(guard.peakTreeMb),
-      rendererCapMb: config.rendererCapMb, treeCapMb: config.treeCapMb, pages, killed: [...killed, ...stragglers],
+      breakdown: treeBreakdown(sample), rendererCapMb: config.rendererCapMb, treeCapMb: config.treeCapMb, pages, killed: [...killed, ...stragglers],
       releasedHolds: released, exitCode: exit ? BROWSER_GUARD_EXIT_CODE : null,
       command: process.argv.slice(1).join(' ').slice(0, 300),
     };
@@ -440,8 +473,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
       }
       const sample = measureTree(rows, rootPid, footprints);
       guard.samples += 1;
-      guard.peakRendererMb = Math.max(guard.peakRendererMb, sample.rendererMb);
-      guard.peakTreeMb = Math.max(guard.peakTreeMb, sample.treeMb);
+      notePeakSample(guard, sample, readCompanions(guardOptions.companions));
       if (!sample.pids.length) { guard.stop(); return; } // the browser is gone
       if (config.rendererCapMb > 0 && sample.rendererMb > config.rendererCapMb) {
         trip(sample, `renderer ${sample.rendererPid} at ${fmt(sample.rendererMb)} passed the ${fmt(config.rendererCapMb)} renderer cap`);
@@ -521,7 +553,8 @@ export function browserGuardOf(browser) {
  * `options` are the launcher's own (args gain the guard's flags). `guard`: { label, method ('launch', 'launchServer',
  * 'launchPersistentContext'), userDataDir (persistent contexts), heapMb, rendererCapMb, treeCapMb, intervalMs,
  * rendererProcessLimit, exit (false: report and kill, keep the process), releaseHolds (with exit: false: 'all', 'none' or
- * the capture locks a trip releases), onTrip(report), log(line), logFile }.
+ * the capture locks a trip releases), onTrip(report), log(line), logFile, companions ({ name: () => MB }, read on each
+ * sample into peakCompanionsMb and the tree-peak sample's peakBreakdown) }.
  * A launcher that starts no browser of this process (a test double, or a fixture browser with a fake pid) gets its
  * result back unwatched: the guard only ever samples and kills a process tree this process started.
  */
