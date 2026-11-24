@@ -22,8 +22,8 @@ import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.m
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { freezePage, startViteChild, thawPage, withCaptureHold } from './capture-hold.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
@@ -217,7 +217,9 @@ async function bootPage(browser, baseUrl, device) {
 async function stageMap(entry, mapId) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  // (276, game-readiness) the boot through the readiness module's own wait, then the shot hooks it installs
+  await waitForBootLoaded(page, { timeout: 900000, polling: 1000 });
+  await page.waitForFunction('!!window.__SHOTS && !!window.__DEBUG', { timeout: 60000, polling: 250 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });
@@ -278,12 +280,11 @@ async function main(argv) {
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
   setBrowserGuardContext({ hold: label });
-  const lock = createCaptureLock();
   const servers = new Map();
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
-  let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
+  let browser = null, entry = null, session = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   const openPair = async ({ job, mapId }) => {
     browser ??= await launch();
@@ -291,60 +292,61 @@ async function main(argv) {
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
     await stageMap(entry, mapId);
   };
-  const close = async () => {
-    if (held) lock.release();
-    held = false;
-    if (browser) await browser.close().catch(() => {});
-    for (const server of servers.values()) await server.close().catch(() => {});
-  };
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
-    process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
-  }
+  // (276, capture-hold-census) the hold is tools/capture-hold.mjs withCaptureHold's (its refresh, cap, yield and signals):
+  // the browser (launchGuardedBrowser's own process) closes before every release — at the end, at a yield, at a stop —
+  // so the next holder's GPU work never overlaps it
+  const closeBrowser = async () => { if (browser) await browser.close().catch(() => {}); browser = null; entry = null; session = null; pagesSinceLaunch = 0; };
+  const closeServers = async () => { for (const server of servers.values()) await server.close().catch(() => {}); servers.clear(); };
   let shot = 0, failed = 0;
   try {
-    await lock.acquire(options.waitHours * 3600 * 1000, {
-      lockClass: 'render', prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
-    });
-    held = true;
-    for (let i = 0; i < pairs.length; i++) {
-      const { job, mapId } = pairs[i];
-      const started = Date.now();
-      let outcome = 'failed';
-      try {
-        if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pairs[i]);
-        const shooting = (async () => {
-          const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-          if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses, posesStore: options.posesStore, posesFile: options.poses, kinds: options.kinds }, job.frames);
-          receipt.ms = Date.now() - started;
-          job.manifest.maps[mapId] = receipt;
-          writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-          return 'shot';
-        })();
-        shooting.catch(() => {});
-        outcome = await Promise.race([shooting, sleep(options.pairMinutes * 60_000).then(() => 'timeout')]);
-      } catch (error) {
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
-      } finally {
-        if (entry) await entry.page.close().catch(() => {});
-        entry = null;
+    await withCaptureHold(async ({ signal, checkpoint, say }) => {
+      for (let i = 0; i < pairs.length; i++) {
+        const { job, mapId } = pairs[i];
+        if (signal.aborted) {
+          say(`the hold was stopped (${signal.reason?.message ?? signal.reason}): ${pairs.length - i} pair(s) left for the next run`);
+          failed += pairs.length - i;
+          break;
+        }
+        const started = Date.now();
+        let outcome = 'failed';
+        try {
+          if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pairs[i]);
+          const shooting = (async () => {
+            const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+            if (live !== mapId) await stageMap(entry, mapId);
+            const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses, posesStore: options.posesStore, posesFile: options.poses, kinds: options.kinds }, job.frames);
+            receipt.ms = Date.now() - started;
+            job.manifest.maps[mapId] = receipt;
+            writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+            return 'shot';
+          })();
+          shooting.catch(() => {});
+          outcome = await Promise.race([shooting, sleep(options.pairMinutes * 60_000).then(() => 'timeout')]);
+        } catch (error) {
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
+        } finally {
+          if (entry) await entry.page.close().catch(() => {});
+          entry = null;
+        }
+        if (outcome === 'shot') {
+          shot++;
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${pairs.length}`);
+        } else {
+          failed++;
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
+        }
+        if (pagesSinceLaunch >= 8) await closeBrowser();
+        if (i < pairs.length - 1) {
+          const cp = await checkpoint();
+          if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again at the back of the queue`);
+        }
       }
-      if (outcome === 'shot') {
-        shot++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${pairs.length}`);
-      } else {
-        failed++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
-      }
-      if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
-      if (i < pairs.length - 1) {
-        const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
-        if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
-      }
-    }
+    }, { label, lockClass: 'render', timeoutMs: options.waitHours * 3600 * 1000,
+      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); return { session }; },
+      onYield: closeBrowser, teardown: closeBrowser });
   } finally {
-    await close();
+    await closeBrowser();
+    await closeServers();
   }
   console.log(`[${label}] ${shot} pair(s) shot, ${failed} failed`);
   return failed ? 1 : 0;
