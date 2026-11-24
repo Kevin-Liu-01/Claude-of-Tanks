@@ -1507,6 +1507,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
     // 2026-11-24 (cn-turrets-276): the ZTZ-99A2, ZTZ-99A and VT-4A1 cheeks are closed outline solids with seated tiles
     'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
+    // 2026-11-24 (cn-turrets-276b): only those three turrets moved; every other id keeps its armour, build and anatomy
+    'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
