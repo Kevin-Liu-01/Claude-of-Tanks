@@ -867,8 +867,7 @@ export function createGarageArchitectureController(
         // (half a metre past the walls: the upstand's thickness)
         const clip = kit.clipGarageEnvironmentToExterior(build.root, footprint.halfXM + 0.5, footprint.halfZM + 0.5);
         build.root.name = `garage_enclosure_exterior_${variant.architecture}`;
-        // its distance: the map's own battle horizon ring, as every outdoor pack's
-        standFarRing(variant.mapId, build.root, () => !disposed);
+        // (no far ring: through a hall's openings the sky and its clouds carry the distance; Kevin 2026-11-24)
         let drawCalls = 0, triangles = 0;
         build.root.traverse((object) => {
           const mesh = object as THREE.Mesh;

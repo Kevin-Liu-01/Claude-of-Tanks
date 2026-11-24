@@ -936,6 +936,32 @@ export function* createGarageStageSteps(
         group.add(exterior.root);
         group.userData.verdantExterior = exterior.stats;
         requestRender();
+        standTruckAtShutter(exterior.root);
+      }).catch(() => {});
+    };
+    // (garage round 2, 277: Kevin, "maybe like a truck backing in") the map fleet's truck reversing into the roller
+    // shutter, built as the battle builds its parked vehicles (civilianVehicleKit.ts): its tail a metre inside the door
+    // line, its cab out in the yard, in the half-turned hall's frame (the shutter at z = -HW)
+    const standTruckAtShutter = (parent: THREE.Object3D): void => {
+      void import('../world/maps/civilianVehicleKit.ts').then(({ buildIntactCivilianVehicle }) => {
+        if (stageDisposed) return;
+        const geometry = track(buildIntactCivilianVehicle('verdant', getDeviceTier() === 'mobile', 'truck', 7));
+        geometry.computeBoundingBox();
+        const tail = geometry.boundingBox!.min.z;
+        const material = track(shadowMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0.08 })));
+        const truck = new THREE.Mesh(geometry, material);
+        truck.name = 'garage_verdant_shutter_truck';
+        truck.castShadow = true;
+        truck.receiveShadow = true;
+        const [shutterFrom, shutterTo] = verdantHallShutter(HW).x;
+        // its nose (+z) turned out of the hall, so its tail (-tail after the half-turn) stands INSIDE_M past the door line
+        const INSIDE_M = 1.1;
+        truck.rotation.y = Math.PI + 0.07;
+        truck.position.set(-(shutterFrom + shutterTo) / 2, GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM, -HW + INSIDE_M + tail);
+        truck.updateMatrix();
+        truck.matrixAutoUpdate = false;
+        parent.add(truck);
+        requestRender();
       }).catch(() => {});
     };
     if (typeof document !== 'undefined') {
