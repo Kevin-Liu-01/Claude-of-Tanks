@@ -644,10 +644,22 @@ async function shootCloseBox(page, tag) {
     return { view: t('airSupport.view'), lower: t('airSupport.lower') };
   });
   const measure = () => page.evaluate(measureCloseBox, labels.lower);
-  // frames across a change: a press of Support, then a frame as fast as the page gives them for 1.1 s (the raise is 0.7 s)
+  // frames across a change: a press of Support, then a frame as fast as the page gives them for 1.1 s (the raise is 0.7 s).
+  // Under pointer lock (desktop) every click lands on the canvas and fires the gun, so Support is worked by the key printed
+  // on it; without the lock (touch, cursor-aim) it is pressed in its own box.
+  const pressedBy = [];
   const press = async (name) => {
     const frames = [];
-    await page.click('.strike-support');
+    if (await page.evaluate(() => !!document.pointerLockElement)) {
+      const key = await page.evaluate(() => document.querySelector('.strike-support .key')?.textContent?.trim() ?? 'X');
+      await page.keyboard.down(`Key${key.toUpperCase()}`);
+      await sleep(60);
+      await page.keyboard.up(`Key${key.toUpperCase()}`);
+      pressedBy.push(`key ${key}`);
+    } else {
+      await page.click('.strike-support');
+      pressedBy.push('click');
+    }
     const t0 = Date.now();
     for (let i = 0; Date.now() - t0 < 1100 && i < 40; i++) {
       const file = `${name}-${String(i).padStart(2, '0')}`;
@@ -699,7 +711,7 @@ async function shootCloseBox(page, tag) {
     receipt.closeBox[size] = {
       pass: !problems.length && !downProblems.length && negativeProblems.length > 0,
       problems, downProblems, negativeProblems, gunship, support: { rest: rest.support, up: up.support, down: down.support },
-      frames: { raise, lower },
+      frames: { raise, lower }, pressedBy: pressedBy.splice(0),
     };
   }
 }
