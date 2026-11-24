@@ -20,7 +20,7 @@ import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { TANK_IDS } from '../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { terrainVariantFor } from '../sim/matchRuleset.ts';
-import { mainStatement, runMainStatements, mainSource } from '../app/mainComposition.test-support.mjs';
+import { mainStatementWith, runMainStatements, mainSource } from '../app/mainComposition.test-support.mjs';
 
 await ensureAuthorityFleet([...TANK_IDS, 'm1a1_abrams_hc']);
 const world = createDedicatedWorldCollision('ruinspires');
@@ -41,9 +41,11 @@ const recordSource = mainSource.match(/\n {2}recordIntent: (\(options\) => battl
 assert.ok(recordSource, "main binds the solo entry's recordIntent");
 const recordIntent = runMainStatements(`const recordIntent = ${recordSource};`, { battleEntryIntent: intent, terrainVariantFor }, 'recordIntent');
 let onPhase = null;
-runMainStatements(mainStatement("bus.on('phase:change', () => {\n  if (game.phase === 'garage') {"), {
+// (replay-slices-276) the battle's recording closes on the way out (main's finishReplay, replay fd79f71ad8): counted here
+let recordingsClosed = 0;
+runMainStatements(mainStatementWith("bus.on('phase:change', () => {", 'clearMatchSession(game);'), {
   bus: { on: (type, listener) => { if (type === 'phase:change') onPhase = listener; } },
-  game, battleEntryIntent: intent, clearMatchSession, frameLoop: { restart() {} },
+  game, battleEntryIntent: intent, clearMatchSession, frameLoop: { restart() {} }, finishReplay: () => { recordingsClosed += 1; },
 }, 'null');
 assert.equal(typeof onPhase, 'function');
 
@@ -70,6 +72,7 @@ assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, "main's recor
 transitionAppPhase(game, 'garage', { reason: 'garage-return' });
 clearBattleAfterExit({ game });
 onPhase({ phase: 'garage' });
+assert.equal(recordingsClosed, 1, 'the Garage return closes the battle\'s recording (and saves it)');
 const afterClear = { ended: game.couch === null, names: firstTanks.map((entity) => entity.displayName ?? null) };
 assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'the Garage phase keeps the couch for Battle Again');
 
@@ -95,6 +98,9 @@ for (const entity of firstTanks) {
   if (!second.seats.some((seat) => seat.entity === entity)) assert.equal(entity.displayName ?? null, null, 'a tank no seat drives now has its own name');
 }
 assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'and the record is still the couch battle\'s');
+// the rematch's own battle phase keeps its recording open: only a way out of the battle closes one
+onPhase({ phase: 'battle' });
+assert.equal(recordingsClosed, 1, 'a battle phase announced closes no recording');
 
 // battle-core's half (Y11): nothing of the couch battle outlives the Garage return's clearMatchSession
 assert.equal(afterClear.ended, true, 'the Garage return ended the couch session (battle-core endCouchSession)');
