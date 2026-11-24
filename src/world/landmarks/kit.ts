@@ -38,9 +38,15 @@ function bandUv(p: Vec3, q: Vec3, arcAtP: number): EmitOptions['uv'] {
  * A surface of revolution about the vertical through (x, z): `profile` is [radius, y] pairs from the bottom up. A flat
  * step (two rows at one height) is an annulus facing up or down; the ends close with caps where their radius is > 0.
  * The UVs run round the ring by arc length and up by height, so a course or a tile row wraps the drum unbroken.
+ * `bottomCap` false leaves the foot open where it stands on a floor (no face anyone sees).
  */
+/** A profile row at or under this radius (m) is the axis: a cone's apex or a disc's centre, where the builders write 0.001
+ *  (landmarks-world-276, the integrity census's slivers: a ring of 1 mm drawn as quads made each a needle — a triangle
+ *  metres long and a millimetre high; at the axis a band or a step closes in triangles to its point). */
+const AXIS_R = 0.002;
+
 export function revolve(sink: PartSink, bucket: RegionalBucket, x: number, z: number,
-  profile: ReadonlyArray<readonly [number, number]>, n: number, opts: EmitOptions = {}, phase = 0): void {
+  profile: ReadonlyArray<readonly [number, number]>, n: number, opts: EmitOptions = {}, phase = 0, bottomCap = true): void {
   if (profile.length < 2) return;
   const rings = profile.map(([r, y]) => ringY(x, y, z, Math.max(0, r), n, phase));
   for (let k = 0; k + 1 < profile.length; k++) {
@@ -49,22 +55,23 @@ export function revolve(sink: PartSink, bucket: RegionalBucket, x: number, z: nu
     if (Math.abs(y1 - y0) < 1e-5) {
       if (Math.abs(r1 - r0) < 1e-5) continue;
       // an annulus: a top step where the profile narrows, a soffit where it widens
-      const up = r1 < r0;
+      const up = r1 < r0, axis = Math.min(r0, r1) <= AXIS_R;
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;
         const outer = up ? a : b, inner = up ? b : a;
-        if (up) sink.quad(bucket, outer[i], outer[j], inner[j], inner[i], { ...opts, uv: { kind: 'world' } });
+        if (axis) sink.polygon(bucket, up ? [outer[i], outer[j], inner[i]] : [inner[i], outer[j], outer[i]], { ...opts, uv: { kind: 'world' } });
+        else if (up) sink.quad(bucket, outer[i], outer[j], inner[j], inner[i], { ...opts, uv: { kind: 'world' } });
         else sink.quad(bucket, inner[i], inner[j], outer[j], outer[i], { ...opts, uv: { kind: 'world' } });
       }
       continue;
     }
-    if (r0 < 1e-5 && r1 < 1e-5) continue;
+    if (r0 <= AXIS_R && r1 <= AXIS_R) continue;
     const rm = (r0 + r1) / 2;
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
       const arc = rm * Math.PI * 2 * i / n;
-      if (r0 < 1e-5) sink.polygon(bucket, [a[i], b[j], b[i]], { ...opts, uv: bandUv(b[i], b[j], arc) });
-      else if (r1 < 1e-5) sink.polygon(bucket, [a[i], a[j], b[i]], { ...opts, uv: bandUv(a[i], a[j], arc) });
+      if (r0 <= AXIS_R) sink.polygon(bucket, [a[i], b[j], b[i]], { ...opts, uv: bandUv(b[i], b[j], arc) });
+      else if (r1 <= AXIS_R) sink.polygon(bucket, [a[i], a[j], b[i]], { ...opts, uv: bandUv(a[i], a[j], arc) });
       else sink.quad(bucket, a[i], a[j], b[j], b[i], { ...opts, uv: bandUv(a[i], a[j], arc) });
     }
   }
@@ -72,8 +79,8 @@ export function revolve(sink: PartSink, bucket: RegionalBucket, x: number, z: nu
   // surface: an annulus already) takes none
   const [rb, yb0] = profile[0], [, yb1] = profile[1];
   const [rt, yt1] = profile[profile.length - 1], [, yt0] = profile[profile.length - 2];
-  if (rb > 1e-5 && Math.abs(yb1 - yb0) > 1e-5) sink.polygon(bucket, [...rings[0]].reverse(), { ...opts, uv: { kind: 'world' } });
-  if (rt > 1e-5 && Math.abs(yt1 - yt0) > 1e-5) sink.polygon(bucket, [...rings[rings.length - 1]], { ...opts, uv: { kind: 'world' } });
+  if (bottomCap && rb > AXIS_R && Math.abs(yb1 - yb0) > 1e-5) sink.polygon(bucket, [...rings[0]].reverse(), { ...opts, uv: { kind: 'world' } });
+  if (rt > AXIS_R && Math.abs(yt1 - yt0) > 1e-5) sink.polygon(bucket, [...rings[rings.length - 1]], { ...opts, uv: { kind: 'world' } });
 }
 
 // ---------------------------------------------------------------------------------------------------------- arches
@@ -497,9 +504,16 @@ export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: numb
  * archivolt following the arch, a strip down each jamb, a keystone at the crown and a sill under it. Dressing proud of
  * the face (no collision); its sides are fine joinery.
  */
+/** The deepest a surround stands proud with fine edges (m): its face within a contact's reach (5 cm) of the wall. */
+const SURROUND_FINE_OUT_M = 0.05;
+
 export function archSurround(sink: PartSink, bucket: RegionalBucket, face: Face, h: ArchHole, width: number, out: number,
   opts: { keystone?: boolean; sill?: boolean; colour?: Rgb; tint?: Rgb } = {}): void {
   const dec: EmitOptions = { decor: true, ...(opts.colour ? { colour: opts.colour } : {}), ...(opts.tint ? { tint: opts.tint } : {}) };
+  // (landmarks-world-276, the integrity census: a surround 12 cm proud on its fine edges alone floated on a phone and past
+  // the fine-detail distance) its edges back to the wall are fine joinery only where its face stands within a contact's
+  // reach of the wall; a deeper surround keeps them at every distance
+  const edge: EmitOptions = out <= SURROUND_FINE_OUT_M ? { ...dec, fine: true } : dec;
   const line = archLine(h, 8);
   // the archivolt: a band of quads between the arch line and its offset outward (away from the opening)
   const offset = line.map(([u, y], i): [number, number] => {
@@ -513,19 +527,19 @@ export function archSurround(sink: PartSink, bucket: RegionalBucket, face: Face,
     const a = line[i], b = line[i + 1], c = offset[i + 1], d = offset[i];
     sink.quad(bucket, facePoint(face, a[0], a[1], out), facePoint(face, b[0], b[1], out), facePoint(face, c[0], c[1], out), facePoint(face, d[0], d[1], out), dec);
     // the outer edge back to the wall (fine: a few centimetres deep), facing away from the opening, and the inner one
-    sink.quad(bucket, facePoint(face, c[0], c[1], 0), facePoint(face, d[0], d[1], 0), facePoint(face, d[0], d[1], out), facePoint(face, c[0], c[1], out), { ...dec, fine: true });
-    sink.quad(bucket, facePoint(face, a[0], a[1], 0), facePoint(face, b[0], b[1], 0), facePoint(face, b[0], b[1], out), facePoint(face, a[0], a[1], out), { ...dec, fine: true });
+    sink.quad(bucket, facePoint(face, c[0], c[1], 0), facePoint(face, d[0], d[1], 0), facePoint(face, d[0], d[1], out), facePoint(face, c[0], c[1], out), edge);
+    sink.quad(bucket, facePoint(face, a[0], a[1], 0), facePoint(face, b[0], b[1], 0), facePoint(face, b[0], b[1], out), facePoint(face, a[0], a[1], out), edge);
   }
   // the jamb strips from the sill to the spring
   for (const side of [-1, 1]) {
     const ui = h.u + side * h.w / 2, uo = ui + side * width;
     const [ua, ub] = side < 0 ? [uo, ui] : [ui, uo];
     sink.quad(bucket, facePoint(face, ua, h.y0, out), facePoint(face, ub, h.y0, out), facePoint(face, ub, h.spring, out), facePoint(face, ua, h.spring, out), dec);
-    const edge: Vec3[] = [facePoint(face, uo, h.y0, 0), facePoint(face, uo, h.y0, out), facePoint(face, uo, h.spring, out), facePoint(face, uo, h.spring, 0)];
-    sink.polygon(bucket, side < 0 ? edge : edge.reverse(), { ...dec, fine: true });
+    const outer: Vec3[] = [facePoint(face, uo, h.y0, 0), facePoint(face, uo, h.y0, out), facePoint(face, uo, h.spring, out), facePoint(face, uo, h.spring, 0)];
+    sink.polygon(bucket, side < 0 ? outer : outer.reverse(), edge);
     // the inner edge, facing into the opening (seen past the reveal's lip at a glancing angle)
     const inner: Vec3[] = [facePoint(face, ui, h.y0, 0), facePoint(face, ui, h.spring, 0), facePoint(face, ui, h.spring, out), facePoint(face, ui, h.y0, out)];
-    sink.polygon(bucket, side < 0 ? inner : inner.reverse(), { ...dec, fine: true });
+    sink.polygon(bucket, side < 0 ? inner : inner.reverse(), edge);
   }
   if (opts.keystone !== false && h.form !== 'flat') {
     const crown = h.spring + archRise(h);

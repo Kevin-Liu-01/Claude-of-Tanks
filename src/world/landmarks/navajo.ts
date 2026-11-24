@@ -404,7 +404,9 @@ export const hogan: LandmarkBuilder = (ctx) => {
     for (const s of [-1, 1]) bar(sink, 'structureWood', [rx - rw - 0.4, ry, s * rd], [rx + rw + 0.4, ry + (v() - 0.5) * 0.1, s * rd], 0.15, { colour: shade(JUNIPER, 0.9), decor: true });
     for (let k = 0; k < 7; k++) {
       const x = rx - rw - 0.2 + (2 * rw + 0.4) * k / 6;
-      bar(sink, 'structureWood', [x, ry + 0.12, -rd - 0.4], [x + (v() - 0.5) * 0.3, ry + 0.12, rd + 0.4], 0.09, { colour: shade(JUNIPER, 1.0 + v() * 0.2), decor: true, fine: true });
+      // (landmarks-world-276, the integrity census: the brush roof lies on these poles, 10 cm over the stringers; fine,
+      // it stood on nothing past the fine-detail distance and on a phone) drawn at every distance
+      bar(sink, 'structureWood', [x, ry + 0.12, -rd - 0.4], [x + (v() - 0.5) * 0.3, ry + 0.12, rd + 0.4], 0.09, { colour: shade(JUNIPER, 1.0 + v() * 0.2), decor: true });
     }
     const roof: Vec3[] = Array.from({ length: 9 }, (_, i) => {
       const a = (i / 9) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), j = 0.9 + v() * 0.2;

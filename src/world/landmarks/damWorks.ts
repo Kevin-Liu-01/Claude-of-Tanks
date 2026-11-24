@@ -214,9 +214,11 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
     for (const dz of [-0.35, 0.35]) bar(sink, 'structureMetal', [x, y - 1.7, z + dz], [x, y - 9.6, z + dz * 0.6], 0.1, { colour: CABLE, decor: true });
     sink.span('structureMetal', x - 0.32, y - 10.5, z - 0.5, x + 0.32, y - 9.5, z + 0.5, { colour: rgb(0xb8902a), decor: true });
     const rim = y - 11.4;
-    for (const s of [-1, 1]) bar(sink, 'structureMetal', [x, y - 10.4, z], [x, rim + 0.1, z + s * 1.62], 0.09, { colour: STEEL, decor: true });
+    // (landmarks-world-276, the integrity census: the bail stopped short of the rim and the load stood clear of the
+    // bucket's wall) the bail's legs down onto the rim's lip, the concrete out to the wall where it stands
+    for (const s of [-1, 1]) bar(sink, 'structureMetal', [x, y - 10.4, z], [x, rim, z + s * 1.58], 0.09, { colour: STEEL, decor: true });
     revolve(sink, 'structureMetal', x, z, [[0.55, rim - 3.2], [1.5, rim - 1.8], [1.7, rim - 0.2], [1.62, rim], [1.5, rim]], 12, { colour: BUCKET, decor: true });
-    revolve(sink, 'structureMetal', x, z, [[1.52, rim - 0.3], [0.001, rim - 0.3]], 12, { colour: WET_CONCRETE, decor: true });
+    revolve(sink, 'structureMetal', x, z, [[1.68, rim - 0.3], [0.001, rim - 0.3]], 12, { colour: WET_CONCRETE, decor: true });
     sink.span('structureMetal', x - 0.35, rim - 3.5, z - 0.35, x + 0.35, rim - 3.15, z + 0.35, { colour: shade(BUCKET, 0.7), decor: true });
   }
   return { parts: sink.finish() };
@@ -354,7 +356,9 @@ export const landingPad: LandmarkBuilder = (ctx) => {
   for (const r of [R * 0.36, R * 0.84]) revolve(sink, 'structureMetal', 0, 0, [[r + 0.05, yS], [r - 0.05, yS]], n, { colour: SEAM, decor: true });
   for (let k = 0; k < 24; k++) {
     const a = (k / 24) * Math.PI * 2;
-    sink.placed(a, 0, 0, 0, () => sink.span('structureMetal', -0.05, DH, R * 0.36, 0.05, yS, R - 0.1, { colour: SEAM, decor: true }));
+    // (landmarks-world-276, the integrity census's slivers: a box 5 mm high and metres long drew needles for sides) the
+    // seam a strip laid on the deck
+    sink.placed(a, 0, 0, 0, () => sink.quad('structureMetal', [-0.05, yS, R - 0.1], [0.05, yS, R - 0.1], [0.05, yS, R * 0.36], [-0.05, yS, R * 0.36], { colour: SEAM, decor: true }));
   }
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.72, yM], [R * 0.68, yM]], n, { colour: shade(MARK, 0.92), decor: true });
   for (const yaw of [0, Math.PI / 2]) sink.placed(yaw, 0, 0, 0, () => {

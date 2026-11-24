@@ -321,16 +321,18 @@ function nagareRoof(sink: PartSink, cx: number, cz: number, w: number, d: number
  */
 function bracket(sink: PartSink, v: Stream, x: number, y: number, z: number, o: Vec3, tiers: number, step: number): void {
   const alongX = o[0] === 0;
-  const box = (yy: number, half: number, hy: number, out: number, depth: number, colour: Rgb, fine: boolean): void => {
+  const box = (yy: number, half: number, hy: number, out: number, depth: number, colour: Rgb): void => {
     const cx = x + o[0] * out, cz = z + o[2] * out, hx = alongX ? half : depth, hz = alongX ? depth : half;
-    sink.span('structureWood', cx - hx, yy, cz - hz, cx + hx, yy + hy, cz + hz, fine ? { colour, decor: true, fine: 'near' } : { colour, decor: true });
+    sink.span('structureWood', cx - hx, yy, cz - hz, cx + hx, yy + hy, cz + hz, { colour, decor: true });
   };
-  box(y, 0.34, 0.3, 0, 0.34, TIMBER_DARK, false);
+  box(y, 0.34, 0.3, 0, 0.34, TIMBER_DARK);
   for (let k = 0; k < tiers; k++) {
     const yk = y + 0.3 + k * 0.34, reach = k * step, tip = (k + 1) * step;
-    box(yk, 0.62 + 0.14 * k, 0.2, reach, 0.12, shade(TIMBER, 0.95 + 0.1 * v()), false);
-    box(yk, 0.12, 0.2, tip / 2, tip / 2 + 0.14, TIMBER, false);
-    box(yk + 0.2, 0.14, 0.14, tip, 0.14, TIMBER_DARK, true);
+    box(yk, 0.62 + 0.14 * k, 0.2, reach, 0.12, shade(TIMBER, 0.95 + 0.1 * v()));
+    box(yk, 0.12, 0.2, tip / 2, tip / 2 + 0.14, TIMBER);
+    // (landmarks-world-276, the integrity census: the tip's block was fine detail, and every tier over it, the purlin
+    // and the roof stood on it: stranded past the fine-detail distance and on a phone) drawn at every distance
+    box(yk + 0.2, 0.14, 0.14, tip, 0.14, TIMBER_DARK);
   }
 }
 
@@ -762,8 +764,14 @@ function cedar(sink: PartSink, v: Stream, x: number, z: number, h: number): void
     const a0 = i / 6 * Math.PI * 2, a1 = (i + 1) / 6 * Math.PI * 2;
     sink.pipe('straw', [x + Math.cos(a0) * rr, ry, z + Math.sin(a0) * rr], [x + Math.cos(a1) * rr, ry, z + Math.sin(a1) * rr], 0.12, 6, { decor: true });
   }
-  for (const a of [0.4, 1.9, 3.5, 5.0]) sink.span('structureWood', x + Math.cos(a) * 0.95 - 0.07, ry - 0.62, z + Math.sin(a) * 0.95 - 0.02, x + Math.cos(a) * 0.95 + 0.07, ry - 0.08, z + Math.sin(a) * 0.95 + 0.02,
-    { colour: WHITE, decor: true, fine: 'near' });
+  // (landmarks-world-276, the integrity census: the shide hung on a circle 0.95 m out, the rope a hexagon whose sides
+  // come in to 0.75 m: one stood 6 cm off it) each hung from the rope's side where it falls
+  const side = (a: number): number => rr * Math.cos(Math.PI / 6) / Math.cos((((a % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3)) - Math.PI / 6);
+  for (const a of [0.4, 1.9, 3.5, 5.0]) {
+    const sr = side(a) + 0.1;
+    sink.span('structureWood', x + Math.cos(a) * sr - 0.07, ry - 0.62, z + Math.sin(a) * sr - 0.02, x + Math.cos(a) * sr + 0.07, ry - 0.08, z + Math.sin(a) * sr + 0.02,
+      { colour: WHITE, decor: true, fine: 'near' });
+  }
   const kb = stoneOf(0.66, true), e = 1.7;
   for (const s of [-1, 1]) {
     bar(sink, 'stone', [x - e, 0.06, z + s * e], [x + e, 0.06, z + s * e], 0.22, kb);
