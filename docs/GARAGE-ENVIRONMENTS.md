@@ -84,6 +84,32 @@ biome-specific horizon layers. Shared
 procedural sky, cloud, fog, and sun presets reproduce the source map without
 mounting its battlefield runtime.
 
+## Battlefield buildings, materials, and set pieces
+
+A pack's buildings are its battlefield's buildings, built by the same code. The
+Garage no longer has its own version of any of it:
+
+- [`src/ui/garageBattleStructures.ts`](../src/ui/garageBattleStructures.ts)
+  loads the source map's kits the way a battle entry does and reads the map's
+  props settings and `StructureBuildContext` (snow, cladding). Each building
+  goes through the world build's steps: the shared bucket set, the builder on
+  its wall bucket, the catalog exterior with its cuts, and then the map's
+  regional architecture kit, which rebuilds most of them (62 of the 81 outdoor
+  buildings).
+- The buildings draw with the battlefield's own material table
+  (`buildStructureSurfaces` in `src/world/props.ts`): sourced photographs, the
+  steel atlas, window styles, and the grime, rust and snow hooks. A pack paints
+  only the prints its buckets draw, each map once per session, in small idle
+  slices, taking the surface paint worker's prints the way a battle build does.
+- The map's authored set pieces (`props.landmarks`) stand on the horizon ring
+  ([`garageHorizonSetPieces.ts`](../src/ui/garageHorizonSetPieces.ts)). They
+  are built by the landmark composer's own `buildLandmarkPiece`, placed at
+  their true compass bearing from the map anchor with their distance compressed
+  onto the ring and their angular size kept.
+
+The Garage keeps only the staging: where each building stands, at what scale,
+and facing the hero axis.
+
 ## Runtime and resource ownership
 
 Garage boot prioritizes the selected vehicle, platform, essential interface,
@@ -113,16 +139,27 @@ failed criterion. The rubric checks:
 
 - connected walls, roofs, braces, cranes, fixtures, and ground contacts;
 - geometry-derived collision envelopes for every structure, including open
-  compounds that preserve intentional drive-through space;
+  compounds that preserve intentional drive-through space. A kit-rebuilt
+  building is certified the way battle certifies it: battle's runtime collision
+  profile must score above 90, and every facade part must connect. The receipt
+  does this certification because it costs up to 4 s per pack;
 - no scenery overlap, floating parts, platform intersections, route grades
-  above ten percent, or opening-view obstruction;
+  above ten percent, or opening-view obstruction. Horizon set pieces count
+  too;
+- nothing holds the orbiting camera or stands between it and the hero, at any
+  yaw and pitch of its fitted orbit
+  ([`garageOrbitClearance.ts`](../src/ui/garageOrbitClearance.ts)). One rule
+  covers every pack: a kit piece or facility station that would do so moves to
+  the nearest clear, level place;
 - readable maintenance purpose, four real fleet exhibits, and a full 360-degree
   service story;
 - map-specific terrain, vegetation, structures, materials, skyline, and route;
-- no more than 72,000 triangles and 25 draw calls per outdoor environment (64k since
-  garage round 7: buildings at the props standard need real members and cut openings; 72k since 2026-10-16, deploy
-  226: the garages' place-truth facilities and r8 detail together with the props lanes' container and tower rebuilds put
-  Cinder at 70.9k with its yard rails trimmed and Glacier at 70.5k; the Garage frame time is measured in the final pass);
+- the pack budget, `GARAGE_PACK_BUDGET` in
+  [`garageQualityRubric.ts`](../src/ui/garageQualityRubric.ts). It is the one
+  owner the rubric, `qa:garage` and the receipts read. It is provisional
+  (180k triangles, 36 draw calls) until it is set from measured Garage frame
+  time on the desktop and mobile tiers. It was 72k triangles and 25 draw calls
+  while the packs drew the legacy builders;
 - normal-speed environment switches below the 80 ms maximum-frame-gap gate;
 - bounded texture residency, two-pack caching, and no retained heap growth after
   repeated complete cycles.
@@ -138,6 +175,8 @@ node src/game/garageVariants.selftest.mjs
 node src/game/garagePresentationPose.selftest.mjs
 node src/ui/garageArchitecture.selftest.mjs
 node src/ui/garageQualityRubric.selftest.mjs
+node src/ui/garageBattleStructures.selftest.mjs
+node src/ui/garageOrbitClearance.selftest.mjs
 node tools/garage-variants-probe.selftest.mjs
 npm run qa:structures
 npm run qa:tree-trunks
