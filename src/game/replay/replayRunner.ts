@@ -25,6 +25,7 @@ import { replayStateDigest } from './replayChecksum.ts';
 import { replayRefusal } from './replayBuild.ts';
 import { FOOTPRINT_ACTION } from './replayRecorder.ts';
 import { replaySeatAction } from './seatActions.ts';
+import { installRecordedStorage, rosterMismatch, runRecordedSetup } from './replaySetup.ts';
 import { ensureAuthorityFleet, requireAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
 /* The page's battle types are wide; the runner reads them through these. */
@@ -64,26 +65,6 @@ const RULES = { selectShell, repairAllModules, startMagazineReload, activateSpec
 
 function stubVisual(): object {
   return { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
-}
-
-/** A localStorage that answers what the recording read, installed on globalThis for the run. */
-function installStorage(values: Record<string, string | null>): () => void {
-  const root = globalThis as Record<string, unknown>;
-  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  const store = new Map(Object.entries(values).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
-  const stand = {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => { store.set(key, String(value)); },
-    removeItem: (key: string) => { store.delete(key); },
-    key: (index: number) => [...store.keys()][index] ?? null,
-    clear: () => store.clear(),
-    get length() { return store.size; },
-  };
-  Object.defineProperty(globalThis, 'localStorage', { value: stand, configurable: true, writable: true });
-  return () => {
-    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
-    else delete root.localStorage;
-  };
 }
 
 function applyFootprint(game: RunGame, action: ReplayAction): void {
@@ -127,42 +108,23 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
   const { header } = recording;
   const refusal = replayRefusal(header.replayDigest, header.build, hooks.localDigest);
   if (refusal) throw new ReplayMismatch('refused', `replay recorded on ${refusal.recordedOn || 'another version'}`);
-  const setup = header.setup as Record<string, RuntimeValue> & { options?: Record<string, RuntimeValue> };
+  const setup = header.setup as Record<string, RuntimeValue>;
   // every hull's spec finalized as the page's were, or no run (ensureReplayFleet loads them)
   requireAuthorityFleet(header.roster.map((entry) => entry.specId));
-  const releaseStorage = installStorage((setup.storage ?? {}) as Record<string, string | null>);
+  // stepping reads storage too, so the stand-in stays for the whole run (dispose releases it)
+  const releaseStorage = installRecordedStorage(header);
   try {
     const game = createGameState({ rosterSeed: Number(setup.rosterSeed) }) as RunGame;
     game.mapId = setup.mapId as string;
     spawnTanks(game as never, { scene: { remove() {} } } as never);
     for (const hull of game.allTanks as unknown as RunHull[]) if (hull) hull.visual = stubVisual();
-    game.battleCount = Number(setup.battleCount);
-    // the bot memory is two Sets on the page (rosterState.ts), arrays in the recording
-    const specSet = (value: RuntimeValue) => (Array.isArray(value) ? new Set(value.map(String)) : null);
-    game.previousBotSpecIds = specSet(setup.previousBotSpecIds) as RuntimeValue;
-    game.recentBotSpecIds = specSet(setup.recentBotSpecIds) as RuntimeValue;
-    const root = globalThis as { __DEBUG?: unknown };
-    const previousDebug = root.__DEBUG;
-    if (setup.debugFlags) root.__DEBUG = { flags: setup.debugFlags };
-    try {
-      const options = setup.options ?? {};
-      setupBattle(game as never, setup.playerSpecId as string, world, {
-        random: options.random === true,
-        ...(typeof options.gameMode === 'string' && options.gameMode ? { gameMode: options.gameMode } : {}),
-        ...(typeof options.campaignOperationId === 'string' ? { campaignOperationId: options.campaignOperationId } : {}),
-        deferVisuals: true,
-        deferCamoRepaint: true,
-        deferOpeningRoutes: options.deferOpeningRoutes === true,
-        ...(typeof setup.seed === 'number' ? { seed: setup.seed } : {}),
-      });
-    } finally {
-      if (setup.debugFlags) root.__DEBUG = previousDebug;
-    }
+    runRecordedSetup(game, header, (playerSpecId, options) => setupBattle(game as never, playerSpecId, world, {
+      ...options, deferVisuals: true, deferCamoRepaint: true,
+    }), { storage: 'caller' });
     const tanks = game.tanks as unknown as RunHull[];
     for (const hull of tanks) hull.visual ??= stubVisual();
-    const seated = tanks.map((hull) => `${hull.id}:${hull.specId}:${hull.team}`).join(',');
-    const recorded = header.roster.map((entry) => `${entry.id}:${entry.specId}:${entry.team}`).join(',');
-    if (seated !== recorded) throw new ReplayMismatch('roster', `replay: the battle seated ${seated}, the recording ${recorded}`);
+    const mismatchedRoster = rosterMismatch(tanks, header);
+    if (mismatchedRoster) throw new ReplayMismatch('roster', mismatchedRoster);
     const seats = header.seats.map((id) => {
       const hull = game.tankById.get(id) as unknown as RunHull | undefined;
       if (!hull) throw new ReplayMismatch('seat', `replay: no seated hull ${id}`);
