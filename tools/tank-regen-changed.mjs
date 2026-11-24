@@ -94,7 +94,7 @@ const TABLE_CURRENT = TABLE_PRESENT && (!IDS || RECORDED?.toolchain === TOOLCHAI
 const UNRECORDED = TABLE_CURRENT ? null : TABLE_PRESENT ? `the table is on another toolchain: ${toolchainChange(RECORDED, TOOLCHAIN.parts)}`
   : 'no fingerprints table';
 const table = await loadTable(value('table') ?? null);
-const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
+const { STEPS, CPU_FIXPOINT_STEPS, RIG_BOOTSTRAP, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
 /** A world step's resolver view is the state's per-map half; a tank step's is the state itself. */
 const viewOf = (definition, state) => (definition.universe === 'maps' ? state.world : state);
@@ -398,6 +398,14 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   return true;
 }
 
+/** (276) The combat rig of every id whose calibration has none, before any tool loads the fleet (steps.mjs RIG_BOOTSTRAP). */
+async function rigBootstrap() {
+  if (!RIG_BOOTSTRAP) return;
+  const [tool, ...extra] = RIG_BOOTSTRAP;
+  const run = await runChild([tool, ...extra, ...(CHECK ? ['--check'] : [])], { niced: true, timeoutS: 3600, label: 'rig-bootstrap' });
+  if (run.code !== 0) throw new Error(`${tool} failed (exit ${run.code})${CHECK ? ': a calibration row has no measured rig' : ''}`);
+}
+
 async function aggregates(list, label) {
   for (const [tool, ...extra] of list) {
     const run = await runChild([tool, ...extra, ...(CHECK ? ['--check'] : [])], { niced: true, timeoutS: 600, label: `${label}-${tool.split('/').pop()}` });
@@ -497,6 +505,7 @@ async function verifyRuns() {
 
 async function checkAll() {
   // Nightly: each step's whole-fleet --check (no writes). Steps without a check form are listed, not skipped silently.
+  await rigBootstrap();
   await aggregates(PRE_AGGREGATES, 'pre');
   for (const definition of [...STEPS, ...(NO_WORLD ? [] : WORLD_STEPS)].filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu'))) {
     if (!definition.check) { log(`[regen] ${definition.name}: no --check form (compare with a scratch --all run)`); summary.runs.push({ step: definition.name, check: 'none' }); continue; }
@@ -541,6 +550,7 @@ try {
   }
   if (CHECK) await checkAll();
   else {
+    if (!DRY) await rigBootstrap();
     if (!DRY) await aggregates(PRE_AGGREGATES, 'pre');
     await cpuFixpoint(ALL || !!IDS);
     await afterSteps(ALL || !!IDS);
