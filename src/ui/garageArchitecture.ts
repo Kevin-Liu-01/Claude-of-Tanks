@@ -585,7 +585,32 @@ export function createGarageArchitectureController(
     trim();
     publish();
     requestRender();
+    if (record.architecture !== 'field_shed') standFarRing(_variant.mapId, build.root, () => current(record) && record.build === build);
     return true;
+  };
+
+  /**
+   * (garage round 2, 277) A shown pack's far backdrop: its map's own battle horizon ring (garageBattleStructures.ts
+   * prepareGarageFarRing), prepared once the pack is on screen, in idle slices, and stood in the pack's frame. Never on
+   * a switch's path: the switch presents with its near bands alone, the ring arrives after.
+   */
+  const standFarRing = (mapId: string, root: THREE.Object3D, wanted: () => boolean): void => {
+    // (a page only, as the warm: the receipts under Node measure the packs, not the ring)
+    if (typeof document === 'undefined' || root.getObjectByName('garage_battle_far_ring')) return;
+    const run = (): void => {
+      if (disposed || !wanted()) return;
+      void getEnvironmentKit()
+        .then((kit) => kit.prepareGarageFarRing(mapId, engineCtx, () => !disposed && wanted()))
+        .then((ring) => {
+          if (!ring || disposed || !wanted()) return;
+          root.add(ring);
+          requestRender();
+        })
+        .catch(() => {});
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof idle === 'function') idle(run, { timeout: 1500 });
+    else setTimeout(run, 300);
   };
 
   const attach = (
@@ -842,6 +867,8 @@ export function createGarageArchitectureController(
         // (half a metre past the walls: the upstand's thickness)
         const clip = kit.clipGarageEnvironmentToExterior(build.root, footprint.halfXM + 0.5, footprint.halfZM + 0.5);
         build.root.name = `garage_enclosure_exterior_${variant.architecture}`;
+        // its distance: the map's own battle horizon ring, as every outdoor pack's
+        standFarRing(variant.mapId, build.root, () => !disposed);
         let drawCalls = 0, triangles = 0;
         build.root.traverse((object) => {
           const mesh = object as THREE.Mesh;

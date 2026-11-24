@@ -1613,6 +1613,9 @@ function disposeStructureGeometry(records: readonly GarageStructureRecord[], bac
   }
 }
 
+// (garage round 2, 277) the far backdrop's battle ring, for the architecture controller's kit chunk
+export { prepareGarageFarRing } from './garageBattleStructures.ts';
+
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
   outerEngineCtx: GarageEnvironmentEngineContext,
