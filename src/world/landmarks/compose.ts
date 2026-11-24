@@ -42,6 +42,8 @@ const SQUARE = 480;
 const SPAWN_CLEAR = 22;
 /** A road core a body may not stand in (the layout brief's carriageway). */
 const ROAD_CORE_M = 3.5;
+/** The footprint probes' spacing (m): a road's centre line across a footprint passes within a road core of a probe. */
+const PROBE_STEP_M = 3;
 /** The parts one compound record holds (server/collisionManifestCodec.ts: a compound of at most 64). */
 const MOVEMENT_PART_LIMIT = 64;
 /** The steepest fall under a footprint a piece is seated on (its plinths reach down this far). */
@@ -197,8 +199,13 @@ export function landmarkObjectiveDiscs(mapId: string, spawns: ReadonlyArray<{ x:
 function footprintProbes(x: number, z: number, hw: number, hl: number, yaw: number): Array<[number, number]> {
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const out: Array<[number, number]> = [];
-  for (const ix of [-1, -0.5, 0, 0.5, 1]) for (const iz of [-1, -0.5, 0, 0.5, 1]) {
-    const lx = ix * hw, lz = iz * hl;
+  // (landmarks-world-276; skybridge's head tower stood its backstay's deadmen in a road: a 5 x 5 grid put 10.75 m
+  // between probes along its 43 m footprint, and the 7 m road core crossing it slant fell between them) every edge cut
+  // at PROBE_STEP_M or finer: no road's centre line crosses the footprint between probes (each lies within 2.1 m of one,
+  // inside the 3.5 m core)
+  const nx = Math.max(4, Math.ceil((2 * hw) / PROBE_STEP_M)), nz = Math.max(4, Math.ceil((2 * hl) / PROBE_STEP_M));
+  for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) {
+    const lx = (2 * i / nx - 1) * hw, lz = (2 * j / nz - 1) * hl;
     out.push([x + lx * c + lz * s, z - lx * s + lz * c]);
   }
   return out;

@@ -222,8 +222,11 @@ export default {
     // drowned gorge (a rotation pair about the layout's centre), the track cable sagging across the lake between them with
     // the carriage and its concrete bucket hung on it.
     landmarks: [
-      { kind: 'cablewayTower', x: -103.3, z: 140.2, yawDeg: 126.5, params: { cable: true, span: 269.5, farRise: -1.27 }, name: 'the cableway head tower (west shore)' },
-      { kind: 'cablewayTower', x: 113.3, z: -20.2, yawDeg: -53.5, name: 'the cableway tail tower (east shore)' },
+      // (landmarks-world-276: the head tower's backstay deadmen stood in the west shore's road; the pair moved 5 m in
+      // along the cable line, each, on 14 m backstays, so it stays a rotation pair, every anchor 4.5 m off the road core
+      // and the tail tower clear of the east shore's works)
+      { kind: 'cablewayTower', x: -99.3, z: 137.2, yawDeg: 126.5, params: { backstay: 14, cable: true, span: 259.5, farRise: -1.07 }, name: 'the cableway head tower (west shore)' },
+      { kind: 'cablewayTower', x: 109.3, z: -17.2, yawDeg: -53.5, params: { backstay: 14 }, name: 'the cableway tail tower (east shore)' },
     ],
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
     architecture: BUILDING_STYLES.skybridge.kit,
