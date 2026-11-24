@@ -295,14 +295,28 @@ const _crashVel = { x: 0, y: 0, z: 0 };
  * its velocity in `vel`. The authority launches the crash round on this arc (sim/airSupportFire.ts; the shell step
  * integrates constant gravity exactly) and the presentation draws the falling airframe on it, so both meet the ground
  * at the same point.
+ *
+ * (air-crash-he-276c) It comes down inside the battlefield: where its carry would land it beyond fall.landInsideM (the
+ * playable square; the drawn, dug terrain reaches 42 m further), on the mark's ground height, its way across the ground
+ * is turned so it lands at the nearest point inside (each axis clamped), in the same fall time. A break outside the
+ * square glides in; one whose landing is already inside keeps its carry bit for bit. The 42 m apron covers ground
+ * higher or lower than the mark's.
  */
 export function crashFall(rules: AirSupportRules, strike: RunRecord, downedS: number, timeS: number,
   out: { x: number; y: number; z: number }, vel?: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
   const fall = AIR_CRASH_RULES.fall;
   runPose(rules, strike, downedS, _crashPose);
   runVelocity(rules, strike, downedS, _crashVel);
-  const vx = _crashVel.x * fall.carry, vy = _crashVel.y * fall.carry - fall.sinkMps, vz = _crashVel.z * fall.carry;
-  const t = Math.max(0, timeS - downedS), g = fall.gravityMps2;
+  let vx = _crashVel.x * fall.carry, vz = _crashVel.z * fall.carry;
+  const vy = _crashVel.y * fall.carry - fall.sinkMps, g = fall.gravityMps2;
+  // when it meets the mark's ground: y0 + vy t - g t^2 / 2 = strike.y
+  const drop = Math.max(0, _crashPose.y - strike.y), landS = (vy + Math.sqrt(vy * vy + 2 * g * drop)) / g;
+  if (landS > 0) {
+    const L = fall.landInsideM, lx = _crashPose.x + vx * landS, lz = _crashPose.z + vz * landS;
+    if (lx > L || lx < -L) vx = ((lx > L ? L : -L) - _crashPose.x) / landS;
+    if (lz > L || lz < -L) vz = ((lz > L ? L : -L) - _crashPose.z) / landS;
+  }
+  const t = Math.max(0, timeS - downedS);
   out.x = _crashPose.x + vx * t; out.y = _crashPose.y + vy * t - 0.5 * g * t * t; out.z = _crashPose.z + vz * t;
   if (vel) { vel.x = vx; vel.y = vy - g * t; vel.z = vz; }
   return out;
