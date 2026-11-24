@@ -3,27 +3,33 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { minimapYawForHeading } from './minimapOrientation.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 
 // Exercise the production HUD's retained contacts and event listeners without
 // constructing the rest of the DOM/WebGL presentation.
 const source = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
+// (inherited-reds-276) the spotting and blip stages run as a hud.ts slice (tools/source-slice.test-support.mjs): they close
+// over the HUD's inert locals (isOwnTank, 8a9cc8e523's couch-pane predicate, was missing) and name any other they gain
+const hud = sourceSlice(new URL('./hud.ts', import.meta.url));
+// the HUD's per-view local the predicate reads: this receipt's HUD is the page's, not a couch pane's
+const PAGE_HUD = 'const ownsFramePlayer = false;\n';
 const spotById = new Map();
-const functions = source.slice(source.indexOf('  function spotMemoryFor('), source.indexOf('  function isSpotted('));
+const functions = hud.section('  function spotMemoryFor(', '  function isSpotted(');
 const player = { id:'player', isPlayer:true, state:{pos:{x:0,y:0,z:0},yaw:0} };
 // Spotting and blips read the HUD's own side (hud.ts ownSide: a watched seat's side, else the player's team, which
 // Infected converts; 6642dbbdbd); this player keeps the default side.
 const ownSide = () => player.team ?? 'player';
-const update = new Function('spotById', 'SPOT_RANGE_M', 'SPOT_PERSIST_S', 'hasLOS', 'playerRef', 'ownSide',
-  stripTypeScriptTypes(functions) + '\nreturn updateSpotting;')(spotById, 500, 5, () => true, player, ownSide);
+const update = hud.compile({ spotById, SPOT_RANGE_M: 500, SPOT_PERSIST_S: 5, hasLOS: () => true, playerRef: player, ownSide },
+  `${PAGE_HUD}${functions}\nreturn updateSpotting;`);
 const enemy = { id:'enemy', team:'enemy', modeActive:true, state:{pos:{x:100,y:0,z:30},yaw:0.7}, combat:{destroyed:false} };
 let seen = true;
 const frame = { player, tanks:[player,enemy], timeS:10, spotting:{isSpotted:()=>seen} };
 const tick = () => { frame.timeS += 1; update(frame); };
 const ghosts=[], live=[];
-const blipSource = source.slice(source.indexOf('  function pushTankMinimapBlip('), source.indexOf('  function collectMinimapTankBlips('));
-const drawBlip = new Function('spotById','worldToMap','pushLiveBlip','drawGhostMarker','mmCtx','teamInk','playerRef','ownSide',
-  stripTypeScriptTypes(blipSource)+'\nreturn pushTankMinimapBlip;')(
-  spotById,(x,z)=>[x,z],(...args)=>live.push(args),(...args)=>ghosts.push(args),{},()=>({own:'own',enemy:'enemy'}),player,ownSide);
+const blipSource = hud.section('  function pushTankMinimapBlip(', '  function collectMinimapTankBlips(');
+const drawBlip = hud.compile({ spotById, worldToMap: (x,z)=>[x,z], pushLiveBlip: (...args)=>live.push(args),
+  drawGhostMarker: (...args)=>ghosts.push(args), mmCtx: {}, teamInk: ()=>({own:'own',enemy:'enemy'}), playerRef: player, ownSide },
+  `${PAGE_HUD}${blipSource}\nreturn pushTankMinimapBlip;`);
 
 tick();
 assert.equal(spotById.get(enemy.id).vis,true);
