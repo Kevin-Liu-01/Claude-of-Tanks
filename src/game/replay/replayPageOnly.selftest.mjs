@@ -91,7 +91,9 @@ assert.deepEqual(diffDumps(withoutPageOnly(replayDump), withoutPageOnly(nearName
 
 // 4. the replay steps in the battle phase
 const runner = readFileSync(new URL('./replayRunner.ts', import.meta.url), 'utf8');
-assert.match(runner, /gamePhase\.phase = 'battle';\s*const bus = createBus/, 'the replay enters the page\'s battle phase before its first step');
+// (battle-teardown-276: through the one phase writer, appLifecycle.ts transitionAppPhase)
+assert.match(runner, /transitionAppPhase\(game as \{ phase: AppPhase \}, 'battle', \{ reason: 'replay-run' \}\);\s*const bus = createBus/,
+  'the replay enters the page\'s battle phase before its first step');
 assert.ok(!listed.includes('phase'), 'so the phase is no page-only field');
 
 console.log(`replayPageOnly.selftest: ${listed.length} page-only field(s) (the battle's ${PAGE_ONLY_FIELDS.game.join(', ')}; each hull's `
