@@ -3257,6 +3257,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
     // condition in the page's lane
     'src/ui/airSupportNotices.selftest.mjs',
+    // battle-teardown-276 (Kevin 2026-11-24: "notifications till here in garage - properly clear game state stuff after
+    // leaving"): one battle scope, opened and ended by the phase writer; by every exit no notice, timer or listener outlives it
+    'src/ui/battleTeardown.selftest.mjs',
     // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
     'tools/air-support-close-box.selftest.mjs',
     // notices-276 (Kevin 2026-11-23: "fix ui overlaps like gunship overhead with X binoculars"): one list of the controls a

@@ -1135,6 +1135,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       clearSightFurniture();
       setSightNotice(false);
       settleSightFurniture();
+      // (battle-teardown-276) the two body flags whose rules do not ask for data-cot-battle-layout go with the battle's
+      // layout: the scope's vision seat and Watch's riding bar stood on the body in the Garage
+      if (document.body.dataset.scopeVision !== undefined) delete document.body.dataset.scopeVision;
+      if (document.body.hasAttribute('data-watch-top')) document.body.toggleAttribute('data-watch-top', false);
       return;
     }
     // (the observed parts are looked for only when the body's or the root's children changed, or a relayout was asked

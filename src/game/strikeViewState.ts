@@ -32,3 +32,13 @@ export const strikeView: StrikeViewState = {
 
 /** The transition's length (s): the camera rises into the binoculars and settles. */
 export const STRIKE_VIEW_TRANSITION_S = 0.6;
+
+/** (battle-teardown-276) The battle's end lowers the binoculars and forgets the order (game/battleScope.ts, through the air
+ *  HUD's disposer): a battle left with them up raised them at the next one's start. True when they were up. */
+export function endStrikeView(): boolean {
+  const wasOpen = strikeView.open;
+  strikeView.open = false;
+  strikeView.blend = 0;
+  strikeView.order.reset();
+  return wasOpen;
+}

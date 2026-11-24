@@ -53,11 +53,12 @@ assert.match(hud, /const noticeView: NoticeView = flier\?\.aerial\?\.active \? \
 assert.match(hud, /events\.view\(noticeView\);\s*if \(!ownsFramePlayer\) battleNotices\.view\(noticeView\);/, 'both lanes, the condition lane from the page\'s HUD');
 // the condition lane's hold
 const lane = readFileSync('src/ui/battleNotices.ts', 'utf8');
-assert.match(lane, /if \(noticeKind\(options\.kind\)\.subject === 'tank'\) tankConditions\.set\(options\.id, options\);\s*if \(shownInView\(options\.kind, view\)\) show\(options\);/,
+// (battle-teardown-276: every condition is kept under its battle's scope; a tank one is held off the tank)
+assert.match(lane, /raised\.set\(options\.id, options\);\s*if \(shownInView\(options\.kind, view\)\) show\(options\);/,
   'a tank condition raised off the tank waits');
-assert.match(lane, /for \(const options of tankConditions\.values\(\)\) \{\s*if \(shownInView\(options\.kind, next\)\) show\(options\); else takeDown\(options\.id\);/,
+assert.match(lane, /for \(const options of raised\.values\(\)\) \{\s*if \(noticeKind\(options\.kind\)\.subject !== 'tank'\) continue;\s*if \(shownInView\(options\.kind, next\)\) show\(options\); else takeDown\(options\.id\);/,
   'a view change takes them down or raises them again');
-assert.match(lane, /dismiss\(id\) \{\s*tankConditions\.delete\(id\);/, 'one dismissed while held does not come back');
+assert.match(lane, /dismiss\(id\) \{\s*raised\.delete\(id\);/, 'one dismissed while held does not come back');
 assert.match(lane, /shape: noticeKind\(kind\)\.shape/, 'the kit draws the kind\'s shape');
 
 // ---- the event lane, live: the shape written; the tank's own held off the tank and back on it
