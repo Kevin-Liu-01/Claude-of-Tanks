@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import * as THREE from 'three';
 
-import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
+import { createGaragePhasePresentationRuntime, GARAGE_OPEN_SPOT_SHARE } from './garagePhasePresentationRuntime.ts';
 
 const scene = new THREE.Scene();
 const stageRoot = new THREE.Group();
@@ -201,5 +201,28 @@ assert.doesNotMatch(mainSource, /function placeGarage\(/,
   'main must not own terrain-relative Garage placement');
 assert.match(mainSource, /createGaragePhasePresentationRuntime\(/,
   'the composition root must delegate Garage presentation ownership');
+
+// (garage-env-276) the showroom spots follow the light: under an open yard's grounded model they share
+// GARAGE_OPEN_SPOT_SHARE of its sun at the hero (three's law: intensity over distance to the decay); a sealed bay's
+// authored rig keeps them as authored, and a sealed bay after an open yard gets them back
+{
+  const spots = [];
+  scene.traverse((object) => { if (object.isSpotLight) spots.push(object); });
+  assert.equal(spots.length, 2, 'the showroom\'s two spots');
+  const target = spots[0].target.position;
+  const atHero = () => spots.reduce((sum, spot) => sum + spot.intensity / spot.position.distanceTo(target) ** spot.decay, 0);
+  const authored = spots.map((spot) => spot.intensity);
+  scene.userData.lightModel = { mode: 'physical', sunIntensity: 4.47 };
+  runtime.setSunTrim(true);
+  assert.ok(Math.abs(atHero() - GARAGE_OPEN_SPOT_SHARE * 4.47) < 1e-9, `the spots put ${atHero().toFixed(3)} on the hero: the share of the sun`);
+  assert.ok(Math.abs(spots[0].intensity / spots[1].intensity - authored[0] / authored[1]) < 1e-9, 'each keeps its authored weight');
+  scene.userData.lightModel = { mode: 'physical', sunIntensity: 8.94 };
+  runtime.setSunTrim(true);
+  assert.ok(Math.abs(atHero() - GARAGE_OPEN_SPOT_SHARE * 8.94) < 1e-9, 'a stronger sun, the same ratio');
+  scene.userData.lightModel = { mode: 'legacy', sunIntensity: 2.3 };
+  runtime.setSunTrim(true);
+  assert.deepEqual(spots.map((spot) => spot.intensity), authored, 'a sealed bay keeps the authored spots');
+  delete scene.userData.lightModel;
+}
 
 console.log('garagePhasePresentationRuntime.selftest: lighting, placement, residency, and world swaps pass');
