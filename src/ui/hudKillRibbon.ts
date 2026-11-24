@@ -14,6 +14,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { formatNumber, t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon } from './icons.ts';
+import { noticeArtHtml } from './components/notice.ts';
 
 /** How long the ribbon holds after the latest kill, and how soon another kill extends the streak. */
 const RIBBON_HOLD_MS = 2400;
@@ -56,6 +57,11 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .cot-c-chip{flex:none;height:26px;padding:0 var(--s2);font-size:var(--battle-fs-12);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-ribbon .cot-c-chip[data-cause='ammorack']{color:var(--sys-ammo);box-shadow:var(--battle-ring-ammo)}
 .cot-ribbon .cot-c-chip[data-cause='fire']{color:var(--danger);box-shadow:var(--ring-danger)}
+/* (notices-276b; Kevin 2026-11-24, through Main: the kill banner carries the destroyed tank's render) the kit's art layer
+   first on the plate (components/notice.ts noticeArtHtml, the one mask in notices.css), its right end at the streak's
+   block; the plate's rows over it */
+.cot-ribbon{--notice-art-w:180px;--notice-art-end:58px}
+.cot-ribbon>:is(.top,.stream){position:relative}
 .cot-ribbon .x{flex:none;margin-left:auto;align-self:stretch;min-width:58px;padding:0 14px;display:flex;flex-direction:column;
   justify-content:center;align-items:center;gap:2px;background:var(--accent);color:var(--ink-on-accent);font:700 var(--battle-fs-20)/1 var(--hud-font)}
 .cot-ribbon .x[hidden]{display:none}
@@ -151,6 +157,8 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   const dealt = new Map<string, number>();
   let streak = 0, streakDamage = 0, lastKillMs = -Infinity;
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The victim's render on the plate (the kit's art layer, first in the ribbon), or null. */
+  let art: Element | null = null;
 
   function paintStream(): void {
     const now = performance.now();
@@ -184,8 +192,13 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       dealt.delete(victim.id);
       word.textContent = t('hud.kill.shot');
       flagHost.innerHTML = victim.flag;
-      silhouette.hidden = !victim.specId;
-      if (victim.specId) maskIcon(silhouette, victim.specId, 'side_silhouette', 'currentColor');
+      // (its render on the plate, or its silhouette where it has none: one picture of it)
+      art?.remove();
+      const picture = victim.specId ? noticeArtHtml(`tank:${victim.specId}`) : '';
+      if (picture) root.insertAdjacentHTML('afterbegin', picture);
+      art = picture ? root.firstElementChild : null;
+      silhouette.hidden = !victim.specId || !!art;
+      if (victim.specId && !art) maskIcon(silhouette, victim.specId, 'side_silhouette', 'currentColor');
       callsign.textContent = victim.callsign;
       vehicle.textContent = victim.vehicle;
       vehicle.hidden = !victim.vehicle || victim.vehicle === victim.callsign;

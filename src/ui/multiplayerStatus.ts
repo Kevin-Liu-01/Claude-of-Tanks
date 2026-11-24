@@ -435,7 +435,7 @@ export function createMultiplayerStatusSurface({
     notices.condition({
       // (the ladder, battleNotices.ts: a link the match let go is `lost`; the leave's confirmation answers a press; a link
       // reconnecting or a new host is ambient)
-      id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false,
+      kind: 'link', id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false,
       priority: severity === 'error' ? NOTICE_PRIORITY.lost : leaving ? NOTICE_PRIORITY.answered : NOTICE_PRIORITY.ambient,
       actions: leaving ? [{ label: t('mpStatus.leave'), keep: true, run: leaveNow }] : [],
     });

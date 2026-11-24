@@ -136,6 +136,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     const detailHtml = noPrompt ? formatKeyLine(host.input, def.lineNoPrompt!, {}) : formatKeyLine(host.input, def.line, actions);
     const settingsPath = `${t('settings.title')} › ${t('settings.tab.gameplay')} › ${t('settings.interface.armorOverlay')}`;
     battleNotices.condition({
+      kind: 'hint',
       id: `cot-hint-${id}`,
       severity: 'info',
       className: `cot-key-hint cot-first-hint cot-first-hint--${id}`,

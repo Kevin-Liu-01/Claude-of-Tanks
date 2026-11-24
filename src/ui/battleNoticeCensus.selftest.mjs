@@ -134,12 +134,16 @@ assert.match(hud, /keyLine\('hud\.aimWarning\.flipLine', \{ key: 'selfRight' \}\
 assert.match(read('src/ui/firstUseHints.ts'), /className: `cot-key-hint cot-first-hint/, 'the first-use hints wear the same layout');
 // the condition lane is the page's: a couch pane's HUD never raises one (it would speak for every seat)
 assert.match(hud, /const parked = !ownsFramePlayer && touchWarning && !touchWarningSeated\(\);/, 'a pane HUD never parks its chip into the page\'s conditions');
-// (air-support-275) the INCOMING plate is the condition lane's, at the threat rung, and a pane's HUD hands Air Support a port
-// that raises none; its refusals and shoot-downs are events on the HUD's own bus (airSupportNotices.selftest drives them)
+// (air-support-275, notices-276b) the air lane: every air plate is the condition lane's (INCOMING at the threat rung, the
+// crew's call-in and a shoot-down answered), none an event, and a pane's HUD hands Air Support a port that raises none
+// (airSupportNotices.selftest drives them)
 const air = read('src/ui/airSupportHud.ts');
-assert.match(air, /notices\.condition\(\{ id: INCOMING_NOTICE,[^}]*priority: NOTICE_PRIORITY\.threat/, 'the INCOMING warning is a threat-rung condition');
-assert.doesNotMatch(air, /\bnotices\.show\(/, 'Air Support raises nothing outside the two lanes');
-assert.match(hud, /createAirSupportHud\(root, bus, ownsFramePlayer \? PANE_CONDITIONS : battleNotices\)/, 'a pane HUD raises no Air Support condition');
+assert.match(air, /plate\(INCOMING_NOTICE, 'airIncoming', threat\.kind,[^;]*NOTICE_PRIORITY\.threat\)/, 'the INCOMING warning is a threat-rung plate');
+assert.match(air, /notices\.condition\(\{ kind, id, severity/, 'every air plate is a condition');
+assert.doesNotMatch(air, /BATTLE_EVENT|\bnotices\.show\(/, 'Air Support raises no event and nothing outside the lanes');
+assert.match(hud, /const airConditions = ownsFramePlayer \? PANE_CONDITIONS : battleNotices;/, 'a pane HUD raises no air plate');
+assert.match(hud, /createAirSupportHud\(root, bus, airConditions\)/, 'Air Support raises through it');
+assert.match(hud, /airConditions\.condition\(\{ kind: 'droneDown'/, 'an enemy drone brought down is the air lane\'s too');
 
 const counts = { notices: 0, battle: 0, menu: 0 };
 for (const key of found.keys()) counts[SURFACES[key].kind]++;

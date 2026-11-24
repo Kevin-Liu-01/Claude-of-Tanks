@@ -51,6 +51,8 @@ export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices',
  *  the gunship's sight and Air Support's binoculars; and a mode whose sectors' banner and badges stand over the centre (the
  *  condition lane pushed onto the map and the lanes, combined-arms-276's probe). */
 export const NOTICE_STATES = ['idle', 'sniper', 'drone', 'gunship', 'binoculars', 'mode-zone_control'];
+/** The notice states that look through another view than the tank's: the tank's own notices are held there (notices-276b). */
+const VIEW_STATES = ['drone', 'gunship', 'binoculars'];
 const plant = process.argv.includes('--plant');
 const noticesOnly = process.argv.includes('--notices-only');
 const shots = process.argv.includes('--shots');
@@ -124,6 +126,20 @@ try {
         coverage = noticeCoverage(rects, await page.evaluate(() => document.body.dataset.hudGuidance ?? ''));
         if (coverage.event !== 'shown') problems.push('notice: the event lane shows nothing');
         if (coverage.condition === 'missing') problems.push('notice: the condition lane shows nothing and does not wait');
+        // (notices-276b) off the tank the tank's own notices are held (noticeKinds.ts): its event never in the seat, the
+        // planted tank condition (the top rung) never in the condition lane; from the tank its event takes the seat
+        const held = await page.evaluate(() => {
+          const seat = document.querySelector('.cot-alert.show');
+          const planted = document.body.dataset.probeTankCondition;
+          const plant = planted ? document.querySelector(`.${planted}`) : null;
+          return { event: seat?.dataset.tip ?? '', tank: document.body.dataset.probeTankEvent ?? '',
+            planted: !!planted, plantShown: !!plant?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) };
+        }).catch(() => null);
+        if (VIEW_STATES.includes(state)) {
+          if (held?.event && held.event === held.tank) problems.push(`hold: the tank's own event shows in ${state}`);
+          if (!held?.planted) problems.push(`hold: no tank condition planted in ${state}`);
+          else if (held.plantShown) problems.push(`hold: the planted tank condition shows in ${state}`);
+        } else if (held?.event !== held?.tank) problems.push(`hold: the tank's own event is not in the seat in ${state} (${held?.event})`);
       }
       if (shots) await page.screenshot({ path: resolve(out, `${name}-${label}.png`) });
       // one datum, one place (tools/datum-census.mjs, the registry's runtime half)

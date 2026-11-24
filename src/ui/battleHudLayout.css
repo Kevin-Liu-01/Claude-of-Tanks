@@ -213,6 +213,8 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before{inset:0;b
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{inset:1px;background:var(--notice-fill)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong))}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong))}
+/* (notices-276b) a one-line status kind's pill (noticeKinds.ts data-shape; the HUD's own lanes by hud.ts's rule) */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-shape=pill]{--notice-cut:inset(0 round 999px)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box-shadow:var(--focus-ring)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 /* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
