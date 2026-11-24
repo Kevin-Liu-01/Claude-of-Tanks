@@ -87,8 +87,22 @@ export function insideClearPolygon(polygons: readonly (readonly (readonly [numbe
   return false;
 }
 
-/** Equal arc-length stations keep bent bank ribbons and farm rows readable. */
-export function authoredTreeStations(feature: AuthoredTreeFeature): Array<{ x: number; z: number }> {
+/** The keep-out a row's stations leave round a structure's clearance (m): about a bank willow's crown and lean. */
+export const STATION_KEEP_OUT_M = 3;
+/** The arc-length step at which a row's path is read for its free stretches (m). */
+const FREE_STEP_M = 0.5;
+
+/**
+ * Equal arc-length stations keep bent bank ribbons and farm rows readable. `keptOut` (landmarks-world-276, Mangrove's
+ * fishing-creek bank under its canal market and kilns: eight of its eighteen stations stood in the set pieces' ground and
+ * none could take a tree): ground the row may not stand on — a structure's clearance, a set piece's footprint. The row's
+ * stations are then laid at equal arc length along its path's free stretches alone, so the same count of trees stands on
+ * the bank either side of what took its ground. A path the keep-out does not touch keeps its stations exactly.
+ */
+export function authoredTreeStations(feature: AuthoredTreeFeature,
+  keptOut: ((x: number, z: number) => boolean) | null = null): Array<{ x: number; z: number }> {
+  const free = keptOut ? freeStations(feature, keptOut) : null;
+  if (free) return free;
   if (!Number.isInteger(feature.count) || feature.count < 2 || feature.count > 80
       || feature.path.length < 2 || feature.path.length > 12) throw new Error('Invalid bounded authored tree feature');
   const lengths: number[] = [];
@@ -106,6 +120,45 @@ export function authoredTreeStations(feature: AuthoredTreeFeature): Array<{ x: n
     const t = distance / length, offset = ((i % 3) - 1) * (feature.width ?? 0);
     return { x: a[0] + (b[0] - a[0]) * t - (b[1] - a[1]) / length * offset,
       z: a[1] + (b[1] - a[1]) * t + (b[0] - a[0]) / length * offset };
+  });
+}
+
+/** The stations along a path's free stretches (authoredTreeStations `keptOut`); null when the keep-out touches none of
+ *  it, or leaves under 2.5 m a tree (the station spacing a trunk keeps: then the stations stand as authored). */
+function freeStations(feature: AuthoredTreeFeature, keptOut: (x: number, z: number) => boolean): Array<{ x: number; z: number }> | null {
+  const segments: Array<{ ax: number; az: number; ux: number; uz: number; length: number }> = [];
+  for (let i = 1; i < feature.path.length; i++) {
+    const [ax, az] = feature.path[i - 1], [bx, bz] = feature.path[i], length = Math.hypot(bx - ax, bz - az);
+    if (length > 0) segments.push({ ax, az, ux: (bx - ax) / length, uz: (bz - az) / length, length });
+  }
+  // the free arc: each FREE_STEP_M of the path whose middle stands clear, as [start, end] runs in arc length
+  const runs: Array<[number, number]> = [];
+  let start = 0, blocked = false;
+  for (const seg of segments) {
+    const steps = Math.max(1, Math.ceil(seg.length / FREE_STEP_M)), step = seg.length / steps;
+    for (let k = 0; k < steps; k++) {
+      const t = (k + 0.5) * step, out = keptOut(seg.ax + seg.ux * t, seg.az + seg.uz * t);
+      if (out) blocked = true;
+      const last = runs[runs.length - 1];
+      if (!out) { if (last && last[1] === start) last[1] = start + step; else runs.push([start, start + step]); }
+      start += step;
+    }
+  }
+  if (!blocked) return null;
+  const freeLength = runs.reduce((n, [a, b]) => n + (b - a), 0);
+  if (freeLength < (feature.count - 1) * 2.5) return null;
+  const at = (arc: number): { x: number; z: number; ux: number; uz: number } => {
+    let d = arc, i = 0;
+    while (i < segments.length - 1 && d > segments[i].length) d -= segments[i++].length;
+    const seg = segments[i];
+    return { x: seg.ax + seg.ux * d, z: seg.az + seg.uz * d, ux: seg.ux, uz: seg.uz };
+  };
+  return Array.from({ length: feature.count }, (_, i) => {
+    // the i-th station's free distance, carried through the runs to its arc length on the path
+    let d = freeLength * i / (feature.count - 1), r = 0;
+    while (r < runs.length - 1 && d > runs[r][1] - runs[r][0]) d -= runs[r][1] - runs[r++][0];
+    const p = at(Math.min(runs[r][1], runs[r][0] + d)), offset = ((i % 3) - 1) * (feature.width ?? 0);
+    return { x: p.x - p.uz * offset, z: p.z + p.ux * offset };
   });
 }
 
@@ -253,7 +306,10 @@ export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
   const used = new Set<T>();
   return features.map(feature => {
     const receipt = { id: feature.id, attempted: feature.count, accepted: 0, unsafe: 0, noDonor: 0, displaced: 0 };
-    for (const station of authoredTreeStations(feature)) {
+    // (landmarks-world-276) a station keeps off what keeps every tree off: the structures' clearances, the set pieces'
+    // footprints among them; the row's stations move along its bank to the free ground
+    const keptOut = structures.length ? (x: number, z: number) => overlapsStructureClearance(structures, x, z, STATION_KEEP_OUT_M) : null;
+    for (const station of authoredTreeStations(feature, keptOut)) {
       const point = feature.bench
         ? benchStation(station, feature.bench.searchM, terrain, (x, z) => siteOk(x, z, 0) && stationOccupant(trees, x, z) !== -2)
         : station;

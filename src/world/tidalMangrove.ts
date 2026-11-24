@@ -1,7 +1,7 @@
 /** Map-owned tidal forms. Root arches are decorative, like legacy flares;
  * hull/shell interaction remains the existing crushable main-stem cylinder. */
 import type { BufferGeometry } from 'three';
-import { authoredTreeStations, type AuthoredTreeFeature, type AuthoredTreeRecord } from './authoredTreePlacement.ts';
+import { STATION_KEEP_OUT_M, authoredTreeStations, type AuthoredTreeFeature, type AuthoredTreeRecord } from './authoredTreePlacement.ts';
 import type { CollisionRecord } from './collision.ts';
 import { moveConcealerDisc } from './concealerIndex.ts';
 import type { HeightField } from './terrain.ts';
@@ -227,7 +227,10 @@ export function relocateTidalMangroves<T extends AuthoredTreeRecord>(
   if (obstacles.length !== concealers.length) throw new Error('Tidal transfer requires paired pre-bush interaction slots');
   const interactions = new Map<number, number>();
   obstacles.forEach((obstacle, index) => interactions.set(obstacle.treeIdx, index));
-  const dryStations = dryFeatures.flatMap(authoredTreeStations), used = new Set<T>();
+  // (landmarks-world-276) the dry rows' stations where the redistribution laid them: along their banks' free stretches,
+  // off the structures' clearances (authoredTreePlacement.ts STATION_KEEP_OUT_M)
+  const keptOut = structures.length ? (x: number, z: number) => overlapsStructureClearance(structures, x, z, STATION_KEEP_OUT_M) : null;
+  const dryStations = dryFeatures.flatMap((feature) => authoredTreeStations(feature, keptOut)), used = new Set<T>();
   const keepouts = [...avoid];
   for (const anchor of anchors) {
     const landing = planRiverLanding(field, field._layout.lakes, anchor);
