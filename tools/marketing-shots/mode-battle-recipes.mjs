@@ -961,8 +961,10 @@ export const RECIPES = {
     hour: 'day',
     windowS: 600,
     hud: 'full',
-    // (r2: r1's even sides lost 44-250; the brief's proof ends on the player's win) ten allies against three
-    storage: { 'cot.game.teams.v1': { combined_arms: { scoreTarget: 250, allies: 10, enemies: 3 } } },
+    // (r2: r1's even sides lost 44-250; the brief's proof ends on the player's win) ten allies against three. (r3: at 250
+    // the sectors' score ended that battle 30 s after the call-in, before the drone's first sortie was down) 500, Deploy's
+    // next offered target
+    storage: { 'cot.game.teams.v1': { combined_arms: { scoreTarget: 500, allies: 10, enemies: 3 } } },
     async run(ctx) {
       await ctx.eval(() => {
         const D = window.__DEBUG, CA = window.__CA = { calls: [], seatBusy: 0, kills: [], captures: 0, ended: null };
@@ -1014,6 +1016,9 @@ export const RECIPES = {
         if (sortie === 1) await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeViewToggle', {}));
         await ctx.capture({ label: `drone flight ${sortie}`, windowS: 25, max: sortie === 1 ? 8 : 4, everyS: 1.2, cameras: [{ kind: 'game', hud: 'full' }],
           stopWhen: () => !window.__DEBUG.game.player?.aerial?.active });
+        // (r3: the capture stopped at its count while the drone still flew, and the next sortie's wait fast-forwarded the
+        // battle under it to its end) the sortie runs out in real time before anything is fast-forwarded
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active ? null : true), { timeoutS: 40, label: `drone ${sortie} down` });
         await ctx.mb('setOnFrame', null);
         await tally(`drone ${sortie}`);
       }
