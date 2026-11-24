@@ -2070,11 +2070,41 @@ export function buildGarageEnvironment(
       (horizon as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>).material = [surface.material, horizonOwnMaterial];
     }
   };
+  /**
+   * (garage-env-276, Main 2026-11-24: "the handover must not pop") The surface a mesh wore, over its new one, fading out:
+   * a copy of the mesh on the old material at the same depth, drawn first in the transparent pass (the yard's graded
+   * floor and decals still blend over it) and gone after GARAGE_GROUND_HANDOVER_MS. A page only; Node swaps outright.
+   */
+  const fadeOutOver = (mesh: THREE.Mesh, material: THREE.Material): void => {
+    if (typeof requestAnimationFrame !== 'function') return;
+    material.transparent = true;
+    material.depthWrite = false;
+    material.needsUpdate = true;
+    const ghost = new THREE.Mesh(mesh.geometry, material);
+    ghost.name = `${mesh.name}_handover`;
+    ghost.renderOrder = -1;
+    ghost.receiveShadow = mesh.receiveShadow;
+    mesh.add(ghost);
+    const startedAt = performance.now();
+    const step = (): void => {
+      const t = Math.min(1, (performance.now() - startedAt) / GARAGE_GROUND_HANDOVER_MS);
+      material.opacity = 1 - t * t * (3 - 2 * t);
+      requestRender();
+      if (t < 1 && !disposed) { requestAnimationFrame(step); return; }
+      mesh.remove(ghost);
+    };
+    requestAnimationFrame(step);
+  };
   if (terrainSurface) wearBattleGround(terrainSurface);
   else void pendingTerrain?.then((surface) => {
     if (!surface) return;
     if (disposed) { releaseGarageTerrainSurface(surface); return; }
+    const garageGround = terrain.material as THREE.Material;
+    const horizonWas = horizon.material as THREE.Material;
     wearBattleGround(surface);
+    fadeOutOver(terrain, garageGround);
+    // (the horizon's own material still draws its built landmarks: its landforms fade on a copy)
+    if (horizon.material !== horizonWas) fadeOutOver(horizon, track(horizonWas.clone()));
     requestRender();
   });
 
@@ -3395,6 +3425,9 @@ export async function prepareGarageEnvironmentAssets(
 }
 
 export type GarageBattleGroundMode = 'wait' | 'handover';
+
+/** The Garage's ground fading into the battle's where it lands (buildGarageEnvironment fadeOutOver). */
+const GARAGE_GROUND_HANDOVER_MS = 400;
 
 /** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
 async function prepareGarageStructures(
