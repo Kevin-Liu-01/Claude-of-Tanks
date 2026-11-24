@@ -106,6 +106,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/turboSpinMigration.selftest.mjs',
     // 2026-11-24 (bot-turbo-276): bots take Turbo and the air spin through the action step, only where the mode carries them
     'src/sim/botTurboSpin.selftest.mjs',
+    // 2026-11-24 (flip-boost-276): the air spin a dodge: each move's shove and turn, the cooldown, one a flight, the ground
+    // dodge, the ball, page/authority parity, planted controls
+    'src/sim/flipBoost.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
     'src/mp/wire/actionBitMask.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',

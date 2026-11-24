@@ -50,7 +50,7 @@ export interface BattleClientAccess {
   readonly requestTankJump: RuntimeModule['requestTankJump'];
   readonly pressSelfRight: RuntimeModule['pressSelfRight'];
   readonly requestHullTurbo: RuntimeModule['requestHullTurbo'];
-  readonly requestTankAirSpin: RuntimeModule['requestTankAirSpin'];
+  readonly requestHullAirSpin: RuntimeModule['requestHullAirSpin'];
 }
 
 /**
@@ -139,6 +139,6 @@ export function createBattleClientAccess(
     requestTankJump: (...args) => requireRuntime().requestTankJump(...args),
     pressSelfRight: (...args) => requireRuntime().pressSelfRight(...args),
     requestHullTurbo: (...args) => requireRuntime().requestHullTurbo(...args),
-    requestTankAirSpin: (...args) => requireRuntime().requestTankAirSpin(...args),
+    requestHullAirSpin: (...args) => requireRuntime().requestHullAirSpin(...args),
   };
 }

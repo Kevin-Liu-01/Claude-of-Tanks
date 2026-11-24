@@ -14,6 +14,7 @@ import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { SIM_DT, tankAirborne } from './movement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { AIR_SPIN_RATE } from './hullFlight.ts';
 import { BOT_TURBO, createBotAbilityPlanner } from '../game/botAbilities.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 
@@ -48,7 +49,10 @@ assert.ok(planned({ state: { ...flight, verticalSpeed: 0.5 } }, { chaseM: 120, f
   'the air dash once the climb is spent, farther than the ground leap');
 assert.ok(planned({ state: flight }, { flightS: 3 }).bits & AIR_SPIN, 'early in a climb with the turn ahead: the air spin');
 assert.equal(planned({ state: flight, modeAirSpin: false }, { flightS: 3 }).bits & AIR_SPIN, 0, 'no air spin where the mode has none');
-assert.equal(planned({ state: flight }, { flightS: 1 }).bits & AIR_SPIN, 0, 'no air spin without the whole turn ahead of the landing');
+// (flip-boost-276: the turn is 0.6 s; the flight left just short of the turn and its margin)
+const turnAhead = 2 * Math.PI / AIR_SPIN_RATE + BOT_TURBO.spinMarginS;
+assert.equal(planned({ state: flight }, { flightS: turnAhead - 0.05 }).bits & AIR_SPIN, 0, 'no air spin without the whole turn ahead of the landing');
+assert.ok(planned({ state: flight }, { flightS: turnAhead + 0.05 }).bits & AIR_SPIN, 'and the air spin once it is');
 assert.equal(planned({ state: { ...flight, verticalSpeed: 0.5 } }, { flightS: 3 }).bits & AIR_SPIN, 0, 'no air spin off a hop (no climb)');
 assert.equal(planned({ state: { ...flight, _ride: { airTime: 1.2 } } }, { flightS: 3 }).bits & AIR_SPIN, 0, 'one spin a flight: none late in it');
 assert.equal(planned({ state: { ...flight, _airSpinAxis: 1 } }, { flightS: 3 }).bits & AIR_SPIN, 0, 'none while a spin still turns');

@@ -28,7 +28,7 @@ import { BOT_TURBO, createBotAbilityPlanner, type BotAbilityContext } from './bo
 import { tankAirborne } from '../sim/hullFlight.ts';
 import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
-import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics, type TurboRules } from '../sim/matchRuleset.ts';
+import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type AirSpinRules, type RulesetPhysics, type TurboRules } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
@@ -229,7 +229,7 @@ interface AiEntity {
   /** Turbo and the air spin (turbo-spin-275), stamped by the mode (matchModes.ts stampPhysics); the bot presses them
    *  through its action bits like a player (bot-turbo-276). */
   modeTurbo?: TurboRules | null;
-  modeAirSpin?: boolean;
+  modeAirSpin?: AirSpinRules | null;
   turboReadyS?: number;
   spec: AiSpec;
   state: TankState;

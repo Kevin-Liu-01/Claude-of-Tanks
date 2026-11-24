@@ -9,9 +9,10 @@
 //   - Turbo: the forward leap on the ground (speed and a hop) and in flight (speed, the fall stopped), never past the
 //     launch cap; refused while it cools and for a hull on its roof on the ground; taken again once the cooldown has run;
 //   - F (SELF_RIGHT): a jump on the ground, a flip or roll in flight (no rocket re-boost), the axis from the drive (W or
-//     nothing a front flip, S a back flip, A a roll left, D a roll right); one whole turn, then the axis stops and the
+//     nothing a front flip, S a back flip, A a roll left, D a roll right); one whole turn (0.6 s since flip-boost-276), then the axis stops and the
 //     hull lands on its tracks; a second press mid-turn is refused;
-//   - the air spin's own bit flips in flight and never jumps on the ground;
+//   - the air spin's own bit flips in flight; on the ground it is the ground dodge's hop into the flip (flip-boost-276;
+//     its shoves, cooldown and one-a-flight rule are flipBoost.selftest.mjs's), lit on the ground;
 //   - the ground ends a turn; two runs of the same presses are bit-identical; a replay from a mid-flip checkpoint
 //     (movementPredictionState.ts version 10) follows the original exactly.
 import assert from 'node:assert/strict';
@@ -63,13 +64,13 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 for (const mode of ['turbo_ball', 'mars']) {
   const r = matchRulesetFor(mode);
   assert.ok(r.turbo && r.turbo.forwardMps > 0 && r.turbo.cooldownS === 3, `${mode} carries Turbo with the 3 s cooldown`);
-  assert.equal(r.airSpin, true, `${mode} carries the air spin`);
+  assert.ok(r.airSpin && r.airSpin.cooldownS > 0 && r.airSpin.forwardMps > 0, `${mode} carries the air spin (a dodge since flip-boost-276)`);
   assert.ok(r.jumpMps > 0, `${mode} is a jump mode`);
 }
 for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'air_support', 'drone']) {
   const r = matchRulesetFor(mode);
   assert.equal(r.turbo, null, `${mode} has no Turbo`);
-  assert.equal(r.airSpin, false, `${mode} has no air spin`);
+  assert.equal(r.airSpin, null, `${mode} has no air spin`);
   const e = hull(mode);
   run(e, 120);
   const speed = e.state.speed;
@@ -82,7 +83,8 @@ assert.equal(airSpinAxisFor(0, 0), AIR_SPIN_AXES.FRONT_FLIP, 'no drive held: a f
 assert.equal(airSpinAxisFor(1, 0), AIR_SPIN_AXES.FRONT_FLIP, 'W: a front flip');
 assert.equal(airSpinAxisFor(-1, 0), AIR_SPIN_AXES.BACK_FLIP, 'S: a back flip');
 assert.equal(airSpinAxisFor(0, 1), AIR_SPIN_AXES.ROLL_LEFT, 'A (steer +): a roll left');
-assert.equal(airSpinAxisFor(1, -1), AIR_SPIN_AXES.FRONT_FLIP, 'W and D held alike: the flip (a roll needs the steer stronger)');
+assert.equal(airSpinAxisFor(1, -1), AIR_SPIN_AXES.ROLL_RIGHT, 'W and D held alike: the barrel roll (flip-boost-276; 275 flipped)');
+assert.equal(airSpinAxisFor(1, 0.5), AIR_SPIN_AXES.FRONT_FLIP, 'W with a light steer: the flip');
 assert.equal(airSpinAxisFor(0.5, -0.9), AIR_SPIN_AXES.ROLL_RIGHT, 'D stronger than W: a roll right');
 
 // ---- Turbo on the ground and in the air
@@ -124,7 +126,7 @@ for (const mode of ['turbo_ball', 'mars']) {
 function flight(mode, throttle, steer, { press = PLAYER_ACTION_BITS.SELF_RIGHT } = {}) {
   const e = hull(mode); clock.t = 0; heard.length = 0;
   run(e, 120);
-  assert.equal(canTankAirSpin(e.state), false, `${mode}: no spin on the ground (the HUD's grey)`);
+  assert.equal(canTankAirSpin(e.state), true, `${mode}: lit on the ground too, the ground dodge (flip-boost-276)`);
   tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
   assert.equal(e.state.grounded, false, `${mode}: F on the ground jumps`);
   run(e, 20);
@@ -146,17 +148,18 @@ for (const mode of ['turbo_ball', 'mars']) {
     const field0 = key === 'pitch' ? 'visualPitch' : 'visualRoll';
     let turned = 0, last = e.state[field0], ticks = 0;
     while (e.state._airSpinAxis && ticks < 120) { tick(e); turned += wrap(e.state[field0] - last); last = e.state[field0]; ticks++; }
-    assert.ok(ticks >= 50 && ticks <= 56, `${mode}: one turn in about 0.9 s (${ticks} ticks)`);
+    assert.ok(ticks >= 34 && ticks <= 38, `${mode}: one turn in about 0.6 s (${ticks} ticks)`);
     assert.ok(Math.abs(Math.abs(turned) - 2 * Math.PI) < 0.35, `${mode}: a whole turn about its ${key} (${turned.toFixed(2)} rad)`);
     assert.equal(Math.sign(turned), Math.sign(axis), `${mode}: in its direction`);
     while (!e.state.grounded) tick(e);
     run(e, 180);
     assert.equal(e.state.overturned, false, `${mode}: axis ${axis} lands on its tracks`);
   }
-  // the air spin's own bit: a flip in flight, nothing on the ground
+  // the air spin's own bit: a flip in flight; on the ground the ground dodge, its hop into a flip (flip-boost-276)
   const g = hull(mode); clock.t = 0; run(g, 120);
   tick(g, PLAYER_ACTION_BITS.AIR_SPIN);
-  assert.ok(g.state.grounded && g.state._airSpinAxis === 0, `${mode}: the air spin's own key never jumps`);
+  assert.ok(g.state._airSpinAxis === AIR_SPIN_AXES.FRONT_FLIP && g.state.grounded === false,
+    `${mode}: the air spin's own key on the ground is the ground dodge's hop into its flip`);
   const a = flight(mode, 0, 0, { press: PLAYER_ACTION_BITS.AIR_SPIN });
   assert.equal(a.state._airSpinAxis, AIR_SPIN_AXES.FRONT_FLIP, `${mode}: and flips in flight`);
 }
@@ -188,4 +191,4 @@ for (let n = 0; n < 90; n++) { updateTank(a, field, SIM_DT, null); updateTank(re
 assert.equal(replay.state.visualRoll, a.state.visualRoll, 'the replay rolls as the original');
 assert.equal(replay.state.pos.y, a.state.pos.y, 'and flies as it');
 
-console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the air spin; Turbo leaps on the ground and dashes in the air under the launch cap, cools 3 s, and never leaps off a roof; F jumps on the ground and flips or rolls in flight (W/none front, S back, A left, D right), one whole turn in 0.9 s, landing on its tracks; the air spin key never jumps; the ground ends a turn; runs and a mid-flip replay are bit-identical');
+console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the air spin; Turbo leaps on the ground and dashes in the air under the launch cap, cools 3 s, and never leaps off a roof; F jumps on the ground and flips or rolls in flight (W/none front, S back, A left, D right), one whole turn in 0.6 s, landing on its tracks; the air spin key on the ground hops into the ground dodge; the ground ends a turn; runs and a mid-flip replay are bit-identical');

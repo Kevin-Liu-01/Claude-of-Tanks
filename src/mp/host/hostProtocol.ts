@@ -78,6 +78,10 @@ export interface MigrationEntityExtras {
   turboReadyIn?: number;
   /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. */
   airSpin?: number;
+  /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
+  airSpinReadyIn?: number;
+  /** The flight's dodge spent (flip-boost-276; movement.ts `_flipUsed`); absent when unspent. */
+  flipUsed?: true;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the

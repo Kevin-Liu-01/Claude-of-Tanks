@@ -53,10 +53,13 @@ const VERSION_9_COUNT = VERSION_7_COUNT + STOP_V8.length;
 const AIR_SPIN_CODE = 8;
 const VALUE_COUNT = VERSION_9_COUNT + 1;
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 8191;
+// version 11 (flip-boost-276): the flight's dodge spent (movement.ts `_flipUsed`), flag bit 13; the values are version
+// 10's, so the layout still fits the wire's 64. A version-10 checkpoint decodes with the dodge unspent.
+const FLIP_USED_FLAG = 1 << 13;
+const MAX_FLAGS = (1 << 14) - 1;
 
 /** The layout's current version and length (the wire names them, src/mp/match/movementCheckpoint.ts: one codec). */
-export const MOVEMENT_PREDICTION_STATE_VERSION = 10;
+export const MOVEMENT_PREDICTION_STATE_VERSION = 11;
 export const MOVEMENT_PREDICTION_STATE_VALUES = VALUE_COUNT;
 
 interface MovementPredictionState {
@@ -117,7 +120,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
-    (state._body.bodyRest & 3) << 11;
+    (state._body.bodyRest & 3) << 11 | (state._flipUsed ? FLIP_USED_FLAG : 0);
   return { version: MOVEMENT_PREDICTION_STATE_VERSION, values, flags };
 }
 
@@ -126,13 +129,13 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 10 ? VALUE_COUNT : record.version === 9 || record.version === 8 ? VERSION_9_COUNT
+  const count = record.version === 11 || record.version === 10 ? VALUE_COUNT : record.version === 9 || record.version === 8 ? VERSION_9_COUNT
     : record.version === 7 ? VERSION_7_COUNT
     : record.version === 6 ? VERSION_6_COUNT : record.version === 5 ? VERSION_5_COUNT
       : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
-      record.flags < 0 || record.flags > MAX_FLAGS) return false;
+      record.flags < 0 || record.flags > (record.version === 11 ? MAX_FLAGS : FLIP_USED_FLAG - 1)) return false;
   const values = record.values;
   const flags = record.flags;
   let offset = restore(state, SCALARS, values, 0);
@@ -163,7 +166,9 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
-  state._body.bodyRest = record.version === 9 || record.version === 10 ? (flags >> 11) & 3 : 0;
+  state._body.bodyRest = record.version === 9 || record.version === 10 || record.version === 11 ? (flags >> 11) & 3 : 0;
+  // a checkpoint before version 11 has the flight's dodge unspent
+  state._flipUsed = !!(flags & FLIP_USED_FLAG);
   if (count >= VERSION_5_COUNT) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
     offset = restore(state._susp, DIVE_V5, values, offset);

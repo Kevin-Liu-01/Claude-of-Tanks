@@ -131,6 +131,7 @@ import {
   terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
+  type AirSpinRules,
   type TurboRules,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -271,8 +272,9 @@ export interface AuthoritativeEntity {
   modeJumpMps?: number | null;
   /** Turbo and the air spin (turbo-spin-275; sim/hullActions.ts TurboHull), stamped with the jump. */
   modeTurbo?: TurboRules | null;
-  modeAirSpin?: boolean;
+  modeAirSpin?: AirSpinRules | null;
   turboReadyS?: number;
+  airSpinReadyS?: number;
   modeRecoilLaunchScale?: number;
   modeShellKnockScale?: number;
   /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
@@ -1792,7 +1794,8 @@ export function createAuthoritativeMatch({
     },
     // turbo-spin-275: the seat's HUD starts Turbo's cooldown from its event (readyS: the cooldown it starts)
     turboed: (entity) => { emit('tank_turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0 }); },
-    airSpun: (entity) => { emit('tank_air_spin', { id: entity.id, axis: entity.state._airSpinAxis }); },
+    // flip-boost-276: and the air spin's (a dodge now, with a cooldown of its own)
+    airSpun: (entity) => { emit('tank_air_spin', { id: entity.id, axis: entity.state._airSpinAxis, readyS: entity.modeAirSpin?.cooldownS ?? 0 }); },
     consumable: (entity, slot, use) => {
       if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
       if (!use.ok) {

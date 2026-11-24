@@ -42,8 +42,11 @@
  * Version 10 (turbo-spin-275) appends the air spin in progress as one value (movement.ts `_airSpinAxis`, `_airSpinLeft`;
  * movementPredictionState.ts encodeAirSpin): a replay mid-flip turns at the spin's rate past the flight's angular cap, as the
  * authority does, and stops where it stops. A version-9 checkpoint still decodes, no spin turning.
- * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 10 uses all 64, so the next
- * version that adds a value widens that limit first.
+ * Version 11 (flip-boost-276) adds the flight's dodge spent (movement.ts `_flipUsed`, flag bit 13; the values are version
+ * 10's): one air spin a flight, so a replay after a flip refuses a second as the authority does and the HUD greys it. A
+ * version-10 checkpoint still decodes, the dodge unspent.
+ * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): versions 10 and 11 use all 64, so
+ * the next version that adds a value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 import {

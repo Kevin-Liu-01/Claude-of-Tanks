@@ -3114,6 +3114,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const spinTile = modeMoveTile('airSpin', () => bus.emit('ui:airSpin', {}));
   /** Turbo's cooldown on the HUD's clock, from the seat's own events (game/turboCooldown.ts, the phone pad's too). */
   const turboCooldown = createTurboCooldown(bus, () => playerRef?.id, () => lastTimeS);
+  /** The air spin's (flip-boost-276: a dodge with a short cooldown), from its `tank:airSpin` events alike. */
+  const airSpinCooldown = createTurboCooldown(bus, () => playerRef?.id, () => lastTimeS, 'tank:airSpin');
   let lastModeMovesKey = -1;
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
   const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
@@ -3208,10 +3210,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     setDisabled(jumpHint,!canControl);
-    // turbo-spin-275: the air spin lights only in flight (sim/hullFlight.ts, the rule the sim applies); the jump dims there
+    // turbo-spin-275: the air spin lights by the rule the sim applies (sim/hullFlight.ts; flip-boost-276: on the ground too,
+    // the ground dodge, until the flight's dodge is spent, and dark while it cools); the jump dims in flight
     const flying=tankAirborne(player?.state);
     jumpHint.toggleAttribute('data-airborne',flying&&controlsModeMoves.airSpin);
-    const spinGrey=!canTankAirSpin(player?.state);
+    const spinGrey=!canTankAirSpin(player?.state)||airSpinCooldown.readyIn(lastTimeS)>0;
     spinTile.button.toggleAttribute('data-grounded',spinGrey);
     setDisabled(spinTile.button,!canControl||spinGrey);
     const turboWait=turboCooldown.readyIn(lastTimeS);
@@ -9529,6 +9532,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       jumpLabel.textContent = t('hud.jump');
       setControlsJumpMode(isJumpMode(ruleset),{turbo:!!ruleset?.turbo,airSpin:!!ruleset?.airSpin});
       turboCooldown.reset();
+      airSpinCooldown.reset();
       // round 30: the touch layer shows its rocket button in the same rulesets
       // (phone-jump-274) on a phone's survival edge only: its row's jump tile stands down there (battleHudLayout.css) for
       // this button. Sent { on: false } in every ruleset since the row took the jump (8843847297), it left a phone no jump

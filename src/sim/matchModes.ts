@@ -21,7 +21,7 @@ import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjecti
 import {
   FLAG_CARRIER_SPEED_SCALE, HUNT_RULES, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
   assaultWaveHealthScale, cacheHealChance, hordeMaxAlive, hordeWaveHealthScale, hordeWaveSpecial, hordeWaveSpeedScale,
-  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, rulesetSeatHullScale, type ArrivalRules, type RulesetPhysics, type TurboRules,
+  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, rulesetSeatHullScale, type ArrivalRules, type RulesetPhysics, type AirSpinRules, type TurboRules,
 } from './matchRuleset.ts';
 
 /** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
@@ -74,6 +74,9 @@ const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
 /** The ball's horizontal coasting time constant: BALL_LINEAR_DRAG per 60 Hz step (2.08 s). */
 const BALL_DRAG_TAU_S = -1 / (60 * detMath.log(BALL_LINEAR_DRAG));
+/** A dodge's strike (flip-boost-276): what a hull mid-flip or mid-roll adds along the touch and up, past its velocity's. */
+const BALL_FLIP_STRIKE_MPS = 6;
+const BALL_FLIP_LIFT_MPS = 3;
 const BALL_GRAVITY_MPS2 = 9.81;
 const PICKUP_RADIUS_M = 7;
 /** The Turbo Ball kick-off line-up (ball.kickoffM) and the CTF revive slot (flagPitch.respawnBackM): a team's hulls this far apart across the axis. */
@@ -117,7 +120,9 @@ export interface MatchModeEntity {
   /** Driven by a player (a watcher's taken seat keeps `bot`, its role): botDriven.ts. */
   isPlayer?: boolean;
   spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number};role?:string;topSpeedKmh?:number};
-  state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number };
+  state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number;
+    /** The translation impulse and the dodge turning (movement.ts TankState): the ball's touch reads them (flip-boost-276). */
+    _spring?: { recoilVX: number; recoilVZ: number }; _airSpinAxis?: number };
   combat: {
     hp: number;
     maxHp: number;
@@ -144,7 +149,7 @@ export interface MatchModeEntity {
   modeJumpMps?: number | null;
   /** Turbo and the air spin (turbo-spin-275), stamped with the jump. */
   modeTurbo?: TurboRules | null;
-  modeAirSpin?: boolean;
+  modeAirSpin?: AirSpinRules | null;
   modeRecoilLaunchScale?: number;
   modeShellKnockScale?: number;
   /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
@@ -2081,12 +2086,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const inv = distance > 0.01 ? 1 / distance : 1;
     const nx = distance > 0.01 ? dx * inv : detMath.sin(entity.state.yaw);
     const nz = distance > 0.01 ? dz * inv : detMath.cos(entity.state.yaw);
-    const driveX = detMath.sin(entity.state.yaw) * entity.state.speed;
-    const driveZ = detMath.cos(entity.state.yaw) * entity.state.speed;
+    // the hull's whole ground velocity, its translation impulse with its run (flip-boost-276: a barrel roll's sideways
+    // shove strikes the ball as a run does)
+    const driveX = detMath.sin(entity.state.yaw) * entity.state.speed + (entity.state._spring?.recoilVX ?? 0);
+    const driveZ = detMath.cos(entity.state.yaw) * entity.state.speed + (entity.state._spring?.recoilVZ ?? 0);
     const closing = Math.max(0, driveX * nx + driveZ * nz);
-    ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * (4 + closing * 0.35);
-    ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * (4 + closing * 0.35);
-    ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
+    // a hull mid-dodge (flip-boost-276; movement.ts requestTankAirSpin) strikes harder and higher: the flip's own hit
+    const flip = entity.state._airSpinAxis ? 1 : 0;
+    const push = 4 + closing * 0.35 + flip * BALL_FLIP_STRIKE_MPS;
+    ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * push;
+    ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * push;
+    ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12 + flip * BALL_FLIP_LIFT_MPS);
     ball.lastTouchId = entity.id;
     lastBallTouchS = timeS;
     // where the ball was struck (presentation: the strike is heard there; no outcome reads it)

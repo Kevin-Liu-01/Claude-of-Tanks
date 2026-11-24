@@ -2436,13 +2436,14 @@ function phoneMode(): 'tank' | 'strike' | 'drone' | 'gunship' | 'watch' | 'dead'
 }
 /** The seat's Turbo cooldown for the phone's key (turbo-spin-275), from its own tank:turbo events as the HUD reads it. */
 const phoneTurbo = createTurboCooldown(bus, () => game.player?.id, () => game.timeS);
+const phoneAirSpin = createTurboCooldown(bus, () => game.player?.id, () => game.timeS, 'tank:airSpin');
 function phoneSource() {
   const watch = watchOwner.current?.controller;
   const ruleset = game.ruleset;
   return { battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
     shellCode: shellTypeCode, lockable: true, mode: phoneMode(),
     // turbo-spin-275: a jump mode's Turbo and air spin, greyed while unavailable (game/turboCooldown.ts)
-    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS)) : undefined,
+    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS), phoneAirSpin.readyIn(game.timeS)) : undefined,
     facts: { jump: ruleset?.jumpMps != null, turbo: !!ruleset?.turbo, airSpin: !!ruleset?.airSpin, drone: game.player?.aerial?.kind === 'drone', airSupport: !!ruleset?.airSupport,
       consumables: ruleset?.consumables !== false, range: !!ruleset?.provingGround,
       watchRiding: watch?.active === true && watch.view === 'ride',
@@ -2558,7 +2559,7 @@ playerBattleActions = createPlayerBattleActions({
     requestTankJump: battleClientAccess.requestTankJump,
     pressSelfRight: battleClientAccess.pressSelfRight,
     requestHullTurbo: battleClientAccess.requestHullTurbo,
-    requestTankAirSpin: battleClientAccess.requestTankAirSpin,
+    requestHullAirSpin: battleClientAccess.requestHullAirSpin,
   },
 });
 const playerFrameInput = createPlayerFrameInput({

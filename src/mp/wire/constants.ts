@@ -85,6 +85,9 @@ export const WIRE_VERSION = 13;
 // from the action table), F's airborne meaning (a flip or roll, not the rocket's re-boost), the movement checkpoint's
 // version 10 (the spin in progress, its 64th value), the migration extras' turboReadyIn and airSpin, and the
 // tank_turbo and tank_air_spin events.
+// flip-boost-276 (no bump: the match build's prediction and authority digests already part builds that differ): the air
+// spin a dodge, the movement checkpoint's version 11 (flag bit 13, the flight's dodge spent), the migration extras'
+// airSpinReadyIn and flipUsed, and tank_air_spin's readyS.
 export const PROTOCOL_VERSION = 15; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
