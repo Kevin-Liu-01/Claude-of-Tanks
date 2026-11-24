@@ -25,6 +25,9 @@ assert.deepEqual(lit('background', "url('/media/a#fff.webp') center/cover"), {},
 assert.deepEqual(lit('content', '"#1"'), {}, 'nothing inside a string');
 assert.deepEqual(lit('background', 'var(--gold) linear-gradient(var(--tan-line), transparent)'), {}, 'custom-property names are not colours');
 assert.deepEqual(lit('white-space', 'nowrap'), {});
+assert.deepEqual(lit('mask-image', 'linear-gradient(to right,transparent,black 72%)'), {}, "a mask gradient's keywords are alpha stops");
+assert.deepEqual(lit('-webkit-mask', 'linear-gradient(black,transparent)'), {}, 'the prefixed mask too');
+assert.deepEqual(lit('color', 'black'), { colour: 1 }, 'a planted colour: black still counts');
 assert.deepEqual(lit('font-family', "'Chakra Petch', Black"), {}, 'a family name is not a colour');
 assert.deepEqual(lit('font-size', '11px'), { fontSize: 1 });
 assert.deepEqual(lit('font-size', 'var(--fs-14)'), {});
