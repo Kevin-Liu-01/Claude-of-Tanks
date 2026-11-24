@@ -39,7 +39,7 @@
    picture can stand inside 96vw x 1680 px x 82vh at the picture's own aspect (--library-ar, set from the manifest with
    aspect-ratio), and the picture fills it: no letterbox inside the picture, no stage showing round it, the same size
    before its bytes arrive; its clip lies in the same cell */
-.media-library-stage{position:relative;display:grid;background:var(--surface-scene)}
+.media-library-stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr);background:var(--surface-scene)}
 .media-library-stage img{display:block;grid-area:1/1;width:100%;height:auto}
 .media-library-stage .media-library-wait{position:absolute;inset:auto 0 0;padding:14px 18px;text-align:center}
 /* a picture's clip plays over it, whole, once it plays; its control stands on the stage as the site's media toggles do */
