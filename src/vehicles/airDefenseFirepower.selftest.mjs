@@ -2,7 +2,7 @@
 // of rockets too multiple rockts per launcher"): every air-defence vehicle's cannon at the simulation's 0.05 s floor, its
 // sustained output twice the authored gun's, its rounds six times the authored stowage, its rack firing whole in salvos
 // with three loads, the family weighed as its own balance cohort; the M163's Vulcan in 300-round bursts, and (270) at the
-// rotary floor, one round a tick, the fleet's only rotary gun.
+// rotary floor, one round a tick; (276) the M6 Linebacker's GAU-12/U the second rotary gun.
 import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
@@ -82,9 +82,25 @@ for (const index of [0, 1]) {
 const wholeRun = { ...rotaryRun, shells: rotaryRun.shells.map((round) => ({ ...round, dmg: Math.round(round.dmg) })) };
 assert.ok(Math.abs(ruleRatio(wholeRun, 0) - 1) > 0.05, `the contract catches whole-number rounding (${ruleRatio(wholeRun, 0).toFixed(3)}x)`);
 // rotary is opt-in: every other vehicle's guns keep the 0.05 s floor
+// 276: the M6 Linebacker's GAU-12/U joins it (Kevin: "make the m6 linebackers gun a minigun so its an evolution from the m163"):
+// the same rotary path, 200-round bursts at one round a tick, a 2 s reset, each round heavier than the Vulcan's, the
+// Stinger rack unchanged
+const ROTARY = ['m163_vads', 'm6_linebacker'];
 const rotary = ALL_TANK_IDS.filter((id) => getSpec(id).gun.autoloader?.rotary);
-assert.deepEqual(rotary, ['m163_vads'], 'the M163 is the only rotary gun');
-for (const id of AIR_DEFENCE.filter((id) => id !== 'm163_vads')) {
+assert.deepEqual([...rotary].sort(), [...ROTARY].sort(), 'the M163 and the M6 are the rotary guns');
+const m6 = getSpec('m6_linebacker');
+assert.deepEqual(m6.gun.autoloader, { magazineSize: 200, intraClipS: ROTARY_FIRE_CYCLE_FLOOR_S, fullReloadS: 2, rotary: true },
+  'm6_linebacker: the GAU-12 burst limiter at the rotary floor');
+assert.equal(m6.gun.reloadS, 2, 'm6_linebacker: the headline reload is the burst reset');
+assert.deepEqual(m6.gun.shells.map((round) => [round.name, round.dmg, round.count]),
+  [['PGU-20/U API', 9.2, 3600], ['FIM-92 Stinger', 340, 36], ['PGU-25/U HEI', 10, 7200]], 'm6_linebacker: its rounds');
+assert.deepEqual(m6.gun.shells.filter((round) => !round.guided).map((round) => round.maxLifetimeS), [3, 3],
+  'm6_linebacker: each 25 mm round flies 3 s, ~3.3 km');
+// the evolution from the M163: each round heavier and deeper-reaching than the Vulcan's, the sustained output in the band
+const [m6Api, m163Api] = [m6.gun.shells[0], getSpec('m163_vads').gun.shells[0]];
+assert.ok(m6Api.dmg > m163Api.dmg && m6Api.pen100Mm > m163Api.pen100Mm && m6Api.pen2000Mm > m163Api.pen2000Mm,
+  'm6_linebacker: the 25 mm API outweighs the M163\'s 20 mm');
+for (const id of AIR_DEFENCE.filter((id) => !ROTARY.includes(id))) {
   assert.equal(fireCycleFloorS(getSpec(id).gun.autoloader), FIRE_CYCLE_FLOOR_S, `${id}: the 0.05 s floor`);
 }
 // the Tunguska-M's 2A38M pair: a third of each round's damage at six times the rate

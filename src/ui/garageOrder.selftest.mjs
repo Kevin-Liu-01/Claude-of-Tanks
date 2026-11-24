@@ -214,8 +214,9 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'China', filler: 'unlisted_chinese_vehicle',
-    // release 265: the Longwei family after its hosts (the Qinglong and Baihu after the ZTZ-99A, the Zhuque and Xuanwu after the Yun)
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 't72b3_zhuque', 't72b3m_xuanwu', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
+    // owner 2026-11-24: the ZTZ-20, ZTZ-100, Type 100 and ZTZ-100 Prototype lead, ahead of the Qinglong; the VT-4A1,
+    // ZTZ-99A2 and ZTZ-99A follow the Lei, then the Zhuque and Xuanwu; the ZTZ-20 Prototype stays after the AFT-10
+    expected: ['ztz20', 'ztz100', 'type100', 'ztz100_prototype', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'vt4a1', 'ztz99a2', 'ztz99a', 't72b3_zhuque', 't72b3m_xuanwu', 'aft10', 'ztz20_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',

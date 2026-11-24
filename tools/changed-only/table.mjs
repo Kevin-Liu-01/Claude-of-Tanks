@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG } from './fingerprint.mjs';
 import * as REPOSITORY from './steps.mjs';
 
 /**
- * { path, STEPS, TABLES, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, config, stepByName }. A
+ * { path, STEPS, TABLES, CPU_FIXPOINT_STEPS, RIG_BOOTSTRAP, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, config, stepByName }. A
  * fixture module exports STEPS, TABLES and CONFIG (computeState's config: tables, aggregates, fleet entries, loader files, the group
  * loaders file, declarations, accessors); the order and aggregate lists default from STEPS and to none.
  */
@@ -19,6 +19,7 @@ export async function loadTable(path = null) {
   return {
     path: path ? resolve(path) : null,
     STEPS, TABLES: module.TABLES, CPU_FIXPOINT_STEPS,
+    RIG_BOOTSTRAP: module.RIG_BOOTSTRAP ?? null,
     PRE_AGGREGATES: module.PRE_AGGREGATES ?? [], POST_AGGREGATES: module.POST_AGGREGATES ?? [],
     // pages built from a step's outputs (steps.mjs DEPENDENTS); a fixture has none unless it declares them
     DEPENDENTS: module.DEPENDENTS ?? [],

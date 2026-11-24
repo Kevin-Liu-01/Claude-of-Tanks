@@ -362,6 +362,28 @@ export function drawBallGlyph(ctx: Ctx, x: number, y: number, r: number): void {
   ctx.restore();
 }
 
+/** Juggernaut's boss (guidance-pointers-276): a crown in its side's colour with a dark keyline, `r` its half width. */
+export function drawBossGlyph(ctx: Ctx, x: number, y: number, r: number, color: string): void {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - r, y + r * 0.55);
+  ctx.lineTo(x - r * 1.05, y - r * 0.55);
+  ctx.lineTo(x - r * 0.45, y - r * 0.05);
+  ctx.lineTo(x, y - r * 0.8);
+  ctx.lineTo(x + r * 0.45, y - r * 0.05);
+  ctx.lineTo(x + r * 1.05, y - r * 0.55);
+  ctx.lineTo(x + r, y + r * 0.55);
+  ctx.closePath();
+  ctx.rect(x - r, y + r * 0.66, r * 2, r * 0.3);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.2, r * 0.14);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** Supply cache disc: chalk disc, keyline, and a heal cross or three shells. */
 export function drawPickupGlyph(ctx: Ctx, x: number, y: number, r: number, kind: 'heal' | 'ammo'): void {
   const color = kind === 'heal' ? OBJECTIVE_PALETTE.heal : OBJECTIVE_PALETTE.ammo;

@@ -12,7 +12,7 @@ import ts from 'typescript-compiler-api';
 import { Vector3 } from 'three';
 import { setObbShape, setCompoundShape, shellPassesThroughCollisionRecord, DENSE_SET_PIECE_KINDS, SET_PIECE_WRECK_MIN_CALIBER_MM } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../world/collisionRecordPacking.ts';
 
 const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);

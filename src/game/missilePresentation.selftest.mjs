@@ -26,31 +26,38 @@ function privateFunction(file, name, dependencies) {
 }
 
 const muzzle = new Vector3(), direction = new Vector3(), origins = [];
+// (276, sim-det-trig) the round leaves from the pose both drivers fire from (sim/gunPose.ts), never the visual: this
+// stand-in records the mouth or tube the real pose would read (the launcher cursor before it advances) and returns it
+const posed = new Vector3(), bore = new Vector3();
+function gunWorldPose(entity, shell, cannonMuzzle) {
+  const launcher = usesLauncherMuzzles(entity.spec.gun, shell);
+  const index = launcher ? launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0) : cannonMuzzle;
+  origins.push({ index, guided: launcher });
+  return { muzzle: posed.set(launcher ? entity.spec.gun.launcherMuzzles[index].x : index, 2, 0), direction: bore.set(0, 0, 1) };
+}
 // (round 8 Y1 s5-01) the cannons' turn is the shared barrel owner's (sim/launcherPolicy.ts nextCannonMuzzle, the authority's too)
-const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex, nextCannonMuzzle, isGunship });
+const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex, nextCannonMuzzle, isGunship, gunWorldPose });
 // The AC-130 fires from its orbit toward the aim point, with no muzzle rotation.
 const gunship = { aerial: { kind: 'gunship' }, state: { pos: new Vector3(0, 240, 180) }, input: { aimPoint: new Vector3(0, 0, 0) } };
 assert.equal(prepare(gunship, { guided: false }), -1);
 assert.deepEqual([muzzle.x, muzzle.y, muzzle.z], [0, 240, 180], 'gunship rounds leave from the orbit');
 assert.ok(Math.abs(direction.y + 240 / Math.hypot(240, 180)) < 1e-9, 'and fly toward the aim point');
 const rack = [{ x: -1 }, { x: 1 }, { x: 2 }];
-const entity = {
-  spec: { gun: { launcherMuzzles: rack, muzzles: [{ x: -.2 }, { x: .2 }] } },
-  combat: { launcherCursor: 2, muzzleCursor: 1 },
-  visual: { gunMuzzleWorld(out, index, guided) {
-    origins.push({ index, guided }); out.set(guided ? rack[index].x : index, 2, 0);
-  }, gunDirWorld(out) { out.set(0, 0, 1); } },
-};
+// a visual that would pose the round anywhere else: the step never asks it
+const visual = { gunMuzzleWorld() { throw new Error('the step posed a round from the visual'); }, gunDirWorld() { throw new Error('the step posed a round from the visual'); } };
+const entity = { spec: { gun: { launcherMuzzles: rack, muzzles: [{ x: -.2 }, { x: .2 }] } }, combat: { launcherCursor: 2, muzzleCursor: 1 }, visual };
 assert.equal(prepare(entity, { guided: true }), 2);
+assert.equal(muzzle.x, 2, 'the round leaves the tube the pose names');
 assert.equal(entity.combat.launcherCursor, 0, 'accepted missile wraps rack');
 assert.equal(entity.combat.muzzleCursor, 1, 'missile leaves cannon alternation intact');
 assert.equal(prepare(entity, { guided: false }), 1);
 assert.equal(entity.combat.launcherCursor, 0, 'cannon leaves next missile untouched');
 assert.equal(prepare(entity, { guided: true }), 0);
 assert.deepEqual(origins, [{ index: 2, guided: true }, { index: 1, guided: false }, { index: 0, guided: true }]);
-const oldCursor = entity.combat.launcherCursor;
-assert.equal(prepare({ ...entity, visual: null }, { guided: true }), null);
-assert.equal(entity.combat.launcherCursor, oldCursor, 'no visual/no launch cannot consume a tube');
+// a hull with no visual (deferred, culled or headless) fires all the same: the shot never waited on the drawing
+const bare = { ...entity, visual: null, combat: { launcherCursor: 1, muzzleCursor: 0 } };
+assert.equal(prepare(bare, { guided: true }), 1);
+assert.equal(bare.combat.launcherCursor, 2, 'a visual-less hull consumes its tube as any other');
 const legacy = { ...entity, spec: { gun: { muzzles: [{}, {}] } }, combat: { muzzleCursor: 1 } };
 assert.equal(prepare(legacy, {}), 1, 'ordinary multi-cannon selection remains unchanged');
 assert.equal(legacy.combat.launcherCursor, undefined);
@@ -63,15 +70,12 @@ const banks = { shells: rounds, launcherMuzzles: [
   ...[0, 1].map(x => ({ x, y: 0, z: 1, shellSlots: [1] })),
   ...[2, 3, 4].map(x => ({ x, y: 1, z: 0, frame: 'turret', shellSlots: [2] })),
 ] };
-const bankCalls = [];
-const mixed = { spec: { gun: banks }, combat: { launcherCursor: 0 }, visual: {
-  gunMuzzleWorld(out, index, launcher) { bankCalls.push(['origin', index, launcher]); out.set(index, 0, 0); },
-  gunDirWorld(out, index, launcher) { bankCalls.push(['axis', index, launcher]); out.set(0, .2, 1).normalize(); },
-} };
-assert.deepEqual([prepare(mixed, rounds[2]), prepare(mixed, rounds[2]), prepare(mixed, rounds[1]),
-  prepare(mixed, rounds[1]), prepare(mixed, { ...rounds[2] })], [2, 3, 0, 1, 2]);
-assert.deepEqual(bankCalls.filter(row => row[0] === 'origin').map(row => row.slice(1)),
-  bankCalls.filter(row => row[0] === 'axis').map(row => row.slice(1)), 'origin and direction use the same tube');
+origins.length = 0;
+const mixed = { spec: { gun: banks }, combat: { launcherCursor: 0 }, visual };
+const picked = [prepare(mixed, rounds[2]), prepare(mixed, rounds[2]), prepare(mixed, rounds[1]),
+  prepare(mixed, rounds[1]), prepare(mixed, { ...rounds[2] })];
+assert.deepEqual(picked, [2, 3, 0, 1, 2]);
+assert.deepEqual(origins.map((origin) => origin.index), picked, 'the pose reads the tube the selector picked, before the cursor moves');
 assert.equal(launcherMuzzleIndex(banks, { guided: true, launcherTubes: 0 }), -1,
   'a gun-fired missile never inherits an unrelated external rack');
 
@@ -107,7 +111,7 @@ assert.equal(blasts.length, 0, 'battle quality adds no cinematic layer');
 fireMoment({ id: 'fx9', actor, params: { slot: 2, quality: 'cinematic', ageS: .1 } });
 assert.deepEqual(blasts.at(-1), { id: 'fx9', pos: [0, 2, 3], caliberMm: 30, ageS: .1 },
   'a cinematic firing moment adds its muzzle blast at the same muzzle, calibre and age');
-console.log('missilePresentation: actual solo cursor isolation and Studio selected-shell FX PASS');
+console.log('missilePresentation: actual solo cursor isolation (rounds posed by sim/gunPose.ts, never the visual) and Studio selected-shell FX PASS');
 
 actor.spec.gun.fixedLaunchCanisters = true;
 actor.spec.gun.shells = [{ guided: false, type: 'HE', caliberMm: 220, velocityMps: 300 }];

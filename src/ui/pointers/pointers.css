@@ -1,9 +1,10 @@
 /* pointers.css — the battle's pointers (pointerLayer.ts, guidance-pointers-275). Copyright © 2026 Kevin B. Liu.
  * Kevin, 2026-11-22: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the ui".
- * The follow pointer is paint on the ground in the accent (a trail of broad chevrons, a turn arrow round the tank), with a
+ * The follow pointer is paint on the ground in the accent (a trail of broad chevrons, a turn arrow ahead of the tank), with a
  * dark keyline so it reads on sand, snow and grass alike; its flow runs a few beats as it appears (finite, so reduced
  * motion's 1 ms never strobes), none under reduced motion. A warning is a bubble on the screen's rim in the enemy's colour:
- * its arrow at the threat, its glyph, its distance or an air run's seconds and countdown ring; a new one pulses twice.
+ * its arrow at the threat, its glyph, its distance or an air run's seconds and countdown ring; a new one pulses twice. A
+ * moving objective's indicator (the ball, a carried flag, the juggernaut) is the same bubble in its side's colour.
  * Loaded beside the HUD by its bundle (battleHudAccess.ts). */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
@@ -14,19 +15,22 @@ body:is(.cot-kc-live,.cot-si-report) .cot-ptr{display:none;}
 .cot-ptr--ground{z-index:var(--z-hud-world);}
 .cot-ptr--rim{z-index:var(--z-hud-score);}
 .cot-ptr-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.cot-ptr-bubble{--ptr-tone:var(--text-enemy);}
+.cot-ptr-bubble[data-side='own']{--ptr-tone:var(--text-own);}
+.cot-ptr-bubble[data-side='neutral']{--ptr-tone:var(--team-neutral);}
 .cot-ptr-chevron{fill:var(--accent);fill-opacity:calc(.92 - var(--i,0) * .07);stroke:var(--surface-scene);stroke-opacity:.55;
   stroke-width:1.5;stroke-linejoin:round;animation:cot-ptr-flow var(--dur-stage) var(--ease-move) 3;
   animation-delay:calc(var(--i,0) * var(--dur-fast));}
 @keyframes cot-ptr-flow{0%,100%{opacity:1;}45%{opacity:.4;}}
 .cot-ptr-turn{fill:var(--accent);fill-opacity:.85;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:1.5;stroke-linejoin:round;}
 .cot-ptr-turn-head{fill-opacity:1;}
-.cot-ptr-disc,.cot-ptr-arrow{fill:var(--text-enemy);stroke:var(--surface-scene);stroke-opacity:.6;stroke-width:1.5;}
+.cot-ptr-disc,.cot-ptr-arrow{fill:var(--ptr-tone);stroke:var(--surface-scene);stroke-opacity:.6;stroke-width:1.5;}
 .cot-ptr-glyph{fill:var(--ink-1);}
-.cot-ptr-pulse{fill:none;stroke:var(--text-enemy);stroke-width:2;opacity:0;}
+.cot-ptr-pulse{fill:none;stroke:var(--ptr-tone);stroke-width:2;opacity:0;}
 .cot-ptr-bubble.is-new .cot-ptr-pulse{animation:cot-ptr-pulse var(--dur-stage) var(--ease-move) 2;}
 @keyframes cot-ptr-pulse{0%{opacity:.7;scale:.8;}100%{opacity:0;scale:1.35;}}
 .cot-ptr-ring{fill:none;stroke:var(--ink-1);stroke-width:3;stroke-linecap:round;rotate:-90deg;}
-.cot-ptr-badge circle{fill:var(--ink-1);stroke:var(--text-enemy);stroke-width:1.5;}
+.cot-ptr-badge circle{fill:var(--ink-1);stroke:var(--ptr-tone);stroke-width:1.5;}
 .cot-ptr-badge text{font-family:var(--font-mono);font-size:var(--fs-11);font-weight:var(--fw-bold);fill:var(--surface-scene);
   text-anchor:middle;}
 .cot-ptr-label{font-family:var(--font-mono);font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:var(--fw-bold);fill:var(--ink-1);

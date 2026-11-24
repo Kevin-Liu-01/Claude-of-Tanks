@@ -6,7 +6,7 @@
 // Each check runs on the tree, then on a seeded violation that it must catch (tools/driver-boundaries.mjs).
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { checkoutReader, coreViolations, localDriverViolations, mainDriverViolations } from './driver-boundaries.mjs';
+import { checkoutReader, coreViolations, localDriverViolations, mainDriverViolations, presentationWriteViolations } from './driver-boundaries.mjs';
 
 /**
  * Render-side modules the core reached when the rule was written (2026-10-29): world/terrain.ts's water, horizon and sourced
@@ -75,6 +75,30 @@ assert.ok(local.closure.has('src/game/state.ts') && local.closure.has('src/sim/m
     `an online import outside the online composition is caught (${strayViolations.join('; ')})`);
 }
 
+// ---- (d, 276) the presentation never writes simulation state ------------------------------------------------------
+const presentation = presentationWriteViolations({ read });
+assert.deepEqual(presentation.violations, [], `the presentation writes simulation state:\n${presentation.violations.join('\n')}`);
+// seeded: the roof gun's pose written back from its effects (fixed in 276), a HUD bumping a hull's hit points, a camera
+// copying into a hull's position, and a fracture's cell array (not a record) left alone
+{
+  const seeded = presentationWriteViolations({ files: ['src/fx/auxiliaryPresentation.ts', 'src/ui/hud.ts', 'src/engine/camera.ts', 'src/fx/cells.ts'],
+    read: checkoutReader(process.cwd(), {
+      'src/fx/auxiliaryPresentation.ts': `${read('src/fx/auxiliaryPresentation.ts')}\nexport const back = (e: any) => { e.state.roofGunYaw = e.combat.auxiliary.gunYaw; };\n`,
+      'src/ui/hud.ts': 'export const heal = (entity: any) => { entity.combat!.hp++; delete entity.combat.burning; };\n',
+      'src/engine/camera.ts': 'export const follow = (entity: any, at: any) => entity.state.pos.copy(at);\n',
+      'src/fx/cells.ts': 'export const fall = (grid: any, cell: number, el: any) => { grid.state[cell] = 2; const state = { active: true }; state.active = false; el.dataset.state = "on"; };\n',
+    }) });
+  assert.deepEqual(seeded.violations.map((violation) => violation.replace(/:\d+ /, ' ')), [
+    'the presentation writes simulation state: src/fx/auxiliaryPresentation.ts (state.roofGunYaw)',
+    'the presentation writes simulation state: src/ui/hud.ts (combat.hp)',
+    'the presentation writes simulation state: src/ui/hud.ts (combat.burning)',
+    'the presentation writes simulation state: src/engine/camera.ts (state.pos)',
+  ], 'a write-back, an update, a delete and a mutating call are caught; a cell array, a local record and a UI field are not');
+  const stale = presentationWriteViolations({ read, writers: { 'src/ui/hud.ts': 'none' } });
+  assert.ok(stale.violations.includes('listed state writer no longer writes one (unlist it): src/ui/hud.ts'), 'the writer list only shrinks');
+}
+
 console.log(`driver-boundaries.selftest: the core (${core.closure.size} modules) imports no driver code (${CORE_RENDER_PIN.length} pinned `
   + `render-side modules, shrink-only); the local driver (${local.closure.size} modules) never reaches src/mp or the room host; `
-  + 'main.ts names the online driver only where it composes it; 9 seeded violations caught');
+  + `main.ts names the online driver only where it composes it; the presentation writes no simulation state (${presentation.writing.size} listed `
+  + 'mirror/scheduler writers); 14 seeded violations caught');

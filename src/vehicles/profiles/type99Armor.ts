@@ -17,6 +17,10 @@ import type {
   Vec3Tuple,
 } from '../specHelpers.ts';
 import type { ModuleId } from '../../sim/moduleCatalog.ts';
+import {
+  ZTZ99A2_TURRET_OUTLINE, ZTZ99A_TURRET_OUTLINE, VT4A1_TURRET_OUTLINE, cheekFaceQuad,
+  type CheekCourse, type CheekFace, type TurretOutline,
+} from './chineseTurretOutlines.ts';
 
 type MutableVec3 = [number, number, number];
 type Quad = [MutableVec3, MutableVec3, MutableVec3, MutableVec3];
@@ -117,6 +121,20 @@ function rearPlate(
   ], options);
 }
 
+interface VtFamilyArmorConfig {
+  readonly heightScale: number;
+  readonly widthScale: number;
+  readonly depthScale: number;
+  readonly chevronDepthScale: number;
+  readonly frontShellLengthScale: number;
+  readonly chevronInnerAdvanceM: number;
+  readonly chevronOuterAdvanceM: number;
+  readonly chevronLiftM: number;
+  readonly rearExtensionM: number;
+  readonly rearUndersideLiftM: number;
+  readonly rearCrownLiftM: number;
+}
+
 // A welded cheek is commonly a deliberately twisted four-corner surface.
 // Combat quads must remain planar, so represent it as the same two triangles
 // the rendered slab uses. Repeating the final vertex keeps the existing
@@ -134,24 +152,11 @@ function splitFace(
   ];
 }
 
-interface VtFamilyArmorConfig {
-  readonly heightScale: number;
-  readonly widthScale: number;
-  readonly depthScale: number;
-  readonly chevronDepthScale: number;
-  readonly frontShellLengthScale: number;
-  readonly chevronInnerAdvanceM: number;
-  readonly chevronOuterAdvanceM: number;
-  readonly chevronLiftM: number;
-  readonly rearExtensionM: number;
-  readonly rearUndersideLiftM: number;
-  readonly rearCrownLiftM: number;
-}
-
-// Combat counterpart to the VT-family visual turret. Both variants share
-// the same welded chevron load path, while their station scales remain
-// independent so a Type 99A hit shell never silently aliases VT-4A1 geometry.
-function vtFamilyTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
+// The Type 96B frame's turret plates: the welded chevron load path its own turret (type96bX.ts) still draws. Release 276
+// (cn-turrets-276b): kept byte-for-byte as it stood before cn-turrets-276, when the VT-4A1 shared this function; the
+// Type 96B and every tank that copies its armour (the three Type 96 concepts, the T-80U Yun, the T-72B3 Qilin and
+// Kunlun) keep their plates and stats. fleetScope276.selftest.mjs holds every id outside the three redesigned turrets.
+function type96BFrameTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
   const h = config.heightScale / 0.75;
   const x = (value: number): number => value * config.widthScale;
   const y = (value: number): number => value * h;
@@ -236,6 +241,110 @@ function vtFamilyTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
   ];
 }
 
+// The VT-4A1's turret plates (release 276): its cheek modules read from the plan outline its builder lofts
+// (chineseTurretOutlines.ts), the walls and roof behind them on the VT-family stations. The VT-4A1's alone: the Type 96B
+// frame keeps its own chevron plates (type96BFrameTurretPlates).
+function vt4a1TurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
+  const h = config.heightScale / 0.75;
+  const x = (value: number): number => value * config.widthScale;
+  const y = (value: number): number => value * h;
+  const z = (value: number): number => value * config.depthScale;
+  const shellZ = (value: number): number => z(value >= -0.58
+    ? -0.58 + (value + 0.58) * config.frontShellLengthScale
+    : value);
+  const rearProgress = (value: number): number => Math.max(0, Math.min(1,
+    (-value - 1.58) / (2.68 - 1.58),
+  ));
+  const rearZ = (value: number): number => (
+    shellZ(value) - config.rearExtensionM * rearProgress(value)
+  );
+  const rearBottomY = (value: number, zStation: number): number => (
+    y(value) + config.rearUndersideLiftM * rearProgress(zStation)
+  );
+  const rearTopY = (value: number, zStation: number): number => (
+    y(value) + config.rearCrownLiftM * rearProgress(zStation)
+  );
+  return [
+    // release 276: the flat box faces stand near square to a frontal shot where the chevrons they replace were sloped;
+    // KE/CE raised (600/850 -> 795/1125) so the turret front keeps its protection (Kevin's standing rule: stats hold;
+    // tools: the frontal turret penetration share with a 120 mm reference, before 29.8 %, after 29.5 %)
+    ...outlineCheekPlates(VT4A1_TURRET_OUTLINE, { front: 'turret_cheek', outer: 'turret_cheek', era: 'turret_era' },
+      700, { keMm: 795, ceMm: 1125 }, ['under', 'band', 'slope'],
+      { faces: [['front', 'band'], ['outer', 'band']], thicknessM: 0.05 }),
+    frontPlate('mantlet', 380, x(-0.25), x(0.25),
+      [y(0.10), z(0.82)], [y(0.50), z(0.62)],
+      { keMm: 380, ceMm: 450, gunFollow: true }),
+    // release 276: the side wall runs back from the cheek module's chamfer (chineseTurretOutlines.ts)
+    ...sidePlatePair('turret_side_forward', 300,
+      [z(1.26), y(0.04), 0.60, x(1.58)],
+      [z(-0.58), y(0.04), 0.64, x(1.60)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_side_forward', 300,
+      [z(-0.58), y(0.04), 0.64, x(1.60)],
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_side_rear', 300,
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      [rearZ(-2.48), rearBottomY(0.12, -2.48), rearTopY(0.64, -2.48), x(0.82)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_bustle_side', 55,
+      [rearZ(-1.68), rearBottomY(0.10, -1.68), rearTopY(0.60, -1.68), x(1.38)],
+      [rearZ(-2.68), rearBottomY(0.10, -2.68), rearTopY(0.57, -2.68), x(1.24)],
+      { keMm: 55, ceMm: 55 }),
+    ...sidePlatePair('turret_stowage_screen', 10,
+      [z(-0.35), y(0.22), y(0.62), x(1.68)],
+      [rearZ(-2.72), rearBottomY(0.18, -2.72), rearTopY(0.58, -2.72), x(1.42)],
+      { kind: 'spaced' }),
+    rearPlate('turret_rear', 55, x(1.24), rearZ(-2.68),
+      rearBottomY(0.10, -2.68), rearTopY(0.57, -2.68)),
+    // release 276: the flat roof of the outline solid (0.76) behind the cheek modules' top bevels
+    deckPlate('turret_roof_forward', 45, [z(1.49), 0.76, x(1.22)], [rearZ(-1.76), 0.76, x(1.49)]),
+    deckPlate('turret_roof_bustle', 45, [rearZ(-1.76), 0.76, x(1.49)], [z(-2.47), 0.76, x(0.77)]),
+  ];
+}
+
+
+// Release 276: the ZTZ-99A2 / ZTZ-99A / VT-4A1 cheek plates read straight from the turret outline the builder lofts its
+// shell from (chineseTurretOutlines.ts): each plate IS a drawn cheek face (exact planar quads, wound outward), and the
+// ERA plates lie on the tiled faces at the tiles' height. `courses` lists the faces' courses; `era` those that carry
+// tiles, with the tiles' thickness.
+function outlineCheekPlates(
+  o: TurretOutline,
+  names: { readonly front: string; readonly outer: string; readonly era: string },
+  physicalMm: number,
+  options: PlateOptions,
+  courses: readonly CheekCourse[],
+  era: { readonly faces: readonly (readonly [CheekFace, CheekCourse])[]; readonly thicknessM: number },
+): ArmorPlate[] {
+  const plates: ArmorPlate[] = [];
+  const outward = (q: readonly (readonly number[])[]): MutableVec3[] => {
+    const v = q.map((p) => [p[0], p[1], p[2]] as MutableVec3);
+    const e1 = [v[1][0] - v[0][0], v[1][1] - v[0][1], v[1][2] - v[0][2]];
+    const e3 = [v[3][0] - v[0][0], v[3][1] - v[0][1], v[3][2] - v[0][2]];
+    const n = [e1[1] * e3[2] - e1[2] * e3[1], e1[2] * e3[0] - e1[0] * e3[2], e1[0] * e3[1] - e1[1] * e3[0]];
+    const c = [0, 1, 2].map((k) => (v[0][k] + v[1][k] + v[2][k] + v[3][k]) / 4);
+    return n[0] * c[0] + n[1] * 0.6 + n[2] * c[2] >= 0 ? v : [v[1], v[0], v[3], v[2]];
+  };
+  const shift = (q: MutableVec3[], d: number): Quad => {
+    const e1 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
+    const e3 = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
+    const n = [e1[1] * e3[2] - e1[2] * e3[1], e1[2] * e3[0] - e1[0] * e3[2], e1[0] * e3[1] - e1[1] * e3[0]];
+    const l = Math.hypot(n[0], n[1], n[2]);
+    return q.map((p) => [p[0] + n[0] / l * d, p[1] + n[1] / l * d, p[2] + n[2] / l * d]) as Quad;
+  };
+  for (const side of [1, -1] as const) {
+    const suffix = side > 0 ? '_R' : '_L';
+    for (const [face, course] of era.faces) {
+      plates.push(armorPlate(names.era + suffix, 15, shift(outward(cheekFaceQuad(o, side, face, course)), era.thicknessM),
+        { kind: 'era', era: FY4 }));
+    }
+    for (const face of ['front', 'outer'] as const) for (const course of courses) {
+      plates.push(armorPlate((face === 'front' ? names.front : names.outer) + suffix, physicalMm, outward(cheekFaceQuad(o, side, face, course)) as Quad, options));
+    }
+  }
+  return plates;
+}
+
 function moduleBox(
   module: ModuleId,
   min: Vec3Tuple,
@@ -317,7 +426,7 @@ function type96BFrameArmor(): ArmorEnvelope {
     deckPlate('hull_roof_engine', 45, [-1.48, 1.78, 1.60], [-3.52, 1.78, 1.58]),
   ];
 
-  const turretPlates = vtFamilyTurretPlates({
+  const turretPlates = type96BFrameTurretPlates({
     heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
     frontShellLengthScale: 0.90,
     chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
@@ -552,26 +661,17 @@ function ztz99A2PrototypeArmor(): ArmorEnvelope {
   ];
 
   const turretPlates: ArmorPlate[] = [
-    ...splitFace('turret_era_R', 15, [
-      [0.20, 0.30, 1.60], [1.55, 0.08, 0.16],
-      [1.14, 0.62, 0.10], [0.20, 0.82, 0.92],
-    ], { kind: 'era', era: FY4 }, true),
-    ...splitFace('turret_era_L', 15, [
-      [-1.55, 0.08, 0.16], [-0.20, 0.30, 1.60],
-      [-0.20, 0.82, 0.92], [-1.14, 0.62, 0.10],
-    ], { kind: 'era', era: FY4 }, true),
-    ...splitFace('turret_cheek_R', 700, [
-      [0.18, 0.30, 1.68], [1.55, 0.08, 0.16],
-      [1.14, 0.62, 0.10], [0.16, 0.82, 0.92],
-    ], { keMm: 600, ceMm: 850 }),
-    ...splitFace('turret_cheek_L', 700, [
-      [-1.55, 0.08, 0.16], [-0.18, 0.30, 1.68],
-      [-0.16, 0.82, 0.92], [-1.14, 0.62, 0.10],
-    ], { keMm: 600, ceMm: 850 }),
+    // release 276: the closed arrowhead covers the whole front the old wedge plates left open; KE/CE lowered
+    // (600/850 -> 525/745) so the turret front keeps its protection (Kevin's standing rule: stats hold; the frontal
+    // turret penetration share with a 120 mm reference, before 47.5 %, after 49.3 %)
+    ...outlineCheekPlates(ZTZ99A_TURRET_OUTLINE, { front: 'turret_cheek', outer: 'turret_cheek', era: 'turret_era' },
+      700, { keMm: 525, ceMm: 745 }, ['band', 'slope'],
+      { faces: [['front', 'band'], ['outer', 'band']], thicknessM: 0.08 }),
     frontPlate('mantlet', 380, -0.25, 0.25, [0.18, 1.68], [0.62, 1.54],
       { keMm: 380, ceMm: 450, gunFollow: true }),
+    // release 276: the side wall runs back from the cheek module's side join (chineseTurretOutlines.ts)
     ...sidePlatePair('turret_side_forward', 300,
-      [0.16, 0.08, 0.89, 1.55], [-0.60, 0.08, 0.89, 1.62],
+      [0.20, 0.08, 0.42, 1.50], [-0.60, 0.08, 0.89, 1.54],
       { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_side_center', 300,
       [-0.60, 0.08, 0.89, 1.62], [-1.55, 0.16, 0.89, 1.38],
@@ -583,7 +683,8 @@ function ztz99A2PrototypeArmor(): ArmorEnvelope {
       [0.46, 0.10, 0.56, 1.72], [-2.42, 0.10, 0.56, 1.72],
       { kind: 'spaced' }),
     rearPlate('turret_rear', 55, 1.30, -2.46, 0.22, 0.82),
-    deckPlate('turret_roof_forward', 45, [1.42, 0.89, 0.48], [-1.55, 0.89, 1.35]),
+    deckPlate('turret_roof_forward', 45, [1.10, 0.89, 0.40], [0.70, 0.89, 1.00]),
+    deckPlate('turret_roof_forward', 45, [0.70, 0.89, 1.00], [-1.55, 0.89, 1.38]),
     deckPlate('turret_roof_bustle', 45, [-1.55, 0.89, 1.35], [-2.46, 0.82, 1.30]),
   ];
 
@@ -616,43 +717,31 @@ function ztz99A2PrototypeArmor(): ArmorEnvelope {
 function ztz99A2Armor(): ArmorEnvelope {
   const prototype = ztz99A2PrototypeArmor();
   const turretPlates: ArmorPlate[] = [
-    ...splitFace('turret_chevron_inner_R', 700, [
-      [0.20, 0.02, 1.54], [0.84, 0.02, 1.08],
-      [0.62, 0.68, 0.72], [0.18, 0.66, 1.05],
-    ], { keMm: 620, ceMm: 870 }),
-    ...splitFace('turret_chevron_inner_L', 700, [
-      [-0.84, 0.02, 1.08], [-0.20, 0.02, 1.54],
-      [-0.18, 0.66, 1.05], [-0.62, 0.68, 0.72],
-    ], { keMm: 620, ceMm: 870 }),
-    ...splitFace('turret_chevron_outer_R', 700, [
-      [0.84, 0.02, 1.08], [1.58, 0.05, 0.18],
-      [1.30, 0.64, 0.13], [0.62, 0.68, 0.72],
-    ], { keMm: 620, ceMm: 870 }),
-    ...splitFace('turret_chevron_outer_L', 700, [
-      [-1.58, 0.05, 0.18], [-0.84, 0.02, 1.08],
-      [-0.62, 0.68, 0.72], [-1.30, 0.64, 0.13],
-    ], { keMm: 620, ceMm: 870 }),
+    ...outlineCheekPlates(ZTZ99A2_TURRET_OUTLINE,
+      { front: 'turret_chevron_inner', outer: 'turret_chevron_outer', era: 'turret_chevron_era' },
+      // release 276: KE/CE 620/870 -> 575/805 so the turret front keeps its protection on the arrowhead faces (Kevin's
+      // standing rule: stats hold; the frontal turret penetration share with a 120 mm reference, before 27.0 %, after 27.5 %)
+      700, { keMm: 575, ceMm: 805 }, ['band', 'slope'],
+      { faces: [['front', 'band'], ['front', 'slope'], ['outer', 'band'], ['outer', 'slope']], thicknessM: 0.065 }),
     frontPlate('mantlet', 390, -0.24, 0.24, [0.16, 1.50], [0.62, 1.30],
       { keMm: 390, ceMm: 470, gunFollow: true }),
+    // release 276: the side wall runs back from the cheek module's side join (chineseTurretOutlines.ts)
     ...sidePlatePair('turret_side_front', 320,
-      [0.18, 0.05, 0.79, 1.58], [-0.30, 0.05, 0.82, 1.56],
+      [0.34, 0.05, 0.36, 1.56], [-0.30, 0.05, 0.815, 1.56],
       { keMm: 320, ceMm: 440 }),
     ...sidePlatePair('turret_side_center', 300,
-      [-0.30, 0.05, 0.82, 1.56], [-1.50, 0.18, 0.82, 1.50],
+      [-0.30, 0.05, 0.815, 1.56], [-1.50, 0.18, 0.815, 1.50],
       { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_bustle_rise', 65,
       [-1.50, 0.18, 0.82, 1.50], [-2.22, 0.44, 0.80, 1.18],
       { keMm: 65, ceMm: 65 }),
-    ...sidePlatePair('turret_chevron_era', 15,
-      [1.10, 0.02, 0.66, 0.84], [0.16, 0.05, 0.64, 1.58],
-      { kind: 'era', era: FY4 }),
     ...sidePlatePair('turret_stowage_screen', 10,
       [-0.30, 0.12, 0.72, 1.64], [-2.30, 0.46, 0.78, 1.32],
       { kind: 'spaced' }),
     rearPlate('turret_rear', 55, 1.18, -2.22, 0.44, 0.80),
-    deckPlate('turret_roof_front', 45, [1.12, 0.76, 0.52], [0.18, 0.79, 1.12]),
-    deckPlate('turret_roof_center', 45, [0.18, 0.79, 1.12], [-1.50, 0.82, 1.35]),
-    deckPlate('turret_roof_bustle', 45, [-1.50, 0.82, 1.35], [-2.22, 0.80, 0.92]),
+    deckPlate('turret_roof_front', 45, [1.095, 0.815, 0.41], [0.785, 0.815, 1.06]),
+    deckPlate('turret_roof_center', 45, [0.785, 0.815, 1.06], [-1.50, 0.815, 1.43]),
+    deckPlate('turret_roof_bustle', 45, [-1.50, 0.815, 1.43], [-2.15, 0.815, 1.11]),
   ];
   const modules = prototype.modules.map((box): ModuleBox => {
     if (box.module === 'turretRing') {
@@ -711,7 +800,7 @@ function vt4A1Armor(): ArmorEnvelope {
     turretPivot: [0, 1.56, 0.40],
     gunPivot: [0, 0.3198, 0.75],
     gunBarrel: { lengthM: 5.95, radiusM: 0.071 },
-    turretPlates: vtFamilyTurretPlates({
+    turretPlates: vt4a1TurretPlates({
       heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
       frontShellLengthScale: 1,
       chevronInnerAdvanceM: 0, chevronOuterAdvanceM: 0, chevronLiftM: 0.07,

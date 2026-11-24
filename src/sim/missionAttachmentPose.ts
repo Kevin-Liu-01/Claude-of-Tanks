@@ -1,6 +1,7 @@
 /** Deterministic native docking frame. Mirrors the chassis presentation and
  * two-plane stabilizer; contains no renderer, fleet-builder or clock access. */
 import {Euler,Quaternion,Vector3} from 'three';
+import { quaternionFromEuler, quaternionFromAxisAngle } from './detRotation.ts';
 import {missionAttachmentFor,missionAttachmentTurretPivot,DRONE_DOCK_HEIGHT_M,type MissionCarrierSpec} from './missionAttachment.ts';
 import * as detMath from './detMath.ts';
 export interface MissionCarrierPose {
@@ -16,18 +17,18 @@ export function missionAttachmentPose(spec:MissionCarrierSpec,state:MissionCarri
  // the hit/recoil rock is the visual's own (audit M9): the launch frame is the simulated hull's
  const extraPitch=(state._susp?.p??0)*2.2;
  const extraRoll=(state._susp?.r??0)*1.9+(state._swayEst??0)*2.4;
- chassis.setFromEuler(euler.set(-pitch-extraPitch,state.yaw,roll+extraRoll));
+ quaternionFromEuler(chassis, euler.set(-pitch-extraPitch,state.yaw,roll+extraRoll));
  position.set(seat.x+(seat.payloadOffset?.[0]??0),seat.y+DRONE_DOCK_HEIGHT_M,seat.z+(seat.payloadOffset?.[1]??0));orientation.copy(chassis);
  if(seat.frame==='turret'){
   let yaw=state.turretYaw??0;
   if(Math.abs(extraPitch)+Math.abs(extraRoll)>1e-6){
    const elevation=state.gunPitch??0,c=detMath.cos(elevation);
    direction.set(detMath.sin(yaw)*c,detMath.sin(elevation),detMath.cos(yaw)*c);
-   canonical.setFromEuler(euler.set(-pitch,state.yaw,roll));
+   quaternionFromEuler(canonical, euler.set(-pitch,state.yaw,roll));
    direction.applyQuaternion(canonical);canonical.copy(chassis).invert();direction.applyQuaternion(canonical);
    yaw=detMath.atan2(direction.x,direction.z);
   }
-  turn.setFromAxisAngle(yAxis,yaw);position.applyQuaternion(turn);
+  quaternionFromAxisAngle(turn, yAxis,yaw);position.applyQuaternion(turn);
   const pivot=missionAttachmentTurretPivot(spec);position.x+=pivot[0];position.y+=pivot[1];position.z+=pivot[2];
   orientation.multiply(turn);
  }

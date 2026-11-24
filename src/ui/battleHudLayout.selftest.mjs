@@ -782,7 +782,7 @@ assert.match(layout,/const countdownScale = touchCountdownShown \? String\(touch
 // moved 26 px as its flag came)
 assert.match(readFileSync(new URL('./battleLoad.ts',import.meta.url),'utf8'),/\.cot-bl \.team\.foe \.thead\{color:var\(--text-enemy\);direction:rtl;\}\n\.cot-bl \.team\.foe \.thead>\*\{direction:ltr;\}/,
   'the foe heading reads from its right edge, its words and flags in their own direction');
-assert.match(layout,/new ResizeObserver\(\(entries\) => \{[\s\S]{0,900}?planInput\(entry\.target\);[\s\S]{0,900}?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
+assert.match(layout,/new ResizeObserver\(\(entries\) => \{[\s\S]{0,900}?planInput\(entry\.target[^;]*\);[\s\S]{0,900}?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
 assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'virtual keyboard/visual viewport changes reflow through the shared layout event');
 assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
 assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');

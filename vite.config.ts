@@ -31,7 +31,7 @@ import { localizeEntryDocument } from './src/presentation/localizedHtml.ts';
 import { hrefForLocale, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { DEFAULT_LOCALE } from './src/ui/localePrefix.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
-import { resolveMatchBuild } from './tools/matchBuild.ts';
+import { resolveMatchBuild, resolveReplayDigest } from './tools/matchBuild.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
@@ -46,6 +46,8 @@ import { speculationRules } from './tools/viteSpeculationRules.ts';
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
 const matchBuild = resolveMatchBuild(dirname(fileURLToPath(import.meta.url)), appVersion);
+/** The replay digest every recording of this build carries (src/game/replay/replayBuild.ts; docs/REPLAY.md §7). */
+const replayDigest = resolveReplayDigest(dirname(fileURLToPath(import.meta.url)));
 
 /**
  * The page catalog plugin (tools/viteI18nPageCatalogs.ts). Its build scan also reads the game's whole graph and every
@@ -237,7 +239,7 @@ function forceNotFoundStatus(res: ServerResponse): void {
 export default defineConfig({
   // 2026-10-13 (MP plan step 13): the same-wire build check's line — the page and the match host Worker read the same
   // constant (src/mp/wire/matchBuild.ts MATCH_BUILD), so a host can refuse a seat whose prediction code differs.
-  define: { __COT_MATCH_BUILD__: JSON.stringify(matchBuild) },
+  define: { __COT_MATCH_BUILD__: JSON.stringify(matchBuild), __COT_REPLAY_DIGEST__: JSON.stringify(replayDigest) },
   // Workers Vite still bundles on their own (the match host, the material painter, the sky/cloud/schematic/texture
   // workers) keep ES modules so their donor families stay on-demand imports, and their chunks take the same base36
   // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").

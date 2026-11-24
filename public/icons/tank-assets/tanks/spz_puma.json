@@ -237,6 +237,36 @@
       },
       {
         "hitboxId": "H09",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.677,0.12,3.8],
+          [1.677,0.12,-3.8],
+          [1.677,1,-3.8],
+          [1.677,1,3.8]
+        ]
+      },
+      {
+        "hitboxId": "H10",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.677,0.12,-3.8],
+          [-1.677,0.12,3.8],
+          [-1.677,1,3.8],
+          [-1.677,1,-3.8]
+        ]
+      },
+      {
+        "hitboxId": "H11",
         "name": "hull_rear",
         "physicalMm": 30,
         "keMm": 26,
@@ -251,7 +281,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H12",
         "name": "hull_roof",
         "physicalMm": 35,
         "keMm": 30,
@@ -496,7 +526,7 @@
     ]
   },
   "geometryHash": "2ff2b893",
-  "metadataHash": "1e17f946",
+  "metadataHash": "12b3c0e7",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": -0.0772
@@ -606,8 +636,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42472,
-      "sha256": "0393b6db0e311835ed23145976f5ffa861ac42ec2a85b51ef0c16702f4ec6a72"
+      "bytes": 38762,
+      "sha256": "2c22acc00e00c2f6e6d2ef2d0a53861c15912f2f885ebab6d288a48f1b0371d5"
     },
     "modulesSide": {
       "file": "spz_puma_modules_side.webp",
@@ -636,8 +666,8 @@
     "technicalLabels": {
       "file": "spz_puma_technical.json",
       "mime": "application/json",
-      "bytes": 3499,
-      "sha256": "7cfb07c1666ed5e63006e17e3044f71b417d8c3f4b0de54402705bc65af38d51"
+      "bytes": 3757,
+      "sha256": "802798692793eda4172f3fcade45c91731ef3e9d16654983d8061104debc935f"
     }
   }
 }

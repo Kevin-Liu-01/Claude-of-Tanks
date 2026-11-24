@@ -113,8 +113,8 @@ function spriteRules() {
   if (/stroke-width|stroke-linecap|stroke-linejoin/.test(spriteText)) problems.push('sprite: a glyph sets its own stroke');
   for (const id of ACTIVE_ICON_IDS) if (!large.has(id)) problems.push(`active id ${id} missing`);
   const modes = [...large.keys()].filter((id) => id.startsWith('mode'));
-  // The 13 rulesets plus the proving ground (2026-10-20), each with a glyph of its own.
-  if (modes.length !== 15) problems.push(`sprite: ${modes.length} mode glyphs (15 unique required)`);
+  // The battle rulesets plus the proving ground (2026-10-20), each with a glyph of its own (16 with Combined Arms, 276).
+  if (modes.length !== 16) problems.push(`sprite: ${modes.length} mode glyphs (16 unique required)`);
   const modeBodies = new Set(modes.map((id) => large.get(id)));
   if (modeBodies.size !== modes.length) problems.push('sprite: two modes share one glyph');
   const host = readFileSync(join(root, 'src/ui/icons/icon.ts'), 'utf8');

@@ -186,28 +186,44 @@ function place(size: GuidanceSize, minW: number, minH: number | null, input: Gui
   const never = [...input.never, ...placed];
   const hard = [...input.hard, ...never];
   const all = [...hard, ...input.soft];
+  // (notices-276) the soft boxes but the sight's keep-out: the map, the rosters and the kill lanes are things on screen; the
+  // sight's keep-out is room kept round the reticle. A surface clear of the instruments but over the map or the feed (the
+  // condition lane on the minimap and the kill rows at 390x844) is the overlap Kevin flagged; over the sight's margin it is not
+  const sight = new Set(input.sight ?? []);
+  const shown = [...hard, ...input.soft.filter((box) => !sight.has(box))];
   const fits = fitsFor(minH != null);
   const least = minH ?? size.h;
-  // every fit clear of the instruments before any on one: whole words clear of all, then of the hard alone, then a type
-  // step smaller (all, hard), then tight (all, hard); where nothing clears the instruments it may lie on one, never on
-  // a shell or kit button or another notice, in the same order of fits
+  // every fit clear of the instruments before any on one: whole words clear of all, then of all but the sight's keep-out,
+  // then of the hard alone, then a type step smaller (the same three), then tight (the same three)
   const tries: Array<[readonly GuidanceBox[], 0 | 1 | 2, GuidanceFit]> = [];
-  for (const fit of fits) tries.push([all, 0, fit], [hard, 1, fit]);
-  for (const fit of fits) tries.push([never, 2, fit]);
+  for (const fit of fits) tries.push([all, 0, fit], [shown, 1, fit], [hard, 1, fit]);
   for (const [boxes, tier, fit] of tries) {
     const found = seek(size, minW, least, fit, input, boxes, from);
     if (found) return { ...found.box, tier, fit: found.fit, offCentre: false };
   }
-  // a surface no centred band holds stands off the line, clear of the instruments where it can be, else of the controls
-  // (the toasts' column there at least its natural height, growing toward the height its reflow would take: the reflow
-  // is an upper bound for a column of one-line notices, which never scroll)
-  for (const [boxes, tier] of [[hard, 1], [never, 2]] as const) {
+  // a surface no centred band holds clear of the instruments stands off the line where a box there clears them (the
+  // toasts' column there at least its natural height, growing toward the height its reflow would take: the reflow is an
+  // upper bound for a column of one-line notices, which never scroll), before it lies on an instrument on the line
+  // (notices-276: at 844x390 under the binoculars "Gunship overhead" lay on the damage panel and the speed readout while
+  // the band right of the sight stood clear)
+  const offLine = (boxes: readonly GuidanceBox[], tier: 1 | 2): GuidancePlace | null => {
     for (const fit of fits) {
       const found = minH == null ? seekAnywhere(size, minW, size.h, 'tight', input, boxes, from)
         : seekAnywhere(size, minW, least, fit, input, boxes, from);
       if (found) return { ...found.box, tier, fit: minH == null ? 'full' : found.fit, offCentre: true };
     }
+    return null;
+  };
+  const clearOff = offLine(shown, 1) ?? offLine(hard, 1);
+  if (clearOff) return clearOff;
+  // where nothing clears the instruments it may lie on one, never on a shell or kit button or another notice, on the line
+  // first, in the same order of fits
+  for (const fit of fits) {
+    const found = seek(size, minW, least, fit, input, never, from);
+    if (found) return { ...found.box, tier: 2, fit: found.fit, offCentre: false };
   }
+  const onOff = offLine(never, 2);
+  if (onOff) return onOff;
   // the smallest phones (568 x 290): the card at its least, wrapped and tight, still off every control
   if (minH != null) {
     const found = seekAnywhere(size, GUIDANCE_CARD_LEAST.w, GUIDANCE_CARD_LEAST.h, 'tight', input, never, from);

@@ -7,10 +7,13 @@ import { stripTypeScriptTypes } from 'node:module';
 
 export const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 
-/** main's top-level statement that begins with `head` (at a line start), through its closing `});` line. */
+/** main's top-level statement that begins with `head` (at a line start), through its closing `});` line. The head must
+ * name one statement: 275's one-line `bus.on('phase:change', () => { connectivity?.refresh(); });` (aa8d9b73b5) came
+ * first in main and two receipts silently ran it in place of the Garage handler they meant. */
 export function mainStatement(head, source = mainSource) {
   const start = source.indexOf(`\n${head}`);
   if (start < 0) throw new Error(`main.ts has no top-level statement starting ${head}`);
+  if (source.indexOf(`\n${head}`, start + 1) >= 0) throw new Error(`main.ts has more than one top-level statement starting ${head}: name one`);
   const end = source.indexOf('\n});', start + 1);
   if (end < 0) throw new Error(`main.ts statement ${head} has no closing line`);
   return source.slice(start + 1, end + 4);

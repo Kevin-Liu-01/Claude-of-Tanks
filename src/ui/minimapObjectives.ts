@@ -10,7 +10,7 @@
  */
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
-import { AIR_SUPPORT_RULES, airStrikeFlies, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { AIR_SUPPORT_RULES, airStrikeFlies, modePlaysSectors, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { runExitS, runFootprint, runPose, type RunPose } from '../sim/strikeRuns.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 
@@ -259,7 +259,7 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   const out: ObjectiveMarker[] = [];
   spawnMarkers(state, perspective, out);
   if (state.id === 'capture_the_flag') flagMarkers(state, perspective, out);
-  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') zoneMarkers(state, perspective, out);
+  else if (modePlaysSectors(state.id) || state.id === 'ac130') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
   laneMarkers(state, out);

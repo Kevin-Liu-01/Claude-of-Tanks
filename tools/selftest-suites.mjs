@@ -91,7 +91,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/strikeSignatures.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
+    // combined-arms-276 (Kevin 2026-11-23: "lets add a mode with drone AND air support"): a composed mode is its rule parts,
+    // never a fork, and no reader asks a part's mode by its id
+    'src/sim/modeComposition.selftest.mjs',
+    // combined-arms-276: the sector battle with the ledger and a drone on every crew; bots use both, one control seat
+    'src/sim/combinedArms.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
+    // 2026-11-23 (air-crash-he-276): a downed aircraft and a drone into the ground or a building burst as one HE round
+    'src/sim/airCrash.selftest.mjs',
+    // 2026-11-24 (air-crash-he-276b): a wreck rests on the drawn ground hulls stand on, its lowest point on the dug bowl
+    'src/game/airCrashWreck.selftest.mjs',
+    // 2026-11-24 (air-crash-he-276c): a downed aircraft whose carry would land it off the battlefield comes down inside it
+    'src/sim/airCrashInside.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
     'src/game/strikeOrder.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
@@ -104,6 +115,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/turboSpin.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): a host migration mid-flip and mid-turbo; the flip finishes, the cooldown runs on
     'src/mp/host/turboSpinMigration.selftest.mjs',
+    // 2026-11-24 (bot-turbo-276): bots take Turbo and the air spin through the action step, only where the mode carries them
+    'src/sim/botTurboSpin.selftest.mjs',
+    // 2026-11-24 (flip-boost-276): the air spin a dodge: each move's shove and turn, the cooldown, one a flight, the ground
+    // dodge, the ball, page/authority parity, planted controls
+    'src/sim/flipBoost.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
     'src/mp/wire/actionBitMask.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
@@ -301,6 +317,24 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/twinMuzzleParity.selftest.mjs',
     // round 8 Y1 s5-01 (review r1): the same mouths on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/twinMuzzleSolo.selftest.mjs',
+    // replay-system-275 (docs/REPLAY.md): the recording's bytes and the seat stage (no world)
+    'src/sim/replayFormat.selftest.mjs',
+    // replay-system-275 (P2): the viewer's track, sampled and posed between samples (no world)
+    'src/game/replay/replayTrack.selftest.mjs',
+    // replay-system-276: every rule of the handlers' port is recorded or read-only, and each recorded one replays (no world)
+    'src/game/replay/seatActions.selftest.mjs',
+    // replay-system: every solo runtime call is recorded or unrecorded with its reason; a training cue, its checkpoint and
+    // end and the proving ground's reset replay as main.ts made them (no world)
+    'src/game/replay/battleActions.selftest.mjs',
+    // replay-system (P2): the viewer's timeline marks, transport clock and posing step (no DOM, no world)
+    'src/game/replay/replayViewerCore.selftest.mjs',
+    // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
+    'src/game/replay/replayViewer.selftest.mjs',
+    // 276 (sim-det-trig): the fields a replay's state diff leaves out are the page's presentation and no simulation
+    // module reads one (both drivers' import graph; a planted read, the clock and rosterState's sampler are named)
+    'src/game/replay/replayPageOnly.selftest.mjs',
+    // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
+    'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',
@@ -408,6 +442,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/whip-rods.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // fills-leak-276: the generator frees each build's native canvases before the next id (RSS flat in the id count)
+    'tools/gen-interior-fills-memory.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
     'tools/interior-fill-exposure.selftest.mjs',
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
@@ -648,6 +684,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
+    // 276 (sim-det-trig, Main's gap-3 rule): every id's drawn muzzle within p99 3 cm / max 10 cm of the pose both drivers
+    // fire from (sim/gunPose.ts); ids beyond are listed by distance
+    'src/vehicles/gunPoseVisualFit.selftest.mjs',
+    'src/vehicles/combatRigFromBuild.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
     // 2026-11-08 round 8 s5-04: the Redback's gun is the Puma S1's registration-time gun, whenever its pack evaluates
     'src/vehicles/redbackRegistrationGun.selftest.mjs',
@@ -845,6 +885,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
+    // release 276: both PL-01s' skirt crests start at the hull deck's side edge and follow the glacis (owner markup)
+    'src/vehicles/profiles/pl01SkirtLine.selftest.mjs',
     // release 262: the Leclerc turret's false roofs (owner-marked) stay closed on the S1, S2 and SXXI
     'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
     // release 264: the T-72B 1987's and T-62MV1's open commander's hatch opens into its cupola
@@ -866,6 +908,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',
+    // 276 (sim-det-trig): three's rotation constructors on detMath, bit-identical to three on detMath, and to three on
+    // native Math wherever native Math agrees with detMath (tools/det-math-lint.mjs flags the methods by name)
+    'src/sim/detRotation.selftest.mjs',
     // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
@@ -984,6 +1029,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit 77 on a wait
     'tools/with-capture-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    // probe-fresh-browser-276: one guarded browser per staging, the previous one reaped (the tree stays flat under the 10 GB cap)
+    'tools/frame-budget-probe-browsers.selftest.mjs',
     // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
     // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
     'tools/probe-unit-stop.selftest.mjs',
@@ -1021,6 +1068,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 276 (sim-det-trig-c): the chain measures the combat rig before any tool loads the fleet (the bootstrap first)
+    'tools/combat-rig-bootstrap.selftest.mjs',
     // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
     // before the unlock, and a budget that tears down before it exits
     'tools/chain-lifecycle.selftest.mjs',
@@ -1218,13 +1267,19 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tutorial/tutorialGuide.selftest.mjs',
     // guidance-pointers-275 (Kevin: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the
     // ui"): the one pointer primitive: the follow trail and turn arrow, the warnings' ranked, merged, capped rim bubbles, and
-    // their sources (tanks with a gun on the player, air runs, missiles, the objective that matters now)
+    // their sources (tanks with a gun on the player, air runs, missiles, drones), the moving objectives' indicators (276)
     'src/ui/pointers/pointerPlan.selftest.mjs',
+    // guidance-pointers-276 (Kevin: "they get clipped off if you aim to ur side"): the follow pointer against the chase
+    // camera, the turret swept round: no piece cut by the screen; only the tutorial posts one
+    'src/ui/pointers/pointerFollowView.selftest.mjs',
     // 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them
     'src/ui/tutorial/tutorialTour.selftest.mjs',
     // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):
     // the Sentry's fire and aim, the arc's colours from the reticle's solver, the angle step's window inside red
     'src/sim/trainingThreat.selftest.mjs',
+    // 276 (tutorial-s11-cover): S11's wall hides the whole loaner from Sentry 3 on Verdant's own ground (the contact lattice
+    // the battle's sight reads), not only on flat analytic ground; the first wall planted as the control that shows the turret
+    'src/game/trainingCoverGround.selftest.mjs',
     // 273 (Main: fix the class): a hull off the field (modeActive false) is off it for every reader of the hull list
     'src/sim/hullField.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
@@ -1454,6 +1509,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
+    // inherited-reds-276 (Main 2026-11-23): the S-tanks' front zoned by height, the beak's underside the wedge's
+    'src/vehicles/sTankWedgeZoning.selftest.mjs',
     'src/vehicles/fleetOrder.selftest.mjs',
     'src/vehicles/profiles/abramsRoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/abramsTurretLift.selftest.mjs',
@@ -1473,6 +1530,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
     'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
+    // 2026-11-24 (cn-turrets-276): the ZTZ-99A2, ZTZ-99A and VT-4A1 cheeks are closed outline solids with seated tiles
+    'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
+    // 2026-11-24 (cn-turrets-276b): only those three turrets moved; every other id keeps its armour, build and anatomy
+    'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
@@ -1692,7 +1753,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/muzzleNearField.selftest.mjs', // 271: a gun's muzzle light reaches its own gun through a near field
-    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's report, flash, light and kick by its cadence; a slow gun's as before
+    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's flash, light and kick by its cadence; 276: its sound by its fire-rate regime
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
@@ -1907,6 +1968,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed; a mode
     // respawn starts the hull's module states whole (round 4 merge review r1)
     'src/audio/audioLatches.selftest.mjs',
+    'src/audio/toggleSettle.selftest.mjs', // 276: a toggle's sound settles on its final state (scope, zoom steps, auto-aim, lights)
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
@@ -2016,6 +2078,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/couchOpener.selftest.mjs',
     // round 8 Y4 (ROUND8 amendment 4): a couch battle's Battle Again on the page's setupBattle is a couch battle (MANUAL 'sims')
     'src/game/couchRematch.selftest.mjs',
+    // 276 (sim-det-trig): the training shooters' whenSeen on the battle's own ground (MANUAL 'sims': a world and the roster)
+    'src/game/trainingSightGround.selftest.mjs',
     // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
     'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
@@ -2393,6 +2457,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/serviceRecord.selftest.mjs',
+    // (leave-no-loss-276) a left battle has no result: a solo and a room Leave move no total and read "Left"; R6's leave-as-defeat is the negative control
+    'src/game/battleOutcome.selftest.mjs',
     'src/ui/serviceRecordView.selftest.mjs',
     'src/ui/battlefieldFacts.selftest.mjs',
     'src/game/campaignProgress.selftest.mjs',
@@ -2459,6 +2525,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleResultBeatClock.selftest.mjs', // 2026-11-02 audit F4: death and ending beats hold through a pause
     'src/game/deathFlowExits.selftest.mjs', // 2026-11-02 audit round 5 U4: every exit that ends the player's death flow (a teardown, a fresh or left Watch seat, a mode's revive) leaves the result runtime owing no hand-back and no late replay; a revive hands the HUD and camera back and re-arms the death flow, at its row or its next death's event (real runtime, rig, killcam and watch controller)
+    // (killcam-first-frame-276) a replay's first presented frame is its first shot (the frame that starts it is a replay
+    // frame), and both hulls stand at their recorded poses on every frame of the shot (real main frame, battle frame,
+    // result runtime, rig and killcam; full, quick, Air Support with the binoculars up; late-camera and live-repaint controls)
+    'src/game/killcamFirstFrame.selftest.mjs',
+    // (killcam-strike-shot-276) an Air Support kill replays its own planned shot: the aircraft's run, the round's flight,
+    // the hit; frame 1 its first planned pose, the victim held pre-hit, the aircraft staged from its recorded run (every
+    // strike kind and the binoculars; real frame owners, bridge and air-support world; the no-shot control)
+    'src/game/killcamStrikeShot.selftest.mjs',
     'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
     // (death-flow-275) every mode's death -> after-death -> end: the death's shape, the respawn dial, each verdict's beat and caption
@@ -2524,6 +2598,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'tools/cpu-burners.selftest.mjs',
+    // inherited-reds-276: a source slice closes over what it reads (imports, declarations, inert locals) and a name nothing
+    // declares fails before it runs, named (tools/source-slice.test-support.mjs; five receipts' ReferenceErrors on c7d111fad4)
+    'tools/source-slice.selftest.mjs',
+    // inherited-reds-276 (owner 2026-11-23): the balance matchup receipt is a fresh generation, never stale or hand-edited
+    'tools/balance-matchups.selftest.mjs',
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
@@ -3023,6 +3102,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
+    // inherited-reds-276 (Main 2026-11-23): a sheet hall's clerestory, one whole light a bay between its columns
+    'src/world/maps/regional/hallClerestory.selftest.mjs',
     'src/world/maps/regional/latticeDamage.selftest.mjs', // 2026-10-14 props census #3: open frames recorded, read as lattices, folded over in their members
     'src/world/maps/regional/ruinGrammar.selftest.mjs', // 2026-10-14 props census #7: kit ruins on the ruin grammar, walls recorded, no dark plates; the rubble pile keeps the street's draws
     'src/world/maps/regional/towerDamage.selftest.mjs', // 2026-10-15 props census #9 (E13): every placed tower kind records its bodies, read in storey bands through the multi-body route
@@ -3112,6 +3193,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/felledTreeOwners.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
     'src/world/concealerIndex.selftest.mjs',
+    // 276 (sim-world-packed, Main's ruling B): a solo battle collides on the shards' records, rounded in-page by their packer
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
@@ -3174,6 +3257,17 @@ export const SELFTEST_SUITES = Object.freeze({
     // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
     // condition in the page's lane
     'src/ui/airSupportNotices.selftest.mjs',
+    // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
+    'tools/air-support-close-box.selftest.mjs',
+    // notices-276 (Kevin 2026-11-23: "fix ui overlaps like gunship overhead with X binoculars"): one list of the controls a
+    // view brings, read by every notice planner and the overlap probe; its judge fails a notice on a planted control
+    'tools/battle-hud-overlap-judge.selftest.mjs',
+    // notices-276 (Kevin 2026-11-23: "graphics in the empty part of the notifications"): one art layer, one mask, the ruled
+    // kinds carry it, every aircraft render on disk
+    'src/ui/components/noticeArt.selftest.mjs',
+    // notices-276b (Kevin 2026-11-24: "should we combine stuff ... hexagons look better for the bigger notis"): every battle
+    // notice's kind declares its subject and shape; the tank's own held off the binoculars, the drone and the gunship
+    'src/ui/noticeKinds.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

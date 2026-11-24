@@ -22,6 +22,7 @@ import { icon, type IconId } from '../icons/icon.ts';
 import { t } from '../i18n.ts';
 import { leaveThen } from './surfaceMotion.ts';
 import { attrs, esc, type Attrs } from './escape.ts';
+import { noticeArtUrl, type NoticeArtId } from './noticeArt.ts';
 
 export type NoticeSeverity = 'info' | 'success' | 'warning' | 'error' | 'progress';
 
@@ -45,6 +46,11 @@ export interface NoticeContent {
   /** A small picture after the words (first-party inline SVG markup only, never text from a player or the network), with
    *  its label: read by a screen reader, and the picture's tooltip under a mouse. */
   readonly media?: { readonly svg: string; readonly label: string };
+  /** The kind's picture in the notice's empty side (noticeArt.ts: an aircraft's or a tank's render), faded in from nothing
+   *  under the kit's one mask (notices.css .cot-c-notice__art); decorative: the words say what it is. */
+  readonly art?: NoticeArtId;
+  /** Its kind's shape (noticeKinds.ts: the HUD's hexagon plate, or a one-line pill), as data-shape for the host's sheet. */
+  readonly shape?: 'plate' | 'pill';
   readonly className?: string;
 }
 
@@ -58,12 +64,20 @@ interface StaticAction {
  *  event lane (battleNoticeEvents.ts) draws its events with it inside the planners' alert seat. */
 export function noticeContentHtml(options: NoticeContent): string {
   const severity = options.severity ?? 'info';
-  return `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
+  // (the art first: absolutely placed, it paints before the parts that follow it, over the host's plate, notices.css)
+  return noticeArtHtml(options.art) + `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
     + `<span class="cot-c-notice__body"><span class="cot-c-notice__text">${esc(options.text)}</span>`
     + `${options.detailHtml ? `<span class="cot-c-notice__detail">${options.detailHtml}</span>`
       : options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`
     + (options.media ? `<span class="cot-c-notice__media" role="img" aria-label="${esc(options.media.label)}" title="${esc(options.media.label)}">`
       + `${options.media.svg}</span>` : '');
+}
+
+/** The art's layer: the picture against its host's right edge under the kit's one mask (notices.css), first in its host
+ *  (the kit's notices, and a plate of the same family that carries a render, hudKillRibbon.ts). */
+export function noticeArtHtml(art: NoticeArtId | undefined): string {
+  const url = noticeArtUrl(art);
+  return url ? `<span class="cot-c-notice__art" aria-hidden="true"><img src="${esc(url)}" alt="" decoding="async" draggable="false"></span>` : '';
 }
 
 function actionButton(label: string, primary: boolean | undefined, extra?: Attrs): string {
@@ -322,6 +336,7 @@ function render(region: Region, toast: QueuedToast, el: HTMLElement): void {
   const severity = o.severity ?? 'info';
   el.className = `cot-c-notice cot-c-notice--toast${o.className ? ` ${o.className}` : ''}`;
   el.dataset.severity = severity;
+  if (o.shape) el.dataset.shape = o.shape; else delete el.dataset.shape;
   if (severity === 'error') el.setAttribute('role', 'alert'); else el.removeAttribute('role');
   const count = toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '';
   const progress = o.progress !== undefined && severity === 'progress'

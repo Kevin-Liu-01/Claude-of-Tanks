@@ -56,6 +56,8 @@ import {
 // the following --check pass instead of describing the authored source.
 enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
+// 276: the combat frame, mouths and track hulls as each build draws them (every driver's, through finalizeCombatAnatomy)
+const { measureCombatRig } = await import('./combat-rig-measure.mjs');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { measureTurretRing, measureTurretSweep, turretRingRadius, TURRET_RING_SIDE_CAPS } = await import('../src/vehicles/turretRingWell.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
@@ -766,6 +768,8 @@ function receiptFor(id) {
       : id === 'c2_ariete' ? captureArieteC2Collision(create) : null;
   const tank = stockCapture?.tank ?? create();
   try {
+    // measured first, on the build at rest, before the frames below are made rigid
+    const rig = measureCombatRig(tank, TANK_SPECS[id]);
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
@@ -842,6 +846,7 @@ function receiptFor(id) {
       tracks: { left: trackL, right: trackR },
       trackContact: trackContactReceipt(tank.contactGeom, id),
       ...(turretRing ? { turretRing } : {}),
+      rig,
       [VISIBLE]: visible,
     };
   } finally {

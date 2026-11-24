@@ -44,15 +44,25 @@ function build(id) {
   assert.ok(world._treeImpostors, `${id}: an atlas (the recording renderer)`);
   return { cfg, world, fresh };
 }
+/** The ring hashed as the pin's per-species-and-mirror quad pools: since world-pools-272 (0afb6409b) one pool holds
+ * them all, its `userData.horizonForestImpostor.buckets` naming each (species, mirror) slot range, and each range is
+ * hashed as the pool it replaced (name, count, matrices, colours, rows), so the pin stays the owner-approved bytes. */
 function digest(forest) {
   const hash = createHash('sha256');
-  const meshes = forest.children.filter(c => c.isInstancedMesh).sort((a, b) => a.name.localeCompare(b.name));
-  for (const m of meshes) {
-    hash.update(m.name); hash.update(String(m.count));
-    hash.update(Buffer.from(m.instanceMatrix.array.buffer, m.instanceMatrix.array.byteOffset, m.count * 64));
-    if (m.instanceColor) hash.update(Buffer.from(m.instanceColor.array.buffer, m.instanceColor.array.byteOffset, m.count * 12));
+  const views = [];
+  for (const m of forest.children.filter(c => c.isInstancedMesh)) {
+    const buckets = m.userData.horizonForestImpostor?.buckets;
+    if (!buckets) { views.push({ name: m.name, mesh: m, start: 0, count: m.count, rowsWhole: true }); continue; }
+    for (const b of buckets) views.push({ name: `horizon-forest-impostor-${b.species}-${b.mirror ? 1 : 0}`, mesh: m, start: b.start, count: b.count });
+  }
+  views.sort((a, b) => a.name.localeCompare(b.name));
+  for (const { name, mesh: m, start, count, rowsWhole } of views) {
+    hash.update(name); hash.update(String(count));
+    hash.update(Buffer.from(m.instanceMatrix.array.buffer, m.instanceMatrix.array.byteOffset + start * 64, count * 64));
+    if (m.instanceColor) hash.update(Buffer.from(m.instanceColor.array.buffer, m.instanceColor.array.byteOffset + start * 12, count * 12));
     const rows = m.geometry.getAttribute('aImpRow');
-    if (rows) hash.update(Buffer.from(rows.array.buffer, rows.array.byteOffset, rows.array.byteLength));
+    if (rows) hash.update(rowsWhole ? Buffer.from(rows.array.buffer, rows.array.byteOffset, rows.array.byteLength)
+      : Buffer.from(rows.array.buffer, rows.array.byteOffset + start * 4, count * 4));
   }
   return hash.digest('hex');
 }

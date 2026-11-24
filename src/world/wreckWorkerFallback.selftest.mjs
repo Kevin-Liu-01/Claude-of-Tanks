@@ -87,7 +87,7 @@ const mainBakeOf = (calls) => function* (ctx, specId, options) {
 //    failure arrives as the worker's own report (requestId 0): the build completes with the main-thread bake.
 for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
   const calls = [], acquired = [];
-  const first = request('m551_sheridan'), second = request('marder1a3', 2133, true);
+  const first = request('m551_sheridan'), second = request('marder1a3', 2133, 'turret_blown_off');
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: first }, { fine: true, progress: false, wreckBake: second }],
     modes: [mode], acquire: async (id) => { acquired.push(id); }, mainBake: mainBakeOf(calls) });
   const startedAt = performance.now();
@@ -158,9 +158,9 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 {
   const calls = [];
   const prefetchWorkers = [];
-  const prefetch = startWreckBakePrefetch([['m551_sheridan', 2002, 0], ['marder1a3', 2133, 1]],
+  const prefetch = startWreckBakePrefetch([['m551_sheridan', 2002, 'burnt_out'], ['marder1a3', 2133, 'turret_blown_off']],
     () => createWreckBakeClient(() => { const w = new FixtureWorker('silent'); prefetchWorkers.push(w); return w; }, 60));
-  const first = request('m551_sheridan'), second = request('marder1a3', 2133, true);
+  const first = request('m551_sheridan'), second = request('marder1a3', 2133, 'turret_blown_off');
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: first }, { fine: true, progress: false, wreckBake: second }],
     modes: ['ok'], mainBake: mainBakeOf(calls), prefetch });
   const startedAt = performance.now();
@@ -169,6 +169,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
     assert.deepEqual(runtime.built, true, 'planned bakes failed: the props build completes');
     assert.equal(first.result.mainThread, true);
     assert.equal(second.result.mainThread, true);
+    assert.equal(prefetch.stats.taken, 2, 'both requests are the plan\'s rows (one key: donor, seed and damage state)');
     assert.equal(h.workers.length, 0, 'the props build starts no worker of its own after the planned bake failed');
     assert.equal(prefetchWorkers.length, 1, 'the plan stops after its first failure: no second silent worker');
     assert.ok(performance.now() - startedAt < 2000, 'one timeout in all');
@@ -236,7 +237,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 //    thread, and its geometry, colours, shadow proxy and collision solids equal the worker's bake (wreckBakeWorker.ts:
 //    bakeTankWreck with an empty engine context, which wreckBakeWorker.selftest holds equal to the worker's reply).
 {
-  const real = request('t90am', 2526, true);
+  const real = request('t90am', 2526, 'turret_blown_off');
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: real }], modes: ['silent'], timeoutMs: 30,
     acquire: ensureTankBuilder, mainBake: bakeTankWreckSteps });
   const runtime = await h.run();

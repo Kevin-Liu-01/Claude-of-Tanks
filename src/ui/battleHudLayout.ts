@@ -10,6 +10,7 @@ import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn,
   type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 import { cardNaturalSize, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
+import { VIEW_CONTROL_PARTS, VIEW_CONTROL_SELECTOR } from './hudViewControls.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -229,12 +230,12 @@ const CHASE_CEILING_HALF = 60;
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
  *  the objective, the rosters, the network readouts and the feed lanes (`soft`; the map apart, touchNoticePlan `map`). */
-const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
+export const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-dp,.cot-drive,.cot-scope-vision,'
   + `${AIM_CHIP},.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,`
   + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open,'
-  // (Watch's bar where it rides on the floor: watchHud.ts)
-  + '.cot-watch:not([hidden])';
+  // (Watch's bar where it rides on the floor: watchHud.ts; the controls a view brings: hudViewControls.ts)
+  + `.cot-watch:not([hidden]),${VIEW_CONTROL_SELECTOR}`;
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
@@ -245,7 +246,7 @@ export const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot
   + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat]),.cot-respawn:not([hidden])';
 export const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
   + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
-  + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
+  + `.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden]),${VIEW_CONTROL_SELECTOR}`;
 const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-toasthost';
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
 export const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
@@ -440,7 +441,21 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** A queued medal card whose place clears the battle sight only: the scope flag decides whether it shows. */
   let medalScopeSensitive = false;
   const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
-  const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
+  // (notices-276) the alert is transient, except that a new height is a plan input, however it came (a resize, or its
+  // words and class changing): the touch plan seats it and the condition lane by the height it shows. Planned before it
+  // wrapped, it stood compact over the right lane at 390x844 (three lines, 63 px) and the condition 17 px into it, a fixed
+  // point no later pass left, where a fresh plan seats it whole under the sight (the overlap probe; the lane's diagnostic)
+  const alertHeights = new WeakMap<Element, number>();
+  /** The compact alert's height for each alert's words, as it last showed compact (the touch plan's compact candidate). */
+  const compactAlertHeights = new Map<string, number>();
+  const planInput = (target: Element) => {
+    if (target.classList?.contains('cot-alert')) {
+      const height = (target as HTMLElement).offsetHeight ?? 0;
+      if (height > 0 && Math.abs((alertHeights.get(target) ?? 0) - height) > 1) { alertHeights.set(target, height); planInputs = true; }
+      return;
+    }
+    if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true;
+  };
   const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
     'systems-top', 'systems-width', 'systems-left', 'objective-top', 'objective-bottom', 'objective-width', 'objective-left',
     'report-right', 'flight-right-clearance', 'tray-shift']);
@@ -919,10 +934,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (width < 768) box(width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8, top + 8, 88, 20);
     else add(net);
     add(read('.cot-spec.show'));
-    // the drone's and the gunship's flight console while their view is up (a view change, like the spectator tray),
-    // where keeping off it costs no reticle clearance (below)
-    const plain = nextKey.length;
-    add(read('.cot-flight-hud:not([hidden]) .flight-console'));
+    // (notices-276) the controls a view brings (hudViewControls.ts: Air Support's binoculars, rack and Support, the flight's
+    // console and solution), each where it stands this pass: kept, like every other control, at any cost to the reticle's
+    // clearance (before, the flight console was dropped where keeping off it cost clearance, and the binoculars were not
+    // seen at all: a CSS rule moved the alert off the readout)
+    for (const node of hudQueryAll(VIEW_CONTROL_SELECTOR)) add(shownBox(node));
     const boxesEnd = nextKey.length;
     const laneKey = (x: number, from: number, to: number) => {
       if (to - from >= 26) nextKey.push(Math.round(x), Math.round(sideWidth), Math.round(from), Math.round(to));
@@ -949,10 +965,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
         return planned;
       }
       const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
-      let plainObstacles = 0;
       for (let i = 7; i < boxesEnd; i += 5) {
         const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] }, role = nextKey[i + 4];
-        if (role !== 2) { obstacles.push(r); if (i < plain) plainObstacles++; }
+        if (role !== 2) obstacles.push(r);
         if (role) furniture.push(r);
       }
       const lane = (i: number): PlanLane | null => nextKey[i] < 0 && nextKey[i + 1] < 0 ? null
@@ -969,10 +984,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
         sightY: height / 2 - sightShift,
       };
       planned = planMouseNotices(input);
-      if (boxesEnd > plain && planned.clearance < 2) {
-        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, plainObstacles) });
-        if (without.clearance > planned.clearance) planned = without;
-      }
       plannedSize = size;
       recentPlans.unshift({ key: nextKey.slice(), size, plan: planned });
       if (recentPlans.length > 4) recentPlans.pop();
@@ -1135,11 +1146,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
       // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
       // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
-      observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
+      observe('.cot-mp-status.battle');
       // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
       observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
       // Watch's bar (its seat: refresh)
       observe('.cot-watch');
+      // (notices-276) the controls a view brings: their coming and going replans the notices round them
+      observe(VIEW_CONTROL_PARTS);
       // (battle-camera-264) the first battles' controls strip: the chase framing clears it while it shows
       observe('.cot-hints');
     }
@@ -1556,6 +1569,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     setBodyVar('--hud-left-inset', leftInset ? `${leftInset}px` : '');
     setBodyVar('--hud-right-inset', rightInset ? `${rightInset}px` : '');
+    // the binoculars' call-ins open leftward from an edge section (airSupportHud.css data-systems-slot=edge); where its
+    // columns leave less room than the row, the row wraps into the rows that fit and the readout stands under the last
+    // (combined-arms-276's overlap probe at 390x844: Drone's fifth control took a second column and the six call-ins ran
+    // 24 px off the left edge)
+    const rackRoom = systemsLeft - 8 - 12;
+    const rackSlots = systemsSlot === 'edge' ? document.querySelectorAll('.cot-strike-rack .strike-slot:not([hidden])').length : 0;
+    const rackRows = rackSlots ? Math.ceil(rackSlots / Math.max(1, Math.floor((rackRoom + 3) / (TOUCH_TARGET + 3)))) : 1;
+    setBodyVar('--hud-strike-rack-room', rackRows > 1 ? `${rackRoom}px` : '');
+    setBodyVar('--hud-strike-rack-rows', rackRows > 1 ? String(rackRows) : '');
     let systemsCount = 0;
     // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px
     // place: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells; else balanced rows)
@@ -1722,7 +1744,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // The kill ribbon's place (it shows on a mouse layout from 768 px wide and not short): the right column ends over it
     // where it reaches under the column (a small map's column ran the open log 10 px onto it at 1024x600, the layout
     // receipt's returned-combined).
-    const ribbonTop = Math.min(ribbonGap.bottom + RIBBON_LIFT, flightConsole?.top ?? Infinity);
+    // (notices-276) and over every control a view brings in its column (hudViewControls.ts, the boxes where they stand this
+    // pass: the binoculars' call-in rack stood 15 px under the ribbon at 1920x1080), as over the flight's console
+    const viewControls = hudQueryAll(VIEW_CONTROL_SELECTOR).map((node) => shownBox(node)).filter((box): box is DOMRect => !!box);
+    let ribbonTop = Math.min(ribbonGap.bottom + RIBBON_LIFT, flightConsole?.top ?? Infinity);
+    for (const box of [...viewControls].sort((a, b) => b.top - a.top)) {
+      if (box.right > ribbon.x - ribbon.width / 2 && box.left < ribbon.x + ribbon.width / 2 && box.top < ribbonTop
+        && box.bottom > ribbonTop - RIBBON_LIFT - RIBBON_H - 8) ribbonTop = box.top;
+    }
     const ribbonShows = !touch && document.body.dataset.cotHeight !== 'short'
       && ['tablet', 'laptop', 'desktop'].includes(document.body.dataset.cotWidth ?? '');
     const ribbonFloor = ribbonShows && ribbon.width >= RIBBON_LEAST && ribbon.x + ribbon.width / 2 > width - sideWidth - 12
@@ -1897,7 +1926,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let besideColumn = width - 24;
     // (Watch's rail of controls at the right edge too: the drone's personal lane ran 46 px under it at 390x844, the overlap
     // receipt in round 14)
-    for (const box of [ammo, read('.cot-cons'), read('.cot-watch-rail')]) {
+    // (and a portrait phone's systems edge section: a Combined Arms kit, the drone's tile and the Support slot among its
+    // controls, takes two columns and stood 52 px into the lane's rows at 390x844, combined-arms-276's overlap probe)
+    for (const box of [ammo, read('.cot-cons'), read('.cot-watch-rail'), systemsSlot === 'edge' ? read('.cot-vehicle-controls') : null]) {
       // (beside the rows' band from the lane's anchor: its floor can stand over the anchor, a portrait phone's systems slot)
       if (box && box.left > width / 2 && box.top < Math.max(leftEnd, leftAnchor + 3 * 29) && box.bottom > leftAnchor) besideColumn = Math.min(besideColumn, box.left - 8);
     }
@@ -1923,10 +1954,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const sightFloor = (anchor: number, crosses: boolean) =>
       sight && crosses && sight.bottom + 8 > anchor ? sight.top - 8 : Infinity;
     const leftReach = touch && width < height ? Math.max(sideWidth, wideFeed ? wideLeftFeed : besideColumn) : sideWidth;
+    // (notices-276) a lane ends 8 px over the first control a view brings under its anchor within its reach (hudViewControls.ts:
+    // the binoculars' call-in rack and readout ran under the left lane at 390x844, the rack under the right one at 844x390);
+    // one that covers the anchor holds the lane's rows until it goes
+    // (and, on touch, the scope's vision plate, which stands left of the sight there: the left lane ran 51 px down onto it at
+    // 844x390, the overlap probe's sniper+notices; on mouse the plate's seat already keeps off the lane's rows, seatScopeVision)
+    const laneControls = touch && scopeVision ? [...viewControls, scopeVision] : viewControls;
+    const controlFloor = (anchor: number, x0: number, x1: number): number => {
+      let floor = Infinity;
+      for (const box of laneControls) {
+        if (box.right <= x0 || box.left >= x1 || box.bottom <= anchor) continue;
+        floor = Math.min(floor, box.top <= anchor ? anchor : box.top - 8);
+      }
+      return floor;
+    };
     // (on mouse the plan's countdown band above already keeps the lanes off it)
     const leftKillBottom = Math.min(!plan && countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd,
-    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach));
+    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach), controlFloor(leftAnchor, 0, leftReach));
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -1951,7 +1996,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const rightReach = wideFeed ? width - wideFeedWidth : width - sideWidth;
     const rightKillEnd = Math.min(rightKillBottom, rightKillFloor, rightEnd,
-      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach));
+      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach), controlFloor(rightAnchor, rightReach, width));
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
       battleNotificationRows(rightKillEnd - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);
@@ -2051,6 +2096,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
       // (the compact alert planned at its own height while it shows so: two lines of its 8 px type until one does)
       const compactAlertBox = compactNow.includes('alert-compact') ? read('.cot-alert.show') : null;
+      // (notices-276) its compact height as last measured for its words, where it shows whole now: the 28 px guess let
+      // the plan choose the compact seat under the score for a three-line alert (63 px), over the right lane at 390x844,
+      // the overlap probe, a different state each run as the passes settled either way)
+      const alertWords = hudQuery<HTMLElement>('.cot-alert')?.dataset.tip ?? '';
+      if (compactAlertBox && alertWords) {
+        if (compactAlertHeights.size > 64) compactAlertHeights.clear();
+        compactAlertHeights.set(alertWords, compactAlertBox.height);
+      }
+      const compactAlertH = compactAlertBox?.height ?? compactAlertHeights.get(alertWords) ?? TOUCH_COMPACT_ALERT_LINES_H;
       // (the card's layout box: it enters scaled)
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
       // (the kill lanes by the places and heights this pass gives them, while they hold a row)
@@ -2064,7 +2118,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
-        alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertBox?.height ?? TOUCH_COMPACT_ALERT_LINES_H },
+        alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertH },
         countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop,
         oneRow: width > height ? height <= 340 : width <= 340, sightY: height / 2 - battleSightShift() };
@@ -2072,8 +2126,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const touchCentre = (card: GuidanceBox | null): GuidanceBox[] => {
         const placed = planTouchNotices({ ...touchInput, obstacles: card ? [...obstacles, { x0: card.x0, y0: card.y0, x1: card.x1, y1: card.y1 }] : obstacles });
         touchPlans.set(card, placed);
+        // (notices-276) the compact alert at the height it shows (its words wrap to three lines at 134 px): planned at the
+        // constant's 40 px, the condition lane was seated 17 px into a wrapped alert at 390x844 and 844x390
+        const compactAlert = { w: TOUCH_COMPACT_ALERT.w, h: Math.max(TOUCH_COMPACT_ALERT.h, touchInput.alertCompact.h) };
         const size = (compact: boolean, alert: boolean) => placed.oneRow ? TOUCH_ONE_ROW
-          : compact ? (alert ? TOUCH_COMPACT_ALERT : TOUCH_COMPACT_NOTICE) : alert ? touchInput.alert : noticeSize;
+          : compact ? (alert ? compactAlert : TOUCH_COMPACT_NOTICE) : alert ? touchInput.alert : noticeSize;
         const at = (y: number, sz: TouchSize) => ({ x0: width / 2 - sz.w / 2, y0: y, x1: width / 2 + sz.w / 2, y1: y + sz.h });
         return [at(placed.noticeTop, size(placed.noticeCompact, false)), at(placed.alertTop, size(placed.alertCompact, true))];
       };

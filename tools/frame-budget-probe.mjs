@@ -10,8 +10,9 @@
 //   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
 //
 // Every root is a checkout with a production build in <root>/dist (`npm run build`); the probe serves one root at
-// a time through `vite preview` on --port (127.0.0.1) and opens ONE headless Chrome (hardware ANGLE, the repo's
-// capture flags) for the run. Per slot (one page): the desktop preset pinned in storage before boot (an explicit
+// a time through `vite preview` on --port (127.0.0.1) and opens a fresh headless Chrome (hardware ANGLE, the repo's
+// capture flags) for every staging, the previous one closed first (see "One browser per staging" below). Per slot (one
+// page): the desktop preset pinned in storage before boot (an explicit
 // choice, so the session auto tier cannot step down), the sides switch at --sides (13x14 = the 14 v 14 preset), a
 // pinned roster (every production id but the player, sorted, every k-th — the same 27 opponents on every build of
 // one catalog; the receipt lists them), a solo battle through __DEBUG.beginSoloBattle, the sourced textures
@@ -47,8 +48,19 @@
 // on a map with costlier heights, so the pages of a hold sampled different loads. Every still pose now settles the stream
 // first (world-residency-acquisition's settleResidencyTerrain: the lookahead built job by job until none is pending at the
 // camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
+//
+// One browser per staging (2026-11-24, probe-fresh-browser-276): the run used to open ONE Chrome and a page per slot in
+// it. Its tree grew slot by slot (what a closed page leaves behind in the browser's GPU and browser processes), and
+// the browser guard's 10 GB tree cap (COT_BROWSER_TREE_CAP_MB) killed two ABBA runs on ruinspires desktop while the
+// second slot's page staged, after the first had measured; a single-slot run of the same map finished clean. Every
+// staging (a slot's page, and a page the agreement sends back to be staged again) now gets its own browser through the
+// same guarded launch, and the browser before it is closed (its tree killed by its exact pids) before the launch. A slot
+// is the unit of isolation: the ABBA order, the agreement and each page's own warm-up (entry, settle, terrain stream)
+// are unchanged, and every slot starts from the same cold browser, where a later slot used to inherit the GPU process
+// of the slots before it. Each slot record keeps its stagings' guard peaks (`browsers`: peak tree and renderer MB),
+// so a run shows whether the tree stays flat across slots (tools/frame-budget-probe-browsers.selftest.mjs).
 
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { browserGuardOf, launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
 import { heldItemOutcome, heldRunExitCode, heldStopWhy } from './held-items.mjs';
 import path from 'node:path';
@@ -1132,15 +1144,17 @@ export function cacheTrace(cmd) {
 }
 
 /** A slot the pages' agreement sends back to be staged again before it measures. */
-class RestageSignal extends Error {}
+export class RestageSignal extends Error {}
 
-async function measureSlot(browser, options, slot, gate = null) {
+/** One slot: every staging on a page of a fresh browser (`openBrowser()` closes the one before it and launches the next);
+ *  `stage` is the page's work (measureOnPage; a receipt's stand-in). */
+export async function measureSlot(openBrowser, options, slot, gate = null, stage = measureOnPage) {
   const [w0, h0] = options.viewports[0].split('x').map(Number);
   const [allies, enemies] = options.sides.split('x').map(Number);
   for (;;) {
-    const page = await browser.newPage();
+    const page = await (await openBrowser()).newPage();
     try {
-      return await measureOnPage(page, options, slot, { w0, h0, allies, enemies }, gate);
+      return await stage(page, options, slot, { w0, h0, allies, enemies }, gate);
     } catch (error) {
       if (!(error instanceof RestageSignal)) throw error;
     } finally {
@@ -1262,9 +1276,10 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
 }
 
 /** One probe run over the slots still to measure. `deps` (round 3 A5) are the run's outside world, for a receipt that
- *  drives it without a browser: the locks, the browser launch, the preview server and the slot's measurement. */
+ *  drives it without a browser: the locks, the browser launch, the preview server, the slot's measurement
+ *  (`measure(openBrowser, options, slot, gate)`) and the guard record of a launched browser (its peaks). */
 export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions),
-  openServer = openPreview, measure = measureSlot } = {}) {
+  openServer = openPreview, measure = measureSlot, guardOf = browserGuardOf } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${line}`);
   const slotFile = (key) => path.join(options.out, `${options.tag}-${key}.json`);
@@ -1319,9 +1334,29 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
     if (j.restage.includes(slot.key)) return { action: 'restage', note: j.notes.join('; ') };
     return { action: 'measure', accepted: j.accepted };
   };
+  // one browser per staging: the slot's stagings' guard peaks (a browser's are read once it is closed)
+  const launchOptions = { headless: 'new', protocolTimeout: 900000,
+    args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] };
+  let slotBrowsers = [];
+  const closeBrowser = async () => {
+    if (!browser) return;
+    const closing = browser;
+    browser = null;
+    await closing.close().catch(() => {});
+    const guard = guardOf(closing);
+    slotBrowsers.push(guard ? { peakTreeMb: Math.round(guard.peakTreeMb), peakRendererMb: Math.round(guard.peakRendererMb),
+      samples: guard.samples, tripped: guard.tripped?.why ?? null } : { peakTreeMb: null, unwatched: true });
+  };
+  const openBrowser = async () => {
+    await closeBrowser();
+    browser = await launchBrowser(launchOptions);
+    return browser;
+  };
+  const treePeak = (browsers) => {
+    const peaks = browsers.map((b) => b.peakTreeMb).filter((mb) => mb != null);
+    return peaks.length ? `${(Math.max(...peaks) / 1024).toFixed(2)} GB` : 'unwatched';
+  };
   try {
-    browser = await launchBrowser({ headless: 'new', protocolTimeout: 900000,
-      args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
     const queue = [...todo];
     let revisited = false;
     for (let qi = 0; qi < queue.length; qi++) {
@@ -1336,24 +1371,29 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
         }
         const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
         let record;
+        slotBrowsers = [];
         // (round 3 A5) a slot the hold's stop cut (its browser stopped under it) is the next hold's, never a FAILED run
-        const unit = await runProbeUnit(locks, () => measure(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        const unit = await runProbeUnit(locks, () => measure(openBrowser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        // the slot's last browser closes before anything else: the next slot stages in a browser of its own
+        await closeBrowser();
+        const browsers = slotBrowsers;
         if (unit.outcome === 'left') {
           remaining++;
           log(`${slot.key} left for the next hold: ${unit.why}`);
           writeFileSync(slotFile(slot.key), JSON.stringify({ failed: `left for the next hold: ${unit.why}`, left: true, key: slot.key, label: slot.label,
-            mapId: slot.mapId }, null, 1));
+            mapId: slot.mapId, browsers }, null, 1));
           continue;
         }
         try {
           if (unit.outcome === 'failed') throw unit.error;
           record = unit.value;
           record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
+          record.browsers = browsers;
           record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
           record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
           if (record.void) {
             voided++;
-            log(`${slot.key} VOID: ${record.void}`);
+            log(`${slot.key} VOID: ${record.void} | tree peak ${treePeak(browsers)}`);
             writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
             continue;
           }
@@ -1376,14 +1416,16 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
             record.void = `the scene changed mid-run: ${fs.calls} draws / ${fs.tris} triangles measured against ${record.scene.calls} / ${record.scene.tris} staged`;
             voided++;
           }
-          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
+          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s | tree peak ${treePeak(browsers)}${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
         } catch (error) {
           ok = false;
-          record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId };
-          log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)}`);
+          record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId, browsers };
+          log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)} | tree peak ${treePeak(browsers)}`);
         }
         writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
       } finally {
+        // a slot that threw past its record still leaves no browser to the next
+        await closeBrowser();
         // the slots the agreement sent back measure once more after the pattern, each judged again against the others
         if (qi === queue.length - 1 && revisit.size && !revisited) { revisited = true; queue.push(...revisit); revisit.clear(); }
       }
@@ -1391,7 +1433,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
   } finally {
     clearInterval(sampler);
     clearInterval(refresh);
-    if (browser) await browser.close().catch(() => {});
+    await closeBrowser();
     if (server) await server.close().catch(() => {});
     await locks.release();
   }

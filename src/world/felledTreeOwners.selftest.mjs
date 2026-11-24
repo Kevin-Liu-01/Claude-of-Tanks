@@ -32,7 +32,7 @@ import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim/munitionBlast.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createStudioCrushes } from '../game/studioCrush.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from './collisionRecordPacking.ts';
 
 const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0), maxY: 0, minY: 0 };
 

@@ -53,6 +53,17 @@ interface BattleFramePresentationPort {
   updateResult(): void;
 }
 
+/**
+ * A replay being watched (docs/REPLAY.md §5): the battle is posed from its track each frame and never stepped; no
+ * countdown, no fixed-step debt, and the presentation draws the posed state as it stands (alpha 1, as online).
+ */
+interface BattleFrameReplayPort {
+  isActive(): boolean;
+  /** Only on frames the battle is in view: never while the entry's load screen covers it (through its exit fade), so
+   *  the viewer offers its transport (game/replay/replayViewer.ts `posing`) only where a press can reach the bar. */
+  advance(appliedDtSeconds: number): void;
+}
+
 interface BattleFrameRuntimeOptions {
   game: GameState;
   settings: BattleFrameSettingsPort;
@@ -64,6 +75,7 @@ interface BattleFrameRuntimeOptions {
   getRigMode(): string;
   stepSimulation(): void;
   emitPause(paused: boolean): void;
+  replay?: BattleFrameReplayPort;
   simulationDt?: number;
   maxSimulationSteps?: number;
 }
@@ -102,6 +114,7 @@ export function createBattleFrameRuntime({
   getRigMode,
   stepSimulation,
   emitPause,
+  replay,
   simulationDt = 1 / 60,
   maxSimulationSteps = 4,
 }: BattleFrameRuntimeOptions): BattleFrameRuntime {
@@ -277,8 +290,19 @@ export function createBattleFrameRuntime({
     appliedDtSeconds: number,
     wallDtSeconds: number,
     networkActive: boolean,
+    replayActive: boolean,
+    entryCovered: boolean,
   ): void => {
-    if (networkActive) {
+    if (replayActive) {
+      // the recorded battle starts after its count: the count closes at once and the battle rolls out late (no cues)
+      if (game.preBattleS > 0) {
+        game.preBattleS = 0;
+        countdown.show(0);
+      }
+      rollout(true);
+      if (!entryCovered) replay!.advance(appliedDtSeconds);
+      simulationAccumulator = 0;
+    } else if (networkActive) {
       countdown.show(game.preBattleS);
       followNetworkCountdown();
       simulationAccumulator = 0;
@@ -298,10 +322,11 @@ export function createBattleFrameRuntime({
   const updatePresentation = (
     appliedDtSeconds: number,
     networkActive: boolean,
+    replayActive: boolean,
     killcamActive: boolean,
     livePaused: boolean,
   ): number => {
-    const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    const alpha = networkActive || replayActive ? 1 : simulationAccumulator / simulationDt;
     frameStages?.stage(FRAME_STAGE.presentation);
     if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
     return alpha;
@@ -352,18 +377,26 @@ export function createBattleFrameRuntime({
     const networkActive = network.isActive();
     if (inBattle && networkActive) networkBattleOwned = true;
     const retiringNetworkBattle = networkBattleOwned && !networkActive;
+    const replayActive = inBattle && replay?.isActive() === true;
 
     if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
-      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
+      // the entry's load screen covers the battle (and the HUD) through its exit fade: the camera's lock
+      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive, replayActive, cameraLocked);
     }
+    // (killcam-first-frame-276) A replay the result update (or the pump) started in this frame owns this frame's draw:
+    // its first frame is its first shot. Read once at the frame's start, this frame was a live one, and its live
+    // presentation repainted both hulls at their live poses over the replay's staging (the killer where it had driven
+    // since its shot, the player's wreck where it lay, which the flight never restaged until the hit: Kevin 2026-11-24,
+    // "starts from where you are then snaps you back to where you died").
+    const replayOwnsFrame = killcamActive || killcam.isActive();
     const presentationAlpha = retiringNetworkBattle ? 1 : updatePresentation(
-      appliedDtSeconds, networkActive, killcamActive, livePaused,
+      appliedDtSeconds, networkActive, replayActive, replayOwnsFrame, livePaused,
     );
     return writeReceipt(
       appliedDtSeconds,
       inBattle,
       paused,
-      killcamActive,
+      replayOwnsFrame,
       livePaused,
       presentationAlpha,
     );

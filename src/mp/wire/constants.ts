@@ -85,7 +85,13 @@ export const WIRE_VERSION = 13;
 // from the action table), F's airborne meaning (a flip or roll, not the rocket's re-boost), the movement checkpoint's
 // version 10 (the spin in progress, its 64th value), the migration extras' turboReadyIn and airSpin, and the
 // tank_turbo and tank_air_spin events.
-export const PROTOCOL_VERSION = 15; // wire 13 (u32 action bits)
+// flip-boost-276 (no bump: the match build's prediction and authority digests already part builds that differ): the air
+// spin a dodge, the movement checkpoint's version 11 (flag bit 13, the flight's dodge spent), the migration extras'
+// airSpinReadyIn and flipUsed, and tank_air_spin's readyS.
+// 16 (combined-arms-276, release 276): a new battle mode id, Combined Arms (BATTLE_MODE_IDS), which a 275 Rooms Worker or
+// tab would refuse or play as Standard: a 275 tab and a 276 tab never share a match. The wire is unchanged (13). The Rooms
+// Worker ships first. One bump for the release: a later 276 change rides 16 unreleased.
+export const PROTOCOL_VERSION = 16; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
 /**
@@ -330,16 +336,13 @@ export const STATUS_FLAGS_SHIFT = 7;
 /** The widest status word the decoder admits (wire 10: 7 + ENTITY_FLAG_BITS bits, a varint). */
 export const STATUS_WORD_MAX = (1 << (STATUS_FLAGS_SHIFT + ENTITY_FLAG_BITS)) - 1;
 
-/** Quantization: integers on the wire, SI units in the simulation. */
+/** Quantization: integers on the wire, SI units in the simulation. The seat control's four are the core's (sim/seatControl.ts). */
+export { AIM_DISTANCE_SCALE, AIM_PITCH_UNITS, ANGLE_TURN_UNITS, CONTROL_AXIS_SCALE } from '../../sim/seatControl.ts';
 export const POSITION_SCALE = 1000;          // mm
 export const VELOCITY_SCALE = 100;           // cm/s (tanks)
 export const SHELL_VELOCITY_SCALE = 10;      // dm/s (shells fly at up to 1800 m/s)
-export const ANGLE_TURN_UNITS = 65536;       // u16 turns
-export const AIM_PITCH_UNITS = 32767;        // i16 over +-pi/2
-export const AIM_DISTANCE_SCALE = 20;        // 5 cm units, u16 (max 3276 m)
 export const RELOAD_MS_UNITS = 2;            // u16 in 2 ms steps (max 131 s)
 export const MULTIPLIER_SCALE = 1000;        // u16, max 65.535
-export const CONTROL_AXIS_SCALE = 127;       // i8 throttle / steer
 export const MAX_POS_REL_MM = 32767;
 export const MAX_TILT_REL_UNITS = 127;
 export const INPUT_MARGIN_UNKNOWN = 127;

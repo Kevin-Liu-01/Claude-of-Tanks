@@ -50,6 +50,8 @@ const audioBindings = {
   dbToGain: (db) => 10 ** (db / 20),
   // Air Support's rounds own their reports (audio/modeSounds.ts): a strike's shell:fired plays none
   STRIKE_OWNED_REPORTS,
+  // (276) a thinned round holds its gun's burst (audioEngine burstRound) without a sound of its own
+  burstKeepAlive: (key) => calls.push(['hold', key]),
 };
 const predictAudio = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), audioBindings);
 const confirmAudio = await receiver('../audio/audioEngine.ts', namedFunction('onShellFired'), audioBindings);
@@ -141,6 +143,7 @@ assert.deepEqual(fxCalls.slice(5), ['missile', 'wire:21:2'], 'a confirmed wire-g
   assert.equal(fxCalls.length, flashes, 'a thinned round flashes nothing');
   assert.equal(calls.filter(([kind]) => kind === 'report').length, reports, 'and plays no report');
   assert.equal(calls.filter(([kind]) => kind === 'radio').length, radio, 'and no crew call');
+  assert.ok(calls.some(([kind]) => kind === 'hold'), 'but holds its gun\'s burst (276)');
   assert.equal(shellKinds.get(40), 'AP', 'its flight is still registered for its impact');
   confirmFx({ ...vulcan, shellId: 41, thinned: false });
   assert.deepEqual(fxCalls.slice(flashes), ['flash'], 'the full round between them flashes');

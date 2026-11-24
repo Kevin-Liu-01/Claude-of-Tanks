@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.509,0.448,-2.402],
-          [1.509,0.73,-2.402],
-          [1.509,0.73,2.732],
-          [1.509,0.448,2.732]
+          [1.5085,0.0922,3.2404],
+          [1.5085,0.0922,-3.2404],
+          [1.5085,0.7303,-3.2404],
+          [1.5085,0.7303,3.2404]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.509,0.448,2.758],
-          [-1.509,0.73,2.758],
-          [-1.509,0.73,-2.376],
-          [-1.509,0.448,-2.376]
+          [-1.5085,0.0922,-3.2404],
+          [-1.5085,0.0922,3.2404],
+          [-1.5085,0.7303,3.2404],
+          [-1.5085,0.7303,-3.2404]
         ]
       },
       {
@@ -808,7 +808,7 @@
     ]
   },
   "geometryHash": "cd855afe",
-  "metadataHash": "5dce7237",
+  "metadataHash": "a5d884a3",
   "presentationAnchor": {
     "xM": 0.0018,
     "zM": -0.0014
@@ -863,8 +863,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35564,
-      "sha256": "f41bd5d723b91f0f956f74cac3f8b3074453e2f44561260dd444d920e744dc02"
+      "bytes": 34610,
+      "sha256": "5c3c64f25c573232540e3897e699e93e67c1478a29391ce9efd6222c93c8e7a1"
     },
     "modulesSide": {
       "file": "ares_apc_modules_side.webp",
@@ -941,8 +941,8 @@
     "technicalLabels": {
       "file": "ares_apc_technical.json",
       "mime": "application/json",
-      "bytes": 4122,
-      "sha256": "94bbebca7c9a0b5bebc56d308bdb5f1c41f8a12589291858d18f06313996db6f"
+      "bytes": 4123,
+      "sha256": "fd2458fd5df293e2cdb09fcca2d32b2a66887dc528579eb57cc8a70ec8d5f3aa"
     }
   }
 }

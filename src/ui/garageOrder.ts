@@ -74,10 +74,14 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'kf41_lynx', 'kf51_evo', 'kf51_u', 'puma_s1', 'spz_wotan', 'marder2', 'mbt70', 'leo2_improved',
   ]),
   China: Object.freeze([
-    'vt4a1', 'ztz99a2', 'ztz99a', 'ztz99a2_qinglong', 'vt4a1_baihu',
-    't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 't72b3_zhuque', 't72b3m_xuanwu',
-    'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10',
-    'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long',
+    // owner 2026-11-24: "move the vt 4a1, ztz 99a2, and ztz 99a to behind the 96072m lei and move the zhu que and
+    // xuan wu behind those. then move the ztz 20, ztz 100, type 100 ifv, and ztz 100 proto up in front of the
+    // qinglong" and "ztz 20 proto stays next to aft 10"
+    'ztz20', 'ztz100', 'type100', 'ztz100_prototype',
+    'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun',
+    'type96b', 'type96_80_feng', 'type96_72m_lei',
+    'vt4a1', 'ztz99a2', 'ztz99a', 't72b3_zhuque', 't72b3m_xuanwu',
+    'aft10', 'ztz20_prototype', 'type96_72_long',
     'ztz99_longwei', 'ztz85_iii', 'type59',
   ]),
   // 2026-09-15 owner roster pass ("our x tanks are better models, i like featuring them

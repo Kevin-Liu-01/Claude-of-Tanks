@@ -236,7 +236,7 @@ export function addLeo1BvMantlet(P: TankBuilderPort, options: { readonly xsw30Se
   // The L7A3's thermal sleeve, drawn here rather than by buildGun: two sections tapering from 0.22 m across at the mask to
   // 0.17 m, banded at their ends and strapped along them clear of the bore evacuator (critics 265, rounds 5-7: "a thin
   // pipe", "no thermal sleeve or straps", "about a third too thin ... lacks the thick sleeved barrel"). The combat barrel
-  // follows the drawn one (combatGunRigs.generated.ts, gun-barrel-align-census --rigs).
+  // follows the drawn one (the calibration's measured rig, 276).
   const sleeveSeg = P.q ? 28 : 12;
   // (the outer section's straps are left off: at 3.18 m one came 24.7 mm from the stern in recoil at yaw 165)
   const sleeves = [[sleeveStartZ, 2.00, 0.110, 0.098, [0.96, 1.22, 1.48, 1.74]], [2.26, 3.57, 0.094, 0.086, []]] as const;

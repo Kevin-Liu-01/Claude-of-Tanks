@@ -1,4 +1,5 @@
 import { Euler, Quaternion, Vector3 } from 'three';
+import { quaternionFromEuler } from './detRotation.ts';
 import { shellGravityMps2, solveBallisticGunLay } from './ballistics.ts';
 import type { BallisticShellSpec } from './ballistics.ts';
 
@@ -55,7 +56,7 @@ export function botNominalGunLaneClear(
   const sy = detMath.sin(state.turretYaw), cy = detMath.cos(state.turretYaw);
   const gx = gun?.[0] ?? 0, gz = gun?.[2] ?? 0;
   hullEuler.set(-(state.visualPitch || 0), state.yaw, state.visualRoll || 0, 'YXZ');
-  hullRotation.setFromEuler(hullEuler);
+  quaternionFromEuler(hullRotation, hullEuler);
   muzzle.set(
     (turret?.[0] ?? 0) + gx * cy + gz * sy,
     (turret?.[1] ?? shooter.spec.dims.heightM * 0.7)

@@ -222,14 +222,70 @@ try {
   assert.deepEqual([pairCold.findings.length, pairWarm.reused, pairWarm.findings.length], [8, 2, 8]);
 } finally { rmSync(scratch, { recursive: true, force: true }); }
 
+// 6b. Typed arrays and buffers (replay-system-275, 2026-11-22): the replay receipt's line that took 14 GiB resident (a
+// failed equal on a whole replay track, verbatim) and every typed shape are flagged with a `typed:` reason; a typed array
+// whose size the call shows to be small, and a comparison with a literal value, are not; the identity form is rewritten
+// to a boolean and still fails on the defect, and a deep comparison is never wrapped in graphLabels.
+{
+  const TYPED = HEAD + [
+    "import { gzipSync } from 'node:zlib';",
+    'function incident(refused){',
+    "  assert.equal(refused.track, null, 'another build\\'s recording has no track');",
+    '}',
+    'function shapes(n, bytes, a, b, rows){',
+    '  const big=new Float32Array(n), copy=Buffer.from(bytes);',
+    '  assert.deepEqual(big, new Float32Array(a));',
+    '  assert.deepStrictEqual(copy, Buffer.alloc(n));',
+    '  assert.deepEqual(gzipSync(bytes), gzipSync(a));',
+    '  assert.equal(a.buffer, b.buffer);',
+    '  assert.deepEqual(big.subarray(0, n), Float64Array.from(rows));',
+    '}',
+    'function fine(a){',
+    '  assert.deepEqual(new Float32Array(16), new Float32Array(16));',
+    '  assert.deepEqual(Float64Array.of(1, 2), new Float64Array([1, 2]));',
+    "  assert.equal(a.track.samples, 1600);",
+    "  assert.deepEqual(new Float32Array(a), 4);",
+    '}',
+  ].join('\n');
+  const result = lint(TYPED, 'replayRoundTrip.selftest.mjs');
+  assert.deepEqual(lines(result), [5, 9, 10, 11, 12, 13], 'the incident and every typed shape, and nothing small or valued');
+  assert.ok(result.findings.every(row => /typed:/.test(row.reason)), 'each carries a typed reason');
+  assert.match(result.findings[0].reason, /actual typed: \.track/);
+  const deep = result.findings.find(row => row.op === 'deepEqual');
+  assert.equal(deep.fix, null, 'a typed deep comparison is left for a hand edit, never graphLabels');
+  const incident = result.findings[0];
+  assert.equal(incident.fix?.kind, 'identity', 'the incident\'s equal becomes a boolean');
+  const after = applyFixes(TYPED, [incident]);
+  assert.match(after.text, /assert\.ok\(refused\.track === null, /);
+  // the rewrite keeps the verdict and the message stays a line
+  const track = { data: new Float32Array(246_000), shellData: new Float32Array(1000) };
+  let error;
+  try { assert.ok(track === null, 'another build\'s recording has no track'); } catch (caught) { error = caught; }
+  assert.ok(error instanceof assert.AssertionError && error.message.length < 600, 'the boolean still fails, in a line');
+  // the pin: per file, shrink-only
+  const pinScratch = mkdtempSync(join(tmpdir(), 'object3d-assert-lint-pin-'));
+  try {
+    writeFileSync(join(pinScratch, 'typed.selftest.mjs'), TYPED);
+    const base = { root: pinScratch, files: ['typed.selftest.mjs'], cache: false };
+    const held = lintRepo({ ...base, pin: { 'typed.selftest.mjs': 6 } });
+    assert.deepEqual([held.findings.length, held.pinned.length, held.stalePins.length], [0, 6, 0], 'a pinned count holds');
+    const grown = lintRepo({ ...base, pin: { 'typed.selftest.mjs': 5 } });
+    assert.deepEqual([grown.findings.length, grown.pinned.length], [6, 0], 'one more than pinned fails the whole file');
+    const shrunk = lintRepo({ ...base, pin: { 'typed.selftest.mjs': 7 } });
+    assert.deepEqual(shrunk.stalePins.map(row => [row.pinned, row.found]), [[7, 6]], 'a pin above the count is stale');
+  } finally { rmSync(pinScratch, { recursive: true, force: true }); }
+}
+
 // 7. The repository: every receipt lints clean, and each allowlisted call says why.
 const repo = lintRepo();
 assert.ok(repo.files > 1500, `receipts listed (${repo.files})`);
 assert.deepEqual(repo.findings.map(row => `${row.file}:${row.line} ${row.text}`), [],
   'equality asserts on three.js graph objects: compare booleans, uuids, names or ids (node tools/object3d-assert-lint.mjs --fix)');
 assert.deepEqual([...repo.stale, ...repo.badAllow].map(row => `${row.file}:${row.line}`), []);
+assert.deepEqual(repo.stalePins.map(row => `${row.file}: ${row.pinned} pinned, ${row.found} found`), [],
+  'the typed pin only shrinks (lower tools/object3d-assert-lint.typed-pin.json)');
 for (const row of repo.allowed) assert.ok(row.allow.length >= 12, `${row.file}:${row.line}: a reason, not a token`);
 
 console.log(`object3d-assert-lint.selftest: the four T-72 lines, ${expected.length} operand shapes, the import forms, the allowlist, `
   + `the rewrites and their mutation verdicts, the byte-keyed cache pass; ${repo.files} receipts clean (${repo.allowed.length} allowlisted, `
-  + `${repo.reused} reused)`);
+  + `${repo.reused} reused); typed operands flagged (the 14 GiB replay line), ${repo.pinned.length} older ones pinned shrink-only`);

@@ -17,7 +17,7 @@ import { penetratorHoleRadiusM } from './munitionBlast.ts';
 import { blastHoleRadiusM } from './structureSections.ts';
 import { setCompoundShape, setObbShape } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
-import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+import { packCollisionRecord } from '../world/collisionRecordPacking.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
 const standard = matchRulesetFor('standard');

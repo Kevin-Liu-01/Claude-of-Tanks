@@ -4,8 +4,9 @@
  */
 
 /** Air spin (turbo-spin-275): one flip or roll a press, a whole turn in this long, at this rate (rad/s). Here, in the
- *  leaf, so the checkpoint codec and the migration read it without movement.ts. */
-const AIR_SPIN_TURN_S = 0.9;
+ *  leaf, so the checkpoint codec and the migration read it without movement.ts. A dodge's quick turn since
+ *  flip-boost-276 (was 0.9 s): a ground dodge's hop (AirSpinRules.hopMps) holds the hull up for all of it. */
+const AIR_SPIN_TURN_S = 0.6;
 export const AIR_SPIN_RATE = 2 * Math.PI / AIR_SPIN_TURN_S;
 
 /** Flight shorter than this after the ride leaves its support still counts as on the ground (a step's lift, a bump). */
@@ -17,6 +18,9 @@ export interface HullFlightState {
   _ride?: { airTime?: number };
   _body?: { autoRighting?: boolean };
   _airSpinAxis?: number;
+  /** The flight's dodge is spent (flip-boost-276; movement.ts TankState._flipUsed): cleared on the ground. */
+  _flipUsed?: boolean;
+  overturned?: boolean;
 }
 
 /** A hull in flight: off the ground, or its ride past the jump's grace. */
@@ -25,7 +29,12 @@ export function tankAirborne(state: HullFlightState | null | undefined): boolean
   return state.grounded === false || (state._ride ? (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S : false);
 }
 
-/** Whether an air-spin press would turn the hull now: in flight, not held by the righting torque, no turn under way. */
+/**
+ * Whether an air-spin press would dodge now (flip-boost-276): not held by the righting torque, no turn under way, and
+ * either in flight with the flight's dodge unspent or on the ground on its tracks (the ground dodge). The cooldown is
+ * the entity's (sim/modeMoves.ts airSpinReadyIn).
+ */
 export function canTankAirSpin(state: HullFlightState | null | undefined): boolean {
-  return !!state && tankAirborne(state) && state._body?.autoRighting !== true && !state._airSpinAxis;
+  if (!state || state._body?.autoRighting === true || state._airSpinAxis) return false;
+  return tankAirborne(state) ? state._flipUsed !== true : state.overturned !== true;
 }

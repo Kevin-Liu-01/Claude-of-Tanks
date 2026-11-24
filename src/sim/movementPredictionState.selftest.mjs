@@ -139,7 +139,7 @@ test('a version-8 checkpoint still decodes, resting on no body contact', () => {
   for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
   source.state._body.bodyRest = 3;
   const v10 = captureMovementPredictionState(source.state);
-  assert.equal(v10.version, 10);
+  assert.equal(v10.version, 11, 'flip-boost-276: version 11 (the flight\'s dodge spent, flag bit 13)');
   assert.equal(v10.flags >> 11 & 3, 3, 'version 9 on carries the ends a hull rests on a body contact at as flag bits 11 and 12');
   const full = entity().state;
   assert.equal(applyMovementPredictionState(full, v10), true);
@@ -177,6 +177,23 @@ test('a version-9 checkpoint still decodes, no air spin turning; version 10 carr
   for (const forged of [3 * 8 + 1, -3 * 8 + 1, 8 + 7, 0.5, NaN]) assert.equal(decodeAirSpin(forged), null, `${forged} names no spin a build writes`);
 });
 
+test('version 11 carries the flight\'s dodge spent (flip-boost-276); a version-10 checkpoint decodes it unspent', () => {
+  const source = entity();
+  for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
+  assert.equal(captureMovementPredictionState(source.state).flags & 8192, 0, 'an unspent dodge clears bit 13');
+  source.state._flipUsed = true;
+  const v11 = captureMovementPredictionState(source.state);
+  assert.equal(v11.flags & 8192, 8192, 'a spent dodge sets flag bit 13');
+  assert.equal(v11.values.length, 64, 'in the same 64 values');
+  const carried = entity().state;
+  assert.equal(applyMovementPredictionState(carried, v11), true);
+  assert.equal(carried._flipUsed, true, 'the spent dodge rides the checkpoint');
+  const older = entity().state;
+  older._flipUsed = true;
+  assert.equal(applyMovementPredictionState(older, { version: 10, values: v11.values, flags: v11.flags & 8191 }), true);
+  assert.equal(older._flipUsed, false, 'a version-10 checkpoint has the dodge unspent');
+});
+
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
   const source = entity();
   const good = captureMovementPredictionState(source.state);
@@ -184,9 +201,11 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
   const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
-    { ...good, version: 7 }, { ...good, version: 11 }, { ...good, version: 9 },
+    { ...good, version: 7 }, { ...good, version: 12 }, { ...good, version: 9 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
-    { ...good, values: sparse }, ...[-1, 8192, 1.5, NaN].map(flags => ({ ...good, flags })),
+    { ...good, values: sparse }, ...[-1, 16384, 1.5, NaN].map(flags => ({ ...good, flags })),
+    // flag bit 13 (the dodge spent) is version 11's: a version-10 checkpoint naming it is forged
+    { ...good, version: 10, flags: good.flags | 8192 },
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
   for (const value of bad) {
     const target = entity().state;

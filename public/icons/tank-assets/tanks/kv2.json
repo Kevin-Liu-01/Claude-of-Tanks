@@ -151,6 +151,36 @@
       },
       {
         "hitboxId": "H07",
+        "name": "track_R",
+        "physicalMm": 18,
+        "keMm": 18,
+        "ceMm": 18,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.494,0.15,3.3375],
+          [1.494,0.15,-3.3375],
+          [1.494,1.235,-3.3375],
+          [1.494,1.235,3.3375]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 18,
+        "keMm": 18,
+        "ceMm": 18,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.494,0.15,-3.3375],
+          [-1.494,0.15,3.3375],
+          [-1.494,1.235,3.3375],
+          [-1.494,1.235,-3.3375]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 60,
         "keMm": 60,
@@ -165,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H08",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 30,
         "keMm": 30,
@@ -398,7 +428,7 @@
     ]
   },
   "geometryHash": "640f6bf2",
-  "metadataHash": "a6a98a8c",
+  "metadataHash": "88ee67f0",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": -0.0431
@@ -506,8 +536,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35732,
-      "sha256": "933ffc0495b5666432e9fc15f936dea08d91888b51e8a6d69a37b80f9633802f"
+      "bytes": 34512,
+      "sha256": "bd159a7a16186d5ce346e56d77bdad6fc566e6ed575f4b1065e330f7d40ac2d1"
     },
     "modulesSide": {
       "file": "kv2_modules_side.webp",
@@ -536,8 +566,8 @@
     "technicalLabels": {
       "file": "kv2_technical.json",
       "mime": "application/json",
-      "bytes": 3694,
-      "sha256": "091aa737c7c7d00f5168264fa03c5ede3adda6c6004138f141287f1625348606"
+      "bytes": 3952,
+      "sha256": "deb3a5d2c81abeb006a277addb0ea8770105181862836b4636beded56b014043"
     }
   }
 }

@@ -156,6 +156,8 @@ function createViewer(): Viewer {
     } : null);
     caption();
     image.style.aspectRatio = `${item[1]} / ${item[2]}`;
+    // the viewer's width follows the picture's aspect (mediaLibrary.css .media-library-viewer): no bars round it
+    dialog.style.setProperty('--library-ar', String(item[1] / item[2]));
     wait.hidden = false;
     wait.textContent = t('mediaLibrary.loading');
     pictureUrl(collection, item).then((url) => {

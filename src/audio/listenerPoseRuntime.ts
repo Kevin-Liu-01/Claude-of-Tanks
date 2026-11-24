@@ -14,6 +14,8 @@ export interface AudioListenerPose {
   kind: AudioListenerKind;
   ownerId: string | null;
   scoped: boolean;
+  /** (276) The tank sight's magnification while scoped (its zoom steps tick), else 1. */
+  zoom?: number;
 }
 
 interface AudioTank {
@@ -38,6 +40,8 @@ interface AudioGame extends PlayerVisibilityGame {
 
 interface AudioRig {
   mode: string;
+  /** the sight's magnification (engine/cameraRig.ts rig.zoom) */
+  zoom?: number;
 }
 
 interface AudioKillcam {
@@ -94,6 +98,7 @@ export function createListenerPoseRuntime({
     kind: 'camera',
     ownerId: null,
     scoped: false,
+    zoom: 1,
   };
   // what the player sees, the one rule (round 8 Y3 s1-02): made once, read by the engine for each hull of each frame
   const visible = (hull: VisibilityHull): boolean => isPlayerVisible(game, hull);
@@ -120,6 +125,7 @@ export function createListenerPoseRuntime({
         pose.kind = 'player-drone';
         pose.ownerId = entity!.id;
         pose.scoped = false;
+        pose.zoom = 1;
       } else if (entity && sourcePosition) {
         tankPosition.copy(sourcePosition);
         tankPosition.y += entity.spec?.dims?.heightM != null
@@ -129,11 +135,13 @@ export function createListenerPoseRuntime({
         pose.kind = killcam.spectate.active && !seat ? 'spectated-tank' : 'player-tank';
         pose.ownerId = entity.id;
         pose.scoped = !seat && rig.mode === 'SNIPER' && camera.userData.scoped === true;
+        pose.zoom = pose.scoped && Number.isFinite(rig.zoom) ? rig.zoom : 1;
       } else {
         pose.pos = camera.position;
         pose.kind = killcamActive || killcam.isActive() ? 'killcam-camera' : 'camera';
         pose.ownerId = null;
         pose.scoped = false;
+        pose.zoom = 1;
       }
       audio.update(dtSeconds, pose, game.tanks, game.shells, visible);
     },

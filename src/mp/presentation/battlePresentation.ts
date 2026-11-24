@@ -26,7 +26,7 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
-import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor, modeLaunchesDrones, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import {
@@ -60,6 +60,7 @@ import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
 import { modeEndReport } from '../../sim/modeEndReport.ts';
+import { markFreeFallStore } from '../../fx/freeFallStores.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -260,7 +261,7 @@ export interface BattlePresentation extends PresentationAdapter {
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
   endDisconnected(): boolean;
-  /** (death-flow-275 R6) The seat left before the verdict: the records hear a defeat ('left'); no report follows. */
+  /** (leave-no-loss-276) The seat left before the verdict: the records hear 'left', no result and no total; no report follows. */
   recordLeft(): boolean;
   /**
    * The session's verdict (the newest snapshot's meta, or the room's match status), which lands ahead of the presented
@@ -703,7 +704,7 @@ export function createBattlePresentation({
       _lastX: 0, _lastZ: 0, _reviveOwed: false,
     };
     if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
-    if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
+    if (modeLaunchesDrones(game.gameMode)) actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
     actors.set(actor.id, actor);
     actorsByEntity.set(actor.entityId, actor);
     roster.push(actor);
@@ -1311,14 +1312,16 @@ export function createBattlePresentation({
   }
 
   /**
-   * (death-flow-275 R6; Kevin approved 2026-11-21) A seat that leaves a room's battle before its verdict is recorded as a
-   * defeat, as a local battle's Leave is (game/state.ts recordBattleLeft): `battle:ended` with reason 'left' and `left:
-   * true` reaches the records, not the report (the player is on the way out). A spectator records nothing.
+   * (leave-no-loss-276; Kevin 2026-11-24) A seat that leaves a room's battle before its verdict has no result, as a local
+   * battle's Leave has none (game/state.ts recordBattleLeft): `battle:ended` with result 'left' (game/battleOutcome.ts),
+   * reason 'left' and `left: true` reaches the records, which stand it in the history as "Left" and count it toward no
+   * total; no report follows (the player is on the way out). The team plays on (its seat is a bot's after its grace,
+   * sim/deathRules R5) and its own verdict is untouched. A spectator records nothing.
    */
   function recordLeft(): boolean {
     if (game.result || spectator) return false;
     bus.emit('battle:ended', {
-      result: 'defeat', reason: 'left', left: true, timeS: game.timeS, map: game.mapId, mapId: game.mapId,
+      result: 'left', reason: 'left', left: true, timeS: game.timeS, map: game.mapId, mapId: game.mapId,
       durationS: game.timeS, network: true, gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
     });
     return true;
@@ -1624,7 +1627,9 @@ export function createBattlePresentation({
       case 'drone_down':
         // a drone shot down (the authority's counter-drone strike, sim/aerialCombat.ts strikeDrone), as the solo step
         // raises it: heard breaking up where it flew, and the crew calls its own drone lost to fire or the enemy's our gun downed
-        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
+        // (air-crash-he-276) its airframe falls on as its crash round: a store, never a tracer (fx/freeFallStores.ts)
+        if (typeof payload.shellId === 'number') markFreeFallStore(payload.shellId);
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId, ...(typeof payload.shellId === 'number' ? { shellId: payload.shellId } : {}) });
         return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');
@@ -1811,7 +1816,7 @@ export function createBattlePresentation({
   function predictionWorld(): PredictionWorld | null {
     const own = ownActor();
     // Aerial movement belongs to the shared flight simulation, never the ground predictor.
-    if (!own || !worldCollision || game.gameMode === 'ac130' || game.gameMode === 'drone') return null;
+    if (!own || !worldCollision || game.gameMode === 'ac130' || modeLaunchesDrones(game.gameMode)) return null;
     if (predictionWorldCache && predictionWorldSpec === own.spec) return predictionWorldCache;
     predictionWorldSpec = own.spec;
     predictionWorldCache = createPredictionWorld({

@@ -172,10 +172,19 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/couchSessionBattle.selftest.mjs',
     'src/game/twinMuzzleSolo.selftest.mjs',
     'src/game/devBattleHoldEdges.selftest.mjs',
+    // replay-system-275 (docs/REPLAY.md): a solo battle recorded and replayed, 4800 steps seated by setupBattle twice and
+    // a third time for the negative control, plus the indexer's Worker job tracking it (about 11 s of user CPU; bounded:
+    // peak 0.73 GiB resident under its own 1 GiB cap, roster-only anatomy); its format,
+    // seat-stage, track and seat-action receipts stay default (src/sim/replayFormat.selftest.mjs, src/game/replay/replayTrack.selftest.mjs,
+    // src/game/replay/seatActions.selftest.mjs)
+    'src/game/replay/replayRoundTrip.selftest.mjs',
     // round 8 Y4 (2026-11-02 audit, sm-fix, ROUND8 amendment 4): a couch battle's Battle Again through main's intent and
     // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
     // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
     'src/game/couchRematch.selftest.mjs',
+    // 276 (sim-det-trig): a training shooter that fires only at what it sees reads the battle's own ground, not the page's
+    // drawn sampler: S11's Sentry 3 on Verdant's shard twice (with and without a page sampler), about 10 s of user CPU
+    'src/game/trainingSightGround.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
@@ -206,7 +215,12 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/fleetPassLow.selftest.mjs',
     // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
     'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
+    // 276 (cn-turrets-276b): every id outside the ZTZ-99A2, ZTZ-99A and VT-4A1 matches the pre-cn-turrets-276 fleet (about 2 CPU-min)
+    'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 276 (sim-det-trig): the drawn muzzle against the fired one (sim/gunPose.ts) on every production id
+    'src/vehicles/gunPoseVisualFit.selftest.mjs',
+    'src/vehicles/combatRigFromBuild.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/interiorFillSurface.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
@@ -384,6 +398,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseChevronEra.selftest.mjs',
     'src/vehicles/profiles/chineseFuelDrum.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
+    'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
     'src/vehicles/profiles/christian2.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/cv90MkivCaliber.selftest.mjs',
@@ -494,6 +509,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
+    'src/vehicles/profiles/pl01SkirtLine.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
     'src/vehicles/profiles/pumaS1.selftest.mjs',
     'src/vehicles/profiles/roundedTrackContact.selftest.mjs',
@@ -679,6 +695,8 @@ export const MANUAL_SUITES = Object.freeze({
     { idScoped: true }),
   world: suite('world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content', [
     'server/collisionManifestDrift.selftest.mjs',
+    // 276 (sim-world-packed): the page's records rounded as the shards are, on two real map builds
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/ui/minimapLiquidWater.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',

@@ -88,7 +88,7 @@ for (const id of ['t80bv', 'ua_t80bv']) for (const plate of [...TANK_SPECS[id].a
 // the T-80U X combat frame
 for (const id of MARKS) {
   const spec = TANK_SPECS[id], twin = TANK_SPECS.t80u;
-  // the combat frame is the one the gun-barrel census measures on the build (combatGunRigs.generated.ts): the twin's yaw
+  // the combat frame is the one the gun-barrel census measures on the build (the calibration's measured rig, 276): the twin's yaw
   // pivot exactly, the trunnion within 1.5 cm of the twin's (the marks' gun sits on the casting's own mantlet collar)
   assert.deepEqual(spec.armor.turretPivot, twin.armor.turretPivot, `${id}: the twin's yaw pivot`);
   spec.armor.gunPivot.forEach((v, k) => assert.ok(Math.abs(v - twin.armor.gunPivot[k]) <= 0.015, `${id}: trunnion ${k} within 1.5 cm of the twin's`));

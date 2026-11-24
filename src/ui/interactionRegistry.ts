@@ -169,6 +169,8 @@ export const INTERACTION_SITES = Object.freeze({
   // ---- the battle (premiere-battle)
   'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'segmented', marks: ['segmented:.cot-scope-vision-seg'], lane: 'premiere-battle' },
   /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
+  // (replay-system) what the replay's timeline shows: every mark, the kills, or the ridden tank's own
+  'replay-filter': { chooses: 'view', options: 3, screen: 'battle', owner: 'src/ui/replayBar.ts', build: 'segmented', marks: ['segmented:.cot-replay-filter'], lane: 'premiere-battle' },
   'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
   // ---- the Studio (premiere-gallery-studio)

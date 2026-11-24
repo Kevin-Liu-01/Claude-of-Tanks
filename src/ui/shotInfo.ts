@@ -310,6 +310,8 @@ export interface ShotInfoRuntime {
   toggleLog(): void;
   setPlayer(id: EntityId | null, timeS?: number, perspective?: string): void;
   setTeamResolver(resolve: (id: EntityId) => string | undefined): void;
+  /** (replay-system) Whether the finished battle was recorded: the end screen then offers Watch and Download replay. */
+  setReplayProbe(recorded: () => boolean): void;
   hideStats(): void;
   reset(): void;
 }
@@ -1073,6 +1075,8 @@ export function mergeEndRosterRow(
 export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body): ShotInfoRuntime {
   ensureFonts();
   ensureStyle('cot-si-style', SI_CSS, 'surfaces');
+  // (replay-system) main.ts answers whether the battle is being recorded; none recorded until it says
+  let replayProbe: () => boolean = () => false;
 
   const root = el('div', 'cot-si');
   const cardHost = el('div', 'cot-si-cardhost', root);
@@ -1802,6 +1806,7 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
 
   function buildSummary(result: EndScreenResult): EndScreenSummary {
     const watched = !!endInfo?.watch;
+    const recorded = replayProbe();
     const rows = summaryRows();
     const { allies, enemies } = summaryTeams(rows);
     const kills = summaryKills();
@@ -1815,6 +1820,7 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
       reason: endInfo?.reason || null,
       playerVehicle,
       playerSpecId: me?.specId || null,
+      ...(recorded ? { replay: true } : {}),
       // (ac130-fx-228) the pilot flew the AC-130: the debrief shows the aircraft, not the garage tank
       ...(me?.aircraft ? { playerAircraft: true } : {}),
       playerDead: !!me?.dead,
@@ -2090,8 +2096,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
 
   bus.on('battle:ended', (payload) => {
     const p = eventPayload<BattleEndedEvent | null>(payload);
-    // (death-flow-275 R6) a battle left before its verdict is recorded as a defeat, but no report follows: the player is
-    // on the way to the Garage
+    // (leave-no-loss-276) a battle left before its verdict has no result (game/battleOutcome.ts 'left') and no report
+    // follows: the player is on the way to the Garage
     if ((p as { left?: boolean } | null)?.left) return;
     // the floating shot card and incoming toasts must never linger behind the
     // results screen — a dimmed PENETRATION card double-reported the final
@@ -2188,6 +2194,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     root,
     statsRoot,
     toggleLog,
+
+    setReplayProbe(recorded: () => boolean): void { replayProbe = recorded; },
 
     /** Latch the player entity id (hud.ts forwards it each frame). */
     setPlayer(id: EntityId | null, timeS?: number, perspective?: string): void {

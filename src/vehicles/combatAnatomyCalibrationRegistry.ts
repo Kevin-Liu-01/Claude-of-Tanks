@@ -132,6 +132,21 @@ export interface AnatomyPlateFitReceipt extends Record<string, RuntimeValue> {
   readonly why?: 'notDrawn' | 'inShell' | 'unfitted';
 }
 
+/**
+ * The combat frame and weapons' mouths as the build draws them (276; tools/combat-rig-measure.mjs measures them and
+ * finalizeCombatAnatomy applies them on every driver): pivots in the hull and turret frames, the barrel to the drawn
+ * mouth, the mouth across the bore, a twin plant's mouths, each launcher tube's mouth and bore, the track hitbox hulls.
+ */
+export interface AnatomyCombatRig {
+  readonly turretPivot: readonly [number, number, number];
+  readonly gunPivot: readonly [number, number, number];
+  readonly lengthM?: number;
+  readonly mouth?: { readonly x: number; readonly y: number };
+  readonly mouths?: readonly { readonly x: number; readonly y: number }[];
+  readonly launchers?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly pitch: number; readonly yaw: number }[];
+  readonly trackHulls?: readonly { readonly x0: number; readonly x1: number; readonly poly: readonly (readonly [number, number])[] }[];
+}
+
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   /** hitbox-fit-274: the authored layers not on this build's drawn geometry (absent when every layer sits on it). */
   readonly plateFits?: readonly AnatomyPlateFitReceipt[];
@@ -152,6 +167,8 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   };
   /** The tracks' ground contact as the builder lays it (sim/trackContact.ts): the movement solve's receipt. */
   readonly trackContact?: TrackContactReceipt;
+  /** The combat frame, mouths and track hulls as built (276): every driver's, through finalizeCombatAnatomy. */
+  readonly rig?: AnatomyCombatRig;
   /** The turret ring as built (turreted tanks). */
   readonly turretRing?: AnatomyTurretRingReceipt;
   /** Where each crew member sits (235 crew fit), in the internal layout's crew order. */

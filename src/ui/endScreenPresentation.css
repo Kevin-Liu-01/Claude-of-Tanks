@@ -88,7 +88,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0
 body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;padding:20px;gap:20px}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr{min-height:56px;height:auto;padding:10px var(--s2)}
-body[data-cot-width] .cot-es.cot-es--record .es-actions{flex:0 0 auto;width:100%;justify-content:flex-end;padding:var(--s3) 0 0;margin:0;gap:10px;background:transparent;position:static}
+body[data-cot-width] .cot-es.cot-es--record .es-actions{flex:0 0 auto;width:100%;justify-content:flex-end;padding:var(--s3) 0 0;margin:0;gap:10px;background:transparent;position:static;flex-wrap:wrap}
 /* the actions are the kit's buttons: the report's reset (.cot-es *) would strip their padding and min-width */
 body[data-cot-width] .cot-es.cot-es--record .es-action{min-width:160px;padding:0 var(--s5)}
 body[data-cot-width] .cot-es.cot-es--record .es-rematch{flex:0 0 auto;width:100%;max-height:24dvh;overflow:auto;margin:var(--s2) 0 0}
@@ -284,6 +284,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr :is(.kc,.dc){display:none}
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es.cot-es--record .es-actions{width:100%;justify-content:flex-start;align-items:center}
 .cot-es--record .es-mark{display:block;flex:none;width:45px;height:26px;margin-left:auto;opacity:.72}
 @media(max-width:700px){.cot-es--record .es-mark{display:none}}
+/* (replay-system-275) the replay pair sits in the row after the report's own actions; a phone gives it a line of its own */
+.cot-es--record .es-replay-actions{display:contents}
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-replay-actions{display:flex;flex:1 0 100%;gap:inherit}}
 /* the medals as a row of their own art at every width (the name on hover, a tap's tooltip and for screen readers) */
 body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:14px 20px}
 body[data-cot-width] .cot-es.cot-es--record .es-awards .ak{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}

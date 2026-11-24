@@ -19,6 +19,10 @@ export interface PlateOptions {
   keMm?: number;
   kind?: string;
   moduleLink?: ModuleId;
+  /** A hull front split by height, not by facing (see ArmorPlate.frontZone). */
+  frontZone?: 'upper' | 'lower';
+  /** An external track plate laid on its measured track prism (see ArmorPlate.seatOnTrack). */
+  seatOnTrack?: boolean;
 }
 
 export interface ArmorPlate {
@@ -37,6 +41,20 @@ export interface ArmorPlate {
   gunFollow: boolean;
   /** Opt-in convex planar outline; the standard constructors still emit quads. */
   convexPolygon?: boolean;
+  /**
+   * (inherited-reds-276) A hull front zoned by height: where a hull has an 'upper' and a 'lower' plate, a forward collision
+   * face ahead of the upper plate's rear edge reads the upper plate when its centre stands above the lower plate's top
+   * edge, else the lower, whatever way it faces (combatAnatomy.ts frontZonePlate). The S-tanks' wedge: a beak's
+   * underside faces down-forward and read the lower front by its facing once 0e6edc9b66's shared casemate put the 103B's
+   * at centre height.
+   */
+  frontZone?: 'upper' | 'lower';
+  /**
+   * (strv-track-plates) An external plate linked to a track module, laid on that track's prism as the build measured it
+   * (combatAnatomy.ts seatPlatesOnTrack): its outer face over the drawn run, keeping its own height band. The S-tanks'
+   * plates stood at 0.88 of the half-width over the hull's length, off the drawn track.
+   */
+  seatOnTrack?: boolean;
   surfaceGroup?: string;
   /** Exact cut-edge ownership for adjacent outer and backing sheets. */
   openEdges?: readonly number[];
@@ -106,6 +124,8 @@ export function plate(
     moduleLink: o.moduleLink || null,
     gunFollow: !!o.gunFollow,
     ...(o.droneInterception !== undefined ? { droneInterception: o.droneInterception } : {}),
+    ...(o.frontZone ? { frontZone: o.frontZone } : {}),
+    ...(o.seatOnTrack ? { seatOnTrack: true } : {}),
   };
 }
 

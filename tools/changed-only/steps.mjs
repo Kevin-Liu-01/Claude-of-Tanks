@@ -69,8 +69,6 @@ export const TABLES = Object.freeze({
   simFloors: { kind: 'json', files: ['docs/geometry-gate/sim-floors.json'], path: ['rows'], canonical: true },
   // 267: the geometry gate's records, one per measured id beside the other steps' ledgers; each names its oracle
   geometryGate: { kind: 'jsonRow', files: ['docs/geometry-gate/*.json'], idsOnly: true, inputField: 'oracle' },
-  // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
-  combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
 });
 
 /** Index and loader maps that import every shard of a table. Their bytes depend only on which shards exist, so they
@@ -530,7 +528,9 @@ export const STEPS = Object.freeze([
     checkTool: 'tools/changed-only/fills-check.mjs',
     check: ['--all', '--jobs=4'], checkScoped: (list) => [ids(list), '--jobs=4'],
     outputs: ['interiorFills', 'movingClearanceAir'],
-    files: ['src/vehicles/interiorFillLoaders.generated.ts'], gb: 8, timeoutS: 3600, perIdS: 60,
+    // gb (fills-leak-276): one process's peak is flat in the id count since the loop drains native canvas finalizers
+    // per id (--all: 2.74 GiB over 313 ids, 1.75 MB an id fitted; it was 31 GB): the measured peak plus a margin.
+    files: ['src/vehicles/interiorFillLoaders.generated.ts'], gb: 4, timeoutS: 3600, perIdS: 60,
   },
   {
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
@@ -658,6 +658,16 @@ export const STEPS = Object.freeze([
 
 export const CPU_FIXPOINT_STEPS = Object.freeze(STEPS.filter((step) => step.device === 'cpu' && !step.after).map((step) => step.name));
 export const stepByName = (name) => STEPS.find((step) => step.name === name);
+
+/**
+ * (276 sim-det-trig-c) Run before anything else: every tool that loads the fleet finalizes each saved id at import, and
+ * finalize refuses a drawn weapon whose calibration has no measured rig. This measures the rig of exactly the ids whose
+ * row has none (gen-combat-anatomy in measurement mode, which needs none); with every row rigged it does nothing. It runs
+ * ahead of the aggregates and the CPU steps (controls, fills, seats and spare-track build tanks before the anatomy step):
+ * tools/combat-rig-bootstrap.selftest.mjs holds the order. A present but stale rig needs no reorder: those steps load,
+ * and the fixpoint re-runs them once the anatomy step moves a row.
+ */
+export const RIG_BOOTSTRAP = Object.freeze(['tools/combat-rig-bootstrap.mjs']);
 
 /** Whole-fleet aggregates the chain regenerates before resolving (they feed the shared core) and after the CPU pass. */
 export const PRE_AGGREGATES = Object.freeze([

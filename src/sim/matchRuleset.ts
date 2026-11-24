@@ -8,9 +8,10 @@
 // controller, setupBattle, movement (gravity, speed), ballistics (shell gravity), damage (hit
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
-import { shell } from './shellSpec.ts';
+import { shell, type ShellSpec } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
 import type { ConsumableGateContext, ConsumableId, ConsumableTiming } from './consumableRules.ts';
 
@@ -112,6 +113,56 @@ export const AIR_STRIKE_WEAPONS = Object.freeze({
   // rail onto its target's intercept). The penetration is a game figure: any hull it strikes is through.
   missile: shell('AGM-65 Maverick', 'HEAT', 305, 900, 900, 1300, 320, { guided: true, reloadGroup: 'strike-missile',
     soundProfile: 'gunship-missile', blastRadiusM: 7, maxLifetimeS: 9 }),
+});
+
+/**
+ * Air crashes (air-crash-he-276; the owner, 2026-11-23: "when a plane is shot down and falls it should cause a big
+ * explosion with sounds and explosion hole. duh. same with drones if they hit the ground or a building, its like HE", and
+ * "plane wrecks and so on should leave the biggest craters and actual wrecks"). A downed aircraft, and a drone that meets
+ * the ground or a building, bursts as one HE round in the normal impact path (sim/airCrash.ts): its blast on the hulls and
+ * the structures, its crater, its sound. Each airframe class's charge is its round's blast envelope (munitionBlast.ts:
+ * (R / 8.1)^3 kg TNT-equivalent, a crater 1.1 * W^(1/3) * 1.15 m, at most 6 m) and `dmg` its blast's hull damage, each
+ * with its reason. A downed aircraft falls on its own path at `fall.carry` of its airspeed (a broken airframe loses its
+ * lift and most of its way) with `fall.sinkMps` more downward at the break, under the crash round's own gravity, so the
+ * wreck the presentation draws and the round the authority bursts are one arc (sim/strikeRuns.ts crashFall).
+ */
+type AirCrashClass = 'drone' | 'jet' | 'attack' | 'gunship';
+interface AirCrashRow { readonly blastRadiusM: number; readonly dmg: number; readonly caliberMm: number; readonly why: string }
+export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
+  /** landInsideM: a fall whose carry would land it beyond this (the playable square, world/battlefieldBounds.ts) is turned
+   *  to land inside it (sim/strikeRuns.ts crashFall), so its crater, its blast and its wreck fall where the ground is
+   *  drawn and dug, and in sight (air-crash-he-276c). */
+  readonly fall: { readonly carry: number; readonly sinkMps: number; readonly gravityMps2: number; readonly maxS: number; readonly landInsideM: number };
+} = Object.freeze({
+  drone: Object.freeze({ blastRadiusM: 11, dmg: 700, caliberMm: 90,
+    why: 'an FPV quadcopter: about its warhead (the 90 mm charge) with its battery; 11 m is 2.5 kg, the least load that digs a bowl (1.7 m), a mark no longer' }),
+  jet: Object.freeze({ blastRadiusM: 34, dmg: 2200, caliberMm: 300,
+    why: 'a fighter (the recon, bomb and Maverick runs): some 3 t of fuel and what stores it kept; 34 m is 73 kg, a 5.3 m crater, past the GBU-12\'s 3.4 m' }),
+  attack: Object.freeze({ blastRadiusM: 36, dmg: 2400, caliberMm: 300,
+    why: 'the A-10: heavier than the fighter, with its 30 mm drum and 4 t of fuel; 36 m is 88 kg, a 5.6 m crater' }),
+  gunship: Object.freeze({ blastRadiusM: 40, dmg: 3200, caliberMm: 300,
+    why: 'the AC-130: some 20 t of fuel and its gun magazines; the envelope\'s 40 m cap (119 kg) and the crater\'s 6 m cap, the largest in the game' }),
+  fall: Object.freeze({ carry: 0.35, sinkMps: 10, gravityMps2: 9.81, maxS: 30, landInsideM: PLAYABLE_HALF_EXTENT_M }),
+});
+/** Which crash an Air Support aircraft makes (artillery has none: the battery is off the map). */
+export function airCrashClassOf(kind: AirStrikeKind): AirCrashClass | null {
+  if (kind === 'artillery') return null;
+  return kind === 'gunship' ? 'gunship' : kind === 'strafe' ? 'attack' : 'jet';
+}
+const crashRound = (name: string, cls: AirCrashClass): ShellSpec => {
+  const row = AIR_CRASH_RULES[cls];
+  // an unpowered wreck (no tracer, no motor: the presentation draws the airframe), HE through the normal burst; the
+  // reloadGroup names the crash for the kill source (aerialCombat.ts killSourceOf) and the lag rewind (none)
+  return shell(name, 'HE', row.caliberMm, 120, 120, row.dmg, 60, { blastRadiusM: row.blastRadiusM, moduleDmg: 120,
+    flight: 'free_fall', reloadGroup: cls === 'drone' ? 'drone-crash' : 'air-crash', soundProfile: 'strike-bomb',
+    gravityScale: AIR_CRASH_RULES.fall.gravityMps2 / 9.81, maxLifetimeS: AIR_CRASH_RULES.fall.maxS });
+};
+/** The crash rounds, one per airframe class (sim/airCrash.ts bursts them). */
+export const AIR_CRASH_ROUNDS: Readonly<Record<AirCrashClass, ShellSpec>> = Object.freeze({
+  drone: crashRound('FPV drone crash', 'drone'),
+  jet: crashRound('Fighter crash', 'jet'),
+  attack: crashRound('A-10 crash', 'attack'),
+  gunship: crashRound('AC-130 crash', 'gunship'),
 });
 export interface AirStrikeRules {
   /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the
@@ -928,7 +979,7 @@ export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly not
   juggernaut: { note: 'juggernaut' },
   // the escorts are the player's country, the ground force one enemy country
   ac130: { note: 'ac130' },
-  air_support: { note: null },
+  air_support: { note: null }, combined_arms: { note: null },
   // the proving ground is a solo range against static target hulls: no team fiction applies (230 x gameplay-modes union)
   proving_ground: { note: null },
   // the training battle's hulls are the scenes' own (273): no team fiction applies
@@ -1161,13 +1212,13 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
-    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES,
+    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES, combined_arms: SYMMETRIC_ALLIES,
     proving_ground: PROVING_ALLIES, training: TRAINING_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
-    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES,
+    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES, combined_arms: SYMMETRIC_ENEMIES,
     proving_ground: PROVING_TARGETS, training: TRAINING_ACTORS,
   }),
   waveSize: range(2, 12),
@@ -1238,6 +1289,26 @@ export interface TurboRules {
 }
 const TURBO_BALL_TURBO: TurboRules = Object.freeze({ forwardMps: 12, liftMps: 2.5, cooldownS: 3 });
 const MARS_TURBO: TurboRules = Object.freeze({ forwardMps: 9, liftMps: 2.2, cooldownS: 3 });
+/**
+ * A mode's air spin as a dodge (flip-boost-276; owner 2026-11-24: "make the flip work a lot better as an actual boost",
+ * "doing a and d and s should do barrel rolls and a reverse flip too"): the move a press picks from the drive it is
+ * pressed with (movement.ts airSpinAxisFor) takes this shove at once. W or no drive: the front flip adds `forwardMps` to
+ * the run speed; S: the back flip takes `backMps` off it; A or D: the barrel roll shoves the hull `sideMps` to that side,
+ * held while it rolls. In flight it also stops the fall; on the ground it lifts the hull at `hopMps`, the mode's own jump:
+ * the turn waits until the hull is clear of what it sweeps (movement.ts AIR_SPIN_CLEAR_SCALE), and a lower hop left a
+ * 50 t hull too little air to finish a turn it could begin (it landed on its roof). One a flight (a ground dodge's flight
+ * included), then `cooldownS`. Measured in sim/flipBoost.selftest.mjs on the turbo fixture (65 km/h, 50 t) from a
+ * full-throttle run: within the 0.6 s turn the front flip is metres ahead of the run and the roll metres to its side.
+ */
+export interface AirSpinRules {
+  readonly forwardMps: number;
+  readonly backMps: number;
+  readonly sideMps: number;
+  readonly hopMps: number;
+  readonly cooldownS: number;
+}
+const TURBO_BALL_AIR_SPIN: AirSpinRules = Object.freeze({ forwardMps: 10, backMps: 9, sideMps: 11, hopMps: 13, cooldownS: 1.2 });
+const MARS_AIR_SPIN: AirSpinRules = Object.freeze({ forwardMps: 8, backMps: 7, sideMps: 9, hopMps: 9.5, cooldownS: 1.2 });
 
 /** Turbo Ball: arcade rebounds at 0.6 g, a single 13 m/s jump lands free, walls at 1.85× speed cost less per kJ. */
 const TURBO_PHYSICS: RulesetPhysics = Object.freeze({
@@ -1303,8 +1374,9 @@ export interface MatchRuleset {
    * mode has none. */
   readonly turbo: TurboRules | null;
   /** Air spin (turbo-spin-275): F in flight flips or rolls the hull one whole turn (movement.ts requestTankAirSpin); the
-   * jump's mid-air re-boost gives way to it. Only a jump mode has it. */
-  readonly airSpin: boolean;
+   * jump's mid-air re-boost gives way to it. A dodge since flip-boost-276: its shove, ground hop and cooldown, or null
+   * when the mode has none. Only a jump mode has it. */
+  readonly airSpin: AirSpinRules | null;
   /** Multiplies the hull's firing recoil into a real launch opposite the muzzle (owner: "aim behind you and launch
    * yourself and use it as a speed boost"); 1 keeps the ordinary hull kick. */
   readonly recoilLaunchScale: number;
@@ -1423,7 +1495,7 @@ export interface WatchRules {
 }
 export const WATCH_RULES: WatchRules = Object.freeze({
   modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault',
-    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'air_support'] as const),
+    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'air_support', 'combined_arms'] as const),
   takeControl: true,
   deathHoldS: 1.6,
   takenDeathS: 3.5,
@@ -1432,6 +1504,27 @@ export const WATCH_RULES: WatchRules = Object.freeze({
   openBackM: 140,
   openPitchDeg: -24,
 });
+
+const baseRulesetOf = (mode: unknown): MatchRuleset | null =>
+  typeof mode === 'string' && Object.hasOwn(BASE_RULESETS, mode) ? BASE_RULESETS[mode as GameModeId] : null;
+/**
+ * A mode's facets, for the readers that hold only its id (the HUD, the audio, the presentation, the wire's mode state).
+ * Each reads the rule part the mode's ruleset spreads, never the id, so a mode composed of parts (COMPOSED_MODES) has
+ * every reader of every part (sim/modeComposition.selftest.mjs fails on a new id check for a part's mode).
+ */
+/** Every crew launches an FPV drone (DRONE_LAUNCH_PART: Drone, Combined Arms). */
+export function modeLaunchesDrones(mode: unknown): boolean {
+  return baseRulesetOf(mode)?.aerial === 'drone';
+}
+/** Every crew earns and spends support points on call-ins (AIR_SUPPORT_BATTLE_PART: Air Support, Combined Arms). */
+export function modeCallsAirSupport(mode: unknown): boolean {
+  return !!baseRulesetOf(mode)?.airSupport;
+}
+/** The battle is the three sectors (matchModes.ts's 'zone_control' objective): Zone Control, Gravity Mode and every mode
+ *  with Air Support's battle. */
+export function modePlaysSectors(mode: unknown): boolean {
+  return mode === 'zone_control' || mode === 'mars' || modeCallsAirSupport(mode);
+}
 
 /** A mode a battle can be watched in. */
 export function isWatchableMode(mode: GameModeId | string | null | undefined): boolean {
@@ -1442,6 +1535,18 @@ export function isWatchableMode(mode: GameModeId | string | null | undefined): b
 export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
   if (!isWatchableMode(ruleset.mode)) return ruleset;
   return Object.freeze({ ...ruleset, records: false, watch: WATCH_RULES });
+}
+
+/**
+ * A replay being watched (replay-system, docs/REPLAY.md §5): Watch's drone and ride over a battle posed from its track,
+ * never simulated. Nobody's seat to take (nothing steps), every tank seen (the battle is over), and no records: a
+ * replay awards nothing.
+ */
+export const REPLAY_WATCH_RULES: WatchRules = Object.freeze({ ...WATCH_RULES, takeControl: false, revealAll: true });
+
+/** The recorded battle's ruleset as the replay viewer runs it. */
+export function replayRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  return Object.freeze({ ...ruleset, records: false, watch: REPLAY_WATCH_RULES });
 }
 
 /**
@@ -1576,7 +1681,7 @@ const DESTRUCTION_OFF: DestructionRules = Object.freeze({
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
-  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, turbo: null, airSpin: false, recoilLaunchScale: 1, shellKnockScale: 0.3,
+  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, turbo: null, airSpin: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, respawnSafeM: 75, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
   destruction: DESTRUCTION_ON, terrainVariant: null, records: true, routePush: true,
@@ -1627,6 +1732,45 @@ const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   offensiveJump: true, hitReactions: 'angle',
 });
 
+/**
+ * Rule parts (combined-arms-276): the named pieces more than one mode plays, each declared once here and spread into
+ * every mode that has it, so a rule two modes share is one object and cannot drift. The readers never ask which mode
+ * this is; they read the facet a part sets (`ruleset.aerial`, `ruleset.counterDrone`, `ruleset.airSupport`), so a mode
+ * composed of parts plays every part by construction.
+ */
+/** Drone's launch: every crew's FPV drone on Drone mode's cooldown (AERIAL_RULES.drone) and the roof stations that
+ *  engage enemy drones in flight (VH.15 counter-drone). */
+const DRONE_LAUNCH_PART = Object.freeze({ aerial: 'drone', counterDrone: true } as const satisfies Partial<MatchRuleset>);
+/** Air Support's score target (air-support-270's first seeded run: at 750 the side that took the sectors first won in
+ *  under three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one split. */
+const AIR_SUPPORT_SCORE_TARGET = 2000;
+/** Air Support's battle: Zone Control's three sectors (matchModes.ts plays them wherever `airSupport` is set), confirmed
+ *  kills scoring, 8 s respawns, a twelve-minute clock, and the support ledger with its call-ins; the vehicle's own loadout
+ *  (the strikes are the mode's firepower, not the guns). */
+const AIR_SUPPORT_BATTLE_PART = Object.freeze({
+  scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES,
+} as const satisfies Partial<MatchRuleset>);
+/** The rule parts by name, for the composition receipt (sim/modeComposition.selftest.mjs). */
+export const MODE_RULE_PARTS = Object.freeze({ droneLaunch: DRONE_LAUNCH_PART, airSupportBattle: AIR_SUPPORT_BATTLE_PART });
+export type ModeRulePartId = keyof typeof MODE_RULE_PARTS;
+/**
+ * The modes declared as nothing but rule parts over STANDARD, with the parts in spread order (a later part's field wins,
+ * though no two parts set the same field). The receipt holds each one to exactly this: every field of its ruleset is
+ * STANDARD's or a part's, no field is redefined, and its declaration names only its parts.
+ */
+export const COMPOSED_MODES: Readonly<Partial<Record<GameModeId, readonly ModeRulePartId[]>>> = Object.freeze({
+  // Combined Arms (owner 2026-11-23: "lets add a mode with drone AND air support"): Air Support's sector battle, its score
+  // target and its call-ins, with every crew also holding Drone's launch. The drone is not a call-in: points stay for the
+  // air menu. One control seat at a time (game/playerBattleActions.ts, sim/airSupport.ts botCall): the binoculars and a
+  // drone in flight exclude each other wherever both facets are on.
+  combined_arms: Object.freeze(['airSupportBattle', 'droneLaunch'] as const),
+});
+/** A composed mode's ruleset: STANDARD, its parts in order, its id. Nothing else (COMPOSED_MODES). */
+function composedRuleset(mode: GameModeId): MatchRuleset {
+  const parts = COMPOSED_MODES[mode] ?? [];
+  return Object.freeze(Object.assign({}, STANDARD, ...parts.map((part) => MODE_RULE_PARTS[part]), { mode }) as MatchRuleset);
+}
+
 // Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
 // realistic modes (Standard, Capture the Flag, Zone Control, Realistic) and Drone (owner 2026-11-02: "drone mode
 // shouldnt have infinite ammo") keep the vehicle's own loadout; every other special and arcade mode plays unlimited
@@ -1666,7 +1810,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    criticalDamage: false, jumpMps: 13, turbo: TURBO_BALL_TURBO, airSpin: true, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, jumpMps: 13, turbo: TURBO_BALL_TURBO, airSpin: TURBO_BALL_AIR_SPIN, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
     // the goals and the kick-off spot stand inside the arena
     objectiveFootprint: Object.freeze({ radiusM: 18, arena: true }),
@@ -1760,7 +1904,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // rounds and a twelve-minute clock; the boost caches (repairs, under unlimited rounds) are the mode controller's.
   mars: Object.freeze({
     ...STANDARD, mode: 'mars', scoresKills: true, mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
-    reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, turbo: MARS_TURBO, airSpin: true, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+    reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, turbo: MARS_TURBO, airSpin: MARS_AIR_SPIN, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
   juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', scoresKills: true, ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
@@ -1800,14 +1944,15 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', elimination: true, scoresKills: true, alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', scoresKills: true, respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, ...DRONE_LAUNCH_PART, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', scoresKills: true,
     middleReserve: Object.freeze({ kind: 'extraction', radiusM: 30, reliefM: 7 }), aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
-  // Air Support (air-support-270): Zone Control's three sectors, 8 s respawns and a twelve-minute clock, with the support
-  // ledger and the three airstrikes; the vehicle's own loadout (the strikes are the mode's firepower, not the guns)
-  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
+  // Air Support (air-support-270): its battle part alone (AIR_SUPPORT_BATTLE_PART)
+  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', ...AIR_SUPPORT_BATTLE_PART }),
+  // Combined Arms (combined-arms-276): Air Support's battle and Drone's launch, declared as its parts (COMPOSED_MODES)
+  combined_arms: composedRuleset('combined_arms'),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
   // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
@@ -1839,9 +1984,8 @@ export function rulesetObjectiveAxisM(ruleset: Pick<MatchRuleset, 'flagPitch' | 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
   capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20,
-  // Air Support plays to 2000 (air-support-270's first seeded run: at 750 the side that took the sectors first won in under
-  // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
-  air_support: 2000,
+  // Air Support's battle part plays to its own target (AIR_SUPPORT_SCORE_TARGET), and so does every mode composed with it
+  air_support: AIR_SUPPORT_SCORE_TARGET, combined_arms: AIR_SUPPORT_SCORE_TARGET,
 });
 /** The arrangement fields Deploy offers beyond the sides, and which modes take each (improve-271 plan 027). */
 export type ArrangementChoiceField = 'scoreTarget' | 'respawnS' | 'waveSize' | 'waveStep' | 'holdS' | 'juggernautRole';

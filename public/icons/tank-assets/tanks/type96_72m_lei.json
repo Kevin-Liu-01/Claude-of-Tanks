@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.975,0.495,-3.199],
-          [1.92,1.033,-3.199],
-          [1.923,1.033,3.224],
-          [1.978,0.495,3.224]
+          [1.7279,0.1265,3.347],
+          [1.7279,0.1265,-3.347],
+          [1.7279,1.0333,-3.347],
+          [1.7279,1.0333,3.347]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.983,0.495,3.2],
-          [-1.926,1.033,3.2],
-          [-1.922,1.033,-3.162],
-          [-1.979,0.495,-3.162]
+          [-1.7279,0.1265,-3.347],
+          [-1.7279,0.1265,3.347],
+          [-1.7279,1.0333,3.347],
+          [-1.7279,1.0333,-3.347]
         ]
       },
       {
@@ -13474,7 +13474,7 @@
     ]
   },
   "geometryHash": "5ddab9b1",
-  "metadataHash": "4d1db56f",
+  "metadataHash": "6d7b67f2",
   "presentationAnchor": {
     "xM": -0.0027,
     "zM": 0.0299
@@ -13531,8 +13531,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25656,
-      "sha256": "336bcaea4552edd8159218b06f80dfd5f3942972573758060958d1e09f65bd63"
+      "bytes": 25284,
+      "sha256": "5182a6868f803d9aa9b2fc4255c09cadf3226ffb88d3907681fb2ec8db73eccf"
     },
     "modulesSide": {
       "file": "type96_72m_lei_modules_side.webp",
@@ -13611,7 +13611,7 @@
       "file": "type96_72m_lei_technical.json",
       "mime": "application/json",
       "bytes": 5282,
-      "sha256": "a65b506e1b85bdff47ee4f2deae706802c3c3df1c039cda21eead2aa6f97b7c0"
+      "sha256": "1b6295752655ca89889924da75f1f0848a49d07369d7176c99b8bed214f3cf66"
     }
   }
 }

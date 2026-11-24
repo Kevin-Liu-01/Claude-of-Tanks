@@ -14,7 +14,7 @@
 //   the 2A4's box mudguards over the idlers, the standing spare track links, guarded headlights and shackled tow eyes
 //   (photos 4, 5); the stern its full-width louvred grille, tail lights under the rail ends and hung mudflaps.
 // - turret: the rig sits at hull (0, 1.71, 0.63) and the gun pivot at turret (0, 0.38, 0.90): the measured combat rig
-//   (combatGunRigs.generated.ts) both hold. A low six-sided shell (roof 0.815, side crease 0.40) with two arrowhead
+//   (the calibration's measured rig, 276) both hold. A low six-sided shell (roof 0.815, side crease 0.40) with two arrowhead
 //   cheeks either side of a vertical gun-slot face at z 1.10 (x +-0.43, kf51Specs.ts's mantlet plate), a squared bustle
 //   whose sides carry the hinged faceted stowage boxes (hinge stacks forward, handles, latches; photo 3), the gunner's
 //   sight on the right cheek, the SEOSS panoramic sight behind it, twin-lens sensor heads and the rear-corner camera

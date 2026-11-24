@@ -5,6 +5,8 @@
 // The surfaces read an aircraft's files exactly as a tank's (iconUrl, maskIcon, tankThumbUrl); the hero card follows from
 // tools/genHeroCards.mjs, whose fleet reads this manifest. Run under the capture lock:
 //   node tools/with-capture-lock.mjs --lock-class=render -- node tools/genAircraftAssets.mjs [--ids=ac130] [--out=public/icons]
+// (notices-276) It also renders the aircraft the battle notices picture (previewVehicles.ts RENDERED_AIRCRAFT: the A-10, the
+// F-16, the drone), in the same studio and framing; those get no hero card.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -14,13 +16,13 @@ import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
-import { AIRCRAFT_ASSETS_FILE, AIRCRAFT_VIEWS, PREVIEW_AIRCRAFT_IDS } from '../src/vehicles/previewVehicles.ts';
+import { AIRCRAFT_ASSETS_FILE, AIRCRAFT_VIEWS, RENDERED_AIRCRAFT_IDS } from '../src/vehicles/previewVehicles.ts';
 import { TANK_ASSET_VIEWS } from '../src/vehicles/tankAssets.ts';
 
 const arg = (key, fallback = '') => process.argv.find((value) => value.startsWith(`--${key}=`))?.slice(key.length + 3) || fallback;
 const outDir = resolve(arg('out', 'public/icons'));
-const ids = arg('ids') ? arg('ids').split(',').map((id) => id.trim()).filter(Boolean) : [...PREVIEW_AIRCRAFT_IDS];
-for (const id of ids) if (!PREVIEW_AIRCRAFT_IDS.includes(id)) throw new Error(`genAircraftAssets: ${id} is not a preview aircraft`);
+const ids = arg('ids') ? arg('ids').split(',').map((id) => id.trim()).filter(Boolean) : [...RENDERED_AIRCRAFT_IDS];
+for (const id of ids) if (!RENDERED_AIRCRAFT_IDS.includes(id)) throw new Error(`genAircraftAssets: ${id} is not a rendered aircraft`);
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 const manifestPath = resolve(outDir, AIRCRAFT_ASSETS_FILE);
 const previous = (() => { try { return JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { return null; } })();
@@ -70,7 +72,7 @@ try {
       }
       aircraft[id] = { ...meta, assets };
     }
-    const sorted = Object.fromEntries(Object.entries(aircraft).filter(([id]) => PREVIEW_AIRCRAFT_IDS.includes(id)).sort(([a], [b]) => a.localeCompare(b)));
+    const sorted = Object.fromEntries(Object.entries(aircraft).filter(([id]) => RENDERED_AIRCRAFT_IDS.includes(id)).sort(([a], [b]) => a.localeCompare(b)));
     writeFileSync(manifestPath, `${JSON.stringify({ schemaVersion: 1, generator: 'tools/genAircraftAssets.mjs', views: AIRCRAFT_VIEWS, aircraft: sorted }, null, 2)}\n`);
     console.log(`[aircraft-assets] ${Object.keys(result.aircraft).length} aircraft -> ${manifestPath}`);
   }

@@ -2,7 +2,8 @@ import { buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { registerHooks, stripTypeScriptTypes } from 'node:module';
+import { registerHooks } from 'node:module';
+import { loadSourceSlice } from '../../tools/source-slice.test-support.mjs';
 import * as THREE from 'three';
 import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoads, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion } from './roadBuildingFrontage.ts';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
@@ -85,13 +86,12 @@ const hooks = registerHooks({ load(url, context, next) {
 } });
 const originals = await import('./props.ts');
 hooks.deregister();
-const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (inherited-reds-276) props.ts as a slice (tools/source-slice.test-support.mjs): the sections close over the build's
+// locals and the module's imports they read (lookLedger, 6117763918, was missing from the hand-kept list)
+const props = await loadSourceSlice(new URL('./props.ts', import.meta.url));
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood',
   'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof'];
-function section(start, end) {
-  const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
-  assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
-}
+const section = (start, end) => props.section(start, end);
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
   // Plan W (2026-10-13): the structure shell pool belongs to the browser's async build; this Node build derives every
   // structure's shells inline, as the manifests and hosts do (no pool, no sourced-texture worker)
@@ -127,18 +127,24 @@ function build(config, enable) {
     const ensureSteelAtlasSteps = function* () {};
     const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
     const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+    // the build's locals the sections read, as props.ts declares them per build (the slice names any it gains):
+    // this build's look ledger (buildings-270, 6117763918), the desktop's ground contacts, the surface materials it retains
+    const lookLedger = new AppearanceLedger(), mobileProps = false, retainedSurfaceMaterials = [];
+    ${props.LOCALS}
     ${section('function mergeInto(', 'type GroundDecalKind')}
     ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };\n")}
     ${section('  const roads = L.roads;', '  // heaped masonry chunks')}
     return { buildings: buildingFeatures, receipt: group.userData.roadBuildingFrontage ?? [],
       rngTail: rng(), buckets, obstacles };
   }`;
-  const factory = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(enable ? body :
-    body.replace('placePlannedBuilding(px, pz, rot, roadSite);', 'placePlannedBuilding(px, pz, rot);'))}`)(...Object.values(dependencies));
+  const factory = props.compile(dependencies, `return ${enable ? body :
+    body.replace('placePlannedBuilding(px, pz, rot, roadSite);', 'placePlannedBuilding(px, pz, rot);')}`);
   const field = createHeightField(1337, config), iterator = factory(config, field);
   let step = iterator.next(); while (!step.done) step = iterator.next();
   for (const geometry of Object.values(step.value.buckets).flat()) geometry.dispose();
   delete step.value.buckets;
+  // (buildings-271) a feature's ground-contact reader is a closure per build; this law compares pose, footprint and kind
+  for (const feature of step.value.buildings) delete feature.contacts;
   return step.value;
 }
 // Locate the farmhouse's actual entrance leaf (not its gable window).

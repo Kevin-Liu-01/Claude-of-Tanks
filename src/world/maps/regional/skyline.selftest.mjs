@@ -34,7 +34,9 @@ const ray = new THREE.Raycaster();
 
 function build(builder, id, plot, seed, tier = 'desktop') {
   const [w, d, h] = plot;
-  const style = { ...FRANCONIAN_STYLE, id: 'skyline-test', builders: { [id]: builder }, wear: 0 };
+  // (6117763918, 2026-11-05: weathering and wear are the place's, no default) the city kit's own id, so the harness map
+  // (off the building-style table) weathers as the kit's row: Franconian's, the city the plots are drawn for
+  const style = { ...FRANCONIAN_STYLE, builders: { [id]: builder } };
   return buildRegionalParts(style, {
     structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
     wallBucket: 'stone', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'skyline', snowCap: false, tier,
