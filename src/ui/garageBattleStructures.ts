@@ -83,6 +83,15 @@ export function resolveGarageBattleGroundMode(
 }
 
 /**
+ * (Main 2026-11-24, Kevin's option A: "phones skip the big download") One rule for every photographed set the Garage
+ * would fetch, the ground's layers and the structures' building and rock sets alike: only a handover fetches them. A
+ * phone's Garage ('library') and Node ('wait') fetch none; battles keep their own rule.
+ */
+export function garageFetchesPhotoSets(mode: GarageBattleGroundMode = resolveGarageBattleGroundMode()): boolean {
+  return mode === 'handover' && !headless();
+}
+
+/**
  * A map's ground layers start loading and decoding ahead of its ground material's prepare, only where the pack hands its
  * ground over (a 'library' or 'wait' pack fetches nothing). `prepare` is the receipts' seam. Returns whether it started.
  */
@@ -91,7 +100,7 @@ export function startGarageTerrainSources(
   mode: GarageBattleGroundMode,
   prepare: typeof prepareSourcedTerrain = prepareSourcedTerrain,
 ): boolean {
-  if (mode !== 'handover' || terrainSources.has(mapId) || terrainCache.has(mapId)) return false;
+  if (mode !== 'handover' || terrainSources.has(mapId) || terrainCache.has(mapId)) return false; // (garageFetchesPhotoSets' rule)
   const terrainCfg = getMapConfig(mapId) as unknown as TerrainMapConfig;
   terrainSources.set(mapId, prepare(mapId, terrainCfg.splat ?? {}, { worker: true }));
   while (terrainSources.size > 2) {
@@ -232,8 +241,9 @@ function surfaceEntry(map: GarageMapStructures, anisotropy: number, drawn: Reado
         shadowRegistrations.push([material, hook as ShaderHook | null | undefined]);
       },
     },
-    // (no DOM, the receipts under Node: no photographed sets to fetch; the procedural prints are the fallback of record)
-    sourceApplication: headless() ? { signal: AbortSignal.abort() } : {},
+    // the battle's photographed building and rock sets only where the Garage fetches photo sets (garageFetchesPhotoSets:
+    // a desktop page); a phone (Kevin's option A) and Node keep the procedural prints, the fallback of record
+    sourceApplication: garageFetchesPhotoSets() ? {} : { signal: AbortSignal.abort() },
     onRetained: (materials, textures) => { retained.materials = materials; retained.textures = textures; },
     drawn,
   });

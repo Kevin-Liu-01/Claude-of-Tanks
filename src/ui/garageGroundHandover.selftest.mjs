@@ -9,7 +9,8 @@
 // 3. a pack disposed before its battle ground lands releases the ground it never wore (no hold left behind);
 // 4. (Kevin 2026-11-24, option A) the mode follows the battle's device tier: Node waits, a desktop page hands over, a
 //    mobile-tier page keeps the Garage's ground; only a handover starts the ground's photographed layers' fetch;
-// 5. a 'library' pack keeps the Garage's ground and its map's battle ground is never prepared.
+// 5. a 'library' pack keeps the Garage's ground and its map's battle ground is never prepared; one rule fetches every
+//    photographed set (ground, building, rock) only on a handover.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
@@ -43,7 +44,10 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
   early.dispose();
   await new Promise((resolve) => setTimeout(resolve, 50));
   // 4.
-  const { resolveGarageBattleGroundMode, startGarageTerrainSources, garageTerrainSurfaceCache } = await import('./garageBattleStructures.ts');
+  const { resolveGarageBattleGroundMode, startGarageTerrainSources, garageTerrainSurfaceCache, garageFetchesPhotoSets } = await import('./garageBattleStructures.ts');
+  // one rule for every photographed set (the ground's layers, the structures' building and rock sets): a phone fetches none
+  assert.equal(garageFetchesPhotoSets('library'), false, 'a mobile-tier Garage fetches no photo set');
+  assert.equal(garageFetchesPhotoSets('wait'), false, 'Node fetches no photo set');
   assert.equal(resolveGarageBattleGroundMode(false, 'desktop'), 'wait', 'Node waits');
   assert.equal(resolveGarageBattleGroundMode(false, 'mobile'), 'wait', 'Node waits on any tier');
   assert.equal(resolveGarageBattleGroundMode(true, 'desktop'), 'handover', 'a desktop page hands over');
