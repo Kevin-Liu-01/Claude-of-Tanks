@@ -334,6 +334,27 @@ export function garageKitPads(variant: GarageVariant, placement: GarageKitPlacem
   return pads;
 }
 
+/**
+ * Where a pack's placed kit stands, for the ground cover (garage-env-276: a battle tuft stood inside Railyard's monitor
+ * housing): every piece but the wall runs, by its footprint or its solid's plan extent, with a half-metre margin for the
+ * orbit rule's nudges. The cover grows round the kit, never through it.
+ */
+export function garageKitCoverPads(variant: GarageVariant, placement: GarageKitPlacement): Array<{
+  readonly x: number; readonly z: number; readonly radius: number;
+}> {
+  const pads: Array<{ x: number; z: number; radius: number }> = [];
+  for (const item of garageKitItems(variant, placement)) {
+    if (item.kind === 'wall') continue;
+    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    const box = piece.result.solid.boundingBox;
+    const [hx, hz] = piece.footprint ?? (box && !box.isEmpty()
+      ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))] : [0.5, 0.5]);
+    const point = garageViewPoint(item.at[0], item.at[1]);
+    pads.push({ x: point.x, z: point.z, radius: Math.hypot(hx, hz) + 0.5 });
+  }
+  return pads;
+}
+
 /** Drop the session cache (tests). */
 export function clearGarageKitCache(): void {
   for (const piece of pieceCache.values()) disposePiece(piece);

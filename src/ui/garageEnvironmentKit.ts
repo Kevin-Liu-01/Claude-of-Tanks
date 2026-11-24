@@ -77,7 +77,7 @@ import {
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
 import {
-  buildGarageKitDressing, garageKitPads, pinGarageKitMap, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement,
+  buildGarageKitDressing, garageKitCoverPads, garageKitPads, pinGarageKitMap, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement,
 } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import { prepareGarageAtmosphere } from './garageAtmosphereKit.ts';
@@ -2326,8 +2326,30 @@ export function buildGarageEnvironment(
     }
     return best;
   };
+  // the pack's placed kit (its authored placement, the kit drawn or not: the ground it stands on stays clear)
+  // as a half-metre occupancy grid over the patch, filled once: the rule runs for every sward and tuft candidate (a
+  // scan of every pad per candidate cost the bake ~45 ms)
+  const coverPlacement = kitPlacement ?? GARAGE_KIT_PLACEMENTS[variant.architecture];
+  const KIT_CELL_M = 0.5;
+  const kitColumns = Math.ceil(patch.sizeXM / KIT_CELL_M), kitRows = Math.ceil(patch.sizeZM / KIT_CELL_M);
+  const kitCells = new Uint8Array(kitColumns * kitRows);
+  for (const pad of coverPlacement ? garageKitCoverPads(variant, coverPlacement) : []) {
+    // a cell is taken when any of it may lie inside the pad (its centre within the radius and a half diagonal)
+    const reach = pad.radius + KIT_CELL_M * Math.SQRT1_2;
+    const c0 = Math.max(0, Math.floor((pad.x - reach + patch.sizeXM / 2) / KIT_CELL_M));
+    const c1 = Math.min(kitColumns - 1, Math.floor((pad.x + reach + patch.sizeXM / 2) / KIT_CELL_M));
+    const r0 = Math.max(0, Math.floor((pad.z - reach + patch.sizeZM / 2) / KIT_CELL_M));
+    const r1 = Math.min(kitRows - 1, Math.floor((pad.z + reach + patch.sizeZM / 2) / KIT_CELL_M));
+    for (let row = r0; row <= r1; row += 1) {
+      for (let column = c0; column <= c1; column += 1) {
+        const cx = (column + 0.5) * KIT_CELL_M - patch.sizeXM / 2, cz = (row + 0.5) * KIT_CELL_M - patch.sizeZM / 2;
+        if (Math.hypot(cx - pad.x, cz - pad.z) < reach) kitCells[row * kitColumns + column] = 1;
+      }
+    }
+  }
   const coverBlocked = (x: number, z: number): boolean => {
     if (Math.abs(x) > patch.sizeXM / 2 - 0.5 || Math.abs(z) > patch.sizeZM / 2 - 0.5) return true;
+    if (kitCells[Math.floor((z + patch.sizeZM / 2) / KIT_CELL_M) * kitColumns + Math.floor((x + patch.sizeXM / 2) / KIT_CELL_M)]) return true;
     if (structureRecords.some((record) => (
       Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
       && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
