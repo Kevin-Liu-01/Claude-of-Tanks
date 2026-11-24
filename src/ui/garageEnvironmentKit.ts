@@ -1547,7 +1547,10 @@ interface PreparedGarageStructures {
   readonly map: GarageMapStructures;
   readonly surfaces: GarageStructureSurfaces;
   /** (garage-env-276, class 2) The map's battle ground material for the yard's patch (garageBattleStructures.ts). */
-  readonly terrain: GarageTerrainSurface;
+  /** The map's battle ground once prepared (Node, or a page whose map was already painted); else null and pending. */
+  readonly terrain: GarageTerrainSurface | null;
+  /** (garage-env-276, the cold first visit) a page's battle ground, still preparing off the switch's path. */
+  readonly terrainPending: Promise<GarageTerrainSurface | null> | null;
   /** The map's set pieces on the horizon ring, in their buckets (garageHorizonSetPieces.ts). */
   readonly horizon: { readonly buckets: GeometryBuckets; readonly pieces: readonly GarageHorizonSetPiece[] };
 }
@@ -1571,7 +1574,8 @@ function disposePreparedStructures(id: string): void {
   disposeStructureGeometry(prepared.records, prepared.backdrop);
   disposeBuckets(prepared.horizon.buckets);
   releaseGarageStructureSurfaces(prepared.surfaces);
-  releaseGarageTerrainSurface(prepared.terrain);
+  if (prepared.terrain) releaseGarageTerrainSurface(prepared.terrain);
+  void prepared.terrainPending?.then((surface) => { if (surface) releaseGarageTerrainSurface(surface); });
 }
 
 function disposeBuckets(buckets: GeometryBuckets): void {
@@ -2035,24 +2039,44 @@ export function buildGarageEnvironment(
   // (garage-env-276, class 2) the map's own battle ground material (its splat layers, land use, breakup and wetness,
   // garageBattleStructures.ts prepareGarageTerrainSurface), reading the patch as the map's ground at its source anchor:
   // the material's world positions move into the map's frame each draw (the pack's root may stand anywhere)
-  const terrainSurface = prepared?.terrain ?? holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
-  for (const [material, hook] of terrainSurface.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
-  track({ dispose: () => releaseGarageTerrainSurface(terrainSurface) });
-  // (garage-env-276, class 3) the horizon's ground (its relief or biome bands and landforms: garageSkyline.ts and
-  // createBackdropGeometry's group 0) wears the same battle terrain material, lit by the real sun and hazed by the real sky as the battle's horizon ring is, its
-  // built landmarks and water keeping their colours (group 1): the far mesas and massifs were flat-shaded colour
-  if (horizon.geometry.groups.length === 2) {
-    (horizon as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>).material = [terrainSurface.material, horizon.material];
-  }
-  const terrain = new THREE.Mesh(terrainGeometry, terrainSurface.material);
+  // (garage-env-276, the cold first visit) a page's pack presents on the Garage's own ground (the library's set for the
+  // recipe's surface, warmed on the picker's intent) while its battle ground prepares, and wears the battle ground the
+  // moment it lands (wearBattleGround below); Node and an already painted map wear it from the bake
+  const pendingTerrain = prepared?.terrainPending ?? null;
+  let terrainSurface: GarageTerrainSurface | null = prepared?.terrain
+    ?? (pendingTerrain ? null : holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4))));
+  const terrain = new THREE.Mesh(terrainGeometry, terrainSurface?.material ?? texturedMaterial(recipe.terrainSurface, {
+    color: recipe.terrainTint, roughness: rainSoaked ? 0.8 : 0.94, metalness: 0,
+  }));
   terrain.name = 'map_derived_terrain_patch';
   terrain.receiveShadow = true;
   const [anchorX, anchorZ] = patch.sourceAnchor;
-  terrain.onBeforeRender = () => {
-    const e = terrain.matrixWorld.elements;
-    terrainSurface.mapOrigin.value.set(anchorX - e[12], -e[13], anchorZ - e[14]);
-  };
   root.add(terrain);
+  const horizonOwnMaterial = horizon.material;
+  const wearBattleGround = (surface: GarageTerrainSurface): void => {
+    terrainSurface = surface;
+    for (const [material, hook] of surface.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
+    track({ dispose: () => releaseGarageTerrainSurface(surface) });
+    terrain.material = surface.material;
+    terrain.onBeforeRender = () => {
+      const e = terrain.matrixWorld.elements;
+      surface.mapOrigin.value.set(anchorX - e[12], -e[13], anchorZ - e[14]);
+    };
+    // (garage-env-276, class 3) the horizon's ground (its relief or biome bands and landforms: garageSkyline.ts and
+    // createBackdropGeometry's group 0) wears the same battle terrain material, lit by the real sun and hazed by the real
+    // sky as the battle's horizon ring is, its built landmarks and water keeping their colours (group 1): the far mesas
+    // and massifs were flat-shaded colour
+    if (horizon.geometry.groups.length === 2) {
+      (horizon as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>).material = [surface.material, horizonOwnMaterial];
+    }
+  };
+  if (terrainSurface) wearBattleGround(terrainSurface);
+  else void pendingTerrain?.then((surface) => {
+    if (!surface) return;
+    if (disposed) { releaseGarageTerrainSurface(surface); return; }
+    wearBattleGround(surface);
+    requestRender();
+  });
 
   // The paved apron drapes onto the shaped terrain (2026-10-10, wave 338: a hard-edged "decal patch" in the sand was
   // the old 29 x 24 m box's corner standing proud over a dip). Inside the podium's terrain-clear ring it lies at the
@@ -3284,7 +3308,7 @@ export function buildGarageEnvironment(
       for (const handle of handles) handle.release();
       handles.length = 0;
       if (outerEngineCtx.releaseShadowMaterial) {
-        const owned = new Set<unknown>([...disposables, ...structureSurfaces.materials, terrainSurface.material]);
+        const owned = new Set<unknown>([...disposables, ...structureSurfaces.materials, ...(terrainSurface ? [terrainSurface.material] : [])]);
         for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
       }
       cascadeMaterials.clear();
@@ -3334,6 +3358,12 @@ export async function prepareGarageEnvironmentAssets(
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   stillWanted: () => boolean = () => true,
+  /**
+   * (garage-env-276, the cold first visit) 'handover': the pack presents on the Garage's own ground and its battle
+   * ground swaps in where it lands (a page: its photographed layers download and decode); 'wait': the prepare takes the
+   * battle ground whole (Node, where the layers are painted).
+   */
+  battleGround: GarageBattleGroundMode = typeof document === 'undefined' ? 'wait' : 'handover',
 ): Promise<boolean> {
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
@@ -3361,8 +3391,10 @@ export async function prepareGarageEnvironmentAssets(
   if (slicer.due()) await slicer.yield();
   if (!stillWanted()) return false;
   prepareGarageAtmosphere();
-  return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted, slicer);
+  return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted, slicer, battleGround);
 }
+
+export type GarageBattleGroundMode = 'wait' | 'handover';
 
 /** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
 async function prepareGarageStructures(
@@ -3371,13 +3403,14 @@ async function prepareGarageStructures(
   anisotropy: number,
   stillWanted: () => boolean,
   slicer: GarageSlicer,
+  battleGround: GarageBattleGroundMode,
 ): Promise<boolean> {
   if (preparedStructures.has(variant.id)) return true;
   const inFlight = preparingStructures.get(variant.id);
   if (inFlight) { inFlight.wanted.add(stillWanted); return inFlight.task; }
   const wanted = new Set<() => boolean>([stillWanted]);
   // it stops only once no caller that joined it wants it any more
-  const task = buildPreparedStructures(variant, recipe, anisotropy, () => [...wanted].some((wants) => wants()), slicer);
+  const task = buildPreparedStructures(variant, recipe, anisotropy, () => [...wanted].some((wants) => wants()), slicer, battleGround);
   preparingStructures.set(variant.id, { task, wanted });
   const clear = (): void => { if (preparingStructures.get(variant.id)?.task === task) preparingStructures.delete(variant.id); };
   task.then(clear, clear);
@@ -3390,6 +3423,7 @@ async function buildPreparedStructures(
   anisotropy: number,
   wanted: () => boolean,
   slicer: GarageSlicer,
+  battleGround: GarageBattleGroundMode,
 ): Promise<boolean> {
   const patch = getGarageTerrainPatch(variant.mapId);
   const heights = garageEnvironmentHeights(recipe, patch);
@@ -3447,17 +3481,28 @@ async function buildPreparedStructures(
     disposeStructureGeometry(records, backdrop);
     return false;
   }
-  // (garage-env-276, class 2) the map's battle ground material, built as its world build builds it, in slices
-  const terrain = await prepareGarageTerrainSurface(map, anisotropy, wanted, slicer);
-  if (!terrain) {
-    releaseGarageStructureSurfaces(surfaces);
-    disposeBuckets(horizonBuckets);
-    disposeStructureGeometry(records, backdrop);
-    return false;
-  }
+  // (garage-env-276, class 2) the map's battle ground material, built as its world build builds it, in slices. (The
+  // cold first visit, timing4: on a page it waited on the photographed layers' download and decode, 1-3 s of a switch's
+  // wait.) A page's switch never waits on it: the pack presents on the Garage's own ground and the battle ground swaps
+  // in where it lands (buildGarageEnvironment). It prepares in the background, its own slicer, wanted while the map's
+  // cache keeps it; Node (the receipts) takes it whole, as before (prepareGarageEnvironmentAssets' battleGround).
+  const handover = battleGround === 'handover';
+  const terrainTask = prepareGarageTerrainSurface(map, anisotropy, handover ? () => true : wanted,
+    handover ? createGarageSlicer() : slicer);
+  let terrain: GarageTerrainSurface | null = null;
+  let terrainPending: Promise<GarageTerrainSurface | null> | null = null;
+  if (!handover) {
+    terrain = await terrainTask;
+    if (!terrain) {
+      releaseGarageStructureSurfaces(surfaces);
+      disposeBuckets(horizonBuckets);
+      disposeStructureGeometry(records, backdrop);
+      return false;
+    }
+  } else terrainPending = terrainTask;
   disposePreparedStructures(variant.id);
   preparedStructures.set(variant.id, {
-    records, rngDraws, backdrop, map, surfaces, terrain, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
+    records, rngDraws, backdrop, map, surfaces, terrain, terrainPending, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
   });
   return true;
 }
