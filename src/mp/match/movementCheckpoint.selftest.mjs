@@ -202,4 +202,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 64-value version-10 layout identical to the authority encoder, versions 8, 7, 6, 5 and 4 still decode, the roof and the body contact a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 64-value version-11 layout identical to the authority encoder, versions 8, 7, 6, 5 and 4 still decode, the roof and the body contact a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');
