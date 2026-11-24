@@ -18,7 +18,7 @@ function smoothstep(a: number, b: number, x: number): number {
 // readable material response that flat vertex colors could not provide.
 function sampleStructureDetail(
   noi: SimplexNoise,
-  kind: 'wood' | 'canvas' | 'steel',
+  kind: 'wood' | 'canvas' | 'steel' | 'plate',
   x: number,
   y: number,
   sample: Float32Array,
@@ -31,6 +31,16 @@ function sampleStructureDetail(
     const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
     sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
     sample[1] = 0.88 + sample[0] * 0.10;
+  } else if (kind === 'plate') {
+    // (garage round 2, 277) rolled plate and sections, the sheet steel's own grain, scratches and rust without its
+    // corrugation, seams or rivets: the Garage hall's columns, girts, frames and trusses
+    const scratch = smoothstep(0.72, 0.94, noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
+    const mill = noi.noise(x * 0.021 - 5, y * 0.021 + 13) * 0.5 + 0.5;
+    const rust = smoothstep(0.62, 0.92, noi.noise(x * 0.05 + 3, y * 0.05 - 41) * 0.5 + 0.5) * 0.45
+      + ((noi.noise(x * 0.4 + 17, y * 0.4 + 9) * 0.5 + 0.5) > 0.9 ? 0.5 : 0);
+    sample[0] = 0.5 + grain * 0.10 + mill * 0.06 - scratch * 0.04;
+    sample[1] = 0.9 + (mill - 0.5) * 0.08 + (grain - 0.5) * 0.04 - scratch * 0.07;
+    sample[2] = clamp(rust, 0, 1);
   } else {
     // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
     // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
@@ -55,11 +65,11 @@ function sampleStructureDetail(
 /** One kind's tile: the albedo luminance, the height and (steel) the rust mask; 128 px for the canvas, 256 px otherwise. */
 export interface StructureDetailBuffers { size: number; px: Uint8ClampedArray; hgt: Float32Array; rust: Float32Array | null }
 
-export function paintStructureDetailBuffers(noi: SimplexNoise, kind: 'wood' | 'canvas' | 'steel'): StructureDetailBuffers {
+export function paintStructureDetailBuffers(noi: SimplexNoise, kind: 'wood' | 'canvas' | 'steel' | 'plate'): StructureDetailBuffers {
   // (the facades lane, round 6; wave 241: "smeared-grain planks") the wood is hewn oak at 256 px, twice the texels over
   // the same 1.82 m tile, its grain painted seamless (timberGrain.ts paintTimberGrain); the canvas keeps 128 px
   const s = kind === 'canvas' ? 128 : 256, px = new Uint8ClampedArray(s * s * 4);
-  const rust = kind === 'steel' ? new Float32Array(s * s) : null;
+  const rust = kind === 'steel' || kind === 'plate' ? new Float32Array(s * s) : null;
   const grain = kind === 'wood' ? paintTimberGrain(s, 0x0a4) : null;
   const hgt = grain ? grain.hgt : new Float32Array(s * s);
   const sample = new Float32Array(3);

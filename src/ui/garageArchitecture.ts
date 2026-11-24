@@ -818,6 +818,49 @@ export function createGarageArchitectureController(
       return prepare(variant, true).then(() => collectStats());
     },
     stats: collectStats,
+    /**
+     * (garage round 2, 277: Kevin, "the world through its doors") The world outside an enclosure: its map's scene pack,
+     * built whole with no yard kit, then clipped to the outside of its recipe's enclosure (its plan footprint)
+     * (garageEnvironmentKit.ts clipGarageEnvironmentToExterior). The stage asks for it after the Garage presents and owns
+     * what it returns; null once the controller is disposed.
+     */
+    async buildEnclosureExterior(variant: GarageVariant): Promise<{
+      readonly root: THREE.Object3D;
+      readonly texturesReady?: Promise<void>;
+      readonly stats: Readonly<{ removedTriangles: number; removedInstances: number; drawCalls: number; triangles: number }>;
+      dispose(): void;
+    } | null> {
+      const kit = await getEnvironmentKit();
+      const footprint = kit.garageEnclosureFootprint(variant);
+      if (disposed || !footprint) return null;
+      const library = ensureAssets(kit);
+      const release = kit.pinGarageEnvironmentCaches(variant);
+      try {
+        const wanted = (): boolean => !disposed;
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted)) === false) if (disposed) return null;
+        const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender, { kitPlacement: null });
+        // (half a metre past the walls: the upstand's thickness)
+        const clip = kit.clipGarageEnvironmentToExterior(build.root, footprint.halfXM + 0.5, footprint.halfZM + 0.5);
+        build.root.name = `garage_enclosure_exterior_${variant.architecture}`;
+        let drawCalls = 0, triangles = 0;
+        build.root.traverse((object) => {
+          const mesh = object as THREE.Mesh;
+          if (!mesh.isMesh || !mesh.visible) return;
+          drawCalls += 1;
+          const geometry = mesh.geometry;
+          const count = geometry.index ? geometry.index.count / 3 : (geometry.getAttribute('position')?.count ?? 0) / 3;
+          triangles += count * ((object as THREE.InstancedMesh).isInstancedMesh ? (object as THREE.InstancedMesh).count : 1);
+        });
+        return {
+          root: build.root,
+          texturesReady: build.texturesReady,
+          stats: Object.freeze({ removedTriangles: clip.removedTriangles, removedInstances: clip.removedInstances, drawCalls, triangles: Math.round(triangles) }),
+          dispose: () => { for (const geometry of clip.clones) geometry.dispose(); build.dispose(); },
+        };
+      } finally {
+        release();
+      }
+    },
     /** The pack records' phases, oldest first (diagnostics and receipts): each its architecture and its variant. */
     packPhases: (): Array<{ key: GarageArchitectureKey; variantId: string; phase: GaragePackPhase }> => (
       [...packs.values()].map((record) => ({ key: record.architecture, variantId: record.key, phase: record.phase }))),
