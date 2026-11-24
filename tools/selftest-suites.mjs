@@ -1186,6 +1186,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cursorEdgePan.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
+    // guidance-pointers-276: the recorded chase bands' stale check (a fresh capture within a few px, or --check fails)
+    'tools/hud-chase-bands-drift.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
     'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',

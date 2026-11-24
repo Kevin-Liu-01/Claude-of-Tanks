@@ -5,11 +5,13 @@
 // WebGL) at every supported battle size, idle and with the controls strip (mouse sizes), into
 // tools/fixtures/hud-chase-bands.json, which src/engine/chaseFraming.selftest.mjs reads. Re-record after the HUD's
 // bottom chrome or its head band moves.
-//   node tools/hud-chase-bands.browser.mjs [--check]   (--check: compare with the recorded file, write nothing)
+//   node tools/hud-chase-bands.browser.mjs [--check]   (--check: compare with the recorded file, write nothing; it fails
+//   on any band past BANDS_DRIFT_PX, tools/hud-chase-bands-drift.mjs, guidance-pointers-276)
 import { readFileSync, writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { startViteChild, stubViteSocket } from './capture-hold.mjs';
+import { BANDS_DRIFT_PX, bandsDrift } from './hud-chase-bands-drift.mjs';
 
 const FIXTURE = new URL('./fixtures/hud-chase-bands.json', import.meta.url);
 const SIZES = [[1920, 1080, false], [1440, 900, false], [1280, 720, false], [1180, 820, true], [820, 1180, true], [390, 844, true], [844, 390, true]];
@@ -62,9 +64,11 @@ keys.forEach((size, i) => {
 lines.push('  }', '}');
 const text = `${lines.join('\n')}\n`;
 if (check) {
-  const same = JSON.stringify(recorded.sizes) === JSON.stringify(sizes);
-  console.log(same ? 'hud-chase-bands: the recorded bands hold' : 'hud-chase-bands: the bands moved; re-record without --check');
-  process.exit(same ? 0 : 1);
+  const drift = bandsDrift(recorded.sizes, sizes);
+  for (const d of drift) console.log(`  ${d.size} ${d.state}: ${d.what}`);
+  console.log(drift.length ? `hud-chase-bands: stale, ${drift.length} bands moved past ${BANDS_DRIFT_PX} px; re-record without --check`
+    : `hud-chase-bands: the recorded bands hold within ${BANDS_DRIFT_PX} px`);
+  process.exit(drift.length ? 1 : 0);
 }
 writeFileSync(FIXTURE, text);
 console.log(`hud-chase-bands: recorded ${keys.length} sizes`);
