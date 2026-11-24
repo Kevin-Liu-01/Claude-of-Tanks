@@ -1495,6 +1495,7 @@
   "hud.alert.autoAimOn": "APUNTADO AUTOMÁTICO: {name}",
   "hud.alert.autoAimTarget": "APUNTADO AUTOMÁTICO: OBJETIVO",
   "hud.alert.ammoTypeEmpty": "TIPO DE MUNICIÓN AGOTADO · SELECCIONA OTRO TIPO",
+  "hud.alert.droneDowned": "Dron enemigo derribado",
   "hud.alert.missilesDepletedNext": "MISILES AGOTADOS · SIGUIENTE MUNICIÓN SELECCIONADA",
   "hud.alert.ammoDepletedNext": "MUNICIÓN AGOTADA · SIGUIENTE TIPO SELECCIONADO",
   "hud.alert.allAmmoDepleted": "TODA LA MUNICIÓN AGOTADA",

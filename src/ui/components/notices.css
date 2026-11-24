@@ -27,6 +27,19 @@
 /* a notice's picture after its words (notice.ts media): first-party SVG at its own size */
 .cot-c-notice__media{display:block;flex:none;align-self:center;line-height:0;border-radius:var(--r1);overflow:hidden}
 .cot-c-notice__media svg{display:block}
+/* a notice's art (noticeArt.ts; Kevin 2026-11-23: "the graphic and then its gradient transitioning from nothing into the
+   image"): one rule for every kind and every host (a toast, the HUD's event seat). The layer is the notice's first child, held
+   against its right edge at full height and masked from transparent at its left into the image; the notice keeps its words
+   off the picture's solid part by its end padding. Placed first and positioned, it paints over the host's plate (a host may
+   draw its plate in pseudo-elements under its content, as the HUD's angled plates do) and under the notice's own parts,
+   positioned after it, by document order alone. A seat with no empty side (a compact one) sets --notice-art:none and
+   --notice-art-room:0px. */
+.cot-c-notice:has(>.cot-c-notice__art){position:relative;isolation:isolate;padding-inline-end:calc(var(--s3) + var(--notice-art-room,52px))}
+:is(.cot-c-notice__glyph,.cot-c-notice__body,.cot-c-notice__count,.cot-c-notice__acts,.cot-c-notice__close,.cot-c-notice__media){position:relative}
+.cot-c-notice__art{display:var(--notice-art,block);position:absolute;top:0;right:0;bottom:0;width:var(--notice-art-w,136px);
+  border-radius:inherit;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent,black 72%);mask-image:linear-gradient(to right,transparent,black 72%)}
+.cot-c-notice__art img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 52%;border-radius:inherit}
 /* a notice's actions and close are 44 px targets on touch (the interaction bar's line 1 and the gauntlet's line 12) */
 @media (pointer:coarse){.cot-c-notice .cot-c-btn{--h:44px}.cot-c-notice__close{margin:-10px -10px -10px 0}}
 .cot-c-notice[hidden]{display:none}

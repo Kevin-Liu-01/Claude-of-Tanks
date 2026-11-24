@@ -24,6 +24,7 @@ import { NOTICE_PRIORITY } from './battleNotices.ts';
 import { NoticeQueue, noticeContentHtml, type QueuedToast } from './components/notice.ts';
 import { markDatum } from './dom.ts';
 import type { IconId } from './icons/icon.ts';
+import type { NoticeArtId } from './components/noticeArt.ts';
 
 type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 
@@ -38,6 +39,8 @@ export interface BattleEvent {
   readonly priority: number;
   readonly severity?: EventSeverity;
   readonly icon?: IconId;
+  /** The kind's picture in the notice's empty side (components/noticeArt.ts; the kinds Kevin and Main ruled on 2026-11-23). */
+  readonly art?: NoticeArtId;
   /** One event per slot: a newer one replaces it in place, and never cools down. */
   readonly slot?: string;
   /** A key line for the detail (keyPrompt.ts "[KEY] text"), drawn when it shows and again when the keys change. */
@@ -94,7 +97,7 @@ export function createBattleEventLane(host: EventLaneHost) {
     // (a compact seat reads as its glyph: the words in the live region and in the hover tip)
     el.dataset.tip = event.text;
     el.innerHTML = noticeContentHtml({
-      severity, icon: severity === 'error' ? 'alert' : event.icon ?? 'info', text: line,
+      severity, icon: severity === 'error' ? 'alert' : event.icon ?? 'info', text: line, art: event.art,
       detailHtml: keys || undefined, detail: keys ? undefined : rest.join(' · ') || undefined,
     }) + (toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '');
     el.dataset.severity = severity;

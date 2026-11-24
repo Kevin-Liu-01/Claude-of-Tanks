@@ -1495,6 +1495,7 @@
   "hud.alert.autoAimOn": "AUTO-AIM: {name}",
   "hud.alert.autoAimTarget": "AUTO-AIM: TARGET",
   "hud.alert.ammoTypeEmpty": "AMMUNITION TYPE EMPTY · SELECT ANOTHER TYPE",
+  "hud.alert.droneDowned": "Enemy drone down",
   "hud.alert.missilesDepletedNext": "MISSILES DEPLETED · NEXT AMMO SELECTED",
   "hud.alert.ammoDepletedNext": "AMMUNITION DEPLETED · NEXT TYPE SELECTED",
   "hud.alert.allAmmoDepleted": "ALL AMMUNITION DEPLETED",

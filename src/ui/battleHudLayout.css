@@ -780,6 +780,15 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (a one-line alert as tall as the detection's 32 px beside it, one notice height on touch: 28 against 32 read as two
    kits, gauntlet r8) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
+/* (notices-276) a notice's art (components/noticeArt.ts) stands in its seat's empty side. A compact seat has none: the touch
+   alert's 136 px (there the art's room wrapped the auto-aim lock to five lines, onto the damage panel at 844x390), the
+   smallest windows' 134 px and a short mouse window's glyph-only alert show their words alone; the touch seat keeps a
+   narrower picture */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{--notice-art-room:28px;--notice-art-w:96px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{--notice-art:none;--notice-art-room:0px}
+@media (max-height:299px) and (orientation:landscape),(max-width:340px) and (orientation:portrait),(max-height:550px),(max-width:480px){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:is(.cot-touch-layout:not([data-touch-notices]),:not(.cot-touch-layout)) .cot-alert{--notice-art:none;--notice-art-room:0px}
+}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
 /* (notices-audit-275) the event's line and its detail side by side in the one row; on touch its words start at the glyph's

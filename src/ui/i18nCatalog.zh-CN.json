@@ -1512,6 +1512,7 @@
   "hud.alert.autoAimOn": "自动瞄准：{name}",
   "hud.alert.autoAimTarget": "自动瞄准：目标",
   "hud.alert.ammoTypeEmpty": "该类弹药已空 · 请选择其他弹药",
+  "hud.alert.droneDowned": "击落敌方无人机",
   "hud.alert.missilesDepletedNext": "导弹耗尽 · 已切换下一弹药",
   "hud.alert.ammoDepletedNext": "弹药耗尽 · 已切换下一弹药",
   "hud.alert.allAmmoDepleted": "全部弹药耗尽",

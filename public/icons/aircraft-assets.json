@@ -9,6 +9,67 @@
     "sideSilhouette"
   ],
   "aircraft": {
+    "a10": {
+      "kind": "aircraft",
+      "airframe": "strikeJet",
+      "nation": "USA",
+      "geometryHash": "7175a0f8",
+      "dims": {
+        "lengthM": 16.72,
+        "spanM": 17.5,
+        "heightM": 3.41
+      },
+      "assets": {
+        "angle": {
+          "file": "a10_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 25268,
+          "sha256": "aa7b755d0594558a17e17880646626db4e38640b1529cf95a94ee37ec4e3d92a",
+          "thumbnail": {
+            "file": "thumbs/a10_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 12226,
+            "sha256": "b17628c52843d9caa2b9c7fe85205bf4c82395fb63445977991155c0db7b29dc"
+          }
+        },
+        "top": {
+          "file": "a10_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 9080,
+          "sha256": "91c0aba083857ce08344d921a0781a6379ecaeb54f6a2a471fac6bc0794b990a"
+        },
+        "side": {
+          "file": "a10_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 4786,
+          "sha256": "b70ff0876e02dd7f851d60c6f31a589a61e7d3551bc610314ef128e4112c81be"
+        },
+        "topSilhouette": {
+          "file": "a10_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 2260,
+          "sha256": "f1837781cfd65f018ae5bb059440df6c579e08b572fddaff1f444e522cfb86db"
+        },
+        "sideSilhouette": {
+          "file": "a10_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 2919,
+          "sha256": "68ca44c3322605f20e159f832471977c1148e752c4d9a5252d0e3eada5ac4cf1"
+        }
+      }
+    },
     "ac130": {
       "kind": "aircraft",
       "airframe": "gunship",
@@ -67,6 +128,128 @@
           "mime": "image/png",
           "bytes": 3392,
           "sha256": "34af714651642379876c1aeee62e28b5598b6f6613466786b73d33860f2fb915"
+        }
+      }
+    },
+    "drone": {
+      "kind": "aircraft",
+      "airframe": "drone",
+      "nation": "USA",
+      "geometryHash": "6497c2c7",
+      "dims": {
+        "lengthM": 0.73,
+        "spanM": 0.76,
+        "heightM": 0.25
+      },
+      "assets": {
+        "angle": {
+          "file": "drone_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 19442,
+          "sha256": "c579ef41926ad0042284b5ab851d157b7dc644c536c421f28a3eecf4fe4ab956",
+          "thumbnail": {
+            "file": "thumbs/drone_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 9226,
+            "sha256": "163c532d2dc2d586eefab5ccc4cae69e009dc5b157db9ed97941fff0e22868a5"
+          }
+        },
+        "top": {
+          "file": "drone_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 19268,
+          "sha256": "c4259aeccc3ab98df6b70b404f96bc33bcf275432b36de19025273a8b81c8d0e"
+        },
+        "side": {
+          "file": "drone_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 8696,
+          "sha256": "0b7cc7906f8657e3d3bdd34baaa0d452f96a78ef72dd14d918cca0429dd9bf51"
+        },
+        "topSilhouette": {
+          "file": "drone_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 3761,
+          "sha256": "e45f4a91789207aec1301451392d9bb13322eaccf8d3ac1b36a15c46caa59cce"
+        },
+        "sideSilhouette": {
+          "file": "drone_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 4437,
+          "sha256": "62d92b266e9803fa47f8ae11ed6275472d2373f7cc9e5bc18cfe17469f218267"
+        }
+      }
+    },
+    "f16": {
+      "kind": "aircraft",
+      "airframe": "fighterJet",
+      "nation": "USA",
+      "geometryHash": "898d6074",
+      "dims": {
+        "lengthM": 15.1,
+        "spanM": 9.49,
+        "heightM": 4.4
+      },
+      "assets": {
+        "angle": {
+          "file": "f16_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 24138,
+          "sha256": "a51c777f4821c5bdf6356dd0f26f20e34b74f81b3cef605549d9df374fb14b0f",
+          "thumbnail": {
+            "file": "thumbs/f16_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 11164,
+            "sha256": "d1b55fb694507fd5044be6e8564c4d938762739ed6c2b56a2ff83be555a275af"
+          }
+        },
+        "top": {
+          "file": "f16_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 9900,
+          "sha256": "812fa87dee3562359323145bc59546e21c85c609c2b96cba8a0e60d34d96179f"
+        },
+        "side": {
+          "file": "f16_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 6284,
+          "sha256": "e79d7315aaec67bc8816a674f9efe2d0ce3aec7dd1a16ac1c9555f52ced545d5"
+        },
+        "topSilhouette": {
+          "file": "f16_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 2042,
+          "sha256": "4d8562acb9f89152658c14d331be7ce78feeb6b9748b7b8a1a664196e8634cc3"
+        },
+        "sideSilhouette": {
+          "file": "f16_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 3303,
+          "sha256": "0095fcc92b51bc01a2365fa5e813ac6d9e0f7b1a8cae6173b40e4af68b7457e8"
         }
       }
     }

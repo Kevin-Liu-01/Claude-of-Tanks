@@ -1495,6 +1495,7 @@
   "hud.alert.autoAimOn": "ZIELAUTOMATIK: {name}",
   "hud.alert.autoAimTarget": "ZIELAUTOMATIK: ZIEL",
   "hud.alert.ammoTypeEmpty": "MUNITIONSTYP AUFGEBRAUCHT · ANDEREN TYP WÄHLEN",
+  "hud.alert.droneDowned": "Feindliche Drohne abgeschossen",
   "hud.alert.missilesDepletedNext": "LENKFLUGKÖRPER AUFGEBRAUCHT · NÄCHSTE MUNITION AUSGEWÄHLT",
   "hud.alert.ammoDepletedNext": "MUNITION AUFGEBRAUCHT · NÄCHSTER TYP AUSGEWÄHLT",
   "hud.alert.allAmmoDepleted": "GESAMTE MUNITION AUFGEBRAUCHT",

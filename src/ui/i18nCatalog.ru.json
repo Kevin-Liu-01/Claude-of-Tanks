@@ -1495,6 +1495,7 @@
   "hud.alert.autoAimOn": "АВТОПРИЦЕЛ: {name}",
   "hud.alert.autoAimTarget": "АВТОПРИЦЕЛ: ЦЕЛЬ",
   "hud.alert.ammoTypeEmpty": "БОЕПРИПАСЫ ЭТОГО ТИПА ЗАКОНЧИЛИСЬ · ВЫБЕРИТЕ ДРУГОЙ ТИП",
+  "hud.alert.droneDowned": "Вражеский дрон сбит",
   "hud.alert.missilesDepletedNext": "РАКЕТЫ ЗАКОНЧИЛИСЬ · ВЫБРАН СЛЕДУЮЩИЙ ТИП БОЕПРИПАСОВ",
   "hud.alert.ammoDepletedNext": "БОЕПРИПАСЫ ЗАКОНЧИЛИСЬ · ВЫБРАН СЛЕДУЮЩИЙ ТИП",
   "hud.alert.allAmmoDepleted": "ВСЕ БОЕПРИПАСЫ ЗАКОНЧИЛИСЬ",
