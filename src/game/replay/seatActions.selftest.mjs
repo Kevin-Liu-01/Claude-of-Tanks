@@ -36,7 +36,7 @@ assert.deepEqual(verdict.both, [], 'a rule is recorded or read-only, not both');
 assert.deepEqual(verdict.stale, [], 'the lists name only rules the port has');
 
 // negative control: a new rule on the port, in neither list, is caught
-const planted = actionsSource.replace("  | 'requestTankAirSpin'\n", "  | 'requestTankAirSpin'\n  | 'requestPlantedAction'\n");
+const planted = actionsSource.replace("  | 'requestHullAirSpin'\n", "  | 'requestHullAirSpin'\n  | 'requestPlantedAction'\n");
 assert.notEqual(planted, actionsSource, 'the control plants its rule');
 assert.deepEqual(classify(portRules(planted)).unclassified, ['requestPlantedAction'], 'an unclassified rule fails the check');
 
@@ -59,9 +59,9 @@ const LIVE = {
   useSoloConsumable: (h) => [h, bus, 1, TIME_S],
   requestTankSelfRight: (h) => [h.state, 0.5],
   requestTankJump: (h) => [h.state, 7.25, 0.5],
-  pressSelfRight: (h) => [h],
+  pressSelfRight: (h) => [h, TIME_S],
   requestHullTurbo: (h) => [h, TIME_S],
-  requestTankAirSpin: (h) => [h.state, 0.375, -0.625],
+  requestHullAirSpin: (h) => [h, TIME_S],
 };
 assert.deepEqual(Object.keys(LIVE).sort(), [...RECORDED_RULES].sort(), 'the round trip covers every recorded rule');
 
@@ -91,8 +91,8 @@ for (const kind of RECORDED_RULES) {
   assert.equal(replaySeen.length, 1, `${kind}: replayed as one call`);
   assert.equal(replaySeen[0].name, kind, `${kind}: replayed as the same rule`);
   assert.deepEqual(replaySeen[0].args, liveSeen[0].args, `${kind}: replayed with the handler's arguments`);
-  if (kind === 'pressSelfRight') {
-    assert.deepEqual(replaySeen[0].input, liveSeen[0].input, 'pressSelfRight reads the throttle and steer the handler found');
+  if (kind === 'pressSelfRight' || kind === 'requestHullAirSpin') {
+    assert.deepEqual(replaySeen[0].input, liveSeen[0].input, `${kind} reads the throttle and steer the handler found`);
     assert.deepEqual(replayHull.input, { throttle: 0, steer: 0 }, 'and the seat keeps its own controls after the call');
   }
 }

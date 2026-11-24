@@ -14,7 +14,7 @@ import type { ReplayAction } from '../../sim/replayFormat.ts';
 
 /** The rules the handlers call that change the simulation (the rest of the port only reads). */
 export const RECORDED_RULES = ['selectShell', 'repairAllModules', 'startMagazineReload', 'activateSpecialAction', 'useSoloConsumable',
-  'requestTankSelfRight', 'requestTankJump', 'pressSelfRight', 'requestHullTurbo', 'requestTankAirSpin'] as const;
+  'requestTankSelfRight', 'requestTankJump', 'pressSelfRight', 'requestHullTurbo', 'requestHullAirSpin'] as const;
 
 /** The rules the handlers call that only read (a refusal's reason, a slot, a count, a kind): never recorded. */
 export const READ_RULES = ['magazineReloadDenialReason', 'guidedMissileSlot', 'specialActionKind', 'hasAmmunition', 'shellAmmunitionCapacity',
@@ -45,13 +45,13 @@ function recordedArgs(kind: RecordedRule, args: readonly unknown[]): number[] {
     case 'useSoloConsumable': return [num(args[2])];
     case 'requestTankSelfRight': return [num(args[1] ?? 1)];
     case 'requestTankJump': return [num(args[1]), num(args[2] ?? 1)];
-    // the self-right key's rule reads the seat's throttle and steer as the handler finds them, between two steps (an
-    // air spin's direction), which the seat's quantized controls need not equal; the air spin is handed them
-    case 'pressSelfRight': {
+    // the self-right key's rule and the air spin's read the seat's throttle and steer as the handler finds them, between
+    // two steps (the spin's direction), which the seat's quantized controls need not equal
+    case 'pressSelfRight':
+    case 'requestHullAirSpin': {
       const input = (args[0] as SeatActionEntity | null)?.input;
       return [num(input?.throttle ?? 0), num(input?.steer ?? 0)];
     }
-    case 'requestTankAirSpin': return [num(args[1]), num(args[2])];
     default: return [];
   }
 }
@@ -103,17 +103,17 @@ export function replaySeatAction(action: ReplayAction, entity: SeatActionEntity 
     case 'useSoloConsumable': call('useSoloConsumable', entity, ports.bus, a, ports.timeS); return;
     case 'requestTankSelfRight': call('requestTankSelfRight', entity.state, a); return;
     case 'requestTankJump': call('requestTankJump', entity.state, a, b); return;
-    case 'pressSelfRight': {
+    case 'pressSelfRight':
+    case 'requestHullAirSpin': {
       // the throttle and steer the handler's call read, for this call only (the step's own come from the seat's row)
       const input = entity.input;
-      if (!input) { call('pressSelfRight', entity); return; }
+      if (!input) { call(action.kind, entity, ports.timeS); return; }
       const throttle = input.throttle, steer = input.steer;
       input.throttle = a; input.steer = b;
-      try { call('pressSelfRight', entity); } finally { input.throttle = throttle; input.steer = steer; }
+      try { call(action.kind, entity, ports.timeS); } finally { input.throttle = throttle; input.steer = steer; }
       return;
     }
     case 'requestHullTurbo': call('requestHullTurbo', entity, ports.timeS); return;
-    case 'requestTankAirSpin': call('requestTankAirSpin', entity.state, a, b); return;
     case PREVIOUS_SHELL_SLOT: {
       const special = entity.specialAction as { previousShellSlot?: number } | null | undefined;
       if (special) special.previousShellSlot = a;
