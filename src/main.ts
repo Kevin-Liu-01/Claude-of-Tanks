@@ -2407,9 +2407,6 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  // (death-flow-275 R6) a Leave before the verdict of a battle that keeps records is a defeat (recordBattleLeft)
-  leaveCountsAsDefeat: () => game.phase === 'battle' && !game.result && !!game.ruleset?.records
-    && !game.ruleset?.watch && !game.ruleset?.couch,
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -3817,8 +3814,9 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
-  // (death-flow-275 R6; Kevin approved 2026-11-21) a local battle left before its verdict is recorded as a defeat
-  // (game/state.ts recordBattleLeft: the records hear it, no report or ending follows); the Esc menu said so
+  // (leave-no-loss-276; Kevin 2026-11-24 "leaving battles early should not count as a loss") a battle left before its
+  // verdict has no result: the records stand it in the history as "Left" and count it toward no total
+  // (game/battleOutcome.ts; game/state.ts recordBattleLeft, the room's presentation recordLeft); no report or ending follows
   if (game.phase === 'battle' && !game.result) {
     if (v2?.active) v2.recordLeft();
     else if (isSoloBattleRuntimeReady()) recordBattleLeft(game, bus);

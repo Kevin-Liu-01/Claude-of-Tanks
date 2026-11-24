@@ -521,7 +521,7 @@ export interface BrowserComposition {
   closeMatch(reason?: string): void;
   /** An explicit leave from the lobby or the battle: the seat goes and the admin migrates at once. */
   leaveRoom(reason?: string): void;
-  /** (death-flow-275 R6) The seat leaves a revealed battle before its verdict: recorded as a defeat. */
+  /** (leave-no-loss-276) The seat leaves a revealed battle before its verdict: recorded as 'left', no result, no total. */
   recordLeft(): boolean;
   /** The network status model's snapshot (the HUD's ping cell, diagnostics); written in place, never copied. */
   readonly networkStatus: Readonly<NetworkStatusSnapshot>;

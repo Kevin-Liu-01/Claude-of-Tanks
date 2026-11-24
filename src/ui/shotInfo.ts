@@ -2090,8 +2090,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
 
   bus.on('battle:ended', (payload) => {
     const p = eventPayload<BattleEndedEvent | null>(payload);
-    // (death-flow-275 R6) a battle left before its verdict is recorded as a defeat, but no report follows: the player is
-    // on the way to the Garage
+    // (leave-no-loss-276) a battle left before its verdict has no result (game/battleOutcome.ts 'left') and no report
+    // follows: the player is on the way to the Garage
     if ((p as { left?: boolean } | null)?.left) return;
     // the floating shot card and incoming toasts must never linger behind the
     // results screen — a dimmed PENETRATION card double-reported the final

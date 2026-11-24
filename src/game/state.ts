@@ -3244,20 +3244,21 @@ function applyEliminationResult(
 }
 
 /**
- * (death-flow-275 R6; Kevin approved 2026-11-21) Leaving a battle that keeps records before its verdict is a defeat: the
- * records hear `battle:ended` with result 'defeat', reason 'left' and `left: true` (the report and its presentation stand
- * down for it: the player is on the way to the Garage). The battle's own state takes no verdict, so no ending beat
- * starts under the return's veil. A practice battle (the range, training), a watched or a couch battle records nothing,
- * as at their end. Returns whether the leave was recorded.
+ * (leave-no-loss-276; Kevin 2026-11-24: "leaving battles early should not count as a loss") Leaving a battle that keeps
+ * records before its verdict has no result: the records hear `battle:ended` with result 'left' (game/battleOutcome.ts),
+ * reason 'left' and `left: true`, and stand it in the history as "Left" without counting it toward any total (the report
+ * and its presentation stand down for it: the player is on the way to the Garage). The battle's own state takes no
+ * verdict, so no ending beat starts under the return's veil. A practice battle (the range, training), a watched or a
+ * couch battle records nothing, as at their end. Returns whether the leave was recorded.
  */
 export function recordBattleLeft(game: SoloGameState, bus: EventBus): boolean {
   if (game.result !== null || !game.ruleset.records || game.ruleset.watch || game.ruleset.couch) return false;
-  emitBattleEnded(game, bus, { result: 'defeat', reason: 'left' });
+  emitBattleEnded(game, bus, { result: 'left', reason: 'left' });
   return true;
 }
 
 function emitBattleEnded(game: SoloGameState, bus: EventBus,
-  left: { result: 'defeat'; reason: 'left' } | null = null): void {
+  left: { result: 'left'; reason: 'left' } | null = null): void {
   bus.emit('battle:ended', {
     result: left?.result ?? game.result,
     reason: left?.reason ?? game.resultReason,

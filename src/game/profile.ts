@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { battleKeepsRecords } from '../sim/matchRuleset.ts';
+import { battleOutcomeOf, outcomeCounts, KeptRecordRow, type BattleOutcome } from './battleOutcome.ts';
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
 // vehicles, so credits and XP would communicate progression that does not
@@ -9,7 +10,8 @@ import { battleKeepsRecords } from '../sim/matchRuleset.ts';
 const PROFILE_KEY = 'cot.profile.v2';
 const PROFILE_VERSION = 2;
 
-export type BattleResult = 'victory' | 'draw' | 'defeat';
+/** (leave-no-loss-276) battleOutcome.ts's closed set: a left battle is 'left', never a defeat. */
+export type BattleResult = BattleOutcome;
 
 export interface BattleRecord {
   result: BattleResult;
@@ -37,6 +39,13 @@ interface PlayerRecord {
   lastBattle: BattleRecord | null;
   /** The latest completed battles, newest first (the Deploy screen's recent battles), at most RECENT_BATTLES. */
   recentBattles: BattleRecord[];
+}
+
+/** (leave-no-loss-276) The profile as stored: a row whose result is outside battleOutcome.ts's set is held as read
+ *  (KeptRecordRow), in its place, and saved back untouched; the getters (`viewOf`) never show or count it. */
+interface StoredProfile extends Omit<PlayerRecord, 'lastBattle' | 'recentBattles'> {
+  lastBattle: BattleRecord | KeptRecordRow | null;
+  recentBattles: (BattleRecord | KeptRecordRow)[];
 }
 
 /** How many completed battles the profile keeps for the Deploy screen. */
@@ -71,7 +80,7 @@ interface BattleTally {
 
 const installedBuses = new WeakSet<ProfileEventBus>();
 
-let cachedProfile: PlayerRecord | null = null;
+let cachedProfile: StoredProfile | null = null;
 let lastBattle: BattleRecord | null = null;
 
 function finiteInt(value: RuntimeValue, fallback = 0): number {
@@ -82,10 +91,6 @@ function finiteInt(value: RuntimeValue, fallback = 0): number {
 
 function firstString(...values: RuntimeValue[]): string {
   return values.find((value): value is string => typeof value === 'string') ?? '';
-}
-
-function resultOf(value: RuntimeValue): BattleResult {
-  return value === 'victory' || value === 'draw' ? value : 'defeat';
 }
 
 function recordOf(value: RuntimeValue): Record<string, RuntimeValue> | null {
@@ -111,9 +116,12 @@ function blankProfile(): PlayerRecord {
 
 function sanitizeBattle(value: RuntimeValue): BattleRecord | null {
   const source = recordOf(value);
-  if (!source) return null;
+  // (leave-no-loss-276) a row naming no outcome of the set is not a battle this version reads: it never reads as a
+  // defeat (storedBattle keeps it as read)
+  const result = source ? battleOutcomeOf(source.result) : null;
+  if (!source || !result) return null;
   return {
-    result: resultOf(source.result),
+    result,
     kills: finiteInt(source.kills),
     damage: finiteInt(source.damage),
     vehicleId: typeof source.vehicleId === 'string' ? source.vehicleId : '',
@@ -125,7 +133,21 @@ function sanitizeBattle(value: RuntimeValue): BattleRecord | null {
   };
 }
 
-function sanitizeProfile(value: RuntimeValue): PlayerRecord {
+/** A stored row: read, kept as read when its result is outside the set, or nothing when there is no row. */
+function storedBattle(value: RuntimeValue): BattleRecord | KeptRecordRow | null {
+  return value == null ? null : sanitizeBattle(value) ?? new KeptRecordRow(value);
+}
+
+function readable(row: BattleRecord | KeptRecordRow | null): row is BattleRecord {
+  return row !== null && !(row instanceof KeptRecordRow);
+}
+
+/** The player's record as the getters show it: the rows the records can read. */
+function viewOf(stored: StoredProfile): PlayerRecord {
+  return { ...stored, lastBattle: readable(stored.lastBattle) ? stored.lastBattle : null, recentBattles: stored.recentBattles.filter(readable) };
+}
+
+function sanitizeProfile(value: RuntimeValue): StoredProfile {
   const source = recordOf(value);
   if (!source) return blankProfile();
   return {
@@ -137,25 +159,25 @@ function sanitizeProfile(value: RuntimeValue): PlayerRecord {
     kills: finiteInt(source.kills),
     damage: finiteInt(source.damage),
     bestDamage: finiteInt(source.bestDamage),
-    lastBattle: sanitizeBattle(source.lastBattle),
+    lastBattle: storedBattle(source.lastBattle),
     recentBattles: recentOf(source.recentBattles, source.lastBattle),
   };
 }
 
 /** The stored recent battles, or the last battle alone for a profile saved before the list existed. */
-function recentOf(value: RuntimeValue, last: RuntimeValue): BattleRecord[] {
+function recentOf(value: RuntimeValue, last: RuntimeValue): (BattleRecord | KeptRecordRow)[] {
   const list = Array.isArray(value) ? value : [last];
-  return list.map(sanitizeBattle).filter((battle): battle is BattleRecord => battle !== null).slice(0, RECENT_BATTLES);
+  return list.map(storedBattle).filter((battle): battle is BattleRecord | KeptRecordRow => battle !== null).slice(0, RECENT_BATTLES);
 }
 
-function loadProfile(): PlayerRecord {
+function loadProfile(): StoredProfile {
   if (cachedProfile) return cachedProfile;
   cachedProfile = blankProfile();
   try {
     const saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null');
     cachedProfile = sanitizeProfile(saved);
   } catch (_) { /* storage unavailable or corrupt: use a session profile */ }
-  lastBattle = cachedProfile.lastBattle;
+  lastBattle = readable(cachedProfile.lastBattle) ? cachedProfile.lastBattle : null;
   return cachedProfile;
 }
 
@@ -175,7 +197,7 @@ export function battleOrdinalBase(): number {
 
 /** A copy of the player's real local battle record. */
 export function getPlayerRecord(): PlayerRecord {
-  return clone(loadProfile());
+  return clone(viewOf(loadProfile()));
 }
 
 /** A copy of the latest completed battle, including across page reloads. */
@@ -186,7 +208,7 @@ export function getLastBattleRecord(): BattleRecord | null {
 
 /** Copies of the latest completed battles, newest first, including across page reloads. */
 export function getRecentBattles(): BattleRecord[] {
-  return clone(loadProfile().recentBattles);
+  return clone(viewOf(loadProfile()).recentBattles);
 }
 
 /** Persist one completed battle without awarding fictional currencies. */
@@ -213,14 +235,18 @@ export function recordBattleResult({
     durationS,
     completedAt,
   });
-  if (!battle) throw new TypeError('battle result must be an object');
-  profile.matches += 1;
-  if (battle.result === 'victory') profile.wins += 1;
-  else if (battle.result === 'draw') profile.draws += 1;
-  else profile.losses += 1;
-  profile.kills += battle.kills;
-  profile.damage += battle.damage;
-  profile.bestDamage = Math.max(profile.bestDamage, battle.damage);
+  if (!battle) throw new TypeError('battle result must name an outcome (battleOutcome.ts)');
+  // (leave-no-loss-276) a left battle stands in the history as "Left" and no total hears it: not the matches, the wins,
+  // losses or draws (the win rate), the kills, the damage or the best damage
+  if (outcomeCounts(battle.result)) {
+    profile.matches += 1;
+    if (battle.result === 'victory') profile.wins += 1;
+    else if (battle.result === 'draw') profile.draws += 1;
+    else profile.losses += 1;
+    profile.kills += battle.kills;
+    profile.damage += battle.damage;
+    profile.bestDamage = Math.max(profile.bestDamage, battle.damage);
+  }
   profile.lastBattle = battle;
   profile.recentBattles = [battle, ...profile.recentBattles].slice(0, RECENT_BATTLES);
   lastBattle = battle;
@@ -282,7 +308,8 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
     if (!tally) return;
     // a practice mode keeps no record (sim/matchRuleset.ts records): the proving ground never reaches the tally, nor a
     // watched battle (battleKeepsRecords)
-    if (event.reason === 'network_disconnect' || !battleKeepsRecords(event)) {
+    // (leave-no-loss-276) an end naming no outcome of the set records nothing (it never reads as a defeat)
+    if (event.reason === 'network_disconnect' || !battleKeepsRecords(event) || !battleOutcomeOf(event.result)) {
       tally = null;
       return;
     }

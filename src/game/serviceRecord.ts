@@ -4,6 +4,7 @@ import { FiredRoundLedger } from './battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { getPlayerRecord } from './profile.ts';
 import { rulesetKeepsRecords } from '../sim/matchRuleset.ts';
+import { battleOutcomeOf, outcomeCounts, KeptRecordRow, type BattleOutcome } from './battleOutcome.ts';
 // Medals and achievements: what a commander did, kept on this device beside
 // the battle record (profile.ts). A medal is earned inside one battle — some
 // the moment they happen, the rest when it ends; an achievement is a lifetime
@@ -115,7 +116,8 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = Object.freeze(ACHIEVEMENT
   Object.freeze({ id, icon, tiers: Object.freeze([tiers[0], tiers[1], tiers[2]] as [number, number, number]) })));
 const ACHIEVEMENT_IDS: ReadonlySet<string> = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
 
-type BattleResult = 'victory' | 'draw' | 'defeat';
+/** (leave-no-loss-276) battleOutcome.ts's closed set: a left battle is 'left', never a defeat. */
+type BattleResult = BattleOutcome;
 
 interface ServiceStats {
   battles: number;
@@ -177,7 +179,9 @@ interface ServiceStore {
   vehicles: string[];
   nations: string[];
   modes: string[];
-  history: ServiceBattle[];
+  /** Newest first. (leave-no-loss-276) A row whose result is outside battleOutcome.ts's set is held as read, in its place
+   *  (KeptRecordRow), and saved back untouched; getServiceRecord never shows or counts it. */
+  history: (ServiceBattle | KeptRecordRow)[];
   /** Awards not yet looked at in the Service Record: `medal:<id>` and `achievement:<id>:<tier>`. */
   unseen: string[];
 }
@@ -291,10 +295,6 @@ function recordOf(value: RuntimeValue): Record<string, RuntimeValue> | null {
     : null;
 }
 
-function resultOf(value: RuntimeValue): BattleResult {
-  return value === 'victory' || value === 'draw' ? value : 'defeat';
-}
-
 function stringSet(value: RuntimeValue, limit: number): string[] {
   if (!Array.isArray(value)) return [];
   const out: string[] = [];
@@ -343,9 +343,13 @@ function sanitizeBattle(value: RuntimeValue): ServiceBattle | null {
     if (step) trace.push({ t: Math.max(0, finite(step.t)), specId: text(step.specId), distM: count(step.distM), cause: text(step.cause),
       ...(step.source === 'ac130' || step.source === 'drone' ? { source: step.source } : {}) });
   }
+  // (leave-no-loss-276) a row naming no outcome of the set is not a battle this version reads: it never reads as a
+  // defeat (sanitizeStore keeps it as read)
+  const result = battleOutcomeOf(source.result);
+  if (!result) return null;
   return {
     at: finite(source.at),
-    result: resultOf(source.result),
+    result,
     mode: text(source.mode) || 'standard',
     mapId: text(source.mapId),
     vehicleId: text(source.vehicleId),
@@ -386,8 +390,8 @@ function sanitizeStore(value: RuntimeValue): ServiceStore {
   store.nations = stringSet(source.nations, 64);
   store.modes = stringSet(source.modes, 32);
   for (const entry of Array.isArray(source.history) ? source.history.slice(0, HISTORY_LIMIT) : []) {
-    const battle = sanitizeBattle(entry);
-    if (battle) store.history.push(battle);
+    if (entry == null) continue;
+    store.history.push(sanitizeBattle(entry) ?? new KeptRecordRow(entry));
   }
   store.unseen = stringSet(source.unseen, UNSEEN_LIMIT).filter(validUnseen);
   return store;
@@ -492,7 +496,7 @@ export function getServiceRecord(): ServiceRecordView {
     stats: { ...store.stats },
     medals: clone(store.medals),
     achievements,
-    history: clone(store.history),
+    history: clone(store.history.filter((row): row is ServiceBattle => !(row instanceof KeptRecordRow))),
     unseen: [...store.unseen],
     medalsEarned: achievementValue(store, 'medal_case'),
     tiersReached: achievements.reduce((sum, entry) => sum + entry.tier, 0),
@@ -745,8 +749,10 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (!tracker) return;
     if (event.reason === 'network_disconnect') { battle = null; return; }
     if (event.watch === true || event.couch === true || !rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
+    // (leave-no-loss-276) an end naming no outcome of the set records nothing (it never reads as a defeat)
+    const result = battleOutcomeOf(event.result);
+    if (!result) { battle = null; return; }
     settleShots(ctx.clockS(), true);
-    const result = resultOf(event.result);
     const player = me();
     const roster = (Array.isArray(event.roster) ? event.roster : []).map(recordOf)
       .filter((row): row is Record<string, RuntimeValue> => row != null);
@@ -755,6 +761,22 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (!player || (roster.length > 0 && !ownRow)) { battle = null; return; }
     const alive = ownRow ? ownRow.alive !== false : tracker.alive;
     const durationS = finite(event.durationS) || Math.max(0, (Date.now() - tracker.startedAt) / 1000);
+    // (leave-no-loss-276; Kevin 2026-11-24 "leaving battles early should not count as a loss") a left battle stands in
+    // the history as "Left" with what it saw, and nothing else hears it: no battle, win, survival, kill, damage, shot,
+    // best, medal, achievement or place is banked, and no awards follow (no report does)
+    if (!outcomeCounts(result)) {
+      battle = null;
+      const store = loadStore();
+      store.history.unshift({
+        at: Date.now(), result, mode: text(event.gameMode) || ctx.gameMode() || 'standard', mapId: text(event.mapId) || tracker.mapId,
+        vehicleId: tracker.vehicleId, ...(ownRow?.aircraft === true ? { aircraft: true } : {}),
+        kills: tracker.kills, damage: Math.round(tracker.damage), durationS: Math.round(durationS), survived: alive,
+        shots: tracker.aimedShots, hits: tracker.aimedHits, bestChain: tracker.bestChain, medals: [], achievements: [], trace: tracker.trace,
+      });
+      store.history.length = Math.min(store.history.length, HISTORY_LIMIT);
+      saveStore();
+      return;
+    }
     const won = result === 'victory';
 
     let topDamage = 0;

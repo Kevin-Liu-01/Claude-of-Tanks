@@ -283,14 +283,25 @@ for (let i = 0; i < 30; i++) {
 assert.equal(getServiceRecord().history.length, 25, 'the history keeps the latest 25 battles');
 
 // A fresh module instance reads corrupt or hostile storage without throwing.
-store.set('cot.service.v1', JSON.stringify({ version: 1, stats: { battles: -4, kills: 'x' }, medals: { nope: { count: 3 }, first_blood: { count: 2.6 } }, history: [{ result: 'win', medals: ['first_blood', 'bogus'], trace: 'x' }], unseen: [1, 'medal:first_blood', 'medal:nope', 'achievement:veteran:4', 'achievement:veteran:2', 'medal:first_blood:1', 'random'] }));
+// (leave-no-loss-276) a row naming no outcome of the closed set (a later version's 'retreat', a bad import's) is kept as
+// read: never shown, never counted, never read as a defeat, and saved back byte for byte
+const foreignRow = { result: 'retreat', at: 1700000000000, medals: ['first_blood'], future: { field: [1, 2.5, 'x'], note: null } };
+store.set('cot.service.v1', JSON.stringify({ version: 1, stats: { battles: -4, kills: 'x' }, medals: { nope: { count: 3 }, first_blood: { count: 2.6 } }, history: [foreignRow, { result: 'defeat', medals: ['first_blood', 'bogus'], trace: 'x' }], unseen: [1, 'medal:first_blood', 'medal:nope', 'achievement:veteran:4', 'achievement:veteran:2', 'medal:first_blood:1', 'random'] }));
 const fresh = await import('./serviceRecord.ts?corrupt');
 const view = fresh.getServiceRecord();
 assert.equal(view.stats.battles, 0);
 assert.deepEqual(Object.keys(view.medals), ['first_blood']);
 assert.equal(view.medals.first_blood.count, 3);
+assert.equal(view.history.length, 1, 'a row with an unknown result is not shown');
 assert.equal(view.history[0].result, 'defeat');
 assert.deepEqual(view.history[0].medals, ['first_blood']);
 assert.deepEqual(view.unseen, ['medal:first_blood', 'achievement:veteran:2'], 'only real award keys survive');
+// the round trip: a save (the unseen marks cleared) writes the kept row back exactly as it was stored, in its place
+fresh.markServiceRecordSeen();
+const resaved = JSON.parse(store.get('cot.service.v1'));
+assert.equal(JSON.stringify(resaved.history[0]), JSON.stringify(foreignRow), 'the kept row survives a load and save byte for byte');
+assert.ok(store.get('cot.service.v1').includes(JSON.stringify(foreignRow)), 'byte for byte in the stored text');
+assert.equal(resaved.history.length, 2, 'in its place, beside the readable row');
+assert.equal(fresh.getServiceRecord().stats.battles, 0, 'and counted in no total');
 
 console.log('serviceRecord selftest: ok');

@@ -77,6 +77,7 @@ import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
+import type { BattleOutcome } from '../game/battleOutcome.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
 import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.ts';
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
@@ -343,6 +344,10 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
 }
 /** How far a fitted sheet's rows may give (their tiles' padding) to bring one more row in, or grow to fill the room. */
 // (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
+/** (leave-no-loss-276) the Deploy screen's recent battles: a tone and a glyph per outcome of the closed set (a Record over
+ *  the union, so a new outcome does not compile until it has both). A left battle is neutral, the way back to the Garage. */
+const DEPLOY_RECORD_TONE: Readonly<Record<BattleOutcome, 'v' | 'd' | 'n'>> = Object.freeze({ victory: 'v', defeat: 'd', draw: 'n', left: 'n' });
+const DEPLOY_RECORD_ICON: Readonly<Record<BattleOutcome, string>> = Object.freeze({ victory: 'statVictory', defeat: 'close', draw: 'close', left: 'garage' });
 const FIT_SHRINK_PX = 10;
 const FIT_STRETCH_PX = 36;
 /** A docked paint swatch gives up to half its picture's 48 px basis (showroom.css) to bring one more row in: its picture
@@ -4725,12 +4730,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const battle of getRecentBattles()) {
       const copy = heroCopy(battle.vehicleId);
       if (!copy) continue;
-      const won = battle.result === 'victory';
       const result = document.createElement('article');
       result.className = 'cot-deploy-rec';
       result.append(copy);
-      result.insertAdjacentHTML('beforeend', `<div class="res"><span class="w ${won ? 'v' : battle.result === 'draw' ? 'n' : 'd'}">` +
-        `${uiIconSVG(won ? 'statVictory' : 'close', 15)}${t(`garage.record.${battle.result}`)}</span>` +
+      result.insertAdjacentHTML('beforeend', `<div class="res"><span class="w ${DEPLOY_RECORD_TONE[battle.result]}">` +
+        `${uiIconSVG(DEPLOY_RECORD_ICON[battle.result], 15)}${t(`garage.record.${battle.result}`)}</span>` +
         `${rules([['map', battle.mapId ? t(`map.${battle.mapId}`) : '–'], ['skull', String(battle.kills)], ['damage', String(battle.damage)]])}</div>`);
       deployLower.append(result);
     }
