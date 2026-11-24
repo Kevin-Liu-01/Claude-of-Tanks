@@ -24,7 +24,10 @@ Kevin 2026-11-21): `battleNotices.ts` holds the one ladder (`NOTICE_PRIORITY`: l
 threat, turned, answered, ambient, teaching) and the condition lane (`condition` and
 `dismiss`: a state held until it ends), `battleNoticeEvents.ts` the HUD's event lane in
 the planners' `.cot-alert` seat (what just happened; `ui:battleEvent` raises one from
-outside the HUD), their keys on `keyPrompt.ts`'s "[KEY] text" line;
+outside the HUD), their keys on `keyPrompt.ts`'s "[KEY] text" line; every raise names its
+kind in `noticeKinds.ts` (its subject and shape: the hexagon plate or a one-line pill; the
+tank's own held off the binoculars, the drone and the gunship; Air Support's air lane all
+condition-lane plates; `noticeKinds.selftest.mjs`);
 `battleNoticeCensus.selftest.mjs` fails a new announcing surface until it is theirs
 or named there with its reason; `captionLine.ts` draws the crew radio's captions where
 the guidance plan seats them;
