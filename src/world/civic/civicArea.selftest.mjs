@@ -15,7 +15,8 @@
 //   - the lamps (AC12, G6): the map's count does not fall, a dozen round the crossing, none in a structure;
 //   - every piece seated on the ground and out of every structure.
 import assert from 'node:assert/strict';
-import { installWorldBuildFixture, releaseWorldBuild } from '../../../tools/headlessWorldCollision.mjs';
+import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models, fleet, plans, collision, dressing] = await Promise.all([
   import('../maps/index.ts'), import('../terrain.ts'), import('../vegetation.ts'), import('../props.ts'), import('../propsModelStore.ts'),
@@ -24,7 +25,7 @@ await models.preloadPropModels();
 const engine = { anisotropy: 4, setupShadowMaterial() {} };
 
 async function build(mapId, off) {
-  await releaseWorldBuild(); // the last build's world is free to go
+  await betweenBuilds(); // the last build's world is free to go
   globalThis.__cotCivicOff = off;
   try {
     const config = maps.getMapConfig(mapId);

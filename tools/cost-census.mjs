@@ -75,7 +75,8 @@ async function main(argv) {
   const [out, ...mapIds] = argv;
   if (!out || !mapIds.length) { console.error('usage: node tools/cost-census.mjs <out.jsonl> <mapId...> | --compare <base> <branch>'); return 2; }
   const T = process.cwd();
-  const { installWorldBuildFixture, releaseWorldBuild } = await import(`${T}/tools/headlessWorldCollision.mjs`);
+  const { installWorldBuildFixture } = await import(`${T}/tools/headlessWorldCollision.mjs`);
+  const { betweenBuilds } = await import(`${T}/tools/build-loop-yield.mjs`);
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
     import(`${T}/src/world/maps/index.ts`), import(`${T}/src/world/terrain.ts`), import(`${T}/src/world/vegetation.ts`), import(`${T}/src/world/props.ts`),
@@ -83,7 +84,7 @@ async function main(argv) {
   await models.preloadPropModels();
   const engine = { anisotropy: 4, setupShadowMaterial() {} };
   for (const mapId of mapIds) {
-    await releaseWorldBuild(); // the last map's world is free to go
+    await betweenBuilds(); // the last map's world is free to go
     const t0 = Date.now();
     const config = maps.getMapConfig(mapId);
     if (config.props?.tankWrecks?.ids?.length) await fleet.ensureTankBuilders(config.props.tankWrecks.ids);

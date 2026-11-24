@@ -4,7 +4,7 @@
 // The 276 regen's `gen-interior-fills --all` grew ~4 GB/min to 31 GB resident over 313 ids while its V8 heap stayed
 // flat: every build paints 10-16 napi-rs canvases (~60-80 MB of native pixels), a canvas's pixels are freed only by the
 // addon's N-API finalizer, Node runs those finalizers in a later macrotask, and the per-id loop never left its turn.
-// tank-surface-collect.mjs drainNativeFinalizers() is the yield the loop now awaits after tank.dispose().
+// build-loop-yield.mjs betweenBuilds() is the yield the loop now awaits after tank.dispose().
 //
 // This runs the real generator (release flags, --stats: writes nothing) on a few ids with a probe preloaded that forces
 // a GC at each id's result line and counts the canvases of earlier builds whose FinalizationRegistry callback has run.
@@ -51,7 +51,7 @@ assert.ok(builds.every((n) => n > 0), `every probe id paints canvases (${builds.
 const owed = lines.at(-3).made;
 assert.ok(last.finalized >= 0.75 * owed,
   `canvases of finished builds are still alive at the last id: ${last.finalized} finalized of ${owed} owed (made ${last.made}); `
-  + 'the per-id loop must yield (drainNativeFinalizers) after tank.dispose()');
+  + 'the per-id loop must yield (betweenBuilds) after tank.dispose()');
 
 const slope = (mb(last.rss) - mb(lines[1].rss)) / (lines.length - 2);
 console.log(`gen-interior-fills memory: ${last.finalized}/${last.made} canvases finalized by the last of ${IDS.length} ids, `

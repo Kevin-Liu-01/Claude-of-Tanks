@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 // the shards' packer: one source for the capture page, this Node build and the page's own rounding (276)
 import { packCollisionRecord } from '../src/world/collisionRecordPacking.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** The canvas/image/fetch fixture the world receipts build props and vegetation behind (no pixels are read back). */
 export function installWorldBuildFixture(target = globalThis) {
@@ -32,17 +33,6 @@ export function installWorldBuildFixture(target = globalThis) {
     ? new Response(readFileSync(url)) : browserFetch(url));
   target.__cotWorldBuildFixture = true;
 }
-
-/**
- * Let a finished map's world go before the next one builds (roadlife-retention-277, 2026-11-24). Every world build makes
- * WeakRefs (engine/renderLayers.ts's shadow-caster list, engine/shadowCasterProxies.ts's caster owners: ~230 a map), and
- * V8 keeps a WeakRef's target alive until the current job ends: until the microtask queue drains. A loop of builds chained
- * only through awaits that resolve at once never drains it, so every map's meshes and their geometry stayed reachable past
- * every GC (roadLife: external memory 1.2 -> 10.2 GiB over 7 maps, peak 8.2 GiB). A macrotask yield ends the job; it also
- * runs N-API finalizers queued for freed native memory (tank-surface-collect.mjs drainNativeFinalizers, the same class).
- * buildWorldCollisionData awaits it; a receipt that builds maps itself awaits it before each build.
- */
-export function releaseWorldBuild() { return new Promise((done) => setImmediate(done)); }
 
 /** Pack a world's three record lists (the capture page's shape: tree colliders are stored once, in obstacles). */
 export function packWorldCollision({ obstacles, colliders, concealers, craters = null }) {
@@ -83,7 +73,7 @@ async function worldBuilders() {
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
   const { maps, terrain, vegetation, props, fleet, mapCraters, kits } = await worldBuilders();
-  await releaseWorldBuild(); // the previous map's world is free to go (releaseWorldBuild)
+  await betweenBuilds(); // the previous map's world is free to go (build-loop-yield.mjs)
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
   const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
