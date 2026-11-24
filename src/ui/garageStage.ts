@@ -29,7 +29,7 @@ import {
   garageHardstandGradedHook,
   garageHardstandGrainTexture,
 } from './garageHardstandProgram.ts';
-import type { HallMesh } from './garageHallKit.ts';
+import { boxProjectMetreUvs, type HallMesh } from './garageHallKit.ts';
 import { buildVerdantFloorAlbedoSteps, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
 import { createGarageVariantReveal } from './garageVariantReveal.ts';
@@ -901,7 +901,72 @@ export function* createGarageStageSteps(
       };
       later(step, 300);
     };
+    // (garage round 2, 277: Kevin, "the standard garage (motor pool) needs to be updated a lot too, textures etc") the
+    // hall's steel, trusses and concrete take the battle kit's prints once the Garage has presented, a step a slice
+    const wearHall = (): void => {
+      void import('./garageVerdantHallSurfaces.ts').then(({ paintVerdantHallSurfaces, wearVerdantHallPrint }) => {
+        if (stageDisposed) return;
+        const steps = paintVerdantHallSurfaces(aniso);
+        const step = (): void => {
+          if (stageDisposed) return;
+          const next = steps.next();
+          if (!next.done) { later(step, 300); return; }
+          const { plate, concrete } = next.value;
+          for (const texture of [plate.albedo, plate.normal, concrete.albedo, concrete.normal]) track(texture);
+          wearVerdantHallPrint(hallSteelMat, plate);
+          wearVerdantHallPrint(trussMat, plate);
+          wearVerdantHallPrint(hallConcreteMat, concrete);
+          group.userData.verdantHallSurfaces = 'battle-kit-prints';
+          requestRender();
+        };
+        later(step, 300);
+      }).catch(() => {});
+    };
+    // (garage round 2, 277: Kevin, "the world through its doors") the Verdant map's own world outside the hall's openings
+    // (its scene pack, clipped to the outside of the hall: garageArchitecture.ts buildEnclosureExterior) replaces the
+    // hand-coloured country once the Garage has presented
+    const buildVerdantExterior = (): void => {
+      void architecture.buildEnclosureExterior(getGarageVariant('verdant_motor_pool')).then((exterior) => {
+        if (!exterior) return;
+        if (stageDisposed) { exterior.dispose(); return; }
+        track(exterior);
+        verdantExterior = exterior;
+        exterior.root.visible = hallCountry?.visible ?? true;
+        if (hallCountry) hallCountry.visible = false;
+        group.add(exterior.root);
+        group.userData.verdantExterior = exterior.stats;
+        requestRender();
+        standTruckAtShutter(exterior.root);
+      }).catch(() => {});
+    };
+    // (garage round 2, 277: Kevin, "maybe like a truck backing in") the map fleet's truck reversing into the roller
+    // shutter, built as the battle builds its parked vehicles (civilianVehicleKit.ts): its tail a metre inside the door
+    // line, its cab out in the yard, in the half-turned hall's frame (the shutter at z = -HW)
+    const standTruckAtShutter = (parent: THREE.Object3D): void => {
+      void import('../world/maps/civilianVehicleKit.ts').then(({ buildIntactCivilianVehicle }) => {
+        if (stageDisposed) return;
+        const geometry = track(buildIntactCivilianVehicle('verdant', getDeviceTier() === 'mobile', 'truck', 7));
+        geometry.computeBoundingBox();
+        const tail = geometry.boundingBox!.min.z;
+        const material = track(shadowMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0.08 })));
+        const truck = new THREE.Mesh(geometry, material);
+        truck.name = 'garage_verdant_shutter_truck';
+        truck.castShadow = true;
+        truck.receiveShadow = true;
+        const [shutterFrom, shutterTo] = verdantHallShutter(HW).x;
+        // its nose (+z) turned out of the hall, so its tail (-tail after the half-turn) stands INSIDE_M past the door line
+        const INSIDE_M = 1.1;
+        truck.rotation.y = Math.PI + 0.07;
+        truck.position.set(-(shutterFrom + shutterTo) / 2, GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM, -HW + INSIDE_M + tail);
+        truck.updateMatrix();
+        truck.matrixAutoUpdate = false;
+        parent.add(truck);
+        requestRender();
+      }).catch(() => {});
+    };
     if (typeof document !== 'undefined') {
+      later(wearHall, 3000);
+      later(buildVerdantExterior, 3500);
       later(() => {
         void loadPlatformKit().then((kit) => {
           if (stageDisposed) return;
@@ -976,15 +1041,19 @@ export function* createGarageStageSteps(
     group.add(mesh);
     return mesh;
   };
+  let hallCountry: THREE.Mesh | null = null;
+  let verdantExterior: { readonly root: THREE.Object3D; dispose(): void } | null = null;
   function addHangarShell(): void {
     // The walls stop the garage sun (2026-10-10): without them it lit the floor straight through the shell. The roof
     // casts nothing, so the sun's key on the hero is unchanged; its lights let the sky show.
     addHallPart('garage_verdant_hall_sheeting', hall.sheeting, wallMat, { uv: true, color: false });
     addHallPart('garage_verdant_hall_roof', hall.roof, ceilMat, { uv: true, color: false, cast: false });
-    addHallPart('garage_verdant_hall_steel', hall.steel, hallSteelMat);
-    addHallPart('garage_verdant_hall_concrete', hall.concrete, hallConcreteMat);
+    // (garage round 2) the steel and the concrete keep their metre UVs for the battle kit's prints (the idle chain below)
+    addHallPart('garage_verdant_hall_steel', hall.steel, hallSteelMat, { uv: true });
+    addHallPart('garage_verdant_hall_concrete', hall.concrete, hallConcreteMat, { uv: true });
     addHallPart('garage_verdant_hall_glass', hall.glass, hallGlassMat, { color: false, cast: false, receive: false });
-    addHallPart('garage_verdant_country', hall.exterior, hallExteriorMat, { cast: false });
+    // the hand-coloured country stands until the map's own world outside the openings arrives (verdantExterior below)
+    hallCountry = addHallPart('garage_verdant_country', hall.exterior, hallExteriorMat, { cast: false });
     group.userData.verdantHall = hall.stats;
   }
   addHangarShell();
@@ -1020,7 +1089,10 @@ export function* createGarageStageSteps(
       }
     }
     for (let x = -HW + 1.5; x < HW; x += 3) place(purlinGeo, x, roofTop + 0.02, 0);
-    const roof = new THREE.Mesh(track(mergeGeometries(parts, false)!), trussMat);
+    const merged = mergeGeometries(parts, false)!;
+    // (garage round 2) metre UVs, so the battle kit's plate print tiles at its size along a 46 m chord (garageVerdantHallSurfaces.ts)
+    boxProjectMetreUvs(merged);
+    const roof = new THREE.Mesh(track(merged), trussMat);
     roof.name = 'garage_verdant_roof_structure';
     group.add(roof);
     for (const part of parts) part.dispose();
@@ -1701,6 +1773,10 @@ export function* createGarageStageSteps(
   ): void => {
     const isVerdant = variantId === 'verdant_motor_pool';
     for (const object of indoorStageObjects) object.visible = isVerdant;
+    if (verdantExterior) {
+      verdantExterior.root.visible = isVerdant;
+      if (hallCountry) hallCountry.visible = false;
+    }
     showPlatformCollar(getGarageVariant(variantId).architecture);
     // Keep the light objects present in both modes so Three's light-count
     // defines stay invariant. Removing the Verdant fixtures forced every hero

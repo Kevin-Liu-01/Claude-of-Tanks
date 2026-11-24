@@ -351,3 +351,21 @@ export function addPersonnelDoor(mesh: HallMesh, opening: HallOpening,
   mesh.box([lw / 2, y0 + 1.55, 0.026], [0.32, 0.5, 0.008]); // vision panel frame
   mesh.setFrame(saved);
 }
+
+/**
+ * Metre UVs for a merged geometry with no meaningful ones of its own (the roof trusses' boxes): each vertex takes the two
+ * world axes across its normal's dominant one, so a print tiles at its real size on every face.
+ */
+export function boxProjectMetreUvs(geometry: THREE.BufferGeometry): void {
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const uv = new Float32Array(position.count * 2);
+  for (let index = 0; index < position.count; index += 1) {
+    const nx = Math.abs(normal.getX(index)), ny = Math.abs(normal.getY(index)), nz = Math.abs(normal.getZ(index));
+    const x = position.getX(index), y = position.getY(index), z = position.getZ(index);
+    if (nx >= ny && nx >= nz) { uv[index * 2] = z; uv[index * 2 + 1] = y; }
+    else if (ny >= nz) { uv[index * 2] = x; uv[index * 2 + 1] = z; }
+    else { uv[index * 2] = x; uv[index * 2 + 1] = y; }
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}

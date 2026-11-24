@@ -1393,7 +1393,33 @@ function garageEnvironmentHeights(recipe: GarageEnvironmentRecipe, patch: Garage
     }
   };
   shapeQuayAndShore();
+  // (garage round 2) an enclosed Garage's ground meets its hall's floor: levelled to the datum under the hall and
+  // feathered back into the excerpt past its walls, so the doors open onto ground at the sill, not onto a bank
+  const levelEnclosure = (): void => {
+    const enclosure = recipe.enclosure;
+    if (!enclosure) return;
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const out = Math.hypot(Math.max(0, Math.abs(x) - enclosure.halfXM), Math.max(0, Math.abs(z) - enclosure.halfZM));
+        const level = 1 - THREE.MathUtils.smoothstep(out, 0, enclosure.featherM);
+        if (level <= 0) continue;
+        const index = row * patch.width + column;
+        heights[index] = THREE.MathUtils.lerp(heights[index], GARAGE_ENCLOSURE_SILL_Y, level);
+      }
+    }
+  };
+  levelEnclosure();
   return heights;
+}
+
+/** The enclosed ground's level: just under the hall floor's slab (garagePresentationPose.ts groundSurfaceYM -0.025). */
+const GARAGE_ENCLOSURE_SILL_Y = -0.04;
+
+/** An enclosed Garage's hall in plan, or null for an open one (its recipe's enclosure). */
+export function garageEnclosureFootprint(variant: GarageVariant): GarageEnvironmentRecipe['enclosure'] | null {
+  return GARAGE_ENVIRONMENT_RECIPES[variant.architecture]?.enclosure ?? null;
 }
 
 function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
@@ -1593,6 +1619,9 @@ function disposeStructureGeometry(records: readonly GarageStructureRecord[], bac
     }
   }
 }
+
+// (garage round 2, 277) the far backdrop's battle ring, for the architecture controller's kit chunk
+export { prepareGarageFarRing } from './garageBattleStructures.ts';
 
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
@@ -3541,4 +3570,91 @@ async function buildPreparedStructures(
     horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
   });
   return true;
+}
+
+/**
+ * (garage round 2, 277: Kevin, "the world through its doors") An enclosure's exterior: a scene pack built whole, then
+ * everything inside the enclosure's plan footprint (|x| < halfX, |z| < halfZ in the pack's frame) taken out, so the
+ * hall's doors, windows and roof lights look onto the map's real terrain, landforms, trees and structures and the hall's
+ * own floor and walls stand alone inside. A mesh's triangles go when their centroid is inside; an instanced mesh's
+ * instances when their origin is. A geometry another pack may share (the kit pieces, the groves) is cloned before it is
+ * cut: the clones are returned for their owner to dispose.
+ */
+export function clipGarageEnvironmentToExterior(root: THREE.Object3D, halfX: number, halfZ: number): {
+  readonly removedTriangles: number;
+  readonly removedInstances: number;
+  readonly clones: readonly THREE.BufferGeometry[];
+} {
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const local = new THREE.Matrix4(), instance = new THREE.Matrix4(), point = new THREE.Vector3();
+  const inside = (x: number, z: number): boolean => Math.abs(x) < halfX && Math.abs(z) < halfZ;
+  const clones: THREE.BufferGeometry[] = [];
+  let removedTriangles = 0, removedInstances = 0;
+  const empty: THREE.Object3D[] = [];
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    local.multiplyMatrices(toRoot, mesh.matrixWorld);
+    const instanced = object as THREE.InstancedMesh;
+    if (instanced.isInstancedMesh) {
+      let kept = 0;
+      const hasColor = !!instanced.instanceColor;
+      const color = new THREE.Color();
+      for (let index = 0; index < instanced.count; index += 1) {
+        instanced.getMatrixAt(index, instance);
+        point.setFromMatrixPosition(instance).applyMatrix4(local);
+        if (inside(point.x, point.z)) { removedInstances += 1; continue; }
+        if (kept !== index) {
+          instanced.setMatrixAt(kept, instance);
+          if (hasColor) { instanced.getColorAt(index, color); instanced.setColorAt(kept, color); }
+        }
+        kept += 1;
+      }
+      if (kept !== instanced.count) {
+        instanced.count = kept;
+        instanced.instanceMatrix.needsUpdate = true;
+        if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
+        if (kept === 0) empty.push(instanced);
+      }
+      return;
+    }
+    const geometry = mesh.geometry;
+    const position = geometry.getAttribute('position');
+    if (!position) return;
+    const index = geometry.getIndex();
+    const triangles = index ? index.count / 3 : position.count / 3;
+    const keep: number[] = [];
+    const corner = (k: number): number => (index ? index.getX(k) : k);
+    // a multi-material mesh keeps each group's material over its own kept triangles
+    const spans = geometry.groups.length
+      ? geometry.groups.map((group) => ({ start: group.start, count: group.count, materialIndex: group.materialIndex ?? 0 }))
+      : [{ start: 0, count: triangles * 3, materialIndex: 0 }];
+    const groups: Array<{ start: number; count: number; materialIndex: number }> = [];
+    for (const span of spans) {
+      const start = keep.length;
+      for (let t = span.start / 3; t < Math.min(triangles, (span.start + span.count) / 3); t += 1) {
+        let cx = 0, cz = 0;
+        for (let k = 0; k < 3; k += 1) {
+          point.fromBufferAttribute(position, corner(t * 3 + k)).applyMatrix4(local);
+          cx += point.x; cz += point.z;
+        }
+        if (inside(cx / 3, cz / 3)) continue;
+        keep.push(corner(t * 3), corner(t * 3 + 1), corner(t * 3 + 2));
+      }
+      if (keep.length > start) groups.push({ start, count: keep.length - start, materialIndex: span.materialIndex });
+    }
+    const before = spans.reduce((sum, span) => sum + Math.min(span.count, triangles * 3 - span.start), 0);
+    if (keep.length === before) return;
+    removedTriangles += (before - keep.length) / 3;
+    if (!keep.length) { empty.push(mesh); return; }
+    const cut = geometry.clone();
+    cut.setIndex(keep);
+    cut.clearGroups();
+    if (geometry.groups.length) for (const group of groups) cut.addGroup(group.start, group.count, group.materialIndex);
+    mesh.geometry = cut;
+    clones.push(cut);
+  });
+  for (const object of empty) object.visible = false;
+  return { removedTriangles, removedInstances, clones };
 }

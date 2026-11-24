@@ -89,6 +89,12 @@ export interface GarageEnvironmentRecipe {
   readonly sourceStructure: string;
   readonly landmark: readonly [number, number, number];
   readonly distinctiveElements: readonly string[];
+  /**
+   * (garage round 2, 277) An enclosed Garage's hall in plan (its walls at |x| = halfXM, |z| = halfZM about the turntable):
+   * its pack is the world outside the hall's openings, the ground levelled to the hall's floor out to featherM past the
+   * walls and everything inside the walls taken out (garageEnvironmentKit.ts clipGarageEnvironmentToExterior).
+   */
+  readonly enclosure?: Readonly<{ halfXM: number; halfZM: number; featherM: number }>;
 }
 
 const STRUCTURE_CATALOG_IDS = new Map<StructureBuilder, string>([
@@ -146,6 +152,8 @@ const atView = (builder: StructureBuilder, label: string, side: number, depth: n
 export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnvironmentRecipe>>({
   field_shed: {
     terrainSurface: 'grass', terrainTint: 0xb1bd83, hardstandTint: 0x8d8a78,
+    // the Verdant hall (garageStage.ts: the 46 m floor, its walls at +-23 m)
+    enclosure: { halfXM: 23, halfZM: 23, featherM: 14 },
     structures: [
       at(makeFarmhouse, 'field farmhouse', -36, -6, 0.88),
       at(makeTavern, 'village tavern', -30, -30, 0.76),

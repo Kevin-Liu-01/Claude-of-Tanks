@@ -235,6 +235,17 @@ export function buildBrokenCivilianVehicle(mapId: string, mobile: boolean, role:
   return buildRole(ctx.fleet.roles[kind], kind, ctx, true, seed);
 }
 
+/**
+ * (garage round 2, 277: Kevin, "maybe like a truck backing in") An intact vehicle of the map's fleet, built as the battle
+ * builds its parked ones (the coachbuilder, the fleet's age, the map's climate), fitted into its role's box with its tyres
+ * on y = 0 and its nose to +z: the Garage's set dressing.
+ */
+export function buildIntactCivilianVehicle(mapId: string, mobile: boolean, role: string, seed: number): THREE.BufferGeometry {
+  const ctx = buildContext(mapId, mobile), kind = role as CivilianVehicleKind;
+  if (!ctx.fleet.roles[kind]) throw new Error(`no ${role} in the fleet of ${mapId}`);
+  return buildRole(ctx.fleet.roles[kind], kind, ctx, false, seed);
+}
+
 function roleBuilders(
   role: CivilianVehicleKind, ctx: BuildContext, map: { mapId: string; mobile: boolean } | null = null,
 ): Pick<CivilianVehicleOverride, 'build' | 'buildSteps' | 'broken' | 'brokenJob' | 'shadowBuild' | 'collisionSolid'> {

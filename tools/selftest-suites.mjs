@@ -1339,6 +1339,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageCameraArm.selftest.mjs', // garage-env-276 (b): every pack's orbit at both zoom limits, no eye inside a part
     'src/ui/garageSward.selftest.mjs', // garage-env-276 class 2: the battle sward on the grass yards, the floors clear
     'src/ui/garageGroundHandover.selftest.mjs', // garage-env-276 (the cold first visit): a page's pack presents on the Garage's ground, the battle ground swaps in
+    'src/ui/garageEnclosureExterior.selftest.mjs', // garage round 2 (277): the motor pool's world through its doors, clipped to its hall
     // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
     'src/ui/garagePrewarmCancel.selftest.mjs',
     // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose

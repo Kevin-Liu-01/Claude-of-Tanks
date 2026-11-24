@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { getGarageTerrainPatch } from './garageTerrainPatches.generated.ts';
 import {
   createTerrainSurfaceMaterialSteps, type TerrainMapConfig, type TerrainSourceCheckpoint, type TerrainSurfaceMaterial,
 } from '../world/terrain.ts';
@@ -529,4 +530,64 @@ export function garageDrawnKinds(...bucketSets: ReadonlyArray<Readonly<Record<st
     for (const [key, list] of Object.entries(buckets)) if (Array.isArray(list) && list.length) drawn.add(key);
   }
   return drawn;
+}
+
+/**
+ * (garage round 2, 277: the far backdrop at battle-map far quality, one class) A map's own battle horizon ring
+ * (maps/horizon.ts buildHorizonRingSteps, the battle's seed): its ranges, ring forest, farmsteads and far range, built as
+ * the battle builds it, in slices, and stood at its true distance and bearing from the Garage's place on the map (the
+ * Garage frame shares the map's axes: garageSkyline.ts). Behind the pack's own near bands (44-96 m) it carries the
+ * distance they cannot. Cached per map, the two most recent kept; resolves null when `wanted` turns false.
+ */
+const farRings = new Map<string, Promise<THREE.Mesh | null>>();
+export async function prepareGarageFarRing(
+  mapId: string,
+  engineCtx: object | null,
+  wanted: () => boolean,
+  slicer: GarageSlicer = createGarageSlicer(),
+): Promise<THREE.Mesh | null> {
+  const cached = farRings.get(mapId);
+  if (cached) return cached;
+  const task = (async () => {
+    const { buildHorizonRingSteps } = await import('../world/maps/horizon.ts');
+    if (!wanted()) return null;
+    const cfg = getMapConfig(mapId) as unknown as Parameters<typeof buildHorizonRingSteps>[1];
+    const steps = withHeadlessCanvas(() => buildHorizonRingSteps(engineCtx, cfg, GARAGE_FAR_RING_SEED));
+    let step = withHeadlessCanvas(() => steps.next());
+    while (!step.done) {
+      if (slicer.due()) {
+        await slicer.yield();
+        if (!wanted()) { steps.return(undefined as never); return null; }
+      }
+      step = withHeadlessCanvas(() => steps.next());
+    }
+    const ring = step.value;
+    const [anchorX, anchorZ] = getGarageTerrainPatch(mapId).sourceAnchor;
+    ring.position.set(-anchorX, 0, -anchorZ);
+    ring.updateMatrix();
+    ring.name = 'garage_battle_far_ring';
+    ring.userData.cameraTransparent = true;
+    return ring;
+  })();
+  farRings.set(mapId, task);
+  task.then((ring) => { if (!ring && farRings.get(mapId) === task) farRings.delete(mapId); }, () => farRings.delete(mapId));
+  // the two most recent maps keep their rings; an older one is disposed once it is not drawn
+  while (farRings.size > KEPT_FAR_RINGS) {
+    const [oldest, pending] = farRings.entries().next().value as [string, Promise<THREE.Mesh | null>];
+    farRings.delete(oldest);
+    void pending.then((ring) => { if (ring && !ring.parent) disposeFarRing(ring); });
+  }
+  return task;
+}
+
+/** The battle's ring seed (terrain.ts builds every battlefield's ring with it). */
+const GARAGE_FAR_RING_SEED = 1337;
+const KEPT_FAR_RINGS = 2;
+
+function disposeFarRing(ring: THREE.Object3D): void {
+  ring.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    mesh.geometry?.dispose();
+    for (const material of Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []) material.dispose();
+  });
 }
