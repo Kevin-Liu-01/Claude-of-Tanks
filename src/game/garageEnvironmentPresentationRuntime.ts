@@ -21,6 +21,11 @@ interface GarageEnvironmentPresentationOptions {
    * engine/lighting.ts setEnclosedPresentation.
    */
   setLightEnclosure(enclosed: boolean): void;
+  /**
+   * (garage-env-276) Install the pack's own environment (engine/sky.ts bakeEnvironment, keyed by its sky and enclosure:
+   * a bake the idle pre-paint made is an exact hit, garageEnvironmentBakes.ts).
+   */
+  installEnvironment(): void;
   /** (garage-env-276) The grounded light model an open yard lights with (engine/battleAtmosphereAccess.ts); never rejects. */
   loadOpenSkyLight(): Promise<void>;
   invalidatePresentation(): void;
@@ -54,12 +59,13 @@ export function createGarageEnvironmentPresentationRuntime({
   placeGarage,
   setGarageSunTrim,
   setLightEnclosure,
+  installEnvironment,
   loadOpenSkyLight,
   invalidatePresentation,
   setCameraPose,
 }: GarageEnvironmentPresentationOptions): GarageEnvironmentPresentationRuntime {
   const required = [getSelectedVariantId, setWorldDormant, applySkyPreset, placeGarage,
-    setGarageSunTrim, setLightEnclosure, loadOpenSkyLight, invalidatePresentation, setCameraPose];
+    setGarageSunTrim, setLightEnclosure, installEnvironment, loadOpenSkyLight, invalidatePresentation, setCameraPose];
   if (!(garagePosition instanceof THREE.Vector3)
     || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage environment presentation requires every lifecycle port');
@@ -121,9 +127,11 @@ export function createGarageEnvironmentPresentationRuntime({
     // and environment light. The preset registry is lightweight; no map
     // terrain or runtime module enters the Garage loading path.
     applySkyPreset();
-    // (garage-env-276) the light follows the pack's declared enclosure, after its sky (an open flip's one environment
-    // re-bake, main.ts onEnclosureChange, bakes this sky) and before its sun trim
+    // (garage-env-276) the light follows the pack's declared enclosure, after its sky and before its sun trim; then the
+    // pack's own environment (keyed by that sky and enclosure), installed before the trim so the rig's environment
+    // intensity is the last word, as at boot
     setLightEnclosure(variant.enclosure === 'sealed');
+    installEnvironment();
     placeGarage();
     setGarageSunTrim(true);
     invalidatePresentation();

@@ -122,6 +122,7 @@ import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
+import { createGarageEnvironmentBakes, GARAGE_ENVIRONMENT_CAP } from './game/garageEnvironmentBakes.ts';
 import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
@@ -1208,12 +1209,23 @@ bus.on('battle:rollout', () => setTimeout(() => {
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
+// (garage-env-276) each pack's environment from its own sky, baked ahead in idle slots and kept per pack while the
+// Garage shows (garageEnvironmentBakes.ts); the selector's intents ask it below, activation installs it by key
+const garageEnvironmentBakes = createGarageEnvironmentBakes({
+  sky,
+  presetFor: (variant) => withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)),
+  schedule: (work) => { if (window.requestIdleCallback) window.requestIdleCallback(work); else setTimeout(work, 800); },
+  isShowing: () => garageLightsUp && game.phase === 'garage',
+  capacity: GARAGE_ENVIRONMENT_CAP[resolveDeviceTier(renderer) === 'mobile' ? 'mobile' : 'desktop'],
+});
+if (!STUDIO_BOOT_INTENT) garageEnvironmentBakes.enter();
 const setGarageSpots = (active: boolean): void => {
   if (active) {
     battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
     briefShownForCountdown = false;
     lighting.setBattleLitSet(false);
   }
+  if (active) garageEnvironmentBakes.enter(); else garageEnvironmentBakes.leave();
   garagePhasePresentation.setActive(active);
   garageLightsUp = active;
   killcamAccess.current?.setBattleLights(!active);
@@ -1244,6 +1256,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   setGarageSunTrim,
   // (garage-env-276) the shown pack's enclosure sets the light: an open yard under its battlefield's grounded model
   setLightEnclosure: (enclosed) => lighting.setEnclosedPresentation(enclosed),
+  installEnvironment: () => sky.bakeEnvironment(),
   loadOpenSkyLight: loadGroundedLightModel,
   invalidatePresentation: invalidateGaragePresentation,
   setCameraPose: (position, target, fovDegrees) => {
@@ -1748,9 +1761,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
         ? garageStage.prepareVariant(previewWarmVariant.id)
         : Promise.resolve(),
     ]).catch(() => undefined);
+    if (previewWarmVariant) garageEnvironmentBakes.want(previewWarmVariant.id);
   },
   onGarageVariantIntent: (variantId: string) => {
     void garageStage.prepareVariant(variantId).catch(() => undefined);
+    garageEnvironmentBakes.want(variantId);
   },
   onGarageVariantSelect: (variantId: string) => {
     selectedGarageVariantId = saveGarageVariantId(variantId);

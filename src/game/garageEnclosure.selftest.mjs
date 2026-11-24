@@ -47,6 +47,7 @@ function garage(perPack) {
     placeGarage() {},
     setGarageSunTrim: (active) => { if (active) lighting.setSun(sunDir, preset); },
     setLightEnclosure: perPack ? (enclosed) => lighting.setEnclosedPresentation(enclosed) : () => {},
+    installEnvironment() {},
     loadOpenSkyLight: () => importGroundedLightModel(),
     invalidatePresentation() {},
     setCameraPose() {},
@@ -108,7 +109,7 @@ const open = GARAGE_VARIANTS.filter((v) => v.enclosure === 'open').length;
 assert.equal(flagged, open, `the old wiring fails the check on every open yard (${flagged} of ${open})`);
 
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(main, /setLightEnclosure: \(enclosed\) => lighting\.setEnclosedPresentation\(enclosed\),\s*loadOpenSkyLight: loadGroundedLightModel,/,
+assert.match(main, /setLightEnclosure: \(enclosed\) => lighting\.setEnclosedPresentation\(enclosed\),\s*installEnvironment: \(\) => sky\.bakeEnvironment\(\),\s*loadOpenSkyLight: loadGroundedLightModel,/,
   'main.ts wires the Garage runtime to the lighting\'s enclosure switch and the grounded model\'s chunk');
 // the boot sets its pack's enclosure itself: a Verdant boot never calls activate, and its hall must stay sealed
 assert.match(main, /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);\n[^\n]*\nif \(!STUDIO_BOOT_INTENT\) lighting\.setEnclosedPresentation\(getGarageVariant\(loadGarageVariantId\(\)\)\.enclosure === 'sealed'\);/,

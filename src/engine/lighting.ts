@@ -1540,6 +1540,8 @@ export function createLighting(
     const next = !!on;
     const enclosureChanged = enclosedPresentation !== next;
     enclosedPresentation = next;
+    // (garage-env-276) recorded at once: the sky keys the environment it installs next by it, rig applied or not
+    scene.userData.lightEnclosed = enclosedPresentation;
     // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
     if (enclosureChanged && lastSunPreset) applyRig(lastSunPreset);
   }

@@ -222,15 +222,17 @@ const mapAmbience = { reset() { calls.push('ambience-reset'); } };
 const killcamAccess = { current: { setBattleLights: (shown) => calls.push(['battle-lights', shown]) } };
 // (local-fps-266) the Garage takes back the rig's lights a battle's lit set dropped (lighting.setBattleLitSet)
 const lighting = { setBattleLitSet: (battle) => calls.push(['lit-set', battle]) };
+// (garage-env-276) the Garage's per-pack environments stay resident while it shows and go back when it is left
+const garageEnvironmentBakes = { enter: () => calls.push('env-enter'), leave: () => calls.push('env-leave') };
 const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, frontline, mapAmbience,
-  garagePhasePresentation, missionBrief, killcamAccess, lighting, garageLightsUp: true });
+  garagePhasePresentation, missionBrief, killcamAccess, lighting, garageEnvironmentBakes, garageLightsUp: true });
 const setGarageSunTrim = mainCallback('setGarageSunTrim', { battleAtmosphere: weather, garagePhasePresentation });
 setGarageSpots(false); setGarageSunTrim(false);
-assert.deepEqual(calls, [['active', false], ['battle-lights', true]], 'network activation does not overwrite the prepared night preset');
+assert.deepEqual(calls, ['env-leave', ['active', false], ['battle-lights', true]], 'network activation does not overwrite the prepared night preset');
 calls.length = 0;
 setGarageSpots(true); setGarageSunTrim(true);
 assert.deepEqual(calls, ['reset', 'night-reset', 'frontline-reset', 'ambience-reset', 'brief-hide', ['lit-set', false],
-  ['active', true], ['battle-lights', false], ['trim', true]],
+  'env-enter', ['active', true], ['battle-lights', false], ['trim', true]],
   'Garage clears battle atmosphere, lamp and frontline owners before reinstalling its own active lighting');
 calls.length = 0;
 setGarageSunTrim(false);
@@ -291,7 +293,7 @@ assert.deepEqual(ambiencePrepares, [[3, 'winter', 'day', undefined, ENTRY], [3, 
     const frontOwner = { reset() { frontlineResets++; } };
     const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase,
       missionBrief: { hide() {} }, mapAmbience: { reset() {} }, killcamAccess: { current: null },
-      lighting: { setBattleLitSet() {} }, garageLightsUp: true };
+      lighting: { setBattleLitSet() {} }, garageEnvironmentBakes: { enter() {}, leave() {} }, garageLightsUp: true };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
     let skyInvalidations = 0;
@@ -309,7 +311,7 @@ assert.deepEqual(ambiencePrepares, [[3, 'winter', 'day', undefined, ENTRY], [3, 
     const garage = createGarageEnvironmentPresentationRuntime({
       garagePosition: new THREE.Vector3(), getSelectedVariantId: () => 'verdant',
       setWorldDormant() {}, applySkyPreset: skyOwner.callback, placeGarage() {}, setGarageSunTrim: trim,
-      setLightEnclosure() {}, loadOpenSkyLight: async () => {}, invalidatePresentation() {}, setCameraPose() {},
+      setLightEnclosure() {}, installEnvironment() {}, loadOpenSkyLight: async () => {}, invalidatePresentation() {}, setCameraPose() {},
     });
     await garage.activate('verdant');
     spots(true); trim(true);

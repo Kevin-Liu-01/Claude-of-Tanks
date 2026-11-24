@@ -29,7 +29,7 @@ assert.match(lighting, /onEnclosureChange\(listener: \(enclosed: boolean\) => vo
 // itself (garage-env-276: the shown pack's declared enclosure); either re-applies the rig
 assert.match(lighting, /function setFarCascadeSleep\(sleep: boolean\): void \{\s*if \(!sleep\) setEnclosedPresentation\(false\);/);
 assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{\s*setFarCascadeSleep\(on\);/);
-assert.match(lighting, /function setEnclosedPresentation\(on: boolean\): void \{[\s\S]{0,260}if \(enclosureChanged && lastSunPreset\) applyRig\(lastSunPreset\);/);
+assert.match(lighting, /function setEnclosedPresentation\(on: boolean\): void \{[\s\S]{0,420}if \(enclosureChanged && lastSunPreset\) applyRig\(lastSunPreset\);/);
 
 // 2. sky: the bake records whether it was the enclosed variant; the sync re-bakes only a bake made enclosed, on the open sky
 const bakeAt = sky.indexOf('bakeEnvironment(): void {');

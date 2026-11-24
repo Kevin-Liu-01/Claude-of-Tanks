@@ -1265,6 +1265,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garagePhasePresentationRuntime.selftest.mjs',
     'src/game/garageEnvironmentPresentationRuntime.selftest.mjs',
     'src/game/garageEnclosure.selftest.mjs', // garage-env-276 class 1: the light follows the shown pack's declared enclosure
+    'src/game/garageEnvironmentBakes.selftest.mjs', // garage-env-276 class 1: each pack's environment from its own sky
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageWeather.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
