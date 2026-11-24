@@ -7,6 +7,14 @@
 // phone frames modelled a layout the game no longer had. tools/hud-chase-bands.browser.mjs --check captures the bands
 // afresh and fails on any drift past BANDS_DRIFT_PX through this comparison. Pure: no DOM, no browser.
 
+/** [width, height, touch]: the windows tools/hud-chase-bands.browser.mjs records the bands at, from the live game
+ *  (hud-bands-live-276): the receipts' windows and the UI gauntlet's (the phones both ways, the iPads held wide and upright,
+ *  the desktops). A touch window's key is plain WxH, as the readers look them up. */
+export const BAND_SIZES = Object.freeze([[1920, 1080, false], [1440, 900, false], [1280, 720, false], [1180, 820, true],
+  [820, 1180, true], [390, 844, true], [844, 390, true], [1210, 702, true], [744, 1001, true]].map((size) => Object.freeze(size)));
+/** The battle every size is recorded in: a main battle tank, a standard battle (the chrome's commonest set). */
+export const BAND_BATTLE = Object.freeze({ specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'standard' });
+
 /** How far a recorded band may sit from the fresh one before the fixture counts as stale (CSS px). */
 export const BANDS_DRIFT_PX = 4;
 

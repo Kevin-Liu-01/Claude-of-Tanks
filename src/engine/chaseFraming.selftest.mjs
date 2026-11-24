@@ -2,7 +2,7 @@
 // be able to change and alter this camera angle as u like in settins"): the chase framing (chaseFraming.ts).
 //  1. The defaults are pinned: the settings' defaults and ranges, the reference pose, the base pose without bands.
 //  2. Over every supported layout's recorded bands (tools/fixtures/hud-chase-bands.json, battleHudLayout's published
-//     bands on the layout fixture), for a main battle tank and the fleet's extremes: the hull and tracks keep clear of the
+//     bands recorded in a live battle on a built preview, hud-bands-live-276), for a main battle tank and the fleet's extremes: the hull and tracks keep clear of the
 //     HUD's bottom band with air under them, the roof stays under the sight, the risen sight's ring stays under the head
 //     band and inside the layout's rise cap, and the tank sits higher than the base pose put it.
 //  3. The first battles' controls strip (transient) never moves the sight: the camera draws back over it.
@@ -13,12 +13,16 @@ import { readFileSync } from 'node:fs';
 import { PerspectiveCamera, Vector3 } from 'three';
 import {
   CHASE_BASE_DISTANCE_M, CHASE_BASE_PIVOT_M, CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_PITCH_RAD, NOMINAL_CHASE_TANK,
-  chaseFloorAt, chaseFloorMarginPx, chaseSightClearPx, chaseTankFromDims, clampChaseSetting, normalizeChaseSettings,
+  chaseFarthestM, chaseFloorAt, chaseFloorMarginPx, chaseSightClearPx, chaseTankFromDims, clampChaseSetting, normalizeChaseSettings,
   solveChaseFraming,
 } from './chaseFraming.ts';
 
 const RECORDED = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-chase-bands.json', import.meta.url), 'utf8'));
-const SUPPORTED = ['1920x1080', '1440x900', '1280x720', '1180x820', '820x1180', '390x844', '844x390'];
+// (the receipts' windows and the UI gauntlet's: the iPads held wide and upright, 1210x702 and 744x1001, among them)
+const SUPPORTED = ['1920x1080', '1440x900', '1280x720', '1180x820', '820x1180', '390x844', '844x390', '1210x702', '744x1001'];
+// the bands are the game's, never a stand-in page's (the DOM-only layout fixture has no camera rig, so its sight never rose
+// and its portrait phone's systems row sat where the game never puts it: hud-bands-live-276)
+assert.equal(RECORDED.source, 'live', 'the bands were recorded in a live battle (tools/hud-chase-bands.browser.mjs)');
 // a main battle tank, a long-hulled one with a rear turret's reach, a tall one, a small light tank
 const TANKS = {
   nominal: NOMINAL_CHASE_TANK,
@@ -34,6 +38,12 @@ assert.deepEqual(CHASE_CAMERA_RANGES, { cameraHeight: [-1.5, 3], cameraDistance:
 assert.equal(CHASE_PITCH_RAD, -10 * Math.PI / 180, 'the reference pose is the battle-start look');
 assert.equal(CHASE_BASE_DISTANCE_M, 13);
 assert.equal(CHASE_BASE_PIVOT_M, 1);
+// the farthest default step: 19.5 m in a landscape window; a portrait one reaches h / w as far (the tank keeps its share of
+// the shorter side), twice at most
+assert.equal(chaseFarthestM(1920, 1080), 19.5);
+assert.equal(chaseFarthestM(844, 390), 19.5);
+assert.ok(Math.abs(chaseFarthestM(744, 1001) - 19.5 * 1001 / 744) < 1e-9);
+assert.equal(chaseFarthestM(390, 844), 39, 'a phone held upright: twice, the cap');
 {
   const base = solveChaseFraming(1920, 1080, null);
   assert.deepEqual([base.pivotAboveM, base.distanceM, base.fovDeg, base.shoulderM, base.shift, base.sightShiftPx, base.tank],
@@ -87,7 +97,7 @@ for (const size of SUPPORTED) {
       assert.ok(f.sightShiftPx >= 0 && f.sightShiftPx <= h * 0.14 + 1e-6, `${where}: the rise is bounded (${f.sightShiftPx})`);
       assert.ok(f.sightShiftPx <= (bands.riseCap ?? Infinity), `${where}: the layout's rise cap holds`);
       assert.ok(sightY - 0.15 * Math.min(w, h) >= bands.ceiling, `${where}: the widest ring stays under the head band`);
-      assert.ok(f.distanceM >= CHASE_BASE_DISTANCE_M && f.distanceM <= 19.5, `${where}: the distance stays in its range (${f.distanceM})`);
+      assert.ok(f.distanceM >= CHASE_BASE_DISTANCE_M && f.distanceM <= chaseFarthestM(w, h) + 1e-9, `${where}: the distance stays in its range (${f.distanceM})`);
       // never lower than the base pose had it, and higher (more central) wherever the base pose was covered or low
       const before = baseBox(w, h, tank);
       const centre = (t.y0 + t.y1) / 2, beforeCentre = (before.y0 + before.y1) / 2;
