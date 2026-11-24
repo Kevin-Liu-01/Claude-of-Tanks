@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { battleOutcomeOf, outcomeCounts } from './battleOutcome.ts';
 
 // campaign slice 4 (2026-09-12): a durable local record of Frontline Assault
 // sorties — how far the line was pushed on each map and how often the last
@@ -209,6 +210,9 @@ export function installCampaignProgress(
     const event = recordOf(payload);
     if (!event || event.gameMode !== 'frontline_assault') return;
     if (event.reason === 'network_disconnect') return;
+    // (leave-no-loss-276) a sortie left before its verdict is no attempt: the ladder hears only a verdict
+    const outcome = battleOutcomeOf(event.result);
+    if (!outcome || !outcomeCounts(outcome)) return;
     // batch 27: rooms play Frontline Assault too; only the player's own sorties write the ladder record (never a
     // watched battle: WATCH_RULES)
     if (event.network === true || event.watch === true) return;

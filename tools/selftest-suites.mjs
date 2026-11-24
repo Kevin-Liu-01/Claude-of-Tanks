@@ -2399,6 +2399,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/serviceRecord.selftest.mjs',
+    // (leave-no-loss-276) a left battle has no result: a solo and a room Leave move no total and read "Left"; R6's leave-as-defeat is the negative control
+    'src/game/battleOutcome.selftest.mjs',
     'src/ui/serviceRecordView.selftest.mjs',
     'src/ui/battlefieldFacts.selftest.mjs',
     'src/game/campaignProgress.selftest.mjs',

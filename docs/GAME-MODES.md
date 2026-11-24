@@ -661,8 +661,11 @@ mode gives back (`game/battleResultPresentationRuntime.ts deathShapeFor`):
 - **The respawn dial** (`ui/respawnDial.ts`): bottom centre, in the kill cam's lower band, reading the mode controller's
   armed revive (`matchModes.ts respawnFor`, the viewer's mode state's `respawn` in a room) in whole seconds; "Back next
   wave" for a room's Horde; "Infected · respawn in" once the outbreak took the player. Its own surface, not a notice.
-- **Leaving** a battle that keeps records before its verdict records a defeat (reason `left`); the Esc menu's Leave says
-  so. A room seat whose player left is driven by a bot after 30 s (`SEAT_BOT_GRACE_S`) and handed back on a rejoin.
+- **Leaving** a battle before its verdict is no loss (Kevin, 2026-11-24): the battle has no result. It stands in the
+  history as "Left" (`src/game/battleOutcome.ts`, the closed outcome set) and counts toward no total: not the battles,
+  wins, losses, draws or win rate, nor the kills, damage, medals, achievements or the Frontline ladder. A room seat whose
+  player left is driven by a bot after 30 s (`SEAT_BOT_GRACE_S`) and handed back on a rejoin; the team's own verdict is
+  untouched.
 - **Scuttle**: hold Delete 3 s (`SCUTTLE_HOLD_S`) to destroy your own tank: the way out of a wedged or overturned hull or
   an empty magazine. The kill is the enemy's that damaged it last within 15 s, else nobody's.
 - **Credit**: a fire's kill is the crew's that set it (a rack it cooks off is an ammo-rack kill); team and self kills never

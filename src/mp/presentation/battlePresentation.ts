@@ -260,7 +260,7 @@ export interface BattlePresentation extends PresentationAdapter {
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
   endDisconnected(): boolean;
-  /** (death-flow-275 R6) The seat left before the verdict: the records hear a defeat ('left'); no report follows. */
+  /** (leave-no-loss-276) The seat left before the verdict: the records hear 'left', no result and no total; no report follows. */
   recordLeft(): boolean;
   /**
    * The session's verdict (the newest snapshot's meta, or the room's match status), which lands ahead of the presented
@@ -1311,14 +1311,16 @@ export function createBattlePresentation({
   }
 
   /**
-   * (death-flow-275 R6; Kevin approved 2026-11-21) A seat that leaves a room's battle before its verdict is recorded as a
-   * defeat, as a local battle's Leave is (game/state.ts recordBattleLeft): `battle:ended` with reason 'left' and `left:
-   * true` reaches the records, not the report (the player is on the way out). A spectator records nothing.
+   * (leave-no-loss-276; Kevin 2026-11-24) A seat that leaves a room's battle before its verdict has no result, as a local
+   * battle's Leave has none (game/state.ts recordBattleLeft): `battle:ended` with result 'left' (game/battleOutcome.ts),
+   * reason 'left' and `left: true` reaches the records, which stand it in the history as "Left" and count it toward no
+   * total; no report follows (the player is on the way out). The team plays on (its seat is a bot's after its grace,
+   * sim/deathRules R5) and its own verdict is untouched. A spectator records nothing.
    */
   function recordLeft(): boolean {
     if (game.result || spectator) return false;
     bus.emit('battle:ended', {
-      result: 'defeat', reason: 'left', left: true, timeS: game.timeS, map: game.mapId, mapId: game.mapId,
+      result: 'left', reason: 'left', left: true, timeS: game.timeS, map: game.mapId, mapId: game.mapId,
       durationS: game.timeS, network: true, gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
     });
     return true;
