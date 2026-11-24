@@ -338,7 +338,8 @@ frames of the first uncovered one).
 - `ui/replayBar.ts`: transport row (play, speed, previous and next mark, clock, the timeline filter on the kit's segmented
   control, leave) over the timeline track. Styles in the `surfaces` layer on the HUD's tokens. On a phone the row keeps
   play, speed and the clock. The Watch bar lifts above it and its take-control button is hidden. The shell and
-  consumable trays are hidden while a replay is live (a recording keeps no magazine). A kill with no other tank behind
+  consumable trays and the vehicle's own controls are hidden while a replay is live (a recording keeps no magazine or
+  charges). A kill with no other tank behind
   it (a scuttle, a fall) reads as a loss (`replay.mark.loss`), never "X destroyed X".
 - Entry points: the end screen's secondary Watch replay and Download replay (after the report's own actions, every mode),
   and the Service Record's Replays tab (the saved 20, Watch and Download per row). `main.ts` handles `ui:replayWatch` and

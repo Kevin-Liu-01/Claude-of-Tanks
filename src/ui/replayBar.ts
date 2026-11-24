@@ -9,8 +9,9 @@
  *
  * It only draws: the controller (game/replay/replayViewer.ts) owns the clock and the marks. Per frame it moves the
  * playhead and the clock's text; the marks are rebuilt only when the shown list changes. Styles in the 'surfaces' layer
- * on the HUD's tokens (styleLayers.ts), as the Watch bar's. While a replay is live the shell and consumable trays are
- * hidden (as under the drone): a recording keeps no magazine, so a ridden tank's rack would show its battle's start.
+ * on the HUD's tokens (styleLayers.ts), as the Watch bar's. While a replay is live the shell and consumable trays and the
+ * vehicle's own controls (smoke, lights …) are hidden (as under the drone): a recording keeps no magazine or charges, so
+ * a ridden tank's would show its battle's start.
  */
 import { t } from './i18n.ts';
 import { icon } from './icons/icon.ts';
@@ -80,7 +81,7 @@ const STYLE = `
 .cot-replay.static .tk{cursor:default}
 body.cot-replay-live .cot-watch{bottom:calc(var(--inset-bottom) + 112px)}
 body.cot-replay-live .cot-watch .wb.seat{display:none}
-body.cot-replay-live :is(.cot-shells,.cot-cons){visibility:hidden}
+body.cot-replay-live :is(.cot-shells,.cot-cons,.cot-vehicle-controls){visibility:hidden}
 @media(hover:none),(pointer:coarse){.cot-replay .cot-c-kbd{display:none}.cot-replay .tk{height:44px}}
 @media(max-width:700px){
  .cot-replay{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));width:auto;transform:none}
