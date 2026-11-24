@@ -71,6 +71,8 @@ interface ArmorPlate {
   /** 266: a main plate measured on the drawn build (the KF51 EVO's mantlet on its gun slot), already in its frame: the
    * calibration leaves it in place and only the faces over it read it (prepareCollisionCells) */
   drawn?: boolean;
+  /** (inherited-reds-276) a hull front zoned by height, not by facing (specHelpers ArmorPlate.frontZone, frontZonePlate) */
+  frontZone?: 'upper' | 'lower';
 }
 
 interface AnatomyShapeEllipsoid {
