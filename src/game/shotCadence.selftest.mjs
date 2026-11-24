@@ -1,18 +1,18 @@
-// shotCadence.selftest (release 272, fire-fx-debounce): a fast gun's presentation stays bounded, a slow gun's is as before.
-// The cadence (game/shotCadence.ts) and the consumers that read it: the audio's report (audioEngine fireWeapon), the
-// effects' muzzle flash and light (effects.ts muzzleFlash), the network seat's camera kick (combatFeedbackRuntime). Each
-// consumer is driven twice on fresh, identically seeded instances: once with the round's simulation clock (the cadence)
-// and once without it (no clock: the pre-272 path, which the code keeps for replays and probes). At 1,200 rounds a minute
-// for 3 s the clocked run's voices, audio nodes, flashes, particles, light strikes and shake stay bounded; at a tank's
-// 6-8 s reload the two runs are identical. First-party: Kevin B. Liu (NOTICE.md).
+// shotCadence.selftest (release 272, fire-fx-debounce; 276, gun-audio): a fast gun's presentation stays bounded, a slow
+// gun's is as before, and every gun is heard by its fire-rate regime. The cadence (game/shotCadence.ts) and the consumers
+// that read it: the effects' muzzle flash and light (effects.ts muzzleFlash), the network seat's camera kick
+// (combatFeedbackRuntime); and the audio's regimes (audioEngine fireWeapon, burstRound): a 3/s gun round by round, a 12/s
+// gun's short cracks over a held body and one echo at its release, a 50/s rotary gun's roar with no rounds in it, each
+// delayed by its distance. Each consumer is driven on fresh, identically seeded instances, with the round's simulation
+// clock and without it (no clock: the path replays and probes keep). First-party: Kevin B. Liu (NOTICE.md).
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import {
-  SHAKE_SUSTAIN_TRAUMA_PER_S, SHOT_CADENCE_WINDOW_S, SHOT_FLOOR_S, SHOT_SLOW_S, createShotCadence, shotShakeScale,
-  sustainedGrainS,
+  ROAR_RPS, SHAKE_SUSTAIN_TRAUMA_PER_S, SHOT_CADENCE_WINDOW_S, SHOT_FLOOR_S, SHOT_SLOW_S, SUSTAINED_RPS, burstReleaseS,
+  createShotCadence, fireRegime, shotShakeScale,
 } from './shotCadence.ts';
 import { createBus } from './stateCore.ts';
 
@@ -24,18 +24,25 @@ function rounds(everyTicks, seconds, startS = 0) {
   for (let tick = 0; tick * TICK < seconds - 1e-9; tick += everyTicks) out.push(startS + tick * TICK);
   return out;
 }
+/** The rounds of a gun cycling every `cycleS` for `seconds` (not on the tick: the harness emits each on its tick). */
+function cycled(cycleS, seconds, startS = 0) {
+  const out = [];
+  for (let k = 0; k * cycleS < seconds - 1e-9; k++) out.push(startS + k * cycleS);
+  return out;
+}
 const report = { seconds: BURST_S };
 process.on('exit', (code) => { if (code !== 0) console.error(`shotCadence.selftest partial: ${JSON.stringify(report)}`); });
 
 // ---------------------------------------------------------------- the cadence ---
 {
   const channels = Object.keys(SHOT_CADENCE_WINDOW_S);
-  assert.equal(SHOT_CADENCE_WINDOW_S.report, SHOT_FLOOR_S, 'the crack and the core flicker keep the floor (20 a second)');
+  assert.deepEqual(channels.sort(), ['core', 'flash', 'impact', 'shake'], 'the cadence is the flash\'s, the kick\'s and the strikes\' (276: the sound reads its regime)');
+  assert.equal(SHOT_CADENCE_WINDOW_S.core, SHOT_FLOOR_S, 'the core flicker keeps the floor (20 a second)');
   for (const channel of channels) {
     const w = SHOT_CADENCE_WINDOW_S[channel];
     assert.ok(w >= SHOT_FLOOR_S && w <= SHOT_SLOW_S && SHOT_SLOW_S < 0.5, `${channel}: its window sits between the floor and half a second (${w})`);
   }
-  for (const channel of ['body', 'flash', 'shake', 'tail']) {
+  for (const channel of ['flash', 'shake']) {
     const k = Math.round(SHOT_CADENCE_WINDOW_S[channel] / SHOT_FLOOR_S);
     assert.ok(k % 2 === 1 && Math.abs(k * SHOT_FLOOR_S - SHOT_CADENCE_WINDOW_S[channel]) < 1e-9,
       `${channel}: an odd number of floor rounds, so a twin gun's barrels take turns (${k})`);
@@ -47,7 +54,6 @@ process.on('exit', (code) => { if (code !== 0) console.error(`shotCadence.selfte
     const cadence = createShotCadence();
     for (const t of [0, reloadS, 2 * reloadS, 3 * reloadS, 4 * reloadS]) {
       for (const channel of channels) assert.equal(cadence.admit(channel, 't1', 'gun', t), 1, `${reloadS} s reload: ${channel} at ${t}`);
-      assert.equal(sustainedGrainS(cadence.gapS), null, 'a slow gun rings in full');
       assert.equal(shotShakeScale(1, 0.27), 1, 'and kicks as it always did');
     }
   }
@@ -62,14 +68,13 @@ process.on('exit', (code) => { if (code !== 0) console.error(`shotCadence.selfte
       if (n > 0) taken[channel].push(n);
     }
     assert.equal(fast.length, 60, '60 rounds');
-    assert.equal(taken.report.length, 60, 'every round at the floor cracks');
-    assert.ok(taken.report.every((n) => n === 1));
-    for (const channel of ['body', 'flash', 'shake']) {
+    assert.equal(taken.core.length, 60, 'every round at the floor flickers');
+    assert.ok(taken.core.every((n) => n === 1));
+    for (const channel of ['flash', 'shake']) {
       assert.equal(taken[channel].length, 20, `${channel}: one in three (${taken[channel].length})`);
       // the burst's last two rounds fold into a round that never comes (its burst ended): the 20 taken stand for 58
       assert.equal(taken[channel].reduce((a, b) => a + b, 0), 58, `${channel}: the taken rounds stand for all but the last two`);
     }
-    assert.equal(taken.tail.length, 7, 'the echo once in nine rounds');
     assert.equal(taken.impact.length, 30, 'the strikes once a tenth');
     assert.equal(cadence.weapons, 1, 'one weapon, one track: nothing allocated per round');
     // the camera's trauma under the rig's decay (engine/cameraRig.ts TRAUMA_DECAY_PER_S, read from its source)
@@ -96,10 +101,10 @@ process.on('exit', (code) => { if (code !== 0) console.error(`shotCadence.selfte
   {
     const cadence = createShotCadence();
     const vulcan = rounds(1, BURST_S);
-    const cracks = vulcan.filter((t) => cadence.admit('report', 'm163', 'vulcan', t) > 0);
+    const cores = vulcan.filter((t) => cadence.admit('core', 'm163', 'vulcan', t) > 0);
     assert.equal(vulcan.length, 180);
-    assert.equal(cracks.length, 60, 'one crack in three at one round a tick: the floor\'s density');
-    assert.deepEqual(cracks, vulcan.filter((_, i) => i % 3 === 0), 'exactly the rounds the M163 lane\'s thinning keeps');
+    assert.equal(cores.length, 60, 'one flicker in three at one round a tick: the floor\'s density');
+    assert.deepEqual(cores, vulcan.filter((_, i) => i % 3 === 0), 'exactly the rounds the M163 lane\'s thinning keeps');
     const full = vulcan.filter((t) => cadence.admit('flash', 'm163', 'vulcan', t) > 0);
     assert.equal(full.length, 20, 'one full flash in nine');
     assert.ok(Math.abs(shotShakeScale(9, 0.1) - SHAKE_SUSTAIN_TRAUMA_PER_S * SHOT_CADENCE_WINDOW_S.shake / 0.1) < 1e-12,
@@ -122,6 +127,25 @@ process.on('exit', (code) => { if (code !== 0) console.error(`shotCadence.selfte
     cadence.clear();
     assert.equal(cadence.weapons, 0);
   }
+  // (276) the regimes: by the gun's rounds a second and `rotary`
+  assert.equal(SUSTAINED_RPS, 8);
+  assert.equal(ROAR_RPS, 20);
+  assert.equal(fireRegime(1 / 3), 'single', 'a 3/s gun: round by round');
+  assert.equal(fireRegime(6), 'single', 'a tank gun at its reload');
+  assert.equal(fireRegime(Infinity), 'single', 'a gun with no cadence yet');
+  assert.equal(fireRegime(Number.NaN), 'single');
+  assert.equal(fireRegime(0.13), 'single', 'just under 8 a second');
+  assert.equal(fireRegime(1 / 8), 'sustained', '8 a second');
+  assert.equal(fireRegime(0.12), 'sustained', 'the roof 12.7 mm');
+  assert.equal(fireRegime(1 / 12), 'sustained', 'a 12/s gun');
+  assert.equal(fireRegime(0.09), 'sustained', 'the roof 7.62 mm');
+  assert.equal(fireRegime(SHOT_FLOOR_S), 'roar', 'the floor (an air-defence cannon, the Gepard\'s class)');
+  assert.equal(fireRegime(1 / 50), 'roar', 'a 50/s gun');
+  assert.equal(fireRegime(1 / 3, true), 'roar', 'a rotary gun whatever its rate');
+  assert.equal(burstReleaseS(1 / 60, 0.05), 0.125, 'a viewer\'s rotary gun (its full rounds every third): 2.5 heard gaps');
+  assert.equal(burstReleaseS(1 / 60, Infinity), 0.1, 'never under a tenth');
+  assert.ok(Math.abs(burstReleaseS(1 / 12, 1 / 12) - 2.5 / 12) < 1e-12);
+  assert.equal(burstReleaseS(2, 2), 0.6, 'never over 0.6 s');
 }
 
 // -------------------------------------------------------------------- audio ---
@@ -138,21 +162,25 @@ globalThis.fetch = async (url) => {
 globalThis.window = globalThis.window ?? {};
 const { createFakeContext, fakeBuffer } = await import('../audio/fakeAudioContext.test-support.mjs');
 const { createAudio } = await import('../audio/audioEngine.ts');
+const { propagationDelayS, atmosphereForMap } = await import('../audio/audioMath.ts');
+const { ROAR, roarVoicing } = await import('../audio/weaponAudio.ts');
 const terrain = { getHeightAt: () => 0, getGroundType: () => 'medium', getTrackSurfaceAt: () => 0, getWaterDepthAt: () => 0 };
-function audioTank(id, x, z, team, isPlayer = false) {
+const BMP2_GUN = { caliberMm: 30, shells: [{ type: 'APFSDS' }] };
+function audioTank(id, x, z, team, isPlayer = false, gun = BMP2_GUN) {
   return {
     id, team, isPlayer, specId: 'bmp2',
-    spec: { id: 'bmp2', nation: 'USSR', role: 'ifv', weightTons: 14, enginePowerHp: 300, topSpeedKmh: 65, reverseSpeedKmh: 10, gun: { caliberMm: 30, shells: [{ type: 'APFSDS' }] } },
+    spec: { id: 'bmp2', nation: 'USSR', role: 'ifv', weightTons: 14, enginePowerHp: 300, topSpeedKmh: 65, reverseSpeedKmh: 10, gun },
     state: { pos: { x, y: 0, z }, speed: 0, yaw: 0, yawRate: 0, verticalSpeed: 0, grounded: true, turretYawRate: 0, gunPitch: 0 },
     input: { throttle: 0 },
     combat: { destroyed: false, hp: 1000, maxHp: 1000, modules: {}, ammo: [500], ammoCapacity: [500], shellSlot: 0 },
   };
 }
 /**
- * One fresh audio engine (same seed every time), a listener in our hull, a foe 60 m off; then the events, each emitted on
- * the tick of its time `t`. Returns what the mix did over them.
+ * One fresh audio engine (same seed every time), a listener in our hull, a foe (60 m off unless `foe` places it, with
+ * `foeGun` its gun); then the events, each emitted on the tick of its time `t`. Returns what the mix did over them: the
+ * voices started (`log`, times from the first event's tick) and the engine's own log of bursts (`bursts`).
  */
-async function runAudioEvents(events) {
+async function runAudioEvents(events, { foe = [-20, 57], foeGun = BMP2_GUN } = {}) {
   const ctx = createFakeContext({ decode: () => fakeBuffer(1.5) });
   const audio = createAudio({ context: ctx, getMapId: () => 'urban', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
   const bus = createBus();
@@ -160,7 +188,7 @@ async function runAudioEvents(events) {
   audio.resume();
   const probe = globalThis.window.__COT_AUDIO;
   const listener = { pos: { x: 0, y: 2, z: 0 }, forward: { x: 0, y: 0, z: 1 }, kind: 'player-tank', ownerId: 'me', scoped: false };
-  const tanks = [audioTank('me', 0, 0, 'player', true), audioTank('foe', -20, 57, 'enemy')];
+  const tanks = [audioTank('me', 0, 0, 'player', true), audioTank('foe', foe[0], foe[1], 'enemy', false, foeGun)];
   bus.emit('phase:change', { phase: 'battle' });
   await audio.warmBattleEvents(['bmp2']);
   for (let i = 0; i < 10; i++) { ctx.advance(TICK); audio.update(TICK, listener, tanks); }
@@ -169,9 +197,10 @@ async function runAudioEvents(events) {
   const idle = probe.activeVoices();
   const startsBefore = ctx.started.length, nodesBefore = ctx.nodes.length;
   const seqBefore = probe.sfxLog.at(-1)?.seq ?? 0;
+  const soundSeqBefore = probe.soundLog.at(-1)?.seq ?? 0;
   const t0 = ctx.currentTime;
   let most = 0;
-  const endS = events.at(-1).t + 1;
+  const endS = events.at(-1).t + 1.5;
   for (let tick = 0, s = 0; tick * TICK <= endS; tick++) {
     const now = tick * TICK;
     while (s < events.length && events[s].t <= now + 1e-9) { const event = events[s++]; bus.emit(event.type, event.payload); }
@@ -180,15 +209,18 @@ async function runAudioEvents(events) {
     most = Math.max(most, probe.activeVoices());
   }
   const log = probe.sfxLog.filter((e) => e.seq > seqBefore).map((e) => ({ n: e.n, t: +(e.t - t0).toFixed(6), g: e.g, r: e.r, d: e.d, b: e.b }));
-  return { starts: ctx.started.length - startsBefore, nodes: ctx.nodes.length - nodesBefore, mostVoices: most - idle, idleVoices: idle, log };
+  const bursts = probe.soundLog.filter((e) => e.seq > soundSeqBefore && String(e.type).startsWith('burst:'))
+    .map((e) => ({ ...e, t: +(e.t - t0).toFixed(6), ...(e.lastRoundAt != null ? { lastRoundAt: e.lastRoundAt - t0, releaseAt: e.releaseAt - t0, heardAt: e.heardAt - t0 } : {}) }));
+  return { starts: ctx.started.length - startsBefore, nodes: ctx.nodes.length - nodesBefore, mostVoices: most - idle, idleVoices: idle, log, bursts };
 }
 /** The shots, each at its own simulation time (`clocked`) or with none (the pre-272 path). */
-function runAudio(shots, clocked) {
+function runAudio(shots, clocked, options) {
   return runAudioEvents(shots.map((shot, i) => ({ t: shot.t, type: 'shell:fired', payload: { shellId: i + 1, shooterId: shot.shooterId,
     isPlayer: shot.shooterId === 'me', muzzlePos: shot.muzzlePos, dir: shot.dir, caliberMm: shot.caliberMm, shellType: 'APFSDS',
-    weaponSound: shot.weaponSound, velocityMps: 1000, ...(clocked ? { timeS: shot.t } : {}) } })));
+    weaponSound: shot.weaponSound, velocityMps: 1000, ...(shot.shellName ? { shellName: shot.shellName } : {}),
+    ...(clocked ? { timeS: shot.t } : {}) } })), options);
 }
-const foeShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'foe', muzzlePos: [-20, 2.5, 57], dir: [0.33, 0, -0.94], caliberMm, weaponSound });
+const foeShot = (t, caliberMm = 30, weaponSound = '2a42', shellName = undefined, at = [-20, 57]) => ({ t, shooterId: 'foe', muzzlePos: [at[0], 2.5, at[1]], dir: [0.33, 0, -0.94], caliberMm, weaponSound, shellName });
 const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'me', muzzlePos: [0, 2.5, 3], dir: [0, 0, 1], caliberMm, weaponSound });
 {
   // slow fire: a 120 mm and a 125 mm at their 6 and 8 s reloads, and our own 30 mm single shots: identical, voice for voice
@@ -202,9 +234,11 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
   assert.ok(before.log.length > 20, `the slow shots were heard (${before.log.length} voices)`);
   assert.deepEqual(after.log, before.log, 'a slow gun is heard exactly as before: every voice, its time, gain, rate and bus');
   assert.equal(after.nodes, before.nodes, 'and builds the same audio graph');
+  assert.equal(after.bursts.length, 0, 'and opens no burst');
   report.audioSlow = { voices: after.log.length, identical: true };
 
-  // fast fire: our own and a foe's 30 mm at 1,200 rounds a minute for 3 s
+  // fast fire: our own and a foe's 30 mm at 1,200 rounds a minute for 3 s, timed by its rounds (no spec cycle): the floor
+  // roars (fireRegime 'roar') from its second round, the first heard alone before its cadence is known
   for (const [who, make] of [['foe', foeShot], ['own', ownShot]]) {
     const burst = rounds(3, BURST_S).map((t) => make(t));
     const b = await runAudio(burst, false);
@@ -213,22 +247,132 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
       before: { voiceStarts: b.starts, audioNodes: b.nodes, gunVoicesMost: b.mostVoices, idleVoices: b.idleVoices },
       after: { voiceStarts: a.starts, audioNodes: a.nodes, gunVoicesMost: a.mostVoices, idleVoices: a.idleVoices },
     };
-    assert.ok(a.starts <= b.starts * 0.75, `${who}: fewer voices started (${b.starts} -> ${a.starts})`);
-    assert.ok(a.nodes <= b.nodes * 0.75, `${who}: fewer audio nodes built (${b.nodes} -> ${a.nodes})`);
-    // (the crack's grains, the punch, the echoes and the rounds' flybys, which the saturated pool used to cull)
-    assert.ok(a.mostVoices <= 24 && a.mostVoices < b.mostVoices, `${who}: the gun holds at most ${a.mostVoices} voices over the idle mix (was ${b.mostVoices})`);
-    // every round still cracks: one close (or own) report per round at the floor
+    assert.ok(a.starts <= b.starts * 0.5, `${who}: fewer voices started (${b.starts} -> ${a.starts})`);
+    assert.ok(a.nodes <= b.nodes * 0.5, `${who}: fewer audio nodes built (${b.nodes} -> ${a.nodes})`);
+    assert.ok(a.mostVoices <= 12 && a.mostVoices < b.mostVoices, `${who}: the gun holds at most ${a.mostVoices} voices over the idle mix (was ${b.mostVoices})`);
     const cracks = a.log.filter((e) => /^ac_30_(close|own)$/.test(e.n)).length;
-    const cracksBefore = b.log.filter((e) => /^ac_30_(close|own)$/.test(e.n)).length;
-    assert.ok(cracks > 0 && cracks >= cracksBefore * 0.9 - 2, `${who}: the burst keeps its rounds' cracks (${cracksBefore} -> ${cracks}; the log keeps 256)`);
+    assert.ok(cracks <= 1, `${who}: no round cracks in the roar but the first, heard before its cadence was (${cracks})`);
+    assert.ok(a.log.filter((e) => e.n === ROAR.close).length >= 8, `${who}: the roar carries the burst`);
+    assert.deepEqual(a.bursts.map((e) => [e.type, e.regime]), [['burst:start', 'roar'], ['burst:release', 'roar']], `${who}: one burst, one release`);
   }
-  // the Vulcan at one round a tick (the M163 lane's rotary floor): two of three rounds silent, as its thinning had them
+  // the Vulcan at one round a tick (the M163 lane's rotary floor), timed by its rounds
   {
     const vulcan = rounds(1, BURST_S).map((t) => foeShot(t, 20, 'rh202'));
     const b = await runAudio(vulcan, false);
     const a = await runAudio(vulcan, true);
     report.audio_vulcan_3600rpm = { before: { voiceStarts: b.starts, gunVoicesMost: b.mostVoices }, after: { voiceStarts: a.starts, gunVoicesMost: a.mostVoices } };
-    assert.ok(a.starts <= b.starts * 0.5, `the Vulcan starts a fraction of the voices (${b.starts} -> ${a.starts})`);
+    assert.ok(a.starts <= b.starts * 0.2, `the Vulcan starts a fraction of the voices (${b.starts} -> ${a.starts})`);
+  }
+}
+
+// ------------------------------------------- audio: the regimes (276 receipts) ---
+{
+  const SPEED = propagationDelayS(343, atmosphereForMap('urban'));
+  const tails = (log) => log.filter((e) => e.n.startsWith('tail_'));
+  // (1) a 3/s gun (a 25 mm at its spec's 1/3 s): every round its own report and its own echo, no burst; clocked or not
+  {
+    const gun = { caliberMm: 25, soundProfile: 'm242-bushmaster', reloadS: 1 / 3, shells: [{ name: 'M791 APDS-T', type: 'APDS', caliberMm: 25, reloadS: 1 / 3 }] };
+    const shots = cycled(1 / 3, 3).map((t) => foeShot(t, 25, 'm242-bushmaster', 'M791 APDS-T'));
+    const a = await runAudio(shots, true, { foeGun: gun });
+    const b = await runAudio(shots, false, { foeGun: gun });
+    assert.equal(shots.length, 9);
+    assert.deepEqual(a.log, b.log, 'a 3/s gun is heard as it always was');
+    assert.equal(a.bursts.length, 0, '3/s: no burst (negative control for the two below)');
+    assert.equal(a.log.filter((e) => e.n === 'ac_25_close').length, 9, '3/s: one report a round');
+    assert.equal(tails(a.log).length, 9, '3/s: one echo a round');
+    assert.equal(a.log.filter((e) => e.n === ROAR.close).length, 0, '3/s: no roar');
+    report.regime_3ps = { reports: 9, echoes: 9, bursts: 0 };
+  }
+  // (2) a 12/s gun (a roof-class 12.7 mm at its spec's 1/12 s) for 2 s, 60 m off: a short crack every round, a body that
+  // swells in while held, and one echo, from the release; (2b) the same 600 m off: each layer later by the distance
+  const mg = { caliberMm: 12.7, soundProfile: 'heavy-machine-gun', reloadS: 1 / 12, shells: [{ name: 'M8 API', type: 'AP', caliberMm: 12.7, reloadS: 1 / 12 }] };
+  const mgRun = async (at) => {
+    const shots = cycled(1 / 12, 2).map((t) => foeShot(t, 12.7, 'heavy-machine-gun', 'M8 API', at));
+    return { shots, run: await runAudio(shots, true, { foe: at, foeGun: mg }) };
+  };
+  {
+    const { shots, run } = await mgRun([-20, 57]);
+    const [start, release] = run.bursts;
+    assert.deepEqual(run.bursts.map((e) => [e.type, e.regime]), [['burst:start', 'sustained'], ['burst:release', 'sustained']], '12/s: one sustained burst');
+    assert.equal(release.rounds, shots.length, '12/s: every round in it');
+    assert.equal(run.log.filter((e) => e.n === 'mg_heavy_close').length, shots.length, '12/s: a crack every round');
+    assert.equal(run.log.filter((e) => e.n === ROAR.close).length, 0, '12/s: no roar (negative control for the rotary gun)');
+    const lastRound = release.lastRoundAt;
+    // (each voice's start carries its arrival: the burst's clock is the gun's)
+    const body = tails(run.log).filter((e) => e.t <= lastRound + 2 / 12 + start.arrivalS + 1e-6);
+    const after = tails(run.log).filter((e) => e.t > lastRound + 2 / 12 + start.arrivalS + 1e-6);
+    assert.ok(body.length >= 4, `12/s: the held body is laid while the trigger is held (${body.length} grains)`);
+    assert.ok(body[0].g < body[2].g, `12/s: the body swells in (${body.slice(0, 3).map((e) => e.g)})`);
+    assert.equal(after.length, 1, `12/s: one echo after the burst (${after.map((e) => e.t)})`);
+    const releaseWindow = burstReleaseS(1 / 12, 1 / 12);
+    assert.ok(after[0].t >= lastRound && after[0].t <= lastRound + releaseWindow + 2 * TICK + 0.06 + start.arrivalS,
+      `12/s: the echo starts at the release (${after[0].t.toFixed(3)} s; last round ${lastRound.toFixed(3)} s, window ${releaseWindow.toFixed(3)} s)`);
+    assert.ok(Math.abs(start.arrivalS - start.dist * SPEED / 343) < 1e-3, '12/s: its arrival is its distance at the speed of sound');
+    const { run: far } = await mgRun([0, 600]);
+    const [farStart, farRelease] = far.bursts;
+    const farLead = farStart.arrivalS - start.arrivalS;
+    assert.ok(farLead > 1.4, `12/s at 600 m: the sound arrives ${farLead.toFixed(3)} s after the near gun's, its tracers ahead of it`);
+    const firstNear = run.log.find((e) => e.n.startsWith('mg_heavy'));
+    const firstFar = far.log.find((e) => e.n.startsWith('mg_heavy'));
+    assert.ok(Math.abs((firstFar.t - firstNear.t) - farLead) < 0.01, `12/s: the first crack is delayed by the distance (${(firstFar.t - firstNear.t).toFixed(3)} s)`);
+    const farEcho = tails(far.log).filter((e) => e.t > farRelease.lastRoundAt + 2 / 12 + farStart.arrivalS + 1e-6);
+    assert.equal(farEcho.length, 1, '12/s at 600 m: one echo');
+    assert.ok(Math.abs((farEcho[0].t - farRelease.heardAt) - (after[0].t - release.heardAt)) < 0.04, '12/s at 600 m: its echo at its release, as it reaches us');
+    report.regime_12ps = { rounds: shots.length, cracks: shots.length, bodyGrains: body.length, echoes: 1, echoAfterLastRoundS: +(after[0].t - lastRound).toFixed(3),
+      nearArrivalS: +start.arrivalS.toFixed(3), farArrivalS: +farStart.arrivalS.toFixed(3) };
+  }
+  // (3) a 50/s rotary gun (the Vulcan's cluster at a 1/50 s cycle) for 2 s, 30 m off: no round heard on its own, its barrels
+  // spun up under a roar pitched to its rate, then spun down and one echo at the release; (3b) 600 m off: the low rumble
+  // alone, later by its distance; (3c) unclocked (a replay): round by round, the negative control
+  const vulcan = { caliberMm: 20, soundProfile: 'rh202', reloadS: 2, autoloader: { magazineSize: 300, intraClipS: 1 / 50, fullReloadS: 2, rotary: true },
+    shells: [{ name: 'M53 API', type: 'AP', caliberMm: 20, reloadS: 1 / 50 }] };
+  const vulcanRun = async (at, clocked = true) => {
+    const shots = cycled(1 / 50, 2).map((t) => foeShot(t, 20, 'rh202', 'M53 API', at));
+    return { shots, run: await runAudio(shots, clocked, { foe: at, foeGun: vulcan }) };
+  };
+  {
+    const { shots, run } = await vulcanRun([-10, 28]);
+    const [start, release] = run.bursts;
+    assert.deepEqual(run.bursts.map((e) => [e.type, e.regime, e.rotary]), [['burst:start', 'roar', true], ['burst:release', 'roar', undefined]], '50/s: one roar');
+    assert.equal(start.rps, 50, '50/s: timed by its spec\'s cycle');
+    assert.equal(release.rounds, shots.length, '50/s: every round in it');
+    assert.equal(run.log.filter((e) => /^ac_20_(close|far)$/.test(e.n)).length, 0, '50/s: no round heard on its own');
+    const grains = run.log.filter((e) => e.n === ROAR.close);
+    const expected = Math.floor((release.lastRoundAt + 2 / 50 - start.t) / ROAR.grainEveryS) + 1;
+    assert.ok(Math.abs(grains.length - expected) <= 1, `50/s: the roar's grains span the burst (${grains.length}, ~${expected})`);
+    const voicing = roarVoicing(1 / 50, 20, true);
+    const rate = grains[1].r / voicing.burstRate;
+    assert.ok(rate > 0.9 && rate < 1.12, `50/s: the roar is pitched to its rate (${grains[1].r} for ${voicing.burstRate.toFixed(3)})`);
+    assert.equal(run.log.filter((e) => e.n === ROAR.whine).length, 1, '50/s near: its barrels\' whine, once');
+    const echoes = tails(run.log);
+    assert.equal(echoes.length, 1, `50/s: one echo (${echoes.map((e) => e.t)})`);
+    assert.ok(echoes[0].t > release.lastRoundAt && echoes[0].t <= release.lastRoundAt + burstReleaseS(1 / 50, 1 / 50) + 2 * TICK + 0.06 + start.arrivalS,
+      `50/s: the echo at the release (${echoes[0].t.toFixed(3)} s after a last round at ${release.lastRoundAt.toFixed(3)} s)`);
+    assert.ok(grains.every((e) => e.t <= release.lastRoundAt + 2 / 50 + start.arrivalS + 1e-6), '50/s: no grain is laid after the burst');
+    const { run: far } = await vulcanRun([0, 600]);
+    const [farStart] = far.bursts;
+    assert.equal(far.log.filter((e) => e.n === ROAR.close).length, 0, '50/s at 600 m: no near tearing');
+    assert.ok(far.log.filter((e) => e.n === ROAR.far).length >= 5, '50/s at 600 m: the low rumble');
+    assert.equal(far.log.filter((e) => e.n === ROAR.whine).length, 0, '50/s at 600 m: no whine');
+    const firstFar = far.log.find((e) => e.n === ROAR.far);
+    assert.ok(Math.abs(firstFar.t - (grains[0].t - start.arrivalS + farStart.arrivalS)) < 0.01,
+      `50/s at 600 m: the rumble arrives by the distance (${firstFar.t.toFixed(3)} s against ${(grains[0].t - start.arrivalS + farStart.arrivalS).toFixed(3)} s)`);
+    const { run: replay } = await vulcanRun([-10, 28], false);
+    assert.equal(replay.bursts.length, 0, '50/s unclocked (a replay): no burst');
+    assert.ok(replay.log.filter((e) => e.n === 'ac_20_close').length > 30, '50/s unclocked: round by round, as replays keep it');
+    report.regime_50ps_rotary = { rounds: shots.length, roundCracks: 0, grains: grains.length, whine: 1, echoes: 1,
+      burstRate: grains[1].r, nearArrivalS: +start.arrivalS.toFixed(3), farArrivalS: +farStart.arrivalS.toFixed(3) };
+  }
+  // the M163 and the M6: one rate, told apart by bore and barrels
+  {
+    const m163 = roarVoicing(1 / 60, 20, true);
+    const m6 = roarVoicing(1 / 60, 25, true);
+    assert.equal(m163.barrels, 6);
+    assert.equal(m6.barrels, 5);
+    assert.ok(m163.burstRate > m6.burstRate, 'the 20 mm Vulcan roars a shade higher than the 25 mm GAU-12');
+    assert.ok(m6.whineRate > m163.whineRate, 'the GAU-12\'s five barrels turn faster at one rate than the Vulcan\'s six');
+    assert.equal(roarVoicing(0.05, 35, false).whineRate, null, 'a floor-rate twin cannon has no barrels to spin');
+    report.rotary_voicing = { m163, m6 };
   }
 }
 

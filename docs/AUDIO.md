@@ -270,12 +270,23 @@ roof stations' machine guns and 30 mm cannons; every row when the roster is
 unknown or in the Gun Game); our own reports and our loader's machinery load
 and are pinned once our hull is known.
 
-A fast gun is heard by its cadence (2026-11-11, release 272; `src/game/shotCadence.ts`, the one cap the audio, the
-effects, the camera and the phone read). Each round's crack plays up to the simulation's floor, 20 a second; a rotary
-gun's rounds between are silent. A gun firing sustained (rounds under 0.25 s apart) rings each crack for a short grain
-(0.3-1 s), its punch, distant boom (under a close report), breech and feed once each 0.15 s, its echo once each 0.45 s,
-and a burst's hull strikes on one target once each 0.1 s. A round with no simulation clock (a replay's, the Studio's)
-and any gun slower than 0.45 s a round are heard as before, voice for voice (`shotCadence.selftest`).
+A gun is heard by its fire-rate regime (release 276; `fireRegime` in `src/game/shotCadence.ts`), keyed on its real
+cadence (the spec's intra-clip cycle or round reload, else the gap between its rounds) and on `autoloader.rotary`:
+- under 8 rounds a second: each round its own report, variants round-robin and pitch jittered, as before;
+- 8 to 20 a second (machine guns, fast autocannons): a short crack each round over a held body (the map's echo bank in
+  grains, swelling in over the burst's first rounds), then one echo from the release;
+- 20 a second and up (every air-defence cannon at the floor) or any rotary gun (the M163's Vulcan, the M6's GAU-12): no
+  round is heard on its own. The burst is a roar of the GAU-8 recordings' steady section in overlapping grains
+  (`ROAR` in `weaponAudio.ts`), pitched to the gun's rate; near it the tearing close bank plus a rotary gun's drive
+  whine (spun up at the first round, down after the release), far a darkened low rumble; one echo from the release.
+`burstRound` in `audioEngine.ts` holds each burst and releases it once no round has come for 2.5 cycles; remote layers
+arrive by distance at the speed of sound, so tracers lead the sound. The muzzle flash, the camera kick and the phone keep
+the shared cadence (`SHOT_CADENCE_WINDOW_S`), and a burst's hull strikes on one target still come once each 0.1 s. A round
+with no simulation clock (a replay's, the Studio's) plays round by round (`shotCadence.selftest`).
+
+State toggles settle on their final state (`src/audio/toggleSettle.ts`): the scope, the tank sight's zoom steps (a soft
+`zoom_step`), auto-aim, the lights and the roof gun sound once their state has held 120 ms, and not at all if it ends
+where it started (`toggleSettle.selftest`). Continuous one-shots keep their cooldowns.
 The same audit (the lane's evidence `AUDIT.md`) bounded the other bursts the engine heard: a fast gun's rounds on the
 world strike once each 0.1 s per shooter (an airstrike's strafe in full); a held empty trigger clicks once a press; a
 fast gun's hit calls keep their queued moment instead of waiting for the burst to pause (crewRadio `burst`); a hull

@@ -236,8 +236,9 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // burst carries for kilometres; a barrage's ten whistles overlap and are heard a few hundred metres round their
   // landings; a 500 lb bomb is the loudest thing on the field; a crashed jet as far as a tank going up
   air_strike_warning: o({ bus: 'alarm', space: 'flat', priority: 94, maxInstances: 1, cooldownS: 0.4, gainDb: -6 }),
-  air_gau8_close: o({ priority: 88, maxInstances: 2, refM: 150, rolloff: 0.6, maxM: 3000, absorb: 0.6, send: 0.2, loudDb: 152 }),
-  air_gau8_far: o({ priority: 80, maxInstances: 2, refM: 400, rolloff: 0.6, maxM: 6000, absorb: 0.3, send: 0.3, loudDb: 150 }),
+  // (276) also the roar of a rotary or floor-rate gun (weaponAudio.ts ROAR): two overlapping grains a gun, a few guns
+  air_gau8_close: o({ priority: 88, maxInstances: 6, refM: 150, rolloff: 0.6, maxM: 3000, absorb: 0.6, send: 0.2, loudDb: 152 }),
+  air_gau8_far: o({ priority: 80, maxInstances: 6, refM: 400, rolloff: 0.6, maxM: 6000, absorb: 0.3, send: 0.3, loudDb: 150 }),
   air_shell_incoming: o({ priority: 82, maxInstances: 6, cooldownS: 0, refM: 40, rolloff: 0.9, maxM: 700, absorb: 0.8, loudDb: 132 }),
   air_bomb_fall: o({ priority: 84, maxInstances: 2, cooldownS: 0, refM: 60, rolloff: 0.9, maxM: 900, absorb: 0.8, loudDb: 134 }),
   air_bomb_blast: o({ priority: 92, maxInstances: 2, refM: 60, rolloff: 0.6, maxM: 4000, absorb: 0.5, send: 0.32, loudDb: 158 }),
