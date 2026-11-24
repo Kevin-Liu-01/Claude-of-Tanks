@@ -1,7 +1,8 @@
 // garage-env-276 (class 2): the battle's own sward on the Garage yards (garageEnvironmentKit.ts, tallGrass.ts nearOnly).
 // 1. every outdoor pack draws the battle sward exactly where the battle draws one (a grass biome: not desert, not
 //    badlands), at the Garage's density, inside its triangle share of the pack budget;
-// 2. no blade stands on the working floors (the apron) or past the patch's edge;
+// 2. no blade stands on the worked floors (the turntable's surround: Main's ruling B shrank the 36 m apron to the floors)
+//    or past the patch's edge;
 // 3. the sward is no camera obstacle (the battle clears its blades by the lens): the spring arm's obstacles are the same
 //    with it as without, and the static tufts stay beside it (the battle's card tufts' stand-in).
 import assert from 'node:assert/strict';
@@ -9,6 +10,7 @@ import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { getGarageTerrainPatch } from './garageTerrainPatches.generated.ts';
+import { GARAGE_PLATFORM_GEOMETRY } from '../game/garagePresentationPose.ts';
 import { buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets, GARAGE_GRASS_QUALITY } from './garageEnvironmentKit.ts';
 
 const SWARD_TRIANGLES = 40_000;
@@ -37,7 +39,8 @@ for (const variant of GARAGE_VARIANTS.filter((v) => v.architecture !== 'field_sh
     for (let index = 0; index < near.count; index += 1) {
       near.getMatrixAt(index, m);
       p.setFromMatrixPosition(m);
-      assert.ok(!(Math.abs(p.x) < 15 && Math.abs(p.z) < 12.5), `${variant.id}: clump ${index} on the apron (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`);
+      assert.ok(Math.hypot(p.x, p.z) >= GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM,
+        `${variant.id}: clump ${index} on the turntable's worked surround (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`);
       assert.ok(Math.abs(p.x) <= patch.sizeXM / 2 && Math.abs(p.z) <= patch.sizeZM / 2, `${variant.id}: clump ${index} past the patch`);
     }
     // 3.
@@ -50,5 +53,5 @@ for (const variant of GARAGE_VARIANTS.filter((v) => v.architecture !== 'field_sh
 }
 assets.dispose();
 console.log(`garageSward.selftest: the battle sward on every grass yard at ${GARAGE_GRASS_QUALITY} of the battle's density, `
-  + `none on desert or badlands, the apron and the patch's edge clear, no camera obstacle PASS\n  ${rows.join('\n  ')}`);
+  + `none on desert or badlands, the worked floors and the patch's edge clear, no camera obstacle PASS\n  ${rows.join('\n  ')}`);
 process.exit(0);

@@ -2061,6 +2061,26 @@ export function buildGarageEnvironment(
   // The apron lies on the terrain's own grid and triangulation, 2 cm over it, so it drapes exactly (a finer grid of its
   // own bridged the terrain's cells and stood up to 6 cm proud of a pad's feather) and costs fewer triangles.
   const APRON_HALF_M = 18;
+  /**
+   * (garage-env-276, class 2; Main's ruling B) The worked floors' share of the ground at a point: the turntable's
+   * surround (full to where the terrain levels round the podium, gone at its feather radius) and the crew floors (the
+   * fleet pads' reach and feather); the fleet pads draw their own slabs. Past them the ground is the battle's own terrain
+   * and sward, as round a spawn, where a 36 m slab used to cover every near view.
+   */
+  const CREW_FLOOR_REACH = 1.32;
+  const crewFloors = terraceRecords.filter((terrace) => terrace.label.startsWith('crew-floor-'));
+  const floorShareAt = (x: number, z: number): number => {
+    let share = THREE.MathUtils.clamp(
+      (GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM - Math.hypot(x, z)) / GARAGE_HARDSTAND_FEATHER_M, 0, 1);
+    if (share >= 1 || !crewFloors.length) return share;
+    const view = garageWorldPointToView(x, z);
+    for (const floor of crewFloors) {
+      const e = Math.hypot((view.side - floor.side) / (floor.radiusSide * CREW_FLOOR_REACH),
+        (view.depth - floor.depth) / (floor.radiusDepth * CREW_FLOOR_REACH));
+      share = Math.max(share, THREE.MathUtils.clamp((1 - e) / 0.32, 0, 1));
+    }
+    return share;
+  };
   const apronGeometry = (() => {
     const cellX = patch.sizeXM / (patch.width - 1), cellZ = patch.sizeZM / (patch.height - 1);
     const i0 = Math.max(0, Math.floor((patch.sizeXM / 2 - APRON_HALF_M) / cellX) - 1);
@@ -2097,9 +2117,10 @@ export function buildGarageEnvironment(
   }
   {
     // The worked yard thins out into the terrain (wave 408: "a ruler-straight seam ... where the textured foreground
-    // snow meets a flat, pale, untextured snow plane"): each vertex's share of worked ground falls to nothing over the
-    // apron's outer 2.4 m and as the ground climbs toward the rise limit, so neither the rectangle's edge nor the
-    // slope's crossing line shows; garageHardstandGradedHook breaks the ramp into an irregular margin.
+    // snow meets a flat, pale, untextured snow plane"): each vertex's share of worked ground is the worked floors' (the
+    // turntable's surround and the crew floors, floorShareAt) and falls to nothing as the ground climbs toward the rise
+    // limit, so neither the floor's edge nor the slope's crossing line shows; garageHardstandGradedHook breaks the ramp
+    // into an irregular margin. Cells the floors never reach are dropped below.
     const positions = apronGeometry.getAttribute('position');
     const blend = new Float32Array(positions.count);
     for (let index = 0; index < positions.count; index += 1) {
@@ -2108,7 +2129,7 @@ export function buildGarageEnvironment(
       const edge = (APRON_HALF_M - Math.max(Math.abs(x), Math.abs(z))) / GARAGE_HARDSTAND_FEATHER_M;
       const ground = samplePatch(patch, heights, x, z);
       const rise = 1 - THREE.MathUtils.smoothstep(ground, 0.18, APRON_RISE_LIMIT_M - 0.01);
-      blend[index] = THREE.MathUtils.clamp(edge, 0, 1) * rise;
+      blend[index] = Math.min(THREE.MathUtils.clamp(edge, 0, 1), floorShareAt(x, z)) * rise;
     }
     apronGeometry.setAttribute('hardstandBlend', new THREE.BufferAttribute(blend, 1));
   }
@@ -2269,16 +2290,32 @@ export function buildGarageEnvironment(
 
   /**
    * Where the yard's ground cover may not grow (the tufts' rule, and the battle sward's since garage-env-276): inside a
-   * structure's footprint, on the working floors (the apron and every exhibit or crew pad: 2026-10-10, wave 357, "black
-   * spikes stud the sand"), in Saltmere's dock or through its granite paving, and past the patch's edge.
+   * structure's footprint, on the worked floors (the turntable's surround, the crew floors and every exhibit pad:
+   * 2026-10-10, wave 357, "black spikes stud the sand"), on the approach road, in Saltmere's dock or through its granite
+   * paving, and past the patch's edge.
    */
+  const approachRoute = recipe.approach.waypoints.map(([side, depth]) => cameraPoint(side, depth));
+  const approachHalfM = recipe.approach.width / 2 + Math.max(0, ...(recipe.approach.lanes ?? []).map(Math.abs)) + 1;
+  /** Plan distance from the approach road's centreline. */
+  const approachDistanceAt = (x: number, z: number): number => {
+    let best = Infinity;
+    for (let index = 1; index < approachRoute.length; index += 1) {
+      const a = approachRoute[index - 1], b = approachRoute[index];
+      const dx = b.x - a.x, dz = b.z - a.z, length2 = dx * dx + dz * dz || 1;
+      const t = THREE.MathUtils.clamp(((x - a.x) * dx + (z - a.z) * dz) / length2, 0, 1);
+      best = Math.min(best, Math.hypot(x - (a.x + dx * t), z - (a.z + dz * t)));
+    }
+    return best;
+  };
   const coverBlocked = (x: number, z: number): boolean => {
     if (Math.abs(x) > patch.sizeXM / 2 - 0.5 || Math.abs(z) > patch.sizeZM / 2 - 0.5) return true;
     if (structureRecords.some((record) => (
       Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
       && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
     ))) return true;
-    if (Math.abs(x) < 15 && Math.abs(z) < 12.5) return true;
+    // the worked floors (their feather included) and the approach road's corridor
+    if (floorShareAt(x, z) > 0) return true;
+    if (approachDistanceAt(x, z) < approachHalfM) return true;
     const view = garageWorldPointToView(x, z);
     if (terraceRecords.some((terrace) => (
       (terrace.label.startsWith('fleet-service-') || terrace.label.startsWith('crew-floor-'))
