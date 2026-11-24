@@ -527,7 +527,7 @@ const scene = new THREE.Scene();
 /** The point an aircraft's smoke or burst is drawn at (airSupportWorld.ts aircraftFx), reused. */
 const _aircraftFxAt = new THREE.Vector3();
 const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
-  groundHeight: (x, z) => groundSampler(x, z),
+  groundHeight: (x, z, ceiling) => groundSampler(x, z, ceiling),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
