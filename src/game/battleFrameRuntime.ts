@@ -53,6 +53,15 @@ interface BattleFramePresentationPort {
   updateResult(): void;
 }
 
+/**
+ * A replay being watched (docs/REPLAY.md §5): the battle is posed from its track each frame and never stepped; no
+ * countdown, no fixed-step debt, and the presentation draws the posed state as it stands (alpha 1, as online).
+ */
+interface BattleFrameReplayPort {
+  isActive(): boolean;
+  advance(appliedDtSeconds: number): void;
+}
+
 interface BattleFrameRuntimeOptions {
   game: GameState;
   settings: BattleFrameSettingsPort;
@@ -64,6 +73,7 @@ interface BattleFrameRuntimeOptions {
   getRigMode(): string;
   stepSimulation(): void;
   emitPause(paused: boolean): void;
+  replay?: BattleFrameReplayPort;
   simulationDt?: number;
   maxSimulationSteps?: number;
 }
@@ -102,6 +112,7 @@ export function createBattleFrameRuntime({
   getRigMode,
   stepSimulation,
   emitPause,
+  replay,
   simulationDt = 1 / 60,
   maxSimulationSteps = 4,
 }: BattleFrameRuntimeOptions): BattleFrameRuntime {
@@ -277,8 +288,12 @@ export function createBattleFrameRuntime({
     appliedDtSeconds: number,
     wallDtSeconds: number,
     networkActive: boolean,
+    replayActive: boolean,
   ): void => {
-    if (networkActive) {
+    if (replayActive) {
+      replay!.advance(appliedDtSeconds);
+      simulationAccumulator = 0;
+    } else if (networkActive) {
       countdown.show(game.preBattleS);
       followNetworkCountdown();
       simulationAccumulator = 0;
@@ -298,10 +313,11 @@ export function createBattleFrameRuntime({
   const updatePresentation = (
     appliedDtSeconds: number,
     networkActive: boolean,
+    replayActive: boolean,
     killcamActive: boolean,
     livePaused: boolean,
   ): number => {
-    const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    const alpha = networkActive || replayActive ? 1 : simulationAccumulator / simulationDt;
     frameStages?.stage(FRAME_STAGE.presentation);
     if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
     return alpha;
@@ -352,9 +368,10 @@ export function createBattleFrameRuntime({
     const networkActive = network.isActive();
     if (inBattle && networkActive) networkBattleOwned = true;
     const retiringNetworkBattle = networkBattleOwned && !networkActive;
+    const replayActive = inBattle && replay?.isActive() === true;
 
     if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
-      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
+      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive, replayActive);
     }
     // (killcam-first-frame-276) A replay the result update (or the pump) started in this frame owns this frame's draw:
     // its first frame is its first shot. Read once at the frame's start, this frame was a live one, and its live
@@ -363,7 +380,7 @@ export function createBattleFrameRuntime({
     // "starts from where you are then snaps you back to where you died").
     const replayOwnsFrame = killcamActive || killcam.isActive();
     const presentationAlpha = retiringNetworkBattle ? 1 : updatePresentation(
-      appliedDtSeconds, networkActive, replayOwnsFrame, livePaused,
+      appliedDtSeconds, networkActive, replayActive, replayOwnsFrame, livePaused,
     );
     return writeReceipt(
       appliedDtSeconds,

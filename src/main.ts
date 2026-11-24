@@ -265,7 +265,13 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { createReplayRecorder, type RecorderGame, type ReplaySetupOptions } from './game/replay/replayRecorder.ts';
-import { listReplays, loadReplayFile, saveReplay } from './game/replay/replayStore.ts';
+import { listReplays, loadReplayFile, saveReplay, unpackReplay } from './game/replay/replayStore.ts';
+import { decodeReplay, type ReplayRecording } from './sim/replayFormat.ts';
+import { recordedBattle, runRecordedSetup } from './game/replay/replaySetup.ts';
+// (the replay bar's segmented filter: the kit is already in the boot chunk with the Garage; the lazy bar takes it as a port)
+import { segmented, wireRoving } from './ui/components/components.ts';
+import type { replayCollisionManifest } from './game/replay/replayWorldManifest.ts';
+type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
@@ -753,12 +759,17 @@ const devTrace = traceRequested
 const replayRecorder = createReplayRecorder();
 // a battle recorded with the divergence trace keeps it here for the tools (game/replay/replayTrace.ts; off unless they ask)
 let lastReplayTrace: unknown = null;
-const finishReplay = (): void => {
+// (the save resolves once the store has it: the end screen's Watch and Download wait on it)
+let replaySaving: Promise<unknown> = Promise.resolve();
+const finishReplay = (): Promise<unknown> => {
   const done = replayRecorder.finish();
-  if (!done) return;
+  if (!done) return replaySaving;
   if (done.trace) lastReplayTrace = done.trace;
-  void saveReplay(done.bytes, done.header, done.end);
+  replaySaving = saveReplay(done.bytes, done.header, done.end);
+  return replaySaving;
 };
+// a saved replay the page is entering as a battle (watchSavedReplay below): setupBattle takes it (once)
+let pendingReplay: { recording: ReplayRecording; file: Uint8Array } | null = null;
 const bus = createBus(devTrace
   ? (ev, payload) => { devTrace.event(ev, payload); replayRecorder.onEvent(ev, payload); }
   : (ev, payload) => replayRecorder.onEvent(ev, payload));
@@ -2830,7 +2841,20 @@ const soloBattleStart = createSoloBattleStartAccess({
       // the battle's recording opens round its setup (game/replay/replayRecorder.ts: what setup reads beyond its options)
       setupBattle: (battle: Parameters<typeof setupBattle>[0], specId: string, world: Parameters<typeof setupBattle>[2],
         options: Parameters<typeof setupBattle>[3]) => {
-        finishReplay();
+        void finishReplay();
+        const replay = pendingReplay;
+        pendingReplay = null;
+        // a saved replay: set up as recorded (replaySetup.ts), never recorded itself, then posed by the viewer
+        if (replay) {
+          currentHud()?.shotInfo.setReplayProbe(() => false);
+          const result = runRecordedSetup(battle as unknown as Parameters<typeof runRecordedSetup>[0], replay.recording.header,
+            (playerSpecId, recorded) => setupBattle(battle, playerSpecId, world, { ...options, ...recorded }));
+          if (!replayViewerOwner.current?.attach(replay.recording, replay.file, world as unknown as ReplayManifestWorld)) {
+            console.error('[replay] the replay could not be attached to its battle');
+          }
+          return result;
+        }
+        currentHud()?.shotInfo.setReplayProbe(() => replayRecorder.active);
         replayRecorder.beginSetup(battle as unknown as RecorderGame, specId, (options ?? {}) as ReplaySetupOptions);
         try { return setupBattle(battle, specId, world, options); } finally { replayRecorder.endSetup(); }
       },
@@ -3626,6 +3650,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       watchOwner.current?.stop();
+      replayViewerOwner.current?.stop();
       currentDamagePanel()?.release();
       if (keepScreens) return;
       currentDamagePanel()?.clear();
@@ -4064,6 +4089,73 @@ const watchOwner = createLazyRuntimeOwner(
       || (target instanceof Element && !!target.closest('.cot-touch-aim')),
   }),
 );
+// The replay viewer (docs/REPLAY.md §5): a saved battle watched as a battle, posed from its track. Its chunk loads the
+// first time a replay is watched; nothing of it is on the boot graph.
+const replayViewerOwner = createLazyRuntimeOwner(
+  () => import('./app/replayViewerRuntime.ts'),
+  (module) => module.createReplayViewerRuntime({
+    game: game as unknown as Parameters<typeof module.createReplayViewerRuntime>[0]['game'],
+    watch: () => watchOwner.current?.controller ?? null,
+    hud: { root: () => currentHud()?.root ?? null, replayKill: (kill) => currentHud()?.replayKill(kill) },
+    leave: () => { void leaveBattleToGarage().catch((error) => console.error('[replay] leave failed', error)); },
+    isInputHeld: () => settings.isOpen(),
+    reportError: (message, error) => console.error(message, error),
+    kit: { segmented, wireRoving },
+  }),
+);
+/** The saved replay `id`'s stored bytes (the battle just ended when null, saved first), or null. */
+async function savedReplayFile(id: number | null): Promise<{ id: number; data: Uint8Array } | null> {
+  if (id == null) {
+    await finishReplay();
+    id = (await listReplays())[0]?.id ?? null;
+  }
+  if (id == null) return null;
+  const data = await loadReplayFile(id);
+  return data ? { id, data } : null;
+}
+/** Watch a saved replay: a recording this build cannot replay shows its timeline alone; else the page enters its battle
+ *  (from the Garage: an end screen returns there first) and setupBattle hands it to the viewer. */
+async function watchSavedReplay(id: number | null): Promise<void> {
+  const stored = await savedReplayFile(id);
+  if (!stored) return;
+  const file = await unpackReplay(stored.data);
+  const recording = decodeReplay(file);
+  const [viewer] = await Promise.all([replayViewerOwner.preload(), watchOwner.preload()]);
+  const refusal = viewer.refusal(recording);
+  if (refusal) {
+    viewer.showTimeline({ header: recording.header, end: recording.end, events: recording.events, track: null, indexedSteps: 0,
+      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` } });
+    return;
+  }
+  if (game.phase === 'battle') await leaveBattleToGarage();
+  const battle = recordedBattle(recording.header);
+  pendingReplay = { recording, file };
+  try {
+    await beginLocalBattleEntry(battle.playerSpecId, battle.mapId,
+      { randomRoster: battle.randomRoster, gameMode: battle.gameMode, campaignOperationId: battle.campaignOperationId });
+  } finally {
+    // setupBattle took it; a refused or failed entry must not hand it to the next battle
+    pendingReplay = null;
+  }
+}
+/** Save a replay's file (as stored: gzipped where the browser could) under its battle's date. */
+async function downloadSavedReplay(id: number | null): Promise<void> {
+  const stored = await savedReplayFile(id);
+  if (!stored) return;
+  const stamp = new Date(stored.id).toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const url = URL.createObjectURL(new Blob([stored.data as BlobPart], { type: 'application/octet-stream' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `claude-of-tanks-${stamp}.cotreplay`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+const replayIdOf = (payload: unknown): number | null => {
+  const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
+  return typeof id === 'number' && Number.isFinite(id) ? id : null;
+};
+bus.on('ui:replayWatch', (payload) => { void watchSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] watch failed', error)); });
+bus.on('ui:replayDownload', (payload) => { void downloadSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] download failed', error)); });
 // Couch mode (docs/COUCH-MODE.md): the lobby that seats the phones, each seat's controls, the per-tick input stage and
 // the shared camera. Its chunk loads when the host opens Couch on the Deploy screen; nothing of it is on the boot graph.
 const couchOwner = createLazyRuntimeOwner(
@@ -4240,6 +4332,11 @@ const battleFrame = createBattleFrameRuntime({
   },
   // (who paused: a tutorial card's hold, or the pause menu; the tutorial's own card stays up under its own hold)
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused, by: paused && !settings.isOpen() && tutorialHolds() ? 'tutorial' : 'menu' }),
+  // a replay being watched is posed from its track each frame, never stepped (app/replayViewerRuntime.ts)
+  replay: {
+    isActive: () => replayViewerOwner.current?.isActive() === true,
+    advance: (dt: number) => replayViewerOwner.current?.advance(dt),
+  },
   simulationDt: SIM_DT,
 });
 const pauseInfo = battleFrame.pauseInfo;

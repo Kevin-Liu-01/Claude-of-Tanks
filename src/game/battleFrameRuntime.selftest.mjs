@@ -148,6 +148,43 @@ runtime.advance(1 / 60, 1 / 60, 1300, false);
 assert.equal(simulationSteps, beforeSameFrameClose.simulationSteps + 1,
   'explicit solo setup releases the network retirement lease without a rendered Garage frame');
 
+// a replay being watched (docs/REPLAY.md §5): posed each frame, never stepped, no countdown, drawn at alpha 1; paused
+// with the menu like any battle, and off again the frame it stops
+{
+  const replayGame = { phase: 'battle', preBattleS: 3, result: null, player: { input: {}, combat: {} } };
+  let replayActive = true, replayPaused = false, steps = 0;
+  const advanced = [], frames = [], counted = [];
+  const replayRuntime = createBattleFrameRuntime({
+    game: replayGame,
+    settings: { isOpen: () => replayPaused },
+    killcam: { isActive: () => false },
+    input: { camera: {}, poll: () => {}, dispose: () => {} },
+    network: { isActive: () => false, pump: () => {} },
+    countdown: { isWarmPending: () => false, advance: (seconds, wall) => Math.max(0, seconds - wall), show: (seconds) => counted.push(seconds), rollout: () => {} },
+    presentation: { captureSoloPose: () => {}, update: (dt, alpha) => frames.push(alpha), updateResult: () => {} },
+    getRigMode: () => 'ARCADE',
+    stepSimulation: () => { steps += 1; },
+    emitPause: () => {},
+    replay: { isActive: () => replayActive, advance: (dt) => advanced.push(dt) },
+  });
+  replayRuntime.advance(0.05, 0.05, 0, false);
+  replayRuntime.advance(0.05, 0.05, 50, false);
+  assert.deepEqual(advanced, [0.05, 0.05], 'a replay advances by the frame');
+  assert.equal(steps, 0, 'a replay never steps the simulation');
+  assert.deepEqual(counted, [], 'nor runs the countdown');
+  assert.equal(replayGame.preBattleS, 3);
+  assert.deepEqual(frames, [1, 1], 'its presentation draws the posed state (alpha 1)');
+  replayPaused = true;
+  replayRuntime.advance(0.05, 0.05, 100, false);
+  assert.equal(advanced.length, 2, 'the menu pauses a replay');
+  replayPaused = false;
+  replayActive = false;
+  replayGame.preBattleS = 0;
+  replayRuntime.advance(1 / 60, 1 / 60, 150, false);
+  assert.equal(advanced.length, 2);
+  assert.equal(steps, 1, 'once the replay stops, the battle steps again');
+}
+
 assert.throws(() => createBattleFrameRuntime({}), /requires every frame port/);
 assert.throws(() => createBattleFrameRuntime({
   game, settings: {}, killcam: {}, input: {}, network: {}, countdown: {}, presentation: {},
@@ -165,4 +202,4 @@ assert.match(mainSource, /createMainFrameRuntime\(/,
 assert.match(mainFrameSource, /battleFrame\.advance\(/,
   'the frame owner delegates gameplay advancement through one state machine');
 
-console.log('battleFrameRuntime.selftest: pause, countdown, network, fixed-step, and presentation pass');
+console.log('battleFrameRuntime.selftest: pause, countdown, network, replay, fixed-step, and presentation pass');

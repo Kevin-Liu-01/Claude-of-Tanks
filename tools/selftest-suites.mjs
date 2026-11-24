@@ -314,6 +314,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/seatActions.selftest.mjs',
     // replay-system (P2): the viewer's timeline marks, transport clock and posing step (no DOM, no world)
     'src/game/replay/replayViewerCore.selftest.mjs',
+    // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
+    'src/game/replay/replayViewer.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
