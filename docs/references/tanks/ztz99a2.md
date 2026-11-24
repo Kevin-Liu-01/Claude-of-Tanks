@@ -97,3 +97,45 @@ GATE: 88.8 -> 88.9 IMPROVED (x2 bit-identical), dims 100, floaters 100
 (two §B4 offenders found and fixed mid-round: chevron toes + tow-cable
 anchors -> 0/0 strict); npm test green; type99a donor 7f613788 byte-held.
 FINAL HASH: 93c78198.
+
+## Release 276: cheek redesign from photographs (cn-turrets-276, 2026-11-24)
+
+Kevin, 2026-11-24: "clean up and redesign the vt 4a1 ztz 99a2 and ztz99a turrets which are a little messy esp with
+cheeks, and need to be redesigned."
+
+**Why the cheeks were messy.** Each cheek was a stack of separately typed pieces with no shared outline: a loft shell
+that stopped at one plan line, a "closed chevron" lofted from six hand-typed stations that ignored that line, four thin
+cassettes sampled along the chevron, and on the ZTZ-99A two beak prisms and a flank box on top. They crossed, overhung
+and left slivers at every join.
+
+**Mechanism now.** One turret plan outline per id (`src/vehicles/profiles/chineseTurretOutlines.ts`). The builder lofts
+the whole shell, body and cheek modules, from it as one closed solid (`chineseTurretSolid.ts`). The face tiles are
+closed blocks seated on its planar faces, and the combat plates (`type99Armor.ts`) are read from the same faces. Receipt:
+`chineseTurretCheeks.selftest.mjs` (closed solids and cut parts, planar faces, seated and disjoint tiles, five planted
+controls).
+
+**Photographs** (reference only, never shipped; Wikimedia Commons): "ZTZ-99A tank front 20170902.jpg", "ZTZ-99A tank
+front right 20170902.jpg", "ZTZ-99A MBT 20170902.jpg" (Military Museum, Beijing). In reality "99A2" was the pre-service
+label for the ZTZ-99A. The game keeps two ids: `ztz99a2` is the production 99A as photographed, and `ztz99a` is the
+early, pre-production 99A (Kevin's choice via Main, 2026-11-24).
+
+### ztz99a2 (production)
+
+| # | Region | Photo read | Baseline (was) | Fix (now) |
+|---|---|---|---|---|
+| 1 | Cheek plan | Two arrowhead modules. The front face runs from the mantlet notch outward and back about 25 degrees, and the outer face runs steeply back (about 60 degrees) to the side wall. | One Leopard-2A6-style chevron per side, swept from the throat to the shoulder in a single raked line. | Outline tip (0.41, 1.68), corner (1.06, 1.38), side join (1.56, 0.34): front face 24 degrees, outer face 64 degrees. |
+| 2 | Cheek section | A vertical lower band (one tile row) under a long sloped top (two tile rows) that climbs to the roof. | Upper and lower faces meeting at a horizontal ridge (a side-section chevron). | Band 0.155 to 0.40, then a top sloping 0.58 m back to the 0.815 roof (36 degrees). |
+| 3 | Tiles | Large flat FY-class tiles in rows on the band and slope of both faces; the star sits on the outer face. | Four thin cassettes per side laid along the chevron, gapped and overhanging at their ends. | 36 closed tiles: on each face a band row of three and two slope rows of three, 24 mm gaps, 30 mm from every edge, sunk 4 mm. |
+| 4 | Joins | The modules are one welded volume with the turret body. | The shell, the chevron and the cassettes crossed one another, leaving slivers. | One solid: the module faces are the shell's own faces, with no join to gap. |
+| 5 | Gun channel | The mantlet sits in a notch between the modules' inner faces. | Unchanged 0.80 m channel. | Unchanged; the cut walls are capped and closed (chineseChannelWallCaps). |
+| 6 | Floor | The modules' undersides sit just over the hull deck. | Chevron chins at y -0.04, lifted by the turret seat at build. | The floor stands on the seat plane (0.155), so the seat moves none of it. |
+| 7 | Roof kit | Cupola, sights and warning heads on a flat roof. | On the old crown (0.80 to 0.82). | Flat roof at 0.815; every fitting seated (donorStockSeating). |
+
+### ztz99a (early 99A)
+
+| # | Region | Read | Baseline (was) | Fix (now) |
+|---|---|---|---|---|
+| 1 | Cheek plan | The same arrowhead method on a blunter outline. | A welded wedge loft plus a six-station chevron, four cassettes and two beak prisms beside the gun. | Outline tip (0.41, 1.60), corner (1.00, 1.20), side join (1.50, 0.20). |
+| 2 | Cheek section | A taller band; bare welded slope. | Wedge plus chevron. | Band 0.16 to 0.45, then a bare top sloping 0.50 m back to the 0.89 roof. |
+| 3 | Tiles | One row of large tiles on the band. | Four thin cassettes per side. | 8 closed tiles: two on each band, 30 mm gaps. |
+| 4 | Clutter | None at the module's flank. | A box and dark strip at z 0.39 standing through the flank, a crown rim trim, two beak prisms. | Gone; smoke banks moved to the side wall behind the module, warning boxes seated on the roof. |

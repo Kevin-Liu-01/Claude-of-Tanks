@@ -1484,6 +1484,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
     'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
+    // 2026-11-24 (cn-turrets-276): the ZTZ-99A2, ZTZ-99A and VT-4A1 cheeks are closed outline solids with seated tiles
+    'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',

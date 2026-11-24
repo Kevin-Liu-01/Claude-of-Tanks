@@ -41,38 +41,20 @@ assert(prototype.equipment.geometry.boundingBox.min.z <= -2.34,
   'ZTZ-99A2 Prototype: preserved deep rear service package remains present');
 
 const receipt = production.turretRig.userData.ztz99a2ProductionReceipt;
-assert.equal(receipt?.architecture, 'ztz99a2-production-arrow-r4',
-  'ZTZ-99A2: canonical ID receives the new production turret');
+// release 276 (cn-turrets-276, Kevin 2026-11-24): the shell and its arrowhead cheek modules are one closed solid lofted
+// from the turret's plan outline (chineseTurretOutlines.ts); the six-station Leopard-style chevrons are retired
+assert.equal(receipt?.architecture, 'ztz99a2-production-arrowhead-r5',
+  'ZTZ-99A2: canonical ID receives the production arrowhead turret');
 assert.equal(receipt?.prototypeGeometryReused, false,
   'ZTZ-99A2: production turret is not the relabeled prototype mesh');
-assert.equal(receipt?.integratedChevronFront, true,
-  'ZTZ-99A2: production chevrons form the integrated primary front');
-assert.equal(receipt?.chevronSideJoinGapM, 0,
-  'ZTZ-99A2: chevrons terminate inside the side shoulders without a gap');
-assert.equal(receipt?.chevronProfile, 'vt4a1-leopard-2a6-derived',
-  'ZTZ-99A2: production front uses the requested VT/Leopard chevron grammar');
-assert.equal(receipt?.chevronStationsPerSide, 6,
-  'ZTZ-99A2: each watertight cheek carries six shaping stations');
-assert.equal(receipt?.surfacePanelsPerSide, 4,
-  'ZTZ-99A2: four raised armor cassettes make each chevron visually explicit');
-assert.equal(receipt?.sharedPhysicalRidge, true,
-  'ZTZ-99A2: upper and lower cheek faces meet on one physical ridge');
-assert.equal(receipt?.chevronRidgeAdvanceM, 1.10,
-  'ZTZ-99A2: chevron ridge is the dominant front ahead of the shortened shell');
-assert.equal(receipt?.chevronUpperRootYM, 0.83,
-  'ZTZ-99A2: chevrons rise into the turret roof course');
-assert.equal(receipt?.chevronLowerReturnYM, -0.04,
-  'ZTZ-99A2: chevrons descend through the turret chin course');
-assert.equal(receipt?.chevronVerticalCoverageM, 0.87,
-  'ZTZ-99A2: chevrons cover the full vertical front rather than a shallow band');
-assert.equal(receipt?.fullHeightFrontCoverage, true,
-  'ZTZ-99A2: receipt records full-height frontal chevron coverage');
-assert.equal(receipt?.permanentChevronCarriers, 2,
-  'ZTZ-99A2: both closed chevron carriers belong to the permanent turret shell');
-assert.equal(receipt?.detonatingChevronFacePanels, 8,
-  'ZTZ-99A2: only the eight raised face panels are depleted as ERA');
+assert.equal(receipt?.outlineLofted, true,
+  'ZTZ-99A2: shell and cheek modules are one solid from one outline');
+assert.equal(receipt?.cheekModules, 'arrowhead',
+  'ZTZ-99A2: arrowhead cheek modules, as photographed');
+assert.equal(receipt?.detonatingCheekTiles, 36,
+  'ZTZ-99A2: only the face tiles are depleted as ERA');
 assert.equal(receipt?.spentStateRetainsClosedFront, true,
-  'ZTZ-99A2: spent ERA state retains the complete roof-to-chin front');
+  'ZTZ-99A2: spent ERA state retains the complete closed front');
 assert.equal(receipt?.bustleExtensionM, 0.50,
   'ZTZ-99A2: bustle is extended by exactly 0.50 m');
 assert.equal(receipt?.bustleUndersideRiseM, 0.42,
@@ -86,18 +68,16 @@ assert.deepEqual(production.turretRig.position.toArray(), [0, 1.56, 0.12],
   'ZTZ-99A2: new low production turret sits on its own forward ring station');
 assert.notEqual(signature(prototype.turret), signature(production.turret),
   'ZTZ-99A2: production and prototype primary turret geometry are distinct');
-const chevronFaceEra = production.tank.root.getObjectByName('turretExternalArmor');
-assert(chevronFaceEra && chevronFaceEra.geometry.attributes.position.count >= 180,
-  'ZTZ-99A2: raised ERA face courses remain complete on both permanent cheeks');
-// Main's owner-directed mantlet fit (2026-10-02, 245aa4e4e) opens a 0.80 m gun channel through the turret stock,
-// so the carriers' first inboard station (x 0.22: ridge z 1.72, roof root y 0.83 at z 0.58) is gone by design and
-// each closed carrier now ends in a capped wall at |x| 0.40. Its wall section follows from the station table
-// (station 1 at x 0.34-0.40, station 2 at x 0.62-0.82): ridge (y 0.3791, z 1.6491), roof root (y 0.8257,
-// z 0.4314) and chin return (y -0.04, z 0.82). The front envelope is measured on the stock outboard of the channel.
+const cheekTiles = production.tank.root.getObjectByName('turretExternalArmor');
+assert(cheekTiles && cheekTiles.geometry.attributes.position.count >= 36 * 36,
+  'ZTZ-99A2: the 36 raised face tiles (closed blocks) are all built');
+// Main's owner-directed mantlet fit (2026-10-02, 245aa4e4e) opens a 0.80 m gun channel through the turret stock, so each
+// closed cheek ends in a capped wall at |x| 0.40. Release 276: the cheeks are faces of the outline solid
+// (chineseTurretOutlines.ts), so the wall section is the outline's: the level stub inboard of the tip at z 1.68 from the
+// floor (on the ring's seat plane, turretSeatRace.ts: y 0.155) to the band top (y 0.40), and the sloped top meeting the
+// roof (y 0.815) at z 1.10. The front envelope is measured on the stock outboard of the channel.
 const channelHalfWidth = 0.40;
-// Release 264 (main-reds 261): since the 241 regen published the ZTZ-99A2's turretRing row, the turret seat
-// (turretSeatRace.ts seatTurretOverDeck) stands the chin return on its seat plane, y -0.04 -> 0.1525.
-const chevronWall = [[0.379091, 1.649091], [0.825714, 0.431429], [0.1525, 0.82]];
+const chevronWall = [[0.40, 1.68], [0.815, 1.10], [0.155, 1.68]];
 const chevronPositions = production.turret.geometry.attributes.position;
 const onWall = (side, [y, z]) => {
   for (let index = 0; index < chevronPositions.count; index++) {
@@ -109,17 +89,17 @@ const onWall = (side, [y, z]) => {
 };
 const closedWalls = () => {
   for (const side of [-1, 1]) for (const corner of chevronWall) {
-    assert(onWall(side, corner), `ZTZ-99A2: permanent chevron carrier closes at the gun-channel wall (${side}, ${corner})`);
+    assert(onWall(side, corner), `ZTZ-99A2: the permanent cheek closes at the gun-channel wall (${side}, ${corner})`);
   }
 };
 closedWalls();
-// Seeded defect: the carriers pulled 10 mm back from their measured wall section must fail.
+// Seeded defect: the cheeks pulled 10 mm back from their measured wall section must fail.
 production.turret.geometry.translate(0, 0, -0.01);
-assert.throws(closedWalls, assert.AssertionError, 'ZTZ-99A2: a displaced chevron wall section is rejected');
+assert.throws(closedWalls, assert.AssertionError, 'ZTZ-99A2: a displaced cheek wall section is rejected');
 production.turret.geometry.translate(0, 0, 0.01);
 closedWalls();
 assert(new Box3().setFromObject(production.turret).max.z >= production.turretRig.position.z + chevronWall[0][1] - 1e-4,
-  'ZTZ-99A2: permanent closed chevron volumes project to the gun-channel walls');
+  'ZTZ-99A2: the permanent closed cheeks project to the gun-channel walls');
 let frontMinY = Infinity;
 let frontMaxY = -Infinity;
 for (let index = 0; index < chevronPositions.count; index++) {
@@ -127,8 +107,8 @@ for (let index = 0; index < chevronPositions.count; index++) {
   frontMinY = Math.min(frontMinY, chevronPositions.getY(index));
   frontMaxY = Math.max(frontMaxY, chevronPositions.getY(index));
 }
-assert(frontMinY <= -0.039 && frontMaxY >= 0.8257 && frontMaxY - frontMinY >= 0.865,
-  `ZTZ-99A2: permanent chevron geometry spans the roof-to-chin front envelope (${frontMinY}..${frontMaxY})`);
+assert(frontMinY <= 0.02 && frontMaxY >= 0.814 && frontMaxY - frontMinY >= 0.79,
+  `ZTZ-99A2: the permanent cheeks span the roof-to-chin front envelope (${frontMinY}..${frontMaxY})`);
 
 for (const vehicle of [prototype, production, vt4a1]) {
   const hullReceipt = vehicle.hullRig.userData.ztz99a2HullIntegrationReceipt;
