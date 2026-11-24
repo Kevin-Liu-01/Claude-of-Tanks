@@ -1,5 +1,30 @@
 # Olifant Mk 2 (`olifant_mk2`) — reference packet
 
+## olifant-turret-276 (2026-11-24): the Mk 2 on the TTD's Loggim turret
+
+Kevin, 2026-11-24: "the ttd turret is more accurate for what the olifant turrets are suposed to look like. update the
+olifant mk 2 and save the old turret as an old variation for mk 1". The TTD's turret (ttd-275, drawn from the SA Armour
+Museum photographs and Bocquelet's elevation) moved into one builder, `src/vehicles/profiles/loggimTurret.ts`, that the
+TTD and the Mk 2 both call; the TTD's geometry is byte-identical. The 262 box turret below stays on the Mk 1B, which
+already carried it (`docs/references/tanks/olifant_mk1b.md`), so the Mk 1 line keeps the old turret as its variation.
+Owner ruling, so the rows below are the owner's photo class (§B7), not a new photo read.
+
+| # | Read (owner, TTD photographs) | Was (262 box turret) | Now (Loggim turret) |
+|---|---|---|---|
+| 1 | slab-sided welded turret 2.74 m wide, flat roof with a broad chamfer along the front edge | box 2.90 m wide, raked cheeks to the gun's slot | the TTD's body, its roof 2.63 m up (the published height kept: seated 0.18 m higher on the Centurion's ring than on the TTD's) |
+| 2 | five upright front blocks: two broad outer cheeks, two inner blocks with vents on their chamfer, the tall mantlet between | two raked cheeks, a narrow cast block, a boxy housing and a ribbed bellows | the TTD's front blocks and tall mantlet; the bellows and housing gone |
+| 3 | gunner's sight box at the roof's right front, commander's sunken cupola behind it with the stabilised head on its front | the box sight head on a 0.26 m post | the TTD's GS60 box and sunken cupola with its stabilised head (the Mk 2's stabilised commander's sight, TE) |
+| 4 | loader's hatch and FN MAG on the left, sensor mast behind the left inner block | hatch and pintle MAG | the TTD's hatch, MAG (`olifantMk2LoaderMag`), mast and ventilator |
+| 5 | two banks of four 81 mm dischargers on the roof's side edges behind armour sheets | rails of four at the bustle's rear corners | the TTD's sheeted banks |
+| 6 | stowage boxes flush on the bustle's sides, the number on them | number on the turret side | the TTD's boxes, the number on each |
+| 7 | the GT3 105 mm in its thermal sleeve to the muzzle, the fume extractor about 0.8 m out of the face, the muzzle reference unit | the L7 with a part sleeve | the TTD's GT3 at the L7's 4.74 m (the gun record, muzzle station and overall length kept): the extractor 1.80-2.49 m ahead of the trunnion, the bands at 3.17 and 3.77 m |
+
+Spec changes: none to dimensions, weight, armour values, gun or balance. The trunnion sits 0.60 m over the ring (was
+0.555), so the depression by yaw was re-swept (`centurionGunPitch.ts`: -10 over the front arc, -9.1 at worst over the
+front corners, -6.5 to -6.8 over the engine deck, was -6 to -6.1). The radio sketch rises 0.15 m over the bustle's raised
+floor (in place, 61 % of it lay outside the armour); the Mk 1B keeps the Centurion's. The hull number on the skirts is
+unchanged.
+
 ## Current status (release 262, 2026-10-27): a new South African Centurion derivative
 
 Owner, 2026-10-27: "add ... olifant mk2 (special turret with remote control machine gun and optics)" (with a reference
