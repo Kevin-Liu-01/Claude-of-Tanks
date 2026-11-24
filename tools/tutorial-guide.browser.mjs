@@ -147,18 +147,27 @@ try {
     }
     const start = await pose();
     // the ball set down relative to the camera (behind the hull at the start), the clock nudged so the markers re-derive
+    // the ball set down, the hold let go for a moment so the marker derivation sees it, and its place read back: a
+    // kickoff or a bounce in that moment can carry it off, so it is set down again (at most three tries) until it stays
     const place = async (name, along, across) => {
-      await page.evaluate(({ a, c, p }) => {
-        const ms = window.__DEBUG.game.matchModeState, ball = ms?.ball;
-        if (!ball) return;
-        const x = p.x + Math.sin(p.yaw) * a + Math.cos(p.yaw) * c, z = p.z + Math.cos(p.yaw) * a - Math.sin(p.yaw) * c;
-        ball.x = x; ball.z = z; ball.vx = 0; ball.vy = 0; ball.vz = 0;
-        ball.y = window.__DEBUG.game.player.state.pos.y + 2.2;
-      }, { a: along, c: across, p: start });
-      await page.evaluate(() => window.__DEBUG.battleHold?.set(false));
-      await sleep(150);
-      await page.evaluate(() => window.__DEBUG.battleHold?.set(true));
+      let off = Infinity;
+      for (let attempt = 0; attempt < 3 && off > 3; attempt++) {
+        off = await page.evaluate(async ({ a, c, p }) => {
+          const ball = window.__DEBUG.game.matchModeState?.ball;
+          if (!ball) return Infinity;
+          const x = p.x + Math.sin(p.yaw) * a + Math.cos(p.yaw) * c, z = p.z + Math.cos(p.yaw) * a - Math.sin(p.yaw) * c;
+          const setDown = () => { ball.x = x; ball.z = z; ball.vx = 0; ball.vy = 0; ball.vz = 0; ball.y = window.__DEBUG.game.player.state.pos.y + 2.2; };
+          setDown();
+          window.__DEBUG.battleHold?.set(false);
+          await new Promise((done) => setTimeout(done, 150));
+          window.__DEBUG.battleHold?.set(true);
+          const now = window.__DEBUG.game.matchModeState?.ball ?? ball;
+          return Math.hypot(now.x - x, now.z - z);
+        }, { a: along, c: across, p: start });
+      }
       const read = await show(name, null);
+      report.cases[name].ballOffM = Number(off.toFixed(2));
+      assert.ok(off <= 3, `${name}: the ball stays where it is set down (${off.toFixed(1)} m off after three tries)`);
       return read.bubbles.filter((b) => b.kind === 'ball').length;
     };
     const ahead = await place('ball-ahead', 40, 0), behind = await place('ball-behind', -60, 0), aside = await place('ball-aside', 0, 80);

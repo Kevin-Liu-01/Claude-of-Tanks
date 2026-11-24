@@ -99,11 +99,13 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
 /** Where the turn arrow may start (m along the camera's heading from the tank, m toward the turn's side); the plan keeps
  *  the largest on the screen that fits. Beside the hull on the turn's side: that ground stands at the hull's own depth,
  *  the nearest to the camera the arrow can lie without the hull over it, so the arrow is large, and a portrait phone's
- *  tank can stand over all the ground ahead. Ahead of the hull: the chase camera looks down over the turret, so the ground
+ *  tank can stand over all the ground ahead. Behind it (between the camera and the hull): a portrait phone's one open
+ *  ground when a tall hull fills its width (the recorded phone HUD, 2026-11-24). Ahead of the hull: the chase camera looks down over the turret, so the ground
  *  just ahead stands behind the hull on the screen, and behind a tall hull (3 m) all of it to 18 m does. The battle's
  *  stills found both: a marker aside got no arrow on a phone, and on a desktop only a sliver 30 m out. */
 export const TURN_PLACES = Object.freeze([
   { aheadM: 0, besideM: 4 }, { aheadM: 4, besideM: 4 }, { aheadM: -4, besideM: 4 },
+  { aheadM: -7, besideM: 0 }, { aheadM: -9, besideM: 0 },
   { aheadM: 10, besideM: 0 }, { aheadM: 14, besideM: 0 }, { aheadM: 18, besideM: 0 }, { aheadM: 24, besideM: 0 }, { aheadM: 30, besideM: 0 },
 ] as const);
 /** The px round the arrowhead that keeps clear of the HUD and the hull, so a head never sits in a gap between buttons. */
@@ -113,6 +115,9 @@ export const TURN_HEAD_PAD_PX = 6;
 export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2] as const);
 /** It bends at least this far (deg), so a destination just off the screen still reads as a turn; at most a U-turn. */
 export const TURN_MIN_SWEEP_DEG = 30;
+/** A destination this far round (deg) reads as "turn around": where no arrow fits turning the shorter way (a portrait
+ *  phone's narrow ground behind a tall hull), the arrow may turn the other. */
+export const TURN_EITHER_DEG = 150;
 const TURN_SEGMENTS = 14;
 /** The arrowhead's length along the bend (rad). */
 const TURN_HEAD_RAD = 0.55;
@@ -142,10 +147,12 @@ export function bearing(from: GroundPoint, to: GroundPoint): number {
  * to the destination until its head points along the destination's bearing (at least TURN_MIN_SWEEP_DEG, at most a
  * U-turn). Its band is a fifth of its radius wide, so a smaller arrow keeps its shape.
  */
-export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, radiusM: number, aheadM: number, besideM = 0): TurnArrow {
+export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, radiusM: number, aheadM: number, besideM = 0,
+  longWay = false): TurnArrow {
   const off = turnFrom(viewYaw, bearing(tank, to));
-  const turn: 1 | -1 = off >= 0 ? 1 : -1;
-  const sweep = Math.min(Math.PI, Math.max(Math.abs(off), (TURN_MIN_SWEEP_DEG * Math.PI) / 180));
+  const shorter: 1 | -1 = off >= 0 ? 1 : -1;
+  const turn: 1 | -1 = longWay ? (-shorter as 1 | -1) : shorter;
+  const sweep = Math.min(Math.PI, Math.max(longWay ? 2 * Math.PI - Math.abs(off) : Math.abs(off), (TURN_MIN_SWEEP_DEG * Math.PI) / 180));
   const fx = Math.sin(viewYaw), fz = Math.cos(viewYaw);
   // the side the yaw turns toward: d(forward)/d(yaw) = (cos, -sin), times the way to turn
   const sx = turn * Math.cos(viewYaw), sz = -turn * Math.sin(viewYaw);
@@ -242,10 +249,13 @@ export function planFollow(input: FollowInput): FollowPlan {
     return { chevrons, turn: null, inView: true };
   }
   const boxes = input.hull ? [...input.noCover, input.hull] : input.noCover;
+  const either = Math.abs(turnFrom(input.viewYaw, bearing(input.player, follow))) >= (TURN_EITHER_DEG * Math.PI) / 180;
   let best: FollowPlan | null = null, bestSpan = 0;
+  for (const longWay of either ? [false, true] : [false]) {
+  if (best) break;
   for (const place of TURN_PLACES) {
     for (const radiusM of TURN_RADII_M) {
-      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, place.besideM);
+      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, place.besideM, longWay);
       const band = ground(arrow.band), head = ground(arrow.head);
       if (!band || !head) continue;
       if (band.some((p) => boxes.some((b) => inside(p, b, 0)))) continue;
@@ -257,6 +267,7 @@ export function planFollow(input: FollowInput): FollowPlan {
       const span = Math.hypot(x1 - x0, y1 - y0);
       if (span > bestSpan) { bestSpan = span; best = { chevrons: [], turn: { band, head, turn: arrow.turn, radiusM }, inView: false }; }
     }
+  }
   }
   return best ?? NO_FOLLOW;
 }
