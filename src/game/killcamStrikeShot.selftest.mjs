@@ -14,7 +14,7 @@
 //      (the release less the kind's lead, plus i frames), on every later frame at the clock the replay stages, and never
 //      at its live pose; the battery's kill shows no aircraft;
 //   5. no snap in the first 10 frames (the camera moves less than a frame's worth between them);
-//   6. the run shot reads: the aircraft's drawn silhouette is 15-25 % of a 16:9 frame's width, whole, with the strike's
+//   6. the run shot reads: the aircraft's rastered silhouette is 15-25 % of a 16:9 frame's width, whole, with the strike's
 //      mark in frame on every run frame, and whole with the mark in frame in a phone's portrait frame.
 // One kind also dies with the binoculars up. The planted control: the same kill with no shot (its round never
 // announced: no strike record, no trace) falls back to the card alone, and the receipt must fail it on every kind.
@@ -235,16 +235,22 @@ function battle({ kind, binoculars = false, announce = true }) {
   // the run shot's framing at an aspect: the aircraft's share of the frame's width (its drawn bounds projected) and
   // whether the strike's mark is inside the frame
   const corner = new THREE.Vector3(), lens = new THREE.PerspectiveCamera();
+  const ta = new THREE.Vector3(), tb = new THREE.Vector3(), tc = new THREE.Vector3();
+  // the silhouette as the screen draws it: the airframe's triangles rastered onto a grid of cell centres about 7 px apart on
+  // the filmed canvases (240 across a 16:9 frame, 110 across a phone's), so a part thinner than a cell (a wing seen edge-on)
+  // adds no width; the vertices' own extent says whether it is whole in frame
   const framingAt = (aspect) => {
     lens.position.copy(camera.position); lens.quaternion.copy(camera.quaternion);
     lens.fov = camera.fov; lens.aspect = aspect; lens.near = 0.1; lens.far = 6000;
     lens.updateProjectionMatrix(); lens.updateMatrixWorld(true);
+    const cols = aspect > 1 ? 240 : 110, rows = Math.round(cols / aspect);
     const craft = aircraftObjects();
     let width = 0, whole = false;
     if (craft.length === 1) {
-      // the silhouette's own extent: every drawn vertex projected (a world box over a banked airframe overstates it)
-      let lo = Infinity, hi = -Infinity, bottom = Infinity, top = -Infinity;
+      let lo = Infinity, hi = -Infinity, bottom = Infinity, top = -Infinity, minCol = Infinity, maxCol = -Infinity;
       craft[0].updateMatrixWorld(true);
+      const toGrid = (v) => { v.x = (v.x + 1) / 2 * cols; v.y = (v.y + 1) / 2 * rows; return v; };
+      const edge = (a, b, x, y) => (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
       const visit = (node) => {
         if (!node.visible) return;
         const position = node.isMesh && node.geometry?.attributes?.position;
@@ -256,11 +262,36 @@ function battle({ kind, binoculars = false, announce = true }) {
               bottom = Math.min(bottom, corner.y); top = Math.max(top, corner.y);
             }
           }
+          const index = node.geometry.index;
+          const count = index ? index.count : position.count;
+          for (let t = 0; t + 2 < count; t += 3) {
+            const [ia, ib, ic] = index ? [index.getX(t), index.getX(t + 1), index.getX(t + 2)] : [t, t + 1, t + 2];
+            ta.fromBufferAttribute(position, ia).applyMatrix4(node.matrixWorld).project(lens);
+            tb.fromBufferAttribute(position, ib).applyMatrix4(node.matrixWorld).project(lens);
+            tc.fromBufferAttribute(position, ic).applyMatrix4(node.matrixWorld).project(lens);
+            if (ta.z >= 1 || tb.z >= 1 || tc.z >= 1) continue;
+            toGrid(ta); toGrid(tb); toGrid(tc);
+            const area = edge(ta, tb, tc.x, tc.y);
+            if (area === 0) continue;
+            const c0 = Math.max(0, Math.ceil(Math.min(ta.x, tb.x, tc.x) - 0.5)), c1 = Math.min(cols - 1, Math.floor(Math.max(ta.x, tb.x, tc.x) - 0.5));
+            const r0 = Math.max(0, Math.ceil(Math.min(ta.y, tb.y, tc.y) - 0.5)), r1 = Math.min(rows - 1, Math.floor(Math.max(ta.y, tb.y, tc.y) - 0.5));
+            for (let c = c0; c <= c1; c++) {
+              if (c >= minCol && c <= maxCol) continue;
+              for (let r = r0; r <= r1; r++) {
+                const x = c + 0.5, y = r + 0.5;
+                const w0 = edge(tb, tc, x, y), w1 = edge(tc, ta, x, y), w2 = edge(ta, tb, x, y);
+                if (area > 0 ? (w0 >= 0 && w1 >= 0 && w2 >= 0) : (w0 <= 0 && w1 <= 0 && w2 <= 0)) {
+                  minCol = Math.min(minCol, c); maxCol = Math.max(maxCol, c);
+                  break;
+                }
+              }
+            }
+          }
         }
         for (const child of node.children) visit(child);
       };
       visit(craft[0]);
-      if (hi > lo) width = (Math.min(1, hi) - Math.max(-1, lo)) / 2;
+      if (maxCol >= minCol) width = (maxCol - minCol + 1) / cols;
       whole = lo >= -1 && hi <= 1 && bottom >= -1 && top <= 1;
     }
     corner.set(record.x, record.y, record.z).project(lens);
@@ -405,10 +436,7 @@ function judge(label, kind, run) {
 
 const KINDS = ['strafe', 'bomb', 'missile', 'gunship', 'artillery'];
 const failures = [];
-for (const kind of KINDS) {
-  const run = battle({ kind });
-  failures.push(...judge(kind, kind, run));
-}
+for (const kind of KINDS) failures.push(...judge(kind, kind, battle({ kind })));
 failures.push(...judge('bomb, binoculars up', 'bomb', battle({ kind: 'bomb', binoculars: true })));
 // the planted control: the kill with no shot (its round never announced) falls back to the card alone and must fail
 for (const kind of KINDS) {
