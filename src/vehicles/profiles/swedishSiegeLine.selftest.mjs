@@ -204,4 +204,28 @@ for (let frame = 0; frame < 240; frame++) updateTank(hillEntity, hill, SIM_DT);
 assert.ok(hillState.visualPitch >= THREE.MathUtils.degToRad(11),
   'the S-Tank settles into the real hill slope instead of staying visually flat');
 
-console.log('swedishSiegeLine.selftest: tier balance, hydraulic authority and track deformation passed');
+// (strv-track-plates) The external track plates lie on the track prisms the build measured (combatAnatomy.ts
+// seatPlatesOnTrack, from the calibration's rig on every driver): the drawn track's outer face over its run, and the prisms
+// take their armour from them. Authored at 0.88 of the half-width over the hull's length they stood off the drawn track,
+// the anatomy dropped them (notDrawn) and the prisms fell back to 20 mm (trackShapes.ts trackShapeForSide).
+const TRACK_MM = { udes03: 20, strv103a: 25, strv103b: 30, strv103b_net: 30, strv103e: 30, strv152: 30 };
+for (const [id, trackMm] of Object.entries(TRACK_MM)) {
+  const spec = getSpec(id);
+  const plates = spec.armor.hullPlates.filter((plate) => plate.name === 'track_R' || plate.name === 'track_L');
+  assert.deepEqual(plates.map((plate) => plate.name).sort(), ['track_L', 'track_R'],
+    `${id}: the hit model carries both external track plates`);
+  for (const plate of plates) {
+    const shape = spec.armor.trackShapes?.find((track) => track.module === plate.moduleLink);
+    assert.ok(shape, `${id}: ${plate.name} has its measured track prism`);
+    const face = shape.module === 'trackR' ? shape.x1 : shape.x0;
+    const zs = shape.poly.map((point) => point[0]);
+    for (const vert of plate.verts) assert.equal(vert[0], face, `${id}: ${plate.name} lies on its prism's outer face (${face})`);
+    assert.deepEqual([Math.min(...plate.verts.map((v) => v[2])), Math.max(...plate.verts.map((v) => v[2]))],
+      [Math.min(...zs), Math.max(...zs)], `${id}: ${plate.name} spans the drawn run, not the hull`);
+    assert.equal(plate.physicalMm, trackMm, `${id}: ${plate.name} keeps its authored ${trackMm} mm`);
+    assert.deepEqual([shape.plate.physicalMm, shape.plate.keMm, shape.plate.ceMm],
+      [plate.physicalMm, plate.keMm, plate.ceMm], `${id}: the ${shape.module} prism carries ${plate.name}'s armour`);
+  }
+}
+
+console.log('swedishSiegeLine.selftest: tier balance, hydraulic authority, track deformation and track plates passed');

@@ -250,10 +250,13 @@ function siegeArmor(
       leftSidePlate('hull_side_lower_L', ratings.sideMm, bodyW * 0.88, floor,
         bodyW, trackTop * 0.70, -hl * 0.94, hl * 0.86,
         plateRatings(ratings.sideKeMm, ratings.sideCeMm)),
+      // (strv-track-plates) laid on the measured track prisms when the anatomy finalizes (combatAnatomy.ts
+      // seatPlatesOnTrack): the drawn track's outer face over its run. Authored here at 0.88 of the half-width over the
+      // hull's length they stood off the drawn track, the anatomy dropped them (notDrawn) and the prisms fell back to 20 mm.
       rightSidePlate('track_R', ratings.trackMm, hw * 0.88, 0.10, hw * 0.88,
-        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackR' }),
+        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackR', seatOnTrack: true }),
       leftSidePlate('track_L', ratings.trackMm, hw * 0.88, 0.10, hw * 0.88,
-        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackL' }),
+        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackL', seatOnTrack: true }),
       rearPlate('hull_rear', ratings.rearMm, bodyW, floor, -hl * 0.96, roofY,
         -hl * 0.96),
       roofPlate('hull_roof', ratings.roofMm, bodyW * 0.96, roofY, -hl * 0.96,

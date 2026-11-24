@@ -29,7 +29,7 @@ import {
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
-import { attachTrackShapes } from './trackShapes.ts';
+import { attachTrackShapes, type TrackShape } from './trackShapes.ts';
 import type { AnatomyCombatRig } from './combatAnatomyCalibrationRegistry.ts';
 import { rememberAuthoredGun, rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
@@ -74,6 +74,8 @@ interface ArmorPlate {
   drawn?: boolean;
   /** (inherited-reds-276) a hull front zoned by height, not by facing (specHelpers ArmorPlate.frontZone, frontZonePlate) */
   frontZone?: 'upper' | 'lower';
+  /** (strv-track-plates) an external track plate laid on its measured prism (specHelpers ArmorPlate.seatOnTrack) */
+  seatOnTrack?: boolean;
 }
 
 interface AnatomyShapeEllipsoid {
@@ -1853,6 +1855,35 @@ interface RigGun {
 }
 
 /**
+ * (strv-track-plates) An external plate that opts in (ArmorPlate.seatOnTrack) and links a track module is laid on that
+ * track's prism (attachTrackShapes: the running gear as the build measured it): the prism's outer face (x1 on the right,
+ * x0 on the left) over the prism's run in z, keeping the plate's own height band and armour. The prism is the hit surface
+ * on every driver; the plate gives it its armour (trackShapes.ts trackShapeForSide) and gives HE its nearest face, so both
+ * stand on the one measured line. The S-tanks' plates stood at 0.88 of the half-width over the hull's length.
+ */
+function seatPlatesOnTrack(armor: ArmorAnatomy): void {
+  const shapes = (armor as { trackShapes?: readonly TrackShape[] }).trackShapes;
+  if (!shapes?.length) return;
+  armor.hullPlates = armor.hullPlates.map((plate) => {
+    if (!plate.seatOnTrack || plate.kind !== 'external') return plate;
+    const shape = shapes.find((track) => track.module === plate.moduleLink);
+    if (!shape) return plate;
+    const right = shape.module === 'trackR';
+    const x = right ? shape.x1 : shape.x0;
+    const zs = shape.poly.map((point) => point[0]);
+    const zLo = Math.min(...zs), zHi = Math.max(...zs);
+    const ys = plate.verts.map((vert) => vert[1]);
+    const yLo = Math.min(...ys), yHi = Math.max(...ys);
+    // the side plates' own winding (specHelpers rightSidePlate / leftSidePlate), so the face still points out
+    const verts: Vec3[] = right
+      ? [[x, yLo, zHi], [x, yLo, zLo], [x, yHi, zLo], [x, yHi, zHi]]
+      : [[x, yLo, zLo], [x, yLo, zHi], [x, yHi, zHi], [x, yHi, zLo]];
+    const { traceBounds: _authoredBounds, ...seated } = plate;
+    return { ...seated, verts };
+  });
+}
+
+/**
  * The combat frame and the weapons' mouths, as the built rig draws them (276 sim-det-trig; Main's ruling on the class of
  * combat data only the visual builder computed): tools/gen-combat-anatomy.mjs measures them on each id's build
  * (tools/combat-rig-measure.mjs) into its calibration, and every driver takes them from here, so the page and every
@@ -1890,6 +1921,7 @@ export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?:
     spec.gun = measured;
   }
   if (rig.trackHulls?.length) attachTrackShapes(armor as unknown as Parameters<typeof attachTrackShapes>[0], rig.trackHulls);
+  seatPlatesOnTrack(armor);
   const lengthM = armor.gunBarrel?.lengthM ?? 0;
   const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + lengthM + 0.4;
   if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
