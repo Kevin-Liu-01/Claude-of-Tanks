@@ -75,7 +75,7 @@
   color:var(--ink-on-accent);background:var(--accent);border-radius:var(--control-radius);
   font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);letter-spacing:normal;}
 .cot-header-nav .record-badge[hidden]{display:none;}
-.cot-header-nav .record-new{position:absolute;top:var(--s1);right:var(--s1);width:8px;height:8px;border-radius:50%;
+.cot-header-nav .record-new{position:absolute;top:var(--s1);right:var(--s1);width:var(--status-dot);height:var(--status-dot);border-radius:50%;
   background:var(--accent-hi);}
 .cot-header-nav .record-new[hidden]{display:none;}
 /* the staging area's plate (owner 10-26: "its own ui surface"): the stage's top-left corner, level with the readout
@@ -226,8 +226,8 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 /* focus wears the kit's ring, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
 .cot-room-ready:focus-visible,.cot-room-reminder:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .cot-room-ready:not(:disabled):hover{background:var(--surface-hover);}
-.cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-.cot-room-reminder.ready .rr-dot{background:var(--ok);box-shadow:0 0 12px var(--ok)}.cot-room-reminder b{color:var(--accent-hi)}
+.cot-room-reminder .rr-dot{flex:none;width:var(--status-dot);height:var(--status-dot);border-radius:50%;background:var(--accent)}
+.cot-room-reminder.ready .rr-dot{background:var(--ok)}.cot-room-reminder b{color:var(--accent-hi)}
 .cot-garage-panel-scrim{display:none}
 
 

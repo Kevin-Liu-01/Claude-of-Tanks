@@ -75,7 +75,7 @@ body[data-studio-settling] #app{visibility:hidden}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
 .st-head .hist{display:flex;flex:none;align-items:center;gap:var(--s1)}
 .st-head .sv{display:flex;align-items:center;gap:var(--s2);margin-right:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
-.st-head .sv i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.st-head .sv i{flex:none;width:var(--status-dot);height:var(--status-dot);border-radius:50%;background:var(--ok)}
 .st-head .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
 .st-head .ib:disabled{color:var(--ink-4);cursor:default}
 .st-head .redo .cot-i{transform:scaleX(-1)}

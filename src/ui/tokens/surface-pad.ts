@@ -30,9 +30,8 @@ export const SURFACE_TOKENS = {
   'pad-guard-shadow': 'inset 0 1px 0 rgba(255,190,170,.4),inset 0 -1px 0 rgba(0,0,0,.4),0 3px 5px rgba(0,0,0,.55)',
   'pad-bat': 'linear-gradient(90deg,#6d757e,#e3e8ec 45%,#5b636b)',
   'pad-engrave': '0 1px 0 rgba(255,255,255,.08),0 -1px 0 rgba(0,0,0,.75)',
-  'pad-led-ok': 'radial-gradient(circle at 40% 35%,#d4ffe8,var(--mint-400) 55%,#1c6844)',
-  'pad-led-warn': 'radial-gradient(circle at 40% 35%,#fff0c4,var(--yellow-400) 55%,#7a5a10)',
-  'pad-led-off': 'radial-gradient(circle at 40% 35%,#4a5058,#1d2126 70%)',
-  'pad-led-glow': '0 0 8px currentColor',
+  'pad-led-ok': '#5bd69b',
+  'pad-led-warn': '#ffd15c',
+  'pad-led-off': 'rgba(246,243,236,.24)',
   'pad-counter': 'linear-gradient(180deg,#000 0,#1a1d21 24%,#1a1d21 76%,#000 100%)',
 } as const;
