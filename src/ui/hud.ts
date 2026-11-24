@@ -9360,9 +9360,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
-    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, (frame.player || playerRef)?.state?.pos ?? null,
+    // (combined-arms-276, one control seat) the Support slot steps aside while our drone flies: the binoculars wait for the
+    // tank (game/playerBattleActions.ts), and in flight the slot stood on the stick at 844x390 and the flight console at
+    // 1210x702, the overlap probe's combined-drone state
+    const supportSeat = frame.player || playerRef;
+    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, supportSeat?.state?.pos ?? null,
       frame.matchModeState?.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha', frame.timeS,
-      mode !== 'hidden' && !!(frame.player || playerRef) && !(frame.player || playerRef)?.combat?.destroyed, frame.auxiliaryKeyLabels?.strikeView || 'X');
+      mode !== 'hidden' && !!supportSeat && !supportSeat.combat?.destroyed && !(supportSeat.aerial?.kind === 'drone' && supportSeat.aerial.active),
+      frame.auxiliaryKeyLabels?.strikeView || 'X');
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId, frame.timeS, objectiveTeam);

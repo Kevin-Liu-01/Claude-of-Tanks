@@ -57,7 +57,16 @@ async function stageStrikeCamera(ctx) {
     const loop = () => {
       hideOverlays();
       const f = window.__AS.follow;
-      if (f?.mark) {
+      const pilot = f?.drone ? D.game.player?.aerial : null;
+      if (pilot?.active) {
+        // (combined-arms-276) behind the player's own FPV drone and over it, looking at the strike's mark ahead: the
+        // drone in the foreground, the run over the parked pair beyond it
+        const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z);
+        const dx = f.x - pilot.x, dz = f.z - pilot.z, d = Math.hypot(dx, dz) || 1;
+        eye.set(pilot.x - dx / d * f.back + dz / d * f.side, pilot.y + f.up, pilot.z - dz / d * f.back - dx / d * f.side);
+        at.set(f.x, y + f.lookUp, f.z);
+        D.rig.setExternalPose(eye, at, f.fov);
+      } else if (f?.mark) {
         // behind the run's heading and off its side, looking at the mark: the strike's ground and its airframe
         const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z), h = f.heading;
         eye.set(f.x - Math.sin(h) * f.back + Math.cos(h) * f.side, y + f.up, f.z - Math.cos(h) * f.back - Math.sin(h) * f.side);
@@ -873,22 +882,31 @@ export const RECIPES = {
 
   // (combined-arms-276, the owner: "lets add a mode with drone AND air support") Combined Arms' Deploy tile, plate and
   // landing still: both of the mode's weapons in one frame. The player's side calls a strike on two enemies parked 260 m
-  // ahead (Air Support's staging), and the player launches its FPV drone so it reaches the pair as the strike lands, steered
-  // at them through the touch-aim path. The game's own camera (the chase view as the drone lifts off the dock, then its
-  // lens on the dive, in daylight) frames the jet's run over the pair; the HUD and markers hidden.
+  // ahead (Air Support's staging), and the player launches its FPV drone so it reaches the pair as the strike lands, its aim
+  // laid on the pair. The camera is pinned behind and over the drone, looking at the mark: the drone in the foreground, the
+  // jet's run over the pair beyond it; the HUD, markers, notices and hints hidden.
   'deploy/combined_arms': {
     battle: { specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'combined_arms' },
     hour: 'day',
     windowS: 90,
     hud: 'hidden',
-    storage: { 'cot.aerialVision': 'daylight' },
     async run(ctx) {
       await ctx.ff(3);
       await stageStrikeCamera(ctx);
+      // (r2: r1's game camera flew the drone's own lens, so the strike and the pair were never in its frame, and the
+      // drone's notice showed over the HUD-free frames) the notices and hints hidden with the HUD, and the camera pinned
+      // behind the drone: with the camera pinned the rig writes no aim, so the page lays the player's aim on the pair
+      await ctx.eval(() => {
+        const style = document.createElement('style');
+        style.textContent = '.cot-battle-notices,.cot-hints,.cot-alert,.cot-c-notice{display:none!important}';
+        document.head.append(style);
+      });
       const reach = (label, atS) => ctx.until((t) => window.__DEBUG.game.timeS >= t, { timeoutS: 60, label, args: [atS] });
-      // the launch's climb (AERIAL_RULES.drone.launchS 2.4 s) and ~6 s over 260 m at 42 m/s: launched 8.5 s before the
-      // strike lands, the drone dives on the pair as the jet passes over it
-      for (const shot of [{ kind: 'strafe', label: 'drone and strafe' }, { kind: 'bomb', label: 'drone and bomb' }]) {
+      const SHOTS = [
+        { kind: 'strafe', label: 'drone and strafe', view: { back: 9, side: 2.5, up: 2.5, lookUp: 2, fov: 55 } },
+        { kind: 'bomb', label: 'drone and bomb', view: { back: 11, side: -3, up: 4, lookUp: 3, fov: 58 } },
+      ];
+      for (const shot of SHOTS) {
         let strike = null;
         for (let tries = 0; !strike && tries < 40; tries++) {
           strike = await callStrikeOnPair(ctx, shot.kind);
@@ -896,31 +914,40 @@ export const RECIPES = {
         }
         if (!strike) { ctx.note(`${shot.label}: no ${shot.kind} accepted`); continue; }
         ctx.log(shot.label, JSON.stringify(strike));
+        // the launch's climb (2.4 s) and ~6 s over the 260 m at 42 m/s: launched 8.5 s before the strike lands
         await reach(`${shot.label}: the launch`, strike.landsS - 8.5);
         await ctx.eval(() => window.__MB.H.tap('drone'));
-        await ctx.mb('setOnFrame', DRONE_AT_NEAREST_ENEMY);
+        await ctx.mb('setOnFrame', `
+          const p = H.player(); if (!p || !p.aerial || !p.aerial.active) return;
+          const t = H.sel('nearestEnemy'); if (!t) return;
+          p.input.aimPoint.set(t.x, t.y + 1.2, t.z);`);
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active && !window.__DEBUG.game.player.aerial.launching ? true : null),
+          { timeoutS: 8, label: `${shot.label}: the drone in flight` });
+        await ctx.eval((f) => { window.__AS.follow = f; }, { ...shot.view, drone: true, x: strike.x, z: strike.z });
         await ctx.eval((t) => { window.__AS.stopAtS = t; }, strike.landsS + 2.5);
-        await ctx.capture({ label: shot.label, windowS: 120, max: 24, everyS: 0.45, minGapMs: 200,
-          cameras: [{ kind: 'game', hud: 'hidden' }], stopWhen: () => window.__DEBUG.game.timeS >= window.__AS.stopAtS });
+        await ctx.capture({ label: shot.label, windowS: 120, max: 24, everyS: 0.35, minGapMs: 200,
+          cameras: [{ kind: 'game', hud: 'hidden' }],
+          stopWhen: () => window.__DEBUG.game.timeS >= window.__AS.stopAtS || !window.__DEBUG.game.player?.aerial?.active });
         await ctx.mb('setOnFrame', null);
+        await ctx.eval(() => { window.__AS.follow = null; window.__DEBUG.rig.release(); });
         // the next run waits for the drone's cooldown (a loss's 25 s) and the strike's end
         await reach(`${shot.label}: the drone ready again`, strike.landsS + 28);
       }
     },
   },
 
-
   // (combined-arms-276) the solo proof, in the real game page with the HUD up (READY evidence, never a delivery): both
   // controls on the HUD with the drone docked; a call-in through the player's own path (the binoculars raised on a pick,
   // the trigger: game/playerBattleActions.ts); the drone launched and flown at the enemy, the binoculars refused while it
   // flies (ui:seatBusy); a drone kill; then the battle fast-forwarded to its verdict on a 250-point target (Deploy's
-  // lowest), the end screen captured. The page's tally (window.__CA) is logged at each step.
+  // lowest; ten allies against three, so the verdict is the player's side's), the end screen captured. The page's tally (window.__CA) is logged at each step.
   'proof/combined_arms': {
     battle: { specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'combined_arms' },
     hour: 'day',
     windowS: 600,
     hud: 'full',
-    storage: { 'cot.game.teams.v1': { combined_arms: { scoreTarget: 250 } } },
+    // (r2: r1's even sides lost 44-250; the brief's proof ends on the player's win) ten allies against three
+    storage: { 'cot.game.teams.v1': { combined_arms: { scoreTarget: 250, allies: 10, enemies: 3 } } },
     async run(ctx) {
       await ctx.eval(() => {
         const D = window.__DEBUG, CA = window.__CA = { calls: [], seatBusy: 0, kills: [], captures: 0, ended: null };
