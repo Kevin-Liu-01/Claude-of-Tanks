@@ -1101,6 +1101,9 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
+// (2026-10-15, the SKY lane) a Garage's sky: its battlefield's under the Garage's fair weather (garageWeather.ts); every
+// Garage sky read goes through it (the sun trim, the presentation preset, the per-pack environment bakes)
+const garageSkyFor = (variant: { readonly mapId: string }) => withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -1110,7 +1113,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getGarageSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
-    return withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
+    return garageSkyFor(variant);
   },
   getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
@@ -1213,7 +1216,7 @@ let garageLightsUp = true;
 // Garage shows (garageEnvironmentBakes.ts); the selector's intents ask it below, activation installs it by key
 const garageEnvironmentBakes = createGarageEnvironmentBakes({
   sky,
-  presetFor: (variant) => withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)),
+  presetFor: garageSkyFor,
   schedule: (work) => { if (window.requestIdleCallback) window.requestIdleCallback(work); else setTimeout(work, 800); },
   isShowing: () => garageLightsUp && game.phase === 'garage',
   capacity: GARAGE_ENVIRONMENT_CAP[resolveDeviceTier(renderer) === 'mobile' ? 'mobile' : 'desktop'],
@@ -1248,7 +1251,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
     mapAmbience.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     // (2026-10-15, the SKY lane) the overcast battlefields' yards under the Garage's fair weather (garageWeather.ts)
-    sky.applyPresentationPreset(withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)), scene);
+    sky.applyPresentationPreset(garageSkyFor(variant), scene);
     worldRuntime.invalidateSkyPresentation();
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },

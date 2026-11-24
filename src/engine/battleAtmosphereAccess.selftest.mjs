@@ -303,6 +303,8 @@ assert.deepEqual(ambiencePrepares, [[3, 'winter', 'day', undefined, ENTRY], [3, 
       getGarageVariant: () => ({ mapId: 'verdant' }), getGarageSkyPreset: () => garagePreset,
       // (2026-10-15) the Garage's fair weather (garageWeather.ts): Verdant's yard is its battlefield's sky
       withGarageWeather: (_mapId, preset) => preset,
+      // (garage-env-276) main.ts's one Garage sky read
+      garageSkyFor: () => garagePreset,
       worldRuntime: { invalidateSkyPresentation() { skyInvalidations++; } },
       sky: { applyPresentationPreset(preset) {
         h.applied.push(preset); h.scene.fog = new THREE.FogExp2(0xaaaaaa, preset.fogDensity);

@@ -75,8 +75,12 @@ for (const { id, sun, sky, drawn } of garageSkies) {
   assert.deepEqual(norm(deriveCloudLayerPreset(sky)), drawn, `${id}: the same cumulus with or without the resolver`);
 }
 
-// both Garage sky reads take the weather (the presentation preset and the Garage sky config)
+// every Garage sky read takes the weather: one function (main.ts garageSkyFor) for the presentation preset, the Garage sky
+// config and the per-pack environment bakes (garage-env-276)
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-assert.equal(main.split('withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId))').length - 1, 2, 'both Garage sky reads');
-assert.equal(main.split('getGarageSkyPreset(variant.mapId)').length - 1, 2, 'no Garage sky read without the weather');
+assert.equal(main.split('withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId))').length - 1, 1, 'one Garage sky read');
+assert.equal(main.split('getGarageSkyPreset(variant.mapId)').length - 1, 1, 'no Garage sky read without the weather');
+assert.match(main, /return garageSkyFor\(variant\);/, 'the Garage sky config reads it');
+assert.match(main, /sky\.applyPresentationPreset\(garageSkyFor\(variant\), scene\);/, 'the presentation preset reads it');
+assert.match(main, /presetFor: garageSkyFor,/, 'the per-pack environment bakes read it');
 console.log(`garageWeather.selftest: ${DECLARED.join(', ')} under fair-weather cumulus (the battle resolver's own, at ${SUNS.length} suns each), the light model's sun clear, every other destination untouched`);

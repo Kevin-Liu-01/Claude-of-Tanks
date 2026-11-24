@@ -32,17 +32,18 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(getGarageSkyPreset(variant.mapId), garageSky, `${variant.id}'s trimmed sky is one stable object`);
 }
 // the trim table: every outdoor Garage, nothing but the sun's elevation and azimuth, elevation 28-38 degrees, an azimuth
-// 55-65 degrees off the back-light axis (the camera sits at azimuth ~43 degrees from the hero, the back axis at ~223)
+// 55-65 degrees off the back-light axis (the camera sits at azimuth ~43 degrees from the hero, the back axis at ~223);
+// garage-env-276: one azimuth for every yard, the side that shows the hero's shadow (garageSunShadow.selftest.mjs)
 assert.deepEqual(Object.keys(GARAGE_SUN_TRIM).sort(),
   ['alpine', 'badlands', 'coastal', 'desert', 'foundry', 'monsoon', 'railyard', 'urban', 'winter'],
   'every outdoor Garage declares its sun; Verdant (indoors) does not');
 assert.deepEqual(GARAGE_SUN_TRIM, {
-  desert: { sunElevationDeg: 36, sunAzimuthDeg: 283 }, winter: { sunElevationDeg: 28, sunAzimuthDeg: 163 },
-  urban: { sunElevationDeg: 34, sunAzimuthDeg: 283 }, coastal: { sunElevationDeg: 32, sunAzimuthDeg: 163 },
-  railyard: { sunElevationDeg: 30, sunAzimuthDeg: 283 }, monsoon: { sunElevationDeg: 30, sunAzimuthDeg: 163 },
-  alpine: { sunElevationDeg: 28, sunAzimuthDeg: 283 }, badlands: { sunElevationDeg: 32, sunAzimuthDeg: 163 },
+  desert: { sunElevationDeg: 36, sunAzimuthDeg: 283 }, winter: { sunElevationDeg: 28, sunAzimuthDeg: 283 },
+  urban: { sunElevationDeg: 34, sunAzimuthDeg: 283 }, coastal: { sunElevationDeg: 32, sunAzimuthDeg: 283 },
+  railyard: { sunElevationDeg: 30, sunAzimuthDeg: 283 }, monsoon: { sunElevationDeg: 30, sunAzimuthDeg: 283 },
+  alpine: { sunElevationDeg: 28, sunAzimuthDeg: 283 }, badlands: { sunElevationDeg: 32, sunAzimuthDeg: 283 },
   foundry: { sunElevationDeg: 30, sunAzimuthDeg: 283 },
-}, 'the Garage sun trim is pinned per Garage');
+}, 'the Garage sun trim is pinned per Garage (garage-env-276: one azimuth, derived from the presentation pose)');
 for (const [mapId, trim] of Object.entries(GARAGE_SUN_TRIM)) {
   assert.deepEqual(Object.keys(trim).sort(), ['sunAzimuthDeg', 'sunElevationDeg'], `${mapId}: the trim touches the sun only`);
   assert.ok(trim.sunElevationDeg >= 28 && trim.sunElevationDeg <= 38, `${mapId}: the Garage sun stands 28-38 degrees high`);
