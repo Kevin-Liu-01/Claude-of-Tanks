@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { VT4A1_TURRET_OUTLINE, ZTZ99A2_TURRET_OUTLINE, ZTZ99A_TURRET_OUTLINE } from './chineseTurretOutlines.ts';
 
 function signature(mesh) {
   const positions = mesh.geometry.attributes.position.array;
@@ -113,45 +114,40 @@ for (const audit of [
   tank.dispose();
 }
 
-// These points are structural corners on the closed left/right chevron
-// carriers. They must remain in the primary turret mesh when every bound ERA
-// sector is depleted; only the raised surface-panel vertices may collapse.
-// The VT4A1 and ZTZ-99A2 carriers now stop at the capped walls of the 0.80 m
-// gun channel (main 245aa4e4e), so their first inboard stations (x 0.22) are
-// gone by design. Their corners are the next station (upper x 0.62, lower
-// x 0.78), and both carriers must reach the channel walls.
+// These points are structural corners of the closed cheek modules. They must remain in the primary turret mesh when
+// every bound ERA sector is depleted; only the raised tile and panel vertices may collapse. Release 276
+// (cn-turrets-276): the three turrets' cheeks are faces of one closed solid lofted from each turret's plan outline
+// (chineseTurretOutlines.ts); the corners are that outline's roof corners (the right cheek's front corner, the left
+// cheek's side join), which the turret seat never moves, and both cheeks must still reach the gun channel's walls.
+const roofCorner = (outline, k, side) => {
+  const roof = outline.rings.at(-1), half = (roof.length + 2) / 2;
+  return [...roof[side > 0 ? k : 2 * half - 2 - k]];
+};
 for (const audit of [
-  {
-    id: 'vt4a1', receipt: 'vtFamilyTurretReceipt',
-    // release 264 (main-reds 261): since the 241 regen published its turretRing row, the turret seat
-    // (turretSeatRace.ts seatTurretOverDeck) stands the low chevron corner on its seat plane, 0.1028 -> 0.1514
-    permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1514, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
-  },
-  {
-    id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt',
-    // release 264: the same seat stands its low chevron corner on the seat plane, -0.02 -> 0.1525
-    permanentPoints: [[-0.62, 0.81, 0.18], [0.78, 0.1525, 0.70]], channel: { halfWidth: 0.40, minZ: 0.62 },
-  },
-]) {
+  { id: 'vt4a1', receipt: 'vtFamilyTurretReceipt', outline: VT4A1_TURRET_OUTLINE },
+  { id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt', outline: ZTZ99A2_TURRET_OUTLINE },
+  { id: 'ztz99a', receipt: 'ztz99a2TurretIntegrationReceipt', outline: ZTZ99A_TURRET_OUTLINE },
+].map((a) => ({ ...a, permanentPoints: [roofCorner(a.outline, 2, 1), roofCorner(a.outline, 3, -1)],
+  channel: { halfWidth: 0.40, minZ: 0.62 } }))) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
   const turretRig = tank.root.getObjectByName('rig_turret');
   const turret = tank.root.getObjectByName('turret');
   const faceEra = tank.root.getObjectByName('turretExternalArmor');
   assert(turretRig && turret?.geometry && faceEra?.geometry,
-    `${audit.id}: permanent turret and raised chevron ERA exist`);
-  assert.equal(turretRig.userData[audit.receipt]?.permanentChevronCarriers, 2,
-    `${audit.id}: receipt records both permanent chevron carriers`);
+    `${audit.id}: permanent turret and raised face tiles exist`);
+  assert.equal(turretRig.userData[audit.receipt]?.outlineLofted, true,
+    `${audit.id}: receipt records the cheeks lofted with the shell from one outline`);
   assert.equal(turretRig.userData[audit.receipt]?.spentStateRetainsClosedFront, true,
     `${audit.id}: receipt records the complete spent-state front`);
   assert.equal(turretRig.userData[audit.receipt]?.permanentArmoredBustle, true,
     `${audit.id}: ERA depletion cannot remove the armored bustle structure`);
   for (const point of audit.permanentPoints) {
     assert(hasVertex(turret, point),
-      `${audit.id}: primary turret contains permanent chevron corner ${point.join(',')}`);
+      `${audit.id}: primary turret contains permanent cheek corner ${point.join(',')}`);
   }
   if (audit.channel) {
     assert.equal(channelWallVertices(turret, audit.channel.halfWidth, audit.channel.minZ), 2,
-      `${audit.id}: both permanent carriers close against the gun-channel walls`);
+      `${audit.id}: both cheek modules close against the gun-channel walls`);
   }
 
   const primaryBefore = signature(turret);
@@ -166,12 +162,12 @@ for (const audit of [
     `${audit.id}: ERA depletion cannot remove structural turret geometry`);
   for (const point of audit.permanentPoints) {
     assert(hasVertex(turret, point),
-      `${audit.id}: spent state retains chevron corner ${point.join(',')}`);
+      `${audit.id}: spent state retains cheek corner ${point.join(',')}`);
   }
   assert.equal(tank.resetEra(), true, `${audit.id}: ERA visuals reset for a new round`);
   assert.equal(collapsedVertices(faceEra), collapsedBefore,
-    `${audit.id}: reset restores every raised chevron face panel`);
+    `${audit.id}: reset restores every raised face tile`);
   tank.dispose();
 }
 
-console.log('chineseGunMountEraSpent.selftest: gun-root tapers and permanent spent-state chevron carriers verified');
+console.log('chineseGunMountEraSpent.selftest: gun-root tapers and permanent spent-state cheek modules verified');

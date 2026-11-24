@@ -384,6 +384,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseChevronEra.selftest.mjs',
     'src/vehicles/profiles/chineseFuelDrum.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
+    'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
     'src/vehicles/profiles/christian2.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/cv90MkivCaliber.selftest.mjs',

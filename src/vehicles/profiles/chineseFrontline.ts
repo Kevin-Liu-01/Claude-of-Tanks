@@ -8,14 +8,9 @@ import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening
 import { tankSeedId } from '../tankIdAliases.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
-import {
-  chevronSurfacePanel,
-  chineseArrowCassette,
-  closedIntegratedChevron,
-  interpolateChevronStation,
-  type ChevronStation,
-} from './chineseChevron.ts';
 import { buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
+import { VT4A1_TURRET_OUTLINE } from './chineseTurretOutlines.ts';
+import { addCheekTiles, outlineSolid, type CheekTileCourse } from './chineseTurretSolid.ts';
 import { buildLongwei, buildLongweiTurret } from './longwei.ts';
 import { LONGWEI_FAMILY } from '../longweiFamilyConfig.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -157,13 +152,18 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
   }),
 });
 
+/** Release 276: the VT-4's bolted modular panels: three on each module's front, one on its chamfer. */
+const VT4A1_CHEEK_PANELS: readonly CheekTileCourse[] = Object.freeze([
+  { face: 'front', course: 'band', columns: 3, rows: 1, gapM: 0.018, edgeM: 0.025, thicknessM: 0.050 },
+  { face: 'outer', course: 'band', columns: 1, rows: 1, gapM: 0.018, edgeM: 0.025, thicknessM: 0.050 },
+] as const);
+
 function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  const { box, cylY, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
   const sx = (value: number): number => value * widthScale;
   const sz = (value: number): number => value * depthScale;
-  const cz = (value: number): number => value * config.chevronDepthScale;
   const sy = (value: number): number => value * heightRatio;
   const rearProgress = (value: number): number => THREE.MathUtils.clamp(
     (-value - 1.58) / (2.68 - 1.58), 0, 1,
@@ -186,114 +186,32 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   );
   P.turretG.position.set(0, config.pivotY, config.pivotZ);
   P.gunG.position.set(0, config.gunY, config.gunZ);
-  const basePlan: [number, number][] = [
-    // The armored shell stops behind the arrow ridge so the chevrons are the
-    // actual turret front, not applique over a second protruding nose. The
-    // long rear stations form a proper integral bustle at the same time.
-    [0.52, 0.48], [1.08, 0.22], [1.46, -0.10], [1.60, -0.58],
-    [1.54, -1.58], [1.38, -2.22], [0.82, -2.48], [0.52, -2.52],
-    [-0.52, -2.52], [-0.82, -2.48], [-1.38, -2.22], [-1.54, -1.58],
-    [-1.60, -0.58], [-1.46, -0.10], [-1.08, 0.22], [-0.52, 0.48],
-  ];
-  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), rearZ(z)]);
-  const lowerHeights = basePlan.map(([, z]) => 0.02
-    + config.rearUndersideLiftM * rearProgress(z));
-  const midHeights = [0.34, 0.40, 0.48, 0.55, 0.62, 0.66, 0.67, 0.67,
-    0.67, 0.67, 0.66, 0.62, 0.55, 0.48, 0.40, 0.34].map((height, index) => (
-    height * heightScale + config.rearCrownLiftM * rearProgress(basePlan[index][1])
-  ));
-  const shellHeight = 0.89 * heightScale;
-  if (config.rearUndersideLiftM > 0) {
-    P.add('turretDark', polyMultiLoft(plan, [
-      { height: lowerHeights.map((height) => height - 0.025), inset: 0.985 },
-      { height: lowerHeights.map((height) => height + 0.035), inset: 0.970 },
-    ]));
-  } else {
-    P.add('turretDark', KIT.polyTurret(plan, 0.09, 0.97, 0.98), 0, -0.04, 0);
-  }
-  const shell = polyMultiLoft(plan, [
-    { height: lowerHeights, inset: 1.00 },
-    { height: midHeights, inset: 1.00 },
-    { height: shellHeight,
-      inset: [0.66, 0.72, 0.80, 0.87, 0.91, 0.94, 0.95, 0.95,
-        0.95, 0.95, 0.94, 0.91, 0.87, 0.80, 0.72, 0.66],
-      centerHeight: shellHeight },
-  ]);
-  if (variant === 'vt4a1') addChineseThroatStock(P, shell); else P.add('turret', shell);
+  // Release 276 (Kevin 2026-11-24, the NORINCO VT-4 photographs): the shell, body and both flat-faced box cheek
+  // modules, is one closed solid lofted from the turret's plan outline (chineseTurretOutlines.ts). Each module's front
+  // stands nearly square to the bore, a 45-degree chamfer turns its outer corner to the vertical side wall, a narrow
+  // bevel runs along its top front edge and an undercut chamfer along its bottom one; the gun channel is cut from the
+  // solid as before. Bolted modular panels on the fronts and chamfers are the only parts that detonate; the solid
+  // under them keeps the front closed when they are spent. (It replaces a loft shell, a roof bridge slab and
+  // Leopard-style chevrons from six hand-typed stations laid over both, with four thin cassettes along each, which
+  // crossed and left slivers at every join.)
+  const outline = VT4A1_TURRET_OUTLINE;
+  // the dark underside: a thin course just inside the floor ring (the floor rises 0.30 m aft over the engine deck)
+  const floor = outline.rings[0];
+  const inset = (ring: typeof floor, k: number, dy: number) => ring.map(([x, y, z]) => [x * k, y + dy, z * k - (1 - k) * 0.35] as const);
+  P.add('turretDark', outlineSolid([inset(floor, 0.985, -0.025), inset(floor, 0.970, 0.035)]));
+  addChineseThroatStock(P, outlineSolid(outline.rings));
   P.add('turret', cylY(sx(1.10), sx(1.16), 0.11, P.q ? 20 : 14), 0, -0.04, shellZ(-0.30));
-  // A low roof bridge overlaps the primary shell and the inner chevron roots.
-  const bridge = orientedSlab(
-    [sx(-0.80), sy(0.59), shellZ(0.48)], [sx(0.80), sy(0.59), shellZ(0.48)],
-    [sx(1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
-    [sx(-1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
-    [sx(-0.68), sy(0.69), shellZ(0.34)], [sx(0.68), sy(0.69), shellZ(0.34)],
-    [sx(1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
-    [sx(-1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
-  );
-  if (variant === 'vt4a1') addChineseThroatStock(P, bridge); else P.add('turret', bridge);
-  // Leopard-style chevrons now provide the complete frontal volume. Their
-  // outer stations penetrate the shell shoulder and their inner stations
-  // close around the gun throat, leaving no legacy frontal wedge underneath.
-  const chevronStations = Object.freeze(([
-    { x: 0.22, upperX: 0.22, ridgeX: 0.22, lowerX: 0.22,
-      upperY: 0.615, upperZ: 0.46, ridgeY: 0.300, ridgeZ: 1.68, lowerY: 0.030, lowerZ: 0.78 },
-    { x: 0.38, upperX: 0.34, ridgeX: 0.38, lowerX: 0.40,
-      upperY: 0.615, upperZ: 0.39, ridgeY: 0.300, ridgeZ: 1.61, lowerY: 0.030, lowerZ: 0.79 },
-    { x: 0.82, upperX: 0.62, ridgeX: 0.82, lowerX: 0.78,
-      upperY: 0.608, upperZ: 0.14, ridgeY: 0.293, ridgeZ: 1.36, lowerY: 0.030, lowerZ: 0.68 },
-    { x: 1.18, upperX: 0.86, ridgeX: 1.18, lowerX: 1.18,
-      upperY: 0.593, upperZ: -0.12, ridgeY: 0.278, ridgeZ: 1.10, lowerY: 0.038, lowerZ: 0.44 },
-    { x: 1.50, upperX: 1.04, ridgeX: 1.50, lowerX: 1.58,
-      upperY: 0.570, upperZ: -0.40, ridgeY: 0.255, ridgeZ: 0.82, lowerY: 0.053, lowerZ: 0.30 },
-    // The terminal cap is the physical side join. Its rear upper/lower roots
-    // now finish inside the x=1.46..1.60 turret wall instead of both ending
-    // ahead of it; the cap therefore closes the former daylight seam on
-    // either side while the ridge remains the visible arrow shoulder.
-    { x: 1.68, upperX: 1.48, ridgeX: 1.68, lowerX: 1.60,
-      upperY: 0.560, upperZ: -0.54, ridgeY: 0.245, ridgeZ: 0.54, lowerY: 0.075, lowerZ: -0.12 },
-  ] satisfies readonly ChevronStation[]).map((station) => ({
-    ...station,
-    x: sx(station.x),
-    upperX: sx(station.upperX), ridgeX: sx(station.ridgeX), lowerX: sx(station.lowerX),
-    upperY: sy(station.upperY) + config.chevronLiftM,
-    ridgeY: sy(station.ridgeY) + config.chevronLiftM,
-    lowerY: sy(station.lowerY) + config.chevronLiftM,
-    ...(() => {
-      const progress = THREE.MathUtils.clamp((station.x - 0.22) / (1.68 - 0.22), 0, 1);
-      const advance = THREE.MathUtils.lerp(
-        config.chevronInnerAdvanceM, config.chevronOuterAdvanceM, progress);
-      return {
-        upperZ: cz(station.upperZ) + advance,
-        ridgeZ: cz(station.ridgeZ) + advance,
-        lowerZ: cz(station.lowerZ) + advance,
-      };
-    })(),
-  })));
-  const panelBands = Object.freeze([
-    [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
-  ] as const);
-  // The closed chevron is the welded carrier/front casting. It must survive
-  // an ERA detonation; only the raised surface cassettes belong to the visual
-  // ERA cluster. Keeping the carrier in the primary turret also prevents the
-  // spent state from exposing the deliberately truncated shell behind it.
-  for (const side of [-1, 1] as const) {
-    const stock=closedIntegratedChevron(chevronStations, side);
-    if (variant==='vt4a1') addChineseThroatStock(P,stock); else P.add('turret',stock);
-  }
   P.visualEraCluster(`${tankSeedId(variant)}-integrated-chevron-front`, 'turret', () => { // schema-1 name (tankIdAliases.ts)
-    for (const side of [-1, 1] as const) {
-      for (const [startT, endT] of panelBands) {
-        const startX = THREE.MathUtils.lerp(chevronStations[0].x,
-          chevronStations.at(-1)!.x, startT);
-        const endX = THREE.MathUtils.lerp(chevronStations[0].x,
-          chevronStations.at(-1)!.x, endT);
-        const panel=variant==='vt4a1'?chineseArrowCassette(chevronStations,side,startX,endX):chevronSurfacePanel(
-          interpolateChevronStation(chevronStations, startX),
-          interpolateChevronStation(chevronStations, endX),
-          side,
-        );
-        if(variant==='vt4a1')addChineseThroatStock(P,panel,'turretExternalArmor');
-        else P.addExternalArmor('turret',panel);
+    const panels = addCheekTiles(P, outline, VT4A1_CHEEK_PANELS);
+    P.turretG.userData.vtCheekPanels = panels.length;
+    if (P.geometryReceipt) P.turretG.userData.cheekTileRecords = Object.freeze(panels);
+    // two bolt heads at the top and bottom of each panel's face
+    for (const t of panels) {
+      const [b0, b1, b2, b3] = t.base.map((q) => new THREE.Vector3(...q));
+      const n = new THREE.Vector3(...t.normal), yaw = Math.atan2(n.x, n.z);
+      for (const [u, v] of [[0.5, 0.12], [0.5, 0.88]] as const) {
+        const q = b0.clone().lerp(b1, u).lerp(b3.clone().lerp(b2, u), v).addScaledVector(n, t.thicknessM - 0.004);
+        P.add('turretDetail', cylZ(0.016, 0.014, 8), q.x, q.y, q.z, 0, yaw, 0);
       }
     }
   });
@@ -401,9 +319,10 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     warningX: sx(1.02),
     warningZ: sz(-1.52),
     warningY: 0.72 + roofLift,
-    smokeX: sx(1.18),
-    smokeZ: sz(-0.08),
-    smokeY: sy(0.39),
+    // release 276: on the side wall behind the cheek module (they stood inside the new box module at x 1.18)
+    smokeX: sx(1.66),
+    smokeZ: sz(-0.30),
+    smokeY: sy(0.44),
   });
   if (variant === 'vt4a1') {
     mount(P, 'turret', FITTINGS.openYokeRws({
@@ -427,9 +346,9 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   }
   const marking = 'VT4';
   P.decal('turret', 'number', marking, 0.23,
-    [-sx(1.59), sy(0.36), sz(-0.72)], -Math.PI / 2);
+    [-sx(1.61), sy(0.36), sz(-0.72)], -Math.PI / 2);
   P.decal('turret', 'number', marking, 0.23,
-    [sx(1.59), sy(0.36), sz(-0.72)], Math.PI / 2);
+    [sx(1.61), sy(0.36), sz(-0.72)], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.28);
 }
 
@@ -445,29 +364,23 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
   const rearZ = (value: number): number => (
     shellZ(value) - config.rearExtensionM * rearProgress(value)
   );
-  const shellHeight = 0.89 * heightScale;
 
+  const outline = VT4A1_TURRET_OUTLINE;
   const commonReceipt = Object.freeze({
-    architecture: 'vt-integrated-chevron-family-r5',
+    architecture: 'vt-box-module-turret-r6',
     variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
     pivotShiftForwardM: 0.55,
-    turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
-    widthScale, depthScale, chevronDepthScale: config.chevronDepthScale,
-    frontShellLengthScale: config.frontShellLengthScale,
-    chevronInnerAdvanceM: config.chevronInnerAdvanceM,
-    chevronOuterAdvanceM: config.chevronOuterAdvanceM,
-    chevronLiftM: config.chevronLiftM,
-    rearExtensionM: config.rearExtensionM,
+    turretHeightScale: heightScale, primaryShellHeightM: outline.section.roofY,
+    widthScale, depthScale,
     rearUndersideLiftM: config.rearUndersideLiftM,
-    rearCrownLiftM: config.rearCrownLiftM,
-    integratedChevronFront: true,
-    chevronsArePrimaryFront: true, chevronTerminalBuriedInSideBelt: true,
-    permanentChevronCarriers: 2, detonatingChevronFacePanels: 8,
+    // release 276: one closed solid from the plan outline; the box cheek modules are its own faces
+    outlineLofted: true,
+    cheekModules: 'flat-box',
+    cheekFrontZM: outline.cheek.tip[1],
+    cheekChamferDeg: 45,
+    cheekPanels: P.turretG.userData.vtCheekPanels,
     spentStateRetainsClosedFront: true,
     permanentArmoredBustle: true,
-    mirroredChevronSideJoins: true, chevronSideJoinGapM: 0,
-    chevronProfile: 'leopard-2a6-derived', sharedPhysicalRidge: true,
-    surfacePanelsPerSide: 4, compoundShoulderTerminal: true,
     gunCenterlineLocalY: config.gunY,
     muzzleWorldZM: config.pivotZ + config.gunZ + config.gunLength,
     warningSensorPedestals: 2, reseatedRoofEquipment: true,
@@ -478,10 +391,8 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
     P.turretG.userData.vt4a1TurretReceipt = Object.freeze({
       ...commonReceipt,
       independentTurret: true, previousTurretHeightScale: 0.75,
-      previousPrimaryShellHeightM: 0.6675, slightlyTallerTurret: true,
-      forwardCenteredTurret: true, legacyFrontalWedgeRemoved: true,
-      upperSlopeDeg: 19, dominantUpperChevron: true,
-      upperRootSetbackM: 1.22, lowerReturnMaxSetbackM: 0.90,
+      previousPrimaryShellHeightM: 0.6675,
+      forwardCenteredTurret: true, legacyFrontalWedgeRemoved: true, legacyChevronsRetired: true,
       roofRws: true, supportedBustleCages: true,
     });
   }
