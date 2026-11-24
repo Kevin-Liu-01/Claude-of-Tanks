@@ -7,7 +7,7 @@
 //    environment light), a sealed bay the authored rig, through every flip between them;
 // 2. leaving the Garage opens the presentation (the battle's light), and a far-band sleep is apart from the enclosure;
 // 3. planted control: the old wiring (the enclosure set once on entry, never per pack) fails the same check on every
-//    open yard; main.ts wires the runtime to the lighting's enclosure switch.
+//    open yard; main.ts wires the runtime to the lighting's enclosure switch, and its boot sets the persisted pack's.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -110,6 +110,9 @@ assert.equal(flagged, open, `the old wiring fails the check on every open yard (
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /setLightEnclosure: \(enclosed\) => lighting\.setEnclosedPresentation\(enclosed\),\s*loadOpenSkyLight: loadGroundedLightModel,/,
   'main.ts wires the Garage runtime to the lighting\'s enclosure switch and the grounded model\'s chunk');
+// the boot sets its pack's enclosure itself: a Verdant boot never calls activate, and its hall must stay sealed
+assert.match(main, /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);\n[^\n]*\nif \(!STUDIO_BOOT_INTENT\) lighting\.setEnclosedPresentation\(getGarageVariant\(loadGarageVariantId\(\)\)\.enclosure === 'sealed'\);/,
+  'the boot\'s light is its persisted pack\'s enclosure');
 
 console.log(`garageEnclosure.selftest: ${GARAGE_VARIANTS.length} packs light as declared through ${rows.length} activations `
   + `(${sealedIds.length} sealed bays on the authored rig; open yards on the grounded model with a shadow-casting sun, `
