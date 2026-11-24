@@ -29,8 +29,9 @@ import {
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
-import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
-import { rememberAuthoredRig } from './combatGunRigSeat.ts';
+import { attachTrackShapes } from './trackShapes.ts';
+import type { AnatomyCombatRig } from './combatAnatomyCalibrationRegistry.ts';
+import { rememberAuthoredGun, rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
 import { turretSeatPlane, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 import type {
@@ -152,6 +153,8 @@ interface ArmorAnatomy {
   turretPivot: Vec3;
   gunPivot?: Vec3;
   gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
+  /** The drawn mouth across the bore from the trunnion (the measured rig; sim/gunPose.ts carries it as the gun pitches). */
+  gunMouth?: { x: number; y: number };
   boundingRadiusM?: number;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
@@ -1842,20 +1845,53 @@ function assignCollisionOutputs(
   else delete armor.trackContact;
 }
 
+/** What the measured rig rewrites of a spec beyond its armor: the gun's mouths and launcher tubes. */
+interface RigGun {
+  muzzles?: readonly { readonly x?: number; readonly y?: number }[];
+  launcherMuzzles?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly pitch?: number; readonly yaw?: number; readonly frame?: string }[];
+  fixedLaunchCanisters?: boolean;
+}
+
 /**
- * 230 gun-barrel alignment: seat the combat articulation where the builder seated its rig (combatGunRigs.generated.ts,
- * measured by tools/gun-barrel-align-census.mjs). The turret and trunnion pivots, the barrel length and, where the
- * authored one was off, its radius are replaced; the bounding radius only grows to keep the muzzle inside the
- * authorities' trace broadphase. Runs before the anatomy reconciles, so the turret ring and the turret cells (both
- * measured in the builder's rig_turret frame) follow the same pivot.
+ * The combat frame and the weapons' mouths, as the built rig draws them (276 sim-det-trig; Main's ruling on the class of
+ * combat data only the visual builder computed): tools/gen-combat-anatomy.mjs measures them on each id's build
+ * (tools/combat-rig-measure.mjs) into its calibration, and every driver takes them from here, so the page and every
+ * authority fire from the gun the page draws. The turret and trunnion pivots and the barrel are replaced (the spec's
+ * authored ones stay the builders' inputs, combatGunRigSeat.ts authoringRigSpec); a single bore's mouth off its trunnion's
+ * line, a twin plant's mouths and each launcher tube's mouth and bore are the drawn ones; the track prisms are the built
+ * running gear's (specs' attachTrackShapes, which an authored trackShapesOverride still wins). The bounding radius only
+ * grows, to keep the muzzle inside the authorities' trace broadphase. Runs before the anatomy reconciles, so the turret
+ * ring and the turret cells (measured in the builder's rig_turret frame) follow the same pivot. A spec that draws a weapon
+ * and has a calibration with no measured rig is an error: there is no authored fallback (in the generator's own
+ * measurement pass the rig is still being written, and the authored frame stands).
  */
-export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undefined): void {
-  if (!rig || !armor.gunBarrel) return;
+export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?: RigGun }, rig: AnatomyCombatRig | null | undefined): void {
+  const armor = spec.armor;
+  const gun = spec.gun;
+  const drawsWeapon = (!!armor.gunBarrel && gun?.fixedLaunchCanisters !== true) || !!gun?.launcherMuzzles?.length;
+  if (!rig) {
+    if (drawsWeapon && !isCombatAnatomyMeasurementMode()) {
+      throw new Error(`combat anatomy for ${spec.id}: a drawn weapon with no measured rig (run tools/gen-combat-anatomy.mjs for it)`);
+    }
+    return;
+  }
   rememberAuthoredRig(armor);
-  armor.turretPivot = [...rig.turretPivot];
-  armor.gunPivot = [...rig.gunPivot];
-  armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM, ...(rig.radiusM === undefined ? {} : { radiusM: rig.radiusM }) };
-  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + rig.lengthM + 0.4;
+  armor.turretPivot = [...rig.turretPivot] as Vec3;
+  armor.gunPivot = [...rig.gunPivot] as Vec3;
+  if (armor.gunBarrel && rig.lengthM !== undefined) armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM };
+  if (rig.mouth) armor.gunMouth = { ...rig.mouth };
+  else delete armor.gunMouth;
+  if (gun && (rig.mouths?.length || rig.launchers?.length)) {
+    const measured: RigGun = rememberAuthoredGun({ ...gun }, gun);
+    if (rig.mouths?.length && gun.muzzles) measured.muzzles = gun.muzzles.map((mouth, i) => ({ ...mouth, ...(rig.mouths![i] ?? {}) }));
+    if (rig.launchers?.length && gun.launcherMuzzles) {
+      measured.launcherMuzzles = gun.launcherMuzzles.map((tube, i) => ({ ...tube, ...(rig.launchers![i] ?? {}) }));
+    }
+    spec.gun = measured;
+  }
+  if (rig.trackHulls?.length) attachTrackShapes(armor as unknown as Parameters<typeof attachTrackShapes>[0], rig.trackHulls);
+  const lengthM = armor.gunBarrel?.lengthM ?? 0;
+  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + lengthM + 0.4;
   if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
 }
 
@@ -2022,7 +2058,7 @@ export function finalizeCombatAnatomy(
   if (!spec?.armor || spec[FINALIZED]) return spec;
   if (isCombatAnatomyMeasurementMode()) rememberAuthoredAnatomy(spec);
   const armor = spec.armor;
-  applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
+  applyCombatGunRig(spec, calibration?.rig);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   seatAuthoredTurretPlates(armor, calibration?.turretRing);
   // the generator measures the authored layers; reapplying its previous fits would make the fit self-referential

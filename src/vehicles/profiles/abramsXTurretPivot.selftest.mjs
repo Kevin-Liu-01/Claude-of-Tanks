@@ -25,7 +25,7 @@ try {
     'AbramsX retains canonical turret, gun and structural shell nodes');
 
   // 230 (4499464c2b): the builder seats rig_turret in the profile-authored frame and the combat-rig table
-  // (combatGunRigs.generated.ts, measured row y 1.962) seats the combat pivot where rig_turret is drawn
+  // (the calibration's measured rig, 276, measured row y 1.962) seats the combat pivot where rig_turret is drawn
   assert.deepEqual(authoringRigSpec(spec).armor.turretPivot, [0, 1.95, -0.04], 'the authored, centered AbramsX turret ring');
   assert.deepEqual(spec.armor.turretPivot, turret.position.toArray(),
     'combat and presentation publish the centered AbramsX turret ring');

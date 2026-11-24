@@ -40,7 +40,7 @@ for (const id of ['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2']) {
   close(squash[1], 1.54, `${id} enlarged turret height with authored shaping`);
   close(squash[2], 1.10, `${id} turret length scale`);
   // 230: the builder seats rig_turret at the profile's authored pivot times the family scale; the combat-rig table
-  // (combatGunRigs.generated.ts) then seats the combat pivot where rig_turret is drawn, already in the 1.10 frame, so the
+  // (the calibration's measured rig, 276) then seats the combat pivot where rig_turret is drawn, already in the 1.10 frame, so the
   // spec's pivot is that seat with no second 1.10
   const authored = authoringRigSpec(spec).armor.turretPivot;
   for (const [axis, name] of [[0, 'x'], [1, 'y'], [2, 'z']]) {

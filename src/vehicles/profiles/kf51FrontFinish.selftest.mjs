@@ -24,7 +24,7 @@ try {
   const turretShell = turretRig.children.find((node) => node.isMesh && node.name === 'turret');
   assert.ok(turretShell, 'KF51 EVO turret has one merged structural shell');
 
-  // the rig on the measured combat frame (combatGunRigs.generated.ts), visible and authoritative pivots together
+  // the rig on the measured combat frame (the calibration's measured rig, 276), visible and authoritative pivots together
   const receipt = turretRig.userData.kf51EvoTurretReceipt;
   assert.equal(receipt?.profile, 'kf51-evo-faceted-turret-r1', 'KF51 EVO publishes its faceted turret receipt');
   assert.deepEqual(turretRig.position.toArray(), [0, 1.71, 0.63], 'KF51 EVO turret rig sits at hull (0, 1.71, 0.63)');

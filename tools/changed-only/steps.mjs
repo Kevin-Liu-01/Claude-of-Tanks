@@ -69,8 +69,6 @@ export const TABLES = Object.freeze({
   simFloors: { kind: 'json', files: ['docs/geometry-gate/sim-floors.json'], path: ['rows'], canonical: true },
   // 267: the geometry gate's records, one per measured id beside the other steps' ledgers; each names its oracle
   geometryGate: { kind: 'jsonRow', files: ['docs/geometry-gate/*.json'], idsOnly: true, inputField: 'oracle' },
-  // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
-  combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
 });
 
 /** Index and loader maps that import every shard of a table. Their bytes depend only on which shards exist, so they

@@ -653,6 +653,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
+    // 276 (sim-det-trig, Main's gap-3 rule): every id's drawn muzzle within p99 3 cm / max 10 cm of the pose both drivers
+    // fire from (sim/gunPose.ts); ids beyond are listed by distance
+    'src/vehicles/gunPoseVisualFit.selftest.mjs',
+    'src/vehicles/combatRigFromBuild.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
     // 2026-11-08 round 8 s5-04: the Redback's gun is the Puma S1's registration-time gun, whenever its pack evaluates
     'src/vehicles/redbackRegistrationGun.selftest.mjs',
@@ -873,6 +877,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',
+    // 276 (sim-det-trig): three's rotation constructors on detMath, bit-identical to three on detMath, and to three on
+    // native Math wherever native Math agrees with detMath (tools/det-math-lint.mjs flags the methods by name)
+    'src/sim/detRotation.selftest.mjs',
     // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
@@ -2033,6 +2040,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/couchOpener.selftest.mjs',
     // round 8 Y4 (ROUND8 amendment 4): a couch battle's Battle Again on the page's setupBattle is a couch battle (MANUAL 'sims')
     'src/game/couchRematch.selftest.mjs',
+    // 276 (sim-det-trig): the training shooters' whenSeen on the battle's own ground (MANUAL 'sims': a world and the roster)
+    'src/game/trainingSightGround.selftest.mjs',
     // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
     'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
@@ -3142,6 +3151,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/felledTreeOwners.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
     'src/world/concealerIndex.selftest.mjs',
+    // 276 (sim-world-packed, Main's ruling B): a solo battle collides on the shards' records, rounded in-page by their packer
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',

@@ -145,8 +145,9 @@ assert.equal(killSourceOf(gunship, GUNSHIP_WEAPONS[2]), killSourceOf(gunship, GU
     assert.equal(pilot.kills ?? 1, 1);
   }
   {
-    // a tank's own kill in the solo battle: no source on either event
-    const { hostile, events } = soloKill('standard', 'm1a1_abrams_hc', 0, false);
+    // a tank's own kill in the solo battle: no source on either event (276: its rounds leave the shared gun pose,
+    // sim/gunPose.ts, so the gun is laid on the hostile as the gunship's are, not posed by the visual)
+    const { hostile, events } = soloKill('standard', 'm1a1_abrams_hc', 0, true);
     assert.ok(hostile.combat.destroyed, "solo: the tank's own round kills the hostile");
     const kill = events.find((e) => e.name === 'tank:destroyed' && e.id === 'hostile');
     assert.equal(kill?.killerId, 'pilot');

@@ -153,7 +153,7 @@ function run(seed, steps, onTick = () => {}) {
 // of its south wall firing its HE round at it.
 {
   const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
-  const { packCollisionRecord } = await import('../../tools/headlessWorldCollision.mjs');
+  const { packCollisionRecord } = await import('../world/collisionRecordPacking.ts');
   const world = createHeadlessCollisionWorld({ mapId: 'verdant', heightField: groundProbe.heightField,
     manifest: { obstacles: [packCollisionRecord(houseContact)], colliders: [packCollisionRecord(houseShell)], concealers: [] } });
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: world,

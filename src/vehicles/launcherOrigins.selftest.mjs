@@ -116,7 +116,7 @@ for (const id of ids) {
           // Cannon mouths can have a measured cosmetic lip offset. Launcher
           // anchors have no such tolerance: their world pose is the spec pose.
           if (launcher) {
-            // the combat-rig row (combatGunRigs.generated.ts) rounds the seated pivot to 0.1 mm: the authority launches
+            // the combat-rig row (the calibration's measured rig, 276) rounds the seated pivot to 0.1 mm: the authority launches
             // from that pivot, the drawn tube hangs off the drawn rig (fv510_milan: 1.862 against 1.8619700, 0.03 mm)
             const drawnPivot = tank.root.getObjectByName('rig_turret').position.toArray();
             const rounded = source.armor.turretPivot.some((v, k) => Math.abs(v - drawnPivot[k]) > 1e-9);

@@ -24,6 +24,7 @@ import { floorShotShare, type GunAutoloader } from './fireCycleFloor.ts';
 
 import { Euler, Quaternion, Vector3 } from 'three';
 import { AIR_SPIN_RATE, canTankAirSpin, tankAirborne } from './hullFlight.ts';
+import { quaternionFromEuler, applyAxisAngle } from './detRotation.ts';
 import { HULL_STEP_UP_M } from '../world/collision.ts';
 import { CLIFF_GRADE,
   DRIVE_ACCEL_PER_HPT as K_ACCEL,
@@ -2966,14 +2967,14 @@ function solveGunLay(
   // Exact inverse YXZ composition keeps the articulated bore, shell origin,
   // reticle, and authoritative hit ray on one pose even on compound slopes.
   _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _hullQuat.setFromEuler(_hullEuler);
+  quaternionFromEuler(_hullQuat, _hullEuler);
   const turretPivot = spec.armor?.turretPivot;
   const gunPivot = spec.armor?.gunPivot;
-  _gunOriginWorld.set(
+  applyAxisAngle(_gunOriginWorld.set(
     gunPivot?.[0] ?? 0,
     gunPivot?.[1] ?? spec.dims.heightM * 0.15,
     gunPivot?.[2] ?? 0,
-  ).applyAxisAngle(_worldUp, state.turretYaw).add(_turretPivotLocal.set(
+  ), _worldUp, state.turretYaw).add(_turretPivotLocal.set(
     turretPivot?.[0] ?? 0,
     turretPivot?.[1] ?? spec.dims.heightM * 0.7,
     turretPivot?.[2] ?? 0,
@@ -3453,7 +3454,7 @@ function fixedHydraulicPitchRequest(
   dt: number,
 ): number {
   _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _hullQuat.setFromEuler(_hullEuler);
+  quaternionFromEuler(_hullQuat, _hullEuler);
   const turretPivot = spec.armor?.turretPivot;
   const gunPivot = spec.armor?.gunPivot;
   _gunOriginWorld.set(

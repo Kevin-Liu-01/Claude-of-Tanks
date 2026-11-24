@@ -6,6 +6,7 @@ import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxil
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor } from '../sim/launcherPolicy.ts';
+import { gunWorldPose } from '../sim/gunPose.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -124,7 +125,7 @@ import {
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
-import { getStoredDifficulty } from './input.ts';
+import { getStoredDifficulty } from './storedDifficulty.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { camoSelectionBonus } from '../sim/camoPaint.ts';
 import { hullReachM, shellMayReachHull } from '../sim/shellHullReach.ts';
@@ -729,6 +730,9 @@ function acquireShell(
   sh.dead = false;
   sh.penRollDone = false;
   sh.remainingPenMm = 0;
+  // (276 sim-det-trig) a pooled round is a fresh one: the last round's shot-card roll goes too (a fresh round has none
+  // until its own roll; the per-step round trace read the stale one on the first round a second battle in one page fired)
+  sh.freshPenRollMm = undefined;
   sh.dmgRoll = 0;
   sh.bounces = 0;
   sh.carriedThrough = false;
@@ -1020,7 +1024,7 @@ function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spaw
  * trigger: its loaded gun fires and its reload spaces the rounds (sim/trainingGround.ts TrainingVolley). Every input is
  * the battle's time and the player's pose, so the same inputs give the same rounds.
  */
-function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
+function driveTrainingActor(game: SoloGameState, entity: SoloEntity, world: SoloWorld): void {
   entity.input.throttle = 0;
   entity.input.steer = 0;
   entity.input.brake = true;
@@ -1040,13 +1044,13 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   let arcAllows = true;
   if (actor.volley.traverseDegPerS != null) {
     const from = entity.state.pos, aim = entity.input.aimPoint;
-    const bearing = Math.atan2(aim.x - from.x, aim.z - from.z);
+    const bearing = detMath.atan2(aim.x - from.x, aim.z - from.z);
     const yaws = game._trainingGunYaw ??= new Map();
     const gunYaw = trainingTraverse(yaws.get(actor.key) ?? entity.state.yaw, bearing, SIM_DT, actor.volley.traverseDegPerS);
     yaws.set(actor.key, gunYaw);
-    const reach = Math.hypot(aim.x - from.x, aim.z - from.z);
-    aim.set(from.x + Math.sin(gunYaw) * reach, aim.y, from.z + Math.cos(gunYaw) * reach);
-    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, Math.atan2(pos.x - from.x, pos.z - from.z));
+    const reach = detMath.hypot(aim.x - from.x, aim.z - from.z);
+    aim.set(from.x + detMath.sin(gunYaw) * reach, aim.y, from.z + detMath.cos(gunYaw) * reach);
+    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, detMath.atan2(pos.x - from.x, pos.z - from.z));
     // (S13) the arc held a while before the trigger: a tank clipping its edge is not shot for it
     if (actor.volley.arcDwellS != null) {
       const since = game._trainingArcSince ??= new Map();
@@ -1054,12 +1058,15 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
       arcAllows = trainingArcDwellMet(actor.volley, since.get(actor.key) ?? null, game.timeS);
     }
   }
-  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
-  const ground = game._groundSampler;
-  const seen = !actor.volley.whenSeen || !ground ? true : (() => {
-    const exposure = trainingExposure(entity.state.pos, hull, ground);
-    return exposure.hull || exposure.turret;
-  })();
+  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them: the
+  // simulation's own (groundFor: the world's field plus the battle's overlay, the stamps laid at setup), the ground every
+  // driver steps on. (276 sim-det-trig) It read the page's drawn sampler (game._groundSampler, set by main.ts), so a Node
+  // replay or any driver without one saw through every wall: whenSeen held true there and the page's Sentry 3 alone waited
+  let seen = true;
+  if (actor.volley.whenSeen) {
+    const exposure = trainingExposure(entity.state.pos, hull, groundFor(world).contactAt);
+    seen = exposure.hull || exposure.turret;
+  }
   // (S11) a sighting shooter fires only once it has seen the player a while, counted afresh each time in sight
   let sighted = true;
   if (actor.volley.seenS != null) {
@@ -1322,8 +1329,8 @@ export function setupBattle(
     // the bots' grid re-reads the ground round the heap, as the authority's does
     onCollapse: (structure) => {
       const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
-      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
-      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      const ex = Math.abs(detMath.sin(structure.yaw)) * structure.hd + Math.abs(detMath.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(detMath.cos(structure.yaw)) * structure.hd + Math.abs(detMath.sin(structure.yaw)) * structure.hw + reach;
       game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
     onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
@@ -1494,10 +1501,10 @@ export function setupBattle(
     playerSpecId,
     allies: allySet,
     placement,
-    playerPerpendicularX: Math.cos(playerYaw),
-    playerPerpendicularZ: -Math.sin(playerYaw),
-    playerForwardX: Math.sin(playerYaw),
-    playerForwardZ: Math.cos(playerYaw),
+    playerPerpendicularX: detMath.cos(playerYaw),
+    playerPerpendicularZ: -detMath.sin(playerYaw),
+    playerForwardX: detMath.sin(playerYaw),
+    playerForwardZ: detMath.cos(playerYaw),
     obstacles: world.getObstacles(),
     botMatch,
     opening,
@@ -1688,9 +1695,9 @@ function shouldCrushObstacle(
   // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
   // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
   if (isFortifiedCoverRecord(obstacle)) {
-    const length = Math.hypot(pushX, pushZ);
+    const length = detMath.hypot(pushX, pushZ);
     if (length <= 1e-9) return false;
-    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
     return game._fortified?.ram(obstacle, self.spec.weightTons, closing, game.timeS) ?? false;
   }
   // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
@@ -1721,10 +1728,10 @@ const _hardObstacles: SoloObstacle[] = [];
 
 /** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
 function structureYield(game: SoloGameState, entity: SoloEntity, obstacle: SoloObstacle, pushX: number, pushZ: number): number | null {
-  const length = Math.hypot(pushX, pushZ);
+  const length = detMath.hypot(pushX, pushZ);
   if (length <= 1e-9 || !game._destruction) return null;
   const state = entity.state;
-  const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+  const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
   return game._destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
     state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
 }
@@ -2026,22 +2033,23 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
     _dir.copy(entity.input.aimPoint).sub(_muzzle).normalize();
     return -1;
   }
-  const visual = entity.visual;
-  if (!visual) return null;
+  // (276, sim-det-trig) the round leaves from the pose the authority fires from (sim/gunPose.ts), never the visual's
+  // scene graph: the visual draws the flash and smoke at the mouth, and nothing it computes flows back into the shot
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
   let muzzleIndex = -1;
   if (launchers) {
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
-    entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   } else {
     // the gun's own mouths (a twin cannon's bores): the barrel owner both drivers share (sim/launcherPolicy.ts); launcher
     // tubes, aft10's canisters among them, took the branch above
     muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
-  const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
-  visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
-  visual.gunDirWorld(_dir, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
+  // the pose reads the launcher cursor before it advances, as the authority's does
+  const pose = gunWorldPose(entity, shell, launchers ? -1 : muzzleIndex);
+  _muzzle.copy(pose.muzzle);
+  _dir.copy(pose.direction);
+  if (launchers) entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   return muzzleIndex;
 }
 
@@ -2240,7 +2248,7 @@ function recoilLaunchFor(entity: SoloEntity, dir: THREE.Vector3): RecoilLaunch |
 
 /** Impact knock (owner 2026-09-16): the hit hull is shoved along the shell's flight direction. */
 function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
-  const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
+  const speed = detMath.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
   const knock = shellKnockMps(shell.spec.caliberMm, speed, entity.spec.weightTons, entity.modeShellKnockScale ?? 1);
   if (!(knock > 0)) return;
   applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, entity.modeGravityScale ?? 1);
@@ -2583,7 +2591,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
-    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity);
+    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity, world);
     applyHullActions(entity, host);
     tickHullConsumables(entity, host);
   }
@@ -2710,7 +2718,7 @@ function resolveTankImpacts(
     const closing = prior + impact;
     entity._impactAccumMps = closing;
     if (fresh) entity._impactAccumT = game.timeS;
-    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
     // the struck face looks into the obstacle: opposite the push
     const faceForward = -(state.impactNx * fx + state.impactNz * fz);
     const sideSign = Math.sign(-(state.impactNx * fz - state.impactNz * fx));
@@ -2742,7 +2750,7 @@ function resolveTankImpacts(
   if (landing > 0) {
     // the landing's attitude is the tracks' (the attitude spring's): the posture a hull holds over them on a grade
     // (movement.ts state._hold) is no part of how it meets the ground
-    const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+    const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
     const attitudeFactor = fallAttitudeFactor(state._spring.pitch - state._terr.pitch, state._spring.roll - state._terr.roll, upY);
     const result = resolveHullImpact({
       combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
@@ -2811,7 +2819,12 @@ function wreckEnvironmentFor(world: SoloWorld, field: SoloHeightField): RigidEnv
   return environment;
 }
 
-interface SoloGround { overlay: TerrainDeformation; field: SoloHeightField }
+interface SoloGround {
+  overlay: TerrainDeformation;
+  field: SoloHeightField;
+  /** The field's contact height by movement's own rule (contact, else the fast, else the plain sampler), bound once. */
+  contactAt: (x: number, z: number) => number;
+}
 const groundByWorld = new WeakMap<SoloWorld, SoloGround>();
 
 /** Destruction (docs/DESTRUCTION.md §7): the ground this world's battles deform — its field plus an overlay each battle
@@ -2820,7 +2833,9 @@ function groundFor(world: SoloWorld): SoloGround {
   let ground = groundByWorld.get(world);
   if (!ground) {
     const overlay = createTerrainDeformation();
-    ground = { overlay, field: createDeformedHeightField(world.heightField, overlay) };
+    const field = createDeformedHeightField(world.heightField, overlay);
+    const sample = field.getContactHeightAt ?? field.getHeightAtFast ?? field.getHeightAt;
+    ground = { overlay, field, contactAt: (x, z) => sample.call(field, x, z) };
     groundByWorld.set(world, ground);
   }
   return ground;
@@ -3153,7 +3168,7 @@ function soloCounterAir(game: SoloGameState): NonNullable<Parameters<typeof step
       if (!air || !strike) return null;
         const pose = air.aircraftPoseOf(strike, game.timeS, _soloAirPose);
         // led: where the aircraft will be when the round meets it (its flight is the record's: exact)
-        const leadS = Math.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
+        const leadS = detMath.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
         air.aircraftPoseOf(strike, game.timeS + leadS, _soloAirPose);
         out.set(_soloAirPose.x, _soloAirPose.y, _soloAirPose.z);
       return strike;
@@ -3505,11 +3520,11 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
       // a pillbox takes a burst on its face as a hit (crushWorldPropFromShell), never a fall to a burst beside it
       if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
       const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
-      if (Math.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
+      if (detMath.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
     }
     _blastFelled.sort((a, c) => {
-      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
-      const dc = Math.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
+      const da = detMath.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const dc = detMath.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
       return da - dc || obstacles.indexOf(a) - obstacles.indexOf(c);
     });
     const fell = Math.min(_blastFelled.length, PROP_FELL_PER_BLAST, budget);

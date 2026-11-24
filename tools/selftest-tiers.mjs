@@ -176,6 +176,9 @@ export const MANUAL_SUITES = Object.freeze({
     // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
     // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
     'src/game/couchRematch.selftest.mjs',
+    // 276 (sim-det-trig): a training shooter that fires only at what it sees reads the battle's own ground, not the page's
+    // drawn sampler: S11's Sentry 3 on Verdant's shard twice (with and without a page sampler), about 10 s of user CPU
+    'src/game/trainingSightGround.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
@@ -207,6 +210,9 @@ export const MANUAL_SUITES = Object.freeze({
     // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
     'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 276 (sim-det-trig): the drawn muzzle against the fired one (sim/gunPose.ts) on every production id
+    'src/vehicles/gunPoseVisualFit.selftest.mjs',
+    'src/vehicles/combatRigFromBuild.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/interiorFillSurface.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
@@ -681,6 +687,8 @@ export const MANUAL_SUITES = Object.freeze({
     { idScoped: true }),
   world: suite('world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content', [
     'server/collisionManifestDrift.selftest.mjs',
+    // 276 (sim-world-packed): the page's records rounded as the shards are, on two real map builds
+    'src/world/collisionRecordPacking.selftest.mjs',
     'src/ui/minimapLiquidWater.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
