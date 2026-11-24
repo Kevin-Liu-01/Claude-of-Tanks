@@ -30,11 +30,13 @@
 /* a notice's art (noticeArt.ts; Kevin 2026-11-23: "the graphic and then its gradient transitioning from nothing into the
    image"): one rule for every kind and every host (a toast, the HUD's event seat). The span is an in-flow spacer at the end of
    the row that keeps the words off the picture's solid part; the picture stands against the host's own box, its right edge
-   and full height, under the host's content, masked from transparent at its left into the image. The host is a stacking
-   context (a toast here, the event seat by its transform). */
+   and full height, over the host's plate (a host may draw its plate in pseudo-elements under its content, as the HUD's
+   angled plates do) and under the notice's own parts, masked from transparent at its left into the image. A seat with no
+   empty side (a compact one) hides the layer by its own rule. */
 .cot-c-notice:has(>.cot-c-notice__art){position:relative;isolation:isolate}
+:is(.cot-c-notice__glyph,.cot-c-notice__body,.cot-c-notice__count,.cot-c-notice__acts,.cot-c-notice__close,.cot-c-notice__media){position:relative;z-index:1}
 .cot-c-notice__art{display:block;flex:none;align-self:stretch;width:var(--notice-art-room,52px);border-radius:inherit;pointer-events:none}
-.cot-c-notice__art img{position:absolute;top:0;right:0;z-index:-1;display:block;width:var(--notice-art-w,136px);height:100%;
+.cot-c-notice__art img{position:absolute;top:0;right:0;z-index:0;display:block;width:var(--notice-art-w,136px);height:100%;
   object-fit:cover;object-position:50% 52%;border-radius:inherit;
   -webkit-mask-image:linear-gradient(to right,transparent,#000 72%);mask-image:linear-gradient(to right,transparent,#000 72%)}
 /* a notice's actions and close are 44 px targets on touch (the interaction bar's line 1 and the gauntlet's line 12) */

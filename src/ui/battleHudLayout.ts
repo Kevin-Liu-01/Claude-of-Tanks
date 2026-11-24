@@ -2071,8 +2071,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const touchCentre = (card: GuidanceBox | null): GuidanceBox[] => {
         const placed = planTouchNotices({ ...touchInput, obstacles: card ? [...obstacles, { x0: card.x0, y0: card.y0, x1: card.x1, y1: card.y1 }] : obstacles });
         touchPlans.set(card, placed);
+        // (notices-276) the compact alert at the height it shows (its words wrap to three lines at 134 px): planned at the
+        // constant's 40 px, the condition lane was seated 17 px into a wrapped alert at 390x844 and 844x390
+        const compactAlert = { w: TOUCH_COMPACT_ALERT.w, h: Math.max(TOUCH_COMPACT_ALERT.h, touchInput.alertCompact.h) };
         const size = (compact: boolean, alert: boolean) => placed.oneRow ? TOUCH_ONE_ROW
-          : compact ? (alert ? TOUCH_COMPACT_ALERT : TOUCH_COMPACT_NOTICE) : alert ? touchInput.alert : noticeSize;
+          : compact ? (alert ? compactAlert : TOUCH_COMPACT_NOTICE) : alert ? touchInput.alert : noticeSize;
         const at = (y: number, sz: TouchSize) => ({ x0: width / 2 - sz.w / 2, y0: y, x1: width / 2 + sz.w / 2, y1: y + sz.h });
         return [at(placed.noticeTop, size(placed.noticeCompact, false)), at(placed.alertTop, size(placed.alertCompact, true))];
       };

@@ -66,13 +66,13 @@ async function settledRects(page, instruments) {
   }
   return rects;
 }
-/** Plants one control over the shown notices (their union), of `className`, in the HUD's root; returns its box. */
+/** Plants one control of `className` over the condition lane's notice (the reported case: "Gunship overhead" under a control
+ *  it did not know), in the HUD's root; returns its box. (Over both lanes' union, a phone's plant spanned half the HUD.) */
 const plantOver = (className) => {
-  const boxes = [...document.querySelectorAll('.cot-alert.show,.cot-battle-notices .cot-c-notice')]
-    .filter((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })).map((el) => el.getBoundingClientRect());
-  if (!boxes.length) return null;
-  const x0 = Math.min(...boxes.map((b) => b.left)), y0 = Math.min(...boxes.map((b) => b.top));
-  const x1 = Math.max(...boxes.map((b) => b.right)), y1 = Math.max(...boxes.map((b) => b.bottom));
+  const notice = [...document.querySelectorAll('.cot-battle-notices .cot-c-notice')]
+    .find((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }));
+  if (!notice) return null;
+  const { left: x0, top: y0, right: x1, bottom: y1 } = notice.getBoundingClientRect();
   const node = document.createElement('div');
   node.className = `${className} is-planted`;
   node.dataset.planted = '';
@@ -109,7 +109,12 @@ try {
       // the layout's planners settle over a few frames (and the Watch bar's chunk lands)
       await settleFrames(page, 600);
       const rects = await settledRects(page, INSTRUMENTS);
-      const problems = overlapProblems(rects, width, height);
+      const all = overlapProblems(rects, width, height);
+      // (a <state>+notices run judges the notices; the state's own control-on-control overlaps are its plain run's verdict,
+      // reported here as `others`)
+      const problems = notices ? all.filter((p) => p.startsWith('notice ') || p.startsWith('offscreen: div.cot-alert')
+        || p.startsWith('offscreen: div.cot-c-notice')) : all;
+      const others = notices ? all.filter((p) => !problems.includes(p)) : [];
       let coverage = null;
       if (notices) {
         coverage = noticeCoverage(rects, await page.evaluate(() => document.body.dataset.hudGuidance ?? ''));
@@ -140,7 +145,7 @@ try {
           const at = await page.evaluate(plantOver, PLANTS[kind]);
           await settleFrames(page, 400);
           const planted = await settledRects(page, [...INSTRUMENTS, PLANT_SELECTOR]);
-          const found = overlapProblems(planted, width, height).filter((p) => p.includes('planted'));
+          const found = overlapProblems(planted, width, height).filter((p) => p.startsWith('notice ') && p.includes('planted'));
           const caught = found.some((p) => p.startsWith('notice '));
           plants[kind] = { at, found, coverage: noticeCoverage(planted, await page.evaluate(() => document.body.dataset.hudGuidance ?? '')) };
           if (shots) await page.screenshot({ path: resolve(out, `${name}-${label}-plant-${kind}.png`) });
@@ -152,7 +157,8 @@ try {
         }
       }
       failures += problems.length;
-      report.push({ case: name, state: label, problems, rects, markers: seen, coverage, plants });
+      report.push({ case: name, state: label, problems, others, rects, markers: seen, coverage, plants });
+      if (others.length) console.log(`     others (the plain state's verdict): ${others.join(' | ')}`);
       console.log(`${problems.length ? 'FAIL' : 'ok  '} ${name.padEnd(9)} ${label.padEnd(26)} markers ${String(seen).padStart(2)}`
         + `${coverage ? ` event ${coverage.event} condition ${coverage.condition}` : ''} ${problems.join(' | ')}`);
       await page.close();
