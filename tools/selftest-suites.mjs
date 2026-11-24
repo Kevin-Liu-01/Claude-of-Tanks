@@ -104,6 +104,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/turboSpin.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): a host migration mid-flip and mid-turbo; the flip finishes, the cooldown runs on
     'src/mp/host/turboSpinMigration.selftest.mjs',
+    // 2026-11-24 (bot-turbo-276): bots take Turbo and the air spin through the action step, only where the mode carries them
+    'src/sim/botTurboSpin.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
     'src/mp/wire/actionBitMask.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
