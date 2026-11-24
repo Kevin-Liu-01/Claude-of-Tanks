@@ -98,11 +98,20 @@ export const bullring: LandmarkBuilder = (ctx) => {
       // the openings' reveals and dark backs, the ground window's grille and surround, the arch's stone ring
       sink.quad('dark', P(-gw / 2, gy0, -0.5), P(gw / 2, gy0, -0.5), P(gw / 2, gy1, -0.5), P(-gw / 2, gy1, -0.5), { decor: true });
       for (const s of [-1, 1]) sink.quad(RENDER, P(s * gw / 2, gy0, s < 0 ? 0 : -0.5), P(s * gw / 2, gy0, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? 0 : -0.5), { shade: 0.72, decor: true });
+      // (landmarks-world-276, the integrity census: the grille's bars ended on an opening with no sill) the reveal's sill,
+      // the wall's depth to the dark back, which the bars stand on
+      sink.quad(RENDER, P(-gw / 2, gy0, 0), P(gw / 2, gy0, 0), P(gw / 2, gy0, -0.5), P(-gw / 2, gy0, -0.5), { shade: 0.8, decor: true });
       extrude(sink, 'stone', [P(-gw / 2 - 0.2, gy0 - 0.15), P(gw / 2 + 0.2, gy0 - 0.15), P(gw / 2 + 0.2, gy0), P(-gw / 2 - 0.2, gy0)], OUT, 0.06, { decor: true });
       for (let u = -gw / 2 + 0.18; u < gw / 2; u += 0.18) bar(sink, 'structureMetal', P(u, gy0, -0.1), P(u, gy1, -0.1), 0.025, { colour: IRON, decor: true, fine: true });
       // (its dark back 0.16 m in: in front of the gallery's inner wall, 0.2 m behind the facet at its middle)
       const back: Vec3[] = [P(-aw / 2, ay0, -0.16), P(aw / 2, ay0, -0.16), ...arch.map((p) => [p[0] - ox * 0.16, p[1], p[2] - oz * 0.16] as Vec3)];
       sink.polygon('dark', [back[0], back[1], ...back.slice(2)], { decor: true });
+      // (landmarks-world-276, the integrity census: the dark back stood 0.16 m in with nothing to the face) the arch's
+      // reveals: its jambs, its sill and its soffit strip by strip, the wall's depth from the face to the back
+      const inset = (p: Vec3): Vec3 => [p[0] - ox * 0.16, p[1], p[2] - oz * 0.16];
+      for (const s of [-1, 1]) sink.quad(RENDER, P(s * aw / 2, ay0, s < 0 ? 0 : -0.16), P(s * aw / 2, ay0, s < 0 ? -0.16 : 0), P(s * aw / 2, ay1, s < 0 ? -0.16 : 0), P(s * aw / 2, ay1, s < 0 ? 0 : -0.16), { shade: 0.72, decor: true });
+      sink.quad(RENDER, P(-aw / 2, ay0, 0), P(aw / 2, ay0, 0), P(aw / 2, ay0, -0.16), P(-aw / 2, ay0, -0.16), { shade: 0.8, decor: true });
+      for (let i = 0; i < 6; i++) sink.quad(RENDER, arch[i], arch[i + 1], inset(arch[i + 1]), inset(arch[i]), { shade: 0.6, decor: true });
       // the arch's dressed voussoirs, flat on the face 5 cm out, the keystone's pair a shade lighter
       const R = (t: number, r: number): Vec3 => P(Math.cos(t) * r, ay1 + Math.sin(t) * r * 0.9, 0.05);
       for (let i = 0; i < 6; i++) {
@@ -148,7 +157,9 @@ export const bullring: LandmarkBuilder = (ctx) => {
   revolve(sink, RENDER, 0, 0, [[Ro - 0.3, H], [Ro - 0.35, H], [Ro - 0.35, yTop], [Ro - 0.3, yTop]], n, { shade: 0.8 }, Math.PI / n);
   revolve(sink, 'stone', 0, 0, [[Ro - 0.35, yMid], [Rg - 0.3, yMid], [Rg - 0.3, yMid - 0.25], [Ro - 0.35, yMid - 0.25]], n, { shade: 0.88 }, Math.PI / n);
   // (the stands' solid under the tiers, from the ground to the gallery: the ring's mass)
-  revolve(sink, 'stone', 0, 0, [[rBot + 0.3, foot], [rBot, foot], [rBot, yBot], [rBot + 0.01, yBot]], n, { shade: 0.7 }, Math.PI / n);
+  // (landmarks-world-276, the integrity census: its face to the callejón ran up, facing away from it: a hole from the
+  // arena) down the callejón side, facing it
+  revolve(sink, 'stone', 0, 0, [[rBot + 0.01, yBot], [rBot, yBot], [rBot, foot], [rBot + 0.3, foot]], n, { shade: 0.7 }, Math.PI / n);
   // ---- the two arcaded galleries: a Tuscan column on every line, round arches between them carrying the render's
   // spandrels and a stone string course; the upper behind its parapet (the antepecho) with a stone coping
   const m2 = n * 2, chord = 2 * Rg * Math.sin(Math.PI / m2), ra = chord / 2 - 0.26, halfC = chord / 2;
@@ -173,18 +184,24 @@ export const bullring: LandmarkBuilder = (ctx) => {
         facing(sink, RENDER, [Q(-halfC, y0, 0.02), Q(halfC, y0, 0.02), Q(halfC, y0 + 0.95, 0.02), Q(-halfC, y0 + 0.95, 0.02)], IN, o);
         facing(sink, 'stone', [Q(-halfC, y0 + 0.95, 0.06), Q(halfC, y0 + 0.95, 0.06), Q(halfC, y0 + 0.95, -0.2), Q(-halfC, y0 + 0.95, -0.2)], UP, { decor: true });
       }
-      revolve(sink, 'stone', x0, z0, galleryColumn(0.2, ys - y0, y0), 6, { decor: true });
+      // (landmarks-world-276: its foot on the gallery's floor takes no cap, the triangles the arches' reveals needed)
+      revolve(sink, 'stone', x0, z0, galleryColumn(0.2, ys - y0, y0), 6, { decor: true }, 0, false);
     }
   }
   // the arena's sand, the barrera (its red boards on posts) and the burladeros' screens, the callejón behind it
   revolve(sink, 'structureMetal', 0, 0, [[Ra, 0.05], [0.001, 0.05]], 40, { colour: SAND, decor: true });
-  revolve(sink, 'structureMetal', 0, 0, [[Ra - 0.01, 0.05], [Ra, 0.05], [Ra, 1.45], [Ra + 0.08, 1.45], [Ra + 0.08, 0.05], [Ra + 0.09, 0.05]], n * 2, { colour: BARRERA, decor: true });
-  revolve(sink, 'structureMetal', 0, 0, [[Ra + 0.19, 1.4], [Ra + 0.2, 1.4], [Ra + 0.2, 1.55], [Ra - 0.05, 1.55]], n * 2, { colour: shade(BARRERA, 0.7), decor: true });
+  // (landmarks-world-276, the integrity census: the boards ran up their arena side, so every face pointed in — the arena
+  // side away from the arena, the top down: holes from the stands) up the callejón side, over, down the arena side
+  revolve(sink, 'structureMetal', 0, 0, [[Ra + 0.09, 0.05], [Ra + 0.08, 0.05], [Ra + 0.08, 1.45], [Ra, 1.45], [Ra, 0.05], [Ra - 0.01, 0.05]], n * 2, { colour: BARRERA, decor: true });
+  // (landmarks-world-276, the integrity census: the cap stood 10 cm over the boards it caps) the cap seated on them
+  revolve(sink, 'structureMetal', 0, 0, [[Ra + 0.19, 1.45], [Ra + 0.2, 1.45], [Ra + 0.2, 1.55], [Ra - 0.05, 1.55], [Ra - 0.05, 1.45]], n * 2, { colour: shade(BARRERA, 0.7), decor: true });
   for (let k = 0; k < 4; k++) {
     const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
     sink.placed(a, Math.sin(a) * (Ra - 0.8), 0, Math.cos(a) * (Ra - 0.8), () => sink.span('structureMetal', -0.9, 0.05, -0.05, 0.9, 1.6, 0.05, { colour: BARRERA, decor: true }));
   }
-  revolve(sink, 'stone', 0, 0, [[Ra + 0.1, 0.03], [rBot, 0.03]], n, { decor: true, shade: 0.75 }, Math.PI / n);
+  // (landmarks-world-276, the integrity census: the callejón's floor ran in to out, a soffit facing down — from over the
+  // ring a 180 m2 hole) out to in: a step facing up
+  revolve(sink, 'stone', 0, 0, [[rBot, 0.03], [Ra + 0.1, 0.03]], n, { decor: true, shade: 0.75 }, Math.PI / n);
   // ---- the Puerta del Príncipe: a stone portal proud of the front facet — paired Tuscan columns on pedestals either side
   // of the arched gate, the entablature and the balcony over it, its door between pilasters, the upper entablature and
   // the pediment with its raking cornices, the royal arms' boss and the finials
@@ -211,7 +228,9 @@ export const bullring: LandmarkBuilder = (ctx) => {
   for (const [x0, y0, x1, y1] of [[-1.05, F1 + 0.6, -0.8, F1 + 3.45], [0.8, F1 + 0.6, 1.05, F1 + 3.45], [-1.05, F1 + 3.2, 1.05, F1 + 3.55]] as const)
     sink.span('stone', x0, y0, pz + 0.5, x1, y1, pz + 0.66, { decor: true, shade: 0.98 });
   for (const s of [-1, 1]) sink.span('stone', s * 2.0 - 0.28, F1 + 0.6, pz + 0.5, s * 2.0 + 0.28, H - 0.4, pz + 0.72, { shade: 0.93 });
-  for (let x = -3.3; x <= 3.31; x += 0.22) bar(sink, 'structureMetal', [x, F1 + 0.6, pz + 1.6], [x, F1 + 1.6, pz + 1.6], 0.03, { colour: IRON, decor: true, fine: true });
+  // (landmarks-world-276, the integrity census: the rail stood on fine balusters alone, stranded past the fine-detail
+  // distance and on a phone) its end balusters drawn at every distance, the rest fine
+  for (let x = -3.3; x <= 3.31; x += 0.22) bar(sink, 'structureMetal', [x, F1 + 0.6, pz + 1.6], [x, F1 + 1.6, pz + 1.6], 0.03, { colour: IRON, decor: true, fine: Math.abs(x) < 3.2 });
   bar(sink, 'structureMetal', [-3.4, F1 + 1.6, pz + 1.6], [3.4, F1 + 1.6, pz + 1.6], 0.05, { colour: IRON, decor: true });
   // the upper entablature and the pediment over it: the tympanum's solid, the raking cornices along its slopes
   const py = H + 0.1, pr = 1.7;

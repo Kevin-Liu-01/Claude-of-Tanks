@@ -801,6 +801,13 @@ assert.match(readFileSync(new URL('../vegetationClearance.ts', import.meta.url),
 
 // ---------------------------------------------------------------------------------------------------------- authoring maps
 let authored = 0, authoredBerths = 0;
+// (landmarks-world-276; kitConnectivity passed set pieces the integrity census then failed — stand-offs of 5-14 cm, joinery
+// stranded past the fine-detail distance and on a phone, slivers — because nothing made the set pieces' own receipt run
+// the census) every authored set piece holds its row in the integrity ledger, keyed as the census keys it (the gate
+// profile: each authoring once), so a new one fails here until tools/building-integrity-check.mjs --update-ledger wrote
+// its row, and tools/building-integrity-check.selftest.mjs then holds that row to the census
+const integrityRows = JSON.parse(readFileSync(new URL('../../../docs/geometry-gate/building-integrity.json', import.meta.url), 'utf8')).rows;
+const integrityAuthored = new Set();
 for (const id of MAP_IDS) {
   const config = getMapConfig(id);
   const landmarks = config.props?.landmarks ?? [];
@@ -835,6 +842,19 @@ for (const id of MAP_IDS) {
     }
     authored++;
   });
+  landmarks.forEach((placement, i) => check(`${id}/${placement.name ?? placement.kind}: integrity row`, () => {
+    const authoring = `${id}:${placement.kind}:${JSON.stringify(resolveLandmarkParams(placement))}`;
+    if (integrityAuthored.has(authoring)) return;
+    integrityAuthored.add(authoring);
+    const key = `landmark/${id}:${placement.kind}#${i}`;
+    // (a piece that draws nothing — a drum cache's or a snow fence's modules, a path on the ground's own surface — is
+    // no building to the census: it writes no row)
+    const drawn = build(placement.kind, placement.params ?? {});
+    const tris = triangles(drawn.parts);
+    for (const g of geometries(drawn.parts)) g.dispose();
+    if (!tris) return;
+    assert.ok(integrityRows[key], `${key}: no row in docs/geometry-gate/building-integrity.json (run tools/building-integrity-check.mjs --source=kits --profile=gate --only=landmarks --builders=${placement.kind} --ledger=docs/geometry-gate/building-integrity.json, fix what floats or strands, then --update-ledger)`);
+  }));
   // a 'clearance' rail spur's berth (railSpurs.ts): props are not filtered off it, so the line keeps clear of every solid
   // the shard holds — the berth's half-width to each side of the centreline, shape by shape
   for (const spur of (config.terrain?.railSpurs ?? []).filter((candidate) => candidate.berth === 'clearance')) check(`${id}/rail berth`, () => {

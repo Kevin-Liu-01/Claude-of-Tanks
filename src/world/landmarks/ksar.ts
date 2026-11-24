@@ -81,7 +81,10 @@ function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: 
   sink.polygon(wall, end(-D).reverse(), o);
   // the outer face (the back, z = -D): its battered mud foot eroded by the wind's sand, patches where the render has
   // fallen to the stone under it, the small vents high in the cells and the palm beams' ends through the wall
-  extrude(sink, wall, [[x0, foot, -D], [x0, foot, -D - 0.45], [x0, 0.35 + v() * 0.4, -D - 0.12], [x0, 0.9 + v() * 0.5, -D]], [1, 0, 0], w, { shade: cs * 0.8, decor: true });
+  // (landmarks-world-276, the integrity census's slivers: a draw put the eroded notch on the line from the foot to the
+  // top, and the section's triangle there was a needle) the notch kept 5 cm in from that line
+  const yN = 0.35 + v() * 0.4, yT = 0.9 + v() * 0.5, chord = -D - 0.45 + 0.45 * (yN - foot) / (yT - foot);
+  extrude(sink, wall, [[x0, foot, -D], [x0, foot, -D - 0.45], [x0, yN, Math.min(-D - 0.02, Math.max(-D - 0.12, chord + 0.05))], [x0, yT, -D]], [1, 0, 0], w, { shade: cs * 0.8, decor: true });
   for (let k = 0, n2 = 1 + Math.floor(v() * 3); k < n2; k++) {
     const pw = 0.4 + v() * 1.0, ph = 0.3 + v() * 0.6, px = x0 + 0.2 + v() * Math.max(0.1, w - pw - 0.4), py = 0.9 + v() * Math.max(0.2, spring - ph - 1.2);
     sink.span('stone', px, py, -D - 0.035, px + pw, py + ph, -D - 0.005, { decor: true, shade: 0.72 + v() * 0.15 });

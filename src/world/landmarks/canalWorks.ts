@@ -356,8 +356,11 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
     revolve(sink, 'stone', x, z, [[Rk + 0.3, foot], [Rk + 0.3, y0 + 0.5], [Rk + 0.05, b0]], 16, { shade: 0.62 + v() * 0.15 });
     // the dome: a bell of brick under its clay skin, smooth-shaded, the crown's last courses black with soot
     const prof: Array<[number, number]> = [];
-    for (let i = 0; i <= 9; i++) { const a = (Math.PI / 2) * i / 9; prof.push([Hk * Math.sin(a), Math.max(0.001, Rk * Math.cos(a) ** 0.72)]); }
+    for (let i = 0; i <= 8; i++) { const a = (Math.PI / 2) * i / 9; prof.push([Hk * Math.sin(a), Rk * Math.cos(a) ** 0.72]); }
     sink.revolve('structureMetal', [x, b0, z], 'y', prof, 16, { colour: body, bandColour: (band) => band >= 7 ? SOOT : band === 6 ? shade(body, 0.55) : body });
+    // (landmarks-world-276, the integrity census's slivers: the last band ran to a 1 mm ring, sixteen needles) the crown
+    // closed to its point (kit.ts revolve: the axis in triangles)
+    revolve(sink, 'structureMetal', x, z, [[prof[8][1], b0 + prof[8][0]], [0, b0 + Hk]], 16, { colour: SOOT });
     // the soot fanned up the dome from the door
     for (let i = 1; i < 7; i++) {
       // (three facets across, each corner on the dome's skin)
@@ -433,8 +436,10 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
   for (let k = 0; k < K; k++) {
     const x = -span / 2 + (k + 0.5) * pitch;
     for (const s of [-1, 1]) {
-      const q = (dx: number, u: number): Vec3 => [x + dx, yeave + (yr - yeave) * u - 0.02, s * ze * (1 - u)];
-      const pts = [q(-1.4, 0.45), q(1.4, 0.45), q(1.4, 0.98), q(-1.4, 0.98)];
+      // (landmarks-world-276, the integrity census: the soot ran 14-26 cm under the courses it blackens, on the roof's
+      // base line, where the middle course stands 0.12 m up) on the middle course's underside, within its lap
+      const q = (dx: number, u: number): Vec3 => [x + dx, yeave + (yr - yeave) * u + 0.12 - 0.02, s * ze * (1 - u)];
+      const pts = [q(-1.4, 0.36), q(1.4, 0.36), q(1.4, 0.66), q(-1.4, 0.66)];
       sink.polygon('structureMetal', s > 0 ? [...pts].reverse() : pts, { colour: SOOT, decor: true });
     }
   }
@@ -464,8 +469,11 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
   }
   for (const e of [-1, 1]) {
     const rr = 0.75 + v() * 0.2, rh = 1.3 + v() * 0.3;
-    sink.revolve('structureWood', [e * (span / 2 + 0.3), yt, -sd / 2 - 1.4], 'y', [[0, rr], [rh, rr * 0.97], [rh + 0.12, rr * 0.85], [rh + 0.14, 0.001]], 10,
+    const sx = e * (span / 2 + 0.3), sz = -sd / 2 - 1.4;
+    sink.revolve('structureWood', [sx, yt, sz], 'y', [[0, rr], [rh, rr * 0.97], [rh + 0.12, rr * 0.85]], 10,
       { colour: BILLET, bandColour: (band) => band ? shade(CUT, 0.9) : shade(BILLET, 0.95) });
+    // (the stack's sawn top closed to its middle, as the kilns' crowns: no 1 mm ring of needles)
+    revolve(sink, 'structureWood', sx, sz, [[rr * 0.85, yt + rh + 0.12], [0, yt + rh + 0.14]], 10, { colour: shade(CUT, 0.9) });
   }
 
   // ---- at the landing: the charcoal heap, the sacks filled from it, and the jetty with its sampan

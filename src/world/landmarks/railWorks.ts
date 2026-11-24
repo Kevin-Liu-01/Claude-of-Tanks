@@ -266,7 +266,9 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
     const [jx, jz] = at(am, rj);
     revolve(sink, 'structureMetal', jx, jz, [[0.95, yj - 0.5], [0.95, yj + 0.35], [0.34, yj + 1.1], [0.32, yj + 4.4], [0.31, yj + 4.4]], 8, { colour: SOOT, decor: true });
     revolve(sink, 'structureMetal', jx, jz, [[0.001, yj + 4.75], [0.72, yj + 4.75], [0.001, yj + 5.25]], 8, { colour: shade(SOOT, 1.25), decor: true });
-    for (const d of [-0.3, 0.3]) bar(sink, 'structureMetal', [jx + d, yj + 4.35, jz], [jx + d * 1.5, yj + 4.78, jz], 0.04, { colour: SOOT, decor: true, fine: 'near' });
+    // (landmarks-world-276, the integrity census: the cap stood on fine stays alone, stranded past the fine-detail
+    // distance and on a phone) its stays drawn at every distance
+    for (const d of [-0.3, 0.3]) bar(sink, 'structureMetal', [jx + d, yj + 4.35, jz], [jx + d * 1.5, yj + 4.78, jz], 0.04, { colour: SOOT, decor: true });
     const sw = (r: number, m: number): number => m / r, lean = (age() - 0.5) * 0.3 / rj;
     facing(sink, 'roof', [S(am + lean + sw(rj - 2.8, 1.5), rj - 2.8, 0.04), S(am + lean - sw(rj - 2.8, 1.5), rj - 2.8, 0.04),
       S(am - sw(rj + 1.4, 1.0), rj + 1.4, 0.04), S(am + sw(rj + 1.4, 1.0), rj + 1.4, 0.04)], UP, { decor: true, shade: 0.3 });
@@ -558,7 +560,12 @@ function turntable(sink: PartSink, cx: number, cz: number, R: number, y: number,
       // the walkway outside the girder, its handrail on stanchions
       sink.span('structureWood', s > 0 ? 1.44 : -2.2, y - 0.06, -Lb, s > 0 ? 2.2 : -1.44, y, Lb, { colour: shade(SLEEPER, 1.25), decor: true });
       bar(sink, 'structureMetal', [s * 2.15, y + 1.0, -Lb + 0.2], [s * 2.15, y + 1.0, Lb - 0.2], 0.05, { colour: IRON, decor: true });
-      for (let z = -Lb + 0.2; z <= Lb - 0.1; z += 2.3) bar(sink, 'structureMetal', [s * 2.15, y, z], [s * 2.15, y + 1.0, z], 0.045, { colour: IRON, decor: true, fine: true });
+      // (landmarks-world-276, the integrity census: the handrail stood on fine stanchions alone) its end stanchions drawn
+      // at every distance, the rest fine
+      for (let z = -Lb + 0.2; z <= Lb - 0.1; z += 2.3) {
+        const end = z === -Lb + 0.2 || z + 2.3 > Lb - 0.1;
+        bar(sink, 'structureMetal', [s * 2.15, y, z], [s * 2.15, y + 1.0, z], 0.045, end ? { colour: IRON, decor: true } : { colour: IRON, decor: true, fine: true });
+      }
     }
     // the deck between the girders and the bridge's rails on it
     sink.span('structureWood', -1.22, y - 0.1, -Lb, 1.22, y, Lb, { colour: SLEEPER, decor: true });
@@ -718,13 +725,16 @@ export const signalBox: LandmarkBuilder = (ctx) => {
       facing(sink, roll < 0.08 ? 'dark' : 'structureWood', [facePoint(f, u0, ya, -0.06), facePoint(f, u1, ya, -0.06), facePoint(f, u1, yb, -0.06), facePoint(f, u0, yb, -0.06)], f.out,
         roll < 0.08 ? { decor: true } : { colour: shade(CAB_TIMBER, 0.8), decor: true });
     }
-    sink.member('structureWood', facePoint(f, -f.width / 2, h.y0 - 0.05, 0.03), facePoint(f, f.width / 2, h.y0 - 0.05, 0.03), 0.09, 0.1, f.out, { colour: CAB_TRIM, decor: true });
+    // (landmarks-world-276: 11 cm proud, on its fine sides alone: drawn whole, as the sill beam and the head trim below)
+    sink.member('structureWood', facePoint(f, -f.width / 2, h.y0 - 0.05, 0.03), facePoint(f, f.width / 2, h.y0 - 0.05, 0.03), 0.09, 0.1, f.out, { colour: CAB_TRIM, decor: true, exposed: true });
   }
   for (const h of upper.back!.slice(1)) archWindow(sink, uf.back, h, 0.08, CAB_TRIM, false, { bars: true, coarse: true });
   // the boarding's head trim and the sill beam the floor stands on
   for (const f of [uf.front, uf.back, uf.left, uf.right]) {
-    sink.member('structureWood', facePoint(f, -f.width / 2, y1 - 0.15, 0.03), facePoint(f, f.width / 2, y1 - 0.15, 0.03), 0.09, 0.05, f.out, { colour: CAB_TRIM, decor: true, fine: true });
-    sink.member('structureWood', facePoint(f, -f.width / 2, y0 - 0.1, 0.04), facePoint(f, f.width / 2, y0 - 0.1, 0.04), 0.24, 0.14, f.out, { colour: shade(CAB_TIMBER, 0.7), decor: true });
+    // (landmarks-world-276, the integrity census: both stand 6-16 cm proud, on their sides alone — a framing member's
+    // sides are fine joinery — so past the fine-detail distance and on a phone their faces floated) drawn whole
+    sink.member('structureWood', facePoint(f, -f.width / 2, y1 - 0.15, 0.03), facePoint(f, f.width / 2, y1 - 0.15, 0.03), 0.09, 0.05, f.out, { colour: CAB_TRIM, decor: true, exposed: true });
+    sink.member('structureWood', facePoint(f, -f.width / 2, y0 - 0.1, 0.04), facePoint(f, f.width / 2, y0 - 0.1, 0.04), 0.24, 0.14, f.out, { colour: shade(CAB_TIMBER, 0.7), decor: true, exposed: true });
   }
   leaf(sink, uf.back, door.u, 0.86, y0 + 2.1, -0.06, y0, DOOR_PAINT);
   // the floor's underside over the overhang

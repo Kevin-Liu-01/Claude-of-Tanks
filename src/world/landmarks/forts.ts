@@ -404,7 +404,9 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
     };
     // the stations along the cover: its ends rolling down to the ground (s 0 to 1 past the block), the block between
     const xl = alpine ? xe : -Lf / 2, xr = Lf / 2, exL = alpine ? 7.2 : 4, exR = 4;
-    const ENDS = [0.0001, 0.4, 0.7, 0.9, 1];
+    // (landmarks-world-276, the integrity census's slivers: the ends' first row stood 0.4 mm past the block's last
+    // station, and the strip between, where the lip drops to the ground, was all needles) the ends start 5 % out
+    const ENDS = [0.05, 0.4, 0.7, 0.9, 1];
     const main: number[] = [];
     const nMain = Math.max(2, Math.ceil((xr - xl) / 7.5));
     for (let i = 0; i <= nMain; i++) main.push(xl + (xr - xl) * i / nMain);
@@ -638,15 +640,18 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
     // the wire on the glacis: iron pickets and two strands (fine dressing)
     const zw = c0 + 0.6 + 2.4;
     const yAt = (x: number): number => { const gy = g(x, c0 + 0.3), gt = g(x, c0 + 0.6 + bank); return gy + 2.4 + (gt - 0.25 - gy - 2.4) * 2.4 / bank; };
-    for (let x = -Lf / 2; x < Lf / 2; x += 3) {
-      const zz = zw + (v() - 0.5) * 0.3, y0 = yAt(x), y1 = yAt(x + 3), lean = (v() - 0.5) * 0.15;
-      bar(sink, 'structureMetal', [x, y0 - 0.3, zz], [x + lean, y0 + 1.3, zz], 0.06, { colour: WIRE, decor: true, fine: true });
-      for (const y of [0.55, 1.15]) {
-        const a: Vec3 = [x, y0 + y, zz], b: Vec3 = [x + 3, y1 + y + (v() - 0.5) * 0.12, zz], up = 0.03;
-        const opts: EmitOptions = { colour: WIRE, decor: true, fine: true };
-        sink.quad('structureMetal', a, b, [b[0], b[1] + up, b[2]], [a[0], a[1] + up, a[2]], opts);
-        sink.quad('structureMetal', b, a, [a[0], a[1] + up, a[2]], [b[0], b[1] + up, b[2]], opts);
-      }
+    // (landmarks-world-276, the integrity census: each strand ran 3 m on at its own picket's line, past the next picket,
+    // which stood up to 0.3 m off it, and the last ran 3 m past the last) the pickets first, each strand from one to the
+    // next, made fast to both where they stand at its height
+    const pickets: Array<{ x: number; y0: number; zz: number; lean: number }> = [];
+    for (let x = -Lf / 2; x <= Lf / 2 + 1e-6; x += 3) pickets.push({ x, y0: yAt(x), zz: zw + (v() - 0.5) * 0.3, lean: (v() - 0.5) * 0.15 });
+    const on = (p: (typeof pickets)[number], y: number): Vec3 => [p.x + p.lean * (y + 0.3) / 1.6, p.y0 + y, p.zz];
+    for (const p of pickets) bar(sink, 'structureMetal', [p.x, p.y0 - 0.3, p.zz], [p.x + p.lean, p.y0 + 1.3, p.zz], 0.06, { colour: WIRE, decor: true, fine: true });
+    for (let k = 0; k + 1 < pickets.length; k++) for (const y of [0.55, 1.15]) {
+      const a = on(pickets[k], y), b = on(pickets[k + 1], y + (v() - 0.5) * 0.12), up = 0.03;
+      const opts: EmitOptions = { colour: WIRE, decor: true, fine: true };
+      sink.quad('structureMetal', a, b, [b[0], b[1] + up, b[2]], [a[0], a[1] + up, a[2]], opts);
+      sink.quad('structureMetal', b, a, [a[0], a[1] + up, a[2]], [b[0], b[1] + up, b[2]], opts);
     }
   }
   return { parts: sink.finish() };
