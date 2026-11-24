@@ -94,6 +94,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/airSupportSolo.selftest.mjs',
     // 2026-11-23 (air-crash-he-276): a downed aircraft and a drone into the ground or a building burst as one HE round
     'src/sim/airCrash.selftest.mjs',
+    // 2026-11-24 (air-crash-he-276b): a wreck rests on the drawn ground hulls stand on, its lowest point on the dug bowl
+    'src/game/airCrashWreck.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
     'src/game/strikeOrder.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run

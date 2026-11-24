@@ -22,7 +22,8 @@ import { BOMB_GRAVITY_MPS2, bombReleaseOffsetS, crashFall, missileLaunchOffsetS,
 import { crashedStrikes, releasedBombs } from './airSupportBridge.ts';
 import { buildStrikeJetAirframe, type BuiltStrikeJet } from './strikeJetAirframe.ts';
 import { buildFighterJetAirframe, type BuiltFighterJet } from './fighterJetAirframe.ts';
-import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
+import { gunshipModelRoot, hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
+import { SUPPORT_STEP_UP_M } from '../sim/structureSupport.ts';
 import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
@@ -38,7 +39,9 @@ export interface AircraftFxPort {
 
 interface AirSupportWorldOptions {
   viewerPosition?: () => { x: number; y: number; z: number } | null;
-  groundHeight?: (x: number, z: number) => number;
+  /** The drawn ground (main.ts: the battle's vehicle ground sampler, world/vehicleGroundSampler.ts, on the dug terrain):
+   *  with a `ceiling`, the standable tops (a roof, a deck) at or under it as well, by the movement solve's own rule. */
+  groundHeight?: (x: number, z: number, ceiling?: number) => number;
   aircraftFx?: AircraftFxPort;
   setupMaterial?: (material: THREE.Material) => void;
   releaseMaterial?: (material: THREE.Material) => void;
@@ -51,8 +54,9 @@ interface Craft { kind: 'jet' | 'gunship'; root: THREE.Object3D; jet: BuiltStrik
   dropped: THREE.Object3D | null;
   /** When it last trailed smoke (presentation time), and whether its crash has burst. */
   smokedAt: number; crashed: boolean;
-  /** (air-crash-he-276) its wreck on the ground: when it came down (presentation time; null while it flies or falls). */
-  wreckAt: number | null; wreckX: number; wreckY: number; wreckZ: number }
+  /** (air-crash-he-276) its wreck on the ground: when it came down (presentation time; null while it flies or falls), the
+   *  crash point, and the drawn ground under it when it was last seated (a crater dug after it re-seats it). */
+  wreckAt: number | null; wreckX: number; wreckY: number; wreckZ: number; wreckGround: number }
 
 const R = AIR_SUPPORT_RULES;
 /** (air-crash-he-276; the owner: "plane wrecks and so on should leave the biggest craters and actual wrecks") A crashed
@@ -61,6 +65,46 @@ const WRECK_S = 75;
 const WRECK_MAX = 4;
 /** A wreck's smoke: thick at first, thinning to a smoulder over the wreck's time. */
 const WRECK_SMOKE_EVERY_S = 0.18;
+/** A wreck rests on its belly or its back, leaning at most this far (rad) from either. */
+const WRECK_LEAN_RAD = 0.3;
+/** The standable tops a wreck may rest on reach this far above where it came down (m): a hull's step-up. */
+const WRECK_CEILING_M = SUPPORT_STEP_UP_M;
+
+/** The lowest drawn vertex of `body` in the world, into `out`; false when it draws nothing. */
+function lowestPoint(body: THREE.Object3D, out: THREE.Vector3): boolean {
+  body.updateMatrixWorld(true);
+  let low = Infinity;
+  body.traverseVisible((o) => {
+    const mesh = o as THREE.Mesh;
+    const position = mesh.isMesh ? mesh.geometry?.attributes?.position : null;
+    if (!position) return;
+    for (let i = 0; i < position.count; i++) {
+      _w.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      if (_w.y < low) { low = _w.y; out.copy(_w); }
+    }
+  });
+  return low < Infinity;
+}
+
+/**
+ * The lowest drawn point of `body` against the ground under it: min over its drawn vertices of (y - ground(x, z)). Every
+ * vertex, once per seat (a few thousand; a seat is rare), so the lowest is exact on any attitude. Exported for the receipt.
+ */
+export function lowestGap(body: THREE.Object3D, ground: (x: number, z: number, ceiling?: number) => number, ceiling?: number): number {
+  body.updateMatrixWorld(true);
+  let gap = Infinity;
+  body.traverseVisible((o) => {
+    const mesh = o as THREE.Mesh;
+    const position = mesh.isMesh ? mesh.geometry?.attributes?.position : null;
+    if (!position) return;
+    for (let i = 0; i < position.count; i++) {
+      _v.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      const g = _v.y - ground(_v.x, _v.z, ceiling);
+      if (g < gap) gap = g;
+    }
+  });
+  return gap;
+}
 
 export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportWorldOptions) {
   const crafts = new Map<number, Craft>();
@@ -88,7 +132,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const anchor = new THREE.Group();
       anchor.name = `air-support gunship ${strike.id}`;
       root.add(anchor);
-      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0 };
+      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     } else if (strike.kind === 'bomb' || strike.kind === 'missile') {
       // the fighter: the bomber carries its two GBU-12s (it drops the port one), the Maverick run its four missiles
       const fighter = buildFighterJetAirframe(hooks);
@@ -96,14 +140,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       for (const bomb of fighter.bombs) bomb.visible = strike.kind === 'bomb';
       for (const missile of fighter.missiles) missile.visible = strike.kind === 'missile';
       root.add(fighter.root);
-      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0 };
+      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     } else {
       const jet = buildStrikeJetAirframe(hooks);
       jet.root.name = `air-support jet ${strike.id}`;
       // the recon jet and the strafer carry no bombs
       for (const bomb of jet.bombs) bomb.visible = false;
       root.add(jet.root);
-      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0 };
+      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     }
     crafts.set(strike.id, craft);
     return craft;
@@ -181,18 +225,27 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     return dt < 12;
   }
 
-  /** The airframe comes to rest where it crashed: nosed down into its crater, banked, half sunk, its props still. */
+  /** The airframe comes to rest where it crashed: nosed down into its crater, on its belly or its back as its roll left
+   *  it (never stood on a wingtip), its props still, the point it ploughed in with (its lowest) over the crash point at the
+   *  crater's heart, and that point on the drawn ground (seatWreck). */
   function settleWreck(craft: Craft, t: number): void {
     craft.wreckAt = t; craft.wreckX = pose.x; craft.wreckY = pose.y; craft.wreckZ = pose.z;
-    const pitch = Math.max(-0.7, Math.min(-0.25, pose.pitch)), bank = pose.bank % (Math.PI * 2);
+    const pitch = Math.max(-0.7, Math.min(-0.25, pose.pitch));
+    // the roll folded to the nearer of upright and inverted, keeping a lean of at most WRECK_LEAN_RAD
+    const roll = Math.atan2(Math.sin(pose.bank), Math.cos(pose.bank)), rest = Math.abs(roll) < Math.PI / 2 ? 0 : Math.PI;
+    const lean = Math.atan2(Math.sin(roll - rest), Math.cos(roll - rest));
+    const bank = rest + Math.max(-WRECK_LEAN_RAD, Math.min(WRECK_LEAN_RAD, lean));
     if (craft.kind === 'gunship') {
-      _p.set(pose.x, pose.y - 1.4, pose.z);
+      _p.set(pose.x, pose.y, pose.z);
       syncGunshipVisual(craft.root, _p, pose.yaw, 0, true, null, bank, pitch);
     } else {
-      craft.root.position.set(pose.x, pose.y - 0.6, pose.z);
+      craft.root.position.set(pose.x, pose.y, pose.z);
       craft.root.rotation.set(-pitch, pose.yaw, bank, 'YXZ');
       if (craft.dropped) craft.dropped.visible = false;
     }
+    const body = wreckBody(craft);
+    if (body && lowestPoint(body, _v)) { body.position.x += pose.x - _v.x; body.position.z += pose.z - _v.z; }
+    seatWreck(craft);
     // the oldest wrecks go first past WRECK_MAX
     let wrecks = 0, oldestId = -1, oldestAt = Infinity;
     for (const [id, other] of crafts) {
@@ -203,10 +256,29 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     if (wrecks > WRECK_MAX && oldestId >= 0) release(oldestId, crafts.get(oldestId)!);
   }
 
-  /** A wreck burns: its smoke thinning over WRECK_S; true while it stands. */
+  /** The wreck's drawn airframe: the gunship's model (gunshipVisual.ts keeps it beside its anchor), else the jet's root. */
+  function wreckBody(craft: Craft): THREE.Object3D | null {
+    return craft.kind === 'gunship' ? gunshipModelRoot(craft.root) : craft.root;
+  }
+
+  /** Seats a wreck as a hull's running gear is seated (the same drawn ground, the battle's vehicle ground sampler): its
+   *  lowest drawn point on the ground under that point, the standable tops admitted up to just above where it came down
+   *  (a roof it crashed on holds it; the floors above do not). Moves the body up or down by the one gap. */
+  function seatWreck(craft: Craft): void {
+    const body = wreckBody(craft), ground = options.groundHeight;
+    craft.wreckGround = ground?.(craft.wreckX, craft.wreckZ, craft.wreckY + WRECK_CEILING_M) ?? craft.wreckY;
+    if (!body || !ground) return;
+    const gap = lowestGap(body, ground, craft.wreckY + WRECK_CEILING_M);
+    if (Number.isFinite(gap)) { body.position.y -= gap; body.updateMatrixWorld(true); }
+  }
+
+  /** A wreck burns: its smoke thinning over WRECK_S; true while it stands. A crater dug under it (its own crash's,
+   *  raised a frame after it came down, or a later shell's) re-seats it. */
   function burnWreck(craft: Craft, t: number): boolean {
     const age = t - craft.wreckAt!;
     if (age > WRECK_S || age < 0) return false;
+    const under = options.groundHeight?.(craft.wreckX, craft.wreckZ, craft.wreckY + WRECK_CEILING_M);
+    if (under != null && Math.abs(under - craft.wreckGround) > 0.005) seatWreck(craft);
     if (t - craft.smokedAt >= WRECK_SMOKE_EVERY_S) {
       craft.smokedAt = t;
       options.aircraftFx?.smoke(craft.wreckX, craft.wreckY + 1.2, craft.wreckZ, Math.max(0.2, 1 - age / WRECK_S));
@@ -346,5 +418,5 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
   };
 }
 const AIM_SHAPE = Object.freeze({ circle: 'aim-circle', lane: 'aim-lane', orbit: 'aim-orbit', track: 'aim-track' } as const);
-const _p = new THREE.Vector3(), _eye = new THREE.Vector3(), _b0 = new THREE.Vector3(), _bv = new THREE.Vector3();
+const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _p = new THREE.Vector3(), _eye = new THREE.Vector3(), _b0 = new THREE.Vector3(), _bv = new THREE.Vector3();
 const _bombPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };

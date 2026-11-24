@@ -440,6 +440,13 @@ async function shootRuns(page, signal, tag, checkpoint) {
     air.restore(saved);
     const p = game.player.state.pos, yaw = game.player.state.yaw;
     let x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+    if (run === 'shootdown') {
+      // (air-crash-he-276b) toward the map's middle and further in: struck before its gun opens, the jet falls ~490 m
+      // short of its mark, so the wreck comes down inside the terrain square, where the drawn ground is the dug terrain
+      // (beyond ±512 m the horizon ring draws it, undug, and no hull ever stands there)
+      const d = Math.hypot(p.x, p.z) || 1;
+      x = p.x - (p.x / d) * 650; z = p.z - (p.z / d) * 650;
+    }
     if (run === 'warning') {
       // the enemy 600 m ahead calls on our hull: its fighter comes in over its shoulder, toward us
       const ex = p.x + Math.sin(yaw) * 600, ez = p.z + Math.cos(yaw) * 600;
@@ -574,6 +581,39 @@ async function shootRuns(page, signal, tag, checkpoint) {
             }
           });
           partsY = [lo, hi, w ? D.world.heightField.getHeightAt(w.x, w.z) : null, meshes].map((y) => (y == null ? null : +y.toFixed(2)));
+          // its vertices against the drawn ground (the battle's vehicle ground sampler on the dug terrain, what airSupportWorld
+          // seats a wreck on): how many stand above it, the lowest's gap; and whether every ancestor is drawn
+          const hf = D.world.heightField, drawn = D.game._groundSampler ?? ((x, z) => hf.getContactHeightAt(x, z));
+          let above = 0, total = 0, gap = Infinity;
+          craft.traverseVisible((o) => {
+            const pos = o.isMesh ? o.geometry?.attributes?.position : null;
+            if (!pos) return;
+            const step = Math.max(1, Math.floor(pos.count / 400));
+            for (let i = 0; i < pos.count; i += step) {
+              v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); total++;
+              const g = drawn(v.x, v.z);
+              if (v.y > g) above++;
+              gap = Math.min(gap, v.y - g);
+            }
+          });
+          // (probe) the drawn terrain's own vertex nearest a point (the chunk's current LOD geometry) beside the sampler there
+          let terr = null; D.scene.traverse((o) => { if (!terr && o.userData?.craterMesh) terr = o; });
+          const drawnVertex = (x, z) => {
+            const c = terr?.userData.terrainChunks?.find((k) => x >= k.cx0 && x < k.cx0 + 128 && z >= k.cz0 && z < k.cz0 + 128);
+            const g = c?.mesh?.geometry; if (!g) return null;
+            const P = g.attributes.position, q = D.camera.position.clone(); c.mesh.updateMatrixWorld(true);
+            let best = Infinity, y = null;
+            for (let i = 0; i < P.count; i++) { q.fromBufferAttribute(P, i).applyMatrix4(c.mesh.matrixWorld); const d = (q.x - x) ** 2 + (q.z - z) ** 2; if (d < best) { best = d; y = q.y; } }
+            return { y: +y.toFixed(2), off: +Math.sqrt(best).toFixed(2), level: c.level, lodIs: c.lods.indexOf(g), sampler: +drawn(x, z).toFixed(2), hf: +hf.getHeightAt(x, z).toFixed(2) };
+          };
+          let low = null; { const u = D.camera.position.clone(); let ly = Infinity; craft.traverseVisible((o) => { const P = o.isMesh ? o.geometry?.attributes?.position : null; for (let i = 0; P && i < P.count; i++) { u.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (u.y < ly) { ly = u.y; low = [u.x, u.z]; } } }); }
+          const terrainProbe = { stats: terr?.userData.craterMesh?.stats ? { ...terr.userData.craterMesh.stats } : null,
+            atLowest: low ? drawnVertex(low[0], low[1]) : null, atSite: window.__crashSite ? drawnVertex(window.__crashSite.x, window.__crashSite.z) : null,
+            overlay: !!terr?.userData.groundOverlay };
+          let chain = [], a = craft; while (a) { chain.push(`${a.name || a.type}:${a.visible ? 1 : 0}:${a.layers?.mask}`); a = a.parent; }
+          partsY = { lo: partsY[0], hi: partsY[1], hfAt: partsY[2], meshes, above, total, lowestGap: +gap.toFixed(2),
+            contactAt: w ? +hf.getContactHeightAt(w.x, w.z).toFixed(2) : null, drawnAt: w ? +drawn(w.x, w.z).toFixed(2) : null,
+            chain, scale: craft.scale?.x, terrainProbe };
         }
         return { found: !!craft, partsY, camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(1)),
           result: D.game.result ?? null, t: +(t - s.landsS).toFixed(3), craft: w ? [w.x, w.y, w.z].map((v) => +v.toFixed(1)) : null,

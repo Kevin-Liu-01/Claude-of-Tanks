@@ -110,7 +110,8 @@ export function stageMatchModeObjectives(scene: THREE.Object3D, state: MatchMode
 
 /** campaign slice 3 (2026-09-12): ground fit for dressing that spreads beyond an objective centre. */
 interface MatchModeWorldPresentationOptions {
-  groundHeight?: (x: number, z: number) => number;
+  /** The drawn ground; with a `ceiling`, the standable tops at or under it too (world/vehicleGroundSampler.ts). */
+  groundHeight?: (x: number, z: number, ceiling?: number) => number;
   /**
    * tactical map 2026-09-15: the viewer's world position. Floating icons and
    * light columns fade out within a few tank lengths (a badge over your own
