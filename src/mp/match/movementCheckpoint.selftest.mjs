@@ -25,8 +25,8 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 10,
-  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on; turbo-spin-275: then the air spin in progress');
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 11,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on; turbo-spin-275: then the air spin in progress; flip-boost-276: then the flight\'s dodge spent (flag bit 13)');
 assert.equal(MOVEMENT_CHECKPOINT_VALUES, 64, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact + the held posture and its seated share (pitch, roll, their rates) + the stops\' share and its rate + the air spin (the wire\'s 64th and last value)');
 
 // One codec: the wire's encoder and decoder are the sim's, so a layout change cannot reach one side only.
@@ -163,10 +163,11 @@ assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.value
 assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: ours.flags }), false, 'a version-6 tag on 64 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 7, values: ours.values, flags: ours.flags }), false, 'a version-7 tag on 64 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: ours.flags }), false, 'a version-9 tag on 64 values');
-assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values, flags: 8192 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 12, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values, flags: 16384 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values, flags: 8192 }), false, 'bit 13 is version 11\'s');
 assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values.slice(0, 63), flags: 8192 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
@@ -185,7 +186,7 @@ for (const ends of [1, 2, 3]) {
   assert.equal(bodyRestored._body.bodyRest, ends, 'the ends restore');
   assert.equal(applyMovementCheckpoint(bodyRestored, { ...bodyCheckpoint, version: 8, values: bodyCheckpoint.values.slice(0, 63) }), true, 'a version-8 checkpoint still decodes');
   assert.equal(bodyRestored._body.bodyRest, 0, 'a version-8 checkpoint rests on no body contact');
-  assert.deepEqual(captureMovementCheckpoint(bodyRestored).values, bodyCheckpoint.values, 'a version-8 checkpoint is version 10\'s values but the spin (none here)');
+  assert.deepEqual(captureMovementCheckpoint(bodyRestored).values, bodyCheckpoint.values, 'a version-8 checkpoint is version 10\'s (and 11\'s) values but the spin (none here)');
 }
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).

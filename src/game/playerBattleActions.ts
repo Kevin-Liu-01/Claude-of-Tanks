@@ -35,7 +35,7 @@ type ActionRules = Pick<BattleClientAccess,
   | 'requestTankJump'
   | 'pressSelfRight'
   | 'requestHullTurbo'
-  | 'requestTankAirSpin'
+  | 'requestHullAirSpin'
   | 'rulesetUnlimitedFor'
 >;
 type ActionCombat = Parameters<ActionRules['selectShell']>[0];
@@ -64,8 +64,9 @@ interface BattleActionEntity extends Omit<
   modeJumpMps?: number | null;
   /** Turbo and the air spin (turbo-spin-275; sim/modeMoves.ts TurboHull), stamped with the jump. */
   modeTurbo?: Parameters<ActionRules['requestHullTurbo']>[0]['modeTurbo'];
-  modeAirSpin?: boolean;
+  modeAirSpin?: Parameters<ActionRules['requestHullAirSpin']>[0]['modeAirSpin'];
   turboReadyS?: number;
+  airSpinReadyS?: number;
   /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
   modeGravityScale?: number;
   /** Drone and AC-130 modes: the gunship this entity is (sim/aerialCombat); unlimited rounds are the gunship's only. */
@@ -533,9 +534,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
     // the action step's own rule (sim/modeMoves.ts pressSelfRight): in a mode with the air spin a hull in flight flips or
     // rolls (turbo-spin-275); else the self-right, and where the ruleset allows it the jump (owner 2026-09-16, Turbo Ball)
-    const did = rules.pressSelfRight(player as Parameters<ActionRules['pressSelfRight']>[0]);
+    const did = rules.pressSelfRight(player as unknown as Parameters<ActionRules['pressSelfRight']>[0], game.timeS);
     if (!did) return;
-    bus.emit(did === 'spin' ? 'tank:airSpin' : did === 'jump' ? 'tank:jump' : 'tank:selfRight', { id: player.id });
+    if (did === 'spin') bus.emit('tank:airSpin', { id: player.id, readyS: player.modeAirSpin?.cooldownS ?? 0 });
+    else bus.emit(did === 'jump' ? 'tank:jump' : 'tank:selfRight', { id: player.id });
     bus.emit('ui:click', {});
   });
   listen('ui:turbo', () => {
@@ -549,8 +551,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player?.modeAirSpin || !player.state) return;
     if (network.isActive()) { network.queueAction('airSpin'); return; }
-    if (!rules.requestTankAirSpin(player.state as Parameters<ActionRules['requestTankAirSpin']>[0], player.input.throttle ?? 0, player.input.steer ?? 0)) return;
-    bus.emit('tank:airSpin', { id: player.id });
+    if (!rules.requestHullAirSpin(player as unknown as Parameters<ActionRules['requestHullAirSpin']>[0], game.timeS)) return;
+    bus.emit('tank:airSpin', { id: player.id, readyS: player.modeAirSpin.cooldownS });
   });
 
   // (death-flow-275 R7; Kevin approved 2026-11-21) hold the scuttle key SCUTTLE_HOLD_S to destroy the tank: the one way out

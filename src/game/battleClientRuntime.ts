@@ -45,5 +45,4 @@ export {
 export { requestTankSelfRight } from '../sim/rollover.ts';
 export { requestTankJump } from '../sim/movement.ts';
 // turbo-spin-275: Turbo and F's meaning in a jump mode, the action step's own rules (sim/modeMoves.ts)
-export { pressSelfRight, requestHullTurbo } from '../sim/modeMoves.ts';
-export { requestTankAirSpin } from '../sim/movement.ts';
+export { pressSelfRight, requestHullAirSpin, requestHullTurbo } from '../sim/modeMoves.ts';

@@ -942,6 +942,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
       }
       if (lifeGoesOn && typeof extras.airSpin === 'number') restoreAirSpin(tank, extras.airSpin, gapS);
+      // the air spin's cooldown and the flight's spent dodge (flip-boost-276): a new host refuses a second as the old did
+      if (lifeGoesOn && Number.isFinite(extras.airSpinReadyIn)) {
+        entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
+      }
+      if (lifeGoesOn && extras.flipUsed === true) tank._flipUsed = true;
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
     }
@@ -1047,6 +1052,9 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
       const airSpin = encodeAirSpin(entity.state._airSpinAxis ?? 0, entity.state._airSpinLeft ?? 0);
       if (airSpin !== 0) extras.airSpin = airSpin;
+      const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
+      if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
+      if (entity.state._flipUsed === true) extras.flipUsed = true;
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {

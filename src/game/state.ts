@@ -49,7 +49,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
   rulesetObjectiveAxisM, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, SCUTTLE_CREDIT_S, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TurboRules, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, SCUTTLE_CREDIT_S, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type AirSpinRules, type TurboRules, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -313,8 +313,9 @@ type SoloPooledEntity = Omit<RosterEntity,
     modeJumpMps?: number | null;
     /** Turbo and the air spin (turbo-spin-275; sim/hullActions.ts TurboHull), stamped with the jump. */
     modeTurbo?: TurboRules | null;
-    modeAirSpin?: boolean;
+    modeAirSpin?: AirSpinRules | null;
     turboReadyS?: number;
+    airSpinReadyS?: number;
     modeRecoilLaunchScale?: number;
     modeShellKnockScale?: number;
     modePhysics?: RulesetPhysics | null;
@@ -2628,7 +2629,7 @@ function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): 
       engineStrained: (entity) => ref.bus.emit('module:state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' }),
       // a couch seat's Turbo and air spin (turbo-spin-275): its HUD and sound, as the player's press emits them
       turboed: (entity) => ref.bus.emit('tank:turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0 }),
-      airSpun: (entity) => ref.bus.emit('tank:airSpin', { id: entity.id, axis: entity.state._airSpinAxis }),
+      airSpun: (entity) => ref.bus.emit('tank:airSpin', { id: entity.id, axis: entity.state._airSpinAxis, readyS: entity.modeAirSpin?.cooldownS ?? 0 }),
     };
     entry = { host, ref };
     soloActionHosts.set(game, entry);

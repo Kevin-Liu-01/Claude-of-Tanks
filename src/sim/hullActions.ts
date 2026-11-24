@@ -18,8 +18,8 @@ import type { ConsumableHost, ConsumableState } from './consumableRules.ts';
 import { magazineReloadDenialReason, repairAllModules, repairModules, startMagazineReload, strainModule } from './damage.ts';
 import { AIR_STRIKE_KINDS, consumableTiming } from './matchRuleset.ts';
 import type { AirStrikeKind } from './matchRuleset.ts';
-import { applyTankTurbo, requestTankAirSpin, requestTankJump } from './movement.ts';
-import { pressSelfRight, requestHullTurbo, type TurboHull } from './modeMoves.ts';
+import { applyTankTurbo, requestTankJump } from './movement.ts';
+import { pressSelfRight, requestHullAirSpin, requestHullTurbo, type TurboHull } from './modeMoves.ts';
 import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './playerActions.ts';
 import { requestTankSelfRight } from './rollover.ts';
 import { activateSpecialAction } from './specialActions.ts';
@@ -63,7 +63,7 @@ export interface HullActionsHost<Hull extends ActionHull> {
   scuttle?(entity: Hull): void;
   /** Turbo's leap taken (turbo-spin-275). */
   turboed?(entity: Hull): void;
-  /** A flip or roll started (turbo-spin-275). */
+  /** A flip or roll started (turbo-spin-275; a dodge since flip-boost-276: its cooldown is entity.airSpinReadyS). */
   airSpun?(entity: Hull): void;
   /** A consumable slot pressed: its use, or null where the mode's gate refuses every consumable. */
   consumable?(entity: Hull, slot: number, use: ConsumableUse | null): void;
@@ -108,13 +108,12 @@ export function applyHullActions<Hull extends ActionHull>(entity: Hull, host: Hu
     host.specialAction?.(entity, action);
   }
   if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-    const did = pressSelfRight(entity);
+    const did = pressSelfRight(entity, timeS);
     if (did === 'right') host.selfRighted?.(entity);
     else if (did === 'spin') host.airSpun?.(entity);
   }
-  // the air spin's own key and tiles: a flip or roll in flight, never a jump (a grounded press does nothing)
-  if (bits & PLAYER_ACTION_BITS.AIR_SPIN && entity.modeAirSpin &&
-      requestTankAirSpin(entity.state, entity.input.throttle ?? 0, entity.input.steer ?? 0)) host.airSpun?.(entity);
+  // the air spin's own key and tiles: a dodge, never a jump (flip-boost-276: on the ground a hop into the flip or roll)
+  if (bits & PLAYER_ACTION_BITS.AIR_SPIN && requestHullAirSpin(entity, timeS)) host.airSpun?.(entity);
   if (bits & PLAYER_ACTION_BITS.TURBO && requestHullTurbo(entity, timeS)) host.turboed?.(entity);
   for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
     if (!(bits & (1 << slot))) continue;
