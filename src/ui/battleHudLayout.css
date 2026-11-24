@@ -785,9 +785,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
    smallest windows' 134 px and a short mouse window's glyph-only alert show their words alone; the touch seat keeps a
    narrower picture */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{--notice-art-room:28px;--notice-art-w:96px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert .cot-c-notice__art{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{--notice-art:none;--notice-art-room:0px}
 @media (max-height:299px) and (orientation:landscape),(max-width:340px) and (orientation:portrait),(max-height:550px),(max-width:480px){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height]:is(.cot-touch-layout:not([data-touch-notices]),:not(.cot-touch-layout)) .cot-alert .cot-c-notice__art{display:none}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:is(.cot-touch-layout:not([data-touch-notices]),:not(.cot-touch-layout)) .cot-alert{--notice-art:none;--notice-art-room:0px}
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}

@@ -34,6 +34,11 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   // the feed against the same boxes: each kill lane's floor, and the ribbon's top
   assert.match(layout, /controlFloor\(leftAnchor, 0, leftReach\)/, 'the left kill lane ends over a view control');
   assert.match(layout, /controlFloor\(rightAnchor, rightReach, width\)/, 'the right kill lane ends over a view control');
+  assert.match(layout, /const laneControls = touch && scopeVision \? \[\.\.\.viewControls, scopeVision\] : viewControls;/,
+    'a touch lane ends over the scope\'s vision plate too');
+  // the alert's new height replans (the touch plan seats the condition lane under it at the height it shows)
+  assert.match(layout, /planInput\(entry\.target, entry\.contentRect\?\.height \?\? 0\)/, 'the alert\'s resize carries its height');
+  assert.match(layout, /if \(target\.classList\?\.contains\('cot-alert'\)\) \{\s*if \(height > 0 && Math\.abs/, 'a new alert height is a plan input');
   assert.match(layout, /for \(const box of \[\.\.\.viewControls\]\.sort[\s\S]{0,240}ribbonTop = box\.top;/, 'the ribbon rests over a view control');
   // (the old escape: the flight console dropped where keeping off it cost the reticle clearance)
   assert.doesNotMatch(layout, /plainObstacles|obstacles\.slice\(0, plain/, 'no plan drops a view control to keep the reticle clear');
@@ -91,6 +96,19 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   const phoneRack = box('.cot-strike-rack:not([hidden])', 'section.cot-strike-rack', 51, 228, 279, 44);
   assert.deepEqual(overlapProblems([laneL, phoneRack], 390, 844), ['feed div.cot-kill-lane.l on section.cot-strike-rack (279 x 44 px)']);
   assert.deepEqual(overlapProblems([box('.cot-kill-lane.l', 'div.cot-kill-lane.l', 0, 222, 330, 0.5), phoneRack], 390, 844), [], 'a lane holding no rows');
+
+  // the condition on a soft box (the feed, the map): the plan's ruled fallback only where it says no place cleared them
+  // (tier 1, as at 844x390 under the drone's feed), a fault where it claims a clear place (tier 0); never on a control
+  const laneR = box('.cot-kill-lane.r', 'div.cot-kill-lane.r', 500, 120, 344, 84);
+  const onLane = box('.cot-battle-notices .cot-c-notice', 'div.cot-c-notice.cot-air-incoming', 212, 163, 420, 60);
+  assert.deepEqual(overlapProblems([laneR, onLane], 844, 390), ['notice div.cot-c-notice.cot-air-incoming on div.cot-kill-lane.r (132 x 41 px)']);
+  assert.deepEqual(overlapProblems([laneR, onLane], 844, 390, { conditionTier: 1 }),
+    ['soft: notice div.cot-c-notice.cot-air-incoming on div.cot-kill-lane.r (132 x 41 px) (no place clears the soft boxes)']);
+  const rackUnder = box('.cot-strike-rack:not([hidden])', 'section.cot-strike-rack', 300, 180, 200, 44);
+  assert.deepEqual(overlapProblems([rackUnder, onLane], 844, 390, { conditionTier: 1 }),
+    ['notice div.cot-c-notice.cot-air-incoming on section.cot-strike-rack (200 x 43 px)'], 'a control is never soft');
+  const alertOnLane = box('.cot-alert.show', 'div.cot-alert.show', 600, 150, 136, 63);
+  assert.ok(overlapProblems([laneR, alertOnLane], 844, 390, { conditionTier: 1 })[0].startsWith('notice '), 'the event lane is not the guidance\'s');
 
   // off screen, and the deliberate layering
   assert.deepEqual(overlapProblems([box('.cot-dp', 'div.cot-dp', 1900, 1000, 60, 60)], 1920, 1080), ['offscreen: div.cot-dp']);

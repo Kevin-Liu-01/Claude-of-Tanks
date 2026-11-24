@@ -441,7 +441,17 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** A queued medal card whose place clears the battle sight only: the scope flag decides whether it shows. */
   let medalScopeSensitive = false;
   const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
-  const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
+  // (notices-276) the alert is transient, except that a new height is a plan input: the touch plan seats the condition
+  // lane under it at the height it shows (its words wrap to three lines), and planned at its 40 px reserve before it
+  // grew, the condition stood 17 px into it and the feed under it at 390x844, the overlap probe)
+  const alertHeights = new WeakMap<Element, number>();
+  const planInput = (target: Element, height = 0) => {
+    if (target.classList?.contains('cot-alert')) {
+      if (height > 0 && Math.abs((alertHeights.get(target) ?? 0) - height) > 1) { alertHeights.set(target, height); planInputs = true; }
+      return;
+    }
+    if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true;
+  };
   const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
     'systems-top', 'systems-width', 'systems-left', 'objective-top', 'objective-bottom', 'objective-width', 'objective-left',
     'report-right', 'flight-right-clearance', 'tray-shift']);
@@ -455,7 +465,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const resize = new ResizeObserver((entries) => {
     if (entries?.length) {
       for (const entry of entries) {
-        planInput(entry.target);
+        planInput(entry.target, entry.contentRect?.height ?? 0);
         const has = !!entry.contentRect && entry.contentRect.width > 0 && entry.contentRect.height > 0;
         if (has && sized.get(entry.target) === false && (entry.target as HTMLElement).matches?.(SEATED_ON_ARRIVAL) && (entry.target as HTMLElement).style) {
           const node = entry.target as HTMLElement;
@@ -1932,9 +1942,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (notices-276) a lane ends 8 px over the first control a view brings under its anchor within its reach (hudViewControls.ts:
     // the binoculars' call-in rack and readout ran under the left lane at 390x844, the rack under the right one at 844x390);
     // one that covers the anchor holds the lane's rows until it goes
+    // (and, on touch, the scope's vision plate, which stands left of the sight there: the left lane ran 51 px down onto it at
+    // 844x390, the overlap probe's sniper+notices; on mouse the plate's seat already keeps off the lane's rows, seatScopeVision)
+    const laneControls = touch && scopeVision ? [...viewControls, scopeVision] : viewControls;
     const controlFloor = (anchor: number, x0: number, x1: number): number => {
       let floor = Infinity;
-      for (const box of viewControls) {
+      for (const box of laneControls) {
         if (box.right <= x0 || box.left >= x1 || box.bottom <= anchor) continue;
         floor = Math.min(floor, box.top <= anchor ? anchor : box.top - 8);
       }

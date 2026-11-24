@@ -37,7 +37,8 @@ for (const bad of [undefined, null, '', 'b52', 'tank:', 'tank:../x', 'tank:a b',
 // ---- the kit's markup: one layer, decorative, after the words; none without art
 {
   const html = noticeContentHtml({ text: 'Gunship overhead', detail: '4 s', art: 'ac130' });
-  assert.match(html, /<span class="cot-c-notice__art" aria-hidden="true"><img src="\/icons\/thumbs\/ac130_angle\.webp" alt="" decoding="async" draggable="false"><\/span>$/);
+  // (first: positioned, it paints under the parts after it without a z-index, notices.css)
+  assert.match(html, /^<span class="cot-c-notice__art" aria-hidden="true"><img src="\/icons\/thumbs\/ac130_angle\.webp" alt="" decoding="async" draggable="false"><\/span><span class="cot-c-notice__glyph">/);
   assert.doesNotMatch(noticeContentHtml({ text: 'Fire' }), /cot-c-notice__art/);
   assert.doesNotMatch(noticeContentHtml({ text: 'x', art: 'tank:../x' }), /cot-c-notice__art/, 'an id that names no render draws none');
 }
@@ -45,9 +46,10 @@ for (const bad of [undefined, null, '', 'b52', 'tank:', 'tank:../x', 'tank:a b',
 // ---- one rule: the mask from transparent into the picture, in the kit's sheet alone
 {
   const sheet = readFileSync('src/ui/components/notices.css', 'utf8');
-  const rule = sheet.match(/\.cot-c-notice__art img\{([^}]*)\}/);
-  assert.ok(rule, 'the kit styles the picture');
-  assert.match(rule[1], /mask-image:linear-gradient\(to right,transparent,#000 \d+%\)/, 'masked from transparent into the image');
+  const rule = sheet.match(/\.cot-c-notice__art\{([^}]*)\}/);
+  assert.ok(rule, 'the kit styles the layer');
+  assert.match(rule[1], /mask-image:linear-gradient\(to right,transparent,black \d+%\)/, 'masked from transparent into the image');
+  assert.match(rule[1], /display:var\(--notice-art,block\)/, 'a seat hides it by the kit\'s variable, never by a rule of its own');
   // (the sheet's one rule, the kit's markup, and this module's own comment)
   const OWNERS = ['src/ui/components/notices.css', 'src/ui/components/notice.ts', 'src/ui/components/noticeArt.ts'];
   const others = [];

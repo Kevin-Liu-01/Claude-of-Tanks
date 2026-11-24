@@ -33,6 +33,13 @@ export const ALLOWED = Object.freeze([
 export const PLANTS = Object.freeze({ seen: 'cot-strike-rack', unseen: 'cot-planted-control' });
 export const PLANT_SELECTOR = `.${PLANTS.unseen}`;
 
+/** What the guidance plan may lay the condition lane's notice over when no place clears it (battleHudLayout.ts GUIDANCE_SOFT:
+ *  the map, the ears, the feed lanes and ribbon, the side toasts). The plan says so by the tier it records
+ *  (body[data-hud-guidance-plan] toasts[4] = 1: clear of the hard boxes alone); a notice on one of these at tier 0 is a fault. */
+export const SOFT = Object.freeze(['.cot-minimap', '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-ribbon.on',
+  '.cot-si-toasthost']);
+const CONDITION = NOTICES[1];
+
 const allowed = (a, b) => ALLOWED.some(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
 const isNotice = (box) => NOTICES.includes(box.selector);
 const isFeed = (box) => FEED.includes(box.selector);
@@ -55,8 +62,10 @@ export function measureInstruments(instruments) {
 }
 
 /** The problems with one state's boxes in a width x height window: off screen, or two instruments crossing (a pair with a
- *  notice in it says so first, "notice ... on ...", and a feed row on anything else "feed ... on ..."). Empty is a pass. */
-export function overlapProblems(rects, width, height) {
+ *  notice in it says so first, "notice ... on ...", and a feed row on anything else "feed ... on ..."). Empty is a pass.
+ *  `conditionTier` is the tier the guidance plan cleared for the condition lane's notice: at 1 (no place cleared the soft
+ *  boxes) its crossing of a SOFT box is the plan's ruled fallback, reported as "soft: ..." beside the verdict. */
+export function overlapProblems(rects, width, height, { conditionTier = 0 } = {}) {
   const problems = [];
   for (let i = 0; i < rects.length; i++) {
     const a = rects[i];
@@ -67,6 +76,10 @@ export function overlapProblems(rects, width, height) {
       const size = `(${Math.round(w)} x ${Math.round(h)} px)`;
       const [n, o] = isNotice(b) && !isNotice(a) ? [b, a] : [a, b];
       const [f, c] = isFeed(b) && !isFeed(a) ? [b, a] : [a, b];
+      if (isNotice(n) && n.selector === CONDITION && conditionTier === 1 && SOFT.includes(o.selector) && !isNotice(o)) {
+        problems.push(`soft: notice ${n.name} on ${o.name} ${size} (no place clears the soft boxes)`);
+        continue;
+      }
       problems.push(isNotice(n) ? `notice ${n.name} on ${o.name} ${size}`
         : isFeed(f) && !isFeed(c) ? `feed ${f.name} on ${c.name} ${size}` : `${a.name} overlaps ${b.name} ${size}`);
     }

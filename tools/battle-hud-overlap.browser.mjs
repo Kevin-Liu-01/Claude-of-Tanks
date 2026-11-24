@@ -83,6 +83,9 @@ const plantOver = (className) => {
   return [Math.round(x0), Math.round(y0), Math.round(x1), Math.round(y1)];
 };
 
+/** The tier the guidance plan cleared for the condition lane's notice this pass (battleHudLayout.ts writeGuidance), or -1. */
+const guidanceToastTier = () => { try { return JSON.parse(document.body.dataset.hudGuidancePlan ?? '{}').toasts?.[4] ?? -1; } catch { return -1; } };
+
 const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
 const report = [];
 let failures = 0;
@@ -109,7 +112,7 @@ try {
       // the layout's planners settle over a few frames (and the Watch bar's chunk lands)
       await settleFrames(page, 600);
       const rects = await settledRects(page, INSTRUMENTS);
-      const all = overlapProblems(rects, width, height);
+      const all = overlapProblems(rects, width, height, { conditionTier: await page.evaluate(guidanceToastTier) });
       // (a <state>+notices run judges the notices and the feed against everything; the state's own control-on-control
       // overlaps are its plain run's verdict, reported here as `others`)
       const problems = notices ? all.filter((p) => p.startsWith('notice ') || p.startsWith('feed ') || p.startsWith('offscreen: div.cot-alert')
@@ -145,7 +148,7 @@ try {
           const at = await page.evaluate(plantOver, PLANTS[kind]);
           await settleFrames(page, 400);
           const planted = await settledRects(page, [...INSTRUMENTS, PLANT_SELECTOR]);
-          const found = overlapProblems(planted, width, height).filter((p) => p.startsWith('notice ') && p.includes('planted'));
+          const found = overlapProblems(planted, width, height, { conditionTier: await page.evaluate(guidanceToastTier) }).filter((p) => p.startsWith('notice ') && p.includes('planted'));
           const caught = found.some((p) => p.startsWith('notice '));
           plants[kind] = { at, found, coverage: noticeCoverage(planted, await page.evaluate(() => document.body.dataset.hudGuidance ?? '')) };
           if (shots) await page.screenshot({ path: resolve(out, `${name}-${label}-plant-${kind}.png`) });

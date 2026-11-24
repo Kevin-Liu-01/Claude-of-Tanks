@@ -62,13 +62,13 @@ interface StaticAction {
  *  event lane (battleNoticeEvents.ts) draws its events with it inside the planners' alert seat. */
 export function noticeContentHtml(options: NoticeContent): string {
   const severity = options.severity ?? 'info';
-  return `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
+  // (the art first: absolutely placed, it paints before the parts that follow it, over the host's plate, notices.css)
+  return noticeArtHtml(options.art) + `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
     + `<span class="cot-c-notice__body"><span class="cot-c-notice__text">${esc(options.text)}</span>`
     + `${options.detailHtml ? `<span class="cot-c-notice__detail">${options.detailHtml}</span>`
       : options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`
     + (options.media ? `<span class="cot-c-notice__media" role="img" aria-label="${esc(options.media.label)}" title="${esc(options.media.label)}">`
-      + `${options.media.svg}</span>` : '')
-    + noticeArtHtml(options.art);
+      + `${options.media.svg}</span>` : '');
 }
 
 /** The art's layer: an in-flow spacer that keeps the words off the picture's solid part, holding the picture itself, which
