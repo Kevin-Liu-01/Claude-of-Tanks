@@ -1,10 +1,12 @@
 // Shared authoring coordinates for visible cassettes and finite combat plates.
 // Open cage bars deliberately do not acquire an invisible armor sheet.
+import {PL01_GLACIS_FOLD,PL01_GLACIS_NOSE} from './pl01HullLine.ts';
 export type EscortFieldKit = {inner:number;outer:number;rear:number;front:number;top:number;hem:number;panels:number;
   glacis?:readonly [rearZ:number,rearY:number,frontZ:number,frontY:number];cageNoseSetback?:number};
 export const ESCORT_FIELD_KITS = {
   pl01_105:{inner:1.87,outer:2.08,rear:-3.28,front:3.18,top:1.96,hem:1.11,panels:7,
-    glacis:[1.30,1.975,3.425,1.46],cageNoseSetback:.65},
+    // the hull's own upper glacis (fold to nose), so the kit's top cut can never drift from the deck the skirts follow
+    glacis:[...PL01_GLACIS_FOLD,...PL01_GLACIS_NOSE],cageNoseSetback:.65},
   upior:{inner:1.45,outer:1.64,rear:-2.26,front:2.25,top:1.43,hem:.88,panels:6},
 } satisfies Record<string,EscortFieldKit>;
 export function escortKitTop(c:EscortFieldKit,z:number):number {
