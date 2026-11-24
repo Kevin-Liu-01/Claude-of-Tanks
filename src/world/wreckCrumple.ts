@@ -107,10 +107,13 @@ function frameBox(meshes: THREE.Mesh[], toFrame: THREE.Matrix4, rootInv: THREE.M
 
 function segments(rng: () => number, n: number, z0: number, z1: number, halfMin: number, halfMax: number, ampMin: number,
   ampMax: number): Segment[] {
+  // (inherited-reds-276) each run keeps a slot of the span to itself: runs() sums what overlaps, so two runs drawn over
+  // one stretch stacked their amplitudes past ampMax (an M1A1 HC skirt swung out 1.07 rad on a 0.6 rad plan, 1.16 m)
   const list: Segment[] = [];
+  const slot = (z1 - z0) / n;
   for (let i = 0; i < n; i++) {
-    const half = halfMin + (halfMax - halfMin) * rng();
-    list.push({ zc: z0 + half + (z1 - z0 - 2 * half) * rng(), half, amp: ampMin + (ampMax - ampMin) * rng() });
+    const half = Math.min(halfMin + (halfMax - halfMin) * rng(), slot / 2);
+    list.push({ zc: z0 + i * slot + half + (slot - 2 * half) * rng(), half, amp: ampMin + (ampMax - ampMin) * rng() });
   }
   return list;
 }

@@ -71,6 +71,8 @@ interface ArmorPlate {
   /** 266: a main plate measured on the drawn build (the KF51 EVO's mantlet on its gun slot), already in its frame: the
    * calibration leaves it in place and only the faces over it read it (prepareCollisionCells) */
   drawn?: boolean;
+  /** (inherited-reds-276) a hull front zoned by height, not by facing (specHelpers ArmorPlate.frontZone, frontZonePlate) */
+  frontZone?: 'upper' | 'lower';
 }
 
 interface AnatomyShapeEllipsoid {
@@ -444,12 +446,44 @@ function gunFacePlate(
   return best;
 }
 
+/** A hull's height-zoned front (ArmorPlate.frontZone): its upper and lower plates and the height between them. */
+interface FrontZoneContext {
+  upper: PlateDescriptor;
+  lower: PlateDescriptor;
+  /** The lower plate's top edge. */
+  splitY: number;
+  /** The upper plate's rear edge: a forward face behind it is not the front's. */
+  rearZ: number;
+}
+
+const FRONT_ZONE_MIN_NORMAL_Z = 0.2;
+
+function frontZoneContext(descriptors: readonly PlateDescriptor[]): FrontZoneContext | null {
+  const upper = descriptors.filter((descriptor) => descriptor.plate.frontZone === 'upper');
+  const lower = descriptors.filter((descriptor) => descriptor.plate.frontZone === 'lower');
+  if (upper.length !== 1 || lower.length !== 1) return null;
+  return { upper: upper[0], lower: lower[0], splitY: lower[0].max[1], rearZ: upper[0].min[2] };
+}
+
+/**
+ * (inherited-reds-276; Main 2026-11-23: the S-tank's beak underside is the wedge's) A forward face (facing more forward
+ * than sideways, ahead of the upper plate's rear edge) of a height-zoned front reads by where it stands, not by its facing: above the lower plate's top edge the upper plate, below it the
+ * lower. Facing alone handed a down-facing beak underside to the lower front (nearestPlate's alignment floor excludes
+ * the upper plate, which faces up), which moved with every casemate change.
+ */
+function frontZonePlate(faceCenter: readonly number[], faceNormal: readonly number[], zone: FrontZoneContext): ArmorPlate | null {
+  // forward, and more forward than sideways: a front corner's side faces stay the sides'
+  if (faceNormal[2] < FRONT_ZONE_MIN_NORMAL_Z || Math.abs(faceNormal[0]) > faceNormal[2] || faceCenter[2] < zone.rearZ) return null;
+  return faceCenter[1] >= zone.splitY ? zone.upper.plate : zone.lower.plate;
+}
+
 function collisionFaceFromTriangle(
   sourceIndices: readonly number[],
   vertices: Vec3[],
   cellCenter: readonly number[],
   descriptors: readonly PlateDescriptor[],
   gun: GunFaceContext | null = null,
+  front: FrontZoneContext | null = null,
 ): CollisionFace | null {
   if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
   const indices = sourceIndices.slice();
@@ -471,7 +505,8 @@ function collisionFaceFromTriangle(
     [indices[1], indices[2]] = [indices[2], indices[1]];
     normal = [-normal[0], -normal[1], -normal[2]];
   }
-  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates)) ?? nearestPlate(faceCenter, normal, descriptors);
+  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates))
+    ?? (front && frontZonePlate(faceCenter, normal, front)) ?? nearestPlate(faceCenter, normal, descriptors);
   if (!plate) return null;
   return {
     indices,
@@ -514,13 +549,14 @@ function collisionCellFromCalibration(
   source: AnatomyCalibrationCell,
   descriptors: readonly PlateDescriptor[],
   gun: GunFaceContext | null = null,
+  front: FrontZoneContext | null = null,
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
   const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
-    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun);
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun, front);
     if (face) faces.push(face);
   }
   if (faces.length < 4) return null;
@@ -581,9 +617,11 @@ function prepareCollisionCells(
   // face's nearest guess (the KF51 EVO's cheek noses face below every plate's alignment and kept the front's read)
   const nearest = descriptors.some((descriptor) => !descriptor.plate.drawn)
     ? descriptors.filter((descriptor) => !descriptor.plate.drawn) : descriptors;
+  // a front zoned by height (ArmorPlate.frontZone) reads its forward faces by where they stand
+  const front = frontZoneContext(descriptors);
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, nearest, gun);
+    const cell = collisionCellFromCalibration(source, nearest, gun, front);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);

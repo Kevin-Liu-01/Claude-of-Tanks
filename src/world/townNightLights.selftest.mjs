@@ -51,7 +51,9 @@ await buildWorldCollisionData('urban', { inspect: ({ dressing }) => {
   dressing.group.traverse((o) => {
     if (!o.isMesh) return;
     if (o.name === 'destructible-lamp' && o.isInstancedMesh) lamps += o.count;
-    if (o.name === 'props-bucket-curtain') panes += litVertices(o.geometry);
+    // (373190cbfa, 2026-10-31: a regional window's stack is layered) the curtain bucket draws as its own mesh and its pane
+    // stack's layers (props-bucket-curtain-stack1, -stack2), all in the bucket's one night-glow material
+    if (/^props-bucket-curtain(-stack\d)?$/.test(o.name)) panes += litVertices(o.geometry);
   });
 } });
 // (226 before the planned rows: 20 lamps; the planned rows without their furniture: 2, the town's own fixtures)

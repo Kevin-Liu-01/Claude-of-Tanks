@@ -19,6 +19,8 @@ export interface PlateOptions {
   keMm?: number;
   kind?: string;
   moduleLink?: ModuleId;
+  /** A hull front split by height, not by facing (see ArmorPlate.frontZone). */
+  frontZone?: 'upper' | 'lower';
 }
 
 export interface ArmorPlate {
@@ -37,6 +39,14 @@ export interface ArmorPlate {
   gunFollow: boolean;
   /** Opt-in convex planar outline; the standard constructors still emit quads. */
   convexPolygon?: boolean;
+  /**
+   * (inherited-reds-276) A hull front zoned by height: where a hull has an 'upper' and a 'lower' plate, a forward collision
+   * face ahead of the upper plate's rear edge reads the upper plate when its centre stands above the lower plate's top
+   * edge, else the lower, whatever way it faces (combatAnatomy.ts frontZonePlate). The S-tanks' wedge: a beak's
+   * underside faces down-forward and read the lower front by its facing once 0e6edc9b66's shared casemate put the 103B's
+   * at centre height.
+   */
+  frontZone?: 'upper' | 'lower';
   surfaceGroup?: string;
   /** Exact cut-edge ownership for adjacent outer and backing sheets. */
   openEdges?: readonly number[];
@@ -106,6 +116,7 @@ export function plate(
     moduleLink: o.moduleLink || null,
     gunFollow: !!o.gunFollow,
     ...(o.droneInterception !== undefined ? { droneInterception: o.droneInterception } : {}),
+    ...(o.frontZone ? { frontZone: o.frontZone } : {}),
   };
 }
 

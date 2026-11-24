@@ -1,22 +1,19 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { createRequire, stripTypeScriptTypes } from 'node:module';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { resolveDeviceTier, texSize } from '../engine/quality.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
-// round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
-// the sandboxed material steps take the real functions
-import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { groundSurfaceUniformValues } from './groundSurfaces.ts';
-// ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
-// height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
-import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+// The material's ground-redux, ground-surface, land-use and built-environment tables are terrain.ts's own imports: the
+// slice takes the real modules (tools/source-slice.test-support.mjs; inherited-reds-276: builtEnvironmentFor, which
+// 1b2062e514 gave the material, was missing from the hand-kept list). The build wrappers' height-field hook
+// (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing).
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the 465a68f7c synchronous ground painter and the
@@ -25,12 +22,11 @@ import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with
 // settings and pre-normal heights exactly, in row-major noise order, with no partial texture publication.
 // Native Canvas2D is mandatory. No upload-only stub or rasterizer skip is used.
 const source = terrainSourceText();
-const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-function declaration(name, text = source) {
-  const tree = text === source ? ast : ts.createSourceFile('mutant.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const matches = tree.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === name);
-  assert.equal(matches.length, 1, `one actual owner: ${name}`);
-  return matches[0].getText(tree).replace(/^export /, '');
+const terrainUrl = new URL('./terrain.ts', import.meta.url), slices = new Map();
+/** terrain.ts (or a mutant of it) as a slice; one per text. */
+function terrainSlice(text = source) {
+  if (!slices.has(text)) slices.set(text, sourceSlice(terrainUrl, { text }));
+  return slices.get(text);
 }
 const saved = new Map(['document', 'ImageData', 'window', 'scheduler', 'requestAnimationFrame',
   'cancelAnimationFrame', 'setTimeout', 'clearTimeout'].map(key => [key, globalThis[key]]));
@@ -54,12 +50,12 @@ function fixture({ text = source, observe = null } = {}) {
     'selectTerrainLandformMask', 'snowRockHoldLine', 'createSplatMaterialSteps', 'stackLandUseBake', 'buildTerrainMeshes',
     // (perf-248) the shore and the folds the build and the ring worker share
     'createShoreAt', 'foldFieldSteps',
-    'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(name => declaration(name, text)).join('\n');
+    'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(name => terrainSlice(text).declaration(name)).join('\n');
   // The actual ground, wet selector, material, terrain generator and async
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;
   // real Three objects retain the material/texture identity boundary.
-  const create = new Function('THREE', 'SimplexNoise', 'texSize', 'torusNoise',
-    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
+  const create = (THREE, SimplexNoise, texSize, torusNoise, canvasToTexture, normalFromHeight, layer, own, state) =>
+    terrainSlice(text).compile({ THREE, SimplexNoise, texSize, torusNoise, canvasToTexture, normalFromHeight, layer, own, state }, `
     const attachTerrainLandUse = () => {};
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
@@ -94,8 +90,8 @@ function fixture({ text = source, observe = null } = {}) {
       state.pending = pending;
       try { return yield* pending; } finally { state.closes++; }
     };
-  `) + `return { sync: makeGroundLayer, steps: makeGroundLayerSteps,
-    wet: createWetSplatLayerSteps, build: buildTerrainMeshes, buildAsync: buildTerrainMeshesAsync };`);
+    return { sync: makeGroundLayer, steps: makeGroundLayerSteps,
+      wet: createWetSplatLayerSteps, build: buildTerrainMeshes, buildAsync: buildTerrainMeshesAsync };`);
   const api = create(THREE, SimplexNoise, texSize, (...args) => {
     observe?.(state.calls, args);
     state.calls++; state.time += 13 / (8 * texSize(256) * 2);
@@ -103,7 +99,7 @@ function fixture({ text = source, observe = null } = {}) {
   }, (...args) => own(textureFromRgbaPixels(...args)), (height, ...args) => {
     state.heights.push(height.slice());
     return own(normalTextureFromHeight(height, ...args));
-  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
+  }, layer, own, state);
   const sourcePreparation = { tryCreateLayer: layer, apply: () => Promise.resolve([]),
     cancel() { state.sourceCancels++; } };
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };

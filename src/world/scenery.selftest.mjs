@@ -723,7 +723,9 @@ assert.ok(pools > merge && works > pools, 'the field works build once the pools\
 assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the field walls\' print');
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
 // the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
-assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
+// (buildings-272, 6c9e9cbd7e: a lava wall is laid on the field print though its map's stone print is brick, Caldera's)
+assert.match(propsSource, /const brickWalls = sourcedStoneIsBrick\(mapId\) && P\.wallStyle !== 'lava';/, 'the brick print walls every brick-print map but a lava one');
+assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| brickWalls \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
 assert.match(propsSource, /wallstone: (?:dryStoneWallType\()?\{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/,
   'the wall pool draws the field print (in the dry-stone build since the r2 sweep: dryStoneWallType)');
 assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
@@ -737,7 +739,8 @@ assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} :
 assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
 assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
 assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
-assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
+// (buildings-272, b3c9ee1541: a lava bank's stones tumble from its foot's half-width)
+assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, (?:lava \? footHalf : )?thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
 assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');

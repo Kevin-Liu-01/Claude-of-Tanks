@@ -77,7 +77,7 @@ import { DESKTOP_FINE_CELLED_BUCKETS, FINE_CELLED_BUCKETS, PartSink } from './ma
 import type { LandmarkPlacement } from './landmarks/types.ts';
 import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWorks.ts'; // the field boundaries' works and their LOD
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
-import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
+import { sceneryClearances, type GroundCoverHole, type SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, sceneryLegacyCollisionTypes } from './maps/sceneryKit.ts';
 import {
@@ -9343,6 +9343,10 @@ ${snowCap ? `
         // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
         // against the low things, a kerb, a log, a crate on its side)
         if (hulkMeetsTallSolid(x, z, footHx, footHz, yaw)) return null;
+        // nor on an authored scenery feature's ground (sceneryPlan.ts sceneryClearances, the trees' keep-out): the scenery
+        // pass builds after the hulks and refuses a formation a hulk stands on (Olympus Basin's basalt blocks north-east of
+        // the station, under the wrecks-270 cast's PL-01 since 66c6c9e311)
+        if (hulkOnScenery(x, z, footHx, footHz, yaw)) return null;
         // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
         // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
@@ -9499,6 +9503,18 @@ ${snowCap ? `
             if (ob.max[0] < x - r || ob.min[0] > x + r || ob.max[2] < z - r || ob.min[2] > z + r) continue;
             for (const poly of shapePolygons(ob)) if (polygonGap(hull, poly).gap < -0.1) return true;
           }
+        }
+        return false;
+      }
+      const sceneryKeep = sceneryClearances((cfg as SceneryMapConfig | null)?.scenery);
+      function hulkOnScenery(x: number, z: number, hx: number, hz: number, yaw: number): boolean {
+        const s = Math.sin(yaw), c = Math.cos(yaw);
+        for (const disc of sceneryKeep) {
+          const dx = disc.x - x, dz = disc.z - z, r = Math.max(disc.halfWidth, disc.halfLength);
+          if (Math.abs(dx) > hx + hz + r || Math.abs(dz) > hx + hz + r) continue;
+          // the disc's centre in the hull's frame (hulkMeetsTallSolid's corners: u along (c, -s), v along (s, c))
+          const u = dx * c - dz * s, v = dx * s + dz * c;
+          if (Math.hypot(u - Math.max(-hx, Math.min(hx, u)), v - Math.max(-hz, Math.min(hz, v))) < r) return true;
         }
         return false;
       }

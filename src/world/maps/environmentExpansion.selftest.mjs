@@ -200,8 +200,9 @@ for (const config of maps) {
   assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
   // (wrecks-270) 8 to 12 hulks: the period's, or on a 1944 front today's armour of its nations (maps/wreckCasts.ts,
-  // mapQuality.selftest)
-  assert.ok(config.props.tankWrecks.count >= 8 && config.props.tankWrecks.count <= 12,
+  // mapQuality.selftest); a map the blind A/B reverted whole to base keeps main's five (35deb498cf, Orchard, 2026-11-09)
+  const wrecks = config.props.tankWrecks;
+  assert.ok(wrecks.base ? wrecks.count === 5 : wrecks.count >= 8 && wrecks.count <= 12,
     `${label}: the cast's wreck budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);

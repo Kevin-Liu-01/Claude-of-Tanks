@@ -300,7 +300,7 @@
         "aimTimeS": 1.25
       },
       "armorCeilingsMm": {
-        "hullKe": 480,
+        "hullKe": 450,
         "turretKe": 480
       },
       "guidedWeapons": [
@@ -802,7 +802,7 @@
     {
       "id": "challenger3_td",
       "revision": "262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)",
-      "tier": 8,
+      "tier": 10,
       "era": "modern",
       "role": "mbt",
       "hp": 2550,
@@ -836,7 +836,7 @@
     {
       "id": "challenger3_td_rws",
       "revision": "262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)",
-      "tier": 8,
+      "tier": 10,
       "era": "modern",
       "role": "mbt",
       "hp": 2550,
@@ -870,7 +870,7 @@
     {
       "id": "challenger_x_sleek",
       "revision": "a x1.4 gun slot: the Challenger 1's upright 624 mm slot was pierced by every VIII round",
-      "tier": 8,
+      "tier": 7,
       "era": "cold-war",
       "role": "mbt",
       "hp": 2350,
@@ -1881,6 +1881,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "leopard_as1",
+      "revision": "269: the Leopard AS1: the Leopard 1A3 DK's welded turret, hull and L7A3 with the SABCA laser fire control, 42.4 t on 830 hp",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1500,
+      "powerWeight": 19.58,
+      "speedKmh": [
+        65,
+        25
+      ],
+      "traverseDegS": [
+        44,
+        38.2
+      ],
+      "primary": {
+        "damage": 390,
+        "penetrationMm": [
+          404,
+          368,
+          331
+        ],
+        "reloadS": 5.5,
+        "sustainedDpm": 4254.55,
+        "accuracy": 0.291,
+        "aimTimeS": 1.84
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "lrmv_lynx",
       "revision": "bring the 30 mm round to the modern 30 mm penetration",
       "tier": 5,
@@ -1913,6 +1947,169 @@
         "turretKe": 140
       },
       "guidedWeapons": []
+    },
+    {
+      "id": "m113a1_fsv",
+      "revision": "269: the M113A1 FSV: the aluminium M113A1 under the Saladin turret, its 76 mm L5A1 firing HESH and HE, 11.9 t on 212 hp",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "light",
+      "hp": 900,
+      "powerWeight": 17.82,
+      "speedKmh": [
+        64,
+        14
+      ],
+      "traverseDegS": [
+        58.3,
+        40.3
+      ],
+      "primary": {
+        "damage": 320,
+        "penetrationMm": [
+          110,
+          110,
+          110
+        ],
+        "reloadS": 5.2,
+        "sustainedDpm": 3692.31,
+        "accuracy": 0.36,
+        "aimTimeS": 1.88
+      },
+      "armorCeilingsMm": {
+        "hullKe": 44,
+        "turretKe": 32
+      },
+      "guidedWeapons": [
+        {
+          "name": "BGM-71A TOW",
+          "damage": 320,
+          "penetrationMm": 430,
+          "reloadS": 3,
+          "count": 6,
+          "velocityMps": 195
+        }
+      ]
+    },
+    {
+      "id": "m113a1_mrv",
+      "revision": "269: the M113A1 MRV: the M113A1 under the Scorpion turret, its 76 mm L23A1 firing HESH and HE, 12.5 t on 212 hp",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "light",
+      "hp": 900,
+      "powerWeight": 16.96,
+      "speedKmh": [
+        62,
+        14
+      ],
+      "traverseDegS": [
+        63.8,
+        40.3
+      ],
+      "primary": {
+        "damage": 320,
+        "penetrationMm": [
+          110,
+          110,
+          110
+        ],
+        "reloadS": 5,
+        "sustainedDpm": 3840,
+        "accuracy": 0.367,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 44,
+        "turretKe": 25
+      },
+      "guidedWeapons": [
+        {
+          "name": "BGM-71A TOW",
+          "damage": 320,
+          "penetrationMm": 430,
+          "reloadS": 3,
+          "count": 6,
+          "velocityMps": 195
+        }
+      ]
+    },
+    {
+      "id": "m113a3",
+      "revision": "269: the US M113A3: the Ares APC's .50 and fire control on the aluminium M113, 12.3 t on 275 hp",
+      "tier": 2,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 1500,
+      "powerWeight": 22.36,
+      "speedKmh": [
+        66,
+        14
+      ],
+      "traverseDegS": [
+        61.6,
+        66
+      ],
+      "primary": {
+        "damage": 24,
+        "penetrationMm": [
+          80,
+          70,
+          55
+        ],
+        "reloadS": 0.14,
+        "sustainedDpm": 10285.71,
+        "accuracy": 0.27,
+        "aimTimeS": 0.7
+      },
+      "armorCeilingsMm": {
+        "hullKe": 44,
+        "turretKe": 12
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m113as4",
+      "revision": "269: the M113AS4: the stretched M113 under ceramic appliqué and the Tenix turret's 12.7 mm M2, 18 t on 350 hp",
+      "tier": 3,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 1300,
+      "powerWeight": 19.44,
+      "speedKmh": [
+        65,
+        14
+      ],
+      "traverseDegS": [
+        61.6,
+        66
+      ],
+      "primary": {
+        "damage": 24,
+        "penetrationMm": [
+          80,
+          70,
+          55
+        ],
+        "reloadS": 0.14,
+        "sustainedDpm": 10285.71,
+        "accuracy": 0.27,
+        "aimTimeS": 0.7
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 30
+      },
+      "guidedWeapons": [
+        {
+          "name": "BGM-71E TOW-2A",
+          "damage": 450,
+          "penetrationMm": 900,
+          "reloadS": 2.8,
+          "count": 6,
+          "velocityMps": 195
+        }
+      ]
     },
     {
       "id": "m1a1",
@@ -2017,6 +2214,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "m1a1_aim_sa_aus",
+      "revision": "269: the M1A1 AIM SA: the M1A1 with export armour, a quicker fire control and the tungsten KEW-A2, 61.3 t on 1,500 hp",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 24.47,
+      "speedKmh": [
+        67,
+        25
+      ],
+      "traverseDegS": [
+        44.9,
+        42.8
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          740,
+          680,
+          615
+        ],
+        "reloadS": 6.2,
+        "sustainedDpm": 5032.26,
+        "accuracy": 0.31,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 516,
+        "turretKe": 731
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "m1a1ha",
       "revision": "a x2 mantlet and 2,500 HP: its upright gun face read under 470 mm at VIII",
       "tier": 8,
@@ -2047,6 +2278,40 @@
       "armorCeilingsMm": {
         "hullKe": 516,
         "turretKe": 731
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m1a2_sepv3_aus",
+      "revision": "269: the Australian M1A2 SEPv3: the SEPv3 without ARAT or Trophy, its KEW-A2 tungsten round, 66 t on 1,500 hp",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2650,
+      "powerWeight": 22.73,
+      "speedKmh": [
+        67,
+        25
+      ],
+      "traverseDegS": [
+        44.9,
+        40.8
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          740,
+          680,
+          615
+        ],
+        "reloadS": 5.8,
+        "sustainedDpm": 5379.31,
+        "accuracy": 0.3,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 600,
+        "turretKe": 850
       },
       "guidedWeapons": []
     },
@@ -2375,6 +2640,74 @@
       "guidedWeapons": []
     },
     {
+      "id": "magach6b",
+      "revision": "267: the new Magach 6B shares the M60A1 package with its Blazer boxes",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2100,
+      "powerWeight": 17.65,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 440,
+        "penetrationMm": [
+          570,
+          530,
+          480
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 3882.35,
+        "accuracy": 0.3,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "magach7c",
+      "revision": "267: the new Magach 7C: the M60A1 package with its passive armour, skirts and the 908 hp AVDS-1790-5A",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2200,
+      "powerWeight": 16.51,
+      "speedKmh": [
+        48,
+        18
+      ],
+      "traverseDegS": [
+        40.8,
+        36.7
+      ],
+      "primary": {
+        "damage": 440,
+        "penetrationMm": [
+          570,
+          530,
+          480
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 3882.35,
+        "accuracy": 0.29,
+        "aimTimeS": 1.71
+      },
+      "armorCeilingsMm": {
+        "hullKe": 88,
+        "turretKe": 150
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "marder1a3",
       "revision": "lift the 20 mm round over the shown-tier IFV penetration floor",
       "tier": 2,
@@ -2584,6 +2917,108 @@
       "armorCeilingsMm": {
         "hullKe": 900,
         "turretKe": 300
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "olifant_mk1",
+      "revision": "269: the Olifant Mk 1: the 20-pdr Mk 5 with the 750 hp AVDS diesel, 56 t, and the laser fire control",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1500,
+      "powerWeight": 13.39,
+      "speedKmh": [
+        45,
+        14
+      ],
+      "traverseDegS": [
+        28.6,
+        24.5
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          488,
+          444,
+          400
+        ],
+        "reloadS": 7.1,
+        "sustainedDpm": 4056.34,
+        "accuracy": 0.285,
+        "aimTimeS": 2.11
+      },
+      "armorCeilingsMm": {
+        "hullKe": 315,
+        "turretKe": 399
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "olifant_mk1a",
+      "revision": "269: the Olifant Mk 1A: the Mk 5/2's 105 mm hull with the 750 hp AVDS, 56 t, the stabilised GT3 and its APFSDS a step under the Mk 2's",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1950,
+      "powerWeight": 13.39,
+      "speedKmh": [
+        45,
+        14
+      ],
+      "traverseDegS": [
+        28.6,
+        26.5
+      ],
+      "primary": {
+        "damage": 420,
+        "penetrationMm": [
+          500,
+          468,
+          436
+        ],
+        "reloadS": 6.9,
+        "sustainedDpm": 3652.17,
+        "accuracy": 0.28,
+        "aimTimeS": 1.91
+      },
+      "armorCeilingsMm": {
+        "hullKe": 300,
+        "turretKe": 380
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "olifant_mk1b",
+      "revision": "269: the Olifant Mk 1B: the Mk 2 without its thermal fire control, 900 hp, its turret cheeks and rounds a step under the Mk 2's",
+      "tier": 3,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2000,
+      "powerWeight": 15.25,
+      "speedKmh": [
+        58,
+        18
+      ],
+      "traverseDegS": [
+        28.6,
+        26.5
+      ],
+      "primary": {
+        "damage": 420,
+        "penetrationMm": [
+          510,
+          480,
+          450
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3600,
+        "accuracy": 0.27,
+        "aimTimeS": 1.86
+      },
+      "armorCeilingsMm": {
+        "hullKe": 400,
+        "turretKe": 480
       },
       "guidedWeapons": []
     },
@@ -2833,6 +3268,83 @@
           "velocityMps": 210
         }
       ]
+    },
+    {
+      "id": "redback",
+      "revision": "269: the AS21 Redback: the Puma S1's footing (30 mm, Spike LR2, Iron Fist hard-kill) on 42 t and 1,000 hp",
+      "tier": 6,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 2700,
+      "powerWeight": 23.81,
+      "speedKmh": [
+        65,
+        30
+      ],
+      "traverseDegS": [
+        47,
+        72.1
+      ],
+      "primary": {
+        "damage": 95,
+        "penetrationMm": [
+          245,
+          224,
+          202
+        ],
+        "reloadS": 0.28,
+        "sustainedDpm": 20357.14,
+        "accuracy": 0.252,
+        "aimTimeS": 1.05
+      },
+      "armorCeilingsMm": {
+        "hullKe": 285,
+        "turretKe": 285
+      },
+      "guidedWeapons": [
+        {
+          "name": "Spike LR2",
+          "damage": 680,
+          "penetrationMm": 900,
+          "reloadS": 2.25,
+          "count": 8,
+          "velocityMps": 180
+        }
+      ]
+    },
+    {
+      "id": "semel",
+      "revision": "269: the Semel: the Strv 81's Mk 5 hull, armour and 20-pdr Type B under the 810 hp Continental petrol engine",
+      "tier": 2,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1450,
+      "powerWeight": 15.64,
+      "speedKmh": [
+        42,
+        13
+      ],
+      "traverseDegS": [
+        28.6,
+        24.5
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          488,
+          444,
+          400
+        ],
+        "reloadS": 7.1,
+        "sustainedDpm": 4056.34,
+        "accuracy": 0.32,
+        "aimTimeS": 2.35
+      },
+      "armorCeilingsMm": {
+        "hullKe": 315,
+        "turretKe": 399
+      },
+      "guidedWeapons": []
     },
     {
       "id": "shot_kal",
@@ -3392,7 +3904,7 @@
       },
       "armorCeilingsMm": {
         "hullKe": 450,
-        "turretKe": 700
+        "turretKe": 480
       },
       "guidedWeapons": []
     },
@@ -3731,7 +4243,7 @@
         "aimTimeS": 2.2
       },
       "armorCeilingsMm": {
-        "hullKe": 450,
+        "hullKe": 480,
         "turretKe": 550
       },
       "guidedWeapons": []
@@ -3937,6 +4449,40 @@
       "armorCeilingsMm": {
         "hullKe": 448,
         "turretKe": 560
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "ttd",
+      "revision": "269: the TTD: 58.3 t on 1,234 hp, the GT3 105 mm with the Mk 2's rounds, spaced armour at the IV footing over a 750 mm glacis",
+      "tier": 3,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2200,
+      "powerWeight": 21.17,
+      "speedKmh": [
+        71,
+        30
+      ],
+      "traverseDegS": [
+        32.6,
+        36.7
+      ],
+      "primary": {
+        "damage": 420,
+        "penetrationMm": [
+          520,
+          490,
+          460
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 3937.5,
+        "accuracy": 0.24,
+        "aimTimeS": 1.62
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 520
       },
       "guidedWeapons": []
     },
@@ -4506,15 +5052,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 5,
-      "draws": 2,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
       "aScore": 0.5,
-      "averageDurationS": 36.98,
-      "averageAEndHp": 285.17,
-      "averageBEndHp": 285.17,
-      "averageADamage": 2363.75,
-      "averageBDamage": 2363.75
+      "averageDurationS": 22.58,
+      "averageAEndHp": 206.42,
+      "averageBEndHp": 206.42,
+      "averageADamage": 2243.58,
+      "averageBDamage": 2243.58
     },
     {
       "id": "moving-mirror-control",
@@ -4534,15 +5080,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 4,
-      "bWins": 4,
-      "draws": 4,
+      "aWins": 3,
+      "bWins": 3,
+      "draws": 6,
       "aScore": 0.5,
-      "averageDurationS": 33.33,
-      "averageAEndHp": 319.42,
-      "averageBEndHp": 319.42,
-      "averageADamage": 2384.25,
-      "averageBDamage": 2384.25
+      "averageDurationS": 24.33,
+      "averageAEndHp": 76.83,
+      "averageBEndHp": 76.83,
+      "averageADamage": 2373.17,
+      "averageBDamage": 2373.17
     },
     {
       "id": "tier9-rifled-peers",
@@ -4566,18 +5112,18 @@
       "bWins": 3,
       "draws": 0,
       "aScore": 0.75,
-      "averageDurationS": 58.94,
-      "averageAEndHp": 1136.92,
-      "averageBEndHp": 315.58,
-      "averageADamage": 2395.33,
-      "averageBDamage": 1293.67
+      "averageDurationS": 60.33,
+      "averageAEndHp": 1139.58,
+      "averageBEndHp": 274.25,
+      "averageADamage": 2225.75,
+      "averageBDamage": 1210.42
     },
     {
       "id": "nextgen-challengers",
       "purpose": "Tier VIII Challenger 3 prototype against an M1A1 peer",
       "band": [
-        0.2,
-        0.8
+        1,
+        1
       ],
       "aId": "challenger3_proto",
       "bId": "m1a1_abrams_hc",
@@ -4590,22 +5136,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 12,
+      "bWins": 0,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 34.46,
-      "averageAEndHp": 182.08,
-      "averageBEndHp": 402,
-      "averageADamage": 2164.67,
-      "averageBDamage": 2550.25
+      "aScore": 1,
+      "averageDurationS": 21.77,
+      "averageAEndHp": 1120,
+      "averageBEndHp": 0,
+      "averageADamage": 2450,
+      "averageBDamage": 1530
     },
     {
       "id": "nextgen-abrams-peer",
       "purpose": "next-generation US peer ceiling",
       "band": [
-        0.2,
-        0.8
+        0.833,
+        0.833
       ],
       "aId": "m1a3",
       "bId": "abramsx",
@@ -4618,22 +5164,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 10,
+      "bWins": 2,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 34.31,
-      "averageAEndHp": 469.83,
-      "averageBEndHp": 130.42,
-      "averageADamage": 2799.58,
-      "averageBDamage": 2338.33
+      "aScore": 0.833,
+      "averageDurationS": 31.69,
+      "averageAEndHp": 514.92,
+      "averageBEndHp": 50.17,
+      "averageADamage": 2699.83,
+      "averageBDamage": 2235.08
     },
     {
       "id": "t90-export-step",
       "purpose": "Tier VII T-90 against a K2 prototype peer",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "t90_1992",
       "bId": "k2b",
@@ -4646,15 +5192,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 0,
+      "bWins": 12,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 22,
-      "averageAEndHp": 235.08,
-      "averageBEndHp": 279.08,
-      "averageADamage": 2451.58,
-      "averageBDamage": 2458.5
+      "aScore": 0,
+      "averageDurationS": 23.09,
+      "averageAEndHp": 0,
+      "averageBEndHp": 672.67,
+      "averageADamage": 1927.33,
+      "averageBDamage": 2550
     },
     {
       "id": "chieftain-tier8",
@@ -4674,15 +5220,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 60.72,
-      "averageAEndHp": 280.75,
-      "averageBEndHp": 432.75,
-      "averageADamage": 1648.5,
-      "averageBDamage": 1872.83
+      "aScore": 0.417,
+      "averageDurationS": 38.49,
+      "averageAEndHp": 262.25,
+      "averageBEndHp": 494,
+      "averageADamage": 1506,
+      "averageBDamage": 1737.75
     },
     {
       "id": "k2-tier9-peer",
@@ -4702,15 +5248,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 37.5,
-      "averageAEndHp": 500,
-      "averageBEndHp": 231.5,
-      "averageADamage": 2256.92,
-      "averageBDamage": 2308.33
+      "aScore": 0.75,
+      "averageDurationS": 32.47,
+      "averageAEndHp": 487.42,
+      "averageBEndHp": 119.08,
+      "averageADamage": 2280.92,
+      "averageBDamage": 2212.58
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -4730,15 +5276,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 3,
-      "bWins": 9,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.25,
-      "averageDurationS": 29.45,
-      "averageAEndHp": 246.92,
-      "averageBEndHp": 526,
-      "averageADamage": 1831.08,
-      "averageBDamage": 2628.33
+      "aScore": 0.417,
+      "averageDurationS": 29.54,
+      "averageAEndHp": 180.33,
+      "averageBEndHp": 305.67,
+      "averageADamage": 1994.33,
+      "averageBDamage": 2519.67
     },
     {
       "id": "k2b-cross-tier",
@@ -4758,22 +5304,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 25.68,
-      "averageAEndHp": 289.08,
-      "averageBEndHp": 257.5,
-      "averageADamage": 2424.17,
-      "averageBDamage": 2371.67
+      "aScore": 0.667,
+      "averageDurationS": 21.02,
+      "averageAEndHp": 463.75,
+      "averageBEndHp": 45.75,
+      "averageADamage": 2354.25,
+      "averageBDamage": 2136.25
     },
     {
       "id": "proryv-tier10-peer",
       "purpose": "Tier X modern MBT peers",
       "band": [
-        0.2,
-        0.8
+        0.917,
+        0.917
       ],
       "aId": "t90m_proryv",
       "bId": "t90m",
@@ -4786,15 +5332,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 11,
+      "bWins": 1,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 59.37,
-      "averageAEndHp": 470.5,
-      "averageBEndHp": 175.5,
-      "averageADamage": 2654.17,
-      "averageBDamage": 2485.25
+      "aScore": 0.917,
+      "averageDurationS": 42.83,
+      "averageAEndHp": 880.08,
+      "averageBEndHp": 91.25,
+      "averageADamage": 2608.75,
+      "averageBDamage": 2019.92
     },
     {
       "id": "merkava-tier7-peer",
@@ -4814,22 +5360,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 20.63,
-      "averageAEndHp": 192.08,
-      "averageBEndHp": 126.25,
-      "averageADamage": 1896.42,
-      "averageBDamage": 1478.92
+      "aScore": 0.417,
+      "averageDurationS": 23.21,
+      "averageAEndHp": 113.33,
+      "averageBEndHp": 392.33,
+      "averageADamage": 1457.67,
+      "averageBDamage": 1486.67
     },
     {
       "id": "puma-tier8-peer",
       "purpose": "Tier IV Puma against a Tier III IFV (no Tier IV IFV duels inside the band)",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "spz_puma",
       "bId": "bmp3_rok",
@@ -4842,22 +5388,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 0,
+      "bWins": 12,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 45.8,
-      "averageAEndHp": 77.5,
-      "averageBEndHp": 174.83,
-      "averageADamage": 1535.25,
-      "averageBDamage": 1941.83
+      "aScore": 0,
+      "averageDurationS": 21.65,
+      "averageAEndHp": 0,
+      "averageBEndHp": 874.83,
+      "averageADamage": 825.17,
+      "averageBDamage": 2000
     },
     {
       "id": "puma-s1-tier10-peer",
       "purpose": "Tier X modern IFV guided-weapon peers",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "spz_wotan",
       "bId": "bmpt_t90",
@@ -4906,22 +5452,22 @@
         35904
       ],
       "duels": 84,
-      "aWins": 20,
-      "bWins": 64,
+      "aWins": 0,
+      "bWins": 84,
       "draws": 0,
-      "aScore": 0.238,
-      "averageDurationS": 13.9,
-      "averageAEndHp": 127.48,
-      "averageBEndHp": 773.24,
-      "averageADamage": 2269.86,
-      "averageBDamage": 2777.76
+      "aScore": 0,
+      "averageDurationS": 14.57,
+      "averageAEndHp": 0,
+      "averageBEndHp": 2950,
+      "averageADamage": 0,
+      "averageBDamage": 2750
     },
     {
       "id": "puma-s1-tier10-close-peer",
       "purpose": "Tier X modern IFV guided-weapon peers",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "spz_wotan",
       "bId": "bmpt_t90",
@@ -4970,22 +5516,22 @@
         35904
       ],
       "duels": 84,
-      "aWins": 22,
-      "bWins": 62,
+      "aWins": 0,
+      "bWins": 84,
       "draws": 0,
-      "aScore": 0.262,
-      "averageDurationS": 13.63,
-      "averageAEndHp": 150.14,
-      "averageBEndHp": 657.69,
-      "averageADamage": 2375.12,
-      "averageBDamage": 2773.93
+      "aScore": 0,
+      "averageDurationS": 14.49,
+      "averageAEndHp": 0,
+      "averageBEndHp": 2950,
+      "averageADamage": 0,
+      "averageBDamage": 2750
     },
     {
       "id": "puma-s1-tier10-long-peer",
       "purpose": "Tier X modern IFV guided-weapon peers",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "spz_wotan",
       "bId": "bmpt_t90",
@@ -5034,15 +5580,15 @@
         35904
       ],
       "duels": 84,
-      "aWins": 24,
-      "bWins": 60,
+      "aWins": 0,
+      "bWins": 84,
       "draws": 0,
-      "aScore": 0.286,
-      "averageDurationS": 14.3,
-      "averageAEndHp": 130.29,
-      "averageBEndHp": 650.29,
-      "averageADamage": 2385.74,
-      "averageBDamage": 2764.43
+      "aScore": 0,
+      "averageDurationS": 14.65,
+      "averageAEndHp": 0,
+      "averageBEndHp": 2950,
+      "averageADamage": 0,
+      "averageBDamage": 2750
     },
     {
       "id": "leopard-heavy-peer",
@@ -5062,22 +5608,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 34.09,
-      "averageAEndHp": 164.17,
-      "averageBEndHp": 417.08,
-      "averageADamage": 2295.67,
-      "averageBDamage": 2729.17
+      "aScore": 0.333,
+      "averageDurationS": 29.05,
+      "averageAEndHp": 248.17,
+      "averageBEndHp": 664.42,
+      "averageADamage": 1985.58,
+      "averageBDamage": 2476.83
     },
     {
       "id": "leopard-tier9-peer",
       "purpose": "Tier VIII modern MBT peers",
       "band": [
-        0.2,
-        0.8
+        1,
+        1
       ],
       "aId": "leo2a4m_can",
       "bId": "m1a1",
@@ -5090,22 +5636,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 12,
+      "bWins": 0,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 46.59,
-      "averageAEndHp": 876.67,
-      "averageBEndHp": 170.83,
-      "averageADamage": 2320.83,
-      "averageBDamage": 1685.33
+      "aScore": 1,
+      "averageDurationS": 25.68,
+      "averageAEndHp": 1706.17,
+      "averageBEndHp": 0,
+      "averageADamage": 2300,
+      "averageBDamage": 793.83
     },
     {
       "id": "ifv-nextgen-peer",
       "purpose": "Tier X Raijū anti-armor weapons against a Tier VII IFV (no Tier X IFV duels inside the band)",
       "band": [
-        0.2,
-        0.8
+        1,
+        1
       ],
       "aId": "raiju_ifv",
       "bId": "cv90_mk4_concept",
@@ -5118,22 +5664,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 12,
+      "bWins": 0,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 40.56,
-      "averageAEndHp": 469.5,
-      "averageBEndHp": 579.92,
-      "averageADamage": 2355.92,
-      "averageBDamage": 2250.25
+      "aScore": 1,
+      "averageDurationS": 7.06,
+      "averageAEndHp": 2256,
+      "averageBEndHp": 0,
+      "averageADamage": 2825,
+      "averageBDamage": 444
     },
     {
       "id": "m60-guided-peer",
       "purpose": "Tier II guided weapon cycle against Tier IX armor (a deliberate cross-tier check)",
       "band": [
-        0.2,
-        0.8
+        0,
+        0
       ],
       "aId": "m60a2",
       "bId": "t90a_2004",
@@ -5146,15 +5692,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 0,
+      "bWins": 12,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 17.75,
-      "averageAEndHp": 579.75,
-      "averageBEndHp": 71.58,
-      "averageADamage": 2487.58,
-      "averageBDamage": 1710.08
+      "aScore": 0,
+      "averageDurationS": 24.61,
+      "averageAEndHp": 0,
+      "averageBEndHp": 2250,
+      "averageADamage": 0,
+      "averageBDamage": 2250
     }
   ]
 }

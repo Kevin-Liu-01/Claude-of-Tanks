@@ -1463,6 +1463,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
+    // inherited-reds-276 (Main 2026-11-23): the S-tanks' front zoned by height, the beak's underside the wedge's
+    'src/vehicles/sTankWedgeZoning.selftest.mjs',
     'src/vehicles/fleetOrder.selftest.mjs',
     'src/vehicles/profiles/abramsRoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/abramsTurretLift.selftest.mjs',
@@ -2540,6 +2542,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'tools/cpu-burners.selftest.mjs',
+    // inherited-reds-276: a source slice closes over what it reads (imports, declarations, inert locals) and a name nothing
+    // declares fails before it runs, named (tools/source-slice.test-support.mjs; five receipts' ReferenceErrors on c7d111fad4)
+    'tools/source-slice.selftest.mjs',
+    // inherited-reds-276 (owner 2026-11-23): the balance matchup receipt is a fresh generation, never stale or hand-edited
+    'tools/balance-matchups.selftest.mjs',
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
@@ -3039,6 +3046,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
+    // inherited-reds-276 (Main 2026-11-23): a sheet hall's clerestory, one whole light a bay between its columns
+    'src/world/maps/regional/hallClerestory.selftest.mjs',
     'src/world/maps/regional/latticeDamage.selftest.mjs', // 2026-10-14 props census #3: open frames recorded, read as lattices, folded over in their members
     'src/world/maps/regional/ruinGrammar.selftest.mjs', // 2026-10-14 props census #7: kit ruins on the ruin grammar, walls recorded, no dark plates; the rubble pile keeps the street's draws
     'src/world/maps/regional/towerDamage.selftest.mjs', // 2026-10-15 props census #9 (E13): every placed tower kind records its bodies, read in storey bands through the multi-body route
