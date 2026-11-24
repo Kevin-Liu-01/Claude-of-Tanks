@@ -917,9 +917,11 @@ export const RECIPES = {
         document.head.append(style);
       });
       const reach = (label, atS) => ctx.until((t) => window.__DEBUG.game.timeS >= t, { timeoutS: 60, label, args: [atS] });
+      // (r4: r3's camera, 9-11 m behind, held the drone as a speck of a few pixels at 3840 wide over open ground) over
+      // the drone's shoulder, 2-3 m back: the airframe large in the foreground, the run on the pair beyond it
       const SHOTS = [
-        { kind: 'strafe', label: 'drone and strafe', view: { back: 9, side: 2.5, up: 2.5, lookUp: 2, fov: 55 } },
-        { kind: 'bomb', label: 'drone and bomb', view: { back: 11, side: -3, up: 4, lookUp: 3, fov: 58 } },
+        { kind: 'strafe', label: 'drone and strafe', view: { back: 2.2, side: 0.7, up: 0.6, lookUp: 2, fov: 62 } },
+        { kind: 'bomb', label: 'drone and bomb', view: { back: 3, side: -0.9, up: 0.9, lookUp: 3, fov: 64 } },
       ];
       for (const shot of SHOTS) {
         let strike = null;
@@ -945,8 +947,9 @@ export const RECIPES = {
           stopWhen: () => window.__DEBUG.game.timeS >= window.__AS.stopAtS || !window.__DEBUG.game.player?.aerial?.active });
         await ctx.mb('setOnFrame', null);
         await ctx.eval(() => { window.__AS.follow = null; window.__DEBUG.rig.release(); });
-        // the next run waits for the drone's cooldown (a loss's 25 s) and the strike's end
-        await reach(`${shot.label}: the drone ready again`, strike.landsS + 28);
+        // the next run waits for the drone's cooldown (a loss's 25 s) and the strike's end (r3: at +28 s the bomb's
+        // launch came before the drone was back, and the shot had no drone)
+        await reach(`${shot.label}: the drone ready again`, strike.landsS + 34);
       }
     },
   },
