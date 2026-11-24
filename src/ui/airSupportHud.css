@@ -167,9 +167,10 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
  body[data-systems-slot=edge] .cot-strike-dock{left:calc(var(--hud-systems-left,12px) + var(--hud-systems-width,52px) - 44px);
    top:calc(var(--hud-systems-top,50%) - 52px)}
  body[data-systems-slot=edge][data-cot-height=short] .cot-strike-dock{top:calc(var(--hud-systems-top,50%) - 49px)}
- body[data-systems-slot=edge] .cot-strike-rack{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);top:var(--hud-systems-top,50%);flex-direction:row-reverse}
+ body[data-systems-slot=edge] .cot-strike-rack{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);top:var(--hud-systems-top,50%);flex-direction:row-reverse;
+   flex-wrap:wrap;row-gap:3px;max-width:var(--hud-strike-rack-room,none)}
  body[data-systems-slot=edge] .cot-binoculars .binocular-readout{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);
-   top:calc(var(--hud-systems-top,50%) + 52px);bottom:auto}
+   top:calc(var(--hud-systems-top,50%) + 52px + (var(--hud-strike-rack-rows,1) - 1) * 47px);bottom:auto}
 }
 /* a portrait phone: the call-ins and the readout under the controls row, the readout without the name the lit slot
    shows (its 390 px held no more); CALL on the centre line over the second FIRE; INCOMING over the row */

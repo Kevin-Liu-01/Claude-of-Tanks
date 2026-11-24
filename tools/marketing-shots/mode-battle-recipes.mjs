@@ -89,17 +89,18 @@ async function stageStrikeCamera(ctx) {
     requestAnimationFrame(loop);
   });
 }
-/** In the page: the player's points to the cap, its cooldowns cleared, two enemies parked on a mark 260 m ahead, the
- *  strike called on it; the accepted strike's record, or null. */
-function callStrikeOnPair(ctx, kind) {
-  return ctx.eval((kind) => {
+/** In the page: the player's points to the cap, its cooldowns cleared, two enemies parked on a mark (`at`, else 260 m
+ *  ahead), the strike called on it; the accepted strike's record, or null. */
+function callStrikeOnPair(ctx, kind, at = null) {
+  return ctx.eval(({ kind, at }) => {
     const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
     const saved = air.capture();
     saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
     saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
     air.restore(saved);
-    const p = game.player.state.pos, yaw = game.player.state.yaw, hf = D.world.heightField;
-    const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+    const p = game.player.state.pos, hf = D.world.heightField;
+    const yaw = at ? Math.atan2(at.x - p.x, at.z - p.z) : game.player.state.yaw;
+    const x = at ? at.x : p.x + Math.sin(yaw) * 260, z = at ? at.z : p.z + Math.cos(yaw) * 260;
     const enemies = game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).slice(0, 2);
     enemies.forEach((t, i) => {
       const ex = x + Math.cos(yaw) * (i ? -9 : 7), ez = z - Math.sin(yaw) * (i ? -9 : 7) + (i ? 12 : 0);
@@ -110,15 +111,19 @@ function callStrikeOnPair(ctx, kind) {
     const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
     const s = mine[mine.length - 1];
     return { id: s.id, kind: s.kind, x: s.x, z: s.z, heading: s.heading, calledS: s.calledS, landsS: s.landsS, endS: s.endS };
-  }, kind);
+  }, { kind, at });
 }
 /** In the page, each frame (MB.setOnFrame): the flying FPV drone steered at the nearest enemy through the touch-aim path
  *  (the camera aims, the drone follows), with a burst of frames as it closes (modes/drone, deploy/combined_arms). */
-const DRONE_AT_NEAREST_ENEMY = `
+/** The drone steered at the nearest enemy. `cruiseM` holds it that high over the target until it is 60 m out, then dives
+ *  (combined-arms-276 proof r2: flown level from 340 m over Verdant's woods, the drone went into the trees short of the
+ *  enemy, no kill). */
+const droneAtNearestEnemy = ({ cruiseM = 0 } = {}) => `
         const p = H.player(); if (!p || !p.aerial || !p.aerial.active || p.aerial.launching) return;
         const t = H.sel('nearestEnemy'); if (!t) return;
         const cam = D.camera; const dir = H.vec(); cam.getWorldDirection(dir);
-        const dx = t.x - cam.position.x, dy = (t.y + 1.2) - cam.position.y, dz = t.z - cam.position.z;
+        const over = Math.hypot(t.x - cam.position.x, t.z - cam.position.z) > 60 ? ${cruiseM} : 0;
+        const dx = t.x - cam.position.x, dy = (t.y + 1.2 + over) - cam.position.y, dz = t.z - cam.position.z;
         const yawWant = Math.atan2(dx, dz), pitchWant = Math.atan2(dy, Math.hypot(dx, dz));
         const yawCur = Math.atan2(dir.x, dir.z), pitchCur = Math.asin(Math.max(-1, Math.min(1, dir.y)));
         let ey = yawWant - yawCur; ey = Math.atan2(Math.sin(ey), Math.cos(ey));
@@ -704,7 +709,7 @@ export const RECIPES = {
       await settle(ctx, 1.5);
       await ctx.eval(() => window.__MB.H.tap('drone'));
       // steer the FPV drone at the nearest enemy through the touch-aim path (the camera aims, the drone follows)
-      await ctx.mb('setOnFrame', DRONE_AT_NEAREST_ENEMY);
+      await ctx.mb('setOnFrame', droneAtNearestEnemy());
       await ctx.capture({
         cameras: [{ kind: 'game', hud: 'full' }],
         everyS: 1.0,
@@ -892,6 +897,16 @@ export const RECIPES = {
     hud: 'hidden',
     async run(ctx) {
       await ctx.ff(3);
+      // (r3: r2's mark, 260 m down the spawn's heading on Verdant, stood in woods, and every frame behind the drone was
+      // canopy) the mark is a surveyed open lane's end (H.stageEngagement: open ground, nothing hiding it from the
+      // player's spot, which moves onto open ground if its own has no lane), the pair parked there
+      const staged = await ctx.eval(() => window.__MB.H.stageEngagement({ dists: [240, 210, 270, 300], enemies: 1, allies: 0 }));
+      ctx.log('staged', JSON.stringify(staged));
+      const mark = await ctx.eval(() => {
+        const H = window.__MB.H, p = H.player(), t = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos))[0];
+        return t ? { x: t.state.pos.x, z: t.state.pos.z } : null;
+      });
+      if (!staged) ctx.note('no open lane surveyed; the mark is 260 m ahead');
       await stageStrikeCamera(ctx);
       // (r2: r1's game camera flew the drone's own lens, so the strike and the pair were never in its frame, and the
       // drone's notice showed over the HUD-free frames) the notices and hints hidden with the HUD, and the camera pinned
@@ -909,7 +924,7 @@ export const RECIPES = {
       for (const shot of SHOTS) {
         let strike = null;
         for (let tries = 0; !strike && tries < 40; tries++) {
-          strike = await callStrikeOnPair(ctx, shot.kind);
+          strike = await callStrikeOnPair(ctx, shot.kind, staged ? mark : null);
           if (!strike) await ctx.sleep(1500);
         }
         if (!strike) { ctx.note(`${shot.label}: no ${shot.kind} accepted`); continue; }
@@ -982,17 +997,27 @@ export const RECIPES = {
       await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeCall', {}));
       await ctx.until(() => (window.__CA.calls.some((c) => c.own) ? true : null), { timeoutS: 10, label: 'the call accepted' });
       await tally('called');
-      // 3. the drone: launched, flown at the nearest enemy; the binoculars asked for while it flies (refused)
+      // 3. the drone: launched, flown over the woods at the nearest enemy and dived onto it, sortie after sortie (each on
+      // Drone's cooldown, fast-forwarded) until it kills; the binoculars asked for in the first flight (refused)
       await ctx.sleep(1500);
-      await ctx.eval(() => window.__MB.H.tap('drone'));
-      await ctx.mb('setOnFrame', DRONE_AT_NEAREST_ENEMY);
-      await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active ? true : null), { timeoutS: 10, label: 'the drone aloft' });
-      await ctx.sleep(1200);
-      await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeViewToggle', {}));
-      await ctx.capture({ label: 'drone flight', windowS: 25, max: 10, everyS: 1.2, cameras: [{ kind: 'game', hud: 'full' }],
-        stopWhen: () => !window.__DEBUG.game.player?.aerial?.active });
-      await ctx.mb('setOnFrame', null);
-      await tally('drone');
+      const droneKills = () => ctx.eval(() => window.__CA.kills.filter((k) => k.mine && k.source === 'drone').length);
+      for (let sortie = 1; sortie <= 4 && !(await droneKills()); sortie++) {
+        for (let i = 0; i < 6; i++) {
+          const ready = await ctx.eval(() => { const a = window.__DEBUG.game.player?.aerial; return !!a && !a.active && !(a.cooldownS > 0); });
+          if (ready) break;
+          await ctx.ff(5);
+        }
+        await ctx.eval(() => window.__MB.H.tap('drone'));
+        await ctx.mb('setOnFrame', droneAtNearestEnemy({ cruiseM: 25 }));
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active ? true : null), { timeoutS: 10, label: 'the drone aloft' });
+        await ctx.sleep(1200);
+        if (sortie === 1) await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeViewToggle', {}));
+        await ctx.capture({ label: `drone flight ${sortie}`, windowS: 25, max: sortie === 1 ? 8 : 4, everyS: 1.2, cameras: [{ kind: 'game', hud: 'full' }],
+          stopWhen: () => !window.__DEBUG.game.player?.aerial?.active });
+        await ctx.mb('setOnFrame', null);
+        await tally(`drone ${sortie}`);
+      }
+      if (!(await droneKills())) ctx.note('no drone kill in four sorties');
       // 4. the verdict: the battle fast-forwarded (the bots fly their drones and call in on their own) to its score
       for (let i = 0; i < 40; i++) {
         const done = await ctx.eval(() => !!window.__CA.ended);

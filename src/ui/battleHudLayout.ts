@@ -1567,6 +1567,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     setBodyVar('--hud-left-inset', leftInset ? `${leftInset}px` : '');
     setBodyVar('--hud-right-inset', rightInset ? `${rightInset}px` : '');
+    // the binoculars' call-ins open leftward from an edge section (airSupportHud.css data-systems-slot=edge); where its
+    // columns leave less room than the row, the row wraps into the rows that fit and the readout stands under the last
+    // (combined-arms-276's overlap probe at 390x844: Drone's fifth control took a second column and the six call-ins ran
+    // 24 px off the left edge)
+    const rackRoom = systemsLeft - 8 - 12;
+    const rackSlots = systemsSlot === 'edge' ? document.querySelectorAll('.cot-strike-rack .strike-slot:not([hidden])').length : 0;
+    const rackRows = rackSlots ? Math.ceil(rackSlots / Math.max(1, Math.floor((rackRoom + 3) / (TOUCH_TARGET + 3)))) : 1;
+    setBodyVar('--hud-strike-rack-room', rackRows > 1 ? `${rackRoom}px` : '');
+    setBodyVar('--hud-strike-rack-rows', rackRows > 1 ? String(rackRows) : '');
     let systemsCount = 0;
     // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px
     // place: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells; else balanced rows)
