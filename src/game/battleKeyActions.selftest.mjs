@@ -4,6 +4,7 @@ import { DEFAULT_BINDINGS } from './input.ts';
 import { createBus } from './stateCore.ts';
 import { createMobileAutoAimRuntime } from './mobileAutoAimRuntime.ts';
 import { PerspectiveCamera, Vector3 } from 'three';
+import ts from 'typescript';
 
 // Round 30 (owner 2026-09-20): "make auto aim a keybind in desktop mode and keybind turning on hitboxes too";
 // "the gravity jump should have a little rocket icon and be a lot more powerful, and work even when you're not
@@ -33,8 +34,33 @@ const actions = read('./playerBattleActions.ts');
 assert.match(actions, /onAction\('autoAim', \(\) => \{\n\s*if \(!battleInputAllowed\(\)\) return;\n\s*bus\.emit\('ui:autoAimToggle', \{\}\);/, 'T emits the same toggle the touch button does');
 assert.match(actions, /onAction\('hitboxOverlay', \(\) => \{[\s\S]*?const on = !input\.getSettings\(\)\.armorAimOverlay;\n\s*input\.setSetting\('armorAimOverlay', on\);\n\s*bus\.emit\('ui:armorOverlayState', \{ on \}\);/, 'H flips the live armour overlay setting and announces it');
 const hud = read('../ui/hud.ts');
-// (notices-audit-275) the confirmation is the battle notices' event lane's, its key line the overlay's own key
-assert.match(hud, /on\('ui:armorOverlayState', \(\{ on \}\) => \{\n\s*events\.raise\(\{ text: t\(on \? 'hud\.alert\.armorOverlayOn' : 'hud\.alert\.armorOverlayOff'\)/, 'the HUD confirms the overlay state');
+// (notices-audit-275) the confirmation is the battle notices' event lane's, its key line the overlay's own key. (replay-hold-276)
+// Read by its call's shape, not its fields' order (notices-276b put `kind` first and the regex lost it): the HUD's
+// on('ui:armorOverlayState', handler) raises on its event lane an object whose kind is 'armorOverlay' and whose text is
+// the overlay's on or off line, whatever else it carries and in whatever order.
+{
+  const file = ts.createSourceFile('hud.ts', hud, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const handlers = [];
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'on'
+      && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === 'ui:armorOverlayState') handlers.push(node.arguments[1]);
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  assert.equal(handlers.length, 1, 'the HUD listens for the overlay state once');
+  const raises = [];
+  const inHandler = (node) => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.getText(file) === 'events.raise'
+      && ts.isObjectLiteralExpression(node.arguments[0])) raises.push(node.arguments[0]);
+    ts.forEachChild(node, inHandler);
+  };
+  inHandler(handlers[0]);
+  const fields = (literal) => Object.fromEntries(literal.properties.filter(ts.isPropertyAssignment)
+    .map((property) => [property.name.getText(file), property.initializer.getText(file).replace(/\s+/g, ' ')]));
+  const confirms = raises.map(fields).filter((raised) => raised.kind === "'armorOverlay'"
+    && raised.text === "t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff')");
+  assert.equal(confirms.length, 1, `the HUD confirms the overlay state (its event lane raises the armorOverlay kind with the on or off line; raised: ${JSON.stringify(raises.map(fields))})`);
+}
 
 // --- the auto-aim runtime no longer needs a touch layout (the runtime receipt covers acquisition)
 const runtimeSource = read('./mobileAutoAimRuntime.ts');
