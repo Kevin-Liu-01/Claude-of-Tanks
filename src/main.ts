@@ -61,6 +61,8 @@ import {
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
+// (the HUD's chase bands as the live layout published them: __DEBUG.battleBands, tools/hud-chase-bands.browser.mjs)
+import { battleBands } from './ui/battleSight.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
 import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
@@ -4933,6 +4935,7 @@ if (diagnosticsRequested) {
       getLastWorldRelease: () => (worldRuntime.lastRelease
         ? { ...worldRuntime.lastRelease } : null),
       isGraphicsContextLost: () => graphicsContextLost,
+      getBattleBands: () => battleBands(),
       selectGarageTank: (id: string) => garage.setSelected(id),
       stagePedestalTank: (id: string) => {
         selectedVehicle.set(id);

@@ -38,6 +38,9 @@ export interface DebugSurfaceDependencies {
   garage: RuntimeValue;
   quality: Readonly<Record<string, UnknownAction>>;
   getFx(): RuntimeValue;
+  /** The HUD's chase bands as the live layout last published them (ui/battleSight.ts battleBands; null before the battle
+   *  HUD's first layout): tools/hud-chase-bands.browser.mjs records the fixture from them. */
+  getBattleBands(): RuntimeValue;
   getBattleAtmosphere?(): RuntimeValue;
   getNightLighting?(): RuntimeValue;
   getMapAmbience?(): RuntimeValue;
@@ -173,6 +176,7 @@ export function installDebugSurface(
     get garageGpuResidency() { return deps.getGarageGpuResidency(); },
     get lastWorldRelease() { return deps.getLastWorldRelease(); },
     get graphicsContextLost() { return deps.isGraphicsContextLost(); },
+    get battleBands() { return deps.getBattleBands(); },
     selectGarageTank: deps.selectGarageTank,
     stagePedestalTank: deps.stagePedestalTank,
     get world() { return deps.getWorld(); },
