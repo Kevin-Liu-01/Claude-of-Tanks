@@ -175,6 +175,13 @@ export interface EmitOptions {
    */
   phoneOnly?: boolean;
   /**
+   * (dome-detail-275, the 276 perf hold: Blackglass's 88 row houses' roof courses, +59 k casting triangles, the shadow
+   * pass's cost) dressing a few centimetres proud of a surface that already casts the silhouette (a roof's courses on
+   * its slab): it receives shadows but casts none, in any bucket (userData.receiveOnly: props.ts merges it into the
+   * bucket's non-casting mesh). Decor only
+   */
+  noCast?: boolean;
+  /**
    * its face joined to the building at range through the parts it meets, whatever its depth up to
    * FINE_FLUSH_MAX_DEPTH_M: a framed wall's timbers (house.ts H: posts, rails, braces, struts, their faces in one plane,
    * the frame seated on its sill and corners), a door frame on its threshold under its head, a canopy's beam under its
@@ -296,9 +303,9 @@ export class PartSink {
   }
 
   private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false, tag?: EmitOptions['tag'],
-    phone = false): Accumulator {
+    phone = false, noCast = false): Accumulator {
     const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`
-      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '') + (phone ? '|m' : '');
+      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '') + (phone ? '|m' : '') + (decor && noCast && !shadow ? '|r' : '');
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -328,7 +335,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground, opts.tag, !!opts.phoneOnly);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground, opts.tag, !!opts.phoneOnly, !!opts.noCast);
     const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -551,7 +558,7 @@ export class PartSink {
       const x = own[0] + other[0], y = own[1] + other[1], l = Math.hypot(x, y) || 1;
       return [x / l, y / l];
     };
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine, false, undefined, false, !!opts.noCast);
     const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
     const [ou, ov] = this.uvOffset;
@@ -602,7 +609,7 @@ export class PartSink {
     const ref: Vec3 = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
     const s1 = normalize3([ax[1] * ref[2] - ax[2] * ref[1], ax[2] * ref[0] - ax[0] * ref[2], ax[0] * ref[1] - ax[1] * ref[0]]);
     const s2: Vec3 = [ax[1] * s1[2] - ax[2] * s1[1], ax[2] * s1[0] - ax[0] * s1[2], ax[0] * s1[1] - ax[1] * s1[0]];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine, false, undefined, false, !!opts.noCast);
     const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
     const [ou, ov] = this.uvOffset;
@@ -691,6 +698,7 @@ export class PartSink {
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
       if (rest.includes('m')) geometry.userData.phoneOnly = true;
+      if (rest.includes('r')) geometry.userData.receiveOnly = true;
       const layer = rest.find((r) => /^L\d$/.test(r));
       if (layer) geometry.userData.paneStackLayer = Number(layer.slice(1));
       if (piece) geometry.userData.damagePiece = piece;

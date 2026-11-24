@@ -271,7 +271,8 @@ function layAll(relief: RoofRelief, frames: readonly Frame[], o: ReliefOptions, 
   // covering's occlusion and tint
   const paint = (f: Frame, tone: number, tint: Rgb | null, fine: boolean | 'near' = false): EmitOptions => {
     const uv: UvMode = { kind: 'plane', origin: f.o, u: o.bucket === 'straw' ? neg(f.up) : f.along, v: o.bucket === 'straw' ? f.along : neg(f.up) };
-    const out: EmitOptions = { decor: true, uv, ...(fine ? { fine } : {}) };
+    // (276 perf hold) the courses stand centimetres off a slab that already casts the roof's shadow: they cast none
+    const out: EmitOptions = { decor: true, noCast: true, uv, ...(fine ? { fine } : {}) };
     if (base.colourAt) {
       const ca = base.colourAt;
       return { ...out, colourAt: (p) => { const c = shadeRgb(ca(p), tone); return tint ? mulRgb(c, tint) : c; } };
@@ -625,7 +626,7 @@ export function roofSpecRelief(sink: PartSink, rg: RoofGeometry, roof: RoofSpec,
   // the parapet's coping: a slab over its wall head proud of both faces, its drip a shade under it
   const pb: RegionalBucket = roof.parapetBucket ?? (roof.bucket === 'roof' ? 'plaster' : roof.bucket);
   const top = y + roof.parapet, xo = rg.s + e + 0.04, zo = rg.halfD + e + 0.04, w = th + 0.08, c = 0.07;
-  const cap: EmitOptions = { decor: true, shade: 1.08, shadeAt: (p: Vec3) => (p[1] < top + 0.001 ? 0.7 : 1.08) };
+  const cap: EmitOptions = { decor: true, noCast: true, shade: 1.08, shadeAt: (p: Vec3) => (p[1] < top + 0.001 ? 0.7 : 1.08) };
   sink.span(pb, -xo, top, zo - w, xo, top + c, zo, cap);
   sink.span(pb, -xo, top, -zo, xo, top + c, -zo + w, cap);
   sink.span(pb, xo - w, top, -zo + w, xo, top + c, zo - w, cap);
