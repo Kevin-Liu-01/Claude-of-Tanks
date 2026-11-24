@@ -5248,15 +5248,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 1,
-      "bWins": 11,
+      "aWins": 7,
+      "bWins": 5,
       "draws": 0,
-      "aScore": 0.083,
-      "averageDurationS": 40.76,
-      "averageAEndHp": 58,
-      "averageBEndHp": 1245.83,
-      "averageADamage": 1154.17,
-      "averageBDamage": 2642
+      "aScore": 0.583,
+      "averageDurationS": 30.26,
+      "averageAEndHp": 524.25,
+      "averageBEndHp": 137,
+      "averageADamage": 2263,
+      "averageBDamage": 2175.75
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -5304,15 +5304,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 25.8,
-      "averageAEndHp": 249.58,
-      "averageBEndHp": 352.58,
-      "averageADamage": 2047.42,
-      "averageBDamage": 2350.42
+      "aScore": 0.667,
+      "averageDurationS": 21.02,
+      "averageAEndHp": 551.5,
+      "averageBEndHp": 45.75,
+      "averageADamage": 2354.25,
+      "averageBDamage": 2048.5
     },
     {
       "id": "proryv-tier10-peer",
