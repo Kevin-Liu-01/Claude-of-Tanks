@@ -19,9 +19,10 @@ import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts'
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
-  buildGarageStructureSteps, garageDrawnKinds, holdGarageStructureSurfacesNow, loadGarageMapStructures,
-  prepareGarageStructureSurfaces,
-  releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
+  buildGarageStructureSteps, garageDrawnKinds, holdGarageStructureSurfacesNow, holdGarageTerrainSurfaceNow,
+  loadGarageMapStructures, prepareGarageStructureSurfaces, prepareGarageTerrainSurface,
+  releaseGarageStructureSurfaces, releaseGarageTerrainSurface, resolveGarageMapStructures, startGarageSurfacePaints,
+  type GarageTerrainSurface,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
 import {
@@ -1513,6 +1514,8 @@ interface PreparedGarageStructures {
   /** The source map as its world build reads it, and its structure surfaces (garageBattleStructures.ts). */
   readonly map: GarageMapStructures;
   readonly surfaces: GarageStructureSurfaces;
+  /** (garage-env-276, class 2) The map's battle ground material for the yard's patch (garageBattleStructures.ts). */
+  readonly terrain: GarageTerrainSurface;
   /** The map's set pieces on the horizon ring, in their buckets (garageHorizonSetPieces.ts). */
   readonly horizon: { readonly buckets: GeometryBuckets; readonly pieces: readonly GarageHorizonSetPiece[] };
 }
@@ -1536,6 +1539,7 @@ function disposePreparedStructures(id: string): void {
   disposeStructureGeometry(prepared.records, prepared.backdrop);
   disposeBuckets(prepared.horizon.buckets);
   releaseGarageStructureSurfaces(prepared.surfaces);
+  releaseGarageTerrainSurface(prepared.terrain);
 }
 
 function disposeBuckets(buckets: GeometryBuckets): void {
@@ -1992,14 +1996,24 @@ export function buildGarageEnvironment(
   const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
   const terrainGeometry = track(createTerrainGeometry(patch, heights, TERRAIN_TILE_M[recipe.terrainSurface] ?? 9.6));
-  // Monsoon's ground is wet (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
-  // wet sheen"): the grass, the causeway and the yard take a damp sheen and the yard's puddles a polish (the wet mask)
+  // Monsoon's yard is wet (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
+  // wet sheen"): the causeway and the yard take a damp sheen and the yard's puddles a polish (the wet mask); its ground
+  // is the map's own battle material, wet as the map's is
   const rainSoaked = variant.weather === 'rain';
-  const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
-    color: recipe.terrainTint, roughness: rainSoaked ? 0.8 : 0.94, metalness: 0,
-  }));
+  // (garage-env-276, class 2) the map's own battle ground material (its splat layers, land use, breakup and wetness,
+  // garageBattleStructures.ts prepareGarageTerrainSurface), reading the patch as the map's ground at its source anchor:
+  // the material's world positions move into the map's frame each draw (the pack's root may stand anywhere)
+  const terrainSurface = prepared?.terrain ?? holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
+  for (const [material, hook] of terrainSurface.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
+  track({ dispose: () => releaseGarageTerrainSurface(terrainSurface) });
+  const terrain = new THREE.Mesh(terrainGeometry, terrainSurface.material);
   terrain.name = 'map_derived_terrain_patch';
   terrain.receiveShadow = true;
+  const [anchorX, anchorZ] = patch.sourceAnchor;
+  terrain.onBeforeRender = () => {
+    const e = terrain.matrixWorld.elements;
+    terrainSurface.mapOrigin.value.set(anchorX - e[12], -e[13], anchorZ - e[14]);
+  };
   root.add(terrain);
 
   // The paved apron drapes onto the shaped terrain (2026-10-10, wave 338: a hard-edged "decal patch" in the sand was
@@ -3114,7 +3128,7 @@ export function buildGarageEnvironment(
       for (const handle of handles) handle.release();
       handles.length = 0;
       if (outerEngineCtx.releaseShadowMaterial) {
-        const owned = new Set<unknown>([...disposables, ...structureSurfaces.materials]);
+        const owned = new Set<unknown>([...disposables, ...structureSurfaces.materials, terrainSurface.material]);
         for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
       }
       cascadeMaterials.clear();
@@ -3274,9 +3288,17 @@ async function buildPreparedStructures(
     disposeStructureGeometry(records, backdrop);
     return false;
   }
+  // (garage-env-276, class 2) the map's battle ground material, built as its world build builds it, in slices
+  const terrain = await prepareGarageTerrainSurface(map, anisotropy, wanted);
+  if (!terrain) {
+    releaseGarageStructureSurfaces(surfaces);
+    disposeBuckets(horizonBuckets);
+    disposeStructureGeometry(records, backdrop);
+    return false;
+  }
   disposePreparedStructures(variant.id);
   preparedStructures.set(variant.id, {
-    records, rngDraws, backdrop, map, surfaces, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
+    records, rngDraws, backdrop, map, surfaces, terrain, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
   });
   return true;
 }

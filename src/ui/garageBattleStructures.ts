@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { createTerrainSurfaceMaterialSteps, type TerrainMapConfig, type TerrainSurfaceMaterial } from '../world/terrain.ts';
 import { loadMapKits } from '../world/worldKits.ts';
 import {
   buildStructureSurfaces, createStructureBuckets, mulberry32, plannedKitRenderPaints, plannedSurfacePaints,
@@ -285,6 +286,103 @@ function trimSurfaceCache(): void {
 /** Diagnostics: the maps whose surfaces the cache holds, and whether each is painted. */
 export function garageStructureSurfaceCache(): ReadonlyArray<{ mapId: string; painted: boolean; holds: number }> {
   return [...surfaceCache.values()].map((entry) => ({ mapId: entry.mapId, painted: !!entry.done, holds: entry.holds }));
+}
+
+// ---- the ground: the map's battle terrain material on the yard's patch (class 2) -------------------------------------
+
+/** A map's battle ground material for the Garage's patch, held for the caller (releaseGarageTerrainSurface). */
+export interface GarageTerrainSurface extends TerrainSurfaceMaterial {
+  readonly mapId: string;
+  /** Its shader hook, for the pack to install (the engine's setupShadowMaterial), as the structure surfaces' are. */
+  readonly shadowRegistrations: ReadonlyArray<readonly [THREE.Material, ShaderHook | null | undefined]>;
+}
+interface TerrainEntry {
+  readonly mapId: string;
+  readonly steps: Generator<void, TerrainSurfaceMaterial, void>;
+  readonly shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]>;
+  done: GarageTerrainSurface | null;
+  holds: number;
+}
+const terrainCache = new Map<string, TerrainEntry>();
+
+function terrainEntry(map: GarageMapStructures, anisotropy: number): TerrainEntry {
+  let entry = terrainCache.get(map.mapId);
+  if (entry) { terrainCache.delete(map.mapId); terrainCache.set(map.mapId, entry); return entry; } // most recent last
+  const shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]> = [];
+  const steps = createTerrainSurfaceMaterialSteps({
+    anisotropy,
+    setupShadowMaterial(material, hook) { shadowRegistrations.push([material, hook as ShaderHook]); },
+  }, map.cfg as unknown as TerrainMapConfig);
+  entry = { mapId: map.mapId, steps, shadowRegistrations, done: null, holds: 0 };
+  terrainCache.set(map.mapId, entry);
+  trimTerrainCache();
+  return entry;
+}
+
+function stepTerrain(entry: TerrainEntry): void {
+  const step = withHeadlessCanvas(() => entry.steps.next());
+  if (step.done) entry.done = { ...step.value, mapId: entry.mapId, shadowRegistrations: entry.shadowRegistrations };
+}
+
+/**
+ * A map's ground material, built in ~6 ms slices (the terrain build's own steps), or at once from the cache; null when
+ * `wanted` turns false part-way (the build waits in the cache where it stopped). Held for the caller.
+ */
+export async function prepareGarageTerrainSurface(
+  map: GarageMapStructures,
+  anisotropy: number,
+  wanted: () => boolean,
+): Promise<GarageTerrainSurface | null> {
+  const entry = terrainEntry(map, anisotropy);
+  entry.holds += 1;
+  try {
+    let sliceStart = performance.now();
+    while (!entry.done) {
+      if (performance.now() - sliceStart >= SLICE_MS) {
+        await nextSlice();
+        if (!wanted()) return null;
+        sliceStart = performance.now();
+      }
+      stepTerrain(entry);
+    }
+    entry.holds += 1;
+    return entry.done;
+  } finally {
+    entry.holds -= 1;
+    trimTerrainCache();
+  }
+}
+
+/** The same ground material at once (a bake with nothing prepared: the receipts under Node), held for the caller. */
+export function holdGarageTerrainSurfaceNow(map: GarageMapStructures, anisotropy: number): GarageTerrainSurface {
+  const entry = terrainEntry(map, anisotropy);
+  while (!entry.done) stepTerrain(entry);
+  entry.holds += 1;
+  return entry.done;
+}
+
+/** A hold on a map's ground material ends. */
+export function releaseGarageTerrainSurface(surface: GarageTerrainSurface): void {
+  const entry = terrainCache.get(surface.mapId);
+  if (!entry || entry.done !== surface) return;
+  entry.holds = Math.max(0, entry.holds - 1);
+  trimTerrainCache();
+}
+
+function trimTerrainCache(): void {
+  let unheld = [...terrainCache.values()].filter((entry) => entry.holds === 0);
+  while (unheld.length > KEPT_UNHELD_SURFACES) {
+    const oldest = unheld.shift()!;
+    terrainCache.delete(oldest.mapId);
+    if (oldest.done) disposeMaterials([oldest.done.material], oldest.done.textures);
+    else oldest.steps.return(undefined as never);
+    unheld = [...terrainCache.values()].filter((entry) => entry.holds === 0);
+  }
+}
+
+/** Diagnostics: the maps whose ground material the cache holds. */
+export function garageTerrainSurfaceCache(): ReadonlyArray<{ mapId: string; built: boolean; holds: number }> {
+  return [...terrainCache.values()].map((entry) => ({ mapId: entry.mapId, built: !!entry.done, holds: entry.holds }));
 }
 
 function disposeMaterials(materials: readonly THREE.Material[], textures: readonly THREE.Texture[]): void {
