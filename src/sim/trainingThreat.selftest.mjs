@@ -155,7 +155,7 @@ assert.ok(volley.penBody, 'a round through the plate brings the re-prompt');
 const runner = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
 assert.match(runner, /port\.cue\?\.\(cue, true\);\s*stepOff\.push\(\(\) => port\.cue\?\.\(cue, false\)\);/, 'the runner cues while the step shows, and stands it down after');
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
-assert.match(state, /else if \(training && entity\._provingMark && !entity\.combat\.destroyed\) driveTrainingActor\(game, entity\);/,
+assert.match(state, /else if \(training && entity\._provingMark && !entity\.combat\.destroyed\) driveTrainingActor\(game, entity, world\);/,
   'the solo step drives the training hulls');
 assert.ok(!/Math\.random|Date\.now|performance\.now/.test(state.slice(state.indexOf('function driveTrainingActor'), state.indexOf('export function trainingThreatFor'))),
   'the shooter\'s controls read no clock and no random');

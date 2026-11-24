@@ -1023,7 +1023,7 @@ function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spaw
  * trigger: its loaded gun fires and its reload spaces the rounds (sim/trainingGround.ts TrainingVolley). Every input is
  * the battle's time and the player's pose, so the same inputs give the same rounds.
  */
-function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
+function driveTrainingActor(game: SoloGameState, entity: SoloEntity, world: SoloWorld): void {
   entity.input.throttle = 0;
   entity.input.steer = 0;
   entity.input.brake = true;
@@ -1057,12 +1057,15 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
       arcAllows = trainingArcDwellMet(actor.volley, since.get(actor.key) ?? null, game.timeS);
     }
   }
-  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
-  const ground = game._groundSampler;
-  const seen = !actor.volley.whenSeen || !ground ? true : (() => {
-    const exposure = trainingExposure(entity.state.pos, hull, ground);
-    return exposure.hull || exposure.turret;
-  })();
+  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them: the
+  // simulation's own (groundFor: the world's field plus the battle's overlay, the stamps laid at setup), the ground every
+  // driver steps on. (276 sim-det-trig) It read the page's drawn sampler (game._groundSampler, set by main.ts), so a Node
+  // replay or any driver without one saw through every wall: whenSeen held true there and the page's Sentry 3 alone waited
+  let seen = true;
+  if (actor.volley.whenSeen) {
+    const exposure = trainingExposure(entity.state.pos, hull, groundFor(world).contactAt);
+    seen = exposure.hull || exposure.turret;
+  }
   // (S11) a sighting shooter fires only once it has seen the player a while, counted afresh each time in sight
   let sighted = true;
   if (actor.volley.seenS != null) {
@@ -2587,7 +2590,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
-    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity);
+    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity, world);
     applyHullActions(entity, host);
     tickHullConsumables(entity, host);
   }
@@ -2815,7 +2818,12 @@ function wreckEnvironmentFor(world: SoloWorld, field: SoloHeightField): RigidEnv
   return environment;
 }
 
-interface SoloGround { overlay: TerrainDeformation; field: SoloHeightField }
+interface SoloGround {
+  overlay: TerrainDeformation;
+  field: SoloHeightField;
+  /** The field's contact height by movement's own rule (contact, else the fast, else the plain sampler), bound once. */
+  contactAt: (x: number, z: number) => number;
+}
 const groundByWorld = new WeakMap<SoloWorld, SoloGround>();
 
 /** Destruction (docs/DESTRUCTION.md §7): the ground this world's battles deform — its field plus an overlay each battle
@@ -2824,7 +2832,9 @@ function groundFor(world: SoloWorld): SoloGround {
   let ground = groundByWorld.get(world);
   if (!ground) {
     const overlay = createTerrainDeformation();
-    ground = { overlay, field: createDeformedHeightField(world.heightField, overlay) };
+    const field = createDeformedHeightField(world.heightField, overlay);
+    const sample = field.getContactHeightAt ?? field.getHeightAtFast ?? field.getHeightAt;
+    ground = { overlay, field, contactAt: (x, z) => sample.call(field, x, z) };
     groundByWorld.set(world, ground);
   }
   return ground;

@@ -176,6 +176,9 @@ export const MANUAL_SUITES = Object.freeze({
     // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
     // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
     'src/game/couchRematch.selftest.mjs',
+    // 276 (sim-det-trig): a training shooter that fires only at what it sees reads the battle's own ground, not the page's
+    // drawn sampler: S11's Sentry 3 on Verdant's shard twice (with and without a page sampler), about 10 s of user CPU
+    'src/game/trainingSightGround.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
