@@ -227,7 +227,7 @@ if (fromJson) { /* rows read */ } else if (source === 'maps' && fromDump) {
     console.log(`${mapId}: ${structures.length} structures from the dump, ${checked} checked (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
   }
 } else if (source === 'maps') {
-  const { installWorldBuildFixture } = await import('./headlessWorldCollision.mjs');
+  const { installWorldBuildFixture, releaseWorldBuild } = await import('./headlessWorldCollision.mjs');
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, fleet, models] = await Promise.all([
     import('../src/world/maps/index.ts'), import('../src/world/terrain.ts'), import('../src/world/vegetation.ts'),
@@ -235,6 +235,7 @@ if (fromJson) { /* rows read */ } else if (source === 'maps' && fromDump) {
   await models.preloadPropModels();
   const mapIds = list('maps').length ? list('maps') : [...maps.MAP_IDS];
   for (const mapId of mapIds) {
+    await releaseWorldBuild(); // the last map's world is free to go
     const t0 = performance.now();
     const config = maps.getMapConfig(mapId);
     const wreckIds = config.props?.tankWrecks?.ids ?? [];

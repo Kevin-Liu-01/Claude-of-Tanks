@@ -9,7 +9,7 @@
 //   - each run one ribbon: every piece's start meets the last one's end (no gap over 10 mm), a run at least 3 m long;
 //   - the lanes' corners return round their radius where the street's pavement reaches them.
 import assert from 'node:assert/strict';
-import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
+import { installWorldBuildFixture, releaseWorldBuild } from '../../../tools/headlessWorldCollision.mjs';
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models, fleet, plans, collision] = await Promise.all([
   import('../maps/index.ts'), import('../terrain.ts'), import('../vegetation.ts'), import('../props.ts'), import('../propsModelStore.ts'),
@@ -44,6 +44,7 @@ const ONLY = process.env.COT_CIVIC_MAPS ? new Set(process.env.COT_CIVIC_MAPS.spl
 for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   const plan = plans.civicPlanFor(mapId), pw = plan.pathways;
   if (!pw) continue;
+  await releaseWorldBuild(); // the last map's world is free to go
   const config = maps.getMapConfig(mapId);
   if (config.props?.tankWrecks?.ids?.length) await fleet.ensureTankBuilders(config.props.tankWrecks.ids);
   const field = terrain.createHeightField(1337, config);

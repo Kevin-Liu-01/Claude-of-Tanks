@@ -60,7 +60,7 @@ splice(/(\n\s*)addDestructible\(kind, x, fit\.y \+ 0\.04, z, rot\);/,
 writeFileSync(copyPath, source);
 try {
   const imp = (rel) => import(pathToFileURL(path.join(root, rel)).href);
-  const { installWorldBuildFixture } = await imp('tools/headlessWorldCollision.mjs');
+  const { installWorldBuildFixture, releaseWorldBuild } = await imp('tools/headlessWorldCollision.mjs');
   installWorldBuildFixture();
   const [mapsModule, terrain, vegetation, props, fleet, models] = await Promise.all([
     imp('src/world/maps/index.ts'), imp('src/world/terrain.ts'), imp('src/world/vegetation.ts'),
@@ -69,6 +69,7 @@ try {
   await models.preloadPropModels();
   const result = {};
   for (const mapId of maps) {
+    await releaseWorldBuild(); // the last map's world is free to go
     const config = mapsModule.getMapConfig(mapId);
     const wreckIds = config.props?.tankWrecks?.ids ?? [];
     if (wreckIds.length) await fleet.ensureTankBuilders(wreckIds);
