@@ -1131,11 +1131,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.reason === 'network_disconnect') {
       return t('endScreen.outcome.disconnect');
     }
-    // Infected's own endings (the outbreak took every survivor; the survivors held out to extraction)
-    if (sum.reason === 'outbreak_complete') return t('endScreen.outcome.outbreak');
-    if (sum.reason === 'survivors_extracted') return t('endScreen.outcome.extracted');
-    // (endscreen-modes-275) a mode's own ending (flags home, the score reached, the troops out): "Enemy force destroyed"
-    // read under every points win
+    // (endscreen-modes-275) a mode's own ending (flags home, the score reached, the troops out, the outbreak, the sortie
+    // out of time): "Enemy force destroyed" read under every points win
     const reasonKey = outcomeKey(sum.reason, result);
     if (reasonKey) return t(reasonKey);
     if (result === 'victory') {
