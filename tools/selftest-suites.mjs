@@ -2536,6 +2536,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'tools/cpu-burners.selftest.mjs',
+    // inherited-reds-276: a source slice closes over what it reads (imports, declarations, inert locals) and a name nothing
+    // declares fails before it runs, named (tools/source-slice.test-support.mjs; five receipts' ReferenceErrors on c7d111fad4)
+    'tools/source-slice.selftest.mjs',
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',

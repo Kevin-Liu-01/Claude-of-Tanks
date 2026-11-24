@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 import { createHash } from 'node:crypto';
 import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { createObstacleGrid, setObbShape, setCircleShape, setCompoundShape, setConvexShape } from './collision.ts';
@@ -237,11 +238,10 @@ solidBox.dispose(); guardGeometry.dispose(); material.dispose();
   }
 }
 
+// (garage-env-276) makeTuft through createTuftFilter's return, by the shared slice harness: a missing anchor fails by
+// name (its old end anchor had gone and the indexOf slice silently ran to the file's end)
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
-// (garage-env-276) makeTuft ends where createTuftFilter returns it (the old end anchor had gone: the slice ran to the end)
-const tuftStart = vegetation.indexOf('  function makeTuft('), tuftEnd = vegetation.indexOf('  return { makeTuft,', tuftStart);
-assert.ok(tuftStart > 0 && tuftEnd > tuftStart, 'makeTuft and its factory\'s return');
-const makeTuft = vegetation.slice(tuftStart, tuftEnd);
+const makeTuft = sourceSlice(new URL('./vegetation.ts', import.meta.url)).section('  function makeTuft(', '  return { makeTuft,');
 assert.ok(makeTuft.indexOf('groundCoverBlocked?.') > makeTuft.lastIndexOf('crng()'), 'clearance cannot shift RNG draws');
 assert.match(vegetation, /entry\.total = mesh\.count = kept/, 'density updates cannot restore rejected instances');
 assert.match(vegetation, /carpetCache\.clear\(\)/, 'no previously cached grass resurrects');
