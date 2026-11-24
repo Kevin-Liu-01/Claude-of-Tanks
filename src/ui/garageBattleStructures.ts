@@ -405,7 +405,7 @@ function headless(): boolean {
  * their texels into a canvas (proceduralTexture.ts), which Node lacks. The stand-in is in place only for the step, so
  * every other `typeof document` test in the Garage still sees what the receipt set up. In a browser it is never used.
  */
-function withHeadlessCanvas<T>(step: () => T): T {
+export function withHeadlessCanvas<T>(step: () => T): T {
   if (!headless()) return step();
   const scope = globalThis as { document?: unknown; ImageData?: unknown };
   const hadDocument = 'document' in scope, savedDocument = scope.document;

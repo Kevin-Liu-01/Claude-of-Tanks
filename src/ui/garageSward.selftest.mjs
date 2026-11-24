@@ -1,4 +1,5 @@
-// garage-env-276 (class 2): the battle's own sward on the Garage yards (garageEnvironmentKit.ts, tallGrass.ts nearOnly).
+// garage-env-276 (class 2): the battle's own sward and ground tufts on the Garage yards (garageEnvironmentKit.ts,
+// tallGrass.ts nearOnly, vegetation.ts createGroundTufts).
 // 1. every outdoor pack draws the battle sward exactly where the battle draws one (a grass biome: not desert, not
 //    badlands), at the Garage's density, inside its triangle share of the pack budget;
 // 2. no blade stands on the worked floors (the turntable's surround: Main's ruling B shrank the 36 m apron to the floors)
@@ -25,7 +26,22 @@ for (const variant of GARAGE_VARIANTS.filter((v) => v.architecture !== 'field_sh
   // 1.
   assert.equal(!!group, grows, `${variant.id}: the battle sward is drawn exactly where the battle draws one`);
   assert.equal(build.stats.battleSward > 0, grows, `${variant.id}: ${build.stats.battleSward} clumps`);
-  assert.equal(build.stats.groundCover > 0, !grows, `${variant.id}: one surface owns the cover (the static tufts only where no sward draws)`);
+  const tufts = build.root.getObjectByName('battle_ground_tufts');
+  assert.equal(build.stats.groundCover > 0, !grows && !tufts,
+    `${variant.id}: one surface owns the cover (the static tufts only where no battle sward or tufts draw)`);
+  // the battle's tufts: desert's scrub and badlands' dry stalks (no sward there), no camera obstacle, the floors clear
+  if (variant.mapId === 'desert' || variant.mapId === 'badlands') assert.ok(build.stats.battleTufts > 0, `${variant.id}: its battle stalks`);
+  if (tufts) {
+    assert.equal(tufts.userData.cameraTransparent, true, `${variant.id}: the tufts are no camera obstacle`);
+    const m = new THREE.Matrix4(), p = new THREE.Vector3();
+    for (const mesh of tufts.children.filter((child) => child.isInstancedMesh)) {
+      for (let index = 0; index < mesh.count; index += 1) {
+        mesh.getMatrixAt(index, m);
+        p.setFromMatrixPosition(m);
+        assert.ok(Math.hypot(p.x, p.z) >= GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM, `${variant.id}: tuft ${index} on the worked surround`);
+      }
+    }
+  }
   let triangles = 0;
   if (group) {
     const near = group.children.find((child) => child.isInstancedMesh && child.visible && child.count > 0);
@@ -49,7 +65,7 @@ for (const variant of GARAGE_VARIANTS.filter((v) => v.architecture !== 'field_sh
     const obstacles = build.cameraObstacles.length;
     assert.ok(obstacles < 2000, `${variant.id}: the spring arm took no blade (${obstacles} obstacles)`);
   }
-  rows.push(`${variant.mapId} ${build.stats.battleSward} clumps, ${triangles} triangles`);
+  rows.push(`${variant.mapId} ${build.stats.battleSward} clumps, ${triangles} triangles; ${build.stats.battleTufts} battle tufts; ${build.stats.drawCalls} draws`);
   build.dispose();
 }
 assets.dispose();

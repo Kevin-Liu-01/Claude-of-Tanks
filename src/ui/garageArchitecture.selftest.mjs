@@ -204,7 +204,7 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.treeDetailTier, 'battlefield-far',
     'headless Garage audits must retain the DOM-free battlefield tree fallback');
   // (garage-env-276: one surface owns the cover, the battle sward where it draws, the static tufts elsewhere)
-  assert.ok(stats.battleSward > 0 ? stats.groundCover === 0 : stats.groundCover >= 48,
+  assert.ok(stats.battleSward > 0 || stats.battleTufts > 0 ? stats.groundCover === 0 : stats.groundCover >= 48,
     `${variant.id} must retain bounded biome ground cover from one owner`);
   assert.ok(stats.structures >= 9,
     `${variant.id} must surround the hero with at least nine connected map structures`);

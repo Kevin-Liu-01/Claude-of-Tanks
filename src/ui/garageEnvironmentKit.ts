@@ -17,12 +17,12 @@ import {
 } from '../world/maps/structureCollision.ts';
 import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts';
 import type { TreeSpecies } from '../world/treeSpecies.ts';
-import { createGarageTreeKit } from '../world/vegetation.ts';
+import { createGarageTreeKit, createGroundTufts } from '../world/vegetation.ts';
 import {
   buildGarageStructureSteps, garageDrawnKinds, holdGarageStructureSurfacesNow, holdGarageTerrainSurfaceNow,
   loadGarageMapStructures, prepareGarageStructureSurfaces, prepareGarageTerrainSurface,
   releaseGarageStructureSurfaces, releaseGarageTerrainSurface, resolveGarageMapStructures, startGarageSurfacePaints,
-  type GarageTerrainSurface,
+  type GarageTerrainSurface, withHeadlessCanvas,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
 import { createTallGrass, type TallGrass } from '../world/tallGrass.ts';
@@ -126,6 +126,8 @@ interface GarageEnvironmentStats {
   readonly groundCover: number;
   /** (garage-env-276, class 2) The battle sward's clumps on the yard (tallGrass.ts near ring), 0 where it draws none. */
   readonly battleSward: number;
+  /** (garage-env-276, class 2) The battle's ground tufts on the yard (vegetation.ts createGroundTufts), lush and dry. */
+  readonly battleTufts: number;
   readonly structures: number;
   /** The structures its map's regional architecture kit rebuilt, as the world build rebuilds them (garage-env-276). */
   readonly regionalKitStructures: number;
@@ -2364,6 +2366,30 @@ export function buildGarageEnvironment(
     return sward;
   };
   const battleSward = addBattleSward();
+  // (garage-env-276, class 2) the battle's own ground tufts (vegetation.ts createGroundTufts: the cards the battle
+  // scatters round its camera, its desert scrub, dry stalks and rimed stalks, at the map's own density and tone) over the
+  // patch, by the same rule, windless; no camera obstacle
+  const addBattleTufts = (): ReturnType<typeof createGroundTufts> | null => {
+    // (the cards paint into a canvas: the receipts under Node take the adapter's stand-in, as the structure surfaces do)
+    const tufts = withHeadlessCanvas(() => createGroundTufts({ getHeightAt: (x, z) => samplePatch(patch, heights, x, z) }, {
+      setupShadowMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook as never),
+      releaseShadowMaterial: outerEngineCtx.releaseShadowMaterial ? (material) => {
+        cascadeMaterials.delete(material);
+        outerEngineCtx.releaseShadowMaterial!(material);
+      } : undefined,
+    }, map.cfg as unknown as Parameters<typeof createGroundTufts>[2], {
+      seed, mapId: variant.mapId, tier: getDeviceTier(),
+      area: { minX: -patch.sizeXM / 2, maxX: patch.sizeXM / 2, minZ: -patch.sizeZM / 2, maxZ: patch.sizeZM / 2 },
+      blocked: (x, _y, z) => coverBlocked(x, z),
+    }));
+    if (tufts.counts.lush + tufts.counts.dry === 0) { tufts.dispose(); return null; }
+    tufts.group.name = 'battle_ground_tufts';
+    tufts.group.userData.cameraTransparent = true;
+    root.add(tufts.group);
+    track(tufts);
+    return tufts;
+  };
+  const battleTufts = addBattleTufts();
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color
   // graded to the selected biome. It is intentionally windless in Garage:
@@ -2436,8 +2462,8 @@ export function buildGarageEnvironment(
     return groundCoverIndex;
   };
   // (2026-11-24, Main: one surface owns the cover) the static tufts are the stand-in the battle's own cover replaces:
-  // none where the battle sward draws
-  const groundCoverIndex = battleSward ? 0 : addGroundCover();
+  // none where the battle sward or the battle tufts draw
+  const groundCoverIndex = battleSward || battleTufts ? 0 : addGroundCover();
 
   const mergeStructureRecords = (): void => {
     for (const { placement, local, x, z, y } of structureRecords) {
@@ -3149,6 +3175,7 @@ export function buildGarageEnvironment(
     treeDetailTier,
     groundCover: groundCoverIndex,
     battleSward: battleSward?.near.count ?? 0,
+    battleTufts: battleTufts ? battleTufts.counts.lush + battleTufts.counts.dry : 0,
     structures: recipe.structures.length,
     regionalKitStructures: structureRecords.filter((record) => record.regionalKit).length,
     horizonSetPieces: Object.freeze(horizonSetPieces.map((piece) => Object.freeze({ ...piece }))),
