@@ -5,7 +5,7 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_PACK_BUDGET } from './garageQualityRubric.ts';
-import { createStarvationMeter, threadCpuMs } from '../../tools/starvation-meter.mjs';
+import { createStarvationMeter, leastCpuMs, threadCpuMs } from '../../tools/starvation-meter.mjs';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
   GARAGE_FACILITY_AXIS_YAW_RAD,
@@ -91,7 +91,7 @@ const loadMeasuredKit = async () => {
       if (plant === 'blocked') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PLANT_MS);
       if (plant === 'busy') while (threadCpuMs() - cpuFrom < PLANT_MS) { /* the build's own stall: CPU */ }
       try { return kit.buildGarageEnvironment(...args); } finally {
-        builds.push({ plant, cpuMs: threadCpuMs() - cpuFrom, wallMs: performance.now() - wallFrom });
+        builds.push({ plant, variantId: args[2]?.id, cpuMs: threadCpuMs() - cpuFrom, wallMs: performance.now() - wallFrom });
       }
     },
   };
@@ -351,20 +351,33 @@ assert.ok(blocked.wallMs - blocked.cpuMs >= PLANT_MS - 5 && blockedTransaction.s
   'the negative control: a build blocked without CPU is not charged, and its transaction is net of the block');
 assert.ok(busy.cpuMs >= PLANT_MS, 'the negative control: a build that spends the CPU is charged');
 // (267) The CPU clock takes preemption out, not the slower core or the memory contention a loaded machine also gives: at
-// load 160-166 the first build read 95-101 ms of CPU. Main's measured factor came first: a calibration kernel read before
-// and after a build differed 8-20 % at p90 (up to 45 %) at load 130-170, the thread moving between this M5 Max's Super
-// and Performance cores, over its 10 % bar, and the quiet Super-core baseline cannot be read while the lanes run. So the
-// share of the unplanted transactions' time this thread was starved is the proxy, measured, not guessed from load1:
-// past STARVED_SHARE_REPORTED the budgets are reported with it, not asserted. The controls above hold at any share.
-const STARVED_SHARE_REPORTED = 0.25;
-const unplanted = transactions.filter((entry) => entry.plant === null);
-const starvedShare = unplanted.reduce((sum, entry) => sum + entry.starvedMs, 0) / unplanted.reduce((sum, entry) => sum + entry.wallMs, 0);
-if (starvedShare > STARVED_SHARE_REPORTED) {
-  console.log(`garageArchitecture.selftest: the thread was starved ${(starvedShare * 100).toFixed(0)} % of its transactions (over ${STARVED_SHARE_REPORTED * 100} %): the build's budget is reported, not asserted (build ${maxBuildMs.toFixed(1)} of 100 ms)`);
-} else {
-  assert.ok(maxBuildMs < 100,
-    `headless environment geometry construction exceeded budget (${maxBuildMs.toFixed(1)} ms of CPU; starved ${(starvedShare * 100).toFixed(0)} %)`);
+// load 160-166 the first build read 95-101 ms of CPU, and a calibration kernel read before and after a build differed
+// 8-45 % as the thread moved between this M5 Max's core kinds. (garage-env-276, Main 2026-11-24: the same commit read 79
+// and 137 ms 20 minutes apart; a load gate only hides the result.) Contention only ever adds to a build's CPU, so the
+// budget judges each outdoor pack's least CPU over BUILD_REPS fresh builds (tools/starvation-meter.mjs leastCpuMs), the
+// first-visit sweep's build among them: the quiet cost, asserted at any load. (It is the warm build's cost; the browser's
+// timing ticket judges the cold switch.)
+const BUILD_REPS = 3;
+const costKit = await import('./garageEnvironmentKit.ts');
+const costAssets = costKit.createGarageEnvironmentAssetLibrary({});
+const leastBuilds = [];
+for (const variant of GARAGE_VARIANTS.filter((entry) => entry.architecture !== 'field_shed')) {
+  const swept = builds.filter((build) => build.plant === null && build.variantId === variant.id).map((build) => build.cpuMs);
+  const { leastMs, samples } = await leastCpuMs(BUILD_REPS - Math.min(1, swept.length), async (_index, measure) => {
+    await costKit.prepareGarageEnvironmentAssets(costAssets, variant);
+    measure(() => costKit.buildGarageEnvironment({}, costAssets, variant, () => {})).dispose();
+  });
+  leastBuilds.push({ id: variant.id, leastMs: Math.min(leastMs, ...swept), samples: [...swept, ...samples] });
 }
+costAssets.dispose();
+const leastBuild = leastBuilds.reduce((worst, entry) => (entry.leastMs > worst.leastMs ? entry : worst));
+const starvedShare = transactions.filter((entry) => entry.plant === null)
+  .reduce((sum, entry, _index, unplanted) => sum + entry.starvedMs / unplanted.reduce((total, item) => total + item.wallMs, 0), 0);
+console.log(`garageArchitecture.selftest: the build's least CPU over ${BUILD_REPS} builds ${leastBuild.leastMs.toFixed(1)} ms at most `
+  + `(${leastBuild.id}: ${leastBuild.samples.map((ms) => ms.toFixed(0)).join(', ')} ms; budget 100; the thread starved `
+  + `${(starvedShare * 100).toFixed(0)} % of its transactions)`);
+assert.ok(leastBuild.leastMs < 100,
+  `headless environment geometry construction exceeded budget (${leastBuild.id}: ${leastBuild.leastMs.toFixed(1)} ms of CPU at least over ${BUILD_REPS} builds)`);
 // (garage-env-276 D, Main 2026-11-24) The cold transaction is information here, not a budget: a browser hands the ground's
 // photographed layers (prepareSourcedTerrain) and the structure prints (surfacePaintPrefetch.ts) to workers, while Node,
 // with neither Worker nor Image, paints their procedural fallbacks in the prepare's slices, a path no player takes. It is

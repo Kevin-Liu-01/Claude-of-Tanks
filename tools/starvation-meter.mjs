@@ -22,6 +22,27 @@ export function threadCpuMs() {
 }
 
 /**
+ * The least thread CPU a repeatable piece of work takes over `reps` runs, and every run's (garage-env-276, Main
+ * 2026-11-24: a budget that holds at any load, with no load gate). A loaded machine only ever adds to a run's CPU (a
+ * slower core, a shared one, a cold cache; 267 measured a calibration kernel 8-45 % apart before and after one build as the
+ * thread moved between core kinds), never takes from it, so the cheapest of a few runs converges on the quiet cost.
+ * `run(index)` does the work once (its own setup outside the clock: `measure(fn)` wraps the part that is charged).
+ */
+export async function leastCpuMs(reps, run) {
+  const samples = [];
+  for (let index = 0; index < reps; index += 1) {
+    let charged = null;
+    await run(index, (work) => {
+      const from = threadCpuMs();
+      try { return work(); } finally { charged = threadCpuMs() - from; }
+    });
+    if (charged === null) throw new Error('leastCpuMs: the run charged nothing (call measure(fn) once a run)');
+    samples.push(charged);
+  }
+  return { leastMs: Math.min(...samples), samples };
+}
+
+/**
  * `onInterval(interval)` runs after every sample with `{ startMs, endMs, wallMs, cpuMs, starvedMs }`; the timer seams
  * (`now`, `cpuNow`, `sample()` without `start()`) let a receipt drive it by hand.
  */
