@@ -954,7 +954,9 @@ function createBackdropGeometry(
   });
   // (garage-env-276, class 3) the bands are the map's ground: their triangles, and a landform landmark's below, draw with
   // the map's battle terrain material (group 0); the sea and the built horizon keep their colours (group 1)
-  const terrainIndices: number[] = indices.splice(0, indices.length);
+  // (2026-11-24, the class 2+3 sheet) the bands keep their colours: compressed into steep walls they read as cliffs under the
+  // battle material (dark rock on coastal, monsoon and the desert's dunes); a landform landmark takes it
+  const terrainIndices: number[] = [];
   if (style === 'coastal') {
     // the sea from the shore to the horizon: deep green-teal at the shore, swell bands across it, the horizon's haze far
     // (wave 408: "a flat, uniform teal plane meeting the grass")

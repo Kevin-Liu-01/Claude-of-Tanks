@@ -928,9 +928,12 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
     (v) => Math.min(0.7, 0.06 + layerIndex * 0.1 + (1 - v) * 0.16));
   });
 
-  // (garage-env-276, class 3) the ground's triangles: the relief bands and the landform landmarks below, drawn with the
-  // map's own battle terrain material (garageEnvironmentKit.ts); the built landmarks and the water keep their colours
-  const terrainIndices: number[] = mesh.indices.splice(0, mesh.indices.length);
+  // (garage-env-276, class 3) the ground's triangles: the landform landmarks below (jebel, inselberg, massif, ridge), drawn
+  // with the map's own battle terrain material (garageEnvironmentKit.ts); the relief bands, the built landmarks and the
+  // water keep their colours
+  // (2026-11-24, the class 2+3 sheet) the relief bands keep their colours: compressed into steep walls they read as cliffs
+  // under the battle material (dark rock on coastal, monsoon and the desert's dunes); the landforms take it
+  const terrainIndices: number[] = [];
   // the landmarks: nearest first, a landform hidden behind nearer, taller ones over its whole span is left out (the far
   // jebels behind Jebel Rum, a far ridge behind the cirque), and the rest keep to the skyline's triangle budget
   const receipts: GarageSkylineLandmarkReceipt[] = [];
