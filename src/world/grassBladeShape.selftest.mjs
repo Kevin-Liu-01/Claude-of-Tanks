@@ -34,7 +34,7 @@ const hook = registerHooks({ load(href, context, next) {
   if (href === lightUrl) return { ...result, source: String(result.source) + '\nexport { buildCoverageMipmaps };' };
   if (href !== currentUrl) return result;
   assert.equal(String(result.source), text, 'source stable during fixture load');
-  return { ...result, source: text + `\nexport { mipAlphaGuard };\nexport function grassShapeMaterial(engineCtx, grassWindHook) { ${declaration('makeGrassMaterial')} return makeGrassMaterial; }` };
+  return { ...result, source: text + `\nexport { mipAlphaGuard };\nexport function grassShapeMaterial(engineCtx, grassWindHook, uniforms) { ${declaration('makeGrassMaterial')} return (...args) => makeGrassMaterial(engineCtx, uniforms, ...args); }` };
 } });
 let current, buildMips;
 try { current = await import(currentUrl); ({ buildCoverageMipmaps: buildMips } = await import(lightUrl)); }
@@ -56,10 +56,12 @@ function textureContract(texture) {
   assert.deepEqual(texture.mipmaps, []); assert.equal(texture.generateMipmaps, true); assert.equal(texture.version, 1);
 }
 function materialContract(api, texture) {
-  const calls = [], extra = () => {};
-  const make = api.grassShapeMaterial({ setupShadowMaterial: (mat, hook) => calls.push([mat, hook]) }, () => extra);
+  const calls = [], hooks = [], extra = () => {}, uniforms = {};
+  const make = api.grassShapeMaterial({ setupShadowMaterial: (mat, hook) => calls.push([mat, hook]) },
+    (...args) => { hooks.push(args); return extra; }, uniforms);
   const mat = make(texture, 150, 'world-grass-wind-v6');
   try {
+    assert.equal(hooks.length, 1); assert.strictEqual(hooks[0][0], uniforms); assert.equal(hooks[0][1], 150, 'the hook takes the uniforms and the reach');
     assert.ok(mat instanceof THREE.MeshLambertMaterial); assert.ok(mat.map === texture);
     assert.deepEqual([mat.alphaTest, mat.alphaToCoverage, mat.side, mat.transparent, mat.depthWrite], [.44, true, THREE.DoubleSide, false, true]);
     assert.deepEqual(calls, [[mat, extra]]); assert.equal(mat.customProgramCacheKey(), 'world-grass-wind-v6');

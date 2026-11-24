@@ -219,6 +219,10 @@ function checkSourceContract(text) {
     // ground-269 (2026-11-04): the ground-surface table's four packed vectors — the open and worn grounds' macro and close
     // codes, the town floor's, the relief cap and repair switches (groundSurfaces.ts; vec4, no sampler)
     'uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear',
+    // garage-env-276 (2026-11-24): the Garage's copy of the material (createTerrainSurfaceMaterialSteps) reads its patch as
+    // the map's ground at its anchor — an offset into the map's frame (vec3, no sampler; the battle's material never
+    // declares it)
+    'uGarageMapOrigin',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

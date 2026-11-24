@@ -67,7 +67,7 @@ import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, se
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { civicLawnTest, civicPavedRooms, civicPavementTest, civicTreeStations } from './civic/plans/index.ts';
 import { pavedGroundTest } from './maps/builtEnvironmentTable.ts';
-import { advanceGrassChunkWork, createGrassChunkWork,
+import { advanceGrassChunkWork, createGrassChunkWork, writeGrassTuftData,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
 import { createGrassCarpetWork, advanceGrassCarpetWork,
   type GrassCarpetWorkState } from './grassCarpetWork.ts';
@@ -4214,118 +4214,18 @@ export async function createVegetationAsync(
   }
 }
 
-function* vegetationBuildSteps(
-  heightField: HeightField,
-  engineCtx: EngineContext,
-  seed: number,
-  cfg: VegetationMapConfig | null,
-  deferFarGrass: boolean,
-): Generator<BuildYield, VegetationRuntime, void> {
-  const mobileTier = getDeviceTier() === 'mobile';
-  const lightDesk = !mobileTier && presetLightWorld(); // Ultra Low on a desktop (LIGHT_WORLD_VEG)
-  // Round 77b (2026-09-26): the far tier bakes its impostor atlas from the near trees where the engine context
-  // carries a renderer (production); the receipts (no renderer) and the mobile tier keep the opaque lobe tier.
-  const bakeRenderer: TreeImpostorRenderer | null = mobileTier ? null : (engineCtx.renderer ?? null);
-  // Phone screens cannot resolve the alpha-card density used by desktop in
-  // the midfield; it aliases into crawling grain while spending millions of
-  // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
-  // silhouettes. Both transitions already use continuous density/LOD fades,
-  // so this removes sub-pixel noise without introducing a distance pop.
-  const grassFadeEnd = mobileTier ? 224 : lightDesk ? LIGHT_WORLD_VEG.grassFadeEnd : GRASS_FADE_END;
-  const grassTaperEnd = mobileTier ? 196 : lightDesk ? LIGHT_WORLD_VEG.grassTaperEnd : 280;
-  const treeNearIn = mobileTier ? 200 : lightDesk ? LIGHT_WORLD_VEG.treeNearIn : (() => {
-    // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
-    // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is
-    // TREE_NEAR_IN / TREE_NEAR_OUT; nothing else reads the query (the receipts run without a location).
-    const q = typeof location !== 'undefined' ? Number((/[?&]treeNear=(\d+)(&|$)/.exec(location.search ?? '') ?? [])[1]) : NaN;
-    return q >= 60 && q <= 400 ? q : TREE_NEAR_IN;
-  })();
-  const treeNearOut = mobileTier ? 225 : lightDesk ? LIGHT_WORLD_VEG.treeNearOut : treeNearIn + (TREE_NEAR_OUT - TREE_NEAR_IN);
-  const veg: VegetationConfig = {
-    species: ['pine', 'oak'],
-    clusterMix: [['pine', 0.55], ['oak', 0.45]],
-    loneMix: [['pine', 0.5], ['oak', 0.5]],
-    rimMix: [['pine', 0.7], ['oak', 0.3]],
-    clusterCount: 46, loneCount: 95, rimCount: 58,
-    grassDensity: 1, bushCount: 1, bushSpecies: 'oak',
-    grassTexTone: null, tuftTone: null, parks: null, palettes: {},
-    avoid: null, // [{x,z,r}] — no vegetation discs (e.g. establishing-camera foreground)
-    ...((cfg && cfg.vegetation) || {}),
-  };
-  const rng = mulberry32(seed);
-  const group = new THREE.Group();
-  group.name = 'vegetation';
-  const L = heightField._layout;
-  const v = L.village;
-  const noVeg = heightField._noVeg || (() => false);
-  let groundCoverBlocked: GroundCoverBlocked | null = null;
-  // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
-  applySnowGrassLaw(veg, cfg?.id ?? null);
-  // grass r2: the map's sward kind for the shared patch field (none on a map without a sward, or under snow)
-  const swardKindOf = resolveGroundReduxProfile(cfg?.id ?? null).grass?.kind ?? null;
-  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf; // (a snow map's tufts are dead winter grass: no fresh patch)
-  const _swardPatch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
-  const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
-    * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
-  const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
-    * (mobileTier ? 0.72 : lightDesk ? LIGHT_WORLD_VEG.carpetScale : 1));
+/** The grass cards' shared uniforms: the battle's (vegetationBuildSteps) or a Garage yard's own (createGroundTufts). */
+interface GrassWindUniforms {
+  uWindTime: { value: number };
+  uCamPos: { value: THREE.Vector3 };
+  uSniperFade: { value: number };
+  uCamFwd: { value: THREE.Vector3 };
+}
 
-  const uWindTime = { value: 0 };
-  // p2 trees lane (2026-10-02): the leaf transmission's strength (canopyLighting.ts), driven each frame from the
-  // scene's light model: LEAF_TRANSMISSION under the grounded light, 0 under the legacy rig (its anti-sun fill still
-  // lights the backs) and before a light model resolves
-  const uLeafTransmission = { value: 0 };
-  // Round 77 (2026-09-26): the map's wind (treeClimate.ts) — the direction it blows toward, and (the lean of a
-  // nominal-height crown top, 1 / the nominal height, the canopy flutter amplitude); the mobile tier keeps a third
-  // of the lean and half the flutter. And the moss its shaded trunk bases grow (0 on the arid and frozen maps).
-  const treeWind = resolveTreeWind(cfg);
-  const uWindDir = { value: new THREE.Vector2(treeWind.dirX, treeWind.dirZ) };
-  const uWind = { value: new THREE.Vector3(
-    TREE_WIND_LEAN_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.lean : 1),
-    1 / TREE_WIND_NOMINAL_HEIGHT_M,
-    TREE_WIND_FLUTTER_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.flutter : 1),
-  ) };
-  const uMoss = { value: resolveTrunkMoss(cfg) };
-  // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
-  const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
-  // trees round 4 (the cost hold): a small shrub's thinning (FOLIAGE_SHRUB_THIN; 0 thins none — the phones)
-  const uShrubThin = { value: mobileTier ? 0 : FOLIAGE_SHRUB_THIN };
-  const uCamPos = { value: new THREE.Vector3(0, 0, 0) };
-  // gameplay_feel r2: camera->tank occlusion-fade focus point (y=-9999 = off)
-  const uFocusPos = { value: new THREE.Vector3(0, -9999, 0) };
-  // Sniper near-grass suppression (0 = arcade, 1 = sniper): with the camera at
-  // the gun trunnion, meter-tall blades otherwise flood the lower half of the
-  // scope. WoT hides near grass in sniper mode by default — fade tufts inside
-  // ~15 m of the camera while the rig is in SNIPER. Eased over ~0.1 s in
-  // update() so mode switches don't pop.
-  const uSniperFade = { value: 0 };
-  let sniperFadeTarget = 0;
-  // item 259: See-through foliage (FOLIAGE_LENS_REACH), off by default. Off, the scope corridor's target stays 0, the
-  // occlusion sweep never runs, and the near dissolve keeps its lens band: the crowns' and shrubs' reach (the facing
-  // clusters' builds) and uCotNearSee (0 the lens band, 1 the whole band) for a canopy drawn without them (the phones'
-  // cards, the far lobes)
-  let seeThrough = false;
-  let occlusionSweeps = 0; // (the receipt's count: the frames the occlusion sweep ran)
-  const uCrownNearReach = { value: FOLIAGE_LENS_REACH };
-  const uShrubNearReach = { value: FOLIAGE_LENS_REACH };
-  const uCotNearSee = { value: 0 };
-  // HIGH-ZOOM SCOPE HARD-CUT (controls_gunnery r4): at x4/x8 the screen-door
-  // dither of the scope-corridor fade magnifies into a full-frame halftone
-  // stipple (the r3 critic's "blanketed in dither"). Below ~15° FOV the
-  // corridor fade goes BINARY — faded fragments discard cleanly, kept ones
-  // render full-opacity — so the zoomed sight picture is crisp edge to edge.
-  const uScopeHard = { value: 0 };
-  // SCOPE CORRIDOR LENGTH (controls_gunnery r5): how far along the scope ray
-  // the foliage cull reaches, in meters. Driven from the live server-aim
-  // distance (rig.aimDist) through setSniperFade — the r4 corridor died at a
-  // fixed 40-70 m, so any bush 100-320 m out on the sight line still blinded
-  // the x4/x8 scope (r5 critique: target IS-2 100% hidden at 320 m).
-  const uScopeDist = { value: 70 };
-  // Camera forward (unit) — drives the sniper center-cone grass clear-out.
-  const uCamFwd = { value: new THREE.Vector3(0, 0, 1) };
-
-  // ---- grass materials (shared hook, per-material fade distance) ----
-  const grassWindHook = (farDist: number): MaterialShaderHook => (shader: MaterialShader): void => {
+// ---- grass materials (shared hook, per-material fade distance) ----
+function grassWindHook(uniforms: GrassWindUniforms, farDist: number): MaterialShaderHook {
+  const { uWindTime, uCamPos, uSniperFade, uCamFwd } = uniforms;
+  return (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     shader.uniforms.uCamPos = uCamPos;
     shader.uniforms.uGrassFar = { value: farDist };
@@ -4405,80 +4305,40 @@ function* vegetationBuildSteps(
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
+}
 
-  // Far tufts collapse to one wider plane. At this range their alpha
-  // silhouette supplies the entire read, so a crossed second plane is waste.
-  const makeTuftFarGeometry = (w: number, h: number): THREE.BufferGeometry =>
-    buildGrassTuftGeometry(w, h, 1, 1.5);
+function makeGrassMaterial(
+  engineCtx: Pick<EngineContext, 'setupShadowMaterial'>,
+  uniforms: GrassWindUniforms,
+  tex: THREE.Texture,
+  farDist: number,
+  cacheKey: string,
+  alphaTest = 0.44,
+): THREE.MeshLambertMaterial {
+  // Lambert is materially cheaper for a rough, non-metallic alpha card and
+  // preserves the lighting/shadow response that is actually visible here.
+  const mat = new THREE.MeshLambertMaterial({
+    map: tex, alphaTest, alphaToCoverage: true, side: THREE.DoubleSide,
+  });
+  engineCtx.setupShadowMaterial(mat, grassWindHook(uniforms, farDist));
+  mat.customProgramCacheKey = () => cacheKey;
+  return mat;
+}
 
-  const grassTex: THREE.Texture[] = [];
-  grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
-  yield { stage: 'grassPrep', fine: true };
-  grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
-  yield { stage: 'grassPrep', fine: true };
-  // (Longleaf round 4) a wiregrass map's tufts wear the bunchgrass cards, painted from their own streams
-  if (veg.grassCard === 'wiregrass') {
-    for (let variant = 0; variant < 2; variant++) {
-      grassTex[variant].dispose();
-      grassTex[variant] = makeWiregrassCardTexture(mulberry32(seed + 43 + variant), variant, veg.grassTexTone);
-    }
-  }
-  function makeGrassMaterial(
-    tex: THREE.Texture,
-    farDist: number,
-    cacheKey: string,
-    alphaTest = 0.44,
-  ): THREE.MeshLambertMaterial {
-    // Lambert is materially cheaper for a rough, non-metallic alpha card and
-    // preserves the lighting/shadow response that is actually visible here.
-    const mat = new THREE.MeshLambertMaterial({
-      map: tex, alphaTest, alphaToCoverage: true, side: THREE.DoubleSide,
-    });
-    engineCtx.setupShadowMaterial(mat, grassWindHook(farDist));
-    mat.customProgramCacheKey = () => cacheKey;
-    return mat;
-  }
-  const grassVariants: Array<{
-    geo: THREE.BufferGeometry;
-    geoFar: THREE.BufferGeometry;
-    matMid: THREE.MeshLambertMaterial;
-    matNear: THREE.MeshLambertMaterial;
-    height: number;
-    radius: number;
-  }> = [];
-  function* buildGrassVariants(): Generator<BuildYield, void, void> {
-    for (let gv = 0; gv < 2; gv++) {
-      // r7: taller tuft cards (0.60/0.48 -> 0.74/0.58) — WoT-scale near grass
-      // must clearly break the ground plane beside the tracks, not read as a
-      // 2 cm moss carpet
-      const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.74 : 0.58;
-      grassVariants.push({
-        // The far card is wider; reserve its full width and 0.188 m wind sway.
-        height: h - 0.03, radius: w * 0.75 + 0.2,
-        geo: buildGrassTuftGeometry(w, h),
-        geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
-        // Ground cover 2026-09-12: the streamed mid/far tufts cut at 0.34 so the
-        // thin blades survive their deep mips and the far fields keep the dark
-        // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
-        // keeps the crisp 0.44 edge beside the tracks.
-        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
-      });
-      yield { stage: 'grassPrep', fine: true };
-    }
-  }
-  yield* buildGrassVariants();
-
-  const _m4 = new THREE.Matrix4();
-  const _q = new THREE.Quaternion();
-  const _qLean = new THREE.Quaternion();
-  const _qTurn = new THREE.Quaternion(); // the map-revival lane: a twin bush's half turn (veg.rotationalCover)
-  const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
-  const _axLean = new THREE.Vector3();
-  const _pv = new THREE.Vector3();
-  const _sv = new THREE.Vector3();
-  const _up = new THREE.Vector3(0, 1, 0);
+/**
+ * The battle's tuft filter and tint (makeTuft) and the state it reads, for createVegetation's build and a Garage yard's
+ * patch (createGroundTufts). The canopy's cover and the ground cover's clearance arrive later, through the setters.
+ */
+function createTuftFilter(
+  heightField: HeightField,
+  veg: VegetationConfig,
+  cfg: VegetationMapConfig | null,
+  grassVariants: ReadonlyArray<{ height: number; radius: number }>,
+  swardKind: Parameters<typeof swardPatchAt>[2] | null,
+  _swardPatch: SwardPatch,
+) {
+  const noVeg = heightField._noVeg || (() => false);
+  let groundCoverBlocked: GroundCoverBlocked | null = null;
 
   // shared placement filter/tint for a tuft candidate; returns null or
   // [x, y, z, yaw, sxz, sy, r, g, b, variant].
@@ -4804,6 +4664,297 @@ function* vegetationBuildSteps(
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }
+  return { makeTuft, inAvoid, inTreeClear, batterAdmits, steepSeedOk,
+    /** the splat field's reused record (the bushes' clump draw reads it too) */
+    splatScratch: _splatScratch,
+    setWoodsCover(at: ((x: number, z: number) => number) | null): void { woodsCoverAt = at; },
+    setGroundCoverBlocked(blocked: GroundCoverBlocked | null): void { groundCoverBlocked = blocked; },
+  };
+}
+
+interface GroundTuftsOptions {
+  seed: number;
+  mapId: string;
+  /** Yard-local metres, all within ±474 m (the tuft filter culls past it). */
+  area: { minX: number; maxX: number; minZ: number; maxZ: number };
+  /** The ground cover's clearance (groundCoverClearance.ts): a tuft whose card meets a solid is dropped. */
+  blocked?: GroundCoverBlocked;
+  /** The cards' scale-out distance from the patch centre; the default keeps the whole patch whole from 20 m off it. */
+  far?: number;
+  tier?: 'mobile' | 'desktop';
+}
+
+/**
+ * The battle's own ground tufts (desert scrub, badlands stalks, winter rimed stalks) on a Garage yard's patch: the map's
+ * tuft law through createTuftFilter, the near carpet's cards, its per-cell streams over the area's 16 m cells and its
+ * scaling. The battle's world stands in where the yard has none: no roads, villages, fields, civic plan or avoid discs,
+ * a medium flat ground at the field's heights. Windless, and the cards keep their size about the patch centre.
+ */
+export function createGroundTufts(
+  field: { getHeightAt(x: number, z: number): number },
+  engineCtx: Pick<EngineContext, 'setupShadowMaterial'> & { releaseShadowMaterial?(material: THREE.Material): unknown },
+  cfg: VegetationMapConfig | null,
+  options: GroundTuftsOptions,
+): { group: THREE.Group; counts: { lush: number; dry: number }; update(dt: number, camPos: THREE.Vector3): void; dispose(): void } {
+  const { seed, mapId, area } = options;
+  const mobile = (options.tier ?? getDeviceTier()) === 'mobile';
+  // the battle's veg record (vegetationBuildSteps) for the fields the tufts read, its snow law and its sward kind
+  const tuftVeg = { grassDensity: 1, grassTexTone: null, tuftTone: null, ...cfg?.vegetation, avoid: null } as VegetationConfig;
+  applySnowGrassLaw(tuftVeg, mapId);
+  const swardKindOf = resolveGroundReduxProfile(mapId).grass?.kind ?? null;
+  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf;
+  // the cards the battle paints from its seed (a wiregrass map's bunchgrass cards from their own streams)
+  const textures = [0, 1].map((variant) => tuftVeg.grassCard === 'wiregrass'
+    ? makeWiregrassCardTexture(mulberry32(seed + 43 + variant), variant, tuftVeg.grassTexTone)
+    : makeGrassCardTexture(mulberry32(seed + 41 + variant), variant, tuftVeg.grassTexTone));
+  const cx = (area.minX + area.maxX) / 2, cz = (area.minZ + area.maxZ) / 2;
+  const uniforms: GrassWindUniforms = {
+    uWindTime: { value: 0 }, uCamPos: { value: new THREE.Vector3(cx, field.getHeightAt(cx, cz), cz) },
+    uSniperFade: { value: 0 }, uCamFwd: { value: new THREE.Vector3(0, 0, 1) },
+  };
+  // the hook's scale-out starts at 0.56 of its reach (grassWindHook): past the patch's far corner from 20 m off its centre
+  const far = options.far ?? Math.ceil((Math.hypot(area.maxX - area.minX, area.maxZ - area.minZ) / 2 + 20) / 0.56);
+  // the carpet's two cards (vegetationBuildSteps buildGrassVariants), with the near material at the yard's reach (its own
+  // program key: the material differs from the carpet's in its reach)
+  const variants = [[0.92, 0.74], [1.14, 0.58]].map(([w, h], gv) => ({
+    height: h - 0.03, radius: w * 0.75 + 0.2, geo: buildGrassTuftGeometry(w, h),
+    mat: makeGrassMaterial(engineCtx, uniforms, textures[gv], far, 'garage-ground-tufts-v1'),
+  }));
+  const flat = {
+    getHeightAt: (x: number, z: number): number => field.getHeightAt(x, z),
+    getGroundType: (): string => 'medium',
+    getContactNormalAt: <T extends { x: number; y: number; z: number }>(_x: number, _z: number, out: T): T => {
+      out.x = 0; out.y = 1; out.z = 0; return out;
+    },
+    _roadDist: (): number => 1e9,
+    _villageMask: (): number => 0,
+  } as unknown as HeightField;
+  const filter = createTuftFilter(flat, tuftVeg, null, variants, swardKind, { r: 1, g: 1, b: 1, cured: 0, value: 1 });
+  if (options.blocked) filter.setGroundCoverBlocked(options.blocked);
+  // the carpet's cells (grassCarpetWork.ts): each cell's own stream, its candidates, its scaling, its Float32 records
+  const perCell = Math.round(CARPET_PER_CELL * tuftVeg.grassDensity * (mobile ? 0.72 : 1));
+  const rows: [number[], number[]] = [[], []];
+  for (let iz = Math.floor(area.minZ / CARPET_CELL); iz <= Math.floor(area.maxZ / CARPET_CELL); iz++) {
+    for (let ix = Math.floor(area.minX / CARPET_CELL); ix <= Math.floor(area.maxX / CARPET_CELL); ix++) {
+      const crng = mulberry32((seed ^ 0x51ab ^ (ix * 374761393) ^ (iz * 668265263)) >>> 0);
+      for (let k = 0; k < perCell; k++) {
+        const t = filter.makeTuft(ix * CARPET_CELL + crng() * CARPET_CELL, iz * CARPET_CELL + crng() * CARPET_CELL, crng, true);
+        if (!t || t[0] < area.minX || t[0] > area.maxX || t[2] < area.minZ || t[2] > area.maxZ) continue;
+        t[4] *= 0.96; t[5] *= 1.04;
+        (t[9] ? rows[1] : rows[0]).push(...t);
+      }
+    }
+  }
+  const group = new THREE.Group();
+  group.name = 'groundTufts';
+  const meshes = variants.map((v, vv) => {
+    const data = Float32Array.from(rows[vv]), count = data.length / 10;
+    const mesh = new THREE.InstancedMesh(v.geo, v.mat, count);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+    for (let i = 0; i < count; i++) {
+      writeGrassTuftData(mesh.instanceMatrix.array as Float32Array, mesh.instanceColor.array as Float32Array, i, data, i * 10);
+    }
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
+    group.add(mesh);
+    return mesh;
+  });
+  return {
+    group,
+    counts: { lush: meshes[0].count, dry: meshes[1].count },
+    update(): void { /* windless: the cards hold still and keep their size about the patch centre */ },
+    dispose(): void {
+      group.removeFromParent();
+      group.clear();
+      for (const mesh of meshes) mesh.dispose();
+      for (const v of variants) {
+        engineCtx.releaseShadowMaterial?.(v.mat);
+        v.mat.dispose();
+        v.geo.dispose();
+      }
+      for (const texture of textures) texture.dispose();
+    },
+  };
+}
+
+function* vegetationBuildSteps(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: VegetationMapConfig | null,
+  deferFarGrass: boolean,
+): Generator<BuildYield, VegetationRuntime, void> {
+  const mobileTier = getDeviceTier() === 'mobile';
+  const lightDesk = !mobileTier && presetLightWorld(); // Ultra Low on a desktop (LIGHT_WORLD_VEG)
+  // Round 77b (2026-09-26): the far tier bakes its impostor atlas from the near trees where the engine context
+  // carries a renderer (production); the receipts (no renderer) and the mobile tier keep the opaque lobe tier.
+  const bakeRenderer: TreeImpostorRenderer | null = mobileTier ? null : (engineCtx.renderer ?? null);
+  // Phone screens cannot resolve the alpha-card density used by desktop in
+  // the midfield; it aliases into crawling grain while spending millions of
+  // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
+  // silhouettes. Both transitions already use continuous density/LOD fades,
+  // so this removes sub-pixel noise without introducing a distance pop.
+  const grassFadeEnd = mobileTier ? 224 : lightDesk ? LIGHT_WORLD_VEG.grassFadeEnd : GRASS_FADE_END;
+  const grassTaperEnd = mobileTier ? 196 : lightDesk ? LIGHT_WORLD_VEG.grassTaperEnd : 280;
+  const treeNearIn = mobileTier ? 200 : lightDesk ? LIGHT_WORLD_VEG.treeNearIn : (() => {
+    // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
+    // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is
+    // TREE_NEAR_IN / TREE_NEAR_OUT; nothing else reads the query (the receipts run without a location).
+    const q = typeof location !== 'undefined' ? Number((/[?&]treeNear=(\d+)(&|$)/.exec(location.search ?? '') ?? [])[1]) : NaN;
+    return q >= 60 && q <= 400 ? q : TREE_NEAR_IN;
+  })();
+  const treeNearOut = mobileTier ? 225 : lightDesk ? LIGHT_WORLD_VEG.treeNearOut : treeNearIn + (TREE_NEAR_OUT - TREE_NEAR_IN);
+  const veg: VegetationConfig = {
+    species: ['pine', 'oak'],
+    clusterMix: [['pine', 0.55], ['oak', 0.45]],
+    loneMix: [['pine', 0.5], ['oak', 0.5]],
+    rimMix: [['pine', 0.7], ['oak', 0.3]],
+    clusterCount: 46, loneCount: 95, rimCount: 58,
+    grassDensity: 1, bushCount: 1, bushSpecies: 'oak',
+    grassTexTone: null, tuftTone: null, parks: null, palettes: {},
+    avoid: null, // [{x,z,r}] — no vegetation discs (e.g. establishing-camera foreground)
+    ...((cfg && cfg.vegetation) || {}),
+  };
+  const rng = mulberry32(seed);
+  const group = new THREE.Group();
+  group.name = 'vegetation';
+  const L = heightField._layout;
+  const v = L.village;
+  const noVeg = heightField._noVeg || (() => false);
+  let groundCoverBlocked: GroundCoverBlocked | null = null;
+  // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
+  applySnowGrassLaw(veg, cfg?.id ?? null);
+  // grass r2: the map's sward kind for the shared patch field (none on a map without a sward, or under snow)
+  const swardKindOf = resolveGroundReduxProfile(cfg?.id ?? null).grass?.kind ?? null;
+  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf; // (a snow map's tufts are dead winter grass: no fresh patch)
+  const _swardPatch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
+  const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
+    * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
+  const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
+    * (mobileTier ? 0.72 : lightDesk ? LIGHT_WORLD_VEG.carpetScale : 1));
+
+  const uWindTime = { value: 0 };
+  // p2 trees lane (2026-10-02): the leaf transmission's strength (canopyLighting.ts), driven each frame from the
+  // scene's light model: LEAF_TRANSMISSION under the grounded light, 0 under the legacy rig (its anti-sun fill still
+  // lights the backs) and before a light model resolves
+  const uLeafTransmission = { value: 0 };
+  // Round 77 (2026-09-26): the map's wind (treeClimate.ts) — the direction it blows toward, and (the lean of a
+  // nominal-height crown top, 1 / the nominal height, the canopy flutter amplitude); the mobile tier keeps a third
+  // of the lean and half the flutter. And the moss its shaded trunk bases grow (0 on the arid and frozen maps).
+  const treeWind = resolveTreeWind(cfg);
+  const uWindDir = { value: new THREE.Vector2(treeWind.dirX, treeWind.dirZ) };
+  const uWind = { value: new THREE.Vector3(
+    TREE_WIND_LEAN_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.lean : 1),
+    1 / TREE_WIND_NOMINAL_HEIGHT_M,
+    TREE_WIND_FLUTTER_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.flutter : 1),
+  ) };
+  const uMoss = { value: resolveTrunkMoss(cfg) };
+  // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
+  const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
+  // trees round 4 (the cost hold): a small shrub's thinning (FOLIAGE_SHRUB_THIN; 0 thins none — the phones)
+  const uShrubThin = { value: mobileTier ? 0 : FOLIAGE_SHRUB_THIN };
+  const uCamPos = { value: new THREE.Vector3(0, 0, 0) };
+  // gameplay_feel r2: camera->tank occlusion-fade focus point (y=-9999 = off)
+  const uFocusPos = { value: new THREE.Vector3(0, -9999, 0) };
+  // Sniper near-grass suppression (0 = arcade, 1 = sniper): with the camera at
+  // the gun trunnion, meter-tall blades otherwise flood the lower half of the
+  // scope. WoT hides near grass in sniper mode by default — fade tufts inside
+  // ~15 m of the camera while the rig is in SNIPER. Eased over ~0.1 s in
+  // update() so mode switches don't pop.
+  const uSniperFade = { value: 0 };
+  let sniperFadeTarget = 0;
+  // item 259: See-through foliage (FOLIAGE_LENS_REACH), off by default. Off, the scope corridor's target stays 0, the
+  // occlusion sweep never runs, and the near dissolve keeps its lens band: the crowns' and shrubs' reach (the facing
+  // clusters' builds) and uCotNearSee (0 the lens band, 1 the whole band) for a canopy drawn without them (the phones'
+  // cards, the far lobes)
+  let seeThrough = false;
+  let occlusionSweeps = 0; // (the receipt's count: the frames the occlusion sweep ran)
+  const uCrownNearReach = { value: FOLIAGE_LENS_REACH };
+  const uShrubNearReach = { value: FOLIAGE_LENS_REACH };
+  const uCotNearSee = { value: 0 };
+  // HIGH-ZOOM SCOPE HARD-CUT (controls_gunnery r4): at x4/x8 the screen-door
+  // dither of the scope-corridor fade magnifies into a full-frame halftone
+  // stipple (the r3 critic's "blanketed in dither"). Below ~15° FOV the
+  // corridor fade goes BINARY — faded fragments discard cleanly, kept ones
+  // render full-opacity — so the zoomed sight picture is crisp edge to edge.
+  const uScopeHard = { value: 0 };
+  // SCOPE CORRIDOR LENGTH (controls_gunnery r5): how far along the scope ray
+  // the foliage cull reaches, in meters. Driven from the live server-aim
+  // distance (rig.aimDist) through setSniperFade — the r4 corridor died at a
+  // fixed 40-70 m, so any bush 100-320 m out on the sight line still blinded
+  // the x4/x8 scope (r5 critique: target IS-2 100% hidden at 320 m).
+  const uScopeDist = { value: 70 };
+  // Camera forward (unit) — drives the sniper center-cone grass clear-out.
+  const uCamFwd = { value: new THREE.Vector3(0, 0, 1) };
+
+  // the grass cards' shared uniforms (grassWindHook)
+  const grassUniforms: GrassWindUniforms = { uWindTime, uCamPos, uSniperFade, uCamFwd };
+
+  // Far tufts collapse to one wider plane. At this range their alpha
+  // silhouette supplies the entire read, so a crossed second plane is waste.
+  const makeTuftFarGeometry = (w: number, h: number): THREE.BufferGeometry =>
+    buildGrassTuftGeometry(w, h, 1, 1.5);
+
+  const grassTex: THREE.Texture[] = [];
+  grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
+  yield { stage: 'grassPrep', fine: true };
+  grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
+  yield { stage: 'grassPrep', fine: true };
+  // (Longleaf round 4) a wiregrass map's tufts wear the bunchgrass cards, painted from their own streams
+  if (veg.grassCard === 'wiregrass') {
+    for (let variant = 0; variant < 2; variant++) {
+      grassTex[variant].dispose();
+      grassTex[variant] = makeWiregrassCardTexture(mulberry32(seed + 43 + variant), variant, veg.grassTexTone);
+    }
+  }
+  const grassVariants: Array<{
+    geo: THREE.BufferGeometry;
+    geoFar: THREE.BufferGeometry;
+    matMid: THREE.MeshLambertMaterial;
+    matNear: THREE.MeshLambertMaterial;
+    height: number;
+    radius: number;
+  }> = [];
+  function* buildGrassVariants(): Generator<BuildYield, void, void> {
+    for (let gv = 0; gv < 2; gv++) {
+      // r7: taller tuft cards (0.60/0.48 -> 0.74/0.58) — WoT-scale near grass
+      // must clearly break the ground plane beside the tracks, not read as a
+      // 2 cm moss carpet
+      const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.74 : 0.58;
+      grassVariants.push({
+        // The far card is wider; reserve its full width and 0.188 m wind sway.
+        height: h - 0.03, radius: w * 0.75 + 0.2,
+        geo: buildGrassTuftGeometry(w, h),
+        geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
+        // Ground cover 2026-09-12: the streamed mid/far tufts cut at 0.34 so the
+        // thin blades survive their deep mips and the far fields keep the dark
+        // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
+        // keeps the crisp 0.44 edge beside the tracks.
+        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
+        matMid: makeGrassMaterial(engineCtx, grassUniforms, grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
+        matNear: makeGrassMaterial(engineCtx, grassUniforms, grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
+      });
+      yield { stage: 'grassPrep', fine: true };
+    }
+  }
+  yield* buildGrassVariants();
+
+  const _m4 = new THREE.Matrix4();
+  const _q = new THREE.Quaternion();
+  const _qLean = new THREE.Quaternion();
+  const _qTurn = new THREE.Quaternion(); // the map-revival lane: a twin bush's half turn (veg.rotationalCover)
+  const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
+  const _axLean = new THREE.Vector3();
+  const _pv = new THREE.Vector3();
+  const _sv = new THREE.Vector3();
+  const _up = new THREE.Vector3(0, 1, 0);
+
+  // the tuft filter and tint (createTuftFilter: shared with the Garage yard's patch, createGroundTufts)
+  const tuftFilter = createTuftFilter(heightField, veg, cfg, grassVariants, swardKind, _swardPatch);
+  const { makeTuft, inAvoid, inTreeClear, batterAdmits, steepSeedOk } = tuftFilter;
 
   // ---- ground lane (2026-10-08, crater-render-spec §C): the battle's craters in the ground cover ----
   // One law (groundCoverCraters.ts): inside 0.9 R of a crater the cover is gone, elsewhere in the overlay's reach it
@@ -5069,6 +5220,7 @@ function* vegetationBuildSteps(
       throw new Error('Seal ground-cover clearance before streaming starts');
     }
     groundCoverBlocked = blocked;
+    tuftFilter.setGroundCoverBlocked(blocked);
     let rejected = 0;
     for (const chunk of grassChunks) for (const entry of chunk.meshes ?? []) {
       const mesh = entry.mesh;
@@ -8196,7 +8348,7 @@ function* vegetationBuildSteps(
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
         // thicket cores — shrubs knot into dense washes/hollow thickets with
         // clean ground between, instead of the r5 near-uniform pepper noise
-        const sb = sampleSplatNoise(x, z, _splatScratch);
+        const sb = sampleSplatNoise(x, z, tuftFilter.splatScratch);
         const biome = smoothstepJs(0.42, 0.70, sb.n2);
         const thicket = smoothstepJs(0.44, 0.78, sb.n1);
         clump = biome * (0.12 + 0.88 * thicket);
@@ -9738,14 +9890,14 @@ function* vegetationBuildSteps(
       woodsMask[k] = t * t * (3 - 2 * t);
     }
   }
-  woodsCoverAt = (x: number, z: number): number => {
+  tuftFilter.setWoodsCover((x: number, z: number): number => {
     const u = Math.max(0, Math.min(woodsSize - 1.001, (x + 512) / woodsCell - 0.5));
     const v = Math.max(0, Math.min(woodsSize - 1.001, (z + 512) / woodsCell - 0.5));
     const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, k = j * woodsSize + i;
     const a = woodsMask[k] + (woodsMask[k + 1] - woodsMask[k]) * fu;
     const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
     return a + (b - a) * fv;
-  };
+  });
   /** The rig's scope share (0 arcade, 1 scoped): it promotes the corridor's trees and sets the scope's hard cut whatever
    *  See-through foliage says; the corridor's fade follows it only with See-through foliage on (item 259). */
   let sniperShare = 0;

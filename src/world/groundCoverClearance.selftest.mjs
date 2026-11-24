@@ -238,7 +238,10 @@ solidBox.dispose(); guardGeometry.dispose(); material.dispose();
 }
 
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
-const makeTuft = vegetation.slice(vegetation.indexOf('  function makeTuft('), vegetation.indexOf('  // write a tuft stored'));
+// (garage-env-276) makeTuft ends where createTuftFilter returns it (the old end anchor had gone: the slice ran to the end)
+const tuftStart = vegetation.indexOf('  function makeTuft('), tuftEnd = vegetation.indexOf('  return { makeTuft,', tuftStart);
+assert.ok(tuftStart > 0 && tuftEnd > tuftStart, 'makeTuft and its factory\'s return');
+const makeTuft = vegetation.slice(tuftStart, tuftEnd);
 assert.ok(makeTuft.indexOf('groundCoverBlocked?.') > makeTuft.lastIndexOf('crng()'), 'clearance cannot shift RNG draws');
 assert.match(vegetation, /entry\.total = mesh\.count = kept/, 'density updates cannot restore rejected instances');
 assert.match(vegetation, /carpetCache\.clear\(\)/, 'no previously cached grass resurrects');

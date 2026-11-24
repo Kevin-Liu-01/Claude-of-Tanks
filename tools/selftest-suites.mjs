@@ -2843,6 +2843,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',
     'src/world/grassCarpetWork.selftest.mjs',
+    // garage-env-276: the battle's ground tufts on a Garage yard's patch (vegetation.ts createGroundTufts)
+    'src/world/groundTufts.selftest.mjs',
     'src/world/reservoirWaterworks.selftest.mjs',
     'src/world/deltaPlasterPalette.selftest.mjs',
     'src/world/liquidSurfaceDetail.selftest.mjs',
