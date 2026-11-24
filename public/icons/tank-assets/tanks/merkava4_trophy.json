@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.806,0.643,-2.994],
-          [1.8,0.984,-2.994],
-          [1.797,0.984,3.8],
-          [1.803,0.643,3.8]
+          [1.5737,0.135,3.8],
+          [1.5737,0.135,-3.8],
+          [1.5737,0.9836,-3.8],
+          [1.5737,0.9836,3.8]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.804,0.643,3.8],
-          [-1.8,0.984,3.8],
-          [-1.801,0.984,-3.038],
-          [-1.806,0.643,-3.038]
+          [-1.5737,0.135,-3.8],
+          [-1.5737,0.135,3.8],
+          [-1.5737,0.9836,3.8],
+          [-1.5737,0.9836,-3.8]
         ]
       },
       {
@@ -587,7 +587,7 @@
     ]
   },
   "geometryHash": "98370df4",
-  "metadataHash": "8dd994ad",
+  "metadataHash": "a3643020",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0291
@@ -647,8 +647,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39682,
-      "sha256": "a729b0d22fa76a8a2794690e77d7ca9bdd668fd21697d54bbca1c35de59c159c"
+      "bytes": 40658,
+      "sha256": "1366840207dafc9cc93358e3d3a2c8d226740d4c0ebbaaedfca405b411c7d5d7"
     },
     "modulesSide": {
       "file": "merkava4_trophy_modules_side.webp",
@@ -727,7 +727,7 @@
       "file": "merkava4_trophy_technical.json",
       "mime": "application/json",
       "bytes": 5121,
-      "sha256": "6a004db61660a7291abc10147e4bd9b5e5a20d208dd5b64c528cd1d8af307264"
+      "sha256": "432338c1200050d66738474e898fdeab2f9f3203da3e6f35bf9c3c73d535edf1"
     }
   }
 }

@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,0,0],
+    "turretPivot": [0,1.59,0.4],
     "plates": [
       {
         "hitboxId": "H01",
@@ -151,6 +151,36 @@
       },
       {
         "hitboxId": "H07",
+        "name": "track_R",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.615,0.1,2.573],
+          [1.615,0.1,-2.359],
+          [1.615,0.88,-2.359],
+          [1.615,0.88,2.573]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.615,0.1,-2.359],
+          [-1.615,0.1,2.573],
+          [-1.615,0.88,2.573],
+          [-1.615,0.88,-2.359]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -165,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H08",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 40,
@@ -319,7 +349,7 @@
     ]
   },
   "geometryHash": "44f17828",
-  "metadataHash": "f7dba616",
+  "metadataHash": "e76139d7",
   "presentationAnchor": {
     "xM": 0.0015,
     "zM": 0.0948
@@ -429,8 +459,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31946,
-      "sha256": "ef46136318664e7ad2546caacb4f12eb50594157c7bb3a4d4b2d6c126792e0be"
+      "bytes": 31062,
+      "sha256": "853b6f23a3ed0c6688fc75446bdf6f05abe4e4056aebcaa9c9d84b1e7bbad2ee"
     },
     "modulesSide": {
       "file": "strv103b_net_modules_side.webp",
@@ -459,8 +489,8 @@
     "technicalLabels": {
       "file": "strv103b_net_technical.json",
       "mime": "application/json",
-      "bytes": 3089,
-      "sha256": "6a082ebee44d0222f357d03d99dc740e08f7dfd571c67acc94b442a42eb34595"
+      "bytes": 3347,
+      "sha256": "8f108ec6522f9b9951967c70b40bee2c67a675174b2688cb6206787058a0fbcf"
     }
   }
 }

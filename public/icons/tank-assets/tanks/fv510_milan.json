@@ -334,10 +334,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.584,0.502,-2.89],
-          [1.577,0.893,-2.89],
-          [1.583,0.893,3.165],
-          [1.591,0.502,3.165]
+          [1.2989,0.1128,3.1652],
+          [1.2989,0.1128,-3.1652],
+          [1.2989,0.8926,-3.1652],
+          [1.2989,0.8926,3.1652]
         ]
       },
       {
@@ -349,10 +349,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.59,0.502,3.165],
-          [-1.581,0.893,3.165],
-          [-1.576,0.893,-2.887],
-          [-1.585,0.502,-2.887]
+          [-1.2989,0.1128,-3.1652],
+          [-1.2989,0.1128,3.1652],
+          [-1.2989,0.8926,3.1652],
+          [-1.2989,0.8926,-3.1652]
         ]
       },
       {
@@ -648,7 +648,7 @@
     ]
   },
   "geometryHash": "14d89af1",
-  "metadataHash": "36b4ce2f",
+  "metadataHash": "9fd449ee",
   "presentationAnchor": {
     "xM": -0.0037,
     "zM": 0.0297
@@ -754,8 +754,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43912,
-      "sha256": "eb0f2d95708c558dd4c55b80c874fd3d1a7abb1732fa4ed4d50d9068a9d7961e"
+      "bytes": 45960,
+      "sha256": "75fc4e5dbb1cdf9b935d76f732e6d517f6d3faae2d91d7c951f063d9b1fa2c62"
     },
     "modulesSide": {
       "file": "fv510_milan_modules_side.webp",
@@ -784,8 +784,8 @@
     "technicalLabels": {
       "file": "fv510_milan_technical.json",
       "mime": "application/json",
-      "bytes": 5562,
-      "sha256": "1a8d74259efda230bd3191a8c23e38d4b6078a600cf9daf4a8d3ce8212629b7e"
+      "bytes": 5550,
+      "sha256": "c8ce6bab075fb7c7779be69e101cab966b9f6bfdc4227e7337769c8cd1135fe4"
     }
   }
 }

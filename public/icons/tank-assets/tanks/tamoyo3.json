@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.056,0.439,-3.25],
-          [1.056,1.12,-3.25],
-          [1.056,1.12,3.25],
-          [1.056,0.439,3.25]
+          [1.2556,0.12,3.25],
+          [1.2556,0.12,-3.25],
+          [1.2556,1.12,-3.25],
+          [1.2556,1.12,3.25]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.056,0.439,3.25],
-          [-1.056,1.12,3.25],
-          [-1.056,1.12,-3.25],
-          [-1.056,0.439,-3.25]
+          [-1.2556,0.12,-3.25],
+          [-1.2556,0.12,3.25],
+          [-1.2556,1.12,3.25],
+          [-1.2556,1.12,-3.25]
         ]
       },
       {
@@ -699,7 +699,7 @@
     ]
   },
   "geometryHash": "6bfc45af",
-  "metadataHash": "58565050",
+  "metadataHash": "9aeabd30",
   "presentationAnchor": {
     "xM": 0.0041,
     "zM": -0.0683
@@ -806,8 +806,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23566,
-      "sha256": "a1aa7da1680f1b65a8819f2be184423839fe7e2ddaea5452bd6eb909715ce4d7"
+      "bytes": 23896,
+      "sha256": "bc0d86b8c1cd41a138594c23c54907b827b5e885ac472a48d7ae45e8d655df97"
     },
     "modulesSide": {
       "file": "tamoyo3_modules_side.webp",
@@ -837,7 +837,7 @@
       "file": "tamoyo3_technical.json",
       "mime": "application/json",
       "bytes": 5336,
-      "sha256": "9258f8eee89c47760b17d9f62db5315fb65cb24b184eaecee7a77f62a69c9279"
+      "sha256": "4e210db11c469058109ef27337c747340518474d16bf09b7ea5e8a94e19594ef"
     }
   }
 }

@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.7437,0.1005],
+    "turretPivot": [0,1.7,0.47],
     "plates": [
       {
         "hitboxId": "H01",
@@ -787,14 +787,14 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.2423,-0.7951,-0.3697],
-        "max": [0.652,0.9369,0.088],
+        "min": [0.2423,-0.7287,-0.4114],
+        "max": [0.632,0.9368,0.045],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "d19977c7",
-  "metadataHash": "42cc46d3",
+  "metadataHash": "3d341a23",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.053
@@ -920,8 +920,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39074,
-      "sha256": "baee978b244ca0c7b41350ab21a444def4848232694e961625bfaf5d9b8a728d"
+      "bytes": 39056,
+      "sha256": "f6ccbfaa825c6dbf8f7e33921603d06524796ed0e6ab2331293d57d30849e001"
     },
     "markings": {
       "file": "olifant_mk1a_markings.png",
@@ -935,7 +935,7 @@
       "file": "olifant_mk1a_technical.json",
       "mime": "application/json",
       "bytes": 5450,
-      "sha256": "aea8900c6e937b8da57b3d4ef69c73641de9ee86d48f3a79e99c801adb273e87"
+      "sha256": "00c4fc304d28b62b44f396a73be205bf71bc6e36dec560602cfae2cf7b83f5ed"
     }
   }
 }

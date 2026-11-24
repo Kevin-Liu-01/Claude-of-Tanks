@@ -587,6 +587,36 @@
       },
       {
         "hitboxId": "H37",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.42,0.08,2.95],
+          [1.42,0.08,-2.95],
+          [1.42,1,-2.95],
+          [1.42,1,2.95]
+        ]
+      },
+      {
+        "hitboxId": "H38",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.42,0.08,-2.95],
+          [-1.42,0.08,2.95],
+          [-1.42,1,2.95],
+          [-1.42,1,-2.95]
+        ]
+      },
+      {
+        "hitboxId": "H39",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 30,
@@ -601,7 +631,7 @@
         ]
       },
       {
-        "hitboxId": "H38",
+        "hitboxId": "H40",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 26,
@@ -616,7 +646,7 @@
         ]
       },
       {
-        "hitboxId": "H39",
+        "hitboxId": "H41",
         "name": "hull_hatch_01_front",
         "physicalMm": 20,
         "keMm": 26,
@@ -631,7 +661,7 @@
         ]
       },
       {
-        "hitboxId": "H40",
+        "hitboxId": "H42",
         "name": "hull_hatch_01_rear",
         "physicalMm": 20,
         "keMm": 26,
@@ -646,7 +676,7 @@
         ]
       },
       {
-        "hitboxId": "H41",
+        "hitboxId": "H43",
         "name": "hull_hatch_01_right",
         "physicalMm": 20,
         "keMm": 26,
@@ -661,7 +691,7 @@
         ]
       },
       {
-        "hitboxId": "H42",
+        "hitboxId": "H44",
         "name": "hull_hatch_01_left",
         "physicalMm": 20,
         "keMm": 26,
@@ -676,7 +706,7 @@
         ]
       },
       {
-        "hitboxId": "H43",
+        "hitboxId": "H45",
         "name": "hull_hatch_01_top",
         "physicalMm": 20,
         "keMm": 26,
@@ -1379,7 +1409,7 @@
     ]
   },
   "geometryHash": "3c659607",
-  "metadataHash": "ecd9c68f",
+  "metadataHash": "3419489e",
   "presentationAnchor": {
     "xM": -0.0003,
     "zM": -0.0984
@@ -1487,8 +1517,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35662,
-      "sha256": "92c3603c9efb53b070e4a6c5c414c3e088b7e8b860829118c480e57afa10c471"
+      "bytes": 33306,
+      "sha256": "78f51a646531737622468d9f51fd304a0414027807ca1603761a3ed8f7756eff"
     },
     "modulesSide": {
       "file": "m551_sheridan_modules_side.webp",
@@ -1517,8 +1547,8 @@
     "technicalLabels": {
       "file": "m551_sheridan_technical.json",
       "mime": "application/json",
-      "bytes": 5647,
-      "sha256": "b99ae7491cc91e3fcfddd9ed362b399c17220b3e0d6da32947bd2440ab501573"
+      "bytes": 5607,
+      "sha256": "aac5c6c506504be621c5bf18840002ef7a7e2523cd237e3a0d9419beeb96be1a"
     }
   }
 }

@@ -788,149 +788,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.742,0.585,2.265],
-          [1.742,0.585,3.665],
-          [1.742,0.553,3.665],
-          [1.742,0.553,2.265]
+          [1.8,0.12,4.45],
+          [1.8,0.12,-4.45],
+          [1.8,1.05,-4.45],
+          [1.8,1.05,4.45]
         ]
       },
       {
         "hitboxId": "H50",
-        "name": "track_R",
+        "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
         "ceMm": 20,
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.742,0.553,0],
-          [1.742,0.585,0],
-          [1.742,0.585,2.225],
-          [1.742,0.553,2.225]
+          [-1.8,0.12,-4.45],
+          [-1.8,0.12,4.45],
+          [-1.8,1.05,4.45],
+          [-1.8,1.05,-4.45]
         ]
       },
       {
         "hitboxId": "H51",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.726,0.585,0],
-          [1.903,1.05,0],
-          [1.899,1.05,3.68],
-          [1.721,0.585,3.68]
-        ]
-      },
-      {
-        "hitboxId": "H52",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.884,1.05,-3.61],
-          [1.889,1.05,-2.225],
-          [1.886,0.857,-2.225],
-          [1.882,0.857,-3.61]
-        ]
-      },
-      {
-        "hitboxId": "H53",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.795,0.817,-0.705],
-          [1.795,0.817,0],
-          [1.725,0.585,0],
-          [1.725,0.585,-0.705]
-        ]
-      },
-      {
-        "hitboxId": "H54",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.742,0.553,2.225],
-          [-1.742,0.585,2.225],
-          [-1.742,0.585,0],
-          [-1.742,0.553,0]
-        ]
-      },
-      {
-        "hitboxId": "H55",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.742,0.585,3.65],
-          [-1.742,0.585,2.225],
-          [-1.742,0.553,2.225],
-          [-1.742,0.553,3.65]
-        ]
-      },
-      {
-        "hitboxId": "H56",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.724,0.585,0],
-          [-1.806,0.818,0],
-          [-1.806,0.818,-0.68],
-          [-1.724,0.585,-0.68]
-        ]
-      },
-      {
-        "hitboxId": "H57",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.885,1.05,-2.225],
-          [-1.885,1.05,-3.625],
-          [-1.882,0.85,-3.625],
-          [-1.882,0.85,-2.225]
-        ]
-      },
-      {
-        "hitboxId": "H58",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.899,1.05,3.65],
-          [-1.903,1.05,0],
-          [-1.726,0.585,0],
-          [-1.721,0.585,3.65]
-        ]
-      },
-      {
-        "hitboxId": "H59",
         "name": "hull_rear",
         "physicalMm": 60,
         "keMm": 60,
@@ -945,7 +825,7 @@
         ]
       },
       {
-        "hitboxId": "H60",
+        "hitboxId": "H52",
         "name": "hull_roof",
         "physicalMm": 50,
         "keMm": 50,
@@ -1228,7 +1108,7 @@
     ]
   },
   "geometryHash": "940fa9c0",
-  "metadataHash": "67555409",
+  "metadataHash": "b2be50e5",
   "presentationAnchor": {
     "xM": 0.0003,
     "zM": -0.0234
@@ -1334,8 +1214,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36412,
-      "sha256": "7cb1788d256725d37caa10b6fa24a78652ccf01c5044968cfaa1037967067dc2"
+      "bytes": 34602,
+      "sha256": "dc911f8cfad5f2399d495fd7a8c0d76c3c0f0a589e2cc8ff63b3efedad749940"
     },
     "modulesSide": {
       "file": "object148_proto_modules_side.webp",
@@ -1364,8 +1244,8 @@
     "technicalLabels": {
       "file": "object148_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5089,
-      "sha256": "423f6e2e54cc55235ae1fab09f2411d430ce65978568534c2fac40ca1510a322"
+      "bytes": 4575,
+      "sha256": "014e2ca6ec6f3e1f61eb0e28452eb0e2eddd4773b9a173f76ec13f1171c13d91"
     }
   }
 }

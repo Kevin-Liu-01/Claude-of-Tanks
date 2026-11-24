@@ -181,6 +181,36 @@
       },
       {
         "hitboxId": "H09",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.7,0.12,3.96],
+          [1.7,0.12,-3.96],
+          [1.7,1,-3.96],
+          [1.7,1,3.96]
+        ]
+      },
+      {
+        "hitboxId": "H10",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.7,0.12,-3.96],
+          [-1.7,0.12,3.96],
+          [-1.7,1,3.96],
+          [-1.7,1,-3.96]
+        ]
+      },
+      {
+        "hitboxId": "H11",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 66,
@@ -195,7 +225,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H12",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 59,
@@ -210,7 +240,7 @@
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H13",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
         "keMm": 59,
@@ -225,7 +255,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H14",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 59,
@@ -240,7 +270,7 @@
         ]
       },
       {
-        "hitboxId": "H13",
+        "hitboxId": "H15",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
         "keMm": 59,
@@ -255,7 +285,7 @@
         ]
       },
       {
-        "hitboxId": "H14",
+        "hitboxId": "H16",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
         "keMm": 59,
@@ -270,7 +300,7 @@
         ]
       },
       {
-        "hitboxId": "H15",
+        "hitboxId": "H17",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
         "keMm": 59,
@@ -993,7 +1023,7 @@
     ]
   },
   "geometryHash": "01f4c1ab",
-  "metadataHash": "b8ef8fcd",
+  "metadataHash": "c71154e0",
   "presentationAnchor": {
     "xM": 0.0002,
     "zM": 0.0323
@@ -1052,8 +1082,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20740,
-      "sha256": "272b5056ced1202601705179db1f2400d0bd1f9020a27b1cf927bd2eb8058cea"
+      "bytes": 20138,
+      "sha256": "c28a97fc28fb1e1afe95a3c0e4ddd200cd0a8f119160a71d8e4d3243204dfea3"
     },
     "modulesSide": {
       "file": "leo2a5m_modules_side.webp",
@@ -1131,8 +1161,8 @@
     "technicalLabels": {
       "file": "leo2a5m_technical.json",
       "mime": "application/json",
-      "bytes": 4673,
-      "sha256": "f0bb2a36e6420f912fa0247a2547ea1fd1393ac007560b9879484222263d3146"
+      "bytes": 4628,
+      "sha256": "b8be8132847cfa60dba006efc08a5af09724113962bedb33cd6930eff7b5faae"
     }
   }
 }

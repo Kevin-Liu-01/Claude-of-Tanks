@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.733,0.638,-3.533],
-          [1.733,1.036,-3.533],
-          [1.733,1.036,3.476],
-          [1.733,0.638,3.476]
+          [1.5903,0.1184,3.6709],
+          [1.5903,0.1184,-3.6709],
+          [1.5903,1.0364,-3.6709],
+          [1.5903,1.0364,3.6709]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.733,0.638,3.468],
-          [-1.733,1.036,3.468],
-          [-1.733,1.036,-3.541],
-          [-1.733,0.638,-3.541]
+          [-1.5903,0.1184,-3.6709],
+          [-1.5903,0.1184,3.6709],
+          [-1.5903,1.0364,3.6709],
+          [-1.5903,1.0364,-3.6709]
         ]
       },
       {
@@ -674,7 +674,7 @@
     ]
   },
   "geometryHash": "c1f59e1c",
-  "metadataHash": "8cd94d2d",
+  "metadataHash": "71711447",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": 0.0474
@@ -732,8 +732,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17252,
-      "sha256": "8b2ad13dd3ab0d926210b59564a871203cfab83b3a6ae8d81ca570268a289304"
+      "bytes": 17214,
+      "sha256": "bcc3e81f56dbce563e46339ca2404996e802126d883b2e8b909605c5304c7d44"
     },
     "modulesSide": {
       "file": "k2_black_panther_modules_side.webp",
@@ -812,7 +812,7 @@
       "file": "k2_black_panther_technical.json",
       "mime": "application/json",
       "bytes": 3506,
-      "sha256": "a677d9cc92549e3e8de83208eeb57680d021bc02d18e3ffd9a7e3ff4aad8cf2c"
+      "sha256": "f2b9bfc197f846dd0cbde3574b79c93774b47bace3312c4e80783630d5108df5"
     }
   }
 }

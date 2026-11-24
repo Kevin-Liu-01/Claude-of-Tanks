@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,0,0],
+    "turretPivot": [0,1.59,0.4],
     "plates": [
       {
         "hitboxId": "H01",
@@ -151,6 +151,36 @@
       },
       {
         "hitboxId": "H07",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.615,0.1,2.573],
+          [1.615,0.1,-2.359],
+          [1.615,0.88,-2.359],
+          [1.615,0.88,2.573]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.615,0.1,-2.359],
+          [-1.615,0.1,2.573],
+          [-1.615,0.88,2.573],
+          [-1.615,0.88,-2.359]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -165,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H08",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 25,
         "keMm": 25,
@@ -319,7 +349,7 @@
     ]
   },
   "geometryHash": "679e3f12",
-  "metadataHash": "ce434f00",
+  "metadataHash": "777189a3",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0203
@@ -426,8 +456,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34062,
-      "sha256": "43b81cf1e2634592c300d6a3006b9e590ca36ca8f67d7c1a47c2da171485bc2c"
+      "bytes": 32864,
+      "sha256": "b41feacaa79415fb71ca64e36f700fb317754f325c5691034e1e0f5f4138d006"
     },
     "modulesSide": {
       "file": "udes03_modules_side.webp",
@@ -456,8 +486,8 @@
     "technicalLabels": {
       "file": "udes03_technical.json",
       "mime": "application/json",
-      "bytes": 3098,
-      "sha256": "87347e55f9e27022a0dad2f7d29d063c46cca821f6c72dcbf6ebef709389cb5f"
+      "bytes": 3354,
+      "sha256": "6d1945030511cb13fa20814b19972c805090ca0d816325d95fdc8f9f131a6fab"
     }
   }
 }
