@@ -12,6 +12,7 @@ import { createCombatState } from '../sim/damage.ts';
 import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { createBus } from '../game/stateCore.ts';
 import { initHud } from './hud.ts';
+import { openBattleScope } from '../game/battleScope.ts';
 
 const SPEC = 'm1a1_abrams_hc';
 await ensureAuthorityFleet([SPEC]);
@@ -31,6 +32,8 @@ const spotting = { isSpotted: () => true };
 const bus = createBus();
 const hud = initHud(bus, null);
 bus.emit('ui:battleStart', { playerId: me.id, specId: SPEC, mapId: 'steppe' });
+// (battle-teardown-276) the page's battle notices are a battle's: the battle's scope is open, as the phase writer opens it
+openBattleScope('solo-start');
 hud.setMode('battle');
 bus.emit('phase:change', { phase: 'battle' });
 let timeS = 0;

@@ -21,7 +21,7 @@ import puppeteer from 'puppeteer';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { runWarmHold, startViteChild, stubViteSocket } from './capture-hold.mjs';
 import { beginSoloBattle, isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
-import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const TOOL = 'replay-browser-check';
 const SPEC = 'm1a1_abrams_hc';
@@ -160,8 +160,9 @@ async function main(argv) {
         const arm = { mapId, on, trace, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
           blocks: sample.blocks, blockMeanMs: mean(sample.blocks), blockMaxMs: sample.blocks.length ? Math.max(...sample.blocks) : null,
           pausedMaxMs: sample.pausedMaxMs, recorderActive: sample.active };
-        await page.evaluate(() => { window.__DEBUG.leaveBattleToGarage(); });
-        await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 120000, polling: 250 });
+        // (replay-hold-276) the Leave awaited, then the readiness owner's Garage (docs/AUTOMATION-PATHS.md), not a hand-built wait
+        await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
+        await page.waitForFunction(readinessExpression('garage'), { timeout: 120000, polling: 250 });
         await sleep(1500);
         if (on) {
           const saved = await fetchNewestReplay(page, trace);
