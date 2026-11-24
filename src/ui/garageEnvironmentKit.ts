@@ -2025,6 +2025,12 @@ export function buildGarageEnvironment(
   const terrainSurface = prepared?.terrain ?? holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
   for (const [material, hook] of terrainSurface.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
   track({ dispose: () => releaseGarageTerrainSurface(terrainSurface) });
+  // (garage-env-276, class 3) the skyline's ground (its relief bands and landforms: garageSkyline.ts group 0) wears the
+  // same battle terrain material, lit by the real sun and hazed by the real sky as the battle's horizon ring is, its
+  // built landmarks and water keeping their colours (group 1): the far mesas and massifs were flat-shaded colour
+  if (skyline && horizon.geometry.groups.length === 2) {
+    (horizon as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>).material = [terrainSurface.material, horizon.material];
+  }
   const terrain = new THREE.Mesh(terrainGeometry, terrainSurface.material);
   terrain.name = 'map_derived_terrain_patch';
   terrain.receiveShadow = true;
@@ -3085,7 +3091,8 @@ export function buildGarageEnvironment(
   let triangles = 0;
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
-    objects += 1;
+    // (a mesh draws once a material group: the skyline's ground and its landmarks are two, garage-env-276 class 3)
+    objects += Array.isArray(object.material) ? Math.max(1, object.geometry.groups.length) : 1;
     const one = (object.geometry.index?.count || object.geometry.getAttribute('position')?.count || 0) / 3;
     triangles += one * (object instanceof THREE.InstancedMesh ? object.count : 1);
   });
