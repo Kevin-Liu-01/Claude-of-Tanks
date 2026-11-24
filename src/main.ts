@@ -286,7 +286,7 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, modeLaunchesDrones, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
 import { trainingRulesFor } from './sim/trainingGround.ts';
 import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
@@ -532,7 +532,7 @@ const scene = new THREE.Scene();
 /** The point an aircraft's smoke or burst is drawn at (airSupportWorld.ts aircraftFx), reused. */
 const _aircraftFxAt = new THREE.Vector3();
 const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
-  groundHeight: (x, z) => groundSampler(x, z),
+  groundHeight: (x, z, ceiling) => groundSampler(x, z, ceiling),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
@@ -543,6 +543,13 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   aircraftFx: {
     smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
     crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
+  },
+  // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)
+  hullPosition: (id) => {
+    const tank = game.tanks.find((entity) => entity.id === id);
+    if (!tank?.state || tank.combat?.destroyed || tank === game.player) return null;
+    const seen = !game.spotting || game.spotting.isSpotted(id, game.player?.team ?? 'player', game.player);
+    return seen ? tank.state.pos : null;
   },
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
@@ -1214,7 +1221,7 @@ const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts')
   bus, input,
   playerId: () => game.player?.id ?? null,
   watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
-  airSupportMode: () => game.ruleset?.mode === 'air_support',
+  airSupportMode: () => !!game.ruleset?.airSupport,
 })));
 // (notices-audit-275) the crew radio's captions (ui/captionLine.ts): loaded at the first rollout, shown when the setting is on
 const captionLineChunk = createLazyChunk(() => import('./ui/captionLine.ts').then(({ createCaptionLine }) => createCaptionLine({
@@ -1987,7 +1994,7 @@ const showroom = createGarageShowroomRuntime({
   // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : modeLaunchesDrones(garagePreviewMode) ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
   getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),

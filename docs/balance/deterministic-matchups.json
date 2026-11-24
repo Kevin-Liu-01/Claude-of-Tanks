@@ -4815,7 +4815,7 @@
       },
       "armorCeilingsMm": {
         "hullKe": 500,
-        "turretKe": 600
+        "turretKe": 795
       },
       "guidedWeapons": []
     },
@@ -5052,15 +5052,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
-      "draws": 0,
+      "aWins": 3,
+      "bWins": 3,
+      "draws": 6,
       "aScore": 0.5,
       "averageDurationS": 22.58,
-      "averageAEndHp": 206.42,
-      "averageBEndHp": 206.42,
-      "averageADamage": 2243.58,
-      "averageBDamage": 2243.58
+      "averageAEndHp": 43.75,
+      "averageBEndHp": 43.75,
+      "averageADamage": 2406.25,
+      "averageBDamage": 2406.25
     },
     {
       "id": "moving-mirror-control",
@@ -5084,11 +5084,11 @@
       "bWins": 3,
       "draws": 6,
       "aScore": 0.5,
-      "averageDurationS": 24.33,
-      "averageAEndHp": 76.83,
-      "averageBEndHp": 76.83,
-      "averageADamage": 2373.17,
-      "averageBDamage": 2373.17
+      "averageDurationS": 22.53,
+      "averageAEndHp": 165.08,
+      "averageBEndHp": 165.08,
+      "averageADamage": 2284.92,
+      "averageBDamage": 2284.92
     },
     {
       "id": "tier9-rifled-peers",
@@ -5108,15 +5108,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
+      "aWins": 6,
       "bWins": 3,
-      "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 60.33,
-      "averageAEndHp": 1139.58,
-      "averageBEndHp": 274.25,
-      "averageADamage": 2225.75,
-      "averageBDamage": 1210.42
+      "draws": 3,
+      "aScore": 0.625,
+      "averageDurationS": 63.32,
+      "averageAEndHp": 914.58,
+      "averageBEndHp": 369.83,
+      "averageADamage": 2130.17,
+      "averageBDamage": 1435.42
     },
     {
       "id": "nextgen-challengers",
@@ -5140,18 +5140,18 @@
       "bWins": 0,
       "draws": 0,
       "aScore": 1,
-      "averageDurationS": 21.77,
-      "averageAEndHp": 1120,
+      "averageDurationS": 21.33,
+      "averageAEndHp": 1411.17,
       "averageBEndHp": 0,
       "averageADamage": 2450,
-      "averageBDamage": 1530
+      "averageBDamage": 1238.83
     },
     {
       "id": "nextgen-abrams-peer",
       "purpose": "next-generation US peer ceiling",
       "band": [
-        0.833,
-        0.833
+        0.75,
+        0.75
       ],
       "aId": "m1a3",
       "bId": "abramsx",
@@ -5164,22 +5164,22 @@
         601
       ],
       "duels": 12,
-      "aWins": 10,
-      "bWins": 2,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.833,
-      "averageDurationS": 31.69,
-      "averageAEndHp": 514.92,
-      "averageBEndHp": 50.17,
-      "averageADamage": 2699.83,
-      "averageBDamage": 2235.08
+      "aScore": 0.75,
+      "averageDurationS": 31.63,
+      "averageAEndHp": 419.92,
+      "averageBEndHp": 139.25,
+      "averageADamage": 2610.75,
+      "averageBDamage": 2330.08
     },
     {
       "id": "t90-export-step",
       "purpose": "Tier VII T-90 against a K2 prototype peer",
       "band": [
-        0,
-        0
+        0.083,
+        0.083
       ],
       "aId": "t90_1992",
       "bId": "k2b",
@@ -5192,15 +5192,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 0,
-      "bWins": 12,
+      "aWins": 1,
+      "bWins": 11,
       "draws": 0,
-      "aScore": 0,
-      "averageDurationS": 23.09,
-      "averageAEndHp": 0,
-      "averageBEndHp": 672.67,
-      "averageADamage": 1927.33,
-      "averageBDamage": 2550
+      "aScore": 0.083,
+      "averageDurationS": 22.97,
+      "averageAEndHp": 34.08,
+      "averageBEndHp": 612.5,
+      "averageADamage": 1987.5,
+      "averageBDamage": 2515.92
     },
     {
       "id": "chieftain-tier8",
@@ -5220,15 +5220,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 38.49,
-      "averageAEndHp": 262.25,
-      "averageBEndHp": 494,
-      "averageADamage": 1506,
-      "averageBDamage": 1737.75
+      "aScore": 0.333,
+      "averageDurationS": 38.21,
+      "averageAEndHp": 322.5,
+      "averageBEndHp": 541.5,
+      "averageADamage": 1458.5,
+      "averageBDamage": 1677.5
     },
     {
       "id": "k2-tier9-peer",
@@ -5248,15 +5248,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 7,
+      "bWins": 5,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 32.47,
-      "averageAEndHp": 487.42,
-      "averageBEndHp": 119.08,
-      "averageADamage": 2280.92,
-      "averageBDamage": 2212.58
+      "aScore": 0.583,
+      "averageDurationS": 30.26,
+      "averageAEndHp": 524.25,
+      "averageBEndHp": 137,
+      "averageADamage": 2263,
+      "averageBDamage": 2175.75
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -5282,8 +5282,8 @@
       "aScore": 0.417,
       "averageDurationS": 29.54,
       "averageAEndHp": 180.33,
-      "averageBEndHp": 305.67,
-      "averageADamage": 1994.33,
+      "averageBEndHp": 313.33,
+      "averageADamage": 1986.67,
       "averageBDamage": 2519.67
     },
     {
@@ -5309,10 +5309,10 @@
       "draws": 0,
       "aScore": 0.667,
       "averageDurationS": 21.02,
-      "averageAEndHp": 463.75,
+      "averageAEndHp": 551.5,
       "averageBEndHp": 45.75,
       "averageADamage": 2354.25,
-      "averageBDamage": 2136.25
+      "averageBDamage": 2048.5
     },
     {
       "id": "proryv-tier10-peer",
@@ -5365,10 +5365,10 @@
       "draws": 0,
       "aScore": 0.417,
       "averageDurationS": 23.21,
-      "averageAEndHp": 113.33,
+      "averageAEndHp": 105.58,
       "averageBEndHp": 392.33,
       "averageADamage": 1457.67,
-      "averageBDamage": 1486.67
+      "averageBDamage": 1494.42
     },
     {
       "id": "puma-tier8-peer",
@@ -5392,10 +5392,10 @@
       "bWins": 12,
       "draws": 0,
       "aScore": 0,
-      "averageDurationS": 21.65,
+      "averageDurationS": 21.91,
       "averageAEndHp": 0,
-      "averageBEndHp": 874.83,
-      "averageADamage": 825.17,
+      "averageBEndHp": 878.17,
+      "averageADamage": 821.83,
       "averageBDamage": 2000
     },
     {
@@ -5622,8 +5622,8 @@
       "id": "leopard-tier9-peer",
       "purpose": "Tier VIII modern MBT peers",
       "band": [
-        1,
-        1
+        0.917,
+        0.917
       ],
       "aId": "leo2a4m_can",
       "bId": "m1a1",
@@ -5636,15 +5636,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 12,
-      "bWins": 0,
+      "aWins": 11,
+      "bWins": 1,
       "draws": 0,
-      "aScore": 1,
-      "averageDurationS": 25.68,
-      "averageAEndHp": 1706.17,
-      "averageBEndHp": 0,
-      "averageADamage": 2300,
-      "averageBDamage": 793.83
+      "aScore": 0.917,
+      "averageDurationS": 27.65,
+      "averageAEndHp": 1581.5,
+      "averageBEndHp": 61.83,
+      "averageADamage": 2238.17,
+      "averageBDamage": 918.5
     },
     {
       "id": "ifv-nextgen-peer",

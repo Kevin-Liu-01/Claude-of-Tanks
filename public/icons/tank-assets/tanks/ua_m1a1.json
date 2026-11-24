@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.6869,-0.2],
+    "turretPivot": [0,1.632,0.35],
     "plates": [
       {
         "hitboxId": "H01",
@@ -376,6 +376,21 @@
       },
       {
         "hitboxId": "T08",
+        "name": "bustle_rack",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "external",
+        "turretLocal": true,
+        "verts": [
+          [1.58,0.1721,-3.34],
+          [-1.58,0.1721,-3.34],
+          [-1.58,0.8607,-3.34],
+          [1.58,0.8607,-3.34]
+        ]
+      },
+      {
+        "hitboxId": "T09",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 34,
@@ -390,7 +405,7 @@
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T10",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 34,
@@ -405,7 +420,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T11",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 34,
@@ -420,7 +435,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T12",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 34,
@@ -435,7 +450,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T13",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 34,
@@ -497,7 +512,7 @@
         "volumeId": "M07",
         "name": "radio",
         "min": [0.0978,-0.0784,-0.4493],
-        "max": [0.5865,0.336,0.147],
+        "max": [0.5865,0.336,0.0874],
         "turretLocal": true
       },
       {
@@ -580,28 +595,28 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7673,-0.89,-0.1541],
-        "max": [-0.3079,0.4621,0.6005],
+        "min": [-0.7673,-0.83,-0.1545],
+        "max": [-0.3079,0.5221,0.6005],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.7918,-1.0871,-0.483],
-        "max": [-0.3324,0.2877,0.3596],
+        "min": [-0.7918,-1.0371,-0.483],
+        "max": [-0.3324,0.3377,0.3596],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.3324,-1.09,0.1622],
-        "max": [0.7918,0.6676,0.5699],
+        "min": [0.3324,-1.04,0.0521],
+        "max": [0.7918,0.6802,0.5041],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "12415eff",
-  "metadataHash": "0493e8a6",
+  "metadataHash": "7ea200c5",
   "presentationAnchor": {
     "xM": -0.0061,
     "zM": 0.0335
@@ -710,24 +725,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38682,
-      "sha256": "92fd3d9cb90636f399cbc16e9cfef3acf301c779ddda7cacdce494a623696ab5"
+      "bytes": 38660,
+      "sha256": "bd827a501bcf8091dd0c2bcc7e86f6ba235b5797b08408833f2c11267b7b26cf"
     },
     "modulesSide": {
       "file": "ua_m1a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37100,
-      "sha256": "d64479681bca022913bd88c290aedede2c811c320de76b29db577fa8e06eb048"
+      "bytes": 37080,
+      "sha256": "499bba6cdf193d85341c704973aca5b8e76146777f49e4c521b8348e93ffec0f"
     },
     "crewSide": {
       "file": "ua_m1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35830,
-      "sha256": "8240f33b71f46b50f212708df74072a149f8c962f3cdbb3c0d2c541826846d98"
+      "bytes": 35418,
+      "sha256": "e855a1fa9db611daefaef2f0b4745b05e69daef9ee1b0c1f1b0d6198c89c4ed2"
     },
     "markings": {
       "file": "ua_m1a1_markings.png",
@@ -740,8 +755,8 @@
     "technicalLabels": {
       "file": "ua_m1a1_technical.json",
       "mime": "application/json",
-      "bytes": 4960,
-      "sha256": "d00543dac94b05d61f06104df5f2fec66689877f06f3793a63b5fd38a1f6f171"
+      "bytes": 4959,
+      "sha256": "c2cf0dfb244cf520241614c8478387cea8515089658cfd6d7bcc5b7f46eeaa02"
     }
   }
 }

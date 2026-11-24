@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.87,0.525,2.442],
-          [-1.87,1.075,2.442],
-          [-1.87,1.075,-2.821],
-          [-1.87,0.525,-2.821]
+          [-1.648,0.1402,-3.5271],
+          [-1.648,0.1402,3.5271],
+          [-1.648,1.0745,3.5271],
+          [-1.648,1.0745,-3.5271]
         ]
       },
       {
@@ -478,7 +478,7 @@
     ]
   },
   "geometryHash": "c1315cbb",
-  "metadataHash": "1df81de8",
+  "metadataHash": "5cc59a94",
   "presentationAnchor": {
     "xM": -0.0002,
     "zM": 0.0537
@@ -585,8 +585,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24958,
-      "sha256": "0bd822a38c893bc55dd26f9b708b164e6c114dd6030c9d885921ce944c99fa7b"
+      "bytes": 23904,
+      "sha256": "c14a818e0299b2cea9e6160199fb770a8817e52653f09f67283b26c0e7de2fe3"
     },
     "modulesSide": {
       "file": "m48_super_modules_side.webp",
@@ -616,7 +616,7 @@
       "file": "m48_super_technical.json",
       "mime": "application/json",
       "bytes": 4823,
-      "sha256": "010089afebe6c4674a689b39d7b381973f4c04fd4381d61d89c75dc21d593f6f"
+      "sha256": "6938222b1b2602bdfc2ea32f944762ef32c188133d719670f3df0f2fc07f18b5"
     }
   }
 }

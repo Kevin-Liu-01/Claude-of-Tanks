@@ -136,7 +136,7 @@ assert.match(source, /function beginCameraHandoff[\s\S]*function setReplayCamera
   'killcam owns a continuous phase-to-phase camera handoff');
 assert.match(source, /function beginFiring\(stagedHold = false\)(?:: void)?[\s\S]*if \(stagedHold\) updateFiring\(0\);[\s\S]*else beginShotFlight\(\);/,
   'live playback starts projectile motion on the same frame as the gun event');
-assert.match(source, /function beginShotFlight\(\)(?:: void)?[\s\S]*beginCameraHandoff\(SHOT_ACQUIRE_S\);[\s\S]*pb\.phase = 'flight';[\s\S]*updateFlight\(0\);/,
+assert.match(source, /function beginShotFlight\(handoff = true\)(?:: void)?[\s\S]*if \(handoff\) beginCameraHandoff\(SHOT_ACQUIRE_S\);[\s\S]*pb\.phase = 'flight';[\s\S]*updateFlight\(0\);/,
   'the projectile chase accelerates continuously from the painted launch frame');
 assert.match(source, /function flightStartPose\(outPos(?:: THREE\.Vector3)?, outLook(?:: THREE\.Vector3)?\)(?:: void)?[\s\S]*firingCameraPose\(outPos, outLook\)/,
   'the approach and first flight frame retain a readable rear-quarter shooter composition');

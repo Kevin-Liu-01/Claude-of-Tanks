@@ -20,8 +20,8 @@ export interface PreviewAircraft {
   /** The preview id the renders and the manifests use (never a tank spec id). */
   readonly id: string;
   readonly kind: 'aircraft';
-  /** The airframe builder (src/game/<airframe>Airframe.ts). */
-  readonly airframe: 'gunship';
+  /** The airframe builder (src/game/<airframe>Airframe.ts; the drone's fx/droneModel.ts). */
+  readonly airframe: 'gunship' | 'strikeJet' | 'fighterJet' | 'drone';
   /** Its display name's catalog key, and the English name the offline tools print. */
   readonly labelKey: string;
   readonly label: string;
@@ -42,6 +42,29 @@ export const PREVIEW_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Objec
 });
 
 export const PREVIEW_AIRCRAFT_IDS: readonly string[] = Object.freeze(Object.keys(PREVIEW_AIRCRAFT));
+
+/** The aircraft the battle's notices picture (notices-276, Kevin and Main 2026-11-23: ui/components/noticeArt.ts), rendered
+ *  by the same studio, framing and files as the preview aircraft (tools/genAircraftAssets.mjs) but never previewed in a
+ *  tank's place: no mode puts a player in one and no hero card is made (hero-cards-plan.mjs reads PREVIEW_AIRCRAFT). Air
+ *  Support's A-10 (the recon pass and the strafing run) and F-16 (the bomb and the Maverick run), and the drone. */
+const NOTICE_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Object.freeze({
+  a10: Object.freeze({
+    id: 'a10', kind: 'aircraft', airframe: 'strikeJet', labelKey: 'airSupport.kind.strafe', label: 'A-10', nation: 'USA',
+    lengthM: 16.3, spanM: 17.5, heightM: 4.5,
+  }),
+  f16: Object.freeze({
+    id: 'f16', kind: 'aircraft', airframe: 'fighterJet', labelKey: 'airSupport.kind.bomb', label: 'F-16', nation: 'USA',
+    lengthM: 15.0, spanM: 9.5, heightM: 4.9,
+  }),
+  drone: Object.freeze({
+    id: 'drone', kind: 'aircraft', airframe: 'drone', labelKey: 'flight.drone', label: 'Drone', nation: 'USA',
+    lengthM: 0.9, spanM: 0.9, heightM: 0.3,
+  }),
+});
+
+/** Every aircraft with renders: the preview aircraft and the notices' (the asset tool and its page render these). */
+export const RENDERED_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Object.freeze({ ...PREVIEW_AIRCRAFT, ...NOTICE_AIRCRAFT });
+export const RENDERED_AIRCRAFT_IDS: readonly string[] = Object.freeze(Object.keys(RENDERED_AIRCRAFT));
 
 /** The aircraft renders' manifest under public/icons (tools/genAircraftAssets.mjs), and the views an aircraft ships: the
  *  tanks' portrait, side and top with their silhouettes (no armour, module, crew or marking diagram). */

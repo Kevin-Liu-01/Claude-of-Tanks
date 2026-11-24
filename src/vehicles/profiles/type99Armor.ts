@@ -135,10 +135,116 @@ interface VtFamilyArmorConfig {
   readonly rearCrownLiftM: number;
 }
 
-// Combat counterpart to the VT-family visual turret. Both variants share
-// the same welded chevron load path, while their station scales remain
-// independent so a Type 99A hit shell never silently aliases VT-4A1 geometry.
-function vtFamilyTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
+// A welded cheek is commonly a deliberately twisted four-corner surface.
+// Combat quads must remain planar, so represent it as the same two triangles
+// the rendered slab uses. Repeating the final vertex keeps the existing
+// convex-quad trace contract while preserving the exact triangular face.
+function splitFace(
+  name: string,
+  physicalMm: number,
+  [a, b, c, d]: Quad,
+  options: PlateOptions = {},
+  sharedName = true,
+): ArmorPlate[] {
+  return [
+    armorPlate(sharedName ? name : `${name}_A`, physicalMm, [a, b, c, c], options),
+    armorPlate(sharedName ? name : `${name}_B`, physicalMm, [a, c, d, d], options),
+  ];
+}
+
+// The Type 96B frame's turret plates: the welded chevron load path its own turret (type96bX.ts) still draws. Release 276
+// (cn-turrets-276b): kept byte-for-byte as it stood before cn-turrets-276, when the VT-4A1 shared this function; the
+// Type 96B and every tank that copies its armour (the three Type 96 concepts, the T-80U Yun, the T-72B3 Qilin and
+// Kunlun) keep their plates and stats. fleetScope276.selftest.mjs holds every id outside the three redesigned turrets.
+function type96BFrameTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
+  const h = config.heightScale / 0.75;
+  const x = (value: number): number => value * config.widthScale;
+  const y = (value: number): number => value * h;
+  const z = (value: number): number => value * config.depthScale;
+  const cz = (value: number): number => value * config.chevronDepthScale;
+  const shellZ = (value: number): number => z(value >= -0.58
+    ? -0.58 + (value + 0.58) * config.frontShellLengthScale
+    : value);
+  const rearProgress = (value: number): number => Math.max(0, Math.min(1,
+    (-value - 1.58) / (2.68 - 1.58),
+  ));
+  const rearZ = (value: number): number => (
+    shellZ(value) - config.rearExtensionM * rearProgress(value)
+  );
+  const rearBottomY = (value: number, zStation: number): number => (
+    y(value) + config.rearUndersideLiftM * rearProgress(zStation)
+  );
+  const rearTopY = (value: number, zStation: number): number => (
+    y(value) + config.rearCrownLiftM * rearProgress(zStation)
+  );
+  const chevronAdvance = (xStation: number): number => {
+    const progress = Math.max(0, Math.min(1, (xStation - 0.22) / (1.68 - 0.22)));
+    return config.chevronInnerAdvanceM
+      + (config.chevronOuterAdvanceM - config.chevronInnerAdvanceM) * progress;
+  };
+  const chevronZ = (value: number, xStation: number): number => (
+    cz(value) + chevronAdvance(xStation)
+  );
+  const chevronY = (value: number): number => y(value) + config.chevronLiftM;
+  return [
+    ...splitFace('turret_era_R', 15, [
+      [x(0.22), chevronY(0.03), chevronZ(0.80, 0.22)],
+      [x(1.60), chevronY(0.075), chevronZ(-0.12, 1.68)],
+      [x(1.48), chevronY(0.56), chevronZ(-0.54, 1.68)],
+      [x(0.22), chevronY(0.63), chevronZ(0.48, 0.22)],
+    ], { kind: 'era', era: FY4 }),
+    ...splitFace('turret_era_L', 15, [
+      [x(-1.60), chevronY(0.075), chevronZ(-0.12, 1.68)],
+      [x(-0.22), chevronY(0.03), chevronZ(0.80, 0.22)],
+      [x(-0.22), chevronY(0.63), chevronZ(0.48, 0.22)],
+      [x(-1.48), chevronY(0.56), chevronZ(-0.54, 1.68)],
+    ], { kind: 'era', era: FY4 }),
+    ...splitFace('turret_cheek_R', 700, [
+      [x(0.20), chevronY(0.03), chevronZ(0.78, 0.22)],
+      [x(1.60), chevronY(0.075), chevronZ(-0.12, 1.68)],
+      [x(1.48), chevronY(0.56), chevronZ(-0.54, 1.68)],
+      [x(0.20), chevronY(0.615), chevronZ(0.46, 0.22)],
+    ], { keMm: 600, ceMm: 850 }),
+    ...splitFace('turret_cheek_L', 700, [
+      [x(-1.60), chevronY(0.075), chevronZ(-0.12, 1.68)],
+      [x(-0.20), chevronY(0.03), chevronZ(0.78, 0.22)],
+      [x(-0.20), chevronY(0.615), chevronZ(0.46, 0.22)],
+      [x(-1.48), chevronY(0.56), chevronZ(-0.54, 1.68)],
+    ], { keMm: 600, ceMm: 850 }),
+    frontPlate('mantlet', 380, x(-0.25), x(0.25),
+      [y(0.10), z(0.82)], [y(0.50), z(0.62)],
+      { keMm: 380, ceMm: 450, gunFollow: true }),
+    ...sidePlatePair('turret_side_forward', 300,
+      [shellZ(0.18), y(0.04), y(0.62), x(1.52)],
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_side_rear', 300,
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      [rearZ(-2.48), rearBottomY(0.12, -2.48), rearTopY(0.64, -2.48), x(0.82)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_bustle_side', 55,
+      [rearZ(-1.68), rearBottomY(0.10, -1.68), rearTopY(0.60, -1.68), x(1.38)],
+      [rearZ(-2.68), rearBottomY(0.10, -2.68), rearTopY(0.57, -2.68), x(1.24)],
+      { keMm: 55, ceMm: 55 }),
+    ...sidePlatePair('turret_stowage_screen', 10,
+      [z(-0.35), y(0.22), y(0.62), x(1.68)],
+      [rearZ(-2.72), rearBottomY(0.18, -2.72), rearTopY(0.58, -2.72), x(1.42)],
+      { kind: 'spaced' }),
+    rearPlate('turret_rear', 55, x(1.24), rearZ(-2.68),
+      rearBottomY(0.10, -2.68), rearTopY(0.57, -2.68)),
+    deckPlate('turret_roof_forward', 45,
+      [z(0.42), y(0.69), x(0.68)],
+      [rearZ(-1.76), rearTopY(0.70, -1.76), x(1.03)]),
+    deckPlate('turret_roof_bustle', 45,
+      [rearZ(-1.76), rearTopY(0.70, -1.76), x(1.03)],
+      [rearZ(-2.66), rearTopY(0.57, -2.66), x(0.46)]),
+  ];
+}
+
+// The VT-4A1's turret plates (release 276): its cheek modules read from the plan outline its builder lofts
+// (chineseTurretOutlines.ts), the walls and roof behind them on the VT-family stations. The VT-4A1's alone: the Type 96B
+// frame keeps its own chevron plates (type96BFrameTurretPlates).
+function vt4a1TurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
   const h = config.heightScale / 0.75;
   const x = (value: number): number => value * config.widthScale;
   const y = (value: number): number => value * h;
@@ -320,7 +426,7 @@ function type96BFrameArmor(): ArmorEnvelope {
     deckPlate('hull_roof_engine', 45, [-1.48, 1.78, 1.60], [-3.52, 1.78, 1.58]),
   ];
 
-  const turretPlates = vtFamilyTurretPlates({
+  const turretPlates = type96BFrameTurretPlates({
     heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
     frontShellLengthScale: 0.90,
     chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
@@ -694,7 +800,7 @@ function vt4A1Armor(): ArmorEnvelope {
     turretPivot: [0, 1.56, 0.40],
     gunPivot: [0, 0.3198, 0.75],
     gunBarrel: { lengthM: 5.95, radiusM: 0.071 },
-    turretPlates: vtFamilyTurretPlates({
+    turretPlates: vt4a1TurretPlates({
       heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
       frontShellLengthScale: 1,
       chevronInnerAdvanceM: 0, chevronOuterAdvanceM: 0, chevronLiftM: 0.07,

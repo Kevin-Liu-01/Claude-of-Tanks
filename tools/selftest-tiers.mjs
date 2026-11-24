@@ -215,6 +215,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/fleetPassLow.selftest.mjs',
     // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
     'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
+    // 276 (cn-turrets-276b): every id outside the ZTZ-99A2, ZTZ-99A and VT-4A1 matches the pre-cn-turrets-276 fleet (about 2 CPU-min)
+    'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 276 (sim-det-trig): the drawn muzzle against the fired one (sim/gunPose.ts) on every production id
     'src/vehicles/gunPoseVisualFit.selftest.mjs',

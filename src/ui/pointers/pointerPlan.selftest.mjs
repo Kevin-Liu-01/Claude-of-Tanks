@@ -2,28 +2,28 @@
 // pointerPlan.selftest.mjs — the battle's one pointer primitive (guidance-pointers-275). Copyright © 2026 Kevin B. Liu.
 //
 // Kevin, 2026-11-22: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the ui". Holds:
-//  1. follow (the ground): one follow pointer shows (the tutorial's, then the ball, then the objective, then the nearest);
-//     its trail lies on the way, steps evenly, never inside the destination, and goes once the tank is at its edge; the
-//     turn arrow stands only while the destination is out of the camera's view, sweeps the way to turn, and its head
-//     ends nearer the destination's bearing than its band starts;
-//  2. the objective that matters now, per mode (the ball, the sector fought for, a zone being taken, the nearest one not
-//     held, the flags' order), and none in the standard battle;
+//  1. follow (the ground): its trail lies on the way, steps evenly, never inside the destination, and goes once the tank is
+//     at its edge; the turn arrow is laid ahead of the tank in the camera's frame, bends the shorter way, and its head
+//     points along the destination's bearing (its fit to the screen, turret yaw swept: pointerFollowView.selftest.mjs);
+//  2. (276) no mode objective is followed on the ground: the ball, a carried flag and the juggernaut are rim indicators
+//     instead, in their side's colour, shown only while the camera does not show them; an enemy drone near the tank is a
+//     warning;
 //  3. warn (the UI): the rim's geometry (the inset rectangle, the HUD band, behind the camera); a warning the camera
-//     shows gets no bubble; the most urgent come first; neighbours on the rim merge; the cap is 4, 3 on a phone; a
-//     bubble slides along the rim off the HUD and keeps pointing at its warning; the sight lets only threats through;
+//     shows gets no bubble; the most urgent come first; neighbours on the rim merge (a warning never swallows an
+//     indicator); the cap is 4, 3 on a phone; a bubble slides along the rim off the HUD and keeps pointing at its warning;
+//     the sight lets only threats through;
 //  4. the warnings' sources: a spotted enemy with its gun on the tank or close (never an unspotted, dead or friendly one);
 //     an enemy air run the tank stands in, pointing at the aircraft flying it where it is now (its bubble moves round the
-//     rim as the aircraft flies), its ring the warning's time left; an enemy
-//     missile coming at the tank;
+//     rim as the aircraft flies), its ring the warning's time left; an enemy missile coming at the tank;
 //  5. the plan is deterministic, and the layer draws in screen space only and never takes the pointer.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CLOSE_M, GUN_ON_M, OBJECTIVE_ZONE_RADIUS_M, STRIKE_RING_S, TRAIL_COUNT, TRAIL_FIRST_M, TRAIL_HIDE_WITHIN_M,
-  TRAIL_STEP_M, TURN_FROM_DEG, TURN_RADII_M, bearing, bubbleCap, edgeInsets, edgePointer, insideInsets, missileWarnings,
-  objectiveFollow, pickFollow, planBubbles, strikeWarnings, tankWarnings, trailChevrons, turnArrow,
+  CLOSE_M, DRONE_REACH_M, GUN_ON_M, STRIKE_RING_S, TRAIL_COUNT, TRAIL_FIRST_M, TRAIL_HIDE_WITHIN_M, TRAIL_STEP_M,
+  TURN_MIN_SWEEP_DEG, bearing, bubbleCap, droneWarnings, edgeInsets, edgePointer, insideInsets, missileWarnings,
+  objectiveIndicators, planBubbles, strikeWarnings, tankWarnings, trailChevrons, turnArrow,
 } from './pointerPlan.ts';
 import { NOTICE_PRIORITY } from '../battleNotices.ts';
 
@@ -35,18 +35,6 @@ const centroid = (outline) => ({ x: outline.reduce((s, p) => s + p.x, 0) / outli
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // 1. Follow: on the ground.
-{
-  const w = { id: 'w', kind: 'waypoint', x: 0, z: 90, radiusM: 6, trail: true };
-  const ball = { id: 'ball', kind: 'ball', x: 0, z: 10, radiusM: 3, trail: true };
-  const a = { id: 'zone:A', kind: 'objective', x: 0, z: 200, radiusM: 30, trail: true };
-  const b = { id: 'zone:B', kind: 'objective', x: 0, z: 100, radiusM: 30, trail: true };
-  const tank = { x: 0, z: 0 };
-  assert.equal(pickFollow([a, ball, w], tank)?.id, 'w', "the tutorial's own pointer first");
-  assert.equal(pickFollow([a, ball], tank)?.id, 'ball', 'then the ball');
-  assert.equal(pickFollow([a, b], tank)?.id, 'zone:B', 'then the nearest');
-  assert.equal(pickFollow([{ ...a, x: 0, z: 100 }, b], tank)?.id, 'zone:A', 'a tie falls to the id');
-  assert.equal(pickFollow([], tank), null);
-}
 {
   const from = { x: 0, z: 0 }, to = { x: 0, z: 200 };
   const trail = trailChevrons(from, to, 6);
@@ -70,64 +58,78 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 }
 {
   const tank = { x: 0, z: 0 };
-  assert.equal(turnArrow(tank, 0, { x: 0, z: 100 }), null, 'a destination ahead of the camera: no turn arrow');
-  const edgeDeg = TURN_FROM_DEG - 5;
-  assert.equal(turnArrow(tank, 0, { x: Math.sin((edgeDeg * Math.PI) / 180) * 100, z: Math.cos((edgeDeg * Math.PI) / 180) * 100 }), null,
-    'inside the view\'s cone: none');
-  for (const [to, turn] of [[{ x: 100, z: -20 }, 1], [{ x: -100, z: -20 }, -1], [{ x: 30, z: -100 }, 1]]) {
-    const arrow = turnArrow(tank, 0, to);
-    assert.ok(arrow, `a destination at ${to.x},${to.z} out of view gets a turn arrow`);
-    assert.equal(arrow.turn, turn, 'it sweeps the shorter way to the destination');
-    for (const p of arrow.band) {
-      const r = dist(p, tank);
-      assert.ok(r >= TURN_RADII_M.inner - 1e-9 && r <= TURN_RADII_M.outer + 1e-9, 'its band rings the tank');
-    }
-    const want = bearing(tank, to);
-    const startAt = bearing(tank, arrow.band[0]);
-    const tipAt = bearing(tank, arrow.head[1]);
-    assert.ok(Math.abs(wrap(tipAt - want)) < Math.abs(wrap(startAt - want)), 'its head ends nearer the destination than its band starts');
+  for (const [to, turn] of [[{ x: 100, z: -20 }, 1], [{ x: -100, z: -20 }, -1], [{ x: 30, z: -100 }, 1], [{ x: 0, z: -100 }, 1]]) {
+    const arrow = turnArrow(tank, 0, to, 4.5, 10);
+    assert.equal(arrow.turn, turn, `a destination at ${to.x},${to.z}: it bends the shorter way`);
+    for (const p of [...arrow.band, ...arrow.head]) assert.ok(p.z > 10 - 4.5 * 0.4, 'it lies ahead of the tank in the camera\'s view');
+    const tip = arrow.head[1], base = { x: (arrow.head[0].x + arrow.head[2].x) / 2, z: (arrow.head[0].z + arrow.head[2].z) / 2 };
+    const want = Math.max(Math.abs(wrap(bearing(tank, to))), (TURN_MIN_SWEEP_DEG * Math.PI) / 180);
+    const pointing = wrap(bearing(base, tip));
+    assert.ok(Math.abs(Math.abs(pointing) - Math.min(Math.PI, want)) < 0.35, 'its head points along the destination\'s bearing');
+    assert.ok(Math.sign(pointing || 1) === turn || Math.abs(pointing) > Math.PI - 0.35, 'and turns the way it bends');
     assert.equal(arrow.head.length, 3, 'an arrowhead');
   }
-  const behind = turnArrow(tank, Math.PI / 2, { x: -100, z: 0 });
-  assert.ok(behind, 'the view\'s heading, not the hull\'s, decides');
-  const back = { x: 0, z: -100 };
-  const full = turnArrow(tank, 0, back), short = turnArrow(tank, 0, back, 55);
-  const swept = (arrow) => Math.abs(wrap(bearing(tank, arrow.head[1]) - bearing(tank, arrow.band[0])));
-  assert.ok(swept(short) < swept(full) - 0.5, 'a shorter sweep cap ends the head nearer the view (the drawer fits it on screen)');
-  assert.equal(short.turn, full.turn, 'a shortened arrow still turns the same way');
+  const slight = turnArrow(tank, 0, { x: 10, z: 100 }, 4.5, 10);
+  const pointing = Math.abs(wrap(bearing({ x: (slight.head[0].x + slight.head[2].x) / 2, z: (slight.head[0].z + slight.head[2].z) / 2 }, slight.head[1])));
+  assert.ok(pointing > (TURN_MIN_SWEEP_DEG - 12) * Math.PI / 180, 'a destination just off the view still bends far enough to read as a turn');
+  const big = turnArrow(tank, 0, { x: 100, z: 0 }, 6, 10), small = turnArrow(tank, 0, { x: 100, z: 0 }, 2.2, 10);
+  const span = (a) => Math.max(...a.band.map((p) => p.x)) - Math.min(...a.band.map((p) => p.x));
+  assert.ok(span(small) < span(big) / 2, 'a smaller radius is a smaller arrow (the plan fits it to the view)');
+  const turned = turnArrow(tank, Math.PI / 2, { x: 0, z: 100 }, 4.5, 10);
+  assert.ok(turned.band.every((p) => p.x > 10 - 4.5 * 0.4), 'the camera\'s heading, not the hull\'s, decides where it lies');
 }
 
-// 2. The objective that matters now.
+// 2. (276) The moving objectives' indicators and the drones.
 {
-  const tank = { x: 0, z: 0 };
-  assert.equal(objectiveFollow([], tank), null, 'the standard battle: none');
-  const ball = objectiveFollow([{ kind: 'goal', x: 0, z: 300, side: 'enemy' }, { kind: 'ball', x: 10, z: 20, side: 'neutral' }], tank);
-  assert.equal(ball?.kind, 'ball', 'Turbo Ball: the ball');
-  const zones = [
-    { kind: 'zone', x: 0, z: 50, side: 'own', label: 'A' },
-    { kind: 'zone', x: 0, z: 400, side: 'enemy', label: 'B' },
+  const player = { x: 0, y: 0, z: 0, id: 'me' };
+  const ground = () => 1;
+  const markers = [
+    { kind: 'goal', x: 0, z: 300, side: 'enemy' }, { kind: 'ball', x: 10, z: -80, side: 'neutral' },
     { kind: 'zone', x: 0, z: 200, side: 'neutral', label: 'C' },
+    { kind: 'flag', x: 50, z: 50, side: 'own', status: 'carried' }, { kind: 'flag', x: 0, z: 400, side: 'enemy', status: 'home' },
   ];
-  const open = objectiveFollow(zones, tank);
-  assert.equal(open?.id, 'zone:C', 'the nearest zone not held');
-  assert.equal(open?.radiusM, OBJECTIVE_ZONE_RADIUS_M, 'the trail stops at the zone\'s edge');
-  const taken = objectiveFollow([...zones, { kind: 'zone', x: 0, z: 600, side: 'contested', label: 'D' }], tank);
-  assert.equal(taken?.id, 'zone:D', 'a zone being fought for first');
-  assert.equal(objectiveFollow([zones[0]], tank), null, 'every zone held: none');
-  const sectors = [
-    { kind: 'sector', x: 0, z: 0, side: 'own', status: 'taken', label: '1' },
-    { kind: 'sector', x: 0, z: 300, side: 'enemy', status: 'active', label: '2' },
-    { kind: 'sector', x: 0, z: 600, side: 'enemy', status: 'locked', label: '3' },
-  ];
-  assert.equal(objectiveFollow(sectors, tank)?.id, 'sector:2', 'Frontline: the sector being fought for');
-  const flags = (own, enemy) => [
-    { kind: 'flagBase', x: 0, z: -100, side: 'own', status: 'home' },
-    { kind: 'flag', x: 5, z: 5, side: 'own', status: own },
-    { kind: 'flag', x: 0, z: 400, side: 'enemy', status: enemy },
-  ];
-  assert.equal(objectiveFollow(flags('dropped', 'home'), tank)?.id, 'flag:own', 'CTF: recover the own flag where it lies');
-  assert.equal(objectiveFollow(flags('home', 'dropped'), tank)?.id, 'flag:enemy', 'CTF: take the enemy flag');
-  assert.equal(objectiveFollow(flags('home', 'carried'), tank)?.id, 'flag:home', 'CTF: bring it home');
+  const boss = { id: 'boss', x: -200, y: 3, z: 0, enemy: true, alive: true, spotted: true };
+  const list = objectiveIndicators(player, markers, boss, ground);
+  assert.deepEqual(list.map((w) => `${w.kind}:${w.side}`), ['ball:neutral', 'flag:own', 'boss:enemy'],
+    'the ball, a carried flag in its colour, the juggernaut; never a zone, a goal or a flag at home');
+  assert.ok(list.every((w) => w.priority === NOTICE_PRIORITY.ambient), 'an indicator is ambient: the sight stands it down, a warning outranks it');
+  assert.ok(near(list[0].y, 1 + 2.2), 'the ball\'s points at its centre');
+  assert.equal(objectiveIndicators(player, markers, { ...boss, spotted: false }, ground).length, 2, 'an unspotted juggernaut: none');
+  assert.equal(objectiveIndicators(player, markers, { ...boss, alive: false }, ground).length, 2, 'a destroyed one: none');
+  assert.equal(objectiveIndicators(player, markers, { ...boss, id: 'me' }, ground).length, 2, 'the viewer\'s own hull: none');
+  assert.equal(objectiveIndicators(player, [], null, ground).length, 0, 'the standard battle: none');
+
+  // the receipt: the ball in view -> no indicator; behind or aside -> exactly one, pointing at it
+  const view = { width: 1280, height: 720 };
+  // a camera at the origin looking +z with a 90 degree horizontal field: x/z on the screen, z < 0 behind
+  const project = (p) => ({ x: 640 + (p.x / Math.abs(p.z || 1e-6)) * 640, y: 360 - ((p.y - 1) / Math.abs(p.z || 1e-6)) * 640, behind: p.z < 0 });
+  const ballAt = (x, z) => planBubbles({ warns: objectiveIndicators(player, [{ kind: 'ball', x, z, side: 'neutral' }], null, ground), project, view,
+    scoped: false, noCover: [] });
+  assert.equal(ballAt(10, 80).length, 0, 'the ball on the screen: no indicator');
+  const behind = ballAt(0, -60), aside = ballAt(-200, 40);
+  assert.equal(behind.length, 1, 'the ball behind: one indicator');
+  assert.equal(aside.length, 1, 'the ball aside: one indicator');
+  assert.ok(behind[0].kind === 'ball' && behind[0].side === 'neutral', 'the ball\'s glyph in the neutral colour');
+  assert.ok(Math.sin(behind[0].angle) > 0.99, 'behind: at the bottom, pointing down');
+  assert.ok(aside[0].x < 100 && Math.cos(aside[0].angle) < -0.99, 'aside to the left: on the left rim, pointing left');
+  // negative control: the boundary is the screen's, not a distance; a ball just inside the rim gets none, just past it one
+  assert.equal(ballAt(-40 * 0.9, 40).length, 0, 'control: inside the rim, none');
+  assert.equal(ballAt(-40 * 1.2, 40).length, 1, 'control: past the rim, one');
+  // a warning never swallows an indicator where they meet on the rim
+  const tank = { id: 'tank:t', kind: 'tank', x: -200, y: 1, z: 40, priority: NOTICE_PRIORITY.threat, rank: 1, distanceM: 200 };
+  const both = planBubbles({ warns: [tank, ...objectiveIndicators(player, [{ kind: 'ball', x: -200, z: 40, side: 'neutral' }], null, ground)],
+    project, view, scoped: false, noCover: [] });
+  assert.deepEqual(both.map((b) => `${b.kind}:${b.count}`).sort(), ['ball:1', 'tank:1'], 'the tank and the ball keep a bubble each');
+  assert.equal(planBubbles({ warns: objectiveIndicators(player, [{ kind: 'ball', x: 0, z: -60, side: 'neutral' }], null, ground), project, view,
+    scoped: true, noCover: [] }).length, 0, 'the sight up: no indicator');
+}
+{
+  const player = { x: 0, y: 0, z: 0 };
+  const drone = (id, x, z, extra = {}) => ({ id, x, y: 60, z, enemy: true, spotted: true, ...extra });
+  const warns = droneWarnings(player, [drone('near', 100, 0), drone('far', DRONE_REACH_M + 50, 0), drone('own', 50, 0, { enemy: false }),
+    drone('hidden', 50, 0, { spotted: false })]);
+  assert.deepEqual(warns.map((w) => w.id), ['drone:near'], 'an enemy drone near the tank, its carrier spotted; not a far, own or hidden one');
+  assert.ok(warns[0].kind === 'drone' && near(warns[0].y, 60) && warns[0].priority === NOTICE_PRIORITY.threat, 'a threat, pointing at it in the air');
 }
 
 // 3. Warn: in the UI.
@@ -245,10 +247,10 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const layer = read('src/ui/pointers/pointerLayer.ts');
   assert.doesNotMatch(layer, /from 'three'/, 'the layer adds nothing to the 3D scene');
   assert.match(layer, /paint\.setAttribute\('mask', `url\(#\$\{HULL_MASK_ID\}\)`\)/, 'the ground paint runs under the player\'s hull, never over it');
-  assert.match(layer, /headFits\(head, frame\)/, 'the turn arrow\'s head is fitted on the screen and off the HUD');
+  assert.match(layer, /planFollow\(\{ \.\.\.frame, view: \{ width: w, height: h \} \}\)/, 'the layer draws the plan\'s pieces, fitted to the screen');
   const css = read('src/ui/pointers/pointers.css');
   assert.match(css, /\.cot-ptr\{[^}]*pointer-events:none/, 'neither layer takes the pointer');
   assert.match(css, /prefers-reduced-motion/, 'reduced motion stills the pulse and the trail\'s flow');
 }
 
-console.log('pointerPlan.selftest: follow on the ground, warn in the UI; one follow, ranked and merged bubbles, the sight\'s rung, the sources');
+console.log('pointerPlan.selftest: follow on the ground, warn and indicate in the UI; ranked and merged bubbles, the sight\'s rung, the sources');

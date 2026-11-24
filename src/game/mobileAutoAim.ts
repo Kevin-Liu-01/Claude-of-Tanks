@@ -6,7 +6,7 @@ export interface MobileAutoAimCandidate {
   /** Off the field (sim/hullField.ts): never a target. */
   modeActive?: boolean;
   state: { pos: Vector3 } | null;
-  spec: { dims: { heightM: number } };
+  spec: { id?: string; dims: { heightM: number } };
   combat: { destroyed?: boolean } | null;
 }
 

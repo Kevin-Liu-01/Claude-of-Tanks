@@ -14,6 +14,8 @@ import type { AirSupportView } from '../sim/airSupport.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { createSpecialActionPresentationReader, depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
+import { strikeView } from '../game/strikeViewState.ts';
+import type { NoticeView } from './noticeKinds.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
 // selector with ammo counts, consumable slots, penetration indicator, sniper
@@ -52,8 +54,8 @@ import { PEN_INK } from './penInk.ts';
 import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
-import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { RULESET_SCORE_TARGETS, matchRulesetFor, modePlaysSectors, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
+import { GAME_MODE_DEFINITIONS, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
@@ -74,7 +76,7 @@ import type { DriveTelemetry } from './driveTelemetry.ts';
 import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
 import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
-import { BATTLE_EVENT, createBattleEventLane, type BattleEvent } from './battleNoticeEvents.ts';
+import { BATTLE_EVENT, createBattleEventLane, EVENT_HOLD_MS, type BattleEvent } from './battleNoticeEvents.ts';
 import { formatKeyLineWith, tilePrompt } from './keyPrompt.ts';
 import { flipPicture } from './noticeDiagrams.ts';
 import type { ActionId } from '../game/input.ts';
@@ -432,6 +434,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   items?: readonly string[];
   remainingS?: number;
   targetName?: string;
+  targetSpecId?: string;
   by?: string;
   ammoAdded?: number;
   wave?: number;
@@ -1427,6 +1430,8 @@ const AIM_NOTICE_ID = 'cot-aim-warning';
 const FIRE_NOTICE_ID = 'cot-fire';
 /** (death-flow-275 R7) The scuttle's hold, while its key is down. */
 const SCUTTLE_NOTICE_ID = 'cot-scuttle-hold';
+/** An enemy drone the player brought down: the air lane's plate (notices-276b). */
+const DRONE_DOWN_NOTICE_ID = 'cot-air-drone-down';
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
@@ -2413,13 +2418,17 @@ body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 /* ... on the HUD's own notice plate (owner 2026-10-25: "i wonder if we should make notificatison special shapes, like
    hexagons, again"): every battle notice the same long hexagon, the score plate's and the mission plate's slant at both
    ends, its edge and its fill two layers under the words (a ring cannot follow a clip) */
-.cot-sixth,.cot-alert,.cot-aim-warning{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,
+.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,
   calc(100% - var(--notice-point)) 100%,var(--notice-point) 100%,0 50%);--notice-point:8px;--notice-fill:var(--hud-plate-strong);
   --notice-line:var(--line-2);border:0;border-radius:0;background:none;box-shadow:none;isolation:isolate;}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)::before,:is(.cot-sixth,.cot-alert,.cot-aim-warning)::after{content:'';position:absolute;
+:is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::before,:is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::after{content:'';position:absolute;
   z-index:-1;pointer-events:none;clip-path:var(--notice-cut);}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)::before{inset:0;background:var(--notice-line);}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)::after{inset:1px;background:var(--notice-fill);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::before{inset:0;background:var(--notice-line);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::after{inset:1px;background:var(--notice-fill);}
+/* (notices-276b; Kevin 2026-11-24: "hexagons look better for the bigger notis") the two shapes, by the notice's kind
+   (noticeKinds.ts, data-shape): every large or subject notice the hexagon above, Air Support's readout with them; a
+   one-line status the pill, the same edge and fill rounded at both ends */
+.cot-hud [data-shape=pill]{--notice-cut:inset(0 round 999px);}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong));}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong));}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -3009,10 +3018,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       return label && label !== '—' ? { kind: 'key', label } : { kind: 'none' };
     }, line, actions, vars, document);
   const events = createBattleEventLane({ root, doc: document, keyLine });
-  // (an event from a module outside the HUD: air support's refusals and shoot-downs, battleNoticeEvents.ts BATTLE_EVENT)
+  // (an event from a module outside the HUD, battleNoticeEvents.ts BATTLE_EVENT, with its declared kind: Air Support's
+  // refusals and shoot-downs are the air lane's plates now, notices-276b)
   bus.on(BATTLE_EVENT, (payload) => {
     const event = payload as BattleEvent | null | undefined;
-    if (event && typeof event.text === 'string' && typeof event.priority === 'number') events.raise(event);
+    if (event && typeof event.text === 'string' && typeof event.priority === 'number' && typeof event.kind === 'string') events.raise(event);
   });
 
   // ========================= SPOTTING SECTION ===============================
@@ -3140,7 +3150,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // Air Support (air-support-270): the call-in strip, the strike view's binoculars and the INCOMING warning. The warning is
   // a battle condition, and the condition lane is the page's (battleNotices.ts): a couch pane's HUD hands it a port that
   // raises none, so one seat's incoming strike never speaks for every seat (its refusals and shoot-downs stay its own events)
-  const airSupportHud = createAirSupportHud(root, bus, ownsFramePlayer ? PANE_CONDITIONS : battleNotices);
+  // (the page's condition lane, or none for a couch pane's HUD: the air lane's plates, Air Support's and a drone brought down)
+  const airConditions = ownsFramePlayer ? PANE_CONDITIONS : battleNotices;
+  const airSupportHud = createAirSupportHud(root, bus, airConditions);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
@@ -3579,7 +3591,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     fireNoticeKey = key;
     if (!burning) { battleNotices.dismiss(FIRE_NOTICE_ID); return; }
     battleNotices.condition({
-      id: FIRE_NOTICE_ID, severity: 'error', icon: 'statusFire', text: t('hud.status.fire'),
+      kind: 'fire', id: FIRE_NOTICE_ID, severity: 'error', icon: 'statusFire', text: t('hud.status.fire'),
       detailHtml: slot >= 0 ? keyLine('hud.status.fireLine', { key: CONSUMABLE_ACTIONS[slot]! }) : undefined,
       durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
     });
@@ -4171,9 +4183,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
     }
-    if (modeState.id === 'zone_control' || modeState.id === 'mars' || modeState.id === 'air_support') {
+    if (modePlaysSectors(modeState.id)) {
       // (improve-271 plan 027) each mode's own target from the ruleset: Air Support plays to 2000, not Zone Control's 750
-      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
+      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS[String(modeState.id)]) });
     }
     if (modeState.id === 'turbo_ball') {
       return t('hud.modeStatus.goals', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
@@ -4189,17 +4201,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   }
 
   function modeStatusIconName(modeId: string): string {
-    // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
-    if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
-    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport', training: GAME_MODE_DEFINITIONS.training.icon }[modeId];
-    if (icon) return icon;
-    if (modeId === 'standard') return 'modeStandard';
-    if (modeId === 'capture_the_flag') return 'modeFlag';
-    if (modeId === 'mars') return 'modeMars';
-    if (modeId === 'zone_control') return 'modeZones';
-    if (modeId === 'frontline_assault') return 'modeFrontline';
-    if (modeId === 'turbo_ball') return 'modeTurbo';
-    return 'modeHorde';
+    // the mode's own icon, from its definition (combined-arms-276: one table, not a second copy here)
+    return Object.hasOwn(GAME_MODE_DEFINITIONS, modeId) ? GAME_MODE_DEFINITIONS[modeId as keyof typeof GAME_MODE_DEFINITIONS].icon : 'modeHorde';
   }
 
   function updateModeStatus(modeState: HudMatchModeState): void {
@@ -6070,7 +6073,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (Kevin 2026-11-21: "with icon diagrams") the overturned tank wears the key-hint layout: its diagram (noticeDiagrams.ts
     // flipPicture, the one pose diagram) beside its line and its key's, the key the live binding of the self-right command
     battleNotices.condition({
-      id: AIM_NOTICE_ID, className: rollover ? 'cot-aim-notice cot-key-hint' : 'cot-aim-notice',
+      kind: rollover ? 'overturned' : 'aimLimit', id: AIM_NOTICE_ID, className: rollover ? 'cot-aim-notice cot-key-hint' : 'cot-aim-notice',
       severity: warning.kind === 'blocked' ? 'error' : 'warning',
       icon: rollover ? 'rematch' : warning.kind === 'blocked' ? 'alert' : 'turretRing',
       text: rollover ? t('hud.aimWarning.flipTitle') : text,
@@ -8630,6 +8633,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const riddenId = (): string | null => watchSide !== null && !watchDrone ? playerRef?.id ?? null : null;
   const allyLabel = (): string => t(watchSide !== null ? 'hud.side.alpha' : 'hud.allies');
   const enemyLabel = (): string => t(watchSide !== null ? 'hud.side.bravo' : 'hud.enemy');
+  // (notices-276; Main 2026-11-23: drones read like the other aircraft) an enemy drone the player brought down: the air
+  // lane's plate (noticeKinds.ts `air`, the condition lane, notices-276b), as Air Support's "Aircraft down", with the drone's
+  // render, for the event lane's time (state.ts strikeDrone raises drone:down with its carrier and the shooter)
+  on('drone:down', ({ id, killerId }) => {
+    if (!playerId || killerId !== playerId || !id || teamById.get(id) === teamById.get(playerId)) return;
+    airConditions.condition({ kind: 'droneDown', id: DRONE_DOWN_NOTICE_ID, text: t('hud.alert.droneDowned'), severity: 'success',
+      icon: 'modeDrone', art: 'drone', durationMs: EVENT_HOLD_MS, dismissible: false, priority: NOTICE_PRIORITY.answered });
+  });
   on('tank:destroyed', (p) => {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
@@ -8695,7 +8706,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (notices-audit-275: the ATGM's deselection, the suspension's two states and the magazine's start are no events: the
     // shell rail, the lit tile and the reticle's magazine readout already show them)
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE && active) {
-      events.raise({ text: t('hud.alert.atgmSelected'), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: 'missileRack',
+      events.raise({ kind: 'atgmSelected', text: t('hud.alert.atgmSelected'), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: 'missileRack',
         keys: { line: 'hud.alert.line.fireMissile', actions: { fire: 'fire' } } });
     }
   });
@@ -8707,16 +8718,16 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     for (let i = 0; i < 3; i++) {
       if (i < lastShells.length) actions[`shell${i + 1}`] = `shell${i + 1}` as ActionId; else vars[`shell${i + 1}`] = '';
     }
-    events.raise({ text: t('hud.alert.ammoTypeEmpty'), priority: NOTICE_PRIORITY.threat, severity: 'error', icon: 'shell',
+    events.raise({ kind: 'ammoTypeEmpty', text: t('hud.alert.ammoTypeEmpty'), priority: NOTICE_PRIORITY.threat, severity: 'error', icon: 'shell',
       keys: { line: 'hud.alert.line.pickRound', actions, vars } });
   }
   /** A missile asked for with none left. */
   const raiseMissilesDepleted = (): void => {
-    events.raise({ text: t('hud.alert.missilesDepleted'), priority: NOTICE_PRIORITY.threat, severity: 'error', icon: 'missileRack' });
+    events.raise({ kind: 'missilesDepleted', text: t('hud.alert.missilesDepleted'), priority: NOTICE_PRIORITY.threat, severity: 'error', icon: 'missileRack' });
   };
   /** A magazine reload or the hull's special action refused for a reason that is not an empty rack. */
   const raiseMagazineRefused = (reason: string | null | undefined, unavailableKey: string): void => {
-    events.raise({ text: reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
+    events.raise({ kind: 'magazineRefused', text: reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
       : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull') : t(unavailableKey),
     priority: NOTICE_PRIORITY.answered, severity: 'info', icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock' });
   };
@@ -8768,13 +8779,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
         : id === 'first_aid' ? 'hud.alert.crewUnharmed'
           : id === 'repair' || id === 'repair_large' || id === 'track_links' ? 'hud.alert.nothingToRepair'
             : 'hud.alert.consumableNotNeeded';
-      events.raise({ text: t(key, { name: consumableLabel(id) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: CONSUMABLE_ICONS[id] });
+      events.raise({ kind: 'consumable', text: t(key, { name: consumableLabel(id) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: CONSUMABLE_ICONS[id] });
     } else if (reason === 'EMPTY') {
-      events.raise({ text: t('hud.consumable.empty', { name: consumableLabel(id) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: CONSUMABLE_ICONS[id] });
+      events.raise({ kind: 'consumable', text: t('hud.consumable.empty', { name: consumableLabel(id) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: CONSUMABLE_ICONS[id] });
     } else if (reason === 'COOLDOWN') {
-      events.raise({ text: t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'clock' });
+      events.raise({ kind: 'consumable', text: t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'clock' });
     } else if (reason === 'RULESET') {
-      events.raise({ text: t('hud.alert.consumablesDisabled'), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'info' });
+      events.raise({ kind: 'consumable', text: t('hud.alert.consumablesDisabled'), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'info' });
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
@@ -8783,20 +8794,22 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // an APS charge met a round (sim/consumableRules.ts): the crew it saved, or the shooter whose round it stopped
   on('aps:intercept', ({ id, shooterId }) => {
     if (playerId == null) return;
-    if (id === playerId) events.raise({ text: t('hud.alert.apsInterceptedOwn'), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: CONSUMABLE_ICONS.aps_charge });
-    else if (shooterId === playerId) events.raise({ text: t('hud.alert.apsInterceptedShot'), priority: NOTICE_PRIORITY.answered, severity: 'warning', icon: CONSUMABLE_ICONS.aps_charge });
+    if (id === playerId) events.raise({ kind: 'apsIntercepted', text: t('hud.alert.apsInterceptedOwn'), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: CONSUMABLE_ICONS.aps_charge });
+    else if (shooterId === playerId) events.raise({ kind: 'apsIntercepted', text: t('hud.alert.apsInterceptedShot'), priority: NOTICE_PRIORITY.answered, severity: 'warning', icon: CONSUMABLE_ICONS.aps_charge });
   });
   // round 30: the armour-overlay key confirms its state the way the auto-aim lock does
   on('ui:armorOverlayState', ({ on }) => {
-    events.raise({ text: t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), priority: NOTICE_PRIORITY.answered, severity: on ? 'success' : 'info',
+    events.raise({ kind: 'armorOverlay', text: t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), priority: NOTICE_PRIORITY.answered, severity: on ? 'success' : 'info',
       icon: 'armorFlashlight', slot: 'armorOverlay',
       keys: { line: on ? 'hud.alert.line.armorOff' : 'hud.alert.line.armorOn', actions: { key: 'hitboxOverlay' } } });
   });
-  on('ui:autoAimState', ({ on, targetName, reason }) => {
+  on('ui:autoAimState', ({ on, targetName, targetSpecId, reason }) => {
     if (on) {
-      events.raise({ text: t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
+      // (notices-276) the lock shows its target's render (components/noticeArt.ts)
+      events.raise({ kind: 'autoAimOn', text: t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
+        art: targetSpecId ? `tank:${String(targetSpecId)}` : undefined,
         priority: NOTICE_PRIORITY.answered, severity: 'success', icon: 'autoAim', keys: { line: 'hud.alert.line.autoAimRelease', actions: { autoAim: 'autoAim' } } });
-    } else if (reason) events.raise({ text: reason, priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'autoAim' });
+    } else if (reason) events.raise({ kind: 'autoAimRefused', text: reason, priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'autoAim' });
   });
   // (272) the step raises it every tick the trigger is held on an empty gun: the event lane takes a repeat inside a quarter
   // second as the same held press (battleNoticeEvents.ts EVENT_HELD_MS)
@@ -8807,7 +8820,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (playerId != null && id !== playerId) return;
     if (fallbackSlot != null && fallbackSlot >= 0) selectSlot(fallbackSlot);
     const guided = slot != null && lastShells?.[slot]?.type === 'ATGM';
-    events.raise({ text: guided
+    events.raise({ kind: 'ammoDepleted', text: guided
       ? t('hud.alert.missilesDepletedNext')
       : fallbackSlot != null && fallbackSlot >= 0
         ? t('hud.alert.ammoDepletedNext')
@@ -8816,21 +8829,21 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   on('mode:pickup_collected', ({ by, kind, ammoAdded }) => {
     if (playerId != null && by !== playerId) return;
     const amount = Math.max(0, Number(ammoAdded) || 0);
-    events.raise({ text: kind === 'heal' ? t('hud.alert.fieldRepairAcquired') : t('hud.alert.ammoAcquired', { amount }),
+    events.raise({ kind: 'pickup', text: kind === 'heal' ? t('hud.alert.fieldRepairAcquired') : t('hud.alert.ammoAcquired', { amount }),
       priority: NOTICE_PRIORITY.answered, severity: 'success', icon: kind === 'heal' ? 'repair' : 'shell' });
   });
   on('mode:wave_started', ({ wave }) => {
-    events.raise({ text: t('hud.alert.waveInbound', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'warning', icon: 'modeHorde' });
+    events.raise({ kind: 'wave', text: t('hud.alert.waveInbound', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'warning', icon: 'modeHorde' });
   });
   on('mode:flag_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    events.raise({ text: t(allied ? 'hud.alert.alliedFlagCapture' : 'hud.alert.enemyFlagCapture'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(allied ? 'hud.alert.alliedFlagCapture' : 'hud.alert.enemyFlagCapture'), priority: NOTICE_PRIORITY.turned,
       severity: allied ? 'success' : 'error', icon: 'modeFlag' });
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
     if (allied) killRibbon.zone();
-    events.raise({ text: t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), priority: NOTICE_PRIORITY.turned,
       severity: allied ? 'success' : 'error', icon: 'modeZones' });
   });
   // the personal stream's spots (the direction's 06-battle-hud .stream): each enemy the player lit
@@ -8839,7 +8852,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
-    events.raise({ text: t(allied ? 'hud.alert.alliedGoal' : 'hud.alert.enemyGoal'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(allied ? 'hud.alert.alliedGoal' : 'hud.alert.enemyGoal'), priority: NOTICE_PRIORITY.turned,
       severity: allied ? 'success' : 'error', icon: 'modeTurbo' });
   });
   // battle endings (2026-09-25): the director's camera beat (battleResultPresentationRuntime) — the clock
@@ -8848,24 +8861,24 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     endingShown = true;
     respawnDial.hide();
     topPlate.classList.toggle('times-up', !!clockFlash);
-    if (captionKey) events.raise({ text: t(captionKey, captionValues || {}), priority: NOTICE_PRIORITY.turned, severity: 'info', icon: clockFlash ? 'clock' : 'battleRecord' });
+    if (captionKey) events.raise({ kind: 'caption', text: t(captionKey, captionValues || {}), priority: NOTICE_PRIORITY.turned, severity: 'info', icon: clockFlash ? 'clock' : 'battleRecord' });
   });
   on('ending:done', () => { topPlate.classList.remove('times-up'); });
   // batch 19 (2026-09-14): the remaining mode events reach the player — sectors taken, waves cleared
   // (with the repair), respawns, the flag changing hands, caches dropping
   on('mode:line_advanced', ({ line, total }) => {
-    events.raise({ text: t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }),
+    events.raise({ kind: 'objective', text: t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }),
       priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'modeFrontline' });
   });
   on('mode:wave_cleared', ({ wave }) => {
     // (the next wave's countdown is the clock's, never the alert's as well: UI-LOCKDOWN B19)
-    events.raise({ text: t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'repair' });
+    events.raise({ kind: 'wave', text: t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'repair' });
   });
   // (death-flow-275 R7) the scuttle's hold: a condition while the key is held (game/playerBattleActions.ts raises
   // 'ui:scuttleHold' on the press and 'ui:scuttleEnd' when it scuttles or the key comes up)
   on('ui:scuttleHold', () => {
     battleNotices.condition({
-      id: SCUTTLE_NOTICE_ID, severity: 'warning', icon: 'killSelf', text: t('hud.alert.scuttleHold'),
+      kind: 'scuttle', id: SCUTTLE_NOTICE_ID, severity: 'warning', icon: 'killSelf', text: t('hud.alert.scuttleHold'),
       detailHtml: keyLine('hud.alert.scuttleLine', { key: 'scuttle' }),
       durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
     });
@@ -8874,7 +8887,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // (death-flow-275) the outbreak took the player: said once, as the battle turned (the dial then reads "Infected")
   on('mode:infected', (payload) => {
     if (playerId == null || (payload as { id?: string } | null)?.id !== playerId) return;
-    events.raise({ text: t('respawn.event.infected'), priority: NOTICE_PRIORITY.turned, severity: 'warning', icon: 'modeInfected' });
+    events.raise({ kind: 'infected', text: t('respawn.event.infected'), priority: NOTICE_PRIORITY.turned, severity: 'warning', icon: 'modeInfected' });
   });
   on('mode:respawn', ({ id }) => {
     if (id) killLedger.respawn(id);
@@ -8899,21 +8912,21 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   on('mode:flag_taken', ({ team }) => {
     // the payload names the flag's owner: our flag taken means the enemy carries it
     const ours = team === objectiveTeam;
-    events.raise({ text: t(ours ? 'hud.alert.flagTakenEnemy' : 'hud.alert.flagTakenAllied'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(ours ? 'hud.alert.flagTakenEnemy' : 'hud.alert.flagTakenAllied'), priority: NOTICE_PRIORITY.turned,
       severity: ours ? 'error' : 'success', icon: 'modeFlag' });
   });
   on('mode:flag_dropped', ({ team }) => {
     const ours = team === objectiveTeam;
-    events.raise({ text: t(ours ? 'hud.alert.flagDroppedEnemy' : 'hud.alert.flagDroppedAllied'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(ours ? 'hud.alert.flagDroppedEnemy' : 'hud.alert.flagDroppedAllied'), priority: NOTICE_PRIORITY.turned,
       severity: ours ? 'success' : 'warning', icon: 'modeFlag' });
   });
   on('mode:flag_returned', ({ team }) => {
     const ours = team === objectiveTeam;
-    events.raise({ text: t(ours ? 'hud.alert.flagReturnedAllied' : 'hud.alert.flagReturnedEnemy'), priority: NOTICE_PRIORITY.turned,
+    events.raise({ kind: 'objective', text: t(ours ? 'hud.alert.flagReturnedAllied' : 'hud.alert.flagReturnedEnemy'), priority: NOTICE_PRIORITY.turned,
       severity: ours ? 'success' : 'info', icon: 'modeFlag' });
   });
   on('mode:pickup_spawned', ({ kind }) => {
-    events.raise({ text: t(kind === 'heal' ? 'hud.alert.repairCacheDropped' : 'hud.alert.ammoCacheDropped'), priority: NOTICE_PRIORITY.ambient,
+    events.raise({ kind: 'cacheDropped', text: t(kind === 'heal' ? 'hud.alert.repairCacheDropped' : 'hud.alert.ammoCacheDropped'), priority: NOTICE_PRIORITY.ambient,
       severity: 'info', icon: kind === 'heal' ? 'repair' : 'shell' });
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
@@ -8984,7 +8997,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
     // (a module damaged or knocked out is the status chip's appearing over the damage panel, never an alert as well:
     // UI-LOCKDOWN B2, the registry's ruling; the repair finishing still says so)
-    if (p.repaired) events.raise({ text: t('hud.alert.moduleRepaired', { label }), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: icon as IconId });
+    if (p.repaired) events.raise({ kind: 'moduleRepaired', text: t('hud.alert.moduleRepaired', { label }), priority: NOTICE_PRIORITY.answered, severity: 'success', icon: icon as IconId });
   });
 
   // ---------- aim view assembly ----------
@@ -9368,9 +9381,20 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
-    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, (frame.player || playerRef)?.state?.pos ?? null,
+    // (combined-arms-276, one control seat) the Support slot steps aside while our drone flies: the binoculars wait for the
+    // tank (game/playerBattleActions.ts), and in flight the slot stood on the stick at 844x390 and the flight console at
+    // 1210x702, the overlap probe's combined-drone state
+    const supportSeat = frame.player || playerRef;
+    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, supportSeat?.state?.pos ?? null,
       frame.matchModeState?.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha', frame.timeS,
-      mode !== 'hidden' && !!(frame.player || playerRef) && !(frame.player || playerRef)?.combat?.destroyed, frame.auxiliaryKeyLabels?.strikeView || 'X');
+      mode !== 'hidden' && !!supportSeat && !supportSeat.combat?.destroyed && !(supportSeat.aerial?.kind === 'drone' && supportSeat.aerial.active),
+      frame.auxiliaryKeyLabels?.strikeView || 'X');
+    // (notices-276b) what the crew looks through: the tank's own notices hold off the binoculars, the drone's feed and the
+    // gunship (noticeKinds.ts), in this HUD's event lane and, on the page's HUD, the condition lane
+    const noticeView: NoticeView = flier?.aerial?.active ? (flier.aerial.kind === 'gunship' ? 'gunship' : 'drone')
+      : strikeView.open ? 'binoculars' : 'tank';
+    events.view(noticeView);
+    if (!ownsFramePlayer) battleNotices.view(noticeView);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId, frame.timeS, objectiveTeam);

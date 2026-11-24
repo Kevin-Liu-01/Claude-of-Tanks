@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.47,-0.2],
+    "turretPivot": [0,1.632,0.35],
     "plates": [
       {
         "hitboxId": "H01",
@@ -376,6 +376,21 @@
       },
       {
         "hitboxId": "T08",
+        "name": "bustle_rack",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "external",
+        "turretLocal": true,
+        "verts": [
+          [-1.58,0.23,-3.4],
+          [-1.58,0.75,-3.4],
+          [1.58,0.75,-3.4],
+          [1.58,0.23,-3.4]
+        ]
+      },
+      {
+        "hitboxId": "T09",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 34,
@@ -390,7 +405,7 @@
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T10",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 34,
@@ -405,7 +420,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T11",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 34,
@@ -420,7 +435,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T12",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 34,
@@ -435,7 +450,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T13",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 34,
@@ -489,7 +504,7 @@
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.8155,0.1467,-2.4803],
+        "min": [-0.8155,-0.0625,-2.332],
         "max": [0.8788,0.595,-0.968],
         "turretLocal": true
       },
@@ -564,8 +579,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.7462,-0.67,-0.1459],
-        "max": [-0.2868,0.6693,0.6227],
+        "min": [-0.7462,-0.83,-0.1022],
+        "max": [-0.2868,0.5221,0.6227],
         "turretLocal": true
       },
       {
@@ -578,14 +593,14 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.375,-0.88,-0.1021],
-        "max": [0.8344,0.6845,0.4088],
+        "min": [0.375,-1.04,-0.0195],
+        "max": [0.8344,0.6802,0.4325],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "a735d0b6",
-  "metadataHash": "3179d79d",
+  "metadataHash": "ad47316f",
   "presentationAnchor": {
     "xM": -0.0017,
     "zM": 0.0446
@@ -692,24 +707,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37756,
-      "sha256": "d3973cb6a17e11289e81a04de4ac2021b3c049b80f0dafa16a7f0156181307ab"
+      "bytes": 37790,
+      "sha256": "d8722d4ae7925a63b4c3d4378be0964d765c6fcf5d19bf776b54b970749c4949"
     },
     "modulesSide": {
       "file": "m1a1_aim_sa_aus_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37746,
-      "sha256": "88821743f34e5ce2e88f3c81199625aed8e7083b74b788e07de38fd1aff736ed"
+      "bytes": 37874,
+      "sha256": "ca23764fb6c2cd4c07172c03ed585fa6decbb2a608296264cfa9ad614f0554b8"
     },
     "crewSide": {
       "file": "m1a1_aim_sa_aus_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35770,
-      "sha256": "a33e9c6adf2701ef2cef4bd09a78c467c9f907b6f95dcf24499b655dc69700c9"
+      "bytes": 35718,
+      "sha256": "3f9c6ea40a0e5031b590466b9d17550ae0ff3e93255f7777ba3c93d7df5948a1"
     },
     "markings": {
       "file": "m1a1_aim_sa_aus_markings.png",
@@ -722,8 +737,8 @@
     "technicalLabels": {
       "file": "m1a1_aim_sa_aus_technical.json",
       "mime": "application/json",
-      "bytes": 4399,
-      "sha256": "0e67b1ebbda90c7ef94354c4a369c803b4a7415e64d2ca4078d05942e0a68a30"
+      "bytes": 4397,
+      "sha256": "bc4a57b36c7ecc865a6bdc6e899a38a6ff8e6f8e15e217cf206807fe0c683c77"
     }
   }
 }

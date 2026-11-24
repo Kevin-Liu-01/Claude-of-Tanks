@@ -91,7 +91,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/strikeSignatures.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
+    // combined-arms-276 (Kevin 2026-11-23: "lets add a mode with drone AND air support"): a composed mode is its rule parts,
+    // never a fork, and no reader asks a part's mode by its id
+    'src/sim/modeComposition.selftest.mjs',
+    // combined-arms-276: the sector battle with the ledger and a drone on every crew; bots use both, one control seat
+    'src/sim/combinedArms.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
+    // 2026-11-23 (air-crash-he-276): a downed aircraft and a drone into the ground or a building burst as one HE round
+    'src/sim/airCrash.selftest.mjs',
+    // 2026-11-24 (air-crash-he-276b): a wreck rests on the drawn ground hulls stand on, its lowest point on the dug bowl
+    'src/game/airCrashWreck.selftest.mjs',
+    // 2026-11-24 (air-crash-he-276c): a downed aircraft whose carry would land it off the battlefield comes down inside it
+    'src/sim/airCrashInside.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
     'src/game/strikeOrder.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
@@ -1055,6 +1066,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 276 (sim-det-trig-c): the chain measures the combat rig before any tool loads the fleet (the bootstrap first)
+    'tools/combat-rig-bootstrap.selftest.mjs',
     // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
     // before the unlock, and a budget that tears down before it exits
     'tools/chain-lifecycle.selftest.mjs',
@@ -1252,8 +1265,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tutorial/tutorialGuide.selftest.mjs',
     // guidance-pointers-275 (Kevin: "for stuff for you to follow, its on ground. for the warnings / indicators thats in the
     // ui"): the one pointer primitive: the follow trail and turn arrow, the warnings' ranked, merged, capped rim bubbles, and
-    // their sources (tanks with a gun on the player, air runs, missiles, the objective that matters now)
+    // their sources (tanks with a gun on the player, air runs, missiles, drones), the moving objectives' indicators (276)
     'src/ui/pointers/pointerPlan.selftest.mjs',
+    // guidance-pointers-276 (Kevin: "they get clipped off if you aim to ur side"): the follow pointer against the chase
+    // camera, the turret swept round: no piece cut by the screen; only the tutorial posts one
+    'src/ui/pointers/pointerFollowView.selftest.mjs',
     // 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them
     'src/ui/tutorial/tutorialTour.selftest.mjs',
     // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):
@@ -1514,6 +1530,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
     // 2026-11-24 (cn-turrets-276): the ZTZ-99A2, ZTZ-99A and VT-4A1 cheeks are closed outline solids with seated tiles
     'src/vehicles/profiles/chineseTurretCheeks.selftest.mjs',
+    // 2026-11-24 (cn-turrets-276b): only those three turrets moved; every other id keeps its armour, build and anatomy
+    'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
@@ -2509,6 +2527,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // frame), and both hulls stand at their recorded poses on every frame of the shot (real main frame, battle frame,
     // result runtime, rig and killcam; full, quick, Air Support with the binoculars up; late-camera and live-repaint controls)
     'src/game/killcamFirstFrame.selftest.mjs',
+    // (killcam-strike-shot-276) an Air Support kill replays its own planned shot: the aircraft's run, the round's flight,
+    // the hit; frame 1 its first planned pose, the victim held pre-hit, the aircraft staged from its recorded run (every
+    // strike kind and the binoculars; real frame owners, bridge and air-support world; the no-shot control)
+    'src/game/killcamStrikeShot.selftest.mjs',
     'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
     // (death-flow-275) every mode's death -> after-death -> end: the death's shape, the respawn dial, each verdict's beat and caption
@@ -3235,6 +3257,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/airSupportNotices.selftest.mjs',
     // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
     'tools/air-support-close-box.selftest.mjs',
+    // notices-276 (Kevin 2026-11-23: "fix ui overlaps like gunship overhead with X binoculars"): one list of the controls a
+    // view brings, read by every notice planner and the overlap probe; its judge fails a notice on a planted control
+    'tools/battle-hud-overlap-judge.selftest.mjs',
+    // notices-276 (Kevin 2026-11-23: "graphics in the empty part of the notifications"): one art layer, one mask, the ruled
+    // kinds carry it, every aircraft render on disk
+    'src/ui/components/noticeArt.selftest.mjs',
+    // notices-276b (Kevin 2026-11-24: "should we combine stuff ... hexagons look better for the bigger notis"): every battle
+    // notice's kind declares its subject and shape; the tank's own held off the binoculars, the drone and the gunship
+    'src/ui/noticeKinds.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

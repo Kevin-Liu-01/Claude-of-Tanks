@@ -4,12 +4,13 @@ import { JUGGERNAUT_SCALE } from '../sim/juggernautScale.ts';
 import { clearJuggernautVisual, hasGarageTankEnergyVisual, pauseGarageTankEnergyVisual, syncTankEnergyVisual, TANK_ENERGY } from './juggernautVisual.ts';
 import { clearMissionAttachment, syncFlagAttachment, syncMissionAttachment } from './missionAttachmentVisual.ts';
 import { configureDroneMaterials } from '../fx/droneModel.ts';
+import { modeLaunchesDrones } from '../sim/matchRuleset.ts';
 import type { Material } from 'three';
 
 const dockedDrone = Object.freeze({ kind: 'drone' as const, active: false, cooldownS: 0 });
 const energyMode = (mode: string) => mode === 'juggernaut' || mode === 'infected' || mode === 'capture_the_flag';
 function needsNewPreviewPrograms(root:Object3D|null,mode:string):boolean {
-  if(mode==='capture_the_flag'||mode==='drone')return true;
+  if(mode==='capture_the_flag'||modeLaunchesDrones(mode))return true;
   return energyMode(mode)&&!!root&&!hasGarageTankEnergyVisual(root);
 }
 function animatePreview(root:Object3D,spec:MissionCarrierSpec,mode:string,timeS:number,dt:number):void {
@@ -19,7 +20,7 @@ function animatePreview(root:Object3D,spec:MissionCarrierSpec,mode:string,timeS:
     syncTankEnergyVisual(root,spec.dims,JUGGERNAUT_SCALE,1,1,dt,false,style,true);
   }
   if(mode==='capture_the_flag')syncFlagAttachment(root,spec,timeS);
-  else if(mode==='drone')syncMissionAttachment(root,spec,dockedDrone,false);
+  else if(modeLaunchesDrones(mode))syncMissionAttachment(root,spec,dockedDrone,false);
 }
 /** The Garage engine's lit-material registration, so the previewed dock and drone light like the hull under them. */
 interface PreviewEngine { setupShadowMaterial?(material: Material): unknown; releaseShadowMaterial?(material: Material): unknown }
@@ -46,7 +47,7 @@ export function createGarageModePreview(engine?: PreviewEngine) {
         // All aura patterns share one shader. Keep its compiled materials and
         // change uniforms instead of disposing/relinking on each mode click.
         if (root && energyMode(mode) && !energyMode(nextMode)) pauseGarageTankEnergyVisual(root);
-        if (root && (mode === 'drone' || mode === 'capture_the_flag')) clearMissionAttachment(root);
+        if (root && (modeLaunchesDrones(mode) || mode === 'capture_the_flag')) clearMissionAttachment(root);
         mode = nextMode; timeS = 0;
       }
       if (!root || !spec) return;

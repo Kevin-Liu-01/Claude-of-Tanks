@@ -244,10 +244,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.589,0.669,-3.028],
-          [1.589,0.909,-3.028],
-          [1.579,0.909,2.468],
-          [1.579,0.669,2.468]
+          [1.5635,0.108,3.141],
+          [1.5635,0.108,-3.141],
+          [1.5635,0.909,-3.141],
+          [1.5635,0.909,3.141]
         ]
       },
       {
@@ -259,10 +259,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.58,0.669,2.467],
-          [-1.58,0.909,2.467],
-          [-1.589,0.909,-3.029],
-          [-1.589,0.669,-3.029]
+          [-1.5635,0.108,-3.141],
+          [-1.5635,0.108,3.141],
+          [-1.5635,0.909,3.141],
+          [-1.5635,0.909,-3.141]
         ]
       },
       {
@@ -1013,7 +1013,7 @@
     ]
   },
   "geometryHash": "3b5affce",
-  "metadataHash": "42fa08b2",
+  "metadataHash": "23332336",
   "presentationAnchor": {
     "xM": -0.0028,
     "zM": -0.0664
@@ -1070,8 +1070,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40392,
-      "sha256": "0673a819903a1e68430d001027080c3a94c5e4a019e3ac4d00e4809966e1c72c"
+      "bytes": 38670,
+      "sha256": "d4ecc4689ae2871f7933258d5feb4bf3683841f4c5e7f3741c72c7d8e85952c9"
     },
     "modulesSide": {
       "file": "cv90_mk4_concept_modules_side.webp",
@@ -1149,8 +1149,8 @@
     "technicalLabels": {
       "file": "cv90_mk4_concept_technical.json",
       "mime": "application/json",
-      "bytes": 5232,
-      "sha256": "45785b27f416ed5f73ada87e10f644e601ff8ff6be04c7078248e511e9568ec6"
+      "bytes": 5220,
+      "sha256": "817574ad27237d0891b547d91c5a1749a073beab52192e88144baad7598028fd"
     }
   }
 }

@@ -134,8 +134,8 @@ assert.equal(uiIconSVG('', 12), '', 'an empty id draws nothing');
 assert.match(uiIconSVG('info', 13, 'currentColor', 'x'), /^<svg class="cot-i x" /, 'a class joins the cot-i host');
 assert.doesNotMatch(uiIconSVG('info', 13), /style=/, 'the default colour inherits the surrounding text');
 const modeGlyphs = [...sprite.large.keys()].filter((id) => id.startsWith('mode'));
-assert.equal(modeGlyphs.length, 15, 'fifteen mode glyphs: the 14 rulesets and the proving ground');
-assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 15, 'no two modes share a glyph');
+assert.equal(modeGlyphs.length, 16, 'sixteen mode glyphs: the 15 rulesets and the proving ground (Combined Arms, 276)');
+assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 16, 'no two modes share a glyph');
 assert.notEqual(sprite.large.get('modeFrontline'), sprite.large.get('modeZones'), 'Frontline Assault has its own glyph');
 for (const family of [
   ['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'optics', 'radio', 'turretRing', 'track'],

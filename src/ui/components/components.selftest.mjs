@@ -171,7 +171,8 @@ for (const file of ['./components.css', './figures.css', './notices.css', './pic
   assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, `${file}: durations read the motion tokens`);
   for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
     // --mode-ink is the sheet's own mode-tone mapping (data-mode-tone=<mode id>), set from the --mode-<id> tokens
-    if (name === 'h' || name === 'sil' || name === 'mode-ink') continue;
+    // --notice-art, --notice-art-room and --notice-art-w are a notice's art knobs a seat sets, as --h is a button's (noticeArt.ts)
+    if (name === 'h' || name === 'sil' || name === 'mode-ink' || name.startsWith('notice-art')) continue;
     assert.match(tokensCss, new RegExp(`--${name}:`), `${file}: --${name} is a design token`);
   }
 }

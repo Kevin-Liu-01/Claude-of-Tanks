@@ -26,6 +26,7 @@ const MODES = {
   zone_control: { shape: 'quick', reasons: { score_limit: 'objective', time_limit: 'timesUp', left: null } },
   mars: { shape: 'quick', reasons: { score_limit: 'objective', time_limit: 'timesUp', left: null } },
   air_support: { shape: 'quick', reasons: { score_limit: 'objective', time_limit: 'timesUp', left: null } },
+  combined_arms: { shape: 'quick', reasons: { score_limit: 'objective', time_limit: 'timesUp', left: null } },
   turbo_ball: { shape: 'card', reasons: { goal_limit: 'objective', time_limit: 'timesUp', left: null } },
   gun_game: { shape: 'card', reasons: { weapon_ladder_complete: 'replay', time_limit: 'timesUp', left: null } },
   drone: { shape: 'quick', reasons: { drone_score_limit: 'replay', time_limit: 'timesUp', left: null } },

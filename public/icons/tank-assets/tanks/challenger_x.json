@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.756,0.307,-4.155],
-          [1.704,1.161,-4.155],
-          [1.699,1.161,4.155],
-          [1.751,0.307,4.155]
+          [1.52,0.1626,4.155],
+          [1.52,0.1626,-4.155],
+          [1.52,1.1614,-4.155],
+          [1.52,1.1614,4.155]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.751,0.307,4.155],
-          [-1.698,1.161,4.155],
-          [-1.703,1.161,-4.155],
-          [-1.756,0.307,-4.155]
+          [-1.52,0.1626,-4.155],
+          [-1.52,0.1626,4.155],
+          [-1.52,1.1614,4.155],
+          [-1.52,1.1614,-4.155]
         ]
       },
       {
@@ -595,7 +595,7 @@
     ]
   },
   "geometryHash": "6291243d",
-  "metadataHash": "61b79b8c",
+  "metadataHash": "69f4e72e",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0836
@@ -703,8 +703,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19050,
-      "sha256": "f72814b4dee1302604f0430fe2f0cd71bc86ba574dd421afd049732db5c06d9b"
+      "bytes": 20524,
+      "sha256": "44ce2ef40145fd0446c83257fcf850992e197141395af4196a3b111ea1b42ff4"
     },
     "modulesSide": {
       "file": "challenger_x_modules_side.webp",
@@ -734,7 +734,7 @@
       "file": "challenger_x_technical.json",
       "mime": "application/json",
       "bytes": 5237,
-      "sha256": "a3ea54fde9057e33299d9cb10f9a0b4eab4c82bf53f93c26e92dc5c6a3dc4365"
+      "sha256": "e4a51a20dfac37412473a638e5f9be2026d00556e1d815a6c8179cf3ac45d7d2"
     }
   }
 }

@@ -11,11 +11,14 @@
  * Before 275 the tutorial's guide (ui/tutorial/tutorialGuide.ts) drew the battle's only arrows (five thin chevrons and an
  * edge arrow, its own), and a threat's direction showed on the minimap alone. Now every surface hands this plan a pointer,
  * and its MODE picks the look:
- * - follow (where to go: a tutorial waypoint, a thing to look at, the Turbo Ball ball, the objective that matters now):
- *   painted on the ground, never on the screen's rim. ONE follow pointer shows (pickFollow): a chevron trail laid flat on
- *   the terrain from the tank toward it (trailChevrons), and, while it stands out of the camera's view, a curved arrow
- *   painted round the tank sweeping the way to turn (turnArrow). Its destination is its owner's own (the tutorial's
- *   ring, the objective's disc and beacon, the ball).
+ * - follow (where to go, and only where the player could not otherwise know: the tutorial's waypoint, a thing it asks
+ *   them to look at; Kevin, 2026-11-23: "remove the arrows on ground for obvious stuff. like capturing bases"):
+ *   painted on the ground, never on the screen's rim, planned against the camera (planFollow): while its destination
+ *   stands on the screen a chevron trail laid flat on the terrain from the tank toward it (trailChevrons); while it does
+ *   not, a curved arrow painted on the ground ahead of the tank in the camera's view, bending the way to turn until its
+ *   head points along the destination's bearing (turnArrow), sized down until the whole of it fits the screen ("they get
+ *   clipped off if you aim to ur side"). A piece that does not fit whole is not drawn. Its destination is the tutorial's
+ *   own (its ring).
  * - warn (what is coming at the tank: a missile, an air run, a tank on the flank or in the rear with its gun on it or
  *   close): a bubble on the screen's rim pointing at it, never on the ground (planBubbles). One the camera already shows
  *   gets none; the rest are ranked, merged where they meet on the rim, capped (4, or 3 on a phone), and moved along the
@@ -38,8 +41,9 @@ export interface ScreenBox { readonly x0: number; readonly y0: number; readonly 
 
 // ── follow: on the ground ─────────────────────────────────────────────────────────────────────────────────────────────
 
-/** waypoint: a place to drive to; look: a thing to turn toward (no trail); ball, objective: the mode's. */
-type FollowKind = 'waypoint' | 'look' | 'ball' | 'objective';
+/** waypoint: a place to drive to; look: a thing to turn toward (no trail). The tutorial's two, and no other: a mode's
+ *  objective has its own disc, beacon and icon, and the Turbo Ball ball its own rim indicator (ballIndicator). */
+type FollowKind = 'waypoint' | 'look';
 
 export interface FollowPointer {
   readonly id: string;
@@ -50,23 +54,6 @@ export interface FollowPointer {
   readonly radiusM: number;
   /** Lay a trail toward it (a `look` pointer only turns the player). */
   readonly trail: boolean;
-}
-
-/** Which follow pointer shows when several do: the tutorial's own first, then the ball, then the objective. */
-const FOLLOW_ORDER: Readonly<Record<FollowKind, number>> = Object.freeze({ waypoint: 0, look: 1, ball: 2, objective: 3 });
-
-/** The one follow pointer that shows: by kind, then the nearest, then the id. */
-export function pickFollow(pointers: readonly FollowPointer[], player: GroundPoint | null): FollowPointer | null {
-  let best: FollowPointer | null = null;
-  let bestKey = [Infinity, Infinity] as [number, number];
-  for (const pointer of pointers) {
-    const key: [number, number] = [FOLLOW_ORDER[pointer.kind], player ? Math.hypot(pointer.x - player.x, pointer.z - player.z) : 0];
-    if (!best || key[0] < bestKey[0] || (key[0] === bestKey[0] && (key[1] < bestKey[1] || (key[1] === bestKey[1] && pointer.id < best.id)))) {
-      best = pointer;
-      bestKey = key;
-    }
-  }
-  return best;
 }
 
 /** The trail: a chevron every TRAIL_STEP_M from TRAIL_FIRST_M ahead of the tank, at most TRAIL_COUNT, none inside the
@@ -80,8 +67,6 @@ export const TRAIL_HIDE_WITHIN_M = 4;
 const CHEVRON_OUTLINE: ReadonlyArray<readonly [number, number]> = Object.freeze([
   [1.3, 0], [-0.8, 2.0], [-1.3, 1.5], [0.25, 0], [-1.3, -1.5], [-0.8, -2.0],
 ] as const);
-/** Half a chevron's length along its way (m). */
-export const CHEVRON_HALF_M = 1.3;
 
 interface TrailChevron {
   /** Its outline on the ground, closed by the drawer. */
@@ -111,14 +96,33 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
   return out;
 }
 
-/** The turn arrow stands while the destination's bearing is more than TURN_FROM_DEG off the camera's heading. */
-export const TURN_FROM_DEG = 55;
-/** Its band round the tank (m), and the most of a turn it sweeps (deg). */
-export const TURN_RADII_M = Object.freeze({ inner: 5.6, outer: 7.0 });
-export const TURN_SWEEP_MAX_DEG = 150;
-const TURN_START_DEG = 20;
+/** Where the turn arrow may start (m along the camera's heading from the tank, m toward the turn's side); the plan keeps
+ *  the largest on the screen that fits. Beside the hull on the turn's side: that ground stands at the hull's own depth,
+ *  the nearest to the camera the arrow can lie without the hull over it, so the arrow is large, and a portrait phone's
+ *  tank can stand over all the ground ahead. Behind it (between the camera and the hull): a portrait phone's one open
+ *  ground when a tall hull fills its width (the recorded phone HUD, 2026-11-24); 'centred' starts it a radius to the
+ *  other side, so a U-turn's arc stands centred on the hull's line between the phone's side columns (the live phone,
+ *  probed in the battle: its right column runs 228 to 520 px, and only a 1.2 m arc so centred fits there). Ahead of the hull: the chase camera looks down over the turret, so the ground
+ *  just ahead stands behind the hull on the screen, and behind a tall hull (3 m) all of it to 18 m does. The battle's
+ *  stills found both: a marker aside got no arrow on a phone, and on a desktop only a sliver 30 m out. */
+export const TURN_PLACES = Object.freeze([
+  { aheadM: 0, besideM: 4 }, { aheadM: 4, besideM: 4 }, { aheadM: -4, besideM: 4 },
+  { aheadM: -7, besideM: 0 }, { aheadM: -9, besideM: 0 }, { aheadM: -7, besideM: 'centred' }, { aheadM: -9, besideM: 'centred' },
+  { aheadM: 10, besideM: 0 }, { aheadM: 14, besideM: 0 }, { aheadM: 18, besideM: 0 }, { aheadM: 24, besideM: 0 }, { aheadM: 30, besideM: 0 },
+] as const);
+/** The px round the arrowhead that keeps clear of the HUD and the hull, so a head never sits in a gap between buttons. */
+export const TURN_HEAD_PAD_PX = 6;
+/** Its bend's radii (m); the plan keeps the largest arrow on the screen that fits (a portrait phone's narrow ground behind
+ *  the hull takes the small ones). */
+export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2, 1.6, 1.2] as const);
+/** It bends at least this far (deg), so a destination just off the screen still reads as a turn; at most a U-turn. */
+export const TURN_MIN_SWEEP_DEG = 30;
+/** A destination this far round (deg) reads as "turn around": where no arrow fits turning the shorter way (a portrait
+ *  phone's narrow ground behind a tall hull), the arrow may turn the other. */
+export const TURN_EITHER_DEG = 150;
 const TURN_SEGMENTS = 14;
-const TURN_HEAD_DEG = 16;
+/** The arrowhead's length along the bend (rad). */
+const TURN_HEAD_RAD = 0.55;
 
 interface TurnArrow {
   /** The band's outline (outer edge out, inner edge back), closed by the drawer. */
@@ -140,34 +144,145 @@ export function bearing(from: GroundPoint, to: GroundPoint): number {
 }
 
 /**
- * The curved arrow round the tank toward a destination out of view (null while it is within TURN_FROM_DEG of the camera's
- * heading `viewYaw`): a band from just off the view's heading, the way to turn, toward the destination's bearing, at most
- * `maxSweepDeg` of it (TURN_SWEEP_MAX_DEG; the drawer shortens it where the head would leave the screen or meet the HUD),
- * ending in an arrowhead.
+ * The curved arrow toward a destination, painted on the ground in the camera's frame: it starts `aheadM` ahead of the
+ * tank along the camera's heading `viewYaw` and `besideM` toward the side it turns to, running along the heading, and bends on a circle of radius `radiusM` the shorter way
+ * to the destination until its head points along the destination's bearing (at least TURN_MIN_SWEEP_DEG, at most a
+ * U-turn). Its band is a fifth of its radius wide, so a smaller arrow keeps its shape.
  */
-export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, maxSweepDeg = TURN_SWEEP_MAX_DEG): TurnArrow | null {
+export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, radiusM: number, aheadM: number, besideM = 0,
+  longWay = false): TurnArrow {
   const off = turnFrom(viewYaw, bearing(tank, to));
-  if (Math.abs(off) <= (TURN_FROM_DEG * Math.PI) / 180) return null;
-  const turn: 1 | -1 = off >= 0 ? 1 : -1;
-  const start = viewYaw + turn * (TURN_START_DEG * Math.PI) / 180;
-  const sweep = Math.min(Math.abs(off) - (TURN_START_DEG * Math.PI) / 180, (maxSweepDeg * Math.PI) / 180);
-  const head = (TURN_HEAD_DEG * Math.PI) / 180;
-  const bodyEnd = Math.max(0, sweep - head);
-  const at = (yaw: number, r: number): GroundPoint => ({ x: tank.x + Math.sin(yaw) * r, z: tank.z + Math.cos(yaw) * r });
-  const { inner, outer } = TURN_RADII_M;
+  const shorter: 1 | -1 = off >= 0 ? 1 : -1;
+  const turn: 1 | -1 = longWay ? (-shorter as 1 | -1) : shorter;
+  const sweep = Math.min(Math.PI, Math.max(longWay ? 2 * Math.PI - Math.abs(off) : Math.abs(off), (TURN_MIN_SWEEP_DEG * Math.PI) / 180));
+  const fx = Math.sin(viewYaw), fz = Math.cos(viewYaw);
+  // the side the yaw turns toward: d(forward)/d(yaw) = (cos, -sin), times the way to turn
+  const sx = turn * Math.cos(viewYaw), sz = -turn * Math.sin(viewYaw);
+  const cx = tank.x + fx * aheadM + sx * (besideM + radiusM), cz = tank.z + fz * aheadM + sz * (besideM + radiusM);
+  // a point `r` from the bend's centre, `phi` along the bend (0 at the start, heading along the view)
+  const at = (phi: number, r: number): GroundPoint => ({
+    x: cx - sx * r * Math.cos(phi) + fx * r * Math.sin(phi), z: cz - sz * r * Math.cos(phi) + fz * r * Math.sin(phi),
+  });
+  const half = radiusM * 0.1;
+  const headPhi = Math.min(sweep * 0.45, TURN_HEAD_RAD);
+  const bodyEnd = sweep - headPhi;
+  const outer = radiusM + half, inner = radiusM - half;
   const band: GroundPoint[] = [];
-  for (let i = 0; i <= TURN_SEGMENTS; i++) band.push(at(start + turn * (bodyEnd * i) / TURN_SEGMENTS, outer));
-  for (let i = TURN_SEGMENTS; i >= 0; i--) band.push(at(start + turn * (bodyEnd * i) / TURN_SEGMENTS, inner));
-  const base = start + turn * bodyEnd;
-  const spread = (outer - inner) * 0.9;
-  const tip = start + turn * sweep;
-  const mid = (inner + outer) / 2;
-  return { band, turn, head: [at(base, outer + spread), at(tip, mid), at(base, inner - spread)] };
+  for (let i = 0; i <= TURN_SEGMENTS; i++) band.push(at((bodyEnd * i) / TURN_SEGMENTS, inner));
+  for (let i = TURN_SEGMENTS; i >= 0; i--) band.push(at((bodyEnd * i) / TURN_SEGMENTS, outer));
+  const spread = half * 1.9;
+  return { band, turn, head: [at(bodyEnd, inner - spread), at(sweep, radiusM), at(bodyEnd, outer + spread)] };
+}
+
+/** The paint's lift off the ground (m), so it never sinks into the terrain between its corners. */
+export const PAINT_LIFT_M = 0.12;
+/** How far inside the screen's edge a destination must stand to count as on the screen (px). */
+export const FOLLOW_EDGE_PX = 24;
+
+/** What planFollow reads for one frame. */
+export interface FollowInput {
+  /** The tutorial's follow pointer (pointerBoard.ts), or null. */
+  readonly follow: FollowPointer | null;
+  /** The player's tank on the ground. */
+  readonly player: GroundPoint;
+  /** The camera's heading on the ground (yaw). */
+  readonly viewYaw: number;
+  /** The gunner's sight is up: the follow pointer (a hint, P-1) stands down. */
+  readonly scoped: boolean;
+  readonly project: (point: WorldPoint) => ScreenPoint | null;
+  readonly view: Viewport;
+  readonly groundY: (x: number, z: number) => number;
+  /** The HUD the turn arrow's head never covers. */
+  readonly noCover: readonly ScreenBox[];
+  /** The player's own tank on the screen, which the turn arrow's head never covers; null when unknown. */
+  readonly hull: ScreenBox | null;
+}
+
+/** The follow pointer's pieces on the screen, each wholly on it. */
+export interface FollowPlan {
+  readonly chevrons: ReadonlyArray<{ readonly index: number; readonly points: readonly ScreenPoint[] }>;
+  readonly turn: { readonly band: readonly ScreenPoint[]; readonly head: readonly ScreenPoint[]; readonly turn: 1 | -1; readonly radiusM: number } | null;
+  /** Its destination stands on the screen. */
+  readonly inView: boolean;
+}
+
+const NO_FOLLOW: FollowPlan = Object.freeze({ chevrons: [], turn: null, inView: false });
+
+/** A screen point inside the view, `inset` px clear of its edge. */
+export function onScreen(point: ScreenPoint | null, view: Viewport, inset = 0): point is ScreenPoint {
+  return !!point && !point.behind && point.x >= inset && point.x <= view.width - inset && point.y >= inset && point.y <= view.height - inset;
+}
+
+/** A screen point inside a box grown by `pad` px. */
+const inside = (p: { readonly x: number; readonly y: number }, b: ScreenBox, pad: number): boolean =>
+  p.x >= b.x0 - pad && p.x <= b.x1 + pad && p.y >= b.y0 - pad && p.y <= b.y1 + pad;
+/** Two boxes that meet, `a` grown by `pad` px. */
+const overlaps = (a: ScreenBox, b: ScreenBox, pad: number): boolean =>
+  a.x0 - pad <= b.x1 && a.x1 + pad >= b.x0 && a.y0 - pad <= b.y1 && a.y1 + pad >= b.y0;
+
+/**
+ * The follow pointer for this frame, against the camera: the trail while the destination stands on the screen (only its
+ * chevrons wholly on the screen and clear of the HUD), else the turn arrow largest on the screen (its band's diagonal)
+ * among those from every place (TURN_PLACES) and radius wholly on the screen, its band clear of the HUD and the hull and
+ * its head with TURN_HEAD_PAD_PX round it too, else nothing. Never a piece cut by the screen's edge, the camera's plane, a control or the hull's cut-out.
+ */
+export function planFollow(input: FollowInput): FollowPlan {
+  const follow = input.scoped ? null : input.follow;
+  if (!follow) return NO_FOLLOW;
+  const { view } = input;
+  const ground = (outline: readonly GroundPoint[]): ScreenPoint[] | null => {
+    const out: ScreenPoint[] = [];
+    for (const p of outline) {
+      const at = input.project({ x: p.x, y: input.groundY(p.x, p.z) + PAINT_LIFT_M, z: p.z });
+      if (!onScreen(at, view)) return null;
+      out.push(at);
+    }
+    return out;
+  };
+  const dest = input.project({ x: follow.x, y: input.groundY(follow.x, follow.z) + PAINT_LIFT_M, z: follow.z });
+  if (onScreen(dest, view, FOLLOW_EDGE_PX)) {
+    const chevrons: { index: number; points: ScreenPoint[] }[] = [];
+    if (follow.trail) {
+      for (const chevron of trailChevrons(input.player, follow, follow.radiusM)) {
+        const points = ground(chevron.outline);
+        if (points && !points.some((p) => input.noCover.some((b) => inside(p, b, 0)))) chevrons.push({ index: chevron.index, points });
+      }
+    }
+    return { chevrons, turn: null, inView: true };
+  }
+  const boxes = input.hull ? [...input.noCover, input.hull] : input.noCover;
+  const either = Math.abs(turnFrom(input.viewYaw, bearing(input.player, follow))) >= (TURN_EITHER_DEG * Math.PI) / 180;
+  let best: FollowPlan | null = null, bestSpan = 0;
+  for (const longWay of either ? [false, true] : [false]) {
+  if (best) break;
+  for (const place of TURN_PLACES) {
+    for (const radiusM of TURN_RADII_M) {
+      const besideM = place.besideM === 'centred' ? -radiusM : place.besideM;
+      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, besideM, longWay);
+      const band = ground(arrow.band), head = ground(arrow.head);
+      if (!band || !head) continue;
+      if (band.some((p) => boxes.some((b) => inside(p, b, 0)))) continue;
+      const headBox: ScreenBox = { x0: Math.min(...head.map((p) => p.x)), y0: Math.min(...head.map((p) => p.y)),
+        x1: Math.max(...head.map((p) => p.x)), y1: Math.max(...head.map((p) => p.y)) };
+      if (boxes.some((b) => overlaps(headBox, b, TURN_HEAD_PAD_PX))) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of band) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+      const span = Math.hypot(x1 - x0, y1 - y0);
+      if (span > bestSpan) { bestSpan = span; best = { chevrons: [], turn: { band, head, turn: arrow.turn, radiusM }, inView: false }; }
+    }
+  }
+  }
+  return best ?? NO_FOLLOW;
 }
 
 // ── warn: in the UI ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type WarnKind = 'tank' | 'missile' | 'air';
+/** The rim's bubbles: the warnings (a tank, a missile, an air run, a drone) and the moving objectives' indicators (the Turbo
+ *  Ball ball, a carried flag, the juggernaut; Kevin, 2026-11-23: "you know how the bases have indicators in ui tho, we
+ *  should add that for the ball too if it out of view", "same for flag holders and juggernaut"). */
+export type WarnKind = 'tank' | 'missile' | 'air' | 'drone' | 'ball' | 'flag' | 'boss';
+/** Whose colour a bubble wears: the enemy's (every warning), the viewer's side's, or the neutral one (the ball). */
+export type WarnSide = 'enemy' | 'own' | 'neutral';
 
 export interface WarnPointer {
   readonly id: string;
@@ -175,18 +290,20 @@ export interface WarnPointer {
   readonly x: number;
   readonly y: number;
   readonly z: number;
-  /** On the ladder (NOTICE_PRIORITY): every warning today is a threat. */
+  /** On the ladder (NOTICE_PRIORITY): every warning is a threat, an objective's indicator ambient. */
   readonly priority: number;
-  /** Within its rung, the more urgent first: a missile 3, an air run 2, a gun on the tank 1, a hull close by 0. */
+  /** Within its rung, the more urgent first: a missile 3, an air run or a drone 2, a gun on the tank 1, a hull close by 0. */
   readonly rank: number;
   /** Ground distance from the tank (m). */
   readonly distanceM: number;
   /** An air run: the seconds to its landing, and how much of its warning is left (1 just called, 0 landing). */
   readonly countdownS?: number;
   readonly countdownLeft?: number;
+  /** Its colour (absent: the enemy's). */
+  readonly side?: WarnSide;
 }
 
-const WARN_RANK = Object.freeze({ missile: 3, air: 2, gunOn: 1, close: 0 });
+const WARN_RANK = Object.freeze({ missile: 3, air: 2, drone: 2, gunOn: 1, close: 0 });
 
 /** How many bubbles show at once: 4, or 3 on a phone (the narrower side under 500 px). */
 export function bubbleCap(view: Viewport): number {
@@ -248,6 +365,7 @@ export interface Bubble {
   /** An air run's warning left (1..0), or null. */
   readonly countdownLeft: number | null;
   readonly countdownS: number | null;
+  readonly side: WarnSide;
 }
 
 interface BubbleInput {
@@ -324,7 +442,9 @@ export function planBubbles(input: BubbleInput): Bubble[] {
   const merged: Array<{ lead: WarnPointer; x: number; y: number; angle: number; count: number }> = [];
   for (const { warn, point } of ranked) {
     const at = edgePointer(point, view, insets);
-    const near = merged.find((bubble) => Math.hypot(bubble.x - at.x, bubble.y - at.y) < MERGE_PX);
+    // warnings merge with warnings; an objective's indicator only with its own kind (a ball never hides under a tank)
+    const near = merged.find((bubble) => Math.hypot(bubble.x - at.x, bubble.y - at.y) < MERGE_PX
+      && (bubble.lead.kind === warn.kind || (bubble.lead.priority >= NOTICE_PRIORITY.threat && warn.priority >= NOTICE_PRIORITY.threat)));
     if (near) { near.count += 1; continue; }
     merged.push({ lead: warn, x: at.x, y: at.y, angle: at.angle, count: 1 });
   }
@@ -350,7 +470,7 @@ export function planBubbles(input: BubbleInput): Bubble[] {
     const angle = x === bubble.x && y === bubble.y ? bubble.angle : slidAngle(bubble, x, y, view);
     out.push({
       id: bubble.lead.id, kind: bubble.lead.kind, x, y, angle, count: bubble.count, distanceM: bubble.lead.distanceM,
-      countdownLeft: bubble.lead.countdownLeft ?? null, countdownS: bubble.lead.countdownS ?? null,
+      countdownLeft: bubble.lead.countdownLeft ?? null, countdownS: bubble.lead.countdownS ?? null, side: bubble.lead.side ?? 'enemy',
     });
   }
   return out;
@@ -499,59 +619,85 @@ export function missileWarnings(player: WorldPoint, missiles: readonly WarnMissi
   return out;
 }
 
-// ── the follow pointers' sources (pure) ───────────────────────────────────────────────────────────────────────────────
+/** An enemy drone in the air (a carrier's `aerial`, sim/matchModes.ts AerialState kind 'drone'): where it flies, whether
+ *  its carrier is spotted by the viewer's side (a drone whose carrier the viewer cannot see is never warned of). */
+export interface WarnDrone {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly enemy: boolean;
+  readonly spotted: boolean;
+}
 
-/** An objective the mode marks (ui/minimapObjectives.ts ObjectiveMarker): the fields the choice reads. */
-interface FollowObjective {
+/** A drone is a warning while it flies within this of the tank, on the ground (m): about its own spotting reach. */
+export const DRONE_REACH_M = 400;
+
+/** The drones to warn of (Kevin, 2026-11-23: "lets also add warnings for drones, not just airstrikes and missiles"): an
+ *  enemy drone in the air near the tank, its carrier spotted. Its bubble points at the drone where it flies. */
+export function droneWarnings(player: WorldPoint, drones: readonly WarnDrone[]): WarnPointer[] {
+  const out: WarnPointer[] = [];
+  for (const drone of drones) {
+    if (!drone.enemy || !drone.spotted) continue;
+    const distanceM = Math.hypot(player.x - drone.x, player.z - drone.z);
+    if (distanceM > DRONE_REACH_M) continue;
+    out.push({ id: `drone:${drone.id}`, kind: 'drone', x: drone.x, y: drone.y, z: drone.z, priority: NOTICE_PRIORITY.threat,
+      rank: WARN_RANK.drone, distanceM });
+  }
+  return out;
+}
+
+// ── the moving objectives' indicators (pure) ──────────────────────────────────────────────────────────────────────────
+
+/** An objective as the mode marks it (ui/minimapObjectives.ts ObjectiveMarker): the fields the indicators read. */
+export interface RimObjective {
   readonly kind: string;
   readonly x: number;
   readonly z: number;
   readonly side: string;
   readonly status?: string;
-  readonly label?: string;
 }
 
-/** A capture zone's radius (sim/matchModes.ts ZONE_RADIUS_M): the trail stops at its edge. */
-export const OBJECTIVE_ZONE_RADIUS_M = 30;
-const FLAG_RADIUS_M = 6;
-const BALL_RADIUS_M = 3;
+/** The juggernaut as the viewer's client draws it (the mode state's `boss`, found among the frame's hulls). */
+export interface RimBoss {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly enemy: boolean;
+  readonly alive: boolean;
+  /** Spotted by the viewer's side: the indicator reveals nothing the viewer cannot see. */
+  readonly spotted: boolean;
+}
+
+/** Where an indicator points above the ground (m): the ball's centre (sim/matchModes.ts, a 2.2 m buoy), a flag on its
+ *  carrier, a hull's turret. */
+const BALL_UP_M = 2.2;
+const FLAG_UP_M = 4;
+const HULL_UP_M = 2;
+
+const indicatorSide = (side: string): WarnSide => (side === 'own' ? 'own' : side === 'enemy' ? 'enemy' : 'neutral');
 
 /**
- * The follow pointer a mode's objectives give (Kevin: rings on all, "one trail to the one that matters now"): the ball in
- * Turbo Ball; the sector being fought for in Frontline Assault; a zone being taken from the player's side, else the
- * nearest zone it does not hold; in Capture the Flag the own flag while it is away from home and not carried (recover
- * it), else the enemy flag while it is not carried (take it), else the own base (bring it home). None in a mode with
- * nothing to go to (the standard battle, every zone held).
+ * The moving objectives' rim indicators: the Turbo Ball ball, each carried flag (its flag's colour, on its carrier), the
+ * juggernaut while the viewer's side sees it (never the viewer's own hull). Each is ambient on the ladder, so the sight
+ * stands it down and a warning outranks it; planBubbles drops it while the camera shows it. The world's floating icons
+ * (game/matchModeWorldPresentation.ts) mark the same objectives on the screen.
  */
-export function objectiveFollow(markers: readonly FollowObjective[], player: GroundPoint | null): FollowPointer | null {
-  const ball = markers.find((marker) => marker.kind === 'ball');
-  if (ball) return { id: 'ball', kind: 'ball', x: ball.x, z: ball.z, radiusM: BALL_RADIUS_M, trail: true };
-  const sector = markers.find((marker) => marker.kind === 'sector' && (marker.status === 'active' || marker.status === 'holding'));
-  if (sector) return objective(`sector:${sector.label ?? ''}`, sector, OBJECTIVE_ZONE_RADIUS_M);
-  const zones = markers.filter((marker) => marker.kind === 'zone');
-  const contested = zones.filter((zone) => zone.side === 'contested');
-  const open = zones.filter((zone) => zone.side !== 'own');
-  const zone = nearest(contested.length ? contested : open, player);
-  if (zone) return objective(`zone:${zone.label ?? ''}`, zone, OBJECTIVE_ZONE_RADIUS_M);
-  const flags = markers.filter((marker) => marker.kind === 'flag');
-  const own = flags.find((flag) => flag.side === 'own');
-  const enemy = flags.find((flag) => flag.side === 'enemy');
-  if (own && own.status === 'dropped') return objective('flag:own', own, FLAG_RADIUS_M);
-  if (enemy && enemy.status !== 'carried') return objective('flag:enemy', enemy, FLAG_RADIUS_M);
-  const base = markers.find((marker) => marker.kind === 'flagBase' && marker.side === 'own');
-  if (enemy && base) return objective('flag:home', base, FLAG_RADIUS_M);
-  return null;
-}
-
-function objective(id: string, at: GroundPoint, radiusM: number): FollowPointer {
-  return { id, kind: 'objective', x: at.x, z: at.z, radiusM, trail: true };
-}
-
-function nearest<T extends GroundPoint & { readonly label?: string }>(list: readonly T[], player: GroundPoint | null): T | null {
-  let best: T | null = null, bestD = Infinity;
-  for (const item of list) {
-    const d = player ? Math.hypot(item.x - player.x, item.z - player.z) : 0;
-    if (d < bestD || (d === bestD && best && (item.label ?? '') < (best.label ?? ''))) { best = item; bestD = d; }
+export function objectiveIndicators(
+  player: WorldPoint & { readonly id?: string }, markers: readonly RimObjective[], boss: RimBoss | null,
+  groundY: (x: number, z: number) => number,
+): WarnPointer[] {
+  const out: WarnPointer[] = [];
+  const at = (id: string, kind: WarnKind, x: number, y: number, z: number, side: WarnSide): void => {
+    out.push({ id, kind, x, y, z, side, priority: NOTICE_PRIORITY.ambient, rank: 0, distanceM: Math.hypot(player.x - x, player.z - z) });
+  };
+  for (const marker of markers) {
+    if (marker.kind === 'ball') at('ball', 'ball', marker.x, groundY(marker.x, marker.z) + BALL_UP_M, marker.z, 'neutral');
+    else if (marker.kind === 'flag' && marker.status === 'carried') {
+      at(`flag:${marker.side}`, 'flag', marker.x, groundY(marker.x, marker.z) + FLAG_UP_M, marker.z, indicatorSide(marker.side));
+    }
   }
-  return best;
+  if (boss && boss.alive && boss.spotted && boss.id !== player.id) at('boss', 'boss', boss.x, boss.y + HULL_UP_M, boss.z, boss.enemy ? 'enemy' : 'own');
+  return out;
 }

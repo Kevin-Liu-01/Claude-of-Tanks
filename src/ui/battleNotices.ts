@@ -19,6 +19,7 @@
 import { createLazyChunk } from '../app/lazyChunk.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { markDatum } from './dom.ts';
+import { noticeKind, shownInView, type NoticeKind, type NoticeView } from './noticeKinds.ts';
 
 /**
  * The ladder every battle notice is raised at, in both lanes (a higher one takes its lane; the displaced one waits):
@@ -36,8 +37,9 @@ export const NOTICE_PRIORITY = Object.freeze({ lost: 4, threat: 3, turned: 2, an
 /** The battle region's name. */
 const REGION = 'battle';
 
-/** A battle condition: the kit's toast, in the battle's region. */
-type BattleNoticeOptions = Omit<ToastOptions, 'region'>;
+/** A battle condition: the kit's toast, in the battle's region, with its id and its kind (noticeKinds.ts: its subject and
+ *  its shape, which the lane writes). */
+type BattleNoticeOptions = Omit<ToastOptions, 'region' | 'shape' | 'id'> & { readonly id: string; readonly kind: NoticeKind };
 
 /** Where a battle surface raises its conditions (the kit's region by default; a receipt passes its own). */
 export interface BattleNoticePort {
@@ -63,18 +65,41 @@ const kit = createLazyChunk(() => import('./components/notice.ts').then((module)
 // the kit's exit)
 const relayout = (): void => { window.dispatchEvent(new Event('cot-hud-relayout')); };
 let paused = false;
+// (notices-276b) what the crew looks through, and the tank's conditions raised and not dismissed (shown or held behind a
+// view, the latest options of each): off the tank they are taken down, back on it raised again
+let view: NoticeView = 'tank';
+const tankConditions = new Map<string, BattleNoticeOptions>();
+const show = (options: BattleNoticeOptions): void => {
+  const { kind, ...toast } = options;
+  void kit.load().then((module) => { module.notify({ ...toast, shape: noticeKind(kind).shape, region: REGION }); relayout(); }, () => {});
+};
+const takeDown = (id: string): void => {
+  if (kit.state === 'ready' || kit.state === 'loading') void kit.load().then((module) => { module.dismissNotice(id); setTimeout(relayout, 220); }, () => {});
+};
 
 export const battleNotices: BattleNoticePort & {
   /** The game's pause holds every condition's time (notices-audit-275: before, the pointer lock's notice and the hints ran
    *  out behind the pause menu). Never fetches the kit. */
   pause(on: boolean): void;
+  /** What the crew looks through (noticeKinds.ts): off the tank its own conditions are taken down and held, back on it the
+   *  ones still raised show again. */
+  view(next: NoticeView): void;
 } = {
   condition(options) {
-    void kit.load().then((module) => { module.notify({ ...options, region: REGION }); relayout(); }, () => {});
+    if (noticeKind(options.kind).subject === 'tank') tankConditions.set(options.id, options);
+    if (shownInView(options.kind, view)) show(options);
   },
   // (nothing to do before the kit has loaded or while it is failed: no notice was raised; a dismiss never fetches)
   dismiss(id) {
-    if (kit.state === 'ready' || kit.state === 'loading') void kit.load().then((module) => { module.dismissNotice(id); setTimeout(relayout, 220); }, () => {});
+    tankConditions.delete(id);
+    takeDown(id);
+  },
+  view(next) {
+    if (next === view) return;
+    view = next;
+    for (const options of tankConditions.values()) {
+      if (shownInView(options.kind, next)) show(options); else takeDown(options.id);
+    }
   },
   pause(on) {
     paused = on;

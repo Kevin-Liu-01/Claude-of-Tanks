@@ -23,6 +23,7 @@ import type { ObjectiveTeam } from './gameModeCatalog.ts';
 import { botDriven } from './botDriven.ts';
 import { footprintCovers, runExitS, runFootprint, runPose, type RunPose } from './strikeRuns.ts';
 import { strikeMarkRefusal } from './strikeCall.ts';
+import { isCrashRound } from './airCrash.ts';
 
 interface Point3 { x: number; y: number; z: number }
 /** The fixed steps a second the authorities advance the mode clock by (sim/movement.ts SIM_DT = 1 / STRIKE_TICK_HZ;
@@ -61,10 +62,12 @@ export interface AirStrike {
    *  round fires once). Absent in a strike an older host sealed: sim/airSupportFire.ts counts what was due by then. */
   fired?: number;
   firedAux?: number;
+  /** (air-crash-he-276) a downed aircraft's crash round has left (sim/airSupportFire.ts launchCrash: once). */
+  crashed?: boolean;
 }
 
 /** A strike as anyone may see it: its record without its caller (the flight, the footprint and the rounds need no more). */
-export type PublicStrike = Omit<AirStrike, 'callerId' | 'fired' | 'firedAux'>;
+export type PublicStrike = Omit<AirStrike, 'callerId' | 'fired' | 'firedAux' | 'crashed'>;
 
 /** Why the authority refuses a call (requestStrike's mode_strike_denied reason). */
 export type StrikeRefusal = 'DESTROYED' | 'MARK' | 'POINTS' | 'COOLDOWN' | 'AIR_FULL' | 'GUNSHIP_UP' | 'RANGE';
@@ -104,6 +107,8 @@ export interface AirSupportEntity {
   state: { pos: Point3 };
   combat: { destroyed: boolean };
   modeActive?: boolean;
+  /** The crew's drone (sim/aerialCombat.ts), where the mode launches one: `active` while it flies. */
+  aerial?: { readonly kind?: string; readonly active?: boolean } | null;
 }
 
 interface AirSupportOptions<Entity extends AirSupportEntity> {
@@ -129,7 +134,7 @@ export interface AirSupport {
   recordKill(victimId: string, killerId: string | null, supportKill: boolean): void;
   recordCapture(team: ObjectiveTeam, x: number, z: number, radiusM: number): void;
   recordSpot(spotterId: string | null | undefined, targetId: string, timeS: number): void;
-  tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean;
+  tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number; reloadGroup?: unknown } }, timeS: number): boolean;
   damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number): void;
   counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void;
   aircraftPoseOf(strike: AirStrike, timeS: number, out: RunPose): RunPose;
@@ -146,6 +151,9 @@ export interface AirSupport {
   capture(): AirSupportCheckpoint;
   restore(saved: AirSupportCheckpoint): void;
 }
+
+/** How long a downed aircraft's record stands after its fall (its strike's end): the fall and the burst drawn from it. */
+const CRASH_RECORD_S = 9;
 
 /** The call-ins a bot may save for (recon is its scouting, never a preference). */
 type BotStrikePreference = 'artillery' | 'strafe' | 'bomb' | 'missile' | 'gunship';
@@ -299,9 +307,10 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
    * A round of the other side passing through a flying aircraft's hit sphere strikes it for the round's damage (the strike's
    * own side never hits its own aircraft: its own rounds leave from inside it). True when the round was spent on it.
    */
-  function tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean {
-    // a roof station's round lands its counter-air share instead (counterAirHit), never twice
-    if (shell.dead || shell.roofStation || !strikes.length) return false;
+  function tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number; reloadGroup?: unknown } }, timeS: number): boolean {
+    // a roof station's round lands its counter-air share instead (counterAirHit), never twice; a crash round is a falling
+    // wreck, never a round at another aircraft
+    if (shell.dead || shell.roofStation || isCrashRound(shell.spec) || !strikes.length) return false;
     const shooter = shell.shooterId ? byId.get(shell.shooterId) : undefined;
     if (!shooter) return false;
     const team = teamOf(shooter);
@@ -323,7 +332,9 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     strike.hp = Math.max(0, strike.hp - damage);
     emit('mode_aircraft_hit', { strikeId: strike.id, kind: strike.kind, hp: strike.hp, by });
     if (strike.hp > 0) return;
-    strike.downedS = timeS; strike.downedBy = by; strike.endS = Math.min(strike.endS, timeS + 6);
+    // (air-crash-he-276) its record stands CRASH_RECORD_S, past the longest fall (a recon jet from 250 m, ~6 s), so the
+    // presentation draws the airframe down onto its crash round's burst even when it fell late in its egress
+    strike.downedS = timeS; strike.downedBy = by; strike.endS = timeS + CRASH_RECORD_S;
     award(by, rules.points.downed);
     const pose = runPose(rules, strike, timeS, _pose);
     emit('mode_aircraft_down', { strikeId: strike.id, kind: strike.kind, team: strike.team, by, x: pose.x, y: pose.y, z: pose.z });
@@ -392,6 +403,9 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
    * enemy; with nobody spotted in reach, a recon pass toward its scout point.
    */
   function botCall(entity: Entity, timeS: number): void {
+    // one control seat (combined-arms-276): a crew flying its drone calls nothing until it is back in its tank, as a
+    // player's binoculars wait for theirs (game/playerBattleActions.ts)
+    if (entity.aerial?.kind === 'drone' && entity.aerial.active) return;
     const team = teamOf(entity);
     // the side's last air slots stay free for its crews' own calls
     if (teamAir(team, timeS) >= rules.teamAirCap - rules.bots.leaveSlots) return;
@@ -498,7 +512,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const out: AirSupportView = {
       nowS,
       // the round counters are the host's bookkeeping: the view stays the record it always was
-      strikes: strikes.map(({ callerId, fired: _fired, firedAux: _firedAux, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
+      strikes: strikes.map(({ callerId, fired: _fired, firedAux: _firedAux, crashed: _crashed, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
     };
     if (viewer) {
       out.points = Math.floor(points.get(viewer.id) ?? 0);

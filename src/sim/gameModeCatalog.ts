@@ -25,6 +25,7 @@ export const BATTLE_MODE_IDS = Object.freeze([
   'drone',
   'ac130',
   'air_support',
+  'combined_arms',
 ] as const);
 
 /**
@@ -36,7 +37,7 @@ export const BATTLE_MODE_IDS = Object.freeze([
 export const MODE_PRESENTATION_ORDER = Object.freeze([
   'standard', 'drone', 'zone_control', 'capture_the_flag',
   'frontline_assault', 'turbo_ball', 'mars', 'endless_horde',
-  'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'air_support',
+  'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'air_support', 'combined_arms',
 ] as const satisfies readonly (typeof BATTLE_MODE_IDS[number])[]);
 /** How many of the presentation order's modes lead as picture cards (Deploy's top row). */
 export const HEADLINE_MODE_COUNT = 4;
@@ -147,6 +148,11 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     // the zone battle where every crew earns support points and spends them on call-ins (matchRuleset.ts airSupport)
     air_support: Object.freeze({ id: 'air_support', label: 'Air Support', shortLabel: 'AIR', icon: 'modeAirSupport',
       description: `Hold the three sectors and earn support points from combat. Spend them on recon, artillery, strafing runs, precision bombs and an AC-130 orbit. First team to ${RULESET_SCORE_TARGETS.air_support} points wins.`,
+      respawns: true }),
+    // Combined Arms (combined-arms-276; owner 2026-11-23: "lets add a mode with drone AND air support"): Air Support's
+    // battle with Drone's launch (matchRuleset.ts COMPOSED_MODES), placed after Air Support in every list
+    combined_arms: Object.freeze({ id: 'combined_arms', label: 'Combined Arms', shortLabel: 'ARMS', icon: 'modeCombinedArms',
+      description: `Hold the three sectors with your FPV drone and your support points: launch the drone at an enemy, spend points on call-ins. Flying the drone parks your tank. First team to ${RULESET_SCORE_TARGETS.combined_arms} points wins.`,
       respawns: true }),
     // the proving ground (v2 progression, 2026-10-17): a test drive on a measured range — target hulls at set ranges
     // and angles, every shot's outcome on the shot card, no enemies, no clock, nothing recorded

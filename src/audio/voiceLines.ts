@@ -320,6 +320,8 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   ac130: { swap: {} },
   // Air Support: the sectors and the call-ins (air-support-270; the calls are the engine's own, AIR_STRIKE_SOUND)
   air_support: { swap: { battle_start: 'start_air_support', ...NO_TEAM_COUNTS } },
+  // Combined Arms (combined-arms-276) is the Air Support battle with the drone: its crews open on that battle's call
+  combined_arms: { swap: { battle_start: 'start_air_support', ...NO_TEAM_COUNTS } },
   // a practice range: targets in lanes, reset at will, no verdict
   proving_ground: { swap: { battle_start: 'start_range', respawn: null, ...NO_TEAM_COUNTS } },
   // the training battle (273): the range's call to start, no team counts (its hulls are the scenes')

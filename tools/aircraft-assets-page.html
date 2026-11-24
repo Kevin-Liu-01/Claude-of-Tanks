@@ -10,7 +10,7 @@
 // source, and an edit there would re-render every tank. First-party tooling: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { buildPreviewAircraft } from '/src/game/previewAircraftBuild.ts';
-import { PREVIEW_AIRCRAFT_IDS } from '/src/vehicles/previewVehicles.ts';
+import { RENDERED_AIRCRAFT_IDS } from '/src/vehicles/previewVehicles.ts';
 import { exteriorFingerprint, tankAssetFile } from '/src/vehicles/tankAssets.ts';
 import { measurePortraitFullBounds } from '/src/ui/portraitFraming.ts';
 
@@ -168,10 +168,10 @@ function generate(id) {
   }
 }
 
-window.__AIRCRAFT_IDS = [...PREVIEW_AIRCRAFT_IDS];
+window.__AIRCRAFT_IDS = [...RENDERED_AIRCRAFT_IDS];
 window.__AIRCRAFT_GEN = (ids) => {
   const result = { files: {}, aircraft: {} };
-  for (const id of ids && ids.length ? ids : PREVIEW_AIRCRAFT_IDS) {
+  for (const id of ids && ids.length ? ids : RENDERED_AIRCRAFT_IDS) {
     try {
       const one = generate(id);
       Object.assign(result.files, one.files);

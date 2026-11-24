@@ -388,59 +388,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.66,0.677,0],
-          [1.605,1.16,0],
-          [1.626,1.16,3.16],
-          [1.681,0.68,3.16]
+          [1.462,0.12,3.27],
+          [1.462,0.12,-3.27],
+          [1.462,1.16,-3.27],
+          [1.462,1.16,3.27]
         ]
       },
       {
         "hitboxId": "H10",
-        "name": "track_R",
+        "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
         "ceMm": 20,
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.582,1.16,-3.07],
-          [1.543,1.16,0],
-          [1.651,0.67,0],
-          [1.689,0.679,-3.07]
+          [-1.462,0.12,-3.27],
+          [-1.462,0.12,3.27],
+          [-1.462,1.16,3.27],
+          [-1.462,1.16,-3.27]
         ]
       },
       {
         "hitboxId": "H11",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.543,1.16,-0.2],
-          [-1.578,1.16,-3.08],
-          [-1.689,0.678,-3.08],
-          [-1.655,0.671,-0.2]
-        ]
-      },
-      {
-        "hitboxId": "H12",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.626,1.16,3.19],
-          [-1.598,1.16,0],
-          [-1.656,0.676,0],
-          [-1.683,0.68,3.19]
-        ]
-      },
-      {
-        "hitboxId": "H13",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -455,7 +425,7 @@
         ]
       },
       {
-        "hitboxId": "H14",
+        "hitboxId": "H12",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -470,7 +440,7 @@
         ]
       },
       {
-        "hitboxId": "H15",
+        "hitboxId": "H13",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -485,7 +455,7 @@
         ]
       },
       {
-        "hitboxId": "H16",
+        "hitboxId": "H14",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -500,7 +470,7 @@
         ]
       },
       {
-        "hitboxId": "H17",
+        "hitboxId": "H15",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -515,7 +485,7 @@
         ]
       },
       {
-        "hitboxId": "H18",
+        "hitboxId": "H16",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -530,7 +500,7 @@
         ]
       },
       {
-        "hitboxId": "H19",
+        "hitboxId": "H17",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -545,7 +515,7 @@
         ]
       },
       {
-        "hitboxId": "H20",
+        "hitboxId": "H18",
         "name": "m3a3_glacis_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -560,7 +530,7 @@
         ]
       },
       {
-        "hitboxId": "H21",
+        "hitboxId": "H19",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -575,7 +545,7 @@
         ]
       },
       {
-        "hitboxId": "H22",
+        "hitboxId": "H20",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -590,7 +560,7 @@
         ]
       },
       {
-        "hitboxId": "H23",
+        "hitboxId": "H21",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -605,7 +575,7 @@
         ]
       },
       {
-        "hitboxId": "H24",
+        "hitboxId": "H22",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -620,7 +590,7 @@
         ]
       },
       {
-        "hitboxId": "H25",
+        "hitboxId": "H23",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -635,7 +605,7 @@
         ]
       },
       {
-        "hitboxId": "H26",
+        "hitboxId": "H24",
         "name": "m3a3_glacis_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -650,7 +620,7 @@
         ]
       },
       {
-        "hitboxId": "H27",
+        "hitboxId": "H25",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -665,7 +635,7 @@
         ]
       },
       {
-        "hitboxId": "H28",
+        "hitboxId": "H26",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -680,7 +650,7 @@
         ]
       },
       {
-        "hitboxId": "H29",
+        "hitboxId": "H27",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -695,7 +665,7 @@
         ]
       },
       {
-        "hitboxId": "H30",
+        "hitboxId": "H28",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -710,7 +680,7 @@
         ]
       },
       {
-        "hitboxId": "H31",
+        "hitboxId": "H29",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -725,7 +695,7 @@
         ]
       },
       {
-        "hitboxId": "H32",
+        "hitboxId": "H30",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -740,7 +710,7 @@
         ]
       },
       {
-        "hitboxId": "H33",
+        "hitboxId": "H31",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -755,7 +725,7 @@
         ]
       },
       {
-        "hitboxId": "H34",
+        "hitboxId": "H32",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -770,7 +740,7 @@
         ]
       },
       {
-        "hitboxId": "H35",
+        "hitboxId": "H33",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -785,7 +755,7 @@
         ]
       },
       {
-        "hitboxId": "H36",
+        "hitboxId": "H34",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -800,7 +770,7 @@
         ]
       },
       {
-        "hitboxId": "H37",
+        "hitboxId": "H35",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -815,7 +785,7 @@
         ]
       },
       {
-        "hitboxId": "H38",
+        "hitboxId": "H36",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -830,7 +800,7 @@
         ]
       },
       {
-        "hitboxId": "H39",
+        "hitboxId": "H37",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -845,7 +815,7 @@
         ]
       },
       {
-        "hitboxId": "H40",
+        "hitboxId": "H38",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -860,7 +830,7 @@
         ]
       },
       {
-        "hitboxId": "H41",
+        "hitboxId": "H39",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -875,7 +845,7 @@
         ]
       },
       {
-        "hitboxId": "H42",
+        "hitboxId": "H40",
         "name": "m3a3_side_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -890,7 +860,7 @@
         ]
       },
       {
-        "hitboxId": "H43",
+        "hitboxId": "H41",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -905,7 +875,7 @@
         ]
       },
       {
-        "hitboxId": "H44",
+        "hitboxId": "H42",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -920,7 +890,7 @@
         ]
       },
       {
-        "hitboxId": "H45",
+        "hitboxId": "H43",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -935,7 +905,7 @@
         ]
       },
       {
-        "hitboxId": "H46",
+        "hitboxId": "H44",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -950,7 +920,7 @@
         ]
       },
       {
-        "hitboxId": "H47",
+        "hitboxId": "H45",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -965,7 +935,7 @@
         ]
       },
       {
-        "hitboxId": "H48",
+        "hitboxId": "H46",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -980,7 +950,7 @@
         ]
       },
       {
-        "hitboxId": "H49",
+        "hitboxId": "H47",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -995,7 +965,7 @@
         ]
       },
       {
-        "hitboxId": "H50",
+        "hitboxId": "H48",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1010,7 +980,7 @@
         ]
       },
       {
-        "hitboxId": "H51",
+        "hitboxId": "H49",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1025,7 +995,7 @@
         ]
       },
       {
-        "hitboxId": "H52",
+        "hitboxId": "H50",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1040,7 +1010,7 @@
         ]
       },
       {
-        "hitboxId": "H53",
+        "hitboxId": "H51",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1055,7 +1025,7 @@
         ]
       },
       {
-        "hitboxId": "H54",
+        "hitboxId": "H52",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1070,7 +1040,7 @@
         ]
       },
       {
-        "hitboxId": "H55",
+        "hitboxId": "H53",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1085,7 +1055,7 @@
         ]
       },
       {
-        "hitboxId": "H56",
+        "hitboxId": "H54",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1100,7 +1070,7 @@
         ]
       },
       {
-        "hitboxId": "H57",
+        "hitboxId": "H55",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1115,7 +1085,7 @@
         ]
       },
       {
-        "hitboxId": "H58",
+        "hitboxId": "H56",
         "name": "m3a3_side_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1568,7 +1538,7 @@
     ]
   },
   "geometryHash": "53004d58",
-  "metadataHash": "ea5bd9a5",
+  "metadataHash": "52d186ce",
   "presentationAnchor": {
     "xM": -0.0009,
     "zM": -0.0364
@@ -1676,8 +1646,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39308,
-      "sha256": "e19d4d378810983c3824aa62b712d54e89fe5400bbfbc0431c0fd7754beb3430"
+      "bytes": 37016,
+      "sha256": "61dc18549f1eda984ead6b9d93c79db2ebad281937cac5e92c862c5c8a19ae7c"
     },
     "modulesSide": {
       "file": "m3a3_bradley_modules_side.webp",
@@ -1706,8 +1676,8 @@
     "technicalLabels": {
       "file": "m3a3_bradley_technical.json",
       "mime": "application/json",
-      "bytes": 5622,
-      "sha256": "7520625ac95a70c4bd3b87d1b3c3774ef2de8d16dacfd4f469a5b1fecbb872a7"
+      "bytes": 5623,
+      "sha256": "066bdca4027b0d00c132baf49b044f3bdb8d4ffd42e4afab011d04fe583f31e4"
     }
   }
 }

@@ -78,7 +78,7 @@ try {
       // one more battle toast, the pointer lock's kind, through the region every battle notice uses (the same module)
       await page.evaluate(async () => {
         const { battleNotices } = await import('/src/ui/battleNotices.ts');
-        battleNotices.condition({ id: 'hud-guidance-probe', severity: 'info', text: 'Click the battle to aim', durationMs: null, dismissible: false });
+        battleNotices.condition({ kind: 'link', id: 'hud-guidance-probe', severity: 'info', text: 'Click the battle to aim', durationMs: null, dismissible: false });
       });
       await sleep(2500);
       const facts = await page.evaluate((controls) => {
