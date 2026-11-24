@@ -1,4 +1,4 @@
-import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialView,
+import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, droneShellId, killSourceOf, supportKillSource, type AerialView,
   type AerialWorldQuery, type KillSourceShell } from '../sim/aerialCombat.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
@@ -185,6 +185,7 @@ import { beginCouchSession, endCouchSession, type CouchBattle, type CouchSession
 import { modeEndReport } from '../sim/modeEndReport.ts';
 import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from '../sim/airSupportFire.ts';
+import { worldImpactSpec } from '../sim/airCrash.ts';
 import type { AirStrike } from '../sim/airSupport.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
@@ -2406,6 +2407,8 @@ function resolveWorldShellImpact(
   shell: DamageShell,
   hit: SoloWorldHit,
 ): void {
+  // (air-crash-he-276) a drone meeting the ground or a building bursts as its crash round (sim/airCrash.ts)
+  shell.spec = worldImpactSpec(shell.spec);
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, hit.point, null, null);
   } else {
@@ -3123,7 +3126,7 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the drone flight (sim/aerialCombat.ts)
     counterDrone: game.ruleset.counterDrone === true,
     droneHit: (carrier: SoloEntity, chance: number, shooter: SoloEntity) => {
-      if (strikeDrone(carrier, chance)) bus.emit('drone:down', { id: carrier.id, killerId: shooter.id });
+      if (strikeDrone(carrier, chance)) bus.emit('drone:down', { id: carrier.id, killerId: shooter.id, shellId: droneShellId(carrier) });
     },
     // Air Support's counter-air: the stations engage the other side's aircraft (sim/airSupport.ts)
     ...(game.matchModeController?.airSupport ? { counterAir: soloCounterAir(game) } : {}),

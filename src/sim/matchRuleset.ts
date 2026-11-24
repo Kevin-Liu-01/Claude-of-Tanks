@@ -8,7 +8,7 @@
 // controller, setupBattle, movement (gravity, speed), ballistics (shell gravity), damage (hit
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
-import { shell } from './shellSpec.ts';
+import { shell, type ShellSpec } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
@@ -112,6 +112,53 @@ export const AIR_STRIKE_WEAPONS = Object.freeze({
   // rail onto its target's intercept). The penetration is a game figure: any hull it strikes is through.
   missile: shell('AGM-65 Maverick', 'HEAT', 305, 900, 900, 1300, 320, { guided: true, reloadGroup: 'strike-missile',
     soundProfile: 'gunship-missile', blastRadiusM: 7, maxLifetimeS: 9 }),
+});
+
+/**
+ * Air crashes (air-crash-he-276; the owner, 2026-11-23: "when a plane is shot down and falls it should cause a big
+ * explosion with sounds and explosion hole. duh. same with drones if they hit the ground or a building, its like HE", and
+ * "plane wrecks and so on should leave the biggest craters and actual wrecks"). A downed aircraft, and a drone that meets
+ * the ground or a building, bursts as one HE round in the normal impact path (sim/airCrash.ts): its blast on the hulls and
+ * the structures, its crater, its sound. Each airframe class's charge is its round's blast envelope (munitionBlast.ts:
+ * (R / 8.1)^3 kg TNT-equivalent, a crater 1.1 * W^(1/3) * 1.15 m, at most 6 m) and `dmg` its blast's hull damage, each
+ * with its reason. A downed aircraft falls on its own path at `fall.carry` of its airspeed (a broken airframe loses its
+ * lift and most of its way) with `fall.sinkMps` more downward at the break, under the crash round's own gravity, so the
+ * wreck the presentation draws and the round the authority bursts are one arc (sim/strikeRuns.ts crashFall).
+ */
+type AirCrashClass = 'drone' | 'jet' | 'attack' | 'gunship';
+interface AirCrashRow { readonly blastRadiusM: number; readonly dmg: number; readonly caliberMm: number; readonly why: string }
+export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
+  readonly fall: { readonly carry: number; readonly sinkMps: number; readonly gravityMps2: number; readonly maxS: number };
+} = Object.freeze({
+  drone: Object.freeze({ blastRadiusM: 11, dmg: 700, caliberMm: 90,
+    why: 'an FPV quadcopter: about its warhead (the 90 mm charge) with its battery; 11 m is 2.5 kg, the least load that digs a bowl (1.7 m), a mark no longer' }),
+  jet: Object.freeze({ blastRadiusM: 34, dmg: 2200, caliberMm: 300,
+    why: 'a fighter (the recon, bomb and Maverick runs): some 3 t of fuel and what stores it kept; 34 m is 73 kg, a 5.3 m crater, past the GBU-12\'s 3.4 m' }),
+  attack: Object.freeze({ blastRadiusM: 36, dmg: 2400, caliberMm: 300,
+    why: 'the A-10: heavier than the fighter, with its 30 mm drum and 4 t of fuel; 36 m is 88 kg, a 5.6 m crater' }),
+  gunship: Object.freeze({ blastRadiusM: 40, dmg: 3200, caliberMm: 300,
+    why: 'the AC-130: some 20 t of fuel and its gun magazines; the envelope\'s 40 m cap (119 kg) and the crater\'s 6 m cap, the largest in the game' }),
+  fall: Object.freeze({ carry: 0.35, sinkMps: 10, gravityMps2: 9.81, maxS: 30 }),
+});
+/** Which crash an Air Support aircraft makes (artillery has none: the battery is off the map). */
+export function airCrashClassOf(kind: AirStrikeKind): AirCrashClass | null {
+  if (kind === 'artillery') return null;
+  return kind === 'gunship' ? 'gunship' : kind === 'strafe' ? 'attack' : 'jet';
+}
+const crashRound = (name: string, cls: AirCrashClass): ShellSpec => {
+  const row = AIR_CRASH_RULES[cls];
+  // an unpowered wreck (no tracer, no motor: the presentation draws the airframe), HE through the normal burst; the
+  // reloadGroup names the crash for the kill source (aerialCombat.ts killSourceOf) and the lag rewind (none)
+  return shell(name, 'HE', row.caliberMm, 120, 120, row.dmg, 60, { blastRadiusM: row.blastRadiusM, moduleDmg: 120,
+    flight: 'free_fall', reloadGroup: cls === 'drone' ? 'drone-crash' : 'air-crash', soundProfile: 'strike-bomb',
+    gravityScale: AIR_CRASH_RULES.fall.gravityMps2 / 9.81, maxLifetimeS: AIR_CRASH_RULES.fall.maxS });
+};
+/** The crash rounds, one per airframe class (sim/airCrash.ts bursts them). */
+export const AIR_CRASH_ROUNDS: Readonly<Record<AirCrashClass, ShellSpec>> = Object.freeze({
+  drone: crashRound('FPV drone crash', 'drone'),
+  jet: crashRound('Fighter crash', 'jet'),
+  attack: crashRound('A-10 crash', 'attack'),
+  gunship: crashRound('AC-130 crash', 'gunship'),
 });
 export interface AirStrikeRules {
   /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the
