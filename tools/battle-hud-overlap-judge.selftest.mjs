@@ -37,8 +37,8 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   assert.match(layout, /const laneControls = touch && scopeVision \? \[\.\.\.viewControls, scopeVision\] : viewControls;/,
     'a touch lane ends over the scope\'s vision plate too');
   // the alert's new height replans (the touch plan seats the condition lane under it at the height it shows)
-  assert.match(layout, /planInput\(entry\.target, entry\.contentRect\?\.height \?\? 0\)/, 'the alert\'s resize carries its height');
-  assert.match(layout, /if \(target\.classList\?\.contains\('cot-alert'\)\) \{\s*if \(height > 0 && Math\.abs/, 'a new alert height is a plan input');
+  assert.match(layout, /if \(target\.classList\?\.contains\('cot-alert'\)\) \{\s*const height = \(target as HTMLElement\)\.offsetHeight \?\? 0;\s*if \(height > 0 && Math\.abs/,
+    'a new alert height is a plan input, from a resize or a mutation alike');
   assert.match(layout, /for \(const box of \[\.\.\.viewControls\]\.sort[\s\S]{0,240}ribbonTop = box\.top;/, 'the ribbon rests over a view control');
   // (the old escape: the flight console dropped where keeping off it cost the reticle clearance)
   assert.doesNotMatch(layout, /plainObstacles|obstacles\.slice\(0, plain/, 'no plan drops a view control to keep the reticle clear');
