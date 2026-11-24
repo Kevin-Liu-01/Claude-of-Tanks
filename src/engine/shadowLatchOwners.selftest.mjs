@@ -44,7 +44,8 @@ import { GarageRestoreAbandonedError, restoreGarageGpuPipeline } from './garageG
 }
 
 {
-  // the enclosure and the far-cascade sleep are two states; the public enclosure switch moves both
+  // the enclosure and the far-cascade sleep are two states with two switches (garage-env-276: an open Garage yard sleeps
+  // the far bands under the grounded model's light); leaving the Garage wakes the bands and opens the presentation
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
@@ -53,9 +54,14 @@ import { GarageRestoreAbandonedError, restoreGarageGpuPipeline } from './garageG
     assert.equal(telemetry().enclosedPresentation, false);
     lighting.setEnclosedPresentation(true);
     assert.equal(telemetry().enclosedPresentation, true, 'the enclosure has its own state');
-    assert.equal(telemetry().farCascadeDormancyRequested, true, 'and the far bands sleep inside it (the perf policy)');
+    assert.equal(telemetry().farCascadeDormancyRequested, false, 'and moves nothing of the far bands');
+    lighting.setFarCascadeDormant(true);
+    lighting.setEnclosedPresentation(false);
+    assert.equal(telemetry().farCascadeDormancyRequested, true, 'an open yard keeps the far bands asleep (the perf policy)');
+    assert.equal(telemetry().enclosedPresentation, false);
+    lighting.setEnclosedPresentation(true);
     lighting.setFarCascadeDormant(false);
-    assert.equal(telemetry().enclosedPresentation, false, 'the older name is the same switch');
+    assert.equal(telemetry().enclosedPresentation, false, 'leaving the Garage opens the presentation');
     assert.equal(telemetry().farCascadeDormancyRequested, false);
     const source = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
     const rig = source.slice(source.indexOf('function applyRig(opts: SunPreset): void {'));

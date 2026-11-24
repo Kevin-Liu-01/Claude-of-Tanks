@@ -1525,9 +1525,9 @@ export function createLighting(
 
   /**
    * 2026-10-01: resolve and apply the light (lightModel.ts) for a sky preset — the grounded model on the physically
-   * based sky, the authored rig on the Preetham tier and inside the Garage. The Garage is the phase that asked for
-   * far-cascade dormancy (an enclosed presentation: setFarCascadeDormant): the sky does not light a sealed bay, so it
-   * keeps the rig its showroom lights were tuned with, under the legacy rig's exposure. The model owns
+   * based sky, the authored rig on the Preetham tier and inside a sealed Garage bay (an enclosed presentation:
+   * setEnclosedPresentation, the shown pack's declared enclosure): the sky does not light a sealed bay, so it keeps the
+   * rig its showroom lights were tuned with, under the legacy rig's exposure. An open yard lights as its battlefield. The model owns
    * scene.environmentIntensity from here (sky.ts sets the same value when it installs an environment).
    */
   let lastSunPreset: SunPreset | null = null;
@@ -1542,8 +1542,14 @@ export function createLighting(
     enclosedPresentation = next;
     // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
     if (enclosureChanged && lastSunPreset) applyRig(lastSunPreset);
-    // the perf policy: the enclosure hides the 100-700 m bands, so their redraws sleep inside it
-    const sleep = next;
+  }
+  /**
+   * (garage-env-276) The perf policy alone: the Garage's presentation, sealed bay or open yard, never shows the 100-700 m
+   * bands, so their redraws sleep while it is up. The light model is the enclosure's (setEnclosedPresentation: the shown
+   * pack's own, garageVariants.ts GarageVariant.enclosure); leaving the Garage opens it.
+   */
+  function setFarCascadeSleep(sleep: boolean): void {
+    if (!sleep) setEnclosedPresentation(false);
     if (farCascadeDormant === sleep) return;
     farCascadeDormant = sleep;
     if (sleep) applyFarCascadeDormancy();
@@ -1689,18 +1695,22 @@ export function createLighting(
     },
 
     /**
-     * Suspend only the long-range shadow-map renders while an enclosed scene
-     * is visible. Re-enabling schedules every far cascade behind the caller's
-     * covered transition; map resolution and rendered battle quality remain
-     * exactly the active graphics preset.
+     * Suspend only the long-range shadow-map renders while the Garage's
+     * presentation is visible (sealed or open: neither shows the far bands).
+     * Re-enabling schedules every far cascade behind the caller's covered
+     * transition and opens the presentation (the Garage is left); map
+     * resolution and rendered battle quality remain exactly the active
+     * graphics preset.
      */
     setFarCascadeDormant(on: boolean): void {
-      setEnclosedPresentation(on);
+      setFarCascadeSleep(on);
     },
 
     /**
-     * (2026-11-02 audit R3/R4) enter or leave the enclosed presentation (the Garage): the light model keeps the authored
-     * rig inside, and the far cascades sleep there (setFarCascadeDormant is this call's older name).
+     * (2026-11-02 audit R3/R4; garage-env-276) enter or leave the enclosed presentation: the light model keeps the
+     * authored rig inside a sealed bay, and an open yard lights with the grounded model under its own sky. The Garage
+     * sets it from the shown pack's declared enclosure (garageEnvironmentPresentationRuntime.ts activate); the far
+     * cascades' sleep is apart (setFarCascadeDormant).
      */
     setEnclosedPresentation(on: boolean): void {
       setEnclosedPresentation(on);

@@ -309,7 +309,7 @@ assert.deepEqual(ambiencePrepares, [[3, 'winter', 'day', undefined, ENTRY], [3, 
     const garage = createGarageEnvironmentPresentationRuntime({
       garagePosition: new THREE.Vector3(), getSelectedVariantId: () => 'verdant',
       setWorldDormant() {}, applySkyPreset: skyOwner.callback, placeGarage() {}, setGarageSunTrim: trim,
-      invalidatePresentation() {}, setCameraPose() {},
+      setLightEnclosure() {}, loadOpenSkyLight: async () => {}, invalidatePresentation() {}, setCameraPose() {},
     });
     await garage.activate('verdant');
     spots(true); trim(true);

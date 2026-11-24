@@ -16,6 +16,8 @@ const runtime = createGarageEnvironmentPresentationRuntime({
   applySkyPreset: () => calls.push(['sky']),
   placeGarage: () => calls.push(['place']),
   setGarageSunTrim: (value) => calls.push(['sun', value]),
+  setLightEnclosure: (enclosed) => calls.push(['enclosed', enclosed]),
+  loadOpenSkyLight: async () => { calls.push(['openSkyLight']); },
   invalidatePresentation: () => calls.push(['invalidate']),
   setCameraPose: (position, target, fov) => poses.push({
     position: position.toArray(), target: target.toArray(), fov,
@@ -32,8 +34,9 @@ assert.deepEqual(runtime.diagnostics(), {
 
 await runtime.activate('verdant_motor_pool');
 assert.deepEqual(garagePosition.toArray(), [-1500, 0, -1500]);
-assert.deepEqual(calls.slice(-5), [
-  ['dormant', true], ['sky'], ['place'], ['sun', true], ['invalidate'],
+// (garage-env-276) a sealed bay keeps the authored rig: no grounded model asked, the enclosure set after its sky
+assert.deepEqual(calls.slice(-6), [
+  ['dormant', true], ['sky'], ['enclosed', true], ['place'], ['sun', true], ['invalidate'],
 ]);
 assert.equal(poses.length, 0,
   'variant activation must not overwrite the active showroom camera solver');
@@ -55,6 +58,10 @@ assert.deepEqual(runtime.diagnostics(), {
   anchor: [-1500, 0, -1500],
 });
 assert.ok(calls.some(([name, value]) => name === 'dormant' && value === true));
+// (garage-env-276) an open yard lights as its battlefield: the grounded model lands before its sky, then the open flip
+assert.deepEqual(calls.slice(-7), [
+  ['dormant', true], ['openSkyLight'], ['sky'], ['enclosed', false], ['place'], ['sun', true], ['invalidate'],
+]);
 assert.notEqual(runtime.diagnostics(), runtime.diagnostics(),
   'diagnostics must not expose retained state');
 assert.notEqual(runtime.diagnostics().anchor, runtime.diagnostics().anchor,

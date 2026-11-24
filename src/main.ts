@@ -1240,6 +1240,9 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   },
   placeGarage,
   setGarageSunTrim,
+  // (garage-env-276) the shown pack's enclosure sets the light: an open yard under its battlefield's grounded model
+  setLightEnclosure: (enclosed) => lighting.setEnclosedPresentation(enclosed),
+  loadOpenSkyLight: loadGroundedLightModel,
   invalidatePresentation: invalidateGaragePresentation,
   setCameraPose: (position, target, fovDegrees) => {
     rig.setExternalPose(position, target, fovDegrees);

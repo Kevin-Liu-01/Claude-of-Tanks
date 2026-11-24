@@ -16,6 +16,13 @@ interface GarageEnvironmentPresentationOptions {
   applySkyPreset(): void;
   placeGarage(): void;
   setGarageSunTrim(active: boolean): void;
+  /**
+   * (garage-env-276) The light follows the shown pack's declared enclosure (garageVariants.ts GarageVariant.enclosure):
+   * engine/lighting.ts setEnclosedPresentation.
+   */
+  setLightEnclosure(enclosed: boolean): void;
+  /** (garage-env-276) The grounded light model an open yard lights with (engine/battleAtmosphereAccess.ts); never rejects. */
+  loadOpenSkyLight(): Promise<void>;
   invalidatePresentation(): void;
   setCameraPose(position: THREE.Vector3, target: THREE.Vector3, fovDegrees: number): void;
 }
@@ -46,11 +53,13 @@ export function createGarageEnvironmentPresentationRuntime({
   applySkyPreset,
   placeGarage,
   setGarageSunTrim,
+  setLightEnclosure,
+  loadOpenSkyLight,
   invalidatePresentation,
   setCameraPose,
 }: GarageEnvironmentPresentationOptions): GarageEnvironmentPresentationRuntime {
   const required = [getSelectedVariantId, setWorldDormant, applySkyPreset, placeGarage,
-    setGarageSunTrim, invalidatePresentation, setCameraPose];
+    setGarageSunTrim, setLightEnclosure, loadOpenSkyLight, invalidatePresentation, setCameraPose];
   if (!(garagePosition instanceof THREE.Vector3)
     || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage environment presentation requires every lifecycle port');
@@ -102,10 +111,19 @@ export function createGarageEnvironmentPresentationRuntime({
     // the last remaining rapid-switch frame hitch.
     await Promise.resolve();
     if (generation !== activationGeneration) return;
+    // (garage-env-276) an open yard lights as its battlefield (the grounded model's sun, shadows and environment): its
+    // chunk lands before the sky does, so the yard never shows the sealed bay's rig first
+    if (variant.enclosure === 'open') {
+      await loadOpenSkyLight();
+      if (generation !== activationGeneration) return;
+    }
     // Reuse the selected battlefield's real procedural sky, cloud decks, fog,
     // and environment light. The preset registry is lightweight; no map
     // terrain or runtime module enters the Garage loading path.
     applySkyPreset();
+    // (garage-env-276) the light follows the pack's declared enclosure, after its sky (an open flip's one environment
+    // re-bake, main.ts onEnclosureChange, bakes this sky) and before its sun trim
+    setLightEnclosure(variant.enclosure === 'sealed');
     placeGarage();
     setGarageSunTrim(true);
     invalidatePresentation();
