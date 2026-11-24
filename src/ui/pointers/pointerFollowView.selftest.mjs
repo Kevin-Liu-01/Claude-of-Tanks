@@ -11,7 +11,9 @@
 //     piece the plan draws is cut by the screen's edge or the camera's plane; while the destination is off the screen the
 //     turn arrow shows, turns the shorter way, and its head stands clear of the HUD and the hull; while it is on the
 //     screen and far, the trail shows; the negative control: the same checker finds the cut pieces the old geometry laid
-//     (the trail toward a destination aside, the old 7 m ring on a phone);
+//     (the trail toward a destination aside, the old 7 m ring on a phone); the sweep runs for the nominal hull and a tall
+//     one (3 m), whose box on the screen stands over all the ground to 18 m ahead: the arrows that started no farther left
+//     the battle's own case (a marker 90 m aside) with none at all, and the control shows it;
 //  2. the sources: only the tutorial posts a follow pointer (pointerBoard.ts setGuideFollow is called from
 //     src/ui/tutorial/ alone; the HUD's follow is the board's, and the kinds are the tutorial's two); the negative control:
 //     the scan flags a call from anywhere else.
@@ -23,7 +25,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import {
   CHASE_BASE_DISTANCE_M, CHASE_BASE_PIVOT_M, CHASE_CAMERA_DEFAULTS, CHASE_PITCH_RAD, NOMINAL_CHASE_TANK,
 } from '../../engine/chaseFraming.ts';
-import { bearing, onScreen, planFollow, trailChevrons, turnArrow } from './pointerPlan.ts';
+import { bearing, onScreen, planFollow, trailChevrons, TURN_AHEAD_M, TURN_RADII_M, turnArrow } from './pointerPlan.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -49,14 +51,20 @@ function chase(yaw, view) {
     return { x: ((v.x + 1) / 2) * view.width, y: ((1 - v.y) / 2) * view.height, behind: v.z > 1 };
   };
 }
-/** The hull's box on the screen, as battlePointers.ts hullBox projects it. */
-function hullBox(project) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const along of [-3.6, 3.6]) for (const across of [-1.85, 1.85]) for (const up of [0, NOMINAL_CHASE_TANK.heightM]) {
-    const at = project({ x: across, y: up, z: along });
-    x0 = Math.min(x0, at.x); y0 = Math.min(y0, at.y); x1 = Math.max(x1, at.x); y1 = Math.max(y1, at.y);
+/** The hulls the sweep runs for (m): the nominal one and a tall one (a casemate, a hull on a high suspension). */
+const HULLS = { nominal: { lengthM: 7.2, widthM: 3.7, heightM: NOMINAL_CHASE_TANK.heightM }, tall: { lengthM: 8, widthM: 3.8, heightM: 3 } };
+/** The hull's eight corners on the screen, as battlePointers.ts hullBox projects them. */
+function hullCorners(project, hull) {
+  const corners = [];
+  for (const along of [-hull.lengthM / 2, hull.lengthM / 2]) for (const across of [-hull.widthM / 2, hull.widthM / 2]) {
+    for (const up of [0, hull.heightM]) corners.push(project({ x: across, y: up, z: along }));
   }
-  return { x0, y0, x1, y1 };
+  return corners;
+}
+/** Their box on the screen (battlePointers.ts hullBox). */
+function boxOf(points) {
+  return { x0: Math.min(...points.map((p) => p.x)), y0: Math.min(...points.map((p) => p.y)),
+    x1: Math.max(...points.map((p) => p.x)), y1: Math.max(...points.map((p) => p.y)) };
 }
 /** The pieces cut by the screen's edge or the camera's plane: each a list of screen points. */
 const cut = (pieces, view) => pieces.filter((points) => points.some((p) => !onScreen(p, view)));
@@ -66,18 +74,20 @@ const destinations = [
   { id: 'ahead', kind: 'waypoint', x: 0, z: 60, radiusM: 8, trail: true },
   { id: 'behind-aside', kind: 'waypoint', x: 40, z: -30, radiusM: 6, trail: true },
   { id: 'look', kind: 'look', x: -50, z: 20, radiusM: 0, trail: false },
+  // the battle's own case (tools/tutorial-guide.browser.mjs 'aside'): 90 m to the side
+  { id: 'aside', kind: 'waypoint', x: 90, z: 0, radiusM: 6, trail: true },
 ];
 let frames = 0, turns = 0, trails = 0;
-for (const [name, view] of Object.entries(VIEWS)) {
+for (const [hullName, hullSize] of Object.entries(HULLS)) for (const [name, view] of Object.entries(VIEWS)) {
   // the HUD's bottom band (the controls, the rack) and the map's corner, which a head never covers
   const noCover = [{ x0: 0, y0: view.height * 0.84, x1: view.width, y1: view.height }, { x0: view.width - 160, y0: 0, x1: view.width, y1: 160 }];
   for (const follow of destinations) {
     for (let deg = 0; deg < 360; deg += 5) {
       const viewYaw = (deg * Math.PI) / 180;
       const project = chase(viewYaw, view);
-      const hull = hullBox(project);
+      const hull = boxOf(hullCorners(project, hullSize));
       const plan = planFollow({ follow, player: tank, viewYaw, scoped: false, project, view, groundY: flat, noCover, hull });
-      const where = `${name} ${follow.id} turret ${deg}°`;
+      const where = `${hullName} hull, ${name} ${follow.id} turret ${deg}°`;
       frames++;
       const pieces = [...plan.chevrons.map((c) => c.points), ...(plan.turn ? [plan.turn.band, plan.turn.head] : [])];
       assert.deepEqual(cut(pieces, view), [], `${where}: no piece is cut by the screen's edge or the camera's plane`);
@@ -122,6 +132,19 @@ assert.ok(turns > 100 && trails > 10, `the sweep saw both pieces (${turns} turn 
   assert.ok(cut([big.band, big.head].map((piece) => piece.map((p) => phoneProject({ x: p.x, y: 0.12, z: p.z }))), phone).length >= 1,
     'control: an arrow too large for the view is cut, so the plan must size it down');
 }
+// the negative control for the hull: behind the tall hull every head of an arrow starting 10, 14 or 18 m ahead for a
+// marker 90 m aside stands in its box (so the battle drew none); the plan's arrow starts farther and stands clear
+{
+  const view = VIEWS.desktop, project = chase(0, view), hull = boxOf(hullCorners(project, HULLS.tall));
+  const aside = destinations.find((d) => d.id === 'aside');
+  const heads = [10, 14, 18].flatMap((aheadM) => TURN_RADII_M.map((radiusM) => turnArrow(tank, 0, aside, radiusM, aheadM).head
+    .map((p) => project({ x: p.x, y: 0.12, z: p.z }))));
+  assert.ok(heads.every((head) => head.some((p) => inBox(p, hull))), 'control: the tall hull covers every head of the arrows to 18 m');
+  const noCover = [{ x0: 0, y0: view.height * 0.84, x1: view.width, y1: view.height }];
+  const plan = planFollow({ follow: aside, player: tank, viewYaw: 0, scoped: false, project, view, groundY: flat, noCover, hull });
+  assert.ok(plan.turn && plan.turn.head.every((p) => !inBox(p, hull)), 'the plan\'s arrow starts farther, clear of it');
+  assert.ok(TURN_AHEAD_M.some((m) => m > 18), 'the plan tries starts past 18 m');
+}
 
 // 2. The sources: the tutorial's alone.
 function walk(dir, out = []) {
@@ -148,4 +171,4 @@ assert.deepEqual(strayPosters([['src/ui/hud.ts', "setGuideFollow({ id: 'zone', k
   assert.match(hud, /const follow = guideFollow\(\);/, 'the HUD\'s follow pointer is the board\'s');
 }
 
-console.log(`pointerFollowView.selftest: ${frames} frames on 3 screens, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);
+console.log(`pointerFollowView.selftest: ${frames} frames on 3 screens for 2 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);

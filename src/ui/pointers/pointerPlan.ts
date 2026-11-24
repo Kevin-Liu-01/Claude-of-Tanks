@@ -97,8 +97,9 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
 }
 
 /** How far ahead of the tank along the camera's heading the turn arrow starts (m), tried in turn, the nearest first: the
- *  chase camera looks down over the turret, so the ground just ahead stands behind the hull on the screen. */
-export const TURN_AHEAD_M = Object.freeze([10, 14, 18] as const);
+ *  chase camera looks down over the turret, so the ground just ahead stands behind the hull on the screen, and behind a
+ *  tall hull (3 m) all of it to 18 m does: without the farther starts a marker aside got no arrow in the battle. */
+export const TURN_AHEAD_M = Object.freeze([10, 14, 18, 24, 30] as const);
 /** Its bend's radii tried in turn (m), the largest first, until the whole arrow fits the screen (a portrait phone's
  *  narrow view takes the small ones). */
 export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2] as const);
