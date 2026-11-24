@@ -20,15 +20,16 @@ const make = (clearance) => {
   return { orbit, poses };
 };
 const ray = new Ray(), hit = new Vector3();
-/** The free share of look->eye against these boxes, inflated by the camera's 1.2 m margin (garageArchitecture.ts
- *  cameraClearance's own rule: a box holding the look point is no obstacle). */
+/** The free share of look->eye against these boxes, inflated by the camera's 1.2 m margin (garageOrbitClearance.ts
+ *  garageCameraClearance's own rule: a box holding the look point is no obstacle; the rig asks
+ *  for its smaller contact distance for its hard stop). */
 const MARGIN = 1.2;
-const clearanceOf = (boxes) => (look, eye) => {
+const clearanceOf = (boxes) => (look, eye, marginM = MARGIN) => {
   const length = look.distanceTo(eye);
   ray.origin.copy(look); ray.direction.subVectors(eye, look).multiplyScalar(1 / length);
   let first = length;
   for (const raw of boxes()) {
-    const box = raw.clone().expandByScalar(MARGIN);
+    const box = raw.clone().expandByScalar(marginM);
     if (!box.containsPoint(look) && ray.intersectBox(box, hit)) first = Math.min(first, hit.distanceTo(look));
   }
   return first / length;

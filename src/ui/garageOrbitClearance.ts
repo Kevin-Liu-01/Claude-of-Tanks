@@ -156,3 +156,115 @@ export function garageOrbitRelocations(x: number, z: number, reachM = 10, stepM 
   }
   return out.sort((p, q) => p.movedM - q.movedM);
 }
+
+/**
+ * A part as the showroom camera's spring arm sees it: its bounds in its own frame, and where that frame stands (a
+ * rotation, translation and scale; absent, the box stands axis-aligned where it is). An angled building, a diagonal
+ * rail or a tilted rock keeps a box its own size, where an axis-aligned one swells into the empty space beside it.
+ */
+export interface GarageCameraObstacle {
+  readonly box: THREE.Box3;
+  readonly matrix?: THREE.Matrix4;
+}
+
+const _yawLocal = new THREE.Box3();
+/**
+ * A merged part's obstacle: its vertices boxed at the yaw (in 5-degree steps) that boxes them tightest. Most of the
+ * Garage's parts stand square to a yard, a street or the hero; a regional building set at an angle boxes square to itself.
+ */
+export function garageObstacleOfGeometry(geometry: THREE.BufferGeometry): GarageCameraObstacle | null {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  if (!bounds || bounds.isEmpty()) return null;
+  const position = geometry.getAttribute('position');
+  if (!position || Math.hypot(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) < 3) return { box: bounds.clone() };
+  let bestYaw = 0, bestArea = (bounds.max.x - bounds.min.x) * (bounds.max.z - bounds.min.z);
+  for (let deg = 5; deg < 90; deg += 5) {
+    const a = deg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i), z = position.getZ(i), u = x * c - z * sn, v = x * sn + z * c;
+      if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v;
+    }
+    const area = (u1 - u0) * (v1 - v0);
+    if (area < bestArea * 0.98) { bestArea = area; bestYaw = a; }
+  }
+  if (bestYaw === 0) return { box: bounds.clone() };
+  const c = Math.cos(bestYaw), sn = Math.sin(bestYaw);
+  _yawLocal.makeEmpty();
+  const p = new THREE.Vector3();
+  for (let i = 0; i < position.count; i += 1) {
+    const x = position.getX(i), z = position.getZ(i);
+    _yawLocal.expandByPoint(p.set(x * c - z * sn, position.getY(i), x * sn + z * c));
+  }
+  return { box: _yawLocal.clone(), matrix: new THREE.Matrix4().makeRotationY(bestYaw) };
+}
+
+/** An obstacle's world-frame bounds (the kit's reach and standing filters). */
+export function garageObstacleBounds(obstacle: GarageCameraObstacle, target = new THREE.Box3()): THREE.Box3 {
+  target.copy(obstacle.box);
+  return obstacle.matrix ? target.applyMatrix4(obstacle.matrix) : target;
+}
+
+interface OrientedObstacle {
+  readonly center: THREE.Vector3;
+  readonly half: THREE.Vector3;
+  /** world to the box's own axes */
+  readonly inverse: THREE.Quaternion;
+}
+
+function orient(obstacle: GarageCameraObstacle): OrientedObstacle {
+  const center = obstacle.box.getCenter(new THREE.Vector3()), half = obstacle.box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+  if (!obstacle.matrix) return { center, half, inverse: new THREE.Quaternion() };
+  const position = new THREE.Vector3(), rotation = new THREE.Quaternion(), scale = new THREE.Vector3();
+  obstacle.matrix.decompose(position, rotation, scale);
+  half.multiply(scale.set(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)));
+  return { center: center.applyMatrix4(obstacle.matrix), half, inverse: rotation.invert() };
+}
+
+/** The showroom camera's spring-arm query (engine/cameraRig.ts ShowroomOrbitDeps.clearance), and its receipts' test. */
+export interface GarageCameraClearance {
+  (look: THREE.Vector3, eye: THREE.Vector3, marginM?: number): number;
+  /** The first part whose box (grown by `marginM`) holds the point, or -1. */
+  holding(point: THREE.Vector3, marginM?: number): number;
+}
+
+/**
+ * The spring arm's query against these parts: the share (0..1) of the segment from `look` to `eye` before it comes
+ * within `marginM` of a part (the orbit's margin unless the rig asks for its contact distance), all in the parts' frame.
+ * A part whose grown box holds the look point is no obstacle (the hero's own plinth and pad).
+ */
+export function garageCameraClearance(parts: readonly GarageCameraObstacle[], defaultMarginM: number = GARAGE_ORBIT_BAND.marginM): GarageCameraClearance {
+  const oriented = parts.map(orient);
+  const box = new THREE.Box3(), ray = new THREE.Ray(), hit = new THREE.Vector3(), local = new THREE.Vector3();
+  const grown = (index: number, marginM: number): THREE.Box3 => {
+    const { half } = oriented[index];
+    box.min.set(-half.x - marginM, -half.y - marginM, -half.z - marginM);
+    box.max.set(half.x + marginM, half.y + marginM, half.z + marginM);
+    return box;
+  };
+  const toLocal = (index: number, point: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 =>
+    out.subVectors(point, oriented[index].center).applyQuaternion(oriented[index].inverse);
+  const holding = (point: THREE.Vector3, marginM = 0): number => {
+    for (let index = 0; index < oriented.length; index += 1) if (grown(index, marginM).containsPoint(toLocal(index, point, local))) return index;
+    return -1;
+  };
+  const query = (look: THREE.Vector3, eye: THREE.Vector3, marginM = defaultMarginM): number => {
+    const length = look.distanceTo(eye);
+    if (length < 1e-6 || oriented.length === 0) return 1;
+    let first = length;
+    for (let index = 0; index < oriented.length; index += 1) {
+      const { half, center } = oriented[index];
+      // a cheap reject: the segment never comes within the box's grown radius
+      const reach = Math.hypot(half.x, half.y, half.z) + marginM;
+      if (center.distanceTo(look) > length + reach) continue;
+      const bounds = grown(index, marginM);
+      toLocal(index, look, ray.origin);
+      if (bounds.containsPoint(ray.origin)) continue;
+      ray.direction.subVectors(eye, look).multiplyScalar(1 / length).applyQuaternion(oriented[index].inverse);
+      if (ray.intersectBox(bounds, hit)) first = Math.min(first, hit.distanceTo(ray.origin));
+    }
+    return first / length;
+  };
+  return Object.assign(query, { holding });
+}

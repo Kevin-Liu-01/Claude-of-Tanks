@@ -58,7 +58,7 @@ interface GarageShowroomRuntimeOptions {
   anchorFoot?: () => boolean;
   floorY: () => number;
   /** (garage-env-276) the spring arm: the free share (0..1) of the look-to-eye segment (cameraRig.ts ShowroomOrbitDeps). */
-  clearance?: (look: THREE.Vector3, eye: THREE.Vector3) => number;
+  clearance?: (look: THREE.Vector3, eye: THREE.Vector3, marginM?: number) => number;
 }
 
 export interface GarageShowroomRuntime {

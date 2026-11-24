@@ -24,7 +24,10 @@ import {
   releaseGarageStructureSurfaces, resolveGarageMapStructures, startGarageSurfacePaints,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
-import { auditGarageOrbitClearance, type GarageScenePart } from './garageOrbitClearance.ts';
+import {
+  auditGarageOrbitClearance, garageCameraClearance, garageObstacleBounds, garageObstacleOfGeometry,
+  type GarageCameraClearance, type GarageCameraObstacle, type GarageScenePart,
+} from './garageOrbitClearance.ts';
 import {
   auditGarageHorizonSetPieces, buildGarageHorizonSetPieces, type GarageHorizonSetPiece,
 } from './garageHorizonSetPieces.ts';
@@ -184,11 +187,13 @@ export interface GarageEnvironmentBuild {
   /** The pack's graded terrain under a world-local point (the kit's placement receipts seat pieces with it). */
   readonly groundAtWorld?: (x: number, z: number) => number;
   /**
-   * (garage-env-276) The bounds, in the pack's own frame, of every part the showroom camera's spring arm must stay in
-   * front of: each structure part, kit piece, facility primitive and instance within the camera's reach, flat ground and
-   * yard-wide merged geometry left out.
+   * (garage-env-276) The oriented bounds, in the pack's own frame, of every part the showroom camera's spring arm must
+   * stay in front of: each structure part, kit piece, facility primitive and instance within the camera's reach, flat
+   * ground and yard-wide merged geometry left out.
    */
-  readonly cameraObstacles?: readonly THREE.Box3[];
+  readonly cameraObstacles?: readonly GarageCameraObstacle[];
+  /** (garage-env-276) The spring arm's query against them, in the pack's frame (garageOrbitClearance.ts garageCameraClearance). */
+  readonly cameraClearance?: GarageCameraClearance;
   dispose(): void;
 }
 
@@ -2742,15 +2747,20 @@ export function buildGarageEnvironment(
   };
   // (garage-env-276) every part the merge is about to fold away, boxed for the camera's spring arm (every bake) and for the
   // orbit clearance audit (the receipts')
-  const cameraObstacles: THREE.Box3[] = [];
+  const cameraObstacles: GarageCameraObstacle[] = [];
   for (const [key, list] of Object.entries(combined)) {
     if (!Array.isArray(list) || key === APPROACH_BUCKET) continue;
     for (const geometry of list as THREE.BufferGeometry[]) {
       geometry.computeBoundingBox();
-      if (geometry.boundingBox && cameraObstacle(geometry.boundingBox)) cameraObstacles.push(geometry.boundingBox.clone());
+      if (!geometry.boundingBox || !cameraObstacle(geometry.boundingBox)) continue;
+      const obstacle = garageObstacleOfGeometry(geometry);
+      if (obstacle) cameraObstacles.push(obstacle);
     }
   }
-  for (const box of ('primitiveBoxes' in facilityDetails ? facilityDetails.primitiveBoxes : [])) if (cameraObstacle(box)) cameraObstacles.push(box);
+  const obstacleBounds = new THREE.Box3();
+  for (const obstacle of ('primitiveObstacles' in facilityDetails ? facilityDetails.primitiveObstacles : [])) {
+    if (cameraObstacle(garageObstacleBounds(obstacle, obstacleBounds))) cameraObstacles.push(obstacle);
+  }
   const sceneParts: GarageScenePart[] = [];
   for (const [key, list] of options.auditOrbit ? Object.entries(combined) : []) {
     if (!Array.isArray(list) || key === APPROACH_BUCKET) continue;
@@ -2951,7 +2961,7 @@ export function buildGarageEnvironment(
         at.setFromMatrixPosition(instance);
         if (Math.hypot(at.x, at.z) > CAMERA_OBSTACLE_REACH_M + extent * instance.getMaxScaleOnAxis()) continue;
         box.copy(local).applyMatrix4(instance);
-        if (cameraObstacle(box)) cameraObstacles.push(box.clone());
+        if (cameraObstacle(box)) cameraObstacles.push({ box: local.clone(), matrix: instance.clone() });
       }
     });
   }
@@ -3096,6 +3106,7 @@ export function buildGarageEnvironment(
     texturesReady,
     groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
     cameraObstacles: Object.freeze(cameraObstacles),
+    cameraClearance: garageCameraClearance(cameraObstacles),
     dispose() {
       if (disposed) return;
       disposed = true;

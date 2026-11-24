@@ -55,7 +55,7 @@ export interface GarageStageRuntime {
   prepareVariant(variantId: string): Promise<GarageArchitectureStats>;
   stats(): GarageArchitectureStats;
   /** (garage-env-276) the showroom camera's spring arm: the free share of the look-to-eye segment. */
-  cameraClearance(look: THREE.Vector3, eye: THREE.Vector3): number;
+  cameraClearance(look: THREE.Vector3, eye: THREE.Vector3, marginM?: number): number;
   dispose(): void;
 }
 
@@ -1803,7 +1803,7 @@ export function* createGarageStageSteps(
     },
     stats: () => architecture.stats(),
     /** (garage-env-276) the showroom camera's spring arm: the free share of the look-to-eye segment. */
-    cameraClearance: (look: THREE.Vector3, eye: THREE.Vector3) => architecture.cameraClearance(look, eye),
+    cameraClearance: (look: THREE.Vector3, eye: THREE.Vector3, marginM?: number) => architecture.cameraClearance(look, eye, marginM),
     dispose() {
       // (06-ui-3 #7) a reveal or an idle platform slice in flight stops here
       stageDisposed = true;

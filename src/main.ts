@@ -1960,7 +1960,7 @@ const showroom = createGarageShowroomRuntime({
   anchorFoot: () => !document.body.classList.contains('cot-photo-on'),
   floorY: () => GARAGE_POS.y,
   // (garage-env-276) the spring arm: the eye stays in front of the shown Garage's scenery at every zoom and yaw
-  clearance: (look, eye) => garageStage.cameraClearance(look, eye),
+  clearance: (look, eye, marginM) => garageStage.cameraClearance(look, eye, marginM),
 });
 resetGarageShowroom = () => showroom.reset();
 

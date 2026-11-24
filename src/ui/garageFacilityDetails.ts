@@ -21,7 +21,9 @@ import { GARAGE_KIT_CELL_ARCHITECTURES, GARAGE_KIT_FLANK_ARCHITECTURES } from '.
 import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 import { KitBuilder, kitRandom, type KitVec } from './garageKitGeometry.ts';
-import { auditGarageOrbitClearance, garageOrbitRelocations, garageStandsLevel, type GarageScenePart } from './garageOrbitClearance.ts';
+import {
+  auditGarageOrbitClearance, garageOrbitRelocations, garageStandsLevel, type GarageCameraObstacle, type GarageScenePart,
+} from './garageOrbitClearance.ts';
 import { garageKitSkin } from './garageKitSkins.ts';
 
 interface GarageFacilityDetailStats {
@@ -44,8 +46,8 @@ interface GarageFacilityDetailStats {
   readonly openingSightlineIntrusions: number;
   /** (garage-env-276) the stations the orbit rule moved out of the camera's way (its anchor, metres moved; -1: could not). */
   readonly orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }>;
-  /** (garage-env-276) every primitive's own bounds, where it stands (the camera's spring arm; the near ones merge away). */
-  readonly primitiveBoxes: readonly THREE.Box3[];
+  /** (garage-env-276) every primitive's own box and where it stands (the camera's spring arm; the near ones merge away). */
+  readonly primitiveObstacles: readonly GarageCameraObstacle[];
 }
 
 interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
@@ -498,7 +500,7 @@ export function addGarageFacilityDetails({
   let openingSightlineIntrusions = 0;
   /** (garage-env-276) the stations the orbit rule moved, and how far (-1: could not clear) */
   let orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }> = [];
-  let primitiveBoxes: readonly THREE.Box3[] = [];
+  let primitiveObstacles: readonly GarageCameraObstacle[] = [];
   /** Soft shade pools under high canopies (the contact-shadow decal's blots): matrices of unit quads on the ground. */
   const shadePools: THREE.Matrix4[] = [];
   const servicePurposeTags = new Set<string>();
@@ -4293,7 +4295,7 @@ export function addGarageFacilityDetails({
   // moves straight out from the hero, whole and re-grounded, until it clears (garageOrbitClearance.ts; the kit's pieces
   // take the same rule in garageKitPlacement.ts)
   orbitMoves = clearFacilityClustersOfOrbit(boxInstances, cylinderInstances, groundAtWorld);
-  primitiveBoxes = facilityPrimitiveBoxes(boxInstances, cylinderInstances);
+  primitiveObstacles = facilityPrimitiveObstacles(boxInstances, cylinderInstances);
   const near = kitNearFacilityPrimitives(variant, boxInstances, cylinderInstances, groundAtWorld);
   buckets.baked!.push(...near.geometries);
   for (const renderClass of renderClasses) {
@@ -4488,7 +4490,7 @@ export function addGarageFacilityDetails({
     ]).size,
     openingSightlineIntrusions,
     orbitMoves,
-    primitiveBoxes,
+    primitiveObstacles,
     meshes: Object.freeze(meshes),
     materials: Object.freeze(materials),
   });
@@ -4558,17 +4560,17 @@ function clearFacilityClustersOfOrbit(
 }
 
 /** Each facility primitive's bounds where it stands (the unit box and cylinder under its matrix). */
-function facilityPrimitiveBoxes(
+function facilityPrimitiveObstacles(
   boxes: readonly PrimitiveInstance[],
   cylinders: ReadonlyMap<number, readonly PrimitiveInstance[]>,
-): THREE.Box3[] {
+): GarageCameraObstacle[] {
   UNIT_BOX.computeBoundingBox();
-  const out: THREE.Box3[] = [];
-  for (const instance of boxes) out.push(UNIT_BOX.boundingBox!.clone().applyMatrix4(instance.matrix));
+  const out: GarageCameraObstacle[] = [];
+  for (const instance of boxes) out.push({ box: UNIT_BOX.boundingBox!, matrix: instance.matrix });
   for (const [tier, list] of cylinders) {
     let unit = UNIT_CYLINDERS.get(tier);
     if (!unit) { unit = new THREE.CylinderGeometry(1, 1, 1, tier, 1); unit.computeBoundingBox(); UNIT_CYLINDERS.set(tier, unit); }
-    for (const instance of list) out.push(unit.boundingBox!.clone().applyMatrix4(instance.matrix));
+    for (const instance of list) out.push({ box: unit.boundingBox!, matrix: instance.matrix });
   }
   return out;
 }
