@@ -11932,10 +11932,16 @@ ${snowCap ? `
     // flower box, a shop's lettering, a gutter's hangers) merge by 40 m cell and show within half the fine-detail
     // distance (updateFineDetail): more instances of the same batches, no draw or program more
     const NEAR_CELL_M = 40;
-    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
-      && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
-    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number; near?: true };
-    const fineCells = (list: THREE.BufferGeometry[], size = FINE_CELL_M): Cell[] => {
+    // (dome-detail-275; Main's hold on Blackglass at 1920 chase) the dressing that receives shadows and casts none
+    // (geometry.ts EmitOptions.noCast: the roof relief's courses and rolls, a window's surround and sill, a wall's string
+    // courses) culls by the same 120 m cells in every bucket, shown within RELIEF_FAR_SCALE times the fine-detail distance
+    // (updateFineDetail; High: 150 m, the range roofRelief.ts reads to). Merged map-wide into a bucket's '-detail' mesh it
+    // drew at every range: 74.6k of Blackglass's triangles and three draws, every triangle past 135 m of the chase camera
+    const relief = (g: THREE.BufferGeometry) => g.userData.receiveOnly === true && castsNoShadow(g);
+    const culled = (g: THREE.BufferGeometry, key: string) => relief(g) || ((CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
+      && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key))));
+    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number; near?: true; far?: true };
+    const fineCells = (list: THREE.BufferGeometry[], size = FINE_CELL_M, reach?: 'near' | 'far'): Cell[] => {
       const cells = new Map<number, Cell>();
       for (const g of list) {
         if (!g.boundingBox) g.computeBoundingBox();
@@ -11945,7 +11951,7 @@ ${snowCap ? `
         let cell = cells.get(key);
         if (!cell) {
           cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity };
-          if (size !== FINE_CELL_M) cell.near = true;
+          if (reach) cell[reach] = true;
           cells.set(key, cell);
         }
         cell.list.push(g);
@@ -11956,7 +11962,7 @@ ${snowCap ? `
       return [...cells.values()];
     };
     /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
-    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list' | 'near'>; near?: true }> }> = [];
+    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list' | 'near' | 'far'>; near?: true; far?: true }> }> = [];
     group.userData.fineDetail = fineDetail;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
@@ -11970,7 +11976,7 @@ ${snowCap ? `
       // else is tagged, so every other bucket merges as before
       const groundOnly = (g: THREE.BufferGeometry) => g.userData.receiveOnly === true;
       const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key) && !groundOnly(g));
-      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : all.filter(groundOnly);
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : all.filter((g) => groundOnly(g) && !culled(g, key));
       const unlayered: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
       if (!fine.length) unlayered.push([coarse, false, '-detail']);
       // (local-fps-266) a regional pane stack's farther faces (geometry.ts PartSink: userData.paneStackLayer) draw in
@@ -12007,8 +12013,12 @@ ${snowCap ? `
       if (!fine.length) continue;
       // the batch: the always-drawn receive-only dressing (instance 0, when there is any) and one instance per cell of
       // fine joinery; every instance starts visible, so the deployment warm uploads and links it with the rest
-      const cells = [...fineCells(fine.filter((g) => g.userData.fineNear !== true)),
-        ...fineCells(fine.filter((g) => g.userData.fineNear === true), NEAR_CELL_M)];
+      // the joinery (and a phone's timber dressing) at the fine-detail distance, the rest of the non-casting dressing
+      // farther, the craft's finest at half it (the near cells last)
+      const phoneDressing = (g: THREE.BufferGeometry) => g.userData.fine !== true && mobileProps && RECEIVE_ONLY_DETAIL.has(key) && !relief(g);
+      const cells = [...fineCells(fine.filter((g) => (g.userData.fine === true && g.userData.fineNear !== true) || phoneDressing(g))),
+        ...fineCells(fine.filter((g) => g.userData.fine !== true && !phoneDressing(g)), FINE_CELL_M, 'far'),
+        ...fineCells(fine.filter((g) => g.userData.fineNear === true), NEAR_CELL_M, 'near')];
       const parts: THREE.BufferGeometry[] = [];
       if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
       for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
@@ -12023,12 +12033,13 @@ ${snowCap ? `
       // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
       // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
       const batchMaterial = mats[key].clone();
-      // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does
-      const wallBatch = isKitWall(key);
-      engineCtx.setupShadowMaterial(batchMaterial, wallBatch ? wallGrimeHook : grimeHook);
+      // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does; (dome-detail-275) a
+      // kit roof's batch (its relief's far cells) the biased tile hook its slab wears (roofHook)
+      const roofBatch = tileBiased(key), wallBatch = !roofBatch && isKitWall(key);
+      engineCtx.setupShadowMaterial(batchMaterial, roofBatch ? roofHook : wallBatch ? wallGrimeHook : grimeHook);
       // (2026-10-15) by its hook, like the plain buckets: three's batching parameter keeps the batch programs apart
       batchMaterial.userData.propsKind = key;
-      batchMaterial.customProgramCacheKey = () => 'world-props-' + (wallBatch ? 'wall' : 'grime') + '-v8' + (snowCap ? 's' : '');
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + (roofBatch ? 'tile' : wallBatch ? 'wall' : 'grime') + '-v8' + (snowCap ? 's' : '');
       retainedSurfaceMaterials.push(batchMaterial);
       const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
       batch.name = 'props-bucket-' + key + '-batch';
@@ -12053,7 +12064,7 @@ ${snowCap ? `
       for (const g of parts) g.dispose();
       fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
         box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ },
-        ...(cell.near ? { near: true as const } : {}) })) });
+        ...(cell.near ? { near: true as const } : {}), ...(cell.far ? { far: true as const } : {}) })) });
       group.add(batch);
       yield { fine: true };
     }
@@ -13296,17 +13307,20 @@ ${snowCap ? `
     'mobile-ultralow': 35, // Ultra Low (2026-10-13): the joinery within 40 m (a 7 cm frame is a pixel at 0.8 CSS px there)
   };
   const updateFieldWallLod = createFieldWallLod(group); // (fieldBoundaryWorks.ts: the field walls' near, far and stone forms)
+  // (dome-detail-275) the non-casting dressing's cells: High's 150 m, the range roofRelief.ts lays its courses to read from
+  const RELIEF_FAR_SCALE = 1.25;
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
-    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near?: true }> }> | undefined;
+    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near?: true; far?: true }> }> | undefined;
     if (!batches?.length || !cameraPos) return;
     if (fineFrames-- <= 0) { fineFar = FINE_DETAIL_M[resolvePresetName()] ?? 90; fineFrames = 60; }
-    for (const { mesh, cells } of batches) for (const { id, box: b, near } of cells) {
+    for (const { mesh, cells } of batches) for (const { id, box: b, near, far: reach } of cells) {
       const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
       const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
       const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
-      // the craft's near cells (mergeMaterialBuckets NEAR_CELL_M) show within half the distance
-      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id), far = near ? fineFar * 0.5 : fineFar;
+      // the craft's near cells (mergeMaterialBuckets NEAR_CELL_M) show within half the distance, the non-casting
+      // dressing's (mergeMaterialBuckets relief) within RELIEF_FAR_SCALE times it
+      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id), far = near ? fineFar * 0.5 : reach ? fineFar * RELIEF_FAR_SCALE : fineFar;
       if (shown ? d > far + 15 : d < far) mesh.setVisibleAt(id, !shown);
     }
   }
