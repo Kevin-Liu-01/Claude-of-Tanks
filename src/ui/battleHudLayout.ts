@@ -446,6 +446,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // wrapped, it stood compact over the right lane at 390x844 (three lines, 63 px) and the condition 17 px into it, a fixed
   // point no later pass left, where a fresh plan seats it whole under the sight (the overlap probe; the lane's diagnostic)
   const alertHeights = new WeakMap<Element, number>();
+  /** The compact alert's height for each alert's words, as it last showed compact (the touch plan's compact candidate). */
+  const compactAlertHeights = new Map<string, number>();
   const planInput = (target: Element) => {
     if (target.classList?.contains('cot-alert')) {
       const height = (target as HTMLElement).offsetHeight ?? 0;
@@ -2083,6 +2085,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
       // (the compact alert planned at its own height while it shows so: two lines of its 8 px type until one does)
       const compactAlertBox = compactNow.includes('alert-compact') ? read('.cot-alert.show') : null;
+      // (notices-276) its compact height as last measured for its words, where it shows whole now: the 28 px guess let
+      // the plan choose the compact seat under the score for a three-line alert (63 px), over the right lane at 390x844,
+      // the overlap probe, a different state each run as the passes settled either way)
+      const alertWords = hudQuery<HTMLElement>('.cot-alert')?.dataset.tip ?? '';
+      if (compactAlertBox && alertWords) {
+        if (compactAlertHeights.size > 64) compactAlertHeights.clear();
+        compactAlertHeights.set(alertWords, compactAlertBox.height);
+      }
+      const compactAlertH = compactAlertBox?.height ?? compactAlertHeights.get(alertWords) ?? TOUCH_COMPACT_ALERT_LINES_H;
       // (the card's layout box: it enters scaled)
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
       // (the kill lanes by the places and heights this pass gives them, while they hold a row)
@@ -2096,7 +2107,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
-        alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertBox?.height ?? TOUCH_COMPACT_ALERT_LINES_H },
+        alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertH },
         countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop,
         oneRow: width > height ? height <= 340 : width <= 340, sightY: height / 2 - battleSightShift() };
