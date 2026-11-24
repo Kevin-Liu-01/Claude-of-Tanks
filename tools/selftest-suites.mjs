@@ -1284,6 +1284,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // garage-env-276: no scenery holds the orbiting camera or blocks its view of the hero (Main's ruling (a))
     'src/ui/garageOrbitClearance.selftest.mjs',
     'src/ui/garageCameraArm.selftest.mjs', // garage-env-276 (b): every pack's orbit at both zoom limits, no eye inside a part
+    'src/ui/garageSward.selftest.mjs', // garage-env-276 class 2: the battle sward on the grass yards, the floors clear
     // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
     'src/ui/garagePrewarmCancel.selftest.mjs',
     // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose

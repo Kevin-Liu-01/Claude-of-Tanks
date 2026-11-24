@@ -25,6 +25,9 @@ import {
   type GarageTerrainSurface,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
+import { createTallGrass, type TallGrass } from '../world/tallGrass.ts';
+import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
+import { getDeviceTier } from '../engine/quality.ts';
 import {
   auditGarageOrbitClearance, garageCameraClearance, garageObstacleBounds, garageObstacleOfGeometry,
   type GarageCameraClearance, type GarageCameraObstacle, type GarageScenePart,
@@ -121,6 +124,8 @@ interface GarageEnvironmentStats {
   /** The named landmarks of a Garage's built skyline (garage r9, garageSkylineKit.ts), or none. */
   readonly kitSkylineLandmarks: readonly string[];
   readonly groundCover: number;
+  /** (garage-env-276, class 2) The battle sward's clumps on the yard (tallGrass.ts near ring), 0 where it draws none. */
+  readonly battleSward: number;
   readonly structures: number;
   /** The structures its map's regional architecture kit rebuilt, as the world build rebuilds them (garage-env-276). */
   readonly regionalKitStructures: number;
@@ -198,6 +203,20 @@ export interface GarageEnvironmentBuild {
   dispose(): void;
 }
 
+/**
+ * (garage-env-276, class 2) The battle sward's density on a Garage yard, a share of the battle's own (tallGrass.ts
+ * qualityScale): at the battle's 1.0 the near ring over the patch is 55-110 k triangles (monsoon and the meadows), past
+ * what a pack's budget (garageQualityRubric.ts GARAGE_PACK_BUDGET) leaves; at 0.35 it is 19-39 k. PROVISIONAL with the
+ * budget, which is set from the final base's measured frame time.
+ */
+export const GARAGE_GRASS_QUALITY = 0.35;
+/** One fill for the whole near ring (an exact candidate budget: tallGrass.ts takes it without a time cap). */
+const GARAGE_GRASS_CANDIDATES = 1_000_000;
+/** Whether an object (or a group it stands in) is no camera obstacle: the battle sward, whose blades clear by the lens. */
+function cameraTransparent(object: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) if (node.userData.cameraTransparent) return true;
+  return false;
+}
 /** The farthest the showroom camera stands from the hero (engine/cameraRig.ts SHOW_DIST_MAX_M) plus a part's reach. */
 const CAMERA_OBSTACLE_REACH_M = 22;
 /** Whether a part's bounds are a camera obstacle: standing (not flat ground), within reach, and a part, not a yard. */
@@ -2248,6 +2267,51 @@ export function buildGarageEnvironment(
   hardstand.updateMatrix();
   root.add(hardstand);
 
+  /**
+   * Where the yard's ground cover may not grow (the tufts' rule, and the battle sward's since garage-env-276): inside a
+   * structure's footprint, on the working floors (the apron and every exhibit or crew pad: 2026-10-10, wave 357, "black
+   * spikes stud the sand"), in Saltmere's dock or through its granite paving, and past the patch's edge.
+   */
+  const coverBlocked = (x: number, z: number): boolean => {
+    if (Math.abs(x) > patch.sizeXM / 2 - 0.5 || Math.abs(z) > patch.sizeZM / 2 - 0.5) return true;
+    if (structureRecords.some((record) => (
+      Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
+      && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
+    ))) return true;
+    if (Math.abs(x) < 15 && Math.abs(z) < 12.5) return true;
+    const view = garageWorldPointToView(x, z);
+    if (terraceRecords.some((terrace) => (
+      (terrace.label.startsWith('fleet-service-') || terrace.label.startsWith('crew-floor-'))
+      && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
+    ))) return true;
+    return !!drydock && garageDrydockGround(drydock, view.side, view.depth, 0) !== null;
+  };
+  // (garage-env-276, class 2) the battle's own sward (tallGrass.ts) on the yard: its near ring over the patch, at the
+  // Garage's density (GARAGE_GRASS_QUALITY: the pack budget's share), filled once from the hero and windless (a
+  // presentation that wakes for nothing: no wind clock, no pressure field). None where the battle draws none: the mobile
+  // tier, a map without a grass biome (desert, badlands).
+  const addBattleSward = (): TallGrass | null => {
+    if (!resolveGroundReduxProfile(variant.mapId).grass || getDeviceTier() === 'mobile') return null;
+    const sward = createTallGrass({ getHeightAt: (x, z) => samplePatch(patch, heights, x, z) }, {
+      mapId: variant.mapId, seed, renderer: null, nearOnly: true, candidatesPerUpdate: GARAGE_GRASS_CANDIDATES,
+      qualityScale: () => GARAGE_GRASS_QUALITY,
+      blocked: (x, _y, z) => coverBlocked(x, z),
+      setupMaterial: engineCtx.setupShadowMaterial ? (material, hook) => engineCtx.setupShadowMaterial!(material, hook as never) : null,
+      releaseMaterial: outerEngineCtx.releaseShadowMaterial ? (material) => {
+        cascadeMaterials.delete(material);
+        outerEngineCtx.releaseShadowMaterial!(material);
+      } : null,
+    });
+    if (!sward.getState().enabled) { sward.dispose(); return null; }
+    sward.update(0, new THREE.Vector3(0, 0, 0));
+    sward.group.name = 'battle_sward';
+    // (the battle clears its blades by the lens: the sward holds no camera and blocks no view, garageOrbitClearance.ts)
+    sward.group.userData.cameraTransparent = true;
+    root.add(sward.group);
+    track(sward);
+    return sward;
+  };
+  const battleSward = addBattleSward();
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color
   // graded to the selected biome. It is intentionally windless in Garage:
@@ -2287,22 +2351,7 @@ export function buildGarageEnvironment(
       const radius = Math.sqrt(17 * 17 + rng() * (44 * 44 - 17 * 17));
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const insideStructure = structureRecords.some((record) => (
-        Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
-        && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
-      ));
-      if (insideStructure) return;
-      // no tufts on the working floors (2026-10-10, wave 357: "black spikes stud the sand"): the apron and every
-      // exhibit or crew pad stay clear
-      if (Math.abs(x) < 15 && Math.abs(z) < 12.5) return;
-      const view = garageWorldPointToView(x, z);
-      const onPad = terraceRecords.some((terrace) => (
-        (terrace.label.startsWith('fleet-service-') || terrace.label.startsWith('crew-floor-'))
-        && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
-      ));
-      if (onPad) return;
-      // nor in Saltmere's dock or through its granite paving
-      if (drydock && garageDrydockGround(drydock, view.side, view.depth, 0) !== null) return;
+      if (coverBlocked(x, z)) return;
       const y = samplePatch(patch, heights, x, z);
       const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
       coverPosition.set(x, y + 0.01, z);
@@ -2334,6 +2383,8 @@ export function buildGarageEnvironment(
     root.add(groundCover);
     return groundCoverIndex;
   };
+  // (the static tufts stand in for the battle's card tufts and litter, vegetation.ts, which a battle draws beside its
+  // sward on every map: they stay beside it)
   const groundCoverIndex = addGroundCover();
 
   const mergeStructureRecords = (): void => {
@@ -2941,7 +2992,7 @@ export function buildGarageEnvironment(
     const instance = new THREE.Matrix4(), box = new THREE.Box3();
     root.traverse((object) => {
       const mesh = object as THREE.InstancedMesh;
-      if (!mesh.isInstancedMesh) return;
+      if (!mesh.isInstancedMesh || cameraTransparent(mesh)) return;
       mesh.geometry.computeBoundingBox();
       if (!mesh.geometry.boundingBox) return;
       for (let index = 0; index < mesh.count; index += 1) {
@@ -2963,7 +3014,7 @@ export function buildGarageEnvironment(
     const instance = new THREE.Matrix4(), toPackMesh = new THREE.Matrix4(), box = new THREE.Box3(), at = new THREE.Vector3();
     root.traverse((object) => {
       const mesh = object as THREE.InstancedMesh;
-      if (!mesh.isInstancedMesh) return;
+      if (!mesh.isInstancedMesh || cameraTransparent(mesh)) return;
       mesh.geometry.computeBoundingBox();
       const local = mesh.geometry.boundingBox;
       if (!local) return;
@@ -3044,6 +3095,7 @@ export function buildGarageEnvironment(
     trees: recipe.treeCount,
     treeDetailTier,
     groundCover: groundCoverIndex,
+    battleSward: battleSward?.near.count ?? 0,
     structures: recipe.structures.length,
     regionalKitStructures: structureRecords.filter((record) => record.regionalKit).length,
     horizonSetPieces: Object.freeze(horizonSetPieces.map((piece) => Object.freeze({ ...piece }))),

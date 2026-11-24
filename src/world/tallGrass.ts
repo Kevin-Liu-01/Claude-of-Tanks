@@ -88,6 +88,11 @@ interface TallGrassOptions {
    * ring a metre and a half round each foot, where no hoof or blade reaches; none.
    */
   rockFeet?: ReadonlyArray<{ x: number; z: number; r: number }> | null;
+  /**
+   * (garage-env-276) The near ring alone: the mid and far rings never fill and never draw (the Garage's yard, a patch
+   * inside the near ring's reach whose camera never leaves it). A battle leaves it off.
+   */
+  nearOnly?: boolean;
 }
 
 interface TallGrassRingState {
@@ -741,6 +746,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const rings = [near, mid, far] as const;
   const enabled = !!biome && tier !== 'mobile';
   group.visible = enabled;
+  const nearOnly = options.nearOnly === true;
+  if (nearOnly) { mid.mesh.visible = false; far.mesh.visible = false; }
 
   const heightAt = (x: number, z: number): number =>
     field.getHeightAtFast ? field.getHeightAtFast(x, z) : field.getHeightAt(x, z);
@@ -1290,7 +1297,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       lastCamX = cameraPosition.x; lastCamZ = cameraPosition.z;
       for (const ring of rings) follow(ring, cameraPosition);
       // (local-fps-265) cold only while a ring has an interior cell to build, never for a step's edge column
-      const cold = lastCold = interiorPending(near) || interiorPending(mid) || interiorPending(far);
+      const cold = lastCold = interiorPending(near) || (!nearOnly && (interiorPending(mid) || interiorPending(far)));
       const behind = !cold && (near.pending.length > 2 * near.ring + 1 || mid.pending.length > 2 * mid.ring + 1
         || far.pending.length > 2 * far.ring + 1);
       const budget = options.candidatesPerUpdate ?? (cold ? TALL_GRASS.coldCandidatesPerUpdate : TALL_GRASS.candidatesPerUpdate);
@@ -1300,9 +1307,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       // cold fills from under the camera out; live slices serve the mid ring first, whose new column reaches its fade
       // band soonest (the near and far columns stay past theirs for a whole cell)
       if (cold || deadline === Infinity) updateRing(near, cameraPosition, density, budget, deadline);
-      updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
+      if (!nearOnly) updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
       if (!cold && deadline !== Infinity) updateRing(near, cameraPosition, density, budget, deadline);
-      updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
+      if (!nearOnly) updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
     }
     if (pressure) {
       const anchor = focus ?? cameraPosition;

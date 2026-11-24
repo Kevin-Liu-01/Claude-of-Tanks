@@ -58,6 +58,8 @@ export interface GarageArchitectureStats {
   /** The named landmarks of the pack's built skyline (garage r9, garageSkylineKit.ts). */
   kitSkylineLandmarks: readonly string[];
   groundCover: number;
+  /** (garage-env-276, class 2) The battle sward's clumps on the yard (garageEnvironmentKit.ts). */
+  battleSward: number;
   structures: number;
   /** The structures its map's regional kit rebuilt (garageBattleStructures.ts). */
   regionalKitStructures: number;
@@ -268,6 +270,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     builtHorizonAccentTopM: 0,
     kitSkylineLandmarks: [],
     groundCover: 0,
+    battleSward: 0,
     structures: 1,
     regionalKitStructures: 0,
     facadeDetailCertified: true,
@@ -503,6 +506,7 @@ export function createGarageArchitectureController(
       builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
       kitSkylineLandmarks: Array.isArray(data.kitSkylineLandmarks) ? data.kitSkylineLandmarks as string[] : [],
       groundCover: numericStat(data.groundCover),
+      battleSward: numericStat(data.battleSward),
       structures: numericStat(data.structures),
       regionalKitStructures: numericStat(data.regionalKitStructures),
       horizonFindings: Array.isArray(data.horizonFindings) ? data.horizonFindings as string[] : [],
