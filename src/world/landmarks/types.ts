@@ -45,7 +45,29 @@ export type LandmarkKind =
   // a fjord farm's works (fjordWorks.ts)
   | 'hayRack' | 'fishRack' | 'stabbur'
   // Taurus-Littrow Station's (lunar.ts): Challenger's site, the oxygen works and its front, the solar towers, the commons, the repeaters
-  | 'apolloSite' | 'isruWorks' | 'solarTower' | 'stationDome' | 'relayRepeater';
+  | 'apolloSite' | 'isruWorks' | 'solarTower' | 'stationDome' | 'relayRepeater'
+  // a junction's railway works (railWorks.ts, landmarks-271): the engine shed round its turntable, the signal box
+  | 'roundhouse' | 'signalBox'
+  // an ironworks' furnace (ironWorks.ts, landmarks-271)
+  | 'blastFurnace' | 'gasholder'
+  // a Shinto shrine's precinct (shrine.ts, landmarks-271)
+  | 'shrine'
+  // the Dahar's ksar and saint's tomb (ksar.ts, landmarks-271)
+  | 'ghorfaKsar' | 'marabout'
+  // forts (forts.ts, landmarks-271)
+  | 'desertFort' | 'casemateFort'
+  // Siwa's mosque and spring (siwa.ts, landmarks-271)
+  | 'shaliMosque' | 'springPool'
+  // the Serranía's bullring (andalusia.ts, landmarks-271)
+  | 'bullring' | 'alcazaba'
+  // a canal hamlet's market and charcoal works (canalWorks.ts, landmarks-271)
+  | 'canalMarket' | 'charcoalKilns'
+  // Podhale's wooden church (podhale.ts, landmarks-271)
+  | 'woodenChurch'
+  // Monument Valley's trading post and hogans (navajo.ts, landmarks-271)
+  | 'tradingPost' | 'hogan'
+  // works and stations (damWorks.ts, landmarks-271): Glen Canyon's cableway head tower, an Olympus station's landing pad
+  | 'cablewayTower' | 'landingPad';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;
