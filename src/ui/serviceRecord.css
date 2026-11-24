@@ -221,6 +221,14 @@
 .cot-record-step-gap{min-width:48px;text-align:end;color:var(--ink-2)}
 .cot-record-trace-empty{padding-top:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-13));color:var(--ink-3)}
 
+/* the replays (replay-system-275): one plate per saved battle as the log draws it, its length, then Watch and Download */
+.cot-record-replays{display:grid;gap:var(--s2);margin:0;padding:0;list-style:none}
+.cot-record-replay{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(104px,auto) auto;align-items:center;gap:var(--s4);
+  padding:var(--s3) var(--s4);border:1px solid var(--line-1);background:var(--surface-raised)}
+.cot-record-replay>.cot-record-vehicle{height:64px}
+.cot-record-replay-actions{display:flex;gap:var(--s2)}
+.cot-record-replay-skel{height:90px}
+
 @media(max-width:900px){
   .cot-record-outcomes{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cot-record-outcome.win-rate{grid-column:1/-1}
@@ -282,6 +290,11 @@
   .cot-record-trace li.linked::after{display:none}
   .cot-record-trace li.joins::after{content:'';position:absolute;top:calc(var(--s2) + .5lh);left:-18.5px;width:1px;height:100%;background:var(--ink-3)}
   .cot-record-trace-icon{width:32px;height:26px}
+  /* five tabs outrun a phone's strip in the longer locales: it scrolls rather than clip a name */
+  .cot-record-tabs{overflow-x:auto;scrollbar-width:none}
+  .cot-record-replay{grid-template-columns:72px minmax(0,1fr) auto;gap:var(--s2) var(--s3);padding:var(--s3)}
+  .cot-record-replay>.cot-record-vehicle{grid-row:1/3;height:52px}
+  .cot-record-replay-actions{grid-column:2/-1}
 }
 /* a compact screen keeps the header to a band; a short landscape phone to one line with the X beside the title */
 @media(max-height:720px){

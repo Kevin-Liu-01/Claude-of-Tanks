@@ -289,5 +289,95 @@
   },
   "hud.hint.ammoTypes.line": {
     "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
+  },
+  "endScreen.watchReplay": {
+    "context": "Claude of Tanks, a browser tank game. A secondary button on the after-battle report: plays back the battle just fought. Short button label; \"replay\" means a recorded playback of the battle."
+  },
+  "endScreen.downloadReplay": {
+    "context": "Claude of Tanks, a browser tank game. A secondary button on the after-battle report: saves the battle's recording as a file. Short button label."
+  },
+  "garage.record.tab.replays": {
+    "context": "Claude of Tanks, a browser tank game. A tab in the Service Record dialog listing saved battle recordings (replays). One word, as short as the English."
+  },
+  "garage.record.replaysEmpty": {
+    "context": "Claude of Tanks, a browser tank game. Shown in the Service Record's replays tab when no recording is saved yet: solo battles are recorded and listed there. One short sentence."
+  },
+  "garage.record.replayWatch": {
+    "context": "Claude of Tanks, a browser tank game. A small button on one saved replay's row: plays that recording. One word."
+  },
+  "garage.record.replayDownload": {
+    "context": "Claude of Tanks, a browser tank game. A small button on one saved replay's row: saves that recording as a file. One word."
+  },
+  "replay.play": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: resume playback. One word."
+  },
+  "replay.pause": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: pause playback. One word."
+  },
+  "replay.speed": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Label for the playback speed control (0.5x, 1x, 2x). One word."
+  },
+  "replay.timeline": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar. Accessible name of the bar and of its track, the strip that shows the battle's events in time order and that you drag to seek. One or two words."
+  },
+  "replay.leave": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: close the viewer and return to the game."
+  },
+  "replay.previousMark": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: jump back to the previous marked event on the timeline (a kill, a hit, a fire)."
+  },
+  "replay.nextMark": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: jump ahead to the next marked event on the timeline."
+  },
+  "replay.frameBack": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: step the playback back by one simulation frame."
+  },
+  "replay.frameForward": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Button: step the playback forward by one simulation frame."
+  },
+  "replay.filter.all": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Timeline filter: show every marked event. One word."
+  },
+  "replay.filter.kills": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Timeline filter: show only destroyed-vehicle events. One word, a noun."
+  },
+  "replay.filter.tank": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Timeline filter: show only events involving the tank the camera follows."
+  },
+  "replay.indexing": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Status while the recording is read and its timeline built, before playback can start."
+  },
+  "replay.refused": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Shown when a recording was made by another game version: {version} is a version string such as 2026.11.22. Replays only play on the version that recorded them."
+  },
+  "replay.drifted": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Shown when playback stops early because the simulation diverged from the recording: {time} is a battle time as m:ss."
+  },
+  "replay.unavailable": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. Shown when a recording is damaged or cannot be read."
+  },
+  "replay.mark.kill": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {actor} and {subject} are tank display names; the first destroyed the second. Past tense, as short as the English."
+  },
+  "replay.mark.pen": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {actor}'s shell penetrated the armour of {subject} (both tank display names). Armour penetration, not a generic verb."
+  },
+  "replay.mark.fire": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: the tank {subject} (a display name) caught fire."
+  },
+  "replay.mark.objective": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event marker for a mode objective (a flag taken, a zone captured). One word."
+  },
+  "replay.mark.strike": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event marker: an air strike hit the battlefield."
+  },
+  "replay.mark.respawn": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: the tank {subject} (a display name) came back into the battle after being destroyed."
+  },
+  "replay.mark.ram": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {actor} drove into {subject} (both tank display names) and damaged it."
+  },
+  "replay.mark.end": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. The last timeline marker: the battle ended."
   }
 }
