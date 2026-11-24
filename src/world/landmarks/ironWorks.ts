@@ -12,7 +12,7 @@
 // it merges into the props' buckets (no draw call of its own). The furnace, stoves, dust catcher and the cast house's
 // walls are structure; the lattices, pipes, platforms and the skip bridge are dressing a hull drives under.
 import { LocalFrame, normalize3, PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, revolve } from './kit.ts';
+import { DRESS_PROUD, bar, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const RUST = rgb(0x6e3f28), RUST_DARK = rgb(0x4a2c1e), OXIDE = rgb(0x8a5034), STEEL = rgb(0x4f4a46), SOOT = rgb(0x2a2420);
@@ -233,9 +233,14 @@ function tube(sink: PartSink, bucket: 'structureMetal', a: Vec3, b: Vec3, r: num
 /** A patch on a drum of radius r about the axis (the arc t0..t1 in radians, y0 to y1), 0.03 m proud: with `rag` a band
  *  of flaked paint, its edges ragged up and down by the look stream, or with `taper` a rust streak narrowing to its foot
  *  (dressing). */
-function drumPatch(sink: PartSink, r: number, t0: number, t1: number, y0: number, y1: number, colour: Rgb, o: { taper?: number; rag?: () => number } = {}): void {
-  const rr = r + 0.03, segs = Math.max(1, Math.ceil(Math.abs(t1 - t0) * r / 1.2)), tm = (t0 + t1) / 2, taper = o.taper ?? 0;
-  const P = (t: number, y: number): Vec3 => [Math.cos(t) * rr, y, Math.sin(t) * rr];
+function drumPatch(sink: PartSink, r: number, t0: number, t1: number, y0: number, y1: number, colour: Rgb,
+  o: { taper?: number; rag?: () => number; facets: number }): void {
+  const segs = Math.max(1, Math.ceil(Math.abs(t1 - t0) * r / 1.2)), tm = (t0 + t1) / 2, taper = o.taper ?? 0;
+  // (on the drum's own facets (a revolve of `facets`, a vertex at angle 0), a hand off them: on the true circle a patch
+  // stood up to 8 cm off a 36-facet lift's flats)
+  const step = Math.PI * 2 / o.facets;
+  const rr = (t: number): number => r * Math.cos(step / 2) / Math.cos((((t % step) + step) % step) - step / 2) + DRESS_PROUD;
+  const P = (t: number, y: number): Vec3 => [Math.cos(t) * rr(t), y, Math.sin(t) * rr(t)];
   const foot = (t: number): number => tm + (t - tm) * (1 - taper);
   // (the ragged edge: each seam's top and foot moved a hand, the band's ends pinched)
   const lo: number[] = [], hi: number[] = [], tall = y1 - y0;
@@ -357,12 +362,12 @@ export const gasholder: LandmarkBuilder = (ctx) => {
     for (let s = 0; s < streaks; s++) {
       const t = v() * Math.PI * 2, w = (0.25 + v() * 0.55) / h.r, len = Math.min(span - 0.8, 1.4 + v() * span * 0.6);
       const col = v() < 0.4 ? shade(RUST_DARK, 0.75) : shade(OXIDE, 1.15);
-      if (len > 0.5) drumPatch(sink, h.r, t - w / 2, t + w / 2, h.y - 0.6 - len, h.y - 0.6, col, { taper: 0.75 });
+      if (len > 0.5) drumPatch(sink, h.r, t - w / 2, t + w / 2, h.y - 0.6 - len, h.y - 0.6, col, { taper: 0.75, facets: n });
     }
     const flakes = 2 + Math.floor(v() * 2);
     for (let s = 0; s < flakes; s++) {
       const t = v() * Math.PI * 2, arc = (3 + v() * 9) / h.r, tall = 0.6 + v() * 1.0, y0 = h.from + 0.2 + v() * Math.max(0.1, span - tall - 1.2);
-      drumPatch(sink, h.r, t, t + arc, y0, y0 + tall, shade(OXIDE, 1.12 + v() * 0.1), { rag: v });
+      drumPatch(sink, h.r, t, t + arc, y0, y0 + tall, shade(OXIDE, 1.12 + v() * 0.1), { rag: v, facets: n });
     }
   }
 
@@ -376,6 +381,8 @@ export const gasholder: LandmarkBuilder = (ctx) => {
     sink.box('stone', [ca * Rc, tankH + 0.175, sa * Rc], [0.85, 0.175, 0.85], { shade: 1.05 }, f);
     sink.box('structureMetal', [ca * Rc, tankH + 0.42, sa * Rc], [0.75, 0.07, 0.75], { colour: STEEL, decor: true }, f);
     standard(sink, a, Rc, tankH + 0.35, top, 1.2, RUST_DARK);
+    // (the guide rail the lifts' rollers run on, down the standard's inner face across its lacing)
+    bar(sink, 'structureMetal', [ca * (Rc - 0.6), tankH + 0.35, sa * (Rc - 0.6)], [ca * (Rc - 0.6), top, sa * (Rc - 0.6)], 0.14, { colour: STEEL, decor: true });
   }
   // the ring girders (each a deep pair of chords) and the bracing corner to corner in every bay between them
   for (let i = 0; i < levels.length; i++) for (let k = 0; k < cols; k++) {
@@ -388,10 +395,18 @@ export const gasholder: LandmarkBuilder = (ctx) => {
       bar(sink, 'structureMetal', colAt(k + 1, y0), colAt(k, y1), 0.13, { colour: col, decor: true });
     }
   }
+  // each standard's diaphragm plate at every girder and brace level: the girders, aimed at the standard's centre, frame
+  // into its plate (the hollow between its four angles held nothing for them)
+  const plateYs = new Set<number>([levels[0] + 0.3]);
+  for (let i = 1; i < levels.length; i++) { plateYs.add(levels[i]); plateYs.add(levels[i] - 0.9); }
+  for (let k = 0; k < cols; k++) {
+    const a = (k / cols) * Math.PI * 2, f = radialFrame(a);
+    for (const y of plateYs) sink.box('structureMetal', [Math.cos(a) * Rc, y, Math.sin(a) * Rc], [0.6, 0.05, 0.6], { colour: RUST_DARK, decor: true }, f);
+  }
   // each lift's guide rollers on their brackets running on the standards, at its head
   for (const h of heads) for (let c = 0; c < cols; c++) {
     const a = (c / cols) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
-    bar(sink, 'structureMetal', [ca * (h.r + 0.2), h.y + 0.3, sa * (h.r + 0.2)], [ca * (Rc - 0.7), h.y + 0.3, sa * (Rc - 0.7)], 0.22, { colour: STEEL, decor: true });
+    bar(sink, 'structureMetal', [ca * (h.r - 0.1), h.y + 0.3, sa * (h.r - 0.1)], [ca * (Rc - 0.7), h.y + 0.3, sa * (Rc - 0.7)], 0.22, { colour: STEEL, decor: true });
     sink.span('structureMetal', ca * (Rc - 0.75) - 0.3, h.y, sa * (Rc - 0.75) - 0.3, ca * (Rc - 0.75) + 0.3, h.y + 0.6, sa * (Rc - 0.75) + 0.3, { colour: shade(STEEL, 0.8), decor: true });
   }
   // the walkway on the top girder, its railing
@@ -408,6 +423,7 @@ export const gasholder: LandmarkBuilder = (ctx) => {
       sink.span('structureMetal', sx - 0.45, y - 0.03, z - 0.12, sx + 0.45, y + 0.03, z + 0.12, { colour: STEEL, decor: true, fine: 'near' });
     }
     bar(sink, 'structureMetal', [sx + 0.5, fy + 1.0, sz - dz], [sx + 0.5, y1 + 1.0, sz + dz], 0.05, { colour: STEEL, decor: true });
+    for (const [py, pz] of [[fy, sz - dz], [y1, sz + dz]] as const) bar(sink, 'structureMetal', [sx + 0.5, py, pz], [sx + 0.5, py + 1.03, pz], 0.05, { colour: STEEL, decor: true });
     sink.span('structureMetal', sx - 0.6, y1 - 0.08, sz + dz - 0.7 * Math.sign(dz) - 0.7, sx + 0.6, y1, sz + dz + 0.7 * Math.sign(dz) - 0.7 + 1.4 * (dz > 0 ? 1 : 0), { colour: STEEL, decor: true });
   }
 

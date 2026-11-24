@@ -146,7 +146,7 @@ export const desertFort: LandmarkBuilder = (ctx) => {
     for (let uu = -S / 2 + 4.9; uu < S / 2 - 2; uu += 7.2) {
       if (!free(uu, 0.4)) continue;
       bar(sink, 'structureWood', at(uu, H - 0.75, -0.12), at(uu, H - 0.85, 0.72), 0.2, { colour: DOOR, decor: true });
-      sink.quad(wall, at(uu - 0.22, H - 3.0, 0.01), at(uu + 0.22, H - 3.0, 0.01), at(uu + 0.13, H - 0.95, 0.01), at(uu - 0.13, H - 0.95, 0.01),
+      sink.quad(wall, at(uu - 0.22, H - 3.0, -0.015), at(uu + 0.22, H - 3.0, -0.015), at(uu + 0.13, H - 0.95, -0.015), at(uu - 0.13, H - 0.95, -0.015),
         { decor: true, shadeAt: (p) => 0.66 + 0.3 * clamp01((H - 0.95 - p[1]) / 2.05), fine: 'near' });
     }
     // the render fallen away in patches (the brick under it showing darker), a lighter patch of new render, the damp

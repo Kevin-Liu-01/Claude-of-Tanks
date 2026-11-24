@@ -438,6 +438,7 @@ function romon(sink: PartSink, v: Stream, gz: number, base: number): number {
       const zf = gz + f * d / 2;
       sink.span('structureWood', x0, kh, zf - 0.06, x1, 1.35, zf + 0.06, { colour: BOARD });
       sink.span('dark', x0, 1.35, zf - f * 0.34 - 0.03, x1, head - 0.42, zf - f * 0.34 + 0.03, { decor: true });
+      sink.span('structureWood', x0, 1.3, Math.min(zf, zf - f * 0.37), x1, 1.35, Math.max(zf, zf - f * 0.37), { colour: BOARD, decor: true });
       lattice(sink, x0, x1, 1.35, head - 0.42, zf + f * 0.02, f, 0.28, TIMBER);
     }
   }

@@ -735,7 +735,7 @@ export const signalBox: LandmarkBuilder = (ctx) => {
     const px = -ow / 2 + 0.3 + (ow - 0.6) * k / posts, pz = zF - 0.25;
     sink.cylinder('stone', [px, foot, pz], 'y', 0.75 - foot, 0.28, 8, { shade: 0.85 });
     sink.cylinder('structureMetal', [px, 0.75, pz], 'y', y0 - 0.95, 0.1, 8, { colour: IRON });
-    for (const s of [-1, 1]) if ((k > 0 || s > 0) && (k < posts || s < 0)) bar(sink, 'structureMetal', [px, y0 - 1.1, pz], [px + s * 0.8, y0 - 0.24, pz], 0.07, { colour: IRON, decor: true });
+    for (const s of [-1, 1]) if ((k > 0 || s > 0) && (k < posts || s < 0)) bar(sink, 'structureMetal', [px, y0 - 1.1, pz], [px + s * 0.8, y0 - 0.1, zF + 0.1], 0.07, { colour: IRON, decor: true });
     bar(sink, 'structureMetal', [px, y0 - 1.0, pz], [px, y0 - 0.24, D / 2], 0.07, { colour: IRON, decor: true });
   }
   // the brackets under the narrow overhang round the ends and the back

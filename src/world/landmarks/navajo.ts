@@ -248,6 +248,8 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
     sink.span('structureWood', bu0, y0, D / 2 + 0.14, bu1, y1, D / 2 + 0.2, { colour: shade(SIGN, 0.88 + v() * 0.14), decor: true });
   }
   for (const x of [bu0 + 0.3, bu1 - 0.3]) bar(sink, 'structureWood', [x, by0 - 0.1, D / 2 + 0.22], [x, by1 + 0.12, D / 2 + 0.22], 0.08, { colour: shade(VIGA, 0.9), decor: true, fine: 'near' });
+  // (the cleats behind the planks, spiked to the parapet: the board hangs on the wall, not off it)
+  for (const x of [bu0 + 0.3, bu1 - 0.3]) bar(sink, 'structureWood', [x, by0 - 0.1, D / 2 + 0.07], [x, by1 + 0.12, D / 2 + 0.07], 0.14, { colour: shade(VIGA, 0.7), decor: true });
   const board: Face = { origin: [(bu0 + bu1) / 2, 0, D / 2 + 0.2], u: [1, 0, 0], out: [0, 0, 1], width: bw };
   letterText(sink, 'structureWood', board, "GOULDING'S", (v() - 0.5) * 0.15, by0 + 0.62, { capHeight: 0.55, maxWidth: bw - 0.7, weight: 0.8, colour: LETTER });
   letterText(sink, 'structureWood', board, 'TRADING POST', (v() - 0.5) * 0.15, by0 + 0.15, { capHeight: 0.36, maxWidth: bw - 1.0, weight: 0.8, colour: LETTER });
@@ -304,7 +306,7 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
   // ---- the sand the wind off the cliff has banked against the back of the block and the wareroom, the water barrels
   bank(sink, (t, o) => [lerp(x1 - 0.5, x0 + 1.0, t), -D / 2 - 0.1 - o], bench1, 0.9 + v() * 0.4, 2.6, g, v, SAND);
   bank(sink, (t, o) => [lerp(wx1 + 0.4, wx0, t), wz0 - 0.1 - o], bench1, 0.55 + v() * 0.25, 2.0, g, v, SAND, 5);
-  for (let k = 0; k < 2; k++) sink.cylinder('structureMetal', [x0 - 0.9 + k * 0.85, bench0, -D / 2 - 0.9], 'y', 0.9, 0.36, 8, { colour: shade(rgb(0x3a5a3a), 0.8 + v() * 0.3), decor: true });
+  for (let k = 0; k < 2; k++) sink.cylinder('structureMetal', [x0 + 1.4 + k * 0.85, bench0, -D / 2 - 0.9], 'y', 0.9, 0.36, 8, { colour: shade(rgb(0x3a5a3a), 0.8 + v() * 0.3), decor: true });
 
   // ---- the yard: the beaten ground off the steps to the pumps and the road, the hitching rail of juniper posts, the pumps
   const pumpX = cx + W * 0.36, pumpZ = pz + 3.0;
@@ -367,7 +369,7 @@ export const hogan: LandmarkBuilder = (ctx) => {
   }
   const sp: Vec3 = [-0.15, top - 0.1, -0.1], st = top + 1.0 + v() * 0.3;
   sink.cylinder('structureMetal', sp, 'y', st - sp[1], 0.1, 8, { colour: rgb(0x55524e), decor: true });
-  revolve(sink, 'structureMetal', sp[0], sp[2], [[0.001, st + 0.1], [0.24, st + 0.1], [0.001, st + 0.3]], 8, { colour: rgb(0x403d3a), decor: true });
+  revolve(sink, 'structureMetal', sp[0], sp[2], [[0.001, st - 0.02], [0.24, st + 0.06], [0.001, st + 0.26]], 8, { colour: rgb(0x403d3a), decor: true });
   // ---- the entry on the east: a short passage under its own earth, its face of upright logs round the plank door
   const ez = Rw - 0.45, zf = Rw + 1.45;
   sink.span('structureWood', -0.95, foot, ez, 0.95, 1.85, zf, { colour: CHINK });
@@ -415,8 +417,9 @@ export const hogan: LandmarkBuilder = (ctx) => {
     });
     extrude(sink, 'structureWood', heap, [0, -1, 0], 0.25, { colour: shade(BRUSH, 1.1), decor: true });
     for (let k = 0; k < 10; k++) {
-      const p = roof[k % roof.length], a = Math.atan2(p[2], p[0] - rx) + (v() - 0.5) * 0.5, l = 0.5 + v() * 0.5;
-      bar(sink, 'structureWood', [p[0] - Math.cos(a) * 0.3, ry + 0.3, p[2] - Math.sin(a) * 0.3], [p[0] + Math.cos(a) * l, ry + 0.1 - v() * 0.3, p[2] + Math.sin(a) * l], 0.06, { colour: shade(BRUSH, 0.8 + v() * 0.3), decor: true, fine: true });
+      // (a stick's tip pokes out of the roof's edge by less than its last third: the rest lies in the brush)
+      const p = roof[k % roof.length], a = Math.atan2(p[2], p[0] - rx) + (v() - 0.5) * 0.5, l = 0.12 + v() * 0.1;
+      bar(sink, 'structureWood', [p[0] - Math.cos(a) * 0.6, ry + 0.3, p[2] - Math.sin(a) * 0.6], [p[0] + Math.cos(a) * l, ry + 0.26 - v() * 0.08, p[2] + Math.sin(a) * l], 0.06, { colour: shade(BRUSH, 0.8 + v() * 0.3), decor: true, fine: true });
     }
     bar(sink, 'structureWood', [rx - 1.4, g(rx - 1.4, -0.6) + 0.18, -0.6], [rx + 1.2, g(rx + 1.2, -0.9) + 0.18, -0.9], 0.3, { colour: shade(LOG, 0.8), decor: true });
   }

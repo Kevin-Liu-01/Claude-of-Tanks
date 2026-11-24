@@ -19,7 +19,7 @@
 // own). The legs, footings, berm, module and the lander's body are structure; lattices, cables, lights and markings
 // are dressing.
 import { LocalFrame, PartSink, normalize3, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, extrude, revolve } from './kit.ts';
+import { DRESS_PROUD, bar, extrude, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const STEEL = rgb(0x5a5f62), RED_OXIDE = rgb(0x8a3a2a), CABLE = rgb(0x262626), CAB = rgb(0xd2c8a8), BUCKET = rgb(0x5e5e5a);
@@ -147,11 +147,16 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   for (const s of [-1, 1]) {
     bar(sink, 'structureMetal', [s * cw / 2, cy - 0.2, wAt / 2 + 2.4], P(s, 1, cy - 3.2), 0.2, { colour: RED_OXIDE, decor: true });
     bar(sink, 'structureMetal', [s * cw / 2, cy + 1.05, wAt / 2], [s * cw / 2, cy + 1.05, wAt / 2 + 2.4], 0.06, { colour: STEEL, decor: true });
+    for (const pz of [wAt / 2 + 0.05, wAt / 2 + 2.35]) bar(sink, 'structureMetal', [s * cw / 2, cy, pz], [s * cw / 2, cy + 1.08, pz], 0.05, { colour: STEEL, decor: true });
   }
   const lx = 1.15, lz = (y: number): number => (B + (T - B) * y / H) / 2 + 0.4;
   for (const dx of [-0.25, 0.25]) bar(sink, 'structureMetal', [lx + dx, 0, lz(0)], [lx + dx, cy, lz(cy)], 0.07, { colour: STEEL, decor: true });
   for (let y = 0.6; y < cy - 0.3; y += 0.6) bar(sink, 'structureMetal', [lx - 0.25, y, lz(y)], [lx + 0.25, y, lz(y)], 0.05, { colour: STEEL, decor: true, fine: 'near' });
-  for (let y = 3; y < cy - 0.5; y += 1.5) bar(sink, 'structureMetal', [lx - 0.4, y, lz(y)], [lx + 0.4, y, lz(y) + 0.7], 0.05, { colour: STEEL, decor: true, fine: true });
+  // (the cage's hoops: each from one stile out round the climber's back and in to the other)
+  for (let y = 3; y < cy - 0.5; y += 1.8) {
+    const z = lz(y), hoop: Vec3[] = [[lx - 0.25, y, z], [lx, y, z + 0.75], [lx + 0.25, y, z]];
+    for (let i = 0; i < 2; i++) bar(sink, 'structureMetal', hoop[i], hoop[i + 1], 0.05, { colour: STEEL, decor: true, fine: true });
+  }
   // the hoist house at the tower's foot behind it: a corrugated-iron shed on its concrete plinth under a rusted gable,
   // its sliding door to the tower, the haul rope's two strands out of the slot over it and up to the bull wheel, its
   // stack; the grime of splash and oil along its wall foot
@@ -233,7 +238,7 @@ function lander(sink: PartSink, v: () => number, deck: number): void {
   for (let y = base + 1.9; y < base + 11.2; y += 1.85) revolve(sink, 'structureMetal', 0, 0, [[R, y], [R + 0.035, y], [R + 0.035, y + 0.07], [R, y + 0.07]], n, { colour: shade(HULL, 0.78), decor: true });
   // the heat shield down the windward half, its edge at the flaps' hinge line: a lighter bed of joints and the tiles
   // over it in staggered courses, each tile's charcoal a little different, so it reads as tiled in any light
-  const sy0 = base + 0.6, sh = 10.8, rows = 12, cols = 14, th = sh / rows, dth = Math.PI / cols, rT = R + 0.09, gap = 0.035;
+  const sy0 = base + 0.6, sh = 10.8, rows = 12, cols = 14, th = sh / rows, dth = Math.PI / cols, rT = R + 0.045 + DRESS_PROUD, gap = 0.035;
   sink.cylinder('structureMetal', [0, sy0, 0], 'y', sh, R + 0.045, cols, { colour: TILE_JOINT, decor: true }, R + 0.045, false, Math.PI / 2, Math.PI);
   for (let j = 0; j < rows; j++) {
     const y0 = sy0 + j * th + gap, y1 = sy0 + (j + 1) * th - gap, off = j % 2 ? -dth / 2 : 0;
@@ -260,7 +265,7 @@ function lander(sink: PartSink, v: () => number, deck: number): void {
   for (let k = 0; k < 6; k++) {
     const vac = k % 2 === 1, a = (k / 6) * Math.PI * 2, r = vac ? 2.55 : 1.15, e = vac ? 1.1 : 0.72, L = vac ? 2.8 : 1.9;
     const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
-    revolve(sink, 'structureMetal', bx, bz, [[e - 0.06, base - L], [e, base - L], [e * 0.72, base - L * 0.6], [0.42, base - 0.45], [0.32, base - 0.05]], 12,
+    revolve(sink, 'structureMetal', bx, bz, [[e - 0.06, base - L], [e, base - L], [e * 0.72, base - L * 0.6], [0.42, base - 0.45], [0.32, base + 0.02]], 12,
       { colour: shade(BELL, vac ? 1 : 0.85), decor: true });
     revolve(sink, 'structureMetal', bx, bz, [[0.3, base - 0.5], [e * 0.68, base - L * 0.6], [e - 0.07, base - L + 0.02]], 12, { colour: BELL_IN, decor: true });
   }
@@ -289,6 +294,7 @@ function lander(sink: PartSink, v: () => number, deck: number): void {
   bar(sink, 'structureMetal', [R + 0.06, hy1 + 0.1, -hw - 0.1], [R + 0.06, hy1 + 0.1, hw + 0.1], 0.18, { colour: shade(HULL, 0.7), decor: true });
   sink.span('structureMetal', R, hy0 - 0.25, -1.2, R + 2.3, hy0, 1.2, { colour: STEEL, decor: true });
   for (const z of [-1.15, 1.15]) bar(sink, 'structureMetal', [R + 0.3, hy0 + 1.0, z], [R + 2.3, hy0 + 1.0, z], 0.05, { colour: LAMP, decor: true });
+  for (const z of [-1.15, 1.15]) for (const x of [R + 0.3, R + 1.3, R + 2.25]) bar(sink, 'structureMetal', [x, hy0, z], [x, hy0 + 1.03, z], 0.05, { colour: LAMP, decor: true });
   const tx = R + 2.0;
   for (const z of [-1.0, 1.0]) bar(sink, 'structureMetal', [tx, -deck, z], [tx, hy0, z], 0.2, { colour: STEEL });
   for (let y = 1.0; y < hy0; y += 1.2) bar(sink, 'structureMetal', [tx, y, -1.0], [tx, y + 1.2, 1.0], 0.07, { colour: STEEL, decor: true, fine: true });
@@ -379,9 +385,10 @@ export const landingPad: LandmarkBuilder = (ctx) => {
     sink.placed(-am + Math.PI / 2, Math.cos(am) * bR, 0, Math.sin(am) * bR, () => {
       const c = shade(BERM, 0.9 + v() * 0.12);
       extrude(sink, 'structureWood', [[-len / 2, -0.4, -2.5], [-len / 2, -0.4, 2.5], [-len / 2, 4.2, 0.8], [-len / 2, 4.2, -0.8]], [1, 0, 0], len, { colour: c });
-      // the bag courses on both slopes, a few centimetres proud
+      // the bag courses on both slopes, laid on the slope's face (DRESS_PROUD out along its normal: 6 cm held them off it)
       for (const s of [-1, 1]) for (let t = 0.12; t < 0.95; t += 0.11) {
-        const z0 = s * (2.5 - 1.7 * t), y0 = -0.4 + 4.6 * t, z1 = s * (2.5 - 1.7 * (t + 0.012)), y1 = -0.4 + 4.6 * (t + 0.012), nz = s * 0.06, ny = 0.03;
+        const z0 = s * (2.5 - 1.7 * t), y0 = -0.4 + 4.6 * t, z1 = s * (2.5 - 1.7 * (t + 0.012)), y1 = -0.4 + 4.6 * (t + 0.012);
+        const nz = s * DRESS_PROUD * 4.6 / 4.904, ny = DRESS_PROUD * 1.7 / 4.904;
         const a: Vec3 = [-len / 2, y0 + ny, z0 + nz], b: Vec3 = [len / 2, y0 + ny, z0 + nz], cc: Vec3 = [len / 2, y1 + ny, z1 + nz], d: Vec3 = [-len / 2, y1 + ny, z1 + nz];
         sink.quad('structureWood', ...(s > 0 ? [a, b, cc, d] as const : [b, a, d, cc] as const), { colour: shade(c, 0.72), decor: true, fine: 'near' });
       }
@@ -405,7 +412,7 @@ export const landingPad: LandmarkBuilder = (ctx) => {
     sink.cylinder('structureMetal', [0, 2.0, 6], 'z', 2.4, 1.4, 12, { colour: shade(HULL, 0.85) });
     sink.span('structureMetal', -0.6, 1.2, 8.4, 0.6, 2.8, 8.45, { colour: HULL_DARK, decor: true });
     sink.span('structureMetal', -5.8, 4.6, -4, -2.6, 4.7, 4, { colour: rgb(0xe8e8e8), decor: true });
-    bar(sink, 'structureMetal', [-2.4, 3.6, 0], [-4.2, 4.6, 0], 0.12, { colour: HULL_DARK, decor: true });
+    for (const z of [-3, 0, 3]) bar(sink, 'structureMetal', [-2.0, 3.5, z], [-4.2, 4.6, z], 0.12, { colour: HULL_DARK, decor: true });
   });
   // the lander on the deck
   if (ctx.params.lander !== false) sink.placed(0, 0, DH, 0, () => lander(sink, v, DH));

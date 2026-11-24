@@ -98,7 +98,7 @@ export const bullring: LandmarkBuilder = (ctx) => {
       // the openings' reveals and dark backs, the ground window's grille and surround, the arch's stone ring
       sink.quad('dark', P(-gw / 2, gy0, -0.5), P(gw / 2, gy0, -0.5), P(gw / 2, gy1, -0.5), P(-gw / 2, gy1, -0.5), { decor: true });
       for (const s of [-1, 1]) sink.quad(RENDER, P(s * gw / 2, gy0, s < 0 ? 0 : -0.5), P(s * gw / 2, gy0, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? 0 : -0.5), { shade: 0.72, decor: true });
-      sink.quad('stone', P(-gw / 2 - 0.2, gy0 - 0.15, 0.06), P(gw / 2 + 0.2, gy0 - 0.15, 0.06), P(gw / 2 + 0.2, gy0, 0.06), P(-gw / 2 - 0.2, gy0, 0.06), { decor: true });
+      extrude(sink, 'stone', [P(-gw / 2 - 0.2, gy0 - 0.15), P(gw / 2 + 0.2, gy0 - 0.15), P(gw / 2 + 0.2, gy0), P(-gw / 2 - 0.2, gy0)], OUT, 0.06, { decor: true });
       for (let u = -gw / 2 + 0.18; u < gw / 2; u += 0.18) bar(sink, 'structureMetal', P(u, gy0, -0.1), P(u, gy1, -0.1), 0.025, { colour: IRON, decor: true, fine: true });
       // (its dark back 0.16 m in: in front of the gallery's inner wall, 0.2 m behind the facet at its middle)
       const back: Vec3[] = [P(-aw / 2, ay0, -0.16), P(aw / 2, ay0, -0.16), ...arch.map((p) => [p[0] - ox * 0.16, p[1], p[2] - oz * 0.16] as Vec3)];
@@ -110,7 +110,10 @@ export const bullring: LandmarkBuilder = (ctx) => {
         facing(sink, 'stone', [R(t0, aw / 2), R(t1, aw / 2), R(t1, aw / 2 + 0.24), R(t0, aw / 2 + 0.24)], OUT, { decor: true, shade: i === 2 || i === 3 ? 0.98 : 0.88 });
       }
       // the iron balcony rail across the upper opening
-      bar(sink, 'structureMetal', P(-aw / 2, ay0 + 0.95, 0.15), P(aw / 2, ay0 + 0.95, 0.15), 0.04, { colour: IRON, decor: true, fine: true });
+      // (leaded into the jambs either side: its returns run back into the wall)
+      const railY = ay0 + 0.95, railU = aw / 2 + 0.06;
+      bar(sink, 'structureMetal', P(-railU, railY, 0.15), P(railU, railY, 0.15), 0.04, { colour: IRON, decor: true, fine: true });
+      for (const s of [-1, 1]) bar(sink, 'structureMetal', P(s * railU, railY, 0.15), P(s * railU, railY, -0.03), 0.04, { colour: IRON, decor: true, fine: true });
     }
     // the pilasters at the facet's corners and the stone bands at the plinth and the floor (the cornice is the eaves')
     sink.quad('stone', P(-half, foot, 0.12), P(half, foot, 0.12), P(half, 0.9, 0.12), P(-half, 0.9, 0.12), { decor: true, shade: 0.9 });
@@ -496,7 +499,7 @@ function curtain(sink: PartSink, v: () => number, w: Wall, a: readonly [number, 
           facing(sink, TAPIA, [P(g.s0, g.head, CORE), P(g.s1, g.head, CORE), P(g.s1, g.head, top.d), P(g.s0, g.head, top.d)], UP, o);
           for (let l = v() < 0.5 ? 1 : 2; l > 0; l--) {
             const z0 = g.s0 + 0.3 + v() * Math.max(0.1, len - 1.8), zl = 0.6 + v() * 0.8, hh = 0.25 + v() * 0.5, dA = -HALF + 0.15 + v() * 0.6, dB = Math.min(top.d - 0.05, dA + 0.7 + v() * 0.6);
-            sink.span(TAPIA, -dB, g.head - 0.02, z0, -dA, g.head + hh, z0 + zl, { decor: true, shade: tone * 0.95 });
+            sink.span(TAPIA, -dB, Math.min(g.head, w.ww) - 0.02, z0, -dA, g.head + hh, z0 + zl, { decor: true, shade: tone * 0.95 });
           }
         }
         if (g.kind === 'breach') {
