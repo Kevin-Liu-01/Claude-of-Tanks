@@ -50,3 +50,35 @@ export function authoringRigSpec<T extends { armor: RigArmor }>(spec: T): T {
     },
   };
 }
+
+const AUTHORED_GUN = Symbol.for('claude-of-tanks.combat-gun-rig.authored-gun');
+
+interface RigMouth {
+  readonly x?: number;
+  readonly y?: number;
+  readonly z?: number;
+  readonly pitch?: number;
+  readonly yaw?: number;
+}
+
+/** The mouths a gun's builder authored: its cannon mouths and its launcher tubes. */
+export interface AuthoredGunMouths {
+  readonly muzzles?: readonly RigMouth[];
+  readonly launcherMuzzles?: readonly RigMouth[];
+}
+
+/** The gun's mouths as its builder authored them: the copy a measured gun keeps (rememberAuthoredGun), else its own. */
+export function authoredGun(gun: AuthoredGunMouths | null | undefined): AuthoredGunMouths | null {
+  if (!gun) return null;
+  return (gun as AuthoredGunMouths & { [AUTHORED_GUN]?: AuthoredGunMouths })[AUTHORED_GUN] ?? gun;
+}
+
+/** (276) A measured gun that replaces the authored one keeps the authored mouths (the first authored copy wins). */
+export function rememberAuthoredGun<T extends object>(measured: T, authored: AuthoredGunMouths): T {
+  const kept = authoredGun(authored)!;
+  Object.defineProperty(measured, AUTHORED_GUN, {
+    value: Object.freeze({ muzzles: kept.muzzles?.map((mouth) => ({ ...mouth })), launcherMuzzles: kept.launcherMuzzles?.map((tube) => ({ ...tube })) }),
+    enumerable: false,
+  });
+  return measured;
+}

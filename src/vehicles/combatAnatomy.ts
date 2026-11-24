@@ -31,7 +31,7 @@ import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
 import { attachTrackShapes } from './trackShapes.ts';
 import type { AnatomyCombatRig } from './combatAnatomyCalibrationRegistry.ts';
-import { rememberAuthoredRig } from './combatGunRigSeat.ts';
+import { rememberAuthoredGun, rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
 import { turretSeatPlane, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 import type {
@@ -1844,7 +1844,7 @@ export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?:
   if (rig.mouth) armor.gunMouth = { ...rig.mouth };
   else delete armor.gunMouth;
   if (gun && (rig.mouths?.length || rig.launchers?.length)) {
-    const measured: RigGun = { ...gun };
+    const measured: RigGun = rememberAuthoredGun({ ...gun }, gun);
     if (rig.mouths?.length && gun.muzzles) measured.muzzles = gun.muzzles.map((mouth, i) => ({ ...mouth, ...(rig.mouths![i] ?? {}) }));
     if (rig.launchers?.length && gun.launcherMuzzles) {
       measured.launcherMuzzles = gun.launcherMuzzles.map((tube, i) => ({ ...tube, ...(rig.launchers![i] ?? {}) }));
