@@ -258,6 +258,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/game/inputHoldToggle.selftest.mjs': tracked('src/ui/**', 'src/game/**', 'src/app/**', 'src/main.ts'),
   // element colour resets outside @layer base (git ls-files of the tracked sheets)
   'tools/surface-element-resets.selftest.mjs': tracked('src/**/*.css'),
+  // the shared tokens something reads (git ls-files of every tracked text file outside docs, release, public and assets:
+  // a token named anywhere is read; tokens.selftest fails on an unread one)
+  'tools/token-references.mjs': tracked('**/*.{ts,tsx,js,mjs,cjs,css,html,json,svg}'),
 
   // the import graphs of real receipts (closureOf on this checkout) beside its fixture repository
   'tools/selftest-cache.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
