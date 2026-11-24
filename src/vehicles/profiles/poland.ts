@@ -2,6 +2,9 @@ import {addEscortFieldKit} from './escortFieldKit.ts';
 import {addPL01FieldTurret} from './pl01FieldTurret.ts';
 import { addPL01GunAssembly } from './pl01GunAssembly.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
+import {
+  PL01_DECK_LINE, PL01_DRIVER_DECK, PL01_GLACIS_FOLD, PL01_GLACIS_NOSE, PL01_HULL_SIDE_X, pl01DeckY,
+} from '../pl01HullLine.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
 import { buildPT64Tur } from './pt64Tur.ts';
 import { buildPT91Twardy } from './pt91Twardy.ts';
@@ -139,28 +142,7 @@ function segmentedStrip(
 // sprocket (-2.80, 0.732); track band x 1.00..1.56, top 1.286).
 // ===========================================================================
 
-// One hull-side line (Kevin 2026-11-24: "make the sideskirts of the pl01s align with the upper glacis and hull").
-// The print's deck is one surface from the centreline out to |x| 1.70 at every station, stern included, and the skirt
-// crest falls away from it. The loft deck, the upper glacis, the skirt tops, the bow bridge and the stern wings all
-// read this profile and this side plane; the skirts used to carry their own top table (fold at z 1.88), stood up to
-// 0.15 m proud of the glacis edge and showed their inboard bevel wall over the deck.
-const PL01_HULL_SIDE_X = 1.616;
-const PL01_DECK_LINE: readonly (readonly [z: number, y: number])[] = [
-  [-3.505, 2.095], [-3.35, 2.095], [-1.50, 2.065], [-0.45, 2.04], [0.50, 2.02], [1.30, 1.975], [3.425, 1.46],
-];
-const [, , , , PL01_DRIVER_DECK, PL01_GLACIS_FOLD, PL01_GLACIS_NOSE] = PL01_DECK_LINE;
-function pl01DeckY(z: number): number {
-  const line = PL01_DECK_LINE;
-  if (z <= line[0][0]) return line[0][1];
-  for (let i = 1; i < line.length; i++) {
-    const [z1, y1] = line[i];
-    if (z <= z1) {
-      const [z0, y0] = line[i - 1];
-      return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
-    }
-  }
-  return line[line.length - 1][1];
-}
+// The hull deck line and side plane (Kevin 2026-11-24 skirt alignment) live in ../pl01HullLine.ts.
 
 interface PL01BuildContext {
   readonly is105: boolean;

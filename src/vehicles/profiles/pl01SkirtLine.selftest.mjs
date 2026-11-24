@@ -9,12 +9,17 @@
 //   - the skirt outer face holds the ±1.90 plane over the running-gear span;
 //   - no face lies in the marked band (a vertical inboard wall at |x| 1.62), and no inboard-facing face rises above
 //     the deck next to it.
-// Planted controls: the old strip put back, and the skirt tops raised 30 mm, must each fail.
+//   - the pl01_105 escort kit's top cut is the same glacis: its top at every z from the fold to the kit's nose is the
+//     hull deck line (capped at the kit top), so a second copy of the glacis cannot drift from it.
+// Planted controls: the old strip put back, the skirt tops raised 30 mm, and a kit glacis 40 mm off the hull's, must
+// each fail.
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
+import { ESCORT_FIELD_KITS, escortKitTop } from '../escortFieldKitLayout.ts';
+import { PL01_GLACIS_FOLD, PL01_HULL_SIDE_X, pl01DeckY } from '../pl01HullLine.ts';
 
-const SIDE_X = 1.616;
+const SIDE_X = PL01_HULL_SIDE_X;
 const TOL = 0.005;
 const BAND = { x: 1.62, yMin: 1.325, yMax: 2.065 };
 const glacisPlaneY = (z) => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
@@ -120,4 +125,20 @@ for (const id of ['pl01', 'pl01_105']) {
     assert(raised.deckStep > TOL || raised.skirtStep > TOL, 'control: skirts standing proud of the deck are caught');
   }
 }
+// the escort kit reads the hull's glacis, not a copy of it
+function kitDrift(kit) {
+  let worst = 0;
+  for (let z = PL01_GLACIS_FOLD[0]; z <= kit.front + 1e-9; z += 0.02) {
+    worst = Math.max(worst, Math.abs(escortKitTop(kit, z) - Math.min(kit.top, pl01DeckY(z))));
+  }
+  return worst;
+}
+const kit = ESCORT_FIELD_KITS.pl01_105;
+const drift = kitDrift(kit);
+console.log(`pl01_105 escort kit top vs hull deck line: ${(drift * 1000).toFixed(2)} mm`);
+assert(drift < 1e-6, `pl01_105 escort kit glacis cut follows the hull deck line (worst ${(drift * 1000).toFixed(2)} mm)`);
+const [z0, y0, z1, y1] = kit.glacis;
+const planted = kitDrift({ ...kit, glacis: [z0, y0, z1, y1 + 0.04] });
+console.log(`control (kit glacis nose +40 mm): ${(planted * 1000).toFixed(2)} mm`);
+assert(planted > TOL, 'control: a kit glacis that drifts from the hull deck line is caught');
 console.log('pl01SkirtLine: PASS');
