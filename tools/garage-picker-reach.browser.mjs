@@ -5,9 +5,9 @@
 // Per window, a fresh load at that size (touch where the deploy probe touches): the route a player has to the picker,
 // whichever the layout shows: the docked picker button, the mobile nav's Environment, or the portrait tab bar's More
 // and then Environment. Each step must be the element the point under it hits (elementFromPoint: on screen, not
-// covered), after the scroll a player gives its list when it stands past the fold of a scrolling menu (the step is then
-// reported as scrolled). The open picker's option for another location must be hit at its centre too, and choosing it
-// must select that location. A window with no route fails.
+// covered) with no scroll: a step past the fold of a scrolling menu fails, though the probe scrolls to it to say whether
+// a player could still reach it (Main 2026-11-24: on screen at every window without a scroll). The open picker's option
+// for another location must be hit at its centre too, and choosing it must select that location.
 //   node tools/garage-picker-reach.browser.mjs --url=http://127.0.0.1:4179 [--case=390x844,1280x800] [--out=outputs/garage-picker-reach]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -82,6 +82,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
               if (inScroller) { scrolled.push(step); await new Promise((r) => setTimeout(r, 200)); }
             }
             if (!(await hittable(step))) { failure = `${step} is not on screen or is covered`; break; }
+            // (Main 2026-11-24: no scroll needed at any window) a step past its menu's fold fails, reachable or not
+            if (scrolled.includes(step)) { failure = `${step} stands past its menu's fold (reachable only by scrolling)`; break; }
             await page.click(step);
             await new Promise((r) => setTimeout(r, 250));
           }

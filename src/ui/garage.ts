@@ -746,6 +746,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
     `${uiIconSVG('garage', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.garage')}</strong></span></button>` +
+    // (garage-env-276) the location picker right after the Garage: on a landscape phone (844 x 390) the menu shows five
+    // of its nine items, and the picker, last, stood past the fold (tools/garage-picker-reach.browser.mjs)
+    `<button type="button" data-mobile-nav="environment">` +
+    `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `<strong>${t('garage.nav.stagingArea')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="studio">` +
     `${uiIconSVG('studio', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.studio')}</strong></span></button>` +
@@ -763,10 +768,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong>${t('settings.language.title')}</strong><small lang="${currentLocale}">${localeRecord(currentLocale).name}</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.record')}</strong></span></button>` +
-    `<button type="button" data-mobile-nav="environment">` +
-    `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.stagingArea')}</strong></span></button></div></nav>` +
+    `<strong>${t('garage.nav.record')}</strong></span></button></div></nav>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('modeStandard', 20)}</span>` +
