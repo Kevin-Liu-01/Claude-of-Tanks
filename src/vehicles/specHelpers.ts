@@ -21,6 +21,8 @@ export interface PlateOptions {
   moduleLink?: ModuleId;
   /** A hull front split by height, not by facing (see ArmorPlate.frontZone). */
   frontZone?: 'upper' | 'lower';
+  /** An external track plate laid on its measured track prism (see ArmorPlate.seatOnTrack). */
+  seatOnTrack?: boolean;
 }
 
 export interface ArmorPlate {
@@ -47,6 +49,12 @@ export interface ArmorPlate {
    * at centre height.
    */
   frontZone?: 'upper' | 'lower';
+  /**
+   * (strv-track-plates) An external plate linked to a track module, laid on that track's prism as the build measured it
+   * (combatAnatomy.ts seatPlatesOnTrack): its outer face over the drawn run, keeping its own height band. The S-tanks'
+   * plates stood at 0.88 of the half-width over the hull's length, off the drawn track.
+   */
+  seatOnTrack?: boolean;
   surfaceGroup?: string;
   /** Exact cut-edge ownership for adjacent outer and backing sheets. */
   openEdges?: readonly number[];
@@ -117,6 +125,7 @@ export function plate(
     gunFollow: !!o.gunFollow,
     ...(o.droneInterception !== undefined ? { droneInterception: o.droneInterception } : {}),
     ...(o.frontZone ? { frontZone: o.frontZone } : {}),
+    ...(o.seatOnTrack ? { seatOnTrack: true } : {}),
   };
 }
 
