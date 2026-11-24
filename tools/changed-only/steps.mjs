@@ -528,7 +528,9 @@ export const STEPS = Object.freeze([
     checkTool: 'tools/changed-only/fills-check.mjs',
     check: ['--all', '--jobs=4'], checkScoped: (list) => [ids(list), '--jobs=4'],
     outputs: ['interiorFills', 'movingClearanceAir'],
-    files: ['src/vehicles/interiorFillLoaders.generated.ts'], gb: 8, timeoutS: 3600, perIdS: 60,
+    // gb (fills-leak-276): one process's peak is flat in the id count since the loop drains native canvas finalizers
+    // per id (--all: 2.74 GiB over 313 ids, 1.75 MB an id fitted; it was 31 GB): the measured peak plus a margin.
+    files: ['src/vehicles/interiorFillLoaders.generated.ts'], gb: 4, timeoutS: 3600, perIdS: 60,
   },
   {
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
