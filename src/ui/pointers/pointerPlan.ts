@@ -96,10 +96,18 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
   return out;
 }
 
-/** How far ahead of the tank along the camera's heading the turn arrow starts (m), tried in turn, the nearest first: the
- *  chase camera looks down over the turret, so the ground just ahead stands behind the hull on the screen, and behind a
- *  tall hull (3 m) all of it to 18 m does: without the farther starts a marker aside got no arrow in the battle. */
-export const TURN_AHEAD_M = Object.freeze([10, 14, 18, 24, 30] as const);
+/** Where the turn arrow may start (m along the camera's heading from the tank, m toward the turn's side); the plan keeps
+ *  the largest on the screen that fits. Beside the hull on the turn's side: that ground stands at the hull's own depth,
+ *  the nearest to the camera the arrow can lie without the hull over it, so the arrow is large, and a portrait phone's
+ *  tank can stand over all the ground ahead. Ahead of the hull: the chase camera looks down over the turret, so the ground
+ *  just ahead stands behind the hull on the screen, and behind a tall hull (3 m) all of it to 18 m does. The battle's
+ *  stills found both: a marker aside got no arrow on a phone, and on a desktop only a sliver 30 m out. */
+export const TURN_PLACES = Object.freeze([
+  { aheadM: 0, besideM: 4 }, { aheadM: 4, besideM: 4 }, { aheadM: -4, besideM: 4 },
+  { aheadM: 10, besideM: 0 }, { aheadM: 14, besideM: 0 }, { aheadM: 18, besideM: 0 }, { aheadM: 24, besideM: 0 }, { aheadM: 30, besideM: 0 },
+] as const);
+/** The px round the arrowhead that keeps clear of the HUD and the hull, so a head never sits in a gap between buttons. */
+export const TURN_HEAD_PAD_PX = 6;
 /** Its bend's radii tried in turn (m), the largest first, until the whole arrow fits the screen (a portrait phone's
  *  narrow view takes the small ones). */
 export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2] as const);
@@ -130,18 +138,18 @@ export function bearing(from: GroundPoint, to: GroundPoint): number {
 
 /**
  * The curved arrow toward a destination, painted on the ground in the camera's frame: it starts `aheadM` ahead of the
- * tank along the camera's heading `viewYaw`, running that way, and bends on a circle of radius `radiusM` the shorter way
+ * tank along the camera's heading `viewYaw` and `besideM` toward the side it turns to, running along the heading, and bends on a circle of radius `radiusM` the shorter way
  * to the destination until its head points along the destination's bearing (at least TURN_MIN_SWEEP_DEG, at most a
  * U-turn). Its band is a fifth of its radius wide, so a smaller arrow keeps its shape.
  */
-export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, radiusM: number, aheadM: number): TurnArrow {
+export function turnArrow(tank: GroundPoint, viewYaw: number, to: GroundPoint, radiusM: number, aheadM: number, besideM = 0): TurnArrow {
   const off = turnFrom(viewYaw, bearing(tank, to));
   const turn: 1 | -1 = off >= 0 ? 1 : -1;
   const sweep = Math.min(Math.PI, Math.max(Math.abs(off), (TURN_MIN_SWEEP_DEG * Math.PI) / 180));
   const fx = Math.sin(viewYaw), fz = Math.cos(viewYaw);
   // the side the yaw turns toward: d(forward)/d(yaw) = (cos, -sin), times the way to turn
   const sx = turn * Math.cos(viewYaw), sz = -turn * Math.sin(viewYaw);
-  const cx = tank.x + fx * aheadM + sx * radiusM, cz = tank.z + fz * aheadM + sz * radiusM;
+  const cx = tank.x + fx * aheadM + sx * (besideM + radiusM), cz = tank.z + fz * aheadM + sz * (besideM + radiusM);
   // a point `r` from the bend's centre, `phi` along the bend (0 at the start, heading along the view)
   const at = (phi: number, r: number): GroundPoint => ({
     x: cx - sx * r * Math.cos(phi) + fx * r * Math.sin(phi), z: cz - sz * r * Math.cos(phi) + fz * r * Math.sin(phi),
@@ -196,10 +204,18 @@ export function onScreen(point: ScreenPoint | null, view: Viewport, inset = 0): 
   return !!point && !point.behind && point.x >= inset && point.x <= view.width - inset && point.y >= inset && point.y <= view.height - inset;
 }
 
+/** A screen point inside a box grown by `pad` px. */
+const inside = (p: { readonly x: number; readonly y: number }, b: ScreenBox, pad: number): boolean =>
+  p.x >= b.x0 - pad && p.x <= b.x1 + pad && p.y >= b.y0 - pad && p.y <= b.y1 + pad;
+/** Two boxes that meet, `a` grown by `pad` px. */
+const overlaps = (a: ScreenBox, b: ScreenBox, pad: number): boolean =>
+  a.x0 - pad <= b.x1 && a.x1 + pad >= b.x0 && a.y0 - pad <= b.y1 && a.y1 + pad >= b.y0;
+
 /**
  * The follow pointer for this frame, against the camera: the trail while the destination stands on the screen (only its
- * chevrons wholly on the screen), else the nearest and then largest turn arrow wholly on the screen whose head stands clear
- * of the HUD and the player's hull, else nothing. Never a piece cut by the screen's edge or the camera's plane.
+ * chevrons wholly on the screen and clear of the HUD), else the turn arrow largest on the screen (its band's diagonal)
+ * among those from every place (TURN_PLACES) and radius wholly on the screen, its band clear of the HUD and the hull and
+ * its head with TURN_HEAD_PAD_PX round it too, else nothing. Never a piece cut by the screen's edge, the camera's plane, a control or the hull's cut-out.
  */
 export function planFollow(input: FollowInput): FollowPlan {
   const follow = input.scoped ? null : input.follow;
@@ -220,22 +236,29 @@ export function planFollow(input: FollowInput): FollowPlan {
     if (follow.trail) {
       for (const chevron of trailChevrons(input.player, follow, follow.radiusM)) {
         const points = ground(chevron.outline);
-        if (points) chevrons.push({ index: chevron.index, points });
+        if (points && !points.some((p) => input.noCover.some((b) => inside(p, b, 0)))) chevrons.push({ index: chevron.index, points });
       }
     }
     return { chevrons, turn: null, inView: true };
   }
   const boxes = input.hull ? [...input.noCover, input.hull] : input.noCover;
-  for (const aheadM of TURN_AHEAD_M) {
+  let best: FollowPlan | null = null, bestSpan = 0;
+  for (const place of TURN_PLACES) {
     for (const radiusM of TURN_RADII_M) {
-      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, aheadM);
+      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, place.besideM);
       const band = ground(arrow.band), head = ground(arrow.head);
       if (!band || !head) continue;
-      if (head.some((p) => boxes.some((b) => p.x >= b.x0 && p.x <= b.x1 && p.y >= b.y0 && p.y <= b.y1))) continue;
-      return { chevrons: [], turn: { band, head, turn: arrow.turn, radiusM }, inView: false };
+      if (band.some((p) => boxes.some((b) => inside(p, b, 0)))) continue;
+      const headBox: ScreenBox = { x0: Math.min(...head.map((p) => p.x)), y0: Math.min(...head.map((p) => p.y)),
+        x1: Math.max(...head.map((p) => p.x)), y1: Math.max(...head.map((p) => p.y)) };
+      if (boxes.some((b) => overlaps(headBox, b, TURN_HEAD_PAD_PX))) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of band) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+      const span = Math.hypot(x1 - x0, y1 - y0);
+      if (span > bestSpan) { bestSpan = span; best = { chevrons: [], turn: { band, head, turn: arrow.turn, radiusM }, inView: false }; }
     }
   }
-  return NO_FOLLOW;
+  return best ?? NO_FOLLOW;
 }
 
 // ── warn: in the UI ───────────────────────────────────────────────────────────────────────────────────────────────────

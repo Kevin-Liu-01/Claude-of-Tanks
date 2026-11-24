@@ -26,7 +26,7 @@ import {
   droneWarnings, missileWarnings, objectiveIndicators, strikeWarnings, tankWarnings, type RimBoss, type ScreenBox, type ScreenPoint,
   type WarnAircraft, type WarnDrone, type WarnMissile, type WarnPointer, type WarnStrike, type WarnTank, type WorldPoint,
 } from './pointerPlan.ts';
-import { GUIDANCE_CARD, GUIDANCE_CONTROLS, GUIDANCE_HARD } from '../battleHudLayout.ts';
+import { GUIDANCE_CARD, GUIDANCE_CONTROLS, GUIDANCE_HARD, TOUCH_NOTICE_OBSTACLES } from '../battleHudLayout.ts';
 
 /** A hull as the HUD's frame carries it (hud.ts HudTank): the fields the sources read. */
 interface PointerTank {
@@ -69,10 +69,12 @@ interface BattlePointers {
   destroy(): void;
 }
 
-/** What a bubble never covers: the guidance's instruments and controls (battleHudLayout.ts, the classes the tutorial's card
- *  and the toasts keep off), the map, the tutorial's card and the battle's notices. Measured again at most every
- *  NO_COVER_MS, or at once on the HUD's relayout. */
-const NO_COVER = `${GUIDANCE_HARD},${GUIDANCE_CONTROLS},${GUIDANCE_CARD},.cot-minimap,.cot-battle-notices`;
+/** What a bubble or the turn arrow never covers: the guidance's instruments and controls (battleHudLayout.ts, the classes
+ *  the tutorial's card and the toasts keep off, the touch clusters and the controls a view brings, hudViewControls.ts),
+ *  what a touch layout's notices keep off (TOUCH_NOTICE_OBSTACLES), the map, the tutorial's card and the battle's notices:
+ *  the same live boxes the notice planners read, never a list of their own. Measured again at most every NO_COVER_MS, or
+ *  at once on the HUD's relayout. */
+const NO_COVER = `${GUIDANCE_HARD},${GUIDANCE_CONTROLS},${TOUCH_NOTICE_OBSTACLES},${GUIDANCE_CARD},.cot-minimap,.cot-battle-notices`;
 const NO_COVER_MS = 500;
 /** The hull box when a spec gives no measures (m): about a main battle tank's. */
 const HULL_FALLBACK = Object.freeze({ hullLengthM: 7, widthM: 3.6, heightM: 2.6 });

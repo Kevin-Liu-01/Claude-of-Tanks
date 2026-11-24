@@ -6,14 +6,15 @@
 // degrees and the trail ran from the tank toward the destination whatever the view, so with the turret aimed aside both
 // were laid where the chase camera's narrow side field (about 15 degrees each way on a portrait phone) could not hold them,
 // and the screen's edge cut them. Holds:
-//  1. the sweep: the chase camera's own pose (engine/chaseFraming.ts) round a tank, the turret at every 5 degrees, on a
-//     desktop window and a phone held both ways, for a waypoint ahead, one behind and aside, and a thing to look at: no
-//     piece the plan draws is cut by the screen's edge or the camera's plane; while the destination is off the screen the
-//     turn arrow shows, turns the shorter way, and its head stands clear of the HUD and the hull; while it is on the
-//     screen and far, the trail shows; the negative control: the same checker finds the cut pieces the old geometry laid
-//     (the trail toward a destination aside, the old 7 m ring on a phone); the sweep runs for the nominal hull and a tall
-//     one (3 m), whose box on the screen stands over all the ground to 18 m ahead: the arrows that started no farther left
-//     the battle's own case (a marker 90 m aside) with none at all, and the control shows it;
+//  1. the sweep: the battle's own camera (engine/chaseFraming.ts solveChaseFraming over each supported layout's recorded
+//     HUD: its distance, pivot and lens shift) round a nominal, a tall and a long hull, the turret at every 5 degrees, for
+//     a waypoint ahead, one behind and aside, a thing to look at and the battle's own case (a marker 90 m aside): no piece
+//     is cut by the screen's edge or the camera's plane or lies under the HUD; while the destination is off the screen the
+//     turn arrow shows, turns the shorter way, and its band and its padded head stand clear of the HUD and the hull, often
+//     beside the hull; while it is on the screen and far, the trail shows. The negative controls: the same checks find
+//     what the old geometry and the battle's stills showed (the trail toward a destination aside cut, the old 7 m ring cut
+//     on a phone, the old rule's arrow ahead of a tall hull a sliver on a desktop beside the plan's, a head in a gap
+//     between buttons passing a test of its corners alone);
 //  2. the sources: only the tutorial posts a follow pointer (pointerBoard.ts setGuideFollow is called from
 //     src/ui/tutorial/ alone; the HUD's follow is the board's, and the kinds are the tutorial's two); the negative control:
 //     the scan flags a call from anywhere else.
@@ -22,53 +23,64 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PerspectiveCamera, Vector3 } from 'three';
+import { CHASE_PITCH_RAD, chaseTankFromDims, NOMINAL_CHASE_TANK, solveChaseFraming } from '../../engine/chaseFraming.ts';
 import {
-  CHASE_BASE_DISTANCE_M, CHASE_BASE_PIVOT_M, CHASE_CAMERA_DEFAULTS, CHASE_PITCH_RAD, NOMINAL_CHASE_TANK,
-} from '../../engine/chaseFraming.ts';
-import { bearing, onScreen, planFollow, trailChevrons, TURN_AHEAD_M, TURN_RADII_M, turnArrow } from './pointerPlan.ts';
+  bearing, onScreen, planFollow, trailChevrons, TURN_HEAD_PAD_PX, TURN_PLACES, TURN_RADII_M, turnArrow,
+} from './pointerPlan.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(resolve(ROOT, path), 'utf8');
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// 1. The sweep.
-const VIEWS = { desktop: { width: 1280, height: 720 }, phone: { width: 390, height: 844 }, phoneWide: { width: 844, height: 390 } };
+// 1. The sweep: the battle's own camera. Each supported layout's recorded HUD (tools/fixtures/hud-chase-bands.json, the
+// bands chaseFraming.selftest.mjs frames over) frames the chase as the rig does (solveChaseFraming: its distance, its
+// pivot, its lens shift), and its boxes are what the arrow keeps off (the controls, the map, the instruments, the head band).
+const RECORDED = JSON.parse(read('tools/fixtures/hud-chase-bands.json'));
+const LAYOUTS = ['1920x1080', '1280x720', '390x844', '844x390'];
+// a main battle tank, a tall one and a long one (chaseFraming.selftest.mjs's)
+const TANKS = {
+  nominal: NOMINAL_CHASE_TANK,
+  tall: chaseTankFromDims({ heightM: 3.2, widthM: 3.5, hullLengthM: 7.0 }),
+  long: chaseTankFromDims({ heightM: 2.6, widthM: 3.8, hullLengthM: 9.2 }, -0.6),
+};
 const tank = { x: 0, z: 0 };
 const flat = () => 0;
-/** The chase camera with the turret at `yaw` (the hull faces +z): CHASE_BASE_DISTANCE_M back, CHASE_PITCH_RAD down, the
- *  default lens, looking at its pivot over the turret roof. */
-function chase(yaw, view) {
-  const camera = new PerspectiveCamera(CHASE_CAMERA_DEFAULTS.cameraFov, view.width / view.height, 0.1, 5000);
+/** The chase camera framed for `bands` and `hull` with the turret at `yaw` (the hull faces +z): the framing's distance
+ *  back from its pivot over the roof at CHASE_PITCH_RAD, its lens raised by the framing's shift (as cameraRig.ts applyLens
+ *  writes it). Returns the projector. */
+function chase(yaw, bands, hull) {
+  const view = { width: bands.width, height: bands.height };
+  const f = solveChaseFraming(view.width, view.height, bands, null, hull);
+  const camera = new PerspectiveCamera(f.fovDeg, view.width / view.height, 0.1, 5000);
   const dir = new Vector3(Math.sin(yaw) * Math.cos(CHASE_PITCH_RAD), Math.sin(CHASE_PITCH_RAD), Math.cos(yaw) * Math.cos(CHASE_PITCH_RAD));
-  const pivot = new Vector3(tank.x, NOMINAL_CHASE_TANK.heightM + CHASE_BASE_PIVOT_M, tank.z);
-  camera.position.copy(pivot).addScaledVector(dir, -CHASE_BASE_DISTANCE_M);
-  camera.lookAt(pivot);
-  camera.updateMatrixWorld();
+  camera.position.set(0, hull.heightM + f.pivotAboveM, 0).addScaledVector(dir, -f.distanceM);
+  camera.lookAt(camera.position.clone().add(dir));
+  if (f.shift) camera.view = { enabled: true, fullWidth: 1, fullHeight: 1, offsetX: 0, offsetY: f.shift, width: 1, height: 1 };
   camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
   const v = new Vector3();
   return (p) => {
     v.set(p.x, p.y, p.z).project(camera);
     return { x: ((v.x + 1) / 2) * view.width, y: ((1 - v.y) / 2) * view.height, behind: v.z > 1 };
   };
 }
-/** The hulls the sweep runs for (m): the nominal one and a tall one (a casemate, a hull on a high suspension). */
-const HULLS = { nominal: { lengthM: 7.2, widthM: 3.7, heightM: NOMINAL_CHASE_TANK.heightM }, tall: { lengthM: 8, widthM: 3.8, heightM: 3 } };
-/** The hull's eight corners on the screen, as battlePointers.ts hullBox projects them. */
-function hullCorners(project, hull) {
-  const corners = [];
-  for (const along of [-hull.lengthM / 2, hull.lengthM / 2]) for (const across of [-hull.widthM / 2, hull.widthM / 2]) {
-    for (const up of [0, hull.heightM]) corners.push(project({ x: across, y: up, z: along }));
+/** The hull's box on the screen, as battlePointers.ts hullBox projects it (and the paint's cut-out masks). */
+function hullBox(project, hull) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const along of [-hull.rearM, hull.frontM]) for (const across of [-hull.widthM / 2, hull.widthM / 2]) for (const up of [0, hull.heightM]) {
+    const at = project({ x: across, y: up, z: along });
+    x0 = Math.min(x0, at.x); y0 = Math.min(y0, at.y); x1 = Math.max(x1, at.x); y1 = Math.max(y1, at.y);
   }
-  return corners;
+  return { x0, y0, x1, y1 };
 }
-/** Their box on the screen (battlePointers.ts hullBox). */
-function boxOf(points) {
-  return { x0: Math.min(...points.map((p) => p.x)), y0: Math.min(...points.map((p) => p.y)),
-    x1: Math.max(...points.map((p) => p.x)), y1: Math.max(...points.map((p) => p.y)) };
-}
+/** The recorded HUD's boxes: its controls, map and instruments, and the head band. */
+const hudBoxes = (bands) => [...bands.floor, { x0: 0, y0: 0, x1: bands.width, y1: bands.ceiling }];
 /** The pieces cut by the screen's edge or the camera's plane: each a list of screen points. */
 const cut = (pieces, view) => pieces.filter((points) => points.some((p) => !onScreen(p, view)));
-const inBox = (p, b) => p.x >= b.x0 && p.x <= b.x1 && p.y >= b.y0 && p.y <= b.y1;
+const inBox = (p, b, pad = 0) => p.x >= b.x0 - pad && p.x <= b.x1 + pad && p.y >= b.y0 - pad && p.y <= b.y1 + pad;
+const boxAround = (points) => ({ x0: Math.min(...points.map((p) => p.x)), y0: Math.min(...points.map((p) => p.y)),
+  x1: Math.max(...points.map((p) => p.x)), y1: Math.max(...points.map((p) => p.y)) });
+const meets = (a, b, pad) => a.x0 - pad <= b.x1 && a.x1 + pad >= b.x0 && a.y0 - pad <= b.y1 && a.y1 + pad >= b.y0;
 
 const destinations = [
   { id: 'ahead', kind: 'waypoint', x: 0, z: 60, radiusM: 8, trail: true },
@@ -77,29 +89,31 @@ const destinations = [
   // the battle's own case (tools/tutorial-guide.browser.mjs 'aside'): 90 m to the side
   { id: 'aside', kind: 'waypoint', x: 90, z: 0, radiusM: 6, trail: true },
 ];
-let frames = 0, turns = 0, trails = 0;
-for (const [hullName, hullSize] of Object.entries(HULLS)) for (const [name, view] of Object.entries(VIEWS)) {
-  // the HUD's bottom band (the controls, the rack) and the map's corner, which a head never covers
-  const noCover = [{ x0: 0, y0: view.height * 0.84, x1: view.width, y1: view.height }, { x0: view.width - 160, y0: 0, x1: view.width, y1: 160 }];
+let frames = 0, turns = 0, trails = 0, beside = 0;
+for (const layout of LAYOUTS) for (const [hullName, hullSize] of Object.entries(TANKS)) {
+  const bands = RECORDED.sizes[layout].idle, view = { width: bands.width, height: bands.height }, noCover = hudBoxes(bands);
   for (const follow of destinations) {
     for (let deg = 0; deg < 360; deg += 5) {
       const viewYaw = (deg * Math.PI) / 180;
-      const project = chase(viewYaw, view);
-      const hull = boxOf(hullCorners(project, hullSize));
+      const project = chase(viewYaw, bands, hullSize);
+      const hull = hullBox(project, hullSize);
       const plan = planFollow({ follow, player: tank, viewYaw, scoped: false, project, view, groundY: flat, noCover, hull });
-      const where = `${hullName} hull, ${name} ${follow.id} turret ${deg}°`;
+      const where = `${layout} ${hullName} hull, ${follow.id} turret ${deg}°`;
       frames++;
       const pieces = [...plan.chevrons.map((c) => c.points), ...(plan.turn ? [plan.turn.band, plan.turn.head] : [])];
       assert.deepEqual(cut(pieces, view), [], `${where}: no piece is cut by the screen's edge or the camera's plane`);
+      for (const c of plan.chevrons) assert.ok(!c.points.some((p) => noCover.some((b) => inBox(p, b))), `${where}: no chevron under the HUD`);
       if (!plan.inView) {
         assert.ok(plan.turn, `${where}: the destination is off the screen, so the turn arrow shows`);
         assert.equal(plan.chevrons.length, 0, `${where}: no trail while it is off the screen`);
         const off = wrap(bearing(tank, follow) - viewYaw);
         assert.equal(plan.turn.turn, off >= 0 ? 1 : -1, `${where}: it turns the shorter way`);
-        for (const p of plan.turn.head) {
-          assert.ok(![...noCover, hull].some((b) => inBox(p, b)), `${where}: its head stands clear of the HUD and the hull`);
-        }
+        assert.ok(!plan.turn.band.some((p) => [...noCover, hull].some((b) => inBox(p, b))), `${where}: its band stands clear of the HUD and the hull`);
+        const head = boxAround(plan.turn.head);
+        assert.ok(![...noCover, hull].some((b) => meets(head, b, TURN_HEAD_PAD_PX)), `${where}: its head stands clear of the HUD and the hull`);
         turns++;
+        // beside the hull: its start stands to the hull's side on the screen
+        if (plan.turn.band[0].x < hull.x0 || plan.turn.band[0].x > hull.x1) beside++;
       } else {
         assert.equal(plan.turn, null, `${where}: no turn arrow while the destination is on the screen`);
         if (follow.trail && deg === 0 && follow.id === 'ahead') assert.ok(plan.chevrons.length >= 3, `${where}: the trail shows`);
@@ -108,42 +122,61 @@ for (const [hullName, hullSize] of Object.entries(HULLS)) for (const [name, view
     }
   }
 }
-assert.ok(turns > 100 && trails > 10, `the sweep saw both pieces (${turns} turn arrows, ${trails} trails)`);
+assert.ok(turns > 300 && trails > 20 && beside > turns / 4,
+  `the sweep saw both pieces (${turns} turn arrows, ${beside} beside the hull, ${trails} trails)`);
 // the sight stands it down
 {
-  const view = VIEWS.desktop, project = chase(0, view);
+  const bands = RECORDED.sizes['1920x1080'].idle, view = { width: bands.width, height: bands.height }, project = chase(0, bands, TANKS.nominal);
   const plan = planFollow({ follow: destinations[0], player: tank, viewYaw: 0, scoped: true, project, view, groundY: flat, noCover: [], hull: null });
   assert.equal(plan.chevrons.length + (plan.turn ? 1 : 0), 0, 'the sight up: no follow pointer');
 }
-// the negative control: the same checker sees the cut pieces the old geometry laid
+// the negative controls: the same checks find what the battle's stills found
 {
-  const view = VIEWS.desktop, viewYaw = Math.PI / 2, project = chase(viewYaw, view);
-  const lifted = (outline) => outline.map((p) => project({ x: p.x, y: 0.12, z: p.z }));
+  const desk = RECORDED.sizes['1280x720'].idle, deskView = { width: desk.width, height: desk.height };
+  const viewYaw = Math.PI / 2, project = chase(viewYaw, desk, TANKS.nominal);
+  const lifted = (outline, at = project) => outline.map((p) => at({ x: p.x, y: 0.12, z: p.z }));
   const raw = trailChevrons(tank, destinations[0], destinations[0].radiusM).map((c) => lifted(c.outline));
-  assert.ok(cut(raw, view).length >= 3, 'control: the whole trail toward a destination aside is cut, so the checker can see it');
-  const phone = VIEWS.phone, phoneProject = chase(viewYaw, phone);
+  assert.ok(cut(raw, deskView).length >= 3, 'control: the whole trail toward a destination aside is cut, so the checker can see it');
+  const phone = RECORDED.sizes['390x844'].idle, phoneView = { width: phone.width, height: phone.height };
+  const phoneProject = chase(viewYaw, phone, TANKS.nominal);
   const ring = [];
   for (let i = 0; i <= 14; i++) {
     const a = viewYaw - (20 + (130 * i) / 14) * (Math.PI / 180);
     ring.push(phoneProject({ x: Math.sin(a) * 7, y: 0.12, z: Math.cos(a) * 7 }));
   }
-  assert.equal(cut([ring], phone).length, 1, 'control: the old 7 m ring round the tank is cut on a phone with the turret aside');
+  assert.equal(cut([ring], phoneView).length, 1, 'control: the old 7 m ring round the tank is cut on a phone with the turret aside');
   const big = turnArrow(tank, viewYaw, destinations[0], 24, 10);
-  assert.ok(cut([big.band, big.head].map((piece) => piece.map((p) => phoneProject({ x: p.x, y: 0.12, z: p.z }))), phone).length >= 1,
+  assert.ok(cut([big.band, big.head].map((piece) => lifted(piece, phoneProject)), phoneView).length >= 1,
     'control: an arrow too large for the view is cut, so the plan must size it down');
-}
-// the negative control for the hull: behind the tall hull every head of an arrow starting 10, 14 or 18 m ahead for a
-// marker 90 m aside stands in its box (so the battle drew none); the plan's arrow starts farther and stands clear
-{
-  const view = VIEWS.desktop, project = chase(0, view), hull = boxOf(hullCorners(project, HULLS.tall));
+  // a marker aside, on each layout: the plan keeps the largest arrow that fits, never smaller than the first arrow ahead
+  // of the hull that fits (the old rule's pick); on a desktop that one is the battle stills' sliver, well under the size
+  // of the plan's beside the hull
   const aside = destinations.find((d) => d.id === 'aside');
-  const heads = [10, 14, 18].flatMap((aheadM) => TURN_RADII_M.map((radiusM) => turnArrow(tank, 0, aside, radiusM, aheadM).head
-    .map((p) => project({ x: p.x, y: 0.12, z: p.z }))));
-  assert.ok(heads.every((head) => head.some((p) => inBox(p, hull))), 'control: the tall hull covers every head of the arrows to 18 m');
-  const noCover = [{ x0: 0, y0: view.height * 0.84, x1: view.width, y1: view.height }];
-  const plan = planFollow({ follow: aside, player: tank, viewYaw: 0, scoped: false, project, view, groundY: flat, noCover, hull });
-  assert.ok(plan.turn && plan.turn.head.every((p) => !inBox(p, hull)), 'the plan\'s arrow starts farther, clear of it');
-  assert.ok(TURN_AHEAD_M.some((m) => m > 18), 'the plan tries starts past 18 m');
+  for (const layout of LAYOUTS) {
+    const bands = RECORDED.sizes[layout].idle, view = { width: bands.width, height: bands.height }, front = chase(0, bands, TANKS.tall);
+    const hull = hullBox(front, TANKS.tall), boxes = [...hudBoxes(bands), hull];
+    const fits = (arrow) => {
+      const band = lifted(arrow.band, front), head = lifted(arrow.head, front);
+      return !cut([band, head], view).length && !band.some((p) => boxes.some((b) => inBox(p, b)))
+        && !boxes.some((b) => meets(boxAround(head), b, TURN_HEAD_PAD_PX)) ? band : null;
+    };
+    const span = (points) => { const b = boxAround(points); return Math.hypot(b.x1 - b.x0, b.y1 - b.y0); };
+    let ahead = null;
+    for (const p of TURN_PLACES.filter((q) => !q.besideM)) for (const r of TURN_RADII_M) ahead ??= fits(turnArrow(tank, 0, aside, r, p.aheadM));
+    const plan = planFollow({ follow: aside, player: tank, viewYaw: 0, scoped: false, project: front, view, groundY: flat, noCover: hudBoxes(bands), hull });
+    assert.ok(plan.turn, `${layout}: a marker aside gets its arrow`);
+    assert.ok(!ahead || span(ahead) <= span(plan.turn.band) + 1e-6, `${layout}: the plan's arrow is the larger`);
+    if (bands.touch === false) {
+      assert.ok(plan.turn.band[0].x < hull.x0 || plan.turn.band[0].x > hull.x1, `${layout}: on a desktop it lies beside the hull`);
+      assert.ok(ahead && span(ahead) < span(plan.turn.band) * 0.7,
+        `control, ${layout}: the old rule's arrow ahead is a sliver (${ahead ? span(ahead).toFixed(0) : '-'} px against ${span(plan.turn.band).toFixed(0)} px)`);
+    }
+  }
+  // a head whose corners sit in the gap between two buttons: the corners alone pass, the padded box does not
+  const gapHead = [{ x: 100, y: 100 }, { x: 104, y: 96 }, { x: 108, y: 100 }];
+  const buttons = [{ x0: 80, y0: 60, x1: 130, y1: 94 }, { x0: 80, y0: 102, x1: 130, y1: 140 }];
+  assert.ok(!gapHead.some((p) => buttons.some((b) => inBox(p, b))) && buttons.some((b) => meets(boxAround(gapHead), b, TURN_HEAD_PAD_PX)),
+    'control: a head in a gap between buttons passes a corner test and fails the padded one');
 }
 
 // 2. The sources: the tutorial's alone.
@@ -171,4 +204,4 @@ assert.deepEqual(strayPosters([['src/ui/hud.ts', "setGuideFollow({ id: 'zone', k
   assert.match(hud, /const follow = guideFollow\(\);/, 'the HUD\'s follow pointer is the board\'s');
 }
 
-console.log(`pointerFollowView.selftest: ${frames} frames on 3 screens for 2 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);
+console.log(`pointerFollowView.selftest: ${frames} frames on 4 recorded layouts for 3 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);
