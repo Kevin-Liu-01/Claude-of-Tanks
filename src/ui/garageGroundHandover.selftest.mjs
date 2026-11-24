@@ -6,7 +6,10 @@
 //    terrain (the recipe's surface, the switch's first frame) and the horizon in its own colours;
 // 2. the battle ground then swaps in: the terrain and the horizon's landform group wear the battle material, which
 //    reads the patch in the map's frame (its mapOrigin follows the pack);
-// 3. a pack disposed before its battle ground lands releases the ground it never wore (no hold left behind).
+// 3. a pack disposed before its battle ground lands releases the ground it never wore (no hold left behind);
+// 4. (Kevin 2026-11-24, option A) the mode follows the battle's device tier: Node waits, a desktop page hands over, a
+//    mobile-tier page keeps the Garage's ground; only a handover starts the ground's photographed layers' fetch;
+// 5. a 'library' pack keeps the Garage's ground and its map's battle ground is never prepared.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
@@ -39,8 +42,32 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
   const early = buildGarageEnvironment({}, assets, variant, () => {});
   early.dispose();
   await new Promise((resolve) => setTimeout(resolve, 50));
+  // 4.
+  const { resolveGarageBattleGroundMode, startGarageTerrainSources, garageTerrainSurfaceCache } = await import('./garageBattleStructures.ts');
+  assert.equal(resolveGarageBattleGroundMode(false, 'desktop'), 'wait', 'Node waits');
+  assert.equal(resolveGarageBattleGroundMode(false, 'mobile'), 'wait', 'Node waits on any tier');
+  assert.equal(resolveGarageBattleGroundMode(true, 'desktop'), 'handover', 'a desktop page hands over');
+  assert.equal(resolveGarageBattleGroundMode(true, 'mobile'), 'library', 'a mobile-tier page keeps the Garage\'s ground');
+  let fetches = 0;
+  const spy = () => { fetches += 1; return { ready: Promise.resolve(), tryCreateLayer: () => null, apply: async () => [], cancel() {} }; };
+  assert.equal(startGarageTerrainSources('winter', 'library', spy), false, 'a library pack starts no ground fetch');
+  assert.equal(startGarageTerrainSources('winter', 'wait', spy), false, 'a waiting pack starts no ground fetch');
+  assert.equal(fetches, 0, 'nothing fetched outside a handover');
+  assert.equal(startGarageTerrainSources('winter', 'handover', spy), true, 'a handover starts its ground\'s fetch');
+  assert.equal(fetches, 1, 'once');
+  // 5.
+  const phone = GARAGE_VARIANTS.find((entry) => entry.mapId === 'desert');
+  await prepareGarageEnvironmentAssets(assets, phone, () => true, 'library');
+  const phoneBuild = buildGarageEnvironment({}, assets, phone, () => {});
+  const phoneTerrain = phoneBuild.root.getObjectByName('map_derived_terrain_patch');
+  const phoneGround = phoneTerrain.material;
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(phoneTerrain.material, phoneGround, 'a library pack keeps the Garage\'s ground');
+  assert.ok(!garageTerrainSurfaceCache().some((entry) => entry.mapId === 'desert'), 'its map\'s battle ground is never prepared');
+  phoneBuild.dispose();
   assets.dispose();
   console.log('garageGroundHandover.selftest: a page\'s pack presents on the Garage\'s ground, the battle ground and the '
-    + 'horizon\'s landforms swap in where it lands, a disposed pack holds none PASS');
+    + 'horizon\'s landforms swap in where it lands, a disposed pack holds none; the mode follows the battle\'s tier, only a '
+    + 'handover fetches the ground, a mobile-tier pack keeps the Garage\'s ground and prepares no battle ground PASS');
 }
 process.exit(0);

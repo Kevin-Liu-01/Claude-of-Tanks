@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { getDeviceTier } from '../engine/quality.ts';
 import {
   createTerrainSurfaceMaterialSteps, type TerrainMapConfig, type TerrainSourceCheckpoint, type TerrainSurfaceMaterial,
 } from '../world/terrain.ts';
@@ -60,15 +61,45 @@ export function startGarageSurfacePaints(mapId: string): void {
   }
   // (D, 2026-11-24) and its ground's photographed layers start loading and decoding in the worker now, beside the
   // pack's other slices, as a battle entry starts them with its world build (taken by the ground material's prepare)
-  if (!terrainSources.has(mapId) && !terrainCache.has(mapId)) {
-    const terrainCfg = getMapConfig(mapId) as unknown as TerrainMapConfig;
-    terrainSources.set(mapId, prepareSourcedTerrain(mapId, terrainCfg.splat ?? {}, { worker: true }));
-    while (terrainSources.size > 2) {
-      const [oldest, sources] = terrainSources.entries().next().value!;
-      sources.cancel();
-      terrainSources.delete(oldest);
-    }
+  startGarageTerrainSources(mapId, resolveGarageBattleGroundMode());
+}
+
+/**
+ * (garage-env-276; Kevin 2026-11-24, option A) How a pack comes by its map's battle ground:
+ * - 'wait': the prepare takes it whole (Node: its layers are painted, nothing is fetched);
+ * - 'handover': the pack presents on the Garage library's ground and the battle ground, its photographed layers fetched
+ *   and decoded off the switch's path, fades in where it lands (a desktop page);
+ * - 'library': the pack keeps the Garage library's ground and the Garage never fetches the battle ground (a page on the
+ *   battle's mobile tier: its photographed sets are the same 1K downloads as desktop's, 2-16 MB a map).
+ * The tier is the battle's own (engine/quality.ts getDeviceTier), never the viewport.
+ */
+export type GarageBattleGroundMode = 'wait' | 'handover' | 'library';
+export function resolveGarageBattleGroundMode(
+  page: boolean = typeof document !== 'undefined',
+  tier: ReturnType<typeof getDeviceTier> = getDeviceTier(),
+): GarageBattleGroundMode {
+  if (!page) return 'wait';
+  return tier === 'mobile' ? 'library' : 'handover';
+}
+
+/**
+ * A map's ground layers start loading and decoding ahead of its ground material's prepare, only where the pack hands its
+ * ground over (a 'library' or 'wait' pack fetches nothing). `prepare` is the receipts' seam. Returns whether it started.
+ */
+export function startGarageTerrainSources(
+  mapId: string,
+  mode: GarageBattleGroundMode,
+  prepare: typeof prepareSourcedTerrain = prepareSourcedTerrain,
+): boolean {
+  if (mode !== 'handover' || terrainSources.has(mapId) || terrainCache.has(mapId)) return false;
+  const terrainCfg = getMapConfig(mapId) as unknown as TerrainMapConfig;
+  terrainSources.set(mapId, prepare(mapId, terrainCfg.splat ?? {}, { worker: true }));
+  while (terrainSources.size > 2) {
+    const [oldest, sources] = terrainSources.entries().next().value!;
+    sources.cancel();
+    terrainSources.delete(oldest);
   }
+  return true;
 }
 /** A map's ground layers started ahead (startGarageSurfacePaints), until its ground material's build takes them. */
 const terrainSources = new Map<string, TerrainSourcePreparation>();

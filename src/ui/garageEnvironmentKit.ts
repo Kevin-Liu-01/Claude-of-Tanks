@@ -21,7 +21,8 @@ import { createGarageTreeKit, createGroundTufts } from '../world/vegetation.ts';
 import {
   buildGarageStructureSteps, garageDrawnKinds, holdGarageStructureSurfacesNow, holdGarageTerrainSurfaceNow,
   loadGarageMapStructures, prepareGarageStructureSurfaces, prepareGarageTerrainSurface,
-  releaseGarageStructureSurfaces, releaseGarageTerrainSurface, resolveGarageMapStructures, startGarageSurfacePaints,
+  releaseGarageStructureSurfaces, releaseGarageTerrainSurface, resolveGarageBattleGroundMode, resolveGarageMapStructures,
+  startGarageSurfacePaints, type GarageBattleGroundMode,
   type GarageTerrainSurface, withHeadlessCanvas,
   type GarageMapStructures, type GarageStructureSurfaces,
 } from './garageBattleStructures.ts';
@@ -1551,6 +1552,8 @@ interface PreparedGarageStructures {
   readonly terrain: GarageTerrainSurface | null;
   /** (garage-env-276, the cold first visit) a page's battle ground, still preparing off the switch's path. */
   readonly terrainPending: Promise<GarageTerrainSurface | null> | null;
+  /** How it came by its battle ground ('library': none, the Garage's ground alone). */
+  readonly groundMode: GarageBattleGroundMode;
   /** The map's set pieces on the horizon ring, in their buckets (garageHorizonSetPieces.ts). */
   readonly horizon: { readonly buckets: GeometryBuckets; readonly pieces: readonly GarageHorizonSetPiece[] };
 }
@@ -2043,8 +2046,10 @@ export function buildGarageEnvironment(
   // recipe's surface, warmed on the picker's intent) while its battle ground prepares, and wears the battle ground the
   // moment it lands (wearBattleGround below); Node and an already painted map wear it from the bake
   const pendingTerrain = prepared?.terrainPending ?? null;
+  // ('library': a phone keeps the Garage's ground, the battle ground neither waited for nor held)
   let terrainSurface: GarageTerrainSurface | null = prepared?.terrain
-    ?? (pendingTerrain ? null : holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4))));
+    ?? (pendingTerrain || prepared?.groundMode === 'library' || (!prepared && resolveGarageBattleGroundMode() === 'library')
+      ? null : holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4))));
   const terrain = new THREE.Mesh(terrainGeometry, terrainSurface?.material ?? texturedMaterial(recipe.terrainSurface, {
     color: recipe.terrainTint, roughness: rainSoaked ? 0.8 : 0.94, metalness: 0,
   }));
@@ -3388,12 +3393,8 @@ export async function prepareGarageEnvironmentAssets(
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   stillWanted: () => boolean = () => true,
-  /**
-   * (garage-env-276, the cold first visit) 'handover': the pack presents on the Garage's own ground and its battle
-   * ground swaps in where it lands (a page: its photographed layers download and decode); 'wait': the prepare takes the
-   * battle ground whole (Node, where the layers are painted).
-   */
-  battleGround: GarageBattleGroundMode = typeof document === 'undefined' ? 'wait' : 'handover',
+  /** (garage-env-276) how the pack comes by its battle ground (garageBattleStructures.ts resolveGarageBattleGroundMode). */
+  battleGround: GarageBattleGroundMode = resolveGarageBattleGroundMode(),
 ): Promise<boolean> {
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
@@ -3424,7 +3425,6 @@ export async function prepareGarageEnvironmentAssets(
   return prepareGarageStructures(variant, recipe, assets.anisotropy ?? 4, stillWanted, slicer, battleGround);
 }
 
-export type GarageBattleGroundMode = 'wait' | 'handover';
 
 /** The Garage's ground fading into the battle's where it lands (buildGarageEnvironment fadeOutOver). */
 const GARAGE_GROUND_HANDOVER_MS = 400;
@@ -3519,12 +3519,13 @@ async function buildPreparedStructures(
   // wait.) A page's switch never waits on it: the pack presents on the Garage's own ground and the battle ground swaps
   // in where it lands (buildGarageEnvironment). It prepares in the background, its own slicer, wanted while the map's
   // cache keeps it; Node (the receipts) takes it whole, as before (prepareGarageEnvironmentAssets' battleGround).
+  // ('library', a phone: the Garage's ground alone, the battle ground never prepared nor fetched)
   const handover = battleGround === 'handover';
-  const terrainTask = prepareGarageTerrainSurface(map, anisotropy, handover ? () => true : wanted,
-    handover ? createGarageSlicer() : slicer);
+  const terrainTask = battleGround === 'library' ? null : prepareGarageTerrainSurface(map, anisotropy,
+    handover ? () => true : wanted, handover ? createGarageSlicer() : slicer);
   let terrain: GarageTerrainSurface | null = null;
   let terrainPending: Promise<GarageTerrainSurface | null> | null = null;
-  if (!handover) {
+  if (battleGround === 'wait' && terrainTask) {
     terrain = await terrainTask;
     if (!terrain) {
       releaseGarageStructureSurfaces(surfaces);
@@ -3533,9 +3534,11 @@ async function buildPreparedStructures(
       return false;
     }
   } else terrainPending = terrainTask;
+  const groundMode = battleGround;
   disposePreparedStructures(variant.id);
   preparedStructures.set(variant.id, {
-    records, rngDraws, backdrop, map, surfaces, terrain, terrainPending, horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
+    records, rngDraws, backdrop, map, surfaces, terrain, terrainPending, groundMode,
+    horizon: { buckets: horizonBuckets, pieces: horizonStep.value },
   });
   return true;
 }
