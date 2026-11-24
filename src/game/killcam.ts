@@ -602,6 +602,8 @@ interface PlaybackBundle {
   /** (death-flow-275) the quick cam inside a respawn wait: the shot and its impact, no x-ray, out by `quickEndWallMs`. */
   quick: boolean;
   quickEndWallMs: number;
+  /** (killcam-first-frame-276) No frame has been presented yet: the first update shows begin()'s pose, advancing nothing. */
+  unpresented: boolean;
   impactAng0: number;
   exitWallMs?: number;
 }
@@ -2136,6 +2138,9 @@ export function createKillCam(deps: KillcamDeps) {
      */
     update(dt: number) {
       if (!active || !pb || staged) return;
+      // (killcam-first-frame-276) the replay's first presented frame is its first shot exactly as begin() posed it: the
+      // frame that started it advances nothing (its dt was the live frame's)
+      if (pb.unpresented) { pb.unpresented = false; dt = 0; }
       // the quick cam's wall-clock cap (death-flow-275): out before the revive, wherever the replay stands
       if (pb.quick && pb.phase !== 'exit' && performance.now() >= pb.quickEndWallMs) {
         beginExit();
@@ -2159,6 +2164,7 @@ export function createKillCam(deps: KillcamDeps) {
       }
       // 'exit': the closing letterbox + fade own the screen — camera holds
       // its last x-ray pose; wall-clock timers drive the handover (beginExit)
+      if (active && pb) holdShotHulls();
     },
 
     /** Debug/testing introspection. */
@@ -2452,6 +2458,7 @@ export function createKillCam(deps: KillcamDeps) {
       isFinale: false,
       quick: false,
       quickEndWallMs: 0,
+      unpresented: true,
       impactAng0: 0,
     };
     bundle.group.name = 'killcam';
@@ -2876,6 +2883,26 @@ export function createKillCam(deps: KillcamDeps) {
     if (vis.setVisible) vis.setVisible(true);
     vis.syncFromState(pb.attackerPoseState, Math.max(0, dt));
     if (vis.root) vis.root.updateMatrixWorld(true);
+  }
+
+  /**
+   * (killcam-first-frame-276) Every frame of a projectile replay's shot, from its first frame through its hit, shows both
+   * hulls at their recorded poses: the killer on its firing pose, the victim where it stood before the hit. The replay
+   * owns their presentation (battleFrameRuntime.ts gives it the frame that started it), so nothing live repaints them;
+   * this holds the rule on every frame rather than only at the beats that restage (the approach, the firing, the hit),
+   * so the hit has nothing to snap back. The live wreck hold ('wreck') shows the live wreck by design; a ram replays its
+   * own two poses (updateCollision).
+   */
+  function holdShotHulls(): void {
+    if (pb.replayKind !== 'projectile') return;
+    const phase = pb.phase;
+    if (phase !== 'approach' && phase !== 'firing' && phase !== 'flight' && phase !== 'contact') return;
+    pinAttackerAtFiringPose(0);
+    const victim = pb.snap.targetEnt?.visual;
+    if (victim && pb.snapPoseState) {
+      victim.syncFromState(pb.snapPoseState, 0);
+      victim.root?.updateMatrixWorld(true);
+    }
   }
 
   function applyReplaySurfaceState(
