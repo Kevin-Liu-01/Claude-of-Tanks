@@ -346,7 +346,8 @@ const battleActions = trainingRecording.actions.filter((action) => action.seat =
 assert.deepEqual(battleActions.map((action) => action.kind), ['cueTrainingActor', 'setTrainingCheckpoint', 'finishTrainingBattle'],
   'the cue, the checkpoint and the end are kept as the battle\'s own actions');
 assert.deepEqual([battleActions[0].key, battleActions[0].args, battleActions[0].tick], ['sentry3', [1], 61], 'the cue keeps its actor and its step');
-assert.ok(training.seenFrom !== null && training.seenFrom > 60, `Sentry 3's sight clock ran once cued (from step ${training.seenFrom})`);
+// (the cue is made before the step of loop tick 60, so that step is the first that can see the player)
+assert.ok(training.seenFrom !== null && training.seenFrom >= 60, `Sentry 3's sight clock ran once cued (from step ${training.seenFrom})`);
 assert.ok(training.fired.length >= 1 && training.fired[0] - training.seenFrom >= SENTRY3.volley.seenS * 60 - 1,
   `and it fired only after ${SENTRY3.volley.seenS} s in sight (rounds at ${training.fired.join(', ')})`);
 assert.equal(training.result, 'victory', 'the chapter\'s end is the battle\'s verdict');
