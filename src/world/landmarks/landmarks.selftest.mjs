@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { LANDMARK_BUILDERS } from './index.ts';
 import { LANDMARK_KINDS, isDressingPiece, landmarkClearances, landmarkFootprint, resolveLandmarkParams } from './plan.ts';
-import { composeLandmarks, hasStructure, keepOutGap, landmarkObjectiveDiscs } from './compose.ts';
+import { composeLandmarks, hasStructure, landmarkObjectiveDiscs } from './compose.ts';
 import { PartSink, REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
 import { archedFace } from './kit.ts';
 import { landmarkPiecesOf } from './pieces.ts';
@@ -105,10 +105,6 @@ const BUDGET = {
   hayRack: 3000, fishRack: 9000, stabbur: 3000,
   // (the Earthrise 228 rebuild) Taurus-Littrow Station's set pieces
   apolloSite: 9000, isruWorks: 12000, solarTower: 5000, stationDome: 9000, relayRepeater: 4000,
-  // (landmarks-271) the signature set pieces of the maps that had none (11-08: their realism pass)
-  roundhouse: 16000, signalBox: 3000, blastFurnace: 22000, gasholder: 34500, shrine: 26000, ghorfaKsar: 27000, marabout: 1500,
-  desertFort: 4500, casemateFort: 5400, shaliMosque: 5100, springPool: 3000, canalMarket: 4600, charcoalKilns: 5100,
-  alcazaba: 10000, bullring: 23000, woodenChurch: 4800, tradingPost: 3400, hogan: 3400, cablewayTower: 4900, landingPad: 7800,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -141,11 +137,6 @@ const VARIANTS = {
   harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
   isruWorks: [{ part: 'front' }],
   apolloSite: [{ radius: 16 }],
-  roundhouse: [{ stalls: 7, front: 22, depth: 18, lead: 4 }],
-  casemateFort: [{ style: 'alpine', length: 44, depth: 20, height: 4.5 }],
-  cablewayTower: [{ cable: true, span: 269.5, farRise: -1.27 }],
-  landingPad: [{ radius: 16 }],
-  torii: [{ material: 'stone' }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -217,16 +208,14 @@ for (const kind of KINDS) {
     } else {
       assert.ok(LANDMARK_KINDS[kind].dressing?.(resolveLandmarkParams({ kind, x: 0, z: 0, params })), `${label}: only a dressing kind is all dressing`);
     }
-    // the footprint holds the piece (its vegetation clearance and reserved ground cover what stands); a cableway's track
-    // cable (overhead dressing) runs on along its line to the far tower, `span` out
+    // the footprint holds the piece (its vegetation clearance and reserved ground cover what stands)
     const [hw, hl] = landmarkFootprint({ kind, x: 0, z: 0, params });
-    const reach = kind === 'cablewayTower' && params.cable ? params.span : 0;
     let mx = 0, mz = 0;
     for (const g of geometries(a.parts)) {
       const p = g.getAttribute('position');
       for (let i = 0; i < p.count; i++) { mx = Math.max(mx, Math.abs(p.getX(i))); mz = Math.max(mz, Math.abs(p.getZ(i))); }
     }
-    assert.ok(mx <= hw + 0.6 && mz <= Math.max(hl, reach) + 0.6, `${label}: the piece (±${mx.toFixed(2)}, ±${mz.toFixed(2)}) stands in its footprint (±${hw.toFixed(2)}, ±${hl.toFixed(2)})`);
+    assert.ok(mx <= hw + 0.6 && mz <= hl + 0.6, `${label}: the piece (±${mx.toFixed(2)}, ±${mz.toFixed(2)}) stands in its footprint (±${hw.toFixed(2)}, ±${hl.toFixed(2)})`);
     for (const g of [...geometries(a.parts), ...geometries(b.parts), ...geometries(mobile.parts)]) g.dispose();
     built++; total += tris;
   });
@@ -580,7 +569,7 @@ check('the mole and its light', () => {
 // (types.ts approaches; compose.ts composeApproaches): a door's trodden apron and its worn path to the road it faces —
 // paving only (no record, no plot, nothing refused or moved); the path laid only through a gap, never across a wall
 check('approaches', () => {
-  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200), _noVeg: () => false, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) };
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
   const obstacles = [], published = [], vetoes = [];
   // a wall module standing between the second granary's door and the road
   obstacles.push({ kind: 'wallstone', crushable: true, min: [57, 0, 190], max: [63, 1.2, 190.6], shape2: { kind: 'obb', cx: 60, cz: 190.3, hw: 3, hl: 0.3, yaw: 0 } });
@@ -615,7 +604,7 @@ check('approaches', () => {
 // (types.ts tints; compose.ts authoredTints): a placement's own tints retint the kit's surfaces where the map's kit
 // weathers the piece — the named bucket's colours only; the geometry, every other bucket and the records unchanged
 check('tints', () => {
-  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200), _noVeg: () => false, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) };
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
   const compose = (tints) => {
     const merged = [], obstacles = [];
     const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
@@ -645,7 +634,7 @@ check('tints', () => {
 
 // ---------------------------------------------------------------------------------------------------------- composer
 {
-  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200), _noVeg: () => false, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) };
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
   const merged = [], obstacles = [], colliders = [], reserved = [], published = [], furniture = [];
   const ctx = (landmarks) => ({
     mapId: 'selftest', landmarks, heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders,
@@ -682,32 +671,6 @@ check('tints', () => {
   const church = obstacles.find((o) => o.kind === 'structure');
   assert.ok(church.min[0] < 60 - 12 && church.max[0] > 60 + 10 && church.max[2] - church.min[2] < 20, 'the church lies along x');
   for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
-  // a bridge's pier (mapKits.ts bridgeSupportFootprints; built after the pass, so no obstacle yet) refuses a piece on
-  // it or within 0.6 m, as the props' scatter keeps out of it; a placed piece's receipt gives its ground to the nearest
-  assert.equal(keepOutGap({ x: 10, z: 0, c: 1, s: 0, hw: 1, hd: 1 }, 0, 0, 2, 2, 0), 7, 'the gap between two squares');
-  assert.ok(Math.abs(keepOutGap({ x: 10, z: 0, c: Math.SQRT1_2, s: Math.SQRT1_2, hw: 1, hd: 1 }, 0, 0, 2, 2, 0) - (8 - Math.SQRT2)) < 1e-9,
-    "a turned pier's corner is the nearest");
-  assert.equal(keepOutGap({ x: 3, z: 0, c: 1, s: 0, hw: 1.5, hd: 1 }, 0, 0, 2, 2, 0), 0, 'overlapping rectangles meet');
-  {
-    const pier = { x: 250, z: -250, c: 1, s: 0, hw: 4, hd: 6 };
-    const it = composeLandmarks({ ...ctx([
-      { kind: 'obelisk', x: 250, z: -250, name: 'on a pier' },
-      // (an obelisk's footprint is 4.08 m each way: 1.6 + 9 × 0.12 + 1.4 for its railing; the pier's west face is at 246)
-      { kind: 'obelisk', x: 246 - 0.3 - 4.08, z: -250, name: 'at a pier' },
-      { kind: 'obelisk', x: 246 - 1 - 4.08, z: -250, name: 'by a pier' },
-      { kind: 'obelisk', x: 250, z: -220, name: 'off a pier' },
-    ]), keepOuts: [pier] });
-    let st = it.next(); while (!st.done) st = it.next();
-    const at = (name) => st.value.pieces.find((p) => p.name === name);
-    assert.equal(at('on a pier').reason, 'bridge pier', 'a piece never stands on a pier');
-    assert.equal(at('at a pier').reason, 'bridge pier', 'nor within 0.6 m of one');
-    assert.equal(at('by a pier').status, 'placed', 'a metre off it stands');
-    assert.equal(at('by a pier').keepOut, 1, 'its receipt gives the metre');
-    assert.equal(at('off a pier').status, 'placed');
-    assert.equal(at('off a pier').keepOut, 19.92, 'its receipt gives its ground to the pier: -220 - 4.08 - (-250 + 6)');
-    assert.equal(by('a church').keepOut, undefined, 'a map without piers records none');
-    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
-  }
   // a bridge whose roadway holds more parts than one compound may (64: server/collisionManifestCodec.ts) publishes it
   // in runs of 64, each its own movement record and each cloned into the shells' list
   const before = { obstacles: obstacles.length, colliders: colliders.length };

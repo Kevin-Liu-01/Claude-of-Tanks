@@ -6372,7 +6372,7 @@ ${snowCap ? `
     if (!P.landmarks?.length) return;
     const receipt = yield* composeLandmarks({
       mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
-      obstacles, colliders, keepOuts: bridgePiers, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
       structureIndex: () => structureSerial++,
       describeStructure: (structureIdx, kind, parts, x, y, z, yaw, groupObstacles, groupColliders) =>
         describeStructureAt(structureIdx, kind, parts as unknown as PropsBuckets, x, y, z, yaw, groupObstacles, groupColliders),

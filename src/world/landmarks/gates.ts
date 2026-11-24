@@ -4,7 +4,7 @@
 // on the ground and everything over the passage (the lintel, the arch ring, the tower above it) is a separate solid
 // lifted clear of them (kit.ts ARCH_GAP_M), so the movement record leaves the passage open while shells and sight
 // still meet the arch.
-import { PartSink, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
@@ -527,80 +527,14 @@ export const triumphalArch: LandmarkBuilder = (ctx) => {
 
 // ---------------------------------------------------------------------------------------------------------- torii
 
-/** A planar polygon turned to face `want` (the stone torii's curved members). */
-function toriiFace(sink: PartSink, pts: readonly Vec3[], want: Vec3, opts: EmitOptions): void {
-  let nx = 0, ny = 0, nz = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1]);
-  }
-  sink.polygon('stone', nx * want[0] + ny * want[1] + nz * want[2] >= 0 ? pts : [...pts].reverse(), opts);
-}
-
-/**
- * (realism 273, caldera; the identity critic: "the kasagi lintel is straight ... read the stone as single blocks, not
- * coursed brick") The granite ichi-no-torii of a great shrine (Aso's): round pillars leaning in, a little thinner at the
- * head, each on its kamebara (the rounded "turtle-belly" mound) over a squared footing stone, the daiwa ring at its head;
- * the nuki through them with its stub ends and the wedges (kusabi) outside the pillars; the shimaki and the kasagi over
- * it, curving up together to their ends (the kasagi's ends cut on the slant); the gakuzuka and its stone tablet. Each
- * member one block, the stone's print spread over it so it reads as a monolith and not as coursing.
- */
-function stoneTorii(sink: PartSink, span: number, H: number, base: number, r0: number): void {
-  const r = r0 * 1.1, lean = 0.035, headY = H - 1.05, nukiY = H * 0.68;
-  const block = (s: number, decor = false): EmitOptions => ({ shade: s, density: 0.05, decor });
-  const lean0 = (y: number): number => lean * (y - 0.66);
-  for (const sx of [-1, 1]) {
-    const x = sx * span / 2, hx = x - sx * lean0(headY);
-    sink.span('stone', x - r * 2, base, -r * 2, x + r * 2, 0.12, r * 2, block(0.72));
-    revolve(sink, 'stone', x, 0, [[r * 1.8, 0.12], [r * 1.76, 0.3], [r * 1.55, 0.5], [r * 1.25, 0.64], [r * 1.04, 0.7]], 12, block(0.82));
-    sink.pipe('stone', [x, 0.66, 0], [hx, headY - 0.3, 0], r, 12, { ...block(0.9), caps: true }, r * 0.91);
-    sink.pipe('stone', [hx, headY - 0.3, 0], [hx, headY, 0], r * 1.1, 12, { ...block(0.84), caps: true });
-  }
-  const Lk = span / 2 + 1.75, sori = 0.42;
-  const lift = (x: number): number => sori * Math.pow(Math.min(1, Math.abs(x) / Lk), 2.4);
-  /** a member curving with the kasagi from -L to L, its foot on the curve at y0, h deep, dz either side of the plane */
-  const beam = (L: number, y0: number, h: number, dz: number, flare: number, s: number): void => {
-    const n = 10, top: Vec3[] = [], bot: Vec3[] = [];
-    for (let i = 0; i <= n; i++) {
-      const x = -L + 2 * L * i / n, xb = i === 0 ? x + flare : i === n ? x - flare : x;
-      top.push([x, y0 + lift(x) + h, 0]); bot.push([xb, y0 + lift(xb), 0]);
-    }
-    const at = (p: Vec3, z: number): Vec3 => [p[0], p[1], z];
-    for (let i = 0; i < n; i++) {
-      toriiFace(sink, [at(top[i], -dz), at(top[i + 1], -dz), at(top[i + 1], dz), at(top[i], dz)], [0, 1, 0], block(s));
-      toriiFace(sink, [at(bot[i], -dz), at(bot[i + 1], -dz), at(bot[i + 1], dz), at(bot[i], dz)], [0, -1, 0], block(s * 0.8));
-      for (const f of [-1, 1]) toriiFace(sink, [at(bot[i], f * dz), at(bot[i + 1], f * dz), at(top[i + 1], f * dz), at(top[i], f * dz)], [0, 0, f], block(s * 0.95));
-    }
-    for (const [i, f] of [[0, -1], [n, 1]] as const) toriiFace(sink, [at(bot[i], -dz), at(bot[i], dz), at(top[i], dz), at(top[i], -dz)], [f, 0, 0], block(s * 0.88));
-  };
-  sink.placed(0, 0, ARCH_GAP_M, 0, () => {
-    // the nuki through the pillars, its ends standing out past them, the wedges driven in over it outside each pillar
-    const nx = span / 2 - lean0(nukiY);
-    sink.span('stone', -nx - 0.95, nukiY, -r * 0.55, nx + 0.95, nukiY + 0.44, r * 0.55, block(0.88));
-    for (const sx of [-1, 1]) sink.span('stone', sx * (nx + r) + (sx > 0 ? 0.02 : -0.2), nukiY + 0.44, -0.13, sx * (nx + r) + (sx > 0 ? 0.2 : -0.02), nukiY + 0.6, 0.13, block(0.8, true));
-    // the shimaki on the pillars' heads and the kasagi over it, curving up together
-    beam(span / 2 + 1.35, headY, 0.34, r * 1.02, 0, 0.86);
-    beam(Lk, headY + 0.34, 0.5, r * 1.22, 0.24, 0.8);
-    // the gakuzuka and its tablet, the inscribed face sunk in its frame either side
-    sink.span('stone', -0.2, nukiY + 0.44, -r * 0.5, 0.2, headY, r * 0.5, block(0.86));
-    sink.span('stone', -0.5, nukiY + 0.8, -r * 0.62, 0.5, headY - 0.2, r * 0.62, block(0.8));
-    for (const f of [-1, 1]) sink.span('stone', -0.38, nukiY + 0.92, f > 0 ? r * 0.62 : -r * 0.62 - 0.01, 0.38, headY - 0.32, f > 0 ? r * 0.62 + 0.01 : -r * 0.62, block(0.56, true));
-  });
-}
-
 /**
  * The torii (a Shinto shrine's gate, myōjin form): two vermilion pillars leaning in, the tie beam (nuki) through them,
  * the black-lacquered top lintel (kasagi) with its upswept ends over the shimaki, the central strut with its plaque.
- * `material` 'stone': the same form in granite (a great shrine's ichi-no-torii, Aso's among them), unpainted.
  */
 export const torii: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const span = Math.max(3, Number(ctx.params.span)), H = Math.max(4, Number(ctx.params.height));
   const base = -0.6 - ctx.groundFall, r = Math.max(0.22, span * 0.05), lean = 0.04;
-  if (ctx.params.material === 'stone') {
-    stoneTorii(sink, span, H, base, r);
-    return { parts: sink.finish() };
-  }
   for (const sx of [-1, 1]) {
     const x = sx * span / 2;
     sink.span('stone', x - r * 1.5, base, -r * 1.5, x + r * 1.5, 0.35, r * 1.5);
