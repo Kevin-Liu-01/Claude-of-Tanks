@@ -183,7 +183,23 @@ export interface GarageEnvironmentBuild {
   readonly texturesReady?: Promise<void>;
   /** The pack's graded terrain under a world-local point (the kit's placement receipts seat pieces with it). */
   readonly groundAtWorld?: (x: number, z: number) => number;
+  /**
+   * (garage-env-276) The bounds, in the pack's own frame, of every part the showroom camera's spring arm must stay in
+   * front of: each structure part, kit piece, facility primitive and instance within the camera's reach, flat ground and
+   * yard-wide merged geometry left out.
+   */
+  readonly cameraObstacles?: readonly THREE.Box3[];
   dispose(): void;
+}
+
+/** The farthest the showroom camera stands from the hero (engine/cameraRig.ts SHOW_DIST_MAX_M) plus a part's reach. */
+const CAMERA_OBSTACLE_REACH_M = 22;
+/** Whether a part's bounds are a camera obstacle: standing (not flat ground), within reach, and a part, not a yard. */
+function cameraObstacle(box: THREE.Box3): boolean {
+  if (box.isEmpty() || box.max.y < 0.35) return false;
+  if (box.max.x - box.min.x > 24 || box.max.z - box.min.z > 24) return false;
+  const nx = Math.max(box.min.x, Math.min(0, box.max.x)), nz = Math.max(box.min.z, Math.min(0, box.max.z));
+  return Math.hypot(nx, nz) <= CAMERA_OBSTACLE_REACH_M;
 }
 
 /**
@@ -2724,7 +2740,17 @@ export function buildGarageEnvironment(
       root.add(mesh);
     }
   };
-  // (garage-env-276) every part the merge is about to fold away, boxed for the orbit clearance audit (the receipts')
+  // (garage-env-276) every part the merge is about to fold away, boxed for the camera's spring arm (every bake) and for the
+  // orbit clearance audit (the receipts')
+  const cameraObstacles: THREE.Box3[] = [];
+  for (const [key, list] of Object.entries(combined)) {
+    if (!Array.isArray(list) || key === APPROACH_BUCKET) continue;
+    for (const geometry of list as THREE.BufferGeometry[]) {
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox && cameraObstacle(geometry.boundingBox)) cameraObstacles.push(geometry.boundingBox.clone());
+    }
+  }
+  for (const box of ('primitiveBoxes' in facilityDetails ? facilityDetails.primitiveBoxes : [])) if (cameraObstacle(box)) cameraObstacles.push(box);
   const sceneParts: GarageScenePart[] = [];
   for (const [key, list] of options.auditOrbit ? Object.entries(combined) : []) {
     if (!Array.isArray(list) || key === APPROACH_BUCKET) continue;
@@ -2904,6 +2930,31 @@ export function buildGarageEnvironment(
       }
     });
   }
+  {
+    // the instanced scenery for the spring arm (the groves, the far primitives, the kit's pools), an instance a box
+    // (in the pack's own frame; an instance whose centre stands past the reach by more than its scaled extent is skipped
+    // before its box is made: the far groves are most of the instances)
+    root.updateMatrixWorld(true);
+    const toPack = root.matrixWorld.clone().invert();
+    const instance = new THREE.Matrix4(), toPackMesh = new THREE.Matrix4(), box = new THREE.Box3(), at = new THREE.Vector3();
+    root.traverse((object) => {
+      const mesh = object as THREE.InstancedMesh;
+      if (!mesh.isInstancedMesh) return;
+      mesh.geometry.computeBoundingBox();
+      const local = mesh.geometry.boundingBox;
+      if (!local) return;
+      toPackMesh.multiplyMatrices(toPack, mesh.matrixWorld);
+      const extent = local.min.length() + local.max.length();
+      for (let index = 0; index < mesh.count; index += 1) {
+        mesh.getMatrixAt(index, instance);
+        instance.premultiply(toPackMesh);
+        at.setFromMatrixPosition(instance);
+        if (Math.hypot(at.x, at.z) > CAMERA_OBSTACLE_REACH_M + extent * instance.getMaxScaleOnAxis()) continue;
+        box.copy(local).applyMatrix4(instance);
+        if (cameraObstacle(box)) cameraObstacles.push(box.clone());
+      }
+    });
+  }
   const instancedStartedAt = performance.now();
   orbitFindings.push(...auditGarageOrbitClearance(sceneParts));
   orbitAuditMs += performance.now() - instancedStartedAt;
@@ -3044,6 +3095,7 @@ export function buildGarageEnvironment(
     stats,
     texturesReady,
     groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+    cameraObstacles: Object.freeze(cameraObstacles),
     dispose() {
       if (disposed) return;
       disposed = true;

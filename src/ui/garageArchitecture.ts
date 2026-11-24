@@ -7,6 +7,8 @@ import type {
   GarageEnvironmentBuild,
 } from './garageEnvironmentKit.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+/** How close scenery may come to the showroom camera (garageOrbitClearance.ts GARAGE_ORBIT_BAND.marginM). */
+const GARAGE_CAMERA_MARGIN_M = 1.2;
 
 interface ArchitectureEngineContext {
   anisotropy?: number;
@@ -781,10 +783,38 @@ export function createGarageArchitectureController(
     return collectStats();
   }
 
+  // (garage-env-276) the shown pack's obstacles in the world frame, inflated by the camera's margin, for the spring arm
+  let clearanceCache: { readonly build: GarageEnvironmentBuild; readonly boxes: readonly THREE.Box3[] } | null = null;
+  const clearanceRay = new THREE.Ray(), clearanceHit = new THREE.Vector3();
+  /**
+   * The share (0..1) of the segment from `look` to `eye` free of the shown pack's parts (cameraRig.ts ShowroomOrbitDeps
+   * clearance): 1 with no outdoor pack shown. A part the look point stands inside is no obstacle to the arm.
+   */
+  function cameraClearance(look: THREE.Vector3, eye: THREE.Vector3): number {
+    const build = active?.build;
+    if (!build?.cameraObstacles?.length) return 1;
+    if (clearanceCache?.build !== build) {
+      build.root.updateMatrixWorld(true);
+      clearanceCache = { build, boxes: build.cameraObstacles.map((box) => box.clone().applyMatrix4(build.root.matrixWorld)
+        .expandByScalar(GARAGE_CAMERA_MARGIN_M)) };
+    }
+    const length = look.distanceTo(eye);
+    if (length < 1e-6) return 1;
+    clearanceRay.origin.copy(look);
+    clearanceRay.direction.subVectors(eye, look).multiplyScalar(1 / length);
+    let first = length;
+    for (const box of clearanceCache.boxes) {
+      if (box.containsPoint(look) || !clearanceRay.intersectBox(box, clearanceHit)) continue;
+      first = Math.min(first, clearanceHit.distanceTo(look));
+    }
+    return first / length;
+  }
+
   return {
     group,
     setVariant,
     resetRendererWarmState,
+    cameraClearance,
     async prepareSelector(): Promise<void> {
       await getEnvironmentKit();
     },
