@@ -26,7 +26,7 @@ import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
 import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
-import { strikeReplay } from './strikeReplayState.ts';
+import { killcamStage } from './killcamStage.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
 export interface AircraftFxPort {
@@ -230,11 +230,11 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
   }
 
   /**
-   * (killcam-strike-shot-276) A kill cam replay of an airstrike is on screen (strikeReplayState.ts): only its strike's
+   * (killcam-strike-shot-276) A kill cam replay of an airstrike is on screen (killcamStage.ts): only its strike's
    * aircraft is drawn, flown from its record at the replay's clock, with its footprint; every live aircraft is hidden
    * (kept, not released: the battle's frame takes them back when the replay leaves).
    */
-  function updateReplay(staged: NonNullable<typeof strikeReplay.record>, t: number): void {
+  function updateReplay(staged: NonNullable<typeof killcamStage.strike>, t: number): void {
     markCount = 0;
     for (const craft of crafts.values()) {
       // (the gunship's airframe is the anchor's sibling: gunshipVisual.ts hides it)
@@ -257,7 +257,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       clearStrikeMarks();
       return;
     }
-    if (strikeReplay.record) { updateReplay(strikeReplay.record, strikeReplay.timeS); return; }
+    if (killcamStage.strike) { updateReplay(killcamStage.strike, killcamStage.strikeTimeS); return; }
     if (air.nowS !== lastNow) { lastNow = air.nowS; baseS = air.nowS; sinceS = 0; }
     else sinceS = Math.min(0.25, sinceS + Math.max(0, timeS - lastTimeS));
     lastTimeS = timeS;

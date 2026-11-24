@@ -16,7 +16,11 @@
 //   5. no snap in the first 10 frames (the camera moves less than a frame's worth between them);
 //   6. the run shot reads: the aircraft's rastered silhouette is 15-25 % of a 16:9 frame's width, its planform showing (the
 //      silhouette's area at least PLANFORM_MIN of its span squared: no edge-on wings), whole, with the strike's mark in
-//      frame on every run frame, and whole with the mark in frame in a phone's portrait frame.
+//      frame on every run frame, and whole with the mark in frame in a phone's portrait frame;
+//   7. the world's markers (capture plates and arcs, objective badges, beacons, spawn rings) leave the screen on every
+//      replay frame, the run shot's too, and come back once the replay leaves; the zones' posts stay
+//      (killcamWorldMarkers.test-support.mjs).
+// Its planted control: the replay's veil never reaching the world, caught on every kind.
 // One kind also dies with the binoculars up. The planted control: the same kill with no shot (its round never
 // announced: no strike record, no trace) falls back to the card alone, and the receipt must fail it on every kind.
 // Before this item an airstrike kill replayed no shot of its own: the bomb's and the battery's had none at all (the card
@@ -24,6 +28,7 @@
 // The browser half (the WebGL frames, the DOM overlay) is the lane's filmed strips (.qa-dev/killcam-strike-shots.mjs).
 import { StubElement } from '../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
+import { setMaxListeners } from 'node:events';
 import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -38,7 +43,8 @@ import { installAirSupportBridge } from './airSupportBridge.ts';
 import { createAirSupportWorld } from './airSupportWorld.ts';
 import { loadGunshipAirframe } from './gunshipVisual.ts';
 import { strikeView } from './strikeViewState.ts';
-import { strikeReplay } from './strikeReplayState.ts';
+import { killcamStage } from './killcamStage.ts';
+import { createMarkerField, judgeWorldMarkers } from './killcamWorldMarkers.test-support.mjs';
 import { STRIKE_SHOT_FRAMING } from './killcamStrikeShot.ts';
 import { AIR_STRIKE_WEAPONS, AIR_SUPPORT_RULES as R, GUNSHIP_WEAPONS, airStrikeFlies } from '../sim/matchRuleset.ts';
 import { BOMB_GRAVITY_MPS2, bombReleaseOffsetS, missileLaunchOffsetS, runMuzzle, runPose, runVelocity } from '../sim/strikeRuns.ts';
@@ -47,6 +53,9 @@ assert.equal(typeof StubElement, 'function', 'setup: the recording DOM is instal
 const SPEC = 'm1a1_abrams_hc';
 await ensureAuthorityFleet([SPEC]);
 await loadGunshipAirframe();
+// each battle builds its own kill cam, whose replay key listener stays on the window after its replay (one kill cam in the
+// game re-adds the same function, a no-op); sixteen battles here
+setMaxListeners(32, globalThis.window);
 const spec = getSpec(SPEC);
 const flat = { getHeightAt: () => 0 };
 const DT = 1 / 60;
@@ -86,7 +95,7 @@ const launchOffsetS = (kind) => (kind === 'bomb' ? bombReleaseOffsetS(R) : kind 
  * One Air Support battle: a strike of `kind` kills the player. `announce` false is the planted control: the round is
  * never announced (no mode:strike_round), so the kill cam has no strike and no trace.
  */
-function battle({ kind, binoculars = false, announce = true }) {
+function battle({ kind, binoculars = false, announce = true, veilFault = null }) {
   const bus = createBus();
   installAirSupportBridge(bus);
   const t0 = 100;
@@ -223,6 +232,8 @@ function battle({ kind, binoculars = false, announce = true }) {
     simulationDt: DT,
   });
   const frames = [];
+  // the mode world's Zone Control field, dressed on every frame (killcamWorldMarkers.test-support.mjs)
+  const markers = createMarkerField(THREE, { fault: veilFault, replayLeft: () => frames.some((f) => f.active) && !killcam.isActive() });
   const dir = new THREE.Vector3();
   const killcamPort = {
     get fxTimeScale() { return killcam.fxTimeScale; },
@@ -324,8 +335,9 @@ function battle({ kind, binoculars = false, announce = true }) {
           died: killcam.replayInfo?.targetPrePose ? new THREE.Vector3(...killcam.replayInfo.targetPrePose) : null,
           aircraft: drawnAircraft(),
           framing: killcam.phase === 'strike' ? { wide: framingAt(16 / 9), tall: framingAt(390 / 844) } : null,
-          stagedS: strikeReplay.record ? strikeReplay.timeS : null, liveS: game.timeS,
+          stagedS: killcamStage.strike ? killcamStage.strikeTimeS : null, liveS: game.timeS,
           card: !!globalThis.document.body.classList.contains('cot-kc-live') && !killcam.isActive(),
+          world: markers.count(),
         });
       },
     },
@@ -340,7 +352,12 @@ function battle({ kind, binoculars = false, announce = true }) {
     rig, killcam: killcamPort, veilHud() {},
     worldFramePresentation: { update() {} },
     // the mode world's Air Support term (matchModeWorldPresentation.ts): the aircraft from the public records
-    matchModeWorld: { update: (state, timeS) => airWorld.update(state?.air ?? null, state?.perspectiveTeam ?? 'alpha', timeS) },
+    matchModeWorld: {
+      update: (state, timeS) => {
+        airWorld.update(state?.air ?? null, state?.perspectiveTeam ?? 'alpha', timeS);
+        markers.update(timeS);
+      },
+    },
     audioListener: { update() {} },
     isGaragePresentationDirty: () => false, clearGaragePresentationDirty() {}, perfHud: { update() {} },
   });
@@ -354,10 +371,15 @@ function battle({ kind, binoculars = false, announce = true }) {
   }
   for (let i = 0; i < 2400 && !frames.some((f) => f.active && f.phase === 'exit'); i++) tick();
   strikeView.open = false;
+  // the replay leaves the screen on its own (its exit's dip), then a few live frames
+  for (let i = 0; i < 600 && killcam.isActive(); i++) tick();
+  if (killcam.isActive()) killcam.cancel();
+  for (let i = 0; i < 5; i++) tick();
   const first = frames.findIndex((f) => f.active);
   const result = { frames, first, planned: planned.pose, record, firedS, hitS, leadS: STRIKE_SHOT_FRAMING[kind].leadS };
   killcam.cancel();
   airWorld.dispose();
+  markers.dispose();
   return result;
 }
 
@@ -399,12 +421,14 @@ function judge(label, kind, run) {
   // 4. the aircraft on its recorded run at the replay's clock, never live
   if (airStrikeFlies(kind)) {
     const runStart = run.firedS - run.leadS;
-    let i = 0;
+    let i = 0, afterFlight = 0;
     for (const f of replay) {
       const expectS = f.phase === 'strike' ? runStart + i * DT : f.stagedS;
       if (f.phase === 'strike') i++;
+      // after the round's flight the clock runs on from the hit a frame at a time (the impact, the x-ray, the exit)
+      if (f.phase !== 'strike' && f.phase !== 'flight') afterFlight++;
       if (expectS == null) { wrong.push(`${label}: a ${f.phase} frame stages no aircraft`); break; }
-      if (f.phase !== 'strike' && !(expectS >= runStart - 1e-6 && expectS <= run.hitS + 6)) {
+      if (f.phase !== 'strike' && !(expectS >= runStart - 1e-6 && expectS <= run.hitS + afterFlight * DT + 1e-6)) {
         wrong.push(`${label}: a ${f.phase} frame stages the aircraft at ${expectS.toFixed(2)} s, off its run's replay span`);
         break;
       }
@@ -428,6 +452,8 @@ function judge(label, kind, run) {
     // a frame's worth: the run shot rides an aircraft at up to 220 m/s (under 4 m a frame) and the flight's handoff
     if (jump > 6 || turn > 8) wrong.push(`${label}: replay frame ${k} -> ${k + 1} snaps (camera ${jump.toFixed(2)} m, ${turn.toFixed(1)} deg)`);
   }
+  // 7. the world's markers leave the screen for the whole replay, every shot of it (the run shot too), and come back
+  wrong.push(...judgeWorldMarkers(label, run.frames, run.first));
   // 6. the run shot reads: the aircraft is a fifth of a 16:9 frame's width (15-25 %), whole, with the mark in frame, and
   //    in a phone's portrait frame (the same lens's height) it stays whole with the mark in frame
   const runFrames = replay.filter((f) => f.framing);
@@ -453,10 +479,16 @@ failures.push(...judge('bomb, binoculars up', 'bomb', battle({ kind: 'bomb', bin
 for (const kind of KINDS) {
   const lines = judge(kind, kind, battle({ kind, announce: false }));
   if (!lines.length) failures.push(`control: ${kind}: a strike kill with no shot was not caught`);
+  // the world's markers' planted fault: the replay's veil never reaching the world
+  const never = judge(kind, kind, battle({ kind, veilFault: 'never' }));
+  if (!never.some((line) => line.includes("replay frames draw the world's markers"))) {
+    failures.push(`control: ${kind}: markers drawn through the replay were not caught [${never.join(' | ') || 'no line'}]`);
+  }
 }
 if (failures.length) {
   for (const line of failures) console.error(`FAIL ${line}`);
   process.exit(1);
 }
 console.log(`killcamStrikeShot: PASS (${KINDS.length} strike kinds and the binoculars: each kill plays its planned shot, frame 1 `
-  + 'is its first planned pose, the victim held pre-hit, the aircraft on its recorded run; the no-shot control is caught on each)');
+  + 'is its first planned pose, the victim held pre-hit, the aircraft on its recorded run, the run shot framed with its planform '
+  + 'showing, the world\'s markers off the screen through the replay; the no-shot and veil controls are caught on each)');

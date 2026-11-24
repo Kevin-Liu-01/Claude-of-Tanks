@@ -119,7 +119,7 @@ import { t } from '../ui/i18n.ts';
 import { attackerLabel } from '../ui/killSourceIdentity.ts';
 import { scratchCanvas } from '../ui/uiCanvas.ts';
 import { STRIKE_SHOT_FRAMING, strikeFlightPath, strikeRunCamera, strikeRunSpan, type StrikeShotRecord } from './killcamStrikeShot.ts';
-import { strikeReplay } from './strikeReplayState.ts';
+import { killcamStage } from './killcamStage.ts';
 import type { AirStrikeKind } from '../sim/matchRuleset.ts';
 import type { RunPose, RunRecord } from '../sim/strikeRuns.ts';
 
@@ -2684,6 +2684,7 @@ export function createKillCam(deps: KillcamDeps) {
     sharedMats();
     showLightPool(true);
     active = true;
+    killcamStage.live = true; // the world hides its markers until teardown (killcamStage.ts)
     staged = false;
     lastBeginWallMs = performance.now();
     // (round 3 A9) begin() is the one setter of `active` and teardown() its one clearer: a replay that throws while it
@@ -3283,7 +3284,7 @@ export function createKillCam(deps: KillcamDeps) {
   function beginShotFlight(handoff = true) {
     if (!pb) return;
     restoreReplayVegetation();
-    // a free-falling store draws no tracer: the world draws the bomb itself on its arc (strikeReplayState.ts)
+    // a free-falling store draws no tracer: the world draws the bomb itself on its arc (killcamStage.ts)
     const tracer = !pb.snap.strike?.freeFall;
     for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = tracer;
     if (pb.shellLight && !tracer) pb.shellLight.intensity = 0;
@@ -3336,7 +3337,7 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   /**
-   * The replayed strike's aircraft and stores on the replay's clock (the world draws them from strikeReplayState.ts): the
+   * The replayed strike's aircraft and stores on the replay's clock (the world draws them from killcamStage.ts): the
    * run shot's time, then the flight's (the round's share of its path flown, on the strike's timeline), then the time run
    * since the hit. Every frame of a strike replay, after its phase's update.
    */
@@ -3352,8 +3353,8 @@ export function createKillCam(deps: KillcamDeps) {
       pb.strikeAfterHitS += Math.max(0, dt);
       timeS = pb.snap.timeS + pb.strikeAfterHitS;
     }
-    strikeReplay.record = shot.run;
-    strikeReplay.timeS = timeS;
+    killcamStage.strike = shot.run;
+    killcamStage.strikeTimeS = timeS;
   }
 
   function updateFiring(dt: number): void {
@@ -6122,7 +6123,9 @@ export function createKillCam(deps: KillcamDeps) {
 
   function teardown(runCallback: boolean): void {
     if (!active) return;
-    strikeReplay.record = null; // the live aircraft are the world's again
+    // the live aircraft and the world's markers are the world's again
+    killcamStage.strike = null;
+    killcamStage.live = false;
     window.removeEventListener('keydown', onReplayKey, true);
     window.removeEventListener('pointerdown', onReplayPointer, true);
     const replay = pb;

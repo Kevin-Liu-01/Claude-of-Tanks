@@ -14,7 +14,11 @@
 //   2. on frame 1 the killer stands at its recorded firing pose, not where it has driven since (the shot's own frame);
 //   3. on every frame of the shot, before the hit and after it (the impact, the x-ray), both hulls stand at their
 //      recorded poses: the killer where it fired, the player's hull where it died;
-//   4. no snap in the first 10 replay frames: the camera and both hulls move less than a frame's worth between them.
+//   4. no snap in the first 10 replay frames: the camera and both hulls move less than a frame's worth between them;
+//   5. (killcam-strike-shot-276) the world's markers (capture plates and arcs, objective badges, beacons, spawn rings, on
+//      a Zone Control field the mode world dresses each frame) leave the screen on every frame of the replay, every
+//      shot of it, and come back once the replay leaves; the zones' posts stay (killcamWorldMarkers.test-support.mjs).
+//      Its planted controls: the replay's veil never reaching the world, and the veil left on after the replay leaves.
 // The planted controls must fail: the replay's camera one frame late fails (1) on the cut shapes (the full cam's first
 // shot glides from the live view, so a late pose is the same picture there), and one live repaint over frame 1 fails (2).
 // Before the fix the frame that began a replay was presented as a live frame (its receipt sampled the kill cam before the
@@ -23,6 +27,7 @@
 // (the WebGL frames, the DOM overlay) is the lane's filmed strip (.qa-dev/killcam-first-frames.mjs).
 import { StubElement } from '../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
+import { setMaxListeners } from 'node:events';
 import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -34,8 +39,12 @@ import { createMainFrameRuntime } from '../app/mainFrameRuntime.ts';
 import { createCameraRig } from '../engine/cameraRig.ts';
 import { createKillCam } from './killcam.ts';
 import { strikeView } from './strikeViewState.ts';
+import { createMarkerField, judgeWorldMarkers } from './killcamWorldMarkers.test-support.mjs';
 
 assert.equal(typeof StubElement, 'function', 'setup: the recording DOM is installed');
+// each battle builds its own kill cam, whose replay key listener stays on the window after its replay (one kill cam in the
+// game re-adds the same function, a no-op); fourteen battles here
+setMaxListeners(32, globalThis.window);
 const SPEC = 'm1a1_abrams_hc';
 await ensureAuthorityFleet([SPEC]);
 const spec = getSpec(SPEC);
@@ -76,7 +85,7 @@ function hull(id, team, x, z, yaw) {
  * sets from begin() through its first presented frame reaches the rig only at its second); `liveRepaint`, one live
  * presentation pass over the replay's first frame (every hull repainted at its live pose after the replay's update).
  */
-function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepaint = false }) {
+function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepaint = false, veilFault = null }) {
   const bus = createBus();
   const player = hull('me', 'alpha', 0, 0, 0);
   player.isPlayer = true; player.bot = false;
@@ -189,6 +198,8 @@ function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepa
   });
   // the presented frames: what the post chain draws, read at its render
   const frames = [];
+  // the mode world's Zone Control field, dressed on every frame (killcamWorldMarkers.test-support.mjs)
+  const markers = createMarkerField(THREE, { fault: veilFault, replayLeft: () => frames.some((f) => f.active) && !killcam.isActive() });
   const dir = new THREE.Vector3();
   let liveRigFrames = 0;
   const rigPort = Object.create(rig, {
@@ -228,6 +239,7 @@ function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepa
           firing: killcam.replayInfo?.attackerPose ? new THREE.Vector3(...killcam.replayInfo.attackerPose) : null,
           victim: player.visual.root.position.clone(),
           died: killcam.replayInfo?.targetPrePose ? new THREE.Vector3(...killcam.replayInfo.targetPrePose) : null,
+          world: markers.count(),
         });
       },
     },
@@ -240,7 +252,11 @@ function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepa
     cameraInput: { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false, autoAimPoint: null },
     getMobileAutoAim: () => null,
     rig: rigPort, killcam: killcamPort, veilHud() {},
-    worldFramePresentation: { update() {} }, matchModeWorld: { update() {} }, audioListener: { update() {} },
+    worldFramePresentation: { update() {} },
+    // the mode world (matchModeWorldPresentation.ts) dressing the Zone Control field each frame; the planted faults: the
+    // replay's veil never reaching it, and the veil left on after the replay leaves
+    matchModeWorld: { update: () => markers.update(game.timeS) },
+    audioListener: { update() {} },
     isGaragePresentationDirty: () => false, clearGaragePresentationDirty() {}, perfHud: { update() {} },
   });
   let nowMs = 0;
@@ -255,10 +271,15 @@ function battle({ mode, respawnS, binoculars = false, latePose = false, liveRepa
   // the whole replay: from its first frame to its exit's dip
   for (let i = 0; i < 4000 && !frames.some((f) => f.active && f.phase === 'exit'); i++) tick();
   strikeView.open = false;
+  // the replay leaves the screen on its own (its exit's dip), then a few live frames
+  for (let i = 0; i < 600 && killcam.isActive(); i++) tick();
+  if (killcam.isActive()) killcam.cancel();
+  for (let i = 0; i < 5; i++) tick();
   const first = frames.findIndex((f) => f.active);
   assert.ok(first > 0, `setup: ${mode}: a replay reached the screen (owner ${rig.cameraOwner}, phase ${killcam.phase})`);
   const result = { frames, first, planned: planned.pose, replayFrames: frames.slice(first, first + 10), liveRigFrames };
   killcam.cancel();
+  markers.dispose();
   return result;
 }
 
@@ -313,6 +334,8 @@ function judge(label, run) {
         + `${Math.max(...killerOff.map((f) => f.killer.distanceTo(f.firing))).toFixed(2)} m from where it fired`);
     }
   }
+  // 5. the world's markers leave the screen for the whole replay, every shot of it, and come back when it leaves
+  wrong.push(...judgeWorldMarkers(label, run.frames, run.first));
   return wrong;
 }
 
@@ -341,10 +364,21 @@ for (const c of CASES) {
     failures.push(`control: ${c.label}: one live repaint over frame 1 was not caught [${repaint.join(' | ') || 'no line'}]`);
   }
 }
+// the world's markers' planted faults must be caught on every shape: the veil never set, and the veil left on after exit
+for (const c of CASES) {
+  const never = judge(c.label, battle({ ...c, veilFault: 'never' }));
+  if (!never.some((line) => line.includes("replay frames draw the world's markers"))) {
+    failures.push(`control: ${c.label}: markers drawn through the replay were not caught [${never.join(' | ') || 'no line'}]`);
+  }
+  const stuck = judge(c.label, battle({ ...c, veilFault: 'stuck' }));
+  if (!stuck.some((line) => line.includes('after the replay the world draws'))) {
+    failures.push(`control: ${c.label}: markers left hidden after the replay were not caught [${stuck.join(' | ') || 'no line'}]`);
+  }
+}
 if (failures.length) {
   for (const line of failures) console.error(`FAIL ${line}`);
   process.exit(1);
 }
 console.log(`killcamFirstFrame: PASS (${CASES.length} shapes; frame 1 is shot 1's planned pose, both hulls at their `
-  + 'recorded poses on every frame of the shot, no snap in 10 frames; the late-camera (cut shapes) and live-repaint controls are '
-  + 'caught on each)');
+  + 'recorded poses on every frame of the shot, no snap in 10 frames, the world\'s markers off the screen through the replay and '
+  + 'back after it; the late-camera (cut shapes), live-repaint and both veil controls are caught on each)');

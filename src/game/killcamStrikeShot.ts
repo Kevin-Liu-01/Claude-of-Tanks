@@ -10,7 +10,7 @@
  *   2. the round: the kill cam's flight chase along the round's own path (the sim's trace, or the launch's arc when the
  *      trace is sparse), trimmed to its last `trimM` for a round that comes from far off (the battery, the AC-130);
  *   3. the hit and its card, as every replay ends.
- * The aircraft on screen is staged from this run at the replay's own clock (strikeReplayState.ts), never the live one.
+ * The aircraft on screen is staged from this run at the replay's own clock (killcamStage.ts), never the live one.
  * Pure: no DOM, no WebGL. Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import { AIR_SUPPORT_RULES, airStrikeFlies, type AirStrikeKind } from '../sim/matchRuleset.ts';
