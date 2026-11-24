@@ -1577,6 +1577,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rackSlots = systemsSlot === 'edge' ? document.querySelectorAll('.cot-strike-rack .strike-slot:not([hidden])').length : 0;
     const rackRows = rackSlots ? Math.ceil(rackSlots / Math.max(1, Math.floor((rackRoom + 3) / (TOUCH_TARGET + 3)))) : 1;
     setBodyVar('--hud-strike-rack-room', rackRows > 1 ? `${rackRoom}px` : '');
+    // (air-support-seats-276) a touch layout's own row (an iPad's, no section): the call-ins start at Support's left edge,
+    // 47 px left of the row (airSupportHud.css), where that keeps them on the screen and off the ammunition's column; else
+    // they end 8 px short of that column, where their band (under the row in portrait, over it in landscape) crosses it, or
+    // short of the screen's 12 px edge. Started at Support's, the row ran over the selected shell by 52x44 at 820x1180 and
+    // 80 px off the screen at 1180x820 (the seats receipt, tools/air-support-seats.mjs).
+    let strikeRackLeft = '';
+    if (touch && !systemsSlot && systemsHeight) {
+      const slots = document.querySelectorAll('.cot-strike-rack .strike-slot:not([hidden])').length;
+      if (slots) {
+        const rackWidth = slots * TOUCH_TARGET + (slots - 1) * 3;
+        const rackTop = height >= width ? systemsTop + 54 : systemsTop - 54;
+        const crossesAmmo = !!ammo && rackTop < ammo.bottom && rackTop + TOUCH_TARGET > ammo.top;
+        const right = Math.min(width - 12, crossesAmmo ? ammoReachLeft - 8 : width);
+        strikeRackLeft = `${Math.round(Math.max(12, Math.min(systemsLeft - 47, right - rackWidth)))}px`;
+      }
+    }
+    setBodyVar('--hud-strike-rack-left', strikeRackLeft);
     setBodyVar('--hud-strike-rack-rows', rackRows > 1 ? String(rackRows) : '');
     let systemsCount = 0;
     // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px

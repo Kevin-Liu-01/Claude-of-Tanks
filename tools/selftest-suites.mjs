@@ -3257,6 +3257,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/airSupportNotices.selftest.mjs',
     // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
     'tools/air-support-close-box.selftest.mjs',
+    // air-support-seats-276: with the binoculars up, CALL, the call-ins, Support and its dock, the shells and the vehicle
+    // controls cross none of one another (today's crossings at 844x390 and 820x1180 the negative control)
+    'tools/air-support-seats.selftest.mjs',
     // notices-276 (Kevin 2026-11-23: "fix ui overlaps like gunship overhead with X binoculars"): one list of the controls a
     // view brings, read by every notice planner and the overlap probe; its judge fails a notice on a planted control
     'tools/battle-hud-overlap-judge.selftest.mjs',
