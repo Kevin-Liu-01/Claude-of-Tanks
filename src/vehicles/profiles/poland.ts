@@ -139,6 +139,29 @@ function segmentedStrip(
 // sprocket (-2.80, 0.732); track band x 1.00..1.56, top 1.286).
 // ===========================================================================
 
+// One hull-side line (Kevin 2026-11-24: "make the sideskirts of the pl01s align with the upper glacis and hull").
+// The print's deck is one surface from the centreline out to |x| 1.70 at every station, stern included, and the skirt
+// crest falls away from it. The loft deck, the upper glacis, the skirt tops, the bow bridge and the stern wings all
+// read this profile and this side plane; the skirts used to carry their own top table (fold at z 1.88), stood up to
+// 0.15 m proud of the glacis edge and showed their inboard bevel wall over the deck.
+const PL01_HULL_SIDE_X = 1.616;
+const PL01_DECK_LINE: readonly (readonly [z: number, y: number])[] = [
+  [-3.505, 2.095], [-3.35, 2.095], [-1.50, 2.065], [-0.45, 2.04], [0.50, 2.02], [1.30, 1.975], [3.425, 1.46],
+];
+const [, , , , PL01_DRIVER_DECK, PL01_GLACIS_FOLD, PL01_GLACIS_NOSE] = PL01_DECK_LINE;
+function pl01DeckY(z: number): number {
+  const line = PL01_DECK_LINE;
+  if (z <= line[0][0]) return line[0][1];
+  for (let i = 1; i < line.length; i++) {
+    const [z1, y1] = line[i];
+    if (z <= z1) {
+      const [z0, y0] = line[i - 1];
+      return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+    }
+  }
+  return line[line.length - 1][1];
+}
+
 interface PL01BuildContext {
   readonly is105: boolean;
   readonly equipmentHeightScale: number;
@@ -166,11 +189,12 @@ function createPL01BuildContext(P: PolishBuilderPort): PL01BuildContext {
   // Turret fittings keep their approved physical proportions and translate
   // upward with the new roof instead of stretching with the armor shell.
   const roofEquipmentY = (y: number): number => y * equipmentHeightScale + roofLiftLocalY;
-  const upperGlacisY = (z: number): number => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
-  const driverDeckY = (z: number): number => z <= 1.30
-    ? 2.02 + (z - 0.50) * ((1.975 - 2.02) / (1.30 - 0.50))
+  const [foldZ, foldY] = PL01_GLACIS_FOLD, [noseZ, noseY] = PL01_GLACIS_NOSE, [deckZ, deckY] = PL01_DRIVER_DECK;
+  const upperGlacisY = (z: number): number => foldY + (z - foldZ) * ((noseY - foldY) / (noseZ - foldZ));
+  const driverDeckY = (z: number): number => z <= foldZ
+    ? deckY + (z - deckZ) * ((foldY - deckY) / (foldZ - deckZ))
     : upperGlacisY(z);
-  const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
+  const glacisPitch = Math.atan((foldY - noseY) / (noseZ - foldZ));
   P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
   P.turretG.userData.pl01RoofLocalY = turretRoofLocalY;
   return {
@@ -198,8 +222,8 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
   // rear -3.49 only at |x| 0.55..1.72, center -3.33) — the rear WINGS below
   // carry the -3.505 plate + boat-tail
   loftHull(P, {
-    deck: [[-3.35, 2.095], [-1.50, 2.065], [-0.45, 2.04], [0.50, 2.02],
-      [1.30, 1.975], [3.425, 1.46]],
+    // the stern wings below carry the deck line's first knot (-3.505)
+    deck: PL01_DECK_LINE.slice(1),
     // stern boat-tails (r3/r6 receipts: the print's rear bottoms rise
     // 0.63 @ -3.23 -> 1.21 @ -3.43 -> 1.46 @ -3.53)
     belly: [[-3.35, 0.92], [-3.10, 0.50], [-2.85, 0.34], [-2.60, 0.30],
@@ -209,7 +233,7 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
     // z~2.6 — the full-width plate tapers to ±0.94 there; the lower band
     // stays inboard of the 0.955 course wall; the sponson floor rides above
     // the 1.45 return-strand shoe crowns.
-    wUp: [[-3.35, 1.616], [2.55, 1.616], [2.66, 0.94], [3.425, 0.90]],
+    wUp: [[-3.35, PL01_HULL_SIDE_X], [2.55, PL01_HULL_SIDE_X], [2.66, 0.94], [3.425, 0.90]],
     wLo: [[-3.35, 0.94], [3.425, 0.86]],
     sponsonY: 1.47,
   });
@@ -220,8 +244,8 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
   // ascending idler band crosses the plane there; the plan bow at |x|
   // 0.96..1.60 is carried by the course itself, exactly like the print).
   segmentedStrip(P, 'hull',
-    [2.60, upperGlacisY(2.60) - 0.045, 2.60, upperGlacisY(2.60), 1.616],
-    [1.33, 1.90, 1.30, 1.975, 1.616],
+    [2.60, upperGlacisY(2.60) - 0.045, 2.60, upperGlacisY(2.60), PL01_HULL_SIDE_X],
+    [1.33, 1.90, 1.30, 1.975, PL01_HULL_SIDE_X],
     ([zb0, yb0, zt0, yt0, w0], [zb1, yb1, zt1, yt1, w1]) => {
       P.add('hull', slab(
         [-w0, yb0, zb0], [w0, yb0, zb0], [w1, yb1, zb1], [-w1, yb1, zb1],
@@ -245,12 +269,13 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
           [s * 0.30, yA0, zA0], [s * 0.94, yB0, zB0], [s * 0.94, yB0, zBr0], [s * 0.30, yA0, zAr0],
           [s * 0.30, yA1, zA1], [s * 0.94, yB1, zB1], [s * 0.94, yB1, zBr1], [s * 0.30, yA1, zAr1]));
       });
-    // Bridge the tapered center plate to the skirt bow without daylight gaps.
+    // Bridge the tapered center plate to the skirt bow without daylight gaps: its top is the glacis carried out to the
+    // hull side line, where the skirt crest bevel starts.
     P.add('hull', slab(
-      [s * 0.90, upperGlacisY(2.60) - 0.055, 2.60], [s * 1.62, 1.655, 2.60],
-      [s * 1.66, 1.42, 3.44], [s * 0.86, 1.29, 3.425],
-      [s * 0.90, upperGlacisY(2.60), 2.60], [s * 1.62, 1.73, 2.60],
-      [s * 1.66, 1.46, 3.44], [s * 0.90, 1.46, 3.425]));
+      [s * 0.90, upperGlacisY(2.60) - 0.055, 2.60], [s * PL01_HULL_SIDE_X, pl01DeckY(2.60) - 0.075, 2.60],
+      [s * PL01_HULL_SIDE_X, pl01DeckY(3.44) - 0.04, 3.44], [s * 0.86, 1.29, 3.425],
+      [s * 0.90, upperGlacisY(2.60), 2.60], [s * PL01_HULL_SIDE_X, pl01DeckY(2.60), 2.60],
+      [s * PL01_HULL_SIDE_X, pl01DeckY(3.44), 3.44], [s * 0.90, 1.46, 3.425]));
   }
   // rear: the print's plan reads -3.49 rear ONLY on the |x| 0.55..1.65
   // wings; the center |x|<0.47 is an inset -3.33 panel with the service
@@ -259,8 +284,10 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
   // 0.64 @ -3.30 measured).
   for (const s of [-1, 1]) {
     P.add('hull', slab(
-      [s * 0.42, 1.47, -3.505], [s * 1.616, 1.47, -3.505], [s * 1.616, 0.70, -3.32], [s * 0.42, 0.70, -3.32],
-      [s * 0.42, 2.09, -3.505], [s * 1.616, 2.09, -3.505], [s * 1.616, 2.09, -3.32], [s * 0.42, 2.09, -3.32]));
+      [s * 0.42, 1.47, -3.505], [s * PL01_HULL_SIDE_X, 1.47, -3.505],
+      [s * PL01_HULL_SIDE_X, 0.70, -3.32], [s * 0.42, 0.70, -3.32],
+      [s * 0.42, pl01DeckY(-3.505), -3.505], [s * PL01_HULL_SIDE_X, pl01DeckY(-3.505), -3.505],
+      [s * PL01_HULL_SIDE_X, pl01DeckY(-3.32), -3.32], [s * 0.42, pl01DeckY(-3.32), -3.32]));
   }
   // center inset panel (door bay) + its shallow boat-tail
   P.add('hull', slab(
@@ -288,33 +315,39 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
   // lines (r3: the early -2.35 stern knee read bottoms 0.76 where the print
   // holds 0.27 to -2.9).
   for (const s of [-1, 1]) {
-    const zs = [
-      // [z, topY, faceBotY(knee), hemY(inner wall), faceX(outer)]
-      // hem 0.62 across the running-gear span (front cols ±1.67 read the
-      // bevel from 0.62 — the 0.26 hem only survives at the chamfer tips);
-      // faceX tapers into the bow/stern chamfers (plan receipt: the ±1.85
-      // face band spans z -3.33..3.03 only)
-      [-3.505, 1.46, 1.455, 1.44, 1.66],
-      [-3.30, 2.065, 1.66, 0.92, 1.82],
-      [-2.88, 2.065, 1.30, 0.62, 1.90],
-      [-1.40, 2.065, 1.30, 0.62, 1.90],
-      [0.40, 2.04, 1.30, 0.62, 1.90],
-      [1.30, 2.01, 1.30, 0.62, 1.90],
-      [1.88, 1.98, 1.30, 0.62, 1.90],
-      [2.60, 1.73, 1.30, 0.62, 1.895],
-      [3.00, 1.635, 1.34, 0.66, 1.86],
-      [3.20, 1.565, 1.38, 0.90, 1.80],
-      [3.44, 1.46, 1.45, 1.44, 1.66],
+    // [z, faceBotY(knee), hemY(inner wall), faceX(outer)]; topY is the hull deck line at z (PL01_DECK_LINE), so the crest
+    // bevel starts at the deck's side edge (PL01_HULL_SIDE_X) and the skirt reads as the glacis and deck folding down.
+    // The deck knots are stations too, so the linear strips below hold the line exactly.
+    // hem 0.62 across the running-gear span (front cols ±1.67 read the
+    // bevel from 0.62 — the 0.26 hem only survives at the chamfer tips);
+    // faceX tapers into the bow/stern chamfers (plan receipt: the ±1.85
+    // face band spans z -3.33..3.03 only)
+    const stations: readonly (readonly [z: number, knee: number, hem: number, faceX: number])[] = [
+      [-3.505, 1.455, 1.44, 1.66],
+      [-3.30, 1.66, 0.92, 1.82],
+      [-2.88, 1.30, 0.62, 1.90],
+      [-1.50, 1.30, 0.62, 1.90],
+      [-0.45, 1.30, 0.62, 1.90],
+      [0.50, 1.30, 0.62, 1.90],
+      [1.30, 1.30, 0.62, 1.90],
+      [1.88, 1.30, 0.62, 1.90],
+      [2.60, 1.30, 0.62, 1.895],
+      [3.00, 1.34, 0.66, 1.86],
+      [3.20, 1.38, 0.90, 1.80],
+      [3.44, 1.45, 1.44, 1.66],
     ];
+    const zs = stations.map(([z, knee, hem, faceX]) => [z, pl01DeckY(z), knee, hem, faceX]);
     for (let i = 0; i < zs.length - 1; i++) {
       // segmented per the station-slice visibility law (r3 receipt: station
       // slices i3-i5 topped at the 1.30 sponson — the 1.5 m panels were
       // edge-on invisible)
       segmentedStrip(P, 'hull', zs[i], zs[i + 1], ([z0, t0, k0, b0, f0], [z1, t1, k1, b1, f1]) => {
-        // top bevel band: deck edge (1.62, top) out-down to the face crest
+        // top bevel band: deck edge (hull side line, deck top) out-down to the face crest. Its inboard side leans from
+        // that edge down to the face band's inner wall, so no vertical inner wall stands beside the hull side.
         P.add('hull', slab(
-          [s * 1.62, t0 - 0.135, z0], [s * f0, t0 - 0.14, z0], [s * f1, t1 - 0.14, z1], [s * 1.62, t1 - 0.135, z1],
-          [s * 1.62, t0, z0], [s * (f0 - 0.025), t0 - 0.125, z0], [s * (f1 - 0.025), t1 - 0.125, z1], [s * 1.62, t1, z1]));
+          [s * 1.645, t0 - 0.135, z0], [s * f0, t0 - 0.14, z0], [s * f1, t1 - 0.14, z1], [s * 1.645, t1 - 0.135, z1],
+          [s * PL01_HULL_SIDE_X, t0, z0], [s * (f0 - 0.025), t0 - 0.125, z0], [s * (f1 - 0.025), t1 - 0.125, z1],
+          [s * PL01_HULL_SIDE_X, t1, z1]));
         // face band: vertical outer face from the crest down to the knee
         P.add('hull', slab(
           [s * 1.645, k0, z0], [s * f0, k0, z0], [s * f1, k1, z1], [s * 1.645, k1, z1],
@@ -345,10 +378,15 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
         Math.min(1.82, crestAt(z + 0.28) - 0.035), z + 0.28);
       P.add('hullDetail', box(0.018, 0.05, 0.09), s * (faceAt(z - 0.26, 4) + 0.005), 1.42, z - 0.26);
     }
-    // shoulder shadow seam follows the falling top line (r3: a full-length
-    // strip at 2.0 owned the z 2.4-2.9 tops where the fold reads 1.66-1.81)
-    P.add('hullDark', box(0.016, 0.04, 4.55), s * 1.88, 1.925, -1.02);
-    P.add('hullDark', box(0.016, 0.04, 0.62), s * 1.88, 1.875, 1.56, -0.075, 0, 0);
+    // shoulder shadow seam rides the face crest (top - 0.14) station by station, from where the face reaches its full
+    // 1.90 plane (z -2.88) to the 1.88 fold (r3: a full-length strip at 2.0 owned the z 2.4-2.9 tops where the fold
+    // reads 1.66-1.81).
+    const seamZs = stations.map(([z]) => z).filter((z) => z >= -2.88 && z <= 1.88);
+    for (let k = 0; k < seamZs.length - 1; k++) {
+      const za = seamZs[k], zb = seamZs[k + 1], ya = crestAt(za), yb = crestAt(zb);
+      P.add('hullDark', box(0.016, 0.04, Math.hypot(zb - za, yb - ya)), s * 1.88, (ya + yb) / 2, (za + zb) / 2,
+        Math.atan2(ya - yb, zb - za), 0, 0);
+    }
   }
 
   // ---- running gear: 7 hidden road pairs + raised ends (print-exact) ------

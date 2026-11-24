@@ -845,6 +845,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
+    // release 276: both PL-01s' skirt crests start at the hull deck's side edge and follow the glacis (owner markup)
+    'src/vehicles/profiles/pl01SkirtLine.selftest.mjs',
     // release 262: the Leclerc turret's false roofs (owner-marked) stay closed on the S1, S2 and SXXI
     'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
     // release 264: the T-72B 1987's and T-62MV1's open commander's hatch opens into its cupola
