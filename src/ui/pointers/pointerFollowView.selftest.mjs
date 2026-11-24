@@ -10,8 +10,8 @@
 //     HUD: its distance, pivot and lens shift) round a nominal, a tall and a long hull, the turret at every 5 degrees, for
 //     a waypoint ahead, one behind and aside, a thing to look at and the battle's own case (a marker 90 m aside): no piece
 //     is cut by the screen's edge or the camera's plane or lies under the HUD; while the destination is off the screen the
-//     turn arrow shows (bare, never cut, in at most a handful of a portrait phone's frames whose tall hull fills its
-//     width), turns the shorter way (either way from TURN_EITHER_DEG round), and its band and its padded head stand clear
+//     turn arrow shows (behind the hull where a portrait phone's tall hull fills its width), turns the shorter way (either
+//     way from TURN_EITHER_DEG round), and its band and its padded head stand clear
 //     of the HUD and the hull, often beside the hull; while it is on the screen and far, the trail shows. The negative controls: the same checks find
 //     what the old geometry and the battle's stills showed (the trail toward a destination aside cut, the old 7 m ring cut
 //     on a phone, the old rule's arrow ahead of a tall hull a sliver on a desktop beside the plan's, a head in a gap
@@ -37,7 +37,15 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // bands chaseFraming.selftest.mjs frames over) frames the chase as the rig does (solveChaseFraming: its distance, its
 // pivot, its lens shift), and its boxes are what the arrow keeps off (the controls, the map, the instruments, the head band).
 const RECORDED = JSON.parse(read('tools/fixtures/hud-chase-bands.json'));
-const LAYOUTS = ['1920x1080', '1280x720', '390x844', '844x390'];
+// The live phone as the battle showed it on 2026-11-24 (measured in a 390x844 touch battle through the pointer layer's own
+// noCover): its right column runs 228 to 520 px, where the recorded fixture holds one button at 468 (the fixture's source
+// page lags the live HUD: hud-bands-live-276). A U-turn there fits only behind the hull, centred and small.
+RECORDED.sizes['390x844-live'] = { idle: { width: 390, height: 844, touch: true, ceiling: 66, floor: [
+  [324, 44, 390, 92], [14, 702, 132, 820], [164, 685, 218, 739], [224, 685, 278, 739], [288, 740, 370, 822], [88, 0, 302, 36],
+  [14, 600, 92, 678], [324, 228, 376, 280], [324, 288, 376, 340], [324, 348, 376, 400], [324, 408, 376, 460], [324, 468, 376, 520],
+  [8, 480, 120, 592], [12, 108, 104, 200], [137, 796, 254, 836],
+].map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })) } };
+const LAYOUTS = ['1920x1080', '1280x720', '390x844', '844x390', '390x844-live'];
 // a main battle tank, a tall one and a long one (chaseFraming.selftest.mjs's)
 const TANKS = {
   nominal: NOMINAL_CHASE_TANK,
@@ -91,7 +99,6 @@ const destinations = [
   { id: 'aside', kind: 'waypoint', x: 90, z: 0, radiusM: 6, trail: true },
 ];
 let frames = 0, turns = 0, trails = 0, beside = 0;
-const bare = [];
 for (const layout of LAYOUTS) for (const [hullName, hullSize] of Object.entries(TANKS)) {
   const bands = RECORDED.sizes[layout].idle, view = { width: bands.width, height: bands.height }, noCover = hudBoxes(bands);
   for (const follow of destinations) {
@@ -105,11 +112,8 @@ for (const layout of LAYOUTS) for (const [hullName, hullSize] of Object.entries(
       const pieces = [...plan.chevrons.map((c) => c.points), ...(plan.turn ? [plan.turn.band, plan.turn.head] : [])];
       assert.deepEqual(cut(pieces, view), [], `${where}: no piece is cut by the screen's edge or the camera's plane`);
       for (const c of plan.chevrons) assert.ok(!c.points.some((p) => noCover.some((b) => inBox(p, b))), `${where}: no chevron under the HUD`);
-      if (!plan.inView && !plan.turn) {
-        // nothing fits: only a portrait phone's tall hull, which can fill its width (and nothing is drawn, so nothing is cut)
-        assert.ok(view.height > view.width && hullName === 'tall', `${where}: the destination is off the screen, so the turn arrow shows`);
-        bare.push(where);
-      } else if (!plan.inView) {
+      if (!plan.inView) {
+        assert.ok(plan.turn, `${where}: the destination is off the screen, so the turn arrow shows`);
         assert.equal(plan.chevrons.length, 0, `${where}: no trail while it is off the screen`);
         const off = wrap(bearing(tank, follow) - viewYaw);
         if (Math.abs(off) < (TURN_EITHER_DEG * Math.PI) / 180) assert.equal(plan.turn.turn, off >= 0 ? 1 : -1, `${where}: it turns the shorter way`);
@@ -129,7 +133,6 @@ for (const layout of LAYOUTS) for (const [hullName, hullSize] of Object.entries(
 }
 assert.ok(turns > 300 && trails > 20 && beside > turns / 4,
   `the sweep saw both pieces (${turns} turn arrows, ${beside} beside the hull, ${trails} trails)`);
-assert.ok(bare.length <= 24, `at most a handful of a portrait phone's tall-hull frames go bare (${bare.length}: ${bare.slice(0, 4).join('; ')})`);
 // the sight stands it down
 {
   const bands = RECORDED.sizes['1920x1080'].idle, view = { width: bands.width, height: bands.height }, project = chase(0, bands, TANKS.nominal);
@@ -210,4 +213,4 @@ assert.deepEqual(strayPosters([['src/ui/hud.ts', "setGuideFollow({ id: 'zone', k
   assert.match(hud, /const follow = guideFollow\(\);/, 'the HUD\'s follow pointer is the board\'s');
 }
 
-console.log(`pointerFollowView.selftest: ${frames} frames on 4 recorded layouts for 3 hulls (${bare.length} bare), no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);
+console.log(`pointerFollowView.selftest: ${frames} frames on 4 recorded layouts and the live phone for 3 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);

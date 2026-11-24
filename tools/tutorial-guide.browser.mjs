@@ -147,14 +147,16 @@ try {
     }
     const start = await pose();
     // the ball set down relative to the camera (behind the hull at the start), the clock nudged so the markers re-derive
-    // the ball set down, the hold let go for a moment so the marker derivation sees it, and its place read back: a
-    // kickoff or a bounce in that moment can carry it off, so it is set down again (at most three tries) until it stays
+    // the ball set down, the hold let go for a moment so the marker derivation sees it, and its place read back: it can
+    // roll or bounce in that moment, so the case holds only where it ended in its region (ahead, behind, aside of the
+    // start pose), set down again at most three times until it does
+    const region = { 'ball-ahead': (a, c) => a > 15 && Math.abs(c) < 15, 'ball-behind': (a) => a < -20, 'ball-aside': (a, c) => c > 40 };
     const place = async (name, along, across) => {
-      let off = Infinity;
-      for (let attempt = 0; attempt < 3 && off > 3; attempt++) {
-        off = await page.evaluate(async ({ a, c, p }) => {
+      let at = { along: NaN, across: NaN };
+      for (let attempt = 0; attempt < 3 && !region[name](at.along, at.across); attempt++) {
+        at = await page.evaluate(async ({ a, c, p }) => {
           const ball = window.__DEBUG.game.matchModeState?.ball;
-          if (!ball) return Infinity;
+          if (!ball) return { along: NaN, across: NaN };
           const x = p.x + Math.sin(p.yaw) * a + Math.cos(p.yaw) * c, z = p.z + Math.cos(p.yaw) * a - Math.sin(p.yaw) * c;
           const setDown = () => { ball.x = x; ball.z = z; ball.vx = 0; ball.vy = 0; ball.vz = 0; ball.y = window.__DEBUG.game.player.state.pos.y + 2.2; };
           setDown();
@@ -162,12 +164,13 @@ try {
           await new Promise((done) => setTimeout(done, 150));
           window.__DEBUG.battleHold?.set(true);
           const now = window.__DEBUG.game.matchModeState?.ball ?? ball;
-          return Math.hypot(now.x - x, now.z - z);
+          const dx = now.x - p.x, dz = now.z - p.z;
+          return { along: Math.sin(p.yaw) * dx + Math.cos(p.yaw) * dz, across: Math.cos(p.yaw) * dx - Math.sin(p.yaw) * dz };
         }, { a: along, c: across, p: start });
       }
       const read = await show(name, null);
-      report.cases[name].ballOffM = Number(off.toFixed(2));
-      assert.ok(off <= 3, `${name}: the ball stays where it is set down (${off.toFixed(1)} m off after three tries)`);
+      report.cases[name].ballAt = { along: Number(at.along.toFixed(1)), across: Number(at.across.toFixed(1)) };
+      assert.ok(region[name](at.along, at.across), `${name}: the ball ends in its region (${at.along.toFixed(1)} m along, ${at.across.toFixed(1)} m across)`);
       return read.bubbles.filter((b) => b.kind === 'ball').length;
     };
     const ahead = await place('ball-ahead', 40, 0), behind = await place('ball-behind', -60, 0), aside = await place('ball-aside', 0, 80);

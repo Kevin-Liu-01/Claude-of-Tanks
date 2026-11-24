@@ -100,19 +100,21 @@ export function trailChevrons(from: GroundPoint, to: GroundPoint, radiusM: numbe
  *  the largest on the screen that fits. Beside the hull on the turn's side: that ground stands at the hull's own depth,
  *  the nearest to the camera the arrow can lie without the hull over it, so the arrow is large, and a portrait phone's
  *  tank can stand over all the ground ahead. Behind it (between the camera and the hull): a portrait phone's one open
- *  ground when a tall hull fills its width (the recorded phone HUD, 2026-11-24). Ahead of the hull: the chase camera looks down over the turret, so the ground
+ *  ground when a tall hull fills its width (the recorded phone HUD, 2026-11-24); 'centred' starts it a radius to the
+ *  other side, so a U-turn's arc stands centred on the hull's line between the phone's side columns (the live phone,
+ *  probed in the battle: its right column runs 228 to 520 px, and only a 1.2 m arc so centred fits there). Ahead of the hull: the chase camera looks down over the turret, so the ground
  *  just ahead stands behind the hull on the screen, and behind a tall hull (3 m) all of it to 18 m does. The battle's
  *  stills found both: a marker aside got no arrow on a phone, and on a desktop only a sliver 30 m out. */
 export const TURN_PLACES = Object.freeze([
   { aheadM: 0, besideM: 4 }, { aheadM: 4, besideM: 4 }, { aheadM: -4, besideM: 4 },
-  { aheadM: -7, besideM: 0 }, { aheadM: -9, besideM: 0 },
+  { aheadM: -7, besideM: 0 }, { aheadM: -9, besideM: 0 }, { aheadM: -7, besideM: 'centred' }, { aheadM: -9, besideM: 'centred' },
   { aheadM: 10, besideM: 0 }, { aheadM: 14, besideM: 0 }, { aheadM: 18, besideM: 0 }, { aheadM: 24, besideM: 0 }, { aheadM: 30, besideM: 0 },
 ] as const);
 /** The px round the arrowhead that keeps clear of the HUD and the hull, so a head never sits in a gap between buttons. */
 export const TURN_HEAD_PAD_PX = 6;
-/** Its bend's radii tried in turn (m), the largest first, until the whole arrow fits the screen (a portrait phone's
- *  narrow view takes the small ones). */
-export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2] as const);
+/** Its bend's radii (m); the plan keeps the largest arrow on the screen that fits (a portrait phone's narrow ground behind
+ *  the hull takes the small ones). */
+export const TURN_RADII_M = Object.freeze([6, 4.5, 3.2, 2.2, 1.6, 1.2] as const);
 /** It bends at least this far (deg), so a destination just off the screen still reads as a turn; at most a U-turn. */
 export const TURN_MIN_SWEEP_DEG = 30;
 /** A destination this far round (deg) reads as "turn around": where no arrow fits turning the shorter way (a portrait
@@ -255,7 +257,8 @@ export function planFollow(input: FollowInput): FollowPlan {
   if (best) break;
   for (const place of TURN_PLACES) {
     for (const radiusM of TURN_RADII_M) {
-      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, place.besideM, longWay);
+      const besideM = place.besideM === 'centred' ? -radiusM : place.besideM;
+      const arrow = turnArrow(input.player, input.viewYaw, follow, radiusM, place.aheadM, besideM, longWay);
       const band = ground(arrow.band), head = ground(arrow.head);
       if (!band || !head) continue;
       if (band.some((p) => boxes.some((b) => inside(p, b, 0)))) continue;
