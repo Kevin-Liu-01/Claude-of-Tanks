@@ -11,6 +11,7 @@ import type { GameModeId } from './matchModes.ts';
 import { shell, type ShellSpec } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
 import type { ConsumableGateContext, ConsumableId, ConsumableTiming } from './consumableRules.ts';
 
@@ -128,7 +129,10 @@ export const AIR_STRIKE_WEAPONS = Object.freeze({
 type AirCrashClass = 'drone' | 'jet' | 'attack' | 'gunship';
 interface AirCrashRow { readonly blastRadiusM: number; readonly dmg: number; readonly caliberMm: number; readonly why: string }
 export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
-  readonly fall: { readonly carry: number; readonly sinkMps: number; readonly gravityMps2: number; readonly maxS: number };
+  /** landInsideM: a fall whose carry would land it beyond this (the playable square, world/battlefieldBounds.ts) is turned
+   *  to land inside it (sim/strikeRuns.ts crashFall), so its crater, its blast and its wreck fall where the ground is
+   *  drawn and dug, and in sight (air-crash-he-276c). */
+  readonly fall: { readonly carry: number; readonly sinkMps: number; readonly gravityMps2: number; readonly maxS: number; readonly landInsideM: number };
 } = Object.freeze({
   drone: Object.freeze({ blastRadiusM: 11, dmg: 700, caliberMm: 90,
     why: 'an FPV quadcopter: about its warhead (the 90 mm charge) with its battery; 11 m is 2.5 kg, the least load that digs a bowl (1.7 m), a mark no longer' }),
@@ -138,7 +142,7 @@ export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
     why: 'the A-10: heavier than the fighter, with its 30 mm drum and 4 t of fuel; 36 m is 88 kg, a 5.6 m crater' }),
   gunship: Object.freeze({ blastRadiusM: 40, dmg: 3200, caliberMm: 300,
     why: 'the AC-130: some 20 t of fuel and its gun magazines; the envelope\'s 40 m cap (119 kg) and the crater\'s 6 m cap, the largest in the game' }),
-  fall: Object.freeze({ carry: 0.35, sinkMps: 10, gravityMps2: 9.81, maxS: 30 }),
+  fall: Object.freeze({ carry: 0.35, sinkMps: 10, gravityMps2: 9.81, maxS: 30, landInsideM: PLAYABLE_HALF_EXTENT_M }),
 });
 /** Which crash an Air Support aircraft makes (artillery has none: the battery is off the map). */
 export function airCrashClassOf(kind: AirStrikeKind): AirCrashClass | null {
