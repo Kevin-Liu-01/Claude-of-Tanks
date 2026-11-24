@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { scoreGarageQuality } from './garageQualityRubric.ts';
+import { GARAGE_HERO_LUMA_FLOOR, scoreGarageQuality } from './garageQualityRubric.ts';
 
 const passing = {
   id: 'test',
@@ -95,5 +95,14 @@ const looseKitFacade = scoreGarageQuality({
 assert.equal(looseKitFacade.total, 98);
 assert.ok(looseKitFacade.failures.includes('map buildings lack supported facade detail'),
   'a reported facade failure fails, whatever the marker count');
+
+// (garage-env-276) the hero's readable floor: a gate, not points; a measured hero at or over it passes, under it fails by
+// name with the rubric's 100 unchanged; an unmeasured one (a headless receipt) is not read
+const lit = scoreGarageQuality({ ...passing, heroLuma: GARAGE_HERO_LUMA_FLOOR });
+assert.equal(lit.total, 100); assert.deepEqual(lit.failures, []);
+const dark = scoreGarageQuality({ ...passing, heroLuma: GARAGE_HERO_LUMA_FLOOR - 1 });
+assert.equal(dark.total, 100, 'the floor is a gate: no points move');
+assert.deepEqual(dark.failures, [`hero is under the readable floor (luma ${GARAGE_HERO_LUMA_FLOOR - 1} < ${GARAGE_HERO_LUMA_FLOOR})`]);
+assert.ok(GARAGE_HERO_LUMA_FLOOR >= 80 && GARAGE_HERO_LUMA_FLOOR < 104, 'under the lowest current pack (104), with a margin');
 
 console.log('garageQualityRubric.selftest: ok');

@@ -50,6 +50,11 @@ interface GarageQualityInput {
   readonly architecture: Readonly<GarageArchitectureQualityReceipt>;
   readonly workshop: Readonly<GarageWorkshopQualityReceipt>;
   readonly transitionMaxGapMs: number;
+  /**
+   * (garage-env-276) The hero's median display luma (0-255) at the default pose in photo mode, the inner 60 % of the
+   * hull's screen box (tools/garage-hero-luma.mjs). Absent: not measured (a headless receipt), and the floor is not read.
+   */
+  readonly heroLuma?: number;
 }
 
 interface GarageQualityScore {
@@ -137,7 +142,10 @@ function scoreComposition(
       4, 'insufficient readable scene layers')
     + ledger.award(number(architecture.structures) >= (isVerdant ? 1 : 8)
       && number(architecture.structurePerimeterSectors) >= 4,
-    4, 'perimeter is not fully composed across four or more sectors');
+    4, 'perimeter is not fully composed across four or more sectors')
+    // (garage-env-276) a gate, not points (the rubric's 100 stand): a hero under the readable floor fails the pack
+    + ledger.award(input.heroLuma === undefined || input.heroLuma >= GARAGE_HERO_LUMA_FLOOR,
+      0, `hero is under the readable floor (luma ${input.heroLuma} < ${GARAGE_HERO_LUMA_FLOOR})`);
 }
 
 function scoreEnvironmentIdentity(
@@ -186,6 +194,14 @@ function scoreMaterialDetail(
  * base's measurement once the switch work (D) lands. (Was 25 draws, 64k since round 7, 72k since deploy 226.)
  */
 export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls: 36 });
+
+/**
+ * The hero's readable floor (garage-env-276, Main 2026-11-24): its median display luma at the default pose in photo
+ * mode (tools/garage-hero-luma.mjs) never under this, so later lighting work cannot sink a hero into the dark
+ * unnoticed. The lowest current pack less a margin: PROVISIONAL at 90 (the lowest pack measured 104 on the class 1
+ * stills' hero crop), set from tools/garage-hero-luma.mjs's own measurement of every pack on the final build.
+ */
+export const GARAGE_HERO_LUMA_FLOOR = 90;
 
 function scorePerformance(
   input: GarageQualityInput,

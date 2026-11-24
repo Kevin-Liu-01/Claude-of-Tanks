@@ -10,6 +10,7 @@ import { GARAGE_PACK_BUDGET, scoreGarageQuality } from '../src/ui/garageQualityR
 import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { awaitPickerImages } from './garage-picker-images.mjs';
+import { measureGarageHeroLuma } from './garage-hero-luma.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -170,6 +171,8 @@ try {
     }, variant.id);
     results.push({ ...state, frames });
     if (shotsDir) await page.screenshot({ path: path.join(shotsDir, `${variant.id}.png`) });
+    // (garage-env-276) the hero's brightness at the default pose in photo mode: the rubric's readable floor reads it
+    results.at(-1).heroLuma = await measureGarageHeroLuma(page);
     if (shotsDir && orbitShots) {
       const stage = await page.evaluate(() => window.__DEBUG.showroom.debugState().stage);
       const viewport = page.viewport();
@@ -419,6 +422,7 @@ try {
     architecture: result.stats.architecture,
     workshop: result.stats,
     transitionMaxGapMs: result.frames.maxGapMs,
+    heroLuma: result.heroLuma.median,
   }));
   for (const score of qualityScores) {
     if (score.total < 90 || score.failures.length) {
@@ -463,12 +467,13 @@ try {
       presented: intentRace.architecture?.presented === true,
       drawCalls: intentRace.architecture?.drawCalls || 0,
     },
-    variants: results.map(({ id, frames, stats }) => ({
+    variants: results.map(({ id, frames, stats, heroLuma }) => ({
       id,
       frames,
       buildMs: stats.architecture.lastBuildMs,
       drawCalls: stats.architecture.drawCalls,
       triangles: stats.architecture.triangles,
+      heroLuma,
     })),
     qualityScores,
     dressingFrames,
