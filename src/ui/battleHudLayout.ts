@@ -441,12 +441,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** A queued medal card whose place clears the battle sight only: the scope flag decides whether it shows. */
   let medalScopeSensitive = false;
   const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
-  // (notices-276) the alert is transient, except that a new height is a plan input: the touch plan seats the condition
-  // lane under it at the height it shows (its words wrap to three lines), and planned at its 40 px reserve before it
-  // grew, the condition stood 17 px into it and the feed under it at 390x844, the overlap probe)
+  // (notices-276) the alert is transient, except that a new height is a plan input, however it came (a resize, or its
+  // words and class changing): the touch plan seats it and the condition lane by the height it shows. Planned before it
+  // wrapped, it stood compact over the right lane at 390x844 (three lines, 63 px) and the condition 17 px into it, a fixed
+  // point no later pass left, where a fresh plan seats it whole under the sight (the overlap probe; the lane's diagnostic)
   const alertHeights = new WeakMap<Element, number>();
-  const planInput = (target: Element, height = 0) => {
+  const planInput = (target: Element) => {
     if (target.classList?.contains('cot-alert')) {
+      const height = (target as HTMLElement).offsetHeight ?? 0;
       if (height > 0 && Math.abs((alertHeights.get(target) ?? 0) - height) > 1) { alertHeights.set(target, height); planInputs = true; }
       return;
     }
@@ -465,7 +467,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const resize = new ResizeObserver((entries) => {
     if (entries?.length) {
       for (const entry of entries) {
-        planInput(entry.target, entry.contentRect?.height ?? 0);
+        planInput(entry.target);
         const has = !!entry.contentRect && entry.contentRect.width > 0 && entry.contentRect.height > 0;
         if (has && sized.get(entry.target) === false && (entry.target as HTMLElement).matches?.(SEATED_ON_ARRIVAL) && (entry.target as HTMLElement).style) {
           const node = entry.target as HTMLElement;
