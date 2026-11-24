@@ -806,7 +806,7 @@ interface TerrainIndexRecord {
 }
 
 type TerrainIndexPool = Map<number, TerrainIndexRecord>;
-type TerrainSourceCheckpoint = () => Promise<void>;
+export type TerrainSourceCheckpoint = () => Promise<void>;
 type TerrainBuildProgress = readonly [number, number, boolean, TerrainSourceCheckpoint?];
 type TerrainBuildTick = (completed: number, total: number) => Promise<void> | void;
 
@@ -8996,11 +8996,15 @@ export interface TerrainSurfaceMaterial {
  * its own. No height field: the landform mask, the water wetness and the formation boundary stay at their inert
  * defaults (a patch tens of metres wide reads none of them). The battle's terrain and its shader are untouched: the
  * offset is spliced into this material's hook only (the engine context's setupShadowMaterial receives the wrapped hook).
+ * Its layers come as the battle's do (D, 2026-11-24): the caller's source preparation (prepareSourcedTerrain, the
+ * worker's decode) yields its checkpoints up for the caller to await, and a layer it holds is never painted by hand;
+ * with none (the receipts under Node) the procedural layers are painted, as the battle's fallback paints them.
  */
 export function* createTerrainSurfaceMaterialSteps(
   engineCtx: TerrainEngineContext,
   cfg: TerrainMapConfig,
-): Generator<void, TerrainSurfaceMaterial, void> {
+  sourcePreparation: TerrainSourcePreparation | null = null,
+): Generator<void | TerrainSourceCheckpoint, TerrainSurfaceMaterial, void> {
   const mapOrigin = { value: new THREE.Vector3() };
   const garageCtx: TerrainEngineContext = {
     anisotropy: engineCtx.anisotropy,
@@ -9015,10 +9019,10 @@ export function* createTerrainSurfaceMaterialSteps(
     },
   };
   const steps = createSplatMaterialSteps(garageCtx, createLayout(cfg), cfg.splat ?? null, cfg.id || 'verdant', null, null,
-    null, [], cfg.sky ?? null, null, null, null);
+    sourcePreparation, [], cfg.sky ?? null, null, null, null);
   let step = steps.next();
   while (!step.done) {
-    yield;
+    yield step.value;
     step = steps.next();
   }
   const { material, textures, sourcedReady } = step.value;

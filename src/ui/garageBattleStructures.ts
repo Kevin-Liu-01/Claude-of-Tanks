@@ -10,7 +10,10 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { createTerrainSurfaceMaterialSteps, type TerrainMapConfig, type TerrainSurfaceMaterial } from '../world/terrain.ts';
+import {
+  createTerrainSurfaceMaterialSteps, type TerrainMapConfig, type TerrainSourceCheckpoint, type TerrainSurfaceMaterial,
+} from '../world/terrain.ts';
+import { prepareSourcedTerrain, type TerrainSourcePreparation } from '../world/sourcedTextures.ts';
 import { loadMapKits } from '../world/worldKits.ts';
 import {
   buildStructureSurfaces, createStructureBuckets, mulberry32, plannedKitRenderPaints, plannedSurfacePaints,
@@ -54,7 +57,20 @@ export function startGarageSurfacePaints(mapId: string): void {
     prefetch?.dispose();
     surfacePaints.delete(oldest);
   }
+  // (D, 2026-11-24) and its ground's photographed layers start loading and decoding in the worker now, beside the
+  // pack's other slices, as a battle entry starts them with its world build (taken by the ground material's prepare)
+  if (!terrainSources.has(mapId) && !terrainCache.has(mapId)) {
+    const terrainCfg = getMapConfig(mapId) as unknown as TerrainMapConfig;
+    terrainSources.set(mapId, prepareSourcedTerrain(mapId, terrainCfg.splat ?? {}, { worker: true }));
+    while (terrainSources.size > 2) {
+      const [oldest, sources] = terrainSources.entries().next().value!;
+      sources.cancel();
+      terrainSources.delete(oldest);
+    }
+  }
 }
+/** A map's ground layers started ahead (startGarageSurfacePaints), until its ground material's build takes them. */
+const terrainSources = new Map<string, TerrainSourcePreparation>();
 
 /** Load a map's kits (as a battle entry does), then resolve what its structure builders read. */
 export async function loadGarageMapStructures(mapId: string): Promise<GarageMapStructures> {
@@ -298,7 +314,11 @@ export interface GarageTerrainSurface extends TerrainSurfaceMaterial {
 }
 interface TerrainEntry {
   readonly mapId: string;
-  readonly steps: Generator<void, TerrainSurfaceMaterial, void>;
+  readonly steps: Generator<void | TerrainSourceCheckpoint, TerrainSurfaceMaterial, void>;
+  /** The battle's sourced layers, decoded in its worker (none under Node: the procedural fallback paints). */
+  readonly sources: TerrainSourcePreparation | null;
+  /** A worker checkpoint the build stopped at, for an async prepare to await (a synchronous hold steps past it). */
+  checkpoint: TerrainSourceCheckpoint | null;
   readonly shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]>;
   done: GarageTerrainSurface | null;
   holds: number;
@@ -309,19 +329,27 @@ function terrainEntry(map: GarageMapStructures, anisotropy: number): TerrainEntr
   let entry = terrainCache.get(map.mapId);
   if (entry) { terrainCache.delete(map.mapId); terrainCache.set(map.mapId, entry); return entry; } // most recent last
   const shadowRegistrations: Array<readonly [THREE.Material, ShaderHook | null | undefined]> = [];
+  // (D, 2026-11-24) its layers as the battle's world build takes them: the photographed sets decoded in the worker, so
+  // the hand-painted fallback layers (the prepare's main-thread bulk) are painted only where a set fails
+  const cfg = map.cfg as unknown as TerrainMapConfig;
+  const ahead = terrainSources.get(map.mapId) ?? null;
+  terrainSources.delete(map.mapId);
+  const sources = ahead ?? (headless() ? null : prepareSourcedTerrain(map.mapId, cfg.splat ?? {}, { worker: true }));
   const steps = createTerrainSurfaceMaterialSteps({
     anisotropy,
     setupShadowMaterial(material, hook) { shadowRegistrations.push([material, hook as ShaderHook]); },
-  }, map.cfg as unknown as TerrainMapConfig);
-  entry = { mapId: map.mapId, steps, shadowRegistrations, done: null, holds: 0 };
+  }, cfg, sources);
+  entry = { mapId: map.mapId, steps, sources, checkpoint: null, shadowRegistrations, done: null, holds: 0 };
   terrainCache.set(map.mapId, entry);
   trimTerrainCache();
   return entry;
 }
 
 function stepTerrain(entry: TerrainEntry): void {
+  entry.checkpoint = null;
   const step = withHeadlessCanvas(() => entry.steps.next());
   if (step.done) entry.done = { ...step.value, mapId: entry.mapId, shadowRegistrations: entry.shadowRegistrations };
+  else if (typeof step.value === 'function') entry.checkpoint = step.value;
 }
 
 /**
@@ -338,6 +366,14 @@ export async function prepareGarageTerrainSurface(
   try {
     let sliceStart = performance.now();
     while (!entry.done) {
+      // the worker's layer, awaited off the thread (a failed decode leaves the fallback to paint), then a fresh slice
+      const checkpoint = entry.checkpoint;
+      if (checkpoint) {
+        entry.checkpoint = null;
+        try { await checkpoint(); } catch { /* the layer's fallback paints */ }
+        if (!wanted()) return null;
+        sliceStart = performance.now();
+      }
       if (performance.now() - sliceStart >= SLICE_MS) {
         await nextSlice();
         if (!wanted()) return null;
@@ -375,7 +411,10 @@ function trimTerrainCache(): void {
     const oldest = unheld.shift()!;
     terrainCache.delete(oldest.mapId);
     if (oldest.done) disposeMaterials([oldest.done.material], oldest.done.textures);
-    else oldest.steps.return(undefined as never);
+    else {
+      oldest.steps.return(undefined as never);
+      oldest.sources?.cancel();
+    }
     unheld = [...terrainCache.values()].filter((entry) => entry.holds === 0);
   }
 }

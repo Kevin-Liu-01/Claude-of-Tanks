@@ -57,16 +57,25 @@ export function garageOrbitSamples(band = GARAGE_ORBIT_BAND): GarageOrbitSample[
   return samples;
 }
 
+/** The default band's samples, made once (every station and kit piece asks with them, a build at a time). */
+let orbitSamplesOnce: readonly GarageOrbitSample[] | null = null;
+const defaultOrbitSamples = (): readonly GarageOrbitSample[] => (orbitSamplesOnce ??= Object.freeze(garageOrbitSamples()));
+
 /** The parts that hold the camera or block its view of the hero, by part, with the first orbit sample that meets each. */
 export function auditGarageOrbitClearance(
   parts: readonly GarageScenePart[],
-  samples: readonly GarageOrbitSample[] = garageOrbitSamples(),
+  samples: readonly GarageOrbitSample[] = defaultOrbitSamples(),
   marginM = GARAGE_ORBIT_BAND.marginM,
 ): string[] {
   const findings: string[] = [];
   const target = new THREE.Vector3(0, GARAGE_PRESENTATION_POSE.cameraLookHeightM, 0);
   const ray = new THREE.Ray(), hit = new THREE.Vector3();
+  // (D, 2026-11-24) a part farther from the look point than the farthest camera and the margin can neither hold a camera
+  // (within the margin of one) nor stand on a sightline (each lies inside that ball): it is passed without a test
+  let reach = 0;
+  for (const sample of samples) reach = Math.max(reach, sample.camera.distanceTo(target));
   for (const part of parts) {
+    if (part.box.distanceToPoint(target) > reach + marginM) continue;
     let triangles: THREE.Triangle[] | null = null;
     const exact = () => (triangles ??= trianglesOf(part));
     for (const sample of samples) {
