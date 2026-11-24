@@ -217,7 +217,8 @@ export function createAppLifecycle({ game, announce, readers: initialReaders = {
       game.phase = next;
       transitions += 1;
       lastReason = reason;
-      // (battle-teardown-276) the battle's lifetime ends or begins with the write, before anyone hears of it
+      // (battle-teardown-276) the page's battle lifetime ends or begins with the write, before anyone hears of it; only a
+      // bound lifecycle's (the page's) moves it: a bare session (a headless replay run, a receipt's double) never does
       battleScopeEdge(from, next, reason);
       beforeAnnounce?.();
       if (!shouldAnnounce) return;
@@ -302,9 +303,7 @@ export function canTransitionAppPhase(game: { phase: AppPhase }, next: AppPhase)
 export function transitionAppPhase(game: { phase: AppPhase }, next: AppPhase, options: AppPhaseTransitionOptions): void {
   const owner = owners.get(game);
   if (owner) { owner.transition(next, options); return; }
-  const from = game.phase;
-  assertEdge(from, next, options.reason);
+  assertEdge(game.phase, next, options.reason);
   game.phase = next;
-  battleScopeEdge(from, next, options.reason);
   options.beforeAnnounce?.();
 }
