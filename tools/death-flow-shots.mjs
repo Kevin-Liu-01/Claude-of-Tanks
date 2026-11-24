@@ -232,8 +232,10 @@ async function runCase(page, tag, which) {
     return;
   }
   if (which === 'full') {
+    // f-finale sits before the exit's dip through black: a capped replay ends at 2.15 + 11 = 13.15 s and the dip runs
+    // about 13.07-13.69 s, so a 13.2 s beat filmed a black frame; a shorter replay is already out on the live wreck by then
     await beats(page, key, [[0.8, 'a-beat'], [3.0, 'b-cut'], [4.6, 'c-flight'], [7.5, 'd-xray'], [10.5, 'e-xray-late'],
-      [13.2, 'f-finale'], [16.5, 'g-wreck-stop']]);
+      [12.6, 'f-finale'], [16.5, 'g-wreck-stop']]);
     // D on to an ally, A back onto the own wreck (filmed too under --cast)
     await page.keyboard.press('KeyD');
     await sleep(1600);
