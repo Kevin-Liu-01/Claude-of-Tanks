@@ -21,6 +21,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { t } from './i18n.ts';
 import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
+import { battleScoped } from '../game/battleScope.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
 const STYLE_ID = 'cot-mp-status-style';
@@ -372,7 +373,9 @@ export function createMultiplayerStatusSurface({
   let lastBanner: NetworkBanner = null;
   let lastBannerText = '';
   /** The battle notice as last raised ('' when none shows). */
-  let noticeKey = '';
+  // (battle-teardown-276) the banner's last raise is the battle's own memo (game/battleScope.ts): the region takes the banner
+  // down with its battle, so the next battle's same sentence is raised again rather than taken for shown
+  const noticeMemo = battleScoped(() => ({ key: '' }));
   let lastHealth: NetworkHealth | null = null;
   let disposed = false;
 
@@ -424,14 +427,15 @@ export function createMultiplayerStatusSurface({
   // The battle's banner: raised again only when its sentence, its tone or its leave changes (the countdown's second).
   function paintNotice(text: string, fact: NetworkBanner, armed: boolean, migrating: boolean, leaving: boolean): void {
     if (!text) {
-      if (noticeKey) { noticeKey = ''; notices.dismiss(BATTLE_NOTICE_ID); }
+      if (noticeMemo().key) { noticeMemo().key = ''; notices.dismiss(BATTLE_NOTICE_ID); }
       return;
     }
     // (a link the match has let go is the kit's error; a new host its information; the rest, the link's state, its warning)
     const severity = migrating ? 'info' : !armed && (fact?.kind === 'dropped' || fact?.kind === 'failed') ? 'error' : 'warning';
     const key = `${severity} ${leaving ? 1 : 0} ${text}`;
-    if (key === noticeKey) return;
-    noticeKey = key;
+    const memo = noticeMemo();
+    if (key === memo.key) return;
+    memo.key = key;
     notices.condition({
       // (the ladder, battleNotices.ts: a link the match let go is `lost`; the leave's confirmation answers a press; a link
       // reconnecting or a new host is ambient)
@@ -519,7 +523,7 @@ export function createMultiplayerStatusSurface({
       if (disposed) return;
       disposed = true;
       banner?.remove();
-      if (noticeKey) { noticeKey = ''; notices.dismiss(BATTLE_NOTICE_ID); }
+      if (noticeMemo().key) { noticeMemo().key = ''; notices.dismiss(BATTLE_NOTICE_ID); }
       root.remove();
       if (host === 'battle') {
         if (--linkHolders === 0) document.body?.classList?.remove(MP_LINK_CLASS);

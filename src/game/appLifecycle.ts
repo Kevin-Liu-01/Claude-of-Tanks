@@ -1,5 +1,6 @@
 import { endingHoldExpired, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { battleCountdownState } from './preBattleCountdown.ts';
+import { battleScopeEdge } from './battleScope.ts';
 
 /**
  * The app's lifecycle (2026-11-02 audit F1). `game.phase` says who owns the scene and the simulation; it is written
@@ -8,7 +9,8 @@ import { battleCountdownState } from './preBattleCountdown.ts';
  * loading, countdown, live, verdict hold and report — is derived here from the fields their own owners write (the
  * entry lifecycle, the Garage return, the countdown owner's `preBattleS` (preBattleCountdown.ts
  * `transitionBattleCountdown`, its one writer), the simulation's `result`, `resultTimeS`), so no second writer keeps a
- * copy that can disagree. Pure: no DOM, no WebGL (src/mp and Node selftests import it).
+ * copy that can disagree. The battle's lifetime (battleScope.ts) opens and ends with the phase write here, so every exit
+ * path ends what the battle started (battle-teardown-276). Pure: no DOM, no WebGL (src/mp and Node selftests import it).
  */
 
 /** Who owns the scene and the simulation (`game.phase`). */
@@ -215,6 +217,9 @@ export function createAppLifecycle({ game, announce, readers: initialReaders = {
       game.phase = next;
       transitions += 1;
       lastReason = reason;
+      // (battle-teardown-276) the page's battle lifetime ends or begins with the write, before anyone hears of it; only a
+      // bound lifecycle's (the page's) moves it: a bare session (a headless replay run, a receipt's double) never does
+      battleScopeEdge(from, next, reason);
       beforeAnnounce?.();
       if (!shouldAnnounce) return;
       const previousScreen = screenPhase;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createBus } from './stateCore.ts';
 import { createPointerLockFeedbackRuntime } from './pointerLockFeedbackRuntime.ts';
+import { endBattleScope, openBattleScope } from './battleScope.ts';
 
 class FakeElement {
   constructor() {
@@ -52,6 +53,10 @@ const notices = { condition: (options) => shown.push(options), dismiss: (id) => 
   assert.equal(resumes, 0, 'Garage canvas orbit cannot initialize or resume battle audio');
   assert.equal(lockRequests, 0, 'non-battle canvas never recaptures even if the other predicate permits it');
   battleStageVisible = true;
+  // (battle-teardown-276) the notice is the battle's: a denial outside a battle raises none
+  denied();
+  assert.equal(shown.length, 0, 'a denial outside a battle raises no notice');
+  openBattleScope('solo-start');
   denied();
   assert.equal(shown.length, 1, 'durable denial shows one notice on the visible battle stage');
   assert.equal(shown[0].id, 'cot-pointer-lock');
@@ -67,6 +72,17 @@ const notices = { condition: (options) => shown.push(options), dismiss: (id) => 
   restored();
   assert.equal(dismissed.length, 2, 'capture while waiting drops the wait');
   battleStageVisible = true;
+  // (battle-teardown-276) the battle's end takes the notice down and rearms it, however the battle was left: the next
+  // battle's denial says so again
+  denied();
+  assert.equal(shown.length, 2, 'a second battle-time denial shows');
+  endBattleScope('garage-return');
+  assert.equal(dismissed.length, 3, 'the battle\'s end takes the notice down');
+  openBattleScope('solo-start');
+  denied();
+  assert.equal(shown.length, 3, 'the next battle\'s denial shows again');
+  restored();
+  assert.equal(dismissed.length, 4);
 
   canvas.dispatch('mousedown');
   assert.equal(resumes, 1, 'canvas intent resumes audio');
@@ -110,7 +126,8 @@ const notices = { condition: (options) => shown.push(options), dismiss: (id) => 
   await Promise.resolve();
   assert.equal(refreshes, 2, 'dispose detaches the battle-start listener');
   await new Promise((resolve) => setTimeout(resolve, 450));
-  assert.equal(shown.length, 1, 'a disposed runtime never shows the waiting notice');
+  assert.equal(shown.length, 3, 'a disposed runtime never shows the waiting notice');
+  endBattleScope('garage-return');
 }
 
 console.log('pointerLockFeedbackRuntime.selftest: gesture, notice and disposal ownership passed');

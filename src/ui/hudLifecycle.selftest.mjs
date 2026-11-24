@@ -15,6 +15,7 @@ import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createBus } from '../game/stateCore.ts';
 import { initHud } from './hud.ts';
+import { endBattleScope, openBattleScope } from '../game/battleScope.ts';
 import { setBodyFlag } from './bodyFlags.ts';
 import { openSurfaceIds } from './components/surfaceStack.ts';
 
@@ -94,8 +95,10 @@ const resizeTo = (width, height) => {
   Object.assign(windowStub.visualViewport, { width, height });
   windowStub.dispatchEvent(new Event('resize'));
 };
-// (a short landscape's touch layout parks the aim warning beside the map: the kit's notice in the battle's region)
+// (a short landscape's touch layout parks the aim warning beside the map: the kit's notice in the battle's region, which
+// holds a battle's conditions only while its scope lives: battle-teardown-276, game/battleScope.ts)
 hud.setMode('hidden');
+openBattleScope('solo-start');
 hud.setMode('battle');
 body.classList.add('cot-touch-layout');
 resizeTo(700, 400);
@@ -107,6 +110,7 @@ await until(parkedNotice, 'a short landscape parks the aim warning in the battle
 hud.setMode('hidden'); // the Garage return: no frame follows
 await settle(300); // the kit's dismissal (a promise on) and its 200 ms exit
 assert.ok(!parkedNotice(), 'the parked aim notice leaves with the battle'); // (a boolean: a stub element's diff never ends)
+endBattleScope('garage-return');
 aim.gunLimitSpec = false;
 body.classList.remove('cot-touch-layout');
 resizeTo(1280, 720);

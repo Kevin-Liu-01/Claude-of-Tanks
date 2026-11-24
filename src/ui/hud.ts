@@ -9224,6 +9224,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     endingShown = false;
     syncAimNotice(null);
     syncFireNotice(false);
+    // (battle-teardown-276) the event lane looks through the tank again: a battle left from the drone's feed, the gunship or
+    // the binoculars held the next battle's tank events until its first frame said otherwise
+    events.view('tank');
     document.body.classList.remove('cot-hud-aerial');
     wasReloading = false;
     readyPulseT = -1;

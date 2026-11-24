@@ -23,6 +23,7 @@
 //   through another view (view()) a tank kind is held, the latest of each, and shown when the view returns to the tank if
 //   it is under VIEW_HOLD_MS old; a tank event showing as the view changes is taken down and held with them.
 import type { ActionId } from '../game/input.ts';
+import { currentBattleScope, type BattleScope } from '../game/battleScope.ts';
 import { NOTICE_PRIORITY } from './battleNotices.ts';
 import { NoticeQueue, noticeContentHtml, type QueuedToast } from './components/notice.ts';
 import { markDatum } from './dom.ts';
@@ -148,10 +149,26 @@ export function createBattleEventLane(host: EventLaneHost) {
     }, Math.ceil(next));
   }
 
-  return {
+  // (battle-teardown-276) the events a battle raised go with it (game/battleScope.ts), however it is left: the lane empties
+  // and looks through the tank again. An event raised outside a battle (a receipt, a preview) is the lane's alone.
+  let adopted: BattleScope | null = null;
+  function adoptScope(): void {
+    const scope = currentBattleScope();
+    if (!scope || scope === adopted) return;
+    adopted = scope;
+    scope.defer(() => {
+      if (adopted !== scope) return;
+      adopted = null;
+      lane.clear();
+      view = 'tank';
+    });
+  }
+
+  const lane = {
     el,
     /** Raises an event (or counts a repeat, or replaces its slot's). */
     raise(event: BattleEvent): void {
+      adoptScope();
       const at = now();
       if (!shownInView(event.kind, view)) { held.set(event.slot ?? keyOf(event), { event, at }); return; }
       if (scoped && event.priority < NOTICE_PRIORITY.threat) {
@@ -231,6 +248,7 @@ export function createBattleEventLane(host: EventLaneHost) {
       el.classList.remove('show');
     },
   };
+  return lane;
 }
 
 export type BattleEventLane = ReturnType<typeof createBattleEventLane>;
