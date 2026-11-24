@@ -3182,6 +3182,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // notices-276 (Kevin 2026-11-23: "graphics in the empty part of the notifications"): one art layer, one mask, the ruled
     // kinds carry it, every aircraft render on disk
     'src/ui/components/noticeArt.selftest.mjs',
+    // notices-276b (Kevin 2026-11-24: "should we combine stuff ... hexagons look better for the bigger notis"): every battle
+    // notice's kind declares its subject and shape; the tank's own held off the binoculars, the drone and the gunship
+    'src/ui/noticeKinds.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',
