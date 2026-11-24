@@ -191,8 +191,18 @@ export const OUTCOME_REASONS: Readonly<Record<string, readonly ('victory' | 'def
   weapon_ladder_complete: ['victory', 'defeat'], escort_extracted: ['victory'], escort_lost: ['defeat'], escort_time_expired: ['defeat'],
 });
 
+/** The outcome reasons that read a line of their own whatever the result, or another reason's line, by result: Infected's
+ *  two endings, and Frontline's sortie out of time (death-flow-275 R10), which is the clock's defeat line. */
+export const OUTCOME_SHARED_LINES: Readonly<Record<string, Readonly<Partial<Record<'victory' | 'defeat', string>>>>> = Object.freeze({
+  outbreak_complete: { victory: 'endScreen.outcome.outbreak', defeat: 'endScreen.outcome.outbreak' },
+  survivors_extracted: { victory: 'endScreen.outcome.extracted', defeat: 'endScreen.outcome.extracted' },
+  assault_time: { defeat: 'endScreen.outcome.defeat.time' },
+});
+
 /** The outcome line's key for a reason and result, or null where the generic line stands. */
 export function outcomeKey(reason: string | null | undefined, result: string): string | null {
   if (!reason || (result !== 'victory' && result !== 'defeat')) return null;
+  const shared = OUTCOME_SHARED_LINES[reason]?.[result];
+  if (shared) return shared;
   return OUTCOME_REASONS[reason]?.includes(result) ? `endScreen.outcome.${reason}.${result}` : null;
 }

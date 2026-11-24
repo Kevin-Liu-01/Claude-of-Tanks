@@ -13,7 +13,7 @@ import { NOTICE_AIRCRAFT, noticeArtUrl } from './noticeArt.ts';
 import { noticeContentHtml } from './notice.ts';
 import { RENDERED_AIRCRAFT, PREVIEW_AIRCRAFT } from '../../vehicles/previewVehicles.ts';
 import { createBus } from '../../game/stateCore.ts';
-import { createAirSupportHud, INCOMING_NOTICE } from '../airSupportHud.ts';
+import { createAirSupportHud, DOWN_NOTICE, INCOMING_NOTICE, ORDER_NOTICE } from '../airSupportHud.ts';
 import { BATTLE_EVENT } from '../battleNoticeEvents.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R } from '../../sim/matchRuleset.ts';
 void created;
@@ -83,12 +83,18 @@ for (const bad of [undefined, null, '', 'b52', 'tank:', 'tank:../x', 'tank:a b',
     assert.equal(raised?.art, art, `INCOMING ${kind}: art ${art ?? 'none'}`);
     hud.update({ nowS: at + R[kind].warningS + 600, points: 0, cooldowns, strikes: [] }, ORIGIN, ORIGIN, 'alpha', at + 1, true, 'X');
   }
+  // (notices-276b) the air lane's every plate carries its airframe: a shoot-down, and the crew's own call-in (its refusal too)
   bus.emit('ui:aircraftDowned', { kind: 'strafe' });
   bus.emit('ui:aircraftDowned', { kind: 'gunship' });
   bus.emit('ui:strikeRefusal', { kind: 'gunship', reason: 'POINTS' });
-  assert.deepEqual(events.map((e) => e.art), ['a10', 'ac130', undefined], 'downed by its aircraft; a refusal stays words');
+  hud.update({ nowS: at + 900, points: 0, cooldowns, strikes: [] }, ORIGIN, ORIGIN, 'alpha', at + 1.5, true, 'X');
+  assert.deepEqual(calls.filter((c) => c.id === DOWN_NOTICE || c.id === ORDER_NOTICE).map((c) => [c.kind, c.art]),
+    [['airDown', 'a10'], ['airDown', 'ac130'], ['airOrder', 'ac130']], 'downed by its aircraft; the crew\'s call-in by its own');
+  assert.equal(events.length, 0, 'none of them an event');
   const hudSource = readFileSync('src/ui/hud.ts', 'utf8');
-  assert.match(hudSource, /on\('drone:down'[\s\S]{0,400}text: t\('hud\.alert\.droneDowned'\)[^\n]*art: 'drone'/, 'an enemy drone brought down shows the drone');
+  assert.match(hudSource, /on\('drone:down'[\s\S]{0,400}kind: 'droneDown'[\s\S]{0,160}art: 'drone'/, 'an enemy drone brought down shows the drone');
+  // the kill banner carries the destroyed tank's render, on the kit's layer
+  assert.match(readFileSync('src/ui/hudKillRibbon.ts', 'utf8'), /noticeArtHtml\(`tank:\$\{victim\.specId\}`\)/, 'the kill banner shows the tank it destroyed');
   assert.match(hudSource, /art: targetSpecId \? `tank:\$\{String\(targetSpecId\)\}` : undefined/, 'the auto-aim lock shows its target');
 }
 console.log(`noticeArt.selftest: PASS (${NOTICE_AIRCRAFT.length} aircraft renders and the tanks' thumbnails; one masked layer; the ruled kinds carry it)`);

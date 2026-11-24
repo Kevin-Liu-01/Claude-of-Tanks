@@ -4,14 +4,14 @@ import {buildBradley, bradleyFlankDressing} from '../modern3.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {KIT, FITTINGS} from './kit.ts';
 import {mount} from './fittingMount.ts';
-import {armorLoft, sideWall, openTube, smokeBank, antenna} from './europeSourcePrimitives.ts';
+import {armorLoft, sideWall, smokeBank, antenna} from './europeSourcePrimitives.ts';
 import {linebackerOptics} from './m6LinebackerOptics.ts';
-import {linebackerGunMount} from './m6LinebackerGunMount.ts';
+import {linebackerGunMount, linebackerRotaryGun, linebackerRotor} from './m6LinebackerGunMount.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {mirrorX} from '../runningGearPrimitives.ts';
 import {weaponAssembly} from './weaponStock.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
-import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_MUZZLE, LINEBACKER_LAUNCHER as L,
+import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_LAUNCHER as L,
   LINEBACKER_MOUTHS, LINEBACKER_SKIRT_STATIONS, LINEBACKER_SKIRT_INNER, LINEBACKER_SKIRT_OUTER} from '../m6LinebackerLayout.ts';
 const {box, cylX, cylY, cylZ} = KIT;
 
@@ -132,9 +132,8 @@ function turretBody(P: TankBuilderPort): void {
   }
   P.add('turret',box(.76,.08,1.12),0,.10,.51);
   linebackerGunMount(P);
-  P.add('gun',cylZ(.092,.35,24),0,0,.44);
-  openTube(P,.039,.49,LINEBACKER_MUZZLE,.0125 / T);
-  P.add('gun',cylZ(.051,.13,24),0,0,2.05);
+  // 276: the GAU-12/U's five-barrel rotor in place of the M242's tube (m6LinebackerGunMount.ts)
+  linebackerRotaryGun(P);
 }
 
 function launcher(P: TankBuilderPort): void {
@@ -263,6 +262,7 @@ export function buildM6Linebacker(P: TankBuilderPort): void {
   roofKit(P);
   turretFieldKit(P);
   P.turretG.userData.linebackerLauncher = {launcherTubes:4};
+  linebackerRotor(P);
   // Bake all turret-owned stock about the unchanged ring. The spec already
   // places the gun pivot at 90%; fittings are separate scene objects and must
   // scale with their seats. Hull skirts, tracks and fenders are untouched.
@@ -275,7 +275,6 @@ export function buildM6Linebacker(P: TankBuilderPort): void {
     child.scale.multiplyScalar(T);
   }
   P.muzzleZ *= T;
-  P.physicalMuzzleBore = {outerRadiusM:.039*T,innerRadiusM:.0125,depthM:.20*T};
   P.topY = .95 * T;
   P.additionalShadowSources = {hull:['hullExternalArmor'],turret:['turretExternalArmor','turretCupola','turretHatch']};
 }

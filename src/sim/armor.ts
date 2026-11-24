@@ -22,6 +22,7 @@ import type { AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
  */
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
+import { quaternionFromEuler, matrixRotationX, matrixRotationY } from './detRotation.ts';
 import type { ModuleId } from './moduleCatalog.ts';
 
 import * as detMath from './detMath.ts';
@@ -419,7 +420,7 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // Forward hull matrix — exact tankFactory mapping ('YXZ', y=yaw,
   // x=-pitch, z=roll), inverted here for world → hull local.
   _euler.set(-pose.pitch, pose.yaw, pose.roll, 'YXZ');
-  _quat.setFromEuler(_euler);
+  quaternionFromEuler(_quat, _euler);
   _unitScale.setScalar(pose.modeScale??1);
   _hullM.compose(pose.pos, _quat, _unitScale);
   _unitScale.set(1,1,1); // Child frames inherit the hull scale exactly once.
@@ -431,7 +432,7 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // Turret frame: hull · T(turretPivot) · Ry(turretYaw) — or, for a wreck's turret off its ring, its body's own pose
   if (pose.turretWorld) _turretM.copy(pose.turretWorld);
   else {
-    _mA.makeRotationY(pose.turretYaw);
+    matrixRotationY(_mA, pose.turretYaw);
     _mA.setPosition(tp[0], tp[1], tp[2]);
     _turretM.multiplyMatrices(_hullM, _mA);
   }
@@ -440,7 +441,7 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // Gun-follow frame: turret geometry pitched about the trunnion —
   // turret · T(gunPivot) · Rx(-gunPitch) · T(-gunPivot)
   _mA.makeTranslation(gp[0], gp[1], gp[2]);
-  _mB.makeRotationX(-pose.gunPitch);
+  matrixRotationX(_mB, -pose.gunPitch);
   _mC.makeTranslation(-gp[0], -gp[1], -gp[2]);
   _mA.multiply(_mB).multiply(_mC);
   _gunM.multiplyMatrices(_turretM, _mA);
@@ -449,7 +450,7 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // Barrel frame: cylinder geometry sits at the origin along +Z —
   // turret · T(gunPivot) · Rx(-gunPitch)
   _mA.makeTranslation(gp[0], gp[1], gp[2]);
-  _mB.makeRotationX(-pose.gunPitch);
+  matrixRotationX(_mB, -pose.gunPitch);
   _mA.multiply(_mB);
   _barrelM.multiplyMatrices(_turretM, _mA);
   _barrelInv.copy(_barrelM).invert();
@@ -457,10 +458,10 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   if (roof) {
     _mA.compose(_roofPosition.fromArray(roof.position), _quat.fromArray(roof.rotation), _unitScale);
     _roofM.multiplyMatrices(roof.owner === 'turret' ? _turretM : _hullM, _mA);
-    _roofM.multiply(_mA.makeRotationY(pose.roofGunYaw ?? 0));
+    _roofM.multiply(matrixRotationY(_mA, pose.roofGunYaw ?? 0));
     _roofM.scale(_roofScale.fromArray(roof.scale));
     _roofM.multiply(_mA.makeTranslation(roof.pivot[0], roof.pivot[1], roof.pivot[2]));
-    _roofM.multiply(_mA.makeRotationX(-(pose.roofGunPitch ?? 0)));
+    _roofM.multiply(matrixRotationX(_mA, -(pose.roofGunPitch ?? 0)));
     _roofInv.copy(_roofM).invert();
   } else { _roofM.copy(_hullM); _roofInv.copy(_hullInv); }
 }

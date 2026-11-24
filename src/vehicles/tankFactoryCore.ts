@@ -41,7 +41,7 @@ import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCa
 import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
-import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
+import { getSpec, TANK_SPECS } from './specs.ts';
 import {
   box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, reprojectMovedFaceBoxUV, thinPartBoxUV,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
@@ -1388,6 +1388,11 @@ export interface TankVisual {
   ): void;
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): THREE.Vector3;
   gunDirWorld(out: THREE.Vector3, muzzleIndex?: number, launcher?: boolean): THREE.Vector3;
+  /** (276) The running gear's track hitbox as built, for the anatomy generator (tools/combat-rig-measure.mjs): the
+   *  calibration carries it and finalizeCombatAnatomy attaches the prisms; the build itself writes no combat data. */
+  readonly trackHitbox: readonly TrackHitboxReceipt[] | null;
+  /** (276) How many launcher tubes the build draws a mouth for (the generator measures each). */
+  readonly launcherTipCount: number;
   gunPivotWorld(out: THREE.Vector3): THREE.Vector3;
   turretTopWorld(out: THREE.Vector3): THREE.Vector3;
   recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number, guided?: boolean): number | null;
@@ -6363,7 +6368,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
   // contactGeom): the real band silhouette + lateral extent of this unit's
   // tracks, derived from the exact loop the visual band was built from.
-  // createTank hands it to specs.attachTrackShapes so hit resolution and the
+  // createTank publishes it (tank.trackHitbox) for the anatomy generator, whose calibration hands it to
+  // specs.attachTrackShapes in finalizeCombatAnatomy (276), so hit resolution and the
   // killcam x-ray follow the true \____/ trapezoid run instead of one AABB
   // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
   // pad/grouser depth (family track shoes reach ~0.05-0.08 outward on
@@ -10778,21 +10784,9 @@ export function* createTankRuntimeSteps(
   let presentationFloorYM = presentationFloorFrom(restScan, contactGeom) ?? 0;
   let presentationFloorMeasured = false;
 
-  // ---- track hitbox attach (combat data only — no geometry writes) --------
-  // Derived by buildRunningGear from the as-built band loop; attached onto
-  // the SHARED spec.armor so every armor consumer (state.ts shell sweeps,
-  // damage.ts, ai.ts weak-spot probes, main.ts HUD, killcam snapshots) sees
-  // the real track shape. Deterministic per spec (gear cfg is authored data;
-  // camoSeed/quality never move wheels), so re-attachment on every build is
-  // an idempotent overwrite. Gearless builds (generic placeholders)
-  // publish nothing and keep the legacy plate+AABB path untouched.
-  // (249) A combat-rig row hands the builders an authoring copy of the armor (authoringRigSpec); the prisms go onto the
-  // shared combat armor as well, which the copy's writes never reached (every such tank fought without track prisms).
-  if (P.gear && P.gear.trackHitbox) {
-    attachTrackShapes(armor, P.gear.trackHitbox);
-    const combatArmor = getSpec(specId).armor;
-    if (combatArmor !== armor) attachTrackShapes(combatArmor, P.gear.trackHitbox);
-  }
+  // (276 sim-det-trig) the track hitbox is combat data: the build publishes it (trackHitbox below) for the anatomy
+  // generator, and every driver's spec gets the prisms from its calibration (finalizeCombatAnatomy). Attached here, only
+  // a page that drew a tank fought with prisms, and every authority with the legacy rectangles.
 
   // ---- state ----
   // (2026-11-02 audit F10) the wreck: one declared state, moved only by moveWreck below (wreckLifecycle.ts); `destroyed`
@@ -12135,6 +12129,8 @@ export function* createTankRuntimeSteps(
     },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space gun trunnion */
     gunPivotWorld(out) { return gunG.getWorldPosition(out); },
+    trackHitbox: P.gear?.trackHitbox?.length ? P.gear.trackHitbox : null,
+    launcherTipCount: launcherTips.length,
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space turret roof anchor */
     turretTopWorld(out) { return turretTop.getWorldPosition(out); },
 

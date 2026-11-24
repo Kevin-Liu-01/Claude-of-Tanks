@@ -17,11 +17,14 @@ interface TurboCooldown {
   dispose(): void;
 }
 
-/** `ownId`: the seat's tank id now; `clock`: the time base its readers pass as `nowS`, read when the event lands. */
-export function createTurboCooldown(bus: EventBus, ownId: () => string | null | undefined, clock: () => number): TurboCooldown {
+/** `ownId`: the seat's tank id now; `clock`: the time base its readers pass as `nowS`, read when the event lands; `event`:
+ *  the move's (flip-boost-276: the air spin's `tank:airSpin` carries its cooldown as Turbo's does). */
+export function createTurboCooldown(
+  bus: EventBus, ownId: () => string | null | undefined, clock: () => number, event: 'tank:turbo' | 'tank:airSpin' = 'tank:turbo',
+): TurboCooldown {
   let readyAtS = -Infinity;
   let totalS = 1;
-  const off = bus.on('tank:turbo', (payload) => {
+  const off = bus.on(event, (payload) => {
     const { id, readyS } = (payload ?? {}) as { id?: string; readyS?: number };
     const own = ownId();
     if (!id || !own || id !== own || !(Number(readyS) > 0)) return;
@@ -36,11 +39,12 @@ export function createTurboCooldown(bus: EventBus, ownId: () => string | null | 
   };
 }
 
-/** A jump mode's moves the phone greys this moment (turbo-spin-275): the air spin unless the hull flies (sim/hullFlight.ts,
- *  the sim's own test), Turbo while it cools. */
-export function modeMovesUnavailable(state: HullFlightState | null | undefined, turboWaitS: number): string[] {
+/** A jump mode's moves the phone greys this moment (turbo-spin-275): the air spin when the sim's own test refuses it
+ *  (sim/hullFlight.ts: its flight's dodge spent, a turn under way, on its roof) or while it cools (flip-boost-276), Turbo
+ *  while it cools. */
+export function modeMovesUnavailable(state: HullFlightState | null | undefined, turboWaitS: number, airSpinWaitS = 0): string[] {
   const out: string[] = [];
-  if (!canTankAirSpin(state)) out.push('airSpin');
+  if (!canTankAirSpin(state) || airSpinWaitS > 0) out.push('airSpin');
   if (turboWaitS > 0) out.push('turbo');
   return out;
 }

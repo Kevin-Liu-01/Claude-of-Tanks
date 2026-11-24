@@ -23,11 +23,13 @@
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
+import { quaternionFromEuler } from '../sim/detRotation.ts';
 import type { BotMission } from '../sim/matchModes.ts';
-import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
+import { BOT_TURBO, createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
+import { tankAirborne } from '../sim/hullFlight.ts';
 import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
-import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
+import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type AirSpinRules, type RulesetPhysics, type TurboRules } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
@@ -225,6 +227,11 @@ interface AiEntity {
   modeJumpMps?: number | null;
   modeGravityScale?: number;
   modePhysics?: RulesetPhysics | null;
+  /** Turbo and the air spin (turbo-spin-275), stamped by the mode (matchModes.ts stampPhysics); the bot presses them
+   *  through its action bits like a player (bot-turbo-276). */
+  modeTurbo?: TurboRules | null;
+  modeAirSpin?: AirSpinRules | null;
+  turboReadyS?: number;
   spec: AiSpec;
   state: TankState;
   combat?: CombatState;
@@ -4790,7 +4797,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const desiredYaw = detMath.atan2(dx, dz);
     const desiredPitch = detMath.atan2(dy, horizontal);
     _hullEuler.set(-(state.visualPitch || 0), state.yaw, state.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(
       detMath.sin(state.turretYaw) * detMath.cos(state.gunPitch),
       detMath.sin(state.gunPitch),
@@ -4985,7 +4992,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
     const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = detMath.hypot(dx, dz) || 1;
     _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
       .applyQuaternion(_hullQuat).normalize();
     if (Math.abs(wrapAngle(detMath.atan2(dx, dz) - detMath.atan2(_vF.x, _vF.z))) > BALL_SHOT.bearRad) return true;
@@ -5019,7 +5026,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.fire = false;
     if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
     _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
+    quaternionFromEuler(_hullQuat, _hullEuler);
     _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
       .applyQuaternion(_hullQuat).normalize();
     const dx = aim.x - st.pos.x, dy = aim.y - (st.pos.y + selfEyeM), dz = aim.z - st.pos.z, d = detMath.hypot(dx, dy, dz) || 1;
@@ -6626,6 +6633,68 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return Math.abs(wrapAngle(detMath.atan2(dx, dz) - st.yaw)) < STRIKER_JUMP.coneRad;
   }
 
+  /**
+   * What Turbo chases (bot-turbo-276): the Turbo Ball striker's ball, while its destination lies on the same line (driving
+   * through the ball, not round it); in a mode without the ball, a target in sight while the bot is not falling back.
+   * The distance to it when it lies inside STRIKER_JUMP.coneRad of the bow, else Infinity.
+   */
+  let turboChasesTank = false;
+  function turboChaseM(retreating: boolean): number {
+    turboChasesTank = false;
+    if (!entity.modeTurbo) return Infinity;
+    const st = entity.state;
+    const objective = getObjective?.();
+    const bearing = (x: number, z: number): number => Math.abs(wrapAngle(detMath.atan2(x - st.pos.x, z - st.pos.z) - st.yaw));
+    let gx: number, gz: number;
+    if (objective?.mission === 'striker' || objective?.mission === 'keeper' || objective?.mission === 'screen') {
+      const ball = objective.mission === 'striker' ? objective.ball : null;
+      if (!ball || bearing(objective.x, objective.z) >= STRIKER_JUMP.coneRad) return Infinity;
+      gx = ball.x; gz = ball.z;
+    } else if (target && losClear && !retreating) {
+      gx = target.state.pos.x; gz = target.state.pos.z;
+      turboChasesTank = true;
+    } else return Infinity;
+    return bearing(gx, gz) < STRIKER_JUMP.coneRad ? detMath.hypot(gx - st.pos.x, gz - st.pos.z) : Infinity;
+  }
+
+  /** Seconds until the hull in flight meets the ground under it (0 on the ground), at the mode's gravity. */
+  function flightLeftS(climbMps = entity.state.verticalSpeed || 0): number {
+    const st = entity.state;
+    if (!tankAirborne(st)) return 0;
+    const g = 9.81 * Math.max(0.1, entity.modeGravityScale ?? 1);
+    const h = Math.max(0, st.pos.y - hf.getHeightAt(st.pos.x, st.pos.z));
+    return (climbMps + Math.sqrt(Math.max(0, climbMps * climbMps + 2 * g * h))) / g;
+  }
+
+  /** Where a leap along the bow comes down `travel` m on is ground the hull can take: the landing's drop, a liquid, a
+   *  step over 3 m on the way, a wall in the way (the jump's probe, and Turbo's). */
+  function leapLandingClear(travel: number): boolean {
+    const st = entity.state;
+    let safe = travel > 0 && travel <= 120 && terrainSafety.jumpLandingSafe(entity, travel) && (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, travel));
+    const baseY = hf.getHeightAt(st.pos.x, st.pos.z);
+    for (let d = 5; safe && d <= travel + 5; d += 5) {
+      const distance = Math.min(travel, d);
+      const y = hf.getHeightAt(st.pos.x + detMath.sin(st.yaw) * distance, st.pos.z + detMath.cos(st.yaw) * distance);
+      if (!Number.isFinite(y) || Math.abs(y - baseY) > 3) safe = false;
+    }
+    if (safe) {
+      jumpOrigin.set(st.pos.x, st.pos.y + 1, st.pos.z);
+      jumpDirection.set(detMath.sin(st.yaw), 0, detMath.cos(st.yaw));
+      safe = !deps.raycast(jumpOrigin, jumpDirection, travel + 5);
+    }
+    return safe;
+  }
+
+  /** How far Turbo's leap carries the hull before it lands: its run speed plus the leap's, over the flight the lift gives. */
+  function turboTravelM(turbo: TurboRules): number {
+    const st = entity.state;
+    const speed = Math.min(45, Math.max(0, st.speed) + turbo.forwardMps);
+    const airborne = tankAirborne(st);
+    const climb = airborne ? Math.max(st.verticalSpeed || 0, turbo.liftMps) : Math.max(0, st.verticalSpeed || 0) + turbo.liftMps;
+    const flight = airborne ? flightLeftS(climb) : 2 * climb / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
+    return speed * flight;
+  }
+
   function driveMission(input: AiInput): boolean {
     const objective = getObjective?.();
     if (!objective?.mission) return false;
@@ -7174,19 +7243,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
       const st = entity.state;
       const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
-      let safe = travel > 0 && travel <= 120 && terrainSafety.jumpLandingSafe(entity, travel) && (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, travel));
-      const baseY = hf.getHeightAt(st.pos.x, st.pos.z);
-      for (let d = 5; safe && d <= travel + 5; d += 5) {
-        const distance = Math.min(travel, d);
-        const y = hf.getHeightAt(st.pos.x + detMath.sin(st.yaw) * distance, st.pos.z + detMath.cos(st.yaw) * distance);
-        if (!Number.isFinite(y) || Math.abs(y - baseY) > 3) safe = false;
-      }
-      if (safe) {
-        jumpOrigin.set(st.pos.x, st.pos.y + 1, st.pos.z);
-        jumpDirection.set(detMath.sin(st.yaw), 0, detMath.cos(st.yaw));
-        safe = !deps.raycast(jumpOrigin, jumpDirection, travel + 5);
-      }
-      abilityContext.safeJump = safe;
+      abilityContext.safeJump = leapLandingClear(travel);
+    }
+    // Turbo and the air spin (bot-turbo-276): only where the mode stamped them, through the same action bits as a player
+    abilityContext.safeTurbo = false;
+    abilityContext.chaseM = entity.modeTurbo ? turboChaseM(abilityContext.retreating) : Infinity;
+    abilityContext.flightS = entity.modeAirSpin ? flightLeftS() : 0;
+    if (entity.modeTurbo && abilities.turboEligible(entity, timeS, abilityContext)
+        && (tankAirborne(entity.state) || (input.throttle > 0.5 && !input.brake))) {
+      const travel = turboTravelM(entity.modeTurbo);
+      // a leap at a tank comes down short of it: the ram is not the bot's to take
+      abilityContext.safeTurbo = (!turboChasesTank || travel + BOT_TURBO.targetStandoffM <= (abilityContext.chaseM ?? 0))
+        && leapLandingClear(travel);
     }
     const abilityBits = abilities.update(entity, timeS, abilityContext);
     if (abilityContext.offensive && (abilityBits & PLAYER_ACTION_BITS.SELF_RIGHT)) offensiveJumps++;

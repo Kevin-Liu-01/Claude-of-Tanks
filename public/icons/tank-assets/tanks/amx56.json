@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.65,0.501,-3.348],
-          [1.65,0.975,-3.348],
-          [1.65,0.975,3.7],
-          [1.65,0.501,3.7]
+          [1.65,0.117,3.8278],
+          [1.65,0.117,-3.8278],
+          [1.65,0.975,-3.8278],
+          [1.65,0.975,3.8278]
         ]
       },
       {
@@ -2348,7 +2348,7 @@
     ]
   },
   "geometryHash": "7e363d81",
-  "metadataHash": "313d0ff5",
+  "metadataHash": "369305cd",
   "presentationAnchor": {
     "xM": 0.0014,
     "zM": 0.0747
@@ -2406,8 +2406,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25954,
-      "sha256": "7bc10f7e1bc8f018cf7e2f25e90cdda1ff69150d3eb2c8bbeae30b9aea471c65"
+      "bytes": 26152,
+      "sha256": "17f8270276d9b9c13956b5586157a98ce7d2340dff0f2f050368334286d3336c"
     },
     "modulesSide": {
       "file": "amx56_modules_side.webp",
@@ -2485,8 +2485,8 @@
     "technicalLabels": {
       "file": "amx56_technical.json",
       "mime": "application/json",
-      "bytes": 4853,
-      "sha256": "c045fe4357bd93a898327ef6a74ea5729d4c5ebf459b750f2f3cb01d281b32ef"
+      "bytes": 5067,
+      "sha256": "fb580e98bdfd576a24441d3618a87d9ed4ae5aaa411f75bf0880b1536574aa1b"
     }
   }
 }

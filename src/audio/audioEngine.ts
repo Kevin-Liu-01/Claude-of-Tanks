@@ -30,7 +30,7 @@ import { getLocale } from '../ui/i18n.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import {
   atmosphereForMap, clamp, dbToGain, dopplerRatio, gainToDb, mulberry32, rampBetween,
-  toListenerFrame, distanceAttenuationDb, panFromRelative,
+  toListenerFrame, distanceAttenuationDb, panFromRelative, propagationDelayS,
   type AtmosphereProfile, type ListenerFrame, type RelativePosition,
 } from './audioMath.ts';
 import { createAssetLibrary, predecodeAssets, type AssetLibrary } from './assetLibrary.ts';
@@ -61,15 +61,16 @@ import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, modeCallsAirSupport, modeLaunchesDrones, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
-import { bombFall, runExitS, runPose } from '../sim/strikeRuns.ts';
+import { bombFall, crashFall, runExitS, runPose } from '../sim/strikeRuns.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import {
   resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type TrackClass, type VehicleAudioIdentity,
 } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import {
-  LAUNCH_ASSET, WEAPON_ROWS, brakeGainDb, eventMount, loaderFor, missileLaunchFor, mountForRound, readyRackDoor, reloadAssets,
-  resolveReloadCuePlan, resolveWeaponReport, stationMount, stationRows, weaponMounts, type ReloadCue, type ReloadCuePlan, type WeaponMount, type WeaponRow,
+  LAUNCH_ASSET, ROAR, SUSTAIN_BODY, WEAPON_ROWS, brakeGainDb, eventMount, loaderFor, missileLaunchFor, mountForRound, readyRackDoor, reloadAssets,
+  resolveReloadCuePlan, resolveWeaponReport, stationMount, stationRows, weaponMounts, roarVoicing, sustainedCrackS,
+  type ReloadCue, type ReloadCuePlan, type RoarVoicing, type WeaponMount, type WeaponRow,
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
 import {
@@ -77,7 +78,8 @@ import {
   type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
 } from './battleMode.ts';
 import { killcamOwnsScreen } from '../game/killcamScreen.ts';
-import { createShotCadence, sustainedGrainS, type ShotKey } from '../game/shotCadence.ts';
+import { createToggleSettle, type SettledToggle } from './toggleSettle.ts';
+import { burstReleaseS, createShotCadence, fireRegime, type FireRegime, type ShotKey } from '../game/shotCadence.ts';
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import {
   GROUND_DEBRIS, MATERIAL_SOUNDS, NEAR_MISS_REACH_M, SPALL, calibreBand, compartmentOf, distantBank, groundMaterial, hitMaterial,
@@ -200,7 +202,7 @@ interface AudioSpec {
     autoloader?: unknown;
     soundProfile?: string;
     reloadS?: number;
-    shells?: readonly { name?: string; type?: string; caliberMm?: number; guided?: boolean; soundProfile?: string; reloadGroup?: string }[];
+    shells?: readonly { name?: string; type?: string; caliberMm?: number; guided?: boolean; soundProfile?: string; reloadGroup?: string; reloadS?: number }[];
   };
 }
 
@@ -631,6 +633,12 @@ export function createAudio({
   let listenerOwnerId: string | null = null;
   let listenerScoped = false;
   let wasScoped = false;
+  // (276) toggle sounds settle on the final state (toggleSettle.ts): the scope, the sight's zoom, auto-aim, lights, roof gun
+  const toggles = createToggleSettle();
+  /** the sight's magnification as last heard (NaN out of the sight), and auto-aim's target ('' off) */
+  let sightZoom = Number.NaN;
+  let autoAimTarget = '';
+  let autoAimReason = '';
   // The battle mode (battleMode.ts): the phase, the stage (loading, live, over, presented), the overlays (paused,
   // kill-cam) and the battle's serial. Its one writer is applyMode(), fed by the bus facts that move it.
   const battleMode: AudioBattleMode = initialMode ? copyAudioBattleMode(initialMode) : createAudioBattleMode(initialPhase);
@@ -1060,9 +1068,8 @@ export function createAudio({
   const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -6, autocannon: -16, mg: -19 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
-  // (272, the owner: "debounce some things like fire sounds") a fast gun's report by its cadence (game/shotCadence.ts):
-  // each round's crack at most the floor's 20 a second, a sustained gun's crack a short grain, its punch, distant boom and
-  // feed once a body window, its echo once a tail window. A gun slower than every window is heard as it always was.
+  // (272) a fast gun's strikes by their cadence (game/shotCadence.ts 'impact'); (276) its report by its fire-rate regime
+  // (fireRegime: burstRound below), not by a cap on its rounds.
   const shotCadence = createShotCadence();
   /** (272) the audio clock of the last empty trigger heard: a held trigger is one press */
   let lastAmmoEmptyAt = -Infinity;
@@ -1103,8 +1110,9 @@ export function createAudio({
    * (a guided round's by how it launches) fading into the distant one by range, the muzzle brake's side blast, the punch
    * of the blast, the map's echo; for our own gun its own report from the hatch, in the sight the closed turret's, and
    * the breech's recoil. A shot whose key has no row is silent (the census and typecheck keep that from shipping).
-   * (272) A round given its weapon (`cadenceShooter`, `cadenceWeapon`) and its clock is heard by that gun's cadence
-   * (shotCadence above); one given no clock (a replay's, a cinematic's, a probe's) plays in full.
+   * (276) A round given its weapon (`cadenceShooter`, `cadenceWeapon`) and its clock is heard by its gun's fire-rate
+   * regime (game/shotCadence.ts fireRegime): a slow gun's round in full, a fast gun's as its burst (burstRound); one
+   * given no clock (a replay's, a cinematic's, a probe's) plays in full.
    */
   function fireWeapon(pos: Vec3, m: WeaponMount, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false,
     shooterId: string | null = null, roundName: string | null = null, dir: Vec3 | null = null,
@@ -1112,16 +1120,10 @@ export function createAudio({
     if (!ready()) return;
     const resolved = resolveWeaponReport(m, soundProfile);
     if (!resolved) { logSound('weapon:unkeyed', { key: m.key }); return; }
-    let grainS: number | undefined;
-    let body = true;
-    let tail = true;
-    if (cadenceShooter != null && Number.isFinite(cadenceTimeS)) {
-      // a round inside the floor of its gun's last crack is silent (a rotary gun's in-between rounds)
-      if (shotCadence.admit('report', cadenceShooter, cadenceWeapon, cadenceTimeS) === 0) return;
-      grainS = sustainedGrainS(shotCadence.gapS) ?? undefined;
-      body = shotCadence.admit('body', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
-      tail = shotCadence.admit('tail', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
-    }
+    // (276) the gun's regime by its real cadence (game/shotCadence.ts fireRegime): a clocked round of a fast gun joins its
+    // burst (burstRound); a slow gun's round, and one given no clock (a replay's, a cinematic's, a probe's), plays in full
+    const clocked = cadenceShooter != null && Number.isFinite(cadenceTimeS) && !cinematic;
+    const cadence = clocked ? gunCadence(shooterId ?? (typeof cadenceShooter === 'string' ? cadenceShooter : null), m, `${cadenceShooter}|${cadenceWeapon}`, cadenceTimeS) : null;
     // The Juggernaut's gun carries further and sits a little deeper.
     const report = shooterId != null && shooterId === bossId ? { ...resolved, gainDb: resolved.gainDb + 2.5, rate: resolved.rate * 0.94 } : resolved;
     const row = report.row;
@@ -1146,48 +1148,309 @@ export function createAudio({
     // everyone else hears standing in for ours while it decodes or rests (owner 2026-10-04, no fallbacks). A gun's own
     // report stays under its closed turret's in the sight; a roof gun's or an autocannon's turret is all we hear there.
     const ownReport = own && (!launch || launch === 'tube') ? row.own : null;
+    const shot: BurstShot = { pos, own, distance, closeK, farK, base, brakeDb, scopedInside, ownReport, close, row, rate: report.rate,
+      gainDb: report.gainDb, twin: !!report.twin, muzzleIndex };
+    if (cadence && cadence.regime !== 'single') { burstRound(cadence, shot); return; }
     // The blast belongs to the close report: past its range the distant bank carries the shot.
     const blastDb = closeK > 0.05 ? BLAST_DB[row.family] : undefined;
-    if (blastDb != null && body && !(scopedInside && row.family !== 'cannon')) {
-      const punch = punchFor(row.family, row.boreMm);
-      // the punch is the muzzle blast itself: it turns with the report around the brake
-      play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) + brakeDb });
+    if (blastDb != null) punch(shot, blastDb);
+    crack(shot, undefined);
+    // The distant boom sits 3 dB under the close report.
+    if (farK > 0.03 && !(scopedInside && row.family !== 'cannon')) {
+      play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
     }
-    if (scopedInside && row.family !== 'cannon') {
-      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate, maxDurS: grainS }));
-    } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb, maxDurS: grainS });
-    else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb, maxDurS: grainS });
-    // The distant boom sits 3 dB under the close report. (272) Under a close report it is the body's; alone, past the close
-    // report's range, it is the round's own crack.
-    if (farK > 0.03 && (body || closeK <= 0.03) && !(scopedInside && row.family !== 'cannon')) {
-      play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3, maxDurS: grainS });
-    }
-    if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2, maxDurS: grainS });
-    if (tail && scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
+    if (scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
       const now = mixer.ctx.currentTime;
       if (row.family !== 'mg' || now - (lastBurstTail.get(row.key) ?? -1) > 0.22) {
         if (row.family === 'mg') lastBurstTail.set(row.key, now);
-        // The echo sits well under the crack (2026-10-02): at the old level it was nearly as loud as a
-        // peak-mastered report and held a near shot within 2–9 dB of its peak for half a second, a blast.
-        play(`tail_${scene.tail}`, { ...base, rate: row.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(row.tailGain) - (own ? 14 : 12) });
+        echo(shot, 0);
       }
     }
     // In the sight our own gun is heard from inside its closed turret, close-miked by its bore.
-    if (body && own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
+    if (own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
     // The machinery of our own shot: the breech recoiling and running back into battery, the buffer's hiss, the
     // turret's loose gear rattling.
-    // (272) a sustained gun's breech and feed sound once a body window
-    if (body && own && !cinematic && row.key === 'ac130-105/unitary_brass') {
+    if (own && !cinematic && row.key === 'ac130-105/unitary_brass') {
       // In the gunship the breech runs open on counter-recoil and throws the hot case onto the deck.
       play('gunship_casing_drop', hullOptions({ delayS: 0.45 }));
-    } else if (body && own && !cinematic && row.family === 'cannon') {
+    } else if (own && !cinematic && row.family === 'cannon') {
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (row.boreMm - 100) / 300, 0.85, 1.15) }));
     }
     // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
     // and it made gunfire read as explosions. The recorded punch is the weight now.)
-    if (body && (own || distance < 45) && row.family === 'autocannon') {
-      play('ac_feed', own ? hullOptions({ delayS: row.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: row.actionDelayS, gainDb: -10 });
+    if ((own || distance < 45) && row.family === 'autocannon') feed(shot, 0);
+  }
+
+  /** One shot as its layers read it (fireWeapon's resolution, shared by the slow path and a burst's rounds). */
+  interface BurstShot {
+    pos: Vec3; own: boolean; distance: number; closeK: number; farK: number; base: PlayOptions; brakeDb: number;
+    scopedInside: boolean; ownReport: string | null; close: string; row: WeaponRow; rate: number; gainDb: number;
+    twin: boolean; muzzleIndex: number;
+  }
+
+  /** The punch of the muzzle blast under a close report: it turns with the report around the brake. */
+  function punch(shot: BurstShot, blastDb: number): void {
+    const { row, base, own, scopedInside } = shot;
+    if (scopedInside && row.family !== 'cannon') return;
+    const p = punchFor(row.family, row.boreMm);
+    play(p.id, { ...base, rate: p.rate, maxDurS: p.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) + shot.brakeDb });
+  }
+
+  /** A round's report: in the sight the closed turret's, from the hatch our own, else the close report by range; `maxDurS`
+   *  cuts a sustained gun's crack to its attack. A twin gun's second barrel cracks a beat behind. */
+  function crack(shot: BurstShot, maxDurS: number | undefined): void {
+    const { row, base, own, closeK, brakeDb } = shot;
+    if (shot.scopedInside && row.family !== 'cannon') {
+      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: shot.rate, maxDurS }));
+    } else if (shot.ownReport) play(shot.ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb, maxDurS });
+    else if (closeK > 0.03) play(shot.close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb, maxDurS });
+    if (shot.twin) {
+      play(shot.close, { ...base, delayS: 0.016, rate: shot.rate * (shot.muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2, maxDurS });
     }
+  }
+
+  /** The map's echo of a report, `delayS` from now. The echo sits well under the crack (2026-10-02): at the old level
+   *  it was nearly as loud as a peak-mastered report and held a near shot within 2–9 dB of its peak for half a second. */
+  function echo(shot: BurstShot, delayS: number, extraDb = 0): void {
+    const { row, base, own } = shot;
+    play(`tail_${scene.tail}`, { ...base, rate: row.tailRate * shot.rate, delayS: delayS + 0.035 + random() * 0.02, gainDb: gainToDb(row.tailGain) - (own ? 14 : 12) + extraDb });
+  }
+
+  /** An autocannon's feed and bolt after its round, near it. */
+  function feed(shot: BurstShot, delayS: number): void {
+    const [x, y, z] = shot.pos;
+    play('ac_feed', shot.own ? hullOptions({ delayS: shot.row.actionDelayS + delayS, gainDb: -8 }) : { x, y, z, delayS: shot.row.actionDelayS + delayS, gainDb: -10 });
+  }
+
+  // ------------------------------------------------------------ fast guns ---
+
+  /** (276) A gun's cadence as its burst reads it: its regime, its true cycle (s) and whether its barrels spin. */
+  interface GunCadence {
+    key: string; regime: FireRegime; cycleS: number; heardGapS: number; rotary: boolean; caliberMm: number;
+  }
+  /** The last round heard of each weapon on its own clock (the cadence a gun the spec does not time is heard at). */
+  const lastRoundAt = new Map<string, number>();
+  /**
+   * The cadence of a shooter's weapon: the spec's own cycle when the round is its gun's (an autoloader's intra-clip
+   * cycle, else its round's reload: an air-defence cannon's floor, the M163's and the M6's one round a tick, `rotary`),
+   * else the gap since the weapon's last round on the round's own clock (a roof station, a probe's gun).
+   */
+  function gunCadence(shooterId: string | null, m: WeaponMount, key: string, timeS: number): GunCadence {
+    const last = lastRoundAt.get(key);
+    const heardGapS = last != null && timeS > last ? timeS - last : Infinity;
+    if (lastRoundAt.size > 512) lastRoundAt.clear();
+    lastRoundAt.set(key, timeS);
+    const info = shooterId != null ? tanks.get(shooterId) : null;
+    const gun = info?.gun && info.mounts.includes(m) && m.key !== 'guided/missile' ? info.gun : null;
+    const loader = gun?.autoloader as { magazineSize?: unknown; intraClipS?: unknown; rotary?: unknown } | null | undefined;
+    let cycleS = Number.NaN;
+    if (loader && Number(loader.magazineSize) > 1 && Number(loader.intraClipS) > 0) cycleS = Number(loader.intraClipS);
+    else if (gun) {
+      const reloads = (gun.shells ?? []).filter((s) => m.rounds.includes(String(s.name ?? ''))).map((s) => Number(s.reloadS));
+      const fastest = Math.min(...reloads.filter((r) => r > 0));
+      cycleS = Number.isFinite(fastest) ? fastest : Number(gun.reloadS);
+    }
+    if (!(cycleS > 0)) cycleS = heardGapS;
+    const rotary = loader?.rotary === true;
+    const live = bursts.get(key);
+    // a held burst keeps its regime round to round (a gun timed by its rounds is not re-judged on one late round)
+    const regime = live ? live.cadence.regime : fireRegime(cycleS, rotary);
+    return { key, regime, cycleS, heardGapS, rotary, caliberMm: Number(gun?.caliberMm ?? m.row?.boreMm ?? 20) };
+  }
+
+  /** One held burst of one weapon: its layers and the clock it releases on. */
+  interface Burst {
+    cadence: GunCadence;
+    shot: BurstShot;
+    startedAt: number;
+    lastRoundAt: number;
+    heardGapS: number;
+    rounds: number;
+    nextGrainAt: number;
+    grains: number;
+    voices: ActiveVoice[];
+    whine: ActiveVoice | null;
+    voicing: RoarVoicing | null;
+  }
+  const bursts = new Map<string, Burst>();
+
+  /** How long a sound from a shot takes to reach us (s): none for our own. */
+  function arrivalS(shot: BurstShot): number {
+    return shot.own ? 0 : propagationDelayS(shot.distance, atmosphere);
+  }
+
+  /**
+   * (276) One round of a fast gun (fireRegime 'sustained' or 'roar'), on the audio clock: it opens the burst or keeps it
+   * held. A sustained gun's round cracks short over the body (sustainGrain); a roaring gun's round is not heard on its
+   * own (roarGrain carries the burst). updateBursts lays the held layers and releases the burst once the rounds stop.
+   */
+  function burstRound(cadence: GunCadence, shot: BurstShot): void {
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    let burst = bursts.get(cadence.key);
+    if (!burst) {
+      const voicing = cadence.regime === 'roar' ? roarVoicing(cadence.cycleS, cadence.caliberMm, cadence.rotary) : null;
+      burst = { cadence, shot, startedAt: now, lastRoundAt: now, heardGapS: cadence.heardGapS, rounds: 0, nextGrainAt: now, grains: 0, voices: [], whine: null, voicing };
+      bursts.set(cadence.key, burst);
+      logSound('burst:start', { key: cadence.key, regime: cadence.regime, rps: +(1 / cadence.cycleS).toFixed(2), rotary: cadence.rotary,
+        dist: +shot.distance.toFixed(1), arrivalS: +arrivalS(shot).toFixed(4) });
+      const blastDb = shot.closeK > 0.05 ? BLAST_DB[shot.row.family] : undefined;
+      if (blastDb != null) punch(shot, blastDb);
+      if (voicing?.whineRate != null) spinUp(burst, voicing);
+    } else {
+      if (Number.isFinite(cadence.heardGapS)) burst.heardGapS = cadence.heardGapS;
+      burst.shot = shot;
+    }
+    burst.rounds++;
+    burst.lastRoundAt = now;
+    if (cadence.regime === 'sustained') {
+      crack(shot, sustainedCrackS(cadence.cycleS));
+      if (shot.farK > 0.03 && !(shot.scopedInside && shot.row.family !== 'cannon')) {
+        play(shot.row.far, { ...shot.base, gainDb: (shot.base.gainDb ?? 0) + gainToDb(shot.farK) - 3, maxDurS: sustainedCrackS(cadence.cycleS) });
+      }
+    }
+    layBurst(burst, now);
+  }
+
+  /** A held round that is not heard (a rotary gun's thinned rounds): it keeps the burst held. */
+  function burstKeepAlive(key: string): void {
+    const burst = bursts.get(key);
+    if (burst && ctx) burst.lastRoundAt = ctx.currentTime;
+  }
+
+  /** The held layers due by the next frame: the sustained body's swelling echo grains, the roar's burst grains. */
+  function layBurst(burst: Burst, now: number): void {
+    // grains are laid a frame ahead, but never past two of the gun's cycles after its last round: a burst that has
+    // stopped lays nothing more while its release is being recognised
+    const horizon = Math.min(now + 1 / 30, burst.lastRoundAt + 2 * Math.max(burst.cadence.cycleS, Number.isFinite(burst.heardGapS) ? burst.heardGapS : 0));
+    const every = burst.cadence.regime === 'roar' ? ROAR.grainEveryS : SUSTAIN_BODY.grainEveryS;
+    while (burst.nextGrainAt <= horizon) {
+      const delayS = Math.max(0, burst.nextGrainAt - now);
+      if (burst.cadence.regime === 'roar') roarGrain(burst, delayS);
+      else sustainGrain(burst, delayS);
+      burst.grains++;
+      burst.nextGrainAt += every;
+    }
+  }
+
+  function holdVoice(burst: Burst, voice: ActiveVoice | null): void {
+    if (!voice) return;
+    for (let i = burst.voices.length - 1; i >= 0; i--) if (burst.voices[i].dead) burst.voices.splice(i, 1);
+    burst.voices.push(voice);
+  }
+
+  /** A grain's gain correction from a borrowed recording's distance law to the gun's own (dB). */
+  function lawDb(id: string, row: WeaponRow, distance: number): number {
+    const group = library?.record(id)?.g ?? 'weapons';
+    const borrowed = cueProfile(id, group);
+    const gun = cueProfile(row.close, library?.record(row.close)?.g ?? 'weapons');
+    return distanceAttenuationDb(distance, gun.refM, gun.rolloff) - distanceAttenuationDb(distance, borrowed.refM, borrowed.rolloff);
+  }
+
+  /** One grain of the roar: the close bank near, the distant bank, darkened, far; pitched to the gun's rate. */
+  function roarGrain(burst: Burst, delayS: number): void {
+    const { shot } = burst;
+    const voicing = burst.voicing!;
+    const [lo, hi] = ROAR.grainOffsetS;
+    const level = (shot.base.gainDb ?? 0) + ROAR.levelDb + shot.brakeDb;
+    const grain: PlayOptions = { ...shot.base, rate: voicing.burstRate * shot.rate, maxDurS: ROAR.grainS, loudDb: shot.row.loudDb, delayS,
+      fadeInS: burst.grains === 0 && voicing.spinUpS > 0 ? Math.max(ROAR.grainFadeInS, 0.5 * voicing.spinUpS) : ROAR.grainFadeInS };
+    // in the sight, the roar through the turret's armour
+    if (shot.scopedInside) grain.lowpassHz = 1800;
+    const started: ActiveVoice[] = [];
+    if (shot.own || shot.closeK > 0.03) {
+      const near = level - (shot.scopedInside ? 3 : 0) + (shot.own ? 2.5 : gainToDb(shot.closeK) + lawDb(ROAR.close, shot.row, shot.distance));
+      const voice = pool?.play(ROAR.close, { ...grain, offsetS: lo + (hi - lo) * random(), gainDb: near }) ?? null;
+      if (voice) started.push(voice);
+    }
+    if (!shot.own && shot.farK > 0.03) {
+      const far = level + gainToDb(shot.farK) - 3 + lawDb(ROAR.far, shot.row, shot.distance);
+      const voice = pool?.play(ROAR.far, { ...grain, offsetS: lo + (hi - lo) * random(), lowpassHz: ROAR.farLowpassHz, gainDb: far }) ?? null;
+      if (voice) started.push(voice);
+    }
+    for (const voice of started) {
+      holdVoice(burst, voice);
+      // the first grain rises with the barrels' spin
+      if (burst.grains === 0 && voicing.spinUpS > 0) {
+        const target = voice.source.playbackRate.value;
+        voice.source.playbackRate.setValueAtTime(target * 0.8, voice.start);
+        voice.source.playbackRate.linearRampToValueAtTime(target, voice.start + voicing.spinUpS);
+      }
+    }
+  }
+
+  /** The barrels spinning up under a rotary gun's burst: its drive's whine, near it, rising to its turning rate. */
+  function spinUp(burst: Burst, voicing: RoarVoicing): void {
+    const { shot } = burst;
+    if (!pool || !ctx || (!shot.own && shot.distance > ROAR.whineM)) return;
+    const [x, y, z] = shot.pos;
+    const options: PlayOptions = shot.own
+      ? hullOptions({ bus: 'ownCombat', loop: true, rate: voicing.whineRate!, gainDb: ROAR.whineDb + 6 })
+      : { x, y, z, space: 'world', bus: 'weapons', loop: true, rate: voicing.whineRate!, gainDb: (shot.base.gainDb ?? 0) + ROAR.whineDb + lawDb(ROAR.whine, shot.row, shot.distance) };
+    const voice = pool.play(ROAR.whine, options);
+    if (!voice) return;
+    const target = voice.source.playbackRate.value;
+    voice.source.playbackRate.setValueAtTime(target * 0.45, voice.start);
+    voice.source.playbackRate.linearRampToValueAtTime(target, voice.start + voicing.spinUpS);
+    burst.whine = voice;
+  }
+
+  /** One grain of a sustained gun's body: the map's echo, swelling in over the burst's first grains. */
+  function sustainGrain(burst: Burst, delayS: number): void {
+    const { shot } = burst;
+    if (scene.tail === 'none' || (shot.scopedInside && shot.row.family !== 'cannon')) return;
+    const [lo, hi] = SUSTAIN_BODY.grainOffsetS;
+    const swell = Math.min(0, SUSTAIN_BODY.startDb + SUSTAIN_BODY.swellDb * burst.grains);
+    holdVoice(burst, pool?.play(`tail_${scene.tail}`, { ...shot.base, rate: shot.row.tailRate * shot.rate, delayS, offsetS: lo + (hi - lo) * random(),
+      maxDurS: SUSTAIN_BODY.grainS, fadeInS: SUSTAIN_BODY.grainFadeInS,
+      gainDb: gainToDb(shot.row.tailGain) - (shot.own ? 14 : 12) + SUSTAIN_BODY.levelDb + swell }) ?? null);
+    if ((shot.own || shot.distance < 45) && shot.row.family === 'autocannon') feed(shot, delayS);
+  }
+
+  /**
+   * (276) The trigger released: the held layers stop where the last round's cycle ends (as that moment reaches us), a
+   * rotary gun's barrels spin down, and the map's echo rings out once, from the release, never from a round inside it.
+   */
+  function releaseBurst(burst: Burst, now: number): void {
+    if (!pool) return;
+    const { shot, cadence } = burst;
+    const releaseAt = Math.max(now, burst.lastRoundAt + cadence.cycleS);
+    const heardAt = releaseAt + arrivalS(shot);
+    for (const voice of burst.voices) if (!voice.dead) pool.releaseAt(voice, Math.max(voice.start, heardAt), cadence.regime === 'roar' ? 0.04 : 0.2);
+    burst.voices.length = 0;
+    const whine = burst.whine;
+    if (whine && !whine.dead && burst.voicing) {
+      const down = burst.voicing.spinDownS;
+      const rate = whine.source.playbackRate;
+      rate.cancelScheduledValues(heardAt);
+      rate.setValueAtTime(rate.value, heardAt);
+      rate.linearRampToValueAtTime(rate.value * 0.35, heardAt + down);
+      pool.releaseAt(whine, heardAt, down);
+    }
+    burst.whine = null;
+    if (scene.tail !== 'none' && !(shot.scopedInside && shot.row.family !== 'cannon')) echo(shot, releaseAt - now, cadence.regime === 'roar' ? 3 : 0);
+    logSound('burst:release', { key: cadence.key, regime: cadence.regime, rounds: burst.rounds, grains: burst.grains,
+      lastRoundAt: +burst.lastRoundAt.toFixed(4), releaseAt: +releaseAt.toFixed(4), heardAt: +heardAt.toFixed(4) });
+  }
+
+  /** Each frame: lay every held burst's next layers, and release a burst whose rounds have stopped. */
+  function updateBursts(now: number): void {
+    for (const [key, burst] of bursts) {
+      if (now - burst.lastRoundAt > burstReleaseS(burst.cadence.cycleS, burst.heardGapS)) {
+        releaseBurst(burst, now);
+        bursts.delete(key);
+      } else layBurst(burst, now);
+    }
+  }
+
+  /** Every burst ends (a battle's teardown): its layers go with the world's voices. */
+  function clearBursts(): void {
+    for (const burst of bursts.values()) {
+      for (const voice of burst.voices) if (!voice.dead) pool?.releaseAt(voice, ctx?.currentTime ?? 0, 0.05);
+      if (burst.whine && !burst.whine.dead) pool?.releaseAt(burst.whine, ctx?.currentTime ?? 0, 0.1);
+    }
+    bursts.clear();
+    lastRoundAt.clear();
   }
 
   /** The angle between a gun's line of fire and the line from its muzzle to us (π/2 when the bore is unknown). */
@@ -1241,6 +1504,8 @@ export function createAudio({
     const shotOf = shotMount(event.shooterId ?? null, event.shellName ?? null, event.caliberMm, event.weaponSound);
     // an airstrike's rounds are heard as the strike's own (Air Support: the A-10's one burst a run, onStrikeRound)
     const strikeOwned = STRIKE_OWNED_REPORTS.has(String(event.weaponSound || ''));
+    // (276) a rotary gun's thinned round is not heard, but it holds the burst its full rounds roar
+    if (event.thinned && !event.feedbackPredicted) burstKeepAlive(`${event.shooterId ?? ''}|${event.weaponSound || event.caliberMm}`);
     if (!event.feedbackPredicted && !event.thinned && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir,
       event.shooterId ?? '', event.weaponSound || event.caliberMm, Number(event.timeS));
     if (!ownShot) shellFlyby(event);
@@ -2836,7 +3101,7 @@ export function createAudio({
   /** Our crew is called out of a footprint its hull is this close to. */
   const AIR_COVER_MARGIN_M = 12;
   /** A downed aircraft falls as the world draws it (game/airSupportWorld.ts fallPose): gravity, a sink, 9 s at most. */
-  const AIR_FALL = Object.freeze({ g: 9.81, sinkMps: 6, maxS: 9 });
+  const AIR_FALL = Object.freeze({ g: 9.81, sinkMps: 6, maxS: 12 });
   /** The A-10's burst: its close bank fades out and its distant one in across these ranges (m). */
   const BURST_CLOSE_FADE_M = [450, 1400] as const;
   const BURST_FAR_FADE_M = [300, 1100] as const;
@@ -2866,13 +3131,11 @@ export function createAudio({
   function airAircraftAt(heard: HeardStrike, t: number, out: typeof airPose): boolean {
     const strike = heard.strike;
     if (heard.downedS == null) { runPose(AIR, strike, t, out); return true; }
+    // (air-crash-he-276) on the arc its crash round flies (sim/strikeRuns.ts crashFall), down where it meets the ground
     runPose(AIR, strike, heard.downedS, out);
+    crashFall(AIR, strike, heard.downedS, t, out);
     const dt = Math.max(0, t - heard.downedS);
-    const speed = strike.kind === 'gunship' ? AIR.gunship.speedMps : AIR[strike.kind].speedMps;
-    out.x += Math.sin(out.yaw) * speed * dt;
-    out.z += Math.cos(out.yaw) * speed * dt;
-    out.y -= 0.5 * AIR_FALL.g * dt * dt + AIR_FALL.sinkMps * dt;
-    return out.y > strike.y - 2 && dt < AIR_FALL.maxS;
+    return out.y > groundY(out.x, out.z, strike.y) + 1 && dt < AIR_FALL.maxS;
   }
 
   /** Whether an enemy strike's footprint covers our living hull. */
@@ -2944,6 +3207,16 @@ export function createAudio({
     if (Number.isFinite(shellId)) {
       if (strikeShells.size >= 256) strikeShells.delete(strikeShells.values().next().value as number);
       strikeShells.add(shellId);
+    }
+    // (air-crash-he-276) a downed aircraft's crash round: no round of its kind is heard leaving; it lands on the 500 lb
+    // bomb's blast and its layers (strikeBlastAt), and the HE bank sizes it by its charge where it has none
+    if (payload.crash === 1) {
+      const blast = AIR_STRIKE_SOUND.bomb.blast;
+      if (blast && Number.isFinite(shellId)) {
+        if (airBlasts.size >= 16) airBlasts.delete(airBlasts.keys().next().value as number);
+        airBlasts.set(shellId, blast);
+      }
+      return;
     }
     const sound = AIR_STRIKE_SOUND[kind];
     const strikeId = Number(payload.strikeId);
@@ -3074,6 +3347,7 @@ export function createAudio({
     stopAerial();
     stopRingGrind(0.4);
     shotCadence.clear();
+    clearBursts();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
     // the rigs' loops go with the rigs (the next battle's rigs pin their own)
@@ -3208,6 +3482,7 @@ export function createAudio({
     lastSmokeBorn = -1;
     auxGunOn = null;
     auxLights = null;
+    toggles.cancel();
     resetQuietRadio();
     // the crew's procedure starts its battle here too, its one per-battle edge (round 8 Y3 s1-03): a battle edge, a
     // network restart
@@ -3628,9 +3903,12 @@ export function createAudio({
       const empty = !!ammo && ammo.every((n) => !n);
       say(empty ? 'ammo_out_all' : 'ammo_empty', { delayS: 0.15 });
     });
-    on<{ on?: boolean; reason?: string }>('ui:autoAimState', (e) => {
-      if (e?.on) { play('lock_on'); say('target_locked', { prob: 0.6, delayS: 0.1 }); }
-      else { play('lock_off'); if (e?.reason && !/off/i.test(e.reason)) say('target_lost', { prob: 0.4, delayS: 0.1 }); }
+    on<{ on?: boolean; targetId?: string | null; reason?: string }>('ui:autoAimState', (e) => {
+      // (276) the lock's sound settles on its final target (settleToggle): a lock dropped and retaken at once is silent
+      const target = e?.on ? String(e.targetId ?? 'on') : '';
+      autoAimReason = String(e?.reason ?? '');
+      if (ctx) toggles.change('autoAim', autoAimTarget, target, ctx.currentTime);
+      autoAimTarget = target;
     });
     on<undefined>('ui:armorOverlayState', () => play('ui_toggle'));
     on<undefined>('ui:minimapZoom', () => play('ui_tab', { gainDb: -6 }));
@@ -3799,15 +4077,25 @@ export function createAudio({
     listenerScoped = !!listener.scoped && listenerKind !== 'killcam-camera';
     listenerValid = true;
     pool.setListener(frame);
-    if (listenerScoped !== wasScoped) {
-      // Track the edge everywhere so a garage trip never leaves a stale scope state.
-      if (battleMode.phase === 'battle') play(listenerScoped ? 'scope_in' : 'scope_out', hullOptions({ gainDb: -8 }));
-      wasScoped = listenerScoped;
-    }
     const now = ctx.currentTime;
+    if (listenerScoped !== wasScoped) {
+      // Track the edge everywhere so a garage trip never leaves a stale scope state; (276) its sound settles on the
+      // final state (a fast in and out is silent), and the sight's zoom starts over from the new view's.
+      if (battleMode.phase === 'battle') toggles.change('scope', wasScoped, listenerScoped, now);
+      else toggles.cancel('scope');
+      wasScoped = listenerScoped;
+      toggles.cancel('zoom');
+      sightZoom = Number.NaN;
+    }
+    // (276) the tank sight's zoom steps: a soft tick once the magnification settles where it did not start
+    const zoom = listenerScoped && Number.isFinite(listener.zoom) ? Number(listener.zoom) : Number.NaN;
+    if (Number.isFinite(zoom) && Number.isFinite(sightZoom) && zoom !== sightZoom && battleMode.phase === 'battle') toggles.change('zoom', sightZoom, zoom, now);
+    sightZoom = zoom;
+    for (const settled of toggles.due(now)) settleToggle(settled);
     pool.prune(now);
     if (pendingCaptions.length) flushCaptions(now);
     sweepWaitingLoops(now);
+    updateBursts(now);
     mixer.update(dt);
     if (!battleMode.paused) {
       radio?.update();
@@ -3859,13 +4147,35 @@ export function createAudio({
     const aux = me.combat?.auxiliary;
     const gunOn = !!aux?.gunOn;
     const lights = typeof aux?.lights === 'number' ? aux.lights : -1;
-    if (auxGunOn != null && gunOn !== auxGunOn) {
-      if (gunOn) { play('roof_gun_servo', hullOptions()); say('roof_gun_on', { delayS: 0.6 }); }
-      else play('switch_toggle', hullOptions({ gainDb: -4 }));
-    }
-    if (auxLights != null && lights !== auxLights && lights >= 0) play(lights === 1 ? 'lights_on' : 'switch_toggle', hullOptions({ gainDb: -3 }));
+    // (276) each settles on its final state (settleToggle)
+    const now = ctx?.currentTime ?? 0;
+    if (auxGunOn != null && gunOn !== auxGunOn) toggles.change('roofGun', auxGunOn, gunOn, now);
+    if (auxLights != null && lights !== auxLights && lights >= 0) toggles.change('lights', auxLights, lights, now);
     auxGunOn = gunOn;
     auxLights = lights;
+  }
+
+  /**
+   * (276) A toggle settled on a new state (toggleSettle.ts): its one sound, never held back by its cue's cooldown (the
+   * settle already spaced it). The scope's lens, the sight's zoom tick, the auto-aim lock and its crew call, the roof
+   * gun's servo and the lights' clunk or click.
+   */
+  function settleToggle({ id, state }: SettledToggle): void {
+    if (battleMode.phase !== 'battle') return;
+    switch (id) {
+      case 'scope': play(state ? 'scope_in' : 'scope_out', hullOptions({ gainDb: -8, toggle: true })); return;
+      case 'zoom': play('zoom_step', hullOptions({ gainDb: -12, toggle: true })); return;
+      case 'autoAim':
+        if (state !== '') { play('lock_on', { toggle: true }); say('target_locked', { prob: 0.6, delayS: 0.1 }); }
+        else { play('lock_off', { toggle: true }); if (autoAimReason && !/off/i.test(autoAimReason)) say('target_lost', { prob: 0.4, delayS: 0.1 }); }
+        return;
+      case 'roofGun':
+        if (state) { play('roof_gun_servo', hullOptions({ toggle: true })); say('roof_gun_on', { delayS: 0.6 }); }
+        else play('switch_toggle', hullOptions({ gainDb: -4, toggle: true }));
+        return;
+      case 'lights': play(state === 1 ? 'lights_on' : 'switch_toggle', hullOptions({ gainDb: -3, toggle: true })); return;
+      default:
+    }
   }
 
   /** The battle's planned roster (spec ids), as last given: every warm of the battle (its phase edge, a late mixer) keeps it. */
@@ -3941,6 +4251,8 @@ export function createAudio({
       ids.add(row.far);
       if (row.key === 'guided/missile') for (const id of Object.values(LAUNCH_ASSET)) ids.add(id);
     }
+    // (276) a cannon past 20 rounds a second or a rotary gun roars (burstRound): its banks and the barrels' whine
+    if ([...rows].some((row) => row.family === 'autocannon')) for (const id of [ROAR.close, ROAR.far, ROAR.whine]) ids.add(id);
     return [...ids];
   }
 

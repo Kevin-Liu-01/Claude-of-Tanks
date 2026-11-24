@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.7437,0.1005],
+    "turretPivot": [0,1.7,0.47],
     "plates": [
       {
         "hitboxId": "H01",
@@ -787,14 +787,14 @@
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [0.2423,-0.7951,-0.3697],
-        "max": [0.652,0.9369,0.088],
+        "min": [0.2423,-0.7287,-0.4114],
+        "max": [0.632,0.9368,0.045],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "0e888a45",
-  "metadataHash": "003dc949",
+  "metadataHash": "6e8f2feb",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0398
@@ -920,8 +920,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22716,
-      "sha256": "b0f6082c9ded1418f622f612f2cb02b4cf1e095a4bbfbfdaf76a923172f630f6"
+      "bytes": 22662,
+      "sha256": "2c4865e53d8c98ee5031b7f02190aa41fcfae906e0fdc4d99e8d2b6a04113e0b"
     },
     "markings": {
       "file": "semel_markings.png",
@@ -935,7 +935,7 @@
       "file": "semel_technical.json",
       "mime": "application/json",
       "bytes": 5459,
-      "sha256": "4ed562b648ffee40cb42758216a7b43e71c07ea963f4ad298627eb67132e4018"
+      "sha256": "d60117212eed71cb9be062c535f4743996665e04d65010ac33f23e63c72cdb3e"
     }
   }
 }

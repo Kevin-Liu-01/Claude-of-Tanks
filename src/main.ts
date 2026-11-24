@@ -539,6 +539,13 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
     smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
     crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
   },
+  // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)
+  hullPosition: (id) => {
+    const tank = game.tanks.find((entity) => entity.id === id);
+    if (!tank?.state || tank.combat?.destroyed || tank === game.player) return null;
+    const seen = !game.spotting || game.spotting.isSpotted(id, game.player?.team ?? 'player', game.player);
+    return seen ? tank.state.pos : null;
+  },
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
@@ -2407,9 +2414,6 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  // (death-flow-275 R6) a Leave before the verdict of a battle that keeps records is a defeat (recordBattleLeft)
-  leaveCountsAsDefeat: () => game.phase === 'battle' && !game.result && !!game.ruleset?.records
-    && !game.ruleset?.watch && !game.ruleset?.couch,
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -2439,13 +2443,14 @@ function phoneMode(): 'tank' | 'strike' | 'drone' | 'gunship' | 'watch' | 'dead'
 }
 /** The seat's Turbo cooldown for the phone's key (turbo-spin-275), from its own tank:turbo events as the HUD reads it. */
 const phoneTurbo = createTurboCooldown(bus, () => game.player?.id, () => game.timeS);
+const phoneAirSpin = createTurboCooldown(bus, () => game.player?.id, () => game.timeS, 'tank:airSpin');
 function phoneSource() {
   const watch = watchOwner.current?.controller;
   const ruleset = game.ruleset;
   return { battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
     shellCode: shellTypeCode, lockable: true, mode: phoneMode(),
     // turbo-spin-275: a jump mode's Turbo and air spin, greyed while unavailable (game/turboCooldown.ts)
-    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS)) : undefined,
+    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS), phoneAirSpin.readyIn(game.timeS)) : undefined,
     facts: { jump: ruleset?.jumpMps != null, turbo: !!ruleset?.turbo, airSpin: !!ruleset?.airSpin, drone: game.player?.aerial?.kind === 'drone', airSupport: !!ruleset?.airSupport,
       consumables: ruleset?.consumables !== false, range: !!ruleset?.provingGround,
       watchRiding: watch?.active === true && watch.view === 'ride',
@@ -2561,7 +2566,7 @@ playerBattleActions = createPlayerBattleActions({
     requestTankJump: battleClientAccess.requestTankJump,
     pressSelfRight: battleClientAccess.pressSelfRight,
     requestHullTurbo: battleClientAccess.requestHullTurbo,
-    requestTankAirSpin: battleClientAccess.requestTankAirSpin,
+    requestHullAirSpin: battleClientAccess.requestHullAirSpin,
   },
 });
 const playerFrameInput = createPlayerFrameInput({
@@ -3817,8 +3822,9 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
-  // (death-flow-275 R6; Kevin approved 2026-11-21) a local battle left before its verdict is recorded as a defeat
-  // (game/state.ts recordBattleLeft: the records hear it, no report or ending follows); the Esc menu said so
+  // (leave-no-loss-276; Kevin 2026-11-24 "leaving battles early should not count as a loss") a battle left before its
+  // verdict has no result: the records stand it in the history as "Left" and count it toward no total
+  // (game/battleOutcome.ts; game/state.ts recordBattleLeft, the room's presentation recordLeft); no report or ending follows
   if (game.phase === 'battle' && !game.result) {
     if (v2?.active) v2.recordLeft();
     else if (isSoloBattleRuntimeReady()) recordBattleLeft(game, bus);

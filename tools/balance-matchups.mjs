@@ -13,7 +13,9 @@ import { TANK_SPECS } from '../src/vehicles/specs.ts';
 import { tankTier } from '../src/vehicles/tier.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const receiptPath = path.join(root, 'docs', 'balance', 'deterministic-matchups.json');
+// --receipt=<path> reads (or writes) another copy: tools/balance-matchups.selftest.mjs proves a hand-edited one fails --check
+const receiptPath = process.argv.find((argument) => argument.startsWith('--receipt='))?.slice(10)
+  ?? path.join(root, 'docs', 'balance', 'deterministic-matchups.json');
 const update = process.argv.includes('--update');
 const check = process.argv.includes('--check');
 const round = (value, digits = 2) => {
@@ -37,7 +39,7 @@ const numericArg = (name, { integer = false, minimum = 0 } = {}) => {
 if (process.argv.includes('--help')) {
   console.log(`Usage:
   node tools/balance-matchups.mjs
-  node tools/balance-matchups.mjs --check | --update
+  node tools/balance-matchups.mjs --check | --update [--receipt=<path>]
   node tools/balance-matchups.mjs --a=<tank-id> --b=<tank-id> [options]
 
 Custom series options:
@@ -124,7 +126,7 @@ const revisedVehicles = Object.keys(FLEET_BALANCE_REVISION).sort().map((id) => {
     })),
   };
 });
-const scenarios = BALANCE_SCENARIOS.map(({ id, purpose, minAScore, maxAScore, ...options }) => ({
+const scenarios = BALANCE_SCENARIOS.map(({ id, purpose, minAScore, maxAScore, ruling: _ruling, ...options }) => ({
   id,
   purpose,
   band: [minAScore ?? 0, maxAScore ?? 1],

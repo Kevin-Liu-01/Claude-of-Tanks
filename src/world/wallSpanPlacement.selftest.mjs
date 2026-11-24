@@ -18,6 +18,7 @@ import { SLAB_SHELL_KINDS } from './props.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts';
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 import { box, jitterUV } from './propGeometry.ts';
 import { roughenChunk } from './maps/regional/ruinGrammar.ts'; // (props census #7 moved the masonry roughening out of props.ts)
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
@@ -193,12 +194,11 @@ for (const seed of [1337, 2049, 7719]) {
 }
 // Exercise the maintained run builder and pool finalizer, including the real
 // RNG stream, gap/road exclusions, support receipts and collision refitting.
-const source = await readFile(new URL('./props.ts', import.meta.url), 'utf8');
-function sourceFunction(start, end) {
-  const a = source.indexOf(start), b = source.indexOf(end, a);
-  assert.ok(a >= 0 && b > a, `maintained ${start.trim()} is exercised`);
-  return stripTypeScriptTypes(source.slice(a, b));
-}
+// (inherited-reds-276) props.ts as a slice (tools/source-slice.test-support.mjs): the run builder closes over the build's
+// locals and the module's imports it reads, so a dependency it gains (brickWalls, 6c9e9cbd7e) needs no hand-kept parameter
+const props = sourceSlice(new URL('./props.ts', import.meta.url));
+const source = props.source;
+const sourceFunction = (start, end) => stripTypeScriptTypes(props.section(start, end));
 const runSource = sourceFunction('  function addWallRun(', '  const wallRuns:');
 assert.ok(runSource.includes('wallIslandEdges(along, exclusions, WALL_SEG)'), 'production fits each retained island');
 const legacyRunSource = runSource.replace('wallIslandEdges(along, exclusions, WALL_SEG)', 'legacyWallEdges(along, exclusions, WALL_SEG)');
@@ -338,15 +338,16 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // posts and breach draw the field walls' print)
   // (sealed lane 2026-10-11) a breach's rubble stands in the parked vehicles' seat passes (props.ts breachRubbleFootprints):
   // the fixture runs none
-  const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
-    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'drawnPlanRecord', 'breachRubbleFootprints', 'wallDressing',
-    'roughenChunk', 'adobeCrownFor', 'regionalArchitecture', `${code}; return addWallRun;`)(
-    { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone', () => null, [],
+  const run = props.compile({ P: { wallStyle: style }, heightField: field, WALL_SEG, rng, buckets, box, jitterUV,
+    addDestructible: add, noVeg: field._noVeg, wallSpans: spans, wallIslandEdges, legacyWallEdges,
+    mapId: field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster,
+    fieldWallBucket: 'fieldStone', drawnPlanRecord: () => null, breachRubbleFootprints: [],
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
-    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk,
+    wallDressing: createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }),
     // (props lane A #6: a mud run's piers carry their region's crown)
-    adobeCrownFor, null);
+    roughenChunk, adobeCrownFor, regionalArchitecture: null },
+    // the build's local the run reads, as props.ts declares it (buildings-272, 6c9e9cbd7e: a lava wall over a brick print)
+    `const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';\n${code}; return addWallRun;`);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);

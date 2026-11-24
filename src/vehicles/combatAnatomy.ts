@@ -29,8 +29,9 @@ import {
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { stationSideSign } from './vehicleSide.ts';
-import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
-import { rememberAuthoredRig } from './combatGunRigSeat.ts';
+import { attachTrackShapes, type TrackShape } from './trackShapes.ts';
+import type { AnatomyCombatRig } from './combatAnatomyCalibrationRegistry.ts';
+import { rememberAuthoredGun, rememberAuthoredRig } from './combatGunRigSeat.ts';
 import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
 import { turretSeatPlane, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 import type {
@@ -71,6 +72,10 @@ interface ArmorPlate {
   /** 266: a main plate measured on the drawn build (the KF51 EVO's mantlet on its gun slot), already in its frame: the
    * calibration leaves it in place and only the faces over it read it (prepareCollisionCells) */
   drawn?: boolean;
+  /** (inherited-reds-276) a hull front zoned by height, not by facing (specHelpers ArmorPlate.frontZone, frontZonePlate) */
+  frontZone?: 'upper' | 'lower';
+  /** (strv-track-plates) an external track plate laid on its measured prism (specHelpers ArmorPlate.seatOnTrack) */
+  seatOnTrack?: boolean;
 }
 
 interface AnatomyShapeEllipsoid {
@@ -150,6 +155,8 @@ interface ArmorAnatomy {
   turretPivot: Vec3;
   gunPivot?: Vec3;
   gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
+  /** The drawn mouth across the bore from the trunnion (the measured rig; sim/gunPose.ts carries it as the gun pitches). */
+  gunMouth?: { x: number; y: number };
   boundingRadiusM?: number;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
@@ -444,12 +451,44 @@ function gunFacePlate(
   return best;
 }
 
+/** A hull's height-zoned front (ArmorPlate.frontZone): its upper and lower plates and the height between them. */
+interface FrontZoneContext {
+  upper: PlateDescriptor;
+  lower: PlateDescriptor;
+  /** The lower plate's top edge. */
+  splitY: number;
+  /** The upper plate's rear edge: a forward face behind it is not the front's. */
+  rearZ: number;
+}
+
+const FRONT_ZONE_MIN_NORMAL_Z = 0.2;
+
+function frontZoneContext(descriptors: readonly PlateDescriptor[]): FrontZoneContext | null {
+  const upper = descriptors.filter((descriptor) => descriptor.plate.frontZone === 'upper');
+  const lower = descriptors.filter((descriptor) => descriptor.plate.frontZone === 'lower');
+  if (upper.length !== 1 || lower.length !== 1) return null;
+  return { upper: upper[0], lower: lower[0], splitY: lower[0].max[1], rearZ: upper[0].min[2] };
+}
+
+/**
+ * (inherited-reds-276; Main 2026-11-23: the S-tank's beak underside is the wedge's) A forward face (facing more forward
+ * than sideways, ahead of the upper plate's rear edge) of a height-zoned front reads by where it stands, not by its facing: above the lower plate's top edge the upper plate, below it the
+ * lower. Facing alone handed a down-facing beak underside to the lower front (nearestPlate's alignment floor excludes
+ * the upper plate, which faces up), which moved with every casemate change.
+ */
+function frontZonePlate(faceCenter: readonly number[], faceNormal: readonly number[], zone: FrontZoneContext): ArmorPlate | null {
+  // forward, and more forward than sideways: a front corner's side faces stay the sides'
+  if (faceNormal[2] < FRONT_ZONE_MIN_NORMAL_Z || Math.abs(faceNormal[0]) > faceNormal[2] || faceCenter[2] < zone.rearZ) return null;
+  return faceCenter[1] >= zone.splitY ? zone.upper.plate : zone.lower.plate;
+}
+
 function collisionFaceFromTriangle(
   sourceIndices: readonly number[],
   vertices: Vec3[],
   cellCenter: readonly number[],
   descriptors: readonly PlateDescriptor[],
   gun: GunFaceContext | null = null,
+  front: FrontZoneContext | null = null,
 ): CollisionFace | null {
   if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
   const indices = sourceIndices.slice();
@@ -471,7 +510,8 @@ function collisionFaceFromTriangle(
     [indices[1], indices[2]] = [indices[2], indices[1]];
     normal = [-normal[0], -normal[1], -normal[2]];
   }
-  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates)) ?? nearestPlate(faceCenter, normal, descriptors);
+  const plate = (gun && gunFacePlate(faceCenter, normal, gun.plates))
+    ?? (front && frontZonePlate(faceCenter, normal, front)) ?? nearestPlate(faceCenter, normal, descriptors);
   if (!plate) return null;
   return {
     indices,
@@ -514,13 +554,14 @@ function collisionCellFromCalibration(
   source: AnatomyCalibrationCell,
   descriptors: readonly PlateDescriptor[],
   gun: GunFaceContext | null = null,
+  front: FrontZoneContext | null = null,
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
   const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
-    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun);
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors, gun, front);
     if (face) faces.push(face);
   }
   if (faces.length < 4) return null;
@@ -581,9 +622,11 @@ function prepareCollisionCells(
   // face's nearest guess (the KF51 EVO's cheek noses face below every plate's alignment and kept the front's read)
   const nearest = descriptors.some((descriptor) => !descriptor.plate.drawn)
     ? descriptors.filter((descriptor) => !descriptor.plate.drawn) : descriptors;
+  // a front zoned by height (ArmorPlate.frontZone) reads its forward faces by where they stand
+  const front = frontZoneContext(descriptors);
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    const cell = collisionCellFromCalibration(source, nearest, gun);
+    const cell = collisionCellFromCalibration(source, nearest, gun, front);
     if (cell) cells.push(cell);
   }
   markInternalCollisionFaces(cells);
@@ -1804,20 +1847,83 @@ function assignCollisionOutputs(
   else delete armor.trackContact;
 }
 
+/** What the measured rig rewrites of a spec beyond its armor: the gun's mouths and launcher tubes. */
+interface RigGun {
+  muzzles?: readonly { readonly x?: number; readonly y?: number }[];
+  launcherMuzzles?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly pitch?: number; readonly yaw?: number; readonly frame?: string }[];
+  fixedLaunchCanisters?: boolean;
+}
+
 /**
- * 230 gun-barrel alignment: seat the combat articulation where the builder seated its rig (combatGunRigs.generated.ts,
- * measured by tools/gun-barrel-align-census.mjs). The turret and trunnion pivots, the barrel length and, where the
- * authored one was off, its radius are replaced; the bounding radius only grows to keep the muzzle inside the
- * authorities' trace broadphase. Runs before the anatomy reconciles, so the turret ring and the turret cells (both
- * measured in the builder's rig_turret frame) follow the same pivot.
+ * (strv-track-plates) An external plate that opts in (ArmorPlate.seatOnTrack) and links a track module is laid on that
+ * track's prism (attachTrackShapes: the running gear as the build measured it): the prism's outer face (x1 on the right,
+ * x0 on the left) over the prism's run in z, keeping the plate's own height band and armour. The prism is the hit surface
+ * on every driver; the plate gives it its armour (trackShapes.ts trackShapeForSide) and gives HE its nearest face, so both
+ * stand on the one measured line. The S-tanks' plates stood at 0.88 of the half-width over the hull's length.
  */
-export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undefined): void {
-  if (!rig || !armor.gunBarrel) return;
+function seatPlatesOnTrack(armor: ArmorAnatomy): void {
+  const shapes = (armor as { trackShapes?: readonly TrackShape[] }).trackShapes;
+  if (!shapes?.length) return;
+  armor.hullPlates = armor.hullPlates.map((plate) => {
+    if (!plate.seatOnTrack || plate.kind !== 'external') return plate;
+    const shape = shapes.find((track) => track.module === plate.moduleLink);
+    if (!shape) return plate;
+    const right = shape.module === 'trackR';
+    const x = right ? shape.x1 : shape.x0;
+    const zs = shape.poly.map((point) => point[0]);
+    const zLo = Math.min(...zs), zHi = Math.max(...zs);
+    const ys = plate.verts.map((vert) => vert[1]);
+    const yLo = Math.min(...ys), yHi = Math.max(...ys);
+    // the side plates' own winding (specHelpers rightSidePlate / leftSidePlate), so the face still points out
+    const verts: Vec3[] = right
+      ? [[x, yLo, zHi], [x, yLo, zLo], [x, yHi, zLo], [x, yHi, zHi]]
+      : [[x, yLo, zLo], [x, yLo, zHi], [x, yHi, zHi], [x, yHi, zLo]];
+    const { traceBounds: _authoredBounds, ...seated } = plate;
+    return { ...seated, verts };
+  });
+}
+
+/**
+ * The combat frame and the weapons' mouths, as the built rig draws them (276 sim-det-trig; Main's ruling on the class of
+ * combat data only the visual builder computed): tools/gen-combat-anatomy.mjs measures them on each id's build
+ * (tools/combat-rig-measure.mjs) into its calibration, and every driver takes them from here, so the page and every
+ * authority fire from the gun the page draws. The turret and trunnion pivots and the barrel are replaced (the spec's
+ * authored ones stay the builders' inputs, combatGunRigSeat.ts authoringRigSpec); a single bore's mouth off its trunnion's
+ * line, a twin plant's mouths and each launcher tube's mouth and bore are the drawn ones; the track prisms are the built
+ * running gear's (specs' attachTrackShapes, which an authored trackShapesOverride still wins). The bounding radius only
+ * grows, to keep the muzzle inside the authorities' trace broadphase. Runs before the anatomy reconciles, so the turret
+ * ring and the turret cells (measured in the builder's rig_turret frame) follow the same pivot. A spec that draws a weapon
+ * and has a calibration with no measured rig is an error: there is no authored fallback (in the generator's own
+ * measurement pass the rig is still being written, and the authored frame stands).
+ */
+export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?: RigGun }, rig: AnatomyCombatRig | null | undefined): void {
+  const armor = spec.armor;
+  const gun = spec.gun;
+  const drawsWeapon = (!!armor.gunBarrel && gun?.fixedLaunchCanisters !== true) || !!gun?.launcherMuzzles?.length;
+  if (!rig) {
+    if (drawsWeapon && !isCombatAnatomyMeasurementMode()) {
+      throw new Error(`combat anatomy for ${spec.id}: a drawn weapon with no measured rig (run tools/gen-combat-anatomy.mjs for it)`);
+    }
+    return;
+  }
   rememberAuthoredRig(armor);
-  armor.turretPivot = [...rig.turretPivot];
-  armor.gunPivot = [...rig.gunPivot];
-  armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM, ...(rig.radiusM === undefined ? {} : { radiusM: rig.radiusM }) };
-  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + rig.lengthM + 0.4;
+  armor.turretPivot = [...rig.turretPivot] as Vec3;
+  armor.gunPivot = [...rig.gunPivot] as Vec3;
+  if (armor.gunBarrel && rig.lengthM !== undefined) armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM };
+  if (rig.mouth) armor.gunMouth = { ...rig.mouth };
+  else delete armor.gunMouth;
+  if (gun && (rig.mouths?.length || rig.launchers?.length)) {
+    const measured: RigGun = rememberAuthoredGun({ ...gun }, gun);
+    if (rig.mouths?.length && gun.muzzles) measured.muzzles = gun.muzzles.map((mouth, i) => ({ ...mouth, ...(rig.mouths![i] ?? {}) }));
+    if (rig.launchers?.length && gun.launcherMuzzles) {
+      measured.launcherMuzzles = gun.launcherMuzzles.map((tube, i) => ({ ...tube, ...(rig.launchers![i] ?? {}) }));
+    }
+    spec.gun = measured;
+  }
+  if (rig.trackHulls?.length) attachTrackShapes(armor as unknown as Parameters<typeof attachTrackShapes>[0], rig.trackHulls);
+  seatPlatesOnTrack(armor);
+  const lengthM = armor.gunBarrel?.lengthM ?? 0;
+  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + lengthM + 0.4;
   if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
 }
 
@@ -1984,7 +2090,7 @@ export function finalizeCombatAnatomy(
   if (!spec?.armor || spec[FINALIZED]) return spec;
   if (isCombatAnatomyMeasurementMode()) rememberAuthoredAnatomy(spec);
   const armor = spec.armor;
-  applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
+  applyCombatGunRig(spec, calibration?.rig);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   seatAuthoredTurretPlates(armor, calibration?.turretRing);
   // the generator measures the authored layers; reapplying its previous fits would make the fit self-referential

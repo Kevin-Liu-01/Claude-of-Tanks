@@ -68,7 +68,7 @@ for (const [mode, row] of Object.entries(MODES)) {
   }
   // the end
   for (const [reason, beat] of Object.entries(row.reasons)) {
-    if (beat === null) continue; // a Leave: recorded as a defeat, no beat (the player is on the way to the Garage)
+    if (beat === null) continue; // a Leave: no result ('left', game/battleOutcome.ts), no beat (the player is on the way to the Garage)
     for (const result of ['victory', 'defeat']) {
       const plan = planBattleEnding(verdict(mode, reason, result), modeState(mode), facts);
       if (beat === 'replay') {
@@ -89,7 +89,7 @@ assert.deepEqual(respawnViewOf({ inS: 4.2 }, { id: 'infected', perspectiveTeam: 
   { inS: 5, nextWave: false, infected: true }, 'Infected: the outbreak took the player');
 assert.equal(respawnViewOf(null, { id: 'standard' }, false), null, 'one life: no dial');
 assert.equal(respawnViewOf({ inS: null }, { id: 'zone_control' }, false), null, 'no wait, no dial');
-for (const key of ['respawn.in', 'respawn.infected', 'respawn.nextWave', 'respawn.event.infected', 'settings.leaveDefeat']) {
+for (const key of ['respawn.in', 'respawn.infected', 'respawn.nextWave', 'respawn.event.infected', 'garage.record.left']) {
   assert.ok(en[key] && zh[key], `${key} in en-US and zh-CN`);
 }
 // a draw at the score target is a dead heat, not "score target reached"

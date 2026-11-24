@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,0,0],
+    "turretPivot": [0,1.7,0.4],
     "plates": [
       {
         "hitboxId": "H01",
@@ -151,6 +151,36 @@
       },
       {
         "hitboxId": "H07",
+        "name": "track_R",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.615,0.1,2.573],
+          [1.615,0.1,-2.359],
+          [1.615,0.88,-2.359],
+          [1.615,0.88,2.573]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.615,0.1,-2.359],
+          [-1.615,0.1,2.573],
+          [-1.615,0.88,2.573],
+          [-1.615,0.88,-2.359]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -165,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H08",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 45,
         "keMm": 45,
@@ -319,7 +349,7 @@
     ]
   },
   "geometryHash": "809e221a",
-  "metadataHash": "f7fc1170",
+  "metadataHash": "a486223a",
   "presentationAnchor": {
     "xM": 0.0063,
     "zM": -0.1209
@@ -428,8 +458,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28574,
-      "sha256": "e99d96da5aa897b879e20aa7340c3b36672cdb142a961b7bcfaccf71608588a9"
+      "bytes": 27998,
+      "sha256": "b2b18184a7b57a0b49d76093ddf1035e5b3f7d58f9b1210dc67547302d77888c"
     },
     "modulesSide": {
       "file": "strv152_modules_side.webp",
@@ -458,8 +488,8 @@
     "technicalLabels": {
       "file": "strv152_technical.json",
       "mime": "application/json",
-      "bytes": 3103,
-      "sha256": "9c7c4148c2aa6169c42cf21afeeb3803b92e4eae2ad682bc7b171176f612e54e"
+      "bytes": 3361,
+      "sha256": "9d47b94c57fea250f7d21069320b722c9d383a926196b997c7284d809502993b"
     }
   }
 }

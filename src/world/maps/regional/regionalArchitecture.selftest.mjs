@@ -12,8 +12,7 @@
 //   - the plot: on those maps every kit building's collision-bearing parts stay inside its plot, at most PLOT_SLACK past
 //     a side (or past the base geometry's own reach there): a kit builds the region's version inside the same lot.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { loadSourceSlice } from '../../../../tools/source-slice.test-support.mjs';
 import * as THREE from 'three';
 import { ARCHITECTURE_STYLES, ARCHITECTURE_STYLE_IDS, buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './index.ts';
 import { paintRatio } from './weather.ts';
@@ -253,13 +252,12 @@ const hooks = registerHooks({ load(url, context, next) {
 } });
 const originals = await import('../../props.ts');
 hooks.deregister();
-const source = readFileSync(new URL('../../props.ts', import.meta.url), 'utf8');
+// (inherited-reds-276) props.ts as a slice (tools/source-slice.test-support.mjs): the sections close over the module's
+// imports and the build's inert locals they read (withContacts, 00fb16fc78, was missing), and name any other it gains
+const props = await loadSourceSlice(new URL('../../props.ts', import.meta.url));
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood',
   'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof'];
-function section(start, end) {
-  const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
-  assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
-}
+const section = (start, end) => props.section(start, end);
 // the plot audit: each kit rebuild's solid envelope against its plot and the base geometry it replaced
 const PLOT_SLACK = 0.8;
 const envelopes = [];
@@ -305,7 +303,7 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
-const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* place(config, heightField) {
+const stage = props.compile(dependencies, `return function* place(config, heightField) {
   const P = { sideSkip: 0.25, spacingPad: 9, buildingLat: [10, 4], maxSpread: 1.7, wallStoneChance: 0.25, ...config.props };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
   const worldKey = worldBuildKey(config);
@@ -321,16 +319,23 @@ const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScri
   const ensureSteelAtlasSteps = function* () {};
   const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  // the build's locals the sections read, as props.ts declares them per build (the slice names any they gain): the
+  // desktop's ground contacts, the surface materials it keeps
+  const mobileProps = false, retainedSurfaceMaterials = [];
+  ${props.LOCALS}
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };\n")}
   ${section('  const roads = L.roads;', '  // heaped masonry chunks')}
   const triangles = Object.fromEntries(Object.entries(buckets).map(([k, list]) => [k, list.reduce((n, g) => n + (g.index ? g.index.count : g.getAttribute('position').count) / 3, 0)]));
   for (const list of Object.values(buckets)) for (const g of list) g.dispose();
   return { buildings: buildingFeatures, rngTail: rng(), obstacles: obstacles.length, colliders: colliders.length, triangles };
-}`)}`)(...Object.values(dependencies));
+}`);
 function run(config) {
   const iterator = stage(config, createHeightField(1337, config));
   let step = iterator.next(); while (!step.done) step = iterator.next();
+  // (buildings-271) a kit building's ground-contact reader (props.ts withContacts) is a closure per build; this law
+  // compares pose, footprint and kind
+  for (const feature of step.value.buildings) delete feature.contacts;
   return step.value;
 }
 const adopting = MAP_IDS.filter((id) => getMapConfig(id).props?.architecture);

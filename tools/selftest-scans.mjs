@@ -112,6 +112,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/galleryShots.selftest.mjs': lists('public/media/gallery-r*/*'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
+  'src/ui/pointers/pointerFollowView.selftest.mjs': lists('src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),
   'src/ui/mapBackdrop.selftest.mjs': lists('public/maps/cards/*.webp'),
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
@@ -142,12 +143,15 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
+  // 276 (sim-det-trig-c): the merge drops a group file no row names any more (combat-rig-bootstrap runs it as a child)
+  'tools/gen-combat-anatomy.mjs': lists('src/vehicles/combatAnatomyGroups/*.generated.ts'),
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
   'tools/hero-cards-check.mjs': lists('public/icons/hero/*'),
   // 266 (Main): the det-math lint reads every module the authority's graph executes (its AUTHORITY_ENTRIES); lanes
-  // missed native Math there in 265 (vehicleMarkings.ts) and 266 (gunFaceSplit.ts through armor.ts)
-  'tools/det-math-lint.mjs': imports('src/sim/authoritativeMatch.ts', 'server/dedicatedWorldCollision.ts'),
+  // missed native Math there in 265 (vehicleMarkings.ts) and 266 (gunFaceSplit.ts through armor.ts); 276 adds the
+  // local step's graph (state.ts, cut to src/sim and src/game)
+  'tools/det-math-lint.mjs': imports('src/sim/authoritativeMatch.ts', 'server/dedicatedWorldCollision.ts', 'src/game/state.ts'),
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),

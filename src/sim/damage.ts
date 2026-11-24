@@ -21,6 +21,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
  */
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
+import { quaternionFromEuler } from './detRotation.ts';
 import { penAtDistanceMm } from './ballistics.ts';
 import { intraClipCycleS, type GunAutoloader } from './fireCycleFloor.ts';
 import type {
@@ -909,7 +910,7 @@ function stampHullLocalShotInfo(
 ): void {
   const state = target.state;
   _siEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-  _siQuat.setFromEuler(_siEuler);
+  quaternionFromEuler(_siQuat, _siEuler);
   _siMat.compose(state.pos, _siQuat, _siOne).invert();
   _siV.set(event.pos[0], event.pos[1], event.pos[2]).applyMatrix4(_siMat);
   event.localPos = [_siV.x, _siV.y, _siV.z];
@@ -1994,7 +1995,7 @@ function nearestPointTrace(
   if (!aabb) return null;
   const st = tank.state;
   _siEuler.set(-st.visualPitch, st.yaw, st.visualRoll, 'YXZ');
-  _siQuat.setFromEuler(_siEuler);
+  quaternionFromEuler(_siQuat, _siEuler);
   _heMat.compose(st.pos, _siQuat, _siOne);
   _heInv.copy(_heMat).invert();
   _heLocal.copy(burstPoint).applyMatrix4(_heInv);

@@ -806,10 +806,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.61,0.278,-2.235],
-          [1.61,0.895,-2.235],
-          [1.61,0.895,3.213],
-          [1.61,0.278,3.213]
+          [1.4747,0.1075,3.2697],
+          [1.4747,0.1075,-3.2697],
+          [1.4747,0.8955,-3.2697],
+          [1.4747,0.8955,3.2697]
         ]
       },
       {
@@ -821,10 +821,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.61,0.278,3.2],
-          [-1.61,0.895,3.2],
-          [-1.61,0.895,-2.248],
-          [-1.61,0.278,-2.248]
+          [-1.4747,0.1075,-3.2697],
+          [-1.4747,0.1075,3.2697],
+          [-1.4747,0.8955,3.2697],
+          [-1.4747,0.8955,-3.2697]
         ]
       },
       {
@@ -1128,7 +1128,7 @@
     ]
   },
   "geometryHash": "3a393730",
-  "metadataHash": "c4ec9c3d",
+  "metadataHash": "6861ed33",
   "presentationAnchor": {
     "xM": -0.001,
     "zM": 0.3273
@@ -1183,8 +1183,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 51324,
-      "sha256": "2d1fa501b0cbdf5633b06b6c5e3dbcd40bd3eec19302dd915ec3a2dc421da7a7"
+      "bytes": 51836,
+      "sha256": "db6ff650f57b6ec4b07742fa5396abef0e2b6b783af00a3db82644d4e475edb1"
     },
     "modulesSide": {
       "file": "griffin_viper_modules_side.webp",
@@ -1261,8 +1261,8 @@
     "technicalLabels": {
       "file": "griffin_viper_technical.json",
       "mime": "application/json",
-      "bytes": 5698,
-      "sha256": "975320e362e4b1bc8a1161e481b3b2df0fd10f406c74244004385a3a43e79973"
+      "bytes": 5692,
+      "sha256": "2d4de24d41da9931ceface8e3a454c8b7d3043196d0f48c4488baf2e90831dd2"
     }
   }
 }

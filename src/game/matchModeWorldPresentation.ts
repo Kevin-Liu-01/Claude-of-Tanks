@@ -10,13 +10,14 @@ import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchMode
 import { createProvingRangeDressing, type ProvingRangeDressing } from './provingRangeDressing.ts';
 import { objectiveMarkersFor, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
 import {
-  badgeLetter, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
+  badgeLetter, drawBallGlyph, drawBossGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
   laneLetter, OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter, type ObjectiveSide,
 } from '../ui/objectiveGlyphs.ts';
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
 import { createAirSupportWorld, type AircraftFxPort } from './airSupportWorld.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 import { modePlaysSectors } from '../sim/matchRuleset.ts';
+import { killcamStage } from './killcamStage.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
 const spriteLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
@@ -30,6 +31,9 @@ const MAX_PICKUPS = 12;
 /** tactical map 2026-09-15: sprite icon texture edge (px) and the beacon column height (m). */
 const ICON_PX = 128;
 const BEACON_HEIGHT_M = 18;
+/** (guidance-pointers-276) the ball's icon over its centre and the juggernaut's over its hull's ground point (m). */
+const BALL_ICON_UP_M = 6;
+const BOSS_ICON_UP_M = 8;
 const ZONE_RADIUS_M = 26.5;
 const ARC_STEPS = 20;
 /** icons are invisible inside ICON_NEAR_M, full at ICON_FAR_M, and grow with distance past ICON_HOLD_M */
@@ -126,6 +130,9 @@ interface MatchModeWorldPresentationOptions {
   mapId?: () => string | null;
   /** (air-support-275) a struck aircraft's smoke and a downed one's burst at the ground (airSupportWorld.ts) */
   aircraftFx?: AircraftFxPort;
+  /** (guidance-pointers-276) where a hull stands while the viewer's side sees it (never the viewer's own), else null:
+   *  Juggernaut's boss wears its icon there, so the icon reveals nothing the viewer cannot see */
+  hullPosition?: (id: string) => { x: number; y: number; z: number } | null;
 }
 
 interface WorksPlacement { x: number; y: number; z: number; yaw: number }
@@ -307,6 +314,11 @@ export function createMatchModeWorldPresentation(
   let flagBaseMarkers: MarkerGroup[] | null = null;
   let zoneMarkers: MarkerGroup[] | null = null;
   let ballMarker: THREE.Mesh | null = null;
+  /** (guidance-pointers-276; Kevin: "you know how the bases have indicators in ui tho, we should add that for the ball too",
+   *  "same for flag holders and juggernaut") the ball's and the juggernaut's floating icons, as the bases', flags' and goals'
+   *  (a carried flag's pennant already rides its carrier) */
+  let ballIcon: MarkerGroup | null = null;
+  let bossIcon: MarkerGroup | null = null;
   let goalMarkers: MarkerGroup[] | null = null;
   let pickupMarkers: MarkerGroup[] | null = null;
   let spawnMarkers: MarkerGroup[] | null = null;
@@ -337,11 +349,31 @@ export function createMatchModeWorldPresentation(
     iconTextures.set(key, texture);
     return texture;
   };
+  // (killcam-strike-shot-276; Main 2026-11-24: "hide the plates … for every kill cam replay") the world-anchored markers:
+  // every icon and light column, the capture plates, arcs and rings, the flag bases' halos and the lane tethers. While a
+  // kill cam replay is live (killcamStage.ts) they are hidden, each keeping its own visibility for the replay's exit; the
+  // physical objects (posts, flags, stands, crates, goals, the trench works) and the aircraft stay.
+  const overlays: THREE.Object3D[] = [];
+  const overlay = <T extends THREE.Object3D>(object: T): T => { overlays.push(object); return object; };
+  let veiled = false;
+  const veilOverlays = (hide: boolean): void => {
+    if (!hide && !veiled) return;
+    for (const object of overlays) {
+      if (hide) {
+        if (object.userData.veilWas === undefined) object.userData.veilWas = object.visible;
+        object.visible = false;
+      } else if (object.userData.veilWas !== undefined) {
+        object.visible = object.userData.veilWas as boolean;
+        delete object.userData.veilWas;
+      }
+    }
+    veiled = hide;
+  };
   const iconSprite = (name: string, scale: number, y: number): THREE.Sprite => {
     const material = new THREE.SpriteMaterial({
       transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
     });
-    const sprite = new THREE.Sprite(material);
+    const sprite = overlay(new THREE.Sprite(material));
     sprite.name = name;
     sprite.scale.set(scale, scale, 1);
     sprite.position.y = y;
@@ -425,7 +457,7 @@ export function createMatchModeWorldPresentation(
       color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide,
       toneMapped: false, blending: THREE.AdditiveBlending,
     });
-    const mesh = new THREE.Mesh(beaconGeometry, material);
+    const mesh = overlay(new THREE.Mesh(beaconGeometry, material));
     mesh.name = 'beacon';
     mesh.position.y = BEACON_HEIGHT_M / 2;
     return mesh;
@@ -475,7 +507,7 @@ export function createMatchModeWorldPresentation(
     flagBaseMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-flag-base`;
-      const halo = new THREE.Mesh(objectiveRing(8.6, 9.6), basic(teamColor(team), 0.3));
+      const halo = overlay(new THREE.Mesh(objectiveRing(8.6, 9.6), basic(teamColor(team), 0.3)));
       halo.rotation.x = -Math.PI / 2;
       halo.position.y = 0.1;
       const column = beacon(teamColor(team), 0.14);
@@ -499,7 +531,7 @@ export function createMatchModeWorldPresentation(
     spawnMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-spawn`;
-      const ring = new THREE.Mesh(objectiveRing(5.4, 6.6), basic(teamColor(team), 0.34));
+      const ring = overlay(new THREE.Mesh(objectiveRing(5.4, 6.6), basic(teamColor(team), 0.34)));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       const column = beacon(teamColor(team), 0.12);
@@ -566,7 +598,7 @@ export function createMatchModeWorldPresentation(
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `capture-zone-${index + 1}`;
       const material = basic(NEUTRAL, 0.4);
-      const ring = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material);
+      const ring = overlay(new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material));
       ring.rotation.x = -Math.PI / 2;
       const core = new THREE.Group();
       core.name = 'objective-post';
@@ -576,11 +608,11 @@ export function createMatchModeWorldPresentation(
       // capture progress as an arc inside the ring, its letter / sector number
       // as a floating badge
       const discMaterial = basic(NEUTRAL, 0.09);
-      const disc = new THREE.Mesh(objectiveRing(0, ZONE_RADIUS_M), discMaterial);
+      const disc = overlay(new THREE.Mesh(objectiveRing(0, ZONE_RADIUS_M), discMaterial));
       disc.rotation.x = -Math.PI / 2;
       disc.position.y = 0.05;
       const arcMaterial = basic(NEUTRAL, 0.85);
-      const arc = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2), arcMaterial);
+      const arc = overlay(new THREE.Mesh(objectiveRing(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2), arcMaterial));
       arc.rotation.x = -Math.PI / 2;
       arc.position.y = 0.14;
       arc.visible = false;
@@ -825,6 +857,8 @@ export function createMatchModeWorldPresentation(
     if (spawnMarkers) for (const marker of spawnMarkers) marker.visible = false;
     if (zoneMarkers) for (const marker of zoneMarkers) marker.visible = false;
     if (ballMarker) ballMarker.visible = false;
+    if (ballIcon) ballIcon.visible = false;
+    if (bossIcon) bossIcon.visible = false;
     if (goalMarkers) for (const marker of goalMarkers) marker.visible = false;
     if (pickupMarkers) for (const marker of pickupMarkers) marker.visible = false;
     for (const marker of laneMarkers) marker.visible = false;
@@ -965,6 +999,20 @@ export function createMatchModeWorldPresentation(
       ballMarker.position.set(state.ball.x, state.ball.y, state.ball.z);
       ballMarker.rotation.set(timeS * 0.55, timeS * 0.8, timeS * 0.35);
     }
+    if (state.ball) {
+      if (!ballIcon) {
+        ballIcon = new THREE.Group() as MarkerGroup;
+        ballIcon.name = 'turbo-ball-icon';
+        const icon = iconSprite('turbo-ball-icon', 5, BALL_ICON_UP_M);
+        setIcon(icon, 'ball', (ctx, c) => drawBallGlyph(ctx, c, c, 44));
+        ballIcon.userData.icon = icon;
+        ballIcon.add(icon);
+        root.add(ballIcon);
+      }
+      ballIcon.visible = true;
+      ballIcon.position.set(state.ball.x, state.ball.y, state.ball.z);
+      fadeByViewer(ballIcon);
+    }
     if (!goalMarkers || state.goals.length !== goalMarkers.length) return;
     const firstGoal = state.goals[0];
     const secondGoal = state.goals[1];
@@ -1021,7 +1069,7 @@ export function createMatchModeWorldPresentation(
     while (laneMarkers.length < count) {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `range-lane-${laneMarkers.length + 1}`;
-      const ring = new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3));
+      const ring = overlay(new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3)));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
@@ -1029,7 +1077,7 @@ export function createMatchModeWorldPresentation(
       marker.userData.icon = icon;
       // a thin tether from the ring up to the board: the board is the lane's marker, anchored to its mark
       laneTether ??= new THREE.CylinderGeometry(0.05, 0.05, 1, 6, 1, true);
-      const tether = new THREE.Mesh(laneTether, basic(AMBER, 0.55));
+      const tether = overlay(new THREE.Mesh(laneTether, basic(AMBER, 0.55)));
       tether.scale.y = LANE_BOARD_FOOT_M;
       tether.position.y = LANE_BOARD_FOOT_M / 2;
       marker.add(ring, tether, icon);
@@ -1064,6 +1112,8 @@ export function createMatchModeWorldPresentation(
   };
 
   const update = (state: MatchModePresentationState | null, timeS: number): void => {
+    // the replay has left: each marker's own visibility back before this frame's dressing runs (which may set it again)
+    if (!killcamStage.live) veilOverlays(false);
     if (!state || state.id === 'standard') {
       if (root.visible) root.traverse(object => { delete object.userData.surfacePlacement; });
       root.visible = false;
@@ -1082,6 +1132,7 @@ export function createMatchModeWorldPresentation(
       updateLineWorks(state, changed);
     }
     else if (state.id === 'turbo_ball') updateTurboBall(state, timeS);
+    if (state.boss) updateBoss(state);
     // Caches coexist with objectives (Mars has both zones and drops).
     // Keep their lifecycle independent of the exclusive objective dispatch.
     if (state.pickups.length || state.id === 'endless_horde') updatePickups(state, timeS);
@@ -1099,6 +1150,29 @@ export function createMatchModeWorldPresentation(
       airWorld ??= createAirSupportWorld(root, options);
       airWorld.update(state.air, state.perspectiveTeam, timeS);
     } else airWorld?.update(null, 'alpha', timeS);
+    // a kill cam replay owns the screen: the markers leave it (after the dressing, which sets icons and arcs each frame)
+    if (killcamStage.live) veilOverlays(true);
+  };
+
+  const BOSS_KEYS: Readonly<Record<ObjectiveSide, string>> = { own: 'boss:own', enemy: 'boss:enemy', neutral: 'boss:neutral', contested: 'boss:contested' };
+  const updateBoss = (state: MatchModePresentationState): void => {
+    const boss = state.boss;
+    const at = boss?.id ? options.hullPosition?.(boss.id) : null;
+    if (!boss || !at) return;
+    if (!bossIcon) {
+      bossIcon = new THREE.Group() as MarkerGroup;
+      bossIcon.name = 'juggernaut-icon';
+      bossIcon.userData.icon = iconSprite('juggernaut-icon', 6, BOSS_ICON_UP_M);
+      bossIcon.add(bossIcon.userData.icon);
+      root.add(bossIcon);
+    }
+    const side = sideOf(boss.team, state);
+    if (needsIcon(bossIcon.userData.icon, BOSS_KEYS[side])) {
+      setIcon(bossIcon.userData.icon, BOSS_KEYS[side], (ctx, c) => drawBossGlyph(ctx, c, c, 40, sideColor(side)));
+    }
+    bossIcon.visible = true;
+    bossIcon.position.set(at.x, at.y, at.z);
+    fadeByViewer(bossIcon);
   };
 
   const dispose = (): void => {

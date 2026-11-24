@@ -12,6 +12,7 @@ import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.
 import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 import { WRECK_STATES, WRECK_VIEW_M, statesForSite, wreckLook } from './wreckStates.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
+import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -442,10 +443,10 @@ for (const failureStage of ['tick', 'builder']) {
 // dependencies are small fixtures; donor selection and success/rejection
 // ordering below are production source, not a second selection algorithm.
 // (wrecks-270) from the donor-and-state picker the placement calls
-const placementStart = source.indexOf('      function chooseWreckBake(');
-const placementEnd = source.indexOf('\n      let placedW = 0;', placementStart);
-assert.ok(placementStart > 0 && placementEnd > placementStart);
-const placementSource = stripTypeScriptTypes(source.slice(placementStart, placementEnd));
+// (inherited-reds-276) the placement stage runs as a props.ts slice (tools/source-slice.test-support.mjs): it closes over the
+// module's imports it reads (sceneryClearances, baf8dc459d's scenery keep-out, was missing) and names any other it gains
+const props = sourceSlice(new URL('./props.ts', import.meta.url));
+const placementSource = stripTypeScriptTypes(props.section('      function chooseWreckBake(', '\n      let placedW = 0;'));
 const wreckCast = ['m551_sheridan', 'marder1a3', 'leo2_improved', 'm1a1', 't90a_2004'];
 
 function placementFixture({ authored = true, random = () => 0.25, code = placementSource, roadDistance = 1e9 } = {}) {
@@ -497,13 +498,15 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     P: {},
     // (wrecks-270, Main 11-07) the fixture's map is the lane's own cast, not one reverted whole to base
     baseWrecks: false,
+    // (inherited-reds-276) the build's own inputs the stage reads (the slice names each): the map config the hulks keep
+    // off its authored scenery by (props.ts hulkOnScenery; none here), the build seed and the cast's era (debris off here)
+    cfg: null, seed: 2002, era: 'ww2',
   };
-  const api = new Function('dependencies', `
-    const { ${Object.keys(dependencies).join(', ')} } = dependencies;
+  const api = props.compile(dependencies, `
     let bakedTris = 0, wreckSerial = 0, wreckPickSerial = 0;
     ${code}
     return { placeWreck, selectedSlots: () => wreckPickSerial, triangles: () => bakedTris };
-  `)(dependencies);
+  `);
   return { ...api, state, outputs };
 }
 

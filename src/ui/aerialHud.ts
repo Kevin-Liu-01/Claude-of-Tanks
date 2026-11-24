@@ -46,7 +46,7 @@ const SCOPE_VIEWS=['daylight','infrared','thermal','night'] as const satisfies r
 export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGround=()=>null){
   // One control seat (combined-arms-276, game/playerBattleActions.ts): the binoculars refused while our drone is aloft are
   // answered on the event lane, with the drone's glyph (the audio engine sounds it)
-  bus.on('ui:seatBusy',()=>{bus.emit(BATTLE_EVENT,{text:t('flight.seatBusy'),priority:NOTICE_PRIORITY.answered,severity:'warning',icon:'modeDrone'} satisfies BattleEvent);});
+  bus.on('ui:seatBusy',()=>{bus.emit(BATTLE_EVENT,{kind:'seatBusy',text:t('flight.seatBusy'),priority:NOTICE_PRIORITY.answered,severity:'warning',icon:'modeDrone'} satisfies BattleEvent);});
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
   signal.setAttribute('role','status');signal.textContent=t('flight.signalLost');
   const transition=createDroneFeedTransition();

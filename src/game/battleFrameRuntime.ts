@@ -356,14 +356,20 @@ export function createBattleFrameRuntime({
     if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
       advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
     }
+    // (killcam-first-frame-276) A replay the result update (or the pump) started in this frame owns this frame's draw:
+    // its first frame is its first shot. Read once at the frame's start, this frame was a live one, and its live
+    // presentation repainted both hulls at their live poses over the replay's staging (the killer where it had driven
+    // since its shot, the player's wreck where it lay, which the flight never restaged until the hit: Kevin 2026-11-24,
+    // "starts from where you are then snaps you back to where you died").
+    const replayOwnsFrame = killcamActive || killcam.isActive();
     const presentationAlpha = retiringNetworkBattle ? 1 : updatePresentation(
-      appliedDtSeconds, networkActive, killcamActive, livePaused,
+      appliedDtSeconds, networkActive, replayOwnsFrame, livePaused,
     );
     return writeReceipt(
       appliedDtSeconds,
       inBattle,
       paused,
-      killcamActive,
+      replayOwnsFrame,
       livePaused,
       presentationAlpha,
     );

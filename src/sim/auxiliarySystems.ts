@@ -2,6 +2,7 @@ import { AIR_SUPPORT_RULES } from './matchRuleset.ts';
 import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type SmokePoint, type SmokeWorld, type SmokeWorldHit } from './smokeBallistics.ts';
 import { smokeClip, smokeClipReach, smokeScreenSummary } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
+import { applyAxisAngle, matrixRotationY, matrixRotationFromEuler } from './detRotation.ts';
 import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
 import { roofGunSwitch, roofGunTogglable } from './roofGunSwitch.ts';
 import { auxiliaryWeaponProfile, type AuxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
@@ -415,11 +416,11 @@ export const auxiliaryShot = { origin, direction, shell:ROOF_GUN_SHELL };
 /** Match the authored hull -> turret frame; no camera or rendered model in authority. */
 function mountFrame(entity: AuxiliaryEntity, owner: 'hull' | 'turret'): Matrix4 {
   const s = entity.state;
-  matrix.makeRotationFromEuler(euler.set(-(s.visualPitch || 0), s.yaw, s.visualRoll || 0, 'YXZ'));
+  matrixRotationFromEuler(matrix, euler.set(-(s.visualPitch || 0), s.yaw, s.visualRoll || 0, 'YXZ'));
   matrix.setPosition(s.pos.x, s.pos.y, s.pos.z);
   if (owner === 'turret') {
     const p = auxiliaryCapabilities(entity.spec)?.turretPivot ?? entity.spec.armor?.turretPivot ?? [0, (entity.spec.dims?.heightM ?? 2.5) * .7, 0];
-    local.makeRotationY(s.turretYaw); local.setPosition(p[0]!, p[1]!, p[2]!); matrix.multiply(local);
+    matrixRotationY(local, s.turretYaw); local.setPosition(p[0]!, p[1]!, p[2]!); matrix.multiply(local);
   }
   return matrix;
 }
@@ -538,7 +539,7 @@ function stationLay(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, point: V
   layPoint.copy(point).applyMatrix4(inverse);
   const bearing = detMath.atan2(layPoint.x, layPoint.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
   if (Number.isNaN(yaw)) return false;
-  layPoint.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
+  applyAxisAngle(layPoint, yAxis, -bearing).divide(mountScale).sub(pivot);
   const pitch = detMath.atan2(layPoint.y, detMath.hypot(layPoint.x, layPoint.z));
   return pitch >= -depressionAt(gun, yaw, profile.depressionRad) && pitch <= profile.elevationRad;
 }
@@ -551,11 +552,11 @@ function laidLine(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: A
   layLocal.copy(point).applyMatrix4(inverse);
   const bearing = detMath.atan2(layLocal.x, layLocal.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
   if (Number.isNaN(yaw)) return false;
-  layLocal.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
+  applyAxisAngle(layLocal, yAxis, -bearing).divide(mountScale).sub(pivot);
   const pitch = detMath.atan2(layLocal.y, detMath.hypot(layLocal.x, layLocal.z));
   if (pitch < -depressionAt(gun, yaw, profile.depressionRad) || pitch > profile.elevationRad) return false;
-  layDir.set(0, detMath.sin(pitch), detMath.cos(pitch)).multiply(mountScale).applyAxisAngle(yAxis, yaw).transformDirection(base);
-  from.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis, -pitch).add(pivot).multiply(mountScale).applyAxisAngle(yAxis, yaw)
+  applyAxisAngle(layDir.set(0, detMath.sin(pitch), detMath.cos(pitch)).multiply(mountScale), yAxis, yaw).transformDirection(base);
+  applyAxisAngle(applyAxisAngle(from.fromArray(gun.muzzle).sub(pivot), xAxis, -pitch).add(pivot).multiply(mountScale), yAxis, yaw)
     .applyMatrix4(base);
   const range = from.distanceTo(point), flight = range / profile.shell.velocityMps;
   arrive.copy(from).addScaledVector(layDir, range);
@@ -694,8 +695,8 @@ const planA = new Vector3(), planB = new Vector3(), planQ = new Quaternion(), pl
 function barrelPlan(gun: RoofGunMount, yaw: number, a: Vector3, b: Vector3): void {
   planQ.fromArray(gun.rotation);
   planAt.fromArray(gun.position);
-  a.fromArray(gun.pivot).applyAxisAngle(yAxis, yaw).applyQuaternion(planQ).add(planAt);
-  b.fromArray(gun.muzzle).applyAxisAngle(yAxis, yaw).applyQuaternion(planQ).add(planAt);
+  applyAxisAngle(a.fromArray(gun.pivot), yAxis, yaw).applyQuaternion(planQ).add(planAt);
+  applyAxisAngle(b.fromArray(gun.muzzle), yAxis, yaw).applyQuaternion(planQ).add(planAt);
 }
 const otherA = new Vector3(), otherB = new Vector3();
 /** Closest distance between two plan segments (x/z). */
@@ -832,7 +833,7 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
   const bearing=detMath.atan2(localTarget.x,localTarget.z), desiredYaw=arc?arcYaw(arc,bearing):bearing;
   if(Number.isNaN(desiredYaw))return false;
-  localTarget.applyAxisAngle(yAxis,-bearing).divide(mountScale).sub(pivot);
+  applyAxisAngle(localTarget, yAxis,-bearing).divide(mountScale).sub(pivot);
   const desiredPitch=detMath.atan2(localTarget.y,detMath.hypot(localTarget.x,localTarget.z));
   if(desiredPitch < -depressionAt(gun,desiredYaw,profile.depressionRad) || desiredPitch > profile.elevationRad)return false;
   const turn=arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
@@ -851,10 +852,9 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   const cp=detMath.cos(state.gunPitch);
   // THREE applies local scale before the animated yaw. Doing the reverse
   // displaced the stretched Challenger mount muzzle by over 12 cm.
-  direction.set(0,detMath.sin(state.gunPitch),cp).multiply(mountScale)
-    .applyAxisAngle(yAxis,state.gunYaw).transformDirection(base);
-  bore.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis,-state.gunPitch).add(pivot);
-  bore.multiply(mountScale).applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
+  applyAxisAngle(direction.set(0,detMath.sin(state.gunPitch),cp).multiply(mountScale),yAxis,state.gunYaw).transformDirection(base);
+  applyAxisAngle(bore.fromArray(gun.muzzle).sub(pivot), xAxis,-state.gunPitch).add(pivot);
+  applyAxisAngle(bore.multiply(mountScale), yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
   // Recheck from the actual moving muzzle, not merely the mount center.
   targetPoint.copy(point);
   const settled=Math.abs(arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw))<=1e-4&&Math.abs(desiredPitch-state.gunPitch)<=1e-4;

@@ -218,10 +218,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.68,0.738,-3.55],
-          [1.68,1.3,-3.55],
-          [1.68,1.3,3.377],
-          [1.68,0.738,3.377]
+          [1.6805,0.08,3.45],
+          [1.6805,0.08,-3.55],
+          [1.6805,1.3,-3.55],
+          [1.6805,1.3,3.45]
         ]
       },
       {
@@ -233,10 +233,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.68,0.738,3.45],
-          [-1.68,1.3,3.45],
-          [-1.68,1.3,-3.55],
-          [-1.68,0.738,-3.55]
+          [-1.6805,0.08,-3.55],
+          [-1.6805,0.08,3.45],
+          [-1.6805,1.3,3.45],
+          [-1.6805,1.3,-3.55]
         ]
       },
       {
@@ -887,7 +887,7 @@
     ]
   },
   "geometryHash": "3cf04fe8",
-  "metadataHash": "48684e5e",
+  "metadataHash": "b7387582",
   "presentationAnchor": {
     "xM": 0.0015,
     "zM": -0.1482
@@ -994,8 +994,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26722,
-      "sha256": "7352db61b88851b62eecdd4bc47e4fe60abc7355e44c76a353ba93596cab8ded"
+      "bytes": 26558,
+      "sha256": "2910c36ab9e377f7bf20f9953467116b6b0f03cef6a7a68672039519bf4da62c"
     },
     "modulesSide": {
       "file": "leo2a3_b4_modules_side.webp",
@@ -1024,8 +1024,8 @@
     "technicalLabels": {
       "file": "leo2a3_b4_technical.json",
       "mime": "application/json",
-      "bytes": 5495,
-      "sha256": "c4202f39050e04e5cb48edcf6013ff0c588fc8d40d23d6d4b9f605d71702269e"
+      "bytes": 5497,
+      "sha256": "7f10c00656d8d702fcfe4582dd55a4b0e519acb1c21610e7f95ea9990f61ed57"
     }
   }
 }

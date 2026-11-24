@@ -49,6 +49,8 @@ export interface NoticeContent {
   /** The kind's picture in the notice's empty side (noticeArt.ts: an aircraft's or a tank's render), faded in from nothing
    *  under the kit's one mask (notices.css .cot-c-notice__art); decorative: the words say what it is. */
   readonly art?: NoticeArtId;
+  /** Its kind's shape (noticeKinds.ts: the HUD's hexagon plate, or a one-line pill), as data-shape for the host's sheet. */
+  readonly shape?: 'plate' | 'pill';
   readonly className?: string;
 }
 
@@ -71,9 +73,9 @@ export function noticeContentHtml(options: NoticeContent): string {
       + `${options.media.svg}</span>` : '');
 }
 
-/** The art's layer: an in-flow spacer that keeps the words off the picture's solid part, holding the picture itself, which
- *  stands against the notice's own box (notices.css). */
-function noticeArtHtml(art: NoticeArtId | undefined): string {
+/** The art's layer: the picture against its host's right edge under the kit's one mask (notices.css), first in its host
+ *  (the kit's notices, and a plate of the same family that carries a render, hudKillRibbon.ts). */
+export function noticeArtHtml(art: NoticeArtId | undefined): string {
   const url = noticeArtUrl(art);
   return url ? `<span class="cot-c-notice__art" aria-hidden="true"><img src="${esc(url)}" alt="" decoding="async" draggable="false"></span>` : '';
 }
@@ -334,6 +336,7 @@ function render(region: Region, toast: QueuedToast, el: HTMLElement): void {
   const severity = o.severity ?? 'info';
   el.className = `cot-c-notice cot-c-notice--toast${o.className ? ` ${o.className}` : ''}`;
   el.dataset.severity = severity;
+  if (o.shape) el.dataset.shape = o.shape; else delete el.dataset.shape;
   if (severity === 'error') el.setAttribute('role', 'alert'); else el.removeAttribute('role');
   const count = toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '';
   const progress = o.progress !== undefined && severity === 'progress'

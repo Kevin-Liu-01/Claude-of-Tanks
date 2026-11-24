@@ -11,10 +11,11 @@
  */
 import { Vector3 } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
-import { AIR_STRIKE_WEAPONS, GUNSHIP_WEAPONS } from './matchRuleset.ts';
+import { AIR_CRASH_RULES, AIR_STRIKE_WEAPONS, GUNSHIP_WEAPONS } from './matchRuleset.ts';
+import { crashRoundForStrike, isCrashRound } from './airCrash.ts';
 import type { ShellSpec } from './shellSpec.ts';
 import { strikeDueTick, strikeRandom, strikeTick, type AirStrike, type AirSupport } from './airSupport.ts';
-import { bombReleaseOffsetS, missileLaunchOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
+import { bombReleaseOffsetS, crashFall, missileLaunchOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
 import * as detMath from './detMath.ts';
 
 interface FireTarget {
@@ -51,11 +52,14 @@ export function strikeRoundPayload(shell: ShellEntity<ShellSpec>, strike: AirStr
     x: shell.pos.x, y: shell.pos.y, z: shell.pos.z, dx: shell.vel.x / speed, dy: shell.vel.y / speed, dz: shell.vel.z / speed,
     // an unpowered store (the bomb): no tracer, no motor; a client's shell carries only its type, so it is named here
     freeFall: shell.spec.flight === 'free_fall' ? 1 : 0,
+    // (air-crash-he-276) a downed aircraft's crash round: no strike round of its kind (no whistle, no report, no bomb drawn)
+    ...(isCrashRound(shell.spec) ? { crash: 1 } : {}),
   };
 }
 
 const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
 const _from = new Vector3(), _dir = new Vector3(), _lane = { x: 0, z: 0 }, _muzzle = { x: 0, y: 0, z: 0 };
+const _crashAt = { x: 0, y: 0, z: 0 }, _crashVel = { x: 0, y: 0, z: 0 };
 
 /**
  * The next round of a stream whose round k is due at `start + k * every` (k = 0..count-1), `fired` of them gone: its k
@@ -99,12 +103,36 @@ function fire<Target extends FireTarget>(ctx: AirSupportFireContext<Target>, str
   ctx.launch(shell, strike);
 }
 
+/**
+ * A downed aircraft's crash round (sim/airCrash.ts): its class's HE round on the fall's arc (sim/strikeRuns.ts crashFall)
+ * from the later of its fall and the step's start, so the round stepped through this step stands where the arc has the
+ * airframe at its end. Credited to the crew that brought it down (its caller's when none is named); public as every
+ * strike round is (it names the strike). Its blast, its crater and its sound are the normal pipeline's.
+ */
+function launchCrash<Target extends FireTarget>(ctx: AirSupportFireContext<Target>, support: AirSupport, strike: AirStrike, prevS: number): void {
+  strike.crashed = true;
+  const spec = crashRoundForStrike(strike.kind);
+  if (!spec || strike.downedS == null) return;
+  crashFall(support.rules, strike, strike.downedS, Math.max(prevS, strike.downedS), _crashAt, _crashVel);
+  _from.set(_crashAt.x, _crashAt.y, _crashAt.z);
+  _dir.set(0, -1, 0);
+  const shell = createShell(spec, strike.downedBy ?? strike.callerId, false, _from, _dir, ctx.nextId()) as ShellEntity<ShellSpec> & { strikeId?: number };
+  shell.vel.set(_crashVel.x, _crashVel.y, _crashVel.z);
+  shell.gravityMps2 = AIR_CRASH_RULES.fall.gravityMps2;
+  shell.strikeId = strike.id;
+  ctx.launch(shell, strike);
+}
+
 /** Fire every round whose time falls in the step (prevS, timeS] of the mode clock. */
 export function stepAirSupportFire<Target extends FireTarget>(support: AirSupport, prevS: number, timeS: number,
   ctx: AirSupportFireContext<Target>): void {
   const rules = support.rules;
   for (const strike of support.strikes) {
-    if (strike.downedS != null && strike.downedS <= timeS) continue;
+    if (strike.downedS != null && strike.downedS <= timeS) {
+      // (air-crash-he-276) a downed aircraft falls as its crash round, launched once in the first step after it fell
+      if (!strike.crashed) launchCrash(ctx, support, strike, prevS);
+      continue;
+    }
     if (strike.kind === 'recon') continue;
     if (strike.kind === 'artillery') {
       // the battery: round k lands at landsS + k * every (never before the warning has run) on a seeded point inside the

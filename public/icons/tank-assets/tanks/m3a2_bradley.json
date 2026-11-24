@@ -289,59 +289,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.66,0.677,0],
-          [1.605,1.16,0],
-          [1.626,1.16,3.16],
-          [1.681,0.68,3.16]
+          [1.462,0.12,3.27],
+          [1.462,0.12,-3.27],
+          [1.462,1.16,-3.27],
+          [1.462,1.16,3.27]
         ]
       },
       {
         "hitboxId": "H10",
-        "name": "track_R",
+        "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
         "ceMm": 20,
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.582,1.16,-3.07],
-          [1.543,1.16,0],
-          [1.651,0.67,0],
-          [1.689,0.679,-3.07]
+          [-1.462,0.12,-3.27],
+          [-1.462,0.12,3.27],
+          [-1.462,1.16,3.27],
+          [-1.462,1.16,-3.27]
         ]
       },
       {
         "hitboxId": "H11",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.543,1.16,-0.2],
-          [-1.578,1.16,-3.08],
-          [-1.689,0.678,-3.08],
-          [-1.655,0.671,-0.2]
-        ]
-      },
-      {
-        "hitboxId": "H12",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.626,1.16,3.19],
-          [-1.598,1.16,0],
-          [-1.656,0.676,0],
-          [-1.683,0.68,3.19]
-        ]
-      },
-      {
-        "hitboxId": "H13",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -356,7 +326,7 @@
         ]
       },
       {
-        "hitboxId": "H14",
+        "hitboxId": "H12",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -601,7 +571,7 @@
     ]
   },
   "geometryHash": "298cdabd",
-  "metadataHash": "662a8ab3",
+  "metadataHash": "06fcac6a",
   "presentationAnchor": {
     "xM": -0.0056,
     "zM": -0.0158
@@ -710,8 +680,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37022,
-      "sha256": "2a364f542a08591832ca58c26804d1da022f725b11945f0164ad66745ef15aa5"
+      "bytes": 35422,
+      "sha256": "f4e3b43d58bffb8791da23d93c9113486aa8f809e8098cf5f012fb52de45f88e"
     },
     "modulesSide": {
       "file": "m3a2_bradley_modules_side.webp",
@@ -741,7 +711,7 @@
       "file": "m3a2_bradley_technical.json",
       "mime": "application/json",
       "bytes": 5211,
-      "sha256": "98d025f27e1fea14e62b0ffe296ca5089ea385ab3b2e9242566ef23605986438"
+      "sha256": "773685db99d024e6a3d40914686611881000517390b991faee548dc144ca90a0"
     }
   }
 }

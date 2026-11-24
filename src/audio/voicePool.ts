@@ -37,6 +37,10 @@ export interface PlayOptions {
   offsetS?: number;
   /** Cut the voice after this long (with a short fade; a loop fades over its last 0.4 s). */
   maxDurS?: number;
+  /** (276) A state toggle's settled sound (toggleSettle.ts debounces it): it never waits on its id's cooldown. */
+  toggle?: boolean;
+  /** (276) A one-shot's fade in (s): a grain started inside a recording (`offsetS`) rises instead of clicking on. */
+  fadeInS?: number;
   pan?: number;
   /** Whether this voice may raise the HDR window (default: world buses + own). */
   drivesWindow?: boolean;
@@ -85,6 +89,8 @@ export interface VoicePool {
   /** 0 (clear) .. 1 (fully behind terrain) for a world position. */
   setOcclusionProbe(probe: ((x: number, y: number, z: number) => number) | null): void;
   stop(filter: (voice: ActiveVoice) => boolean, fadeS?: number): void;
+  /** (276) Fades one voice out from `atS` (audio clock; now if earlier) over `fadeS`: a held layer's scheduled end. */
+  releaseAt(voice: ActiveVoice, atS: number, fadeS?: number): void;
   prune(now: number): void;
   readonly active: readonly ActiveVoice[];
   readonly log: readonly SfxLogEntry[];
@@ -158,7 +164,7 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
     const priority = options.priority ?? base.priority;
     const now = ctx.currentTime;
     const previous = lastStart.get(id);
-    if (previous != null && now - previous < base.cooldownS) return null;
+    if (!options.toggle && previous != null && now - previous < base.cooldownS) return null;
     const buffer = options.buffer ?? library.pick(id, random);
     if (!buffer) return null;
 
@@ -264,6 +270,11 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       const playable = (buffer.duration - offset) / rate;
       const dur = options.maxDurS != null ? Math.min(playable, options.maxDurS) : playable;
       source.start(when, offset);
+      const fadeInS = Number.isFinite(options.fadeInS) ? Math.min(Math.max(0, options.fadeInS as number), dur / 2) : 0;
+      if (fadeInS > 0) {
+        output.gain.setValueAtTime(0, when);
+        output.gain.linearRampToValueAtTime(1, when + fadeInS);
+      }
       if (options.maxDurS != null && options.maxDurS < playable) {
         output.gain.setValueAtTime(1, when + Math.max(0, dur - 0.06));
         output.gain.linearRampToValueAtTime(0, when + dur);
@@ -296,6 +307,9 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       const now = ctx.currentTime;
       for (const voice of voices) if (!voice.dead && filter(voice)) release(voice, now, fadeS);
       prune(now);
+    },
+    releaseAt(voice, atS, fadeS = 0.05) {
+      release(voice, Math.max(ctx.currentTime, atS), fadeS);
     },
     prune,
     get active() { return voices; },

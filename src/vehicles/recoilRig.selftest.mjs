@@ -207,30 +207,37 @@ for (const id of TWIN_PLANT) {
 }
 // 269: the rotary plant (the M163 VADS's Vulcan; gunRotorSpin.ts): its six barrels ride one rotor on rig_recoil, so the
 // belt stroke carries them; each kick runs the rotor up, the rotor's spin never moves the fire axis, and with no shot it
-// coasts to rest. Every other id carries no rotor.
-{
-  const { visual, state, recoilG } = rig('m163_vads');
+// coasts to rest. 276: the M6 Linebacker's GAU-12/U rides the same path, five barrels on its own rotor, and a Stinger
+// launch leaves it still. Every other id carries no rotor.
+for (const [id, barrels] of [['m163_vads', 6], ['m6_linebacker', 5]]) {
+  const { visual, state, recoilG } = rig(id);
   const rotor = recoilG.children.find((child) => child.userData.gunRotor);
-  assert.ok(rotor, 'm163_vads: the rotor rides rig_recoil');
+  assert.ok(rotor, `${id}: the rotor rides rig_recoil`);
+  assert.equal(rotor.userData.gunRotor.barrels, barrels, `${id}: ${barrels} barrels round the rotor`);
   const axis = visual.gunDirWorld(new THREE.Vector3()).clone();
-  const cycle = getSpec('m163_vads').gun.autoloader.intraClipS;
+  const cycle = getSpec(id).gun.autoloader.intraClipS;
+  if (getSpec(id).gun.launcherMuzzles?.length) {
+    visual.recoilKick(0, 1, 0, true);
+    for (let f = 0; f < 30; f++) visual.syncFromState(state, 1 / 60);
+    assert.equal(rotor.rotation.z, 0, `${id}: a missile launch leaves the rotor still`);
+  }
   visual.recoilKick(0, 0.36);
   visual.syncFromState(state, 0.03);
-  assert.ok(recoilG.position.z < -0.04, 'm163_vads: the belt stroke carries the rotor');
+  assert.ok(recoilG.position.z < -0.04, `${id}: the belt stroke carries the rotor`);
   for (let shot = 0; shot < 8; shot++) { visual.recoilKick(0, 0.36); visual.syncFromState(state, cycle); }
-  assert.ok(rotor.rotation.z !== 0, 'm163_vads: the kicks spin the rotor');
+  assert.ok(rotor.rotation.z !== 0, `${id}: the kicks spin the rotor`);
   for (let f = 0; f < 300; f++) visual.syncFromState(state, 1 / 60);
   const rest = rotor.rotation.z;
   visual.syncFromState(state, 1 / 60);
-  assert.equal(rotor.rotation.z, rest, 'm163_vads: the rotor coasts to rest without shots');
+  assert.equal(rotor.rotation.z, rest, `${id}: the rotor coasts to rest without shots`);
   assert.ok(rest !== 0 && visual.gunDirWorld(new THREE.Vector3()).angleTo(axis) < 1e-3,
-    'm163_vads: the turned rotor leaves the fire axis on the bore');
-  for (const id of ['bmp3', 'gepard_1a2']) {
-    const other = rig(id);
-    let rotors = 0;
-    other.visual.root.traverse((object) => { if (object.userData.gunRotor) rotors++; });
-    assert.equal(rotors, 0, `${id}: no rotor`);
-  }
+    `${id}: the turned rotor leaves the fire axis on the bore`);
+}
+for (const id of ['bmp3', 'gepard_1a2', 'm3a3_bradley']) {
+  const other = rig(id);
+  let rotors = 0;
+  other.visual.root.traverse((object) => { if (object.userData.gunRotor) rotors++; });
+  assert.equal(rotors, 0, `${id}: no rotor`);
 }
 
 // Eight fixed missile canisters use separate launch origins, without the

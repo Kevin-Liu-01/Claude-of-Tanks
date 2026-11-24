@@ -13,7 +13,7 @@ interface SoloBattleRuntime {
   /** The training battle's end and its checkpoint (273, game/state.ts). */
   finishTrainingBattle(...args: RuntimeValue[]): RuntimeValue;
   setTrainingCheckpoint(...args: RuntimeValue[]): RuntimeValue;
-  /** (death-flow-275 R6) a Leave before the verdict is recorded as a defeat (game/state.ts). */
+  /** (leave-no-loss-276) a Leave before the verdict is recorded as 'left': no result, no total (game/state.ts). */
   recordBattleLeft(...args: RuntimeValue[]): RuntimeValue;
   trainingSightFor(...args: RuntimeValue[]): RuntimeValue;
   trainingThreatFor(...args: RuntimeValue[]): RuntimeValue;

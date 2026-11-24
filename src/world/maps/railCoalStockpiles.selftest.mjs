@@ -192,8 +192,15 @@ for(const mapId of MAP_IDS) {
       assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
       // (Lane C #27, 2026-10-15) Suzhou Creek's girder abutments carry their granite 0.3 m past the deck each side: an
       // abutment covers the road's width, and no more than a granite course past it (the arched builder's are the deck's)
-      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw>=deck.halfWidth&&part.hw<=deck.halfWidth+0.3+1e-9),
+      // (23713f72b7, 2026-11-21: a gorge viaduct's supports are battered, each recorded as its upper body and the batter's
+      // four steps) an abutment is every part that reaches its end of the deck: the lowest is footed below the bed
+      const station=part=>(part.cx-deck.x)*deck.ux+(part.cz-deck.z)*deck.uz;
+      for(const end of [-1,1]){
+        const abutment=parts.slice(1,-2).filter(part=>end*station(part)+part.hl>=body.hl-1e-6);
+        assert.ok(abutment.length>0&&Math.min(...abutment.map(part=>part.y0))<deck.bedY
+          &&abutment.every(part=>part.hw>=deck.halfWidth&&part.hw<=deck.halfWidth+0.3+1e-9),
         'the abutments are footed below the bed and span the road (at most the girder abutments\' 0.3 m of granite past it)');
+      }
       for(const record of records){
         assert.equal(Math.min(...parts.map(part=>part.y0)),record.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),record.max[1]);
       }

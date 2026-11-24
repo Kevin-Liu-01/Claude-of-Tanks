@@ -78,6 +78,22 @@ assert.ok(!farAtRam.allyRam.has('pusher') && !farAtRam.allyRam.has('mate'),
   assert.deepEqual(caught, { rams: 1, alliedContacts: 1, viewerChecks: 1, viewerFaults: 1 }, 'a leaked ram is a fault');
 }
 
+// a teammate's wreck is no ally: a ram into one is not a right-of-way fault, one into a teammate killed later in the
+// same batch is (its tank_destroyed follows the ram)
+{
+  const wreckRam = { type: 'tank_ram', aId: 'a', bId: 'w' };
+  const lateDeath = { type: 'tank_destroyed', id: 'w' };
+  const judge = (events) => {
+    const tally = createRamTally();
+    judgeRams({ entities: [], entityById: new Map([['a', { combat: { destroyed: false } }], ['w', { combat: { destroyed: true } }]]) },
+      new Map([['a', 'alpha'], ['w', 'alpha']]), { events }, 0, tally);
+    return tally.alliedContacts;
+  };
+  assert.equal(judge([wreckRam]), 0, 'a ram into a teammate\'s wreck is not a teammate contact');
+  assert.equal(judge([wreckRam, lateDeath]), 1, 'a ram into a teammate that died after it in the batch is');
+  assert.equal(judge([lateDeath, wreckRam]), 0, 'and one after its death is not');
+}
+
 console.log(`soakRams: the soak's predicate over a staged battle: rams=${tally.rams} allyContacts=${tally.alliedContacts} `
   + `viewerChecks=${tally.viewerChecks} viewerFaults=0; the far seat (sees one hull of one ram, neither of the other) read `
   + 'none; a leak is caught');

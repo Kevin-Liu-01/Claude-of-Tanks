@@ -5907,7 +5907,18 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/autumn:lavoir#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.389,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-27T05:42:36.900Z"
+ "updatedAt": "2026-11-23T21:47:21.736Z"
 }

@@ -85,6 +85,9 @@ export const WIRE_VERSION = 13;
 // from the action table), F's airborne meaning (a flip or roll, not the rocket's re-boost), the movement checkpoint's
 // version 10 (the spin in progress, its 64th value), the migration extras' turboReadyIn and airSpin, and the
 // tank_turbo and tank_air_spin events.
+// flip-boost-276 (no bump: the match build's prediction and authority digests already part builds that differ): the air
+// spin a dodge, the movement checkpoint's version 11 (flag bit 13, the flight's dodge spent), the migration extras'
+// airSpinReadyIn and flipUsed, and tank_air_spin's readyS.
 // 16 (combined-arms-276, release 276): a new battle mode id, Combined Arms (BATTLE_MODE_IDS), which a 275 Rooms Worker or
 // tab would refuse or play as Standard: a 275 tab and a 276 tab never share a match. The wire is unchanged (13). The Rooms
 // Worker ships first. One bump for the release: a later 276 change rides 16 unreleased.

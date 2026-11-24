@@ -22,6 +22,7 @@ import type { AuthoritativeEntity, ShellRewindHook } from '../../src/sim/authori
 import type { DamageShell } from '../../src/sim/damage.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createPoseHistory, createTankArmorPose, type PoseHistory } from '../../src/sim/poseHistory.ts';
+import { isCrashRound } from '../../src/sim/airCrash.ts';
 
 export const MAX_REWIND_TICKS = 15;
 export const POSE_HISTORY_TICKS = 24;
@@ -124,11 +125,12 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
       }
     },
     rewindS(shell: DamageShell) {
-      if (shell.roofStation) return 0;
+      // (air-crash-he-276) a crash round is a falling wreck, not a shot a client aimed: never rewound
+      if (shell.roofStation || isCrashRound(shell.spec)) return 0;
       return (rewindByShooter.get(shell.shooterId) ?? 0) * SIM_DT;
     },
     begin(shell: DamageShell) {
-      if (active || shell.roofStation) return;
+      if (active || shell.roofStation || isCrashRound(shell.spec)) return;
       const rewind = rewindByShooter.get(shell.shooterId) ?? 0;
       if (rewind <= 0) return;
       const targetTick = currentTick - rewind;

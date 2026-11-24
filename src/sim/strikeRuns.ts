@@ -33,7 +33,7 @@
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import * as detMath from './detMath.ts';
-import { AIR_STRIKE_WEAPONS, type AirStrikeKind, type AirSupportRules } from './matchRuleset.ts';
+import { AIR_CRASH_RULES, AIR_STRIKE_WEAPONS, type AirStrikeKind, type AirSupportRules } from './matchRuleset.ts';
 
 /** What a run is derived from: the public record's mark, heading, timing and id. */
 export interface RunRecord {
@@ -284,6 +284,27 @@ export function runVelocity(rules: AirSupportRules, strike: RunRecord, timeS: nu
   const x1 = _scratchPose.x, y1 = _scratchPose.y, z1 = _scratchPose.z;
   runPose(rules, strike, timeS - h, _scratchPose);
   out.x = (x1 - _scratchPose.x) / (2 * h); out.y = (y1 - _scratchPose.y) / (2 * h); out.z = (z1 - _scratchPose.z) / (2 * h);
+  return out;
+}
+
+const _crashPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+const _crashVel = { x: 0, y: 0, z: 0 };
+/**
+ * A downed aircraft's fall (air-crash-he-276): from where its run had it at `downedS`, at AIR_CRASH_RULES.fall.carry of
+ * the run's velocity there with fall.sinkMps more downward, under fall.gravityMps2. Its point at `timeS` goes in `out` and
+ * its velocity in `vel`. The authority launches the crash round on this arc (sim/airSupportFire.ts; the shell step
+ * integrates constant gravity exactly) and the presentation draws the falling airframe on it, so both meet the ground
+ * at the same point.
+ */
+export function crashFall(rules: AirSupportRules, strike: RunRecord, downedS: number, timeS: number,
+  out: { x: number; y: number; z: number }, vel?: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  const fall = AIR_CRASH_RULES.fall;
+  runPose(rules, strike, downedS, _crashPose);
+  runVelocity(rules, strike, downedS, _crashVel);
+  const vx = _crashVel.x * fall.carry, vy = _crashVel.y * fall.carry - fall.sinkMps, vz = _crashVel.z * fall.carry;
+  const t = Math.max(0, timeS - downedS), g = fall.gravityMps2;
+  out.x = _crashPose.x + vx * t; out.y = _crashPose.y + vy * t - 0.5 * g * t * t; out.z = _crashPose.z + vz * t;
+  if (vel) { vel.x = vx; vel.y = vy - g * t; vel.z = vz; }
   return out;
 }
 

@@ -1,5 +1,24 @@
 # M6 Linebacker concept and M3A3 turret revision
 
+## Current follow-up — 2026-11-23 rotary cannon (276)
+
+Kevin: "make the m6 linebackers gun a minigun so its an evolution from the m163". The M242 chain gun gives way to the
+25 mm GAU-12/U Equalizer, the Vulcan family's five-barrel successor. The USMC's LAV-AD paired it with Stingers, and it
+keeps the M6's 25 mm calibre where a rifle-calibre M134 would fall below the M163's 20 mm.
+
+- Model (`profiles/m6LinebackerGunMount.ts` `linebackerRotaryGun`, frame `m6LinebackerLayout.ts` `LINEBACKER_ROTARY`):
+  five barrels on a 124 mm circle with 25 mm bores, the rotor's front ring ahead of the receiver's stepped sleeve, a mid
+  clamp and a muzzle clamp, and the spindle on the fire axis with its mouth 5 mm behind the tips. The cradle, shield,
+  receiver and sleeve are unchanged. The rotor turns while the gun fires and coasts down after, through the M163's spin
+  owner (`gunRotorSpin.ts`, tagged on `m6_gau12_rotor`), not a second rotary system.
+- Firing: the M163's rotary path (`autoloader.rotary`, one round a tick). The rule runs 200-round bursts with a 2 s
+  reset (authored as the LAV-AD's 1,800 rounds a minute in 40-round bursts). The PGU-20/U API does 9.2 a round with
+  125/108/90 mm pen (the M163's M53: 7.4, 90/72/55). The PGU-25/U HEI does 10. Sustained output is ~20,800 a minute,
+  where the M242 had it. Each round flies 3 s. Report trim `gau-12`, the rotary family of the M163's `rh202`.
+- The Stinger rack is unchanged: four ready, twelve stowed, three loads, salvo of four.
+- Gun depression re-swept (`tools/gun-depression-sweep.mjs --ids=m6_linebacker`): full -9 degrees to 153 degrees of
+  yaw, held at -5.8 from 160 over the rear deck, where the clamps meet it.
+
 ## Current follow-up — 2026-10-04 roof and turret size
 
 The owner requested a proper M3A3 roof and a 10% smaller complete M6 turret.

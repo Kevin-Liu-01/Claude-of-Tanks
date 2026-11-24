@@ -11,7 +11,7 @@ import { togglePhonePause } from './phonePause.ts';
 // bind Escape itself; right-click a chip to clear it. Conflicts highlight both
 // rows and offer a swap. GAMEPLAY tab: mouse sensitivity, sniper sensitivity,
 // aim smoothing (0 % = raw 1:1 input), invert-Y, AI difficulty (easy/normal/
-// hard segmented picker — consumed by game/state.ts via getStoredDifficulty at
+// hard segmented picker — consumed by game/state.ts via getStoredDifficulty (game/storedDifficulty.ts) at
 // battle setup), controller aim sensitivity — each slider is paired with a
 // numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
 // sliders, the crew voices (national crews / one nation's pack) and the
@@ -194,8 +194,6 @@ export interface SettingsOptions {
   readonly isSpectating?: () => boolean;
   readonly canLeaveBattle?: () => boolean;
   readonly onLeaveBattle?: () => void;
-  /** (death-flow-275 R6) Leaving now records a defeat (a battle that keeps records, before its verdict): the button says so. */
-  readonly leaveCountsAsDefeat?: () => boolean;
   readonly gearVisible?: () => boolean;
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
@@ -638,7 +636,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const isBattleActive = opts.isBattleActive || (() => false);
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
   const onLeaveBattle = opts.onLeaveBattle || null;
-  const leaveCountsAsDefeat = opts.leaveCountsAsDefeat || (() => false);
   const gearVisible = opts.gearVisible || (() => false);
   // PAUSE: main.ts supplies the live-battle predicate; the PAUSED header tag
   // shows exactly when the open panel is what froze the sim (garage Esc and
@@ -2072,7 +2069,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     renderTab();
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
     leaveBtn.hidden = !canLeave;
-    leaveBtn.textContent = t(canLeave && leaveCountsAsDefeat() ? 'settings.leaveDefeat' : 'settings.leave');
     root.classList.add('open');
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden

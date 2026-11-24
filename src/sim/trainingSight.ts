@@ -5,6 +5,8 @@
 // only while it sees the player (S11's Sentry 3, game/state.ts): a point of the loaner is seen where the line from the
 // shooter's sight to it stays over the ground, its earthworks included. Pure: the poses and the ground decide it.
 
+import * as detMath from './detMath.ts';
+
 interface Point3 { readonly x: number; readonly y: number; readonly z: number }
 /**
  * The loaner's hull and turret as a shooter sees them (S10, hull down): points along its hull from its centre and up from
@@ -26,14 +28,14 @@ const EXPOSURE_SIGHT_UP_M = 2.2;
  */
 export function trainingExposure(shooter: Point3, player: Point3 & { readonly yaw: number },
   groundY: (x: number, z: number) => number): { readonly hull: boolean; readonly turret: boolean } {
-  const fx = Math.sin(player.yaw), fz = Math.cos(player.yaw);
+  const fx = detMath.sin(player.yaw), fz = detMath.cos(player.yaw);
   const nose = groundY(player.x + fx * EXPOSURE_HALF_LENGTH_M, player.z + fz * EXPOSURE_HALF_LENGTH_M);
   const tail = groundY(player.x - fx * EXPOSURE_HALF_LENGTH_M, player.z - fz * EXPOSURE_HALF_LENGTH_M);
   const rise = (nose - tail) / (2 * EXPOSURE_HALF_LENGTH_M);
   const eye = { x: shooter.x, y: shooter.y + EXPOSURE_SIGHT_UP_M, z: shooter.z };
   const seen = (point: { readonly along: number; readonly up: number }): boolean => {
     const to = { x: player.x + fx * point.along, y: player.y + point.up + rise * point.along, z: player.z + fz * point.along };
-    const length = Math.hypot(to.x - eye.x, to.y - eye.y, to.z - eye.z);
+    const length = detMath.hypot(to.x - eye.x, to.y - eye.y, to.z - eye.z);
     for (let s = 2; s < length - 1.5; s += 0.5) {
       const k = s / length;
       if (eye.y + (to.y - eye.y) * k < groundY(eye.x + (to.x - eye.x) * k, eye.z + (to.z - eye.z) * k)) return false;

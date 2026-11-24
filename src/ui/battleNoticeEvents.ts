@@ -18,13 +18,17 @@
 //   when the scope drops if it is under SCOPE_DEFER_MS old;
 // - a slot keeps one event per slot, the newer state replacing the older in place (273: the armour overlay's OFF
 //   outliving the ON pressed a moment after it);
-// - "A · B" words show A as the line and B as its detail; an event with keys shows its key line as the detail instead.
+// - "A · B" words show A as the line and B as its detail; an event with keys shows its key line as the detail instead;
+// - (notices-276b) every event names its kind (noticeKinds.ts): its shape is the seat's data-shape, and while the crew looks
+//   through another view (view()) a tank kind is held, the latest of each, and shown when the view returns to the tank if
+//   it is under VIEW_HOLD_MS old; a tank event showing as the view changes is taken down and held with them.
 import type { ActionId } from '../game/input.ts';
 import { NOTICE_PRIORITY } from './battleNotices.ts';
 import { NoticeQueue, noticeContentHtml, type QueuedToast } from './components/notice.ts';
 import { markDatum } from './dom.ts';
 import type { IconId } from './icons/icon.ts';
 import type { NoticeArtId } from './components/noticeArt.ts';
+import { noticeKind, shownInView, VIEW_HOLD_MS, type NoticeKind, type NoticeView } from './noticeKinds.ts';
 
 type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 
@@ -33,6 +37,8 @@ type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 export const BATTLE_EVENT = 'ui:battleEvent';
 
 export interface BattleEvent {
+  /** What it is (noticeKinds.ts): its subject and its shape. */
+  readonly kind: NoticeKind;
   /** The words (catalog text); "A · B" shows B as the detail line. */
   readonly text: string;
   /** NOTICE_PRIORITY's rung. */
@@ -85,6 +91,9 @@ export function createBattleEventLane(host: EventLaneHost) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let scoped = false;
   let deferred: { event: BattleEvent; at: number } | null = null;
+  let view: NoticeView = 'tank';
+  /** The tank events held behind a view: the latest of each (by its slot, else its words), with when it was raised. */
+  const held = new Map<string, { event: BattleEvent; at: number }>();
 
   const keyOf = (event: BattleEvent): string => `${event.severity ?? 'warning'}|${event.text}`;
 
@@ -101,6 +110,7 @@ export function createBattleEventLane(host: EventLaneHost) {
       detailHtml: keys || undefined, detail: keys ? undefined : rest.join(' · ') || undefined,
     }) + (toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '');
     el.dataset.severity = severity;
+    el.dataset.shape = noticeKind(event.kind).shape;
     el.setAttribute('role', severity === 'error' ? 'alert' : 'status');
     el.classList.add('show');
   }
@@ -143,6 +153,7 @@ export function createBattleEventLane(host: EventLaneHost) {
     /** Raises an event (or counts a repeat, or replaces its slot's). */
     raise(event: BattleEvent): void {
       const at = now();
+      if (!shownInView(event.kind, view)) { held.set(event.slot ?? keyOf(event), { event, at }); return; }
       if (scoped && event.priority < NOTICE_PRIORITY.threat) {
         if (event.priority >= NOTICE_PRIORITY.turned) deferred = { event, at };
         return;
@@ -179,6 +190,29 @@ export function createBattleEventLane(host: EventLaneHost) {
       deferred = null;
       if (now() - held.at < SCOPE_DEFER_MS) this.raise(held.event);
     },
+    /** What the crew looks through (noticeKinds.ts NoticeView): off the tank its own events are held (and a shown one taken
+     *  down); back on it the held ones still fresh are raised. */
+    view(next: NoticeView): void {
+      if (next === view) return;
+      view = next;
+      const at = now();
+      if (next !== 'tank') {
+        for (const toast of [...queue.shown, ...queue.waiting]) {
+          const event = events.get(toast.id);
+          if (!event || shownInView(event.kind, next)) continue;
+          held.set(event.slot ?? keyOf(event), { event, at: born.get(toast.id) ?? at });
+          forget(toast.id);
+          // (taken down by the view, not seen out: no cooldown when it returns)
+          leftAt.delete(keyOf(event));
+        }
+        if (!queue.shown.length) el.classList.remove('show');
+        schedule();
+        return;
+      }
+      const back = [...held.values()].filter((entry) => at - entry.at < VIEW_HOLD_MS);
+      held.clear();
+      for (const entry of back) this.raise(entry.event);
+    },
     /** The keys changed (a rebinding, another device): the shown event's key line is drawn again. */
     relabel(): void {
       const shown = queue.shown[0];
@@ -193,6 +227,7 @@ export function createBattleEventLane(host: EventLaneHost) {
       lastRaise.clear();
       leftAt.clear();
       deferred = null;
+      held.clear();
       el.classList.remove('show');
     },
   };

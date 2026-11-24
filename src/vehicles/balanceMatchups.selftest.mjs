@@ -8,7 +8,7 @@ assert.deepEqual(deterministicA, deterministicB,
   'the same roster, seed and range setup reproduce an identical duel');
 
 for (const scenario of BALANCE_SCENARIOS) {
-  const { id, purpose, minAScore = 0, maxAScore = 1, ...options } = scenario;
+  const { id, purpose, minAScore = 0, maxAScore = 1, ruling: _ruling, ...options } = scenario;
   const receipt = runBalanceSeries(options);
   assert.equal(receipt.duels, receipt.seeds.length * 2,
     `${id}: every seed runs from both range ends`);

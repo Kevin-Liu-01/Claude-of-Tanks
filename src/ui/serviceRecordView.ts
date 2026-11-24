@@ -5,6 +5,7 @@ import { killSourceIdentity } from './killSourceIdentity.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
+import type { BattleOutcome } from '../game/battleOutcome.ts';
 import {
   MEDALS, getServiceRecord,
   type AchievementProgress, type MedalGroup, type ServiceBattle, type ServiceRecordView,
@@ -94,8 +95,9 @@ function medalName(id: string): string {
   return t(`service.medal.${id}.name`);
 }
 
-function resultLabel(result: string): string {
-  return result === 'victory' ? t('garage.record.victory') : result === 'draw' ? t('garage.record.draw') : t('garage.record.defeat');
+/** (leave-no-loss-276) one label per outcome of the closed set (a left battle reads "Left", never a defeat). */
+function resultLabel(result: BattleOutcome): string {
+  return t(`garage.record.${result}`);
 }
 
 /** The header plate (the last battle: its tank, result, map and time) and the tab counts for the current record. */

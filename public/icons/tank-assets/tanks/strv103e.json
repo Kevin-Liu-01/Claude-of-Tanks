@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,0,0],
+    "turretPivot": [0,1.59,0.4],
     "plates": [
       {
         "hitboxId": "H01",
@@ -151,6 +151,36 @@
       },
       {
         "hitboxId": "H07",
+        "name": "track_R",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.615,0.1,2.573],
+          [1.615,0.1,-2.359],
+          [1.615,0.88,-2.359],
+          [1.615,0.88,2.573]
+        ]
+      },
+      {
+        "hitboxId": "H08",
+        "name": "track_L",
+        "physicalMm": 30,
+        "keMm": 30,
+        "ceMm": 30,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.615,0.1,-2.359],
+          [-1.615,0.1,2.573],
+          [-1.615,0.88,2.573],
+          [-1.615,0.88,-2.359]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -165,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H08",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 45,
         "keMm": 45,
@@ -327,7 +357,7 @@
     ]
   },
   "geometryHash": "b9e3fc62",
-  "metadataHash": "720e5488",
+  "metadataHash": "19b62ca7",
   "presentationAnchor": {
     "xM": 0.0091,
     "zM": 0.1454
@@ -436,8 +466,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26836,
-      "sha256": "be03c0e72765fe017c695d99e8545cdd6a329efe8f66da51518cbdc910e6d71b"
+      "bytes": 25968,
+      "sha256": "cc050649cd81cf9720234dd481e6d0ba9458c9e84d429caf641e1e9a129e863a"
     },
     "modulesSide": {
       "file": "strv103e_modules_side.webp",
@@ -466,8 +496,8 @@
     "technicalLabels": {
       "file": "strv103e_technical.json",
       "mime": "application/json",
-      "bytes": 3312,
-      "sha256": "bc5adeeaa99de5e32b1dbae8085406431db14e51036cfdd3c86abec7381a7275"
+      "bytes": 3570,
+      "sha256": "864e669eb3275c784a462a2b8f1c474aed9185fa6124b24dd4e3f493085909d2"
     }
   }
 }

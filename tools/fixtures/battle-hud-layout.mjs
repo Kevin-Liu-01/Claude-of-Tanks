@@ -291,7 +291,7 @@ function state(name) {
   // options on a durable denial; a touch layout never takes the pointer)
   if(name==='notices'){
     multiplayer('offline');
-    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.condition({id:'cot-pointer-lock',className:'cot-lock-notice',
+    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.condition({kind:'pointerLock',id:'cot-pointer-lock',className:'cot-lock-notice',
       severity:'warning',text:t('pointerLock.toast.unavailable'),durationMs:null,dismissible:false});
     for(let i=0;i<3;i++)hud.update(frame);
   }
@@ -372,11 +372,21 @@ function state(name) {
     for(let i=0;i<5;i++)hud.update(frame);
   }
   // &notices=1 (notices-276): both lanes hold a notice over the state, as a battle raises them, so the probe measures each
-  // lane's box against the state's controls: an event at the threat rung (it shows through a scope) and a condition
+  // lane's box against the state's controls: an event at the threat rung (it shows through a scope) and a condition.
+  // (notices-276b) the event is the tank's own (noticeKinds.ts), with the battle's turn under it: from the tank the tank's
+  // shows; off it (the binoculars, the drone, the gunship) it is held and the battle's shows. A planted tank condition at
+  // the top rung, raised in every view, must never show there (the probe's hold check, data-probe-tank-*).
   if(params0.has('notices')){
-    bus.emit(BATTLE_EVENT,{text:t('hud.alert.ammoTypeEmpty'),priority:NOTICE_PRIORITY.threat,severity:'error',icon:'shell'});
-    if(name!=='binoculars')battleNotices.condition({id:'cot-air-incoming',className:'cot-air-incoming',severity:'warning',icon:'alert',
-      text:t('airSupport.incoming.gunship'),detail:'4 s',durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.threat});
+    bus.emit(BATTLE_EVENT,{kind:'ammoTypeEmpty',text:t('hud.alert.ammoTypeEmpty'),priority:NOTICE_PRIORITY.threat,severity:'error',icon:'shell'});
+    bus.emit(BATTLE_EVENT,{kind:'objective',text:t('hud.alert.alliedFlagCapture'),priority:NOTICE_PRIORITY.turned,severity:'success',icon:'flag'});
+    document.body.dataset.probeTankEvent=t('hud.alert.ammoTypeEmpty');
+    if(name!=='binoculars')battleNotices.condition({kind:'airIncoming',id:'cot-air-incoming',className:'cot-air-incoming',severity:'warning',icon:'alert',
+      text:t('airSupport.incoming.gunship'),detail:'4 s',art:'ac130',durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.threat});
+    if(name==='binoculars'||name==='drone'||name==='gunship'||name==='combined-drone'){
+      battleNotices.condition({kind:'aimLimit',id:'cot-probe-tank-hold',className:'cot-probe-tank-hold',severity:'error',icon:'alert',
+        text:t('hud.alert.ammoTypeEmpty'),durationMs:null,dismissible:false,priority:NOTICE_PRIORITY.lost});
+      document.body.dataset.probeTankCondition='cot-probe-tank-hold';
+    }
     for(let i=0;i<3;i++)hud.update(frame);
   }
   if(name==='markers'||name==='watch-markers')markers();
