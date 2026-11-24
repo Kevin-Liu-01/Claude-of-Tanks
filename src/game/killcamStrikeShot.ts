@@ -51,15 +51,17 @@ interface StrikeShotFraming {
 }
 
 /** Each kind's framing (the one planner's parameters). The run shot holds its aircraft at about a fifth of a 16:9 frame's
- *  width with the mark in frame throughout (Main 2026-11-24: 15-25 %), on a 40 degree lens; the receipt measures it. */
+ *  width with its planform showing and the mark in frame throughout (Main 2026-11-24: 15-25 %; "readability beats lower");
+ *  the receipt measures it. */
 export const STRIKE_SHOT_FRAMING: Readonly<Record<AirStrikeKind, StrikeShotFraming>> = Object.freeze({
-  // the A-10's dive down the lane: dead astern and a little above on a long lens, the lane rising into the frame as the gun
-  // opens (astern keeps the airframe whole in a portrait frame, which shares this lens's height but not its width)
-  strafe: Object.freeze({ leadS: 1.5, back: 57, up: 9, side: 0, lookAhead: 70, toMark: 0.75, fov: 40, trimM: Infinity }),
+  // the A-10's dive down the lane: astern and about 25 degrees above its wing plane, so its straight wing shows as a wing,
+  // not a line (astern keeps the airframe whole in a portrait frame, which shares this lens's height but not its width); the
+  // look stays near the nose (a far mark pulls the look's angle most of the way at a small toMark)
+  strafe: Object.freeze({ leadS: 1.5, back: 42, up: 26, side: 0, lookAhead: 60, toMark: 0.05, fov: 44, trimM: Infinity }),
   // the fighter's steep dive and the release: astern and above, the mark beyond the nose
   bomb: Object.freeze({ leadS: 1.5, back: 32, up: 6, side: 0, lookAhead: 90, toMark: 0.7, fov: 40, trimM: Infinity }),
-  // the Maverick run's shallow dive, astern, the nose on the mark the whole while
-  missile: Object.freeze({ leadS: 1.4, back: 34, up: 5, side: 0, lookAhead: 90, toMark: 0.7, fov: 40, trimM: Infinity }),
+  // the Maverick run's shallow dive: astern and about 20 degrees above its wing plane, the mark beyond the nose
+  missile: Object.freeze({ leadS: 1.4, back: 29, up: 11.5, side: 0, lookAhead: 60, toMark: 0.05, fov: 44, trimM: Infinity }),
   // the AC-130's pylon turn (the mark off its port wing): outside the orbit off its starboard wing and above, in the plane
   // across its flight, looking through the airframe down onto the mark
   gunship: Object.freeze({ leadS: 1.6, back: 10, up: 50, side: -108, lookAhead: 0, toMark: 0.45, fov: 40, trimM: 260 }),

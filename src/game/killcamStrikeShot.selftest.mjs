@@ -14,8 +14,9 @@
 //      (the release less the kind's lead, plus i frames), on every later frame at the clock the replay stages, and never
 //      at its live pose; the battery's kill shows no aircraft;
 //   5. no snap in the first 10 frames (the camera moves less than a frame's worth between them);
-//   6. the run shot reads: the aircraft's rastered silhouette is 15-25 % of a 16:9 frame's width, whole, with the strike's
-//      mark in frame on every run frame, and whole with the mark in frame in a phone's portrait frame.
+//   6. the run shot reads: the aircraft's rastered silhouette is 15-25 % of a 16:9 frame's width, its planform showing (the
+//      silhouette's area at least PLANFORM_MIN of its span squared: no edge-on wings), whole, with the strike's mark in
+//      frame on every run frame, and whole with the mark in frame in a phone's portrait frame.
 // One kind also dies with the binoculars up. The planted control: the same kill with no shot (its round never
 // announced: no strike record, no trace) falls back to the card alone, and the receipt must fail it on every kind.
 // Before this item an airstrike kill replayed no shot of its own: the bomb's and the battery's had none at all (the card
@@ -244,8 +245,9 @@ function battle({ kind, binoculars = false, announce = true }) {
     lens.fov = camera.fov; lens.aspect = aspect; lens.near = 0.1; lens.far = 6000;
     lens.updateProjectionMatrix(); lens.updateMatrixWorld(true);
     const cols = aspect > 1 ? 240 : 110, rows = Math.round(cols / aspect);
+    const cover = new Uint8Array(cols * rows);
     const craft = aircraftObjects();
-    let width = 0, whole = false;
+    let width = 0, whole = false, planform = 0;
     if (craft.length === 1) {
       let lo = Infinity, hi = -Infinity, bottom = Infinity, top = -Infinity, minCol = Infinity, maxCol = -Infinity;
       craft[0].updateMatrixWorld(true);
@@ -276,13 +278,13 @@ function battle({ kind, binoculars = false, announce = true }) {
             const c0 = Math.max(0, Math.ceil(Math.min(ta.x, tb.x, tc.x) - 0.5)), c1 = Math.min(cols - 1, Math.floor(Math.max(ta.x, tb.x, tc.x) - 0.5));
             const r0 = Math.max(0, Math.ceil(Math.min(ta.y, tb.y, tc.y) - 0.5)), r1 = Math.min(rows - 1, Math.floor(Math.max(ta.y, tb.y, tc.y) - 0.5));
             for (let c = c0; c <= c1; c++) {
-              if (c >= minCol && c <= maxCol) continue;
               for (let r = r0; r <= r1; r++) {
+                if (cover[r * cols + c]) continue;
                 const x = c + 0.5, y = r + 0.5;
                 const w0 = edge(tb, tc, x, y), w1 = edge(tc, ta, x, y), w2 = edge(ta, tb, x, y);
                 if (area > 0 ? (w0 >= 0 && w1 >= 0 && w2 >= 0) : (w0 <= 0 && w1 <= 0 && w2 <= 0)) {
+                  cover[r * cols + c] = 1;
                   minCol = Math.min(minCol, c); maxCol = Math.max(maxCol, c);
-                  break;
                 }
               }
             }
@@ -291,12 +293,17 @@ function battle({ kind, binoculars = false, announce = true }) {
         for (const child of node.children) visit(child);
       };
       visit(craft[0]);
-      if (maxCol >= minCol) width = (maxCol - minCol + 1) / cols;
+      if (maxCol >= minCol) {
+        width = (maxCol - minCol + 1) / cols;
+        let cells = 0;
+        for (let i = 0; i < cover.length; i++) cells += cover[i];
+        planform = cells / ((maxCol - minCol + 1) ** 2);
+      }
       whole = lo >= -1 && hi <= 1 && bottom >= -1 && top <= 1;
     }
     corner.set(record.x, record.y, record.z).project(lens);
     const markIn = Math.abs(corner.x) <= 1 && Math.abs(corner.y) <= 1 && corner.z < 1;
-    return { width, whole, markIn };
+    return { width, whole, markIn, planform };
   };
   const main = createMainFrameRuntime({
     scene: new THREE.Scene(), camera, game,
@@ -425,15 +432,19 @@ function judge(label, kind, run) {
   //    in a phone's portrait frame (the same lens's height) it stays whole with the mark in frame
   const runFrames = replay.filter((f) => f.framing);
   const misframed = runFrames.filter((f) => !(f.framing.wide.width >= 0.15 && f.framing.wide.width <= 0.25 && f.framing.wide.whole
-    && f.framing.wide.markIn && f.framing.tall.whole && f.framing.tall.markIn));
+    && f.framing.wide.markIn && f.framing.wide.planform >= PLANFORM_MIN && f.framing.tall.whole && f.framing.tall.markIn));
   if (misframed.length) {
     const f = misframed[0].framing;
     wrong.push(`${label}: ${misframed.length} of ${runFrames.length} run frames misframe the aircraft (16:9 width `
-      + `${(100 * f.wide.width).toFixed(0)} %, whole ${f.wide.whole}, mark ${f.wide.markIn}; portrait whole ${f.tall.whole}, mark ${f.tall.markIn})`);
+      + `${(100 * f.wide.width).toFixed(0)} %, planform ${f.wide.planform.toFixed(2)}, whole ${f.wide.whole}, mark ${f.wide.markIn}; `
+      + `portrait whole ${f.tall.whole}, mark ${f.tall.markIn})`);
   }
   return wrong;
 }
 
+// the planform shows: the rastered silhouette's area is at least this share of its span squared (the A-10 dead astern, its
+// wings edge-on, two engine pods on screen: 0.05; the fighter's bomb dive, which reads: 0.09-0.11; the AC-130 side-on: 0.24)
+const PLANFORM_MIN = 0.08;
 const KINDS = ['strafe', 'bomb', 'missile', 'gunship', 'artillery'];
 const failures = [];
 for (const kind of KINDS) failures.push(...judge(kind, kind, battle({ kind })));
