@@ -55,6 +55,14 @@ assert.equal(markTargetPx(false), 16);
 assert.equal(markAt(marks, 420, DURATION, WIDTH, markTargetPx(true)), kill, 'a finger 20 px off still takes the mark');
 assert.equal(markAt(marks, 420, DURATION, WIDTH, markTargetPx(false)), null, 'a mouse 20 px off does not');
 assert.equal(markAt(marks, 405, DURATION, WIDTH, markTargetPx(false)), kill);
+// a battle that ends on a kill draws the two on one spot: the kill is picked, the end only alone
+const endOnKill = timelineMarks([[600, 'kill:shot', 'b1', 'p', 0, 0], [606, 'end', '', '', 0, 0]], roster);
+assert.equal(markAt(endOnKill, 200, 50, 1000, 44).category, 'kill', 'the end yields to a kill in reach');
+assert.equal(markAt(endOnKill.filter((m) => m.category === 'end'), 200, 50, 1000, 44)?.category, 'end', 'alone, the end is picked');
+// a scuttle (the tank its own killer) or a kill with no actor is a loss, never "X destroyed X"
+const losses = timelineMarks([[60, 'kill:scuttle', 'p', 'p', 0, 0], [90, 'kill:fall', 'b1', '', 0, 0], [120, 'kill:shot', 'b1', 'p', 0, 0]], roster);
+assert.deepEqual(losses.map((m) => m.label.key), ['replay.mark.loss', 'replay.mark.loss', 'replay.mark.kill']);
+assert.equal(losses[0].category, 'kill', 'a loss is still a kill on the bar (its filter, its feed)');
 assert.equal(timeAtX(250, DURATION, WIDTH), 12.5);
 assert.equal(timeAtX(-5, DURATION, WIDTH), 0);
 assert.equal(timeAtX(5000, DURATION, WIDTH), DURATION);

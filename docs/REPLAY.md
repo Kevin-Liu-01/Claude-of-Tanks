@@ -319,27 +319,33 @@ checksum and the final digest match; a throttle unit off at step 500 is caught a
 gzipped and re-simulates at 0.57 ms per step. `src/sim/replayFormat.selftest.mjs` (default tier): the stream, the
 sections, refusals, and the seat stage as a fixed point.
 
-## P2 viewer as built (source only, 2026-11-23; no browser run yet)
+## P2 viewer as built (2026-11-23; browser stills 2026-11-24)
 
 A replay is watched as a battle. The page enters the recording's battle through its ordinary solo entry, set up as
 recorded by the one setup the headless replayer also uses (`replaySetup.ts`: the roster seed, battle count, bot memory,
 debug flags and storage stand-in round the page's own `setupBattle`). `app/replayViewerRuntime.ts` then turns it into a
 replay: `replayRulesetFor` (Watch's drone and ride, no seat to take, every tank seen, no records), the index built in a
 Worker from the page's own world (`replayWorldManifest.ts`, packed as the shard capture packs it), and from then on the
-battle frame's `replay` port poses it each frame instead of stepping it (no countdown, alpha 1).
+battle frame's `replay` port poses it each frame instead of stepping it (no countdown, alpha 1). The frame poses it
+only while the battle is in view, never under the entry's load screen (through its exit fade), and the viewer offers its
+transport from the first posed frame (`posing`): the index is often done before the load screen lifts, and a Play
+enabled under it was pressed there and lost (`battleFrameRuntime.selftest.mjs`: one Play moves the clock within two
+frames of the first uncovered one).
 
 - `replayViewer.ts`: the controller. Clock, poser and marks; a kill crossed by play goes to the HUD's kill feed through
   `hud.replayKill`, never the bus's `tank:destroyed` (the records listen there). A seek back across a kill resets the
   wreck; a wreck set later is aged from its kill, and an ammo-rack kill pops the turret.
 - `ui/replayBar.ts`: transport row (play, speed, previous and next mark, clock, the timeline filter on the kit's segmented
   control, leave) over the timeline track. Styles in the `surfaces` layer on the HUD's tokens. On a phone the row keeps
-  play, speed and the clock. The Watch bar lifts above it and its take-control button is hidden.
+  play, speed and the clock. The Watch bar lifts above it and its take-control button is hidden. The shell and
+  consumable trays are hidden while a replay is live (a recording keeps no magazine). A kill with no other tank behind
+  it (a scuttle, a fall) reads as a loss (`replay.mark.loss`), never "X destroyed X".
 - Entry points: the end screen's secondary Watch replay and Download replay (after the report's own actions, every mode),
   and the Service Record's Replays tab (the saved 20, Watch and Download per row). `main.ts` handles `ui:replayWatch` and
   `ui:replayDownload`; from an end screen it saves the recording first and returns to the Garage before entering.
 - A recording this build cannot replay never enters a battle: the bar shows its timeline alone with the refusal line.
 
-Known gaps for the browser round: the HUD's top band (score, clock) is not driven by the track and stays as setup left
+Known gaps after the browser round: the HUD's top band (score, clock) is not driven by the track and stays as setup left
 it; world changes (felled trees, structures, craters) are not replayed; effects and sounds other than the kill feed do
 not replay; a mode's battlefield variant is not passed to the indexer; watching a replay sets the Garage's selected
 tank to the recording's. The notices-276 view-controls list (`src/ui/hudViewControls.ts`) is not on this base yet; the

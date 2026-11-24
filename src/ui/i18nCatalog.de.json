@@ -4652,6 +4652,7 @@
   "replay.drifted": "Die Wiederholung endet bei {time}: Das Gefecht verlief hier anders.",
   "replay.unavailable": "Diese Wiederholung kann nicht abgespielt werden.",
   "replay.mark.kill": "{actor} hat {subject} zerstört",
+  "replay.mark.loss": "{subject} wurde zerstört",
   "replay.mark.pen": "{actor} hat {subject} durchschlagen",
   "replay.mark.fire": "{subject} brennt",
   "replay.mark.objective": "Ziel",

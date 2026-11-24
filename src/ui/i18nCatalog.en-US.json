@@ -4652,6 +4652,7 @@
   "replay.drifted": "The replay stops at {time}: the battle played out differently here.",
   "replay.unavailable": "This replay can't be played.",
   "replay.mark.kill": "{actor} destroyed {subject}",
+  "replay.mark.loss": "{subject} was destroyed",
   "replay.mark.pen": "{actor} penetrated {subject}",
   "replay.mark.fire": "{subject} caught fire",
   "replay.mark.objective": "Objective",

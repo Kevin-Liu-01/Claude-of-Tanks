@@ -34,7 +34,8 @@ export interface TimelineMark {
   readonly team: string;
   readonly x: number;
   readonly z: number;
-  /** The words: `replay.mark.<category>` with the hulls' spec ids and the cause, resolved by the bar. */
+  /** The words: `replay.mark.<category>` (a kill with no other tank behind it: `replay.mark.loss`) with the hulls' spec
+   *  ids and the cause, resolved by the bar. */
   readonly label: { readonly key: string; readonly actorSpec: string; readonly subjectSpec: string; readonly cause: string };
 }
 
@@ -52,9 +53,12 @@ export function timelineMarks(events: readonly ReplayEventMark[], roster: readon
     else category = MODE_MARKS[type];
     if (!category) return;
     const team = byId.get(actor)?.team ?? byId.get(subject)?.team ?? (teams.has(subject) ? subject : '');
+    // a kill with no other tank behind it (a scuttle, a fall) is a loss: "X was destroyed", never "X destroyed X"
+    const loss = category === 'kill' && (!actor || actor === subject);
     marks.push({
       index, tick, timeS: tick / REPLAY_STEP_HZ, category, type, subject, actor, team, x, z,
-      label: { key: `replay.mark.${category}`, actorSpec: byId.get(actor)?.specId ?? '', subjectSpec: byId.get(subject)?.specId ?? '', cause },
+      label: { key: loss ? 'replay.mark.loss' : `replay.mark.${category}`, actorSpec: byId.get(actor)?.specId ?? '',
+        subjectSpec: byId.get(subject)?.specId ?? '', cause },
     });
   });
   return marks.sort((a, b) => a.tick - b.tick || a.index - b.index);
@@ -78,14 +82,17 @@ export function markTargetPx(coarse: boolean): number {
   return coarse ? 44 : 16;
 }
 
-/** The mark under a pointer at `x` on the bar (the nearest within half its target), or null. */
+/** The mark under a pointer at `x` on the bar (the nearest within half its target), or null. The battle's end yields to
+ *  any other mark in reach: a battle that ends on a kill draws the two on one spot, and the kill is the one to pick. */
 export function markAt(marks: readonly TimelineMark[], x: number, durationS: number, widthPx: number, targetPx: number): TimelineMark | null {
-  let best: TimelineMark | null = null, bestDistance = targetPx / 2;
+  let best: TimelineMark | null = null, bestDistance = targetPx / 2, end: TimelineMark | null = null;
   for (const mark of marks) {
     const distance = Math.abs(markX(mark.timeS, durationS, widthPx) - x);
+    if (distance > targetPx / 2) continue;
+    if (mark.category === 'end') { end ??= mark; continue; }
     if (distance <= bestDistance) { best = mark; bestDistance = distance; }
   }
-  return best;
+  return best ?? end;
 }
 
 /** The battle time under a pointer at `x` (a scrub), clamped to the battle. */

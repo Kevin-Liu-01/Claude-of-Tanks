@@ -4652,6 +4652,7 @@
   "replay.drifted": "Повтор остановится на {time}: здесь бой пошёл иначе.",
   "replay.unavailable": "Этот повтор нельзя воспроизвести.",
   "replay.mark.kill": "{actor} уничтожил {subject}",
+  "replay.mark.loss": "{subject} уничтожен",
   "replay.mark.pen": "{actor} пробил {subject}",
   "replay.mark.fire": "{subject} загорелся",
   "replay.mark.objective": "Цель",

@@ -359,6 +359,9 @@
   "replay.mark.kill": {
     "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {actor} and {subject} are tank display names; the first destroyed the second. Past tense, as short as the English."
   },
+  "replay.mark.loss": {
+    "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {subject} (a tank display name) was destroyed with no other tank behind it (its crew scuttled it, or it fell). Past tense, as short as the English."
+  },
   "replay.mark.pen": {
     "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. A timeline event: {actor}'s shell penetrated the armour of {subject} (both tank display names). Armour penetration, not a generic verb."
   },

@@ -4652,6 +4652,7 @@
   "replay.drifted": "リプレイは {time} で止まります：ここでは戦闘の展開が異なりました。",
   "replay.unavailable": "このリプレイは再生できません。",
   "replay.mark.kill": "{actor} が {subject} を撃破",
+  "replay.mark.loss": "{subject} が撃破された",
   "replay.mark.pen": "{actor} が {subject} を貫通",
   "replay.mark.fire": "{subject} が炎上",
   "replay.mark.objective": "目標",

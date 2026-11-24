@@ -4652,6 +4652,7 @@
   "replay.drifted": "La repetición se detiene en {time}: aquí la batalla transcurrió de otra forma.",
   "replay.unavailable": "No se puede reproducir esta repetición.",
   "replay.mark.kill": "{actor} destruyó a {subject}",
+  "replay.mark.loss": "{subject} fue destruido",
   "replay.mark.pen": "{actor} perforó a {subject}",
   "replay.mark.fire": "{subject} se incendió",
   "replay.mark.objective": "Objetivo",

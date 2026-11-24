@@ -4737,6 +4737,7 @@
   "replay.drifted": "回放在 {time} 停止：此处的战斗进程与录制时不同。",
   "replay.unavailable": "无法播放此回放。",
   "replay.mark.kill": "{actor} 击毁了 {subject}",
+  "replay.mark.loss": "{subject} 被摧毁",
   "replay.mark.pen": "{actor} 击穿了 {subject}",
   "replay.mark.fire": "{subject} 起火",
   "replay.mark.objective": "目标",
