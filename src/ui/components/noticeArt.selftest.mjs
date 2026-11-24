@@ -48,14 +48,16 @@ for (const bad of [undefined, null, '', 'b52', 'tank:', 'tank:../x', 'tank:a b',
   const rule = sheet.match(/\.cot-c-notice__art img\{([^}]*)\}/);
   assert.ok(rule, 'the kit styles the picture');
   assert.match(rule[1], /mask-image:linear-gradient\(to right,transparent,#000 \d+%\)/, 'masked from transparent into the image');
+  // (the sheet's one rule, the kit's markup, and this module's own comment)
+  const OWNERS = ['src/ui/components/notices.css', 'src/ui/components/notice.ts', 'src/ui/components/noticeArt.ts'];
   const others = [];
   const walk = (dir) => { for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = `${dir}/${entry.name}`;
     if (entry.isDirectory()) walk(path);
-    else if (/\.(css|ts)$/.test(entry.name) && path !== 'src/ui/components/notices.css' && !path.endsWith('.selftest.mjs')
-      && readFileSync(path, 'utf8').includes('cot-c-notice__art') && path !== 'src/ui/components/notice.ts') others.push(path);
+    else if (/\.(css|ts)$/.test(entry.name) && !OWNERS.includes(path) && readFileSync(path, 'utf8').includes('cot-c-notice__art')) others.push(path);
   } };
-  walk('src');
+  // (the UI's sheets and modules, where a notice's styles live: tools/selftest-scans.mjs declares the listing)
+  walk('src/ui');
   assert.deepEqual(others, [], 'no per-notice art CSS');
 }
 

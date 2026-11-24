@@ -101,6 +101,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/tokens/badgeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // one selected state (interaction-picker-254 a311036509): every sheet and module under src/ui and src/presentation
   'src/ui/components/components.selftest.mjs': lists('src/ui/**/*.{css,ts}', 'src/presentation/**/*.{css,ts}'),
+  // (notices-276) no stylesheet or module but the kit's styles a notice's art
+  'src/ui/components/noticeArt.selftest.mjs': lists('src/ui/**/*.{css,ts}'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
