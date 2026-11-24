@@ -135,8 +135,10 @@ const S10_RING_BACK_M = 10;
  *  the ground by 1.9 m), and the wall stamped between them. */
 const S11_COVER = Object.freeze({ x: -320, z: 38 });
 const S11_SENTRY3 = Object.freeze({ x: -220, z: -40 });
-/** The wall stands this far in front of the cover spot toward Sentry 3 (m); the peek spot this far to the spot's side. */
-const S11_WALL_AHEAD_M = 6;
+/** The wall stands this far in front of the cover spot toward Sentry 3 (m); the peek spot this far to the spot's side.
+ *  (276 tutorial-s11-cover) 7 m, from 6: its wider foot stays clear of the loaner's nose at P (3.96 m), the nose on the
+ *  ground under it 0.44 m over P's on Verdant's contact ground (0.84 m before). */
+const S11_WALL_AHEAD_M = 7;
 const S11_PEEK_SIDE_M = 10;
 const S11_LINE = (() => {
   const dx = S11_SENTRY3.x - S11_COVER.x, dz = S11_SENTRY3.z - S11_COVER.z, length = Math.hypot(dx, dz);
@@ -232,10 +234,15 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
   // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (sim/trainingSight.ts EXPOSURE_POINTS)
   earthworks: Object.freeze([
     Object.freeze({ x: S10_BERM.x, z: S10_BERM.z, toward: 'sentry2', profile: Object.freeze([-8, 0, -1, 1.9, 1, 1.9, 4.5, 0]), halfWidthM: 7, skirtM: 2.5 }),
-    // S11's wall: 2.8 m high (over the loaner's 2.44 m), 1 m thick at its top, 10 m long across the line to Sentry 3, 6 m in
-    // front of the cover spot; its end 5 m to the side, so a tank at the peek spot 10 m over stands clear of it
+    // S11's wall: 3 m high (over the loaner's 2.44 m), 2 m thick at its top, 10 m long across the line to Sentry 3, 7 m in
+    // front of the cover spot; its end 5 m to the side, so a tank at the peek spot 10 m over stands clear of it.
+    // (276 tutorial-s11-cover) Its top is wider than the contact lattice's diagonal (1.89 m), the triangles the battle's
+    // ground and the page's running gear read (sim/terrainDeformation.ts contactOffsetAt): the first wall's 1 m top fell
+    // between the lattice's points and stood 2.08 m there, not 2.8, and Sentry 3, 9.5 m over ring P on Verdant, saw the
+    // loaner's turret over it from every spot behind it. Now its whole tank is hidden at P with 0.65 m to spare
+    // (trainingCoverGround.selftest.mjs, on Verdant's own ground).
     Object.freeze({ x: S11_COVER.x + S11_LINE.x * S11_WALL_AHEAD_M, z: S11_COVER.z + S11_LINE.z * S11_WALL_AHEAD_M, toward: 'sentry3',
-      profile: Object.freeze([-1.6, 0, -0.5, 2.8, 0.5, 2.8, 1.6, 0]), halfWidthM: 5, skirtM: 0.6 }),
+      profile: Object.freeze([-2.1, 0, -1, 3, 1, 3, 2.1, 0]), halfWidthM: 5, skirtM: 0.6 }),
   ]),
   timeOfDay: 'day',
   hullFloorShare: 0.5,
