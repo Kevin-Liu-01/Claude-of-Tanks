@@ -65,28 +65,35 @@ function differences(a, b, at = '', out = [], limit = 6) {
 }
 
 // the rule either side of 1 um: a drawn turret moved off its authored seat is measured where it stands, unless the move is
-// under a micron, where the rig is its input and the input is written
+// under a micron, where the rig is its input and the input is written. Held on the first id whose drawn turret sits on its
+// seat (many do not: the m1a1's stands 16 cm over its authored pivot, and publishes that)
 {
-  const id = ids.find((candidate) => getSpec(candidate).armor?.turretless !== true) ?? ids[0];
-  const spec = getSpec(id);
-  const input = authoringRigSpec(spec).armor.turretPivot;
-  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  try {
-    const turret = tank.root.getObjectByName('rig_turret');
-    assert.ok(turret, `${id}: a turret to move`);
-    const atRest = measureCombatRig(tank, spec).turretPivot;
-    assert.deepEqual(atRest, [...input], `${id}: the drawn turret on its seat publishes the authored pivot, bit for bit`);
-    turret.position.x += 5e-6;
-    const moved = measureCombatRig(tank, spec).turretPivot;
-    assert.notEqual(moved[0], input[0], `${id}: a turret drawn 5 um off its seat publishes the measurement`);
-    assert.ok(Math.abs(moved[0] - (input[0] + 5e-6)) <= 5e-7, `${id}: to the micron (${moved[0]} for ${input[0]} + 5 um)`);
-    turret.position.x -= 5e-6 - 4e-7;
-    assert.ok(4e-7 < MEASURED_EQUAL_M, 'control: 0.4 um is inside the rule');
-    assert.equal(measureCombatRig(tank, spec).turretPivot[0], input[0], `${id}: a turret 0.4 um off publishes the authored number`);
-    turret.position.x -= 4e-7;
-  } finally {
-    tank.dispose?.();
+  let checked = null;
+  for (const id of ids) {
+    const spec = getSpec(id);
+    if (spec.armor?.turretless === true) continue;
+    const input = authoringRigSpec(spec).armor.turretPivot;
+    const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+    try {
+      const turret = tank.root.getObjectByName('rig_turret');
+      if (!turret) continue;
+      const atRest = measureCombatRig(tank, spec).turretPivot;
+      if (atRest.some((v, i) => v !== input[i])) continue;
+      turret.position.x += 5e-6;
+      const moved = measureCombatRig(tank, spec).turretPivot;
+      assert.notEqual(moved[0], input[0], `${id}: a turret drawn 5 um off its seat publishes the measurement`);
+      assert.ok(Math.abs(moved[0] - (input[0] + 5e-6)) <= 5e-7, `${id}: to the micron (${moved[0]} for ${input[0]} + 5 um)`);
+      turret.position.x -= 5e-6 - 4e-7;
+      assert.ok(4e-7 < MEASURED_EQUAL_M, 'control: 0.4 um is inside the rule');
+      assert.equal(measureCombatRig(tank, spec).turretPivot[0], input[0], `${id}: a turret 0.4 um off publishes the authored number`);
+      turret.position.x -= 4e-7;
+      checked = id;
+      break;
+    } finally {
+      tank.dispose?.();
+    }
   }
+  assert.ok(checked, 'an id whose drawn turret sits on its authored seat holds the rule');
 }
 
 const failures = [];
