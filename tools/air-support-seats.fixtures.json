@@ -845,7 +845,7 @@
    {
     "role": "readout",
     "name": "div.binocular-readout",
-    "x": 193.8,
+    "x": 194,
     "y": 400,
     "w": 122.3,
     "h": 40
@@ -976,7 +976,7 @@
    {
     "role": "readout",
     "name": "div.binocular-readout",
-    "x": 565.8,
+    "x": 495,
     "y": 166,
     "w": 163.3,
     "h": 40
@@ -1183,7 +1183,7 @@
     "role": "call",
     "name": "button.binocular-call.cot-c-btn.cot-c-btn--primary.cot-c-btn--56",
     "x": 861,
-    "y": 388,
+    "y": 390,
     "w": 112,
     "h": 56
    },
@@ -1304,6 +1304,276 @@
     "name": "button.round.fire",
     "x": 1064,
     "y": 702,
+    "w": 96,
+    "h": 96
+   }
+  ]
+ },
+ "after/ipad-744x1001": {
+  "up": true,
+  "touch": true,
+  "slot": "",
+  "viewport": [
+   744,
+   1001
+  ],
+  "boxes": [
+   {
+    "role": "call",
+    "name": "button.binocular-call.cot-c-btn.cot-c-btn--primary.cot-c-btn--56",
+    "x": 271,
+    "y": 693,
+    "w": 112,
+    "h": 56
+   },
+   {
+    "role": "rack",
+    "name": "section.cot-strike-rack",
+    "x": 391,
+    "y": 695,
+    "w": 279,
+    "h": 44
+   },
+   {
+    "role": "dock",
+    "name": "div.cot-strike-dock",
+    "x": 418,
+    "y": 642,
+    "w": 44,
+    "h": 47
+   },
+   {
+    "role": "support",
+    "name": "button.strike-slot.strike-support:selected",
+    "x": 418,
+    "y": 642,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "shell",
+    "name": "button.cot-shell.sel:selected",
+    "x": 678,
+    "y": 625,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "vehicle",
+    "name": "button.cot-auxiliary[smoke]",
+    "x": 465,
+    "y": 640,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "vehicle",
+    "name": "button.cot-systems-more",
+    "x": 512,
+    "y": 640,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "readout",
+    "name": "div.binocular-readout",
+    "x": 418,
+    "y": 749,
+    "w": 122.3,
+    "h": 40
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 678,
+    "y": 695,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 678,
+    "y": 756,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 678,
+    "y": 817,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "round",
+    "name": "button.round.fire.alt",
+    "x": 137,
+    "y": 765,
+    "w": 56,
+    "h": 56
+   },
+   {
+    "role": "round",
+    "name": "button.round.autoaim",
+    "x": 518,
+    "y": 842,
+    "w": 54,
+    "h": 54
+   },
+   {
+    "role": "round",
+    "name": "button.round.scope",
+    "x": 578,
+    "y": 842,
+    "w": 54,
+    "h": 54
+   },
+   {
+    "role": "round",
+    "name": "button.round.fire",
+    "x": 642,
+    "y": 897,
+    "w": 82,
+    "h": 82
+   }
+  ]
+ },
+ "after/ipad-1210x702": {
+  "up": true,
+  "touch": true,
+  "slot": "",
+  "viewport": [
+   1210,
+   702
+  ],
+  "boxes": [
+   {
+    "role": "call",
+    "name": "button.binocular-call.cot-c-btn.cot-c-btn--primary.cot-c-btn--56",
+    "x": 891,
+    "y": 272,
+    "w": 112,
+    "h": 56
+   },
+   {
+    "role": "rack",
+    "name": "section.cot-strike-rack",
+    "x": 919,
+    "y": 220,
+    "w": 279,
+    "h": 44
+   },
+   {
+    "role": "dock",
+    "name": "div.cot-strike-dock",
+    "x": 1011,
+    "y": 276,
+    "w": 44,
+    "h": 47
+   },
+   {
+    "role": "support",
+    "name": "button.strike-slot.strike-support:selected",
+    "x": 1011,
+    "y": 276,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "shell",
+    "name": "button.cot-shell.sel:selected",
+    "x": 1144,
+    "y": 326,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "vehicle",
+    "name": "button.cot-auxiliary[smoke]",
+    "x": 1058,
+    "y": 274,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "vehicle",
+    "name": "button.cot-auxiliary[lights]",
+    "x": 1105,
+    "y": 274,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "vehicle",
+    "name": "button.cot-auxiliary.active[roofGun]",
+    "x": 1152,
+    "y": 274,
+    "w": 44,
+    "h": 44
+   },
+   {
+    "role": "readout",
+    "name": "div.binocular-readout",
+    "x": 919,
+    "y": 172,
+    "w": 163.3,
+    "h": 40
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 1144,
+    "y": 382,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 1144,
+    "y": 443,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "item",
+    "name": "button.cot-con",
+    "x": 1144,
+    "y": 504,
+    "w": 52,
+    "h": 52
+   },
+   {
+    "role": "round",
+    "name": "button.round.fire.alt",
+    "x": 166,
+    "y": 482,
+    "w": 64,
+    "h": 64
+   },
+   {
+    "role": "round",
+    "name": "button.round.autoaim",
+    "x": 946,
+    "y": 601,
+    "w": 58,
+    "h": 58
+   },
+   {
+    "role": "round",
+    "name": "button.round.scope",
+    "x": 1014,
+    "y": 597,
+    "w": 62,
+    "h": 62
+   },
+   {
+    "role": "round",
+    "name": "button.round.fire",
+    "x": 1094,
+    "y": 584,
     "w": 96,
     "h": 96
    }

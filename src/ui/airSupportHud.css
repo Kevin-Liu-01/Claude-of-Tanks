@@ -166,27 +166,6 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
  body[data-systems-slot=edge] .cot-binoculars .binocular-readout{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);
    top:calc(var(--hud-systems-top,50%) + 52px + (var(--hud-strike-rack-rows,1) - 1) * 47px);bottom:auto}
 }
-/* (air-support-seats-276) CALL and the call-ins keep seats of their own with the binoculars up (the seats receipt,
-   tools/air-support-seats.mjs: CALL, the rack, the dock, Support, the shells, the vehicle controls, the readout, the items
-   and the round buttons cross none of one another). A landscape's edge section: CALL under the readout on the call-ins'
-   edge, 8 px under it as the readout is under them; at the right edge's 12 px it stood under the section's controls, 110x44
-   at 844x390, and Support's dock stood on it. An iPad's own row: the call-ins end where battleHudLayout.ts leaves them room
-   (--hud-strike-rack-left: off the ammunition and the screen's edge); in landscape CALL stands left of Support, level with
-   it (its 56 px centred on Support's 44 px, which stands 2 px under the row's top), 8 px apart, where at the right edge's
-   12 px it stood on the readout and the items. Support itself never moves (tools/air-support-close-box.selftest.mjs). */
-@media(pointer:coarse){
- body:not([data-systems-slot]) .cot-strike-rack{left:var(--hud-strike-rack-left,calc(var(--hud-systems-left,50%) - 47px))}
-}
-@media(pointer:coarse) and (orientation:landscape){
- body[data-systems-slot=edge] .binocular-call{right:calc(100% - var(--hud-systems-left,0px) + 8px);bottom:auto;
-   top:calc(var(--hud-systems-top,50%) + 52px + (var(--hud-strike-rack-rows,1) - 1) * 47px + 40px + 8px)}
- body:not([data-systems-slot]) .binocular-call{right:calc(100% - var(--hud-systems-left,50%) + 47px + 8px);bottom:auto;
-   top:calc(var(--hud-systems-top,50%) + 2px + 22px - 28px)}
- /* (and the readout over the call-ins, on their left edge, 8 px over them as they are 10 px over the row: at the right
-    edge's 222 px it stood on the items' column by 30x27 at 1180x820) */
- body:not([data-systems-slot]) .cot-binoculars .binocular-readout{left:var(--hud-strike-rack-left,calc(var(--hud-systems-left,50%) - 47px));
-   top:calc(var(--hud-systems-top,50%) - 54px - 8px - 40px);bottom:auto}
-}
 /* a portrait phone: the call-ins and the readout under the controls row, the readout without the name the lit slot
    shows (its 390 px held no more); CALL on the centre line over the second FIRE; INCOMING over the row */
 @media(pointer:coarse) and (orientation:portrait){
@@ -197,4 +176,11 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
  .cot-binoculars .binocular-group{border-left:0;padding-left:0}
  .binocular-call{right:auto;left:calc(50% - 24px);bottom:252px}
 }
+/* (air-support-seats-276) with the binoculars up on a touch layout, the call-ins, the readout and CALL stand where
+   battleHudLayout.ts seats them (strikeSeats.ts: each its designed seat above where that is clear of every measured control
+   and instrument, else the nearest clear seat), written as --hud-strike-<part>-x/-y. The rules above are each part's seat
+   before the first plan and wherever none is written. Support itself never moves (tools/air-support-close-box.selftest.mjs). */
+body.cot-touch-layout[data-strike-seats] .cot-strike-rack{left:var(--hud-strike-rack-x);top:var(--hud-strike-rack-y);right:auto;bottom:auto;transform:none}
+body.cot-touch-layout[data-strike-seats] .cot-binoculars .binocular-readout{left:var(--hud-strike-readout-x);top:var(--hud-strike-readout-y);right:auto;bottom:auto;transform:none}
+body.cot-touch-layout[data-strike-seats] .cot-binoculars .binocular-call{left:var(--hud-strike-call-x);top:var(--hud-strike-call-y);right:auto;bottom:auto}
 }

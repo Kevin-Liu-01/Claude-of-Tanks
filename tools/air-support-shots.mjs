@@ -62,7 +62,10 @@ const locale = arg('locale', 'en-US');
 const GAUNTLET_SIZES = closeBox || seats ? {
   // the desktop's full tray and its stacked one; the phone's two orientations and the iPad's (touch layouts)
   desktop: [[1920, 1080], [900, 700]],
-  phone: [[390, 844], [844, 390], [820, 1180], [1180, 820]],
+  phone: [[390, 844], [844, 390], [820, 1180], [1180, 820],
+    // (--seats: the overlap probe's iPad windows too, battle-hud-overlap.browser.mjs 744x1001t and 1210x702t, where the
+    // call-ins' first row seat ran into the items' column)
+    ...(seats ? [[744, 1001], [1210, 702]] : [])],
 } : {
   desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
   phone: [[844, 390], [390, 844]],
