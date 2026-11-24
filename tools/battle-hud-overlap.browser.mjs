@@ -48,8 +48,9 @@ export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
   'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers', 'binoculars'];
 /** The views both notice lanes are measured over (each as <state>+notices): the plain battle, the scope, the drone's feed,
- *  the gunship's sight and Air Support's binoculars. */
-export const NOTICE_STATES = ['idle', 'sniper', 'drone', 'gunship', 'binoculars'];
+ *  the gunship's sight and Air Support's binoculars; and a mode whose sectors' banner and badges stand over the centre (the
+ *  condition lane pushed onto the map and the lanes, combined-arms-276's probe). */
+export const NOTICE_STATES = ['idle', 'sniper', 'drone', 'gunship', 'binoculars', 'mode-zone_control'];
 const plant = process.argv.includes('--plant');
 const noticesOnly = process.argv.includes('--notices-only');
 const shots = process.argv.includes('--shots');
