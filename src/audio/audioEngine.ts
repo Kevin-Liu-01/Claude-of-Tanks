@@ -59,7 +59,7 @@ import { streetGritShare } from '../world/roadPave.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, modeCallsAirSupport, modeLaunchesDrones, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
 import { bombFall, crashFall, runExitS, runPose } from '../sim/strikeRuns.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
@@ -4023,6 +4023,8 @@ export function createAudio({
     // Air Support's call-ins (modeSounds.ts AIR_EVENT_SOUND); a call our own strike view refuses before it is sent
     for (const type of AIR_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onAir(type, payload || {}));
     on<unknown>('ui:strikeDenied', () => { if (battleMode.phase === 'battle' && !battleMode.over) play('ui_error'); });
+    // one control seat (combined-arms-276): the binoculars refused while our drone is aloft
+    on<unknown>('ui:seatBusy', () => { if (battleMode.phase === 'battle' && !battleMode.over) play('ui_error'); });
     crew.bind(on, fact);
   }
 
@@ -4210,7 +4212,7 @@ export function createAudio({
     for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) ids.add(`tracks_${cls}_${s}_fast`);
     for (const id of RIG_LOOPS) ids.add(id);
     // the aircraft modes fly from their first second
-    if (mode === 'drone' || mode === 'ac130') for (const id of AERIAL_SET) ids.add(id);
+    if (modeLaunchesDrones(mode) || mode === 'ac130') for (const id of AERIAL_SET) ids.add(id);
     return [...ids];
   }
 
@@ -4242,7 +4244,7 @@ export function createAudio({
       for (const m of weaponMounts(gun)) if (m.row) rows.add(m.row);
     }
     if (!known) for (const row of Object.values(WEAPON_ROWS)) rows.add(row);
-    if (mode === 'ac130' || mode === 'air_support') for (const row of Object.values(WEAPON_ROWS)) if (row.key.startsWith('ac130')) rows.add(row);
+    if (mode === 'ac130' || modeCallsAirSupport(mode)) for (const row of Object.values(WEAPON_ROWS)) if (row.key.startsWith('ac130')) rows.add(row);
     const ids = new Set<string>();
     for (const row of rows) {
       ids.add(row.close);
@@ -4276,9 +4278,9 @@ export function createAudio({
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     // Air Support's call-ins: their aircraft, bursts, whistles, blasts and the warning (the first can be called within the
     // battle's first minute, never at its first frame)
-    if (mode === 'air_support') for (const id of airSupportAssets()) ids.add(id);
+    if (modeCallsAirSupport(mode)) for (const id of airSupportAssets()) ids.add(id);
     // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
-    if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
+    if (modeLaunchesDrones(mode) || mode === 'ac130') aerialWarmed = true;
     // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops): a new warm replaces the
     // battle's pins only, never the session's radio net, the aircraft set or a live rig's loop (2026-11-02 audit F11).
     library.pin(ids, true, 'battle');

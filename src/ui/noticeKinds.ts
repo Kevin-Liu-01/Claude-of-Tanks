@@ -49,6 +49,9 @@ export const NOTICE_KINDS = Object.freeze({
   // ---- the crew (every view)
   fire: plate('crew'),
   scuttle: plate('crew'),
+  // (combined-arms-276) one control seat: the binoculars refused while the crew flies its drone, answered in the drone's
+  // view (aerialHud.ts)
+  seatBusy: pill('crew'),
   // ---- the air lane (airSupportHud.ts, the condition lane)
   airIncoming: plate('air', true),
   airOrder: plate('air', true),

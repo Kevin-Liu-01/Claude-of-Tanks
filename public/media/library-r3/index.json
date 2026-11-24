@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 1113,
+ "count": 1115,
  "collections": [
   {
    "key": "scenes",
@@ -68,9 +68,9 @@
     "en-US": "The game's features, mechanics and modes, each mode on the Deploy screen, the campaign's operations and the first game's tips.",
     "zh-CN": "游戏的功能、机制与模式，出击界面上的各个模式，战役中的各场行动，以及第一局的提示。"
    },
-   "count": 64,
+   "count": 66,
    "sets": 6,
-   "bytes": 279860
+   "bytes": 289734
   },
   {
    "key": "keyart",

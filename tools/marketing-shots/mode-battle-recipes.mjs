@@ -25,6 +25,115 @@ const T = {
   crushOnScreen: (delays = [40, 120, 240], maxDistM = 120) => ({ type: 'prop:crushed', who: 'any', delays, maxDistM }),
 };
 
+// ------------------------------------------------------------------------------------------------ air support staging
+/**
+ * Air Support's camera staging (deploy/air_support, deploy/combined_arms): a page-side loop that keeps the pinned camera
+ * on a followed strike each frame (`window.__AS.follow`: beside a jet by its strike's name, over a mark, or beside the
+ * AC-130 nearest the mark) and moves the objective markers and overlay sprites to a layer the camera never draws.
+ */
+async function stageStrikeCamera(ctx) {
+  await ctx.eval(() => {
+    const D = window.__DEBUG, V = D.camera.position.constructor;
+    const eye = new V(), at = new V(), dir = new V();
+    /** The followed airframe: a jet by its strike's own name; the AC-130 nearest the mark. */
+    const craftOf = (f) => {
+      if (!f.gunship) { const o = D.scene.getObjectByName(`air-support jet ${f.id}`); return o?.visible ? o : null; }
+      let craft = null, best = Infinity;
+      D.scene.traverseVisible((o) => {
+        if (o.name !== 'AC-130 gunship') return;
+        const d = Math.hypot(o.position.x - f.x, o.position.z - f.z);
+        if (d < best) { best = d; craft = o; }
+      });
+      return craft;
+    };
+    window.__AS = { follow: null, craftOf, stopAtS: Infinity };
+    // the mode's objective markers (matchModeWorldPresentation's root) and every overlay icon (a sprite drawn over
+    // the depth: zone letters, contact diamonds) move to a layer the camera never draws, each frame (markers rebuild)
+    const OFF = 31;
+    const hideOverlays = () => {
+      D.scene.getObjectByName('match-mode-objectives')?.traverse((o) => o.layers.set(OFF));
+      D.scene.traverse((o) => { if (o.isSprite && o.material?.depthTest === false) o.layers.set(OFF); });
+    };
+    const loop = () => {
+      hideOverlays();
+      const f = window.__AS.follow;
+      const pilot = f?.drone ? D.game.player?.aerial : null;
+      if (pilot?.active) {
+        // (combined-arms-276) behind the player's own FPV drone and over it, looking at the strike's mark ahead: the
+        // drone in the foreground, the run over the parked pair beyond it
+        const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z);
+        const dx = f.x - pilot.x, dz = f.z - pilot.z, d = Math.hypot(dx, dz) || 1;
+        eye.set(pilot.x - dx / d * f.back + dz / d * f.side, pilot.y + f.up, pilot.z - dz / d * f.back - dx / d * f.side);
+        at.set(f.x, y + f.lookUp, f.z);
+        D.rig.setExternalPose(eye, at, f.fov);
+      } else if (f?.mark) {
+        // behind the run's heading and off its side, looking at the mark: the strike's ground and its airframe
+        const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z), h = f.heading;
+        eye.set(f.x - Math.sin(h) * f.back + Math.cos(h) * f.side, y + f.up, f.z - Math.cos(h) * f.back - Math.sin(h) * f.side);
+        at.set(f.x, y + f.lookUp, f.z);
+        D.rig.setExternalPose(eye, at, f.fov);
+      } else if (f) {
+        const craft = craftOf(f);
+        if (craft) {
+          craft.getWorldPosition(at);
+          craft.getWorldDirection(dir);
+          dir.y = 0; dir.normalize();
+          eye.set(at.x - dir.x * f.back + dir.z * f.side, at.y + f.up, at.z - dir.z * f.back - dir.x * f.side);
+          // look a little ahead and below the airframe, so the ground it works on shares the frame
+          at.set(at.x + dir.x * f.ahead, at.y - f.drop, at.z + dir.z * f.ahead);
+          D.rig.setExternalPose(eye, at, f.fov);
+        }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+}
+/** In the page: the player's points to the cap, its cooldowns cleared, two enemies parked on a mark (`at`, else 260 m
+ *  ahead), the strike called on it; the accepted strike's record, or null. */
+function callStrikeOnPair(ctx, kind, at = null) {
+  return ctx.eval(({ kind, at }) => {
+    const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    const saved = air.capture();
+    saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
+    saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
+    air.restore(saved);
+    const p = game.player.state.pos, hf = D.world.heightField;
+    const yaw = at ? Math.atan2(at.x - p.x, at.z - p.z) : game.player.state.yaw;
+    const x = at ? at.x : p.x + Math.sin(yaw) * 260, z = at ? at.z : p.z + Math.cos(yaw) * 260;
+    const enemies = game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).slice(0, 2);
+    enemies.forEach((t, i) => {
+      const ex = x + Math.cos(yaw) * (i ? -9 : 7), ez = z - Math.sin(yaw) * (i ? -9 : 7) + (i ? 12 : 0);
+      t.state.pos.set(ex, hf.getHeightAt(ex, ez), ez); t.state.speed = 0;
+    });
+    if (!air.requestStrike(game.player.id, kind, x, z, game.timeS)) return null;
+    D.bus.emit('ui:strikeViewClose', {});
+    const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
+    const s = mine[mine.length - 1];
+    return { id: s.id, kind: s.kind, x: s.x, z: s.z, heading: s.heading, calledS: s.calledS, landsS: s.landsS, endS: s.endS };
+  }, { kind, at });
+}
+/** In the page, each frame (MB.setOnFrame): the flying FPV drone steered at the nearest enemy through the touch-aim path
+ *  (the camera aims, the drone follows), with a burst of frames as it closes (modes/drone, deploy/combined_arms). */
+/** The drone steered at the nearest enemy. `cruiseM` holds it that high over the target until it is 60 m out, then dives
+ *  (combined-arms-276 proof r2: flown level from 340 m over Verdant's woods, the drone went into the trees short of the
+ *  enemy, no kill). */
+const droneAtNearestEnemy = ({ cruiseM = 0 } = {}) => `
+        const p = H.player(); if (!p || !p.aerial || !p.aerial.active || p.aerial.launching) return;
+        const t = H.sel('nearestEnemy'); if (!t) return;
+        const cam = D.camera; const dir = H.vec(); cam.getWorldDirection(dir);
+        const over = Math.hypot(t.x - cam.position.x, t.z - cam.position.z) > 60 ? ${cruiseM} : 0;
+        const dx = t.x - cam.position.x, dy = (t.y + 1.2 + over) - cam.position.y, dz = t.z - cam.position.z;
+        const yawWant = Math.atan2(dx, dz), pitchWant = Math.atan2(dy, Math.hypot(dx, dz));
+        const yawCur = Math.atan2(dir.x, dir.z), pitchCur = Math.asin(Math.max(-1, Math.min(1, dir.y)));
+        let ey = yawWant - yawCur; ey = Math.atan2(Math.sin(ey), Math.cos(ey));
+        const ep = pitchWant - pitchCur;
+        const s = D.input.getSettings().sensitivity || 1;
+        D.input.addVirtualAim(-ey / (0.0022 * s) * 0.35, -ep / (0.0022 * s) * 0.35);
+        D.input.setVirtualMove(0, 1);
+        const d = Math.hypot(dx, dy, dz);
+        if (d < 70 && !MB.onFrameState.close) { MB.onFrameState.close = true; MB.burstIn([0, 250, 600, 1000], { type: 'dive', distM: Math.round(d) }); }`;
+
 // ------------------------------------------------------------------------------------------------ shared steps
 /**
  * Contact across open ground. The player holds while the lines close (fast-forwarded, nothing drawn) until an enemy
@@ -600,20 +709,7 @@ export const RECIPES = {
       await settle(ctx, 1.5);
       await ctx.eval(() => window.__MB.H.tap('drone'));
       // steer the FPV drone at the nearest enemy through the touch-aim path (the camera aims, the drone follows)
-      await ctx.mb('setOnFrame', `
-        const p = H.player(); if (!p || !p.aerial || !p.aerial.active || p.aerial.launching) return;
-        const t = H.sel('nearestEnemy'); if (!t) return;
-        const cam = D.camera; const dir = H.vec(); cam.getWorldDirection(dir);
-        const dx = t.x - cam.position.x, dy = (t.y + 1.2) - cam.position.y, dz = t.z - cam.position.z;
-        const yawWant = Math.atan2(dx, dz), pitchWant = Math.atan2(dy, Math.hypot(dx, dz));
-        const yawCur = Math.atan2(dir.x, dir.z), pitchCur = Math.asin(Math.max(-1, Math.min(1, dir.y)));
-        let ey = yawWant - yawCur; ey = Math.atan2(Math.sin(ey), Math.cos(ey));
-        const ep = pitchWant - pitchCur;
-        const s = D.input.getSettings().sensitivity || 1;
-        D.input.addVirtualAim(-ey / (0.0022 * s) * 0.35, -ep / (0.0022 * s) * 0.35);
-        D.input.setVirtualMove(0, 1);
-        const d = Math.hypot(dx, dy, dz);
-        if (d < 70 && !MB.onFrameState.close) { MB.onFrameState.close = true; MB.burstIn([0, 250, 600, 1000], { type: 'dive', distM: Math.round(d) }); }`);
+      await ctx.mb('setOnFrame', droneAtNearestEnemy());
       await ctx.capture({
         cameras: [{ kind: 'game', hud: 'full' }],
         everyS: 1.0,
@@ -746,73 +842,8 @@ export const RECIPES = {
     hud: 'hidden',
     async run(ctx) {
       await ctx.ff(3);
-      await ctx.eval(() => {
-        const D = window.__DEBUG, V = D.camera.position.constructor;
-        const eye = new V(), at = new V(), dir = new V();
-        /** The followed airframe: a jet by its strike's own name; the AC-130 nearest the mark. */
-        const craftOf = (f) => {
-          if (!f.gunship) { const o = D.scene.getObjectByName(`air-support jet ${f.id}`); return o?.visible ? o : null; }
-          let craft = null, best = Infinity;
-          D.scene.traverseVisible((o) => {
-            if (o.name !== 'AC-130 gunship') return;
-            const d = Math.hypot(o.position.x - f.x, o.position.z - f.z);
-            if (d < best) { best = d; craft = o; }
-          });
-          return craft;
-        };
-        window.__AS = { follow: null, craftOf, stopAtS: Infinity };
-        // the mode's objective markers (matchModeWorldPresentation's root) and every overlay icon (a sprite drawn over
-        // the depth: zone letters, contact diamonds) move to a layer the camera never draws, each frame (markers rebuild)
-        const OFF = 31;
-        const hideOverlays = () => {
-          D.scene.getObjectByName('match-mode-objectives')?.traverse((o) => o.layers.set(OFF));
-          D.scene.traverse((o) => { if (o.isSprite && o.material?.depthTest === false) o.layers.set(OFF); });
-        };
-        const loop = () => {
-          hideOverlays();
-          const f = window.__AS.follow;
-          if (f?.mark) {
-            // behind the run's heading and off its side, looking at the mark: the strike's ground and its airframe
-            const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z), h = f.heading;
-            eye.set(f.x - Math.sin(h) * f.back + Math.cos(h) * f.side, y + f.up, f.z - Math.cos(h) * f.back - Math.sin(h) * f.side);
-            at.set(f.x, y + f.lookUp, f.z);
-            D.rig.setExternalPose(eye, at, f.fov);
-          } else if (f) {
-            const craft = craftOf(f);
-            if (craft) {
-              craft.getWorldPosition(at);
-              craft.getWorldDirection(dir);
-              dir.y = 0; dir.normalize();
-              eye.set(at.x - dir.x * f.back + dir.z * f.side, at.y + f.up, at.z - dir.z * f.back - dir.x * f.side);
-              // look a little ahead and below the airframe, so the ground it works on shares the frame
-              at.set(at.x + dir.x * f.ahead, at.y - f.drop, at.z + dir.z * f.ahead);
-              D.rig.setExternalPose(eye, at, f.fov);
-            }
-          }
-          requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
-      });
-      /** In the page: points to the cap, cooldowns cleared, two enemies parked on a mark 260 m ahead, the strike called. */
-      const call = (kind) => ctx.eval((kind) => {
-        const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
-        const saved = air.capture();
-        saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
-        saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
-        air.restore(saved);
-        const p = game.player.state.pos, yaw = game.player.state.yaw, hf = D.world.heightField;
-        const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
-        const enemies = game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).slice(0, 2);
-        enemies.forEach((t, i) => {
-          const ex = x + Math.cos(yaw) * (i ? -9 : 7), ez = z - Math.sin(yaw) * (i ? -9 : 7) + (i ? 12 : 0);
-          t.state.pos.set(ex, hf.getHeightAt(ex, ez), ez); t.state.speed = 0;
-        });
-        if (!air.requestStrike(game.player.id, kind, x, z, game.timeS)) return null;
-        D.bus.emit('ui:strikeViewClose', {});
-        const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
-        const s = mine[mine.length - 1];
-        return { id: s.id, kind: s.kind, x: s.x, z: s.z, heading: s.heading, calledS: s.calledS, landsS: s.landsS, endS: s.endS };
-      }, kind);
+      await stageStrikeCamera(ctx);
+      const call = (kind) => callStrikeOnPair(ctx, kind);
       const reach = (label, atS) => ctx.until((t) => window.__DEBUG.game.timeS >= t, { timeoutS: 40, label, args: [atS] });
       const follow = (spec) => ctx.eval((f) => { window.__AS.follow = f; }, spec);
       // windows run in game time: a frozen candidate holds the battle's clock while the 4K frame is written, so each
@@ -850,6 +881,161 @@ export const RECIPES = {
         await ctx.eval(() => window.__DEBUG.rig.release());
         await reach(`${shot.label}: the strike's end`, Math.min(strike.endS, strike.landsS + 6));
       }
+    },
+  },
+
+
+  // (combined-arms-276, the owner: "lets add a mode with drone AND air support") Combined Arms' Deploy tile, plate and
+  // landing still: both of the mode's weapons in one frame. The player's side calls a strike on two enemies parked 260 m
+  // ahead (Air Support's staging), and the player launches its FPV drone so it reaches the pair as the strike lands, its aim
+  // laid on the pair. The camera is pinned behind and over the drone, looking at the mark: the drone in the foreground, the
+  // jet's run over the pair beyond it; the HUD, markers, notices and hints hidden.
+  'deploy/combined_arms': {
+    battle: { specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'combined_arms' },
+    hour: 'day',
+    windowS: 90,
+    hud: 'hidden',
+    async run(ctx) {
+      await ctx.ff(3);
+      // (r3: r2's mark, 260 m down the spawn's heading on Verdant, stood in woods, and every frame behind the drone was
+      // canopy) the mark is a surveyed open lane's end (H.stageEngagement: open ground, nothing hiding it from the
+      // player's spot, which moves onto open ground if its own has no lane), the pair parked there
+      const staged = await ctx.eval(() => window.__MB.H.stageEngagement({ dists: [240, 210, 270, 300], enemies: 1, allies: 0 }));
+      ctx.log('staged', JSON.stringify(staged));
+      const mark = await ctx.eval(() => {
+        const H = window.__MB.H, p = H.player(), t = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos))[0];
+        return t ? { x: t.state.pos.x, z: t.state.pos.z } : null;
+      });
+      if (!staged) ctx.note('no open lane surveyed; the mark is 260 m ahead');
+      await stageStrikeCamera(ctx);
+      // (r2: r1's game camera flew the drone's own lens, so the strike and the pair were never in its frame, and the
+      // drone's notice showed over the HUD-free frames) the notices and hints hidden with the HUD, and the camera pinned
+      // behind the drone: with the camera pinned the rig writes no aim, so the page lays the player's aim on the pair
+      await ctx.eval(() => {
+        const style = document.createElement('style');
+        style.textContent = '.cot-battle-notices,.cot-hints,.cot-alert,.cot-c-notice{display:none!important}';
+        document.head.append(style);
+      });
+      const reach = (label, atS) => ctx.until((t) => window.__DEBUG.game.timeS >= t, { timeoutS: 60, label, args: [atS] });
+      // (r4: r3's camera, 9-11 m behind, held the drone as a speck of a few pixels at 3840 wide over open ground) over
+      // the drone's shoulder, 2-3 m back: the airframe large in the foreground, the run on the pair beyond it
+      const SHOTS = [
+        { kind: 'strafe', label: 'drone and strafe', view: { back: 2.2, side: 0.7, up: 0.6, lookUp: 2, fov: 62 } },
+        { kind: 'bomb', label: 'drone and bomb', view: { back: 3, side: -0.9, up: 0.9, lookUp: 3, fov: 64 } },
+      ];
+      for (const shot of SHOTS) {
+        let strike = null;
+        for (let tries = 0; !strike && tries < 40; tries++) {
+          strike = await callStrikeOnPair(ctx, shot.kind, staged ? mark : null);
+          if (!strike) await ctx.sleep(1500);
+        }
+        if (!strike) { ctx.note(`${shot.label}: no ${shot.kind} accepted`); continue; }
+        ctx.log(shot.label, JSON.stringify(strike));
+        // the launch's climb (2.4 s) and ~6 s over the 260 m at 42 m/s: launched 8.5 s before the strike lands
+        await reach(`${shot.label}: the launch`, strike.landsS - 8.5);
+        await ctx.eval(() => window.__MB.H.tap('drone'));
+        await ctx.mb('setOnFrame', `
+          const p = H.player(); if (!p || !p.aerial || !p.aerial.active) return;
+          const t = H.sel('nearestEnemy'); if (!t) return;
+          p.input.aimPoint.set(t.x, t.y + 1.2, t.z);`);
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active && !window.__DEBUG.game.player.aerial.launching ? true : null),
+          { timeoutS: 8, label: `${shot.label}: the drone in flight` });
+        await ctx.eval((f) => { window.__AS.follow = f; }, { ...shot.view, drone: true, x: strike.x, z: strike.z });
+        await ctx.eval((t) => { window.__AS.stopAtS = t; }, strike.landsS + 2.5);
+        await ctx.capture({ label: shot.label, windowS: 120, max: 24, everyS: 0.35, minGapMs: 200,
+          cameras: [{ kind: 'game', hud: 'hidden' }],
+          stopWhen: () => window.__DEBUG.game.timeS >= window.__AS.stopAtS || !window.__DEBUG.game.player?.aerial?.active });
+        await ctx.mb('setOnFrame', null);
+        await ctx.eval(() => { window.__AS.follow = null; window.__DEBUG.rig.release(); });
+        // the next run waits for the drone's cooldown (a loss's 25 s) and the strike's end (r3: at +28 s the bomb's
+        // launch came before the drone was back, and the shot had no drone)
+        await reach(`${shot.label}: the drone ready again`, strike.landsS + 34);
+      }
+    },
+  },
+
+  // (combined-arms-276) the solo proof, in the real game page with the HUD up (READY evidence, never a delivery): both
+  // controls on the HUD with the drone docked; a call-in through the player's own path (the binoculars raised on a pick,
+  // the trigger: game/playerBattleActions.ts); the drone launched and flown at the enemy, the binoculars refused while it
+  // flies (ui:seatBusy); a drone kill; then the battle fast-forwarded to its verdict on a 250-point target (Deploy's
+  // lowest; ten allies against three, so the verdict is the player's side's), the end screen captured. The page's tally (window.__CA) is logged at each step.
+  'proof/combined_arms': {
+    battle: { specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'combined_arms' },
+    hour: 'day',
+    windowS: 600,
+    hud: 'full',
+    // (r2: r1's even sides lost 44-250; the brief's proof ends on the player's win) ten allies against three. (r3: at 250
+    // the sectors' score ended that battle 30 s after the call-in, before the drone's first sortie was down) 500, Deploy's
+    // next offered target
+    storage: { 'cot.game.teams.v1': { combined_arms: { scoreTarget: 500, allies: 10, enemies: 3 } } },
+    async run(ctx) {
+      await ctx.eval(() => {
+        const D = window.__DEBUG, CA = window.__CA = { calls: [], seatBusy: 0, kills: [], captures: 0, ended: null };
+        D.bus.on('mode:strike_called', (e) => CA.calls.push({ callerId: e?.callerId, kind: e?.kind, own: e?.callerId === D.game.player?.id }));
+        D.bus.on('ui:seatBusy', () => { CA.seatBusy++; });
+        D.bus.on('mode:zone_captured', () => { CA.captures++; });
+        D.bus.on('tank:destroyed', (e) => CA.kills.push({ id: e?.id, killerId: e?.killerId, source: e?.source ?? null, mine: e?.killerId === D.game.player?.id }));
+        D.bus.on('battle:ended', (e) => { CA.ended = { result: e?.result ?? null, reason: e?.reason ?? null, timeS: D.game.timeS }; });
+      });
+      const tally = async (label) => ctx.log(label, JSON.stringify(await ctx.eval(() => {
+        const g = window.__DEBUG.game, CA = window.__CA;
+        return { timeS: Math.round(g.timeS), score: g.matchModeState?.score ?? null, points: g.matchModeState?.air?.points ?? null,
+          drone: g.player?.aerial ? { active: !!g.player.aerial.active, cooldownS: Math.round(g.player.aerial.cooldownS ?? 0) } : null,
+          calls: CA.calls, seatBusy: CA.seatBusy, captures: CA.captures, kills: CA.kills.length,
+          droneKills: CA.kills.filter((k) => k.mine && k.source === 'drone').length, ended: CA.ended };
+      })));
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 420 })));
+      await settle(ctx, 1);
+      // 1. both controls: the Support slot heading the systems, the drone's tile among them
+      await ctx.capture({ label: 'both controls', windowS: 8, max: 2, everyS: 1.5, cameras: [{ kind: 'game', hud: 'full' }] });
+      // 2. the call-in: points to the cap (staging, named), the binoculars raised on the artillery pick, the trigger
+      await ctx.eval(() => {
+        const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+        const saved = air.capture();
+        saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
+        air.restore(saved);
+        D.bus.emit('ui:strikePick', { kind: 'artillery' });
+      });
+      ctx.note('the player\'s support points were set to the cap for the call-in (the ledger\'s own capture/restore)');
+      await ctx.sleep(900);
+      await ctx.capture({ label: 'binoculars', windowS: 4, max: 1, everyS: 1, cameras: [{ kind: 'game', hud: 'full' }] });
+      await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeCall', {}));
+      await ctx.until(() => (window.__CA.calls.some((c) => c.own) ? true : null), { timeoutS: 10, label: 'the call accepted' });
+      await tally('called');
+      // 3. the drone: launched, flown over the woods at the nearest enemy and dived onto it, sortie after sortie (each on
+      // Drone's cooldown, fast-forwarded) until it kills; the binoculars asked for in the first flight (refused)
+      await ctx.sleep(1500);
+      const droneKills = () => ctx.eval(() => window.__CA.kills.filter((k) => k.mine && k.source === 'drone').length);
+      for (let sortie = 1; sortie <= 4 && !(await droneKills()); sortie++) {
+        for (let i = 0; i < 6; i++) {
+          const ready = await ctx.eval(() => { const a = window.__DEBUG.game.player?.aerial; return !!a && !a.active && !(a.cooldownS > 0); });
+          if (ready) break;
+          await ctx.ff(5);
+        }
+        await ctx.eval(() => window.__MB.H.tap('drone'));
+        await ctx.mb('setOnFrame', droneAtNearestEnemy({ cruiseM: 25 }));
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active ? true : null), { timeoutS: 10, label: 'the drone aloft' });
+        await ctx.sleep(1200);
+        if (sortie === 1) await ctx.eval(() => window.__DEBUG.bus.emit('ui:strikeViewToggle', {}));
+        await ctx.capture({ label: `drone flight ${sortie}`, windowS: 25, max: sortie === 1 ? 8 : 4, everyS: 1.2, cameras: [{ kind: 'game', hud: 'full' }],
+          stopWhen: () => !window.__DEBUG.game.player?.aerial?.active });
+        // (r3: the capture stopped at its count while the drone still flew, and the next sortie's wait fast-forwarded the
+        // battle under it to its end) the sortie runs out in real time before anything is fast-forwarded
+        await ctx.until(() => (window.__DEBUG.game.player?.aerial?.active ? null : true), { timeoutS: 40, label: `drone ${sortie} down` });
+        await ctx.mb('setOnFrame', null);
+        await tally(`drone ${sortie}`);
+      }
+      if (!(await droneKills())) ctx.note('no drone kill in four sorties');
+      // 4. the verdict: the battle fast-forwarded (the bots fly their drones and call in on their own) to its score
+      for (let i = 0; i < 40; i++) {
+        const done = await ctx.eval(() => !!window.__CA.ended);
+        if (done) break;
+        await ctx.ff(15);
+        if (i % 4 === 3) await tally(`ff ${i + 1}`);
+      }
+      await tally('ended');
+      await ctx.sleep(4000);
+      await ctx.capture({ label: 'end screen', windowS: 12, max: 3, everyS: 3, cameras: [{ kind: 'game', hud: 'full' }] });
     },
   },
 

@@ -54,8 +54,8 @@ import { PEN_INK } from './penInk.ts';
 import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
-import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { RULESET_SCORE_TARGETS, matchRulesetFor, modePlaysSectors, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
+import { GAME_MODE_DEFINITIONS, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
@@ -4177,9 +4177,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
     }
-    if (modeState.id === 'zone_control' || modeState.id === 'mars' || modeState.id === 'air_support') {
+    if (modePlaysSectors(modeState.id)) {
       // (improve-271 plan 027) each mode's own target from the ruleset: Air Support plays to 2000, not Zone Control's 750
-      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
+      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS[String(modeState.id)]) });
     }
     if (modeState.id === 'turbo_ball') {
       return t('hud.modeStatus.goals', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
@@ -4195,17 +4195,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   }
 
   function modeStatusIconName(modeId: string): string {
-    // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
-    if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
-    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport', training: GAME_MODE_DEFINITIONS.training.icon }[modeId];
-    if (icon) return icon;
-    if (modeId === 'standard') return 'modeStandard';
-    if (modeId === 'capture_the_flag') return 'modeFlag';
-    if (modeId === 'mars') return 'modeMars';
-    if (modeId === 'zone_control') return 'modeZones';
-    if (modeId === 'frontline_assault') return 'modeFrontline';
-    if (modeId === 'turbo_ball') return 'modeTurbo';
-    return 'modeHorde';
+    // the mode's own icon, from its definition (combined-arms-276: one table, not a second copy here)
+    return Object.hasOwn(GAME_MODE_DEFINITIONS, modeId) ? GAME_MODE_DEFINITIONS[modeId as keyof typeof GAME_MODE_DEFINITIONS].icon : 'modeHorde';
   }
 
   function updateModeStatus(modeState: HudMatchModeState): void {
@@ -9384,9 +9375,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
-    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, (frame.player || playerRef)?.state?.pos ?? null,
+    // (combined-arms-276, one control seat) the Support slot steps aside while our drone flies: the binoculars wait for the
+    // tank (game/playerBattleActions.ts), and in flight the slot stood on the stick at 844x390 and the flight console at
+    // 1210x702, the overlap probe's combined-drone state
+    const supportSeat = frame.player || playerRef;
+    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, supportSeat?.state?.pos ?? null,
       frame.matchModeState?.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha', frame.timeS,
-      mode !== 'hidden' && !!(frame.player || playerRef) && !(frame.player || playerRef)?.combat?.destroyed, frame.auxiliaryKeyLabels?.strikeView || 'X');
+      mode !== 'hidden' && !!supportSeat && !supportSeat.combat?.destroyed && !(supportSeat.aerial?.kind === 'drone' && supportSeat.aerial.active),
+      frame.auxiliaryKeyLabels?.strikeView || 'X');
     // (notices-276b) what the crew looks through: the tank's own notices hold off the binoculars, the drone's feed and the
     // gunship (noticeKinds.ts), in this HUD's event lane and, on the page's HUD, the condition lane
     const noticeView: NoticeView = flier?.aerial?.active ? (flier.aerial.kind === 'gunship' ? 'gunship' : 'drone')

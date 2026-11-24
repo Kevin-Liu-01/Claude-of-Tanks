@@ -17,7 +17,7 @@ import { createSeatInputBuffer } from '../../../server/match/inputBuffer.ts';
 
 // ---- the layout and the bits
 assert.equal(WIRE_VERSION, 13, 'wire 13: the u32 action bits');
-assert.equal(PROTOCOL_VERSION, 15, 'protocol 15: a 274 tab and a 275 tab never share a match');
+assert.ok(PROTOCOL_VERSION >= 15, 'protocol 15 or later: a 274 tab and a 275 tab never share a match (276 is 16: combined-arms-276)');
 assert.equal(AIR_STRIKE_BITS.missile, 1 << 16, 'the Maverick run is the seventeenth bit');
 assert.equal(ACTION_BIT_MASK & 0x3ffff, 0x3ffff, 'the mask covers the seventeen bits through the Maverick run, and the scuttle at 17 (later rows add theirs: actionBitMask.selftest)');
 // the sixteen bits of a u16 keep their values (a 274 build and a 275 build differ only by the new one)

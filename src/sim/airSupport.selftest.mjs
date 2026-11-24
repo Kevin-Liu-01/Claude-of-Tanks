@@ -33,7 +33,8 @@ const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, ge
   for (const bit of bits) assert.equal(bit & (bit - 1), 0, 'one-hot');
   for (const mode of GAME_MODE_IDS) {
     const rules = matchRulesetFor(mode);
-    assert.ok(!(rules.airSupport && (mode === 'ac130' || rules.aerial)), `${mode}: never both supply drops and call-ins`);
+    // (the supply drops are the AC-130 gunship's alone, matchModes.ts requestSupply: Combined Arms' drone drops nothing)
+    assert.ok(!(rules.airSupport && (mode === 'ac130' || rules.aerial === 'gunship')), `${mode}: never both supply drops and call-ins`);
   }
   assert.equal(matchRulesetFor('air_support').airSupport, R);
   assert.equal(PLAYER_ACTION_BITS.STRIKE_GUNSHIP, 1 << 15, 'the u16 is full, never wider');

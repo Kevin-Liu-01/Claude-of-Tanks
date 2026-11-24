@@ -16,6 +16,7 @@ import {
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
 import { createAirSupportWorld, type AircraftFxPort } from './airSupportWorld.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
+import { modePlaysSectors } from '../sim/matchRuleset.ts';
 import { killcamStage } from './killcamStage.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
@@ -1126,7 +1127,7 @@ export function createMatchModeWorldPresentation(
     // state, its views and icon keys with it; improve-271 plan 023)
     const changed = deriveViews(objectiveMarkersFor(state, timeS));
     if (state.id === 'capture_the_flag') updateFlags(state, timeS);
-    else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') updateZones(state);
+    else if (modePlaysSectors(state.id) || state.id === 'ac130') updateZones(state);
     else if (state.id === 'frontline_assault') {
       updateZones(state);
       updateLineWorks(state, changed);
