@@ -198,10 +198,11 @@ export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls:
 /**
  * The hero's readable floor (garage-env-276, Main 2026-11-24): its median display luma at the default pose in photo
  * mode (tools/garage-hero-luma.mjs) never under this, so later lighting work cannot sink a hero into the dark
- * unnoticed. The lowest current pack less a margin: PROVISIONAL at 90 (the lowest pack measured 104 on the class 1
- * stills' hero crop), set from tools/garage-hero-luma.mjs's own measurement of every pack on the final build.
+ * unnoticed. The lowest current pack less a margin: the helper measured every pack at f5d580b70f (the open yards under
+ * the grounded model, the showroom spots a share of its sun) from foundry_heavy_works's 112.3 to winter_repair_bunker's
+ * 149.7 (Verdant 133.7, alpine 122.0); 95 is the lowest less 15 %.
  */
-export const GARAGE_HERO_LUMA_FLOOR = 90;
+export const GARAGE_HERO_LUMA_FLOOR = 95;
 
 function scorePerformance(
   input: GarageQualityInput,

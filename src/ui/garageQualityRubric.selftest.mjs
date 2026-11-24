@@ -103,6 +103,6 @@ assert.equal(lit.total, 100); assert.deepEqual(lit.failures, []);
 const dark = scoreGarageQuality({ ...passing, heroLuma: GARAGE_HERO_LUMA_FLOOR - 1 });
 assert.equal(dark.total, 100, 'the floor is a gate: no points move');
 assert.deepEqual(dark.failures, [`hero is under the readable floor (luma ${GARAGE_HERO_LUMA_FLOOR - 1} < ${GARAGE_HERO_LUMA_FLOOR})`]);
-assert.ok(GARAGE_HERO_LUMA_FLOOR >= 80 && GARAGE_HERO_LUMA_FLOOR < 104, 'under the lowest current pack (104), with a margin');
+assert.ok(GARAGE_HERO_LUMA_FLOOR >= 0.8 * 112.3 && GARAGE_HERO_LUMA_FLOOR <= 0.9 * 112.3, 'the lowest current pack (112.3) less a 10-20 % margin');
 
 console.log('garageQualityRubric.selftest: ok');
