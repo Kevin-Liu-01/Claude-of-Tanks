@@ -1915,7 +1915,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let besideColumn = width - 24;
     // (Watch's rail of controls at the right edge too: the drone's personal lane ran 46 px under it at 390x844, the overlap
     // receipt in round 14)
-    for (const box of [ammo, read('.cot-cons'), read('.cot-watch-rail')]) {
+    // (and a portrait phone's systems edge section: a Combined Arms kit, the drone's tile and the Support slot among its
+    // controls, takes two columns and stood 52 px into the lane's rows at 390x844, combined-arms-276's overlap probe)
+    for (const box of [ammo, read('.cot-cons'), read('.cot-watch-rail'), systemsSlot === 'edge' ? read('.cot-vehicle-controls') : null]) {
       // (beside the rows' band from the lane's anchor: its floor can stand over the anchor, a portrait phone's systems slot)
       if (box && box.left > width / 2 && box.top < Math.max(leftEnd, leftAnchor + 3 * 29) && box.bottom > leftAnchor) besideColumn = Math.min(besideColumn, box.left - 8);
     }

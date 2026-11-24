@@ -46,11 +46,13 @@ export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
 export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
-  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers', 'binoculars'];
+  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers', 'binoculars',
+  // (combined-arms-276) Combined Arms: the drone docked beside the Support slot, the drone flying, the binoculars up
+  'mode-combined_arms', 'combined-drone', 'combined-binoculars'];
 /** The views both notice lanes are measured over (each as <state>+notices): the plain battle, the scope, the drone's feed,
  *  the gunship's sight and Air Support's binoculars; and a mode whose sectors' banner and badges stand over the centre (the
- *  condition lane pushed onto the map and the lanes, combined-arms-276's probe). */
-export const NOTICE_STATES = ['idle', 'sniper', 'drone', 'gunship', 'binoculars', 'mode-zone_control'];
+ *  condition lane pushed onto the map and the lanes, combined-arms-276's probe), with Combined Arms' drone docked and flying. */
+export const NOTICE_STATES = ['idle', 'sniper', 'drone', 'gunship', 'binoculars', 'mode-zone_control', 'mode-combined_arms', 'combined-drone'];
 const plant = process.argv.includes('--plant');
 const noticesOnly = process.argv.includes('--notices-only');
 const shots = process.argv.includes('--shots');

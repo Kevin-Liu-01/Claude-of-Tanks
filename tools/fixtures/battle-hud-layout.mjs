@@ -352,6 +352,25 @@ function state(name) {
     strikeView.open=true;strikeView.kind='strafe';strikeView.blend=1;
     for(let i=0;i<4;i++)hud.update(frame);
   }
+  // ?state=mode-combined_arms | combined-drone | combined-binoculars (combined-arms-276): Combined Arms' two controls
+  // together, the drone's tile in the systems and Air Support's Support slot heading them, with the drone docked, the
+  // drone flying (the Support slot steps aside: one control seat) and the binoculars up (never both at once)
+  if(name==='mode-combined_arms'||name.startsWith('combined-')){
+    const p=player.state.pos, flying=name==='combined-drone', cooldowns=Object.fromEntries(AIR_STRIKE_KINDS.map((kind)=>[kind,0]));
+    player.aerial={kind:'drone',active:flying,launching:false,x:p.x,y:flying?40:p.y,z:p.z,yaw:0,pitch:-0.5,batteryS:flying?30:0,
+      cooldownS:0,recallS:0,returnS:0};
+    frame.matchModeState={...frame.matchModeState,id:'combined_arms',target:2000,perspectiveTeam:'alpha',
+      zones:[{x:-150,z:90,control:1,owner:'alpha',contested:false},{x:0,z:0,control:.4,owner:null,contested:true},
+        {x:150,z:-90,control:-1,owner:'bravo',contested:false}],
+      air:{nowS:frame.timeS,points:240,cooldowns,strikes:[]}};
+    if(name==='combined-binoculars'){frame.aim.point={x:p.x+40,y:0,z:p.z+180};strikeView.open=true;strikeView.kind='strafe';strikeView.blend=1;}
+    if(flying){
+      flightCamera.aspect=innerWidth/innerHeight;flightCamera.position.set(player.aerial.x,player.aerial.y,player.aerial.z);
+      flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
+      frame.camera=flightCamera;
+    }
+    for(let i=0;i<5;i++)hud.update(frame);
+  }
   // &notices=1 (notices-276): both lanes hold a notice over the state, as a battle raises them, so the probe measures each
   // lane's box against the state's controls: an event at the threat rung (it shows through a scope) and a condition
   if(params0.has('notices')){
