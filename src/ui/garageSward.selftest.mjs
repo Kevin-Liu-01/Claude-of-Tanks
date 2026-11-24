@@ -4,7 +4,8 @@
 // 2. no blade stands on the worked floors (the turntable's surround: Main's ruling B shrank the 36 m apron to the floors)
 //    or past the patch's edge;
 // 3. the sward is no camera obstacle (the battle clears its blades by the lens): the spring arm's obstacles are the same
-//    with it as without, and the static tufts stay beside it (the battle's card tufts' stand-in).
+//    with it as without; one surface owns the cover (the static tufts, the battle's cover's stand-in, only where no
+//    sward draws).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
@@ -24,7 +25,7 @@ for (const variant of GARAGE_VARIANTS.filter((v) => v.architecture !== 'field_sh
   // 1.
   assert.equal(!!group, grows, `${variant.id}: the battle sward is drawn exactly where the battle draws one`);
   assert.equal(build.stats.battleSward > 0, grows, `${variant.id}: ${build.stats.battleSward} clumps`);
-  assert.ok(build.stats.groundCover >= 48, `${variant.id}: the static tufts stay beside it`);
+  assert.equal(build.stats.groundCover > 0, !grows, `${variant.id}: one surface owns the cover (the static tufts only where no sward draws)`);
   let triangles = 0;
   if (group) {
     const near = group.children.find((child) => child.isInstancedMesh && child.visible && child.count > 0);

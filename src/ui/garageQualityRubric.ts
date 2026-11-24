@@ -193,7 +193,11 @@ function scoreMaterialDetail(
  * equal to main's at the refresh floor on desktop (1920x1080) and the mobile tier (844x390, 4x CPU). Fixed from the final
  * base's measurement once the switch work (D) lands. (Was 25 draws, 64k since round 7, 72k since deploy 226.)
  */
-export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls: 36 });
+// 2026-11-24 (Main): drawCalls 36 -> 40, PROVISIONAL. Class 2 and 3 each draw once more (the battle sward; the
+// horizon's ground in the map's battle terrain material, a second group), the battle ground tufts once a card variant,
+// and the pack's draw stat now counts a mesh once per material group (urban measured 37). The real ceiling is set by
+// D's frame-time measurement when the timing ticket reopens; triangles stay at 180k.
+export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls: 40 });
 
 /**
  * The hero's readable floor (garage-env-276, Main 2026-11-24): its median display luma at the default pose in photo

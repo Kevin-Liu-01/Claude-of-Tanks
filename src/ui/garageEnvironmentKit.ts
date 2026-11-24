@@ -950,6 +950,9 @@ function createBackdropGeometry(
       }
     }
   });
+  // (garage-env-276, class 3) the bands are the map's ground: their triangles, and a landform landmark's below, draw with
+  // the map's battle terrain material (group 0); the sea and the built horizon keep their colours (group 1)
+  const terrainIndices: number[] = indices.splice(0, indices.length);
   if (style === 'coastal') {
     // the sea from the shore to the horizon: deep green-teal at the shore, swell bands across it, the horizon's haze far
     // (wave 408: "a flat, uniform teal plane meeting the grass")
@@ -987,10 +990,12 @@ function createBackdropGeometry(
       const i = Math.floor(t);
       return THREE.MathUtils.lerp(crests[i], crests[Math.min(span, i + 1)], t - i);
     };
+    const landmarkStart = indices.length;
     const result = landmarks.build({
       positions, colors, indices, sun, horizon, crestAt, layerRadii: layers.map((layer) => layer.radius),
     });
     landmarkTriangles = result.triangles;
+    if (landmarks.kind !== 'built') terrainIndices.push(...indices.splice(landmarkStart));
     if (landmarks.kind === 'built') {
       massTopM = result.massTopM ?? 0;
       accentTopM = result.accentTopM ?? 0;
@@ -1012,9 +1017,13 @@ function createBackdropGeometry(
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setIndex(new THREE.BufferAttribute(vertexCount > 65535 ? new Uint32Array(indices) : new Uint16Array(indices), 1));
+  const ordered = [...terrainIndices, ...indices];
+  geometry.setIndex(new THREE.BufferAttribute(vertexCount > 65535 ? new Uint32Array(ordered) : new Uint16Array(ordered), 1));
+  geometry.addGroup(0, terrainIndices.length, 0);
+  geometry.addGroup(terrainIndices.length, indices.length, 1);
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
+  geometry.userData.terrainTriangles = terrainIndices.length / 3;
   geometry.userData.horizonStyle = recipe.horizonStyle;
   geometry.userData.builtHorizon = skyline ? 'skyline' : builtKind;
   geometry.userData.kitSkylineLandmarks = skyline ? skyline.landmarks.map((landmark) => landmark.name) : [];
@@ -2025,10 +2034,10 @@ export function buildGarageEnvironment(
   const terrainSurface = prepared?.terrain ?? holdGarageTerrainSurfaceNow(map, Math.min(8, Math.max(1, engineCtx.anisotropy || 4)));
   for (const [material, hook] of terrainSurface.shadowRegistrations) engineCtx.setupShadowMaterial?.(material, hook);
   track({ dispose: () => releaseGarageTerrainSurface(terrainSurface) });
-  // (garage-env-276, class 3) the skyline's ground (its relief bands and landforms: garageSkyline.ts group 0) wears the
-  // same battle terrain material, lit by the real sun and hazed by the real sky as the battle's horizon ring is, its
+  // (garage-env-276, class 3) the horizon's ground (its relief or biome bands and landforms: garageSkyline.ts and
+  // createBackdropGeometry's group 0) wears the same battle terrain material, lit by the real sun and hazed by the real sky as the battle's horizon ring is, its
   // built landmarks and water keeping their colours (group 1): the far mesas and massifs were flat-shaded colour
-  if (skyline && horizon.geometry.groups.length === 2) {
+  if (horizon.geometry.groups.length === 2) {
     (horizon as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>).material = [terrainSurface.material, horizon.material];
   }
   const terrain = new THREE.Mesh(terrainGeometry, terrainSurface.material);
@@ -2426,9 +2435,9 @@ export function buildGarageEnvironment(
     root.add(groundCover);
     return groundCoverIndex;
   };
-  // (the static tufts stand in for the battle's card tufts and litter, vegetation.ts, which a battle draws beside its
-  // sward on every map: they stay beside it)
-  const groundCoverIndex = addGroundCover();
+  // (2026-11-24, Main: one surface owns the cover) the static tufts are the stand-in the battle's own cover replaces:
+  // none where the battle sward draws
+  const groundCoverIndex = battleSward ? 0 : addGroundCover();
 
   const mergeStructureRecords = (): void => {
     for (const { placement, local, x, z, y } of structureRecords) {
