@@ -4,11 +4,14 @@
  * the documented resolution (1 mm, 1 cm/s, 1/65536 turn, 2 ms).
  */
 import {
-  AIM_DISTANCE_SCALE, AIM_PITCH_UNITS, ANGLE_TURN_UNITS, CONTROL_AXIS_SCALE, MULTIPLIER_SCALE,
-  POSITION_SCALE, RELOAD_MS_UNITS, SHELL_VELOCITY_SCALE, VELOCITY_SCALE,
+  ANGLE_TURN_UNITS, MULTIPLIER_SCALE, POSITION_SCALE, RELOAD_MS_UNITS, SHELL_VELOCITY_SCALE, VELOCITY_SCALE,
 } from './constants.ts';
 
-const TWO_PI = Math.PI * 2;
+// The seat's control quantizers belong to the core (sim/seatControl.ts: the local driver stages a seat with them too).
+export {
+  dequantizeAimDistance, dequantizeAimPitch, dequantizeAngle, dequantizeControlAxis, quantizeAimDistance, quantizeAimPitch,
+  quantizeAngle, quantizeControlAxis, wrapAngle,
+} from '../../sim/seatControl.ts';
 
 function finite(value: number, fallback = 0): number {
   return Number.isFinite(value) ? value : fallback;
@@ -34,22 +37,6 @@ export function quantizeShellVelocity(mps: number): number {
 }
 export function dequantizeShellVelocity(units: number): number { return units / SHELL_VELOCITY_SCALE; }
 
-/** Any radian value -> u16 turn in [0, 65535]. */
-export function quantizeAngle(radians: number): number {
-  const turns = finite(radians) / TWO_PI;
-  const units = Math.round((turns - Math.floor(turns)) * ANGLE_TURN_UNITS);
-  return units & (ANGLE_TURN_UNITS - 1);
-}
-/** u16 turn -> radians in (-pi, pi]. */
-export function dequantizeAngle(units: number): number {
-  return wrapAngle((units / ANGLE_TURN_UNITS) * TWO_PI);
-}
-export function wrapAngle(radians: number): number {
-  let angle = finite(radians) % TWO_PI;
-  if (angle > Math.PI) angle -= TWO_PI;
-  else if (angle <= -Math.PI) angle += TWO_PI;
-  return angle;
-}
 /** Shortest signed difference b - a in turn units, in [-32768, 32767]. */
 export function angleUnitsDelta(a: number, b: number): number {
   let delta = (b - a) % ANGLE_TURN_UNITS;
@@ -57,23 +44,6 @@ export function angleUnitsDelta(a: number, b: number): number {
   else if (delta < -ANGLE_TURN_UNITS / 2) delta += ANGLE_TURN_UNITS;
   return delta;
 }
-
-export function quantizeAimPitch(radians: number): number {
-  return clampInt((finite(radians) / (Math.PI / 2)) * AIM_PITCH_UNITS, -AIM_PITCH_UNITS, AIM_PITCH_UNITS);
-}
-export function dequantizeAimPitch(units: number): number {
-  return (units / AIM_PITCH_UNITS) * (Math.PI / 2);
-}
-
-export function quantizeAimDistance(meters: number): number {
-  return clampInt(meters * AIM_DISTANCE_SCALE, 0, 65535);
-}
-export function dequantizeAimDistance(units: number): number { return units / AIM_DISTANCE_SCALE; }
-
-export function quantizeControlAxis(value: number): number {
-  return clampInt(finite(value) * CONTROL_AXIS_SCALE, -CONTROL_AXIS_SCALE, CONTROL_AXIS_SCALE);
-}
-export function dequantizeControlAxis(units: number): number { return units / CONTROL_AXIS_SCALE; }
 
 /** Seconds -> RELOAD_MS_UNITS steps, rounded up so any positive remainder stays positive. */
 export function quantizeReloadS(seconds: number): number {

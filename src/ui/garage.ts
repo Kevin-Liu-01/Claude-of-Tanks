@@ -1597,7 +1597,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!opening.current()) return;
       serviceRecord ??= createServiceRecordDialog(recordNames, () => {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
-      });
+      }, emit); // (replay-system) its replays tab's Watch and Download go out on the Garage's bus (main.ts acts on them)
       serviceRecord.open(opening.press); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
       // a failed chunk fetch says so where the player looks (it was a tip on the trigger only): the trigger's error state

@@ -336,16 +336,13 @@ export const STATUS_FLAGS_SHIFT = 7;
 /** The widest status word the decoder admits (wire 10: 7 + ENTITY_FLAG_BITS bits, a varint). */
 export const STATUS_WORD_MAX = (1 << (STATUS_FLAGS_SHIFT + ENTITY_FLAG_BITS)) - 1;
 
-/** Quantization: integers on the wire, SI units in the simulation. */
+/** Quantization: integers on the wire, SI units in the simulation. The seat control's four are the core's (sim/seatControl.ts). */
+export { AIM_DISTANCE_SCALE, AIM_PITCH_UNITS, ANGLE_TURN_UNITS, CONTROL_AXIS_SCALE } from '../../sim/seatControl.ts';
 export const POSITION_SCALE = 1000;          // mm
 export const VELOCITY_SCALE = 100;           // cm/s (tanks)
 export const SHELL_VELOCITY_SCALE = 10;      // dm/s (shells fly at up to 1800 m/s)
-export const ANGLE_TURN_UNITS = 65536;       // u16 turns
-export const AIM_PITCH_UNITS = 32767;        // i16 over +-pi/2
-export const AIM_DISTANCE_SCALE = 20;        // 5 cm units, u16 (max 3276 m)
 export const RELOAD_MS_UNITS = 2;            // u16 in 2 ms steps (max 131 s)
 export const MULTIPLIER_SCALE = 1000;        // u16, max 65.535
-export const CONTROL_AXIS_SCALE = 127;       // i8 throttle / steer
 export const MAX_POS_REL_MM = 32767;
 export const MAX_TILT_REL_UNITS = 127;
 export const INPUT_MARGIN_UNKNOWN = 127;

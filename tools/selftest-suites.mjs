@@ -317,6 +317,24 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/twinMuzzleParity.selftest.mjs',
     // round 8 Y1 s5-01 (review r1): the same mouths on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/twinMuzzleSolo.selftest.mjs',
+    // replay-system-275 (docs/REPLAY.md): the recording's bytes and the seat stage (no world)
+    'src/sim/replayFormat.selftest.mjs',
+    // replay-system-275 (P2): the viewer's track, sampled and posed between samples (no world)
+    'src/game/replay/replayTrack.selftest.mjs',
+    // replay-system-276: every rule of the handlers' port is recorded or read-only, and each recorded one replays (no world)
+    'src/game/replay/seatActions.selftest.mjs',
+    // replay-system: every solo runtime call is recorded or unrecorded with its reason; a training cue, its checkpoint and
+    // end and the proving ground's reset replay as main.ts made them (no world)
+    'src/game/replay/battleActions.selftest.mjs',
+    // replay-system (P2): the viewer's timeline marks, transport clock and posing step (no DOM, no world)
+    'src/game/replay/replayViewerCore.selftest.mjs',
+    // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
+    'src/game/replay/replayViewer.selftest.mjs',
+    // 276 (sim-det-trig): the fields a replay's state diff leaves out are the page's presentation and no simulation
+    // module reads one (both drivers' import graph; a planted read, the clock and rosterState's sampler are named)
+    'src/game/replay/replayPageOnly.selftest.mjs',
+    // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
+    'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',

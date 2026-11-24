@@ -709,6 +709,12 @@ export interface HudRuntime {
    */
   setWatchSide(team: string | null): void;
   /**
+   * A replay's kill as its playback crosses it (replay-system, docs/REPLAY.md §5): into the kill feed as the battle
+   * showed it, never through the bus's tank:destroyed (the records listen there), and past the kill ledger, so a seek
+   * back over a kill shows it again.
+   */
+  replayKill(kill: { id: string; killerId: string | null; cause?: string | null }): void;
+  /**
    * (2026-11-02 audit F8) A presentation veil over the HUD (a replay, the battle-open flyby: app/mainBattleHudRuntime.ts).
    * The root's display is the HUD's one decision, from its mode and this veil: a scope flip never undoes a veil, a
    * veil lifted after the HUD went hidden never shows it, and a battle starts unveiled.
@@ -9661,6 +9667,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     getMinimapCaptureReceipt: () => mmCaptureReceipt ? { ...mmCaptureReceipt } : null,
 
     setWatchSide(team: string | null) { watchSide = team; },
+
+    replayKill(kill: { id: string; killerId: string | null; cause?: string | null }) {
+      pushKill({ id: kill.id, killerId: kill.killerId, ...(kill.cause ? { cause: kill.cause } : {}) } as HudEventPayload);
+    },
 
     setCouchView(on: boolean) { if (couchView !== on) { couchView = on; mmDirty = true; } },
 

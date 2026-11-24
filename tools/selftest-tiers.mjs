@@ -172,6 +172,12 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/couchSessionBattle.selftest.mjs',
     'src/game/twinMuzzleSolo.selftest.mjs',
     'src/game/devBattleHoldEdges.selftest.mjs',
+    // replay-system-275 (docs/REPLAY.md): a solo battle recorded and replayed, 4800 steps seated by setupBattle twice and
+    // a third time for the negative control, plus the indexer's Worker job tracking it (about 11 s of user CPU; bounded:
+    // peak 0.73 GiB resident under its own 1 GiB cap, roster-only anatomy); its format,
+    // seat-stage, track and seat-action receipts stay default (src/sim/replayFormat.selftest.mjs, src/game/replay/replayTrack.selftest.mjs,
+    // src/game/replay/seatActions.selftest.mjs)
+    'src/game/replay/replayRoundTrip.selftest.mjs',
     // round 8 Y4 (2026-11-02 audit, sm-fix, ROUND8 amendment 4): a couch battle's Battle Again through main's intent and
     // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
     // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)

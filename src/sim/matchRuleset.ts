@@ -1538,6 +1538,18 @@ export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
 }
 
 /**
+ * A replay being watched (replay-system, docs/REPLAY.md §5): Watch's drone and ride over a battle posed from its track,
+ * never simulated. Nobody's seat to take (nothing steps), every tank seen (the battle is over), and no records: a
+ * replay awards nothing.
+ */
+export const REPLAY_WATCH_RULES: WatchRules = Object.freeze({ ...WATCH_RULES, takeControl: false, revealAll: true });
+
+/** The recorded battle's ruleset as the replay viewer runs it. */
+export function replayRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  return Object.freeze({ ...ruleset, records: false, watch: REPLAY_WATCH_RULES });
+}
+
+/**
  * A finished battle the records read (the profile tally, the service record, the campaign ladder): its mode keeps
  * records and it was played, not watched (`battle:ended` carries `watch`).
  */
