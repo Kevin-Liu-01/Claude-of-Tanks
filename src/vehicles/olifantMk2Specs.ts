@@ -1,19 +1,23 @@
 // The Olifant Mk 2 (release 262; the owner, 2026-10-27: "add ... olifant mk2 (special turret with remote control machine
 // gun and optics)"): the South African Army's Centurion derivative of 2007 (LIW/Denel; 26 built): the Mk 1B's hull on
 // torsion bars with its armoured skirts and the Continental AV-1790 diesel of 1,040 hp, under a new turret of modular
-// composite armour with a stabilised commander's thermal sight on a post and the 105 mm GT-3B with its thermal sleeve
-// (tanks-encyclopedia, Olifant Mk 2; Wikipedia, Olifant; the Commons photographs). No source shows a remote-controlled
-// machine gun: the loader's pintle 7.62 mm is the Mk 1B's documented anti-aircraft gun. Built as the family's
-// 'olifant_mk2' mark (profiles/centurionFamily.ts; docs/references/tanks/olifant_mk2.md). It clones the Mk 5/2 and flies
+// composite armour with a stabilised commander's thermal sight and the 105 mm GT-3B with its thermal sleeve
+// (tanks-encyclopedia, Olifant Mk 2; Wikipedia, Olifant; the Commons photographs). Its turret is the TTD's Loggim
+// turret since olifant-turret-276 (Kevin, 2026-11-24; profiles/loggimTurret.ts); the 262 box turret stays on the Mk 1B.
+// No source shows a remote-controlled machine gun: the loader's pintle 7.62 mm is the Mk 1B's documented anti-aircraft
+// gun. Built as the family's 'olifant_mk2' mark (profiles/centurionFamily.ts; docs/references/tanks/olifant_mk2.md). It
+// clones the Mk 5/2 and flies
 // South Africa's flag (owner 2026-10-28: "do it then"), drawn in the UK tree's special lane beside the Centurions it
 // came from; its own package: the diesel, the composite turret, the stabilised fire control and the GT-3B's modern
 // APFSDS. The SANDF's three-tone coat.
 import './classicFleetSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { moduleBox } from './specHelpers.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
+const MK2_RADIO_RAISE_M = 0.15;
 const spec = cloneFleetVariant(registries.tankSpecs, 'olifant_mk2', 'centurion5_2', { name: 'Olifant Mk 2', nation: 'South Africa', era: 'modern' });
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
@@ -34,6 +38,11 @@ for (const plate of spec.armor.hullPlates) {
   if (plate.name === 'upper_glacis') Object.assign(plate, { keMm: 400, ceMm: 520 });
   if (plate.name.startsWith('hull_side_')) Object.assign(plate, { keMm: 90, ceMm: 160 });
 }
+// the Centurion's bustle radio raised over the Loggim turret's higher bustle floor (olifant-turret-276: in place, 61 %
+// of the sketch lay under it)
+spec.armor.modules = spec.armor.modules.map((box) => (box.module === 'radio'
+  ? moduleBox('radio', [box.min[0], box.min[1] + MK2_RADIO_RAISE_M, box.min[2]], [box.max[0], box.max[1] + MK2_RADIO_RAISE_M, box.max[2]], true)
+  : box));
 // the stabilised fire control and the GT-3B's rounds
 spec.gun = {
   ...spec.gun, reloadS: 7.0, baseAccuracy: 0.25, aimTimeS: 1.8,

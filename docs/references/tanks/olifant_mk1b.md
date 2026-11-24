@@ -4,7 +4,8 @@
 
 The 1991 rebuild: tier III in the South Africa tree, between the Mk 1A and the Mk 2 (2007), which converted 26 Mk 1Bs.
 Built as the Centurion family's `olifant_mk1b` mark: the Olifant kit (the Mk 2's torsion-bar hull, armoured skirts, glacis
-pack and armoured turret, `profiles/centurionFamily.ts`) with the Mk 1B's own fit; spec `southAfricaSpecs.ts` (a clone of
+pack and the 262 box turret, `profiles/centurionFamily.ts`; since olifant-turret-276 the box turret is the Mk 1B's alone,
+the Mk 2 having moved to the TTD's Loggim turret on Kevin's word, 2026-11-24) with the Mk 1B's own fit; spec `southAfricaSpecs.ts` (a clone of
 the Mk 2 without its thermal fire control). Photo packet `olifant-centurions-20261102.json`; fixture
 `profiles/southAfrica.selftest.mjs`. Implementation: DONE; changed-only regeneration done (9bafdc391c). Blind pairs
 against the Mk 2: r7 6/10, r8 5/10 (matched 95 % and 93 %), certified as real twins per Main's ruling below, the Mk 2's

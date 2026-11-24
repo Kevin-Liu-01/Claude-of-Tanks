@@ -84,6 +84,9 @@ olifant_mk1a.visual = { ...olifant_mk1a.visual, ...drySeasonDisruptive('21A') };
 // shoots slower to aim and a little less armour on the turret's cheeks than its successor's new composite turret.
 const olifant_mk1b = southAfrican('olifant_mk1b', 'olifant_mk2', 'Olifant Mk 1B', 'cold-war');
 Object.assign(olifant_mk1b, { hp: 2000, weightTons: 59, enginePowerHp: 900, topSpeedKmh: 58, reverseSpeedKmh: 18 });
+// the box turret keeps the Centurion's bustle radio (the Mk 2's sits higher in the Loggim turret's bustle)
+const centurionRadio = TANK_SPECS.centurion5_2.armor.modules.find((box) => box.module === 'radio');
+olifant_mk1b.armor.modules = olifant_mk1b.armor.modules.map((box) => (box.module === 'radio' && centurionRadio ? structuredClone(centurionRadio) : box));
 for (const plate of olifant_mk1b.armor.turretPlates) {
   if (plate.name === 'turret_cheek_R' || plate.name === 'turret_cheek_L') Object.assign(plate, { keMm: 480, ceMm: 700 });
   if (plate.name === 'mantlet') Object.assign(plate, { keMm: 410, ceMm: 560 });
