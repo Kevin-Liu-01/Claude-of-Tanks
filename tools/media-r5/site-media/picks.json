@@ -1558,6 +1558,14 @@
           "zh": "翠野原的空中支援俯瞰：一条扫射航道以己方蓝色横贯林地，箭头指向 A-10 的进袭方向，下方是五种呼叫支援"
         },
         "standIn": null
+      },
+      {
+        "id": "combined_arms",
+        "alt": {
+          "en": "Combined Arms at Verdant Fields: a crew's FPV drone hovering over the woods as a strafing run tears two lines of dust across the slope below it, the run's chevrons on the grass",
+          "zh": "翠野原的诸兵种合成：一架乘员的 FPV 无人机悬停在林地上空，下方的山坡上一次扫射掀起两道尘土，草地上是航道的箭头"
+        },
+        "standIn": null
       }
     ],
     "versus": [

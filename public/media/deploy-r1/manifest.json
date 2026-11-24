@@ -10,7 +10,7 @@
   "width": 640,
   "height": 360
  },
- "count": 36,
+ "count": 38,
  "items": [
   {
    "id": "standard",
@@ -381,6 +381,35 @@
    "width": 1600,
    "height": 900,
    "bytes": 89852
+  },
+  {
+   "id": "combined_arms-tile",
+   "file": "combined_arms-480.webp",
+   "mode": "combined_arms",
+   "source": "in-engine battle capture on the combined-arms-276 lane (release 276), HUD and markers hidden: a crew's FPV drone over Verdant Fields at day as a strafing run tears two lines of dust across the slope below it, the run's chevrons on the grass (tools/marketing-shots/mode-battle-shots.mjs deploy/combined_arms r4 #4, 3840x2160). Provisional: Kevin's pick pending",
+   "capture": {
+    "run": "combined-arms-276/r5",
+    "slot": "deploy/combined_arms",
+    "candidate": 4,
+    "crop": null
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "combined_arms-panel",
+   "file": "combined_arms-1600.webp",
+   "mode": "combined_arms",
+   "source": "in-engine battle capture on the combined-arms-276 lane (release 276), HUD and markers hidden: a crew's FPV drone over Verdant Fields at day as a strafing run tears two lines of dust across the slope below it, the run's chevrons on the grass (tools/marketing-shots/mode-battle-shots.mjs deploy/combined_arms r4 #4, 3840x2160). Provisional: Kevin's pick pending",
+   "capture": {
+    "run": "combined-arms-276/r5",
+    "slot": "deploy/combined_arms",
+    "candidate": 4,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 231444
   },
   {
    "id": "proving_ground-tile",
