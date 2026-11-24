@@ -2471,6 +2471,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // frame), and both hulls stand at their recorded poses on every frame of the shot (real main frame, battle frame,
     // result runtime, rig and killcam; full, quick, Air Support with the binoculars up; late-camera and live-repaint controls)
     'src/game/killcamFirstFrame.selftest.mjs',
+    // (killcam-strike-shot-276) an Air Support kill replays its own planned shot: the aircraft's run, the round's flight,
+    // the hit; frame 1 its first planned pose, the victim held pre-hit, the aircraft staged from its recorded run (every
+    // strike kind and the binoculars; real frame owners, bridge and air-support world; the no-shot control)
+    'src/game/killcamStrikeShot.selftest.mjs',
     'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
     // (death-flow-275) every mode's death -> after-death -> end: the death's shape, the respawn dial, each verdict's beat and caption

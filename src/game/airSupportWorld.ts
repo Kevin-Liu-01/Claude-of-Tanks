@@ -26,6 +26,7 @@ import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
 import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
+import { strikeReplay } from './strikeReplayState.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
 export interface AircraftFxPort {
@@ -208,12 +209,55 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       aimColour, locked ? 1 : 0.2);
   }
 
+  /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go). */
+  function poseCraft(strike: PublicStrike, craft: Craft, t: number): void {
+    craft.root.visible = true;
+    if (craft.kind === 'gunship') {
+      _p.set(pose.x, pose.y, pose.z);
+      const eye = options.viewerPosition?.();
+      // banked into its pylon turn (the run's bank: the left wing down on the mark)
+      syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye ? _eye.set(eye.x, eye.y, eye.z) : null, pose.bank, pose.pitch);
+      return;
+    }
+    craft.root.position.set(pose.x, pose.y, pose.z);
+    // the jet's attitude from its run: its heading, its climb or dive (nose up positive; three.js pitches nose down
+    // for a positive x) and its bank in the turns
+    craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
+    // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
+    const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
+    if (strike.kind === 'bomb' && craft.fighter && (strike.downedS == null || strike.downedS > strike.landsS + bombReleaseOffsetS(R))) dropBomb(strike, craft, t);
+    if (strike.kind === 'missile' && craft.fighter) launchMissiles(strike, craft, storeT);
+  }
+
+  /**
+   * (killcam-strike-shot-276) A kill cam replay of an airstrike is on screen (strikeReplayState.ts): only its strike's
+   * aircraft is drawn, flown from its record at the replay's clock, with its footprint; every live aircraft is hidden
+   * (kept, not released: the battle's frame takes them back when the replay leaves).
+   */
+  function updateReplay(staged: NonNullable<typeof strikeReplay.record>, t: number): void {
+    markCount = 0;
+    for (const craft of crafts.values()) {
+      // (the gunship's airframe is the anchor's sibling: gunshipVisual.ts hides it)
+      if (craft.kind === 'gunship') hideGunshipVisual(craft.root); else craft.root.visible = false;
+      if (craft.dropped) craft.dropped.visible = false;
+    }
+    const strike = staged as PublicStrike;
+    pushFootprint(runFootprint(R, staged.kind), staged.kind === 'recon', false, staged.x, staged.y, staged.z, staged.heading,
+      enemy.set(sideColor('enemy')), 1);
+    if (airStrikeFlies(staged.kind) && t >= staged.calledS && t < runExitS(R, staged)) {
+      runPose(R, staged, t, pose);
+      poseCraft(strike, craftFor(strike), t);
+    }
+    if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
+  }
+
   function update(air: AirSupportView | null | undefined, perspective: 'alpha' | 'bravo', timeS: number): void {
     if (!air) {
       for (const [id, craft] of crafts) release(id, craft);
       clearStrikeMarks();
       return;
     }
+    if (strikeReplay.record) { updateReplay(strikeReplay.record, strikeReplay.timeS); return; }
     if (air.nowS !== lastNow) { lastNow = air.nowS; baseS = air.nowS; sinceS = 0; }
     else sinceS = Math.min(0.25, sinceS + Math.max(0, timeS - lastTimeS));
     lastTimeS = timeS;
@@ -242,21 +286,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const craft = craftFor(strike);
       craft.seen = true;
       damageFx(strike, craft, t, true);
-      if (craft.kind === 'gunship') {
-        _p.set(pose.x, pose.y, pose.z);
-        const eye = options.viewerPosition?.();
-        // banked into its pylon turn (the run's bank: the left wing down on the mark)
-        syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye ? _eye.set(eye.x, eye.y, eye.z) : null, pose.bank, pose.pitch);
-      } else {
-        craft.root.position.set(pose.x, pose.y, pose.z);
-        // the jet's attitude from its run: its heading, its climb or dive (nose up positive; three.js pitches nose down
-        // for a positive x) and its bank in the turns
-        craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
-        // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
-        const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
-        if (strike.kind === 'bomb' && craft.fighter && (strike.downedS == null || strike.downedS > strike.landsS + bombReleaseOffsetS(R))) dropBomb(strike, craft, t);
-        if (strike.kind === 'missile' && craft.fighter) launchMissiles(strike, craft, storeT);
-      }
+      poseCraft(strike, craft, t);
     }
     // (a crashed aircraft is not seen the frame it bursts: its airframe goes at the ground, and no later frame finds it)
     for (const [id, craft] of crafts) if (!craft.seen) release(id, craft);

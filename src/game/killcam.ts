@@ -118,6 +118,10 @@ import type { WorldRayHit } from '../world/map.ts';
 import { t } from '../ui/i18n.ts';
 import { attackerLabel } from '../ui/killSourceIdentity.ts';
 import { scratchCanvas } from '../ui/uiCanvas.ts';
+import { STRIKE_SHOT_FRAMING, strikeFlightPath, strikeRunCamera, strikeRunSpan, type StrikeShotRecord } from './killcamStrikeShot.ts';
+import { strikeReplay } from './strikeReplayState.ts';
+import type { AirStrikeKind } from '../sim/matchRuleset.ts';
+import type { RunPose, RunRecord } from '../sim/strikeRuns.ts';
 
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
@@ -126,7 +130,7 @@ export type ReplayKind = 'projectile' | 'collision';
 // 'final' (battle endings, 2026-09-25): the battle-deciding kill whoever fired it — an ally's shell, a bot's
 // ram — replayed from the shooter's side with a neutral title.
 type PlaybackKind = 'death' | 'victory' | 'final';
-export type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
+export type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'strike' | 'flight' | 'contact'
   | 'collision' | 'impact' | 'xray' | 'exit';
 type Disposable = { dispose(): void };
 
@@ -242,6 +246,14 @@ export interface KillcamGame {
   tankById: Map<string, KillcamEntity>;
   /** Physics lane: the step's turret bodies (sim/wreckTurrets.ts), recorded for the replay. */
   _wreckTurrets?: { framePose(id: string, out: Float64Array): boolean; settled(id: string): boolean } | null;
+  /** (killcam-strike-shot-276) Air Support's public records (sim/airSupport.ts AirSupportView): a strike kill's run. */
+  matchModeState?: { air?: { strikes?: readonly RunRecord[] } | null } | null;
+}
+
+/** (killcam-strike-shot-276) An airstrike's round as every viewer is told it (sim/airSupportFire.ts strikeRoundPayload). */
+interface StrikeRoundPayload {
+  strikeId?: number; kind?: string; shellId?: number; velocityMps?: number; freeFall?: number;
+  x?: number; y?: number; z?: number; dx?: number; dy?: number; dz?: number;
 }
 
 /** A dead hull's turret as the step moved it, one pose a fixed step from its launch (the impact beat replays it). */
@@ -368,6 +380,8 @@ export interface ReplaySnapshot {
   armor: KillcamArmor;
   heightM: number;
   boundingRadiusM: number;
+  /** (killcam-strike-shot-276) An Air Support kill: its round's launch and its strike's run (killcamStrikeShot.ts). */
+  strike?: StrikeShotRecord | null;
 }
 
 type CombatFrameSnapshot = Pick<ReplaySnapshot,
@@ -604,6 +618,11 @@ interface PlaybackBundle {
   quickEndWallMs: number;
   /** (killcam-first-frame-276) No frame has been presented yet: the first update shows begin()'s pose, advancing nothing. */
   unpresented: boolean;
+  /** (killcam-strike-shot-276) An Air Support kill's run shot: its span on the strike's clock and how far it has run. */
+  strikeRun: { t: number; startS: number; durS: number } | null;
+  /** The strike's clock at the flight's first point and at the hit, and the time run since the hit (the aircraft's). */
+  strikeFlightStartS: number;
+  strikeAfterHitS: number;
   impactAng0: number;
   exitWallMs?: number;
 }
@@ -1401,6 +1420,8 @@ export function createKillCam(deps: KillcamDeps) {
     for (const rec of traj.values()) trajPool.push(rec.pts);
     traj.clear();
   };
+  // (killcam-strike-shot-276) each airstrike round's launch and its strike's record, by shell id (at most TRAJ_KEEP)
+  const strikeShots = new Map<number, StrikeShotRecord>();
   const poseHistory = new Map<string, EntityFrame>(); // entity id -> its frame at the last fixed step (one a hull, refreshed in place)
   // physics lane (2026-10-10): each dead hull's turret flight as the step moved it, replayed by the impact beat exactly
   const turretTracks = new Map<string, TurretTrack>();
@@ -1418,6 +1439,7 @@ export function createKillCam(deps: KillcamDeps) {
   // (ui:battleStart and phase:change battle) kept two hand-written copies that could drift
   const resetCaptureMemory = (): void => {
     clearTraj();
+    strikeShots.clear();
     poseHistory.clear();
     turretTracks.clear();
     pendingDeath = pendingVictory = lastHitOnPlayer = null;
@@ -1666,11 +1688,19 @@ export function createKillCam(deps: KillcamDeps) {
     const now = captureEntityFrame(target);
     const held = poseHistory.get(target.id);
     const before = held ? copyEntityFrame(held) : now;
+    // (killcam-strike-shot-276) an airstrike's round: its shot is the run, then its own path (killcamStrikeShot.ts)
+    const launch = ev.shellId == null ? undefined : strikeShots.get(ev.shellId);
+    const strike = launch ? { ...launch, from: cloneVec3Tuple(launch.from), vel: cloneVec3Tuple(launch.vel),
+      run: launch.run ? { ...launch.run } : null } : null;
+    const hitS = ev.timeS || 0;
+    const path = strike ? strikeFlightPath(strike, tracePoints(rec, ev.pos), cloneVec3Tuple(ev.pos), hitS) : null;
+    if (strike && path) strike.firedS = Math.min(strike.firedS, hitS);
     return {
       replayKind: 'projectile',
       ev: projectileHitEvent(ev),
-      timeS: ev.timeS || 0,
-      trajPts: tracePoints(rec, ev.pos),
+      timeS: hitS,
+      trajPts: path ? path.points : tracePoints(rec, ev.pos),
+      strike: strike && path ? { ...strike, flightStartS: path.startS } : null,
       // post-hit crew roster ({name:alive} from the sim's combat state, taken
       // AFTER damage resolved): the x-ray colors casualties from EARLIER hits
       // red too, not just the ones this shell caused.
@@ -1773,6 +1803,28 @@ export function createKillCam(deps: KillcamDeps) {
           weaponSound: p.weaponSound || null,
           muzzleIndex: Number.isFinite(p.muzzleIndex) ? Number(p.muzzleIndex) : -1,
           recoilScale: Number.isFinite(p.recoilScale) ? Number(p.recoilScale) : 1,
+        });
+      });
+      // (killcam-strike-shot-276) an airstrike's round: its launch and its strike's public record, for a kill's own shot
+      // (the strafe's, the Maverick's and the AC-130's rounds also arrive as shooterless shell:fired traces through
+      // airSupportBridge.ts; the bomb's and the battery's do not)
+      bus.on('mode:strike_round', (payload) => {
+        const p = payload as StrikeRoundPayload | null;
+        if (!p || p.shellId == null || !Number.isFinite(p.x) || !Number.isFinite(p.strikeId)) return;
+        const kind = String(p.kind) as AirStrikeKind;
+        if (!(kind in STRIKE_SHOT_FRAMING)) return;
+        if (strikeShots.size >= TRAJ_KEEP) strikeShots.delete(strikeShots.keys().next().value!);
+        const game = getGame ? getGame() : null;
+        const record = game?.matchModeState?.air?.strikes?.find((strike) => strike.id === p.strikeId) ?? null;
+        const speed = Number(p.velocityMps) || 0;
+        strikeShots.set(p.shellId, {
+          strikeId: Number(p.strikeId), kind,
+          run: record ? { id: record.id, kind: record.kind, x: record.x, y: record.y, z: record.z, heading: record.heading,
+            calledS: record.calledS, landsS: record.landsS } : null,
+          firedS: Number(game?.timeS) || 0,
+          from: [p.x!, p.y!, p.z!],
+          vel: [(p.dx ?? 0) * speed, (p.dy ?? 0) * speed, (p.dz ?? 0) * speed],
+          freeFall: p.freeFall === 1,
         });
       });
       bus.on('shell:expired', (payload) => {
@@ -2149,6 +2201,7 @@ export function createKillCam(deps: KillcamDeps) {
       if (pb.phase === 'wreck') updateWreck(dt);
       else if (pb.phase === 'approach') updateApproach(dt);
       else if (pb.phase === 'firing') updateFiring(dt);
+      else if (pb.phase === 'strike') updateStrikeShot(dt);
       else if (pb.phase === 'flight') updateFlight(dt);
       else if (pb.phase === 'contact') updateContact(dt);
       else if (pb.phase === 'collision') updateCollision(dt);
@@ -2164,7 +2217,7 @@ export function createKillCam(deps: KillcamDeps) {
       }
       // 'exit': the closing letterbox + fade own the screen — camera holds
       // its last x-ray pose; wall-clock timers drive the handover (beginExit)
-      if (active && pb) holdShotHulls();
+      if (active && pb) { holdShotHulls(); stageStrikeAircraft(dt); }
     },
 
     /** Debug/testing introspection. */
@@ -2459,6 +2512,9 @@ export function createKillCam(deps: KillcamDeps) {
       quick: false,
       quickEndWallMs: 0,
       unpresented: true,
+      strikeRun: null,
+      strikeFlightStartS: 0,
+      strikeAfterHitS: 0,
       impactAng0: 0,
     };
     bundle.group.name = 'killcam';
@@ -2590,11 +2646,15 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function startReplayPhase(xrayOnly: boolean, wreckHold: boolean): void {
-    // the quick cam cuts straight to the killer's firing pose (a flash, no approach orbit) and never holds the wreck
+    // the quick cam cuts straight to the killer's firing pose (a flash, no approach orbit) and never holds the wreck; an
+    // airstrike's quick cam cuts to its own first shot (beginStrikeShot)
     if (pb.quick) {
       if (pb.replayKind === 'collision') { beginCollision(); return; }
       const trajectory = pb.snap.trajPts;
-      if (trajectory && trajectory.length >= 6 && prepareProjectileFlight(trajectory)) { beginFiring(true); return; }
+      if (trajectory && trajectory.length >= 6 && prepareProjectileFlight(trajectory)) {
+        if (pb.snap.strike) beginStrikeShot(); else beginFiring(true);
+        return;
+      }
     }
     if (pb.replayKind === 'collision') {
       if (wreckHold && beginWreck('collision')) return;
@@ -2605,8 +2665,7 @@ export function createKillCam(deps: KillcamDeps) {
     if (!xrayOnly && trajectory && trajectory.length >= 6
         && prepareProjectileFlight(trajectory)) {
       if (wreckHold && beginWreck('approach')) return;
-      if (beginApproach()) return;
-      beginFiring();
+      beginShotIntro();
       return;
     }
     if (wreckHold && beginWreck('xray')) return;
@@ -2896,7 +2955,7 @@ export function createKillCam(deps: KillcamDeps) {
   function holdShotHulls(): void {
     if (pb.replayKind !== 'projectile') return;
     const phase = pb.phase;
-    if (phase !== 'approach' && phase !== 'firing' && phase !== 'flight' && phase !== 'contact') return;
+    if (phase !== 'approach' && phase !== 'firing' && phase !== 'strike' && phase !== 'flight' && phase !== 'contact') return;
     pinAttackerAtFiringPose(0);
     const victim = pb.snap.targetEnt?.visual;
     if (victim && pb.snapPoseState) {
@@ -3031,8 +3090,7 @@ export function createKillCam(deps: KillcamDeps) {
     hideFx();       // deferred begin()-time suppression (see wreckHold)
     restageIntact();  // deferred pre-wreck restage — the replay shows the hit
     if (next === 'approach') {
-      if (beginApproach()) return;
-      beginFiring();
+      beginShotIntro();
       return;
     }
     if (next === 'collision') {
@@ -3222,13 +3280,80 @@ export function createKillCam(deps: KillcamDeps) {
    * has already landed on the shared shooter/launch pose, so this handoff
    * accelerates toward the moving chase target without a cut or static hold.
    */
-  function beginShotFlight() {
+  function beginShotFlight(handoff = true) {
     if (!pb) return;
     restoreReplayVegetation();
-    for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = true;
-    beginCameraHandoff(SHOT_ACQUIRE_S);
+    // a free-falling store draws no tracer: the world draws the bomb itself on its arc (strikeReplayState.ts)
+    const tracer = !pb.snap.strike?.freeFall;
+    for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = tracer;
+    if (pb.shellLight && !tracer) pb.shellLight.intensity = 0;
+    if (handoff) beginCameraHandoff(SHOT_ACQUIRE_S);
+    else pb.cameraBlend = null;
     pb.phase = 'flight';
     updateFlight(0);
+  }
+
+  /** The shot's first beat: an airstrike's run (beginStrikeShot), else the approach onto the killer, else its firing. */
+  function beginShotIntro(): void {
+    if (pb.snap.strike) { beginStrikeShot(); return; }
+    if (beginApproach()) return;
+    beginFiring();
+  }
+
+  // ---------------------------------------------------------------------------
+  // STRIKE SHOT (killcam-strike-shot-276; Kevin 2026-11-24: "yes give air strike kills their own replay shot"): the
+  // aircraft's run up to the round's release, framed per kind (killcamStrikeShot.ts STRIKE_SHOT_FRAMING), then the
+  // round's own flight and the hit. The aircraft is staged from its run at the replay's clock (stageStrikeAircraft).
+  // ---------------------------------------------------------------------------
+  const _runPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+  function beginStrikeShot(): void {
+    const shot = pb.snap.strike!;
+    pb.segIdx = 0;
+    pb.strikeFlightStartS = shot.flightStartS ?? shot.firedS;
+    pb.strikeAfterHitS = 0;
+    for (const object of [pb.core, pb.streak, pb.halo, pb.tail]) if (object) object.visible = false;
+    if (pb.shellLight) pb.shellLight.intensity = 0;
+    if (pb.muzzleLight) pb.muzzleLight.intensity = 0;
+    restageIntact();
+    const span = strikeRunSpan(shot);
+    // no aircraft to fly (the battery off the map): the shot opens on the round's own plunge, cut from the live view
+    if (!span) { beginShotFlight(false); return; }
+    pb.strikeRun = { t: 0, startS: span.startS, durS: span.durS };
+    pb.cameraBlend = null;
+    pb.phase = 'strike';
+    updateStrikeShot(0);
+  }
+
+  function updateStrikeShot(dt: number): void {
+    const run = pb.strikeRun;
+    const shot = pb.snap.strike;
+    if (!run || !shot) return;
+    run.t = Math.min(run.durS, run.t + Math.max(0, dt));
+    const u = run.t / run.durS;
+    strikeRunCamera(shot, run.startS + run.t, u, _runPose, _a, _b);
+    setReplayCamera(_a, _b, STRIKE_SHOT_FRAMING[shot.kind].fov, dt);
+    if (u >= 1) beginShotFlight(true);
+  }
+
+  /**
+   * The replayed strike's aircraft and stores on the replay's clock (the world draws them from strikeReplayState.ts): the
+   * run shot's time, then the flight's (the round's share of its path flown, on the strike's timeline), then the time run
+   * since the hit. Every frame of a strike replay, after its phase's update.
+   */
+  function stageStrikeAircraft(dt: number): void {
+    const shot = pb.snap.strike;
+    if (!shot || !shot.run) return;
+    let timeS: number;
+    if (pb.phase === 'strike' && pb.strikeRun) timeS = pb.strikeRun.startS + pb.strikeRun.t;
+    else if (pb.phase === 'flight') {
+      const u = pb.total > 0 ? Math.min(1, pb.flightDist / pb.total) : 1;
+      timeS = pb.strikeFlightStartS + (pb.snap.timeS - pb.strikeFlightStartS) * u;
+    } else {
+      pb.strikeAfterHitS += Math.max(0, dt);
+      timeS = pb.snap.timeS + pb.strikeAfterHitS;
+    }
+    strikeReplay.record = shot.run;
+    strikeReplay.timeS = timeS;
   }
 
   function updateFiring(dt: number): void {
@@ -5997,6 +6122,7 @@ export function createKillCam(deps: KillcamDeps) {
 
   function teardown(runCallback: boolean): void {
     if (!active) return;
+    strikeReplay.record = null; // the live aircraft are the world's again
     window.removeEventListener('keydown', onReplayKey, true);
     window.removeEventListener('pointerdown', onReplayPointer, true);
     const replay = pb;
