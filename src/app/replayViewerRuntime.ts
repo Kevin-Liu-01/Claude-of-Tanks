@@ -83,12 +83,22 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     return found;
   };
 
+  let indexedTicks = 1;
+  /** The bar as the viewer stands: its transport once the battle frame has posed the replay (the battle in view), until
+   *  then the finished index (the entry's load screen still covers the battle and the bar). */
+  const paint = (): void => {
+    if (!viewer || !bar) return;
+    if (viewer.posing) bar.update(viewer.bar, null);
+    else bar.update(null, { tick: indexedTicks, lastTick: indexedTicks });
+  };
+
   const ensureBar = (): ReplayBar => {
+    // each press repaints at once (the play icon, the clock), not on the next frame
     bar ??= createReplayBar(() => ports.hud.root() ?? document.body, {
-      key: (action) => viewer?.key(action),
-      scrub: (timeS) => viewer?.scrub(timeS),
-      pickMark: (mark) => viewer?.pickMark(mark),
-      setFilter: (filter) => viewer?.setFilter(filter),
+      key: (action) => { viewer?.key(action); paint(); },
+      scrub: (timeS) => { viewer?.scrub(timeS); paint(); },
+      pickMark: (mark) => { viewer?.pickMark(mark); paint(); },
+      setFilter: (filter) => { viewer?.setFilter(filter); paint(); },
       leave: () => { if (timelineOnly) runtime.stop(); else ports.leave(); },
       kit: ports.kit,
       nameOf: (specId) => game.tanks.find((hull) => hull.specId === specId)?.spec?.name ?? specId,
@@ -97,7 +107,7 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (!active || !viewer || event.repeat || ports.isInputHeld()) return;
+    if (!active || !viewer?.posing || event.repeat || ports.isInputHeld()) return;
     const target = event.target as HTMLElement | null;
     if (target && (target.isContentEditable || /^(?:INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
     const action = replayKeyAction(event.code);
@@ -105,6 +115,7 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     event.preventDefault();
     event.stopPropagation();
     viewer.key(action);
+    paint();
   };
 
   const begin = (index: ReplayIndex): void => {
@@ -126,7 +137,9 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
       },
       feed: { kill: (mark) => ports.hud.replayKill({ id: mark.subject, killerId: mark.actor || null, cause: mark.label.cause || null }) },
     });
-    ensureBar().update(viewer.bar, null);
+    indexedTicks = Math.max(1, index.lastTick);
+    ensureBar();
+    paint();
   };
 
   const runtime: ReplayViewerRuntime = {
@@ -171,10 +184,12 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
 
     isActive: () => active,
 
+    // the battle frame calls it only while the battle is in view (game/battleFrameRuntime.ts): the first call offers the
+    // transport
     advance(realS) {
       if (!viewer) return;
       viewer.advance(realS);
-      bar?.update(viewer.bar, null);
+      paint();
     },
 
     stop() {

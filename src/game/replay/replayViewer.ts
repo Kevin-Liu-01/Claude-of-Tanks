@@ -57,6 +57,10 @@ export interface ReplayViewer {
   readonly clock: ReplayClock;
   readonly bar: ReplayBarState;
   readonly marks: readonly TimelineMark[];
+  /** The battle frame has posed the replay at least once: the battle is in view (its entry's load screen gone), so the
+   *  transport is offered. Until then a key, a scrub or a mark is refused: a Play pressed under the load screen would run
+   *  a clock nobody sees, and a click there never reaches the bar. */
+  readonly posing: boolean;
   /** Per rendered frame (the battle frame's replay port): the clock, the poses, the feed and the bar. */
   advance(realS: number): void;
   key(action: ReplayKeyAction): void;
@@ -114,11 +118,14 @@ export function createReplayViewer<THull extends PosedHull>(index: ReplayIndex, 
   }
   poser?.apply(0);
   refreshBar();
+  let posing = false;
   return {
     clock,
     bar,
     marks,
+    get posing() { return posing; },
     advance(realS) {
+      posing = true;
       const step = clock.advance(realS);
       poser?.apply(clock.timeS);
       // the battle's kills as they happen on screen (every kill, whatever the filter shows)
@@ -126,16 +133,19 @@ export function createReplayViewer<THull extends PosedHull>(index: ReplayIndex, 
       refreshBar();
     },
     key(action) {
+      if (!posing) return;
       applyReplayKey(clock, action, shownTimes);
       poser?.apply(clock.timeS);
       refreshBar();
     },
     scrub(timeS) {
+      if (!posing) return;
       clock.seek(timeS);
       poser?.apply(clock.timeS);
       refreshBar();
     },
     pickMark(mark) {
+      if (!posing) return;
       const seek = markSeek(mark);
       clock.seek(seek.timeS);
       poser?.apply(clock.timeS);

@@ -59,6 +59,8 @@ interface BattleFramePresentationPort {
  */
 interface BattleFrameReplayPort {
   isActive(): boolean;
+  /** Only on frames the battle is in view: never while the entry's load screen covers it (through its exit fade), so
+   *  the viewer offers its transport (game/replay/replayViewer.ts `posing`) only where a press can reach the bar. */
   advance(appliedDtSeconds: number): void;
 }
 
@@ -289,9 +291,16 @@ export function createBattleFrameRuntime({
     wallDtSeconds: number,
     networkActive: boolean,
     replayActive: boolean,
+    entryCovered: boolean,
   ): void => {
     if (replayActive) {
-      replay!.advance(appliedDtSeconds);
+      // the recorded battle starts after its count: the count closes at once and the battle rolls out late (no cues)
+      if (game.preBattleS > 0) {
+        game.preBattleS = 0;
+        countdown.show(0);
+      }
+      rollout(true);
+      if (!entryCovered) replay!.advance(appliedDtSeconds);
       simulationAccumulator = 0;
     } else if (networkActive) {
       countdown.show(game.preBattleS);
@@ -371,7 +380,8 @@ export function createBattleFrameRuntime({
     const replayActive = inBattle && replay?.isActive() === true;
 
     if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
-      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive, replayActive);
+      // the entry's load screen covers the battle (and the HUD) through its exit fade: the camera's lock
+      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive, replayActive, cameraLocked);
     }
     // (killcam-first-frame-276) A replay the result update (or the pump) started in this frame owns this frame's draw:
     // its first frame is its first shot. Read once at the frame's start, this frame was a live one, and its live

@@ -49,8 +49,26 @@ assert.equal(viewer.marks.length, 3);
 assert.ok(log.some((e) => e[0] === 'present' && e[1] === 'a'), 'the first pose shows every hull');
 log.length = 0;
 
-// play: 6 s in 0.1 s frames crosses the kill once
+// before the battle frame poses it (its entry's load screen still up) the transport is refused: a Play there would run a
+// clock nobody sees; the first posed frame offers it, and one Play then moves the clock on the next frame
+assert.equal(viewer.posing, false);
 viewer.key('toggle');
+viewer.scrub(4);
+viewer.pickMark(viewer.marks[1]);
+assert.equal(viewer.clock.playing, false, 'a Play under the load screen is refused');
+assert.equal(viewer.bar.timeS, 0, 'and so are a scrub and a mark');
+assert.deepEqual(log.filter((e) => e[0] === 'ride' || e[0] === 'drone'), [], 'nothing is ridden');
+viewer.advance(1 / 60);
+assert.equal(viewer.posing, true, 'the first posed frame offers the transport');
+assert.equal(viewer.bar.timeS, 0, 'a paused clock stays at the start');
+viewer.key('toggle');
+assert.equal(viewer.bar.playing, true, 'one Play plays');
+viewer.advance(1 / 60);
+assert.ok(viewer.bar.timeS > 0, 'and the clock moves on the next frame');
+viewer.scrub(0);
+log.length = 0;
+
+// play: 6 s in 0.1 s frames crosses the kill once
 for (let i = 0; i < 60; i++) viewer.advance(0.1);
 assert.ok(Math.abs(viewer.bar.timeS - 6) < 1e-6);
 assert.ok(Math.abs(view[0].state.pos.x - 6) < 0.06, 'the hull is posed from the track');
@@ -100,6 +118,7 @@ const refused = createReplayViewer({ ...index, track: null, indexedSteps: 0,
 assert.deepEqual(refused.bar.notice, { kind: 'refused', version: '274.3' });
 assert.equal(refused.bar.durationS, 10, 'the recorded span');
 assert.equal(refused.marks.length, 3, 'the timeline is kept');
+refused.advance(0);
 refused.key('toggle');
 refused.advance(0.1);
 assert.ok(refused.bar.timeS > 0, 'its clock still runs over the marks');
@@ -111,5 +130,5 @@ assert.deepEqual(drifted.bar.notice, { kind: 'drifted', timeS: 10 });
 const lost = createReplayViewer({ ...index, track: null, problem: { code: 'roster', tick: 0, message: 'x' } }, ports);
 assert.deepEqual(lost.bar.notice, { kind: 'unavailable' });
 
-console.log('replayViewer.selftest: posed from the track, a kill fed once and its wreck set, a seek back feeds nothing and shows the '
+console.log('replayViewer.selftest: no transport before the first posed frame, then one Play moves the clock; posed from the track, a kill fed once and its wreck set, a seek back feeds nothing and shows the '
   + 'living tank, a mark rides its shooter (else the drone), filters and keys, refused and drifted replays keep their timeline');
