@@ -11,6 +11,7 @@ import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn,
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 import { cardNaturalSize, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
 import { VIEW_CONTROL_PARTS, VIEW_CONTROL_SELECTOR } from './hudViewControls.ts';
+import { planStrikeSeats, type SeatBox, type StrikeSeats } from './strikeSeats.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -230,6 +231,10 @@ const CHASE_CEILING_HALF = 60;
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
  *  the objective, the rosters, the network readouts and the feed lanes (`soft`; the map apart, touchNoticePlan `map`). */
+/** What Air Support's call-ins, readout and CALL keep off on a touch layout (strikeSeats.ts): the controls and the
+ *  instruments a thumb or an eye needs while the binoculars are up. */
+const STRIKE_SEAT_OBSTACLES = '.cot-vehicle-controls>button,.cot-shells>.cot-shell,.cot-cons>.cot-con,.cot-touch.on .round,'
+  + '.cot-touch.on .joy,.cot-touch.on .mobile-chrome,.cot-minimap,.cot-top,.cot-dp,.cot-drive';
 export const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-dp,.cot-drive,.cot-scope-vision,'
   + `${AIM_CHIP},.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,`
@@ -1581,6 +1586,40 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rackSlots = systemsSlot === 'edge' ? document.querySelectorAll('.cot-strike-rack .strike-slot:not([hidden])').length : 0;
     const rackRows = rackSlots ? Math.ceil(rackSlots / Math.max(1, Math.floor((rackRoom + 3) / (TOUCH_TARGET + 3)))) : 1;
     setBodyVar('--hud-strike-rack-room', rackRows > 1 ? `${rackRoom}px` : '');
+    // (air-support-seats-276) with the binoculars up on a touch layout, the call-ins, the readout and CALL are seated by
+    // strikeSeats.ts around the live boxes of every control and instrument: each its designed seat where that is clear, else
+    // the nearest clear one. Fixed offsets had put CALL under the edge section at 844x390, the call-ins on the selected shell
+    // at 820x1180, in the items at 744x1001 and off the screen at 1180x820 (tools/air-support-seats.mjs; the overlap probe).
+    // The open ammunition drawer's reach counts as the rack's box: nothing moves when it opens.
+    const strikeRack = touch ? read('.cot-strike-rack') : null;
+    const strikeSupport = strikeRack ? read('.cot-strike-dock') ?? read('.strike-support') : null;
+    let strikeSeats: StrikeSeats | null = null;
+    if (strikeRack && strikeSupport) {
+      const box = (r: DOMRect): SeatBox => ({ x: r.left, y: r.top, w: r.width, h: r.height });
+      const obstacles: SeatBox[] = [box(strikeSupport)];
+      for (const node of hudQueryAll<HTMLElement>(STRIKE_SEAT_OBSTACLES)) {
+        if (!node.checkVisibility()) continue;
+        const r = node.getBoundingClientRect();
+        if (r.width >= 1 && r.height >= 1) obstacles.push(box(r));
+      }
+      if (ammo) obstacles.push({ x: ammoReachLeft, y: ammo.top, w: ammo.right - ammoReachLeft, h: ammo.height });
+      const readout = read('.cot-binoculars:not([hidden]) .binocular-readout');
+      const call = read('.cot-binoculars:not([hidden]) .binocular-call');
+      strikeSeats = planStrikeSeats({ width, height, slot: systemsSlot, systemsLeft, systemsTop, support: box(strikeSupport),
+        rack: { w: strikeRack.width, h: strikeRack.height }, readout: readout && { w: readout.width, h: readout.height },
+        call: call && { w: call.width, h: call.height }, obstacles });
+    }
+    const seatVar = (name: string, seat: SeatBox | null | undefined) => {
+      setBodyVar(`--hud-strike-${name}-x`, seat ? `${seat.x}px` : '');
+      setBodyVar(`--hud-strike-${name}-y`, seat ? `${seat.y}px` : '');
+    };
+    seatVar('rack', strikeSeats?.rack);
+    seatVar('readout', strikeSeats?.readout);
+    seatVar('call', strikeSeats?.call);
+    if ((document.body.dataset.strikeSeats === '1') !== !!strikeSeats) {
+      if (strikeSeats) document.body.dataset.strikeSeats = '1';
+      else delete document.body.dataset.strikeSeats;
+    }
     setBodyVar('--hud-strike-rack-rows', rackRows > 1 ? String(rackRows) : '');
     let systemsCount = 0;
     // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px
