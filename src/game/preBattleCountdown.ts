@@ -106,7 +106,7 @@ export type BattleCountdownState = 'armed' | 'counting' | 'open';
  *   battle all arm over a count that belongs to the battle they replace.
  * - open(seconds): the reveal opens an armed count (0 rolls out at once). Never reopens a running or open count.
  * - advance(seconds): the local frame's next count, never above the current one.
- * - live: a battle that skips the count (the debug entry).
+ * - live: a battle that skips the count (the debug entry; a saved battle's replay, battleFrameRuntime.ts).
  * - clear: no battle (the Garage return, a cleared roster).
  * - follow(seconds): the network authority's count from a snapshot (0 once it plays); the client only follows it.
  */
