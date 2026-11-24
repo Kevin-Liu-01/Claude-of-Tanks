@@ -308,7 +308,7 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.fireBackTouch', icon: 'fireGun', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry2', behindS: 60,
     title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.bodyTouch', advance: { on: 'destroy', actor: SENTRY2 },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 }, hud: ['.cot-shells', '.cot-touch .round.fire'] } },
-  // S11: peek, shoot, hide. A 2.8 m wall is stamped in front of ring P; Sentry 3 (parked until now) waits past it and
+  // S11: peek, shoot, hide. A 3 m wall is stamped in front of ring P; Sentry 3 (parked until now) waits past it and
   // fires only at what it sees, each time its gun is loaded (the ring over it). The player pulls out to ring Q, fires,
   // and backs into cover before that ring fills, until it is destroyed.
   { id: 'training.toP', icon: 'map', chapter: 'training', target: [], ...PLAY, behindS: 40,

@@ -1225,6 +1225,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):
     // the Sentry's fire and aim, the arc's colours from the reticle's solver, the angle step's window inside red
     'src/sim/trainingThreat.selftest.mjs',
+    // 276 (tutorial-s11-cover): S11's wall hides the whole loaner from Sentry 3 on Verdant's own ground (the contact lattice
+    // the battle's sight reads), not only on flat analytic ground; the first wall planted as the control that shows the turret
+    'src/game/trainingCoverGround.selftest.mjs',
     // 273 (Main: fix the class): a hull off the field (modeActive false) is off it for every reader of the hull list
     'src/sim/hullField.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',

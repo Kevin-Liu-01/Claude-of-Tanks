@@ -196,7 +196,9 @@ const layout = planTrainingRange(TRAINING_RULES);
 assert.equal(layout.course.stamps.length, TRAINING_RULES.earthworks.length, 'each earthwork stamped');
 const overlay = createTerrainDeformation();
 for (const stamp of layout.course.stamps) overlay.addCourse(stamp);
-const ground = (x, z) => overlay.offsetAt(x, z);
+// the ground as the battle and the page read it: the overlay on the contact lattice's triangles (276 tutorial-s11-cover:
+// the analytic offsetAt stood S11's first wall 2.8 m where the lattice the sight reads stood it 2.08 m)
+const ground = (x, z) => overlay.contactOffsetAt(x, z);
 const berm = TRAINING_RULES.earthworks[0];
 assert.ok(Math.abs(ground(berm.x, berm.z) - 1.9) < 0.05, `the crest stands 1.9 m (${ground(berm.x, berm.z).toFixed(2)})`);
 const toward = { x: Math.sin(line), z: Math.cos(line) };
@@ -436,4 +438,4 @@ const trainingEnd = access.search(/else if \(chapter === 'training' && training\
 assert.ok(skipReturn >= 0 && trainingEnd > skipReturn, 'the last card ends the battle (a Skip ends the run only)');
 assert.equal((access.match(/deps\.trainingComplete\(\);/g) ?? []).length, 1, 'and nothing else ends it');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green broadside; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green broadside; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 3 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);
