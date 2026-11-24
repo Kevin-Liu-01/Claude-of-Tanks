@@ -316,6 +316,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
     'src/game/replay/replayViewer.selftest.mjs',
+    // 276 (sim-det-trig): the fields a replay's state diff leaves out are the page's presentation and no simulation
+    // module reads one (both drivers' import graph; a planted read, the clock and rosterState's sampler are named)
+    'src/game/replay/replayPageOnly.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',

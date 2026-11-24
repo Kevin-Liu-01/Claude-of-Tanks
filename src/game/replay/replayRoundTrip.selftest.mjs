@@ -113,6 +113,7 @@ async function recordBattle() {
     recorder.beginSetup(game, SPEC, options);
     setupBattle(game, SPEC, world, options);
     recorder.endSetup();
+    game.phase = 'battle'; // the page steps a battle in its battle phase (main.ts enters it after setup), as the replay does
     assert.ok(recorder.active, 'the recorder armed for the battle');
     assert.ok(game.tanks.every((hull) => planned.includes(hull.specId)), 'setup seated the planned roster');
     const bus = createBus((type, payload) => recorder.onEvent(type, payload));

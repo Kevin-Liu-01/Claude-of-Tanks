@@ -19,6 +19,39 @@ const DUMP_ITEMS = 48;
 const SKIP_KEYS = new Set(['visual', 'root', 'scene', 'mesh', 'parent', 'children', 'spec', 'world', 'heightField', 'allTanks', 'tanks',
   'tankById', 'player', 'spotting', 'jev', '_jevView', '_obstacleQuery', '_obstacleWorld', '_supportField', 'matchModeController',
   'openingRouteJobs', 'ruleset', 'combatRng', '_engineCtx', '_battleVisualPool']);
+/**
+ * (276) The fields only the page's presentation holds, which a dump keeps but no replay can (it has no presentation):
+ * the per-hull render pose, detail and off-screen state, the dust and effect accumulators and the spotting fade
+ * (game/battlePresentationRuntime.ts, game/garageTankLifecycle.ts), and the battle's killcam recorder (main.ts), which the
+ * step feeds (onShellHit, onRam, recordSimStep) and never reads. withoutPageOnly leaves out exactly these, at their own
+ * level; src/game/replay/replayPageOnly.selftest.mjs holds that no simulation module (both drivers' import graph,
+ * tools/det-math-lint.mjs simulationModules) reads one, and a sink only ever has its methods called.
+ */
+export const PAGE_ONLY_FIELDS = Object.freeze({
+  game: Object.freeze(['killcam']),
+  hull: Object.freeze(['_soloRenderPose', '_wasDetailVisible', '_offscreenPresentationS', '_fxAcc', '_dustTravelAcc', '_spotFade']),
+});
+/** Page-only fields the step calls into (fire and forget): a simulation module may call their methods, never read them. */
+export const PAGE_ONLY_SINKS = Object.freeze(['killcam']);
+
+/** A battle dump (snapshotBattle) without the page-only fields, at their own level: what the simulation holds. */
+export function withoutPageOnly(dump: unknown): unknown {
+  if (!dump || typeof dump !== 'object') return dump;
+  const { game, hulls } = dump as { game?: Record<string, unknown>; hulls?: Record<string, Record<string, unknown>> };
+  const drop = (value: Record<string, unknown> | undefined, keys: readonly string[]) => {
+    if (!value || typeof value !== 'object') return value;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value)) if (!keys.includes(key)) out[key] = value[key];
+    return out;
+  };
+  return {
+    ...(dump as Record<string, unknown>),
+    game: drop(game, PAGE_ONLY_FIELDS.game),
+    hulls: hulls && typeof hulls === 'object'
+      ? Object.fromEntries(Object.entries(hulls).map(([id, hull]) => [id, drop(hull, PAGE_ONLY_FIELDS.hull)])) : hulls,
+  };
+}
+
 /** Render objects a page's battle may hold (three.js marks each with one of these). */
 const RENDER_MARKS = ['isObject3D', 'isWebGLRenderer', 'isMaterial', 'isTexture', 'isBufferGeometry', 'isRenderTarget'];
 

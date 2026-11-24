@@ -15,7 +15,7 @@ import { gunzipSync } from 'node:zlib';
 import { decodeReplay } from '../src/sim/replayFormat.ts';
 import { createReplayRun, ensureReplayFleet } from '../src/game/replay/replayRunner.ts';
 import { createReplayWorldFor } from './replay-world.mjs';
-import { TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, firstRoundDifference, traceRounds, traceRows } from '../src/game/replay/replayTrace.ts';
+import { PAGE_ONLY_FIELDS, TRACE_GAME_FIELDS, TRACE_HULL_FIELDS, createReplayTrace, diffDumps, firstRoundDifference, traceRounds, traceRows, withoutPageOnly } from '../src/game/replay/replayTrace.ts';
 
 const [file, traceFile] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const pathsArg = process.argv.find((arg) => arg.startsWith('--paths='));
@@ -46,7 +46,10 @@ const show = (title, all) => {
   console.log(`${title}: ${paths.length ? `${paths.length}${all.length >= PATHS * 20 ? '+' : ''} differing path(s)` : 'identical'}`);
   for (const line of paths.slice(0, PATHS)) console.log(`  ${line.length > 300 ? `${line.slice(0, 300)}…` : line}`);
 };
-show('before step 1', diffDumps(page.snapshots['0'], replay.snapshots['0'], PATHS * 20));
+// (276) the page-only fields (replayTrace.ts PAGE_ONLY_FIELDS: presentation no replay holds) are left out of every dump
+const simDiff = (a, b) => diffDumps(withoutPageOnly(a), withoutPageOnly(b), PATHS * 20);
+console.log(`page-only fields left out: game ${PAGE_ONLY_FIELDS.game.join(', ')}; each hull's ${PAGE_ONLY_FIELDS.hull.join(', ')}`);
+show('before step 1', simDiff(page.snapshots['0'], replay.snapshots['0']));
 
 const width = TRACE_GAME_FIELDS.length + page.ids.length * TRACE_HULL_FIELDS.length;
 const a = traceRows(page), b = traceRows(replay);
@@ -76,6 +79,6 @@ if (page.rounds) {
 for (const key of Object.keys(page.snapshots).map(Number).filter((k) => k > 0).sort((x, y) => x - y)) {
   if (first && key > first.step + 60) break;
   if (!replay.snapshots[key]) { console.log(`after step ${key}: the replay has no dump (it stopped at ${stoppedAt})`); break; }
-  show(`after step ${key}`, diffDumps(page.snapshots[key], replay.snapshots[key], PATHS * 20));
+  show(`after step ${key}`, simDiff(page.snapshots[key], replay.snapshots[key]));
 }
 process.exitCode = first || (page.rounds && firstRoundDifference(traceRounds(page), traceRounds(replay), stoppedAt)) ? 1 : 0;

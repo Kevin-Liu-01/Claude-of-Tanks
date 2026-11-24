@@ -130,6 +130,10 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
       if (!hull) throw new ReplayMismatch('seat', `replay: no seated hull ${id}`);
       return hull;
     });
+    // (276) the page steps a battle in its battle phase (main.ts enters it after setup): so does the replay. A sim-graph
+    // module reads it (stateCore.ts couchSeatsActive, for the page's gates), and the replay stood in the Garage's
+    const gamePhase = game as { phase?: string };
+    gamePhase.phase = 'battle';
     const bus = createBus(() => {});
     const collider = createCollider(game as never, world as never);
     const checksums = new Map(recording.checksums);
