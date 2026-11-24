@@ -55,9 +55,9 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 
 .pad-top{grid-area:top;display:flex;align-items:center;gap:var(--s3);min-width:0;}
 .pad-link{flex:none;display:inline-flex;align-items:center;gap:var(--s2);font-size:var(--fs-13);color:var(--ink-3);white-space:nowrap;}
-.pad-link::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--pad-led-off);}
-.pad-link[data-tone='ok']::before{color:var(--ok);background:var(--pad-led-ok);box-shadow:var(--pad-led-glow);}
-.pad-link[data-tone='warn']::before{color:var(--warn);background:var(--pad-led-warn);box-shadow:var(--pad-led-glow);}
+.pad-link::before{content:'';flex:none;width:var(--status-dot);height:var(--status-dot);border-radius:50%;background:var(--pad-led-off);}
+.pad-link[data-tone='ok']::before{background:var(--pad-led-ok);}
+.pad-link[data-tone='warn']::before{background:var(--pad-led-warn);}
 /* the mode on an engraved plate, the speed on a counter */
 .pad-mode{flex:none;padding:2px var(--s2);border-radius:var(--r1);background:var(--pad-well);box-shadow:var(--pad-well-shadow);
   color:var(--accent-hi);font-size:var(--fs-13);font-weight:var(--fw-semibold);letter-spacing:var(--track-label);text-transform:uppercase;}
