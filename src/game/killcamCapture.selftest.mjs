@@ -89,7 +89,7 @@ const hull = () => ({
   // (round 3 merge review r1) and a network battle's restart under this seat ('battle:restarted'), a battle's entry too
   assert.equal((killcam.match(/resetCaptureMemory\(\);/g) || []).length, 3, 'ui:battleStart, phase:change battle and battle:restarted run the one reset');
   assert.equal((killcam.match(/pendingDeath = pendingVictory = lastHitOnPlayer = null;/g) || []).length, 1, 'no second hand-written list');
-  assert.match(killcam, /const resetCaptureMemory = \(\): void => \{\n\s+clearTraj\(\);\n\s+poseHistory\.clear\(\);\n\s+turretTracks\.clear\(\);\n\s+pendingDeath = pendingVictory = lastHitOnPlayer = null;\n\s+lastLethal = lastDestroyed = null;\n\s+lastHitByTarget\.clear\(\);\n\s+\};/);
+  assert.match(killcam, /const resetCaptureMemory = \(\): void => \{\n\s+clearTraj\(\);\n\s+strikeShots\.clear\(\);\n\s+poseHistory\.clear\(\);\n\s+turretTracks\.clear\(\);\n\s+pendingDeath = pendingVictory = lastHitOnPlayer = null;\n\s+lastLethal = lastDestroyed = null;\n\s+lastHitByTarget\.clear\(\);\n\s+\};/);
   assert.match(killcam, /spectateHandoffTimer = setTimeout\(\(\) => \{ spectateHandoffTimer = null; spectate\.maybeStart\(\); \}, 80\);/);
   assert.match(killcam, /cancel\(\) \{\n\s+clearExit\(\);\n\s+cancelSpectateHandoff\(\);/, 'cancel() revokes the pending handover');
   assert.doesNotMatch(killcam, /setTimeout\(\(\) => spectate\.maybeStart\(\), 80\)/, 'no untracked handover timer');

@@ -16,6 +16,7 @@ import {
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
 import { createAirSupportWorld, type AircraftFxPort } from './airSupportWorld.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
+import { killcamStage } from './killcamStage.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
 const spriteLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
@@ -347,11 +348,31 @@ export function createMatchModeWorldPresentation(
     iconTextures.set(key, texture);
     return texture;
   };
+  // (killcam-strike-shot-276; Main 2026-11-24: "hide the plates … for every kill cam replay") the world-anchored markers:
+  // every icon and light column, the capture plates, arcs and rings, the flag bases' halos and the lane tethers. While a
+  // kill cam replay is live (killcamStage.ts) they are hidden, each keeping its own visibility for the replay's exit; the
+  // physical objects (posts, flags, stands, crates, goals, the trench works) and the aircraft stay.
+  const overlays: THREE.Object3D[] = [];
+  const overlay = <T extends THREE.Object3D>(object: T): T => { overlays.push(object); return object; };
+  let veiled = false;
+  const veilOverlays = (hide: boolean): void => {
+    if (!hide && !veiled) return;
+    for (const object of overlays) {
+      if (hide) {
+        if (object.userData.veilWas === undefined) object.userData.veilWas = object.visible;
+        object.visible = false;
+      } else if (object.userData.veilWas !== undefined) {
+        object.visible = object.userData.veilWas as boolean;
+        delete object.userData.veilWas;
+      }
+    }
+    veiled = hide;
+  };
   const iconSprite = (name: string, scale: number, y: number): THREE.Sprite => {
     const material = new THREE.SpriteMaterial({
       transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
     });
-    const sprite = new THREE.Sprite(material);
+    const sprite = overlay(new THREE.Sprite(material));
     sprite.name = name;
     sprite.scale.set(scale, scale, 1);
     sprite.position.y = y;
@@ -435,7 +456,7 @@ export function createMatchModeWorldPresentation(
       color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide,
       toneMapped: false, blending: THREE.AdditiveBlending,
     });
-    const mesh = new THREE.Mesh(beaconGeometry, material);
+    const mesh = overlay(new THREE.Mesh(beaconGeometry, material));
     mesh.name = 'beacon';
     mesh.position.y = BEACON_HEIGHT_M / 2;
     return mesh;
@@ -485,7 +506,7 @@ export function createMatchModeWorldPresentation(
     flagBaseMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-flag-base`;
-      const halo = new THREE.Mesh(objectiveRing(8.6, 9.6), basic(teamColor(team), 0.3));
+      const halo = overlay(new THREE.Mesh(objectiveRing(8.6, 9.6), basic(teamColor(team), 0.3)));
       halo.rotation.x = -Math.PI / 2;
       halo.position.y = 0.1;
       const column = beacon(teamColor(team), 0.14);
@@ -509,7 +530,7 @@ export function createMatchModeWorldPresentation(
     spawnMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-spawn`;
-      const ring = new THREE.Mesh(objectiveRing(5.4, 6.6), basic(teamColor(team), 0.34));
+      const ring = overlay(new THREE.Mesh(objectiveRing(5.4, 6.6), basic(teamColor(team), 0.34)));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       const column = beacon(teamColor(team), 0.12);
@@ -576,7 +597,7 @@ export function createMatchModeWorldPresentation(
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `capture-zone-${index + 1}`;
       const material = basic(NEUTRAL, 0.4);
-      const ring = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material);
+      const ring = overlay(new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material));
       ring.rotation.x = -Math.PI / 2;
       const core = new THREE.Group();
       core.name = 'objective-post';
@@ -586,11 +607,11 @@ export function createMatchModeWorldPresentation(
       // capture progress as an arc inside the ring, its letter / sector number
       // as a floating badge
       const discMaterial = basic(NEUTRAL, 0.09);
-      const disc = new THREE.Mesh(objectiveRing(0, ZONE_RADIUS_M), discMaterial);
+      const disc = overlay(new THREE.Mesh(objectiveRing(0, ZONE_RADIUS_M), discMaterial));
       disc.rotation.x = -Math.PI / 2;
       disc.position.y = 0.05;
       const arcMaterial = basic(NEUTRAL, 0.85);
-      const arc = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2), arcMaterial);
+      const arc = overlay(new THREE.Mesh(objectiveRing(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2), arcMaterial));
       arc.rotation.x = -Math.PI / 2;
       arc.position.y = 0.14;
       arc.visible = false;
@@ -1047,7 +1068,7 @@ export function createMatchModeWorldPresentation(
     while (laneMarkers.length < count) {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `range-lane-${laneMarkers.length + 1}`;
-      const ring = new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3));
+      const ring = overlay(new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3)));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
@@ -1055,7 +1076,7 @@ export function createMatchModeWorldPresentation(
       marker.userData.icon = icon;
       // a thin tether from the ring up to the board: the board is the lane's marker, anchored to its mark
       laneTether ??= new THREE.CylinderGeometry(0.05, 0.05, 1, 6, 1, true);
-      const tether = new THREE.Mesh(laneTether, basic(AMBER, 0.55));
+      const tether = overlay(new THREE.Mesh(laneTether, basic(AMBER, 0.55)));
       tether.scale.y = LANE_BOARD_FOOT_M;
       tether.position.y = LANE_BOARD_FOOT_M / 2;
       marker.add(ring, tether, icon);
@@ -1090,6 +1111,8 @@ export function createMatchModeWorldPresentation(
   };
 
   const update = (state: MatchModePresentationState | null, timeS: number): void => {
+    // the replay has left: each marker's own visibility back before this frame's dressing runs (which may set it again)
+    if (!killcamStage.live) veilOverlays(false);
     if (!state || state.id === 'standard') {
       if (root.visible) root.traverse(object => { delete object.userData.surfacePlacement; });
       root.visible = false;
@@ -1126,6 +1149,8 @@ export function createMatchModeWorldPresentation(
       airWorld ??= createAirSupportWorld(root, options);
       airWorld.update(state.air, state.perspectiveTeam, timeS);
     } else airWorld?.update(null, 'alpha', timeS);
+    // a kill cam replay owns the screen: the markers leave it (after the dressing, which sets icons and arcs each frame)
+    if (killcamStage.live) veilOverlays(true);
   };
 
   const BOSS_KEYS: Readonly<Record<ObjectiveSide, string>> = { own: 'boss:own', enemy: 'boss:enemy', neutral: 'boss:neutral', contested: 'boss:contested' };
