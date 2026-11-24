@@ -39,6 +39,8 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   // the alert's new height replans (the touch plan seats the condition lane under it at the height it shows)
   assert.match(layout, /if \(target\.classList\?\.contains\('cot-alert'\)\) \{\s*const height = \(target as HTMLElement\)\.offsetHeight \?\? 0;\s*if \(height > 0 && Math\.abs/,
     'a new alert height is a plan input, from a resize or a mutation alike');
+  assert.match(layout, /const compactAlertH = compactAlertBox\?\.height \?\? compactAlertHeights\.get\(alertWords\) \?\? TOUCH_COMPACT_ALERT_LINES_H;/,
+    'the compact candidate at the height its words last showed compact, not a one-line guess');
   assert.match(layout, /for \(const box of \[\.\.\.viewControls\]\.sort[\s\S]{0,240}ribbonTop = box\.top;/, 'the ribbon rests over a view control');
   // (the old escape: the flight console dropped where keeping off it cost the reticle clearance)
   assert.doesNotMatch(layout, /plainObstacles|obstacles\.slice\(0, plain/, 'no plan drops a view control to keep the reticle clear');
