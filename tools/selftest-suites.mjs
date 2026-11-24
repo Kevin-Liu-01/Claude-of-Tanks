@@ -984,6 +984,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit 77 on a wait
     'tools/with-capture-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    // probe-fresh-browser-276: one guarded browser per staging, the previous one reaped (the tree stays flat under the 10 GB cap)
+    'tools/frame-budget-probe-browsers.selftest.mjs',
     // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
     // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
     'tools/probe-unit-stop.selftest.mjs',
