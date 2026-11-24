@@ -35,11 +35,14 @@
 .media-library-viewer{width:min(96vw,1680px);max-width:none;max-height:96vh;padding:0;border:1px solid var(--library-line-strong);background:var(--surface-scene);color:var(--library-ink);box-shadow:var(--e4)}
 .media-library-viewer::backdrop{background:var(--scrim);backdrop-filter:blur(10px)}
 .media-library-viewer figure{margin:0;display:grid;grid-template-rows:minmax(0,1fr) auto;max-height:94vh}
-.media-library-stage{position:relative;display:grid;place-items:center;min-height:min(40vh,320px);background:var(--surface-scene)}
-.media-library-stage img{display:block;width:100%;height:auto;min-height:min(40vh,320px);max-height:82vh;object-fit:contain;object-position:center}
+/* (inherited-reds-276; the image-fit rule: a picture fills its box) the picture keeps its own aspect (the viewer sets
+   aspect-ratio from the manifest) inside the stage's bounds, so its box is the picture and nothing letterboxes; the cell
+   shrinks to it, centred, and its clip lies in the same cell */
+.media-library-stage{position:relative;display:grid;place-items:center;justify-content:center;align-content:center;min-height:min(40vh,320px);background:var(--surface-scene)}
+.media-library-stage img{display:block;grid-area:1/1;width:auto;height:auto;max-width:100%;max-height:82vh}
 .media-library-stage .media-library-wait{position:absolute;inset:auto 0 0;padding:14px 18px;text-align:center}
 /* a picture's clip plays over it, whole, once it plays; its control stands on the stage as the site's media toggles do */
-.media-library-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface-scene)}
+.media-library-stage video{grid-area:1/1;place-self:stretch;width:100%;height:100%;contain:size;object-fit:cover;object-position:center;background:var(--surface-scene)}
 .media-library-stage video[hidden]{display:none}
 .cot-c-btn.media-library-play{position:absolute;z-index:1;right:12px;bottom:12px;min-width:44px;min-height:44px;background:var(--surface-raised);color:var(--ink-1)}
 .cot-c-btn.media-library-play[hidden]{display:none}
