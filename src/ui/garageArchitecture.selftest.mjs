@@ -344,7 +344,7 @@ const maxBuildMs = Math.max(...builds.map(buildCost));
 const maxColdTransactionMs = Math.max(...transactions.map((entry) => entry.wallMs - entry.starvedMs - (entry.plant === 'busy' ? PLANT_MS : 0)));
 const blocked = builds.find((build) => build.plant === 'blocked'), busy = builds.find((build) => build.plant === 'busy');
 const blockedTransaction = transactions.find((entry) => entry.plant === 'blocked');
-console.log(`garageArchitecture.selftest: build ${maxBuildMs.toFixed(1)} ms of CPU at most (budget 100; wall up to ${Math.max(...builds.map((build) => build.wallMs)).toFixed(1)}), cold transaction ${maxColdTransactionMs.toFixed(1)} ms net of ${Math.max(...transactions.map((entry) => entry.starvedMs)).toFixed(0)} ms starved at most (budget 750); plants: blocked ${blocked.cpuMs.toFixed(1)} ms CPU of ${blocked.wallMs.toFixed(0)} wall, busy ${busy.cpuMs.toFixed(1)} ms CPU`);
+console.log(`garageArchitecture.selftest: build ${maxBuildMs.toFixed(1)} ms of CPU at most (budget 100; wall up to ${Math.max(...builds.map((build) => build.wallMs)).toFixed(1)}), cold transaction ${maxColdTransactionMs.toFixed(1)} ms net of ${Math.max(...transactions.map((entry) => entry.starvedMs)).toFixed(0)} ms starved at most (reported: judged in the browser); plants: blocked ${blocked.cpuMs.toFixed(1)} ms CPU of ${blocked.wallMs.toFixed(0)} wall, busy ${busy.cpuMs.toFixed(1)} ms CPU`);
 // (the block shows in the build's wall time and not its CPU: compared with another Garage's busy build it failed at load 300,
 // where contention doubled every build's CPU)
 assert.ok(blocked.wallMs - blocked.cpuMs >= PLANT_MS - 5 && blockedTransaction.starvedMs >= PLANT_MS - 20,
@@ -360,13 +360,16 @@ const STARVED_SHARE_REPORTED = 0.25;
 const unplanted = transactions.filter((entry) => entry.plant === null);
 const starvedShare = unplanted.reduce((sum, entry) => sum + entry.starvedMs, 0) / unplanted.reduce((sum, entry) => sum + entry.wallMs, 0);
 if (starvedShare > STARVED_SHARE_REPORTED) {
-  console.log(`garageArchitecture.selftest: the thread was starved ${(starvedShare * 100).toFixed(0)} % of its transactions (over ${STARVED_SHARE_REPORTED * 100} %): the budgets are reported, not asserted (build ${maxBuildMs.toFixed(1)} of 100 ms, cold transaction ${maxColdTransactionMs.toFixed(1)} of 750 ms)`);
+  console.log(`garageArchitecture.selftest: the thread was starved ${(starvedShare * 100).toFixed(0)} % of its transactions (over ${STARVED_SHARE_REPORTED * 100} %): the build's budget is reported, not asserted (build ${maxBuildMs.toFixed(1)} of 100 ms)`);
 } else {
   assert.ok(maxBuildMs < 100,
     `headless environment geometry construction exceeded budget (${maxBuildMs.toFixed(1)} ms of CPU; starved ${(starvedShare * 100).toFixed(0)} %)`);
-  assert.ok(maxColdTransactionMs < 750,
-    `cold asynchronous Garage module transaction exceeded budget (${maxColdTransactionMs.toFixed(1)} ms net of starvation; starved ${(starvedShare * 100).toFixed(0)} %)`);
 }
+// (garage-env-276 D, Main 2026-11-24) The cold transaction is information here, not a budget: a browser hands the ground's
+// photographed layers (prepareSourcedTerrain) and the structure prints (surfacePaintPrefetch.ts) to workers, while Node,
+// with neither Worker nor Image, paints their procedural fallbacks in the prepare's slices, a path no player takes. It is
+// judged in the browser (the timing ticket: first visit and frame gaps); the synchronous build above stays asserted, so
+// heavy work put back on the main thread's long task still fails here.
 controller.dispose();
 assert.equal(scene.children.length, 0);
 
