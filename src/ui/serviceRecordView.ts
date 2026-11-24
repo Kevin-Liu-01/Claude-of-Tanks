@@ -5,7 +5,7 @@ import { killSourceIdentity } from './killSourceIdentity.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
-import type { BattleOutcome } from '../game/battleOutcome.ts';
+import { battleOutcomeOf, type BattleOutcome } from '../game/battleOutcome.ts';
 import {
   MEDALS, getServiceRecord,
   type AchievementProgress, type MedalGroup, type ServiceBattle, type ServiceRecordView,
@@ -309,11 +309,13 @@ function replays(list: RecordReplays, names: RecordViewNames): string {
   if (!list.length) return emptyState({ text: t('garage.record.replaysEmpty'), icon: 'film', className: 'cot-record-empty' });
   const rows = list.map((entry) => {
     const mode = entry.gameMode ?? '';
+    // (leave-no-loss-276) a recording's result as the records name it; one outside the set shows none, never a defeat
+    const outcome = battleOutcomeOf(entry.result);
     const place = mode
       ? `<span data-mode-tone="${safe(mode)}">${uiIconSVG(names.modeIcon(mode), 11)}${safe(names.map(entry.mapId ?? ''))}&nbsp;·</span> <span>${safe(t(`playMenu.matchMode.${mode}.label`))}</span>`
       : `<span>${safe(names.map(entry.mapId ?? ''))}</span>`;
-    return `<li class="cot-record-replay${entry.result ? ` result-${safe(entry.result)}` : ''}">${vehicleArt(entry.playerSpecId ?? '')}` +
-      `<span class="cot-record-battle-what">${entry.result ? `<span class="cot-record-result">${resultLabel(entry.result)}</span>` : ''}` +
+    return `<li class="cot-record-replay${outcome ? ` result-${outcome}` : ''}">${vehicleArt(entry.playerSpecId ?? '')}` +
+      `<span class="cot-record-battle-what">${outcome ? `<span class="cot-record-result">${resultLabel(outcome)}</span>` : ''}` +
       `<b>${safe(names.vehicle(entry.playerSpecId ?? ''))}</b><small>${place}</small><time>${safe(when(entry.recordedAtMs))}</time></span>` +
       `<span class="cot-record-battle-num"><b>${clock(entry.ticks / 60)}</b><small>${statLabel(t('garage.record.duration'), 'clock')}</small></span>` +
       `<span class="cot-record-replay-actions">` +
