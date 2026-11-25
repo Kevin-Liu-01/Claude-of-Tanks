@@ -40,10 +40,19 @@ export function wreckFactsBakeKey(specId: string, seed: number, state: WreckStat
 /** A number as its exact text: shortest round trip, and the sign of a zero kept. */
 const exact = (n: number): string => (Object.is(n, -0) ? '-0' : String(n));
 
-/** A placed hulk's key: its bake and the exact seat it took (position, yaw and the ground normal it leans to). */
+/** A seat's number in the key: positions to the micrometre, yaw and the normal to 1e-9 (signed zero folded). */
+const seatPart = (value: number, scale: number): string => String(Math.round(value * scale) + 0);
+
+/**
+ * A placed hulk's key: its bake and the seat it took (position, yaw and the ground normal it leans to), named to the
+ * micrometre and the nanoradian. Not the exact bits: Chrome's V8 and Node's answer a road's heading a last bit apart now
+ * and then (Winter, measured: 3 of 10 hulks' yaws 1-4e-17 rad apart, positions identical), as the page's collision is
+ * rounded to the shards' 1/10000 m for the same reason (collisionRecordPacking.ts). Such a seat is the same seat.
+ */
 export function wreckPlacementKey(bakeKey: string, x: number, y: number, z: number, yaw: number,
   normalX: number, normalY: number, normalZ: number): string {
-  return [bakeKey, x, y, z, yaw, normalX, normalY, normalZ].map((v) => (typeof v === 'number' ? exact(v) : v)).join('|');
+  return [bakeKey, seatPart(x, 1e6), seatPart(y, 1e6), seatPart(z, 1e6), seatPart(yaw, 1e9),
+    seatPart(normalX, 1e9), seatPart(normalY, 1e9), seatPart(normalZ, 1e9)].join('|');
 }
 
 /** The facts of a bake (no geometry), as the props build reads them. */
