@@ -154,6 +154,15 @@ interface SkyRig {
   applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
   /** 2026-10-16: re-bake the open sky's environment when the enclosed bake outlived the Garage (see the method). */
   syncEnvironmentEnclosure(): boolean;
+  /**
+   * (garage-env-276) Bake a preset's environment into the cache without installing it or changing the shown sky (the
+   * Garage's idle pre-bake of a pack it may show next); its key, or null when the sky cannot bake one (see the method).
+   */
+  prebakeEnvironment(preset: Partial<SkyPreset>, enclosed: boolean): string | null;
+  /** (garage-env-276) Whether a bake under this key is resident: installing it swaps maps without baking. */
+  environmentCached(key: string): boolean;
+  /** (garage-env-276) How many keyed bakes stay resident (the Garage's per-pack cap while it shows; the pair otherwise). */
+  setEnvironmentCapacity(count: number): void;
   /** Round 68: the volumetric layer (probes), null on the mobile tier / `?clouds=off`. */
   readonly volumetricClouds: VolumetricCloudLayer | null;
 }
@@ -2230,6 +2239,50 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       if (!refreshAtmosphere() || physicalEnvIntensity == null) return false;
       rig.bakeEnvironment();
       return true;
+    },
+
+    /**
+     * (garage-env-276) Each Garage pack lights and reflects with its own sky's environment: a desert yard never with the
+     * winter sky's. The Garage keeps one bake per pack resident (setEnvironmentCapacity) and installs it by key on the
+     * pack's activation (bakeEnvironment: an exact hit swaps maps, no bake). This bakes a pack ahead, in the Garage's idle
+     * pre-paint: the sky takes the pack's preset, sun and enclosure, its atmosphere refreshed, bakes under that key into
+     * the cache, and gives the shown sky back, in one synchronous block (no frame draws between). The installed map, the
+     * scene's environment intensity and the dome the frame draws are untouched. Null when the sky has no key for the
+     * preset (a non-finite clear colour) or no live context.
+     */
+    prebakeEnvironment(p: Partial<SkyPreset>, enclosed: boolean): string | null {
+      const shownPreset = preset, shownSun = sunDir.clone(), shownEnclosed = scene.userData.lightEnclosed;
+      const shownIntensity = scene.environmentIntensity, shownSuffix = atmosphereKeySuffix;
+      let key: string | null = null;
+      try {
+        preset = { ...DEFAULT_PRESET, ...(p || {}) };
+        sunDir.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - preset.sunElevationDeg), THREE.MathUtils.degToRad(preset.sunAzimuthDeg));
+        configureSkyUniforms(sky, sunDir, preset);
+        scene.userData.lightEnclosed = enclosed;
+        refreshAtmosphere();
+        key = environmentKey(renderer, sunDir, preset, environmentKeySuffix());
+        if (key !== null && !environments.has(key)) {
+          const bakeKey = key;
+          withEnvironmentRenderState(renderer, () => environments.prebake(bakeKey, bakeProceduralEnvironment));
+        }
+      } finally {
+        preset = shownPreset;
+        sunDir.copy(shownSun);
+        configureSkyUniforms(sky, sunDir, preset);
+        scene.userData.lightEnclosed = shownEnclosed;
+        refreshAtmosphere();
+        atmosphereKeySuffix = shownSuffix;
+        scene.environmentIntensity = shownIntensity;
+      }
+      return key;
+    },
+
+    environmentCached(key: string): boolean {
+      return environments.has(key);
+    },
+
+    setEnvironmentCapacity(count: number): void {
+      environments.setCapacity(count);
     },
 
     horizonColor,

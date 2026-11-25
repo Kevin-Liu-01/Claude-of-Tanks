@@ -1875,6 +1875,12 @@ const SHOW_SOLVE_ITERS = 9;
 // The camera blends onto a new framing (another hero, a moved stage rect: a panel opening, a resize) on --dur-base's time
 // constant instead of jumping to it; a reset, and a reader who asked for reduced motion, take it at once.
 const SHOW_FRAME_TAU_S = 0.22;
+// (garage-env-276) the spring arm: a critically damped dolly in front of scenery (no overshoot, no snap); it never reaches
+// in past the hero's own near radius (nearDist, the closest the framing ever stands)
+const SHOW_ARM_SMOOTH_S = 0.18;
+// the spring arm's hard stop: never nearer a part's own bounds than the lens and its near plane, whatever the spring's lag
+// (an orbit sweeping the eye sideways into a pillar outruns the eased reach)
+const SHOW_ARM_CONTACT_M = 0.3;
 const SHOW_FRAME_EPS = 1e-4;           // NDC: a stage rect moved by less than this is the same rect
 const SHOW_BLEND_EPS_M = 1e-3;         // m: a blended pose this close to its solve has arrived
 const SHOW_REMEASURE_S = 3;            // a new hero's late parts (its stowage, its decor) land in its first seconds
@@ -2051,6 +2057,12 @@ interface ShowroomOrbitDeps {
    *  on the name line, for every hero and size (owner 10-26: "more lower again!!! more!"). */
   anchorFoot?(): boolean;
   floorY?(): number;
+  /**
+   * (garage-env-276) The share (0..1) of the segment from the look point to the eye that is free of scenery the eye must
+   * stay in front of (the Garage pack's parts, inflated by the camera's margin): the orbit's spring arm. Absent, or 1,
+   * the eye stands where the framing puts it.
+   */
+  clearance?(look: THREE.Vector3, eye: THREE.Vector3, marginM?: number): number;
 }
 
 interface ShowroomOrbit {
@@ -2493,6 +2505,10 @@ export function createShowroomOrbit(
       // vertically, the extremes' midpoint on the rect's centre; foot-anchored, the silhouette's lowest point on the rect's
       // foot (it fills at most `fill` of the rect, so its top stays inside it)
       sy += (foot ? projectionBounds.ny0 - (w.cy - w.hy) : (projectionBounds.ny0 + projectionBounds.ny1) * 0.5 - w.cy) * d * tanV;
+      // (garage-env-276) the box centre stays inside the rect: the extremes, read at the centre's depth, let a corner 1.2 m
+      // from the lens (a long hull zoomed fully in) throw the offset tens of metres, the floor guard flattening the eye
+      // and the look point leaving the hero on every turn of the orbit
+      sy = THREE.MathUtils.clamp(sy, -(w.cy + w.hy) * d * tanV, -(w.cy - w.hy) * d * tanV);
     }
     return { dist: d, sx, sy };
   }
@@ -2501,6 +2517,8 @@ export function createShowroomOrbit(
   const shownPos = new THREE.Vector3(), shownLook = new THREE.Vector3();
   let haveShownPose = false;
   let blending = false;
+  // the spring arm's reach and its rate (m, m/s); Infinity: unclamped
+  let armReach = Infinity, armVel = 0, armSettling = false;
   /** Blend onto the next framing rather than jumping to it (no blend before a first pose, or under reduced motion). */
   function beginBlend(): void {
     blending = haveShownPose && !reducedMotion();
@@ -2522,6 +2540,7 @@ export function createShowroomOrbit(
     const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
+    if (deps.clearance) applyArm(dt);
     if (blending && dt > 0) {
       const k = 1 - Math.exp(-dt / SHOW_FRAME_TAU_S);
       shownPos.lerp(_sbPos, k);
@@ -2557,6 +2576,36 @@ export function createShowroomOrbit(
     tPitch = pitch = heroPitchNow();
     applyPose();
     return true;
+  }
+
+  /**
+   * (garage-env-276) The spring arm: the eye stays in front of the first scenery the look-to-eye segment meets, eased
+   * there and back by a critically damped spring (SmoothDamp's form), and never nearer a part's own bounds than the
+   * contact distance where the spring lags. With nothing in the way the reach is unclamped and the eye is left exactly
+   * where the framing put it.
+   */
+  function applyArm(dt: number): void {
+    const want = _sbPos.distanceTo(_sbLook);
+    const free = THREE.MathUtils.clamp(deps.clearance!(_sbLook, _sbPos), 0, 1);
+    const target = free >= 1 ? want : Math.max(nearDist, free * want);
+    const from = Number.isFinite(armReach) ? armReach : want;
+    if (dt <= 0) { armReach = target >= want ? Infinity : target; armVel = 0; }
+    else {
+      const omega = 2 / SHOW_ARM_SMOOTH_S, x = omega * dt;
+      const decay = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+      const change = from - target, temp = (armVel + omega * change) * dt;
+      armVel = (armVel - omega * temp) * decay;
+      armReach = target + (change + temp) * decay;
+      if (armReach >= want - 1e-4 && target >= want) { armReach = Infinity; armVel = 0; } // back out: unclamped
+    }
+    if (free < 1 && Number.isFinite(armReach)) {
+      // the hard stop: where the spring still lags, the eye stops at the part's own bounds (less the contact distance)
+      const contact = Math.max(nearDist, THREE.MathUtils.clamp(deps.clearance!(_sbLook, _sbPos, SHOW_ARM_CONTACT_M), 0, 1) * want);
+      if (armReach > contact) { armReach = contact; armVel = Math.min(armVel, 0); }
+    }
+    // (still easing: the rig keeps posing until the arm comes to rest, even with the orbit at rest)
+    armSettling = Number.isFinite(armReach) && (Math.abs(armReach - target) > 1e-3 || Math.abs(armVel) > 1e-3);
+    if (armReach < want - 1e-4) _sbPos.lerpVectors(_sbLook, _sbPos, armReach / want);
   }
 
   function resetOrbit(): boolean {
@@ -2733,7 +2782,7 @@ export function createShowroomOrbit(
       else if (dirty || windowMoved) beginBlend();
       advanceOrbitTargets(d);
       const moved = dampOrbitPose(d);
-      const settling = blending;
+      const settling = blending || armSettling;
       if (dirty || moved || windowMoved || resized || settling) applyPose(d);
       return dirty || moved || windowMoved || resized || settling;
     },

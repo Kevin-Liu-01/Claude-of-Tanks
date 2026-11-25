@@ -1,5 +1,6 @@
 import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import { DEFAULT_GARAGE_SKY } from '../world/maps/catalog.ts';
+import { GARAGE_PRESENTATION_POSE } from './garagePresentationPose.ts';
 
 /**
  * Lightweight copies of the atmosphere presets used by the ten Garage source
@@ -108,22 +109,32 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
  * The Garage's own sun (coordinator ruling 2026-10-15, option A; the garage critic panel: "light is flat and close to
  * noon ... sun at 30-40 degrees ... each garage its own time of day"). Each outdoor Garage keeps its battlefield's
  * atmosphere (turbidity, scattering, fog, clouds, sun colour and strength, exposure: the sky lane's) and trims only the
- * sun's elevation (28-38 degrees) and azimuth, chosen for a three-quarter back light on the hero from the fixed Garage
- * camera: the camera looks from the hero's +x+z (azimuth 43 degrees seen from the hero), so a sun about 60 degrees off
- * the back axis (azimuth 283 = back left, 163 = back right) rims the tank, lights the flank the camera sees at a glance,
- * and throws the shadows forward across the yard floor. Verdant is indoors: its walls stop the sun, so it is untrimmed.
+ * sun: its own elevation (28-38 degrees, the yard's time of day) and one azimuth for every yard (garage-env-276), derived
+ * from the presentation pose: a three-quarter back light GARAGE_SUN_BACK_OFFSET_DEG off the camera's back axis, on the
+ * side that throws the hero's cast shadow forward across the turntable, clear of the hull, in the default view
+ * (garageSunShadow.selftest.mjs: 74-97 % of the footprint shows there, a long hull under the lowest sun the least; the
+ * other side's 163 degrees, four yards' old trim, showed 24-78 %). Verdant is indoors: its walls stop the sun, so it is untrimmed.
  */
-export const GARAGE_SUN_TRIM = Object.freeze<Readonly<Record<string, Readonly<{ sunElevationDeg: number; sunAzimuthDeg: number }>>>>({
-  desert: Object.freeze({ sunElevationDeg: 36, sunAzimuthDeg: 283 }), // the wadi's late morning
-  winter: Object.freeze({ sunElevationDeg: 28, sunAzimuthDeg: 163 }), // a low winter sun, long shadows on the snow
-  urban: Object.freeze({ sunElevationDeg: 34, sunAzimuthDeg: 283 }),
-  coastal: Object.freeze({ sunElevationDeg: 32, sunAzimuthDeg: 163 }), // afternoon over the sea
-  railyard: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 283 }),
-  monsoon: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 163 }), // between the showers
-  alpine: Object.freeze({ sunElevationDeg: 28, sunAzimuthDeg: 283 }),
-  badlands: Object.freeze({ sunElevationDeg: 32, sunAzimuthDeg: 163 }),
-  foundry: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 283 }),
+export const GARAGE_SUN_BACK_OFFSET_DEG = 60;
+/** The camera's azimuth seen from the hero (sky.ts's convention: from +z toward +x), from the presentation pose. */
+const GARAGE_CAMERA_AZIMUTH_DEG = Math.atan2(GARAGE_PRESENTATION_POSE.cameraOffsetM[0], GARAGE_PRESENTATION_POSE.cameraOffsetM[2]) * 180 / Math.PI;
+/** Every outdoor Garage's sun azimuth: the camera's back axis turned GARAGE_SUN_BACK_OFFSET_DEG (283 degrees). */
+export const GARAGE_SUN_AZIMUTH_DEG = Math.round((GARAGE_CAMERA_AZIMUTH_DEG + 180 + GARAGE_SUN_BACK_OFFSET_DEG) % 360);
+const GARAGE_SUN_ELEVATION_DEG: Readonly<Record<string, number>> = Object.freeze({
+  desert: 36, // the wadi's late morning
+  winter: 28, // a low winter sun, long shadows on the snow
+  urban: 34,
+  coastal: 32, // afternoon over the sea
+  railyard: 30,
+  monsoon: 30, // between the showers
+  alpine: 28,
+  badlands: 32,
+  foundry: 30,
 });
+export const GARAGE_SUN_TRIM = Object.freeze<Readonly<Record<string, Readonly<{ sunElevationDeg: number; sunAzimuthDeg: number }>>>>(
+  Object.fromEntries(Object.entries(GARAGE_SUN_ELEVATION_DEG).map(([mapId, sunElevationDeg]) =>
+    [mapId, Object.freeze({ sunElevationDeg, sunAzimuthDeg: GARAGE_SUN_AZIMUTH_DEG })])),
+);
 
 const trimmedPresets = new Map<string, Readonly<MapSkyConfig>>();
 

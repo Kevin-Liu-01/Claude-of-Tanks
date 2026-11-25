@@ -806,7 +806,7 @@ interface TerrainIndexRecord {
 }
 
 type TerrainIndexPool = Map<number, TerrainIndexRecord>;
-type TerrainSourceCheckpoint = () => Promise<void>;
+export type TerrainSourceCheckpoint = () => Promise<void>;
 type TerrainBuildProgress = readonly [number, number, boolean, TerrainSourceCheckpoint?];
 type TerrainBuildTick = (completed: number, total: number) => Promise<void> | void;
 
@@ -8975,6 +8975,60 @@ function* createSplatMaterialSteps(
     outlandWaterMask, ...(groundMask === mask ? [] : [groundMask]),
     ...(maskStack.texture === groundMask ? [] : [maskStack.texture]),
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
+}
+
+/** (garage-env-276) What createTerrainSurfaceMaterialSteps gives the Garage. */
+export interface TerrainSurfaceMaterial {
+  readonly material: THREE.MeshStandardMaterial;
+  readonly textures: readonly THREE.Texture[];
+  /**
+   * Added to every world position the material reads (its mask, its land use, its world-space layers): set it to the
+   * map position under the mesh's origin less the mesh's own world position, and the patch reads as the map's ground.
+   */
+  readonly mapOrigin: { value: THREE.Vector3 };
+  readonly sourcedReady?: Promise<void>;
+}
+
+/**
+ * (garage-env-276, class 2) A map's battle ground material for a small patch of its ground drawn outside a loaded
+ * battlefield (the Garage's yard): the splat material the map's terrain wears, built from the map's own layout and
+ * splat settings, with the world positions it reads moved into the map's frame (uGarageMapOrigin) under a program key of
+ * its own. No height field: the landform mask, the water wetness and the formation boundary stay at their inert
+ * defaults (a patch tens of metres wide reads none of them). The battle's terrain and its shader are untouched: the
+ * offset is spliced into this material's hook only (the engine context's setupShadowMaterial receives the wrapped hook).
+ * Its layers come as the battle's do (D, 2026-11-24): the caller's source preparation (prepareSourcedTerrain, the
+ * worker's decode) yields its checkpoints up for the caller to await, and a layer it holds is never painted by hand;
+ * with none (the receipts under Node) the procedural layers are painted, as the battle's fallback paints them.
+ */
+export function* createTerrainSurfaceMaterialSteps(
+  engineCtx: TerrainEngineContext,
+  cfg: TerrainMapConfig,
+  sourcePreparation: TerrainSourcePreparation | null = null,
+): Generator<void | TerrainSourceCheckpoint, TerrainSurfaceMaterial, void> {
+  const mapOrigin = { value: new THREE.Vector3() };
+  const garageCtx: TerrainEngineContext = {
+    anisotropy: engineCtx.anisotropy,
+    setupShadowMaterial(material, hook) {
+      engineCtx.setupShadowMaterial(material, (shader) => {
+        hook(shader);
+        shader.uniforms.uGarageMapOrigin = mapOrigin;
+        shader.vertexShader = 'uniform vec3 uGarageMapOrigin;\n' + _mustReplace(shader.vertexShader,
+          'vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+          'vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz + uGarageMapOrigin;');
+      });
+    },
+  };
+  const steps = createSplatMaterialSteps(garageCtx, createLayout(cfg), cfg.splat ?? null, cfg.id || 'verdant', null, null,
+    sourcePreparation, [], cfg.sky ?? null, null, null, null);
+  let step = steps.next();
+  while (!step.done) {
+    yield step.value;
+    step = steps.next();
+  }
+  const { material, textures, sourcedReady } = step.value;
+  const battleKey = material.customProgramCacheKey.bind(material);
+  material.customProgramCacheKey = () => `${battleKey()}-garage`;
+  return { material, textures, mapOrigin, sourcedReady };
 }
 
 // ---------------------------------------------------------------------------

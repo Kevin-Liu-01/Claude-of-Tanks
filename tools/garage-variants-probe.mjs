@@ -6,9 +6,11 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
+import { GARAGE_PACK_BUDGET, scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
 import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { awaitPickerImages } from './garage-picker-images.mjs';
+import { measureGarageHeroLuma } from './garage-hero-luma.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -87,14 +89,10 @@ try {
 
   // Preview images are a selector-demand asset, never an entry dependency.
   await page.click('[data-picker-menu="garage-staging"]');
-  await page.evaluate(async () => {
-    const images = [...document.querySelectorAll('.cot-c-menu__pop:popover-open .cot-c-picker__opt img')];
-    await Promise.all(images.map((image) => image.complete ? Promise.resolve()
-      : new Promise((resolve) => {
-        image.addEventListener('load', resolve, { once: true });
-        image.addEventListener('error', resolve, { once: true });
-      })));
-  });
+  // (garage-env-276) every thumbnail made eager and settled, or a named failure at 15 s (garage-picker-images.mjs): the
+  // lazy ones past the popover's fold never loaded, and this step hung to the 180 s protocol timeout with no stills
+  await page.evaluate(`(${awaitPickerImages.toString()})(document.querySelectorAll(
+    '.cot-c-menu__pop:popover-open .cot-c-picker__opt img'), { timeoutMs: 15000 })`);
   await page.click('[data-picker-menu="garage-staging"]');
 
   // Reproduce the real selector race: hover starts one pack's offscreen
@@ -173,6 +171,8 @@ try {
     }, variant.id);
     results.push({ ...state, frames });
     if (shotsDir) await page.screenshot({ path: path.join(shotsDir, `${variant.id}.png`) });
+    // (garage-env-276) the hero's brightness at the default pose in photo mode: the rubric's readable floor reads it
+    results.at(-1).heroLuma = await measureGarageHeroLuma(page);
     if (shotsDir && orbitShots) {
       const stage = await page.evaluate(() => window.__DEBUG.showroom.debugState().stage);
       const viewport = page.viewport();
@@ -392,8 +392,8 @@ try {
         failures.push(`${result.id}: restored workshop receipt failed`);
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
-        || architecture.drawCalls < 8 || architecture.drawCalls > 25
-        || architecture.triangles <= 0 || architecture.triangles > 72_000 // 72k since 2026-10-16 (garageQualityRubric.ts)
+        || architecture.drawCalls < 8 || architecture.drawCalls > GARAGE_PACK_BUDGET.drawCalls
+        || architecture.triangles <= 0 || architecture.triangles > GARAGE_PACK_BUDGET.triangles // the one budget
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2
@@ -422,6 +422,7 @@ try {
     architecture: result.stats.architecture,
     workshop: result.stats,
     transitionMaxGapMs: result.frames.maxGapMs,
+    heroLuma: result.heroLuma.median,
   }));
   for (const score of qualityScores) {
     if (score.total < 90 || score.failures.length) {
@@ -466,12 +467,13 @@ try {
       presented: intentRace.architecture?.presented === true,
       drawCalls: intentRace.architecture?.drawCalls || 0,
     },
-    variants: results.map(({ id, frames, stats }) => ({
+    variants: results.map(({ id, frames, stats, heroLuma }) => ({
       id,
       frames,
       buildMs: stats.architecture.lastBuildMs,
       drawCalls: stats.architecture.drawCalls,
       triangles: stats.architecture.triangles,
+      heroLuma,
     })),
     qualityScores,
     dressingFrames,

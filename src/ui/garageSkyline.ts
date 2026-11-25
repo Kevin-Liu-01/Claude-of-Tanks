@@ -125,7 +125,7 @@ const thetaOf = (azDeg: number): number => (90 - azDeg) * DEG;
 const angleGap = (a: number, b: number): number => Math.abs(((a - b + 540) % 360) - 180);
 
 /** The ring radius a landmark at this distance stands at. */
-const ringRadius = (distM: number): number => THREE.MathUtils.clamp(58 + 15 * Math.log(Math.max(1, distM) / 150), 58, 116);
+export const ringRadius = (distM: number): number => THREE.MathUtils.clamp(58 + 15 * Math.log(Math.max(1, distM) / 150), 58, 116);
 
 class SkylineMesh {
   readonly positions: number[] = [];
@@ -928,6 +928,12 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
     (v) => Math.min(0.7, 0.06 + layerIndex * 0.1 + (1 - v) * 0.16));
   });
 
+  // (garage-env-276, class 3) the ground's triangles: the landform landmarks below (jebel, inselberg, massif, ridge), drawn
+  // with the map's own battle terrain material (garageEnvironmentKit.ts); the relief bands, the built landmarks and the
+  // water keep their colours
+  // (2026-11-24, the class 2+3 sheet) the relief bands keep their colours: compressed into steep walls they read as cliffs
+  // under the battle material (dark rock on coastal, monsoon and the desert's dunes); the landforms take it
+  const terrainIndices: number[] = [];
   // the landmarks: nearest first, a landform hidden behind nearer, taller ones over its whole span is left out (the far
   // jebels behind Jebel Rum, a far ridge behind the cirque), and the rest keep to the skyline's triangle budget
   const receipts: GarageSkylineLandmarkReceipt[] = [];
@@ -950,11 +956,13 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
     }
   }
   const budget = SKYLINE_LANDMARK_TRIANGLES;
-  const before = mesh.indices.length / 3;
+  // (the landmarks' triangles, counted wherever they are filed: a landform's move to the ground's list changes nothing)
+  let landmarkTriangles = 0;
   for (const { mark, index } of order) {
     if (!visible.has(index)) continue;
-    if (mesh.indices.length / 3 - before > budget && LANDFORM.has(mark.type) && !mark.name) continue;
+    if (landmarkTriangles > budget && LANDFORM.has(mark.type) && !mark.name) continue;
     const markSalt = salt + index * 131;
+    const markStart = mesh.indices.length;
     let pr: Projection | null = null;
     switch (mark.type) {
       case 'jebel': pr = addJebel(ctx, mark, markSalt); break;
@@ -973,6 +981,9 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
       case 'cross': pr = addCross(ctx, mark); break;
       default: break;
     }
+    landmarkTriangles += (mesh.indices.length - markStart) / 3;
+    // a landform is the map's ground: its triangles join the relief's
+    if (LANDFORM.has(mark.type)) terrainIndices.push(...mesh.indices.splice(markStart));
     if (pr) {
       receipts.push(Object.freeze({
         type: mark.type, name: mark.name, azDeg: mark.azDeg, distM: mark.distM, ringRadiusM: Number(pr.R.toFixed(2)),
@@ -983,9 +994,16 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
 
   const geometry = new THREE.BufferGeometry();
   const vertexCount = mesh.positions.length / 3;
+  const indices = [...terrainIndices, ...mesh.indices];
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(mesh.positions, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(mesh.colors, 3));
-  geometry.setIndex(new THREE.BufferAttribute(vertexCount > 65535 ? new Uint32Array(mesh.indices) : new Uint16Array(mesh.indices), 1));
+  geometry.setIndex(new THREE.BufferAttribute(vertexCount > 65535 ? new Uint32Array(indices) : new Uint16Array(indices), 1));
+  // (garage-env-276, class 3) two draws: the ground (group 0: the relief and the landforms) and the built landmarks and
+  // water (group 1); normals for the ground's lit material
+  geometry.addGroup(0, terrainIndices.length, 0);
+  geometry.addGroup(terrainIndices.length, mesh.indices.length, 1);
+  geometry.computeVertexNormals();
+  geometry.userData.terrainTriangles = terrainIndices.length / 3;
   geometry.computeBoundingSphere();
   geometry.userData.skyline = mapId;
   geometry.userData.skylineLayers = LAYERS.length;

@@ -25,7 +25,9 @@ function section(start, end) {
 const treatment = ' * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1)';
 assert.equal(source.split(treatment).length, 2, 'one record-construction application, never a frame update');
 const stages = [
-  section('  // shared placement filter/tint', "  yield { stage: 'grassPrep' }; // perf-r3"),
+  // (garage-env-276) the filter is createTuftFilter's body (module level) up to its return; the craters' patcher stays
+  section('  // shared placement filter/tint', '  return { makeTuft,'),
+  section('  // ---- ground lane (2026-10-08, crater-render-spec §C)', "  yield { stage: 'grassPrep' }; // perf-r3"),
   section('  // ---- midfield grass scatter', '  const spawn = L.spawns.player;'),
   section('  interface CarpetSet {', "  yield { stage: 'grassCarpet' };"),
 ].join('\n');
@@ -51,7 +53,7 @@ function compile(legacy) {
       ${section('  const grassPerChunk =', '  const uWindTime =')}
       const grassVariants = [], grassTex = [null, null], grassFadeEnd = GRASS_FADE_END;
       const makeTuftFarGeometry = (w, h) => buildGrassTuftGeometry(w, h, 1, 1.5);
-      const makeGrassMaterial = () => new THREE.MeshLambertMaterial();
+      const makeGrassMaterial = () => new THREE.MeshLambertMaterial(), engineCtx = null, grassUniforms = null;
       ${section('  function* buildGrassVariants():', '  yield* buildGrassVariants();')}
       for (const _ of buildGrassVariants()) {}
       ${body}

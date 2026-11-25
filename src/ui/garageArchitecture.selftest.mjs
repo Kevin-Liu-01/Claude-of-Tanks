@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
-import { createStarvationMeter, threadCpuMs } from '../../tools/starvation-meter.mjs';
+import { GARAGE_PACK_BUDGET } from './garageQualityRubric.ts';
+import { createStarvationMeter, leastCpuMs, threadCpuMs } from '../../tools/starvation-meter.mjs';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
   GARAGE_FACILITY_AXIS_YAW_RAD,
@@ -43,7 +44,9 @@ for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES))
 }
 assert.match(kitSource,
   /map: handle\.color,[\s\S]{0,100}normalMap: handle\.normal/,
-  'Garage structure buckets must retain their surface-specific albedo and normal textures');
+  'the Garage-owned surfaces (terrain, hardstand, approach) keep their surface-specific albedo and normal textures');
+assert.match(kitSource, /structureSurfaces\.surfaces\.mats\[key\]/,
+  'Garage structure buckets draw their battlefield material (garageBattleStructures.selftest.mjs)');
 for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
   for (const placement of recipe.structures) {
     const axisDelta = placement.yaw - GARAGE_HERO_HEADING_RAD;
@@ -88,7 +91,7 @@ const loadMeasuredKit = async () => {
       if (plant === 'blocked') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PLANT_MS);
       if (plant === 'busy') while (threadCpuMs() - cpuFrom < PLANT_MS) { /* the build's own stall: CPU */ }
       try { return kit.buildGarageEnvironment(...args); } finally {
-        builds.push({ plant, cpuMs: threadCpuMs() - cpuFrom, wallMs: performance.now() - wallFrom });
+        builds.push({ plant, variantId: args[2]?.id, cpuMs: threadCpuMs() - cpuFrom, wallMs: performance.now() - wallFrom });
       }
     },
   };
@@ -162,9 +165,9 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.enclosingSurfaces, 0,
     `${variant.id} must remain an open Garage environment`);
   assert.equal(stats.source, 'authentic-garage-scene-pack');
-  assert.ok(stats.objects >= 8 && stats.drawCalls <= 26,
+  assert.ok(stats.objects >= 8 && stats.drawCalls <= GARAGE_PACK_BUDGET.drawCalls,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
-  assert.ok(stats.triangles > 0 && stats.triangles <= 72_000, // 72k since 2026-10-16 (deploy 226): see garageQualityRubric.ts
+  assert.ok(stats.triangles > 0 && stats.triangles <= GARAGE_PACK_BUDGET.triangles, // the one budget (garageQualityRubric.ts)
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
@@ -200,13 +203,16 @@ for (const variant of GARAGE_VARIANTS) {
   }
   assert.equal(stats.treeDetailTier, 'battlefield-far',
     'headless Garage audits must retain the DOM-free battlefield tree fallback');
-  assert.ok(stats.groundCover >= 48,
-    `${variant.id} must retain bounded static biome ground cover`);
+  // (garage-env-276: one surface owns the cover, the battle sward where it draws, the static tufts elsewhere)
+  assert.ok(stats.battleSward > 0 || stats.battleTufts > 0 ? stats.groundCover === 0 : stats.groundCover >= 48,
+    `${variant.id} must retain bounded biome ground cover from one owner`);
   assert.ok(stats.structures >= 9,
     `${variant.id} must surround the hero with at least nine connected map structures`);
   assert.equal(stats.collisionAuditedStructures, stats.structures,
     `${variant.id} must derive every hitbox from its real structure geometry`);
-  assert.ok(stats.collisionEnvelopeFill > 0 && stats.collisionEnvelopeFill <= 1,
+  // (the envelope fill averages the legacy-built structures: a pack its kit rebuilt whole has none to average)
+  assert.ok(stats.collisionEnvelopeFill >= 0 && stats.collisionEnvelopeFill <= 1
+    && (stats.collisionEnvelopeFill > 0 || stats.battleCertifiedStructures === stats.structures),
     `${variant.id} collision coverage receipt must remain normalized`);
   assert.ok(stats.openCollisionMaxFill >= 0 && stats.openCollisionMaxFill <= 0.82,
     `${variant.id} open-structure compounds must preserve intentional free space`);
@@ -216,10 +222,10 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} structure contact chains must stay inside the strict nine-centimetre gate`);
   assert.ok(stats.structurePerimeterSectors >= 4,
     `${variant.id} structure composition must survive at least four orbit sectors`);
-  assert.ok(stats.connectedExteriorBuildings >= 3,
-    `${variant.id} must apply connected exterior detail to its building district`);
-  assert.ok(stats.connectedExteriorParts >= 120,
-    `${variant.id} must retain high-detail supported facades`);
+  // (garage-env-276) one standard with battle: a kit-rebuilt building's facade is its kit's, every part connected
+  // (the legacy whole-pack marker count measured the legacy builders' fixtures; garageBattleStructures.selftest.mjs)
+  assert.equal(stats.facadeDetailCertified, true,
+    `${variant.id} must connect every facade part of its kit-rebuilt buildings`);
   assert.ok(stats.maxExteriorSupportGapM <= 0.065,
     `${variant.id} exterior fixtures must touch their authored supports`);
   assert.ok(stats.approachConnected && stats.approachSegments >= 8,
@@ -338,29 +344,45 @@ const maxBuildMs = Math.max(...builds.map(buildCost));
 const maxColdTransactionMs = Math.max(...transactions.map((entry) => entry.wallMs - entry.starvedMs - (entry.plant === 'busy' ? PLANT_MS : 0)));
 const blocked = builds.find((build) => build.plant === 'blocked'), busy = builds.find((build) => build.plant === 'busy');
 const blockedTransaction = transactions.find((entry) => entry.plant === 'blocked');
-console.log(`garageArchitecture.selftest: build ${maxBuildMs.toFixed(1)} ms of CPU at most (budget 100; wall up to ${Math.max(...builds.map((build) => build.wallMs)).toFixed(1)}), cold transaction ${maxColdTransactionMs.toFixed(1)} ms net of ${Math.max(...transactions.map((entry) => entry.starvedMs)).toFixed(0)} ms starved at most (budget 750); plants: blocked ${blocked.cpuMs.toFixed(1)} ms CPU of ${blocked.wallMs.toFixed(0)} wall, busy ${busy.cpuMs.toFixed(1)} ms CPU`);
+console.log(`garageArchitecture.selftest: build ${maxBuildMs.toFixed(1)} ms of CPU at most (budget 100; wall up to ${Math.max(...builds.map((build) => build.wallMs)).toFixed(1)}), cold transaction ${maxColdTransactionMs.toFixed(1)} ms net of ${Math.max(...transactions.map((entry) => entry.starvedMs)).toFixed(0)} ms starved at most (reported: judged in the browser); plants: blocked ${blocked.cpuMs.toFixed(1)} ms CPU of ${blocked.wallMs.toFixed(0)} wall, busy ${busy.cpuMs.toFixed(1)} ms CPU`);
 // (the block shows in the build's wall time and not its CPU: compared with another Garage's busy build it failed at load 300,
 // where contention doubled every build's CPU)
 assert.ok(blocked.wallMs - blocked.cpuMs >= PLANT_MS - 5 && blockedTransaction.starvedMs >= PLANT_MS - 20,
   'the negative control: a build blocked without CPU is not charged, and its transaction is net of the block');
 assert.ok(busy.cpuMs >= PLANT_MS, 'the negative control: a build that spends the CPU is charged');
 // (267) The CPU clock takes preemption out, not the slower core or the memory contention a loaded machine also gives: at
-// load 160-166 the first build read 95-101 ms of CPU. Main's measured factor came first: a calibration kernel read before
-// and after a build differed 8-20 % at p90 (up to 45 %) at load 130-170, the thread moving between this M5 Max's Super
-// and Performance cores, over its 10 % bar, and the quiet Super-core baseline cannot be read while the lanes run. So the
-// share of the unplanted transactions' time this thread was starved is the proxy, measured, not guessed from load1:
-// past STARVED_SHARE_REPORTED the budgets are reported with it, not asserted. The controls above hold at any share.
-const STARVED_SHARE_REPORTED = 0.25;
-const unplanted = transactions.filter((entry) => entry.plant === null);
-const starvedShare = unplanted.reduce((sum, entry) => sum + entry.starvedMs, 0) / unplanted.reduce((sum, entry) => sum + entry.wallMs, 0);
-if (starvedShare > STARVED_SHARE_REPORTED) {
-  console.log(`garageArchitecture.selftest: the thread was starved ${(starvedShare * 100).toFixed(0)} % of its transactions (over ${STARVED_SHARE_REPORTED * 100} %): the budgets are reported, not asserted (build ${maxBuildMs.toFixed(1)} of 100 ms, cold transaction ${maxColdTransactionMs.toFixed(1)} of 750 ms)`);
-} else {
-  assert.ok(maxBuildMs < 100,
-    `headless environment geometry construction exceeded budget (${maxBuildMs.toFixed(1)} ms of CPU; starved ${(starvedShare * 100).toFixed(0)} %)`);
-  assert.ok(maxColdTransactionMs < 750,
-    `cold asynchronous Garage module transaction exceeded budget (${maxColdTransactionMs.toFixed(1)} ms net of starvation; starved ${(starvedShare * 100).toFixed(0)} %)`);
+// load 160-166 the first build read 95-101 ms of CPU, and a calibration kernel read before and after a build differed
+// 8-45 % as the thread moved between this M5 Max's core kinds. (garage-env-276, Main 2026-11-24: the same commit read 79
+// and 137 ms 20 minutes apart; a load gate only hides the result.) Contention only ever adds to a build's CPU, so the
+// budget judges each outdoor pack's least CPU over BUILD_REPS fresh builds (tools/starvation-meter.mjs leastCpuMs), the
+// first-visit sweep's build among them: the quiet cost, asserted at any load. (It is the warm build's cost; the browser's
+// timing ticket judges the cold switch.)
+const BUILD_REPS = 3;
+const costKit = await import('./garageEnvironmentKit.ts');
+const costAssets = costKit.createGarageEnvironmentAssetLibrary({});
+const leastBuilds = [];
+for (const variant of GARAGE_VARIANTS.filter((entry) => entry.architecture !== 'field_shed')) {
+  const swept = builds.filter((build) => build.plant === null && build.variantId === variant.id).map((build) => build.cpuMs);
+  const { leastMs, samples } = await leastCpuMs(BUILD_REPS - Math.min(1, swept.length), async (_index, measure) => {
+    await costKit.prepareGarageEnvironmentAssets(costAssets, variant);
+    measure(() => costKit.buildGarageEnvironment({}, costAssets, variant, () => {})).dispose();
+  });
+  leastBuilds.push({ id: variant.id, leastMs: Math.min(leastMs, ...swept), samples: [...swept, ...samples] });
 }
+costAssets.dispose();
+const leastBuild = leastBuilds.reduce((worst, entry) => (entry.leastMs > worst.leastMs ? entry : worst));
+const starvedShare = transactions.filter((entry) => entry.plant === null)
+  .reduce((sum, entry, _index, unplanted) => sum + entry.starvedMs / unplanted.reduce((total, item) => total + item.wallMs, 0), 0);
+console.log(`garageArchitecture.selftest: the build's least CPU over ${BUILD_REPS} builds ${leastBuild.leastMs.toFixed(1)} ms at most `
+  + `(${leastBuild.id}: ${leastBuild.samples.map((ms) => ms.toFixed(0)).join(', ')} ms; budget 100; the thread starved `
+  + `${(starvedShare * 100).toFixed(0)} % of its transactions)`);
+assert.ok(leastBuild.leastMs < 100,
+  `headless environment geometry construction exceeded budget (${leastBuild.id}: ${leastBuild.leastMs.toFixed(1)} ms of CPU at least over ${BUILD_REPS} builds)`);
+// (garage-env-276 D, Main 2026-11-24) The cold transaction is information here, not a budget: a browser hands the ground's
+// photographed layers (prepareSourcedTerrain) and the structure prints (surfacePaintPrefetch.ts) to workers, while Node,
+// with neither Worker nor Image, paints their procedural fallbacks in the prepare's slices, a path no player takes. It is
+// judged in the browser (the timing ticket: first visit and frame gaps); the synchronous build above stays asserted, so
+// heavy work put back on the main thread's long task still fails here.
 controller.dispose();
 assert.equal(scene.children.length, 0);
 

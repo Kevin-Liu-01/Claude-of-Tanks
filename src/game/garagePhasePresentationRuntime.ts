@@ -64,6 +64,16 @@ export interface GaragePhasePresentationRuntime {
 
 const GARAGE_SUN_COLOR = 0xf2f0ea;
 const GARAGE_SUN_INTENSITY_SCALE = 0.55;
+/** The showroom's two authored spots (candela), the sealed bays' rig. */
+const GARAGE_SPOT_INTENSITY = Object.freeze({ a: 64, b: 48 });
+/**
+ * (garage-env-276) Under an open yard's grounded light the showroom spots carry this share of the model's sun at the
+ * hero, together: a readability lift, not a second key. At their authored 64 and 48 they put about a third of the sun on
+ * the hero from the camera's side, straight into the shadows the camera sees; a battle's fill is its sky's environment
+ * alone. Scaled to the sun the model resolves, they keep its key-to-fill ratio at every exposure (the model's exposure
+ * scales every light alike). The hero's floor (garageQualityRubric.ts GARAGE_HERO_LUMA_FLOOR) guards the lift.
+ */
+export const GARAGE_OPEN_SPOT_SHARE = 0.1;
 
 /**
  * Owns the phase-exclusive Garage scene roots, authored key lights, neutral
@@ -98,8 +108,8 @@ export function createGaragePhasePresentationRuntime({
     throw new TypeError('garage phase presentation requires every scene lifecycle port');
   }
 
-  const spotA = new THREE.SpotLight(0xf2f0e8, 64, 60, 0.5, 0.85, 1.6);
-  const spotB = new THREE.SpotLight(0xdce3ec, 48, 60, 0.6, 0.8, 1.6);
+  const spotA = new THREE.SpotLight(0xf2f0e8, GARAGE_SPOT_INTENSITY.a, 60, 0.5, 0.85, 1.6);
+  const spotB = new THREE.SpotLight(0xdce3ec, GARAGE_SPOT_INTENSITY.b, 60, 0.6, 0.8, 1.6);
   const spotTarget = new THREE.Object3D();
 
   const positionLights = (): void => {
@@ -220,6 +230,28 @@ export function createGaragePhasePresentationRuntime({
           sunIntensity: (skyConfig.sunIntensity ?? 4.5) * GARAGE_SUN_INTENSITY_SCALE,
         }
       : skyConfig);
+    fitSpotsToLight();
+  };
+
+  /**
+   * (garage-env-276) The showroom spots follow the light the shown pack lit with: under an open yard's grounded model
+   * they share GARAGE_OPEN_SPOT_SHARE of its sun at the hero between them (each spot's share by its authored weight, its
+   * falloff at its distance: three's punctual law, intensity over distance to the decay), and a sealed bay's authored
+   * rig keeps them as authored.
+   */
+  const fitSpotsToLight = (): void => {
+    const model = scene.userData.lightModel as { mode?: string; sunIntensity?: number } | undefined;
+    if (model?.mode !== 'physical' || !(Number(model.sunIntensity) > 0)) {
+      spotA.intensity = GARAGE_SPOT_INTENSITY.a;
+      spotB.intensity = GARAGE_SPOT_INTENSITY.b;
+      return;
+    }
+    const atHero = (spot: THREE.SpotLight, intensity: number): number =>
+      intensity / Math.max(1e-3, spot.position.distanceTo(spotTarget.position)) ** spot.decay;
+    const authored = atHero(spotA, GARAGE_SPOT_INTENSITY.a) + atHero(spotB, GARAGE_SPOT_INTENSITY.b);
+    const scale = Math.min(1, (GARAGE_OPEN_SPOT_SHARE * Number(model.sunIntensity)) / authored);
+    spotA.intensity = GARAGE_SPOT_INTENSITY.a * scale;
+    spotB.intensity = GARAGE_SPOT_INTENSITY.b * scale;
   };
 
   const place = (): void => {

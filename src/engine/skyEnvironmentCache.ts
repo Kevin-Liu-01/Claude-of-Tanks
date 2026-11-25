@@ -8,7 +8,7 @@ function setEnvironment(scene: THREE.Scene, texture: THREE.Texture | null): void
 }
 
 /** The two validated procedural skies cover authored day/night returns. */
-const RETAINED_ENVIRONMENTS = 2;
+export const RETAINED_ENVIRONMENTS = 2;
 
 /** Per-Sky ownership: no shared render targets, partial bakes, or dead-context hits. */
 export class SkyEnvironmentCache {
@@ -17,6 +17,8 @@ export class SkyEnvironmentCache {
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
   private active: THREE.WebGLRenderTarget | null = null;
+  /** (garage-env-276) how many keyed bakes stay resident: the default pair, or the Garage's per-pack set while it shows */
+  private capacity = RETAINED_ENVIRONMENTS;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
 
@@ -93,9 +95,48 @@ export class SkyEnvironmentCache {
     this.cached.delete(key);
     this.cached.set(key, target);
     this.releaseOthers(target, true);
-    if (this.cached.size <= RETAINED_ENVIRONMENTS) return;
-    const oldest = this.cached.values().next();
-    if (!oldest.done) this.release(oldest.value);
+    this.trim();
+  }
+
+  /** Release the least recently used keyed bakes past the capacity, never the installed one. */
+  private trim(): void {
+    for (const target of [...this.cached.values()]) {
+      if (this.cached.size <= this.capacity) return;
+      if (target !== this.active) this.release(target);
+    }
+  }
+
+  /**
+   * (garage-env-276) How many keyed bakes stay resident (at least the default pair): the Garage holds one per pack it
+   * has baked, up to its device's cap, while it shows, and gives them back when it leaves. Lowering it releases the
+   * least recently used at once, never the installed bake.
+   */
+  setCapacity(count: number): void {
+    this.capacity = Math.max(RETAINED_ENVIRONMENTS, Math.floor(count));
+    this.trim();
+  }
+
+  /** (garage-env-276) Whether a bake under this key is resident (an install of it swaps maps without baking). */
+  has(key: string): boolean {
+    return this.cached.has(key);
+  }
+
+  /**
+   * (garage-env-276) Bake under this key and keep it resident without installing it (the Garage's idle pre-bake of a
+   * pack it may show next); an install of the key later is an exact hit, validated then. Returns whether it baked.
+   */
+  prebake(key: string, createTarget: () => THREE.WebGLRenderTarget): boolean {
+    if (!this.updateLifetime()) return false;
+    const held = this.cached.get(key);
+    if (held) { this.cached.delete(key); this.cached.set(key, held); return false; }
+    const target = createTarget();
+    if (!this.isCurrent()) { target.dispose(); return false; }
+    this.owned.add(target);
+    target.addEventListener('dispose', this.disposed);
+    target.texture.addEventListener('dispose', this.textureDisposed);
+    this.cached.set(key, target);
+    this.trim();
+    return this.cached.get(key) === target;
   }
 
   private rollback(

@@ -29,7 +29,7 @@ assert.ok(roofStart > 0 && roofEnd > roofStart, 'execute the actual roof materia
 const makeRoofMaterial = new Function('THREE',
   `${stripTypeScriptTypes(source.slice(roofStart, roofEnd))}\nreturn makeRoofMaterial;`)(THREE);
 const start = source.indexOf('  const windowStyle = resolveStructureWindowStyle(mapId);');
-const end = source.indexOf('  const buckets: CompletePropsBuckets =', start);
+const end = source.indexOf('  if (fortPrint) {', start);
 assert.ok(start > 0 && end > start, 'the production props material stage is covered');
 assert.match(source, /import \{ registerRetainedObject3DResources \} from '\.\.\/engine\/resourceLifetime\.ts'/,
   'production props imports the same ownership implementation exercised here');
@@ -59,6 +59,8 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'make
     // (world 240, 71aaa6e0c3) the Aegis Crossing bridge's own ashlar is made only on cliffbridge's regional kit
     const bridgeAshlar = null;
     const grimeTex = makeGrimeTexture(); // Completed before the material stage.
+    // (garage-env-276) the stage declares its materials through its owner's callback (props.ts buildStructureSurfaces)
+    const onRetained = (materials, textures) => registerRetainedObject3DResources(group, { materials, textures });
     ${source.slice(start, end)}
     return { mats, grimeTex, retainedSurfaceMaterials };
   }`)};`)(THREE, resolveStructureWindowStyle, makeRoofMaterial, registerRetainedObject3DResources,

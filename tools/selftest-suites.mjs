@@ -1191,6 +1191,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
+    'src/engine/showroomSpringArm.selftest.mjs', // garage-env-276 (b): the showroom spring arm stands the eye in front of a yard part
     // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
     'src/engine/cameraViewRoundTrip.selftest.mjs',
     // cursor-aim-pan-274: cursor aim (no pointer lock) pans the chase view and the sight at the screen edge; lock and touch never
@@ -1329,6 +1330,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleEntryRuntime.selftest.mjs',
     'src/game/garagePhasePresentationRuntime.selftest.mjs',
     'src/game/garageEnvironmentPresentationRuntime.selftest.mjs',
+    'src/game/garageEnclosure.selftest.mjs', // garage-env-276 class 1: the light follows the shown pack's declared enclosure
+    'src/game/garageEnvironmentBakes.selftest.mjs', // garage-env-276 class 1: each pack's environment from its own sky
+    'src/game/garageSunShadow.selftest.mjs', // garage-env-276 class 1: one Garage sun shows the hero's shadow in the default view
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageWeather.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
@@ -1341,6 +1345,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageArchitecture.selftest.mjs',
     // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
     'src/ui/garageArchitectureRecords.selftest.mjs',
+    // garage-env-276 (2026-11-23): the outdoor packs build their structures the battlefield's way (its kits, its materials)
+    'src/ui/garageBattleStructures.selftest.mjs',
+    // garage-env-276: no scenery holds the orbiting camera or blocks its view of the hero (Main's ruling (a))
+    'src/ui/garageOrbitClearance.selftest.mjs',
+    'src/ui/garageCameraArm.selftest.mjs', // garage-env-276 (b): every pack's orbit at both zoom limits, no eye inside a part
+    'src/ui/garageSward.selftest.mjs', // garage-env-276 class 2: the battle sward on the grass yards, the floors clear
+    'src/ui/garageGroundHandover.selftest.mjs', // garage-env-276 (the cold first visit): a page's pack presents on the Garage's ground, the battle ground swaps in
+    'src/ui/garageEnclosureExterior.selftest.mjs', // garage round 2 (277): the motor pool's world through its doors, clipped to its hall
+    'src/ui/garageLateStructures.selftest.mjs', // garage-env-276 (the cold first visit): a page's pack presents on its structures' footprints, its buildings fade in once shown
     // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
     'src/ui/garagePrewarmCancel.selftest.mjs',
     // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose
@@ -1372,6 +1385,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
+    // garage-env-276 (2026-11-23): qa:garage's picker thumbnails asked for eagerly, settled or named at 15 s (it hung)
+    'tools/garage-picker-images.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
     // roster-mirror-fix (2026-11-22): every registered vehicle drawable in its band, every roster distinct in one tier band
     'src/game/battleRosterCensus.selftest.mjs',
@@ -2921,6 +2936,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',
     'src/world/grassCarpetWork.selftest.mjs',
+    // garage-env-276: the battle's ground tufts on a Garage yard's patch (vegetation.ts createGroundTufts)
+    'src/world/groundTufts.selftest.mjs',
     'src/world/reservoirWaterworks.selftest.mjs',
     'src/world/deltaPlasterPalette.selftest.mjs',
     'src/world/liquidSurfaceDetail.selftest.mjs',

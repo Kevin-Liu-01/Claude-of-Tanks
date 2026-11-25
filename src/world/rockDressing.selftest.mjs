@@ -885,8 +885,11 @@ assert.match(source, /lastRockCamera\.distanceToSquared\(cameraPos\) <= 64\) ret
 assert.match(source, /updatePoleLod\(cameraPos\);\n\s*updateRockLod\(cameraPos\);/, 'the props update runs it');
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
-assert.match(source, /const rockDetail = yield\* makeRockDetail\(noi, aniso, rockLithologyFor\(mapId\)\);/);
-assert.match(source, /textures: \[grimeTex, rockDetail\.lichen\]/, 'the shader-only lichen tile is declared on its world');
+// (garage-env-276 D-2: a Garage pack paints only the prints it draws; a battle draws every kind)
+assert.match(source, /const rockDetail = drawn\('rock'\) \? yield\* makeRockDetail\(noi, aniso, rockLithologyFor\(mapId\)\) : undrawnPrint\(\);/);
+// (garage-env-276: the structure pipeline the Garage shares declares its retained resources through onRetained)
+assert.match(source, /onRetained\(retainedSurfaceMaterials, \[grimeTex, rockDetail\.lichen\]\)/, 'the shader-only lichen tile is declared on its world');
+assert.match(source, /onRetained: \(materials, textures\) => registerRetainedObject3DResources\(group, \{ materials, textures \}\)/, 'the world owner registers what the pipeline retains');
 assert.match(source, /rockDressingFor\(mapId, P\.rockSoilTone \?\? null, snowCap\)[\s\S]{0,200}applyRockShaderHook\(shader, rockDressing, rockDetail\.lichen, rockStoneMean\)/);
 // the stone: the map's terrain rock layer, swapped into the stand-in's textures; its mean to the hook's vector; the
 // map's texture readiness waits for it

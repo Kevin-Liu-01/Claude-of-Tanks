@@ -57,6 +57,8 @@ interface GarageShowroomRuntimeOptions {
   /** The hero's foot on the stage rect's foot (the tracks on the name line), not its middle on the rect's middle. */
   anchorFoot?: () => boolean;
   floorY: () => number;
+  /** (garage-env-276) the spring arm: the free share (0..1) of the look-to-eye segment (cameraRig.ts ShowroomOrbitDeps). */
+  clearance?: (look: THREE.Vector3, eye: THREE.Vector3, marginM?: number) => number;
 }
 
 export interface GarageShowroomRuntime {
@@ -94,6 +96,7 @@ export function createGarageShowroomRuntime({
   getKeepRect,
   anchorFoot,
   floorY,
+  clearance,
 }: GarageShowroomRuntimeOptions): GarageShowroomRuntime {
   if (!element || typeof element.addEventListener !== 'function') {
     throw new TypeError('garage showroom runtime requires an input element');
@@ -109,6 +112,7 @@ export function createGarageShowroomRuntime({
     getKeepRect,
     anchorFoot,
     floorY,
+    clearance,
   };
   const control = createShowroomOrbit(camera, rig, orbitOptions) as ShowroomOrbitControl;
   let enabled = false;

@@ -31,7 +31,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
 import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.ts';
 import { LANDMARK_BUILDERS } from './index.ts';
-import type { LandmarkKind, LandmarkPlacement } from './types.ts';
+import type { LandmarkBuilder, LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import { landmarkModulesOf, landmarkPiecesOf, markLandmarkParts, samplePieceGround } from './pieces.ts';
 // the set pieces' damage kit registers itself (props lane A, E12)
 import './damage.ts';
@@ -323,6 +323,75 @@ function* landmarkSlices<T>(steps: Generator<void, T, void>): Generator<Slice, T
   return step.value;
 }
 
+/** Where a set piece is built: its map, its ground and its water (the composer's, or the Garage's horizon). */
+export interface LandmarkPieceSite {
+  readonly mapId: string;
+  readonly seed: number;
+  readonly tier: 'desktop' | 'mobile';
+  readonly snowCap: boolean;
+  readonly architecture: ArchitectureStyle | null;
+  /** The ground's fall under the footprint (m). */
+  readonly groundFall: number;
+  /** The ground's height at a point of the piece's frame over its base. */
+  readonly groundAt: (lx: number, lz: number) => number;
+  /** The water's depth over the ground at a point of the piece's frame (0 where it is dry). */
+  readonly waterAt: (lx: number, lz: number) => number;
+}
+
+/**
+ * (garage-env-276) One set piece as the composer builds it, in its own frame: its builder on the piece's own streams
+ * (forked from its identity: authoring one never re-rolls another), its named pieces marked for the damage kit, the
+ * phone's fine joinery left out, and the map kit's weathering (finishParts, also for a builder's own collision parts).
+ * composeLandmarks places and records what this returns; the Garage's horizon draws it.
+ */
+export function buildLandmarkPiece(site: LandmarkPieceSite, placement: LandmarkPlacement, params: LandmarkParams,
+  builder: LandmarkBuilder) {
+  const identity = [site.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
+  const built = builder({
+    kind: placement.kind, params,
+    rng: streamFrom(hashSeed(`landmark:${site.mapId}:${placement.kind}`, ...identity)),
+    variant: streamFrom(hashSeed(`landmark:variant:${site.mapId}:${placement.kind}`, ...identity)),
+    age: streamFrom(hashSeed(`landmark:age:${site.mapId}:${placement.kind}`, ...identity)),
+    tier: site.tier, groundFall: site.groundFall, brick: site.architecture?.surfaces.stone.kind === 'brick',
+    ground: site.groundAt,
+    water: site.waterAt,
+    snowCap: site.snowCap, mapId: site.mapId,
+  });
+  let parts = built.parts;
+  // (props lane A, E12) its named pieces (pieces.ts): the ground each may come down on, read now (numbers); the parts
+  // marked a set piece's for the damage kit (landmarks/damage.ts)
+  const namedPieces = landmarkPiecesOf(parts);
+  if (namedPieces) samplePieceGround(namedPieces, site.groundAt);
+  markLandmarkParts(parts);
+  // a phone never builds the fine joinery (geometry.ts EmitOptions.fine): it is dressing, so the collision stays
+  if (site.tier === 'mobile') {
+    for (const name of REGIONAL_BUCKETS) {
+      const list = parts[name];
+      if (!list?.some((g) => g.userData.fine)) continue;
+      for (const g of list) if (g.userData.fine) g.dispose();
+      parts[name] = list.filter((g) => !g.userData.fine);
+    }
+  }
+  // (destruction-slabs 227 round 5) the parts finished as they are drawn: a builder's own collision parts are finished so too
+  let finishParts: (own: RegionalParts) => RegionalParts;
+  if (site.architecture) {
+    // the map kit's weathering: each piece its own tint (or the builder's), damp at the wall foot, moss on the roofs
+    const palette = site.architecture.weather ?? DEFAULT_WEATHER;
+    const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${site.mapId}:${placement.kind}`, ...identity))), ...built.tints,
+      ...authoredTints(placement) };
+    const climate = climateOf(site.mapId, site.architecture.id);
+    finishParts = (own) => weatherRegionalParts(own, tints, { damp: climate.damp, moss: climate.moss, mossTint: palette.mossTint });
+  } else {
+    // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
+    finishParts = (own) => {
+      for (const geometry of partList(own)) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+      return own;
+    };
+  }
+  parts = finishParts(parts);
+  return { identity, built, parts, finishParts };
+}
+
 /** Place the map's set pieces. A generator: a piece's build and its collision (a height band a slice) in slices. */
 export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice, LandmarkReceipt, void> {
   const receipt: LandmarkReceipt = { pieces: [], placed: 0, skipped: 0, triangles: 0 };
@@ -360,57 +429,19 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     const [sw, sl] = spec.seat?.(params) ?? [hw, hl];
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, sw, sl, yaw);
     if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
-    // the piece's own streams, forked from its identity: authoring one never re-rolls another
-    const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
+    // the piece's own streams, forked from its identity: authoring one never re-rolls another (buildLandmarkPiece)
     const groundAt = (lx: number, lz: number) => {
       const c = Math.cos(yaw), s = Math.sin(yaw);
       return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
     };
-    const built = builder({
-      kind: placement.kind, params,
-      rng: streamFrom(hashSeed(`landmark:${ctx.mapId}:${placement.kind}`, ...identity)),
-      variant: streamFrom(hashSeed(`landmark:variant:${ctx.mapId}:${placement.kind}`, ...identity)),
-      age: streamFrom(hashSeed(`landmark:age:${ctx.mapId}:${placement.kind}`, ...identity)),
-      tier: ctx.tier, groundFall: ground.spread, brick: ctx.architecture?.surfaces.stone.kind === 'brick',
-      ground: groundAt,
-      water: (lx: number, lz: number) => {
+    const { built, parts, finishParts } = buildLandmarkPiece({
+      mapId: ctx.mapId, seed: ctx.seed, tier: ctx.tier, snowCap: ctx.snowCap, architecture: ctx.architecture,
+      groundFall: ground.spread, groundAt,
+      waterAt: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);
         return (ctx.heightField as HeightField).getWaterDepthAt?.(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) ?? 0;
       },
-      snowCap: ctx.snowCap, mapId: ctx.mapId,
-    });
-    let parts = built.parts;
-    // (props lane A, E12) its named pieces (pieces.ts): the ground each may come down on, read now (numbers); the parts
-    // marked a set piece's for the damage kit (landmarks/damage.ts)
-    const namedPieces = landmarkPiecesOf(parts);
-    if (namedPieces) samplePieceGround(namedPieces, groundAt);
-    markLandmarkParts(parts);
-    // a phone never builds the fine joinery (geometry.ts EmitOptions.fine): it is dressing, so the collision stays
-    if (ctx.tier === 'mobile') {
-      for (const name of REGIONAL_BUCKETS) {
-        const list = parts[name];
-        if (!list?.some((g) => g.userData.fine)) continue;
-        for (const g of list) if (g.userData.fine) g.dispose();
-        parts[name] = list.filter((g) => !g.userData.fine);
-      }
-    }
-    // (destruction-slabs 227 round 5) the parts finished as they are drawn: a builder's own collision parts are finished so too
-    let finishParts: (own: RegionalParts) => RegionalParts;
-    if (ctx.architecture) {
-      // the map kit's weathering: each piece its own tint (or the builder's), damp at the wall foot, moss on the roofs
-      const palette = ctx.architecture.weather ?? DEFAULT_WEATHER;
-      const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints,
-        ...authoredTints(placement) };
-      const climate = climateOf(ctx.mapId, ctx.architecture.id);
-      finishParts = (own) => weatherRegionalParts(own, tints, { damp: climate.damp, moss: climate.moss, mossTint: palette.mossTint });
-    } else {
-      // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
-      finishParts = (own) => {
-        for (const geometry of partList(own)) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
-        return own;
-      };
-    }
-    parts = finishParts(parts);
+    }, placement, params, builder);
     // (round 5) what the collision is derived from: the parts, or the builder's own (a set piece drawn anew for its damage
     // whose records stand as they were)
     const collisionOf = built.collision?.(parts, finishParts) ?? null;

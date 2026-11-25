@@ -22,6 +22,8 @@ import {
 import { armGarageDisplayAtlas, createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRect } from './garageDisplayAtlas.ts';
 import { createGarageAtmosphere, type GarageAtmosphereRecipe } from './garageAtmosphereKit.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
+import { createGarageSlicer, type GarageSlicer } from './garageSlicer.ts';
+import { auditGarageOrbitClearance, garageOrbitRelocations, garageStandsLevel, type GarageScenePart } from './garageOrbitClearance.ts';
 
 /**
  * The garage r9 kit's arrangement: each Garage lists its kit pieces in a placement table (garageKitPlacements.ts), in
@@ -97,6 +99,8 @@ export interface GarageKitBuild {
     decalTriangles: number;
     atmosphereTriangles: number;
     cranes: readonly KitCraneReceipt[];
+    /** (garage-env-276) the pieces the orbit rule moved out of the camera's way, and how far (-1: could not clear). */
+    orbitMoves: ReadonlyArray<{ readonly name: string; readonly movedM: number }>;
     brandPieces: number;
     tankImages: number;
     stations: number;
@@ -287,21 +291,19 @@ function hash(text: string): number {
 /**
  * Build a Garage's kit pieces into the session cache ahead of its pack (garage r9 K0.3: "build each kit geometry once
  * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
- * work yields to the event loop every few pieces, so a cold visit never builds the whole table inside one frame.
+ * work yields to the event loop when its slice is spent (garageSlicer.ts), so a cold visit never builds the whole table
+ * inside one frame, nor waits a timer tick on every few pieces.
  */
 export async function prepareGarageKitPieces(
   variant: GarageVariant,
   placement: GarageKitPlacement,
-  piecesPerSlice = 4,
+  slicer: GarageSlicer = createGarageSlicer(),
   stillWanted: () => boolean = () => true,
 ): Promise<boolean> {
-  let built = 0;
   for (const item of garageKitItems(variant, placement)) {
     buildGarageKitPiece(item, variant.architecture, variant.mapId);
-    built += 1;
-    // a few pieces a slice (each is a few milliseconds cold), then the event loop runs: no clock decides the slices
-    if (built % piecesPerSlice === 0) {
-      await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    if (slicer.due()) {
+      await slicer.yield();
       // (2026-11-02 audit R5, round 2) a cancelled prewarm stops here; the pieces it built stay cached for the next one
       if (!stillWanted()) return false;
     }
@@ -328,6 +330,27 @@ export function garageKitPads(variant: GarageVariant, placement: GarageKitPlacem
       ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))] : [0.5, 0.5]);
     const point = garageViewPoint(item.at[0], item.at[1]);
     pads.push({ x: point.x, z: point.z, radius: Math.max(hx, hz) + 0.3, y: item.datum ? (item.y ?? 0) : null });
+  }
+  return pads;
+}
+
+/**
+ * Where a pack's placed kit stands, for the ground cover (garage-env-276: a battle tuft stood inside Railyard's monitor
+ * housing): every piece but the wall runs, by its footprint or its solid's plan extent, with a half-metre margin for the
+ * orbit rule's nudges. The cover grows round the kit, never through it.
+ */
+export function garageKitCoverPads(variant: GarageVariant, placement: GarageKitPlacement): Array<{
+  readonly x: number; readonly z: number; readonly radius: number;
+}> {
+  const pads: Array<{ x: number; z: number; radius: number }> = [];
+  for (const item of garageKitItems(variant, placement)) {
+    if (item.kind === 'wall') continue;
+    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    const box = piece.result.solid.boundingBox;
+    const [hx, hz] = piece.footprint ?? (box && !box.isEmpty()
+      ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))] : [0.5, 0.5]);
+    const point = garageViewPoint(item.at[0], item.at[1]);
+    pads.push({ x: point.x, z: point.z, radius: Math.hypot(hx, hz) + 0.5 });
   }
   return pads;
 }
@@ -369,8 +392,12 @@ export function buildGarageKitDressing(params: {
     if (/^still\./.test(rect)) tankImages += 1;
   };
   const items = garageKitItems(variant, placement);
-  for (const item of items) {
-    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+  const orbitMoves: Array<{ readonly name: string; readonly movedM: number }> = [];
+  for (const authored of items) {
+    const piece = buildGarageKitPiece(authored, variant.architecture, variant.mapId);
+    // (garage-env-276) out of the orbiting camera's way, by rule
+    const { item, movedM } = clearKitItemOfOrbit(authored, piece, groundAtWorld);
+    if (movedM !== 0) orbitMoves.push({ name: kitItemName(authored), movedM });
     const yaw = kitItemMatrix(item, groundAtWorld, matrix);
     const solid = placedCopy(piece.result.solid, matrix);
     if (item.kind === 'wall') seatOnGround(solid, groundAtWorld, item.y ?? 0);
@@ -483,6 +510,7 @@ export function buildGarageKitDressing(params: {
     meshes, materials, slideshow, footprints,
     stats: Object.freeze({
       kitPieces: items.length, kitTriangles, displayTriangles, decalTriangles, atmosphereTriangles,
+      orbitMoves: Object.freeze(orbitMoves),
       cranes: Object.freeze(cranes), brandPieces, tankImages, stations, stationMonitors, nameboards,
       displayRects: Object.freeze(displayRects), looseParts, secureStores,
       processZones: cranes.filter((crane) => crane.atWork).length,
@@ -491,6 +519,55 @@ export function buildGarageKitDressing(params: {
 }
 
 /** The placed items, the Garage's one slideshow frame (from the shared slideshow table, on the datum) included. */
+/** How far out the orbit rule may move a piece before it reports it instead (metres past its authored place). */
+const ORBIT_CLEAR_REACH_M = 10;
+const ORBIT_CLEAR_STEP_M = 0.5;
+
+/**
+ * (garage-env-276, Main's ruling (a)) The orbit rule: a kit piece that would hold the orbiting camera or stand between it
+ * and the hero, at the fitted distance at any yaw and pitch (garageOrbitClearance.ts), moves out from the hero (straight
+ * out, or turned up to 30 degrees round it: garageOrbitRelocations) to the nearest place it clears on level ground,
+ * re-grounded where it lands. Every kit takes it alike; a wall run (a line, not a
+ * place) is never moved, and a piece that cannot clear within ORBIT_CLEAR_REACH_M stays and is reported by the receipt.
+ * The placement and its receipts (garageKitItemBounds) both place the cleared item.
+ */
+function clearKitItemOfOrbit(
+  item: GarageKitItem,
+  piece: CachedPiece,
+  groundAtWorld: (x: number, z: number) => number,
+): { readonly item: GarageKitItem; readonly movedM: number } {
+  if (item.kind === 'wall') return { item, movedM: 0 };
+  const geometries = [piece.result.solid, ...piece.result.surfaces.values(), piece.result.display, piece.result.decal]
+    .filter((geometry): geometry is THREE.BufferGeometry => !!geometry && geometry.getAttribute('position')?.count > 0);
+  for (const geometry of geometries) geometry.computeBoundingBox();
+  const matrix = new THREE.Matrix4();
+  const solidBox = (candidate: GarageKitItem): THREE.Box3 => {
+    kitItemMatrix(candidate, groundAtWorld, matrix);
+    return piece.result.solid.boundingBox!.clone().applyMatrix4(matrix);
+  };
+  const meets = (candidate: GarageKitItem): boolean => {
+    kitItemMatrix(candidate, groundAtWorld, matrix);
+    const parts: GarageScenePart[] = [];
+    for (const geometry of geometries) {
+      const box = geometry.boundingBox!.clone().applyMatrix4(matrix);
+      if (box.isEmpty() || box.max.y < 0.35) continue;
+      parts.push({ label: 'kit piece', box, geometry, matrix: matrix.clone() });
+    }
+    return auditGarageOrbitClearance(parts).length > 0;
+  };
+  if (!meets(item)) return { item, movedM: 0 };
+  // (the moves are in the view frame: side and depth rotate with the world about the hero, so distances keep)
+  const [side, depth] = item.at;
+  for (const { dx, dz, movedM } of garageOrbitRelocations(side, depth, ORBIT_CLEAR_REACH_M, ORBIT_CLEAR_STEP_M)) {
+    const candidate = { ...item, at: [side + dx, depth + dz] as const } as GarageKitItem;
+    // (and only where it stands level: a grounded piece is never set on a bank)
+    if (!meets(candidate) && (candidate.datum || garageStandsLevel(solidBox(candidate), groundAtWorld))) {
+      return { item: candidate, movedM: Number(movedM.toFixed(2)) };
+    }
+  }
+  return { item, movedM: -1 };
+}
+
 function garageKitItems(variant: GarageVariant, placement: GarageKitPlacement): readonly GarageKitItem[] {
   const slideshow = GARAGE_SLIDESHOW_PLACEMENTS[variant.architecture];
   return slideshow
@@ -532,8 +609,10 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
     readonly solidObb: { readonly matrix: THREE.Matrix4; readonly box: THREE.Box3 } | null;
   }> {
   const matrix = new THREE.Matrix4();
-  return garageKitItems(variant, placement).map((item) => {
-    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+  return garageKitItems(variant, placement).map((authored) => {
+    const piece = buildGarageKitPiece(authored, variant.architecture, variant.mapId);
+    // the receipts place what the placement places (the orbit rule)
+    const { item } = clearKitItemOfOrbit(authored, piece, groundAtWorld);
     kitItemMatrix(item, groundAtWorld, matrix);
     const place = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
       const placed = geometry.clone().applyMatrix4(matrix);
@@ -597,4 +676,11 @@ function seatOnGround(geometry: THREE.BufferGeometry, groundAtWorld: (x: number,
   // bounds stay as the copy had them (none: placedCopy); the merge bounds the pack's mesh
   if (geometry.boundingBox) geometry.computeBoundingBox();
   if (geometry.boundingSphere) geometry.computeBoundingSphere();
+}
+
+/** A kit item's name for a receipt (its kind and its own name or sort). */
+function kitItemName(item: GarageKitItem): string {
+  const sort = 'name' in item ? item.name : 'crane' in item ? item.crane : 'display' in item ? item.display
+    : 'sign' in item ? item.sign : 'key' in item ? item.key : '';
+  return `${item.kind}:${sort}${'at' in item ? ` at (${item.at[0].toFixed(1)}, ${item.at[1].toFixed(1)})` : ''}`;
 }

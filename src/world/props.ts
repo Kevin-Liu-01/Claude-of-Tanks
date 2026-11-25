@@ -3647,6 +3647,681 @@ function hullSeparation(a: number[], b: number[]): { depth: number; ax: number; 
   return depth === Infinity ? null : { depth, ax: bx, az: bz };
 }
 
+/**
+ * (garage-env-276) A map's props settings as its world build reads them: the defaults, the map's own, its rocks' soil tone
+ * and its civic plan's overlay. The Garage's scene packs build their structures and surfaces from the same settings.
+ */
+export function resolvePropsSettings(cfg: PropsMapConfig | null): PropsSettings {
+  const P: PropsSettings = {
+    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
+      'cottage', 'barn', 'cottage', 'cottage'],
+    tones: {}, rockTone: null, wallStoneChance: 0.25,
+    buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
+    wallRuns: null, well: true, hayCrates: true, fences: true,
+    telegraph: true, carts: true, logs: true, logCount: 26, hayCrateSites: 5,
+    haystacks: 0, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
+    // r6 terrain_environment dressing passes (per-biome, see map configs):
+    // cropFields = standing crop-row plots on open farmland; lampposts =
+    // cast-iron street lights along the town grid; hedgehogs = steel anti-
+    // tank obstacles scattered on streets/approaches
+    cropFields: 0, lampposts: false, hedgehogs: 0,
+    destructibleBuildings: [],
+    // Authored composite positions that turn a broad lane into a memorable
+    // decision point. Each beat may combine a destructible structure,
+    // sandbag redoubt, hard rock outcrop and staged wreck while reusing the
+    // existing pooled/merged render families.
+    tacticalBeats: [],
+    streetRows: false, curbs: false, monument: false, townCraters: false,
+    ...((cfg && cfg.props) || {}),
+  };
+  // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
+  P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
+    ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
+  // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
+  const civicPlan = civicPlanFor(cfg ? cfg.id : 'verdant');
+  if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
+  return P;
+}
+
+/** (garage-env-276) One placed building's bucket set, as the props build and the Garage's scene packs build it. */
+export function createStructureBuckets(): PropsBuckets {
+  return {
+    plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+  };
+}
+
+/** (garage-env-276) What a map's structure builders may read about it (exteriorDetailKit.ts StructureBuildContext). */
+export function structureBuildContextFor(mapId: string, P: PropsSettings, seed: number): StructureBuildContext {
+  return { mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick' };
+}
+
+/** What the battlefield's structure surfaces are built from (buildStructureSurfaces). */
+export interface StructureSurfaceInputs {
+  readonly mapId: string;
+  readonly cfg: PropsMapConfig | null;
+  /** The map's props settings (resolvePropsSettings); the kit's tones and relief are written into them. */
+  readonly P: PropsSettings;
+  readonly noi: SimplexNoise;
+  readonly aniso: number;
+  readonly engineCtx: Pick<EngineContext, 'setupShadowMaterial'>;
+  readonly sourceApplication: SourcedTextureApplicationOptions;
+  /** Declares the surfaces' materials and shader-only textures on their owner, before the build's next checkpoint. */
+  readonly onRetained: (materials: THREE.Material[], textures: THREE.Texture[]) => void;
+  /**
+   * (garage-env-276) The material kinds its consumer draws. Absent (the world build), every print is painted; given (a
+   * Garage pack), a print no drawn kind wears (the rock tile, the hay, the field stone and mud, the vehicle paint, the
+   * hessian, the fort's concrete, the structure canvas) is a neutral stand-in and its photographed set is not fetched.
+   */
+  readonly drawn?: ReadonlySet<string>;
+}
+
+/** A print a consumer never draws, as a one-texel neutral set (buildStructureSurfaces' `drawn`). */
+function undrawnPrint(): GeneratedSurfaceTextures & { lichen: THREE.Texture } {
+  const texel = (r: number, g: number, b: number) => {
+    const texture = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1);
+    texture.needsUpdate = true;
+    return texture;
+  };
+  return { albedo: texel(128, 128, 128), normal: texel(128, 128, 255), surface: texel(255, 255, 0), lichen: texel(0, 0, 0) };
+}
+
+/**
+ * (garage-env-276) A battlefield's structure surfaces: its regional kit, the procedural and sourced prints, the material
+ * table every structure bucket draws with, the weathering, rust and snow hooks, and the on-demand steel atlas. The props
+ * build and the Garage's scene packs both build their structures' looks here, so a map's buildings read the same in
+ * either (the Garage once re-skinned them with its own nine surfaces and a grey `dark`).
+ */
+export function* buildStructureSurfaces(inputs: StructureSurfaceInputs) {
+  const { mapId, cfg, P, noi, aniso, engineCtx, sourceApplication, onRetained } = inputs;
+  const drawn = (kind: string): boolean => !inputs.drawn || inputs.drawn.has(kind);
+  // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
+  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
+  // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
+  // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
+  const kitRender = regionalArchitecture?.surfaces.render;
+  if (kitRender) {
+    const tones: Record<string, ToneFunction | null | undefined> = { ...(P.tones || {}) };
+    // (the facades lane, round 11) a family the map and the kit leave untoned is painted too: as the canvas would have
+    // been toned (the primary as it comes, the second and third families the shifts below take from it)
+    const shift = (base: ToneFunction | null | undefined, dh: number, ds: number, dl: number): ToneFunction => (h, s, l) => {
+      const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
+      return [Math.max(0, Math.min(1, bh + dh)), Math.max(0, Math.min(1, bs * ds)), Math.max(0, Math.min(1, bl * dl))];
+    };
+    const primary = tones.plaster ?? null;
+    tones.plaster ??= (h: number, s: number, l: number) => [h, s, l];
+    tones.plaster2 ??= shift(primary, +0.022, 1.1, 0.90);
+    tones.plaster3 ??= shift(primary, -0.035, 0.72, 0.84);
+    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
+      const own = tones[key] as (ToneFunction & { base?: ToneFunction }) | null | undefined;
+      if (!own) continue;
+      const base = own.base ?? own;
+      tones[key] = Object.assign((h: number, s: number, l: number) => base(h, s, l),
+        { base, paint: { kind: kitRender.kind, seed: kitRender.seed + (key === 'plaster' ? 0 : 1) } });
+    }
+    P.tones = tones;
+  }
+  // a kit's render relief (maps/regional/types.ts ArchitectureSurfaces.plasterRelief) under the map's own; the canvas's 1.2
+  // where neither sets one
+  if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
+  const T = P.tones || {};
+  // (battle-spikes-253) the kit's render prints, painted ahead by the surface paint worker when the prefetch holds them
+  // (plannedSurfacePaints), else here as makePlaster would paint them: the same painter, the same texels
+  if (kitRender) {
+    let byPaint = paintedRenders.get(noi);
+    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
+    const { kind } = kitRender;
+    for (const seed of [kitRender.seed, kitRender.seed + 1]) {
+      if (byPaint.has(`${kind}:${seed}`)) continue;
+      byPaint.set(`${kind}:${seed}`, yield* paintedAhead(surfacePaintKey({ kind, size: 256, seed }),
+        // oxlint-disable-next-line require-yield -- the in-line paint returns the painter's buffers at once
+        function* () { return kind === 'limeRender' ? paintLimeRender(256, seed) : paintLimewash(256, seed); }));
+    }
+  }
+  const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
+  yield { fine: true };
+  // content_breadth r3: TWO extra render families — the street walls
+  // recycled one plaster print ("same white-plaster box repeats dozens of
+  // times", critique). Map configs may author tones.plaster2/plaster3
+  // (urban.js does); other maps derive tasteful shifts of their own plaster
+  // tone so village cottages inherit the variety for free.
+  const _tShift = (
+    base: ToneFunction | null | undefined,
+    dh: number,
+    ds: number,
+    dl: number,
+  ): ToneFunction => (h: number, s: number, l: number) => {
+    const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
+    return [Math.max(0, Math.min(1, bh + dh)),
+      Math.max(0, Math.min(1, bs * ds)),
+      Math.max(0, Math.min(1, bl * dl))];
+  };
+  // the map-revival lane (2026-10-05, Skybridge round 2): a kit that pours its concrete paints plaster2 as that
+  // concrete (glencanyon: board-formed, its formwork's boards, lift lines and tie holes), toned as the render was
+  const plaster2Tone = T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90);
+  const pouredConcrete = regionalArchitecture?.surfaces.concrete;
+  const plaster2 = pouredConcrete
+    ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
+    : makePlaster(noi, aniso, plaster2Tone, null, P.plasterRelief ?? 1.2);
+  yield { fine: true };
+  // These two procedural variants differ only in albedo tone. Share their
+  // immutable relief within this props owner; retained materials deduplicate
+  // final disposal. Primary plaster stays exclusive for sourced image swaps.
+  // (a poured plaster2's relief is the formwork's: plaster3 keeps a render's own)
+  const plaster3 = makePlaster(noi, aniso,
+    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
+  yield { fine: true };
+  const roofT = regionalArchitecture
+    ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
+    : makeRoofTiles(noi, aniso, T.roof || null);
+  yield { fine: true };
+  const stone = regionalArchitecture
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
+      regionalArchitecture.surfaces.stone.dressed, regionalArchitecture.surfaces.stone.weathered)
+    : yield* makeStone(noi, aniso, T.stone || null);
+  yield { fine: true, stage: 'stone-maps' };
+  // (2026-10-22, world-polish-240) Aegis Crossing's gorge bridge in its own ashlar, not the village's stone: the
+  // bridgeStone bucket the Ronda masonry fills (maps/archedStoneBridge.ts)
+  const bridgeAshlar = mapId === 'cliffbridge' && regionalArchitecture
+    ? yield* makeBridgeAshlar(regionalArchitecture.surfaces.stone.tint, aniso) : null;
+  const wood = makeWood(noi, aniso, T.wood || null);
+  yield { fine: true };
+  const straw = makeStraw(noi, aniso, T.straw || null);
+  yield { fine: true };
+  const hay = drawn('hay') ? yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512) : undrawnPrint();
+  yield { fine: true };
+  const structureWood = makeStructureDetail(noi, aniso, 'wood');
+  yield { fine: true };
+  const structureCanvas = drawn('structureCanvas') ? makeStructureDetail(noi, aniso, 'canvas') : undrawnPrint();
+  const burlap = drawn('burlap') ? makeBurlapDetail(aniso) : undrawnPrint(); // the sandbags' hessian (the scenery lane, wave 52)
+  yield { fine: true };
+  const structureMetal = makeStructureDetail(noi, aniso, 'steel');
+  yield { fine: true };
+  // the fortifications lane (2026-10-09): the pillbox's poured concrete, the board-formed print (its formwork's boards,
+  // lift lines and tie holes) lifted to a neutral mean the pillbox's vertex colours divide by (maps/fortKit.ts)
+  const fort = fortFor(mapId);
+  // (round 2: the relics' worn print, the boards a third as strong: wave 370 read them as timber)
+  const fortPrint = fort && drawn('fortConcrete') ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED, true) : null;
+  yield { fine: true };
+  const vehiclePaint = drawn('vehicle') ? makeVehiclePaint(noi, Math.min(aniso, 4)) : undrawnPrint();
+  yield { fine: true };
+
+  // Paint before allocating materials or starting sourced replacements: new
+  // row checkpoints must not suspend those not-yet-registered owners.
+  // World-space grime breaks up every tiled hard-surface texture below.
+  const grimeTex = yield* makeGrimeTexture(noi, aniso);
+  // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint — painted only
+  // where the plan will draw the steel material (a container row, a yard kind, corrugated cladding); the mobile tier
+  // paints it at half size (a quarter of the paint time and texture bytes). The timing record on the group is the
+  // build-timing probe's evidence; a steel part on an unpredicted map falls back to a synchronous paint below.
+  // Round 78 (the performance lane): the mobile tier paints no steel atlas at all — its `steel` material carries the
+  // livery in the vertex colours alone (the path the maps without steel already take), which returns the phones'
+  // props to the round-74 texture footprint (the round-71–77 audit read Whiteout on the mobile tier at +2.9 MB of
+  // textures and +5 programs); the record says so (`fallback: 'mobile'`, painted false).
+  const mobileProps = getDeviceTier() === 'mobile';
+  const steelAtlasSize = mobileProps ? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE;
+  const steelAtlas = { needed: steelAtlasNeeded(P.plan, P.industrialCladding) && !mobileProps, painted: false, fallback: mobileProps ? 'mobile' : '', ms: 0, size: 0 };
+  let steel: SteelAtlasTextures | null = null;
+  if (steelAtlas.needed) {
+    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
+    let rowStart = performance.now();
+    let step = painter.next();
+    while (!step.done) {
+      steelAtlas.ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
+      yield step.value;
+      rowStart = performance.now();
+      step = painter.next();
+    }
+    steelAtlas.ms += performance.now() - rowStart;
+    steel = step.value;
+    steelAtlas.painted = true;
+    steelAtlas.size = steelAtlasSize;
+  }
+  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint; the map's
+  // lithology draws it, and its lichen colonies come with it (the scenery lane, 2026-10-04).
+  const rockDetail = drawn('rock') ? yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId)) : undrawnPrint();
+  // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
+  // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
+  // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
+  // (buildings-272) a lava wall is never the coursed brick module, though its map's stone print is brick (Caldera's is)
+  const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';
+  const fieldWallBucket = P.wallStyle === 'adobe' || brickWalls ? 'stone' : 'fieldStone';
+  const fieldStone = fieldWallBucket === 'fieldStone' && drawn('fieldStone')
+    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
+    : stone;
+  // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
+  const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
+  const fieldMud = adobeWallBucket === 'fieldMud' && drawn('fieldMud')
+    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512,
+      mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex))
+    : plaster;
+
+  // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
+  // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
+  // urban) in place when they load; procedural stays the fallback of record.
+  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
+  // The scenery lane (gauntlet wave 66): the boulders wear the map's own terrain rock layer, photographed, in place of
+  // their procedural tile (the fallback of record); the stone's mean, when it lands, is what their material divides the
+  // stone's structure out about. The map's texture readiness waits for it with the buildings'.
+  const rockStoneMean = new THREE.Vector3(0.214, 0.214, 0.214);
+  const sourcedTexturesReady = Promise.all([
+    applySourcedBuildings(
+      regionalArchitecture
+        ? {
+          ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
+          ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
+        }
+        : { plaster, roof: roofT, wood, stone },
+      mapId, P, sourceApplication,
+    ),
+    drawn('rock') ? applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
+      (cfg as { splat?: SourcedTerrainSettings } | null)?.splat ?? {}, sourceApplication,
+      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])) : Promise.resolve([]),
+  ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
+
+  const windowStyle = resolveStructureWindowStyle(mapId);
+  const mats: Record<string, THREE.MeshStandardMaterial> = {
+    plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
+      roughnessMap: plaster.surface, aoMap: plaster.surface, roughness: 1, metalness: 0 }),
+    plaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
+      roughnessMap: plaster2.surface, aoMap: plaster2.surface, roughness: 1, metalness: 0 }),
+    plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
+      roughnessMap: plaster3.surface, aoMap: plaster3.surface, roughness: 1, metalness: 0 }),
+    roof: makeRoofMaterial(roofT, mapId),
+    stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
+      roughnessMap: stone.surface, aoMap: stone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
+    fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
+      roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the mud walls' worn render over their courses (fieldMudSurface.ts)
+    fieldMud: new THREE.MeshStandardMaterial({ map: fieldMud.albedo, normalMap: fieldMud.normal,
+      roughnessMap: fieldMud.surface, aoMap: fieldMud.surface, roughness: 1, metalness: 0 }),
+    wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
+      roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
+    // content_breadth r3: window PANES get real materials — the old shared
+    // near-black 'dark' slabs read as unframed voids at establishing
+    // distance (critique). 'glass' is a low-roughness slate that picks up
+    // sky/env specular; 'curtain' is a muted warm fill (daytime curtained /
+    // shuttered interiors) that breaks the all-black grid without turning
+    // into the white/emissive rectangles seen under Ruinspires' exposure.
+    // world-dressing r1 + AA agent's FINAL measured glass spec (4eccce8):
+    // roughness floor 0.35 (sub-pixel sky-glints shimmered under AA at
+    // range — the sky-catch read comes from envMapIntensity, not tightness),
+    // metalness <= 0.2, envMapIntensity capped at 1.0 below (1.5 pushed
+    // glints past the 1.78 bloom threshold).
+    glass: new THREE.MeshPhysicalMaterial({ color: windowStyle.glassColor,
+      roughness: windowStyle.glassRoughness, metalness: windowStyle.glassMetalness,
+      clearcoat: windowStyle.glassClearcoat,
+      clearcoatRoughness: windowStyle.glassClearcoatRoughness,
+      envMapIntensity: windowStyle.glassEnvMapIntensity }),
+    curtain: new THREE.MeshStandardMaterial({ color: windowStyle.curtainColor,
+      roughness: 0.94, metalness: 0, emissive: windowStyle.curtainEmissive,
+      emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
+    straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
+      roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
+    // (b15) the straw destructibles — bales, stooks, the field stacks — wear the hay print's bands (makeHay); the
+    // straw bucket (thatched roofs, reeds) keeps the straw print. The same shader as the straw (its program)
+    hay: new THREE.MeshStandardMaterial({ map: hay.albedo, normalMap: hay.normal,
+      roughnessMap: hay.surface, aoMap: hay.surface, roughness: 1, metalness: 0 }),
+    // round 75 item 6: the tile rides the map slots so the library owns it; the rock hook samples it triplanar
+    // (a displaced sphere has no UVs), the vertex tone stays the stone's colour
+    rock: new THREE.MeshStandardMaterial({
+      map: rockDetail.albedo, normalMap: rockDetail.normal, roughnessMap: rockDetail.surface, aoMap: rockDetail.surface,
+      vertexColors: true, roughness: 0.95, metalness: 0,
+    }),
+    baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // the ground lane (wave 234): the rail kit's bed and shoulders, the baked material's tones under crushed stone and
+    // the track's grime (railBallast.ts; its parts' UVs carry their place across the track)
+    ballast: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }),
+    // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
+    pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
+    // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
+    // the rust mask the weathering hook below mixes toward rust.
+    steel: new THREE.MeshStandardMaterial({
+      ...(steel ? { map: steel.albedo, normalMap: steel.normal, roughnessMap: steel.surface, aoMap: steel.surface } : {}),
+      vertexColors: true, roughness: 1, metalness: 0.06,
+    }),
+    vehicle: new THREE.MeshStandardMaterial({
+      map: vehiclePaint.albedo,
+      normalMap: vehiclePaint.normal,
+      roughnessMap: vehiclePaint.surface,
+      vertexColors: true,
+      roughness: 0.84,
+      metalness: 0.045,
+    }),
+    structureWood: new THREE.MeshStandardMaterial({
+      map: structureWood.albedo, normalMap: structureWood.normal,
+      roughnessMap: structureWood.surface, aoMap: structureWood.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
+    structureCanvas: new THREE.MeshStandardMaterial({
+      map: structureCanvas.albedo, normalMap: structureCanvas.normal,
+      roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
+    // the scenery lane (wave 52): the sandbags' hessian, the canvas material's program on its own weave
+    burlap: new THREE.MeshStandardMaterial({
+      map: burlap.albedo, normalMap: burlap.normal,
+      roughnessMap: burlap.surface, aoMap: burlap.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
+    structureMetal: new THREE.MeshStandardMaterial({
+      map: structureMetal.albedo, normalMap: structureMetal.normal,
+      roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
+      vertexColors: true, roughness: 1, metalness: 0.08,
+    }),
+    // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
+    // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
+    // per-vertex tint and weathering. A map without a kit owns none of them.
+    ...(regionalArchitecture ? {
+      regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
+        roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
+        roughnessMap: plaster2.surface, aoMap: plaster2.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
+        roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
+        roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
+    } : {}),
+    ...(bridgeAshlar ? {
+      bridgeStone: new THREE.MeshStandardMaterial({ map: bridgeAshlar.albedo, normalMap: bridgeAshlar.normal,
+        roughnessMap: bridgeAshlar.surface, aoMap: bridgeAshlar.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+    } : {}),
+  };
+  function configureSurfaceMaterials(): void {
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
+      if (mats[key]) mats[key].aoMapIntensity = 0.82;
+    }
+    // (buildings-270) the roof covering's relief as the place's photos show it (its row's surface.tileRelief): the same
+    // texture, its normal map's scale
+    if (mats.regionalRoof && regionalArchitecture) mats.regionalRoof.normalScale.multiplyScalar(surfaceOf(mapId, regionalArchitecture.id)?.tileRelief ?? 1);
+    // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
+    // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
+    // keeps its stones (the sunlit face, lit directly, hardly changes)
+    if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
+    // (2026-10-08, the world-ibl lane: every surface here takes the sky's full image-based light, the share the grounded
+    // light model calibrates the shade with. The trims these materials used to author (steel 0.42, rock 0.35, baked 0.5,
+    // pole 0.4, vehicle 0.58, structure wood 0.34, canvas 0.22, burlap 0.18, structure metal 0.48) never applied: three
+    // overwrote them with the scene's intensity, so the approved look is the full sky. Honored, they took 82-99 % of a
+    // shaded face's light with them, three times deeper shade than the ground beside them; engine/materialEnvIntensity.ts
+    // now applies an authored value, so a trim here is a real, visible change.)
+    // capped (AA glass spec 4eccce8 — glints above 1.0 crossed the 1.78 bloom threshold; the post-side firefly clamp is a
+    // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
+    // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
+    mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
+    // (the ground lane's rail ballast authored 0.4 on a branch where no trim applied; it takes the full sky as every
+    // other surface here does, the look its wave 300 judged)
+    // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
+    const relief = regionalArchitecture?.surfaces.relief;
+    if (relief) {
+      for (const key of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+        mats[key].normalScale.set(relief.normal, relief.normal);
+        mats[key].aoMapIntensity = relief.ao;
+      }
+    }
+  }
+  configureSurfaceMaterials();
+
+  // Empty geometry buckets still have CSM-registered materials; shader-only
+  // uGrime is also invisible to a mesh/material-property traversal. Declare
+  // both on their world owner so eviction releases every shadow registration
+  // and texture, while GPU suspension retains the same reusable CPU objects.
+  const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
+  onRetained(retainedSurfaceMaterials, [grimeTex, rockDetail.lichen]);
+  yield { fine: true, stage: 'grime-texture' };
+  // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
+  // material whitens its UP-FACING fragments toward drifted snow (clumpy,
+  // noise-broken). This is what fixes the physically-contradictory "fully
+  // snow-free saturated orange roofs in a deep-snow scene" critique: roofs,
+  // wall tops, chimneys, carts, sourced baked models and rocks all carry a
+  // slope-masked snow load, while vertical faces keep their material.
+  const snowCap = mapId === 'winter' || !!P.snowCap;
+  // (the facades lane, round 10; gauntlet wave 301 on Steinburg's render: "blotchy brown staining", "cloud-like blotch
+  // noise standing in for lime render"; on its ashlar: "the same dark grime blotch in every block") a kit's walls keep the
+  // neighbourhood drift but not the props' grime: the 1-3 m blotches darkening a fifth (gB) and the clouds swinging the
+  // tone by 15 % (gA) were the stains, laid over the render's own mottling and the stone's own soiling. Their tone swings
+  // a twentieth, and the rain's runs streak the face instead: 10-30 cm wide, metres long, a few per cent darker. Not on
+  // Verdant (the owner's favourite village keeps its look).
+  const grimeHook: MaterialShaderHook = (shader) => grimeShader(shader, false);
+  const wallGrimeHook: MaterialShaderHook = (shader) => grimeShader(shader, true);
+  const wallGrime = !!regionalArchitecture && mapId !== 'verdant' && !kitLegacy(mapId);
+  const isKitWall = (kind: string) => wallGrime && (kind === 'regionalPlaster' || kind === 'regionalPlaster2'
+    || kind === 'regionalPlaster3' || kind === 'regionalStone' || kind === 'bridgeStone');
+  function grimeShader(shader: MaterialShader, walls: boolean): void {
+    shader.uniforms.uGrime = { value: grimeTex };
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>', /* glsl */`#include <worldpos_vertex>
+{
+  vec4 gw = vec4(transformed, 1.0);
+  vec3 gn = objectNormal;
+  #ifdef USE_INSTANCING
+  gw = instanceMatrix * gw;
+  gn = mat3(instanceMatrix) * gn;
+  #endif
+  vGrimeW = (modelMatrix * gw).xyz;
+  vGrimeN = normalize(mat3(modelMatrix) * gn);
+}`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
+      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nuniform sampler2D uGrime;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
+{
+  float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
+${walls ? `
+  // (the runs along the wall's own horizontal, so a wall turned 45 degrees streaks as an axis-aligned one does)
+  vec2 gT = normalize(vec2(-vGrimeN.z, vGrimeN.x) + vec2(1e-3, 0.0));
+  float gR = texture2D(uGrime, vec2(dot(vGrimeW.xz, gT) * 0.7, vGrimeW.y * 0.05)).g;
+  diffuseColor.rgb *= 0.95 + gA * 0.10;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.6, 0.92, gR) * 0.07 * (1.0 - abs(vGrimeN.y));` : `
+  float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
+  diffuseColor.rgb *= 0.84 + gA * 0.30;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;`}
+  // r3 terrain_environment: smooth ~25-60 m warm/cool + value drift so
+  // adjacent buildings stop sharing one identical facade/roof tone (the
+  // "whole town shares 3-4 materials" tell). Low frequency = no seams
+  // across a single wall, but neighbouring houses land on different tints.
+  float gC = texture2D(uGrime, vGrimeW.xz * 0.0058 + vec2(0.31, 0.67)).b;
+  diffuseColor.rgb *= 0.92 + gC * 0.16;
+  diffuseColor.rgb = mix(diffuseColor.rgb,
+    diffuseColor.rgb * (gC > 0.5 ? vec3(1.05, 1.0, 0.93) : vec3(0.95, 0.99, 1.06)),
+    abs(gC - 0.5) * 1.1);
+  // Round 75 weathering law (v7), shared by every props surface:
+  //  - sun fade: upward faces bleach and desaturate a little (roofs, container tops, drum lids)
+  //  - rust: an ORM blue-channel mask (the steel atlas paints one; every other atlas carries zero) mixed toward
+  //    rust with a world-space break-up so two identical panels never rust alike, with runs pulled down the face
+  {
+    float fadeUp = smoothstep(0.55, 0.92, vGrimeN.y) * 0.11;
+    float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(luma) * 1.06 + diffuseColor.rgb * 0.06, fadeUp);
+    #ifdef USE_ROUGHNESSMAP
+    float rustMask = texture2D(roughnessMap, vRoughnessMapUv).b;
+    if (rustMask > 0.002) {
+      float runs = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.9, vGrimeW.y * 0.06)).g;
+      float breakup = 0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 0.37 + vGrimeW.y * 0.21).r;
+      float rust = clamp(rustMask * breakup * (0.7 + 0.6 * runs) * (1.0 - 0.5 * max(0.0, vGrimeN.y)), 0.0, 1.0);
+      vec3 rustColor = mix(vec3(0.26, 0.10, 0.04), vec3(0.46, 0.20, 0.07), breakup);
+      diffuseColor.rgb = mix(diffuseColor.rgb, rustColor, rust);
+    }
+    #endif
+  }
+${snowCap ? `
+  // winter: slope-masked snow load on upward faces (clumpy, wind-tailed)
+  {
+    float swN = texture2D(uGrime, vGrimeW.xz * 0.11 + vec2(0.13, 0.71)).r;
+    float sw = smoothstep(0.52, 0.80, vGrimeN.y + (swN - 0.5) * 0.22);
+    sw *= 0.72 + 0.28 * texture2D(uGrime, vGrimeW.xz * 0.031).g;
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), sw * 0.88);
+  }` : ''}
+}`);
+  }
+  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
+  // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
+  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean); };
+  // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
+  // the dusty maps' sun-bleached
+  const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
+  // the ground lane (wave 234): the track bed's crushed stone, its four-foot's oil and cinder, the rails' rust
+  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };
+  // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
+  // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
+  // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
+  // instanced modules shift; the merged heads and foot stones keep their windows.
+  // (b14; gauntlet wave 97: "a dead-level top", "stacked ... slabs"): and the dry-stone modules' stones settle, their
+  // copes drop and lichen grows by world place (stoneWallShader.ts); the module's top is the pool geometry's
+  const stoneShape: THREE.IUniform<THREE.Vector4> = { value: new THREE.Vector4(1.15, STONE_SETTLE_M, snowCap ? 0 : 1, 0) };
+  const fieldStoneHook: MaterialShaderHook = (shader) => {
+    grimeHook(shader);
+    applyStoneWallHook(shader, stoneShape);
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
+#ifdef USE_INSTANCING
+{
+  vec2 cotStoneShift = vec2(floor(fract(dot(instanceMatrix[3].xz, vec2(0.0731, 0.1193))) * 16.0) * 0.4375, 0.0);
+  #ifdef USE_MAP
+  vMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_NORMALMAP
+  vNormalMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_ROUGHNESSMAP
+  vRoughnessMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_AOMAP
+  vAoMapUv += cotStoneShift;
+  #endif
+}
+#endif`);
+  };
+  // the scenery lane (b14; gauntlet wave 97: the mud walls' "wave-top silhouette and rust-colored staining repeat
+  // identically roughly eight times across the frame", "stamped rectangle decals"): the pool draws one module for every
+  // module, so the mud material lays the crown's slumps, the render's losses over the courses and the rain's stains in
+  // world space (mudWallShader.ts). The module's top and shoulder are the pool geometry's (set when it is built); the
+  // shadow pass runs the same crown (its depth material).
+  const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
+  const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
+  // (round 7) a kit's tile sheet — the regional roofs' and, on a kit's map, the base roofs' (the same sheet) — half a mip
+  // softer (applyTileLodBias)
+  const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
+  const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
+  // the hook a kind wears (installSurfaceShaderHooks), which is all of its code beside three's own parameters
+  const propsProgramFamily = (kind: string): string => (tileBiased(kind) ? 'tile' : isKitWall(kind) ? 'wall'
+    : kind === 'dark' || kind === 'glass' ? 'plain'
+      : kind === 'rock' || kind === 'fieldStone' || kind === 'pole' || kind === 'ballast' || kind === 'fieldMud' ? kind
+        : 'grime');
+  function installSurfaceShaderHooks(): void {
+    for (const [materialKind, material] of Object.entries(mats)) {
+      // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
+      const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
+      // (props lane A, #2) the baked material also folds a clutter pool's near or far form by distance (clutterKit.ts:
+      // its own program as before, one hook more; untagged geometry reads 0 and is untouched)
+      const clutterLod = materialKind === 'baked';
+      if (clutterLod) clutterLodDefaults(material);
+      engineCtx.setupShadowMaterial(material, kitHook ?? (
+        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'ballast' ? ballastHook
+            : materialKind === 'fieldMud' ? mudHook
+            : clutterLod ? (shader) => { grimeHook(shader); clutterLodHook(shader); } : grimeHook));
+      // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
+      // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
+      // weathering)
+      // 2026-10-15 (the perf lane): the program key names the hook the material wears, not its kind. Kinds wearing one
+      // hook compile one program between them wherever three's own parameters (maps, vertex colours, side, batching)
+      // agree, as the hessian and the hay always did: the 10-15 link census had 9 of the 32-34 props programs on
+      // Verdant and Urban linking identical code under their kinds' names (the four kit walls, stone and wood, steel and
+      // structure wood...). A biased roof (round 7) and a kit wall (round 10) keep programs of their own, so a map
+      // without a kit never reuses a kit map's. The kind stays readable as userData.propsKind.
+      material.userData.propsKind = materialKind;
+      // (props lane A, #2) the baked material's clutter LOD hook is one hook more than the grime family's: its own key
+      const family = propsProgramFamily(materialKind) + (clutterLod ? CLUTTER_LOD_KEY : '');
+      material.customProgramCacheKey = () =>
+        'world-props-' + family + '-v8' + (snowCap ? 's' : ''); // round 75: the weathering law
+    }
+  }
+  // map revival lane 2 (2026-10-06): a log-walled kit may leave out the wood's cavity map (ArchitectureSurfaces.woodAo)
+  if (regionalArchitecture?.surfaces.woodAo === 0) { mats.wood.aoMap = null; mats.structureWood.aoMap = null; }
+  installSurfaceShaderHooks();
+
+  // the fortifications lane (2026-10-09): the pillbox's concrete (maps/fortKit.ts), made here, outside the shared material
+  // stage (whose receipts evaluate it over their own atlas families): the board-formed print under the kit's vertex
+  // weather, the props' weathering hook, its own program, owned with the rest. A map whose pillbox is not the kit's (the
+  // sangar's) owns none.
+  if (fortPrint) {
+    const fortConcrete = new THREE.MeshStandardMaterial({
+      map: fortPrint.albedo, normalMap: fortPrint.normal, roughnessMap: fortPrint.surface, aoMap: fortPrint.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    });
+    fortConcrete.aoMapIntensity = 0.82;
+    engineCtx.setupShadowMaterial(fortConcrete, grimeHook);
+    fortConcrete.userData.propsKind = 'fortConcrete';
+    fortConcrete.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
+    mats.fortConcrete = fortConcrete;
+    retainedSurfaceMaterials.push(fortConcrete);
+  }
+  // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
+  // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit
+  // paints its own masonry there (the Dalmatian limestone under the tint burned out white)
+  const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
+  if (masonryTint) mats.fieldStone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
+  /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
+  function ensureSteelAtlas(reason: string): void {
+    for (const _ of ensureSteelAtlasSteps(reason)) { /* one task: a recorded building's */ }
+  }
+  // (260, the rooms census: a steel part the plan did not foresee painted the whole atlas in one step of the props build,
+  // 59 ms on Cliffbridge) the on-demand paint sixteen rows a checkpoint, as the planned paint above
+  function* ensureSteelAtlasSteps(reason: string): Generator<PropsBuildSlice, void, void> {
+    if (steel || mobileProps) return; // round 78: the phones never paint it
+    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
+    let ms = 0, rowStart = performance.now();
+    let step = painter.next();
+    while (!step.done) {
+      ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
+      yield step.value;
+      rowStart = performance.now();
+      step = painter.next();
+    }
+    steel = step.value;
+    steelAtlas.painted = true;
+    steelAtlas.fallback = reason;
+    steelAtlas.ms = ms + performance.now() - rowStart;
+    steelAtlas.size = steelAtlasSize;
+    mats.steel.map = steel.albedo;
+    mats.steel.normalMap = steel.normal;
+    mats.steel.roughnessMap = steel.surface;
+    mats.steel.aoMap = steel.surface;
+    mats.steel.needsUpdate = true;
+  }
+  return {
+    T,
+    adobeWallBucket,
+    brickWalls,
+    ensureSteelAtlas,
+    ensureSteelAtlasSteps,
+    fieldWallBucket,
+    fort,
+    grimeHook,
+    grimeTex,
+    isKitWall,
+    mats,
+    mobileProps,
+    mudShape,
+    regionalArchitecture,
+    retainedSurfaceMaterials,
+    rockDressing,
+    snowCap,
+    sourcedTexturesReady,
+    steelAtlas,
+    stoneShape,
+    wallGrimeHook,
+  };
+}
+export type StructureSurfaces = ReturnType<typeof buildStructureSurfaces> extends Generator<unknown, infer R, unknown> ? R : never;
+
 export function createProps(
   heightField: HeightField,
   engineCtx: EngineContext,
@@ -3979,6 +4654,7 @@ const STRUCTURE_SHELL_WAIT_MS = 15000;
 /** (perf-248) And at the broken vehicles' join before building the rest itself (ms). */
 const BROKEN_VEHICLE_WAIT_MS = 15000;
 
+
 function* propsBuildSteps(
   heightField: HeightField,
   engineCtx: EngineContext,
@@ -3988,32 +4664,7 @@ function* propsBuildSteps(
   workerWrecks = false,
   sourceApplication: SourcedTextureApplicationOptions = {},
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
-  const P: PropsSettings = {
-    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
-      'cottage', 'barn', 'cottage', 'cottage'],
-    tones: {}, rockTone: null, wallStoneChance: 0.25,
-    buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
-    wallRuns: null, well: true, hayCrates: true, fences: true,
-    telegraph: true, carts: true, logs: true, logCount: 26, hayCrateSites: 5,
-    haystacks: 0, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
-    wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
-    // r6 terrain_environment dressing passes (per-biome, see map configs):
-    // cropFields = standing crop-row plots on open farmland; lampposts =
-    // cast-iron street lights along the town grid; hedgehogs = steel anti-
-    // tank obstacles scattered on streets/approaches
-    cropFields: 0, lampposts: false, hedgehogs: 0,
-    destructibleBuildings: [],
-    // Authored composite positions that turn a broad lane into a memorable
-    // decision point. Each beat may combine a destructible structure,
-    // sandbag redoubt, hard rock outcrop and staged wreck while reusing the
-    // existing pooled/merged render families.
-    tacticalBeats: [],
-    streetRows: false, curbs: false, monument: false, townCraters: false,
-    ...((cfg && cfg.props) || {}),
-  };
-  // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
-  P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
-    ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
+  const P = resolvePropsSettings(cfg);
   const mapId = cfg ? cfg.id : 'verdant';
   // (2026-11-02 audit R2) the world's own identity, its map and its terrain variant: the trench variant of a map is another
   // world (its destructible registration, its deferred structure measures), never the standard world's replacement
@@ -4021,9 +4672,8 @@ function* propsBuildSteps(
   // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
   // build describes its first building and the queue would take them all in one go
   while (measureOtherMapStructures(worldKey, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
-  // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
+  // (the maps lane, 228) a map's civic plan (its overlay is in P: resolvePropsSettings)
   const civicPlan = civicPlanFor(mapId);
-  if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
   // (the maps lane, 228) the main stream's draws counted (the civic receipts hold a plan's build to the map's own: every
   // seeded pass draws as on the map without it)
   const mainStream = mulberry32(seed);
@@ -4071,520 +4721,16 @@ function* propsBuildSteps(
   // off the whole graded village ground (v) as before
   const town = P.town ? { ...v, ...P.town } : v;
 
-  // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
-  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   // (buildings-270) this build's look ledger: no two neighbouring buildings share every feature (regional/appearance.ts)
   const lookLedger = new AppearanceLedger();
-  if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
-  // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
-  // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
-  const kitRender = regionalArchitecture?.surfaces.render;
-  if (kitRender) {
-    const tones: Record<string, ToneFunction | null | undefined> = { ...(P.tones || {}) };
-    // (the facades lane, round 11) a family the map and the kit leave untoned is painted too: as the canvas would have
-    // been toned (the primary as it comes, the second and third families the shifts below take from it)
-    const shift = (base: ToneFunction | null | undefined, dh: number, ds: number, dl: number): ToneFunction => (h, s, l) => {
-      const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
-      return [Math.max(0, Math.min(1, bh + dh)), Math.max(0, Math.min(1, bs * ds)), Math.max(0, Math.min(1, bl * dl))];
-    };
-    const primary = tones.plaster ?? null;
-    tones.plaster ??= (h: number, s: number, l: number) => [h, s, l];
-    tones.plaster2 ??= shift(primary, +0.022, 1.1, 0.90);
-    tones.plaster3 ??= shift(primary, -0.035, 0.72, 0.84);
-    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
-      const own = tones[key] as (ToneFunction & { base?: ToneFunction }) | null | undefined;
-      if (!own) continue;
-      const base = own.base ?? own;
-      tones[key] = Object.assign((h: number, s: number, l: number) => base(h, s, l),
-        { base, paint: { kind: kitRender.kind, seed: kitRender.seed + (key === 'plaster' ? 0 : 1) } });
-    }
-    P.tones = tones;
-  }
-  // a kit's render relief (maps/regional/types.ts ArchitectureSurfaces.plasterRelief) under the map's own; the canvas's 1.2
-  // where neither sets one
-  if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
-  const T = P.tones || {};
-  // (battle-spikes-253) the kit's render prints, painted ahead by the surface paint worker when the prefetch holds them
-  // (plannedSurfacePaints), else here as makePlaster would paint them: the same painter, the same texels
-  if (kitRender) {
-    let byPaint = paintedRenders.get(noi);
-    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
-    const { kind } = kitRender;
-    for (const seed of [kitRender.seed, kitRender.seed + 1]) {
-      if (byPaint.has(`${kind}:${seed}`)) continue;
-      byPaint.set(`${kind}:${seed}`, yield* paintedAhead(surfacePaintKey({ kind, size: 256, seed }),
-        // oxlint-disable-next-line require-yield -- the in-line paint returns the painter's buffers at once
-        function* () { return kind === 'limeRender' ? paintLimeRender(256, seed) : paintLimewash(256, seed); }));
-    }
-  }
-  const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
-  yield { fine: true };
-  // content_breadth r3: TWO extra render families — the street walls
-  // recycled one plaster print ("same white-plaster box repeats dozens of
-  // times", critique). Map configs may author tones.plaster2/plaster3
-  // (urban.js does); other maps derive tasteful shifts of their own plaster
-  // tone so village cottages inherit the variety for free.
-  const _tShift = (
-    base: ToneFunction | null | undefined,
-    dh: number,
-    ds: number,
-    dl: number,
-  ): ToneFunction => (h: number, s: number, l: number) => {
-    const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
-    return [Math.max(0, Math.min(1, bh + dh)),
-      Math.max(0, Math.min(1, bs * ds)),
-      Math.max(0, Math.min(1, bl * dl))];
-  };
-  // the map-revival lane (2026-10-05, Skybridge round 2): a kit that pours its concrete paints plaster2 as that
-  // concrete (glencanyon: board-formed, its formwork's boards, lift lines and tie holes), toned as the render was
-  const plaster2Tone = T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90);
-  const pouredConcrete = regionalArchitecture?.surfaces.concrete;
-  const plaster2 = pouredConcrete
-    ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
-    : makePlaster(noi, aniso, plaster2Tone, null, P.plasterRelief ?? 1.2);
-  yield { fine: true };
-  // These two procedural variants differ only in albedo tone. Share their
-  // immutable relief within this props owner; retained materials deduplicate
-  // final disposal. Primary plaster stays exclusive for sourced image swaps.
-  // (a poured plaster2's relief is the formwork's: plaster3 keeps a render's own)
-  const plaster3 = makePlaster(noi, aniso,
-    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
-  yield { fine: true };
-  const roofT = regionalArchitecture
-    ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
-    : makeRoofTiles(noi, aniso, T.roof || null);
-  yield { fine: true };
-  const stone = regionalArchitecture
-    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
-      regionalArchitecture.surfaces.stone.dressed, regionalArchitecture.surfaces.stone.weathered)
-    : yield* makeStone(noi, aniso, T.stone || null);
-  yield { fine: true, stage: 'stone-maps' };
-  // (2026-10-22, world-polish-240) Aegis Crossing's gorge bridge in its own ashlar, not the village's stone: the
-  // bridgeStone bucket the Ronda masonry fills (maps/archedStoneBridge.ts)
-  const bridgeAshlar = mapId === 'cliffbridge' && regionalArchitecture
-    ? yield* makeBridgeAshlar(regionalArchitecture.surfaces.stone.tint, aniso) : null;
-  const wood = makeWood(noi, aniso, T.wood || null);
-  yield { fine: true };
-  const straw = makeStraw(noi, aniso, T.straw || null);
-  yield { fine: true };
-  const hay = yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512);
-  yield { fine: true };
-  const structureWood = makeStructureDetail(noi, aniso, 'wood');
-  yield { fine: true };
-  const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
-  const burlap = makeBurlapDetail(aniso); // the sandbags' hessian (the scenery lane, wave 52)
-  yield { fine: true };
-  const structureMetal = makeStructureDetail(noi, aniso, 'steel');
-  yield { fine: true };
-  // the fortifications lane (2026-10-09): the pillbox's poured concrete, the board-formed print (its formwork's boards,
-  // lift lines and tie holes) lifted to a neutral mean the pillbox's vertex colours divide by (maps/fortKit.ts)
-  const fort = fortFor(mapId);
-  // (round 2: the relics' worn print, the boards a third as strong: wave 370 read them as timber)
-  const fortPrint = fort ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED, true) : null;
-  yield { fine: true };
-  const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
-  yield { fine: true };
-
-  // Paint before allocating materials or starting sourced replacements: new
-  // row checkpoints must not suspend those not-yet-registered owners.
-  // World-space grime breaks up every tiled hard-surface texture below.
-  const grimeTex = yield* makeGrimeTexture(noi, aniso);
-  // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint — painted only
-  // where the plan will draw the steel material (a container row, a yard kind, corrugated cladding); the mobile tier
-  // paints it at half size (a quarter of the paint time and texture bytes). The timing record on the group is the
-  // build-timing probe's evidence; a steel part on an unpredicted map falls back to a synchronous paint below.
-  // Round 78 (the performance lane): the mobile tier paints no steel atlas at all — its `steel` material carries the
-  // livery in the vertex colours alone (the path the maps without steel already take), which returns the phones'
-  // props to the round-74 texture footprint (the round-71–77 audit read Whiteout on the mobile tier at +2.9 MB of
-  // textures and +5 programs); the record says so (`fallback: 'mobile'`, painted false).
-  const mobileProps = getDeviceTier() === 'mobile';
-  const steelAtlasSize = mobileProps ? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE;
-  const steelAtlas = { needed: steelAtlasNeeded(P.plan, P.industrialCladding) && !mobileProps, painted: false, fallback: mobileProps ? 'mobile' : '', ms: 0, size: 0 };
-  let steel: SteelAtlasTextures | null = null;
-  if (steelAtlas.needed) {
-    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
-    let rowStart = performance.now();
-    let step = painter.next();
-    while (!step.done) {
-      steelAtlas.ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
-      yield step.value;
-      rowStart = performance.now();
-      step = painter.next();
-    }
-    steelAtlas.ms += performance.now() - rowStart;
-    steel = step.value;
-    steelAtlas.painted = true;
-    steelAtlas.size = steelAtlasSize;
-  }
-  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint; the map's
-  // lithology draws it, and its lichen colonies come with it (the scenery lane, 2026-10-04).
-  const rockDetail = yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId));
-  // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
-  // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
-  // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
-  // (buildings-272) a lava wall is never the coursed brick module, though its map's stone print is brick (Caldera's is)
-  const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';
-  const fieldWallBucket = P.wallStyle === 'adobe' || brickWalls ? 'stone' : 'fieldStone';
-  const fieldStone = fieldWallBucket === 'fieldStone'
-    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
-    : stone;
-  // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
-  const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
-  const fieldMud = adobeWallBucket === 'fieldMud'
-    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512,
-      mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex))
-    : plaster;
-
-  // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
-  // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
-  // urban) in place when they load; procedural stays the fallback of record.
-  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
-  // The scenery lane (gauntlet wave 66): the boulders wear the map's own terrain rock layer, photographed, in place of
-  // their procedural tile (the fallback of record); the stone's mean, when it lands, is what their material divides the
-  // stone's structure out about. The map's texture readiness waits for it with the buildings'.
-  const rockStoneMean = new THREE.Vector3(0.214, 0.214, 0.214);
-  const sourcedTexturesReady = Promise.all([
-    applySourcedBuildings(
-      regionalArchitecture
-        ? {
-          ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
-          ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
-        }
-        : { plaster, roof: roofT, wood, stone },
-      mapId, P, sourceApplication,
-    ),
-    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
-      (cfg as { splat?: SourcedTerrainSettings } | null)?.splat ?? {}, sourceApplication,
-      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])),
-  ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
-
-  const windowStyle = resolveStructureWindowStyle(mapId);
-  const mats: Record<string, THREE.MeshStandardMaterial> = {
-    plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
-      roughnessMap: plaster.surface, aoMap: plaster.surface, roughness: 1, metalness: 0 }),
-    plaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
-      roughnessMap: plaster2.surface, aoMap: plaster2.surface, roughness: 1, metalness: 0 }),
-    plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
-      roughnessMap: plaster3.surface, aoMap: plaster3.surface, roughness: 1, metalness: 0 }),
-    roof: makeRoofMaterial(roofT, mapId),
-    stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
-      roughnessMap: stone.surface, aoMap: stone.surface, roughness: 1, metalness: 0 }),
-    // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
-    fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
-      roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
-    // the scenery lane (2026-10-03): the mud walls' worn render over their courses (fieldMudSurface.ts)
-    fieldMud: new THREE.MeshStandardMaterial({ map: fieldMud.albedo, normalMap: fieldMud.normal,
-      roughnessMap: fieldMud.surface, aoMap: fieldMud.surface, roughness: 1, metalness: 0 }),
-    wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
-      roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
-    // content_breadth r3: window PANES get real materials — the old shared
-    // near-black 'dark' slabs read as unframed voids at establishing
-    // distance (critique). 'glass' is a low-roughness slate that picks up
-    // sky/env specular; 'curtain' is a muted warm fill (daytime curtained /
-    // shuttered interiors) that breaks the all-black grid without turning
-    // into the white/emissive rectangles seen under Ruinspires' exposure.
-    // world-dressing r1 + AA agent's FINAL measured glass spec (4eccce8):
-    // roughness floor 0.35 (sub-pixel sky-glints shimmered under AA at
-    // range — the sky-catch read comes from envMapIntensity, not tightness),
-    // metalness <= 0.2, envMapIntensity capped at 1.0 below (1.5 pushed
-    // glints past the 1.78 bloom threshold).
-    glass: new THREE.MeshPhysicalMaterial({ color: windowStyle.glassColor,
-      roughness: windowStyle.glassRoughness, metalness: windowStyle.glassMetalness,
-      clearcoat: windowStyle.glassClearcoat,
-      clearcoatRoughness: windowStyle.glassClearcoatRoughness,
-      envMapIntensity: windowStyle.glassEnvMapIntensity }),
-    curtain: new THREE.MeshStandardMaterial({ color: windowStyle.curtainColor,
-      roughness: 0.94, metalness: 0, emissive: windowStyle.curtainEmissive,
-      emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
-    straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
-      roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
-    // (b15) the straw destructibles — bales, stooks, the field stacks — wear the hay print's bands (makeHay); the
-    // straw bucket (thatched roofs, reeds) keeps the straw print. The same shader as the straw (its program)
-    hay: new THREE.MeshStandardMaterial({ map: hay.albedo, normalMap: hay.normal,
-      roughnessMap: hay.surface, aoMap: hay.surface, roughness: 1, metalness: 0 }),
-    // round 75 item 6: the tile rides the map slots so the library owns it; the rock hook samples it triplanar
-    // (a displaced sphere has no UVs), the vertex tone stays the stone's colour
-    rock: new THREE.MeshStandardMaterial({
-      map: rockDetail.albedo, normalMap: rockDetail.normal, roughnessMap: rockDetail.surface, aoMap: rockDetail.surface,
-      vertexColors: true, roughness: 0.95, metalness: 0,
-    }),
-    baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
-    // the ground lane (wave 234): the rail kit's bed and shoulders, the baked material's tones under crushed stone and
-    // the track's grime (railBallast.ts; its parts' UVs carry their place across the track)
-    ballast: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }),
-    // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
-    pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
-    // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
-    // the rust mask the weathering hook below mixes toward rust.
-    steel: new THREE.MeshStandardMaterial({
-      ...(steel ? { map: steel.albedo, normalMap: steel.normal, roughnessMap: steel.surface, aoMap: steel.surface } : {}),
-      vertexColors: true, roughness: 1, metalness: 0.06,
-    }),
-    vehicle: new THREE.MeshStandardMaterial({
-      map: vehiclePaint.albedo,
-      normalMap: vehiclePaint.normal,
-      roughnessMap: vehiclePaint.surface,
-      vertexColors: true,
-      roughness: 0.84,
-      metalness: 0.045,
-    }),
-    structureWood: new THREE.MeshStandardMaterial({
-      map: structureWood.albedo, normalMap: structureWood.normal,
-      roughnessMap: structureWood.surface, aoMap: structureWood.surface,
-      vertexColors: true, roughness: 1, metalness: 0,
-    }),
-    structureCanvas: new THREE.MeshStandardMaterial({
-      map: structureCanvas.albedo, normalMap: structureCanvas.normal,
-      roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
-      vertexColors: true, roughness: 1, metalness: 0,
-    }),
-    // the scenery lane (wave 52): the sandbags' hessian, the canvas material's program on its own weave
-    burlap: new THREE.MeshStandardMaterial({
-      map: burlap.albedo, normalMap: burlap.normal,
-      roughnessMap: burlap.surface, aoMap: burlap.surface,
-      vertexColors: true, roughness: 1, metalness: 0,
-    }),
-    structureMetal: new THREE.MeshStandardMaterial({
-      map: structureMetal.albedo, normalMap: structureMetal.normal,
-      roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
-      vertexColors: true, roughness: 1, metalness: 0.08,
-    }),
-    // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
-    // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
-    // per-vertex tint and weathering. A map without a kit owns none of them.
-    ...(regionalArchitecture ? {
-      regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
-        roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-      regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
-        roughnessMap: plaster2.surface, aoMap: plaster2.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-      regionalPlaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
-        roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-      regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
-        roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-      regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
-    } : {}),
-    ...(bridgeAshlar ? {
-      bridgeStone: new THREE.MeshStandardMaterial({ map: bridgeAshlar.albedo, normalMap: bridgeAshlar.normal,
-        roughnessMap: bridgeAshlar.surface, aoMap: bridgeAshlar.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-    } : {}),
-  };
-  function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
-      if (mats[key]) mats[key].aoMapIntensity = 0.82;
-    }
-    // (buildings-270) the roof covering's relief as the place's photos show it (its row's surface.tileRelief): the same
-    // texture, its normal map's scale
-    if (mats.regionalRoof && regionalArchitecture) mats.regionalRoof.normalScale.multiplyScalar(surfaceOf(mapId, regionalArchitecture.id)?.tileRelief ?? 1);
-    // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
-    // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
-    // keeps its stones (the sunlit face, lit directly, hardly changes)
-    if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
-    // (2026-10-08, the world-ibl lane: every surface here takes the sky's full image-based light, the share the grounded
-    // light model calibrates the shade with. The trims these materials used to author (steel 0.42, rock 0.35, baked 0.5,
-    // pole 0.4, vehicle 0.58, structure wood 0.34, canvas 0.22, burlap 0.18, structure metal 0.48) never applied: three
-    // overwrote them with the scene's intensity, so the approved look is the full sky. Honored, they took 82-99 % of a
-    // shaded face's light with them, three times deeper shade than the ground beside them; engine/materialEnvIntensity.ts
-    // now applies an authored value, so a trim here is a real, visible change.)
-    // capped (AA glass spec 4eccce8 — glints above 1.0 crossed the 1.78 bloom threshold; the post-side firefly clamp is a
-    // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
-    // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
-    mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
-    // (the ground lane's rail ballast authored 0.4 on a branch where no trim applied; it takes the full sky as every
-    // other surface here does, the look its wave 300 judged)
-    // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
-    const relief = regionalArchitecture?.surfaces.relief;
-    if (relief) {
-      for (const key of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
-        mats[key].normalScale.set(relief.normal, relief.normal);
-        mats[key].aoMapIntensity = relief.ao;
-      }
-    }
-  }
-  configureSurfaceMaterials();
-
-  // Empty geometry buckets still have CSM-registered materials; shader-only
-  // uGrime is also invisible to a mesh/material-property traversal. Declare
-  // both on their world owner so eviction releases every shadow registration
-  // and texture, while GPU suspension retains the same reusable CPU objects.
-  const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
-  registerRetainedObject3DResources(group, {
-    materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
-  });
-  yield { fine: true, stage: 'grime-texture' };
-  // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
-  // material whitens its UP-FACING fragments toward drifted snow (clumpy,
-  // noise-broken). This is what fixes the physically-contradictory "fully
-  // snow-free saturated orange roofs in a deep-snow scene" critique: roofs,
-  // wall tops, chimneys, carts, sourced baked models and rocks all carry a
-  // slope-masked snow load, while vertical faces keep their material.
-  const snowCap = mapId === 'winter' || !!P.snowCap;
-  // (the facades lane, round 10; gauntlet wave 301 on Steinburg's render: "blotchy brown staining", "cloud-like blotch
-  // noise standing in for lime render"; on its ashlar: "the same dark grime blotch in every block") a kit's walls keep the
-  // neighbourhood drift but not the props' grime: the 1-3 m blotches darkening a fifth (gB) and the clouds swinging the
-  // tone by 15 % (gA) were the stains, laid over the render's own mottling and the stone's own soiling. Their tone swings
-  // a twentieth, and the rain's runs streak the face instead: 10-30 cm wide, metres long, a few per cent darker. Not on
-  // Verdant (the owner's favourite village keeps its look).
-  const grimeHook: MaterialShaderHook = (shader) => grimeShader(shader, false);
-  const wallGrimeHook: MaterialShaderHook = (shader) => grimeShader(shader, true);
-  const wallGrime = !!regionalArchitecture && mapId !== 'verdant' && !kitLegacy(mapId);
-  const isKitWall = (kind: string) => wallGrime && (kind === 'regionalPlaster' || kind === 'regionalPlaster2'
-    || kind === 'regionalPlaster3' || kind === 'regionalStone' || kind === 'bridgeStone');
-  function grimeShader(shader: MaterialShader, walls: boolean): void {
-    shader.uniforms.uGrime = { value: grimeTex };
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;');
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>', /* glsl */`#include <worldpos_vertex>
-{
-  vec4 gw = vec4(transformed, 1.0);
-  vec3 gn = objectNormal;
-  #ifdef USE_INSTANCING
-  gw = instanceMatrix * gw;
-  gn = mat3(instanceMatrix) * gn;
-  #endif
-  vGrimeW = (modelMatrix * gw).xyz;
-  vGrimeN = normalize(mat3(modelMatrix) * gn);
-}`);
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nuniform sampler2D uGrime;');
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
-{
-  float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
-${walls ? `
-  // (the runs along the wall's own horizontal, so a wall turned 45 degrees streaks as an axis-aligned one does)
-  vec2 gT = normalize(vec2(-vGrimeN.z, vGrimeN.x) + vec2(1e-3, 0.0));
-  float gR = texture2D(uGrime, vec2(dot(vGrimeW.xz, gT) * 0.7, vGrimeW.y * 0.05)).g;
-  diffuseColor.rgb *= 0.95 + gA * 0.10;
-  diffuseColor.rgb *= 1.0 - smoothstep(0.6, 0.92, gR) * 0.07 * (1.0 - abs(vGrimeN.y));` : `
-  float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
-  diffuseColor.rgb *= 0.84 + gA * 0.30;
-  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;`}
-  // r3 terrain_environment: smooth ~25-60 m warm/cool + value drift so
-  // adjacent buildings stop sharing one identical facade/roof tone (the
-  // "whole town shares 3-4 materials" tell). Low frequency = no seams
-  // across a single wall, but neighbouring houses land on different tints.
-  float gC = texture2D(uGrime, vGrimeW.xz * 0.0058 + vec2(0.31, 0.67)).b;
-  diffuseColor.rgb *= 0.92 + gC * 0.16;
-  diffuseColor.rgb = mix(diffuseColor.rgb,
-    diffuseColor.rgb * (gC > 0.5 ? vec3(1.05, 1.0, 0.93) : vec3(0.95, 0.99, 1.06)),
-    abs(gC - 0.5) * 1.1);
-  // Round 75 weathering law (v7), shared by every props surface:
-  //  - sun fade: upward faces bleach and desaturate a little (roofs, container tops, drum lids)
-  //  - rust: an ORM blue-channel mask (the steel atlas paints one; every other atlas carries zero) mixed toward
-  //    rust with a world-space break-up so two identical panels never rust alike, with runs pulled down the face
-  {
-    float fadeUp = smoothstep(0.55, 0.92, vGrimeN.y) * 0.11;
-    float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(luma) * 1.06 + diffuseColor.rgb * 0.06, fadeUp);
-    #ifdef USE_ROUGHNESSMAP
-    float rustMask = texture2D(roughnessMap, vRoughnessMapUv).b;
-    if (rustMask > 0.002) {
-      float runs = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.9, vGrimeW.y * 0.06)).g;
-      float breakup = 0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 0.37 + vGrimeW.y * 0.21).r;
-      float rust = clamp(rustMask * breakup * (0.7 + 0.6 * runs) * (1.0 - 0.5 * max(0.0, vGrimeN.y)), 0.0, 1.0);
-      vec3 rustColor = mix(vec3(0.26, 0.10, 0.04), vec3(0.46, 0.20, 0.07), breakup);
-      diffuseColor.rgb = mix(diffuseColor.rgb, rustColor, rust);
-    }
-    #endif
-  }
-${snowCap ? `
-  // winter: slope-masked snow load on upward faces (clumpy, wind-tailed)
-  {
-    float swN = texture2D(uGrime, vGrimeW.xz * 0.11 + vec2(0.13, 0.71)).r;
-    float sw = smoothstep(0.52, 0.80, vGrimeN.y + (swN - 0.5) * 0.22);
-    sw *= 0.72 + 0.28 * texture2D(uGrime, vGrimeW.xz * 0.031).g;
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), sw * 0.88);
-  }` : ''}
-}`);
-  }
-  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
-  // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
-  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean); };
-  // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
-  // the dusty maps' sun-bleached
-  const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
-  // the ground lane (wave 234): the track bed's crushed stone, its four-foot's oil and cinder, the rails' rust
-  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };
-  // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
-  // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
-  // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
-  // instanced modules shift; the merged heads and foot stones keep their windows.
-  // (b14; gauntlet wave 97: "a dead-level top", "stacked ... slabs"): and the dry-stone modules' stones settle, their
-  // copes drop and lichen grows by world place (stoneWallShader.ts); the module's top is the pool geometry's
-  const stoneShape: THREE.IUniform<THREE.Vector4> = { value: new THREE.Vector4(1.15, STONE_SETTLE_M, snowCap ? 0 : 1, 0) };
-  const fieldStoneHook: MaterialShaderHook = (shader) => {
-    grimeHook(shader);
-    applyStoneWallHook(shader, stoneShape);
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
-#ifdef USE_INSTANCING
-{
-  vec2 cotStoneShift = vec2(floor(fract(dot(instanceMatrix[3].xz, vec2(0.0731, 0.1193))) * 16.0) * 0.4375, 0.0);
-  #ifdef USE_MAP
-  vMapUv += cotStoneShift;
-  #endif
-  #ifdef USE_NORMALMAP
-  vNormalMapUv += cotStoneShift;
-  #endif
-  #ifdef USE_ROUGHNESSMAP
-  vRoughnessMapUv += cotStoneShift;
-  #endif
-  #ifdef USE_AOMAP
-  vAoMapUv += cotStoneShift;
-  #endif
-}
-#endif`);
-  };
-  // the scenery lane (b14; gauntlet wave 97: the mud walls' "wave-top silhouette and rust-colored staining repeat
-  // identically roughly eight times across the frame", "stamped rectangle decals"): the pool draws one module for every
-  // module, so the mud material lays the crown's slumps, the render's losses over the courses and the rain's stains in
-  // world space (mudWallShader.ts). The module's top and shoulder are the pool geometry's (set when it is built); the
-  // shadow pass runs the same crown (its depth material).
-  const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
-  const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
-  // (round 7) a kit's tile sheet — the regional roofs' and, on a kit's map, the base roofs' (the same sheet) — half a mip
-  // softer (applyTileLodBias)
-  const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
-  const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
-  // the hook a kind wears (installSurfaceShaderHooks), which is all of its code beside three's own parameters
-  const propsProgramFamily = (kind: string): string => (tileBiased(kind) ? 'tile' : isKitWall(kind) ? 'wall'
-    : kind === 'dark' || kind === 'glass' ? 'plain'
-      : kind === 'rock' || kind === 'fieldStone' || kind === 'pole' || kind === 'ballast' || kind === 'fieldMud' ? kind
-        : 'grime');
-  function installSurfaceShaderHooks(): void {
-    for (const [materialKind, material] of Object.entries(mats)) {
-      // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
-      const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
-      // (props lane A, #2) the baked material also folds a clutter pool's near or far form by distance (clutterKit.ts:
-      // its own program as before, one hook more; untagged geometry reads 0 and is untouched)
-      const clutterLod = materialKind === 'baked';
-      if (clutterLod) clutterLodDefaults(material);
-      engineCtx.setupShadowMaterial(material, kitHook ?? (
-        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
-            : materialKind === 'ballast' ? ballastHook
-            : materialKind === 'fieldMud' ? mudHook
-            : clutterLod ? (shader) => { grimeHook(shader); clutterLodHook(shader); } : grimeHook));
-      // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
-      // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
-      // weathering)
-      // 2026-10-15 (the perf lane): the program key names the hook the material wears, not its kind. Kinds wearing one
-      // hook compile one program between them wherever three's own parameters (maps, vertex colours, side, batching)
-      // agree, as the hessian and the hay always did: the 10-15 link census had 9 of the 32-34 props programs on
-      // Verdant and Urban linking identical code under their kinds' names (the four kit walls, stone and wood, steel and
-      // structure wood...). A biased roof (round 7) and a kit wall (round 10) keep programs of their own, so a map
-      // without a kit never reuses a kit map's. The kind stays readable as userData.propsKind.
-      material.userData.propsKind = materialKind;
-      // (props lane A, #2) the baked material's clutter LOD hook is one hook more than the grime family's: its own key
-      const family = propsProgramFamily(materialKind) + (clutterLod ? CLUTTER_LOD_KEY : '');
-      material.customProgramCacheKey = () =>
-        'world-props-' + family + '-v8' + (snowCap ? 's' : ''); // round 75: the weathering law
-    }
-  }
-  // map revival lane 2 (2026-10-06): a log-walled kit may leave out the wood's cavity map (ArchitectureSurfaces.woodAo)
-  if (regionalArchitecture?.surfaces.woodAo === 0) { mats.wood.aoMap = null; mats.structureWood.aoMap = null; }
-  installSurfaceShaderHooks();
+  // (garage-env-276) the structure surfaces, shared with the Garage's scene packs (buildStructureSurfaces)
+  const {
+    T, adobeWallBucket, brickWalls, ensureSteelAtlas, ensureSteelAtlasSteps, fieldWallBucket, fort, grimeHook, grimeTex,
+    isKitWall, mats, mobileProps, mudShape, regionalArchitecture, retainedSurfaceMaterials, rockDressing, snowCap,
+    sourcedTexturesReady, steelAtlas, stoneShape, wallGrimeHook,
+  } = yield* buildStructureSurfaces({ mapId, cfg, P, noi, aniso, engineCtx, sourceApplication,
+    onRetained: (materials, textures) => registerRetainedObject3DResources(group, { materials, textures }) });
+  group.userData.steelAtlas = steelAtlas;
 
   const buckets: CompletePropsBuckets = {
     plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
@@ -4594,56 +4740,6 @@ ${snowCap ? `
     // (the phones keep the rail bed on the baked material: no ballast program there)
     ...(mobileProps ? {} : { ballast: [] }),
   };
-  // the fortifications lane (2026-10-09): the pillbox's concrete (maps/fortKit.ts), made here, outside the shared material
-  // stage (whose receipts evaluate it over their own atlas families): the board-formed print under the kit's vertex
-  // weather, the props' weathering hook, its own program, owned with the rest. A map whose pillbox is not the kit's (the
-  // sangar's) owns none.
-  if (fortPrint) {
-    const fortConcrete = new THREE.MeshStandardMaterial({
-      map: fortPrint.albedo, normalMap: fortPrint.normal, roughnessMap: fortPrint.surface, aoMap: fortPrint.surface,
-      vertexColors: true, roughness: 1, metalness: 0,
-    });
-    fortConcrete.aoMapIntensity = 0.82;
-    engineCtx.setupShadowMaterial(fortConcrete, grimeHook);
-    fortConcrete.userData.propsKind = 'fortConcrete';
-    fortConcrete.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
-    mats.fortConcrete = fortConcrete;
-    retainedSurfaceMaterials.push(fortConcrete);
-  }
-  // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
-  // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit
-  // paints its own masonry there (the Dalmatian limestone under the tint burned out white)
-  const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
-  if (masonryTint) mats.fieldStone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
-  group.userData.steelAtlas = steelAtlas;
-  /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
-  function ensureSteelAtlas(reason: string): void {
-    for (const _ of ensureSteelAtlasSteps(reason)) { /* one task: a recorded building's */ }
-  }
-  // (260, the rooms census: a steel part the plan did not foresee painted the whole atlas in one step of the props build,
-  // 59 ms on Cliffbridge) the on-demand paint sixteen rows a checkpoint, as the planned paint above
-  function* ensureSteelAtlasSteps(reason: string): Generator<PropsBuildSlice, void, void> {
-    if (steel || mobileProps) return; // round 78: the phones never paint it
-    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
-    let ms = 0, rowStart = performance.now();
-    let step = painter.next();
-    while (!step.done) {
-      ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
-      yield step.value;
-      rowStart = performance.now();
-      step = painter.next();
-    }
-    steel = step.value;
-    steelAtlas.painted = true;
-    steelAtlas.fallback = reason;
-    steelAtlas.ms = ms + performance.now() - rowStart;
-    steelAtlas.size = steelAtlasSize;
-    mats.steel.map = steel.albedo;
-    mats.steel.normalMap = steel.normal;
-    mats.steel.roughnessMap = steel.surface;
-    mats.steel.aoMap = steel.surface;
-    mats.steel.needsUpdate = true;
-  }
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
@@ -5599,9 +5695,7 @@ ${snowCap ? `
     }
   }
   // Round 75: what a plan builder may read about this battlefield (maps/exteriorDetailKit.ts StructureBuildContext).
-  const structureContext: StructureBuildContext = {
-    mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
-  };
+  const structureContext = structureBuildContextFor(mapId, P, seed);
   /** A building stands in a carriageway when its footprint comes within the road core (the layout brief's 3.5 m,
    * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
   const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
@@ -5657,10 +5751,7 @@ ${snowCap ? `
   function* placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
     fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
     kitPose?: { x: number; z: number; rot: number }): Generator<PropsBuildSlice, boolean, void> {
-    let tmp: PropsBuckets = {
-      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-    };
+    let tmp = createStructureBuckets();
     const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
     attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
@@ -5879,10 +5970,7 @@ ${snowCap ? `
   // A recorded town plan: every building from its own stream at its recorded pose, and nothing generated after it.
   function placeRecordedBuilding(entry: TownPlanEntry): void {
     const stream = mulberry32(entry.rng);
-    let tmp: PropsBuckets = {
-      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-    };
+    let tmp = createStructureBuckets();
     attachStructureBuildContext(tmp, structureContext);
     const builder = BUILDER_BY_NAME[entry.structure] || makeCottage;
     const info = builder(stream, tmp, entry.wall);
@@ -6040,10 +6128,7 @@ ${snowCap ? `
       for (const { entry, added } of rows) {
         if (added && (footprintWet(entry.x, entry.z, entry.w, entry.d, entry.rot) || !townRowPlotClear(entry, heightField._roadDist, obstacles))) continue;
         const stream = mulberry32(entry.rng);
-        let tmp: PropsBuckets = {
-          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-        };
+        let tmp = createStructureBuckets();
         const info = entry.ruined ? makeRuin(stream, tmp)
           : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
         const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
@@ -6157,10 +6242,7 @@ ${snowCap ? `
       const hx = (width * cs + depth * sn) / 2, hz = (width * sn + depth * cs) / 2;
       if (intersectsStreetRow(x, z, hx, hz)) return distance + width * 0.6;
       const ruined = roll < (P.ruinChance ?? 0.24);
-      let tmp: PropsBuckets = {
-        plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-        glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
-      };
+      let tmp = createStructureBuckets();
       // the wall draw stays where the rowhouse call evaluated it (a ruin draws none)
       const rowWall = ruined ? 'stone' : pickWall(srng);
       const info = ruined

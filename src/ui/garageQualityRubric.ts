@@ -32,6 +32,7 @@ interface GarageArchitectureQualityReceipt {
   readonly lastBuildMs?: number;
   readonly collisionAuditedStructures?: number;
   readonly openCollisionMaxFill?: number;
+  readonly facadeDetailCertified?: boolean;
   readonly structurePerimeterSectors?: number;
   readonly treeTrunkMinRadialSegments?: number;
   readonly treeTrunksRooted?: boolean;
@@ -49,6 +50,11 @@ interface GarageQualityInput {
   readonly architecture: Readonly<GarageArchitectureQualityReceipt>;
   readonly workshop: Readonly<GarageWorkshopQualityReceipt>;
   readonly transitionMaxGapMs: number;
+  /**
+   * (garage-env-276) The hero's median display luma (0-255) at the default pose in photo mode, the inner 60 % of the
+   * hull's screen box (tools/garage-hero-luma.mjs). Absent: not measured (a headless receipt), and the floor is not read.
+   */
+  readonly heroLuma?: number;
 }
 
 interface GarageQualityScore {
@@ -136,7 +142,10 @@ function scoreComposition(
       4, 'insufficient readable scene layers')
     + ledger.award(number(architecture.structures) >= (isVerdant ? 1 : 8)
       && number(architecture.structurePerimeterSectors) >= 4,
-    4, 'perimeter is not fully composed across four or more sectors');
+    4, 'perimeter is not fully composed across four or more sectors')
+    // (garage-env-276) a gate, not points (the rubric's 100 stand): a hero under the readable floor fails the pack
+    + ledger.award(input.heroLuma === undefined || input.heroLuma >= GARAGE_HERO_LUMA_FLOOR,
+      0, `hero is under the readable floor (luma ${input.heroLuma} < ${GARAGE_HERO_LUMA_FLOOR})`);
 }
 
 function scoreEnvironmentIdentity(
@@ -163,7 +172,10 @@ function scoreMaterialDetail(
   const { architecture, workshop, isVerdant } = input;
   return ledger.award(number(architecture.facilityMaterialClasses) >= 4,
     2, 'facility material language is too flat')
-    + ledger.award(isVerdant || number(architecture.connectedExteriorParts) >= 120,
+    // (garage-env-276) a pack reports its facade criterion (every kit-rebuilt building's assembly connected);
+    // a report without it is judged on the legacy marker count
+    + ledger.award(isVerdant || (typeof architecture.facadeDetailCertified === 'boolean'
+      ? architecture.facadeDetailCertified : number(architecture.connectedExteriorParts) >= 120),
       2, 'map buildings lack supported facade detail')
     + ledger.award(rows(architecture.textureSets).length >= (isVerdant ? 3 : 6),
       2, 'insufficient PBR surface variety')
@@ -174,21 +186,43 @@ function scoreMaterialDetail(
     2, 'near-tree trunks are faceted or lack grounded root flares');
 }
 
+/**
+ * One outdoor Garage pack's geometry budget, the one owner every gate reads (the rubric, qa:garage, the architecture and
+ * near-facility receipts). PROVISIONAL (garage-env-276, Main 2026-11-23): the packs build their buildings the battlefield's
+ * way (its regional kits and set pieces), measured at 97-165k triangles and 30-35 draws in the browser with p95 frame time
+ * equal to main's at the refresh floor on desktop (1920x1080) and the mobile tier (844x390, 4x CPU). Fixed from the final
+ * base's measurement once the switch work (D) lands. (Was 25 draws, 64k since round 7, 72k since deploy 226.)
+ */
+// 2026-11-24 (Main): drawCalls 36 -> 40, PROVISIONAL. Class 2 and 3 each draw once more (the battle sward; the
+// horizon's ground in the map's battle terrain material, a second group), the battle ground tufts once a card variant,
+// and the pack's draw stat now counts a mesh once per material group (urban measured 37). The real ceiling is set by
+// D's frame-time measurement when the timing ticket reopens; triangles stay at 180k.
+export const GARAGE_PACK_BUDGET = Object.freeze({ triangles: 180_000, drawCalls: 40 });
+
+/**
+ * The hero's readable floor (garage-env-276, Main 2026-11-24): its median display luma at the default pose in photo
+ * mode (tools/garage-hero-luma.mjs) never under this, so later lighting work cannot sink a hero into the dark
+ * unnoticed. The lowest current pack less a margin: the helper measured every pack at f5d580b70f (the open yards under
+ * the grounded model, the showroom spots a share of its sun) from foundry_heavy_works's 112.3 to winter_repair_bunker's
+ * 149.7 (Verdant 133.7, alpine 122.0); 95 is the lowest less 15 %.
+ */
+export const GARAGE_HERO_LUMA_FLOOR = 95;
+
 function scorePerformance(
   input: GarageQualityInput,
   ledger: QualityAwardLedger,
 ): number {
   const { architecture, isVerdant } = input;
-  return ledger.award(isVerdant || number(architecture.drawCalls) <= 25,
-    3, 'environment exceeds 25 draw calls')
+  return ledger.award(isVerdant || number(architecture.drawCalls) <= GARAGE_PACK_BUDGET.drawCalls,
+    3, `environment exceeds ${GARAGE_PACK_BUDGET.drawCalls} draw calls`)
     // 64k since garage round 7 (GA.04, 2026-10-14): the regional buildings at the props standard (real members, openings
     // cut through) need the room; triangles at this scale cost the GPU nothing measurable, and the switch gates below
     // (80 ms gap, 100 ms build) still hold the CPU side. 72k since 2026-10-16 (deploy 226, coordinator ruling Option A):
     // the garages' place-truth facilities and r8 detail with the props lanes' container (LOOKS) and tower (Lane B)
     // rebuilds put railyard_overhaul at 74,795 (70,907 with its yard rails trimmed) and alpine_service_cavern at 70,509;
     // the Garage frame time is measured in the final pass
-    + ledger.award(isVerdant || number(architecture.triangles) <= 72_000,
-      2, 'environment exceeds 72k triangles')
+    + ledger.award(isVerdant || number(architecture.triangles) <= GARAGE_PACK_BUDGET.triangles,
+      2, `environment exceeds ${GARAGE_PACK_BUDGET.triangles / 1000}k triangles`)
     + ledger.award(input.transitionMaxGapMs <= 80,
       3, 'normal-speed switch stalls longer than 80 ms')
     + ledger.award(isVerdant || number(architecture.lastBuildMs) <= 100,

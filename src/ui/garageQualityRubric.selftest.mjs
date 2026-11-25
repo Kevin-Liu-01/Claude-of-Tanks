@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { scoreGarageQuality } from './garageQualityRubric.ts';
+import { GARAGE_HERO_LUMA_FLOOR, scoreGarageQuality } from './garageQualityRubric.ts';
 
 const passing = {
   id: 'test',
@@ -80,5 +80,29 @@ const proxy = scoreGarageQuality({
 });
 assert.equal(proxy.total, 98);
 assert.ok(proxy.failures.includes('proxy tank or proxy component path is active'));
+
+// (garage-env-276) a pack that reports its facade criterion is judged on it, not on the legacy marker count: kit-rebuilt
+// buildings carry no legacy markers, and a reported failure (a kit building with a loose part) consumes the criterion
+const kitFacades = scoreGarageQuality({
+  ...passing,
+  architecture: { ...passing.architecture, connectedExteriorParts: 0, facadeDetailCertified: true },
+});
+assert.equal(kitFacades.total, 100, 'certified kit facades pass without legacy markers');
+const looseKitFacade = scoreGarageQuality({
+  ...passing,
+  architecture: { ...passing.architecture, connectedExteriorParts: 400, facadeDetailCertified: false },
+});
+assert.equal(looseKitFacade.total, 98);
+assert.ok(looseKitFacade.failures.includes('map buildings lack supported facade detail'),
+  'a reported facade failure fails, whatever the marker count');
+
+// (garage-env-276) the hero's readable floor: a gate, not points; a measured hero at or over it passes, under it fails by
+// name with the rubric's 100 unchanged; an unmeasured one (a headless receipt) is not read
+const lit = scoreGarageQuality({ ...passing, heroLuma: GARAGE_HERO_LUMA_FLOOR });
+assert.equal(lit.total, 100); assert.deepEqual(lit.failures, []);
+const dark = scoreGarageQuality({ ...passing, heroLuma: GARAGE_HERO_LUMA_FLOOR - 1 });
+assert.equal(dark.total, 100, 'the floor is a gate: no points move');
+assert.deepEqual(dark.failures, [`hero is under the readable floor (luma ${GARAGE_HERO_LUMA_FLOOR - 1} < ${GARAGE_HERO_LUMA_FLOOR})`]);
+assert.ok(GARAGE_HERO_LUMA_FLOOR >= 0.8 * 112.3 && GARAGE_HERO_LUMA_FLOOR <= 0.9 * 112.3, 'the lowest current pack (112.3) less a 10-20 % margin');
 
 console.log('garageQualityRubric.selftest: ok');

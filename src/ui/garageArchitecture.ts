@@ -7,6 +7,7 @@ import type {
   GarageEnvironmentBuild,
 } from './garageEnvironmentKit.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createGarageSlicer, nextGarageFrame } from './garageSlicer.ts';
 
 interface ArchitectureEngineContext {
   anisotropy?: number;
@@ -58,7 +59,21 @@ export interface GarageArchitectureStats {
   /** The named landmarks of the pack's built skyline (garage r9, garageSkylineKit.ts). */
   kitSkylineLandmarks: readonly string[];
   groundCover: number;
+  /** (garage-env-276, class 2) The battle sward's clumps on the yard (garageEnvironmentKit.ts). */
+  battleSward: number;
+  /** (garage-env-276, class 2) The battle's ground tufts on the yard (garageEnvironmentKit.ts). */
+  battleTufts: number;
   structures: number;
+  /** The structures its map's regional kit rebuilt (garageBattleStructures.ts). */
+  regionalKitStructures: number;
+  /** Its map's set pieces on the horizon ring (garageHorizonSetPieces.ts). */
+  /** What the horizon pieces' audit found (garageHorizonSetPieces.ts). */
+  horizonFindings: readonly string[];
+  /** The parts that hold the orbiting camera or block its view (garageOrbitClearance.ts). */
+  orbitFindings: readonly string[];
+  /** The facility stations the orbit rule moved (garageFacilityDetails.ts). */
+  orbitMoves: ReadonlyArray<{ readonly at: readonly [number, number]; readonly movedM: number }>;
+  horizonSetPieces: ReadonlyArray<Readonly<{ kind: string; bearingDeg: number; distM: number; ringM: number; scale: number; triangles: number }>>;
   wrecks: number;
   facilityProps: number;
   facilityStations: number;
@@ -71,6 +86,9 @@ export interface GarageArchitectureStats {
   approachTerrainGraded: boolean;
   approachMaxGrade: number;
   connectedExteriorParts: number;
+  /** (garage-env-276) the facade criterion: every kit-rebuilt building's assembly connected. */
+  facadeDetailCertified?: boolean;
+  battleCertifiedStructures?: number;
   connectedExteriorBuildings: number;
   maxExteriorSupportGapM: number;
   collisionAuditedStructures: number;
@@ -255,7 +273,17 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     builtHorizonAccentTopM: 0,
     kitSkylineLandmarks: [],
     groundCover: 0,
+    battleSward: 0,
+    battleTufts: 0,
     structures: 1,
+    regionalKitStructures: 0,
+    facadeDetailCertified: true,
+    battleCertifiedStructures: 0,
+    horizonSetPieces: [],
+    horizonFindings: [],
+    orbitFindings: [],
+    orbitMoves: [],
+    orbitAuditMs: 0,
     facilityProps: 0,
     facilityStations: 4,
     approachLabel: 'original enclosed workshop floor',
@@ -482,7 +510,14 @@ export function createGarageArchitectureController(
       builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
       kitSkylineLandmarks: Array.isArray(data.kitSkylineLandmarks) ? data.kitSkylineLandmarks as string[] : [],
       groundCover: numericStat(data.groundCover),
+      battleSward: numericStat(data.battleSward),
+      battleTufts: numericStat(data.battleTufts),
       structures: numericStat(data.structures),
+      regionalKitStructures: numericStat(data.regionalKitStructures),
+      horizonFindings: Array.isArray(data.horizonFindings) ? data.horizonFindings as string[] : [],
+      orbitFindings: Array.isArray(data.orbitFindings) ? data.orbitFindings as string[] : [],
+      orbitMoves: Array.isArray(data.orbitMoves) ? data.orbitMoves as GarageArchitectureStats['orbitMoves'] : [],
+      horizonSetPieces: Array.isArray(data.horizonSetPieces) ? data.horizonSetPieces as GarageArchitectureStats['horizonSetPieces'] : [],
       wrecks: numericStat(data.wrecks),
       facilityProps: numericStat(data.facilityProps),
       facilityStations: numericStat(data.facilityStations),
@@ -495,6 +530,8 @@ export function createGarageArchitectureController(
       approachTerrainGraded: data.approachTerrainGraded === true,
       approachMaxGrade: numericStat(data.approachMaxGrade),
       connectedExteriorParts: numericStat(data.connectedExteriorParts),
+      facadeDetailCertified: typeof data.facadeDetailCertified === 'boolean' ? data.facadeDetailCertified : undefined,
+      battleCertifiedStructures: numericStat(data.battleCertifiedStructures),
       connectedExteriorBuildings: numericStat(data.connectedExteriorBuildings),
       maxExteriorSupportGapM: numericStat(data.maxExteriorSupportGapM),
       collisionAuditedStructures: numericStat(data.collisionAuditedStructures),
@@ -548,7 +585,94 @@ export function createGarageArchitectureController(
     trim();
     publish();
     requestRender();
+    if (record.architecture === 'field_shed') resumeExteriorLate?.();
+    if (record.architecture !== 'field_shed') {
+      const wanted = (): boolean => current(record) && record.build === build;
+      // its map's buildings first (a page's pack presents without them), then its far ring; the buildings only while it is
+      // the selection (a cached pack's stop at their next slice, so the next switch has the thread, and resume when shown)
+      void standLateStructures(build, () => wanted() && selected?.id === record.key)
+        .finally(() => standFarRing(_variant.mapId, build.root, wanted));
+    }
     return true;
+  };
+
+  /**
+   * (garage-env-276, the cold first visit; Kevin 2026-11-24, "fade them in") A shown pack's late layer: its map's
+   * buildings, set pieces and battle prints, built once it is on screen, in slices, their textures uploaded as a warm
+   * uploads them, then faded in (garageEnvironmentKit.ts GarageEnvironmentBuild.standLateStructures). Never on a
+   * switch's path.
+   */
+  /** (the motor pool's exterior) its late layer, stopped when another Garage was selected: run again on its next show. */
+  let resumeExteriorLate: (() => void) | null = null;
+  const standLateStructures = (build: GarageEnvironmentBuild, wanted: () => boolean): Promise<void> => {
+    if (typeof document === 'undefined' || !build.standLateStructures) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const run = (): void => {
+        if (disposed || !wanted()) { resolve(); return; }
+        const live = (): boolean => !disposed && wanted();
+        build.standLateStructures!(live, (group) => uploadTextures(group, live)).catch(() => false).then(() => resolve());
+      };
+      const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (typeof idle === 'function') idle(run, { timeout: 300 });
+      else setTimeout(run, 100);
+    });
+  };
+
+  /**
+   * Uploads each texture an object draws, once (the latch is the session's), a slice a frame (garageSlicer.ts). False
+   * when `live` turns false between uploads.
+   */
+  const uploadTextures = async (object: THREE.Object3D, live: () => boolean): Promise<boolean> => {
+    const { renderer } = engineCtx;
+    if (!renderer) return true;
+    const textures = new Set<THREE.Texture>();
+    object.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        const candidate = material as THREE.MeshStandardMaterial;
+        if (candidate.map) textures.add(candidate.map);
+        if (candidate.normalMap) textures.add(candidate.normalMap);
+      }
+    });
+    // (garage-env-276, the cold first visit) the uploads fill a slice, then yield to the next frame (garageSlicer.ts)
+    const slicer = createGarageSlicer(nextGarageFrame);
+    for (const texture of textures) {
+      if (!live()) return false;
+      if (initializedTextures.has(texture)) continue;
+      // (2026-11-02 audit R5) only an upload is latched: a loader image that missed the 600 ms race has nothing to
+      // upload yet (three uploads only a texture whose version moved), and latching it skipped its warm for good
+      if (texture.version === 0) continue;
+      renderer.initTexture(texture);
+      initializedTextures.add(texture);
+      if (!slicer.due()) continue;
+      await slicer.yield();
+    }
+    return live();
+  };
+
+  /**
+   * (garage round 2, 277) A shown pack's far backdrop: its map's own battle horizon ring (garageBattleStructures.ts
+   * prepareGarageFarRing), prepared once the pack is on screen, in idle slices, and stood in the pack's frame. Never on
+   * a switch's path: the switch presents with its near bands alone, the ring arrives after.
+   */
+  const standFarRing = (mapId: string, root: THREE.Object3D, wanted: () => boolean): void => {
+    // (a page only, as the warm: the receipts under Node measure the packs, not the ring)
+    if (typeof document === 'undefined' || root.getObjectByName('garage_battle_far_ring')) return;
+    const run = (): void => {
+      if (disposed || !wanted()) return;
+      void getEnvironmentKit()
+        .then((kit) => kit.prepareGarageFarRing(mapId, engineCtx, () => !disposed && wanted()))
+        .then((ring) => {
+          if (!ring || disposed || !wanted()) return;
+          root.add(ring);
+          requestRender();
+        })
+        .catch(() => {});
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof idle === 'function') idle(run, { timeout: 1500 });
+    else setTimeout(run, 300);
   };
 
   const attach = (
@@ -640,16 +764,6 @@ export function createGarageArchitectureController(
         advance(record, 'warmed');
         return build;
       }
-      const textures = new Set<THREE.Texture>();
-      build.root.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
-        for (const material of materials) {
-          const candidate = material as THREE.MeshStandardMaterial;
-          if (candidate.map) textures.add(candidate.map);
-          if (candidate.normalMap) textures.add(candidate.normalMap);
-        }
-      });
       await Promise.race([
         build.texturesReady || Promise.resolve(),
         new Promise((resolve) => setTimeout(resolve, TEXTURE_READY_TIMEOUT_MS)),
@@ -659,17 +773,10 @@ export function createGarageArchitectureController(
       // the same library objects, so reinitializing all twelve images on every
       // switch only stretched a cheap 8-15 ms geometry build across hundreds
       // of milliseconds of redundant presentation frames.
-      for (const texture of textures) {
-        // a cancelled prewarm stops between uploads; it stays built, and a later request warms it
-        if (record.cancelled) { advance(record, 'attached'); return null; }
-        if (initializedTextures.has(texture)) continue;
-        // (2026-11-02 audit R5) only an upload is latched: a loader image that missed the 600 ms race has nothing to
-        // upload yet (three uploads only a texture whose version moved), and latching it skipped its warm for good
-        if (texture.version === 0) continue;
-        renderer.initTexture(texture);
-        initializedTextures.add(texture);
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-        if (!live()) return null;
+      // (a cancelled prewarm stops between uploads; it stays built, and a later request warms it)
+      if (!(await uploadTextures(build.root, () => live() && !record.cancelled))) {
+        if (live() && record.cancelled) advance(record, 'attached');
+        return null;
       }
       // garageStage submits exact opaque, transparent, instanced, alpha-test,
       // vertex-color, and CSM program seeds during the covered Verdant boot.
@@ -753,10 +860,24 @@ export function createGarageArchitectureController(
     return collectStats();
   }
 
+  // (garage-env-276) the spring arm: the shown pack answers in its own frame (garageOrbitClearance.ts garageCameraClearance)
+  const toPack = new THREE.Matrix4(), packLook = new THREE.Vector3(), packEye = new THREE.Vector3();
+  /**
+   * The share (0..1) of the segment from `look` to `eye` free of the shown pack's parts (cameraRig.ts ShowroomOrbitDeps
+   * clearance): 1 with no outdoor pack shown.
+   */
+  function cameraClearance(look: THREE.Vector3, eye: THREE.Vector3, marginM?: number): number {
+    const build = active?.build;
+    if (!build?.cameraClearance) return 1;
+    toPack.copy(build.root.matrixWorld).invert();
+    return build.cameraClearance(packLook.copy(look).applyMatrix4(toPack), packEye.copy(eye).applyMatrix4(toPack), marginM);
+  }
+
   return {
     group,
     setVariant,
     resetRendererWarmState,
+    cameraClearance,
     async prepareSelector(): Promise<void> {
       await getEnvironmentKit();
     },
@@ -764,6 +885,71 @@ export function createGarageArchitectureController(
       return prepare(variant, true).then(() => collectStats());
     },
     stats: collectStats,
+    /**
+     * (garage round 2, 277: Kevin, "the world through its doors") The world outside an enclosure: its map's scene pack,
+     * built whole with no yard kit, then clipped to the outside of its recipe's enclosure (its plan footprint)
+     * (garageEnvironmentKit.ts clipGarageEnvironmentToExterior). The stage asks for it after the Garage presents and owns
+     * what it returns; null once the controller is disposed.
+     */
+    async buildEnclosureExterior(variant: GarageVariant): Promise<{
+      readonly root: THREE.Object3D;
+      readonly texturesReady?: Promise<void>;
+      readonly stats: Readonly<{ removedTriangles: number; removedInstances: number; drawCalls: number; triangles: number }>;
+      dispose(): void;
+    } | null> {
+      const kit = await getEnvironmentKit();
+      const footprint = kit.garageEnclosureFootprint(variant);
+      if (disposed || !footprint) return null;
+      const library = ensureAssets(kit);
+      const release = kit.pinGarageEnvironmentCaches(variant);
+      try {
+        const wanted = (): boolean => !disposed;
+        // (garage-env-276: a page's exterior presents on its structures' footprints, as a switch's pack does, its bake no
+        // long task on the Garage the player just booted into; its buildings land after, in slices, and are clipped too)
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted)) === false) if (disposed) return null;
+        const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender, { kitPlacement: null });
+        // (half a metre past the walls: the upstand's thickness)
+        const halfX = footprint.halfXM + 0.5, halfZ = footprint.halfZM + 0.5;
+        const clip = kit.clipGarageEnvironmentToExterior(build.root, halfX, halfZ);
+        const clones = [...clip.clones];
+        build.root.name = `garage_enclosure_exterior_${variant.architecture}`;
+        // (no far ring: through a hall's openings the sky and its clouds carry the distance; Kevin 2026-11-24)
+        let drawCalls = 0, triangles = 0;
+        build.root.traverse((object) => {
+          const mesh = object as THREE.Mesh;
+          if (!mesh.isMesh || !mesh.visible) return;
+          drawCalls += 1;
+          const geometry = mesh.geometry;
+          const count = geometry.index ? geometry.index.count / 3 : (geometry.getAttribute('position')?.count ?? 0) / 3;
+          triangles += count * ((object as THREE.InstancedMesh).isInstancedMesh ? (object as THREE.InstancedMesh).count : 1);
+        });
+        // its buildings, once the exterior stands (the stage adds it on this resolving), clipped as they land: the clip
+        // runs before the next frame draws them
+        // only while the motor pool is the selection (another Garage's switch has the thread); resumed on its next show
+        if (build.standLateStructures) {
+          const landLate = build.standLateStructures.bind(build);
+          const shown = (): boolean => !disposed && selected?.id === variant.id;
+          const attempt = (): void => {
+            resumeExteriorLate = null;
+            void landLate(shown, (group) => uploadTextures(group, shown)).then((landed) => {
+              if (disposed) return;
+              if (!landed) { resumeExteriorLate = attempt; return; }
+              clones.push(...kit.clipGarageEnvironmentToExterior(build.root, halfX, halfZ).clones);
+              requestRender();
+            }).catch(() => {});
+          };
+          void Promise.resolve().then(attempt);
+        }
+        return {
+          root: build.root,
+          texturesReady: build.texturesReady,
+          stats: Object.freeze({ removedTriangles: clip.removedTriangles, removedInstances: clip.removedInstances, drawCalls, triangles: Math.round(triangles) }),
+          dispose: () => { for (const geometry of clones) geometry.dispose(); build.dispose(); },
+        };
+      } finally {
+        release();
+      }
+    },
     /** The pack records' phases, oldest first (diagnostics and receipts): each its architecture and its variant. */
     packPhases: (): Array<{ key: GarageArchitectureKey; variantId: string; phase: GaragePackPhase }> => (
       [...packs.values()].map((record) => ({ key: record.architecture, variantId: record.key, phase: record.phase }))),

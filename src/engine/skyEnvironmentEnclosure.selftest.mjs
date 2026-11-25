@@ -25,9 +25,11 @@ assert.match(rig, /if \(publishedEnclosed !== enclosedPresentation\) \{\s*publis
   'only a change notifies (the first rig\'s included: a Studio boot opens on the sky)');
 assert.match(lighting, /onEnclosureChange\(listener: \(enclosed: boolean\) => void\): \(\) => void \{\s*enclosureListeners\.add\(listener\);\s*return \(\) => \{ enclosureListeners\.delete\(listener\); \};/,
   'onEnclosureChange subscribes and returns the unsubscribe');
-// the enclosure switch (setFarCascadeDormant is its older name) is the flip's path out of the Garage: it re-applies the rig
-assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{\s*setEnclosedPresentation\(on\);/);
-assert.match(lighting, /function setEnclosedPresentation\(on: boolean\): void \{[\s\S]{0,260}if \(enclosureChanged && lastSunPreset\) applyRig\(lastSunPreset\);/);
+// leaving the Garage (setFarCascadeDormant(false)) opens the presentation, and an open Garage yard is the enclosure switch
+// itself (garage-env-276: the shown pack's declared enclosure); either re-applies the rig
+assert.match(lighting, /function setFarCascadeSleep\(sleep: boolean\): void \{\s*if \(!sleep\) setEnclosedPresentation\(false\);/);
+assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{\s*setFarCascadeSleep\(on\);/);
+assert.match(lighting, /function setEnclosedPresentation\(on: boolean\): void \{[\s\S]{0,420}if \(enclosureChanged && lastSunPreset\) applyRig\(lastSunPreset\);/);
 
 // 2. sky: the bake records whether it was the enclosed variant; the sync re-bakes only a bake made enclosed, on the open sky
 const bakeAt = sky.indexOf('bakeEnvironment(): void {');

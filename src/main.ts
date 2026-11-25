@@ -124,6 +124,7 @@ import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
+import { createGarageEnvironmentBakes, GARAGE_ENVIRONMENT_CAP } from './game/garageEnvironmentBakes.ts';
 import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
@@ -599,6 +600,8 @@ const lighting: MainLightingRuntime = await bootStage(
 // before honoring it because all PCF samplers remain active in the shader.
 // Subsequent garage frames skip the invisible 100-700 m shadow redraws.
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
+// (garage-env-276) the boot's light is its pack's enclosure (a Verdant boot never calls activate: the hall stays sealed)
+if (!STUDIO_BOOT_INTENT) lighting.setEnclosedPresentation(getGarageVariant(loadGarageVariantId()).enclosure === 'sealed');
 // (2026-10-16, the engine-cs lane) every flip out of the Garage's sealed bay lights the open ground with the grounded
 // model's environment, never the bay's full-dome bake (sky.ts syncEnvironmentEnclosure)
 lighting.onEnclosureChange((enclosed) => { if (!enclosed) sky.syncEnvironmentEnclosure(); });
@@ -1159,6 +1162,9 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
+// (2026-10-15, the SKY lane) a Garage's sky: its battlefield's under the Garage's fair weather (garageWeather.ts); every
+// Garage sky read goes through it (the sun trim, the presentation preset, the per-pack environment bakes)
+const garageSkyFor = (variant: { readonly mapId: string }) => withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -1168,7 +1174,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getGarageSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
-    return withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
+    return garageSkyFor(variant);
   },
   getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
@@ -1267,12 +1273,23 @@ bus.on('battle:rollout', () => setTimeout(() => {
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
+// (garage-env-276) each pack's environment from its own sky, baked ahead in idle slots and kept per pack while the
+// Garage shows (garageEnvironmentBakes.ts); the selector's intents ask it below, activation installs it by key
+const garageEnvironmentBakes = createGarageEnvironmentBakes({
+  sky,
+  presetFor: garageSkyFor,
+  schedule: (work) => { if (window.requestIdleCallback) window.requestIdleCallback(work); else setTimeout(work, 800); },
+  isShowing: () => garageLightsUp && game.phase === 'garage',
+  capacity: GARAGE_ENVIRONMENT_CAP[resolveDeviceTier(renderer) === 'mobile' ? 'mobile' : 'desktop'],
+});
+if (!STUDIO_BOOT_INTENT) garageEnvironmentBakes.enter();
 const setGarageSpots = (active: boolean): void => {
   if (active) {
     battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
     briefShownForCountdown = false;
     lighting.setBattleLitSet(false);
   }
+  if (active) garageEnvironmentBakes.enter(); else garageEnvironmentBakes.leave();
   garagePhasePresentation.setActive(active);
   garageLightsUp = active;
   killcamAccess.current?.setBattleLights(!active);
@@ -1295,12 +1312,16 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
     mapAmbience.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     // (2026-10-15, the SKY lane) the overcast battlefields' yards under the Garage's fair weather (garageWeather.ts)
-    sky.applyPresentationPreset(withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)), scene);
+    sky.applyPresentationPreset(garageSkyFor(variant), scene);
     worldRuntime.invalidateSkyPresentation();
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },
   placeGarage,
   setGarageSunTrim,
+  // (garage-env-276) the shown pack's enclosure sets the light: an open yard under its battlefield's grounded model
+  setLightEnclosure: (enclosed) => lighting.setEnclosedPresentation(enclosed),
+  installEnvironment: () => sky.bakeEnvironment(),
+  loadOpenSkyLight: loadGroundedLightModel,
   invalidatePresentation: invalidateGaragePresentation,
   setCameraPose: (position, target, fovDegrees) => {
     rig.setExternalPose(position, target, fovDegrees);
@@ -1804,9 +1825,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
         ? garageStage.prepareVariant(previewWarmVariant.id)
         : Promise.resolve(),
     ]).catch(() => undefined);
+    if (previewWarmVariant) garageEnvironmentBakes.want(previewWarmVariant.id);
   },
   onGarageVariantIntent: (variantId: string) => {
     void garageStage.prepareVariant(variantId).catch(() => undefined);
+    garageEnvironmentBakes.want(variantId);
   },
   onGarageVariantSelect: (variantId: string) => {
     selectedGarageVariantId = saveGarageVariantId(variantId);
@@ -2020,6 +2043,8 @@ const showroom = createGarageShowroomRuntime({
   // the tracks rest on the name line; photo mode's whole-screen stage centres the hero
   anchorFoot: () => !document.body.classList.contains('cot-photo-on'),
   floorY: () => GARAGE_POS.y,
+  // (garage-env-276) the spring arm: the eye stays in front of the shown Garage's scenery at every zoom and yaw
+  clearance: (look, eye, marginM) => garageStage.cameraClearance(look, eye, marginM),
 });
 resetGarageShowroom = () => showroom.reset();
 

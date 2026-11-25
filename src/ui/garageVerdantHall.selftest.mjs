@@ -7,11 +7,12 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
 import { buildVerdantFloorAlbedo, VERDANT_FLOOR_POURS, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
+import { leastCpuMs } from '../../tools/starvation-meter.mjs';
 
 const HW = 23, WALL_H = 10;
-const started = performance.now();
-const hall = buildVerdantHallParts(HW, WALL_H);
-const buildMs = performance.now() - started;
+// (garage-env-276) the boot budgets on the least thread CPU of three builds, not the wall clock a loaded machine stretches
+let hall;
+const { leastMs: buildMs } = await leastCpuMs(3, (_index, measure) => { hall = measure(() => buildVerdantHallParts(HW, WALL_H)); });
 
 // budgets: the whole hall under 40k triangles; the outside's apron, fields and woods under 4k
 const parts = ['sheeting', 'roof', 'steel', 'concrete', 'glass', 'exterior'];
@@ -77,9 +78,10 @@ assert.doesNotMatch(stage, /emissive: 0x0d1115|emissive: 0x151b22|emissive: 0x17
 // GA.05 fixes (the garage critic panel, 2026-10-14): the floor is a finished slab on the graded floor program with the
 // concrete detail relief, daylight lands on it under the roof lights and through the shutter, the shutter is two-thirds
 // open, the glass is milky rather than cyan, the roof liner is grey, and no loose cable lies on the floor
-const floorStarted = performance.now();
-const floor = buildVerdantFloorAlbedo({ halfWidthM: HW, shutterX: verdantHallShutter(HW).x });
-const floorMs = performance.now() - floorStarted;
+let floor;
+const { leastMs: floorMs } = await leastCpuMs(3, (_index, measure) => {
+  floor = measure(() => buildVerdantFloorAlbedo({ halfWidthM: HW, shutterX: verdantHallShutter(HW).x }));
+});
 assert.equal(floor.length, VERDANT_FLOOR_TEXELS * VERDANT_FLOOR_TEXELS * 4, 'the floor albedo covers the hall');
 assert.ok(floorMs < 1500, `the floor albedo builds within the boot budget (${floorMs.toFixed(0)} ms)`);
 {
