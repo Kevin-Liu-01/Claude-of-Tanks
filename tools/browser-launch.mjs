@@ -79,6 +79,10 @@ export const BROWSER_GUARD_EXIT_CODE = 86;
 const BROWSER_GUARD_LOG = '/tmp/cot-browser-guard.log';
 
 const GUARD_SWITCH = '--cot-browser-guard';
+// (Main 2026-11-25, modal-layer-277: Kevin heard a lane's battle from its overlap probe's browser) no test browser plays on
+// the owner's speakers. Puppeteer and Playwright mute only a headless launch's defaults; a headed one, or one that drops
+// its defaults (ignoreDefaultArgs: true, or a list naming the flag), played. The guard adds it to every launch's own args.
+export const MUTE_AUDIO = '--mute-audio';
 const EXTRA_SWITCHES = Object.freeze(['--disable-back-forward-cache', '--disable-component-update', '--disable-sync',
   '--no-first-run', '--no-default-browser-check']);
 const FOOTPRINT_EVERY = 5; // ticks between physical-footprint reads (~10 s at the default interval)
@@ -108,8 +112,16 @@ export function browserGuardConfig(guard = {}) {
   };
 }
 
-/** Chrome arguments with the guard's flags merged in; the caller's own values win where it set one. */
-export function guardedLaunchArgs(args = [], { heapMb = 3072, rendererProcessLimit = 4, token = null } = {}) {
+/** Whether a launch asks for the machine's speakers: it lists --mute-audio among the defaults it drops (the one opt-in;
+ *  tools/browser-launch-census.selftest.mjs names every source that writes it). Dropping every default (true) is no ask. */
+export function launchWantsSpeakers(options = {}) {
+  const ignored = options?.ignoreDefaultArgs;
+  return Array.isArray(ignored) && ignored.includes(MUTE_AUDIO);
+}
+
+/** Chrome arguments with the guard's flags merged in; the caller's own values win where it set one. Every browser is mute
+ *  (`speakers: true` only for a launch that asks, launchWantsSpeakers). */
+export function guardedLaunchArgs(args = [], { heapMb = 3072, rendererProcessLimit = 4, token = null, speakers = false } = {}) {
   if (!Array.isArray(args) || !args.every((arg) => typeof arg === 'string')) throw new TypeError('browser guard: args must be strings');
   let jsFlags = false;
   const out = args.map((arg) => {
@@ -121,6 +133,7 @@ export function guardedLaunchArgs(args = [], { heapMb = 3072, rendererProcessLim
   const has = (flag) => out.some((arg) => arg === flag || arg.startsWith(`${flag}=`));
   if (rendererProcessLimit > 0 && !has('--renderer-process-limit')) out.push(`--renderer-process-limit=${rendererProcessLimit}`);
   for (const flag of EXTRA_SWITCHES) if (!has(flag)) out.push(flag);
+  if (!speakers && !has(MUTE_AUDIO)) out.push(MUTE_AUDIO);
   if (token) out.push(`${GUARD_SWITCH}=${token}`);
   return out;
 }
@@ -572,7 +585,7 @@ export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
   // (round 3 B16) SIGINT is the guard's unless the caller decides it (puppeteer's own exits the process inside itself)
   const takesSigint = options?.handleSIGINT === undefined;
   const launchOptions = { ...(options ?? {}), timeout: 0, ...(takesSigint ? { handleSIGINT: false } : {}),
-    args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
+    args: guardedLaunchArgs(options?.args ?? [], { ...config, token, speakers: launchWantsSpeakers(options) }) };
   if (takesSigint) takeSigint(token);
   let watched = false;
   try {
