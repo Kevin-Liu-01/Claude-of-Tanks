@@ -110,6 +110,10 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
 export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/changed-only/chain.selftest.mjs', 'tools/changed-only/resolver.selftest.mjs', 'tools/changed-only/world.selftest.mjs',
 ].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
+  // 277: the chain waits out a live timing hold before it runs (the fixtures pass COT_TIMING_GATE=off)
+  'tools/timing-gate.mjs',
+  // capture-slot-ports-277: the lock hands each render slot its own port block
+  'tools/capture-ports.mjs',
   // 2026-11-02 audit S5: the chain's lock and child process groups
   'tools/chain-lifecycle.mjs',
   // round 2 U38: the chain's GPU holds go through the one hold wrapper (chain-lifecycle runInCaptureHold) and its Vite child

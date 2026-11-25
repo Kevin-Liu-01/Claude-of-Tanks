@@ -222,7 +222,8 @@ put(P, 'src/vehicles/fleetManifest.ts', `export const FLEET_GROUP_BY_ID = { ${EI
 put(P, 'src/vehicles/profiles/alpha.ts', "import { TURRET } from './turretKit.ts';\nexport const ALPHA = { a1: 10 + TURRET, a2: 20 + TURRET, a3: 23 + TURRET, a4: 27 + TURRET };\n");
 put(P, 'src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 30, b2: 41, b3: 44, b4: 52 };\n');
 put(P, 'docs/floors.json', `${JSON.stringify({ schema: 1, tolerance: 1, rows: Object.fromEntries(EIGHT.map((id, i) => [id, { f: i + 1, g: 0 }])) })}\n`);
-const env = { ...process.env, COT_CHANGED_ONLY_CACHE_DIR: cacheDir, NODE_OPTIONS: '' };
+// (277) the fixture chains are tiny: they never wait out a live timing hold (tools/timing-gate.mjs)
+const env = { ...process.env, COT_CHANGED_ONLY_CACHE_DIR: cacheDir, NODE_OPTIONS: '', COT_TIMING_GATE: 'off' };
 const summaries = (root) => {
   const dir = join(root, '.qa-dev/changed-only');
   return existsSync(dir) ? readdirSync(dir).filter((name) => /^\d{4}-.*Z\.json$/.test(name)).sort() : [];
