@@ -11,7 +11,11 @@
  */
 import type { TeamArrangement } from '../../sim/matchRuleset.ts';
 
-export const ROOM_PROTOCOL_VERSION = 2;
+/**
+ * 3 (mp-fixes-277, 2026-11-25): a waiting room publishes its next match's bots (`RoomSnapshot.nextBots`). A snapshot of
+ * another version is refused (readRoomSnapshot), so the rooms Worker ships before the site.
+ */
+export const ROOM_PROTOCOL_VERSION = 3;
 
 /** Capacity (charter R1): 14v14 plus spectators in one room. */
 export const ROOM_MAX_PLAYERS = 28;
@@ -198,6 +202,22 @@ export interface RoomSnapshot {
   host: RoomHostInfo;
   createdAt: number;
   touchedAt: number;
+  /**
+   * (mp-fixes-277; Kevin 2026-11-25, a friend's join "didnt load fast enough") While the room waits: the bots its next
+   * match will seat, planned from a seed the room keeps to itself, so every seat's lobby builds their vehicles before
+   * the start (the joiner's roster stage was 7-12 s of a cold 4 Mbps entry). Only what every seat learns at match_start
+   * anyway: each bot's vehicle, side and paint (no paint on a 'random' battlefield, whose bots' paints hint at the map).
+   * The seed, the map and everything else it drives stay the room's until the start. Absent outside `waiting`.
+   */
+  nextBots?: readonly RoomNextBot[] | null;
+}
+
+/** One bot the waiting room's next match will seat (RoomSnapshot.nextBots). */
+export interface RoomNextBot {
+  specId: string;
+  team: 'alpha' | 'bravo';
+  /** Its paint as the authority will roll it; null where the room's battlefield is 'random'. */
+  camo: string | null;
 }
 
 /** The match host as every participant sees it — `generation` increments on every election (host migration). */
@@ -523,6 +543,12 @@ function isRoomSettings(value: unknown): value is RoomSettings {
     (value.campaignOperationId === null || (typeof value.campaignOperationId === 'string' && ROOM_CAMPAIGN_RE.test(value.campaignOperationId)));
 }
 
+/** A bounded list of next bots (two full sides at most), each a vehicle id, a side and a paint or null. */
+function isRoomNextBots(value: unknown): value is RoomNextBot[] {
+  return Array.isArray(value) && value.length <= 2 * ROOM_DEV_MAX_TEAM_SIZE && value.every((bot) => isRecord(bot) &&
+    typeof bot.specId === 'string' && bot.specId.length > 0 && bot.specId.length <= 64 && (bot.team === 'alpha' || bot.team === 'bravo') &&
+    (bot.camo === null || (typeof bot.camo === 'string' && bot.camo.length <= 64)));
+}
 function isRoomMatchInfo(value: unknown): value is RoomMatchInfo {
   if (!isRecord(value)) return false;
   return typeof value.id === 'string' && value.id.length > 0 && isSafeUnsigned(value.round) &&
@@ -548,7 +574,8 @@ export function readRoomSnapshot(value: unknown): RoomSnapshot {
         (value.lastResult.result === null || (typeof value.lastResult.result === 'string' && RESULT_SET.has(value.lastResult.result))) &&
         (value.lastResult.reason === null || typeof value.lastResult.reason === 'string'))) ||
       !isSafeUnsigned(value.createdAt) || !isSafeUnsigned(value.touchedAt) ||
-      (host !== undefined && !isRoomHostInfo(host))) {
+      (host !== undefined && !isRoomHostInfo(host)) ||
+      (value.nextBots !== undefined && value.nextBots !== null && !isRoomNextBots(value.nextBots))) {
     throw new RoomError('invalid_payload', 'room snapshot fields');
   }
   const ids = new Set(players.map((player) => player.id));

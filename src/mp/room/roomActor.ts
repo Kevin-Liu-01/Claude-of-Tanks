@@ -45,7 +45,7 @@ import type {
 import { electHost, explainElection } from './p2pMatchHost.ts';
 import type { P2pHostReport, P2pMatchHost } from './p2pMatchHost.ts';
 import {
-  abortStart, applyRoomCommand, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planStart, recordMatch,
+  abortStart, applyRoomCommand, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planNextBots, planStart, recordMatch,
   removePlayer, serializeRoom, setPlayerConnected,
 } from './roomPolicy.ts';
 import type { RoomPolicyGuards, RoomStartPlan } from './roomPolicy.ts';
@@ -211,6 +211,12 @@ export class RoomActor {
   private matchTokens = new Map<string, IssuedToken>();
   private startInFlight = false;
   private matchUrl = '';
+  /**
+   * (mp-fixes-277) The next match's seed, drawn while the room waits and kept here, never in the room's state: its bots
+   * are published (RoomSnapshot.nextBots) so every lobby builds their vehicles before the start, and the start plans with
+   * this same seed. A Durable Object that is evicted draws another (the lobbies re-plan; a stale build is a spare one).
+   */
+  private nextSeed: number | null = null;
   private hostLeaseAt: number | null = null;
   private hostReport: P2pHostReport | null = null;
   private hostReportDueAt: number | null = null;
@@ -500,7 +506,14 @@ export class RoomActor {
   }
 
   private stateMessage(): RoomEnvelope {
-    return { type: ROOM_SERVER_MESSAGE.STATE, payload: { room: this.room ? serializeRoom(this.room) : null } };
+    if (!this.room) return { type: ROOM_SERVER_MESSAGE.STATE, payload: { room: null } };
+    const room = serializeRoom(this.room);
+    // (mp-fixes-277) a waiting room names its next match's bots (planned from the seed it keeps), never the seed
+    if (room.phase === 'waiting' && !this.startInFlight) {
+      this.nextSeed ??= Math.floor(this.ports.random() * 0xffffffff) >>> 0;
+      try { room.nextBots = planNextBots(this.room, this.nextSeed); } catch { room.nextBots = null; }
+    }
+    return { type: ROOM_SERVER_MESSAGE.STATE, payload: { room } };
   }
 
   /**
@@ -883,7 +896,9 @@ export class RoomActor {
   private async startMatch(socket: RoomSocketRecord, requestId: string | undefined): Promise<void> {
     const room = this.room!;
     const now = this.ports.now();
-    const seed = Math.floor(this.ports.random() * 0xffffffff) >>> 0;
+    // (mp-fixes-277) the seed the waiting room's published bots were planned from; the next wait draws a fresh one
+    const seed = this.nextSeed ?? (Math.floor(this.ports.random() * 0xffffffff) >>> 0);
+    this.nextSeed = null;
     const plan = planStart(room, { seed, now });
     const matchId = matchIdFrom(this.ports.random, plan.round);
     this.startInFlight = true;

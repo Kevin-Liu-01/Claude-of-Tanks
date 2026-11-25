@@ -13,14 +13,15 @@ import { BATTLE_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
 import type { SerializedLobby } from './lobbyShape.ts';
 import { normalizeTeamArrangement, roomSizeRulesFor, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { resolveMapId } from '../../world/maps/mapIds.ts';
+import { planBotPaints } from '../../sim/camoPaint.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_DEV_MAX_TEAM_SIZE, ROOM_MAP_RE, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
   ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanConsumables, cleanEquipment, cleanId, cleanSeatId, isRecord,
   isRoomTeam, noElection, normalizePlayerName,
 } from './protocol.ts';
 import type {
-  RoomCreateSettings, RoomHostInfo, RoomLastResult, RoomMatchInfo, RoomMode, RoomPlayer, RoomResult, RoomSelection, RoomSettings,
-  RoomSnapshot, RoomTeam,
+  RoomCreateSettings, RoomHostInfo, RoomLastResult, RoomMatchInfo, RoomMode, RoomNextBot, RoomPlayer, RoomResult, RoomSelection,
+  RoomSettings, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
 // rooms host the battle modes only: a practice mode (the proving ground) is solo by definition (sim/matchModes.ts)
@@ -609,9 +610,8 @@ export function canStart(room: RoomSnapshot): boolean {
  * spectators seated as spectators. The room moves to `starting` and the round
  * advances; the caller records the match once the host accepted it.
  */
-export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1a1_abrams_hc' }: { seed: number; now: number; botSpecFallback?: string }): RoomStartPlan {
-  assertStartable(room);
-  if (room.phase !== 'waiting') throw new RoomError('match_running');
+/** The seats a start would plan from the room as it is (its connected players with a vehicle, and its spectators). */
+function planSeats(room: RoomSnapshot, botSpecFallback: string): RoomStartPlan['seats'] {
   const seats: RoomStartPlan['seats'] = [];
   for (const player of room.players) {
     if (!player.connected) continue;
@@ -622,6 +622,29 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
       consumables: (player.consumables ?? []).slice(), camo: player.camo,
     });
   }
+  return seats;
+}
+
+/**
+ * (mp-fixes-277; Kevin 2026-11-25, a friend's join "didnt load fast enough") The bots a start with `seed` would seat,
+ * as RoomSnapshot.nextBots publishes them: planStart's own plan (the same seats, planRoomBots, the same seed) without
+ * changing the room, each bot's paint as the authority rolls it (sim/camoPaint.ts planBotPaints, the roll every seat
+ * repeats after match_start), null on a 'random' battlefield, whose paints would hint at the map the seed draws.
+ */
+export function planNextBots(room: RoomSnapshot, seed: number, botSpecFallback = 'm1a1_abrams_hc'): RoomNextBot[] {
+  const seats = planSeats(room, botSpecFallback);
+  const bots: RoomStartPlan['bots'] = [];
+  planRoomBots(room.settings, seats, bots, seed >>> 0);
+  const mapId = room.settings.mapId;
+  // (a room's bots name no paint of their own: each is rolled, as the authority rolls it)
+  const paints = mapId && mapId !== 'random' ? planBotPaints(seats, bots.map(() => ({ camo: null })), seed >>> 0, mapId) : null;
+  return bots.map((bot, ordinal) => ({ specId: bot.specId, team: bot.team, camo: paints?.[ordinal] ?? null }));
+}
+
+export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1a1_abrams_hc' }: { seed: number; now: number; botSpecFallback?: string }): RoomStartPlan {
+  assertStartable(room);
+  if (room.phase !== 'waiting') throw new RoomError('match_running');
+  const seats = planSeats(room, botSpecFallback);
   const bots: RoomStartPlan['bots'] = [];
   // every bot seat (the symmetric fill, the asymmetric roles, the co-op hostiles) and its vehicle: room/roomBots.ts, the
   // p2p host's derivation (host/hostPlan.planFromRoom) calls it with the same match seed
@@ -737,5 +760,6 @@ export function roomToLobby(room: RoomSnapshot): SerializedLobby {
       id: player.id, name: player.name, team: player.team, specId: player.specId, equipment: player.equipment.slice(),
       camo: player.camo, ready: player.ready, connected: player.connected, isHost: player.isAdmin, rating: null,
     })),
+    nextBots: room.nextBots ? room.nextBots.map((bot) => ({ ...bot })) : null,
   };
 }
