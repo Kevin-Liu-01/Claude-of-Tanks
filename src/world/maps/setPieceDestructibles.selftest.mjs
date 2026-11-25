@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import ts from 'typescript-compiler-api';
 import { SET_PIECE_MASS, setPieceDestructibleKind, setPieceDestructibleTypes, isDenseSetPieceKind } from './setPieceDestructibles.ts';
 import { rollingStockDestructibleTypes as stockTypes, tramDestructibleTypes } from './setPieceDestructibles.ts';
 import { SET_PIECE_SIZE, buildSetPiece } from './vehicleSetPieces.ts';
@@ -44,8 +45,30 @@ assert.equal(shellPassesThroughCollisionRecord({ min: [0, 0, 0], max: [1, 1, 1],
 // both authorities break the crushable a round stops on (so a heavy piece is wrecked where the round stops on it); the
 // dressing hands intact pieces to the props
 const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-assert.match(src('../../game/state.ts'), /function resolveWorldShellImpact\([^)]*\): void \{[\s\S]{0,240}crushWorldPropFromShell\(world, bus, shell, hit, game\._fortified\);/);
-assert.match(src('../../sim/authoritativeMatch.ts'), /function resolveWorldShellHit\([^)]*\): void \{[\s\S]{0,240}destroyShellObstacle\(shell, worldHit\);/);
+// (reds-sweep2-276) both resolves read as their functions' own statements, not a 240-character window: air-crash-he-276
+// (the crash round, `shell.spec = worldImpactSpec(...)`, and its comment) pushed both calls past the window. The claim:
+// the break is an unconditional statement of the resolve's body, reached by every round that meets the world (no exit
+// before it)
+const resolveBreaks = (file, fn, call, claim) => {
+  const source = ts.createSourceFile(file, src(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found = [];
+  const visit = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === fn) found.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  assert.equal(found.length, 1, `${file} declares one ${fn}`);
+  const body = found[0].body.statements;
+  const at = body.findIndex((node) => node.getText(source).replace(/\s+/g, ' ') === call);
+  assert.ok(at >= 0, `${claim} (${call} is a statement of ${fn}'s own body)`);
+  const leaves = (node) => ts.isReturnStatement(node) || ts.isThrowStatement(node)
+    || (!ts.isFunctionLike(node) && (ts.forEachChild(node, leaves) ?? false));
+  assert.ok(!body.slice(0, at).some(leaves), `${claim} (no exit in ${fn} before it)`);
+};
+resolveBreaks('../../game/state.ts', 'resolveWorldShellImpact', 'crushWorldPropFromShell(world, bus, shell, hit, game._fortified);',
+  'solo breaks the crushable a round stops on');
+resolveBreaks('../../sim/authoritativeMatch.ts', 'resolveWorldShellHit', 'destroyShellObstacle(shell, worldHit);',
+  'the authority breaks the crushable a round stops on');
 assert.match(src('../../sim/authoritativeMatch.ts'), /function destroyShellObstacle\([^)]*\): void \{\s*const obstacle = obstacleForWorldHit\(worldHit\);\s*if \(!obstacle\?\.crushable\) return;/);
 assert.match(src('./mapKits.ts'), /if \(!piece\.wrecked && ctx\.setPieceDestructible\) \{ ctx\.setPieceDestructible\(piece\); continue; \}/);
 assert.match(src('../props.ts'), /setPieceDestructible: \(piece\) => \{ setPieceRecords\.push\(piece\); \}/);
