@@ -94,6 +94,9 @@ const solo = process.argv.includes('--solo');
 // seeds (and room codes) from a generator on this seed, so a run's matches draw the same bots, vehicles and 'random' map
 // as another run's and their timings compare (the roster stage swung 6.8-12.4 s with the bots a run drew).
 const seedArg = argValue('seed', '277');
+// --lobby-wait=<s>: the seconds both seats sit in the lobby before readying (a real lobby's wait, in which the lobby
+// preloader builds the room's world and, from room protocol 3, its next bots' vehicles); 0 by default (the worst case)
+const lobbyWaitS = Number(argValue('lobby-wait', 0));
 const roomRandom = seedArg === 'random' ? undefined : (() => {
   let state = (Number(seedArg) >>> 0) || 277;
   return () => { state = (state + 0x6D2B79F5) | 0; let t = Math.imul(state ^ (state >>> 15), 1 | state);
@@ -111,7 +114,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, seed: seedArg, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, seed: seedArg, lobbyWaitS, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -519,6 +522,10 @@ try {
     record.joinerLobby = await B.evaluate(sceneProbe);
     step(`battle-${battle}-b-joined`, { resident: record.joinerLobby.residentIds, worlds: record.joinerLobby.worlds });
 
+    if (lobbyWaitS > 0) {
+      step(`battle-${battle}-lobby-wait`, { s: lobbyWaitS });
+      await sleep(lobbyWaitS * 1000);
+    }
     // ---- ready and start (the lobby's controls; after a battle, the Garage's lobby again)
     for (const page of [B, A]) {
       await waitFor(page, () => document.querySelector('.cot-play [data-action="ready"]')?.disabled === false, 'ready control', 60_000);
