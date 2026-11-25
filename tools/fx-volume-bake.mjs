@@ -26,7 +26,7 @@
  *
  * Every frame is framed on its own cloud (coverage centroid and extent; the extent never shrinks). Frames are spaced
  * in medium time tau = (k / (F-1)); the runtime maps a puff's age onto tau with the medium's gamma (dense early,
- * where a burst changes fastest). All media share one atlas pair (public/fx/vol-media-a.png, -b.png): each medium
+ * where a burst changes fastest). All media share one atlas pair (public/fx/vol-media-a.webp, -b.webp): each medium
  * owns `variants` bands of 8 x 8 tiles, in MEDIA_ORDER — so the runtime draws every medium in one sorted draw call.
  *
  * Deterministic: seeded mulberry32 streams, fixed iteration order, no clock; the same arguments write the same bytes.
@@ -34,10 +34,16 @@
  *
  *   node tools/fx-volume-bake.mjs [--res=96] [--out=public/fx] [--preview=<dir>] [--ledger]
  *                                 [--media=billow,burst] [--frames=N] [--variants=N]   (previews only)
+ *   node tools/fx-volume-bake.mjs --reencode   re-encode the committed pair (texture-diet-277: PNG to WebP) and its ledger
+ *
+ * The sheets are WebP lossless with -exact (texture-diet-277: the PNGs were 2.3 MB of a cold join): every RGBA value is
+ * kept, the colour under zero coverage included, since the runtime decodes them as data (premultiplyAlpha 'none',
+ * colorSpaceConversion 'none'). The ledger records each file's SHA-256, its decoded RGBA's, and the libwebp version.
  */
 import { deflateSync, crc32 } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { decodeRgba, encodeWebp, webpVersion } from './webp-codec.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -663,6 +669,39 @@ function previewLit(W, H, A, B, sun, bg, albedo, emission) {
 // CLI
 // ---------------------------------------------------------------------------------------------------------------
 
+/** A sheet as WebP lossless, every RGBA value exact (the runtime reads them as data); refuses an encode that changed one. */
+function encodeSheet(w, h, rgba, outDir, name) {
+  const bytes = encodeWebp(rgba, w, h, ['-lossless', '-exact', '-z', '9']);
+  const file = join(outDir, name);
+  writeFileSync(file, bytes);
+  const back = decodeRgba(file);
+  if (back.width !== w || back.height !== h || Buffer.compare(Buffer.from(back.rgba), Buffer.from(rgba)) !== 0) {
+    throw new Error(`${name}: the WebP does not decode to the baked RGBA`);
+  }
+  return bytes;
+}
+
+const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
+
+/** --reencode: the committed pair (PNG or WebP) re-encoded as the bake writes it, its ledger's file rows updated. */
+function reencode(root, outDir) {
+  const ledgerPath = join(root, 'src', 'fx', 'volumeAtlases.ledger.json');
+  const ledger = JSON.parse(readFileSync(ledgerPath, 'utf8'));
+  const rgbaSha256 = {};
+  for (const sheet of ['a', 'b']) {
+    const png = join(outDir, `vol-media-${sheet}.png`), webp = join(outDir, `vol-media-${sheet}.webp`);
+    const from = existsSync(png) ? png : webp;
+    const { width, height, rgba } = decodeRgba(from);
+    const bytes = encodeSheet(width, height, rgba, outDir, `vol-media-${sheet}.webp`);
+    if (from === png) rmSync(png);
+    ledger[sheet] = [width, height, sha256(bytes)];
+    rgbaSha256[sheet] = sha256(rgba);
+    console.log(`${from} -> vol-media-${sheet}.webp: ${bytes.length} bytes, RGBA ${rgbaSha256[sheet]}`);
+  }
+  Object.assign(ledger, { encoder: webpVersion(), rgbaSha256 });
+  writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 1)}\n`);
+}
+
 async function main() {
   const arg = (name, fallback) => {
     const hit = process.argv.find((x) => x.startsWith(`--${name}=`));
@@ -677,6 +716,7 @@ async function main() {
   const framesArg = arg('frames', null);
   const variantsArg = arg('variants', null);
   const writeLedger = process.argv.includes('--ledger');
+  if (process.argv.includes('--reencode')) { reencode(root, outDir); return; }
   const bands = [];
   const ledgerMedia = {};
   for (const id of ids) {
@@ -705,10 +745,8 @@ async function main() {
     const s0 = ((2 * yy) * W + 2 * xx) * 4 + c, s1 = s0 + 4, s2 = s0 + W * 4, s3 = s2 + 4;
     Bh[(yy * hw + xx) * 4 + c] = (B[s0] + B[s1] + B[s2] + B[s3] + 2) >> 2;
   }
-  const pngA = encodePng(W, H, A), pngB = encodePng(hw, hh, Bh);
-  writeFileSync(join(outDir, 'vol-media-a.png'), pngA);
-  writeFileSync(join(outDir, 'vol-media-b.png'), pngB);
-  console.log(`atlas ${W}x${H}: a ${pngA.length} bytes, b ${pngB.length} bytes`);
+  const sheetA = encodeSheet(W, H, A, outDir, 'vol-media-a.webp'), sheetB = encodeSheet(hw, hh, Bh, outDir, 'vol-media-b.webp');
+  console.log(`atlas ${W}x${H}: a ${sheetA.length} bytes, b ${sheetB.length} bytes`);
   if (preview) {
     mkdirSync(preview, { recursive: true });
     let k = 0;
@@ -723,14 +761,14 @@ async function main() {
     }
   }
   if (writeLedger) {
-    const sha = (buf) => createHash('sha256').update(buf).digest('hex');
     const ledger = {
       note: 'Generated by `node tools/fx-volume-bake.mjs --ledger` (3D billow volumes ray-marched into flipbooks; sheet '
         + 'a = light from +x, +y, -x and coverage; sheet b = light from -y, emission, motion vectors). Checked by '
         + 'src/fx/volumeMedia.selftest.mjs against src/fx/volumeMedia.ts VOLUME_ATLAS.',
       res, columns: ATLAS_COLUMNS, tile: bands[0].spec.tile, flowScale: FLOW_SCALE, width: W, height: H,
       media: ledgerMedia,
-      a: [W, H, sha(pngA)], b: [hw, hh, sha(pngB)],
+      a: [W, H, sha256(sheetA)], b: [hw, hh, sha256(sheetB)],
+      encoder: webpVersion(), rgbaSha256: { a: sha256(A), b: sha256(Bh) },
     };
     writeFileSync(join(root, 'src', 'fx', 'volumeAtlases.ledger.json'), `${JSON.stringify(ledger, null, 1)}\n`);
   }

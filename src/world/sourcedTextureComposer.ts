@@ -6,6 +6,8 @@ export interface SourcedComposeOptions {
   tint?: readonly [number, number, number] | null;
   desat?: number;
   lift?: number;
+  /** The roughness image's channel: 0 (a greyscale roughness map) or 1 (a packed ORM map, R = AO, G = roughness). */
+  roughChannel?: 0 | 1;
 }
 
 /** Mutate the color readback, retaining the production arithmetic and order. */
@@ -19,6 +21,7 @@ export function composeAlbedoPixels(
     tint = null,
     desat = 0,
     lift = 0,
+    roughChannel = 0,
   }: SourcedComposeOptions = {},
 ): void {
   const d = color;
@@ -38,7 +41,7 @@ export function composeAlbedoPixels(
     d[i + 1] = Math.min(255, g);
     d[i + 2] = Math.min(255, b);
     d[i + 3] = roughInAlpha
-      ? Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul))
+      ? Math.max(8, Math.min(255, (rgd ? rgd[i + roughChannel] : 230) * roughMul))
       : 255;
   }
 }
@@ -49,11 +52,12 @@ export function composeSurfacePixels(
   ao: Uint8ClampedArray | null,
   rough: Uint8ClampedArray | null,
   roughMul = 1,
+  roughChannel: 0 | 1 = 0,
 ): void {
   const d = out, aod = ao, rgd = rough;
   for (let i = 0; i < d.length; i += 4) {
     d[i] = aod ? aod[i] : 255;
-    d[i + 1] = Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul));
+    d[i + 1] = Math.max(8, Math.min(255, (rgd ? rgd[i + roughChannel] : 230) * roughMul));
     d[i + 2] = 0;
     d[i + 3] = 255;
   }

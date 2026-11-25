@@ -19,7 +19,7 @@ import * as THREE from 'three';
 // MOBILE r1: central tier texture scale — the sourced photo-set composites
 // below were the largest world textures left on the mobile tier (7-10 live
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
-import { texSize } from '../engine/quality.ts';
+import { terrainTextureTier, texSize } from '../engine/quality.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { composeAlbedoPixels, composeSurfacePixels, type SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import {
@@ -33,6 +33,20 @@ interface SourceTextureSet {
   normal: string;
   rough: string;
   ao: string;
+}
+
+/** (texture-diet-277) a terrain photo set: three WebPs per quality tier, AO and roughness packed in one ORM map. */
+interface TieredTextureSet {
+  tiered: string;
+}
+
+/** The files a set's photos load from: a building set's four JPGs, or a terrain set's tier (orm stands for ao + rough). */
+interface SetFiles {
+  color: string;
+  normal: string;
+  rough: string | null;
+  ao: string | null;
+  orm: string | null;
 }
 
 type LayerKey = 'G' | 'D' | 'R' | 'M';
@@ -76,6 +90,18 @@ function isTint(value: BuildingTint): value is Tint {
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';
 
+// (texture-diet-277) the terrain sets: tools/terrain-texture-tiers.mjs writes <tier>/<base>_{Color,NormalGL,ORM}.webp from
+// the CC0 1K JPGs beside them (the generator's sources, dropped from dist/); the running preset picks the tier
+// (engine/quality.ts terrainTextureTier), and only that tier is fetched
+const tiered = (base: string): TieredTextureSet => ({ tiered: base });
+
+/** A set's files under the running texture tier. */
+function setFiles(set: SourceTextureSet | TieredTextureSet): SetFiles {
+  if (!('tiered' in set)) return { ...set, orm: null };
+  const at = `${TT}/${terrainTextureTier()}/${set.tiered}`;
+  return { color: `${at}_Color.webp`, normal: `${at}_NormalGL.webp`, rough: null, ao: null, orm: `${at}_ORM.webp` };
+}
+
 // ambientCG 1K JPG naming
 const acg = (dir: string, base: string): SourceTextureSet => ({
   color: `${dir}/${base}_1K-JPG_Color.jpg`,
@@ -83,23 +109,15 @@ const acg = (dir: string, base: string): SourceTextureSet => ({
   rough: `${dir}/${base}_1K-JPG_Roughness.jpg`,
   ao: `${dir}/${base}_1K-JPG_AmbientOcclusion.jpg`,
 });
-// Poly Haven 1K JPG naming
-const ph = (dir: string, base: string): SourceTextureSet => ({
-  color: `${dir}/${base}_diff_1k.jpg`,
-  normal: `${dir}/${base}_nor_gl_1k.jpg`,
-  rough: `${dir}/${base}_rough_1k.jpg`,
-  ao: `${dir}/${base}_ao_1k.jpg`,
-});
 
 const SETS = {
-  grass: acg(TT, 'Grass004'),
-  dryGrass: ph(TT, 'withered_grass'),
-  dirt: acg(TT, 'Ground071'),
-  sand: acg(TT, 'Ground093C'),
-  snow: acg(TT, 'Snow010A'),
-  rock: acg(TT, 'Rock058'),
-  rockWarm: acg(TT, 'Rock063'),
-  cobble: acg(TT, 'PavingStones046'),
+  grass: tiered('Grass004'),
+  dryGrass: tiered('withered_grass'),
+  dirt: tiered('Ground071'),
+  sand: tiered('Ground093C'),
+  snow: tiered('Snow010A'),
+  rock: tiered('Rock058'),
+  cobble: tiered('PavingStones046'),
   // (facades lane, 2026-10-06; wave 174 read the ksar walls' tile as "carved, pharaonic-looking glyphs") Plaster 007's
   // normal map with its rows of blocky losses taken out — a first-party derivative (docs/ATTRIBUTION.md): the trowel
   // undulation and the fine grain kept, the losses' relief replaced by the tile's own quiet grain, their long joint
@@ -111,7 +129,7 @@ const SETS = {
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),
-} satisfies Record<string, SourceTextureSet>;
+} satisfies Record<string, SourceTextureSet | TieredTextureSet>;
 
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
@@ -558,7 +576,7 @@ export function composeAlbedo(
   // Only the terrain splat shader consumes roughness through albedo alpha.
   // Building materials receive it through composeSurface(), so decoding it
   // here as well would repeat a full 1K readback for no output change.
-  const rgd = opts.roughInAlpha ? readScaledPixels(rough, s) : null;
+  const rgd = !opts.roughInAlpha ? null : aod && rough === ao ? aod : readScaledPixels(rough, s); // one ORM readback
   composeAlbedoPixels(px.data, aod, rgd, opts);
   ctx.putImageData(px, 0, 0);
   return c;
@@ -570,14 +588,15 @@ export function composeSurface(
   rough: SourcePhoto | null,
   size: number,
   roughMul = 1,
+  roughChannel: 0 | 1 = 0,
 ): HTMLCanvasElement {
   const aod = readScaledPixels(ao, size);
-  const rgd = readScaledPixels(rough, size);
+  const rgd = aod && rough === ao ? aod : readScaledPixels(rough, size);
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = canvasContext(c);
   const px = ctx.createImageData(size, size);
-  composeSurfacePixels(px.data, aod, rgd, roughMul);
+  composeSurfacePixels(px.data, aod, rgd, roughMul, roughChannel);
   ctx.putImageData(px, 0, 0);
   return c;
 }
@@ -603,7 +622,8 @@ function cachedSurface(
   size: number,
   roughMul: number,
 ): HTMLCanvasElement {
-  return findCachedSurface(setKey, size, roughMul) ?? composeSurface(ao, rough, size, roughMul);
+  return findCachedSurface(setKey, size, roughMul)
+    ?? composeSurface(ao, rough, size, roughMul, composeOptions(setKey, {}).roughChannel ?? 0);
 }
 
 function normalCanvas(img: SourcePhoto): HTMLCanvasElement {
@@ -644,12 +664,17 @@ interface LoadedTextureSet extends SetPhotos<HTMLImageElement> {
 }
 
 async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSet> {
-  const set = SETS[setKey];
+  const set = setFiles(SETS[setKey]);
   const failures: string[] = [];
   const source = (url: string): Promise<HTMLImageElement | null> => loadImage(url).catch((error) => {
     failures.push(error instanceof Error ? error.message : String(error));
     return null;
   });
+  if (set.orm) {
+    // one packed map is both the occlusion (R) and the roughness (G): composeOptions reads roughness from its green
+    const [color, normal, orm] = await Promise.all([source(set.color), source(set.normal), source(set.orm)]);
+    return { color, normal, rough: orm, ao: orm, failures };
+  }
   const [color, normal, rough, ao] = await Promise.all([
     source(set.color), source(set.normal),
     set.rough ? source(set.rough) : null,
@@ -658,11 +683,17 @@ async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSe
   return { color, normal, rough, ao, failures };
 }
 
+/** A set's compose options with its roughness channel: green for a terrain set's packed ORM map, red otherwise. */
+function composeOptions(setKey: keyof typeof SETS, opts: ComposeOptions): ComposeOptions {
+  return 'tiered' in SETS[setKey] ? { ...opts, roughChannel: 1 } : opts;
+}
+
 function composeSet(
   setKey: keyof typeof SETS,
   images: SetPhotos,
-  opts: ComposeOptions,
+  setOpts: ComposeOptions,
 ): { albedo: HTMLCanvasElement; normal: HTMLCanvasElement; surface: HTMLCanvasElement | null } | null {
+  const opts = composeOptions(setKey, setOpts);
   const { color, normal, rough, ao } = images;
   if (!color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
@@ -733,9 +764,11 @@ async function composeDecoded(
       return bitmap;
     } catch { return image; }
   };
+  const aoDrawn = separateSurface ? surface : composite, roughDrawn = (!!opts.roughInAlpha && composite) || surface;
+  const aoDecode = decoded(ao, rough === ao ? aoDrawn || roughDrawn : aoDrawn); // a packed ORM map decodes once
   const [colorPhoto, normalPhoto, aoPhoto, roughPhoto] = await Promise.all([
     decoded(color, composite), decoded(normal, _normalCache.get(setKey)?.size !== size, Math.min(normal.width, texSize(1024))),
-    decoded(ao, separateSurface ? surface : composite), decoded(rough, (!!opts.roughInAlpha && composite) || surface),
+    aoDecode, rough === ao ? aoDecode : decoded(rough, roughDrawn),
   ]);
   try {
     if (signal?.aborted) return null;
@@ -755,7 +788,7 @@ async function composeSetAsync(
   if (signal?.aborted || !color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
   const tint: Tint | null = opts.tint ? [opts.tint[0], opts.tint[1], opts.tint[2]] : null;
-  const snapshot = { ...opts, tint };
+  const snapshot = composeOptions(setKey, { ...opts, tint });
   const key = compositeKey(setKey, snapshot);
   if (_compositeCache.get(key)?.size === size || !canComposeSourcedTextureInWorker()) {
     return composeDecoded(setKey, images, snapshot, signal);

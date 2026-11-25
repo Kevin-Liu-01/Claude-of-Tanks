@@ -1543,6 +1543,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
+    // texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs)
+    'tools/terrain-texture-tiers.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
     'src/world/sourcedBuildingDataSource.selftest.mjs',
     'src/world/sourcedTextureComposer.selftest.mjs',

@@ -132,6 +132,13 @@ export interface QualityPreset {
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
   /**
+   * (texture-diet-277; Kevin 2026-11-25: phones downloaded the desktop's 1K terrain photographs and only scaled them after
+   * decode) the battle terrain's photo-set tier (tools/terrain-texture-tiers.mjs; world/sourcedTextures.ts): '512' fetches
+   * the 512 px sets, absent the 1K ones. Only the chosen tier is fetched; a change re-sources the running battle's terrain
+   * (terrain.ts) and reaches the boulders on the next battlefield. A picture lever only.
+   */
+  readonly terrainTextureTier?: '512';
+  /**
    * 2026-10-13 (Ultra Low; the owner: "also lets make an ultra low graphics setting LOL"): every lever below is a
    * picture lever only. Spotting, smoke cover, collision, hits and the world's layout read none of them, so a match
    * stays fair across presets. Each is absent (the full picture) on every other preset.
@@ -427,6 +434,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
   low: {
     label: 'Low',
+    terrainTextureTier: '512',
     ambience: 0.45,
     msaaSamples: 0,
     tallGrass: 0.25, // round 73 (2026-09-25): a quarter of the sward
@@ -452,6 +460,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // - a quarter of Low's tall grass, the lighter world build (see `lightWorld`).
   ultralow: {
     label: 'Ultra Low',
+    terrainTextureTier: '512',
     ambience: 0,
     msaaSamples: 0,
     tallGrass: 0.1,
@@ -473,6 +482,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // range, no bloom, the cheapest terrain splat. The phone tier already keeps the baked decks and the light world.
   'mobile-ultralow': {
     label: 'Ultra Low',
+    terrainTextureTier: '512',
     ambience: 0,
     msaaSamples: 0,
     maxPixelRatio: 1.0,
@@ -496,6 +506,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // mobile default.
   'mobile-low': {
     label: 'Performance',
+    terrainTextureTier: '512',
     ambience: 0.3,
     msaaSamples: 0,
     // Never raster below one 3D sample per CSS pixel. The final DPR-3 output
@@ -531,6 +542,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   //   graphics memory on the devices most likely to lose their context.
   mobile: {
     label: 'Balanced',
+    terrainTextureTier: '512',
     ambience: 0.4,
     msaaSamples: 0,
     maxPixelRatio: 1.4,
@@ -550,6 +562,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
   'mobile-high': {
     label: 'Quality',
+    terrainTextureTier: '512',
     ambience: 0.5,
     msaaSamples: 2,
     maxPixelRatio: 1.7,
@@ -574,6 +587,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
  */
 const COUCH_PRESET: QualityPreset = Object.freeze({
   label: 'Couch',
+    terrainTextureTier: '512',
   ambience: 0,
   msaaSamples: 0,
   tallGrass: 0.1,
@@ -622,6 +636,11 @@ export function setCouchTier(on: boolean | CouchTierDetail): void {
     shadowMapSizes: [detail.shadowMapSize, detail.shadowMapSize, detail.shadowMapSize / 2, detail.shadowMapSize / 2] as const,
   }) : null;
   broadcastPreset();
+}
+
+/** The battle terrain's photo-set tier under the running preset (QualityPreset.terrainTextureTier). */
+export function terrainTextureTier(): '1k' | '512' {
+  return getPreset().terrainTextureTier === '512' ? '512' : '1k';
 }
 
 export const PRESET_ORDER: readonly DesktopPresetName[] = ['ultralow', 'low', 'medium', 'high', 'ultra'];
