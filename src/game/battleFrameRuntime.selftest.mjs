@@ -155,7 +155,7 @@ assert.equal(simulationSteps, beforeSameFrameClose.simulationSteps + 1,
 {
   const replayGame = { phase: 'battle', preBattleS: 3, result: null, player: { input: {}, combat: {} } };
   let replayActive = true, replayPaused = false, steps = 0;
-  const advanced = [], frames = [], counted = [], rolled = [];
+  const advanced = [], frames = [], counted = [], rolled = [], order = [];
   const replayRuntime = createBattleFrameRuntime({
     game: replayGame,
     settings: { isOpen: () => replayPaused },
@@ -164,11 +164,11 @@ assert.equal(simulationSteps, beforeSameFrameClose.simulationSteps + 1,
     network: { isActive: () => false, pump: () => {} },
     countdown: { isWarmPending: () => false, advance: (seconds, wall) => Math.max(0, seconds - wall), show: (seconds) => counted.push(seconds),
       rollout: (late) => rolled.push(late) },
-    presentation: { captureSoloPose: () => {}, update: (dt, alpha) => frames.push(alpha), updateResult: () => {} },
+    presentation: { captureSoloPose: () => order.push('capture'), update: (dt, alpha) => frames.push(alpha), updateResult: () => {} },
     getRigMode: () => 'ARCADE',
     stepSimulation: () => { steps += 1; },
     emitPause: () => {},
-    replay: { isActive: () => replayActive, advance: (dt) => advanced.push(dt) },
+    replay: { isActive: () => replayActive, advance: (dt) => { advanced.push(dt); order.push('pose'); } },
   });
   replayRuntime.advance(0.05, 0.05, 0, false);
   replayRuntime.advance(0.05, 0.05, 50, false);
@@ -178,6 +178,9 @@ assert.equal(simulationSteps, beforeSameFrameClose.simulationSteps + 1,
   assert.equal(replayGame.preBattleS, 0);
   assert.deepEqual(rolled, [true], 'and it rolls out once, late (no cues)');
   assert.deepEqual(frames, [1, 1], 'its presentation draws the posed state (alpha 1)');
+  // (replay-fixes-277, Kevin 11-25 "no one is actually moving") the solo presentation draws its render poses, which only a
+  // capture advances: every posed frame captures the posed state after the poser wrote it, or the tanks stand still
+  assert.deepEqual(order, ['pose', 'capture', 'pose', 'capture'], 'each posed frame advances the render poses from the posed state');
   replayPaused = true;
   replayRuntime.advance(0.05, 0.05, 100, false);
   assert.equal(advanced.length, 2, 'the menu pauses a replay');

@@ -12,9 +12,12 @@
  *      asked, as long as the range; its size and export time in the receipt.
  *
  * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
- * notice, whose transport enables, whose clock runs when Play is pressed (at 4x), and which plays to the recording's end
- * with a hull moving. Every replay indexer Worker's reply is kept (the problem it named), and each recording is saved
- * beside the receipt for tools/replay-verify.mjs. Live 276: Kevin, "the replays
+ * notice and whose transport enables; then what is DRAWN must be the battle (drawnMotion: paused at three moments, every
+ * shown hull's visual where the track puts it, every hull the track moves moved as far on screen, and the picture riding
+ * the busiest hull 10 s apart changed; Kevin 11-25, "no one is actually moving": the 276 viewer posed the data and drew
+ * the setup); then its clock runs when Play is pressed (at 4x) and it plays to the recording's end. A film (D) must
+ * change as much between its frames 10 s apart. Every replay indexer Worker's reply is kept (the problem it named), and
+ * each recording is saved beside the receipt for tools/replay-verify.mjs. Live 276: Kevin, "the replays
  * dont actually work": the indexer's Worker drew another roster than the page had recorded and refused the replay
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
@@ -165,6 +168,90 @@ const seconds = (clock) => {
 };
 
 /** The viewer opened by whatever the path clicked: it must index, enable Play, run at 4x and reach the end. */
+/** In-page: three animation frames (the presentation draws what the last seek posed). */
+const frames = (page, n = 3) => page.evaluate((count) => new Promise((done) => {
+  let left = count;
+  const tick = () => { if (--left <= 0) done(); else requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}), n);
+
+/** The fraction of pixels (160 x 90, luminance) two screenshots differ in by more than 24 levels, decoded in the page. */
+const pixelChange = (page, a, b) => page.evaluate(async (first, second) => {
+  const load = (data) => new Promise((done, fail) => { const img = new Image(); img.onload = () => done(img); img.onerror = fail; img.src = `data:image/png;base64,${data}`; });
+  const luma = (img) => {
+    const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 90;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 160, 90);
+    const d = ctx.getImageData(0, 0, 160, 90).data; const out = new Float32Array(160 * 90);
+    for (let i = 0; i < out.length; i++) out[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    return out;
+  };
+  const [x, y] = [luma(await load(first)), luma(await load(second))];
+  let changed = 0;
+  for (let i = 0; i < x.length; i++) if (Math.abs(x[i] - y[i]) > 24) changed++;
+  return changed / x.length;
+}, a, b);
+
+/**
+ * (replay-fixes-277, Kevin 11-25 "no one is actually moving") What is DRAWN must be the battle: paused, at three moments,
+ * every shown hull's visual sits where the track (the recording re-simulated) puts it; every hull the track moves more
+ * than 3 m between the first and last moment moves as far on screen (at least three such hulls); and riding the hull
+ * that moves most, the picture 10 s apart differs in at least 3% of its pixels. A frozen replay fails all three (its
+ * hulls drawn at their setup poses while the posed data moved: the 276 viewer).
+ */
+async function drawnMotion(page, shot, log) {
+  const probe = () => page.evaluate(() => {
+    const p = window.__COT_REPLAY.viewer?.();
+    return p ? { timeS: p.timeS, durationS: p.durationS, hulls: p.hulls } : null;
+  });
+  const seek = async (t) => { await page.evaluate((at) => window.__COT_REPLAY.viewer?.()?.seek(at), t); await frames(page); await sleep(150); await frames(page); };
+  const first = await probe();
+  if (!first) return { ok: false, why: 'the viewer offers no probe (no track)' };
+  if (/pause/i.test(await page.evaluate(() => document.querySelector('.cot-replay .play')?.getAttribute('aria-label') ?? ''))) await clickVisible(page, '.cot-replay .play');
+  const D = first.durationS;
+  const moments = [0.15 * D, 0.5 * D, 0.85 * D];
+  const reads = [];
+  for (const t of moments) { await seek(t); reads.push(await probe()); }
+  const flat = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+  let worst = { error: 0, id: null, t: null };
+  for (const read of reads) for (const hull of read.hulls) {
+    if (!hull.visible || !hull.drawn || !hull.track) continue;
+    const error = flat(hull.drawn, hull.track);
+    if (error > worst.error) worst = { error, id: hull.id, t: read.timeS };
+  }
+  const movers = [];
+  for (const hull of reads[0].hulls) {
+    const last = reads[2].hulls.find((entry) => entry.id === hull.id);
+    if (!hull.track || !last?.track || !hull.drawn || !last.drawn) continue;
+    const trackMove = flat(hull.track, last.track), drawnMove = flat(hull.drawn, last.drawn);
+    if (trackMove > 3) movers.push({ id: hull.id, trackMove: +trackMove.toFixed(2), drawnMove: +drawnMove.toFixed(2) });
+  }
+  const lagging = movers.filter((m) => Math.abs(m.drawnMove - m.trackMove) > 1.5);
+  // the picture: riding the hull that moves most, 10 s apart (or the span's ends), the HUD's bands cropped out
+  movers.sort((a, b) => b.trackMove - a.trackMove);
+  let change = null;
+  if (movers.length) {
+    await page.evaluate((id) => window.__COT_REPLAY.viewer?.()?.ride(id), movers[0].id);
+    const t1 = Math.max(0.5, Math.min(D * 0.15, D - 11)), t2 = Math.min(D - 0.2, t1 + 10);
+    const vp = page.viewport();
+    const clip = { x: 0, y: Math.round(vp.height * 0.3), width: vp.width, height: Math.round(vp.height * 0.45) };
+    await seek(t1); await sleep(1500); await frames(page);
+    const a = await page.screenshot({ clip, encoding: 'base64' });
+    await shot('drawn-a');
+    await seek(t2); await sleep(1500); await frames(page);
+    const b = await page.screenshot({ clip, encoding: 'base64' });
+    await shot('drawn-b');
+    change = await pixelChange(page, a, b);
+  }
+  const result = { moments: reads.map((r) => +r.timeS.toFixed(2)), worst: { ...worst, error: +worst.error.toFixed(3) }, movers: movers.length, lagging, change };
+  log.push({ at: 'drawn', ...result });
+  if (worst.error > 0.75) return { ok: false, why: `hull ${worst.id} is drawn ${worst.error.toFixed(2)} m from its track at ${worst.t?.toFixed(1)} s` };
+  if (movers.length < 3) return { ok: false, why: `only ${movers.length} hulls move more than 3 m in the track` };
+  if (lagging.length) return { ok: false, why: `${lagging.length} hulls are not drawn where the track moves them: ${JSON.stringify(lagging.slice(0, 3))}` };
+  if (change === null || change < 0.03) return { ok: false, why: `the picture riding ${movers[0].id} changed in ${((change ?? 0) * 100).toFixed(2)}% of pixels over 10 s` };
+  await seek(0);
+  return { ok: true };
+}
+
 async function watchToEnd(page, shot, log) {
   const opened = Date.now();
   let state = null;
@@ -184,6 +271,8 @@ async function watchToEnd(page, shot, log) {
   log.push({ at: 'transport', ms: Date.now() - opened, state });
   if (!state.playEnabled) return { ok: false, why: `the transport never enabled (note: ${JSON.stringify(state.note)}, clock ${state.clock})` };
   await shot('viewer-ready');
+  const drawn = await drawnMotion(page, shot, log);
+  if (!drawn.ok) return { ok: false, why: `drawn: ${drawn.why}` };
   // Play at 4x: the speed button cycles 0.25, 0.5, 1, 2, 4
   for (let i = 0; i < 5 && state.speed !== '4×'; i++) { await clickVisible(page, '.cot-replay .speed'); state = await viewerState(page); }
   if (!/pause/i.test(state.playLabel ?? '')) await clickVisible(page, '.cot-replay .play');

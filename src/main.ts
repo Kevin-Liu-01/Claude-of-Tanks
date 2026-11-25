@@ -808,6 +808,8 @@ const bus = createBus(devTrace
   lastTrace: () => lastReplayTrace,
   // the watched replay filmed to an MP4 and saved (exportReplayFilm; tools/replay-ui-flow.browser.selftest.mjs films one)
   film: (request: ReplayFilmRequest) => exportReplayFilm(request),
+  // the watched replay as drawn beside its track (replayViewerRuntime probe; the UI-flow receipt's drawn-motion gate)
+  viewer: () => replayViewerOwner.current?.probe() ?? null,
 };
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
