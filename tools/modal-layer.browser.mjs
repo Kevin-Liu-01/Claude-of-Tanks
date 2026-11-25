@@ -6,7 +6,7 @@
 // A real Air Support battle on a built preview (`?debug=1` for window.__DEBUG), at 1920x1080, 390x844 and 844x390 (touch):
 // the binoculars up (ui:strikeViewToggle), an enemy artillery strike planted on the crew's hull (the INCOMING warning, as
 // the reported screenshot), and a kill of the player's (tank:destroyed: the kill ribbon, where the layout shows one). Then
-// the pause veil (a focus return with the pointer unlocked, as an alt-tab raises it) and Settings (the Esc menu), each in
+// the pause veil (the pointer lock let go while the page has no focus, as an alt-tab raises it) and Settings (the Esc menu), each in
 // turn: at a grid over the whole window and at the centre of every overlay that is up, document.elementFromPoint must hit
 // the modal and nothing else. While it samples, every element takes pointer events (a style the probe adds and removes),
 // so a HUD part or a notice that ignores the pointer is still hit where it paints over the modal. A hit outside the modal
@@ -48,16 +48,16 @@ function stage() {
   const air = () => game.matchModeState?.air ?? null;
   const enemies = (game.tanks ?? []).filter((t) => t.team !== player.team);
   if (!document.documentElement.hasAttribute('data-cot-strike-view')) bus.emit('ui:strikeViewToggle', {});
-  // the strike: kept in the air view (a view rebuilt from the authority drops it; the plant comes back each frame)
-  clearInterval(window.__modalLayerStrike);
-  window.__modalLayerStrike = setInterval(() => {
-    const view = air(), pos = player.state?.pos;
-    if (!view || !pos || view.strikes.some((s) => s.id === 987654)) return;
-    view.strikes.push({ id: 987654, kind: 'artillery', team: enemies[0]?.team ?? 'bravo', x: pos.x, y: pos.y ?? 0, z: pos.z,
-      heading: 0, calledS: view.nowS, landsS: view.nowS + 600, endS: view.nowS + 660, hp: 1, maxHp: 1, downedS: null, downedBy: null });
-  }, 16);
+  // the strike: an enemy artillery run on the crew's hull in the mode's own ledger (sim/airSupport.ts strikes, which every
+  // view is made from), its warning ten minutes long so it never lands while the probe looks
+  const ledger = game.matchModeController?.airSupport?.strikes;
+  const pos = player.state?.pos, now = Number(game.timeS) || 0;
+  const record = { id: 987654, kind: 'artillery', team: enemies[0]?.team ?? 'bravo', callerId: enemies[0]?.id ?? 'probe', x: pos?.x ?? 0,
+    y: pos?.y ?? 0, z: pos?.z ?? 0, heading: 0, calledS: now, landsS: now + 600, endS: now + 660, hp: 1, maxHp: 1, downedS: null,
+    downedBy: null, fired: 0, firedAux: 0 };
+  if (Array.isArray(ledger) && !ledger.some((s) => s.id === record.id)) ledger.push(record);
   window.__modalLayerKills = (window.__modalLayerKills ?? 0);
-  return { player: player?.id ?? null, enemies: enemies.length, air: !!air() };
+  return { player: player?.id ?? null, enemies: enemies.length, air: !!air(), ledger: Array.isArray(ledger) };
 }
 
 /** In the page: a fresh kill of the player's (the ribbon holds 2.4 s after the latest). */
@@ -65,7 +65,9 @@ function kill() {
   const D = window.__DEBUG, game = D.game, player = game.player;
   const enemies = (game.tanks ?? []).filter((t) => t.team !== player.team);
   const victim = enemies[(window.__modalLayerKills++) % Math.max(1, enemies.length)];
-  if (victim) D.bus.emit('tank:destroyed', { id: victim.id, killerId: player.id, cause: 'shot', specId: victim.specId });
+  // (as state.ts tells a destruction: the effects read its pos; the HUD alone shows it, the hull drives on)
+  const pos = victim?.state?.pos;
+  if (victim && pos) D.bus.emit('tank:destroyed', { id: victim.id, specId: victim.specId, pos: [pos.x, pos.y, pos.z], killerId: player.id, cause: 'shot' });
   return victim?.id ?? null;
 }
 
@@ -108,6 +110,21 @@ function sample([selector, points]) {
   return { open: true, hits, misses, layer };
 }
 
+/** A still without ?debug=1's diagnostics panel, which no player sees (hidden for the shot only, as hud-chase-bands does). */
+async function shot(page, path) {
+  const hidden = await page.evaluate(() => {
+    const label = [...document.querySelectorAll('body *')].find((n) => !n.children.length && /^\s*battle diagnostics\s*$/i.test(n.textContent ?? ''));
+    let bar = label;
+    while (bar && bar !== document.body && getComputedStyle(bar).position !== 'fixed') bar = bar.parentElement;
+    if (!bar || bar === document.body) return false;
+    bar.dataset.modalLayerHidden = bar.style.visibility;
+    bar.style.visibility = 'hidden';
+    return true;
+  });
+  await page.screenshot({ path });
+  if (hidden) await page.evaluate(() => { for (const n of document.querySelectorAll('[data-modal-layer-hidden]')) { n.style.visibility = n.dataset.modalLayerHidden; delete n.dataset.modalLayerHidden; } });
+}
+
 const report = { label, root, dist, mode, battle: BATTLE, startedAt: new Date().toISOString(), sizes: {}, errors: [] };
 let server = null, browser = null, failed = 0;
 try {
@@ -143,24 +160,43 @@ try {
     entry.stage = await page.evaluate(stage);
     await page.waitForFunction(() => document.documentElement.hasAttribute('data-cot-strike-view'), { timeout: 20_000, polling: 100 }).catch(() => {});
     await page.waitForFunction(() => [...document.querySelectorAll('.cot-c-notice, .cot-alert')].some((el) => /incoming/i.test(el.textContent ?? '')
-      && el.checkVisibility({ checkOpacity: true })), { timeout: 20_000, polling: 100 }).catch(() => {});
+      && el.checkVisibility({ checkOpacity: true })), { timeout: 45_000, polling: 100 }).catch(() => {});
     entry.kill = await page.evaluate(kill);
     await wait(700);
     entry.states.overlays = await page.evaluate(overlays);
-    await page.screenshot({ path: resolve(out, `${label}-${size.name}-1-battle.png`) });
-    for (const [name, selector, open] of [['pause', '.cot-resume', () => window.dispatchEvent(new Event('focus'))],
+    await shot(page, resolve(out, `${label}-${size.name}-1-battle.png`));
+    // the pause veil, as an alt-tab raises it: the pointer lock let go while the page has no focus (settings.ts: an unlock
+    // with focus opens Settings, one without raises the veil; a touch layout, which never locks, takes a focus return)
+    const pauseVeil = async () => {
+      const input = window.__DEBUG.input;
+      const before = { locked: input?.isLocked?.() ?? null, cursorAim: input?.isCursorAim?.() ?? null, phase: window.__DEBUG.game?.phase ?? null };
+      if (document.pointerLockElement) {
+        const hasFocus = Document.prototype.hasFocus;
+        Document.prototype.hasFocus = () => false;
+        await new Promise((done) => { document.addEventListener('pointerlockchange', done, { once: true }); document.exitPointerLock(); setTimeout(done, 1000); });
+        await new Promise((done) => setTimeout(done, 60));
+        Document.prototype.hasFocus = hasFocus;
+      } else {
+        window.dispatchEvent(new Event('focus'));
+      }
+      return { before, shown: !!document.querySelector('.cot-resume.show') };
+    };
+    for (const [name, selector, open] of [['pause', '.cot-resume', pauseVeil],
       ['settings', '.cot-settings', () => window.__DEBUG.settings.open()]]) {
+      // a fresh kill first (the ribbon holds 2.4 s after it): the kill's own beat is a presentation, under which the input
+      // owner refuses the veil and the menu (battleInputOwner.ts), so the modal opens once it has passed
       await page.evaluate(kill);
-      await page.evaluate(open);
-      await page.waitForFunction((sel) => !!document.querySelector(sel)?.checkVisibility({ checkVisibilityCSS: true }), { timeout: 10_000, polling: 100 }, selector).catch(() => {});
-      await wait(450); // the veil's fade and the panel's rise
+      await wait(900);
+      entry.modals[name] = { opener: await page.evaluate(open) };
+      await page.waitForFunction((sel) => !!document.querySelector(sel)?.checkVisibility({ checkVisibilityCSS: true }), { timeout: 4_000, polling: 50 }, selector).catch(() => {});
+      await wait(350); // the veil's fade and the panel's rise
       const up = await page.evaluate(overlays);
       const points = [];
       for (let i = 0; i < 12; i++) for (let j = 0; j < 9; j++) points.push([(i + 0.5) * size.w / 12, (j + 0.5) * size.h / 9, 'grid']);
       for (const [what, r] of Object.entries(up)) points.push([r.x + r.w / 2, r.y + r.h / 2, what], [r.x + 4, r.y + 4, what]);
       const result = await page.evaluate(sample, [selector, points]);
-      entry.modals[name] = { overlays: up, ...result };
-      await page.screenshot({ path: resolve(out, `${label}-${size.name}-${name === 'pause' ? 2 : 3}-${name}.png`) });
+      entry.modals[name] = { ...entry.modals[name], overlays: up, ...result };
+      await shot(page, resolve(out, `${label}-${size.name}-${name === 'pause' ? 2 : 3}-${name}.png`));
       const missing = ['incoming', 'binoculars'].filter((what) => !up[what]);
       const problems = [];
       if (!result.open) problems.push(`${name} did not open`);
@@ -178,7 +214,7 @@ try {
         await wait(400);
       }
     }
-    await page.evaluate(() => { clearInterval(window.__modalLayerStrike); try { window.__DEBUG.settings.close({ noRelock: true }); } catch { /* none */ } });
+    await page.evaluate(() => { try { window.__DEBUG.settings.close({ noRelock: true }); } catch { /* none */ } });
     await context.close();
   }
 } catch (error) {
