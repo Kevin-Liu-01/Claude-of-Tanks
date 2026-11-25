@@ -22,6 +22,7 @@ import { createTank } from '../vehicles/tankFactory.ts';
 import { WHEEL_STANDABLE_STEP_M } from '../vehicles/tankFactoryCore.ts';
 import { HULL_STEP_UP_M } from './collision.ts';
 import { createVehicleGroundSampler } from './vehicleGroundSampler.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 assert.equal(WHEEL_STANDABLE_STEP_M, HULL_STEP_UP_M, 'the wheels stand on a top by the hull step-up the movement solve admits');
@@ -91,6 +92,7 @@ for (const { mapId, hulls } of CASES) {
   const sampler = createVehicleGroundSampler((x, z) => hf.getContactHeightAt(x, z), () => world);
   for (const specId of hulls) {
     // drive: from 18 m short of the deck's near end to 18 m past its far end, along the deck axis at full throttle
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const startAlong = -deck.halfLength - 18;
     const players = [
       { id: 'subject', specId, team: 'alpha' },

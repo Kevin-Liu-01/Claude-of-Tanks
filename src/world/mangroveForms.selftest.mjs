@@ -13,6 +13,7 @@ import { createVegetation, grownFormSprayKind } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
 import { treeBiomeColour, treeBiomeSlot } from './treeBiomes.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -81,6 +82,7 @@ const restore = canvasFixture();
 const report = {};
 try {
   for (const mapId of ['mangrove', 'oasis']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const cfg = getMapConfig(mapId), field = createHeightField(1337, cfg);
     const veg = createVegetation(field, { setupShadowMaterial() {} }, 2001, cfg);
     try {

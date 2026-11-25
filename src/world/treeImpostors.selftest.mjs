@@ -21,6 +21,7 @@ import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { TREE_ARCHETYPES } from './treeSpecies.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (frozen pins retired): the per-map bake-input digests (verdant/fjord/delta) were change detectors of the
 // tree builders and leaf atlases; the bake inputs stay deterministic (two seeded builds digest identically, below).
@@ -141,6 +142,7 @@ const receipts = [];
 try {
   assert.equal(getDeviceTier(), 'desktop');
   for (const id of ['verdant', 'fjord', 'delta']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { cfg, renderer, world } = produce(id);
     const species = cfg.vegetation.species;
     const library = world._treeImpostors;
@@ -262,6 +264,7 @@ try {
   // their links awaited between tasks, then the same draws; the bake's materials released after; a lazy bake meanwhile
   // (a frame's update) leaves nothing to draw
   for (const lazyMeanwhile of [false, true]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { world, renderer } = produce('verdant');
     const library = world._treeImpostors;
     const compiled = [];

@@ -23,6 +23,7 @@ import { createVegetation } from './vegetation.ts';
 import {
   NEEDLE_TRANSMIT_LUMINANCE, NEEDLE_TRANSMIT_SATURATION, applyCanopyDiffuseWrap, canopyTransmitColour,
 } from './canopyLighting.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const luma = c => c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
 const hsvSat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx > 0 ? (mx - mn) / mx : 0; };
@@ -128,6 +129,7 @@ const environment = programEnvironment();
 const report = [];
 try {
   for (const place of PLACES) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
     const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
     const registered = [];

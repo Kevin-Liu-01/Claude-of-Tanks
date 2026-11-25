@@ -13,6 +13,7 @@ import {initializeAerial,stepAerial} from '../sim/aerialCombat.ts';
 import {matchRulesetFor} from '../sim/matchRuleset.ts';
 import {PLAYER_ACTION_BITS} from '../sim/playerActions.ts';
 import { collectMissionStock,nativeMissionCollision,nativeSupportedSeat,nativeRoofHeight } from '../../tools/mission-attachment-geometry.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b'])for(const scale of [1,.8]){
  const spec=TANK_SPECS[id],seat=missionAttachmentFor(spec),root=new Group(),turret=new Group();
  root.position.set(10,2,20);root.rotation.set(-.12,.6,-.08,'YXZ');
@@ -145,6 +146,7 @@ console.log('missionAttachmentVisual: resupply landing down the certified column
 // Use real factory rigs, not a rig synthesized from the same armor pivot as the
 // authority. Legacy armor reference pivots differ from the visible owner.
 for(const id of ['m1a1_abrams_hc','t90am','leclerc_s1','strv103b','leo2_improved']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000});
  tank.root.position.set(10,2,20);tank.root.rotation.set(-.12,.6,-.08,'YXZ');
  const turret=tank.root.getObjectByName('rig_turret');

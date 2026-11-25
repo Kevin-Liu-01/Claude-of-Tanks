@@ -14,6 +14,7 @@ import {PLAYER_ACTION_BITS} from '../sim/playerActions.ts';
 import {createDronePresentation} from '../fx/dronePresentation.ts';
 import {droneLaunchHeight} from '../sim/droneLaunch.ts';
 import {DRONE_CLIMB} from '../fx/droneMotion.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 // Saved physical failure positions must remain rejected after the generated
 // table moves. These are not fetched from the same policy being tested.
 const oldSeats={
@@ -22,6 +23,7 @@ const oldSeats={
  t90a_vladimir:[0,1.1784657171,3.1686],
 };
 for(const[id,[x,y,z]]of Object.entries(oldSeats)){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  await ensureInteriorFills([id]);const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000});tank.root.updateMatrixWorld(true);
  const seat={frame:'hull',x,y,z,width:.34,depth:.32,footX:.108,footZ:.09,supportY:Array(4).fill(y-.045)};
  const stock=collectMissionStock(tank,'hull',-Infinity,false,spec);
@@ -73,6 +75,7 @@ root.traverse(o=>{if(o.isMesh)o.geometry.dispose();});material.dispose();
 }
 console.log('missionAttachmentMotion: permanent welded support, finite feet and equipment/region negative controls passed');
 for(const id of['m1a1_abrams_hc','abramsx','leo2_improved']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000}),state=createTankState(spec,new Vector3(4,1,9),.3);
  syncMissionAttachment(tank.root,spec,{kind:'drone',active:false,cooldownS:0},false);
  const parked=tank.root.getObjectByName('Docked FPV mission payload'),position=new Vector3(),orientation=new Quaternion();

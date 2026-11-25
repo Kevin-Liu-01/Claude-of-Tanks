@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as THREE from 'three';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Default: deterministic tiny image fixture. --native uses the pinned real
 // rasterizer for the same legacy/prepared pixel comparison, without a browser.
@@ -401,6 +402,7 @@ await withFixture(async f => {
     const { buildTerrainMeshesAsync } = await import(url);
     hooks.deregister();
     for (const when of ['before', 'after', 'checkpoint', 'success', 'ordinary-coarse']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       let nexts = 0, closes = 0, cancels = 0, ticks = 0, work = 0, release;
       const held = new Promise(resolve => { release = resolve; });
       const result = new THREE.Group();

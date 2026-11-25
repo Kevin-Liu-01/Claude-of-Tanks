@@ -26,6 +26,7 @@ import { SHADOW_ONLY_LAYER } from '../engine/renderLayers.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -42,6 +43,7 @@ const isConifer = species => TREE_ARCHETYPES[species]?.family === 'conifer';
 const receipts = [];
 try {
   for (const id of ['fjord', 'verdant', 'coastal']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const cfg = getMapConfig(id), field = createHeightField(1337, cfg);
     const hooks = new Map();
     const engine = { renderer, setupShadowMaterial(material, hook) { hooks.set(material, hook); } };

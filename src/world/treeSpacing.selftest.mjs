@@ -23,6 +23,7 @@ import { getMapConfig } from './maps/index.ts';
 import { createLandFieldSample } from './landUse.ts';
 import { treeBiomeArid, treeBiomeSlot } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -122,6 +123,7 @@ try {
   }
   // the Sahara's wadi and oasis: every palm inside the map's palm sites, and palms there (the date-palm groves)
   for (const id of ['desert', 'oasis']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { cfg, field, world } = produce(id);
     try {
       const sites = cfg.vegetation.palmSites;
@@ -176,6 +178,7 @@ try {
   // open; the law moves the field trees it meets there (to a hedge, their own field's boundary, a wood's edge) and drops
   // hardly any, so the field keeps its cover. A town map's park trees keep their belts.
   for (const id of ['frontier', 'coastal', 'reservoir']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { world, field } = produce(id);
     try {
       const law = world.group.userData.fieldTreeLaw, sample = createLandFieldSample();

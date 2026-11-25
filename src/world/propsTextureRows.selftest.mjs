@@ -12,6 +12,7 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the c5ca781e2 synchronous stone/grime painters,
 // so any intended repaint of either texture failed here. The control is now the CURRENT row-checkpointed painter
@@ -62,6 +63,7 @@ function assertPublicOwner(owner, result, args) {
 async function checkWrapperOwnership(wrapperSource) {
   const height = {}, engine = {}, config = {}, vegetation = {}, textures = {};
   for (const async of [false, true]) for (const defaults of [false, true]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const owner = publicOwner((function* () {
       yield { fine: true, stage: 'owned-rows' };
       yield undefined;
@@ -93,6 +95,7 @@ for (const [before, after] of [
   ['return r.value;', 'return { ...r.value };'],
   ['return runtime;', 'return { ...runtime };'],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const mutated = wrappers.replace(before, after);
   assert.notEqual(mutated, wrappers, 'the negative control must change the real wrapper');
   await assert.rejects(checkWrapperOwnership(mutated), assert.AssertionError,
@@ -249,6 +252,7 @@ try {
   });
   const height = {}, engine = {}, vegetation = {};
   for (let index = 0; index < cases.length; index++) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { kind, sample } = cases[index];
     const pending = job(candidate, kind, sample);
     const owner = publicOwner(checkedPainter(pending));

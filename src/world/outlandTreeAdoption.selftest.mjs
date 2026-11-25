@@ -24,6 +24,7 @@ import { shadowCasterCascadesOf, shadowCasterProfileOf } from '../engine/renderL
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -45,6 +46,7 @@ assert.equal(outlandAdoptable(PLAYABLE_HALF_EXTENT_M + OUTLAND_ADOPT_M + 1, 0), 
 const rows = [];
 try {
   for (const id of ['airfield', 'longleaf', 'monsoon']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const cfg = getMapConfig(id), field = createHeightField(1337, cfg);
     const engine = { renderer, setupShadowMaterial() {} };
     const ring = buildHorizonRing(engine, cfg, 1337, field);
