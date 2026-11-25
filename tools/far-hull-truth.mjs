@@ -5,14 +5,15 @@
 //
 //   node tools/far-hull-truth.mjs --root=<tree with dist> [--label=new] [--maps=verdant,monsoon,autumn]
 //     [--views=far-allies,far-low,far-side] [--viewport=1600x900] [--tier=desktop|mobile] [--preset=high] [--port=0]
-//     [--out=<dir>] [--bisect] [--turn] [--control=tint] [--place=<queue key>]
+//     [--out=<dir>] [--bisect] [--turn] [--control=tint|paired] [--place=<queue key>]
 //
 // Per map and view: the frame with the far hull draw (A), again (the A/A floor), with the stand-ins as they were
 // (B: window.__FAR_HULL_DEBUG.set(false)) and with the draw again (A'); the colour frames A and B as PNG, a difference
 // map (red where B is darker by more than 8/255 in luminance, green brighter), each far vehicle's screen box (the crops
 // the blind A/B shows), the frame's draw calls either way and every vehicle's far hull draw record (what it carries, its
 // fallbacks by reason). --control=tint scales every far hull draw's colour by 0.8 before A (the pixel test's
-// sensitivity control: A against B must then differ wherever a far vehicle shows). The bots are frozen and shown; the
+// sensitivity control: A against B must then differ wherever a far vehicle shows); --control=paired captures each pose
+// untinted and then tinted in the same page and scene state, and gates the pose on the tint moving a pixel. The bots are frozen and shown; the
 // far LOD builds one vehicle at a time, so each view waits until every vehicle past the far
 // range shows it.
 import path from 'node:path';
@@ -135,6 +136,17 @@ function installHelpers() {
       return { width: cv.width, height: cv.height, tinted, callsA, callsB, floor: diff(lA, lA2), ab: diff(lA, lB), again: diff(lA, lA3),
         boxes: boxes(), shaderErrors, bisect, a: b64(rgbOf(A)), b: b64(rgbOf(B)) };
     },
+    /** --control=paired: every far hull draw's colour x 0.8 (on) or back (off); returns how many draws it changed. */
+    tint(on) {
+      let n = 0;
+      D.scene.traverse((o) => {
+        if (o.name !== 'farLodHullDraw' || !o.material?.color) return;
+        const tinted = !!o.material.userData.fhtTinted;
+        if (on && !tinted) { o.material.color.multiplyScalar(0.8); o.material.userData.fhtTinted = true; n++; }
+        if (!on && tinted) { o.material.color.multiplyScalar(1 / 0.8); o.material.userData.fhtTinted = false; n++; }
+      });
+      return n;
+    },
     release() { hold?.release?.(); if (clouds) clouds.frozen = false; },
   };
   return { width: cv.width, height: cv.height, taaHeld: !!hold, cloudsFrozen: !!clouds };
@@ -231,6 +243,23 @@ try {
       delete r.a; delete r.b;
       const after = await page.evaluate(farState);
       entry.views[view] = { ...r, far: { built: after.built, showing: after.showing }, records: after.records };
+      // --control=paired: the same pose and scene state with every far hull draw's colour x 0.8 (the pose's own control);
+      // gate: a far hull is in view when the tint moved at least one pixel
+      if (arg('control', '') === 'paired') {
+        const tinted = await page.evaluate(() => window.__FHT.tint(true));
+        const t = await page.evaluate(() => window.__FHT.capture());
+        await page.evaluate(() => window.__FHT.tint(false));
+        if (t.error) entry.views[view].tint = { error: t.error };
+        else {
+          const tA = Buffer.from(t.a, 'base64');
+          writeFileSync(`${stem}-tint-A.png`, encodeRgbPng(t.width, t.height, tA));
+          delete t.a; delete t.b; delete t.boxes; delete t.bisect;
+          entry.views[view].tint = { ...t, tinted };
+        }
+        const tv = entry.views[view].tint;
+        entry.views[view].gate = { inView: !!tv && !tv.error && tv.ab.px1 > 0 };
+        console.log(`${mapId} ${view}: tint (${tinted} draws) A/B ${JSON.stringify(tv?.ab ?? tv)}, gate ${entry.views[view].gate.inView ? 'IN VIEW' : 'no far hull in view'}`);
+      }
       console.log(`${mapId} ${view}: far ${after.showing}/${after.built}, calls draw ${r.callsA} vs stand-ins ${r.callsB}, floor ${JSON.stringify(r.floor)}, A/B ${JSON.stringify(r.ab)}, again ${JSON.stringify(r.again)}, boxes ${r.boxes.length}, errors ${errors.length}`);
     }
     await page.evaluate(() => window.__FHT.release()).catch(() => {});
