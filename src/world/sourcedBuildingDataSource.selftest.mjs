@@ -54,52 +54,53 @@ const policy = view => ({
 });
 try {
   const { applySourcedBuildings, applySourcedTerrain } = await import('./sourcedTextures.ts');
-  const autumn = layer(), orchard = layer();
+  const autumn = layer(), desert = layer();
   const original = Object.fromEntries(Object.entries(autumn).map(([key, value]) => [key, value.source]));
   const originalPolicies = Object.fromEntries(Object.entries(autumn).map(([key, value]) => [key, policy(value)]));
   const disposals = [];
   for (const [key, value] of Object.entries(autumn)) value.addEventListener('dispose', () => {
     disposals.push({ key, source: value.source });
   });
-  await applySourcedBuildings({ roof: autumn }, 'autumn');
+  await applySourcedBuildings({ wood: autumn }, 'autumn');
   const requestCount = imageRequests;
-  await applySourcedBuildings({ roof: orchard }, 'orchard');
+  await applySourcedBuildings({ wood: desert }, 'desert');
   assert.equal(imageRequests, requestCount, 'shared data adds no source requests');
-  assert.equal(autumn.normal.image, orchard.normal.image);
-  assert.equal(autumn.surface.image, orchard.surface.image);
+  assert.equal(autumn.normal.image, desert.normal.image);
+  assert.equal(autumn.surface.image, desert.surface.image);
   // This assertion is the unchanged f662 negative witness before implementation.
-  assert.equal(autumn.normal.source, orchard.normal.source,
+  assert.equal(autumn.normal.source, desert.normal.source,
     'building normal views must share the already-identical immutable canvas Source');
-  assert.equal(autumn.surface.source, orchard.surface.source);
+  assert.equal(autumn.surface.source, desert.surface.source);
   assert.notEqual(autumn.normal.source, autumn.surface.source, 'different data canvases never alias');
-  assert.notEqual(autumn.albedo.source, orchard.albedo.source, 'pigment views are outside sharing scope');
+  assert.notEqual(autumn.albedo.source, desert.albedo.source, 'pigment views are outside sharing scope');
   assert.equal(autumn.albedo.source, original.albedo, 'ordinary albedo replacement path is unchanged');
-  assert.notDeepEqual(autumn.albedo.image.pixels, orchard.albedo.image.pixels);
+  assert.notDeepEqual(autumn.albedo.image.pixels, desert.albedo.image.pixels);
   assert.deepEqual(disposals.map(({ key, source }) => [key, source]),
     ['albedo', 'surface', 'normal'].map(key => [key, original[key]]),
     'release the old GPU owner before replacing the data Source');
   for (const [key, value] of Object.entries(autumn)) assert.deepEqual(policy(value), originalPolicies[key]);
   for (const key of ['normal', 'surface']) for (const field of ['offset', 'repeat', 'center', 'matrix']) {
-    assert.notEqual(autumn[key][field], orchard[key][field], `independent ${key}/${field}`);
+    assert.notEqual(autumn[key][field], desert[key][field], `independent ${key}/${field}`);
   }
   autumn.normal.offset.x = 0.75;
-  assert.equal(orchard.normal.offset.x, 0.13, 'UV mutation never reaches the sibling');
+  assert.equal(desert.normal.offset.x, 0.13, 'UV mutation never reaches the sibling');
 
-  const roofSources = [orchard.normal.source, orchard.surface.source];
-  const roofPixels = roofSources.map(source => source.data.pixels.slice());
-  await applySourcedBuildings({ wood: autumn }, 'autumn');
+  const woodSources = [desert.normal.source, desert.surface.source];
+  const woodPixels = woodSources.map(source => source.data.pixels.slice());
+  // (building-tex-diet-278) another set (the plaster) replaces the timber Source; the roof tiles set is retired
+  await applySourcedBuildings({ plaster: autumn }, 'autumn');
   for (const [index, key] of ['normal', 'surface'].entries()) {
-    assert.notEqual(autumn[key].source, roofSources[index], 'new image replaces Source');
-    assert.equal(orchard[key].source, roofSources[index]);
-    assert.deepEqual(orchard[key].image.pixels, roofPixels[index], 'sibling data cannot change on replacement');
+    assert.notEqual(autumn[key].source, woodSources[index], 'new image replaces Source');
+    assert.equal(desert[key].source, woodSources[index]);
+    assert.deepEqual(desert[key].image.pixels, woodPixels[index], 'sibling data cannot change on replacement');
   }
-  await applySourcedBuildings({ roof: autumn }, 'autumn');
-  assert.equal(autumn.normal.source, roofSources[0], 'return to retained immutable data rejoins Source');
-  assert.equal(autumn.surface.source, roofSources[1]);
+  await applySourcedBuildings({ wood: autumn }, 'autumn');
+  assert.equal(autumn.normal.source, woodSources[0], 'return to retained immutable data rejoins Source');
+  assert.equal(autumn.surface.source, woodSources[1]);
   autumn.normal.dispose(); autumn.surface.dispose();
-  assert.deepEqual(orchard.normal.image.pixels, roofPixels[0]);
-  await applySourcedBuildings({ roof: autumn }, 'autumn');
-  assert.equal(autumn.normal.source, orchard.normal.source, 'temporary disposal preserves reusable CPU ownership');
+  assert.deepEqual(desert.normal.image.pixels, woodPixels[0]);
+  await applySourcedBuildings({ wood: autumn }, 'autumn');
+  assert.equal(autumn.normal.source, desert.normal.source, 'temporary disposal preserves reusable CPU ownership');
 
   const legacy = { G: layer(), D: layer() };
   const legacySources = [legacy.G.normal.source, legacy.D.normal.source];
@@ -111,7 +112,7 @@ try {
 
   const aborted = layer(), signal = new AbortController(); signal.abort();
   const beforeCancel = [aborted.normal.source, aborted.surface.source];
-  const result = await applySourcedBuildings({ roof: aborted }, 'autumn', {}, { signal: signal.signal });
+  const result = await applySourcedBuildings({ wood: aborted }, 'autumn', {}, { signal: signal.signal });
   assert.equal(result[0].applied, false);
   assert.deepEqual([aborted.normal.source, aborted.surface.source], beforeCancel,
     'canceled source consumption cannot install a shared owner');

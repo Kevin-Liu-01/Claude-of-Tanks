@@ -11,10 +11,10 @@ const cases = await urbanCompositionCases(source);
 assert.equal(SOURCE_COMPOSITION_PROTOCOL, 'urban-sourced-image-first-composition-v1');
 assert.deepEqual(cases.map(row => [row.id, row.set]), [
   ['terrain-urban-G', 'grass'], ['terrain-urban-D', 'dirt'], ['terrain-urban-R', 'cobble'],
-  ['building-urban-plaster', 'plaster'], ['building-urban-wood', 'wood'], ['building-urban-stone', 'brick'],
+  ['building-urban-plaster', 'plaster'], ['building-urban-wood', 'wood'],
 ]);
 // (texture-diet-277; building-tex-diet-277) every set loads its 1K tier's three WebPs (colour, normal, packed ORM)
-assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 6 * 3);
+assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 5 * 3);
 assert.ok(cases.every(row => Object.keys(row.images).sort().join() === 'color,normal,orm' && row.options.roughChannel === 1
   && row.images.orm.startsWith(row.kind === 'terrain' ? '/textures/terrain/1k/' : '/textures/buildings/1k/')));
 assert.ok(cases.filter(row => row.kind === 'terrain').every(row => row.options.roughInAlpha === true));
@@ -26,10 +26,10 @@ await assert.rejects(() => urbanCompositionCases(source.replace(
 /Plan collection must not replace images/, 'the planning receiver cannot silently perform texture IO');
 
 const plan = compositionPlan(cases, 2);
-assert.equal(plan.length, 24);
+assert.equal(plan.length, 20);
 assert.deepEqual(plan.slice(0, 2).map(row => row.policy), ['onload', 'decode']);
-assert.deepEqual(plan.slice(12, 14).map(row => row.policy), ['decode', 'onload']);
-assert.equal(compositionPlan(cases, 4).length, 48);
+assert.deepEqual(plan.slice(10, 12).map(row => row.policy), ['decode', 'onload']);
+assert.equal(compositionPlan(cases, 4).length, 40);
 for (const invalid of [0, 1, 3, 5, 2.1, NaN]) assert.throws(() => compositionPlan(cases, invalid));
 for (const row of cases) for (const round of [0, 1]) {
   assert.equal(plan.filter(value => value.caseId === row.id && value.round === round).length, 2);

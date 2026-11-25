@@ -19,7 +19,7 @@ export async function urbanCompositionCases(source) {
     };
     const layer = { albedo: {}, normal: {}, surface: {} };
     await applySourcedTerrain('urban', { G: layer, D: layer, R: layer, M: layer });
-    await applySourcedBuildings({ plaster: layer, roof: layer, wood: layer, stone: layer }, 'urban');
+    await applySourcedBuildings({ plaster: layer, wood: layer }, 'urban');
     return cases;
   `;
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
@@ -29,7 +29,7 @@ export async function urbanCompositionCases(source) {
   const noImageReplacement = () => { throw new Error('Plan collection must not replace images'); };
   const rows = await new AsyncFunction('THREE', 'texSize', 'terrainTextureTier', 'replaceSourcedBuildingDataImage', script)(
     {}, size => size, () => '1k', noImageReplacement);
-  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood', 'brick'],
+  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood'],
     'Unsupported urban source plan; review the experiment corpus explicitly');
   for (const row of rows) {
     assert.deepEqual(Object.keys(row.images).sort(), ['color', 'normal', 'orm']);

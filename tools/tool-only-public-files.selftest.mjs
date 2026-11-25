@@ -17,8 +17,8 @@ try {
   for (const file of ['icons/tank-assets/index.json', 'icons/tank-assets/tanks/m1a1.json', 'icons/m1a1_markings.png', 'icons/m1a1_angle.webp',
     'icons/m1a1_armor_side.webp', 'icons/m1a1_technical.json', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json',
     'textures/terrain/Grass004_1K-JPG_Color.jpg', 'textures/terrain/withered_grass_ao_1k.jpg', 'textures/terrain/1k/Grass004_Color.webp',
-    'textures/terrain/512/Grass004_ORM.webp', 'textures/buildings/Bricks097_1K-JPG_Color.jpg',
-    'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg', 'textures/buildings/1k/Bricks097_ORM.webp',
+    'textures/terrain/512/Grass004_ORM.webp', 'textures/buildings/Planks023A_1K-JPG_Color.jpg',
+    'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg', 'textures/buildings/1k/Planks023A_ORM.webp',
     'textures/buildings/512/Plaster007_Color.webp']) {
     mkdirSync(dirname(join(dist, file)), { recursive: true });
     writeFileSync(join(dist, file), 'x'.repeat(file.length));
@@ -27,7 +27,7 @@ try {
     { path: 'icons/m1a1_markings.png', bytes: 'icons/m1a1_markings.png'.length },
     { path: 'icons/tank-assets/index.json', bytes: 'icons/tank-assets/index.json'.length },
     { path: 'icons/tank-assets/tanks/m1a1.json', bytes: 'icons/tank-assets/tanks/m1a1.json'.length },
-    { path: 'textures/buildings/Bricks097_1K-JPG_Color.jpg', bytes: 'textures/buildings/Bricks097_1K-JPG_Color.jpg'.length },
+    { path: 'textures/buildings/Planks023A_1K-JPG_Color.jpg', bytes: 'textures/buildings/Planks023A_1K-JPG_Color.jpg'.length },
     { path: 'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg', bytes: 'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg'.length },
     { path: 'textures/terrain/Grass004_1K-JPG_Color.jpg', bytes: 'textures/terrain/Grass004_1K-JPG_Color.jpg'.length },
     { path: 'textures/terrain/withered_grass_ao_1k.jpg', bytes: 'textures/terrain/withered_grass_ao_1k.jpg'.length },
@@ -58,7 +58,7 @@ for (const file of runtimeFiles) {
   const text = readFileSync(resolve(ROOT, file), 'utf8');
   if (/tank-assets(?:\.json)?\b|_markings\.png|markings\.png/.test(text)
     || /(?:Grass004|Ground071|Ground093C|Snow010A|Rock058|Rock063|PavingStones046)_1K-JPG_\w+\.jpg|withered_grass_\w+_1k\.jpg/.test(text)
-    || /(?:Plaster007|RoofingTiles012A|Planks023A|Bricks097)_1K-JPG_[\w-]+\.jpg/.test(text)) naming.push(file);
+    || /(?:Plaster007|Planks023A)_1K-JPG_[\w-]+\.jpg/.test(text)) naming.push(file);
 }
 assert.deepEqual(naming, [], 'runtime code must not name tool-only public files');
 assert.match(iconUrl('m1a1', 'markings'), /_markings\.webp$/, 'iconUrl never builds a .png marking sheet URL');

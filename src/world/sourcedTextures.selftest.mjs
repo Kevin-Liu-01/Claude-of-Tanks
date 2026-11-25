@@ -14,7 +14,7 @@ const loadedImages = new Map();
 const sourcedUrl = new URL('./sourcedTextures.ts?selftest=private-cache', import.meta.url).href;
 const hooks = registerHooks({ load(url, context, nextLoad) {
   const result = nextLoad(url, context);
-  return url === sourcedUrl ? { ...result, source: `${result.source}\nexport { applySet, _compositeCache };\n` } : result;
+  return url === sourcedUrl ? { ...result, source: `${result.source}\nexport { applySet, _compositeCache, SETS };\n` } : result;
 } });
 
 class TestCanvas {
@@ -81,7 +81,7 @@ globalThis.Image = TestImage;
 const {
   applySourcedBuildings, applySourcedRock, applySourcedTerrain, composeAlbedo, composeSurface,
   sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
-  applySet, _compositeCache,
+  applySet, _compositeCache, SETS,
 } = await import(sourcedUrl);
 hooks.deregister();
 const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
@@ -200,7 +200,6 @@ assert.equal(buildingLayer.surface.disposeCount, 1,
 
 const ruinspiresLayers = {
   plaster: { albedo: texture(), normal: texture(), surface: texture() },
-  roof: { albedo: texture(), normal: texture(), surface: texture() },
   wood: { albedo: texture(), normal: texture(), surface: texture() },
 };
 await applySourcedBuildings(ruinspiresLayers, 'ruinspires');
@@ -208,8 +207,6 @@ assert.equal(ruinspiresLayers.plaster.albedo.disposeCount, 1,
   'Ruinspires receives its smoke-muted sourced facade texture');
 assert.equal(ruinspiresLayers.wood.albedo.disposeCount, 1,
   'Ruinspires receives its restrained sourced trim texture');
-assert.equal(ruinspiresLayers.roof.albedo.disposeCount, 0,
-  'Ruinspires preserves the authored procedural roof palette like Steinburg');
 const facadeRgb = [...ruinspiresLayers.plaster.albedo.image.pixels]
   .filter((_, index) => index % 4 !== 3);
 assert.ok(Math.max(...facadeRgb) < 192,
@@ -244,7 +241,8 @@ const newMapPalettes = {
   copper_mesa: ['copper_mesa', 'foundry'],
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
-  whiteout: ['winter', 'winter'],
+  // (building-tex-diet-278) Whiteout's and Earthrise Basin's building palette was Winter's roof frost: retired with the roof set
+  whiteout: ['winter', null],
   // (2026-10-07, ground lane, wave 251: Orchard's own dry stony soil under its worn ground, Verdant's grass and rock)
   orchard: ['orchard', 'orchard'],
   // (the map-revival lane, Longleaf r4, 2026-10-11: the flatwoods' own sets — wiregrass over grey loam, its litter-strewn
@@ -258,7 +256,7 @@ const newMapPalettes = {
   // 2026-10-01 (terrain lane, the gate's map-policy cluster): the two maps registered after Mars route deliberately too —
   // Earthrise Basin's grey regolith is its own TERRAIN_PLAN row with frost-toned station huts, Aegis Crossing is
   // pastoral Verdant ground with its own-id (legacy) building route
-  moon: ['moon', 'winter'],
+  moon: ['moon', null],
   // map revival lane 2, round 3 (gauntlet wave 108c: "velvet-green turf"): Aegis Crossing's ground is the summer
   // campiña's, the steppe's withered-grass, dirt and rock sets under its own sourcedTint (cliffbridge.ts)
   cliffbridge: ['steppe', null],
@@ -375,38 +373,17 @@ for (const mapId of ['ruinspires', 'blackglass']) {
   }
 }
 
-const whiteoutRoof = freshLayer();
-const whiteoutStone = freshLayer();
-await applySourcedBuildings({ roof: whiteoutRoof, stone: whiteoutStone },
-  'whiteout', getMapConfig('whiteout').props);
-const winterRoof = freshLayer();
-await applySourcedBuildings({ roof: winterRoof }, 'winter');
-assert.equal(whiteoutRoof.albedo.image, winterRoof.albedo.image,
-  'Whiteout roof tint inherits the existing desaturated winter frost composite');
-assert.equal(whiteoutStone.albedo.disposeCount, 0,
-  'building palette inheritance does not add a sourced bucket or enlarge a procedural texture');
-const orchardRoof = { ...freshLayer(), surface: texture() };
-const autumnRoof = { ...freshLayer(), surface: texture() };
-await applySourcedBuildings({ roof: autumnRoof }, 'autumn');
-await applySourcedBuildings({ roof: orchardRoof }, 'orchard', getMapConfig('orchard').props);
-assert.deepEqual([...orchardRoof.albedo.image.pixels], [
-  75, 78, 82, 255, 30, 29, 28, 255,
-  89, 83, 80, 255, 18, 19, 19, 255,
-], 'actual CPU compositor turns the controlled orange tile sample into restrained charcoal, without clipping');
-assert.equal(orchardRoof.normal.image, autumnRoof.normal.image,
-  'Orchard reuses the exact existing roof normal source rather than adding a sampler');
-assert.deepEqual(orchardRoof.surface.image.pixels, autumnRoof.surface.image.pixels,
-  'roof pigment does not modify the existing roughness/AO surface');
-assert.notEqual(orchardRoof.albedo.image, autumnRoof.albedo.image,
-  'Orchard still owns its distinct charcoal pigment canvas');
-assert.equal(orchardRoof.surface.image, autumnRoof.surface.image,
-  'Orchard and Autumn share the same immutable AO/roughness canvas, not duplicate bytes');
-for (const name of ['albedo', 'normal', 'surface']) {
-  assert.equal(orchardRoof[name].image.width, autumnRoof[name].image.width);
-  assert.equal(orchardRoof[name].image.height, autumnRoof[name].image.height);
-}
+// (building-tex-diet-278) the roof tiles and brick sets are retired: a roof or stone layer handed in takes no sourced set
+const retiredRoof = freshLayer();
+const retiredStone = freshLayer();
+const retiredLoads = loadedImageUrls.length;
+assert.deepEqual(await applySourcedBuildings({ roof: retiredRoof, stone: retiredStone }, 'urban'), [],
+  'no sourced job for the retired roof and stone buckets');
+assert.equal(retiredRoof.albedo.disposeCount + retiredStone.albedo.disposeCount, 0, 'their procedural textures stay');
+assert.equal(loadedImageUrls.length, retiredLoads, 'and no photo is requested for them');
+assert.ok(!Object.hasOwn(SETS, 'roof') && !Object.hasOwn(SETS, 'brick'), 'no roof or brick set is held');
 for (const bucket of ['plaster', 'wood']) assert.deepEqual(sourcedBuildingTintPolicy('orchard', bucket),
-  sourcedBuildingTintPolicy('autumn', bucket), 'the Orchard-only change does not recolor its other building surfaces');
+  sourcedBuildingTintPolicy('autumn', bucket), 'Orchard\'s building tints are Autumn\'s');
 // (2026-10-05, the map-revival lane: Copper Mesa is Queenstown's button grass now, no longer the desert's tones)
 for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert']]) {
   const vegetation = getMapConfig(mapId).vegetation;
@@ -422,11 +399,12 @@ const backingBytes = canvases => [...new Set(canvases)].reduce((sum, c) => sum +
 const cacheBytes = () => backingBytes([..._compositeCache.values()].flatMap(entry =>
   [entry.canvas, entry.surface].filter(Boolean)));
 _compositeCache.clear();
+// ten distinct timber pigments over the one immutable AO/roughness surface
 const paletteRoofs = [];
-for (const mapId of ['autumn', 'orchard', 'winter', 'railyard', 'blackglass', 'skybridge',
-  'fjord', 'alpine', 'caldera', 'foundry']) {
+for (const mapId of ['autumn', 'railyard', 'blackglass', 'skybridge', 'fjord',
+  'caldera', 'foundry', 'desert', 'steppe', 'badlands']) {
   const roof = building();
-  await applySourcedBuildings({ roof }, mapId);
+  await applySourcedBuildings({ wood: roof }, mapId);
   paletteRoofs.push(roof);
   assert.ok(_compositeCache.size <= 8, 'sharing never expands the existing eight-entry LRU');
   const priorDuplicateBytes = [..._compositeCache.values()].reduce((sum, entry) =>
@@ -444,11 +422,11 @@ assert.equal(backingBytes(paletteRoofs.flatMap(roof => [roof.albedo.image, roof.
 const stableSurface = paletteRoofs[0].surface.image;
 const stablePixels = stableSurface.pixels.slice();
 const rougher = building();
-await applySet('roof', rougher, { roughMul: 1.5, tint: [0.9, 0.9, 0.9] });
+await applySet('wood', rougher, { roughMul: 1.5, tint: [0.9, 0.9, 0.9] });
 assert.notEqual(rougher.surface.image, stableSurface, 'roughness multipliers never alias');
 assert.notDeepEqual(rougher.surface.image.pixels, stablePixels, 'roughness separation changes actual green-channel bytes');
 const rougherTint = building();
-await applySet('roof', rougherTint, { roughMul: 1.5, desat: 0.4, lift: 0.1 });
+await applySet('wood', rougherTint, { roughMul: 1.5, desat: 0.4, lift: 0.1 });
 assert.equal(rougherTint.surface.image, rougher.surface.image,
   'tint, desaturation and lift remain albedo-only identity dimensions');
 const plasterSurface = building();
@@ -459,13 +437,13 @@ assert.notEqual(plasterSurface.surface.image, rougher.surface.image,
 // Change the actual cached image fixtures to a larger source, as a tier/size
 // transition does; keep every RGBA pixel valid without involving a GPU.
 for (const [url, fixture] of loadedImages) {
-  if (!url.includes('RoofingTiles012A')) continue;
+  if (!url.includes('Planks023A')) continue;
   const previous = fixture.pixels;
   fixture.width = fixture.height = 4;
   fixture.pixels = Uint8ClampedArray.from({ length: 4 * 4 * 4 }, (_, i) => previous[i % previous.length]);
 }
 const larger = building();
-await applySet('roof', larger, { roughMul: 1.5 });
+await applySet('wood', larger, { roughMul: 1.5 });
 assert.equal(larger.surface.image.width, 4);
 assert.equal(larger.surface.image.pixels.byteLength, 64);
 assert.notEqual(larger.surface.image, rougher.surface.image, 'different output sizes never alias');
@@ -473,11 +451,11 @@ assert.deepEqual(stableSurface.pixels, stablePixels, 'later palettes, roughness 
 
 _compositeCache.clear();
 const packedLayer = freshLayer();
-await applySet('roof', packedLayer, { roughInAlpha: true, roughMul: 1.5 });
+await applySet('wood', packedLayer, { roughInAlpha: true, roughMul: 1.5 });
 assert.equal([..._compositeCache.values()][0].surface, null,
   'terrain packed-alpha composition still creates no separate surface');
 const separateLayer = building();
-await applySet('roof', separateLayer, { roughMul: 1.5 });
+await applySet('wood', separateLayer, { roughMul: 1.5 });
 assert.notEqual(separateLayer.albedo.image, packedLayer.albedo.image,
   'packed terrain and opaque building albedos retain separate cache identities');
 assert.ok(packedLayer.albedo.image.pixels.some((value, i) => i % 4 === 3 && value < 255));

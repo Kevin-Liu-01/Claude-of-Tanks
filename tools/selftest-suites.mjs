@@ -1552,7 +1552,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/sourcedTextureCompositionWorker.selftest.mjs',
     'src/world/sourcedTextureCompositionClient.selftest.mjs',
     'src/world/sourcedTextureCompositionAdoption.selftest.mjs',
-    'src/world/foundryMasonry.selftest.mjs',
     'src/world/foundryRoof.selftest.mjs',
     'src/world/sourcedTerrainPreparation.selftest.mjs',
     'src/world/spawnClearance.selftest.mjs',

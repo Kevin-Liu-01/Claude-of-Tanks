@@ -42,17 +42,15 @@ const plaster = sourceFiles(BUILDING_SOURCES.find((s) => s.base === 'Plaster007'
 assert.equal(plaster.color, 'public/textures/buildings/Plaster007_1K-JPG_Color-even.jpg');
 assert.equal(plaster.normal, 'public/textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg');
 assert.equal(plaster.ao, 'public/textures/buildings/Plaster007_1K-JPG_AmbientOcclusion.jpg');
+// (building-tex-diet-278) the retired roof tiles and brick sets: no generator source, no tier file, no loader set
+assert.deepEqual(BUILDING_SOURCES.map((s) => s.base), ['Plaster007', 'Planks023A'], 'the building sets are the plaster and the timber');
 
 // 3.
 for (const [base, entry] of Object.values(ledgers).flatMap((ledger) => Object.entries(ledger.sets))) {
   const sourceBytes = Object.values(entry.sources).reduce((sum, s) => sum + s.bytes, 0);
   const tierBytes = (tier) => Object.values(entry.outputs[tier]).reduce((sum, o) => sum + o.bytes, 0);
   for (const [tier, size] of Object.entries(TIERS)) {
-    for (const o of Object.values(entry.outputs[tier])) {
-      assert.equal(o.size, size, `${base} ${tier}: ${o.file} is ${size} px wide`);
-      // a set wider than tall (Bricks 097, 1024 x 512) keeps its aspect; a square set records no height
-      if (o.height !== undefined) assert.ok(o.height < size && size % o.height === 0, `${base} ${tier}: ${o.file} keeps its aspect`);
-    }
+    for (const o of Object.values(entry.outputs[tier])) assert.equal(o.size, size, `${base} ${tier}: ${o.file} is ${size} px`);
   }
   assert.ok(tierBytes('512') < tierBytes('1k'), `${base}: the phone tier is the smaller`);
   assert.ok(tierBytes('1k') <= 0.7 * sourceBytes, `${base}: the 1K tier saves ≥ 30 % (${tierBytes('1k')} of ${sourceBytes} B)`);
@@ -66,7 +64,6 @@ for (const [base, entry] of Object.values(ledgers).flatMap((ledger) => Object.en
 for (const ledger of Object.values(ledgers)) {
   assert.match(ledger.encoder, /^cwebp \d+\.\d+\.\d+ \/ dwebp \d+\.\d+\.\d+$/, 'the ledger names the libwebp that encoded it');
 }
-assert.equal(ledgers.buildings.sets.Bricks097.outputs['512'].Color.height, 256, 'Bricks 097\'s 512 tier is 512 x 256');
 
 // 4.
 const flat = (px) => Uint8Array.from(px.flat());
@@ -77,9 +74,6 @@ assert.deepEqual([...grey], [188, 188, 188, 255], 'black and white average to li
 const data = halve(flat([[0, 10, 0, 255], [255, 20, 0, 255], [0, 30, 0, 255], [255, 40, 0, 255]]), 2, 'data');
 assert.deepEqual([...data], [128, 25, 0, 255], 'data channels average as numbers');
 assert.deepEqual([...packOrm(flat([[90, 1, 2, 255]]), flat([[200, 3, 4, 255]]))], [90, 200, 0, 255], 'R = AO, G = roughness, B = 0');
-const wide = halve(flat([[0, 0, 0, 255], [40, 40, 40, 255], [80, 80, 80, 255], [120, 120, 120, 255],
-  [0, 0, 0, 255], [40, 40, 40, 255], [80, 80, 80, 255], [120, 120, 120, 255]]), 4, 'data', 2);
-assert.deepEqual([...wide], [20, 20, 20, 255, 100, 100, 100, 255], 'a 4 x 2 image halves to 2 x 1, row-major');
 
 const setCount = Object.values(ledgers).reduce((sum, ledger) => sum + Object.keys(ledger.sets).length, 0);
 console.log(`terrain-texture-tiers.selftest: ${setCount} sets (${Object.keys(GROUPS).join(', ')}) × ${Object.keys(TIERS).length} tiers match their ledgers`);

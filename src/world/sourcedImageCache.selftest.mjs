@@ -34,7 +34,7 @@ hooks.deregister();
 const imagesOf = (setKey) => { assert.ok('tiered' in SETS[setKey], `${setKey} is a tiered set`); return 3; };
 const setKeyOf = (entry) => (typeof entry === 'string' ? entry : entry?.set ?? null);
 const buildingSets = Object.keys(SETS).filter((key) => SETS[key].dir === '/textures/buildings');
-assert.deepEqual(buildingSets, ['plaster', 'roof', 'wood', 'brick'], 'the four building sets');
+assert.deepEqual(buildingSets, ['plaster', 'wood'], 'the two building sets (the roof tiles and brick retired, building-tex-diet-278)');
 let largest = 0;
 for (const [mapId, plan] of Object.entries(TERRAIN_PLAN)) {
   const terrainSets = new Set([...Object.values(plan).map(setKeyOf).filter(Boolean), 'rock']);

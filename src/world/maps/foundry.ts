@@ -127,7 +127,6 @@ export default {
     // their stoves, the rolling mills under north lights, gas holders, conveyor galleries, the colliery headframe, the
     // works office and the workers' terraces in the coalfield's brick — in place of the generic halls and sheds
     architecture: BUILDING_STYLES.foundry.kit,
-    sourcedPalette: 'ironworks',
     foundryServiceCourt: { sites: [
       { planIndex: 2, kind: 'containerRow', x: 163, z: -106, yawDeg: 0 },
       { planIndex: 3, kind: 'gantry', x: 71.5, z: -96, yawDeg: 0 },
