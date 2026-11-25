@@ -11,6 +11,8 @@
 //
 //   node tools/with-capture-lock.mjs --lock-class=render -- node tools/battle-retention-probe.mjs --dist=<dist> \
 //     --label=fix --out=<dir> [--cpu=4] [--maps=verdant,winter] [--retainers] [--save-snapshot] [--expect=released|retained]
+//   (--dev serves this checkout's sources through vite's dev server instead of a dist: the standing receipt,
+//   tools/battle-retention.browser.selftest.mjs, runs runRetentionRoute that way)
 //
 // Exit 0 when the reading matches --expect (default released: world A's root collected and none of its arrays alive) and
 // --expect-dressing (released | retained | any, the default); 1 otherwise; 2 on a failed run. --expect=retained is the
@@ -22,20 +24,27 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
-const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const root = new URL('..', import.meta.url).pathname;
-const distDir = resolve(arg('dist', 'dist'));
-const label = arg('label', 'run');
-const out = resolve(arg('out', '.qa-dev/battle-retention'));
-const port = Number(arg('port', 4271));
-const [mapA, mapB] = arg('maps', 'verdant,winter').split(',');
-const cpuRate = Number(arg('cpu', 4));
-const expect = arg('expect', 'released');
-const expectDressing = arg('expect-dressing', 'any');
-const retainers = process.argv.includes('--retainers');
-const saveSnapshot = process.argv.includes('--save-snapshot');
-const settleMs = Number(arg('settle-ms', 4000));
-const log = (line) => process.stderr.write(`[battle-retention ${label}] ${line}\n`);
+
+/** The probe's options from its command line. */
+export function parseRetentionArgs(argv = process.argv.slice(2)) {
+  const arg = (name, fallback) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+  const [mapA, mapB] = arg('maps', 'verdant,winter').split(',');
+  return {
+    dev: argv.includes('--dev'),
+    distDir: resolve(arg('dist', 'dist')),
+    label: arg('label', 'run'),
+    out: resolve(arg('out', '.qa-dev/battle-retention')),
+    port: Number(arg('port', 4271)),
+    mapA, mapB,
+    cpuRate: Number(arg('cpu', 4)),
+    expect: arg('expect', 'released'),
+    expectDressing: arg('expect-dressing', 'any'),
+    retainers: argv.includes('--retainers'),
+    saveSnapshot: argv.includes('--save-snapshot'),
+    settleMs: Number(arg('settle-ms', 4000)),
+  };
+}
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const PHONE = {
   viewport: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true, isLandscape: false },
@@ -96,14 +105,26 @@ export function retentionVerdict(probes, { expect = 'released', expectDressing =
   return { worldReleased, dressingReleased, expect, expectDressing, pass: worldPass && dressingPass };
 }
 
-async function main() {
-  const [{ default: puppeteer }, { preview }] = await Promise.all([import('puppeteer'), import('vite')]);
+/**
+ * One route (Garage -> A -> Garage -> B) and its reading: the report, with `verdict` (retentionVerdict; `error` on a run
+ * that did not finish). Writes `<out>/<label>.json` when `out` is set.
+ */
+export async function runRetentionRoute({ dev = false, distDir = resolve('dist'), label = 'run', out = null, port = 4271,
+  mapA = 'verdant', mapB = 'winter', cpuRate = 4, expect = 'released', expectDressing = 'any', retainers = false,
+  saveSnapshot = false, settleMs = 4000 } = {}) {
+  const log = (line) => process.stderr.write(`[battle-retention ${label}] ${line}\n`);
+  const [{ default: puppeteer }, vite] = await Promise.all([import('puppeteer'), import('vite')]);
   let server, browser;
-  const report = { label, distDir, maps: [mapA, mapB], cpuRate, steps: [], errors: [] };
-  let failed = false;
+  const report = { label, source: dev ? 'dev server' : distDir, maps: [mapA, mapB], cpuRate, steps: [], errors: [] };
   try {
-    await mkdir(out, { recursive: true });
-    server = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port, strictPort: true, open: false } });
+    if (out) await mkdir(out, { recursive: true });
+    if (dev) {
+      server = await vite.createServer({ root, logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
+      await server.listen();
+      port = server.httpServer.address().port;
+    } else {
+      server = await vite.preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port, strictPort: true, open: false } });
+    }
     browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 900_000,
       args: ['--no-sandbox', '--use-gl=angle', '--enable-webgl', '--mute-audio', '--enable-precise-memory-info', '--js-flags=--expose-gc'] },
     { label: `battle-retention:${label}` });
@@ -181,7 +202,7 @@ async function main() {
       report.retainers = await snapshotRetainerPaths(cdp, names, 4, locate);
       for (const [name, paths] of Object.entries(report.retainers)) for (const steps of paths) log(`retainer of ${name}: ${steps.join(' > ')}`);
     }
-    if (saveSnapshot) {
+    if (saveSnapshot && out) {
       // the raw snapshot on disk, for an offline read (closure source locations through the dist's source maps)
       const file = join(out, `${label}-${mapB}.heapsnapshot`);
       const stream = createWriteStream(file);
@@ -194,7 +215,6 @@ async function main() {
       log(`snapshot ${file}`);
     }
     report.verdict = retentionVerdict(probes, { expect, expectDressing });
-    failed = !report.verdict.pass;
     const worldA = probes.worldA ?? {}, dressing = probes.dressing ?? {};
     log(`verdict ${JSON.stringify(report.verdict)} world-${mapA}: root ${worldA.rootAlive ? 'ALIVE' : 'collected'}, `
       + `${worldA.arraysAlive}/${worldA.arrays} arrays alive (${worldA.aliveMb} MB); garage dressing: ${dressing.arraysAlive}/`
@@ -204,11 +224,14 @@ async function main() {
     log(`FAIL ${error.message}`);
     report.verdict = { pass: false, error: true };
   } finally {
-    await writeFile(join(out, `${label}.json`), `${JSON.stringify(report, null, 2)}\n`).catch(() => {});
+    if (out) await writeFile(join(out, `${label}.json`), `${JSON.stringify(report, null, 2)}\n`).catch(() => {});
     if (browser) await browser.close().catch(() => browser.process()?.kill('SIGKILL'));
-    if (server) await new Promise((done) => server.httpServer.close(() => done())).catch(() => {});
+    if (server) await (dev ? server.close() : new Promise((done) => server.httpServer.close(() => done()))).catch(() => {});
   }
-  return report.verdict?.error ? 2 : failed ? 1 : 0;
+  return report;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(await main());
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const report = await runRetentionRoute(parseRetentionArgs());
+  process.exit(report.verdict?.error ? 2 : report.verdict?.pass ? 0 : 1);
+}

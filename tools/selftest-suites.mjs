@@ -3498,6 +3498,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 269 (the 268 drive smoke's second battle at 97%): a second solo battle in one page, started while the Leave's Garage
     // restore runs under a loaded GPU, reveals on its first frame
     'tools/second-solo-battle.browser.selftest.mjs',
+    // webcontent-diet-278 (Kevin: "properly clear game state after leaving a battle"): at the phone tier, battle A's world and
+    // every array its geometry held are collected by battle B's settle; a failure prints what holds it
+    'tools/battle-retention.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
