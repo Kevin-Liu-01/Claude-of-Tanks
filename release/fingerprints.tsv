@@ -252,7 +252,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/leopard2a3B4.generated.ts	ad9624d6
 file	anatomy	src/vehicles/combatAnatomyGroups/leopard2a4Family.generated.ts	de24c516d77b8c7c
 file	anatomy	src/vehicles/combatAnatomyGroups/leopardA6X.generated.ts	1718a2a8cd90a092
 file	anatomy	src/vehicles/combatAnatomyGroups/leopardX.generated.ts	8fecbd002ddf8faf
-file	anatomy	src/vehicles/combatAnatomyGroups/loara.generated.ts	d947d4702ec82104
+file	anatomy	src/vehicles/combatAnatomyGroups/loara.generated.ts	6a4b7d5777068135
 file	anatomy	src/vehicles/combatAnatomyGroups/lrmvLynx.generated.ts	971ee269494f5c11
 file	anatomy	src/vehicles/combatAnatomyGroups/lvkv9040.generated.ts	e1294495d4ad7c78
 file	anatomy	src/vehicles/combatAnatomyGroups/m163.generated.ts	b944cb2cdd172742
@@ -577,7 +577,7 @@ file	gate	docs/geometry-gate/ztz100_prototype.json	6db27603016d9c37
 file	gate	docs/geometry-gate/ztz85_iii.json	a2b6b1985e5f375e
 file	gate	docs/geometry-gate/ztz99_longwei.json	009852eda62f87db
 file	gate	docs/geometry-gate/ztz99a2.json	5158653d8b9c615e
-file	gunLines	docs/geometry-gate/gun-junction.json	6519124222f5e185
+file	gunLines	docs/geometry-gate/gun-junction.json	2b7c100abd4e5511
 file	icons	public/icons/tank-assets/index.json	46881c9fd0046165
 file	icons	public/icons/tank-assets/tanks/abramsx.json	a5c0df73dff70c8f
 file	icons	public/icons/tank-assets/tanks/aft10.json	5aea45cf26a6c426
@@ -770,7 +770,7 @@ file	icons	public/icons/tank-assets/tanks/pt84_zbik.json	b3035bc0f4e7fbad
 file	icons	public/icons/tank-assets/tanks/pt91a_twardy.json	71f5e8c2ac58a555
 file	icons	public/icons/tank-assets/tanks/pt91m.json	b1da43f770243f5b
 file	icons	public/icons/tank-assets/tanks/puma_s1.json	9eb6cb1d8ed2db7b
-file	icons	public/icons/tank-assets/tanks/pza_loara.json	76835e025675d97c
+file	icons	public/icons/tank-assets/tanks/pza_loara.json	6d2daa0302e814de
 file	icons	public/icons/tank-assets/tanks/raiju_ifv.json	956f62cd828be60c
 file	icons	public/icons/tank-assets/tanks/redback.json	30da5e57e1f31df0
 file	icons	public/icons/tank-assets/tanks/sabra_mk2.json	a3c8635a83ccdc75
@@ -892,7 +892,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	ea5c81ebdeecf7f1
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	3a0d89e1d260502a
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	6ea65866cfc2e18c
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	e991aaf48e08c04c
-file	ledger	docs/references/fleet-geometry-ledger.json	71ec0643c222efc3
+file	ledger	docs/references/fleet-geometry-ledger.json	dfa33be76fa85725
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	e8eed0cfc487b040
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	890cf11e8a4996f5
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -996,9 +996,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	b6694e88
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	7fb0d925d0c87540
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	0a5919efdde7c859
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	bbe8e989b5cc7271
-file	seats	src/sim/missionAttachmentSeats.generated.ts	c61b531a11b595a3
+file	seats	src/sim/missionAttachmentSeats.generated.ts	a23b674739ff23c8
 file	seats	src/sim/missionDockSeats.generated.ts	f99563ddd33787af
-file	spareTrack	docs/geometry-gate/spare-track.json	19efd7bcac3dfd87
+file	spareTrack	docs/geometry-gate/spare-track.json	ccbd98eaa036666b
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	bfd962f3ae1d788c
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	57e3f04eec042e38
@@ -1051,7 +1051,7 @@ group	leopard2a3B4	7682e2fe64f43a31
 group	leopard2a4Family	81abcf8c8c95b489
 group	leopardA6X	41078ab7ef6d690a
 group	leopardX	0e7fff98fa90929d
-group	loara	87e8c2d84072b2c0
+group	loara	95a3b3edea3ca2d6
 group	lrmvLynx	07f335132cd4946e
 group	lvkv9040	be09a4102409203c
 group	m163	6412cb2e5621a09b
@@ -1294,7 +1294,7 @@ key	anatomy	pt84_zbik	be6ff1cca7fad102	605d8760be721fc2
 key	anatomy	pt91a_twardy	0fe06c2fa8346786	ddec300ed48a9500
 key	anatomy	pt91m	7910f5f62b4979f7	3e44d354e748d287
 key	anatomy	puma_s1	3f4c2ee13e47ee24	cb0c6224c63bd792
-key	anatomy	pza_loara	5a6c85308d4089cf	10572095c1c20421
+key	anatomy	pza_loara	e4e2b65d40e96f24	3047db9015c53212
 key	anatomy	raiju_ifv	1c87ac32771e02eb	c50014fcb65f8226
 key	anatomy	redback	6b412065f122b80f	2c8848bfacac1bc9
 key	anatomy	sabra_mk2	7d54e49bc009c55e	93a2483d04e992e4
@@ -1607,7 +1607,7 @@ key	centering	pt84_zbik	c0c0da089f16bb80	d790347af291b07f
 key	centering	pt91a_twardy	66cf2585eeea38b5	90d40c86c18e043d
 key	centering	pt91m	ab6e5231fb720ca2	d8fc7909c8bc830c
 key	centering	puma_s1	932b70fa2637f9fc	11279c5a4e87a8ae
-key	centering	pza_loara	1f3c210ee6017ee2	1a90b1a2a70a9aa5
+key	centering	pza_loara	1aef46caa65d37e0	1a90b1a2a70a9aa5
 key	centering	raiju_ifv	6a760698f60397c4	ffc89b6254165a76
 key	centering	redback	8fd90c1fec44ae9f	81a3a1199fd2f4ce
 key	centering	sabra_mk2	14ba96073d253e04	6a86eaea54394b77
@@ -1953,7 +1953,7 @@ key	controls	pt84_zbik	10356c93c9aaa028	7163cfbfd53758b0
 key	controls	pt91a_twardy	d1ac84b7f0973b82	e95d2ef6728c2ff5
 key	controls	pt91m	7ba55463279d305f	c80e2f36dbf48929
 key	controls	puma_s1	476db97a5d39f091	d425fbd12fe61f8a
-key	controls	pza_loara	c667717d61bbff81	9ecb14d676502c1a
+key	controls	pza_loara	17b555126ba0af37	9ecb14d676502c1a
 key	controls	raiju_ifv	0cfb8375fc5be5db	141bda1a283d6aa9
 key	controls	redback	2a482c44b9780bb9	6fc2a1cc283c1951
 key	controls	sabra_mk2	3a43bbefada51ecd	af519daac89edcd0
@@ -2266,7 +2266,7 @@ key	fills	pt84_zbik	dd09ce4fa70cca5f	b37dfb38ea5b852d
 key	fills	pt91a_twardy	17ee7b175e3c1112	886198a6503ef557
 key	fills	pt91m	7e25dd693cfcb6f8	c8355d9a1bb90b48
 key	fills	puma_s1	7fb882cff605ee9f	dfff529798d091d3
-key	fills	pza_loara	a4dba5c639a1a798	f9a5a788e591a699
+key	fills	pza_loara	40c24b04cb99424e	f9a5a788e591a699
 key	fills	raiju_ifv	c0df6e31623a56bb	d1b29b27714e1fce
 key	fills	redback	8f27163aee624801	fec5f4f60c09e950
 key	fills	sabra_mk2	c0fe10059a757a73	fcc987f928a2d8a0
@@ -2873,7 +2873,7 @@ key	gunLines	pt84_zbik	bb1d985f58414061	f60a935d2ed6e0d5
 key	gunLines	pt91a_twardy	60af3512602ed31b	bbe092832fd6dd56
 key	gunLines	pt91m	059eb32550eb7ecb	8743bd2984b55068
 key	gunLines	puma_s1	0affb5e2f2e0472e	183aa248ee500739
-key	gunLines	pza_loara	54234901010ac360	9b992e905097c830
+key	gunLines	pza_loara	b57e53418b59cd38	278a377d5772f4ee
 key	gunLines	raiju_ifv	82b634b506492ade	58dbb94e731482d1
 key	gunLines	redback	d264107c0668b31e	7fd0312bfe217619
 key	gunLines	sabra_mk2	e00bb2c6a9bfdbc6	4602d1e6af7091b1
@@ -3186,7 +3186,7 @@ key	icons	pt84_zbik	232e97d7a1c3fbbb	1136be2397c4cdff
 key	icons	pt91a_twardy	a7197d419e5b3c6f	fd35add0ab49a037
 key	icons	pt91m	a593e5d14bcbc7e0	53a190feba197b42
 key	icons	puma_s1	87d655bcec06b8ed	496976d130f58f34
-key	icons	pza_loara	02d1c55555c5341c	bf46269e3a76fb63
+key	icons	pza_loara	c4b49931f491c11a	5f26da6819217c63
 key	icons	raiju_ifv	fd32991017804eee	d0a1602bbae5e238
 key	icons	redback	b3b8e28d4496dfa0	d7dc62871dc847f3
 key	icons	sabra_mk2	16c6a684ad03550c	d72372651687a6aa
@@ -3499,7 +3499,7 @@ key	ledger	pt84_zbik	bacb28b1919c47dc	8cab9f186a0d1b2a
 key	ledger	pt91a_twardy	f411cd167be411d1	1af33cf5b826669b
 key	ledger	pt91m	7e117884414f36f6	dde04f54056f8b3d
 key	ledger	puma_s1	5030b811f3cd2c6b	c78dd8ed2063e9fc
-key	ledger	pza_loara	d0d20af596f98ef6	1245b1e761b25d2f
+key	ledger	pza_loara	d39f8dc8fa8e85b3	71a2164bdae39c34
 key	ledger	raiju_ifv	8fc400898ab84628	95d6d71613b26355
 key	ledger	redback	9e1aca33fe7c0270	475be2ac271dfe03
 key	ledger	sabra_mk2	a196fcec73a33acf	4d1634f3a15b0407
@@ -3812,7 +3812,7 @@ key	marking	pt84_zbik	f3c6ace30103c518	ccf90faae05a9b22
 key	marking	pt91a_twardy	6542eb50bf497422	5410b838ecfbc5be
 key	marking	pt91m	301bb5bac5119120	d1344231651ce0d6
 key	marking	puma_s1	9743503a5037f677	85780db8b64bcb36
-key	marking	pza_loara	badba15888a9796d	d7977b905e1d4eb5
+key	marking	pza_loara	c15ad22b66a551ac	d7977b905e1d4eb5
 key	marking	raiju_ifv	d12767559bcd7b6f	d300ad78baf733d9
 key	marking	redback	fdc383e764609936	2629094f5608e9d7
 key	marking	sabra_mk2	2b3878e24ce6f1f7	e25d95c2ee5586e4
@@ -4125,7 +4125,7 @@ key	seats	pt84_zbik	083bdb9d61d9f04a	b58e00c67cd58b3b
 key	seats	pt91a_twardy	30f016265ff22361	c3c8d3886227800a
 key	seats	pt91m	9b363820f1d6a43f	1fb0258825cf6353
 key	seats	puma_s1	f397bf9fccb68de5	fb669e372b7af3c5
-key	seats	pza_loara	96e63367247be21f	43bec6065348f528
+key	seats	pza_loara	c2ee5017628775ed	0ff06786ad04c2e6
 key	seats	raiju_ifv	d562134cae537ccf	3f7b3427214f90dd
 key	seats	redback	b0a56b9742058d7f	a16790d66b51ada7
 key	seats	sabra_mk2	20192ad21db9dbeb	abbb56494b659209
@@ -4438,7 +4438,7 @@ key	spareTrack	pt84_zbik	b2d5b030e8cf1262	37109c7761faef2e
 key	spareTrack	pt91a_twardy	002cdc1c9865fffc	200fcd20f1f4a68f
 key	spareTrack	pt91m	9c62a9e23a080987	e7d23c81443ff840
 key	spareTrack	puma_s1	0317a8e86bb36f42	349e3290dab5aad7
-key	spareTrack	pza_loara	aae0150cb5b7c85a	87a9dd0029558076
+key	spareTrack	pza_loara	3248f5092824a203	3ae498f10483eb35
 key	spareTrack	raiju_ifv	586bd59b8f305067	822efc5c74ed7995
 key	spareTrack	redback	e3408be2de05f0dc	296c7c3072d4ce9a
 key	spareTrack	sabra_mk2	f852cf9bc37c3591	368f393ebdafbb4b
@@ -5390,7 +5390,7 @@ row	combatAnatomy	pt84_zbik	c2d30532b91bec22
 row	combatAnatomy	pt91a_twardy	ed8200cfe94e2f61
 row	combatAnatomy	pt91m	14f7e28e1757bc17
 row	combatAnatomy	puma_s1	2236c6dcb3d3d281
-row	combatAnatomy	pza_loara	5e56e595709b3959
+row	combatAnatomy	pza_loara	f674e116d66a1ab1
 row	combatAnatomy	raiju_ifv	762b98a9912bd74e
 row	combatAnatomy	redback	3ec82e8f6528cee0
 row	combatAnatomy	sabra_mk2	1c02444663601ea2
@@ -6295,7 +6295,7 @@ row	geometryLedger	pt84_zbik	9e074803fc6a37fb
 row	geometryLedger	pt91a_twardy	fb976c516e23f19b
 row	geometryLedger	pt91m	27381f6fa19192b9
 row	geometryLedger	puma_s1	5b2ab624fd882090
-row	geometryLedger	pza_loara	2b9cf3cff4a8de22
+row	geometryLedger	pza_loara	2d46d38da7e7aa28
 row	geometryLedger	raiju_ifv	e89f1a159e5998f5
 row	geometryLedger	redback	3b439e1d91ed274e
 row	geometryLedger	sabra_mk2	dbb3857f9b5481c7
@@ -6608,7 +6608,7 @@ row	gunJunction	pt84_zbik	6712f4084c07db94
 row	gunJunction	pt91a_twardy	48fed8a1326de4f0
 row	gunJunction	pt91m	779670070929dc20
 row	gunJunction	puma_s1	47f45df8966122c4
-row	gunJunction	pza_loara	d1ec657da259637d
+row	gunJunction	pza_loara	8dc6941b532cd415
 row	gunJunction	raiju_ifv	a91f802ac6685804
 row	gunJunction	redback	e9ea46b33b36f064
 row	gunJunction	sabra_mk2	6c5aa80d38b5dcb2
@@ -7546,7 +7546,7 @@ row	missionAttachmentSeats	pt84_zbik	c690a5d22e8a3678
 row	missionAttachmentSeats	pt91a_twardy	ac1012a49674b0dc
 row	missionAttachmentSeats	pt91m	74b32e8fa413abcb
 row	missionAttachmentSeats	puma_s1	a22bfba766bcf9e3
-row	missionAttachmentSeats	pza_loara	d3c91138091908eb
+row	missionAttachmentSeats	pza_loara	f33983361d3e8b92
 row	missionAttachmentSeats	raiju_ifv	743a955b6c14ea93
 row	missionAttachmentSeats	redback	624498c3092cba92
 row	missionAttachmentSeats	sabra_mk2	673a5ce26d8a1421
@@ -9113,7 +9113,7 @@ row	spareTrackLedger	pt84_zbik	d42cc14ee105eb8c
 row	spareTrackLedger	pt91a_twardy	3a41c445b0dfdc1b
 row	spareTrackLedger	pt91m	b35d03fd1f6eab42
 row	spareTrackLedger	puma_s1	549831d13509fecb
-row	spareTrackLedger	pza_loara	2e92010fc002ca0d
+row	spareTrackLedger	pza_loara	cbe43213be2ff355
 row	spareTrackLedger	raiju_ifv	88745ae488bf9feb
 row	spareTrackLedger	redback	02346cc6bec23c78
 row	spareTrackLedger	sabra_mk2	0be2363e1c4eb519
@@ -10069,7 +10069,7 @@ row	tankAssets	pt84_zbik	79dfe616183995f2
 row	tankAssets	pt91a_twardy	c9b0fd564abdf862
 row	tankAssets	pt91m	3a535fcefec11426
 row	tankAssets	puma_s1	20650f56e31264da
-row	tankAssets	pza_loara	f1bcba0dd296365f
+row	tankAssets	pza_loara	f39310f177f28153
 row	tankAssets	raiju_ifv	098bc0087bb7e132
 row	tankAssets	redback	8f1e412ec2fdfd61
 row	tankAssets	sabra_mk2	79c3eaa1a2eba4c3

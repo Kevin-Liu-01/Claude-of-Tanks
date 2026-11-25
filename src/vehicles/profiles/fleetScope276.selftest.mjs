@@ -28,6 +28,7 @@ const TARGETS = Object.freeze(['ztz99a2', 'ztz99a', 'vt4a1']);
 // Other 276 lanes that move an id on purpose, each with its owner ruling; every id not named here stays pinned.
 const MOVED_ON_PURPOSE = Object.freeze({
   olifant_mk2: "Kevin OK'd Olifant Mk 2 on the Loggim turret for 276 (11-24 18:40); ttd and olifant_mk1b held byte-identical",
+  pza_loara: 'tank-reds-276 (Main 11-24): the dark disc 2 mm proud of each brake face removed; the bore mouth is the brake face, barrel 3.302 -> 3.3',
 });
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);

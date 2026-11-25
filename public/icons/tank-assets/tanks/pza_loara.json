@@ -1014,7 +1014,7 @@
       }
     ]
   },
-  "geometryHash": "edfb8ec5",
+  "geometryHash": "82a8aa55",
   "metadataHash": "52c15d73",
   "presentationAnchor": {
     "xM": 0.0017,
@@ -1073,15 +1073,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36250,
-      "sha256": "1edef18a5d810c68ac9f3220223ca04ef58898b76cd67d2802d576eeb9baf488",
+      "bytes": 36254,
+      "sha256": "216bd95db39d704060bf9bc422b1ef71d73269c6830867a91770166a8a0b4495",
       "thumbnail": {
         "file": "thumbs/pza_loara_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 15162,
-        "sha256": "e693c3e95d716edab1de49c0d7b3408f47a308e287b822eb0b663f350fb7df05",
+        "bytes": 15140,
+        "sha256": "73226e42ec711ad069b30a0a740958cf03e6d5209e29992bdf5a161bf4f37442",
         "frame": [20,39,231,251]
       }
     },
@@ -1090,16 +1090,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19302,
-      "sha256": "98cab13884a96a1b5a32efdbc4e210bbf4a644cbd71ee1aeb24b495c0b9e27ee"
+      "bytes": 19280,
+      "sha256": "1fe85a81f47acd894f1cde91d230c5a3e4617cacecb91a2500e80cbbcce4a76f"
     },
     "side": {
       "file": "pza_loara_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12968,
-      "sha256": "cee9202c7fe68ec03b18edd9b169186983b8ecc55b0f0bfe574a968cb4849e9f"
+      "bytes": 12960,
+      "sha256": "8b6947b5402e6b4be421c5546e81daae80e4fd8855cf05ffd7de6d7eec058b5c"
     },
     "topSilhouette": {
       "file": "pza_loara_top_silhouette.png",
@@ -1122,24 +1122,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33650,
-      "sha256": "7ef7a447a604c17784d6d8337e49cace5ad76e5bf6cf877bdc2903a562d23dbf"
+      "bytes": 33666,
+      "sha256": "a3995eb24363851ed1b5ddfd446340c834ba51286f3f25d683220f0ccae7fc91"
     },
     "modulesSide": {
       "file": "pza_loara_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31498,
-      "sha256": "c2a32fd5d5e0934f9fd322074d9e78d21fbac0915d2ca536467017e5cd87fb6d"
+      "bytes": 31488,
+      "sha256": "3a5db17ca9fec91be381850e64bcd27e90c38ef5d4ef4c822c527f30b1b5ac38"
     },
     "crewSide": {
       "file": "pza_loara_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27446,
-      "sha256": "4be842c36bcf7759f8ef49a7459de0adbd626654f34de7f2b7a3fb0de0346d41"
+      "bytes": 27442,
+      "sha256": "e53daac26c741bb5736fe1a55a751ccf32f9276b5c98270e87899f7feb30658b"
     },
     "markings": {
       "file": "pza_loara_markings.png",

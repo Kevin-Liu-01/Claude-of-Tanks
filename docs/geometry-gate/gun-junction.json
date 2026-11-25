@@ -209,7 +209,7 @@
   "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"19036a9b3e6536f3","gun":"f8e9c808d3012148"}},
   "pt91m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b7046602b06f9065","gun":"e0e5e81cf82dd4c5"}},
   "puma_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fb10c1f61e825498","gun":"bef90fd9efba6a66"}},
-  "pza_loara": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"d52e68cf67e067ad","gun":"15ca1c350872a63a"}},
+  "pza_loara": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"d52e68cf67e067ad","gun":"61c62fa30dc45341"}},
   "raiju_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"87507aa38b27460a","gun":"40d7c2ea02f21271"}},
   "redback": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"01ad3c03c7ec8843","gun":"1e484bec864e4de9"}},
   "sabra_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3604ed2d590d8f43","gun":"1ed4c507882a338a"}},
