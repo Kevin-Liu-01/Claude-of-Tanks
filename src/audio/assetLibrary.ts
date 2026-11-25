@@ -29,6 +29,7 @@
 
 import { SFX_ASSETS, type SfxAssetRecord } from './sfxManifest.generated.ts';
 import { VOICE_PACKS } from './voiceManifest.generated.ts';
+import { classFetch } from '../engine/fetchClasses.ts';
 
 const PROBE_WEBM_B64 = 'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEAAAAAAAJaEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHGTbuMU6uEElTDZ1OsggEwTbuMU6uEHFO7a1OsggJE7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmoCrXsYMPQkBNgIRMYXZmV0GETGF2ZkSJiEBRAAAAAAAAFlSua+WuAQAAAAAAAFzXgQFzxYgAAAAAAAAAAZyBACK1nIN1bmSIgQCGhkFfT1BVU1aqg2MuoFa7hATEtACDgQLhkZ+BAbWIQOdwAAAAAABiZIEQY6KTT3B1c0hlYWQBATgBgLsAAAAAABJUw2fRc3POY8CLY8WIAAAAAAAAAAFnyJlFo4dFTkNPREVSRIeMTGF2YyBsaWJvcHVzZ8ihRaOIRFVSQVRJT05Eh5MwMDowMDowMC4wNjgwMDAwMDAAH0O2dUC454EAo7aBAACASIIut2xWt/QAAeXNngFGUIWXtzyTyRdZwxGaQd8AnvLXOrYji9/f7ABDXS1wlpp/VmSjqYEAFYBIpIhXrJiFA1wmCZMxJ/E6Sew3zKC9w+kbkzg5GqXIpP7pdWvgo6qBACmASJwbUlFFAKzi1LSrmF5J5U7LjWfTJzCwN3ATRwGLKpwcQ7ZED/agpKGYgQA9AEgGV2aBMUjSeumVrXp/vdBZnsCUm4EHdaKEAM3+YBxTu2uRu4+zgQC3iveBAfGCAYbwgQM=';
 
@@ -271,6 +272,14 @@ export function createAssetLibrary({
     }
   }
 
+  /**
+   * (entry-bytes-278) A file's turn on the link: the countdown's front lane goes at once; the bulk banks and the crew's
+   * voice pack are 'idle' (engine/fetchClasses.ts), held behind the photographs while a battle entry's loading card is up.
+   * The hold comes before the library's own slot, so a held bulk file never keeps a front-lane sound from its slot.
+   */
+  const onLink = <T,>(id: string | null, task: () => Promise<T>): Promise<T> =>
+    (id !== null && frontIds.has(id) ? task() : classFetch('idle', task));
+
   /** (plan 018) After a fetch of an asset that has buffers: the variants the network failed wait for F11's backoff. */
   function keepRefill(entry: Entry, network: number[]): void {
     if (!network.length) { entry.refill = undefined; entry.failures = 0; return; }
@@ -376,7 +385,7 @@ export function createAssetLibrary({
     const url = (i: number): string => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`;
     // (plan 018) a playing sound's variants the network failed, once their backoff has run out
     if (entry.promise && refillDue(entry)) {
-      entry.promise = refillInto(entry, url, rec.r, (task) => slot(id, task), (bytes) => { decodedBytes += bytes; evictIfNeeded(); }, () => true);
+      entry.promise = refillInto(entry, url, rec.r, (task) => onLink(id, () => slot(id, task)), (bytes) => { decodedBytes += bytes; evictIfNeeded(); }, () => true);
       return entry.promise;
     }
     if (entry.promise && !retryDue(entry)) return entry.promise;
@@ -386,7 +395,7 @@ export function createAssetLibrary({
       // a browser that cannot decode the format never will: no retry
       if (!(await ready)) { target.state = 'failed'; target.retryAt = Infinity; return; }
       const count = Math.max(1, Math.min(rec.n, maxVariants));
-      const fetched = await Promise.all(Array.from({ length: count }, (_, i) => slot(id, () => fetchOne(url(i), rec.r))));
+      const fetched = await Promise.all(Array.from({ length: count }, (_, i) => onLink(id, () => slot(id, () => fetchOne(url(i), rec.r)))));
       const buffers = fetched.map((f) => f.buffer);
       target.buffers = buffers;
       target.bytes = buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
@@ -506,8 +515,8 @@ export function createAssetLibrary({
         await Promise.all(Object.entries(pack).map(async ([line, takes]) => {
           const entry: Entry = { buffers: [], state: 'loading', promise: null, last: 0, bytes: 0, lastVariant: -1 };
           voiceEntries.set(voiceKey(language, line), entry);
-          const fetched = await Promise.all(takes.map((_, i) => voiceSlot(() => (current()
-            ? fetchOne(`${root}audio/voice/${language}/${line}_${i}.webm`, VOICE_DECODE_HZ) : Promise.resolve(NOT_FETCHED)))));
+          const fetched = await Promise.all(takes.map((_, i) => onLink(null, () => voiceSlot(() => (current()
+            ? fetchOne(`${root}audio/voice/${language}/${line}_${i}.webm`, VOICE_DECODE_HZ) : Promise.resolve(NOT_FETCHED))))));
           if (!current()) return;
           entry.buffers = fetched.map((f) => f.buffer);
           entry.bytes = entry.buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);

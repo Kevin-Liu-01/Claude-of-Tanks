@@ -26,6 +26,7 @@ import {
   canComposeSourcedTextureInWorker, sourceFileBitmap, tryComposeSourcedTexture,
 } from './sourcedTextureCompositionClient.ts';
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
+import { classFetch } from '../engine/fetchClasses.ts';
 import * as detMath from '../sim/detMath.ts';
 
 /**
@@ -471,12 +472,14 @@ const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = _imgCache.get(url);
   if (cached) return touchLru(_imgCache, url, cached, IMAGE_CACHE_MAX);
-  const request = new Promise<HTMLImageElement>((resolve, reject) => {
+  // (entry-bytes-278) a photograph is drawn when it lands and never awaited by a battle entry: 'decor', held to a few at
+  // a time while the loading card is up, so the script chunks and atlases the entry waits for keep the link
+  const request = classFetch('decor', () => new Promise<HTMLImageElement>((resolve, reject) => {
     const im = new Image();
     im.onload = () => resolve(im);
     im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
     im.src = url;
-  });
+  }));
   return touchLru(_imgCache, url, request, IMAGE_CACHE_MAX);
 }
 
