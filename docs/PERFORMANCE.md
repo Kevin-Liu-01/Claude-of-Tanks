@@ -634,6 +634,22 @@ the prefix decomposition through `tools/frame-pass-timer.mjs`:
   headless browsers; the probe records the load and the foreign GPU processes' CPU per slot. Under that load the
   whole-frame query reads high — in the pilots 20–55 ms against a presented interval of 16.5–16.7 ms, a span that
   includes other work rather than the frame's occupancy — so the tables lead with p25 and the paired deltas.
+- The A/A noise rule (2026-11-25, tree-breakdown-277). A delta counts only against its view's A/A spread: the widest
+  single-ABBA delta of one dist measured against itself. The spreads live in `tools/frame-budget-aa-noise.json`, and
+  `--report` prints each view's spread beside its delta (`judgeReport`). A delta from fewer than four pairs (one ABBA
+  is two) inside the spread is inconclusive, never a pass or a fail. So is one within twice the spread of the bar
+  (`--bar-pct`). A change near its bar is measured with `--pattern=ABBAABBA` or more. Ruinspires desktop, dist
+  c7d111fad4, five A/A runs (14 ABBAs): chase 900p ±4.0 %, centre-far 900p ±6.2 %, centre-far 1080p ±3.8 % (GPU
+  median), and chase 1080p ±21.7 %.
+  - The chase 1080p spread comes from one run. Both of its middle slots read 27.6 ms against 22.2-23.2 ms outside them,
+    with foreign GPU under 12 % and the thermal state nominal. Two ABBAABBA A/As then put it down to neither slot
+    position nor in-slot order. One measured chase 1080p alone: 24.1-25.8 ms over 8 slots. The other measured every
+    view: 21.9-22.3 ms over 8 slots. It was the machine, once, which neither the foreign-GPU reading nor the thermal
+    state saw.
+  - The example: dome-detail-276's Blackglass verdict, +9 % GPU at chase 1920x1080 from one ABBA. Under the rule it
+    is inconclusive (inside ±21.7 %). It re-paired at +1.7 % after its fix.
+  - Each sample also records its clock and the thermal state at each end. The probe waits for a quiet GPU before each
+    slot (`--gpu-quiet`), and a slot that saw foreign GPU use is tainted, so its pairs are judged TAINTED.
 - Toggles (`--toggle=shadow-cache|sim-sleep`): A B B A blocks of a runtime switch inside one page and pose, with
   moving views (`chase@7`, the pose gliding over the ground at 7 m/s) where the cascades' snapped poses change.
 - Light presets (the ground lane's holds 14–16, 2026-10-04): a control toggle — a uniform the shader never reads —

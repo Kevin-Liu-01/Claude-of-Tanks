@@ -1,0 +1,253 @@
+{
+ "protocol": "frame-budget-aa-noise-v1",
+ "about": "Each view's A/A spread on this machine (Apple M5 Max): the widest single-ABBA delta (two pairs) of one dist against itself over the clean A/A runs on record. tools/frame-budget-probe.mjs judgeReport puts it beside every delta: fewer than 4 pairs inside the spread, or within 2x the spread of the bar, is inconclusive. Add a run's ABBAs here when a new A/A is measured; a tainted run (foreign GPU over the gate) is left out. Run 2 (2026-11-25 01:47) is left out: another program's GPU process ran at 88-141 % during two of its samples.",
+ "dist": "c7d111fad41c4210ffd2613b457d7f0fa35f9b9c",
+ "views": [
+  {
+   "map": "ruinspires",
+   "tier": "desktop",
+   "viewport": "1600x900",
+   "view": "centre-far",
+   "abbas": 4,
+   "gpuFramePct": 6.2,
+   "gpuFrameP25Pct": 3.1,
+   "cpuFrameMs": 0.15,
+   "measured": [
+    {
+     "run": "2026-11-24 run 1",
+     "note": "probe 54de104a7d; load fell 30.9 -> 8.8 during the run",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -1.8,
+     "gpuFrameP25Pct": -0.5,
+     "cpuFrameMs": 0.15
+    },
+    {
+     "run": "2026-11-25 run 3",
+     "note": "probe 117ab2a933, quiet-GPU gate, nothing tainted",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -6.2,
+     "gpuFrameP25Pct": -3.1,
+     "cpuFrameMs": 0.1
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 2.4,
+     "gpuFrameP25Pct": 0.6,
+     "cpuFrameMs": 0.0
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s4/s5",
+      "s7/s6"
+     ],
+     "gpuFramePct": 2.3,
+     "gpuFrameP25Pct": 0.8,
+     "cpuFrameMs": -0.05
+    }
+   ]
+  },
+  {
+   "map": "ruinspires",
+   "tier": "desktop",
+   "viewport": "1600x900",
+   "view": "chase",
+   "abbas": 4,
+   "gpuFramePct": 4.0,
+   "gpuFrameP25Pct": 2.5,
+   "cpuFrameMs": 0.95,
+   "measured": [
+    {
+     "run": "2026-11-24 run 1",
+     "note": "probe 54de104a7d; load fell 30.9 -> 8.8 during the run",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -3.2,
+     "gpuFrameP25Pct": -2.5,
+     "cpuFrameMs": 0.6
+    },
+    {
+     "run": "2026-11-25 run 3",
+     "note": "probe 117ab2a933, quiet-GPU gate, nothing tainted",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -2.2,
+     "gpuFrameP25Pct": 0.7,
+     "cpuFrameMs": 0.95
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -2.0,
+     "gpuFrameP25Pct": 1.7,
+     "cpuFrameMs": 0.15
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s4/s5",
+      "s7/s6"
+     ],
+     "gpuFramePct": 4.0,
+     "gpuFrameP25Pct": 1.6,
+     "cpuFrameMs": 0.05
+    }
+   ]
+  },
+  {
+   "map": "ruinspires",
+   "tier": "desktop",
+   "viewport": "1920x1080",
+   "view": "centre-far",
+   "abbas": 4,
+   "gpuFramePct": 3.8,
+   "gpuFrameP25Pct": 4.1,
+   "cpuFrameMs": 0.55,
+   "measured": [
+    {
+     "run": "2026-11-24 run 1",
+     "note": "probe 54de104a7d; load fell 30.9 -> 8.8 during the run",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 1.2,
+     "gpuFrameP25Pct": 2.3,
+     "cpuFrameMs": 0.35
+    },
+    {
+     "run": "2026-11-25 run 3",
+     "note": "probe 117ab2a933, quiet-GPU gate, nothing tainted",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 3.8,
+     "gpuFrameP25Pct": 4.1,
+     "cpuFrameMs": 0.55
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": -0.0,
+     "gpuFrameP25Pct": -0.1,
+     "cpuFrameMs": 0.0
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s4/s5",
+      "s7/s6"
+     ],
+     "gpuFramePct": -1.5,
+     "gpuFrameP25Pct": -0.7,
+     "cpuFrameMs": -0.45
+    }
+   ]
+  },
+  {
+   "map": "ruinspires",
+   "tier": "desktop",
+   "viewport": "1920x1080",
+   "view": "chase",
+   "abbas": 6,
+   "gpuFramePct": 21.7,
+   "gpuFrameP25Pct": 15.8,
+   "cpuFrameMs": 0.3,
+   "measured": [
+    {
+     "run": "2026-11-24 run 1",
+     "note": "probe 54de104a7d; load fell 30.9 -> 8.8 during the run",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 6.2,
+     "gpuFrameP25Pct": 14.0,
+     "cpuFrameMs": 0.1
+    },
+    {
+     "run": "2026-11-25 run 3",
+     "note": "probe 117ab2a933, quiet-GPU gate, nothing tainted",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 21.7,
+     "gpuFrameP25Pct": 15.8,
+     "cpuFrameMs": 0.3
+    },
+    {
+     "run": "2026-11-25 run 4",
+     "note": "probe 9b38855b59, ABBAABBA, chase 1080p only",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 1.1,
+     "gpuFrameP25Pct": 3.0,
+     "cpuFrameMs": 0.0
+    },
+    {
+     "run": "2026-11-25 run 4",
+     "note": "probe 9b38855b59, ABBAABBA, chase 1080p only",
+     "slots": [
+      "s4/s5",
+      "s7/s6"
+     ],
+     "gpuFramePct": -3.2,
+     "gpuFrameP25Pct": -4.0,
+     "cpuFrameMs": -0.1
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s0/s1",
+      "s3/s2"
+     ],
+     "gpuFramePct": 0.1,
+     "gpuFrameP25Pct": -3.0,
+     "cpuFrameMs": -0.05
+    },
+    {
+     "run": "2026-11-25 run 5",
+     "note": "probe 9b38855b59, ABBAABBA, every default view",
+     "slots": [
+      "s4/s5",
+      "s7/s6"
+     ],
+     "gpuFramePct": -0.2,
+     "gpuFrameP25Pct": 1.9,
+     "cpuFrameMs": 0.05
+    }
+   ]
+  }
+ ]
+}
