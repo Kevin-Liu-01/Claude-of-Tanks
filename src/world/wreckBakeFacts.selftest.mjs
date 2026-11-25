@@ -45,7 +45,8 @@ function drawnWrecks(meshes) {
   for (const mesh of meshes) {
     const g = mesh?.geometry, p = g?.attributes.position;
     if (!p) continue;
-    const m = mesh.matrixAutoUpdate ? null : mesh.matrix;
+    // what the renderer reads: the world matrix (identity for the world-space meshes, a swapped hulk's pose for its own)
+    const m = mesh.matrixWorld;
     tris += (g.index ? g.index.count : p.count) / 3;
     for (let i = 0; i < p.count; i++) {
       v.fromBufferAttribute(p, i);

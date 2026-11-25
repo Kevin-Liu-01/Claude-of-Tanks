@@ -18,7 +18,14 @@ const hulk = (specId, seed, x, { standIn = true, lean = [0, 0, 0, 1] } = {}) => 
   standIn: standIn ? box(0.5, 0.06).translate(x, 2, 5) : null,
 });
 function makePlan(hulks, focus = null) {
+  // a world group as map.ts leaves it: placed (a parent's offset here), its matrices composed once, then frozen
+  const world = new THREE.Group();
+  world.position.set(0, 0.5, 0);
   const group = new THREE.Group();
+  world.add(group);
+  world.updateMatrixWorld(true);
+  group.updateMatrixWorld = () => {};
+  world.updateMatrixWorld = () => {};
   const mesh = new THREE.Mesh(new THREE.BufferGeometry()), shadow = new THREE.Mesh(new THREE.BufferGeometry());
   group.add(mesh, shadow);
   const swaps = [];
@@ -69,6 +76,9 @@ assert.deepEqual(deferredBakeOrder([hulk('a', 1, 100), hulk('b', 2, 50)], null),
   assert.equal(hulks.length, 3);
   assert.equal(hulks[1].geometry, hulks[2].geometry, 'a bake\'s hulks share its geometry');
   assert.ok(hulks.every((m) => Math.abs(m.matrix.elements[13] - 2) < 1e-9), 'each posed at its seat');
+  // what the renderer reads: the world matrix, under a frozen world group (the browser's KV-2 drew nowhere without it)
+  assert.ok(hulks.every((m) => Math.abs(m.matrixWorld.elements[13] - 2.5) < 1e-9 && Math.abs(m.matrixWorld.elements[12] - m.matrix.elements[12]) < 1e-9),
+    'each hulk\'s world matrix is its pose under the frozen world');
   assert.equal(group.children.filter((o) => o.name === 'hulk-shadow').length, 3, 'each with its shadow proxy');
   assert.equal(plan.mesh.parent, null, 'the stand-ins left the scene');
   assert.equal(plan.shadow.parent, null, 'and their shadow');

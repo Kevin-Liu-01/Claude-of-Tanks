@@ -150,7 +150,14 @@ export async function bakeDeferredWrecks(plan: DeferredWreckPlan, {
       if (cancelled) { release(baked); return stats; }
       const swapStart = now();
       for (const hulk of hulks) {
-        for (const object of plan.makeHulk(baked.geo, baked.shadowGeo, deferredHulkMatrix(hulk, matrix), hulk.specId)) parent.add(object);
+        for (const object of plan.makeHulk(baked.geo, baked.shadowGeo, deferredHulkMatrix(hulk, matrix), hulk.specId)) {
+          parent.add(object);
+          // the world's subtree is frozen once built (map.ts: its updateMatrixWorld is a no-op), so a hulk added after
+          // carries its own world matrix: the frozen parent's times its pose
+          parent.updateWorldMatrix(false, false);
+          object.matrixWorld.multiplyMatrices(parent.matrixWorld, object.matrix);
+          object.matrixWorldNeedsUpdate = false;
+        }
         hulk.standIn?.dispose();
         hulk.standIn = null;
       }

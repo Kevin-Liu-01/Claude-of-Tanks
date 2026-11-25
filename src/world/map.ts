@@ -1122,7 +1122,8 @@ function* assembleWorldSteps(
       if (!plan) return null;
       // (the bakes start nearest `focus`, the player's view; else the player's spawn)
       if (focus && plan.state === 'pending') plan.focus = focus;
-      deferredWrecksRun ??= bakeDeferredWrecks(plan);
+      // one run per plan: a call while it bakes (or after) returns that run; a plan still pending starts it
+      if (!deferredWrecksRun || plan.state === 'pending') deferredWrecksRun = bakeDeferredWrecks(plan);
       return deferredWrecksRun;
     },
     dispose() {
