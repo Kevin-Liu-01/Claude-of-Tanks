@@ -9,7 +9,10 @@
 //      and they swap when the viewer is on the other team (each peer, a replay or a spectated player sees its own blue);
 //   3. a colour-vision preset (deutan) moves the enemy streak with every other enemy mark; the own stays its own;
 //   4. a streak keeps its fade: it leaves the wingtip softly, is most opaque just behind it and fades out along its length;
-//   5. a wreck draws no streak.
+//   5. a wreck draws no streak;
+//   6. (Kevin: "on the actual vehicles add more detailling and coloring") every airframe carries team trim (its markings:
+//      fin caps, wingtips, a band, the roundels' centres) in its one geometry, painted the same viewer-relative team
+//      colour as its streaks; an airframe nobody paints (the AC-130 mode, the renders) keeps it insignia white.
 import assert from 'node:assert/strict';
 import { Color, Group } from 'three';
 import { createAirSupportWorld } from './airSupportWorld.ts';
@@ -17,6 +20,10 @@ import { loadGunshipAirframe } from './gunshipVisual.ts';
 import { AIR_SUPPORT_RULES, airStrikeFlies } from '../sim/matchRuleset.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { setActiveTokens } from '../ui/tokens/tokenSelection.ts';
+import { INSIGNIA } from './airframeParts.ts';
+import { buildStrikeJetAirframe } from './strikeJetAirframe.ts';
+import { buildFighterJetAirframe } from './fighterJetAirframe.ts';
+import { loadedGunshipAirframe } from './gunshipVisual.ts';
 
 await loadGunshipAirframe();
 const R = AIR_SUPPORT_RULES;
@@ -52,10 +59,49 @@ function streaksOf(root, strike) {
   return [root.getObjectByName(`${name} streak port`), root.getObjectByName(`${name} streak starboard`)];
 }
 
+/** How many of the airframe's body vertices are `colour` (linear rgb, as the trim is painted). */
+function verticesOf(body, colour) {
+  const a = body.geometry.attributes.color.array;
+  let n = 0;
+  for (let i = 0; i < a.length; i += 3) {
+    if (Math.abs(a[i] - colour.r) < 1e-6 && Math.abs(a[i + 1] - colour.g) < 1e-6 && Math.abs(a[i + 2] - colour.b) < 1e-6) n++;
+  }
+  return n;
+}
+/** The drawn airframe's body: the jet's own (the AC-130's models are checked together: one beside each anchor). */
+function bodyOf(root, strike) {
+  const craft = root.getObjectByName(`air-support ${NAME[strike.kind]} ${strike.id}`);
+  return craft?.getObjectByName(NAME[strike.kind] === 'jet' ? 'strike-jet-body' : 'strike-fighter-body') ?? null;
+}
+
+// 6: unpainted, every airframe's trim is insignia white
+const insignia = new Color(INSIGNIA);
+const TRIM_MIN = 400;
+for (const [name, build] of [['A-10', buildStrikeJetAirframe], ['fighter', buildFighterJetAirframe],
+  ['AC-130', loadedGunshipAirframe().buildGunshipAirframe]]) {
+  const built = build(null);
+  const body = built.root.children.find((o) => o.isMesh && o.geometry.attributes.color.count > 1000);
+  assert.ok(body, `6: ${name}: its body`);
+  const white = verticesOf(body, insignia);
+  assert.ok(white >= TRIM_MIN, `6: ${name}: its markings are on the airframe (${white} insignia vertices)`);
+  assert.equal(verticesOf(body, new Color(sideColor('own'))), 0, `6: ${name}: unpainted, nothing on it is a team colour`);
+  built.dispose();
+}
+
 for (const perspective of ['alpha', 'bravo']) {
   const { root, world, air } = fly(perspective);
   for (const strike of air.strikes) {
     const label = `${strike.kind} of ${strike.team} seen by ${perspective}`;
+    // 6: its markings in its side's team colour (the AC-130's model is shared by gunship strikes: one per anchor, so
+    // checked on a strike of each side)
+    if (strike.kind !== 'gunship') {
+      const side = strike.team === perspective ? 'own' : 'enemy', other = side === 'own' ? 'enemy' : 'own';
+      const body = bodyOf(root, strike);
+      assert.ok(body, `6: ${label}: its body`);
+      const painted = verticesOf(body, new Color(sideColor(side)));
+      assert.ok(painted >= TRIM_MIN, `6: ${label}: its markings are the ${side} team colour (${painted} vertices)`);
+      assert.equal(verticesOf(body, new Color(sideColor(other))), 0, `6: ${label}: none in the ${other} colour`);
+    }
     const streaks = streaksOf(root, strike);
     // 1: two streaks, drawn, behind the airframe
     assert.ok(streaks.every(Boolean), `1: ${label} has both wingtip streaks`);
@@ -74,6 +120,12 @@ for (const perspective of ['alpha', 'bravo']) {
       assert.ok(a(n - 1) < peak * 0.6, `4: ${label}: it fades along its length (${a(n - 1).toFixed(2)} at its end)`);
     }
   }
+  // 6: the AC-130s: one model beside each side's anchor, each painted its side's colour
+  const gunships = root.children.filter((o) => o.name === 'AC-130 gunship').map((m) => m.getObjectByName('ac130-airframe-body'));
+  assert.equal(gunships.length, 2, `6: an AC-130 of each side seen by ${perspective}`);
+  const sides = gunships.map((b) => (verticesOf(b, new Color(sideColor('own'))) >= TRIM_MIN ? 'own'
+    : verticesOf(b, new Color(sideColor('enemy'))) >= TRIM_MIN ? 'enemy' : 'unpainted')).sort();
+  assert.deepEqual(sides, ['enemy', 'own'], `6: the AC-130s seen by ${perspective} are painted own and enemy`);
   world.dispose();
   assert.equal(root.children.length, 0, 'the streaks go with their aircraft');
 }
@@ -108,4 +160,4 @@ try {
   world.dispose();
 }
 
-console.log(`aircraft streaks: ${KINDS.length} aircraft kinds on both sides draw two wingtip streaks in their side's team colour, viewer-relative and under the deutan preset; each fades; a wreck draws none`);
+console.log(`aircraft streaks: ${KINDS.length} aircraft kinds on both sides draw two wingtip streaks in their side's team colour, viewer-relative and under the deutan preset; each fades; a wreck draws none; every airframe's markings take the same colour (insignia white unpainted)`);

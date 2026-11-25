@@ -29,6 +29,7 @@ import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
 import { killcamStage } from './killcamStage.ts';
 import { createAircraftStreaks, type AircraftStreaks } from './aircraftStreaks.ts';
+import { paintTeamTrim } from './airframeParts.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
 export interface AircraftFxPort {
@@ -327,8 +328,9 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       aimColour, locked ? 1 : 0.2);
   }
 
-  /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go), its streaks in
-   *  `side`: the team colour its side shows everywhere else (sideColor own or enemy, the footprints' own). */
+  /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go), its streaks and its
+   *  markings (the airframe's team trim, airframeParts.ts) in `side`: the team colour its side shows everywhere else
+   *  (sideColor own or enemy, the footprints' own). */
   function poseCraft(strike: PublicStrike, craft: Craft, t: number, side: THREE.Color): void {
     craft.root.visible = true;
     const viewer = options.viewerPosition?.();
@@ -338,13 +340,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       // banked into its pylon turn (the run's bank: the left wing down on the mark)
       syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye, pose.bank, pose.pitch);
       const model = gunshipModelRoot(craft.root);
-      if (model) craft.streaks.update(model, t, side, eye); else craft.streaks.hide();
+      if (model) { paintTeamTrim(model, side); craft.streaks.update(model, t, side, eye); } else craft.streaks.hide();
       return;
     }
     craft.root.position.set(pose.x, pose.y, pose.z);
     // the jet's attitude from its run: its heading, its climb or dive (nose up positive; three.js pitches nose down
     // for a positive x) and its bank in the turns
     craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
+    paintTeamTrim(craft.root, side);
     craft.streaks.update(craft.root, t, side, eye);
     // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
     const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;

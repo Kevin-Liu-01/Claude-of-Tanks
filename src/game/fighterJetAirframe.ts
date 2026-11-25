@@ -7,6 +7,10 @@
  * (40-degree sweep) with a launch rail on each tip, the all-moving tailplanes with their anhedral, the single tall fin
  * and the two ventral fins, one engine's nozzle. Air-superiority grey (FS 36270 on the upper sides, FS 36375 below) in
  * vertex colours on one lit material, one draw, built with the AC-130's kit (airframeParts.ts).
+ * (aircraft-streaks-277; Kevin: "on the actual vehicles add more detailling and coloring") Its side's markings are team
+ * trim (airframeParts.ts holdTeamTrim: airSupportWorld.ts paints them in the side's team colour): the fin cap, the
+ * wingtips, the band behind the radome and the wing roundels' centres; and its detail: the pitot probe, the spine's
+ * antenna blades, the refuelling receptacle and the belly's blade.
  *
  * Its stores sit where the run releases them (sim/strikeRuns.ts FIGHTER_BOMB_PYLON, FIGHTER_MISSILE_RAIL): a GBU-12 on
  * each inboard pylon, two AGM-65 Mavericks on a twin rack under each wing (missile k leaves the port rack when even, the
@@ -14,7 +18,7 @@
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import * as THREE from 'three';
-import { Parts, addLoft, box, lin, rod, surface } from './airframeParts.ts';
+import { INSIGNIA, Parts, addLoft, box, holdTeamTrim, lin, rod, roundel, sliceAt, surface } from './airframeParts.ts';
 import { FIGHTER_BOMB_PYLON, FIGHTER_MISSILE_RAIL } from '../sim/strikeRuns.ts';
 
 interface FighterMaterialHooks { setup(material: THREE.Material): void; release(material: THREE.Material): void }
@@ -109,11 +113,37 @@ export function buildFighterJetAirframe(hooks: FighterMaterialHooks | null): Bui
     box(parts, 0.62, 0.08, 1.4, side * FIGHTER_MISSILE_RAIL[0], -0.4, FIGHTER_MISSILE_RAIL[2] - 0.2, DARK);
   }
 
+  // ---- (aircraft-streaks-277) the side's markings, in the team trim, and the airframe's detail ----
+  const finRoot = { le: new THREE.Vector3(0, 0.6, -3.6), chord: 3.05, thick: 0.18 };
+  const finTip = { le: new THREE.Vector3(0, 3.1, -6.3), chord: 1.2, thick: 0.08 };
+  parts.asTrim(() => {
+    surface(parts, sliceAt(finRoot, finTip, 0.66, 0.025), sliceAt(finRoot, finTip, 1.015, 0.025), new THREE.Vector3(1, 0, 0), 0, INSIGNIA, INSIGNIA);
+    // the band behind the radome
+    addLoft(parts, [
+      { z: 5.85, cy: 0.092, rx: 0.503, ry: 0.543 },
+      { z: 5.55, cy: 0.101, rx: 0.548, ry: 0.589 },
+    ], 18, 0, 2.3, () => lin(INSIGNIA));
+  });
+  for (const side of [-1, 1]) {
+    const wingRoot = { le: new THREE.Vector3(side * 0.7, -0.06, 1.7), chord: 4.6, thick: 0.34 };
+    const wingTip = { le: new THREE.Vector3(side * 4.55, -0.1, -1.55), chord: 1.05, thick: 0.1 };
+    parts.asTrim(() => surface(parts, sliceAt(wingRoot, wingTip, 0.82, 0.025), sliceAt(wingRoot, wingTip, 1.01, 0.025), up, 0, INSIGNIA, INSIGNIA));
+    // the wing's roundels, over and under (35% chord at 3 m out)
+    roundel(parts, new THREE.Vector3(side * 3.0, 0.015, -1.11), up, 0.42);
+    roundel(parts, new THREE.Vector3(side * 3.0, -0.18, -1.11), new THREE.Vector3(0, -1, 0), 0.42);
+  }
+  // the pitot probe off the radome, the spine's blades and receptacle, the belly's blade
+  rod(parts, new THREE.Vector3(0, 0.05, 7.5), new THREE.Vector3(0, 0, 1), 0.022, 0.75, DARK, 6);
+  box(parts, 0.03, 0.25, 0.35, 0, 0.96, 0.5, DARK);
+  box(parts, 0.22, 0.03, 0.35, 0, 0.85, -0.6, DARK);
+  box(parts, 0.03, 0.22, 0.3, 0, -0.73, -2.2, DARK);
+
   const material = new THREE.MeshStandardMaterial({ name: 'strike-fighter-airframe', vertexColors: true, metalness: 0.3, roughness: 0.58 });
   hooks?.setup(material);
   const body = new THREE.Mesh(parts.geometry(), material);
   body.name = 'strike-fighter-body';
   root.add(body);
+  holdTeamTrim(root, body.geometry, parts.trim);
 
   // ---- a GBU-12 on each inboard pylon: the olive Mk 82 body, its seeker head and its tail wings ----
   const bombParts = new Parts();

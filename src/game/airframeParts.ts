@@ -18,7 +18,17 @@ export class Parts {
   readonly pos: number[] = [];
   readonly nrm: number[] = [];
   readonly col: number[] = [];
+  /** (aircraft-streaks-277) the team trim's vertex ranges (start, count): the markings holdTeamTrim paints in a side's
+   *  colour, in the airframe's one geometry (no second material, no second draw). */
+  readonly trim: number[] = [];
+  private trimming = false;
+  /** The parts `build` adds are team trim. */
+  asTrim(build: () => void): void {
+    this.trimming = true;
+    try { build(); } finally { this.trimming = false; }
+  }
   add(geometry: THREE.BufferGeometry, rgb: (x: number, y: number, z: number, i: number) => readonly number[]): void {
+    if (this.trimming) this.trim.push(this.pos.length / 3, (geometry.index ? geometry.index.count : geometry.getAttribute('position').count));
     const g = geometry.index ? geometry.toNonIndexed() : geometry;
     if (!g.getAttribute('normal')) g.computeVertexNormals();
     const p = g.getAttribute('position'), n = g.getAttribute('normal');
@@ -138,4 +148,51 @@ export function box(parts: Parts, w: number, h: number, d: number, x: number, y:
   g.translate(x, y, z);
   const c = lin(hex);
   parts.add(g, () => c);
+}
+
+/** A lifting surface's end, as surface() takes it. */
+export interface SurfaceEnd { le: THREE.Vector3; chord: number; thick: number }
+/** The section of a surface from `a` to `b` at span fraction `t` (past 1 runs on beyond the tip), `grow` larger all
+ *  round: a band of paint laid over that part of the surface. */
+export function sliceAt(a: SurfaceEnd, b: SurfaceEnd, t: number, grow = 0): SurfaceEnd {
+  const le = a.le.clone().lerp(b.le, t);
+  le.z += grow * 0.5;
+  return { le, chord: a.chord + (b.chord - a.chord) * t + grow, thick: a.thick + (b.thick - a.thick) * t + grow };
+}
+
+/** (aircraft-streaks-277) The insignia white: a roundel's ring, and the trim's colour until a side paints it (the AC-130
+ *  mode, the previews and renders). */
+export const INSIGNIA = 0xd8dbd6;
+
+/** A roundel lying on a surface at `centre`, facing `normal`: an insignia-white disc of radius r, and the team trim's
+ *  disc inside it. */
+export function roundel(parts: Parts, centre: THREE.Vector3, normal: THREE.Vector3, r: number): void {
+  const n = normal.clone().normalize();
+  rod(parts, centre.clone().addScaledVector(n, -0.02), n, r, 0.04, INSIGNIA, 24);
+  parts.asTrim(() => rod(parts, centre.clone().addScaledVector(n, -0.02), n, r * 0.68, 0.06, INSIGNIA, 24));
+}
+
+const PAINT_TEAM = 'paintTeam';
+/** Make `geometry`'s team trim (Parts.trim) paintable through `root`: paintTeamTrim(root, colour) writes those vertices'
+ *  colour, only when it changes. */
+export function holdTeamTrim(root: THREE.Object3D, geometry: THREE.BufferGeometry, ranges: readonly number[]): void {
+  const attribute = geometry.getAttribute('color') as THREE.BufferAttribute;
+  let painted = -1;
+  root.userData[PAINT_TEAM] = (colour: THREE.Color): void => {
+    const key = colour.getHex();
+    if (key === painted) return;
+    painted = key;
+    const a = attribute.array as Float32Array;
+    for (let i = 0; i < ranges.length; i += 2) {
+      for (let v = ranges[i]!, end = v + ranges[i + 1]!; v < end; v++) { a[v * 3] = colour.r; a[v * 3 + 1] = colour.g; a[v * 3 + 2] = colour.b; }
+    }
+    attribute.needsUpdate = true;
+  };
+}
+/** Paint the airframe under `root` (one holdTeamTrim made paintable) in `colour`; false when it has no team trim. */
+export function paintTeamTrim(root: THREE.Object3D, colour: THREE.Color): boolean {
+  const paint = root.userData[PAINT_TEAM] as ((colour: THREE.Color) => void) | undefined;
+  if (!paint) return false;
+  paint(colour);
+  return true;
 }
