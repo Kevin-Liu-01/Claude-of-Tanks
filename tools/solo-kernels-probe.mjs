@@ -24,13 +24,15 @@ const checkOnly = process.argv.includes('--check-only');
 const mapsArg = arg('maps', '');
 const seconds = Number(arg('seconds', 20));
 const cycles = Number(arg('cycles', 2));
-const port = Number(arg('port', 5294));
+// --port=<n> pins the dev server's port; by default it binds an OS-assigned one (two runs never collide: capture-ports.mjs)
+let port = Number(arg('port', 0));
 const out = resolve(root, '.qa-dev', checkOnly ? 'solo-kernels-check.json' : `solo-kernels-${mapId}.json`);
 
 let hold;
 const vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-kernels-vite-cache'), logLevel: 'error',
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 await vite.listen();
+port = vite.httpServer.address().port;
 const origin = `http://127.0.0.1:${port}`;
 const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600_000,
   args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--use-angle=metal', '--enable-gpu'] });

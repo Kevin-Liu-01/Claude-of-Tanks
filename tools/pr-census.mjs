@@ -418,7 +418,7 @@ async function capture(opt) {
         if (servers.has(job.root)) continue;
         // the built dist without the project's config, as the cost holds serve it (frame-budget-probe openPreview)
         servers.set(job.root, await startViteChild({ root: job.root, mode: 'preview', config: { root: job.root, configFile: false, logLevel: 'error',
-          build: { outDir: 'dist' }, preview: { host: '127.0.0.1', port: 5481 + servers.size, strictPort: false } } }));
+          build: { outDir: 'dist' }, preview: { host: '127.0.0.1' } } }));
       }
       browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width, height, protocolTimeout: 900000 }), timeout: 180000 });
       const entries = [];

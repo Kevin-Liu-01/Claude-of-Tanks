@@ -12,7 +12,7 @@
 //   node tools/marketing-shots/mode-battle-shots.mjs --only=modes/standard,modes/zone_control
 //   node tools/marketing-shots/mode-battle-shots.mjs --queue=<file>     (one slot per line, '#' comments; re-read
 //        before every slot, so slots can be added, reordered or removed while the run waits for the lock)
-//     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=7613] [--cache-dir=<dir>]
+//     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=<n>] [--cache-dir=<dir>]
 //        [--base=http://127.0.0.1:<port>] [--hold-max-min=9] [--headroom-gb=8] [--dpr=2] [--lock-timeout-min=600]
 //        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double] [--ready-timeout-s=240]
 //   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...] [--alt="what the frame shows"]
@@ -312,7 +312,7 @@ async function nextSlot() {
 const holdMaxMs = Number(opt('hold-max-min', '9')) * 60 * 1000;
 // --ready-timeout-s: the page's budget to load and report the game ready (a loaded machine needs more than the default)
 const readyMs = Number(opt('ready-timeout-s', '240')) * 1000;
-const port = Number(opt('port', '7613'));
+const port = Number(opt('port', '0')); // 0: an OS-assigned port (capture-ports.mjs), read back once bound
 let server = null;
 let base = opt('base');
 // --rooms-double: the multiplayer slot's room signaling double (tools/mp-p2p-room-double.ts), started before the dev
@@ -340,7 +340,7 @@ async function startServer() {
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false, watch: { ignored: ['**/*'] } },
   });
   await server.listen();
-  base = `http://127.0.0.1:${server.config.server.port}`;
+  base = `http://127.0.0.1:${server.httpServer.address().port}`;
   log(`vite dev server ${base} (node pid ${process.pid}, cache ${cacheDir})`);
 }
 async function stopServer() {

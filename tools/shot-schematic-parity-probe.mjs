@@ -1,6 +1,6 @@
 // Native exact-pixel regression. Owns an ordinary FIFO lease, Vite source-fixture
 // server and one fresh Chromium process. This is NOT a timing certification.
-// node tools/shot-schematic-parity-probe.mjs --out=/absolute/new-directory [--port=5944]
+// node tools/shot-schematic-parity-probe.mjs --out=/absolute/new-directory [--port=<n>]
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -11,8 +11,10 @@ import puppeteer from 'puppeteer';
 import { openCaptureHold } from './capture-hold.mjs';
 
 const option = (name, fallback = '') => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const output = option('out'), port = Number(option('port', '5944'));
-if (!output || !Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Require --out=/absolute/new-directory and valid --port');
+// --port=<n> pins the dev server's port; by default it binds an OS-assigned one (two runs never collide: capture-ports.mjs)
+const output = option('out');
+let port = Number(option('port', '0'));
+if (!output || !Number.isInteger(port) || (port !== 0 && (port < 1024 || port > 65535))) throw new Error('Require --out=/absolute/new-directory and valid --port');
 const out = resolve(output);
 let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold); this probe keeps its own signal handlers
 await mkdir(out); // preserve failed runs, never overwrite their receipt
@@ -88,6 +90,7 @@ try {
       });
     } }] }); active();
   await server.listen(); active();
+  port = server.httpServer.address().port;
   browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
     timeout: 30_000, protocolTimeout: 65_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }); active();

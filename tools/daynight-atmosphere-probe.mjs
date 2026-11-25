@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preview } from 'vite';
+import { bindFirstFree } from './capture-ports.mjs';
 import puppeteer from 'puppeteer';
 import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
 import { collectNightWindowCensus } from './night-window-census.mjs';
@@ -1097,7 +1098,9 @@ try {
   report.build = createHash('sha256').update(entry).digest('hex');
   if (optionalFixtureSuite || coldNightEntry) assert.equal(report.build, expectedBuildHash, 'Exact approved production index required');
   assert(!entry.toString().includes('/@vite/client'), 'Production build required');
-  server = await preview({ logLevel: 'error', preview: { host: '127.0.0.1', port: 5852, strictPort: true } });
+  // the capture slot's first free preview port (capture-ports.mjs), or an OS-assigned one outside a hold; never a fixed one
+  ({ server } = await bindFirstFree((port) => preview({ logLevel: 'error', preview: { host: '127.0.0.1', port, strictPort: true } })));
+  const previewOrigin = `http://127.0.0.1:${server.httpServer.address().port}`;
   server.httpServer.on('connection', socket => {
     previewSockets.add(socket);
     socket.once('close', () => previewSockets.delete(socket));
@@ -1112,7 +1115,7 @@ try {
   ]) {
     page = await within(browser.newPage(), 30_000, 'Browser page creation');
     await configurePage(tier);
-    await page.goto(`http://127.0.0.1:5852/?debug=1&tier=${tier.query}`, { waitUntil: 'domcontentloaded', timeout: 360_000 });
+    await page.goto(`${previewOrigin}/?debug=1&tier=${tier.query}`, { waitUntil: 'domcontentloaded', timeout: 360_000 });
     await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__DEBUG?.battleAtmosphere && window.__DEBUG?.nightLighting`, { timeout: 360_000 });
     await evaluateWithin(() => window.__equipmentDamageProbe.install(window.__DEBUG.post));
     await evaluateWithin(installNightLightProbe);

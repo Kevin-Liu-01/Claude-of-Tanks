@@ -56,7 +56,7 @@ const server = await createServer({
   optimizeDeps: { noDiscovery: true },
   server: {
     host: '127.0.0.1',
-    port: 7600 + (process.pid % 200),
+    port: 0, // OS-assigned (capture-ports.mjs): a pid-spread guess could still collide
     strictPort: true,
     hmr: false,
     watch: null,

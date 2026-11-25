@@ -15,7 +15,7 @@ const option = (name, fallback = '') => {
   const direct = argv.find((arg) => arg.startsWith(`--${name}=`));
   return direct ? direct.slice(name.length + 3) : fallback;
 };
-const baseUrl = option('url', 'http://127.0.0.1:4178').replace(/\/$/, '');
+const baseUrl = option('url', process.env.COT_PREVIEW_URL || 'http://127.0.0.1:4178').replace(/\/$/, '');
 const shotsDir = option('shots', '');
 const orbitShots = option('orbit-shots', '') === '1';
 const cpuRate = Math.max(1, Number(option('cpu-rate', '1')) || 1);

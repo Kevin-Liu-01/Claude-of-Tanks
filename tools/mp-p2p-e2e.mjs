@@ -67,10 +67,10 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import net from 'node:net';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
+import { bindFirstFree, roomsPortFor } from './capture-ports.mjs';
 import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
 import { openRooms, pressControl } from './mp-rooms-entry.mjs';
 import { machineLoad, SELFTEST_STARVED_EXIT, STARVED_LOAD_PER_CORE } from './selftest-verdict.mjs';
@@ -122,7 +122,9 @@ const forceRelay = argValue('ice', '') === 'relay';
 // the §7 side-by-side (2026-10-14): --shoot=<s> the host and a peer press fire for that long (shot-to-hit feedback);
 // --profile=<s> a CPU profile of the host's and a peer's main thread (the MP path's frame cost); both off by default
 // --dist=<dir> (2026-10-14): a built site (vite build, no VITE_ROOMS_URL) served by vite preview on 127.0.0.1, its pages
-// on the room double at the LAN helper's port (8792, endpoint.ts), so join and rejoin are timed on production bundles
+// on the room double, so join and rejoin are timed on production bundles. The double binds the capture slot's rooms port
+// (capture-ports.mjs; an OS-assigned one outside a hold) and the pages dial it with ?roomsPort= (endpoint.ts, loopback
+// pages only), never the LAN helper's shared 8792: two runs in the two render slots each have their own (277).
 const distDir = argValue('dist', '') ? resolve(argValue('dist', '')) : '';
 const shootS = Number(argValue('shoot', 0));
 const profileS = Number(argValue('profile', 0));
@@ -144,13 +146,6 @@ const noBots = process.argv.includes('--no-bots');
 const timingsReport = argValue('timings', '') === 'report';
 const extraBrowsers = [];
 
-function freePort() {
-  return new Promise((resolvePort, reject) => {
-    const probe = net.createServer();
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolvePort(port)); });
-  });
-}
 const log = (line) => { if (!json) process.stderr.write(`[mp-p2p-e2e] ${line}\n`); };
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 const startedAt = performance.now();
@@ -183,7 +178,8 @@ function observe(page, label) {
   page.on('console', (message) => { if (message.type() === 'error') errors.push({ page: label, kind: 'console', text: message.text() }); });
 }
 // A/B retain a host-capable graphics tier; touch/viewport emulation is independent.
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+// (--dist adds the room double's &roomsPort= once it is bound)
+let BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 /** Pages driven by touch: every page with --mobile, the phone seat's with --phone. */
 const touchPages = new WeakSet();
 /** Press a control as a player can (tools/mp-rooms-entry.mjs): shown, in view, not covered; a touch seat taps a 44 px target. */
@@ -944,21 +940,23 @@ try {
     process.env.VITE_ROOMS_URL = roomsUrl;
     step('rooms-live', { url: roomsUrl, graceMs });
   } else {
-    rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: distDir ? 8792 : 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
+    rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: distDir ? roomsPortFor() : 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
     process.env.VITE_ROOMS_URL = rooms.url;
+    if (distDir) BOOT_QUERY += `&roomsPort=${new URL(rooms.url).port}`;
     step('rooms-double', { url: rooms.url, graceMs });
   }
   let origin = siteUrl;
   if (!siteUrl && distDir) {
     const { preview } = await import('vite');
-    const previewPort = requestedVitePort > 0 ? requestedVitePort : await freePort();
-    vite = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port: previewPort, strictPort: true } });
-    origin = `http://127.0.0.1:${previewPort}`;
+    ({ server: vite } = await bindFirstFree((port) => preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port, strictPort: true } }),
+      { ports: requestedVitePort > 0 ? [requestedVitePort] : null, fallback: !(requestedVitePort > 0) }));
+    origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
     step('preview', { origin, dist: distDir });
   } else if (!siteUrl) {
-    const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
-    vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
-    await vite.listen();
+    ({ server: vite } = await bindFirstFree(async (port) => {
+      const server = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
+      try { return await server.listen(); } catch (error) { await server.close().catch(() => {}); throw error; }
+    }, { ports: requestedVitePort > 0 ? [requestedVitePort] : null, fallback: !(requestedVitePort > 0) }));
     origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
     step('vite', { origin, cacheDir });
   }

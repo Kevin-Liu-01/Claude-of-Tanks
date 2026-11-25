@@ -22,7 +22,8 @@ function fixture({ queued = false, hungFixture = false, hungClose = false,
     kill(signal) { calls.push(['kill', signal]); child.signalCode = signal; child.emit('exit'); } });
   const page = {
     setDefaultTimeout() {}, on(name, callback) { listeners.set(name, callback); },
-    async goto() {
+    async goto(url) {
+      calls.push(['goto', url]);
       for (const response of responses) listeners.get('response')?.({ status: () => response.status, url: () => response.url });
       if (consoleError) listeners.get('console')?.({ type: () => 'error', text: () => consoleError });
       return { status: () => status, headers: () => ({ 'x-cot-probe': marker }) };
@@ -57,7 +58,7 @@ function fixture({ queued = false, hungFixture = false, hungClose = false,
     }),
     createServer: async options => {
       calls.push(['server', options]);
-      return { listen: async () => {}, httpServer: { closeAllConnections() {} },
+      return { listen: async () => {}, httpServer: { closeAllConnections() {}, address: () => ({ port: 45123 }) },
         close: async () => { calls.push(['server.close']); } };
     },
     puppeteer: { launch: async options => { calls.push(['launch', options]); return browser; } },
@@ -78,6 +79,8 @@ function fixture({ queued = false, hungFixture = false, hungClose = false,
   const report = f.reports[0], server = f.calls.find(([name]) => name === 'server')[1];
   const launch = f.calls.find(([name]) => name === 'launch')[1];
   assert.equal(report.pass, true);
+  assert.equal(server.server.port, 0, 'no --port: the dev server binds an OS-assigned port (capture-ports.mjs)');
+  assert.equal(f.calls.find(([name]) => name === 'goto')[1], 'http://127.0.0.1:45123/__shot-schematic-test__', 'the page opens the port the server bound');
   assert.equal(server.cacheDir, '/fixture/tmp/cot-schematic-vite-owned');
   assert.equal(server.optimizeDeps.noDiscovery, true);
   const plugin = server.plugins[0], headers = {};

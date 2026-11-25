@@ -294,6 +294,7 @@ const DIRECT_ACQUIRER_RECEIPTS = Object.freeze({
   'tools/capture-lock-class.selftest.mjs': 'the lock\'s own receipt (classes)',
   'tools/capture-lock-reentry.selftest.mjs': 'the lock\'s own receipt (re-entry, nesting)',
   'tools/capture-lock.selftest.mjs': 'the lock\'s own receipt',
+  'tools/capture-slot-ports.selftest.mjs': 'two render holders on a private lock prove each slot hands down its own port block',
   'tools/chain-lifecycle.selftest.mjs': 'a child under runInCaptureHold takes a private lock to prove it nests',
   'tools/media-r5/priority-yield.selftest.mjs': 'pins lock.held on a private hold',
   'tools/session-mutex.selftest.mjs': 'the polite lock on private directories',

@@ -3,7 +3,8 @@
 // Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 //
 // Two first-time browsers on a built dist, and one in-process room host (server/rooms/serve.ts, the LAN helper's
-// composition) on the port a local page looks for it on (127.0.0.1:8792, src/mp/session/endpoint.ts):
+// composition) on the capture slot's rooms port (tools/capture-ports.mjs; an OS-assigned one outside a hold), which the
+// pages dial with ?roomsPort= (src/mp/session/endpoint.ts, loopback pages only), never the shared 8792:
 // - A creates a LAN room from the Garage;
 // - B opens the invite and joins;
 // - both ready, and A starts;
@@ -25,7 +26,7 @@ import net from 'node:net';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createRoomsServer } from '../server/rooms/serve.ts';
-import { LAN_ROOMS_PORT } from '../src/mp/session/endpoint.ts';
+import { roomsPortFor } from './capture-ports.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
 import { armBudget, once } from './chain-lifecycle.mjs';
 
@@ -85,7 +86,8 @@ const profileWorker = async (url, session) => {
 };
 const CSP_TEXT = /Content Security Policy|Content-Security-Policy|\[Report Only\]|Refused to (compile|evaluate|load|execute)/i;
 const root = new URL('..', import.meta.url).pathname;
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+// (the room host's &roomsPort= is added once it is bound)
+let BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 // the deployment's own headers on a plain-http host
 const IGNORED = /Cross-Origin-Opener-Policy header has been ignored|origin-agent-cluster/i;
 
@@ -94,13 +96,6 @@ function freePort() {
     const probe = net.createServer();
     probe.once('error', fail);
     probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => done(port)); });
-  });
-}
-function portFree(port) {
-  return new Promise((done) => {
-    const probe = net.createServer();
-    probe.once('error', () => done(false));
-    probe.listen(port, '127.0.0.1', () => probe.close(() => done(true)));
   });
 }
 
@@ -275,9 +270,9 @@ try {
     captureHold = await openCaptureHold({ label: 'mp-room-census', timeoutMs: 150 * 60 * 1000, place: `mp-room-census-${label}`, teardown: stopAll });
     armBudget(budgetMin * 60_000, { teardown, code: 3, log: (line) => console.error(`mp-room-census: ${line}`) });
   }
-  if (!await portFree(LAN_ROOMS_PORT)) throw new Error(`port ${LAN_ROOMS_PORT} (the LAN room helper's) is in use`);
-  rooms = await createRoomsServer({ host: '127.0.0.1', port: LAN_ROOMS_PORT, seatSecret: randomBytes(24).toString('hex'), world: 'terrain',
+  rooms = await createRoomsServer({ host: '127.0.0.1', port: roomsPortFor(), seatSecret: randomBytes(24).toString('hex'), world: 'terrain',
     matchTransport: transport === 'p2p' ? 'p2p' : 'service' });
+  BOOT_QUERY += `&roomsPort=${new URL(rooms.url).port}`;
   const port = await freePort();
   server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
     ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });

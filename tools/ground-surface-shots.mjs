@@ -637,7 +637,7 @@ async function main(argv) {
   const label = `${TOOL} ${path.basename(options.out)}`;
   const servers = new Map();
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
-    servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
+    servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist }));
   }
   let browser = null, entry = null, session = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
