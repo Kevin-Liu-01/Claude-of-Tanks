@@ -3,6 +3,9 @@ export function installBattleUiVisibility(options: {
   hidden(): boolean;
   setHidden(hidden: boolean): void;
   shortcutsBlocked(): boolean;
+  /** The key that switches it: the input layer's `hideBattleUi` binding, either slot (F10 by default, rebindable in
+   *  Settings › Controls since settings-unify-278). */
+  isShortcut(code: string): boolean;
 }) {
   let battle = false;
   const refresh = (): void => {
@@ -10,7 +13,7 @@ export function installBattleUiVisibility(options: {
   };
   const restore = (): void => { options.setHidden(false); refresh(); };
   const key = (event: KeyboardEvent): void => {
-    if (!battle || options.shortcutsBlocked() || event.code !== 'F10' || event.repeat
+    if (!battle || options.shortcutsBlocked() || !options.isShortcut(event.code) || event.repeat
       || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
     const target = event.target;
     if (target instanceof Element && target.closest('input,textarea,select,[contenteditable="true"]')) return;

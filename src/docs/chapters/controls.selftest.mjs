@@ -18,7 +18,8 @@ for (const key of WATCH_KEYS.filter((entry) => entry.view !== 'drone')) {
 const sections = controlsSections();
 assert.deepEqual(sections.map((section) => section.id), ['keys', 'hold', 'touch', 'watch', 'hud'], 'the chapter keeps its five sections');
 const visibility = readFileSync(join(ROOT, 'src/ui/battleUiVisibility.ts'), 'utf8');
-assert.ok(visibility.includes(`event.code !== '${MINIMAL_HUD_KEY}'`), `battleUiVisibility.ts switches the minimal HUD on ${MINIMAL_HUD_KEY}`);
+assert.equal(MINIMAL_HUD_KEY, 'F10', 'the minimal HUD ships on F10');
+assert.ok(visibility.includes('!options.isShortcut(event.code)'), 'battleUiVisibility.ts switches the minimal HUD on its binding (settings-unify-278)');
 const keys = sections[0].html;
 assert.equal((keys.match(/<tr><th scope="row">/g) ?? []).length, ACTION_DEFS.length, 'one row per action the settings list');
 console.log(`controls.selftest: ${ACTION_DEFS.length} actions in the tables; ${WATCH_KEYS.length} Watch keys held to watchController.ts`);

@@ -25,7 +25,8 @@ const player = {
 };
 let failAutoAim = true;
 
-const input = { isTouchLayout: () => touchLayout };
+const settings = { muteAll: false };
+const input = { isTouchLayout: () => touchLayout, getSettings: () => settings, setSetting: (key, value) => { settings[key] = value; } };
 const access = createMobileBattleInputAccess({
   input,
   bus,
@@ -78,8 +79,11 @@ assert.equal(access.getAutoAim(), null);
 
 touchOptions.onToggleSound();
 assert.equal(soundMuted, true);
+assert.equal(settings.muteAll, true, 'the quick mute keeps Mute all (settings-unify-278)');
+assert.equal(touchOptions.soundMuted(), true, 'and the touch button reads it back');
 touchOptions.onToggleSound();
 assert.equal(soundMuted, false);
+assert.equal(settings.muteAll, false);
 
 touchLayout = true;
 await assert.rejects(access.preload(), /simulated auto-aim chunk failure/);

@@ -1,4 +1,4 @@
-// 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play) that every Esc, pointer-lock and replay
+// 2026-11-02 audit F4: one battle input owner (presentation > menu > play; settings-unify-278 retired the veil) that every Esc, pointer-lock and replay
 // path asks. The browser hazard itself (one Esc skipping an ending beat AND opening Settings) is reproduced through the
 // access in settingsAccess.selftest.mjs; this receipt pins the owner's transitions.
 import assert from 'node:assert/strict';
@@ -19,36 +19,24 @@ owner.onChange(() => { changes++; });
 assert.equal(owner.state, 'play');
 assert.equal(owner.canOpenMenu(), true);
 
-// the veil: one at a time, refused over the menu and a live presentation
-assert.equal(owner.showVeil('pause'), true);
-assert.equal(owner.state, 'veil');
-assert.equal(owner.veil, 'pause');
-assert.equal(owner.showVeil('relock'), false, 'a veil already up keeps its trigger');
-assert.equal(owner.veil, 'pause');
-// the menu supersedes the veil
+// the menu (Esc, and the battle's pause): once
 assert.equal(owner.openMenu(), true);
 assert.equal(owner.state, 'menu');
-assert.equal(owner.veil, null, 'opening the menu drops the veil');
 assert.equal(owner.openMenu(), false, 'the menu opens once');
-assert.equal(owner.showVeil('relock'), false, 'no veil over the open menu');
+assert.ok(!('showVeil' in owner) && !('veil' in owner), 'the click-to-resume veil is gone (settings-unify-278)');
 owner.closeMenu();
 assert.equal(owner.state, 'play');
 
-// a presentation owns the screen: no menu, no veil; it drops a veil already up
-assert.equal(owner.showVeil('relock'), true);
+// a presentation owns the screen: no menu
 owner.beginPresentation('ending');
 assert.equal(owner.state, 'presentation');
-assert.equal(owner.veil, null, 'a presentation drops the veil');
 assert.equal(owner.presentationOwns(), true);
 assert.equal(owner.openMenu(), false, 'no menu over an ending beat');
 assert.equal(owner.canOpenMenu(), false);
-assert.equal(owner.showVeil('pause'), false, 'no veil over an ending beat');
 owner.endPresentation('ending');
 assert.equal(owner.state, 'play', 'the screen is released');
 assert.equal(owner.presentationOwns(), true, 'the done grace still owns the skip press');
 assert.equal(owner.openMenu(), false, 'the press that skipped the beat opens no menu');
-assert.equal(owner.showVeil('pause'), true, 'the veil is refused only while a presentation is live');
-owner.hideVeil();
 now += PRESENTATION_DONE_GRACE_MS;
 assert.equal(owner.presentationOwns(), false);
 assert.equal(owner.openMenu(), true, 'past the grace the menu opens');
@@ -110,4 +98,4 @@ emit('phase:change');
 assert.equal(shared.canOpenMenu(), true);
 assert.notEqual(battleInputOwnerFor({ on() {} }), shared, 'another bus has its own owner');
 
-console.log('battleInputOwner.selftest: precedence, veil and menu refusals, the done grace, overlapping sources, the phase reset and one owner per bus pass');
+console.log('battleInputOwner.selftest: precedence, menu refusals, the done grace, overlapping sources, the phase reset and one owner per bus pass');

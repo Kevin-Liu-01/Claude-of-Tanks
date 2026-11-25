@@ -151,7 +151,9 @@ off solo interpolation); the viewer gets a local copy of the posing step, not `s
   Click: seek to 3 s before it and ride the shooter. Filters: all, kills, one tank. Picking a tank adds its own lane.
 - **Cameras**: Watch mode's (`engine/watchCamera.ts`, `game/watchController.ts`): drone (free fly), lock (orbit a
   tank), ride (any tank, Tab and Q/E cycle, click a tank to ride it, V flies off). Plus a gunner view through the
-  ridden tank's sight. The photo-mode camera (`item/photo-mode-271b`) slots in as a fourth when it lands.
+  ridden tank's sight. Photo mode is the fourth (settings-unify-278, from `item/photo-mode-271b`): P or Settings' Photo
+  mode pauses the replay and frames the ridden tank (or the player's) with the free photo camera; Exit returns to the
+  camera it left.
 - **What you see**: everything; it is after the battle. An "as seen by" toggle draws one team's fog from the track's
   spotting flags.
 - **Phones**: the page does no simulation, so a replay costs what a Watch battle costs to draw. The bar collapses to a

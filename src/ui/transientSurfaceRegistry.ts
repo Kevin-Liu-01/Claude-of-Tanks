@@ -91,8 +91,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
     open: { docked: [...SETTINGS_OPEN, '[data-tab="sound"]', '[data-picker-menu="settings-crew-voice"]'],
       folded: [...SETTINGS_OPEN, '[data-tab="sound"]', '[data-picker-menu="settings-crew-voice"]'] } },
   'settings-language': { screen: 'settings', owner: 'src/ui/settings.ts', box: menuBox('settings-language'), on: 'settings',
-    open: { docked: [...SETTINGS_OPEN, '[data-tab="language"]', '[data-picker-menu="settings-language"]'],
-      folded: [...SETTINGS_OPEN, '[data-tab="language"]', '[data-picker-menu="settings-language"]'] } },
+    open: { docked: [...SETTINGS_OPEN, '[data-tab="interface"]', '[data-picker-menu="settings-language"]'],
+      folded: [...SETTINGS_OPEN, '[data-tab="interface"]', '[data-picker-menu="settings-language"]'] } },
   'hud-editor': { screen: 'settings', owner: 'src/ui/hudEditor.ts', box: '.cot-modal', modal: true, on: 'settings', open: {} },
 
   // ---- the Tank Gallery and the public pages

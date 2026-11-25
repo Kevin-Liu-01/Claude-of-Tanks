@@ -18,7 +18,7 @@ body[data-cot-input='coarse']{--cot-control-floor:44px}
    in index.html, so DOM chrome and the WebGL frame keep identical bounds. */
 body[data-cot-viewport='visual'] :is(
   .cot-garage,.cot-hud,.cot-touch,.cot-touch-aim,.cot-bl,.cot-trans,
-  .cot-settings,.cot-resume,.cot-play,.cot-es,.cot-end,.cot-studio,
+  .cot-settings,.cot-play,.cot-es,.cot-end,.cot-studio,
   .cot-si-stats,.cot-kc,.cot-kc-fadeblk,.cot-cine-letterbox,.cot-modal-root
 ){
   width:var(--cot-viewport-width,100dvw);
@@ -195,7 +195,7 @@ body[data-cot-width='phone'] .cot-set-ftr{
 /* the footer sits on the sheet (one surface at every size) */
 body[data-cot-width='phone'] .cot-set-ftr{background:var(--surface-plate);border-top-color:var(--line-1)}
 body[data-cot-width='phone'] .cot-set-ftr .cot-set-btn{flex:1 1 120px;min-width:0}
-body[data-cot-width='phone'] .cot-set-btn.reset{margin-right:0}
+body[data-cot-width='phone'] .cot-set-btn.leave{margin-right:0}
 body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:column;gap:8px;padding-block:10px}
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
@@ -797,21 +797,6 @@ body[data-cot-height='short'] .cot-trans .kick{margin-top:8px}
 body[data-cot-height='short'] .cot-trans .title{margin-top:6px;font-size:clamp(19px,6vh,28px)}
 body[data-cot-height='short'] .cot-trans .sub{margin-top:5px}
 body[data-cot-height='short'] .cot-trans .meter{margin-top:17px}
-
-body[data-cot-width] .cot-resume{
-  box-sizing:border-box;padding:var(--cot-edge);text-align:center;
-}
-body[data-cot-width] .cot-resume .rz-plate{box-sizing:border-box;max-width:100%}
-body[data-cot-width] .cot-resume .rz-title{max-width:100%;overflow-wrap:anywhere;line-height:1.1}
-body[data-cot-width='compact'] .cot-resume .rz-plate,
-body[data-cot-width='phone'] .cot-resume .rz-plate{width:100%;padding:var(--s5) var(--s4);gap:var(--s4)}
-body[data-cot-width='compact'] .cot-resume .rz-title,
-body[data-cot-width='phone'] .cot-resume .rz-title{font-size:var(--fs-24)}
-body[data-cot-width='phone'] .cot-resume .rz-actions{display:grid;grid-template-columns:1fr;justify-self:stretch;width:100%}
-body[data-cot-width='phone'] .cot-resume .rz-actions>.cot-c-btn{width:100%}
-/* (a short landscape's plate fits its two buttons side by side, its padding the plate's own: at the window's width it left
-   84 px of empty plate either side of them at 568x256, gauntlet r13) */
-body[data-cot-height='short'] .cot-resume .rz-plate{width:auto;padding:var(--s4) var(--s5);gap:var(--s3)}
 
 body[data-cot-width] .cot-hints{
   box-sizing:border-box;max-width:min(var(--hud-hints-width,100vw),calc(100vw - (var(--cot-edge) * 2)));justify-content:center;

@@ -122,6 +122,13 @@ export function getLocale(): SupportedLocale {
   return currentLocale;
 }
 
+/** Save `locale` for the next document without switching this one (settings-unify-278: a language picked in battle
+ *  waits for the Garage's reload, so the battle never shows two languages). */
+export function rememberLocale(locale: SupportedLocale): void {
+  ensureInitialised();
+  persist(locale);
+}
+
 /**
  * Switch the active locale and broadcast `cot:locale-changed` on `window`.
  * Product switches reload the document right after (screens own translated DOM)

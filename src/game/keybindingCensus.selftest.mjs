@@ -34,7 +34,6 @@ const KEY_OWNERS = [
   { feature: 'studio entry', files: ['src/game/studioAccess.ts', 'src/game/studio.ts'], phases: ['garage'], codes: ['F8'] },
   { feature: 'studio', files: ['src/game/studio.ts', 'src/ui/studioPanel.ts'], phases: ['studio'],
     codes: ['F8', 'KeyJ', 'KeyK', 'KeyL', 'Space', 'Delete', 'Backspace', 'Escape'] },
-  { feature: 'minimal HUD', files: ['src/ui/battleUiVisibility.ts'], phases: BATTLE, codes: ['F10'] },
   { feature: 'kill cam', files: ['src/game/killcam.ts'], phases: ['killcam'],
     // (death-flow-275) the spectate list steps on A / Q and D / E as well as the arrows: a dead crew drives nothing
     codes: ['Escape', 'Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyQ', 'KeyA', 'KeyD'] },

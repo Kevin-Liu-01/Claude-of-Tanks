@@ -9,7 +9,8 @@
 import type { PerspectiveCamera } from 'three';
 import { createPhotoCamera, PHOTO_LENSES_MM, PHOTO_OPEN_LENS_MM, PHOTO_TILTS_DEG, type PhotoSubject } from '../engine/photoCamera.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
-import { openPhotoMode, type PhotoKit, type PhotoStill } from '../ui/photoMode.ts';
+import type { PhotoKit, PhotoStill } from '../ui/photoMode.ts';
+import { photoModeChunk } from '../ui/photoModeChunk.ts';
 
 interface BattlePhotoInput {
   /** Gate the battle's controls (held state clears), as the pause menu does. */
@@ -33,6 +34,9 @@ export interface BattlePhotoDeps {
   click(): void;
   /** Photo mode opened (true) or closed: main.ts's pause port reads it. */
   onChange(open: boolean): void;
+  /** On close: true when the paused Settings it was opened from takes the screen back (the battle stays paused and the
+   *  pointer free), false when the battle resumes at once (the P key's way in). settings-unify-278. */
+  backToMenu(): boolean;
   /** The view's height in CSS pixels. */
   viewHeightPx(): number;
 }
@@ -62,7 +66,6 @@ export function createBattlePhotoMode(deps: BattlePhotoDeps): BattlePhotoMode {
   const held = new Set<HeldKey>();
   let close: (() => void) | null = null;
   let opening = false;
-  let sheet: Promise<unknown> | null = null;
 
   // the stage's gestures: one pointer orbits (with Shift or the right button it pans), two pinch and pan together
   const pointers = new Map<number, { x: number; y: number; button: number; shift: boolean }>();
@@ -148,8 +151,9 @@ export function createBattlePhotoMode(deps: BattlePhotoDeps): BattlePhotoMode {
     photoCamera.close();
     deps.input.setEnabled(true);
     deps.onChange(false);
-    // the battle takes the pointer back (a refused lock is retaken by the next press on the stage, as after any unlock)
-    deps.input.requestLock({ fromUi: true });
+    // back to the paused Settings it came from, or the battle takes the pointer back (a refused lock is retaken by the
+    // next press on the stage, as after any unlock)
+    if (!deps.backToMenu()) deps.input.requestLock({ fromUi: true });
   };
 
   return {
@@ -164,12 +168,11 @@ export function createBattlePhotoMode(deps: BattlePhotoDeps): BattlePhotoMode {
       deps.onChange(true);
       deps.input.setEnabled(false);
       deps.input.releaseLock();
+      // the bar and its sheet: one load for the document, the Garage's too (ui/photoModeChunk.ts)
+      let openPhotoMode: typeof import('../ui/photoMode.ts').openPhotoMode;
       try {
-        // the sheet loads beside the module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
-        sheet ??= import('../ui/photoMode.css');
-        await sheet;
+        ({ openPhotoMode } = await photoModeChunk.load());
       } catch (error) {
-        sheet = null;
         opening = false;
         deps.input.setEnabled(true);
         deps.onChange(false);

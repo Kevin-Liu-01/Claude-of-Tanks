@@ -55,7 +55,10 @@ const LEGACY_A11Y_KEY = 'cot.accessibility.v1';
 // 0.5 reproduces the classic 28 ms feel.
 const MAX_SMOOTH_TAU_S = 0.056;
 
-const PAD_DEADZONE = 0.18; // stick deadzone (raw axis units)
+/** The sticks' dead zone (raw axis units): the default, and the range Settings › Gameplay › Controller offers
+ *  (settings-unify-278). Its top stays under PAD_MOVE_THRESHOLD, so a held move still needs a push past it. */
+export const PAD_DEADZONE_DEFAULT = 0.18;
+export const PAD_DEADZONE_RANGE = Object.freeze({ min: 0.05, max: 0.3 });
 const PAD_MOVE_THRESHOLD = 0.35; // stick deflection that counts as a held move action
 const PAD_AIM_RATE = 760; // mouse-pixel-equivalents per second at full stick deflection
 const PAD_TRIGGER_THRESHOLD = 0.5; // analog trigger "pressed" level
@@ -114,6 +117,8 @@ export const ACTION_DEFS = [
   { id: 'minimapZoom', label: 'action.minimapZoom', group: 'settings.group.interface' },
   { id: 'shotLog', label: 'action.shotLog', group: 'settings.group.interface' }, // SHOT-INFO (shotInfo.ts)
   { id: 'perfHud', label: 'action.perfHud', group: 'settings.group.interface' }, // FEEL r12 (perfHud.ts)
+  // settings-unify-278: the minimal HUD's key (ui/battleUiVisibility.ts), F10 until rebound
+  { id: 'hideBattleUi', label: 'action.hideBattleUi', group: 'settings.group.interface' },
   // photo-mode-271: a solo battle's photo mode (src/game/battlePhotoMode.ts; the Garage's P is its own)
   { id: 'photoMode', label: 'action.photoMode', group: 'settings.group.interface' },
   // Multiplayer v2 status surface (multiplayerStatus.ts): the network panel and the two-press leave
@@ -153,6 +158,8 @@ export interface InputSettings {
   sniperSensScale: number;
   aimSmoothing: number;
   padSensitivity: number;
+  /** The sticks' dead zone (PAD_DEADZONE_RANGE): a worn stick that drifts wants more, a fresh one less. */
+  padDeadzone: number;
   rmbMode: RmbMode;
   aiDifficulty: AiDifficulty;
   showPerfMeter: boolean;
@@ -169,6 +176,8 @@ export interface InputSettings {
   showHints: boolean;
   /** The crew radio's captions (ui/captionLine.ts, notices-audit-275): off by default. */
   crewCaptions: boolean;
+  /** Every sound off (settings-unify-278): Settings › Sound and the touch layout's quick mute set the one value. */
+  muteAll: boolean;
   volMaster: number;
   volEngine: number;
   volCombat: number;
@@ -316,6 +325,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   // FEEL r12: fps / frame-time / stall overlay. F9, a key nothing else takes: on F8 it toggled with the Studio's own key
   // (studio.ts, studioAccess.ts) and its Garage button (owner 2026-10-28: "battle diagnostics randomly appears")
   perfHud: 'F9',
+  hideBattleUi: 'F10', // settings-unify-278: hide every battle panel but the sight (battleUiVisibility.ts)
   photoMode: 'KeyP',
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
@@ -368,6 +378,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   sniperSensScale: 1, // extra multiplier while in sniper mode (0.2x .. 3x)
   aimSmoothing: 0.5, // 0 = raw 1:1 deltas, 1 = heavy (56 ms EMA); 0.5 = classic 28 ms
   padSensitivity: 1, // 0.2x .. 3x multiplier on right-stick aim
+  padDeadzone: PAD_DEADZONE_DEFAULT,
   // gunnery r1 (owner): what the RMB-bound 'freeCamera' action DOES —
   // 'hold' = hold-to-aim (enter sniper while held, release restores the
   // prior arcade zoom + preserved aim pitch; the owner-mandated default),
@@ -398,6 +409,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   armorAimOverlay: true,
   showHints: true,
   crewCaptions: false,
+  muteAll: false,
   // Sound mix (settings panel SOUND tab). The sound engine
   // (src/audio/audioEngine.ts) reads these at graph build and live-follows
   // the 'ui:volumes' bus event the panel emits on every change.
@@ -526,10 +538,10 @@ function isRmbMode(value: string): value is RmbMode {
 }
 
 /** Squared response curve past the deadzone — fine aim near center. */
-function stickCurve(v: number) {
+function stickCurve(v: number, deadzone: number) {
   const m = Math.abs(v);
-  if (m <= PAD_DEADZONE) return 0;
-  const n = (m - PAD_DEADZONE) / (1 - PAD_DEADZONE);
+  if (m <= deadzone) return 0;
+  const n = (m - deadzone) / (1 - deadzone);
   return Math.sign(v) * n * n;
 }
 
@@ -739,6 +751,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.showHints === 'boolean') settings.showHints = storedSettings.showHints;
     if (typeof storedSettings.crewCaptions === 'boolean') settings.crewCaptions = storedSettings.crewCaptions;
+    if (typeof storedSettings.muteAll === 'boolean') settings.muteAll = storedSettings.muteAll;
+    if (typeof storedSettings.padDeadzone === 'number') {
+      settings.padDeadzone = clamp(storedSettings.padDeadzone, PAD_DEADZONE_RANGE.min, PAD_DEADZONE_RANGE.max);
+    }
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     settings.crewVoice = normalizeCrewVoiceSetting(storedSettings.crewVoice,
       storedSettings.crewVoice === 'interface' ? getLocale() : null);
@@ -1050,12 +1066,13 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     const rightY = axes.length > 3 ? axes[3] : 0;
     padRawMove.x = leftX;
     padRawMove.y = leftY;
-    padMove.x = stickCurve(leftX);
-    padMove.y = stickCurve(leftY);
-    padAim.x = stickCurve(rightX);
-    padAim.y = stickCurve(rightY);
-    return Math.abs(leftX) > PAD_DEADZONE || Math.abs(leftY) > PAD_DEADZONE ||
-      Math.abs(rightX) > PAD_DEADZONE || Math.abs(rightY) > PAD_DEADZONE;
+    const deadzone = settings.padDeadzone;
+    padMove.x = stickCurve(leftX, deadzone);
+    padMove.y = stickCurve(leftY, deadzone);
+    padAim.x = stickCurve(rightX, deadzone);
+    padAim.y = stickCurve(rightY, deadzone);
+    return Math.abs(leftX) > deadzone || Math.abs(leftY) > deadzone ||
+      Math.abs(rightX) > deadzone || Math.abs(rightY) > deadzone;
   }
 
   function pollPadButtons(pad: Gamepad): boolean {
@@ -1483,6 +1500,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'showHints') settings.showHints = !!value;
       else if (key === 'crewCaptions') settings.crewCaptions = !!value;
+      else if (key === 'muteAll') settings.muteAll = !!value;
+      else if (key === 'padDeadzone') settings.padDeadzone = num(PAD_DEADZONE_DEFAULT, PAD_DEADZONE_RANGE.min, PAD_DEADZONE_RANGE.max);
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'audioConcussion') settings.audioConcussion = !!value;
       else if (key === 'crewVoice') {

@@ -211,10 +211,9 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'site', owner: 'src/pad/padPage.ts', surface: '.pad-link' },
     ],
   },
-  /** The battle stands paused: the veil after a focus loss, the tag on Settings opened in a battle. */
+  /** The battle stands paused: the tag on Settings, the battle's one pause screen (settings-unify-278). */
   paused: {
     places: [
-      { screen: 'battle', owner: 'src/ui/settings.ts', surface: '.cot-resume .rz-title', states: ['pause'] },
       { screen: 'settings', owner: 'src/ui/settings.ts', surface: '.cot-set-paused', states: ['in-battle'] },
     ],
   },

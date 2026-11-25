@@ -82,6 +82,7 @@ import type { BattleOutcome } from '../game/battleOutcome.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
 import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.ts';
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
+import { photoModeChunk } from './photoModeChunk.ts';
 import type { PhotoStill, PhotoView } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import type { GarageHotspots, HotspotFacts, HotspotRoom } from './garageHotspots.ts';
@@ -5033,9 +5034,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // photo mode (the direction's Photo action): loaded at its first use, off the game entry
   const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
   let photo: GaragePhotoControl | null = null;
-  // (audit R6) an opener: a chunk that did not arrive marks the Photo button, and its next press reloads
-  // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
-  const photoMode = createLazyChunk(() => Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode), { opener: true });
+  // (audit R6) an opener: a chunk that did not arrive marks the Photo button, and its next press reloads; the module and its
+  // sheet are one load for the document, shared with a battle's photo mode (photoModeChunk.ts)
   // the open photo mode's close (the Garage's hide puts it away: it outlived the screen)
   let closePhoto: (() => void) | null = null;
   function openPhoto(): void {
@@ -5044,7 +5044,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const control = photo;
     const ticket = garageScreen.ticket();
     emit('ui:click', {});
-    void photoMode.load().then(({ openPhotoMode }) => {
+    void photoModeChunk.load().then(({ openPhotoMode }) => {
       // (2026-11-02 audit F5) the Garage that asked must still show, and Deploy not have opened over it meanwhile
       if (!ticket.current() || battleMenu.classList.contains('open')) return;
       closePhoto = openPhotoMode({
