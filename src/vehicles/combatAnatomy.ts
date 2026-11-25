@@ -1855,23 +1855,46 @@ interface RigGun {
 }
 
 /**
- * (strv-track-plates) An external plate that opts in (ArmorPlate.seatOnTrack) and links a track module is laid on that
- * track's prism (attachTrackShapes: the running gear as the build measured it): the prism's outer face (x1 on the right,
- * x0 on the left) over the prism's run in z, keeping the plate's own height band and armour. The prism is the hit surface
- * on every driver; the plate gives it its armour (trackShapes.ts trackShapeForSide) and gives HE its nearest face, so both
- * stand on the one measured line. The S-tanks' plates stood at 0.88 of the half-width over the hull's length.
+ * hull-plates-fit-277: how far (m) an untraced plate may stand past the drawn hull before it is off the build: 10 cm, or 3 %
+ * of the drawn run, whichever is more (the generator's own fits leave a few centimetres; a hull's skirts and track ends
+ * round off within 3 %). tools/plate-overhang-census.mjs holds the fleet to it.
  */
-function seatPlatesOnTrack(armor: ArmorAnatomy): void {
+export function plateOverhangTolM(runM: number): number {
+  return Math.max(0.10, 0.03 * runM);
+}
+
+/**
+ * (strv-track-plates) An external plate that links a track module is laid on that track's prisms (attachTrackShapes: the
+ * running gear as the build measured it) when it opts in (ArmorPlate.seatOnTrack), or (hull-plates-fit-277) when its run
+ * passes the drawn hull's (the calibration's hull and tracks) by more than plateOverhangTolM: the outermost prism's outer
+ * face (x1 on the right, x0 on the left) over the side's run in z, keeping the plate's own height band and armour. The
+ * prism is the hit surface on every driver; the plate gives it its armour (trackShapes.ts trackShapeForSide), gives HE its
+ * nearest face (sim/damage.ts hullAabbOf), and bounds the wreck's hull box (sim/wreckTurrets.ts), so all stand on the one
+ * measured line. The S-tanks' plates stood at 0.88 of the half-width over the hull's length; the generic helpers' pair
+ * (specHelpers communityArmor, modernArmor, the donors) stands at +-half the length around the model's origin, which on a
+ * hull drawn off its origin ran 1.3 to 1.9 m past the bow (the T95, M46 and M47; Main, fire-center-277).
+ */
+function seatPlatesOnTrack(armor: ArmorAnatomy, calibration: CombatAnatomyCalibration | null): void {
   const shapes = (armor as { trackShapes?: readonly TrackShape[] }).trackShapes;
   if (!shapes?.length) return;
+  const drawn = calibration?.hull ? [calibration.hull, calibration.tracks?.left, calibration.tracks?.right] : [];
+  const zs = drawn.flatMap((box) => (box ? [box.min[2], box.max[2]] : []));
+  const drawnLo = zs.length ? Math.min(...zs) : NaN, drawnHi = zs.length ? Math.max(...zs) : NaN;
+  const tol = plateOverhangTolM(drawnHi - drawnLo);
+  const overhangs = (plate: ArmorPlate): boolean => {
+    if (!Number.isFinite(drawnLo)) return false;
+    const pz = plate.verts.map((vert) => vert[2]);
+    return Math.max(drawnLo - Math.min(...pz), Math.max(...pz) - drawnHi) > tol;
+  };
   armor.hullPlates = armor.hullPlates.map((plate) => {
-    if (!plate.seatOnTrack || plate.kind !== 'external') return plate;
-    const shape = shapes.find((track) => track.module === plate.moduleLink);
-    if (!shape) return plate;
-    const right = shape.module === 'trackR';
-    const x = right ? shape.x1 : shape.x0;
-    const zs = shape.poly.map((point) => point[0]);
-    const zLo = Math.min(...zs), zHi = Math.max(...zs);
+    if (plate.kind !== 'external' || !(plate.seatOnTrack || overhangs(plate))) return plate;
+    // a side may run on more than one track (the T95's two a side): its outermost face over all their runs
+    const side = shapes.filter((track) => track.module === plate.moduleLink);
+    if (!side.length) return plate;
+    const right = side[0].module === 'trackR';
+    const x = right ? Math.max(...side.map((track) => track.x1)) : Math.min(...side.map((track) => track.x0));
+    const runZ = side.flatMap((track) => track.poly.map((point) => point[0]));
+    const zLo = Math.min(...runZ), zHi = Math.max(...runZ);
     const ys = plate.verts.map((vert) => vert[1]);
     const yLo = Math.min(...ys), yHi = Math.max(...ys);
     // the side plates' own winding (specHelpers rightSidePlate / leftSidePlate), so the face still points out
@@ -1921,7 +1944,6 @@ export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?:
     spec.gun = measured;
   }
   if (rig.trackHulls?.length) attachTrackShapes(armor as unknown as Parameters<typeof attachTrackShapes>[0], rig.trackHulls);
-  seatPlatesOnTrack(armor);
   const lengthM = armor.gunBarrel?.lengthM ?? 0;
   const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + lengthM + 0.4;
   if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
@@ -2091,6 +2113,7 @@ export function finalizeCombatAnatomy(
   if (isCombatAnatomyMeasurementMode()) rememberAuthoredAnatomy(spec);
   const armor = spec.armor;
   applyCombatGunRig(spec, calibration?.rig);
+  seatPlatesOnTrack(armor, calibration);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   seatAuthoredTurretPlates(armor, calibration?.turretRing);
   // the generator measures the authored layers; reapplying its previous fits would make the fit self-referential

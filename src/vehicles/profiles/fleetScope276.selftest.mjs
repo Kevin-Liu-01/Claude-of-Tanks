@@ -29,6 +29,11 @@ const TARGETS = Object.freeze(['ztz99a2', 'ztz99a', 'vt4a1']);
 const MOVED_ON_PURPOSE = Object.freeze({
   olifant_mk2: "Kevin OK'd Olifant Mk 2 on the Loggim turret for 276 (11-24 18:40); ttd and olifant_mk1b held byte-identical",
   pza_loara: 'tank-reds-276 (Main 11-24): the dark disc 2 mm proud of each brake face removed; the bore mouth is the brake face, barrel 3.302 -> 3.3',
+  // hull-plates-fit-277 (Main, fire-center-277): the legacy track pair that ran past the drawn hull is seated on the measured
+  // track prisms (combatAnatomy.ts seatPlatesOnTrack; tools/plate-overhang-census.mjs). Armour only: build and anatomy held.
+  ...Object.fromEntries(['t95', 'm46_patton', 'm47_patton', 'ajax', 'amx56', 'merkava3d', 'leclerc_xlr', 'c1_ariete', 'c2_ariete',
+    'chieftain3', 'sabra_mk2', 'pl01', 'pl01_105', 'warrior_tes_h', 'griffin50mm', 'griffin_viper', 'namer_ifv', 'merkava3c',
+    'merkava3_baz', 'k21'].map((id) => [id, 'hull-plates-fit-277: its track pair seated on the drawn track (armour only)'])),
 });
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
