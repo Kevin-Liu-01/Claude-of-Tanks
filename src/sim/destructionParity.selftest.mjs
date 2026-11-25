@@ -5,6 +5,7 @@
 // real APFSDS round on a structure as the catalog says.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import ts from 'typescript-compiler-api';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
@@ -38,7 +39,22 @@ assert.match(authority, /advanceRepairs\(dt\);\s*advanceDestruction\(\);\s*updat
 // (2026-10-29) both clock their ground with the match: a collapsed structure's heap rises over RUBBLE_GROW_S with its fall.
 // The solo step had none, and on the page's own battle every heap stood up whole the instant its building came down
 assert.match(authority, /timeS \+= dt;\s*\/\/[^\n]*\n\s*ground\.setTime\(timeS\);/, 'the authority clocks its ground each tick');
-assert.match(solo, /game\.timeS \+= SIM_DT;\s*(\/\/[^\n]*\n\s*)*groundFor\(world\)\.overlay\.setTime\(game\.timeS\);/, 'the solo step clocks its ground each tick');
+// (reds-sweep2-276) read as the step's statements, not adjacent text: replay-system's tick count (b2efbb3efb,
+// `game.tick++`) landed between the clock and the ground and the old regex pinned their adjacency. The claim is that
+// every step that advances the clock sets the ground to it: both are statements of simStep's own body, the ground after
+// the clock, and nothing between them can leave the step (only plain expression statements)
+{
+  const file = ts.createSourceFile('state.ts', solo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const step = file.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === 'simStep');
+  assert.ok(step?.body, 'game/state.ts declares simStep');
+  const body = step.body.statements;
+  const flat = (node) => node.getText(file).replace(/\s+/g, ' ');
+  const clock = body.findIndex((node) => flat(node) === 'game.timeS += SIM_DT;');
+  const ground = body.findIndex((node) => flat(node) === 'groundFor(world).overlay.setTime(game.timeS);');
+  assert.ok(clock >= 0 && ground > clock, 'the solo step clocks its ground each tick (the ground set after the clock, both in simStep\'s body)');
+  assert.ok(body.slice(clock + 1, ground).every(ts.isExpressionStatement),
+    'the solo step clocks its ground each tick (nothing between the clock and the ground can leave the step)');
+}
 // the detonations (§11): solo raises munition:blast where the round burst; the authority carries the same facts to the
 // peers (shell_impact: class, charge, struck structure; the direct shell_hit: the burst point), which raise it alike
 assert.match(solo, /const blast = munitionBlastEventFor\(shell\.spec, hit\.point\.x, hit\.point\.y, hit\.point\.z,[\s\S]{0,260}hit\.record\?\.structureIdx, craterId\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);\s*bus\.emit\('shell:expired'/,
