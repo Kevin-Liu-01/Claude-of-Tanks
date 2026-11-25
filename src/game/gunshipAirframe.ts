@@ -11,9 +11,13 @@
  * that faces the target in the left-hand pylon turn) the 30 mm cannon forward of the wing, the 152 mm howitzer aft of
  * the sponson and the sensor ball under the nose. Gunship grey in vertex colours on one lit material (its cascade setup
  * through the hooks gunshipVisual.ts holds), the body one merged draw, each prop one more.
+ * (aircraft-streaks-277; Kevin: "on the actual vehicles add more detailling and coloring") Its side's markings are team
+ * trim in that one draw (airframeParts.ts holdTeamTrim: Air Support's airSupportWorld.ts paints them in the side's team
+ * colour; unpainted, as the AC-130 mode and the renders draw it, insignia white): the fin cap, the wingtips, the band
+ * behind the cockpit and the roundels' centres on the wings and the fuselage.
  */
 import * as THREE from 'three';
-import { Parts, addLoft, box, lin, rod, surface } from './airframeParts.ts';
+import { INSIGNIA, Parts, addLoft, box, holdTeamTrim, lin, rod, roundel, sliceAt, surface } from './airframeParts.ts';
 
 interface GunshipMaterialHooks { setup(material: THREE.Material): void; release(material: THREE.Material): void }
 
@@ -145,11 +149,34 @@ export function buildGunshipAirframe(hooks: GunshipMaterialHooks | null): BuiltA
     parts.add(ball, () => c);
   }
 
+  // ---- (aircraft-streaks-277) the side's markings, in the team trim ----
+  const finRoot = { le: new THREE.Vector3(0, 2.3, -8.2), chord: 6.4, thick: 0.75 };
+  const finTip = { le: new THREE.Vector3(0, 9.3, -12.5), chord: 2.9, thick: 0.3 };
+  parts.asTrim(() => {
+    surface(parts, sliceAt(finRoot, finTip, 0.8, 0.04), sliceAt(finRoot, finTip, 1.01, 0.04), new THREE.Vector3(1, 0, 0), 0, INSIGNIA, INSIGNIA);
+    // the band behind the cockpit
+    addLoft(parts, [
+      { z: 9.6, cy: 0.32, rx: 2.215, ry: 2.315 },
+      { z: 9.0, cy: 0.32, rx: 2.215, ry: 2.315 },
+    ], 20, 0, 2.6, () => lin(INSIGNIA));
+  });
+  for (const side of [-1, 1]) {
+    const wingRoot = { le: new THREE.Vector3(0, WING_Y, 3.5), chord: 4.9, thick: 0.85 };
+    const wingTip = { le: new THREE.Vector3(side * 20.2, wingY(20.2), 2.55), chord: 2.6, thick: 0.38 };
+    parts.asTrim(() => surface(parts, sliceAt(wingRoot, wingTip, 0.92, 0.04), sliceAt(wingRoot, wingTip, 1.005, 0.04), up, 0, INSIGNIA, INSIGNIA));
+    // the wing's roundels, over and under (35% chord at 14 m out), and the fuselage's abeam the wing
+    const y = wingY(14);
+    roundel(parts, new THREE.Vector3(side * 14, y + 0.26, 1.69), up, 1.1);
+    roundel(parts, new THREE.Vector3(side * 14, y - 0.26, 1.69), new THREE.Vector3(0, -1, 0), 1.1);
+    roundel(parts, new THREE.Vector3(side * 2.19, 0.9, -1.0), new THREE.Vector3(side, 0, 0), 0.85);
+  }
+
   const material = new THREE.MeshStandardMaterial({ name: 'ac130-airframe', vertexColors: true, metalness: 0.32, roughness: 0.6 });
   hooks?.setup(material);
   const body = new THREE.Mesh(parts.geometry(), material);
   body.name = 'ac130-airframe-body';
   root.add(body);
+  holdTeamTrim(root, body.geometry, parts.trim);
   const propGeo = propGeometry();
   const props: THREE.Mesh[] = [];
   for (const x of engines) {

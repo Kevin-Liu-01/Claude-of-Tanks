@@ -7,10 +7,14 @@
  * between the wing and the tail, so the tail and the wing hide their exhaust; the twin fins on the tips of the tailplane;
  * a GBU-12 under each wing. Hog grey (FS 36118 gunship grey on the upper sides, lighter below) in vertex colours on one lit
  * material, one draw, built with the AC-130's kit (airframeParts.ts). Its own chunk: an Air Support battle loads it.
+ * (aircraft-streaks-277; Kevin: "on the actual vehicles add more detailling and coloring") Its side's markings are team
+ * trim (airframeParts.ts holdTeamTrim: airSupportWorld.ts paints them in the side's team colour): the fin caps, the
+ * drooped wingtips, the nose band and the roundels' centres on the wings and the fuselage; and its detail: the pylons
+ * under the wings, the spine's antenna blades and the refuelling receptacle on the nose.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import * as THREE from 'three';
-import { Parts, addLoft, box, lin, rod, surface } from './airframeParts.ts';
+import { INSIGNIA, Parts, addLoft, box, holdTeamTrim, lin, rod, roundel, sliceAt, surface } from './airframeParts.ts';
 
 interface StrikeJetMaterialHooks { setup(material: THREE.Material): void; release(material: THREE.Material): void }
 /** A built jet: its root (nose +Z, port wing +X, up +Y), the GAU-8's muzzle and each engine's exhaust in that frame. */
@@ -111,11 +115,42 @@ export function buildStrikeJetAirframe(hooks: StrikeJetMaterialHooks | null): Bu
       { le: new THREE.Vector3(side * 2.85, 2.35, -6.55), chord: 1.3, thick: 0.14 }, new THREE.Vector3(1, 0, 0), 0, UPPER, UPPER);
   }
 
+  // ---- (aircraft-streaks-277) the side's markings, in the team trim, and the airframe's detail ----
+  for (const side of [-1, 1]) {
+    const finRoot = { le: new THREE.Vector3(side * 2.85, -0.35, -6.0), chord: 2.05, thick: 0.22 };
+    const finTip = { le: new THREE.Vector3(side * 2.85, 2.35, -6.55), chord: 1.3, thick: 0.14 };
+    const droopRoot = { le: new THREE.Vector3(side * 7.55, -0.18, 1.05), chord: 1.75, thick: 0.28 };
+    const droopTip = { le: new THREE.Vector3(side * 8.75, -0.42, 0.85), chord: 1.25, thick: 0.16 };
+    parts.asTrim(() => {
+      // the fin's upper third and the drooped tip, each a coat over the surface
+      surface(parts, sliceAt(finRoot, finTip, 0.68, 0.03), sliceAt(finRoot, finTip, 1.015, 0.03), new THREE.Vector3(1, 0, 0), 0, INSIGNIA, INSIGNIA);
+      surface(parts, sliceAt(droopRoot, droopTip, -0.02, 0.03), sliceAt(droopRoot, droopTip, 1.015, 0.03), up, 0, INSIGNIA, INSIGNIA);
+    });
+    // the wing's roundels, over and under (35% chord at 5.6 m out), and the fuselage's behind the wing
+    roundel(parts, new THREE.Vector3(side * 5.6, -0.05, 0.45), up, 0.5);
+    roundel(parts, new THREE.Vector3(side * 5.6, -0.42, 0.45), new THREE.Vector3(0, -1, 0), 0.5);
+    roundel(parts, new THREE.Vector3(side * 0.73, 0.2, -2.4), new THREE.Vector3(side, 0, 0), 0.3);
+    // the pylons under the wing: the bomb's, and two empty ones outboard
+    box(parts, 0.14, 0.2, 1.1, side * 3.9, -0.58, 1.1, LOWER);
+    box(parts, 0.14, 0.2, 0.9, side * 5.2, -0.53, 0.95, LOWER);
+    box(parts, 0.12, 0.18, 0.8, side * 6.4, -0.46, 0.85, LOWER);
+  }
+  // the nose band behind the gun's nose cap
+  parts.asTrim(() => addLoft(parts, [
+    { z: 7.05, cy: -0.031, rx: 0.602, ry: 0.648 },
+    { z: 6.7, cy: 0.002, rx: 0.669, ry: 0.721 },
+  ], 18, 0, 2.4, () => lin(INSIGNIA)));
+  // the spine's antenna blades and the refuelling receptacle ahead of the canopy
+  box(parts, 0.03, 0.32, 0.4, 0, 1.1, 1.2, DARK);
+  box(parts, 0.03, 0.28, 0.36, 0, 1.08, -1.0, DARK);
+  box(parts, 0.3, 0.04, 0.45, 0, 0.65, 6.95, DARK);
+
   const material = new THREE.MeshStandardMaterial({ name: 'strike-jet-airframe', vertexColors: true, metalness: 0.28, roughness: 0.62 });
   hooks?.setup(material);
   const body = new THREE.Mesh(parts.geometry(), material);
   body.name = 'strike-jet-body';
   root.add(body);
+  holdTeamTrim(root, body.geometry, parts.trim);
 
   // ---- a GBU-12 on the inboard pylon of each wing: the olive Mk 82 body, its seeker head and its wings ----
   const bombParts = new Parts();
