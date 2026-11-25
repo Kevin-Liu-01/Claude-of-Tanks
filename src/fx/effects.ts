@@ -41,6 +41,7 @@ import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
 import { shooterVelocityGain, subjectPointVelocity, syncSubjectEmitterAnchor } from './effectAttachments.ts';
+import { hullFireFrame, hullFireRise } from './hullFireAnchor.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -995,11 +996,9 @@ const LIVE_FIRE_MIN_VIEW = 0.007;
 /** a lick's mean width at scale 1 and no boost (emitColumnTongue's and the night lick's base) */
 const LIVE_FIRE_LICK_W = 0.85;
 /** (fire-visible-275, the look clip: our own tank burning showed smoke and no flame) a column's licks are born ~0.95 m
- *  over its point, made for a wreck's point on the ground; a live fire with no hit point stood at its hull's origin, on
- *  the ground, so its licks were born inside the hull. A live fire never burns below its hull's deck (this share of the
- *  hull's height over its origin), and one with no hit point burns on the rear deck (the engine's, this share of the
- *  hull's length behind its middle). */
-const LIVE_FIRE_DECK_K = 0.62, LIVE_FIRE_REAR_K = 0.3, LIVE_FIRE_LICK_BASE_M = 0.8;
+ *  over its point, made for a wreck's point on the ground; a live fire's point stands this far under the hull's top so
+ *  its licks are born on it, never inside the hull. (fire-center-277) Where on the hull: hullFireAnchor.ts. */
+const LIVE_FIRE_LICK_BASE_M = 0.8;
 
 
 // ---------------------------------------------------------------------------
@@ -1029,6 +1028,9 @@ const _gpPos = new THREE.Vector3(); // gunshipMuzzleFx's gun port
 const _gpSide = new THREE.Vector3(); // gunshipMuzzleFx's level heading toward the guns' target
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
 const _subjectAnchor = new THREE.Vector3(); // moving-emitter attachment scratch
+// (fire-center-277) syncLiveFireAnchor's scratch: the hull's centre in the world, its root's pose, the world's up in the hull
+const _fireCentre = new THREE.Vector3(), _fireAt = new THREE.Vector3(), _fireScale = new THREE.Vector3(), _fireUp = new THREE.Vector3();
+const _fireQ = new THREE.Quaternion();
 const _UP = new THREE.Vector3(0, 1, 0);  // read-only
 const _c0 = new THREE.Color();
 
@@ -2377,7 +2379,6 @@ function* createFxSteps(
    */
   const lastKnownPos = new Map<string, KnownHullPoint>();
   const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
-  const _livePoint: MutableVec3 = [0, 0, 0]; // liveFirePoint's answer (fire-visible-275)
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
   // it was HE (radius-breaks destructible props) — fed by shell:fired,
   // cleared on shell:expired (+ a hard size guard against leaks).
@@ -5106,7 +5107,8 @@ function* createFxSteps(
       const burning = hullHidden(subject) ? undefined : subject?.combat?.fire?.burning;
       if (burning === true) col.sawBurning = true;
       else if (burning === false && col.sawBurning && !replaySuppressed) continue;
-      col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
+      // (fire-center-277) over the hull's measured centre, by its pose now; a hull with no fire frame keeps its point
+      col.attachmentResolved = syncLiveFireAnchor(col, subject) || syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
       columns[live++] = col;
     }
     columns.length = live;
@@ -5175,27 +5177,44 @@ function* createFxSteps(
     return _knownAt;
   }
 
-  /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
-  /** (fire-visible-275) where a live fire burns on its hull: its point, never below the deck; with no hit point (the
-   *  burn scan's, a fire no hit lit) the rear deck. A hull with no dimensions keeps its point. */
-  function liveFirePoint(id: string, p: MutableVec3): MutableVec3 {
-    const ent = decalEntityFor(id) as (FxEntity & { spec?: { dims?: { heightM?: number; hullLengthM?: number } } }) | null;
-    const dims = ent?.spec?.dims, at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
-    if (!ent || !at || !(dims?.heightM && dims.heightM > 0)) return p;
-    _livePoint[0] = p[0]; _livePoint[1] = p[1]; _livePoint[2] = p[2];
-    if (!lastKnownPos.get(id)?.onHull) {
-      const yaw = hullYawOf(ent), back = -LIVE_FIRE_REAR_K * (dims.hullLengthM ?? 6);
-      _livePoint[0] = at.x + Math.sin(yaw) * back;
-      _livePoint[2] = at.z + Math.cos(yaw) * back;
+  /**
+   * (fire-center-277, Kevin 2026-11-24: "tank fires need to be from the center of tank. rn its not, fix.") A live fire
+   * burns over its hull's measured centre (hullFireAnchor.ts: the drawn hull's bounds, not the model's origin; 275 put
+   * it at a hit's point or 0.3 of the length behind the origin) and comes up out of the hull's top there, every frame
+   * by the hull's pose now: its visual root's whole transform (yaw, pitch, roll, a flip, a mode's scale), else its
+   * state's place and yaw. A hit's point does not move it (the damage keeps its own place; the fire reads centred).
+   * False when the hull has no fire frame (no calibration, no dims): the caller keeps its point on the root.
+   */
+  function syncLiveFireAnchor(col: SmokeColumn, subject: FxEntity | null): boolean {
+    const frame = subject ? hullFireFrame((subject as { spec?: object }).spec) : null;
+    if (!subject || !frame) return false;
+    const c = frame.centre;
+    const root = subject.visual?.root as THREE.Object3D | undefined;
+    let rise: number;
+    if (root && root.matrixWorld && typeof root.updateWorldMatrix === 'function') {
+      root.updateWorldMatrix(true, false);
+      _fireCentre.set(c[0], c[1], c[2]).applyMatrix4(root.matrixWorld);
+      root.matrixWorld.decompose(_fireAt, _fireQ, _fireScale);
+      _fireUp.set(0, 1, 0).applyQuaternion(_fireQ.invert()); // the world's up in the hull frame
+      rise = hullFireRise(frame, _fireUp.x, _fireUp.y, _fireUp.z) * Math.abs(_fireScale.y || 1);
+    } else {
+      const at = subject.state?.pos;
+      if (!at || !Number.isFinite(at.x)) return false;
+      const yaw = hullYawOf(subject), cy = Math.cos(yaw), sy = Math.sin(yaw);
+      _fireCentre.set(at.x + cy * c[0] + sy * c[2], at.y + c[1], at.z + cy * c[2] - sy * c[0]);
+      rise = frame.max[1] - c[1];
     }
-    _livePoint[1] = Math.max(_livePoint[1], at.y + LIVE_FIRE_DECK_K * dims.heightM - LIVE_FIRE_LICK_BASE_M);
-    return _livePoint;
+    col.pos[0] = _fireCentre.x;
+    col.pos[1] = _fireCentre.y + rise - LIVE_FIRE_LICK_BASE_M;
+    col.pos[2] = _fireCentre.z;
+    return true;
   }
 
-  function startLiveColumn(id: string, pIn: MutableVec3): void {
+  /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
+  function startLiveColumn(id: string, p: MutableVec3): void {
     for (const col of columns) if (col.key === id) { col.ttl = SMOKE_COLUMN_S; return; }
-    const p = liveFirePoint(id, pIn);
     const col: SmokeColumn = { key: id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
+    syncLiveFireAnchor(col, decalEntityFor(id));
     columns.push(col);
     // (fire-visible-275) the live fires' own budget: one past it, the farthest goes (this one, if it is)
     capLiveFires();
