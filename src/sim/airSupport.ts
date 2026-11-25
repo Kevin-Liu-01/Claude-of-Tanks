@@ -417,7 +417,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const wreck: AircraftWreck = { id: strike.id, kind: strike.kind, team: strike.team, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0,
       atS: timeS, untilS: timeS + AIR_CRASH_RULES.wreck.lifeS };
     wreckAttitude(rules, strike, strike.downedS, timeS, wreck);
-    seatWreck(airframeOf(strike.kind), wreckBreak(strike.id), wreck, x, groundY, z, wreck);
+    seatWreck(airframeOf(strike.kind), wreckBreak(strike.id), wreck, x, groundY, z, wreck, terrainHeight);
     wrecks.push(wreck);
     // the oldest goes first past the cap
     while (wrecks.length > AIR_CRASH_RULES.wreck.max) wrecks.shift();

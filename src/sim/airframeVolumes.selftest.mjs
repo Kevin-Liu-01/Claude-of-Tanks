@@ -110,6 +110,17 @@ for (const [id, kind] of [['strike', 'strafe'], ['fighter', 'bomb'], ['gunship',
     assert.equal(record.kind, 'aircraft_wreck');
     assert.ok(record.shape2.kind === 'compound' && record.shape2.parts.length >= boxes.length, `4: ${id}: one or more parts a box`);
     assert.ok(!record.crushable, '4: a wreck is never crushed');
+    // seated on a crater's bowl (dug 2.25 m at the burst, 5.6 m across): no corner under the ground, one on it; a wing over
+    // the rim holds the wreck up (the drawn wreck is seated on the ground under every vertex)
+    const bowl = (x, z) => { const d = Math.hypot(x - 30, z + 20); return d >= 5.6 ? 5 : 5 - 2.25 * 0.5 * (1 + Math.cos(Math.PI * d / 5.6)); };
+    const onBowl = seatWreck(id, brk, attitude, 30, bowl(30, -20), -20, { x: 0, y: 0, z: 0 }, bowl);
+    const posed = { ...attitude, ...onBowl };
+    let least = Infinity;
+    for (const one of boxes) for (let k = 0; k < 8; k++) {
+      const c = fromAirframe(posed, { x: one.b[k & 1 ? 3 : 0], y: one.b[k & 2 ? 4 : 1], z: one.b[k & 4 ? 5 : 2] }, { x: 0, y: 0, z: 0 });
+      least = Math.min(least, c.y - bowl(c.x, c.z));
+    }
+    assert.ok(Math.abs(least) < 1e-9, `4: ${id} #${wreckId}: on the bowl no corner is under the ground and one is on it (${least})`);
   }
 }
 

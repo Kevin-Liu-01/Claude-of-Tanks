@@ -253,7 +253,8 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       local.id = strike.id; local.kind = strike.kind;
       wreckAttitude(R, strike, strike.downedS ?? t, t, local);
       seatWreckFrame(airframeOf(strike.kind), wreckBreak(strike.id), local, pose.x,
-        options.groundHeight?.(pose.x, pose.z, pose.y + WRECK_CEILING_M) ?? pose.y, pose.z, local);
+        options.groundHeight?.(pose.x, pose.z, pose.y + WRECK_CEILING_M) ?? pose.y, pose.z, local,
+        options.groundHeight ? (x, z) => options.groundHeight!(x, z, pose.y + WRECK_CEILING_M) : null);
       poseWreck(craft, local);
     }
     // the oldest wrecks go first past WRECK_MAX

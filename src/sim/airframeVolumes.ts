@@ -210,20 +210,34 @@ const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
 
 const _c = { x: 0, y: 0, z: 0 }, _w = { x: 0, y: 0, z: 0 };
 /**
- * Seats a wreck lying at `attitude`: its frame's origin such that its lowest box corner stands on (x, groundY, z), the
- * point it ploughed in with (the crash round's burst) on the ground there.
+ * Seats a wreck lying at `attitude`: its frame's origin such that its lowest box corner stands over (x, z), the point it
+ * ploughed in with (the crash round's burst), on `groundY` there, and no corner of it under `ground` (the match's dug
+ * ground: a wingtip over the crater's rim holds it up, as the drawn wreck is seated on the ground under every vertex).
  */
 export function seatWreck(airframe: AirframeId, brk: WreckBreak, attitude: Attitude, x: number, groundY: number, z: number,
-  out: Point3): Point3 {
+  out: Point3, ground: ((x: number, z: number) => number) | null = null): Point3 {
+  const boxes = wreckBoxes(airframe, brk);
   let lowY = Infinity, lowX = 0, lowZ = 0;
-  for (const one of wreckBoxes(airframe, brk)) {
+  for (const one of boxes) {
     for (let k = 0; k < 8; k++) {
       _c.x = one.b[k & 1 ? 3 : 0]!; _c.y = one.b[k & 2 ? 4 : 1]!; _c.z = one.b[k & 4 ? 5 : 2]!;
       fromAirframeDir(attitude, _c, _w);
       if (_w.y < lowY) { lowY = _w.y; lowX = _w.x; lowZ = _w.z; }
     }
   }
-  out.x = x - lowX; out.y = groundY - lowY; out.z = z - lowZ;
+  out.x = x - lowX; out.z = z - lowZ;
+  let y = groundY - lowY;
+  if (ground) {
+    for (const one of boxes) {
+      for (let k = 0; k < 8; k++) {
+        _c.x = one.b[k & 1 ? 3 : 0]!; _c.y = one.b[k & 2 ? 4 : 1]!; _c.z = one.b[k & 4 ? 5 : 2]!;
+        fromAirframeDir(attitude, _c, _w);
+        const lift = ground(out.x + _w.x, out.z + _w.z) - _w.y;
+        if (lift > y) y = lift;
+      }
+    }
+  }
+  out.y = y;
   return out;
 }
 
