@@ -13,7 +13,11 @@
 //   - screenshots: the desktop card with its QR, the phone page live, the desktop driving.
 // Holds the capture lock (one ticket, under 18 minutes). Report: .qa-dev/pad-e2e/report.json.
 //
-//   node tools/pad-e2e.browser.mjs [--samples=40] [--port=<n>] [--out=.qa-dev/pad-e2e]
+//   node tools/pad-e2e.browser.mjs [--samples=40] [--port=<n>] [--out=.qa-dev/pad-e2e] [--no-latency]
+//
+// --no-latency skips the steering-latency measurements (the data channel's and the relay's) and so takes a render hold,
+// not a timing one: for a change that does not touch the link, while the timing slot is someone else's. The relay is still
+// paired and its stick still checked.
 import http from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -29,6 +33,7 @@ import { PAD_GUN_STATE, PAD_LINK_PATH, PAD_LINK_STATE, PAD_PHONE_STATE, PAD_TOUR
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const samples = Number(arg('samples', 40));
+const latency = !process.argv.includes('--no-latency');
 // --port=<n> pins the dev server's port; by default it binds an OS-assigned one (two runs never collide: capture-ports.mjs)
 let port = Number(arg('port', 0));
 const outDir = resolve(root, arg('out', '.qa-dev/pad-e2e'));
@@ -37,7 +42,7 @@ const HOLD_MS = 18 * 60 * 1000;
 let startedAt = Date.now();
 const deadline = () => { if (Date.now() - startedAt > HOLD_MS) throw new Error('pad-e2e: past the 18-minute hold'); };
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
-const report = { samples, checks: {}, latency: {}, network: {}, errors: { desktop: [], phone: [] } };
+const report = { samples, checks: {}, latency: latency ? {} : { skipped: '--no-latency' }, network: {}, errors: { desktop: [], phone: [] } };
 const check = (name, ok, detail = '') => {
   report.checks[name] = { ok: !!ok, ...(detail ? { detail } : {}) };
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
@@ -85,7 +90,7 @@ try {
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }
-  captureHold = await openCaptureHold({ label: 'pad-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
+  captureHold = await openCaptureHold({ label: 'pad-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: latency ? 'timing' : 'render', command: 'tools/pad-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
@@ -370,19 +375,21 @@ try {
       + `desktop frame ${result.desktopFrameMs.p50}/${result.desktopFrameMs.p95} ms; load ${result.load.join(' ')}`);
     return result;
   }
-  report.step = 'latency webrtc';
-  const direct = await steerSamples(samples, 'webrtc');
-  // The pass rule's figure is the phone's event to the tank's input in a rendered frame, on a player's machines. Here the
-  // desktop is a headless WebGL battle on a shared, loaded Mac, so its frame is not a player's: the check holds the
-  // controller's own share (the phone's send and the link, which includes the desktop's main-thread wait) to the bar and
-  // records the end-to-end figure beside the desktop's frame. The owner's real devices give the end-to-end figure.
-  // (the sum of the two p95s: an upper bound on the share's p95)
-  const controllerP95 = direct.split.link.p95 === null ? null : Math.max(0, direct.split.send.p95 ?? 0) + direct.split.link.p95;
-  check('steering latency over the data channel: the controller\'s share (send + link) p95 under 60 ms',
-    direct.n === samples && controllerP95 !== null && controllerP95 < 60,
-    `send ${direct.split.send.p95} + link ${direct.split.link.p95} ms p95; end to end p50 ${direct.p50}, p95 ${direct.p95} ms `
-    + `with the desktop's receipt to frame ${direct.split.apply.p95} ms p95 at a ${direct.desktopFrameMs.p50} ms frame`);
-  report.latency.webrtc.endToEndMeetsBarHere = direct.p95 < 60;
+  if (latency) {
+    report.step = 'latency webrtc';
+    const direct = await steerSamples(samples, 'webrtc');
+    // The pass rule's figure is the phone's event to the tank's input in a rendered frame, on a player's machines. Here the
+    // desktop is a headless WebGL battle on a shared, loaded Mac, so its frame is not a player's: the check holds the
+    // controller's own share (the phone's send and the link, which includes the desktop's main-thread wait) to the bar and
+    // records the end-to-end figure beside the desktop's frame. The owner's real devices give the end-to-end figure.
+    // (the sum of the two p95s: an upper bound on the share's p95)
+    const controllerP95 = direct.split.link.p95 === null ? null : Math.max(0, direct.split.send.p95 ?? 0) + direct.split.link.p95;
+    check('steering latency over the data channel: the controller\'s share (send + link) p95 under 60 ms',
+      direct.n === samples && controllerP95 !== null && controllerP95 < 60,
+      `send ${direct.split.send.p95} + link ${direct.split.link.p95} ms p95; end to end p50 ${direct.p50}, p95 ${direct.p95} ms `
+      + `with the desktop's receipt to frame ${direct.split.apply.p95} ms p95 at a ${direct.desktopFrameMs.p50} ms frame`);
+    report.latency.webrtc.endToEndMeetsBarHere = direct.p95 < 60;
+  }
   const steerSign = await (async () => {
     await phone.evaluate(stickPush, 80);
     await sleep(200);
@@ -642,8 +649,16 @@ try {
   await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live);
   await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
     PAD_LINK_STATE.live, PAD_LINK_PATH.relay);
-  const relay = await steerSamples(Math.min(20, samples), 'relay');
-  check('steering latency over the relay (loopback): recorded', relay.n > 0, `p50 ${relay.p50} ms, p95 ${relay.p95} ms (15 Hz cap)`);
+  if (latency) {
+    const relay = await steerSamples(Math.min(20, samples), 'relay');
+    check('steering latency over the relay (loopback): recorded', relay.n > 0, `p50 ${relay.p50} ms, p95 ${relay.p95} ms (15 Hz cap)`);
+  } else {
+    await phone.evaluate(stickPush, 80);
+    await desktop.waitForFunction(() => (window.__DEBUG.game.player?.input?.steer ?? 0) < -0.5, { timeout: 5000 }).catch(() => {});
+    const relaySteer = await player('p.input.steer');
+    await phone.evaluate(stickLift);
+    check('the relay carries the stick', relaySteer < -0.5, `steer ${relaySteer.toFixed(3)}`);
+  }
   await phone.screenshot({ path: resolve(outDir, 'phone-live-relay.png') });
 
   report.step = 'desktop reload';
