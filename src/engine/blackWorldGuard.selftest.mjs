@@ -907,7 +907,7 @@ for (const [expected, healedBy, inject] of proofs) {
   const heal = h.guard.receipts.at(-1);
   assert.equal(heal?.class, 'camera-layer-mask', 'a mask incident in the second round');
   assert.equal(heal.healedBy, 'H1');
-  assert.equal(h.world.parent, null, 'H1 in the next round does not add the last round\'s battlefield back');
+  assert.ok(h.world.parent === null, 'H1 in the next round does not add the last round\'s battlefield back');
   assert.equal(h.world.visible, false, 'nor draw it');
   assert.equal(h.plannedWorld.visible, false, 'nor the planned one');
   assert.deepEqual(drawnWorlds(h), ['world-verdant'], 'one battlefield drawn: the presented one');
