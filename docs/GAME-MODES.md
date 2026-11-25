@@ -597,12 +597,30 @@ in `sim/matchRuleset.ts`):
   (`sim/modeMoves.ts requestHullTurbo`). The two modes' physics carry a launch ceiling (`launchCeilingMps`, 45 m/s) past
   the drivetrain's 1.2 × top speed: held in flight, bled off on the ground at 14 m/s² (the recoil launch shares it).
 - **Air spin** (F in flight; its own action, unbound by default, and action bit 19 for the tile, the phone key and the
-  touch button, which never jump): one whole flip or roll in 0.9 s, the axis from the drive at the press (W or nothing a
-  front flip, S a back flip, A or D a roll). The rocket's mid-air re-boost gives way to it in these modes. The ground ends
-  a turn; the movement checkpoint (version 10) and the migration extras carry one in progress.
+  touch button, which never jump): one whole flip or roll, the axis from the drive at the press (W or nothing a front
+  flip, S a back flip, A or D a roll). The rocket's mid-air re-boost gives way to it in these modes. The ground ends a
+  turn; the movement checkpoint (version 11) and the migration extras carry one in progress. A dodge since flip-boost-276
+  (each move shoves the hull along it, `AirSpinRules`, one a flight, a 1.2 s cooldown, a ground dodge's hop on the
+  ground).
+- **The thrusters** (thrust-flips-277, owner 2026-11-24: "look like your literally swinging around an axis instead of
+  like a rocket strapped to your butt and sides being activated to change your motion"). The turn and the shove are a
+  burn on a rigid body (`sim/hullThrusters.ts`, `sim/movement.ts driveAirSpin`), not a set rate: nozzles at mount points on
+  the hull's contact box (the butt for the front flip, the nose's underside for the back flip, the side away from the
+  travel for a roll, so a roll lifts its far side and rolls the way it travels) push the hull, their moment r × F about
+  the centre of mass turns it through the box's inertia, and a couple of attitude jets beside them makes up the rest. The
+  main burn lights at 30 % of its thrust, ramps up, and tapers off as the spin reaches 14 rad/s (about 0.15 s, the move's
+  whole shove); the hull coasts on its momentum; then the opposite jets fire a counter-burn that brings it to rest one
+  whole turn round, in about 0.65 s from the press. In flight the hull turns about its centre of mass (its root, under the
+  tracks, moves round it). The burn reads only the spin's checkpointed state (the turn it still owes, the spring's rate),
+  so the checkpoint stays at version 11; the migration extras carry the spin's rate. Each firing nozzle draws a flame and
+  sheds fire and smoke (`fx/hullThrusterPlumes.ts`), each burn's ignition is heard (`tank:thrust`), and a network peer's
+  or a replay's hull draws a ghost of the burn from its `tank:airSpin` event. `thrustArrows=1` draws each nozzle's force.
+  Recordings from before 277 do not replay on it (the sim changed; replays refuse another build).
 - The air spin greys out on the ground everywhere (the HUD tile, the phone controller's key, the touch button); the jump
   dims in flight; Turbo shows its cooldown. A phone's survival edge seats the jump, Turbo and the air spin as round buttons.
 - Checks by hand: `node tools/turbo-spin-clip.mjs --out=DIR` films them in real time through the real keys (render lock).
+- `node tools/thrust-flips-clip.mjs --out=DIR [--arrows]` films each flip and roll as still strips from a chase and a
+  side camera at fixed battle-time offsets (render lock); run from a 276 checkout's directory it films the "before".
 
 ### Speed-based damage, falls and rebounds (owner 2026-09-25)
 

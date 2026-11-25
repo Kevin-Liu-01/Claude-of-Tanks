@@ -8,6 +8,8 @@
 //   - the leap's speed and lift ride the row (the dasher's flight matches).
 //   - the air spin's cooldown and the flight's spent dodge run on (flip-boost-276): a second F in the same flight, past
 //     the cooldown, is refused on both hosts.
+// Since thrust-flips-277 the extras carry the spin's rate as well (the turn rides the hull's angular momentum under its
+// thrusters' burn), and a third negative control drops it.
 // Negative controls: the same handoff with the extras' spin dropped leaves the new host's hull hanging mid-flip (the
 // receipt fails without MigrationEntityExtras.airSpin); with the spent dodge dropped the new host takes the second F.
 import assert from 'node:assert/strict';
@@ -36,7 +38,7 @@ const DT = 1 / 60;
 /** Two hosts' inputs, stepped together; a press lasts one tick. */
 function step(sim, inputs, ticks = 1) { for (let n = 0; n < ticks; n++) { sim.step({ dt: DT, inputs }); for (const c of inputs.values()) c.actionBits = 0; } }
 
-function handoff({ dropSpin = false, dropFlipUsed = false } = {}) {
+function handoff({ dropSpin = false, dropFlipUsed = false, dropRate = false } = {}) {
   const old = make(null), sim = old.authority;
   const flip = control(), dash = control();
   const inputs = new Map([['flipper', flip], ['dasher', dash]]);
@@ -72,10 +74,12 @@ function handoff({ dropSpin = false, dropFlipUsed = false } = {}) {
   const flipperExtras = extras.find((entry) => entry.entityId === old.wireIdOf('flipper'));
   const dasherExtras = extras.find((entry) => entry.entityId === old.wireIdOf('dasher'));
   assert.ok(typeof flipperExtras.airSpin === 'number', 'the extras carry the flip');
+  assert.ok(Math.abs(flipperExtras.airSpinRate) > 5, 'and the rate it turns at (thrust-flips-277: the turn rides its momentum)');
   assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'and the cooldown left');
   assert.ok(flipperExtras.airSpinReadyIn > 0.5 && flipperExtras.flipUsed === true, 'and the air spin\'s cooldown and spent dodge (flip-boost-276)');
   if (dropSpin) delete flipperExtras.airSpin;
   if (dropFlipUsed) delete flipperExtras.flipUsed;
+  if (dropRate) delete flipperExtras.airSpinRate;
   const sealed = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs, timeS: sim.timeS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: extras, frame }));
   const fresh = make({ tick, battleTimeMs });
@@ -145,6 +149,18 @@ for (let n = 0; n < 40; n++) {
 }
 assert.ok(apart > 0.5, `negative control: without the carried spin the new host's hull falls out of the flip (${apart.toFixed(2)} rad apart)`);
 
+// ---- negative control: the extras without the spin's rate (thrust-flips-277): the new host's burn spins it up again from rest
+let lagged = 0;
+{
+  const slow = handoff({ dropRate: true });
+  const a = slow.next.entityById.get('flipper').state, b = slow.sim.entityById.get('flipper').state;
+  for (let n = 0; n < 40; n++) {
+    step(slow.sim, slow.inputs); step(slow.next, slow.freshInputs);
+    lagged = Math.max(lagged, Math.abs(Math.atan2(Math.sin(a.visualPitch - b.visualPitch), Math.cos(a.visualPitch - b.visualPitch))));
+  }
+  assert.ok(lagged > 0.3, `negative control: without the carried rate the new host's flip falls behind (${lagged.toFixed(2)} rad apart)`);
+}
+
 // ---- negative control: the extras without the spent dodge
 {
   const lost = handoff({ dropFlipUsed: true });
@@ -152,4 +168,4 @@ assert.ok(apart > 0.5, `negative control: without the carried spin the new host'
   assert.deepEqual(secondF(lost.sim, lost.next, lost.inputs, lost.freshInputs), [false, true], 'negative control: without the carried spent dodge the new host takes a second F');
 }
 
-console.log(`turboSpinMigration: a migration mid-flip finishes the flip on the new host (pitch within ${worstPitch.toFixed(4)} rad, done ${endedAt} ticks on, back on its tracks); mid-turbo the leap flies on (height within ${worstY.toFixed(4)} m) and the 3 s cooldown refuses then takes Turbo on both hosts; the air spin's cooldown and spent dodge carry (a second F refused on both); dropping the spent dodge lets the new host take it; dropping the carried spin leaves the hull ${apart.toFixed(2)} rad off`);
+console.log(`turboSpinMigration: a migration mid-flip finishes the flip on the new host (pitch within ${worstPitch.toFixed(4)} rad, done ${endedAt} ticks on, back on its tracks); mid-turbo the leap flies on (height within ${worstY.toFixed(4)} m) and the 3 s cooldown refuses then takes Turbo on both hosts; the air spin's cooldown and spent dodge carry (a second F refused on both); dropping the spent dodge lets the new host take it; dropping the carried spin leaves the hull ${apart.toFixed(2)} rad off, its rate ${lagged.toFixed(2)} rad`);

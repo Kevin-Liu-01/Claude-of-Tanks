@@ -78,6 +78,9 @@ export interface MigrationEntityExtras {
   turboReadyIn?: number;
   /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. */
   airSpin?: number;
+  /** The rate that spin turns at on its axis (rad/s, the attitude spring's; thrust-flips-277: the turn rides the hull's
+   *  angular momentum under its thrusters' burn); absent with no spin or at rest. */
+  airSpinRate?: number;
   /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
   airSpinReadyIn?: number;
   /** The flight's dodge spent (flip-boost-276; movement.ts `_flipUsed`); absent when unspent. */

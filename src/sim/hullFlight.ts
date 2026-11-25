@@ -3,10 +3,12 @@
  * the HUD greys the air spin by the rule the simulation applies without taking movement.ts into its chunk. Node-runnable.
  */
 
-/** Air spin (turbo-spin-275): one flip or roll a press, a whole turn in this long, at this rate (rad/s). Here, in the
- *  leaf, so the checkpoint codec and the migration read it without movement.ts. A dodge's quick turn since
- *  flip-boost-276 (was 0.9 s): a ground dodge's hop (AirSpinRules.hopMps) holds the hull up for all of it. */
-const AIR_SPIN_TURN_S = 0.6;
+/** Air spin (turbo-spin-275): one flip or roll a press, a whole turn in about this long, at this mean rate (rad/s). Here,
+ *  in the leaf, so the checkpoint codec, the migration and the bots read it without movement.ts. A dodge's quick turn
+ *  since flip-boost-276 (was 0.9 s): a ground dodge's hop (AirSpinRules.hopMps) holds the hull up for all of it. Since
+ *  thrust-flips-277 the turn is the thrusters' burn (hullThrusters.ts AIR_SPIN_BURN: spin-up, coast, counter-burn), not a
+ *  set rate; this is that burn's length from the press (turboSpin.selftest.mjs measures it within 3 ticks). */
+const AIR_SPIN_TURN_S = 0.65;
 export const AIR_SPIN_RATE = 2 * Math.PI / AIR_SPIN_TURN_S;
 
 /** Flight shorter than this after the ride leaves its support still counts as on the ground (a step's lift, a bump). */

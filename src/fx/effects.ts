@@ -672,6 +672,8 @@ export interface FxRuntime {
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
   exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
     birthOffset?: number): void;
+  /** A firing thruster nozzle's fire and smoke along its exhaust (thrust-flips-277; fx/hullThrusterPlumes.ts). */
+  thrusterJet(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, hullVel: THREE.Vector3): void;
   loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
@@ -8313,6 +8315,42 @@ function* createFxSteps(
         _puffO.alpha = 0.14 + 0.14 * intensity;
       }
       _puffO.grav = 0.5; _puffO.birthOffset = birthOffset;
+      particles.emit('smoke', _puffO);
+    },
+
+    /**
+     * A firing thruster nozzle's fire and smoke (thrust-flips-277; fx/hullThrusterPlumes.ts): fire licks streaming out
+     * along the exhaust `dir` (unit, world) and a puff of smoke that the hull's own velocity `hullVel` carries, at a
+     * 60 Hz cadence from the caller, by the nozzle's share of a full burn `intensity` (0..1).
+     */
+    thrusterJet(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, hullVel: THREE.Vector3): void {
+      const k = Math.max(0, Math.min(1, intensity));
+      if (!(k > 0)) return;
+      const licks = k > 0.55 ? 2 : 1;
+      for (let i = 0; i < licks; i++) {
+        const out = 0.15 + rng() * 0.35, speed = (12 + rng() * 9) * (0.45 + 0.55 * k);
+        _puffO.pos[0] = pos.x + dir.x * out; _puffO.pos[1] = pos.y + dir.y * out; _puffO.pos[2] = pos.z + dir.z * out;
+        _puffO.vel[0] = dir.x * speed + hullVel.x + (rng() - 0.5) * 1.2;
+        _puffO.vel[1] = dir.y * speed + hullVel.y + (rng() - 0.5) * 1.2;
+        _puffO.vel[2] = dir.z * speed + hullVel.z + (rng() - 0.5) * 1.2;
+        _puffO.life = 0.09 + rng() * 0.08;
+        _puffO.size0 = 0.28 + 0.3 * k; _puffO.size1 = 0.75 + 0.6 * k;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 6;
+        col3(0xffd890, _puffO.col0); col3(0xff5a1c, _puffO.col1);
+        _puffO.alpha = 0.9; _puffO.grav = 0; _puffO.birthOffset = 0;
+        particles.emit('fire', _puffO);
+      }
+      if (rng() > 0.3 + 0.6 * k) return;
+      const out = 0.7 + rng() * 0.6, speed = 5 * k;
+      _puffO.pos[0] = pos.x + dir.x * out; _puffO.pos[1] = pos.y + dir.y * out; _puffO.pos[2] = pos.z + dir.z * out;
+      _puffO.vel[0] = dir.x * speed + hullVel.x * 0.85 + (rng() - 0.5) * 0.8;
+      _puffO.vel[1] = dir.y * speed + hullVel.y * 0.85 + 0.4 + rng() * 0.4;
+      _puffO.vel[2] = dir.z * speed + hullVel.z * 0.85 + (rng() - 0.5) * 0.8;
+      _puffO.life = 0.6 + rng() * 0.5;
+      _puffO.size0 = 0.45 + 0.3 * k; _puffO.size1 = 2.0 + rng() * 0.9;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xa8a198, _puffO.col0); col3(0xc4beb6, _puffO.col1);
+      _puffO.alpha = 0.16 + 0.22 * k; _puffO.grav = 0.3; _puffO.birthOffset = 0;
       particles.emit('smoke', _puffO);
     },
 

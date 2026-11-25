@@ -120,6 +120,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-24 (flip-boost-276): the air spin a dodge: each move's shove and turn, the cooldown, one a flight, the ground
     // dodge, the ball, page/authority parity, planted controls
     'src/sim/flipBoost.selftest.mjs',
+    // 2026-11-25 (thrust-flips-277): the air spin a thruster burn on a rigid body: r x F about the centre of mass, the
+    // burn's shape (ramp, taper, coast, counter-burn), the centre of mass ballistic in flight, a replay from mid burn
+    'src/sim/hullThrusters.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
     'src/mp/wire/actionBitMask.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',

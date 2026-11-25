@@ -180,8 +180,10 @@ function lerpSample(
   out.verticalSpeed = lerp(previous.verticalSpeed, current.verticalSpeed, t);
   out.grounded = t < 0.5 ? previous.grounded : current.grounded;
   out.yawRate = lerp(previous.yawRate, current.yawRate, t);
-  out.visualPitch = lerp(previous.visualPitch, current.visualPitch, t);
-  out.visualRoll = lerp(previous.visualRoll, current.visualRoll, t);
+  // along the short arc (thrust-flips-277): a flip or roll crosses the attitude's ±π wrap between two ticks, and a straight
+  // lerp drew the hull near level for a frame mid-turn
+  out.visualPitch = previous.visualPitch + angleDelta(previous.visualPitch, current.visualPitch) * t;
+  out.visualRoll = previous.visualRoll + angleDelta(previous.visualRoll, current.visualRoll) * t;
   out.turretYaw = previous.turretYaw + angleDelta(previous.turretYaw, current.turretYaw) * t;
   out.gunPitch = lerp(previous.gunPitch, current.gunPitch, t);
   out.trackScroll.l = lerp(previous.trackScroll.l, current.trackScroll.l, t);

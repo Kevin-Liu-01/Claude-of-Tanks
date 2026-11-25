@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
 import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
 import { AIR_SPIN_RATE } from './hullFlight.ts';
+import { airSpinPitches, airSpinSense } from './hullThrusters.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a
@@ -217,13 +218,32 @@ export function encodeAirSpin(axis: number, left: number): number {
 
 /**
  * A migrated host's air spin (turbo-spin-275; MigrationEntityExtras.airSpin): the one the extras carried, less the turn the
- * row it restored from already shows (`ageS` of flight at the spin's rate). The spin's step drives its axis from here.
+ * row it restored from already shows (`ageS` of flight). Since thrust-flips-277 the turn rides the hull's angular momentum
+ * (hullThrusters.ts), so the extras carry the spin's rate too (MigrationEntityExtras.airSpinRate, the attitude spring's
+ * on the spin's axis): it is restored onto the spring, and the row's age is taken at it. Without it (an older host) the
+ * age is taken at the burn's mean rate and the burn spins the hull up again from rest. The spin's step drives its axis
+ * from here.
  */
-export function restoreAirSpin(state: Pick<TankState, '_airSpinAxis' | '_airSpinLeft'>, value: number, ageS: number): void {
+export function restoreAirSpin(state: Pick<TankState, '_airSpinAxis' | '_airSpinLeft' | '_spring'>, value: number, ageS: number,
+  rate: number | null = null): void {
   const spin = decodeAirSpin(value);
-  const left = spin ? spin.left - AIR_SPIN_RATE * Math.max(0, Number.isFinite(ageS) ? ageS : 0) : 0;
+  const age = Math.max(0, Number.isFinite(ageS) ? ageS : 0);
+  const carried = spin && rate !== null && Number.isFinite(rate) ? rate : null;
+  const pace = carried !== null && spin ? Math.max(0, carried * airSpinSense(spin.axis)) : AIR_SPIN_RATE;
+  const left = spin ? spin.left - pace * age : 0;
   state._airSpinAxis = spin && left > 1e-9 ? spin.axis : 0;
   state._airSpinLeft = spin && left > 1e-9 ? left : 0;
+  if (spin && left > 1e-9 && carried !== null && state._spring) {
+    if (airSpinPitches(spin.axis)) state._spring.pitchV = carried;
+    else state._spring.rollV = carried;
+  }
+}
+
+/** The rate a spin turns at on its axis (the attitude spring's), for the migration extras; 0 with none turning. */
+export function airSpinRateOf(state: Pick<TankState, '_airSpinAxis' | '_spring'>): number {
+  const axis = state._airSpinAxis;
+  if (!axis || !state._spring) return 0;
+  return airSpinPitches(axis) ? state._spring.pitchV : state._spring.rollV;
 }
 
 /** The air spin a value names, or null for none or a value no build writes. */

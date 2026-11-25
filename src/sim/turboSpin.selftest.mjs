@@ -8,9 +8,11 @@
 //     does nothing;
 //   - Turbo: the forward leap on the ground (speed and a hop) and in flight (speed, the fall stopped), never past the
 //     launch cap; refused while it cools and for a hull on its roof on the ground; taken again once the cooldown has run;
-//   - F (SELF_RIGHT): a jump on the ground, a flip or roll in flight (no rocket re-boost), the axis from the drive (W or
-//     nothing a front flip, S a back flip, A a roll left, D a roll right); one whole turn (0.6 s since flip-boost-276), then the axis stops and the
-//     hull lands on its tracks; a second press mid-turn is refused;
+//   - F (SELF_RIGHT): a jump on the ground, a flip or roll in flight (no rocket re-boost: the burn's nozzles tilt a little
+//     up, thrust-flips-277, but the climb gains nothing like a jump), the axis from the drive (W or nothing a front flip,
+//     S a back flip, A a roll left, D a roll right); one whole turn (about AIR_SPIN_TURN_S, the thrusters' burn since
+//     thrust-flips-277) in the sense its thrusters turn it (hullThrusters.ts airSpinSense: a roll lifts the side away from
+//     its travel), then the axis stops and the hull lands on its tracks; a second press mid-turn is refused;
 //   - the air spin's own bit flips in flight; on the ground it is the ground dodge's hop into the flip (flip-boost-276;
 //     its shoves, cooldown and one-a-flight rule are flipBoost.selftest.mjs's), lit on the ground;
 //   - the ground ends a turn; two runs of the same presses are bit-identical; a replay from a mid-flip checkpoint
@@ -23,6 +25,8 @@ import { applyHullActions } from './hullActions.ts';
 import { turboReadyIn } from './modeMoves.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { applyMovementPredictionState, captureMovementPredictionState } from './movementPredictionState.ts';
+import { AIR_SPIN_RATE } from './hullFlight.ts';
+import { airSpinSense } from './hullThrusters.ts';
 
 const SPEC = {
   name: 'fixture-mbt', enginePowerHp: 1200, weightTons: 50, topSpeedKmh: 65, reverseSpeedKmh: 15,
@@ -134,7 +138,8 @@ function flight(mode, throttle, steer, { press = PLAYER_ACTION_BITS.SELF_RIGHT }
   const v = e.state._ride.v;
   e.input.throttle = throttle; e.input.steer = steer;
   tick(e, press);
-  assert.ok(e.state._ride.v <= v, `${mode}: no rocket re-boost from F in the air`);
+  const jump = matchRulesetFor(mode).jumpMps;
+  assert.ok(e.state._ride.v - v < 0.1 * jump, `${mode}: no rocket re-boost from F in the air (${(e.state._ride.v - v).toFixed(3)} m/s against a ${jump} m/s jump)`);
   return e;
 }
 for (const mode of ['turbo_ball', 'mars']) {
@@ -148,9 +153,10 @@ for (const mode of ['turbo_ball', 'mars']) {
     const field0 = key === 'pitch' ? 'visualPitch' : 'visualRoll';
     let turned = 0, last = e.state[field0], ticks = 0;
     while (e.state._airSpinAxis && ticks < 120) { tick(e); turned += wrap(e.state[field0] - last); last = e.state[field0]; ticks++; }
-    assert.ok(ticks >= 34 && ticks <= 38, `${mode}: one turn in about 0.6 s (${ticks} ticks)`);
+    const nominal = Math.round(2 * Math.PI / AIR_SPIN_RATE / SIM_DT);
+    assert.ok(Math.abs(ticks - nominal) <= 3, `${mode}: one turn in about ${(nominal * SIM_DT).toFixed(2)} s (${ticks} ticks)`);
     assert.ok(Math.abs(Math.abs(turned) - 2 * Math.PI) < 0.35, `${mode}: a whole turn about its ${key} (${turned.toFixed(2)} rad)`);
-    assert.equal(Math.sign(turned), Math.sign(axis), `${mode}: in its direction`);
+    assert.equal(Math.sign(turned), airSpinSense(axis), `${mode}: in the sense its thrusters turn it`);
     while (!e.state.grounded) tick(e);
     run(e, 180);
     assert.equal(e.state.overturned, false, `${mode}: axis ${axis} lands on its tracks`);
@@ -191,4 +197,4 @@ for (let n = 0; n < 90; n++) { updateTank(a, field, SIM_DT, null); updateTank(re
 assert.equal(replay.state.visualRoll, a.state.visualRoll, 'the replay rolls as the original');
 assert.equal(replay.state.pos.y, a.state.pos.y, 'and flies as it');
 
-console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the air spin; Turbo leaps on the ground and dashes in the air under the launch cap, cools 3 s, and never leaps off a roof; F jumps on the ground and flips or rolls in flight (W/none front, S back, A left, D right), one whole turn in 0.6 s, landing on its tracks; the air spin key on the ground hops into the ground dodge; the ground ends a turn; runs and a mid-flip replay are bit-identical');
+console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the air spin; Turbo leaps on the ground and dashes in the air under the launch cap, cools 3 s, and never leaps off a roof; F jumps on the ground and flips or rolls in flight (W/none front, S back, A left, D right), one whole turn under its thruster burn (about 0.65 s), landing on its tracks; the air spin key on the ground hops into the ground dodge; the ground ends a turn; runs and a mid-flip replay are bit-identical');

@@ -103,4 +103,19 @@ runSchedule([1 / 144, 1 / 90, 1 / 72, 1 / 120, 1 / 55, 1 / 100]);
   for (const sample of [pose, tracker.previous, tracker.current]) assert.ok(!('_flinch' in sample), 'no dead hull-flinch field in a pose sample');
 }
 
+// (thrust-flips-277) a flip crossing the attitude's ±π wrap between two ticks is drawn along the short arc: a straight lerp
+// of 3.0 -> -3.0 drew the hull level (0) halfway between the ticks, a frame upright in the middle of the flip
+{
+  const state = makeState();
+  state.visualPitch = 3.0;
+  state.visualRoll = -3.05;
+  const tracker = createTankPresentationPose(state);
+  state.visualPitch = -3.0;
+  state.visualRoll = 3.05;
+  advanceTankPresentationPose(tracker, state);
+  const mid = sampleTankPresentationPose(tracker, state, 0.5);
+  assert.ok(Math.abs(Math.abs(mid.visualPitch) - Math.PI) < 0.01, `a flip over the wrap stays inverted mid-frame (${mid.visualPitch})`);
+  assert.ok(Math.abs(Math.abs(mid.visualRoll) - Math.PI) < 0.01, `a roll over the wrap stays inverted mid-frame (${mid.visualRoll})`);
+}
+
 console.log('presentationPose selftest: all checks passed');
