@@ -247,6 +247,9 @@ P1 alone is already useful: every solo battle becomes a file that reproduces it 
 - `game.tick` beside `game.timeS`.
 - `src/sim/replayFormat.ts`: the file. `src/game/replay/`: the recorder (wired in `main.ts`: round `setupBattle`, the
   step, the rules port, the bus), the runner (the local driver headless), seat actions, checksum, build digest, store.
+  None of it is on the boot graph: the recorder, the store and the recorded setup are one lazy chunk
+  (`src/game/replay/replayChunk.ts`) behind `src/game/replayRecordingAccess.ts`, loaded with the solo authority's
+  preload (so a battle's setup always finds the recorder, and its first step is recorded) and by the replay screen.
 - `tools/replay-verify.mjs` re-simulates a file in Node. `tools/replay-browser-check.mjs` records real browser battles
   and verifies them (the perf pass rule's harness). `tools/replay-measure.mjs` and `tools/replay-measure-local.mjs` are
   the design's Node measurements (the authority and the local driver replaying whole battles, and the input sizes).

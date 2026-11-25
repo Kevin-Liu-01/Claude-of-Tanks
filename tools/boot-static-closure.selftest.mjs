@@ -63,13 +63,21 @@ const FORBIDDEN = Object.freeze({
     '217 kB of mount geometry; the garage reads src/ui/garageAuxiliarySummary.generated.ts and combat anatomy src/vehicles/auxiliaryRoofGuns.generated.ts',
   // (the 228 entry diet, 2026-10-18: game.entryRaw 819,657 over its 818,369 budget) the Moon's coastlines serve one sky
   'src/engine/earthLandMask.ts': 'the lunar Earth\'s land mask loads with the world that draws it (src/engine/earthLandAccess.ts)',
+  // (replay-lazy-276: 276's entry +10.8 kB br) the replay system records solo battles and opens saved ones: it loads with
+  // the solo authority and the replay screen behind src/game/replayRecordingAccess.ts (src/game/replay/replayChunk.ts)
+  'src/game/replay/replayChunk.ts': 'the replay system\'s lazy chunk',
+  'src/game/replay/replayRecorder.ts': 'the battle recorder loads with a solo battle (src/game/replayRecordingAccess.ts)',
+  'src/game/replay/replayStore.ts': 'the saved replays load with a battle or the replay screen',
+  'src/game/replay/replaySetup.ts': 'a saved replay\'s recorded setup loads with the replay screen',
+  'src/sim/replayFormat.ts': 'the recording\'s format loads with the recorder and the viewer',
+  'src/sim/seatControl.ts': 'the seat controls a recording keeps load with the recorder (and the online wire)',
 });
 const boot = staticImportClosure('src/main.ts', { root: ROOT });
 assert.ok(boot.size > 200, `the walker reached only ${boot.size} modules from src/main.ts`);
 for (const [file, reason] of Object.entries(FORBIDDEN)) {
   assert.ok(!boot.has(file), `${file} is in the garage boot (${reason}): ${importChain(boot, file)}`);
 }
-for (const required of ['src/game/soloRosterPlan.ts', 'src/game/soloBattleAccess.ts']) {
+for (const required of ['src/game/soloRosterPlan.ts', 'src/game/soloBattleAccess.ts', 'src/game/replayRecordingAccess.ts']) {
   assert.ok(boot.has(required), `${required} must stay the boot-side entry to the battle path`);
 }
 

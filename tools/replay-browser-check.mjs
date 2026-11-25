@@ -151,9 +151,10 @@ async function main(argv) {
     shoot: async ({ page, errors }) => {
       for (const [index, { on, trace = false, mapId }] of plan.entries()) {
         say(`arm ${index + 1}: recorder ${trace ? 'TRACE' : on ? 'ON' : 'OFF'}`);
-        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = trace; }, trace);
+        // (the recorder loads with a battle's authority, src/game/replayRecordingAccess.ts: ready() loads it now)
+        await page.evaluate(async (trace) => { (await window.__COT_REPLAY.ready()).trace = trace; }, trace);
         await beginSoloBattle(page, { specId: SPEC, mapId, gameMode: 'standard' });
-        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = false; }, trace);
+        await page.evaluate(async () => { (await window.__COT_REPLAY.ready()).trace = false; });
         await page.evaluate(armSamplers, on);
         await driveBattle(page, options.seconds);
         const sample = await page.evaluate(collectSamplers);
