@@ -49,4 +49,6 @@ export interface SerializedLobby {
   round: number;
   lastResult: LobbyRoundResult | null;
   players: LobbyPlayer[];
+  /** (mp-fixes-277, room protocol 3) The bots the waiting room's next match will seat (RoomSnapshot.nextBots); else null. */
+  nextBots?: ReadonlyArray<{ readonly specId: string; readonly team: 'alpha' | 'bravo'; readonly camo: string | null }> | null;
 }

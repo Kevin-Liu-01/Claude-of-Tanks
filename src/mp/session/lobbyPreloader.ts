@@ -11,6 +11,12 @@ export interface LobbyPreloaderOptions {
   loadWorldModule(): Promise<RuntimeValue>;
   cancelBackgroundWorldBuildsExcept(mapId: string | null): void;
   prefetchWorld(mapId: string, options?: { intent?: boolean }): RuntimeValue;
+  /**
+   * (mp-fixes-277) The next match's bots, painted, warmed as the round's roster prewarm warms its seats
+   * (battlePresentation.ts prewarmRosterVisuals: the builders' module cache and the coalesced texture bakes by vehicle and
+   * paint), so the round finds them done.
+   */
+  prewarmBots?(seats: Array<{ playerId: string; specId: string; camo: string; isViewer: false }>): Promise<RuntimeValue>;
 }
 
 interface LobbyPreloader {
@@ -33,6 +39,7 @@ export function createLobbyPreloader({
   loadWorldModule,
   cancelBackgroundWorldBuildsExcept,
   prefetchWorld,
+  prewarmBots,
 }: LobbyPreloaderOptions): LobbyPreloader {
   const prepared = new Set<string>();
   const pending = new Map<string, Promise<void>>();
@@ -67,12 +74,21 @@ export function createLobbyPreloader({
     request('world-module', loadWorldModule);
 
     const missingBuilders: string[] = [];
-    for (const player of state.players || []) {
-      if (state.gameMode === 'ac130' && player.team === 'alpha') continue;
-      const specId = player.specId;
+    // (mp-fixes-277, room protocol 3) the next match's bots beside the players: a cold joiner's roster stage built them
+    // after the WELCOME (7-12 s at 4 Mbps), the lobby's wait builds them now
+    const bots = (state.nextBots ?? []).filter((bot) => !(state.gameMode === 'ac130' && bot.team === 'alpha'));
+    for (const seat of [...(state.players || []), ...bots]) {
+      if (state.gameMode === 'ac130' && seat.team === 'alpha') continue;
+      const specId = seat.specId;
       if (!specId || preparedBuilders.has(specId) || pendingBuilders.has(specId)) continue;
       pendingBuilders.add(specId);
       missingBuilders.push(specId);
+    }
+    const painted = bots.filter((bot): bot is typeof bot & { camo: string } => typeof bot.camo === 'string');
+    if (prewarmBots && painted.length) {
+      // one warm per plan: a lobby packet that names the same bots asks again for nothing (the bakes coalesce anyway)
+      const key = `bots:${painted.map((bot) => `${bot.specId}/${bot.camo}`).sort().join(',')}`;
+      request(key, () => prewarmBots(painted.map((bot, index) => ({ playerId: `next-bot-${index}`, specId: bot.specId, camo: bot.camo, isViewer: false as const }))));
     }
     if (missingBuilders.length) {
       const key = `builders:${missingBuilders.slice().sort().join(',')}`;

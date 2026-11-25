@@ -1635,6 +1635,10 @@ const loadMultiplayerLobby = (): Promise<LobbyIntent> => lobbyIntentChunk.load()
       loadWorldModule,
       cancelBackgroundWorldBuildsExcept,
       prefetchWorld,
+      // (mp-fixes-277) the next match's painted bots, warmed in the lobby by the round's own prewarm (the composition's
+      // chunk, which preloadPresentation already brings)
+      prewarmBots: (seats) => import('./mp/presentation/battlePresentation.ts')
+        .then(({ prewarmRosterVisuals }) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4 })),
     },
   });
   return multiplayerLobby;
