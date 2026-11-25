@@ -1,10 +1,10 @@
 // The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the floating drive stick, the frame's quarter
-// turn on a portrait page, the aim stick's rate, and the desktop mapper that turns frames into the input layer's
+// turn on a portrait page, the sight's speed curve, and the desktop mapper that turns frames into the input layer's
 // virtual controls — newest frame only, aim from wrapping totals, holds reconciled across the two channels, taps,
 // commands, pause and the stale fail-safe. Every action the phone names is a real input action.
 import assert from 'node:assert/strict';
 import { ACTION_DEFS } from '../game/input.ts';
-import { AIM_RIM, AIM_STICK, AIM_STICK_RATE, DRIVE_STICK, TRIGGER_AIM_STICK, aimRimBoost, aimStickStep, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
+import { AIM_CURVE, DRIVE_STICK, aimGain, aimSpeed, frameDelta, frameInsets, frameTurnFor, stickKnob, stickValue } from './padInput.ts';
 import { PAD_AIM_GAIN, createPadInputMapper, decodePadAxes } from './padDesk.ts';
 import { PAD_COMMANDS, PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, encodePadAxes, readPadCtl } from './padProtocol.ts';
 
@@ -59,47 +59,22 @@ for (const turn of [0, 90, 180, 270]) {
 assert.deepEqual(frameInsets(90, [59, 0, 34, 0]), [0, 34, 0, 59]);
 assert.deepEqual(frameInsets(0, [0, 59, 20, 59]), [0, 59, 20, 59]);
 
-// the aim stick (owner 2026-11-21: "it should be a joystick too"): the push is a rate, the gamepad right stick's
-assert.equal(AIM_STICK_RATE * PAD_AIM_GAIN, 760, 'full push turns the gun as fast as a gamepad\'s right stick (input.ts PAD_AIM_RATE)');
+// the sight's drag: slow is 1:1, a swipe a few times as far, a flick the most; the scope caps it lower
+assert.equal(aimGain(0), 1, 'a finger at rest keeps the mouse precision');
+assert.equal(aimGain(AIM_CURVE.slowPxPerMs), 1, 'and a slow drag');
+assert.ok(aimGain(0.5) > 2 && aimGain(0.5) < 3, 'a swipe turns two to three times as far');
+assert.equal(aimGain(10), AIM_CURVE.max, 'a flick is capped');
+assert.equal(aimGain(10, true), AIM_CURVE.maxScoped, 'and lower in the scope');
+assert.ok(aimGain(1) > aimGain(0.5), 'faster is further');
+assert.equal(aimGain(Number.NaN), 1);
 {
-  const still = aimStickStep(0, 0, 16, 0);
-  assert.deepEqual([still.dx, still.dy, still.rimMs], [0, 0, 0], 'a centred stick turns nothing');
-  const right = aimStickStep(1, 0, 100, 0);
-  near(right.dx, AIM_STICK_RATE / 10, 1e-9, 'a tenth of a second at full push right turns a tenth of the rate right');
-  assert.equal(right.dy, 0, 'and none up or down');
-  const up = aimStickStep(0, 1, 100, 0);
-  assert.ok(up.dy < 0, 'pushed up looks up (the aim totals are screen-down positive)');
-  near(aimStickStep(0.5, 0, 100, 0, 2).dx, aimStickStep(1, 0, 100, 0).dx, 1e-9, 'Options\' aim speed scales the rate');
-  near(aimStickStep(1, 0, 5000, 0).dx, aimStickStep(1, 0, 100, 0).dx, 1e-9, 'a stalled frame turns at most 100 ms of it');
-  // a second at full push swings the gun about 96° at the mouse's 0.0022 rad per px (cameraRig BASE_SENS)
-  const deg = AIM_STICK_RATE * PAD_AIM_GAIN * 0.0022 / DEG;
-  assert.ok(deg > 80 && deg < 110, `a second at full push turns the gun ${deg.toFixed(0)}°`);
+  // a 150 px flick at 1.5 px/ms swings the gun past 90° at the mouse's 0.0022 rad per px (cameraRig BASE_SENS)
+  const rad = 150 * PAD_AIM_GAIN * aimGain(1.5) * 0.0022;
+  assert.ok(rad > Math.PI / 2, `a flick across the sight turns the gun past 90° (${(rad * 180 / Math.PI).toFixed(0)}°)`);
 }
-{
-  // held at the rim the turn speeds up, never in the scope, and lets off below the rim
-  assert.equal(aimRimBoost(0), 1);
-  assert.equal(aimRimBoost(AIM_RIM.afterMs), 1, 'a moment at the rim is the plain rate');
-  assert.equal(aimRimBoost(AIM_RIM.afterMs + AIM_RIM.rampMs), AIM_RIM.max, 'then it ramps to the most');
-  assert.equal(aimRimBoost(60_000), AIM_RIM.max, 'and stays there');
-  assert.equal(aimRimBoost(60_000, true), 1, 'never in the scope');
-  let rim = 0;
-  for (let i = 0; i < 60; i++) rim = aimStickStep(1, 0, 16, rim).rimMs;
-  assert.ok(aimStickStep(1, 0, 16, rim).dx > aimStickStep(1, 0, 16, 0).dx * 1.5, 'a second held at the rim turns faster');
-  assert.equal(aimStickStep(0.6, 0, 16, rim).rimMs, 0, 'easing off the rim starts it over');
-  // a turn to the rear: under two seconds held at the rim
-  let turned = 0;
-  rim = 0;
-  for (let t = 0; t < 2000; t += 16) { const step = aimStickStep(1, 0, 16, rim); rim = step.rimMs; turned += step.dx; }
-  assert.ok(turned * PAD_AIM_GAIN * 0.0022 > Math.PI, `two seconds at the rim turns the gun past 180° (${(turned * PAD_AIM_GAIN * 0.0022 / DEG).toFixed(0)}°)`);
-}
-{
-  // finer near the centre than the drive's; the trigger's thumb must push past a press's wobble before it aims
-  assert.ok(AIM_STICK.curve > DRIVE_STICK.curve, 'the aim stick is finer near the centre');
-  const half = stickValue(AIM_STICK.radiusPx / 2, 0, AIM_STICK)[0];
-  assert.ok(half > 0.1 && half < 0.35, `a half push lays the gun slowly (${half.toFixed(2)} of the rate)`);
-  assert.deepEqual(stickValue(10, 0, TRIGGER_AIM_STICK), [0, 0], 'a press\'s 10 px wobble on FIRE aims nothing');
-  assert.ok(stickValue(30, 0, TRIGGER_AIM_STICK)[0] > 0, 'a push past it does');
-}
+assert.equal(aimSpeed(0, 10, 10), 0.5, 'speed is distance over time, smoothed');
+assert.equal(aimSpeed(1, 0, 16), 0.5, 'a still move halves it');
+assert.equal(aimSpeed(0, 8, 0), 1, 'two moves in one millisecond read as 4 ms apart, never infinite');
 
 // --- the mapper -------------------------------------------------------------------------------------------------
 function port() {

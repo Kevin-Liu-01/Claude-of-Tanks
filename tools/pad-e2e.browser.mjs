@@ -4,8 +4,8 @@
 // and an in-process pairing service (server/rooms/localPadService.ts, the LAN helper's): a desktop page and a phone
 // page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic touch
 // events drive a tank in a solo battle — the drive stick, aim, scope, ammunition, fire, pause — and the stale fail-safe stops the tank when the phone vanishes; the controls guide waits for the first battle's panel, shows over
-// the live panel and on the game screen together, and leaves both by itself or on either side's Skip; the aim stick turns
-// the turret while held and stops on the lift, a thumb on fire pushes to aim, and the battle's cues reach the phone as buzzes (a shot felt once, the gun loaded). It records:
+// the live panel and on the game screen together, and leaves both by itself or on either side's Skip; a drag on the sight
+// turns the view by its distance and a finger held still turns nothing, a thumb on fire drags to aim, and the battle's cues reach the phone as buzzes (a shot felt once, the gun loaded). It records:
 //   - the network log: no request reaches the pad service, and no pad module loads, before Connect Phone is pressed;
 //     the signaling socket's frames once the data channel is live (signaling only, no input);
 //   - steering latency (the phone's event → the first desktop animation frame whose player input carries it, both
@@ -409,54 +409,63 @@ try {
   check('releasing the stick centres it', Math.abs(await player('p.input.throttle')) < 0.01);
 
   report.step = 'aim';
-  // aim (owner 2026-11-21: "it should be a joystick too"): the aim stick pushed and held keeps the turret turning; the
-  // lift stops it
-  const yaw0 = await player('p.state.turretYaw');
-  const releaseAim = await touchDrag('.pad-aim', 60, 0, 400);
-  const yawHeld = await player('p.state.turretYaw');
-  await sleep(400);
-  const yawHeld2 = await player('p.state.turretYaw');
-  const knobPushed = await phone.$eval('.pad-aim .pad-knob', (el) => el.style.transform);
+  // aim (owner 2026-11-25: "it should just be touchscreen like before"): a drag on the sight turns the view by the drag's
+  // distance, and a finger held still on the sight turns nothing. Read where it is applied (the phone's aim total) and
+  // drawn (the desktop camera's direction). A slow drag (2 px a move, under aimGain's 0.1 px/ms) keeps the 1x gain, so
+  // twice the drag is twice the turn; an aim stick fails both (its push turns the gun for as long as the thumb holds it).
+  const viewYaw = () => desktop.evaluate(() => {
+    const camera = window.__DEBUG.camera;
+    const d = camera.getWorldDirection(camera.position.clone());
+    return Math.atan2(d.x, d.z);
+  });
+  const turn = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a)) * 180 / Math.PI;
+  const phoneAim = () => phone.evaluate(() => window.__COT_PAD_PHONE.aimX);
+  const slowDrag = async (selector, dx) => {
+    const b = await box(selector);
+    const x = b.x + b.width * 0.3, y = b.y + b.height * 0.4;
+    const from = { aim: await phoneAim(), yaw: await viewYaw() };
+    await phone.touchscreen.touchStart(x, y);
+    const steps = Math.round(Math.abs(dx) / 2);
+    for (let i = 1; i <= steps; i++) { await phone.touchscreen.touchMove(x + dx * i / steps, y); await sleep(25); }
+    await sleep(300);
+    const stopped = { aim: await phoneAim(), yaw: await viewYaw() };
+    // the finger stays down, still, where the drag ended
+    await sleep(800);
+    const held = { aim: await phoneAim(), yaw: await viewYaw() };
+    await phone.touchscreen.touchEnd();
+    await sleep(300);
+    return { aim: stopped.aim - from.aim, deg: turn(from.yaw, stopped.yaw), heldAim: held.aim - stopped.aim, heldDeg: turn(stopped.yaw, held.yaw) };
+  };
+  const aimOne = await slowDrag('.pad-aim', 60);
+  const aimTwo = await slowDrag('.pad-aim', 120);
   await phone.screenshot({ path: resolve(outDir, 'phone-live-aiming.png') });
-  await releaseAim();
-  await sleep(100);
-  // the phone's aim total stands still once the thumb lifts (the turret, slower than the sight, catches up after it)
-  const aimLifted = await phone.evaluate(() => window.__COT_PAD_PHONE.aimX);
-  await sleep(600);
-  const aimLater = await phone.evaluate(() => window.__COT_PAD_PHONE.aimX);
-  check('the aim stick held keeps the turret turning, and its knob shows the push',
-    Math.abs(yawHeld - yaw0) > 0.05 && Math.abs(yawHeld2 - yawHeld) > 0.05 && /translate\(5\dpx/.test(knobPushed),
-    `turret ${(yaw0 * 57.3).toFixed(1)}° → ${(yawHeld * 57.3).toFixed(1)}° → ${(yawHeld2 * 57.3).toFixed(1)}° while held; knob ${knobPushed}`);
-  check('lifting the aim stick stops the aim and centres the knob',
-    aimLater === aimLifted && await phone.$eval('.pad-aim .pad-knob', (el) => /^translate\(0px, ?0px\)$/.test(el.style.transform)),
-    `the phone's aim total ${aimLifted.toFixed(1)} → ${aimLater.toFixed(1)} after the lift`);
+  const aimSpeed = (await phone.evaluate(() => JSON.parse(localStorage.getItem('cot.pad.v2') || '{}').aim)) ?? 1;
+  const ratio = aimTwo.deg / aimOne.deg;
+  check('a drag on the sight turns the view by the drag\'s distance',
+    // the total is the drag at 1x (up to 1.5x where a stalled page bunches two moves into a faster one)
+    [[aimOne, 60], [aimTwo, 120]].every(([d, px]) => d.aim >= 0.9 * px * aimSpeed && d.aim <= 1.5 * px * aimSpeed)
+      && Math.abs(aimOne.deg) > 2 && ratio > 1.6 && ratio < 2.6,
+    `60 px: aim total +${aimOne.aim.toFixed(1)}, view ${aimOne.deg.toFixed(2)}°; 120 px: +${aimTwo.aim.toFixed(1)}, ${aimTwo.deg.toFixed(2)}° (×${ratio.toFixed(2)}); aim speed ${aimSpeed}`);
+  check('a finger held still on the sight turns nothing',
+    aimOne.heldAim === 0 && aimTwo.heldAim === 0 && Math.abs(aimOne.heldDeg) < 0.5 && Math.abs(aimTwo.heldDeg) < 0.5,
+    `held 0.8 s after the drag: aim total +${aimOne.heldAim.toFixed(1)} / +${aimTwo.heldAim.toFixed(1)}, view ${aimOne.heldDeg.toFixed(2)}° / ${aimTwo.heldDeg.toFixed(2)}°`);
 
-  // anywhere in a stick's square is the stick (owner 2026-11-21: "anywhere you click in the squares, the joystick will be
-  // there"): a thumb near the square's far corner brings the well under it, and the push from there drives or aims
-  const wellUnder = async (zone, x, y) => phone.$eval(`${zone} .pad-well`, (el, px, py) => {
+  // anywhere in the drive stick's square is the stick (owner 2026-11-21: "anywhere you click in the squares, the joystick
+  // will be there"): a thumb near the square's far corner brings the well under it, and the push from there drives
+  const cornerB = await box('.pad-stick');
+  const cx = cornerB.x + cornerB.width * 0.12, cy = cornerB.y + cornerB.height * 0.88;
+  await phone.touchscreen.touchStart(cx, cy);
+  for (let i = 1; i <= 6; i++) { await phone.touchscreen.touchMove(cx, cy - 60 * i / 6); await sleep(16); }
+  await sleep(300);
+  const wellOff = await phone.$eval('.pad-stick .pad-well', (el, px, py) => {
     const b = el.getBoundingClientRect();
     return Math.round(Math.hypot(b.left + b.width / 2 - px, b.top + b.height / 2 - py));
-  }, x, y);
-  const corner = async (zone, fx, fy, dx, dy) => {
-    const b = await box(zone);
-    const x = b.x + b.width * fx, y = b.y + b.height * fy;
-    await phone.touchscreen.touchStart(x, y);
-    for (let i = 1; i <= 6; i++) { await phone.touchscreen.touchMove(x + dx * i / 6, y + dy * i / 6); await sleep(16); }
-    await sleep(300);
-    return { off: await wellUnder(zone, x, y), lift: () => phone.touchscreen.touchEnd() };
-  };
-  const driveCorner = await corner('.pad-stick', 0.12, 0.88, 0, -60);
+  }, cx, cy);
   const cornerThrottle = await player('p.input.throttle');
-  await driveCorner.lift();
-  const aimFrom = await phone.evaluate(() => window.__COT_PAD_PHONE.aimX);
-  const aimCorner = await corner('.pad-aim', 0.1, 0.12, 60, 0);
-  const aimTo = await phone.evaluate(() => window.__COT_PAD_PHONE.aimX);
-  await phone.screenshot({ path: resolve(outDir, 'phone-live-corners.png') });
-  await aimCorner.lift();
+  await phone.touchscreen.touchEnd();
   await sleep(300);
-  check('a thumb anywhere in either square is the stick: the well comes under it and its push drives or aims',
-    driveCorner.off <= 3 && aimCorner.off <= 3 && cornerThrottle > 0.5 && aimTo > aimFrom,
-    `drive well ${driveCorner.off} px off the thumb, throttle ${cornerThrottle.toFixed(2)}; aim well ${aimCorner.off} px off, aim ${aimFrom.toFixed(0)} → ${aimTo.toFixed(0)}`);
+  check('a thumb anywhere in the drive square is the stick: the well comes under it and its push drives',
+    wellOff <= 3 && cornerThrottle > 0.5, `well ${wellOff} px off the thumb, throttle ${cornerThrottle.toFixed(2)}`);
 
   report.step = 'ammunition';
   // ammunition: slot 2 from the phone, shown back on the phone
@@ -500,13 +509,13 @@ try {
     `phone buzzes ${JSON.stringify(felt)}; desktop cues ${JSON.stringify(cues)}`);
 
   report.step = 'fire drag';
-  // a thumb on fire pushes to aim; the gun still loads, so the press spends no round and is felt as a refusal
+  // a thumb on fire drags to aim; the gun still loads, so the press spends no round and is felt as a refusal
   const dragFrom = { yaw: await player('p.state.turretYaw'), rounds: await player('p.combat.ammo[p.combat.shellSlot]') };
-  const releaseFire = await touchDrag('.pad-fire', -60, 0, 400);
+  const releaseFire = await touchDrag('.pad-fire', -160, 0);
   await releaseFire();
   await sleep(1500);
   const dragTo = { yaw: await player('p.state.turretYaw'), rounds: await player('p.combat.ammo[p.combat.shellSlot]') };
-  check('a thumb on the fire button pushes to aim', Math.abs(dragTo.yaw - dragFrom.yaw) > 0.05 && dragTo.rounds === dragFrom.rounds,
+  check('a thumb on the fire button drags to aim', Math.abs(dragTo.yaw - dragFrom.yaw) > 0.05 && dragTo.rounds === dragFrom.rounds,
     `turret ${(dragFrom.yaw * 57.3).toFixed(1)}° → ${(dragTo.yaw * 57.3).toFixed(1)}°, rounds ${dragFrom.rounds} → ${dragTo.rounds}`);
   check('a press while the gun loads is felt as a refusal', (await phone.evaluate(() => window.__COT_PAD_PHONE.buzz.unready ?? 0)) >= 1);
   await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.reload.t <= 0, { timeout: 20_000 }).catch(() => {});
@@ -534,7 +543,7 @@ try {
 
   report.step = 'multi-touch';
   // ---- several thumbs at once, as the phone is held -------------------------------------------------------------------
-  // The throttle held while another thumb taps the scope, holds fire and pushes the aim stick: iOS sends no click for a
+  // The throttle held while another thumb taps the scope, holds fire and drags in the sight: iOS sends no click for a
   // touch while another finger is down, so every control acts on its own pointer (owner 2026-10-30: "make the buttons
   // work properly"). CDP's touch points are the touch screen's own, one id per finger.
   const cdp = await phone.createCDPSession();
@@ -573,7 +582,7 @@ try {
   await phone.screenshot({ path: resolve(outDir, 'phone-multi-touch.png') });
   await touches('touchEnd', []);
   await sleep(300);
-  check('three thumbs at once: the throttle held, a scope tap, fire held and the aim stick all reach the battle',
+  check('three thumbs at once: the throttle held, a scope tap, fire held and an aim drag all reach the battle',
     together.throttle > 0.5 && together.mode !== together0.mode && together.fire && together.rounds < together0.rounds && Math.abs(together.yaw - together0.yaw) > 0.02,
     `throttle ${together.throttle.toFixed(2)}, rig ${together0.mode} → ${together.mode}, fire ${together.fire}, rounds ${together0.rounds} → ${together.rounds}, turret ${(together0.yaw * 57.3).toFixed(1)}° → ${(together.yaw * 57.3).toFixed(1)}°; phone ${JSON.stringify(together.phone)}, desktop link ${together.desktopLink}`);
   check('lifting every finger lets every control go', Math.abs(await player('p.input.throttle')) < 0.01 && !(await inputHeld('fire')));
