@@ -1800,20 +1800,13 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     const previewWarmVariant = GARAGE_VARIANTS.find((variant) => (
       variant.id !== selectedGarageVariantId && variant.architecture !== 'field_shed'
     ));
-    // (garage-env-276, timing10/probe11: on the phone tier the warm's first task, the kit's chunks evaluating, the
-    // library's textures and a tree grove, was ~200 ms that the menu's own frames and a quick first pick waited on)
-    // the warm starts in the browser's next idle moment, still well before a pick a person makes
-    const warm = (): void => {
-      void Promise.all([
-        garageStage.prepareSelector(),
-        previewWarmVariant
-          ? garageStage.prepareVariant(previewWarmVariant.id)
-          : Promise.resolve(),
-      ]).catch(() => undefined);
-      if (previewWarmVariant) garageEnvironmentBakes.want(previewWarmVariant.id);
-    };
-    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 500 });
-    else setTimeout(warm, 120);
+    void Promise.all([
+      garageStage.prepareSelector(),
+      previewWarmVariant
+        ? garageStage.prepareVariant(previewWarmVariant.id)
+        : Promise.resolve(),
+    ]).catch(() => undefined);
+    if (previewWarmVariant) garageEnvironmentBakes.want(previewWarmVariant.id);
   },
   onGarageVariantIntent: (variantId: string) => {
     void garageStage.prepareVariant(variantId).catch(() => undefined);
