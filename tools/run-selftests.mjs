@@ -114,6 +114,8 @@ export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/timing-gate.mjs',
   // capture-slot-ports-277: the lock hands each render slot its own port block
   'tools/capture-ports.mjs',
+  // build-loop-yield-277: the closure trace's child awaits betweenBuilds() between its builds
+  'tools/build-loop-yield.mjs',
   // 2026-11-02 audit S5: the chain's lock and child process groups
   'tools/chain-lifecycle.mjs',
   // round 2 U38: the chain's GPU holds go through the one hold wrapper (chain-lifecycle runInCaptureHold) and its Vite child
