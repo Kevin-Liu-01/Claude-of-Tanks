@@ -330,6 +330,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
     'src/game/replay/replayViewer.selftest.mjs',
+    // replay-lazy-276: the battle recorder behind its lazy chunk: idle before it loads, every tap and wrapped rule bound
+    // after, a battle set up after the preload recorded from its first step
+    'src/game/replayRecordingAccess.selftest.mjs',
     // 276 (sim-det-trig): the fields a replay's state diff leaves out are the page's presentation and no simulation
     // module reads one (both drivers' import graph; a planted read, the clock and rosterState's sampler are named)
     'src/game/replay/replayPageOnly.selftest.mjs',
