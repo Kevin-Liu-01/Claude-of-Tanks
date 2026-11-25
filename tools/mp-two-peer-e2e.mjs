@@ -297,6 +297,13 @@ async function explained(page, selector, error) {
 
 const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
 
+/** In-page: when each terrain photograph finished, in seconds against now (the reveal): negative landed before it. */
+function terrainPhotoTimes() {
+  const now = performance.now();
+  return performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/textures/terrain/'))
+    .map((entry) => ({ file: entry.name.split('/').pop().slice(0, 48), endS: +((entry.responseEnd - now) / 1000).toFixed(1), bytes: entry.transferSize || 0 }));
+}
+
 /** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
 async function runSolo(origin) {
   const browser = await launchGuardedBrowser(puppeteer, {
@@ -345,6 +352,8 @@ async function runSolo(origin) {
   }
   out.longestHold = longest;
   out.trace = await page.evaluate(() => (window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null)).catch(() => null);
+  // the terrain photographs against the reveal: one that lands after it swaps in on screen (the pop)
+  out.terrainPhotos = await page.evaluate(terrainPhotoTimes).catch(() => null);
   step('solo-entry', { revealS: +(out.revealMs / 1000).toFixed(1), longestHold: longest, bytes: { boot: out.bytesAtBoot, reveal: out.bytesAtReveal } });
   if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
   if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
@@ -554,6 +563,7 @@ try {
         .map((entry) => ({ path: new URL(entry.name, location.href).pathname.slice(0, 90), bytes: entry.transferSize || 0, encoded: entry.encodedBodySize || 0, decoded: entry.decodedBodySize || 0 }));
       return { count: rows.length, byKind, top };
     }, record.joinerJoinedAtPageMs ?? 0).catch(() => null);
+    record.joinerTerrainPhotos = await B.evaluate(terrainPhotoTimes).catch(() => null);
     record.joinerBytes = { atJoin: record.joinerBytesAtJoin ?? null, atReveal: await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null) };
     // the entry's own stage timings on the joiner (browserComposition markStage: where the time under one label went)
     record.joinerTrace = await B.evaluate(() => {
