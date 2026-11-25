@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import {
-  BROWSER_GUARD_EXIT_CODE, browserGuardConfig, browserGuardOf, browserInstallPrefix, guardedLaunchArgs, launchGuardedBrowser,
+  BROWSER_GUARD_EXIT_CODE, browserGuardConfig, browserGuardOf, browserInstallPrefix, guardedLaunchArgs, launchGuardedBrowser, launchWantsSpeakers,
   measureTree, parseFootprint, parsePsRows, processType, psCpuSeconds,
 } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
@@ -71,6 +71,14 @@ if (process.argv[2] === '--child') {
   assert.deepEqual(guardedLaunchArgs(['--js-flags=--max-old-space-size=8192'], {}).filter((arg) => arg.startsWith('--js-flags')),
     ['--js-flags=--max-old-space-size=8192'], 'a caller\'s own heap size stays');
   assert.throws(() => guardedLaunchArgs('--x'), /args must be strings/);
+  // (modal-layer-277) every browser is mute unless its launch asks for the speakers by name
+  assert.ok(args.includes('--mute-audio'), 'a launch is mute by default');
+  assert.equal(guardedLaunchArgs(['--mute-audio']).filter((arg) => arg === '--mute-audio').length, 1, 'once');
+  assert.ok(!guardedLaunchArgs([], { speakers: true }).includes('--mute-audio'), 'a launch that asks keeps its speakers');
+  const dropMute = { ['ignore' + 'DefaultArgs']: ['--mute-audio'] }; // (built so browser-launch-census reads no ask here)
+  assert.equal(launchWantsSpeakers(dropMute), true, 'dropping the mute default by name is the ask');
+  assert.equal(launchWantsSpeakers({ ignoreDefaultArgs: true }), false, 'dropping every default is no ask: still mute');
+  assert.equal(launchWantsSpeakers({ headless: false }), false, 'a headed browser is still mute');
   const defaults = browserGuardConfig({});
   assert.equal(defaults.rendererCapMb, Number(process.env.COT_BROWSER_RENDERER_CAP_MB || 6144));
   assert.equal(browserGuardConfig({ rendererCapMb: 100, intervalMs: 5 }).intervalMs, 100, 'the interval has a floor');
