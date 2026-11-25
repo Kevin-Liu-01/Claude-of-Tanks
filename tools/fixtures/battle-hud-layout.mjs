@@ -47,6 +47,8 @@ import { NOTICE_PRIORITY } from '../../src/ui/battleNotices.ts';
 import { strikeView } from '../../src/game/strikeViewState.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES } from '../../src/sim/matchRuleset.ts';
 import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
+import { createAppLifecycle, transitionAppPhase } from '../../src/game/appLifecycle.ts';
+import { battleScopeSnapshot } from '../../src/game/battleScope.ts';
 
 // the catalog lands before the HUD builds (the game awaits it too), and a zh-CN capture carries the label floor its /cn/
 // document ships (src/presentation/localizedHtml.ts), as the end-screen fixture does
@@ -57,6 +59,14 @@ if(new URLSearchParams(location.search).has('coarse')){const native=window.match
  window.matchMedia=query=>query==='(pointer: coarse)'||query==='(hover: hover)'?{matches:query==='(pointer: coarse)',media:query,addEventListener(){},removeEventListener(){}}:native(query);}
 installResponsiveLayout();
 const bus = createBus();
+// (battle-teardown-276) the fixture's page takes a battle as the game's does: its session is bound to a lifecycle and the
+// one phase writer moves it into 'battle', which opens the battle's scope (game/battleScope.ts) before anything is raised.
+// Every condition is the battle's (battleNotices files it under the scope that raised it and draws none outside a battle),
+// so the conditions the states raise (the probe's, the network's banner, the pointer lock's, Air Support's INCOMING) show
+// as a battle's would. (written before the HUD is built, as a battle's phase is before its first frame)
+const session = {phase:'garage'};
+createAppLifecycle({game:session, announce:(payload)=>bus.emit('phase:change',payload)});
+transitionAppPhase(session,'battle',{reason:'fixture:battle-hud-layout'});
 const input = createInput();
 const hud = initHud(bus);
 // (the nations' flags land before the first kill, as in a battle, whose load screen imports them long before one: the
@@ -486,7 +496,7 @@ if(backdrop)document.body.style.background=backdrop;
 // ?names=bots: the other hulls without display names, so the plates carry the bots' callsigns (ui/botCallsigns.ts) where
 // the long commanders' names stand in for a room's players
 if(new URLSearchParams(location.search).get('names')==='bots')for(const tank of tanks)if(!tank.isPlayer)delete tank.displayName;
-window.__HUD_LAYOUT = {multiplayer,state, markers, proving, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
+window.__HUD_LAYOUT = {multiplayer,state, markers, proving, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES), battleScope:battleScopeSnapshot};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 // (two more frames once layout settles: the HUD's size observers (the minimap's label size, 140 px and under none) land
