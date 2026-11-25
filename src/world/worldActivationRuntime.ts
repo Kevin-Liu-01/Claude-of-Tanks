@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import { sceneWindOf } from './sceneWind.ts';
+import { bindActiveWorld } from './activeWorld.ts';
 import { minimapAssetUrl } from '../ui/minimapAssetUrl.ts';
 import {
   createWorldBuildCoordinator,
@@ -732,6 +733,18 @@ export function createWorldActivationRuntime<
       releaseHold();
     }
   };
+
+  // (mp-fixes-277) this runtime is the battlefield's one owner: every reader of "the world" asks it (activeWorld.ts),
+  // never the scene by name
+  bindActiveWorld({
+    current: () => current,
+    isBattlefieldRoot: (root) => {
+      if (!root) return false;
+      if (current?.group === root || lifted?.group === root) return true;
+      for (const world of cache.values()) if (world.group === root) return true;
+      return false;
+    },
+  });
 
   return {
     get current() { return current; },

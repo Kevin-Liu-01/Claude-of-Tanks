@@ -234,5 +234,26 @@ async function presentBattle(h, mapId) {
   ], 'a world group is drawn only by settleLift and whileDrawn (the lift rule); the residency mounts the presented one');
 }
 
-console.log('worldActivationOneWorld.selftest: one battlefield drawn per frame (a round warming beside the presented battlefield under a held cloud bake or with no frames, the Garage taking and handing back the screen during a warm, 12 seeded runs at every step and once settled), lifts only through the rule PASS');
+// ---- 6. (mp-fixes-277) the runtime is the battlefield's one owner: activeWorld() is its presented world, never the first
+// world the scene holds. The Garage's planned battlefield is built first (first in the scene, hidden); the room's
+// battlefield presents after it; the reference names the room's, and both are battlefield roots, the Garage's are not.
+{
+  const { activeWorld, isBattlefieldRoot } = await import('./activeWorld.ts');
+  const h = harness();
+  const planned = settle(h.runtime.prefetch('desert', { intent: true }));
+  await h.pump();
+  await planned;
+  const room = await presentBattle(h, 'verdant');
+  const scene = room.group.parent;
+  const worlds = scene.children.filter((child) => child.name && child.name !== 'garage');
+  assert.equal(worlds[0]?.name, 'desert', 'the planned battlefield is the first world in the scene (what a name search found)');
+  assert.equal(activeWorld()?.mapId, 'verdant', 'the reference is the presented battlefield');
+  assert.equal(activeWorld()?.group, room.group);
+  assert.ok(isBattlefieldRoot(worlds[0]) && isBattlefieldRoot(room.group), 'both are battlefield roots');
+  assert.equal(isBattlefieldRoot(scene.children.find((child) => child.name === 'garage')), false, 'the Garage is not');
+  h.runtime.setDormant(true);
+  assert.equal(activeWorld()?.mapId, 'verdant', 'dormant under the Garage, the reference stays the owner\'s');
+}
+
+console.log('worldActivationOneWorld.selftest: one battlefield drawn per frame (a round warming beside the presented battlefield under a held cloud bake or with no frames, the Garage taking and handing back the screen during a warm, 12 seeded runs at every step and once settled), lifts only through the rule, the active world from its owner (mp-fixes-277) PASS');
 process.exit(0);

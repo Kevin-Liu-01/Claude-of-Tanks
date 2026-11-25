@@ -118,6 +118,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
   // 228p: mediaLibrary.ts's static CSS import was a red no import-closure selection could find
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
+  // mp-fixes-277: every module, for a battlefield found by name instead of from its owner (src/world/activeWorld.ts)
+  'src/world/activeWorld.selftest.mjs': lists('src/**/*.ts'),
   // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
   'src/ui/battleNoticeCensus.selftest.mjs': lists('src/ui/**/*.ts', 'src/game/**/*.ts', 'src/app/**/*.ts'),
