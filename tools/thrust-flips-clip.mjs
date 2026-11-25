@@ -7,7 +7,7 @@
 // page into a Turbo Ball battle; the hold only films.
 //
 //   node <lane>/tools/thrust-flips-clip.mjs --out=DIR [--map=airfield] [--mode=turbo_ball|mars] [--arrows] [--port=4258]
-//                                           [--moves=front,back,roll] [--frames=8] [--step=0.1] [--webm]
+//                                           [--moves=front,back,roll] [--frames=8] [--step=0.1] [--webm] [--dry]
 //
 // For each move (front: W, back: S, roll: A) the hull jumps (F), and 0.42 s into the climb the page's clock is slowed
 // (performance.now and requestAnimationFrame scaled, installed before the page's own scripts) and F is pressed with the
@@ -15,7 +15,8 @@
 // static cameras set at the press: `chase` behind the hull, `side` off its right flank (off its rear quarter for a roll).
 // `--arrows` loads the page with thrustArrows=1 (each nozzle's force on the hull and the centre of mass drawn; a 276
 // build ignores it). `--webm` also films each move's slowed take. DIR/<move>-<camera>-<k>.png, DIR/thrust-flips-clip.json:
-// each still's battle time and the hull's state (attitude, spin, the burn's levels where the build has them).
+// each still's battle time and the hull's state (attitude, spin, the burn's levels where the build has them). `--dry`
+// warms and films outside the render lock, for a short check of a take before a ticket (e.g. --moves=roll --frames=2).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
@@ -33,19 +34,17 @@ const mapId = arg('map', 'airfield');
 const gameMode = arg('mode', 'turbo_ball');
 const arrows = flag('arrows');
 const webm = flag('webm');
+const dry = flag('dry');
 const port = Number(arg('port', '4258'));
 const FRAMES = Number(arg('frames', '8'));
 const STEP_S = Number(arg('step', '0.1'));
-const SLOW = Number(arg('slow', '0.04'));
+const SLOW = Number(arg('slow', '0.015'));
 /** Each move's key and the air spin's axis it picks (movement.ts AIR_SPIN_AXES). */
 const MOVES = Object.freeze({
   front: { key: 'KeyW', label: 'front flip (W)', axis: -1 },
   back: { key: 'KeyS', label: 'back flip (S)', axis: 1 },
   roll: { key: 'KeyA', label: 'barrel roll left (A)', axis: 2 },
 });
-/** The clock while both cameras draw one instant: barely moving (a stopped clock stops the page's frames, and a
- *  screenshot then shows the frame drawn before the stop, from whichever camera drew it). */
-const HOLD = 0.002;
 const moves = (arg('moves', 'front,back,roll')).split(',').filter((m) => MOVES[m]);
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
@@ -176,16 +175,26 @@ async function filmMove(page, name) {
   try {
     for (let k = 0; k < FRAMES; k++) {
       await page.waitForFunction((t) => window.__DEBUG.game.timeS >= t, { timeout: 30000, polling: 'raf' }, t0 + k * STEP_S);
-      // hold the battle while both cameras are drawn at this instant
-      await page.evaluate((hold) => { window.__timeScale = hold; }, HOLD);
+      // each camera drawn on the next sim tick after it is set (the page redraws the battle on its ticks: a camera set
+      // between two of them, or on a stopped clock, never reached a frame), so the side still is a tick after the chase's
       for (const cam of ['chase', 'side']) {
-        await page.evaluate((c) => { window.__cam = c; }, cam);
-        await frames(page, 4);
+        const tick = await page.evaluate((c) => {
+          window.__cam = c;
+          const cams = window.__cams?.[c];
+          if (cams) window.__DEBUG.rig.setExternalPose(cams.eye, cams.at, cams.fov);
+          return window.__DEBUG.game.timeS;
+        }, cam);
+        await page.waitForFunction((t) => window.__DEBUG.game.timeS > t + 1e-6, { timeout: 30000, polling: 'raf' }, tick);
+        await frames(page, 2);
+        const off = await page.evaluate((c) => {
+          const want = window.__cams?.[c]?.eye, got = window.__DEBUG.camera.position;
+          return want ? +Math.hypot(want.x - got.x, want.y - got.y, want.z - got.z).toFixed(2) : null;
+        }, cam);
+        if (off === null || off > 0.5) receipt.errors.push(`${name} ${cam} ${k}: the camera is ${off} m off its pose`);
         const file = `${name}-${cam}-${k}.png`;
         await page.screenshot({ path: path.join(out, file) });
-        if (cam === 'chase') record.stills.push({ k, file: file.replace('-chase-', '-{cam}-'), hull: await page.evaluate(hullNow) });
+        record.stills.push({ k, cam, file, hull: await page.evaluate(hullNow) });
       }
-      await page.evaluate((c) => { window.__cam = 'chase'; window.__timeScale = c; }, SLOW);
     }
   } finally {
     if (recorder) await recorder.stop();
@@ -199,12 +208,8 @@ async function filmMove(page, name) {
 let server = null;
 const writeReceipt = () => writeFileSync(path.join(out, 'thrust-flips-clip.json'), `${JSON.stringify(receipt, null, 2)}\n`);
 process.on('exit', () => { try { writeReceipt(); } catch {} });
-await runWarmHold({
-  label: 'thrust-flips-277',
-  lockClass: 'render',
-  place: `thrust-flips-277-clip${arrows ? '-arrows' : ''}`,
-  maxFrozenMinutes: 30,
-  warm: async () => {
+const warm = async () => {
+  {
     const options = mapProbeServerOptions(root, path.join(root, '.qa-dev/vite-thrust-flips'));
     options.server.port = port;
     server = await createServer(options);
@@ -224,8 +229,10 @@ await runWarmHold({
     page.on('pageerror', (error) => receipt.errors.push(String(error?.message ?? error).slice(0, 400)));
     page.on('console', (message) => { if (message.type() === 'error') receipt.errors.push(message.text().slice(0, 400)); });
     return { pages: [page], page, close: async () => { await browser.close(); await server.close(); } };
-  },
-  shoot: async ({ page, signal }) => {
+  }
+};
+const shoot = async ({ page, signal }) => {
+  {
     await page.evaluate(clearMenus);
     await page.evaluate(stage);
     await sleep(1500);
@@ -234,7 +241,15 @@ await runWarmHold({
       await filmMove(page, name);
     }
     await page.evaluate(() => { window.__camLoop = false; }).catch(() => {});
-  },
-});
+  }
+};
+if (dry) {
+  // --dry: a check of the takes outside the render lock (the coordinator's ask before a ticket): warm and shoot here
+  const session = await warm();
+  try { await shoot({ ...session, signal: new AbortController().signal }); } finally { await session.close(); }
+} else {
+  await runWarmHold({ label: 'thrust-flips-277', lockClass: 'render', place: `thrust-flips-277-clip${arrows ? '-arrows' : ''}`,
+    maxFrozenMinutes: 30, warm, shoot });
+}
 writeReceipt();
 console.log(JSON.stringify({ out, moves: Object.fromEntries(Object.entries(receipt.moves).map(([k, v]) => [k, { stills: v.stills.length, landed: v.landed?.overturned === false }])), errors: receipt.errors.length }));
