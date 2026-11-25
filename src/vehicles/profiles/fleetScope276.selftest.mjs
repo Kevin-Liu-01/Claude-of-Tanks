@@ -25,6 +25,11 @@ import { createTank } from '../tankFactory.ts';
 
 const BASELINE = fileURLToPath(new URL('./fleetScope276.baseline.json', import.meta.url));
 const TARGETS = Object.freeze(['ztz99a2', 'ztz99a', 'vt4a1']);
+// Other 276 lanes that move an id on purpose, each with its owner ruling; every id not named here stays pinned.
+const MOVED_ON_PURPOSE = Object.freeze({
+  olifant_mk2: "Kevin OK'd Olifant Mk 2 on the Loggim turret for 276 (11-24 18:40); ttd and olifant_mk1b held byte-identical",
+  pza_loara: 'tank-reds-276 (Main 11-24): the dark disc 2 mm proud of each brake face removed; the bore mouth is the brake face, barrel 3.302 -> 3.3',
+});
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
 
@@ -43,7 +48,7 @@ for (const id of fleetRoster()) {
 function outOfScope(baseline, measured) {
   const moved = [];
   for (const id of Object.keys(measured).sort()) {
-    if (TARGETS.includes(id)) continue;
+    if (TARGETS.includes(id) || Object.hasOwn(MOVED_ON_PURPOSE, id)) continue;
     const before = baseline[id];
     const kinds = before ? KINDS.filter((kind) => before[kind] !== measured[id][kind]) : ['missing from the baseline'];
     if (kinds.length) moved.push(`${id} (${kinds.join(', ')})`);
@@ -66,6 +71,9 @@ if (process.argv.includes('--write')) {
   assert.deepEqual(outOfScope(baseline, planted), ['type96_80_feng (armor)'], 'control: a 1 mm change to one Feng plate is caught');
   const target = { ...rows, ztz99a2: { armor: 'moved', build: 'moved', anatomy: 'moved' } };
   assert.deepEqual(outOfScope(baseline, target), [], 'control: the target ids may move');
+  // the Olifant Mk 2 may move; its TTD sibling, which shared its old turret builder, may not
+  const ttd = { ...rows, ttd: { ...rows.ttd, build: 'moved' } };
+  assert.deepEqual(outOfScope(baseline, ttd), ['ttd (build)'], 'control: the TTD moving is caught');
 
-  console.log(`fleetScope276.selftest: ${Object.keys(rows).length - TARGETS.length} ids outside ${TARGETS.join(', ')} keep their armour, build and anatomy fingerprints; planted Feng plate change caught PASS`);
+  console.log(`fleetScope276.selftest: ${Object.keys(rows).length - TARGETS.length - Object.keys(MOVED_ON_PURPOSE).length} ids outside ${TARGETS.join(", ")} and ${Object.keys(MOVED_ON_PURPOSE).join(", ")} keep their armour, build and anatomy fingerprints; planted Feng plate change caught PASS`);
 }

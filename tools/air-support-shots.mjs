@@ -7,6 +7,7 @@
 //     [--gauntlet --locale=en-US [--sizes=WxH,WxH]]
 //     [--gauntlet] [--locale=en-US|zh-CN]
 //   node tools/air-support-shots.mjs --out=DIR --close-box [--sizes=WxH,...]
+//   node tools/air-support-shots.mjs --out=DIR --seats [--sizes=WxH,...]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
 // each strike from a camera over its mark (the recon jet's pass, the barrage, the strafing jet's run, the bomb, the AC-130
@@ -22,6 +23,7 @@ import { datumProblems } from './datum-census.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { closeBoxProblems, measureCloseBox, putBackOldClose } from './air-support-close-box.mjs';
+import { SEATS, measureSeats, plantCrossing, seatsProblems } from './air-support-seats.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
 const argv = process.argv.slice(2);
@@ -50,13 +52,20 @@ const burst = argv.includes('--burst');
 // (frames across each change, for a clip), the boxes judged by tools/air-support-close-box.mjs closeBoxProblems, and its
 // negative control: the old standalone close put back in the page, which must fail. Exit 1 on any problem.
 const closeBox = argv.includes('--close-box');
+// --seats (air-support-seats-276): at the close-box's sizes, the binoculars up, the seats of CALL, the call-ins' rack, the
+// Support dock and slot, the shells and the vehicle controls judged by tools/air-support-seats.mjs seatsProblems (no two
+// cross), and its negative control: the rack planted on the Support slot, which must fail. Exit 1 on any problem.
+const seats = argv.includes('--seats');
 // --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
 const gauntlet = argv.includes('--gauntlet');
 const locale = arg('locale', 'en-US');
-const GAUNTLET_SIZES = closeBox ? {
+const GAUNTLET_SIZES = closeBox || seats ? {
   // the desktop's full tray and its stacked one; the phone's two orientations and the iPad's (touch layouts)
   desktop: [[1920, 1080], [900, 700]],
-  phone: [[390, 844], [844, 390], [820, 1180], [1180, 820]],
+  phone: [[390, 844], [844, 390], [820, 1180], [1180, 820],
+    // (--seats: the overlap probe's iPad windows too, battle-hud-overlap.browser.mjs 744x1001t and 1210x702t, where the
+    // call-ins' first row seat ran into the items' column)
+    ...(seats ? [[744, 1001], [1210, 702]] : [])],
 } : {
   desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
   phone: [[844, 390], [390, 844]],
@@ -69,7 +78,7 @@ if (sizesArg) {
 }
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
-const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {}, closeBox: {} };
+const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {}, closeBox: {}, seats: {} };
 
 const VIEWPORTS = {
   desktop: { width: 1600, height: 900 },
@@ -898,6 +907,45 @@ async function shootCloseBox(page, tag) {
   }
 }
 
+/** --seats: at each size, the binoculars up, every seat's box judged; the negative control is a crossing planted on the
+ *  page (the rack on Support), which must fail. Support is pressed as --close-box presses it: by its key under pointer
+ *  lock, in its box without. */
+async function shootSeats(page, tag) {
+  await page.evaluate(stage);
+  const pressSupport = async () => {
+    if (await page.evaluate(() => !!document.pointerLockElement)) {
+      const key = await page.evaluate(() => document.querySelector('.strike-support .key')?.textContent?.trim() ?? 'X');
+      await page.keyboard.down(`Key${key.toUpperCase()}`);
+      await sleep(60);
+      await page.keyboard.up(`Key${key.toUpperCase()}`);
+      return `key ${key}`;
+    }
+    await page.click('.strike-support');
+    return 'click';
+  };
+  for (const [width, height] of GAUNTLET_SIZES[tag]) {
+    const kind = tag === 'phone' ? (Math.min(width, height) >= 700 ? 'ipad' : 'phone') : 'desktop';
+    const size = `${kind}-${width}x${height}`;
+    await page.setViewport({ ...VIEWPORTS[tag], width, height });
+    await sleep(1500);
+    await page.evaluate(() => { window.__DEBUG.bus.emit('ui:strikeViewClose', {}); const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; });
+    await sleep(900);
+    await shot(page, `seats-${size}-rest`);
+    const pressedBy = await pressSupport();
+    await sleep(1200);
+    const up = await page.evaluate(measureSeats, SEATS);
+    await shot(page, `seats-${size}-up`);
+    const planted = await page.evaluate(plantCrossing, true) && await page.evaluate(measureSeats, SEATS);
+    await shot(page, `seats-${size}-negative-planted`);
+    await page.evaluate(plantCrossing, false);
+    await pressSupport();
+    await sleep(900);
+    const problems = seatsProblems(up);
+    const negativeProblems = seatsProblems(planted);
+    receipt.seats[size] = { pass: !problems.length && negativeProblems.length > 0, problems, negativeProblems, pressedBy, up };
+  }
+}
+
 /**
  * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
  * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
@@ -950,12 +998,12 @@ async function measureMarks(page, tag) {
 }
 
 let server = null;
-const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${closeBox ? '-close-box' : ''}${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${burst ? '-burst' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${closeBox ? '-close-box' : ''}${seats ? '-seats' : ''}${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${burst ? '-burst' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
 process.on('exit', () => { try { writeReceipt(); } catch {} });
 await runWarmHold({
   label: 'air-support-275',
   // a film of the runs is a render (it shares the lock with other renders); the perf passes stay exclusive
-  ...(runs || closeBox ? { lockClass: 'render' } : {}),
+  ...(runs || closeBox || seats ? { lockClass: 'render' } : {}),
   place: `air-support-270-shots-${only ?? 'all'}`,
   // a battle page frozen in the queue is checked (and re-warmed if it reloaded) only past this
   maxFrozenMinutes: 30,
@@ -989,6 +1037,10 @@ await runWarmHold({
       for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootCloseBox(byTag[tag], tag);
       return;
     }
+    if (seats) {
+      for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootSeats(byTag[tag], tag);
+      return;
+    }
     if (gauntlet) {
       for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootGauntlet(byTag[tag], tag);
       return;
@@ -1019,5 +1071,11 @@ if (closeBox) {
   const failed = Object.entries(receipt.closeBox).filter(([, r]) => !r.pass).map(([size]) => size);
   console.log(`air-support close-box: ${Object.keys(receipt.closeBox).length} sizes, ${failed.length ? `FAIL ${failed.join(', ')}` : 'PASS'}`);
   if (failed.length || !Object.keys(receipt.closeBox).length) process.exitCode = 1;
+}
+if (seats) {
+  const failed = Object.entries(receipt.seats).filter(([, r]) => !r.pass).map(([size]) => size);
+  console.log(`air-support seats: ${Object.keys(receipt.seats).length} sizes, ${failed.length ? `FAIL ${failed.join(', ')}` : 'PASS'}`);
+  for (const [size, r] of Object.entries(receipt.seats)) for (const p of r.problems) console.log(`  ${size}: ${p}`);
+  if (failed.length || !Object.keys(receipt.seats).length) process.exitCode = 1;
 }
 console.log(JSON.stringify({ shots: receipt.shots.length, calls: receipt.calls, perf: receipt.perf, errors: Object.fromEntries(Object.entries(receipt.errors).map(([k, v]) => [k, v.length])) }));

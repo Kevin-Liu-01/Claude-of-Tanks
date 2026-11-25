@@ -470,6 +470,16 @@ export function dismissNotice(id: string): void {
   for (const region of regions.values()) { region.queue.remove(id); schedule(region); }
 }
 
+/** A region's toasts as its queue holds them (shown, waiting), whether its timer runs and whether the game's pause holds
+ *  it: a read for receipts (battle-teardown-276: nothing of a battle left once it has ended). Null before it is placed. */
+export function noticeRegionState(name: string): { readonly shown: readonly string[]; readonly waiting: readonly string[];
+  readonly timer: boolean; readonly paused: boolean } | null {
+  const region = regions.get(name);
+  if (!region) return null;
+  return Object.freeze({ shown: region.queue.shown.map((toast) => toast.id), waiting: region.queue.waiting.map((toast) => toast.id),
+    timer: region.timer !== null, paused: gamePaused });
+}
+
 /** The game's pause holds every toast's time (as a hidden page does). */
 export function pauseNotices(paused: boolean): void {
   gamePaused = paused;

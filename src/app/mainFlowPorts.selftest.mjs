@@ -10,7 +10,7 @@ import { createBattleFrameRuntime } from '../game/battleFrameRuntime.ts';
 import { advancePreBattleCountdown, PRE_BATTLE_WARM_HOLD_LIMIT_S, transitionBattleCountdown } from '../game/preBattleCountdown.ts';
 import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts';
 import { terrainVariantFor } from '../sim/matchRuleset.ts';
-import { mainSource, mainStatement, runMainStatements } from './mainComposition.test-support.mjs';
+import { mainSource, mainStatement, mainStatementWith, runMainStatements } from './mainComposition.test-support.mjs';
 
 // (canTransitionAppPhase by name: this file still runs, and fails by assertion, against a main.ts that has none)
 const { createAppLifecycle, canTransitionAppPhase } = appLifecycleModule;
@@ -67,7 +67,7 @@ function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGara
 /** main's phase:change listener (a Garage phase clears the solo intent, keeping watched); returns its handler. */
 function phaseListener(game, battleEntryIntent) {
   let handler = null;
-  runMainStatements(mainStatement("bus.on('phase:change', () => {\n  if (game.phase === 'garage') {"), {
+  runMainStatements(mainStatementWith("bus.on('phase:change', () => {", 'clearMatchSession(game);'), {
     bus: { on: (type, listener) => { if (type === 'phase:change') handler = listener; } },
     game, battleEntryIntent, clearMatchSession() {}, frameLoop: { restart() {} },
   }, 'null');

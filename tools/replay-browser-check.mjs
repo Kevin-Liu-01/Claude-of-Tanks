@@ -21,7 +21,7 @@ import puppeteer from 'puppeteer';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { runWarmHold, startViteChild, stubViteSocket } from './capture-hold.mjs';
 import { beginSoloBattle, isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
-import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const TOOL = 'replay-browser-check';
 const SPEC = 'm1a1_abrams_hc';
@@ -151,17 +151,19 @@ async function main(argv) {
     shoot: async ({ page, errors }) => {
       for (const [index, { on, trace = false, mapId }] of plan.entries()) {
         say(`arm ${index + 1}: recorder ${trace ? 'TRACE' : on ? 'ON' : 'OFF'}`);
-        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = trace; }, trace);
+        // (the recorder loads with a battle's authority, src/game/replayRecordingAccess.ts: ready() loads it now)
+        await page.evaluate(async (trace) => { (await window.__COT_REPLAY.ready()).trace = trace; }, trace);
         await beginSoloBattle(page, { specId: SPEC, mapId, gameMode: 'standard' });
-        await page.evaluate((trace) => { window.__COT_REPLAY.recorder.trace = false; }, trace);
+        await page.evaluate(async () => { (await window.__COT_REPLAY.ready()).trace = false; });
         await page.evaluate(armSamplers, on);
         await driveBattle(page, options.seconds);
         const sample = await page.evaluate(collectSamplers);
         const arm = { mapId, on, trace, frames: sample.frames.length, frameMedianMs: median(sample.frames), frameP95Ms: pct(sample.frames, 0.95),
           blocks: sample.blocks, blockMeanMs: mean(sample.blocks), blockMaxMs: sample.blocks.length ? Math.max(...sample.blocks) : null,
           pausedMaxMs: sample.pausedMaxMs, recorderActive: sample.active };
-        await page.evaluate(() => { window.__DEBUG.leaveBattleToGarage(); });
-        await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 120000, polling: 250 });
+        // (replay-hold-276) the Leave awaited, then the readiness owner's Garage (docs/AUTOMATION-PATHS.md), not a hand-built wait
+        await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
+        await page.waitForFunction(readinessExpression('garage'), { timeout: 120000, polling: 250 });
         await sleep(1500);
         if (on) {
           const saved = await fetchNewestReplay(page, trace);

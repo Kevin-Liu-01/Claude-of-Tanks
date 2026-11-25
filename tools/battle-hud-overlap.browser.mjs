@@ -123,6 +123,11 @@ try {
       const problems = notices ? all.filter((p) => p.startsWith('notice ') || p.startsWith('feed ') || p.startsWith('offscreen: div.cot-alert')
         || p.startsWith('offscreen: div.cot-c-notice')) : all;
       const others = notices ? all.filter((p) => !problems.includes(p)) : [];
+      // (battle-teardown-276) the fixture stages its state inside a live battle scope, as a battle does: outside one
+      // battleNotices draws no condition, so every notice check below would judge an empty lane
+      if (!await page.evaluate(() => !!window.__HUD_LAYOUT.battleScope?.().live)) {
+        problems.push('fixture: no live battle scope (a condition raised outside a battle is never shown)');
+      }
       let coverage = null;
       if (notices) {
         coverage = noticeCoverage(rects, await page.evaluate(() => document.body.dataset.hudGuidance ?? ''));

@@ -16,7 +16,12 @@
 // raises conditions (its player's tank, the network, the pointer lock), never a pane's HUD, whose seat's state stays on its
 // own surfaces (its reticle's chip, its own event lane). Per-pane regions are 275.1's.
 // The game's pause holds both lanes' time (pause, from the HUD's ui:pause).
+// (battle-teardown-276; Kevin 2026-11-24, the battle's "Gunship overhead · NOW" over the Garage) every condition belongs to
+// the battle that raised it (game/battleScope.ts): it is kept under that battle's scope, and when the scope ends (any way
+// out of the battle) every one of its conditions is taken down, shown or waiting, the view and the pause with them. A
+// condition raised outside a battle is never shown, and one whose kit arrives after its battle ended is never drawn.
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import { currentBattleScope, type BattleScope } from '../game/battleScope.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { markDatum } from './dom.ts';
 import { noticeKind, shownInView, type NoticeKind, type NoticeView } from './noticeKinds.ts';
@@ -65,16 +70,38 @@ const kit = createLazyChunk(() => import('./components/notice.ts').then((module)
 // the kit's exit)
 const relayout = (): void => { window.dispatchEvent(new Event('cot-hud-relayout')); };
 let paused = false;
-// (notices-276b) what the crew looks through, and the tank's conditions raised and not dismissed (shown or held behind a
-// view, the latest options of each): off the tank they are taken down, back on it raised again
+// (notices-276b) what the crew looks through, and (battle-teardown-276) the battle's conditions raised and not dismissed
+// (shown, waiting, or held behind a view: the latest options of each), all under the scope that raised them. Off the tank
+// its own are taken down, back on it raised again; when the scope ends every one is taken down.
 let view: NoticeView = 'tank';
-const tankConditions = new Map<string, BattleNoticeOptions>();
+const raised = new Map<string, BattleNoticeOptions>();
+let raisedScope: BattleScope | null = null;
 const show = (options: BattleNoticeOptions): void => {
   const { kind, ...toast } = options;
-  void kit.load().then((module) => { module.notify({ ...toast, shape: noticeKind(kind).shape, region: REGION }); relayout(); }, () => {});
+  void kit.load().then((module) => {
+    // (the kit came after the condition was replaced, dismissed, or its battle ended: nothing to draw)
+    if (raised.get(options.id) !== options || !raisedScope?.live) return;
+    module.notify({ ...toast, shape: noticeKind(kind).shape, region: REGION });
+    relayout();
+  }, () => {});
 };
 const takeDown = (id: string): void => {
-  if (kit.state === 'ready' || kit.state === 'loading') void kit.load().then((module) => { module.dismissNotice(id); setTimeout(relayout, 220); }, () => {});
+  if (kit.state === 'ready' || kit.state === 'loading') {
+    void kit.load().then((module) => {
+      module.dismissNotice(id);
+      // (after the kit's exit; a battle that has ended relays out at once, leaving no timer behind)
+      if (raisedScope?.live) raisedScope.setTimeout(relayout, 220); else relayout();
+    }, () => {});
+  }
+};
+/** The scope's end: every condition it raised comes down wherever it shows or waits; the view and the pause start over. */
+const endScope = (): void => {
+  const ids = [...raised.keys()];
+  raised.clear();
+  raisedScope = null;
+  view = 'tank';
+  for (const id of ids) takeDown(id);
+  if (paused) battleNotices.pause(false);
 };
 
 export const battleNotices: BattleNoticePort & {
@@ -84,25 +111,38 @@ export const battleNotices: BattleNoticePort & {
   /** What the crew looks through (noticeKinds.ts): off the tank its own conditions are taken down and held, back on it the
    *  ones still raised show again. */
   view(next: NoticeView): void;
+  /** The conditions the live battle holds (shown, waiting or held behind a view), for receipts. */
+  held(): readonly string[];
 } = {
   condition(options) {
-    if (noticeKind(options.kind).subject === 'tank') tankConditions.set(options.id, options);
+    // (battle-teardown-276) only a battle raises a condition, under its scope
+    const scope = currentBattleScope();
+    if (!scope) return;
+    if (raisedScope !== scope) {
+      raisedScope = scope;
+      scope.defer(() => { if (raisedScope === scope) endScope(); });
+    }
+    raised.set(options.id, options);
     if (shownInView(options.kind, view)) show(options);
   },
   // (nothing to do before the kit has loaded or while it is failed: no notice was raised; a dismiss never fetches)
   dismiss(id) {
-    tankConditions.delete(id);
+    raised.delete(id);
     takeDown(id);
   },
   view(next) {
     if (next === view) return;
     view = next;
-    for (const options of tankConditions.values()) {
+    for (const options of raised.values()) {
+      if (noticeKind(options.kind).subject !== 'tank') continue;
       if (shownInView(options.kind, next)) show(options); else takeDown(options.id);
     }
   },
   pause(on) {
     paused = on;
     if (kit.state === 'ready') void kit.load().then((module) => module.pauseNotices(on), () => {});
+  },
+  held() {
+    return raisedScope?.live ? [...raised.keys()] : [];
   },
 };

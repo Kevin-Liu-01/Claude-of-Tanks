@@ -1,8 +1,9 @@
 // Round 5 S2 (2026-11-06), the default-tier half of src/sim/teammateRam.selftest.mjs. That receipt (MANUAL, test:heavy --
 // sims: it seats a battle on Verdant and starts a room, tens of seconds) drives a teammate ram through the solo step and a
 // room and follows its events to every listener on the page. This half keeps, at no cost, what that proof rests on:
-//   1. the listeners: in src/ the page's bus has one listener for tank:ram, audio/audioEngine.ts onTankRam (the crunch,
-//      the cab's knock, the crew's friendly_ram or 'rammed' call), and two for tank:impact, audioEngine.ts onTankImpact
+//   1. the listeners: in src/ the page's bus has two listeners for tank:ram, audio/audioEngine.ts onTankRam (the crunch,
+//      the cab's knock, the crew's friendly_ram or 'rammed' call) and game/replay/replayRecorder.ts (the replay timeline's
+//      'ram' mark, replay-system: a record, never a price, a sound or a cue), and two for tank:impact, audioEngine.ts onTankImpact
 //      (the thud) and pad/padCues.ts (the paired phone's buzz, which pad/padReceiver.ts sends). A new listener of either
 //      fails here, so the manual proof's listener set cannot go stale unseen.
 //   2. the paired phone: padCueOf, which padReceiver runs on every PAD_CUE_EVENTS event, gives a hull contact's thud (the
@@ -23,8 +24,9 @@ const listenersOf = (name) => files.filter((file) => readFileSync(new URL(file, 
   const text = line.trim();
   return text.includes(`'${name}'`) && !text.startsWith('//') && !text.startsWith('*') && !new RegExp(`emit\\(\\s*'${name}'`).test(text);
 })).sort();
-assert.deepEqual(listenersOf('tank:ram'), ['audio/audioEngine.ts'],
-  'tank:ram has one listener on the page, the audio engine\'s onTankRam (the crunch, the cab\'s knock, the crew\'s call): any new one is checked here');
+assert.deepEqual(listenersOf('tank:ram'), ['audio/audioEngine.ts', 'game/replay/replayRecorder.ts'],
+  'tank:ram has two listeners on the page, the audio engine\'s onTankRam (the crunch, the cab\'s knock, the crew\'s call) and the '
+  + 'replay recorder\'s timeline mark (a record only): any new one is checked here');
 assert.deepEqual(listenersOf('tank:impact'), ['audio/audioEngine.ts', 'pad/padCues.ts'],
   'tank:impact has two, the audio engine\'s thud and the paired phone\'s impact buzz: any new one is checked here');
 
@@ -50,5 +52,5 @@ for (const speedMps of [0.5, 4, 12, 30]) {
     `a contact at ${speedMps} m/s keeps the cue's contract, a strength in [0, 1] (${JSON.stringify(cue)})`);
 }
 
-console.log('teammateRamListeners.selftest: tank:ram has one listener in src (audioEngine.ts), tank:impact two (audioEngine.ts, '
+console.log('teammateRamListeners.selftest: tank:ram has two listeners in src (audioEngine.ts, the replay recorder\'s mark), tank:impact two (audioEngine.ts, '
   + 'padCues.ts); a teammate ram\'s contact buzzes the own hull\'s phone as an impact, never as damage, and its report is no cue event');

@@ -15,7 +15,8 @@
 //      as driverStepParity scripts one); the seat's real MatchClient over a loopback pair, bound to the real battle
 //      presentation as the page binds it (bindMatchPresentation): the authority's hulls untouched, the wire's tank_ram
 //      priced at zero, and the page's bus carrying tank:ram (zero damage, on its own hull) and no damage event;
-//   3. the listeners, followed on each page's recorded bus: tank:ram has one in src/ (audio/audioEngine.ts onTankRam)
+//   3. the listeners, followed on each page's recorded bus: tank:ram has one that acts in src/ (audio/audioEngine.ts onTankRam;
+//      the replay recorder only marks it on the timeline, teammateRamListeners.selftest)
 //      and tank:impact two (audioEngine.ts onTankImpact, pad/padCues.ts). The real audio engine, bound to each page's bus
 //      and fed its frames, plays the contact's crunch and the cab's knock and asks for the crew's friendly_ram line, never
 //      'rammed' and no damage sound (the shell, module, crew, fire and destruction cues). The paired phone's cue rule

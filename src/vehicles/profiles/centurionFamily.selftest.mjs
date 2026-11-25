@@ -51,7 +51,7 @@ function gunRadii(gun, len) {
 const report = {};
 const LENGTH = { centurion5_avre: 8.00, olifant_mk2: 7.68, centurion5_1_aus: 8.02 };
 const WIDTH = { olifant_mk2: [3.40, 3.45] };
-const SLEEVED = new Set(['centurion5_2', 'centurion13', 'strv105', 'olifant_mk2']);
+const SLEEVED = new Set(['centurion5_2', 'centurion13', 'strv105']);
 for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
@@ -76,11 +76,14 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion
     const slice = box(turret, (o) => casting.includes(o) || o.name === 'turret');
     let half = 0;
     const v = new THREE.Vector3();
+    // (the Olifant Mk 2's Loggim turret is drawn in sparse sections: its slot's back 0.37 m and the chamfer 0.16 m behind
+    // the face)
+    const win = id === 'olifant_mk2' ? 0.22 : 0.06;
     for (const o of casting.length ? casting : [turret.getObjectByName('turret')].filter(Boolean)) {
       const p = o.geometry.getAttribute('position');
       for (let i = 0; i < p.count; i++) {
         v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
-        if (Math.abs(v.z - (front - 0.30)) < 0.06) half = Math.max(half, Math.abs(v.x));
+        if (Math.abs(v.z - (front - 0.30)) < win) half = Math.max(half, Math.abs(v.x));
       }
     }
     assert.ok(slice.max.y > 0 && half * 2 >= 1.10, `${id}: the casting is ${(half * 2).toFixed(2)} m wide 0.30 m behind its face (no wedge nose)`);
@@ -99,12 +102,14 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion
       // the 165 mm: a chase between the evacuator drum and the collar, the drum 47-73 % along, the ringed collar
       const chase = Math.min(...r.slice(31, 35).filter((x) => x > 0));
       assert.ok(bulge(0.50, 0.70) > chase * 1.6 && bulge(0.92, 1.0) > chase * 1.25, `${id}: the L9A1's drum and muzzle collar`);
+    } else if (id === 'olifant_mk2') {
+      // the GT3 of the TTD's Loggim turret: the thermal sleeve to the muzzle, the fume extractor 38-53 % along
+      const fore = Math.min(...r.slice(30, 38).filter((x) => x > 0));
+      assert.ok(bulge(0.36, 0.54) > fore * 1.25 && bulge(0.60, 0.74) < fore * 1.15, `${id}: the GT3's fume extractor and full-length sleeve`);
     } else if (SLEEVED.has(id)) {
       // the sleeve clads the tube 52-82 % along: measure it against the bare tube between it and the muzzle
       const bare = Math.min(...r.slice(35, 39).filter((x) => x > 0)), clad = Math.min(...r.slice(22, 32).filter((x) => x > 0));
-      // (the Olifant's GT-3B carries its evacuator just ahead of the boot on its mantlet housing, 36-48 % along)
-      const [e0, e1] = id === 'olifant_mk2' ? [0.36, 0.48] : [0.40, 0.50];
-      assert.ok(bulge(e0, e1) > bare * 1.35 && clad > bare * 1.12, `${id}: the L7A2's evacuator and thermal sleeve`);
+      assert.ok(bulge(0.40, 0.50) > bare * 1.35 && clad > bare * 1.12, `${id}: the L7A2's evacuator and thermal sleeve`);
     } else {
       assert.ok(bulge(0.40, 0.50) > tube * 1.35 && bulge(0.62, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 40-50 % along`);
     }

@@ -19,6 +19,23 @@ export function mainStatement(head, source = mainSource) {
   return source.slice(start + 1, end + 4);
 }
 
+/**
+ * (replay-slices-276) The one top-level statement starting `head` whose body holds `anchor`: a listener found by what it
+ * does, not by its first line (replay's fd79f71ad8 put the recording's close at the top of main's Garage phase:change
+ * listener, and every slice by `bus.on('phase:change', () => {\n  if (game.phase === 'garage') {` stopped matching).
+ */
+export function mainStatementWith(head, anchor, source = mainSource) {
+  const found = [];
+  for (let start = source.indexOf(`\n${head}`); start >= 0; start = source.indexOf(`\n${head}`, start + 1)) {
+    const end = source.indexOf('\n});', start + 1);
+    if (end < 0) throw new Error(`main.ts statement ${head} has no closing line`);
+    const statement = source.slice(start + 1, end + 4);
+    if (statement.includes(anchor)) found.push(statement);
+  }
+  if (found.length !== 1) throw new Error(`main.ts has ${found.length} top-level statements starting ${head} that hold ${anchor}: want one`);
+  return found[0];
+}
+
 /** A name main reads that the test did not provide: inert (any property, any call), never a thenable. */
 function inert(name) {
   const stub = new Proxy(function inertStub() {}, {

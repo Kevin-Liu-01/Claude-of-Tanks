@@ -37,15 +37,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // bands chaseFraming.selftest.mjs frames over) frames the chase as the rig does (solveChaseFraming: its distance, its
 // pivot, its lens shift), and its boxes are what the arrow keeps off (the controls, the map, the instruments, the head band).
 const RECORDED = JSON.parse(read('tools/fixtures/hud-chase-bands.json'));
-// The live phone as the battle showed it on 2026-11-24 (measured in a 390x844 touch battle through the pointer layer's own
-// noCover): its right column runs 228 to 520 px, where the recorded fixture holds one button at 468 (the fixture's source
-// page lags the live HUD: hud-bands-live-276). A U-turn there fits only behind the hull, centred and small.
-RECORDED.sizes['390x844-live'] = { idle: { width: 390, height: 844, touch: true, ceiling: 66, floor: [
-  [324, 44, 390, 92], [14, 702, 132, 820], [164, 685, 218, 739], [224, 685, 278, 739], [288, 740, 370, 822], [88, 0, 302, 36],
-  [14, 600, 92, 678], [324, 228, 376, 280], [324, 288, 376, 340], [324, 348, 376, 400], [324, 408, 376, 460], [324, 468, 376, 520],
-  [8, 480, 120, 592], [12, 108, 104, 200], [137, 796, 254, 836],
-].map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })) } };
-const LAYOUTS = ['1920x1080', '1280x720', '390x844', '844x390', '390x844-live'];
+const LAYOUTS = ['1920x1080', '1280x720', '390x844', '844x390', '744x1001', '1210x702'];
 // a main battle tank, a tall one and a long one (chaseFraming.selftest.mjs's)
 const TANKS = {
   nominal: NOMINAL_CHASE_TANK,
@@ -213,4 +205,4 @@ assert.deepEqual(strayPosters([['src/ui/hud.ts', "setGuideFollow({ id: 'zone', k
   assert.match(hud, /const follow = guideFollow\(\);/, 'the HUD\'s follow pointer is the board\'s');
 }
 
-console.log(`pointerFollowView.selftest: ${frames} frames on 4 recorded layouts and the live phone for 3 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);
+console.log(`pointerFollowView.selftest: ${frames} frames on ${LAYOUTS.length} live-recorded layouts for 3 hulls, no follow piece cut; the turn arrow off the screen, the trail on it; the tutorial alone posts one`);

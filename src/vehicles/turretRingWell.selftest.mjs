@@ -129,7 +129,6 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
     specimen.id = 'ring_fixture';
     specimen.armor.modules = [structuredClone(ring)];
     specimen.armor.crew = [];
-    specimen.armor.turretPivot = [0.04, 1.5, 0.1];
     specimen.armor.hullPlates = [{ name: 'synthetic_hull', kind: 'main', physicalMm: 30, keMm: 30, ceMm: 30,
       verts: [[-1.5, 0.4, -3], [1.5, 0.4, -3], [1.5, 1.5, 3], [-1.5, 1.5, 3]] }];
     specimen.armor.turretPlates = [{ name: 'synthetic_base', kind: 'main', physicalMm: 30, keMm: 30, ceMm: 30,
@@ -137,6 +136,9 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
     const calibration = { hull: { min: [-1.6, 0.4, -3.2], max: [1.6, 1.5, 3.4] }, turret: { min: [-1, -0.3, -1], max: [1, 0.7, 1] },
       tracks: { left: { min: [-1.8, 0, -3], max: [-1.4, 0.8, 3] }, right: { min: [1.4, 0, -3], max: [1.8, 0.8, 3] } },
       hullStructures: [], turretStructures: [], hullCollision: [], turretCollision: [], moduleShapes: [],
+      // (276) the combat frame is the calibration's measured rig (tools/combat-rig-measure.mjs), and finalize refuses a
+      // drawn gun without one: the T-72B3's measured rig, its ring moved to the fixture's (authored off the hull's axis)
+      rig: { ...combatAnatomyCalibration('t72b3').rig, turretPivot: [0.04, 1.5, 0.1] },
       ...(turretRing ? { turretRing } : {}) };
     finalizeCombatAnatomy(specimen, calibration);
     return specimen.armor.modules.find((box) => box.module === 'turretRing');

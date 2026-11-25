@@ -295,8 +295,9 @@ export function createBattleFrameRuntime({
   ): void => {
     if (replayActive) {
       // the recorded battle starts after its count: the count closes at once and the battle rolls out late (no cues)
+      // (replay-hold-276) through the count's one writer (preBattleCountdown.ts): the replay is a battle that skips its count
       if (game.preBattleS > 0) {
-        game.preBattleS = 0;
+        transitionBattleCountdown(game, 'live');
         countdown.show(0);
       }
       rollout(true);

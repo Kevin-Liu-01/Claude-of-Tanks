@@ -176,4 +176,11 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
  .cot-binoculars .binocular-group{border-left:0;padding-left:0}
  .binocular-call{right:auto;left:calc(50% - 24px);bottom:252px}
 }
+/* (air-support-seats-276) with the binoculars up on a touch layout, the call-ins, the readout and CALL stand where
+   battleHudLayout.ts seats them (strikeSeats.ts: each its designed seat above where that is clear of every measured control
+   and instrument, else the nearest clear seat), written as --hud-strike-<part>-x/-y. The rules above are each part's seat
+   before the first plan and wherever none is written. Support itself never moves (tools/air-support-close-box.selftest.mjs). */
+body.cot-touch-layout[data-strike-seats] .cot-strike-rack{left:var(--hud-strike-rack-x);top:var(--hud-strike-rack-y);right:auto;bottom:auto;transform:none}
+body.cot-touch-layout[data-strike-seats] .cot-binoculars .binocular-readout{left:var(--hud-strike-readout-x);top:var(--hud-strike-readout-y);right:auto;bottom:auto;transform:none}
+body.cot-touch-layout[data-strike-seats] .cot-binoculars .binocular-call{left:var(--hud-strike-call-x);top:var(--hud-strike-call-y);right:auto;bottom:auto}
 }

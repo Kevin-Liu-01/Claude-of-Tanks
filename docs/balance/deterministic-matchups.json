@@ -5343,6 +5343,34 @@
       "averageBDamage": 2019.92
     },
     {
+      "id": "olifant-tier3-peer",
+      "purpose": "Tier III Olifant Mk 2 against the Centurion Mk 5/2 it was cloned from",
+      "band": [
+        0.75,
+        0.75
+      ],
+      "aId": "olifant_mk2",
+      "bId": "centurion5_2",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 9,
+      "bWins": 3,
+      "draws": 0,
+      "aScore": 0.75,
+      "averageDurationS": 25.89,
+      "averageAEndHp": 241,
+      "averageBEndHp": 71.58,
+      "averageADamage": 1828.42,
+      "averageBDamage": 1809
+    },
+    {
       "id": "merkava-tier7-peer",
       "purpose": "Tier VII Cold War MBT ceiling",
       "band": [

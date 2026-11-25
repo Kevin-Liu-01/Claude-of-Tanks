@@ -15,6 +15,7 @@
  */
 import type { ActionId } from '../game/input.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
+import { currentBattleScope } from '../game/battleScope.ts';
 import { createHintPolicy, START_DELAY_MS, type HintPolicy } from './firstUseHintPolicy.ts';
 import { formatKeyLine, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
 import { t } from './i18n.ts';
@@ -111,6 +112,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
   let timer: ReturnType<typeof setInterval> | null = null;
   let capabilityCheck: ReturnType<typeof setTimeout> | null = null;
   let inBattle = false, dead = false, fired = false;
+  let battle: ReturnType<typeof currentBattleScope> = null;
   let shown: { id: HintId; revision: string; until: number; tiles: Element[]; vars: Record<string, ActionId> } | null = null;
 
   const markSeen = (id: HintId) => { try { localStorage.setItem(SEEN_KEY(id), 'seen'); } catch { /* storage off */ } };
@@ -231,6 +233,11 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     battleStart(): void {
       end();
       inBattle = true; dead = false; fired = false;
+      // (battle-teardown-276) the hints end with the battle however it is left: a quit or a Leave runs neither
+      // battle:ended nor battle:presented, and the tick ran on in the Garage (game/battleScope.ts)
+      const scope = currentBattleScope();
+      scope?.defer(() => { if (scope === battle) end(); });
+      battle = scope;
       policy.battleStart(now());
       capabilityCheck = setTimeout(() => { capabilityCheck = null; offerCapabilities(); }, START_DELAY_MS - 1_000);
     },

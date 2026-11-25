@@ -6,6 +6,7 @@ let selected = 'm1a1_abrams_hc';
 let shotMode = false;
 let networkState = 'connected';
 let nightLighting = null;
+let bands = null;
 const target = {};
 const calls = [];
 const action = (...args) => { calls.push(args); return args[0] ?? null; };
@@ -35,6 +36,7 @@ const surface = installDebugSurface({
   getGarageGpuResidency: () => ({ suspended: false }),
   getLastWorldRelease: () => null,
   isGraphicsContextLost: () => false,
+  getBattleBands: () => bands,
   selectGarageTank: (id) => { selected = id; },
   stagePedestalTank: action,
   getWorld: () => ({ mapId: 'verdant' }),
@@ -58,6 +60,10 @@ const surface = installDebugSurface({
 }, target);
 
 assert.equal(target.__DEBUG, surface);
+// the HUD's chase bands, live (tools/hud-chase-bands.browser.mjs records the fixture from them): read through, never cached
+assert.equal(surface.battleBands, null, 'no bands before the battle HUD lays out');
+bands = { width: 390, height: 844, touch: true, floor: [], ceiling: 66 };
+assert.equal(surface.battleBands, bands, 'the bands the layout last published');
 assert.equal(attachedSchedulerObserver, null, 'installing diagnostics never arms the frame observer');
 assert.equal(surface.observeFrameLoopScheduler, observeFrameLoopScheduler,
   'the explicit port preserves the actual scheduler attachment and owned cleanup');

@@ -38,8 +38,10 @@ globalThis.document = { querySelector: () => null };
 globalThis.window = { dispatchEvent() { return true; } };
 const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((resolve) => setImmediate(resolve)); };
 
-// ---- the region's kit: one failed chunk, then the next notice reaches notify()
+// ---- the region's kit: one failed chunk, then the next notice reaches notify() (in a battle: the region holds a battle's
+// conditions only, battle-teardown-276)
 const { battleNotices } = await import('./battleNotices.ts');
+(await import('../game/battleScope.ts')).openBattleScope('solo-start');
 {
   failing.add('./components/notice.ts');
   battleNotices.condition({ id: 'cot-aim-warning', text: 'parked' });

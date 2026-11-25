@@ -330,6 +330,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
     'src/game/replay/replayViewer.selftest.mjs',
+    // replay-lazy-276: the battle recorder behind its lazy chunk: idle before it loads, every tap and wrapped rule bound
+    // after, a battle set up after the preload recorded from its first step
+    'src/game/replayRecordingAccess.selftest.mjs',
     // 276 (sim-det-trig): the fields a replay's state diff leaves out are the page's presentation and no simulation
     // module reads one (both drivers' import graph; a planted read, the clock and rosterState's sampler are named)
     'src/game/replay/replayPageOnly.selftest.mjs',
@@ -442,6 +445,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/whip-rods.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // fills-leak-276: the generator frees each build's native canvases before the next id (RSS flat in the id count)
+    'tools/gen-interior-fills-memory.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
     'tools/interior-fill-exposure.selftest.mjs',
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
@@ -1187,6 +1192,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cursorEdgePan.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
+    // guidance-pointers-276: the recorded chase bands' stale check (a fresh capture within a few px, or --check fails)
+    'tools/hud-chase-bands-drift.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
     'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
@@ -3272,8 +3279,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // air-support-275: INCOMING a threat-rung condition, refusals and shoot-downs answered events; a couch pane's HUD raises no
     // condition in the page's lane
     'src/ui/airSupportNotices.selftest.mjs',
+    // battle-teardown-276 (Kevin 2026-11-24: "notifications till here in garage - properly clear game state stuff after
+    // leaving"): one battle scope, opened and ended by the phase writer; by every exit no notice, timer or listener outlives it
+    'src/ui/battleTeardown.selftest.mjs',
     // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
     'tools/air-support-close-box.selftest.mjs',
+    // air-support-seats-276: with the binoculars up, CALL, the call-ins, Support and its dock, the shells and the vehicle
+    // controls cross none of one another (today's crossings at 844x390 and 820x1180 the negative control)
+    'tools/air-support-seats.selftest.mjs',
     // notices-276 (Kevin 2026-11-23: "fix ui overlaps like gunship overhead with X binoculars"): one list of the controls a
     // view brings, read by every notice planner and the overlap probe; its judge fails a notice on a planted control
     'tools/battle-hud-overlap-judge.selftest.mjs',

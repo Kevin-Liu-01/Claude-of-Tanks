@@ -44,7 +44,7 @@
 .cot-record-tab small:empty{display:none}
 .cot-record-tab:hover{color:var(--ink-1)}
 .cot-record-tab[aria-selected=true]{border-bottom-color:var(--accent);color:var(--ink-1)}
-.cot-record-tab.has-new small::after{content:'';display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:var(--text-ok);vertical-align:middle}
+.cot-record-tab.has-new small::after{content:'';display:inline-block;width:var(--status-dot);height:var(--status-dot);margin-left:6px;border-radius:50%;background:var(--text-ok);vertical-align:middle}
 
 .cot-record-body{flex:1;min-height:0;padding:var(--s6);overflow:auto;mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);overscroll-behavior:contain;outline:none;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-record-body:focus-visible{outline:var(--focus-bracket-width) solid var(--focus-bracket-color);outline-offset:calc(var(--focus-bracket-width) * -1)}
@@ -251,7 +251,7 @@
   /* a phone's tabs drop the counts and keep the new dot, beside the glyph */
   .cot-record-tab{position:relative}
   .cot-record-tab small{display:none}
-  .cot-record-tab.has-new::after{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
+  .cot-record-tab.has-new::after{content:'';flex:none;width:var(--status-dot);height:var(--status-dot);border-radius:50%;background:var(--text-ok)}
   /* a phone's figures set the glyph over the name, so a three-up name keeps its word whole */
   .cot-service-record :is(.cot-record-outcome,.cot-record-metric){padding:var(--s3)}
   .cot-service-record :is(.cot-record-outcome .cot-record-stat-label,.cot-record-metric .cot-c-tile__label,.cot-record-reason-stats .cot-record-stat-label,.cot-record-battle-num .cot-record-stat-label){flex-direction:column;gap:var(--s2)}

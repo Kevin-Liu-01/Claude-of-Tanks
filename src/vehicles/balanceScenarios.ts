@@ -43,6 +43,9 @@ export const BALANCE_SCENARIOS: readonly BalanceScenario[] = Object.freeze([
   { id: 'k2b-cross-tier', aId: 'k2b', bId: 't80u_yun', purpose: 'Tier VII K2B against a modern MBT peer', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'proryv-tier10-peer', aId: 't90m_proryv', bId: 't90m', purpose: 'Tier X modern MBT peers', minAScore: 0.917, maxAScore: 0.917,
     ruling: 'owner 2026-11-23 (Kevin, via Main): "update the target ranges, keep the stats"; reviewed band 0.2-0.8 until 17d796abac (forward turret faces read the plate they lie over: 0.667 -> 0.917); the score 0.917 is pinned, so any move is reviewed again' },
+  // olifant-turret-276: the Centurion/Olifant line had no scenario (Main 2026-11-24); the Mk 2 against its donor at III
+  { id: 'olifant-tier3-peer', aId: 'olifant_mk2', bId: 'centurion5_2', purpose: 'Tier III Olifant Mk 2 against the Centurion Mk 5/2 it was cloned from', minAScore: 0.75, maxAScore: 0.75,
+    ruling: 'Main 2026-11-24 (owner rule "update the target ranges, keep the stats"): measured at 8139b49125 (olifant-turret-276, the Mk 2 on the TTD\'s Loggim turret) with the Mk 2\'s anatomy regenerated: 0.75 (0.583 on the 262 box turret); the score 0.75 is pinned, so any move on this line is reviewed again' },
   { id: 'merkava-tier7-peer', aId: 'merkava1b', bId: 't62_1975', purpose: 'Tier VII Cold War MBT ceiling', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'puma-tier8-peer', aId: 'spz_puma', bId: 'bmp3_rok', purpose: 'Tier IV Puma against a Tier III IFV (no Tier IV IFV duels inside the band)', minAScore: 0, maxAScore: 0,
     ruling: 'owner 2026-11-23 (Kevin, via Main): "update the target ranges, keep the stats"; reviewed band 0.2-0.8 until 425b729b23 (268 regen for the twelve moved ids); the score 0 is pinned, so any move is reviewed again' },

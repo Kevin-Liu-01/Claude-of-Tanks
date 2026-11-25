@@ -1,6 +1,7 @@
 import { createLazyChunk } from '../app/lazyChunk.ts';
 import { t } from '../ui/i18n.ts';
 import type { BattleNoticePort } from '../ui/battleNotices.ts';
+import { currentBattleScope } from './battleScope.ts';
 import type { EventBus } from './stateCore.ts';
 
 interface PointerLockInput {
@@ -64,6 +65,7 @@ export function createPointerLockFeedbackRuntime({
   let disposed = false;
   let toastShown = false;
   let stageWaitTimer: ReturnType<typeof setTimeout> | null = null;
+  let adopted: ReturnType<typeof currentBattleScope> = null;
   /** The notice's id in the battle region (ui/battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
   const TOAST_ID = 'cot-pointer-lock';
 
@@ -102,7 +104,15 @@ export function createPointerLockFeedbackRuntime({
 
   const stopDenied = input.onLockDenied(() => {
     if (toastShown || disposed) return;
+    // (battle-teardown-276) the notice is the battle's: refused outside one, and ended with it (its stage wait polled on in
+    // the Garage, and toastShown stayed set, so the next battle's refusal said nothing; game/battleScope.ts)
+    const scope = currentBattleScope();
+    if (!scope) return;
     toastShown = true;
+    if (scope !== adopted) {
+      adopted = scope;
+      scope.defer(() => { if (adopted === scope) { adopted = null; removeToast(); } });
+    }
     waitForBattleStage();
   });
   const stopRestored = input.onLockRestored(removeToast);

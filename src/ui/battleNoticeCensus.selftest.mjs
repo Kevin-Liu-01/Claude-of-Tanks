@@ -48,6 +48,7 @@ const SURFACES = {
   'src/ui/tutorial/tutorialOverlay.ts#cot-tut-card': { kind: 'battle', why: 'the tutorial\'s card, its own guidance surface placed by the guidance plan' },
   'src/ui/perfHud.ts#null': { kind: 'battle', why: 'the opt-in performance overlay (a developer readout)' },
   'src/ui/transition.ts#cot-trans-say': { kind: 'battle', why: 'the screen transition\'s spoken status' },
+  'src/ui/replayBar.ts#note': { kind: 'battle', why: 'the replay bar\'s state line (its index\'s progress, or why the replay is refused or drifted, docs/REPLAY.md §5 Timeline): it stands while the state holds, part of the bar' },
   // ---- outside the battle
   'src/ui/battleArrangementPanel.ts#cot-mode-features': { kind: 'menu', why: 'Deploy: the mode\'s features' },
   'src/ui/battleLoad.ts#count': { kind: 'menu', why: 'the load screen\'s countdown' },

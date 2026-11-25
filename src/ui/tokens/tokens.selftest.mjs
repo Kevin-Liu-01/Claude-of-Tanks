@@ -34,6 +34,7 @@ import {
 } from './tokens.ts';
 import { VIEWPORT_HEIGHT_BANDS, VIEWPORT_WIDTH_BANDS } from '../responsiveLayout.ts';
 import { FONT_STACK } from '../fonts.ts';
+import { tokenReferences } from '../../../tools/token-references.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -259,6 +260,10 @@ assert.equal(landingHollow[2], 'var(--hollow-shadow)', 'the landing headlines ca
 // Boot cost (SPEC 16.1): tokens.css at most 4 KB brotli (the shipped file is minified, so this bound is conservative).
 const tokensBrotli = brotliCompressSync(Buffer.from(generatedCss), { params: { [zlib.BROTLI_PARAM_QUALITY]: 11 } }).length;
 assert.ok(tokensBrotli <= 4096, `tokens.css is ${tokensBrotli} B brotli, over the 4 KB boot budget`);
+// (paused-dot-276, Main 11-24) the budget was spent on tokens nothing read: every shared token is read by a tracked file
+// (a CSS var(), a TS key, a family built at runtime) or by a token that is (tools/token-references.mjs)
+const { unused: unusedTokens } = tokenReferences(ROOT);
+assert.deepEqual(unusedTokens, [], `tokens.json declares shared tokens nothing reads: --${unusedTokens.join(', --')}; delete them`);
 
 /* 3a. contrast (SPEC 4.4) ------------------------------------------------------------------------------------- */
 const rgbaOf = (name, resolver = base) => {

@@ -31,7 +31,8 @@ import type { EventBus } from '../game/stateCore.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type AirSupportView } from '../sim/airSupport.ts';
 import { strikeCallBlocker as callBlocker } from '../sim/strikeCall.ts';
-import { strikeView, STRIKE_VIEW_TRANSITION_S } from '../game/strikeViewState.ts';
+import { endStrikeView, strikeView, STRIKE_VIEW_TRANSITION_S } from '../game/strikeViewState.ts';
+import { battleScoped, currentBattleScope, type BattleScope } from '../game/battleScope.ts';
 import type { StrikeOrderRefusal } from '../game/strikeOrder.ts';
 
 const strikeCallBlocker = (air: AirSupportView | null | undefined, kind: AirStrikeKind, rangeM: number) => callBlocker(R, air, kind, rangeM);
@@ -180,9 +181,12 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
   call.addEventListener('click', () => bus.emit('ui:strikeCall', {}));
 
   // ---- the air lane's plates: each raised only when what it says changes (its whole seconds), taken down when it passes ----
-  const plates = new Map<string, string>();
+  // (battle-teardown-276) the plates raised are the battle's own memo: a gunship's "NOW" raised in one battle is never taken
+  // for already raised in the next (the region took the plate down with its battle, game/battleScope.ts)
+  const platesOf = battleScoped(() => new Map<string, string>());
   function plate(id: string, kind: 'airIncoming' | 'airOrder' | 'airDown', strike: AirStrikeKind | null, text: string, detail: string,
     severity: 'info' | 'success' | 'warning', priority: number, durationMs: number | null = null): void {
+    const plates = platesOf();
     const key = strike ? `${kind}|${strike}|${text}|${detail}|${severity}` : '';
     if ((plates.get(id) ?? '') === key) return;
     if (!strike) { plates.delete(id); notices.dismiss(id); return; }
@@ -209,6 +213,23 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
   });
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
+  // (battle-teardown-276; Kevin 2026-11-24) what the binoculars set outside their own boxes goes with the battle, however it
+  // was left (the frames that would lower them stop with it): the page's strike-view flag, the order and the view itself,
+  // whose close the main's phone layout and the raise hear
+  let adopted: BattleScope | null = null;
+  function adoptScope(): void {
+    const scope = currentBattleScope();
+    if (!scope || scope === adopted) return;
+    adopted = scope;
+    scope.defer(() => {
+      refusal = null;
+      setHidden(binoculars, true);
+      setHidden(rack, true);
+      binoculars.classList.remove('is-raising');
+      if (scopedFlag) { scopedFlag = false; document.documentElement.toggleAttribute('data-cot-strike-view', false); }
+      if (endStrikeView()) bus.emit('ui:strikeView', { open: false });
+    });
+  }
   bus.on('ui:strikeView', (payload) => {
     const open = !!(payload as { open?: boolean } | null)?.open;
     binoculars.classList.toggle('is-raising', open && !prefersReducedMotion());
@@ -220,6 +241,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
    */
   function update(air: AirSupportView | null | undefined, aim: Point | null | undefined, hull: Point | null | undefined,
     team: 'alpha' | 'bravo', timeS: number, active: boolean, keyX: string): void {
+    adoptScope();
     const dt = Math.max(0, Math.min(0.1, timeS - lastTimeS));
     lastTimeS = timeS;
     const shown = !!air && active;

@@ -7,6 +7,7 @@ import ts from 'typescript';
 import '../vehicles/tankFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { finalizeCombatAnatomy } from '../vehicles/combatAnatomy.ts';
+import { combatAnatomyCalibration } from '../vehicles/combatAnatomyCalibrationRegistry.ts';
 import { TOS1A_TAGIL_LAUNCHER_MUZZLES } from '../vehicles/tos1aTagilLayout.ts';
 import { blastTargets, traceTank } from './armor.ts';
 
@@ -145,7 +146,10 @@ function calibratedFixture(turretReceipt, moduleShapes) {
     keMm: 30, ceMm: 30, verts: [[-1,.2,-1], [1,.2,-1], [1,1.2,1], [-1,1.2,1]] }];
   const calibration = { hull: { min: [-1.5,0,-3], max: [1.5,1.8,3] }, turret: turretReceipt,
     tracks: { left: { min: [-1.8,0,-3], max: [-1.4,.8,3] }, right: { min: [1.4,0,-3], max: [1.8,.8,3] } },
-    moduleShapes, hullStructures: [], turretStructures: [], hullCollision: [], turretCollision: [] };
+    moduleShapes, hullStructures: [], turretStructures: [], hullCollision: [], turretCollision: [],
+    // (276) a calibration carries the rig the generator measured on the build (tools/combat-rig-measure.mjs); the
+    // launcher draws a weapon, so finalize refuses one without it: the fixture keeps the TOS's own measured rig
+    rig: combatAnatomyCalibration(spec.id).rig };
   finalizeCombatAnatomy(specimen, calibration);
   return specimen.armor.modules.find(box => box.module === 'missileRack');
 }

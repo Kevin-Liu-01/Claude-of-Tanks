@@ -12,7 +12,8 @@
  * three levers are chosen so the box sits between the sight's clear zone and the band's top edge:
  *  - the look-at point: the pivot's height over the turret roof (CHASE_BASE_PIVOT_M while it fits; lower lifts the tank
  *    towards the sight, higher drops it towards the band);
- *  - the distance: the default orbit step (CHASE_BASE_DISTANCE_M at the least), farther only as far as the room needs;
+ *  - the distance: the default orbit step (CHASE_BASE_DISTANCE_M at the least), farther only as far as the room needs
+ *    (chaseFarthestM: a portrait window reaches farther, its tank as readable);
  *  - the screen offset: a lens shift (camera.setViewOffset) that raises the whole picture, the sight with it, where the
  *    room under a centred sight is too short for a readable tank (a short landscape phone). The aim ray is still the
  *    camera's axis, so the reticle (hud.ts projects the aim point) still marks where the shell goes; the HUD's sight
@@ -74,8 +75,10 @@ export const CHASE_PITCH_RAD = -10 * Math.PI / 180;
  *  wherever the room allows. */
 export const CHASE_BASE_DISTANCE_M = 13;
 export const CHASE_BASE_PIVOT_M = 1.0;
-/** The farthest the framed default step goes (the tank at two thirds of its base size). */
+/** The farthest the framed default step goes in a landscape window (the tank at two thirds of its base size). */
 const MAX_DISTANCE_M = 19.5;
+/** How much farther a portrait window may take it, at most (chaseFarthestM; cameraRig's orbit stops at 40 m). */
+const PORTRAIT_REACH_MAX = 2;
 /** The nearest fitting distance's bisection steps (6.5 m / 2^10: under a centimetre). */
 const DISTANCE_BISECTIONS = 10;
 /** The most the framing raises the picture on its own, as a share of the height, and its price against distance: one
@@ -150,6 +153,19 @@ export function chaseSightClearPx(height: number): number {
 /** The px the tank's lowest point keeps over the band's top edge: clear air under the tracks, not a hairline. */
 export function chaseFloorMarginPx(height: number): number {
   return Math.min(40, Math.max(10, Math.round(height * 0.045)));
+}
+
+/**
+ * The farthest the framed default step may go in a window `width` x `height` (hud-bands-live-276). The limit keeps the tank
+ * readable, and a tank's size on screen in CSS px is set by the window's height over the distance, whatever the width: a
+ * landscape window's shorter side is its height, a portrait window's its width. So a portrait window may take the camera
+ * h / w times as far (at most PORTRAIT_REACH_MAX) and its tank keeps the share of the shorter side a landscape window's
+ * keeps at MAX_DISTANCE_M. Recorded live, a portrait phone's and an upright iPad's controls stand beside the screen centre
+ * just under the sight's band, at the hull's track corners: at 19.5 m nothing fitted, and the roof rose over the sight.
+ * Farther, the narrower hull falls between the columns and the sight stays at the centre.
+ */
+export function chaseFarthestM(width: number, height: number): number {
+  return MAX_DISTANCE_M * Math.min(PORTRAIT_REACH_MAX, Math.max(1, height / Math.max(1, width)));
 }
 
 /** A stored or typed value for one numeric camera setting, clamped into its range (NaN: the default). */
@@ -267,6 +283,7 @@ export function solveChaseFraming(width: number, height: number, bands: ChaseBan
     const shiftRoom = Math.max(0, h / 2 - ring - 4 - live.ceiling);
     const maxShift = Math.min(MAX_SHIFT_FRACTION * h, shiftRoom, Math.max(0, live.riseCap ?? Infinity));
     const lowest = h * BOTTOM_MAX_FRACTION;
+    const farthest = chaseFarthestM(w, h);
     /** The cheapest (rise, distance) from `rises` and `fromM` that fits the tank between the sight's clear zone and the
      *  floor (the transient chrome with `transient`); where none fits, the one that falls least short, the hull and
      *  tracks clear and the roof as near the sight as that leaves it. A farther camera only shrinks the tank towards the
@@ -289,12 +306,12 @@ export function solveChaseFraming(width: number, height: number, bands: ChaseBan
         if (best && riseCost + fromM / CHASE_BASE_DISTANCE_M - 1 >= best.cost) break;
         let d = fromM;
         if (!fits(rise, d)) {
-          if (!fits(rise, MAX_DISTANCE_M)) {
+          if (!fits(rise, farthest)) {
             const short = at.top - at.bottom;
-            if (!fallback || short < fallback.short) fallback = { short, pivot: at.bottom, distance: MAX_DISTANCE_M, rise, floor: at.floor };
+            if (!fallback || short < fallback.short) fallback = { short, pivot: at.bottom, distance: farthest, rise, floor: at.floor };
             continue;
           }
-          let lo = fromM, hi = MAX_DISTANCE_M;
+          let lo = fromM, hi = farthest;
           for (let k = 0; k < DISTANCE_BISECTIONS; k++) {
             const mid = (lo + hi) / 2;
             if (fits(rise, mid)) hi = mid;

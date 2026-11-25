@@ -10,6 +10,7 @@
  */
 import type { EventBus } from './stateCore.ts';
 import { markFreeFallStore } from '../fx/freeFallStores.ts';
+import { currentBattleScope, type BattleScope } from './battleScope.ts';
 
 interface StrikeRoundEvent {
   kind?: string; shellId?: number; shellName?: string; shellType?: string; caliberMm?: number; velocityMps?: number;
@@ -34,7 +35,17 @@ export const crashedStrikes = new Set<number>();
 const CRASH_MAX = 16;
 
 export function installAirSupportBridge(bus: EventBus): () => void {
+  // (battle-teardown-276) the strikes kept here are the battle's (keyed by strike ids each battle counts from 1): they go
+  // with it (game/battleScope.ts), so a strike of the next battle never reads the last one's bomb or crash
+  let adopted: BattleScope | null = null;
+  const adopt = (): void => {
+    const scope = currentBattleScope();
+    if (!scope || scope === adopted) return;
+    adopted = scope;
+    scope.defer(() => { releasedBombs.clear(); crashRounds.clear(); crashedStrikes.clear(); });
+  };
   const offExpired = bus.on('shell:expired', (payload) => {
+    adopt();
     const id = (payload as { shellId?: unknown } | null)?.shellId;
     const strikeId = id != null ? crashRounds.get(String(id)) : undefined;
     if (strikeId === undefined) return;
@@ -43,6 +54,7 @@ export function installAirSupportBridge(bus: EventBus): () => void {
     if (crashedStrikes.size > CRASH_MAX) crashedStrikes.delete(crashedStrikes.values().next().value!);
   });
   const offRound = bus.on('mode:strike_round', (payload) => {
+    adopt();
     const round = payload as (StrikeRoundEvent & { strikeId?: number; freeFall?: number; crash?: number }) | null;
     // an unpowered store: the tracer pass never draws it (fx/freeFallStores.ts), the world draws its body falling
     if (round?.freeFall === 1 && round.shellId != null) markFreeFallStore(round.shellId);

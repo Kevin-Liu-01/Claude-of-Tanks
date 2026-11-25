@@ -21,6 +21,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { createBus, createCollider, createGameState, cueTrainingActor, finishTrainingBattle, resetProvingRange, setProvingTargetsMoving,
   setTrainingCheckpoint, setupBattle, simStep } from '../state.ts';
 import { spawnTanks } from '../rosterState.ts';
+import { transitionAppPhase, type AppPhase } from '../appLifecycle.ts';
 import { useSoloConsumable } from '../soloConsumables.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { replayRefusal } from './replayBuild.ts';
@@ -137,9 +138,10 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
       return hull;
     });
     // (276) the page steps a battle in its battle phase (main.ts enters it after setup): so does the replay. A sim-graph
-    // module reads it (stateCore.ts couchSeatsActive, for the page's gates), and the replay stood in the Garage's
-    const gamePhase = game as { phase?: string };
-    gamePhase.phase = 'battle';
+    // module reads it (stateCore.ts couchSeatsActive, for the page's gates), and the replay stood in the Garage's phase.
+    // (battle-teardown-276) through the one phase writer, as every phase write is (appLifecycle.ts; its census): a bare
+    // session, so the edge is checked and nothing is announced or scoped (no page lifecycle is bound to the run's game)
+    transitionAppPhase(game as { phase: AppPhase }, 'battle', { reason: 'replay-run' });
     const bus = createBus(() => {});
     const collider = createCollider(game as never, world as never);
     const checksums = new Map(recording.checksums);
