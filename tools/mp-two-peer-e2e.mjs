@@ -316,6 +316,13 @@ function terrainPhotoTimes() {
     .map((entry) => ({ file: entry.name.split('/').pop().slice(0, 48), endS: +((entry.responseEnd - now) / 1000).toFixed(1), bytes: entry.transferSize || 0 }));
 }
 
+/** (mp-fixes-277) the props build's own record of its slices and waits (props.ts _buildDetail: wreck bakes, pool joins). */
+const propsBuildDetail = () => {
+  const props = window.__DEBUG?.world?._buildDetail?.props;
+  return props ? JSON.parse(JSON.stringify({ synchronousMs: props.synchronousMs, sliceCount: props.sliceCount, slowest: props.slowest,
+    awaitTimings: props.awaitTimings ? { ...props.awaitTimings, wreckRows: undefined } : null })) : null;
+};
+
 /** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
 async function runSolo(origin) {
   const browser = await launchGuardedBrowser(puppeteer, {
@@ -366,6 +373,7 @@ async function runSolo(origin) {
   out.trace = await page.evaluate(() => (window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null)).catch(() => null);
   // the terrain photographs against the reveal: one that lands after it swaps in on screen (the pop)
   out.terrainPhotos = await page.evaluate(terrainPhotoTimes).catch(() => null);
+  out.propsBuild = await page.evaluate(propsBuildDetail).catch(() => null);
   step('solo-entry', { revealS: +(out.revealMs / 1000).toFixed(1), longestHold: longest, bytes: { boot: out.bytesAtBoot, reveal: out.bytesAtReveal } });
   if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
   if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
@@ -581,6 +589,7 @@ try {
       return { count: rows.length, byKind, top };
     }, record.joinerJoinedAtPageMs ?? 0).catch(() => null);
     record.joinerTerrainPhotos = await B.evaluate(terrainPhotoTimes).catch(() => null);
+    record.joinerPropsBuild = await B.evaluate(propsBuildDetail).catch(() => null);
     record.joinerBytes = { atJoin: record.joinerBytesAtJoin ?? null, atReveal: await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null) };
     // the entry's own stage timings on the joiner (browserComposition markStage: where the time under one label went)
     record.joinerTrace = await B.evaluate(() => {

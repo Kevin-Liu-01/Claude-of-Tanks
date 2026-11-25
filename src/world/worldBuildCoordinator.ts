@@ -195,6 +195,11 @@ const STAGE_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Building terrain meshes': 'terrain',
   'Planting vegetation': 'vegetation',
   'Placing structures': 'props',
+  // (mp-fixes-277) the props build's parts (props.ts PROPS_PHASE_LABELS), timed as the props build
+  'Raising landmarks': 'props',
+  'Setting rocks': 'props',
+  'Dressing the battlefield': 'props',
+  'Placing wrecks': 'props',
   'Sealing the battlefield': 'assemble',
 });
 
@@ -466,7 +471,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       };
       const finishBuildStage = (sampleNow = now()): void => {
         if (!created.stageLabel) return;
-        const key = STAGE_KEYS[created.stageLabel] ?? created.stageLabel;
+        // (mp-fixes-277) a label's count after " · " is not a stage of its own (props.ts propsWreckLabel)
+        const named = created.stageLabel.split(' · ')[0];
+        const key = STAGE_KEYS[named] ?? named;
         created.stageTimings[key] = (created.stageTimings[key] ?? 0)
           + Math.round(sampleNow - created.stageMark);
         created.stageMark = sampleNow;

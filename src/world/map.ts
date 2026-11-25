@@ -116,7 +116,7 @@ interface WorldSlicingOptions {
 }
 
 type WorldBuildProgress = (label: string, fraction: number) => Promise<void> | void;
-type BuildSliceProgress = (completed: number, total: number) => Promise<void>;
+type BuildSliceProgress = (completed: number, total: number, part?: string) => Promise<void>;
 
 interface SpawnLayoutPoint {
   x: number;
@@ -500,10 +500,12 @@ export async function createMapAsync(
     // fused into a single ~29 s task on a loaded machine). Each subsystem now
     // drains its chunked twin, yielding through `step` after every slice so
     // the bar creeps THROUGH a subsystem instead of jumping between them.
+    // (mp-fixes-277) a subsystem may name the part of its build under way (the props build: propsPhaseOf)
     const sub = (label: string, f0: number, f1: number): BuildSliceProgress => (
       completed: number,
       total: number,
-    ) => step(label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
+      part?: string,
+    ) => step(part ?? label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
     await step('Surveying terrain', 0.0);
     const heightField = fineSlices
       ? await createHeightFieldAsync(seed, config, fraction => step('Surveying terrain', fraction * 0.34))
