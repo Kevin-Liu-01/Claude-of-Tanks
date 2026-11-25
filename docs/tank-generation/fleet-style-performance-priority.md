@@ -394,8 +394,9 @@ existing quality gates.
 - Check types and strict selected source geometry before expensive asset and
   full-fleet regeneration. Freeze the composed source once those checks pass.
 - Group compatible verified IDs into one checkpoint and one complete release,
-  not one full npm lifecycle per ID. Use the bounded default (up to eight CPU
-  workers; respects smaller hosts), with `COT_SELFTEST_WORKERS=1` for debugging.
+  not one full npm lifecycle per ID. Use the bounded default (two CPU workers,
+  the lane rule; `COT_SELFTEST_WORKERS` asks for up to eight), with
+  `COT_SELFTEST_WORKERS=1` for debugging.
   The [fixed-sample timing and safety checks](../history/research/selftest-release-throughput-20260910.md)
   document the extension; do not project its sample speedup onto a full release.
   Preserve fresh child processes, complete suite coverage and exclusive native

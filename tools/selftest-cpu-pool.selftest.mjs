@@ -9,12 +9,12 @@ import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
-assert.equal(selftestWorkerCount({}), Math.min(8, availableParallelism()), 'bounded pool is the CLI default');
+assert.equal(selftestWorkerCount({}), Math.min(2, availableParallelism()), 'two workers is the CLI default (the lane rule)');
 for(const available of [1,2,3,4,5,6,7,8,18,64])
-  assert.equal(selftestWorkerCount({},available),Math.min(8,available),'respect available CPUs and eight-worker ceiling');
+  assert.equal(selftestWorkerCount({},available),Math.min(2,available),'respect available CPUs and the two-worker default');
 assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'1'},18),1,'explicit serial debugging stays supported');
 assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'4'},1),4,'explicit existing override remains authoritative');
-for(const available of [0,-1,2.5,NaN])
+for(const available of [0,-1,1.5,NaN])
   assert.throws(()=>selftestWorkerCount({},available),/integer from 1 to 8/);
 for(const value of [1,2,3,4,5,6,7,8])assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: String(value) }), value);
 for (const value of ['0', '9', '2.5', '', 'NaN', 'Infinity', '2x']) {

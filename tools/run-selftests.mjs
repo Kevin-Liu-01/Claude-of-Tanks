@@ -177,9 +177,12 @@ export function selftestChildEnv(env = process.env) {
 // Bounded fresh CPU children; real browser regressions remain exclusive.
 // Respect smaller hosts and explicit serial/debug overrides without omitting
 // any assertion or caching a test result.
+// The default is the standing lane rule (277, Main): two workers, so a lane that forgets the variable stays inside it;
+// COT_SELFTEST_WORKERS asks for more, up to the ceiling.
 export const MAX_SELFTEST_WORKERS = 8;
+export const DEFAULT_SELFTEST_WORKERS = 2;
 export function selftestWorkerCount(env = process.env, availableCpus = availableParallelism()) {
-  const count = Number(env.COT_SELFTEST_WORKERS ?? Math.min(MAX_SELFTEST_WORKERS, availableCpus));
+  const count = Number(env.COT_SELFTEST_WORKERS ?? Math.min(DEFAULT_SELFTEST_WORKERS, availableCpus));
   if (!Number.isInteger(count) || count < 1 || count > MAX_SELFTEST_WORKERS) throw new TypeError(`COT_SELFTEST_WORKERS must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
   return count;
 }
