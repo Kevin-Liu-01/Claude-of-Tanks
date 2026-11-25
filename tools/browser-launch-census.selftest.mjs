@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BROWSER_ID_CAPS } from './browser-id-caps.mjs';
 import { browserIdCap, browserIdChunks, eachBrowserChunk } from './browser-id-chunks.mjs';
+import { guardedLaunchArgs } from './browser-launch.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OWNER = 'tools/browser-launch.mjs';
@@ -49,6 +50,23 @@ for (const file of files) {
 assert.deepEqual(findings, [], `launch every browser through ${OWNER} launchGuardedBrowser (the heap cap and the RSS watchdog):\n  `
   + findings.join('\n  '));
 console.log(`browser-launch-census.selftest: ${files.length} sources, every browser launch through ${OWNER}`);
+
+// Mute (Main 2026-11-25, modal-layer-277: Kevin heard a lane's test battle on his speakers). The guard adds --mute-audio
+// to every launch's args (guardedLaunchArgs), so every launch above is mute; a launch keeps the speakers only by naming
+// --mute-audio among the defaults it drops (launchWantsSpeakers), and only the sources below may write that.
+const SPEAKERS = Object.freeze({
+  'tools/audio-default-sink-probe.mjs': 'the default-sink probe: a headed native Chrome whose audio must reach the Mac\'s real output device',
+  'tools/audio-default-sink.selftest.mjs': 'the probe\'s receipt: it reads the probe\'s launch options (no browser of its own)',
+});
+const SPEAKER_ASK = new RegExp(['ignoreDefaultArgs[^\\n]*', '--mute', '-audio'].join(''));
+assert.ok(guardedLaunchArgs([], {}).includes('--mute-audio'), 'the guard mutes every launch');
+const muteFlag = ['--mute', '-audio'].join('');
+assert.ok(SPEAKER_ASK.test(`ignoreDefaultArgs: ['${muteFlag}']`), 'the ask');
+assert.ok(!SPEAKER_ASK.test(`args: ['${muteFlag}']`), 'a mute is no ask');
+const asks = files.filter((file) => { try { return SPEAKER_ASK.test(readFileSync(join(ROOT, file), 'utf8')); } catch { return false; } });
+assert.deepEqual(asks.filter((file) => !SPEAKERS[file]), [], 'only a named source may ask for the speakers (SPEAKERS, with its reason)');
+assert.deepEqual(Object.keys(SPEAKERS).filter((file) => !asks.includes(file)), [], 'a SPEAKERS row whose source no longer asks is stale');
+console.log(`browser-launch-census.selftest: every browser mute but ${Object.keys(SPEAKERS).length} named sources' speaker launches`);
 
 // Tank ids per browser. The scan reads code only (comments removed): a tool opens a browser and reads tank ids.
 const OPENS = /\b(?:launchGuardedBrowser|withIsolatedCaptureBrowser|withMapProbeSession|withDistProbeSession)\s*\(/;
