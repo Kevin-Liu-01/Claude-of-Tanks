@@ -196,6 +196,14 @@ z-index, shadow, duration and `!important` literals outside the token package
 (CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
 new file starts at zero). After replacing literals with tokens, lower it with
 `node tools/style-literal-census.mjs --write`.
+Stacking is one scale (`tokens.json` semantic.layer, owner 2026-11-24: any modal
+over any other UI): z-hud < z-screen < z-report < z-shell < z-cover < z-notice <
+z-drawer < z-menu < z-modal < z-tip < z-critical. A root element takes a layer
+or a step on one (`calc(var(--z-modal) + 1)`); a literal in the local band
+(-2..39) only orders a component's own parts. An open modal also stands in the
+top layer (`components/modalLayer.ts` liftModal), so a screen's stacking context
+never traps it; notices never enter the top layer. `tools/z-layer-census.mjs`
+holds every z-index and every modal to it.
 Motion animates `transform` and `opacity` only, on the `--dur-*` tokens, with a
 reduced-motion path for anything that moves or loops (token durations collapse
 to 1 ms; a loop needs a `prefers-reduced-motion: reduce` rule on its class), as

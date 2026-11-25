@@ -12,7 +12,7 @@ import {
 
 const STYLE_ID = 'cot-mission-brief-style';
 const CSS = `
-.cot-brief{position:fixed;left:22px;top:clamp(220px,30vh,320px);z-index:34;width:min(380px,calc(100vw - 44px));padding:var(--s3) var(--s4);
+.cot-brief{position:fixed;left:22px;top:clamp(220px,30vh,320px);z-index:calc(var(--z-hud) - 6);width:min(380px,calc(100vw - 44px));padding:var(--s3) var(--s4);
   color:var(--ink-1);background:var(--hud-plate);border-radius:var(--plate-radius);box-shadow:inset 2px 0 0 var(--accent),var(--e2);
   font-family:var(--font-ui);opacity:0;transform:translateX(-14px);
   transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-screen) var(--ease-enter);pointer-events:none}

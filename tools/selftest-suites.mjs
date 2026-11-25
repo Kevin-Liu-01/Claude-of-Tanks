@@ -1464,6 +1464,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-11-24 (modal-layer-277; owner: "any modal should go above any other ui stuff"): one stacking order, every z-index
+    // on it and every modal on its modal layer (tools/z-layer-census.mjs)
+    'tools/z-layer-census.selftest.mjs',
     // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
     // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)
     'tools/motion-lint.selftest.mjs',

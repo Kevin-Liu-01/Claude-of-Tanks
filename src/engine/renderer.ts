@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
+import { raiseCritical } from '../ui/components/modalLayer.ts';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss } from './quality.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
@@ -164,7 +165,7 @@ function showContextLossOverlay(state: RecoveryNotice): void {
       el.setAttribute('aria-modal', 'true');
       el.setAttribute('aria-labelledby', 'cot-ctxlost-title');
       el.tabIndex = -1;
-      el.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:var(--surface-scene);color:var(--ink-1);text-align:center;padding:var(--s5);box-sizing:border-box";
+      el.style.cssText = "position:fixed;inset:0;z-index:var(--z-critical);display:grid;place-items:center;background:var(--surface-scene);color:var(--ink-1);text-align:center;padding:var(--s5);box-sizing:border-box";
       // the commander mark signs the notice (no eyebrow); the reload is the kit's primary button
       el.innerHTML = `<div style="width:min(420px,100%)">
         <img src="/brand/mark.svg" alt="" width="72" height="41" style="display:block;margin:0 auto var(--s5)">
@@ -192,6 +193,8 @@ function showContextLossOverlay(state: RecoveryNotice): void {
     if (copy) copy.textContent = t(`graphics.recovery.${state === 'failed' ? 'failedCopy' : state === 'delayed' ? 'delayedCopy' : 'workingCopy'}`);
     if (button) { button.hidden = !fallback; button.textContent = t('graphics.recovery.reload'); }
     el.dataset.recoveryState = state;
+    // (modal-layer-277) the one blocker over an open modal: the scene is gone, so is every control under it
+    raiseCritical(el, true);
   } catch { /* recovery must remain possible even if presentation fails */ }
 }
 

@@ -306,7 +306,7 @@ function nameVehicleCard(card: HTMLElement, name: string, split: (name: string) 
 }
 
 const ES_CSS = `
-.cot-es{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
+.cot-es{position:fixed;inset:0;z-index:calc(var(--z-report) + 1);display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
   padding:2.2vh 0 2.6vh;overflow:hidden;font-family:${FONT_STACK};color:${COL.text};
   background:

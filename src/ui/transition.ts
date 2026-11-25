@@ -75,7 +75,7 @@ interface TransitionScreen {
 // the opaque veil is a press on the veil; a start that reaches the game under it (a key, a menu, a tool's click) waits
 // for the return (garageReturnRuntime.ts whenSettled).
 const CSS = `
-.cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
+.cot-trans{position:fixed;inset:0;z-index:calc(var(--z-cover) + 5);display:none;align-items:center;
   justify-content:center;flex-direction:column;background:#05080b;opacity:0;
   transition:opacity var(--dur-base) var(--cot-ease-out);font-family:${FONT_STACK};color:#e6edf3;
   -webkit-user-select:none;user-select:none;cursor:default;overflow:hidden;}

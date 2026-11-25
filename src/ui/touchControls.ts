@@ -21,12 +21,12 @@ const TIERED_PRESET_KEYS: Readonly<Record<string, string>> = {
 };
 
 const CSS = `
-.cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
+.cot-touch{position:fixed;inset:0;z-index:var(--z-screen);display:none;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;--edge:max(14px,env(safe-area-inset-left));
   --touch-panel:var(--hud-plate-strong);--touch-edge:var(--line-control);
   --touch-action:var(--accent);--touch-action-soft:oklch(from var(--accent) l c h / .18);}
-.cot-touch-aim{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
+.cot-touch-aim{position:fixed;inset:0;z-index:calc(var(--z-hud) - 1);display:none;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;}
 .cot-touch.on,.cot-touch-aim.on{display:block;}

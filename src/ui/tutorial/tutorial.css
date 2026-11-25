@@ -6,7 +6,7 @@
 @import url('../tokens/surface-tutorial.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-.cot-tut{position:fixed;inset:0;z-index:var(--z-toast);width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;
+.cot-tut{position:fixed;inset:0;z-index:var(--z-notice);width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;
   border:0;background:none;overflow:visible;color:var(--ink-1);pointer-events:none;display:none;}
 .cot-tut:is(.is-open,.is-leaving){display:block;}
 .cot-tut-scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;transition:opacity var(--dur-base) var(--ease-enter);}

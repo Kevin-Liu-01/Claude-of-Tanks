@@ -91,7 +91,7 @@ const COURSE_MARGIN_M = 6;
 /** A last shot older than this steps back (ms). */
 const STALE_SHOT_MS = 6000;
 const CSS = `
-.cot-range-card{position:absolute;z-index:var(--hud-layer-controls,30);left:12px;
+.cot-range-card{position:absolute;z-index:var(--hud-layer-controls);left:12px;
   top:calc(var(--hud-left-top,120px) + var(--hud-toast-height,0px) + 8px);
   width:min(288px,var(--hud-side-width,288px));max-height:calc(var(--hud-left-height,60vh) - var(--hud-toast-height,0px) - 8px);
   overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:none;flex-direction:column;gap:6px;

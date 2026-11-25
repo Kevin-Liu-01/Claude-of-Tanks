@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { PadStatusSource } from '../pad/padReceiver.ts';
 import type { PadCommand } from '../pad/padProtocol.ts';
 import { togglePhonePause } from './phonePause.ts';
+import { liftModal } from './components/modalLayer.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -278,7 +279,7 @@ const SETTINGS_CSS = `
    so the colour, contrast and motion presets reach it with no code. Sizes are max(px, token): the type tokens follow the
    game's UI scale and the zh floor, and the px keeps the 11 px floor on a small window. Every class the probes and
    main.ts touch keeps its name and open/close semantics. */
-.cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+.cot-settings{position:fixed;inset:0;z-index:calc(var(--z-modal) + 1);display:none;align-items:center;justify-content:center;
   background:oklch(from var(--scrim) l c h / .7);font-family:var(--font-ui);color:var(--ink-1);
   -webkit-user-select:none;user-select:none;}
 .cot-settings.open{display:flex;}
@@ -478,7 +479,7 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 /* Standalone fallback placement. The garage mounts this settings-owned button
    into its top navigation rail; these coordinates only apply before that
    mount or in a surface that creates settings without the garage. */
-.cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
+.cot-gear{position:fixed;top:60px;right:26px;z-index:calc(var(--z-screen) + 2);width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;border:0;border-radius:var(--control-radius);
   background:var(--surface-plate);box-shadow:var(--ring-2);color:var(--ink-3);pointer-events:auto;
   transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
@@ -488,7 +489,7 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
    notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
    max-content keeps one row until the edge clamps it. */
 .cot-hints{position:fixed;left:var(--hud-hints-x,50%);top:var(--hud-hints-bottom,calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2)));
-  transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
+  transform:translate(-50%,-100%);z-index:calc(var(--z-hud) + 5);width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
   display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
   pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
   font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
@@ -511,7 +512,7 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-cot-strike-view] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
-.cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
+.cot-resume{position:fixed;inset:0;z-index:var(--z-modal);display:none;place-items:center;cursor:pointer;
   background:oklch(from var(--scrim) l c h / .5);color:var(--ink-1);-webkit-user-select:none;user-select:none;}
 .cot-resume.show{display:grid;}
 .cot-resume .rz-plate{display:grid;justify-items:center;gap:var(--s5);padding:var(--s6) var(--s7);
@@ -674,6 +675,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
+  // (modal-layer-277; 844x390: the PAUSED chip sat on the Language tab) a short screen floats the header over the tab row's
+  // end (responsiveSurfaces.css): the row keeps the header's measured width clear, so the chip (its width the locale's word)
+  // and the close never cover a tab
+  const header = requiredElement<HTMLElement>(root, '.cot-set-hdr');
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => { root.style.setProperty('--set-hdr-w', `${Math.ceil(header.getBoundingClientRect().width)}px`); }).observe(header);
+  }
 
   const body = requiredElement<HTMLDivElement>(root, '.cot-set-body');
   const conflictBar = markDatum(requiredElement<HTMLDivElement>(root, '.cot-set-conflict'), 'notices');
@@ -786,7 +794,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // classList.remove of an absent class still rewrites the attribute, 7 writes a second for as long as the page lived, 266)
   function syncResumeVeil() {
     const up = inputOwner.veil !== null;
-    if (up !== resume.classList.contains('show')) resume.classList.toggle('show', up);
+    if (up !== resume.classList.contains('show')) { resume.classList.toggle('show', up); liftModal(resume, up); }
     if (!up && relockRetry !== null) { clearTimeout(relockRetry); relockRetry = null; }
   }
   function hideResumeVeil() {
@@ -2070,6 +2078,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
     leaveBtn.hidden = !canLeave;
     root.classList.add('open');
+    liftModal(root, true); // (modal-layer-277) over every other layer, the pause veil and the HUD's notices among them
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
@@ -2099,6 +2108,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     inputOwner.closeMenu();
     closeSurface(surface);
     root.classList.remove('open');
+    liftModal(root, false);
     root.classList.remove('paused'); // PAUSE: tag never outlives the panel
     window.removeEventListener('keydown', onPanelKey, true);
     window.removeEventListener('keyup', onPanelKeyUp, true);
@@ -2234,7 +2244,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function updateGear() {
     gear.style.display = !open && gearVisible() ? 'flex' : 'none';
     // Safety net (r2): the resume veil must never outlive the battle — a
-    // result can land without a phase:change (end overlay is z 70, veil 79).
+    // result can land without a phase:change (the end overlay on --z-report would sit under the veil on --z-modal).
     if (!isBattleActive()) hideResumeVeil();
     refreshPausedTag(); // PAUSE: tag follows phase/result while the panel is up
   }

@@ -142,10 +142,10 @@ const PANES_CSS = '.cot-couch-panes{position:fixed;inset:0;pointer-events:none;z
  *   layout lifts it over the tray (battleHudLayout.ts --hud-map-lift), and the fit gives up the rosters before the map.
  */
 const PANE_GROUND_CSS = 'html,body{background:transparent;margin:0;overflow:hidden}'
-  + 'body[data-couch-pane]::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483000;'
+  + 'body[data-couch-pane]::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:var(--z-critical);'
   + 'box-shadow:inset 0 0 0 3px var(--couch-seat-ink,var(--team-own))}'
   + 'body[data-couch-pane][data-couch-away]::after{opacity:.35}'
-  + '.cot-couch-seat-tag{position:fixed;left:50%;top:var(--hud-ears-top,52px);transform:translateX(-50%);z-index:2147483000;'
+  + '.cot-couch-seat-tag{position:fixed;left:50%;top:var(--hud-ears-top,52px);transform:translateX(-50%);z-index:var(--z-notice);'
   + 'pointer-events:none;padding:2px 10px;border-radius:var(--r1,4px);background:var(--hud-plate,rgba(10,14,18,.72));'
   + 'box-shadow:inset 0 0 0 2px var(--couch-seat-ink,var(--team-own));color:var(--ink-1,#fff);'
   + 'font:600 var(--battle-fs-13,13px)/1.4 var(--hud-font,inherit);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}'

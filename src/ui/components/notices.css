@@ -57,7 +57,7 @@
 @media (prefers-reduced-motion:reduce){.cot-c-notice--toast[data-state]{transform:none}}
 
 /* ---- a placed region: a fixed column of toasts that never moves the page ---- */
-.cot-c-notices{position:fixed;z-index:var(--z-toast);display:flex;flex-direction:column;gap:var(--s2);width:min(420px,calc(100vw - 32px));
+.cot-c-notices{position:fixed;z-index:var(--z-notice);display:flex;flex-direction:column;gap:var(--s2);width:min(420px,calc(100vw - 32px));
   pointer-events:none}
 .cot-c-notices:empty{display:none}
 .cot-c-notices>*{pointer-events:auto}

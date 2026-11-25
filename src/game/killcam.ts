@@ -1090,7 +1090,7 @@ function proxMatForState(state: ModuleStateName): THREE.MeshLambertMaterial {
 // DOM overlay (letterbox + title + annotation block + projected labels)
 // ---------------------------------------------------------------------------
 const KC_CSS = `
-.cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;isolation:isolate;
+.cot-kc{position:fixed;inset:0;z-index:var(--z-screen);pointer-events:none;display:none;isolation:isolate;
   /* (death-flow-275) the letterbox bands' height and the side gutter: the shot card, the respawn dial (respawnDial.ts,
      outside this root) and the keys sit in and over the lower band */
   --kc-band:8vh;--kc-gutter:28px;
@@ -1200,7 +1200,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   background:radial-gradient(ellipse 80% 70% at 50% 50%,transparent 50%,
     rgba(6,8,11,.34) 84%,rgba(4,6,9,.5) 100%);}
 .cot-kc.grade .cot-kc-grade{opacity:1;}
-.cot-kc-fadeblk{position:fixed;inset:0;z-index:80;background:var(--surface-scene);opacity:0;
+.cot-kc-fadeblk{position:fixed;inset:0;z-index:calc(var(--z-report) + 8);background:var(--surface-scene);opacity:0;
   pointer-events:none;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-kc-fadeblk.in{opacity:1;}
 .cot-kc-fadeblk.lift{transition:opacity var(--cot-motion-base) var(--cot-ease-out);}

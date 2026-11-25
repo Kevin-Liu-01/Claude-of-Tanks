@@ -9,6 +9,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { closeSurface, modalSurfaceOpen, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { liftModal, MODAL_LAYER_ATTR } from './components/modalLayer.ts';
 
 /** Reduce motion: the player's choice on :root (data-motion reduce or full, src/ui/accessibilityPreferences.ts), or the
  *  OS while they follow it. Inline: the public pages load this modal and never carry the accessibility core. */
@@ -28,13 +29,16 @@ const MODAL_SIZES = new Set(['small', 'medium', 'large', 'wide']);
 /** The kit's toasts (components/notice.ts): one shown over a contained surface stays in its Tab ring. */
 const TOAST_SELECTOR = '.cot-c-notice--toast';
 
-/** Shared keyboard boundary for the modal shell and in-battle Settings. The ring is the panel's controls, then those of
- *  any toast shown outside it (an error's Retry raised over a modal); Tab moves natively inside each and wraps between them. */
+/** Shared keyboard boundary for the modal shell, in-battle Settings and the Garage's contained surfaces. The ring is the
+ *  panel's controls, then those of any toast shown outside it over a surface below the modal layer (an error's Retry raised
+ *  over the equipment picker); Tab moves natively inside each and wraps between them. A panel on the modal layer
+ *  (modal-layer-277) stands over every toast, so its ring is its own controls: a toast under its scrim is never reached. */
 export function containModalTab(event: KeyboardEvent, panel: HTMLElement, fallback: HTMLElement): void {
   if (event.key !== 'Tab') return;
   const reachable = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
     .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
-  const toasts = [...document.querySelectorAll<HTMLElement>(TOAST_SELECTOR)].filter((toast) => !panel.contains(toast));
+  const toasts = panel.closest(`[${MODAL_LAYER_ATTR}]`) ? []
+    : [...document.querySelectorAll<HTMLElement>(TOAST_SELECTOR)].filter((toast) => !panel.contains(toast));
   const rings = [panel, ...toasts].map((root) => ({ root, focusable: reachable(root) }))
     .filter((ring, index) => index === 0 || ring.focusable.length);
   const active = document.activeElement;
@@ -119,7 +123,7 @@ export function normalizeModalSize(value: RuntimeValue): ModalSize {
 // kit's own (cot-c-btn, src/ui/components/components.css; this sheet sits in the surfaces layer, over the kit's).
 const CSS = `
 .cot-modal-root,.cot-modal{box-sizing:border-box;min-width:0}
-.cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
+.cot-modal-root{position:fixed;inset:0;z-index:calc(var(--z-modal) + 2);display:grid;place-items:center;padding:clamp(12px,3vw,38px);
   font-family:var(--font-ui);color:var(--ink-1);opacity:0;pointer-events:none;
   transition:opacity var(--dur-base) var(--ease-enter)}
 .cot-modal-root[hidden]{display:none}.cot-modal-root.is-open{opacity:1;pointer-events:auto}
@@ -262,6 +266,7 @@ export function createModal({
       openSurface(surface, trigger);
       body.scrollTop = 0;
       root.hidden = false;
+      liftModal(root, true);
       activeModal = controller;
       lockBody();
       requestAnimationFrame(() => {
@@ -287,6 +292,7 @@ export function createModal({
       if (wasActive) unlockBody();
       const finish = () => {
         root.hidden = true;
+        liftModal(root, false);
         if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
         trigger = null;
       };

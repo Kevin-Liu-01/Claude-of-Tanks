@@ -3,6 +3,7 @@ import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker }
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { liftModal } from './components/modalLayer.ts';
 import { createModePicker, modeRuleLines, type ModeCard, type ModePicker } from './modePicker.ts';
 import { battlefieldFacts } from './battlefieldFacts.ts';
 import type { IconId } from './icons/icon.ts';
@@ -200,7 +201,7 @@ export function preloadPlayMode(_mode: PlayMode): Promise<null> {
 const CSS = `
 /* the panel hangs under the Garage's bar (y 16 to 60 at every size), never across it, and grows downward; the game
    document declares the weight-voiced 'Cot UI' family, so the reading voice is that family too */
-.cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:flex-start;justify-content:center;
+.cot-play{position:fixed;inset:0;z-index:var(--z-modal);display:none;align-items:flex-start;justify-content:center;
   padding:max(72px,8vh) var(--s5) var(--s5);background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
 .cot-play.show{display:flex}
 .cot-play,.cot-play *{box-sizing:border-box}
@@ -2392,6 +2393,7 @@ export function createPlayMenu({
     const restoreFocus = !handedOff && root.contains(document.activeElement);
     closeSurface(roomsSurface);
     root.classList.remove('show');
+    liftModal(root, false);
     // Closing the presentation must never mean leaving an established room.
     // The live lobby state remains authoritative while the player browses the
     // Garage and is rendered unchanged when this modal is opened again.
@@ -2406,6 +2408,7 @@ export function createPlayMenu({
         && !root.contains(document.activeElement)) returnFocus = document.activeElement;
     if (!root.classList.contains('show')) openSurface(roomsSurface, returnFocus);
     root.classList.add('show');
+    liftModal(root, true);
   }
   function dispose(): void {
     if (seat === 'handed_off') moveSeat('lobby', 'menu disposed');

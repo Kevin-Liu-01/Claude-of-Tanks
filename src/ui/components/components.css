@@ -179,7 +179,7 @@ button.cot-c-chip{cursor:pointer}
 [data-reveal][data-ready]>:is(img,video,picture){opacity:1}
 /* ---- the hover tip (hoverTip.ts): one per document, in the top layer, placed clear of every edge; it keeps its text's
    own line breaks (a consumable slot's second line, the Studio clip's effects) ---- */
-.cot-c-tip{position:fixed;inset:auto;z-index:var(--z-toast);max-width:min(280px,calc(100vw - 16px));margin:0;padding:var(--s1) var(--s2);
+.cot-c-tip{position:fixed;inset:auto;z-index:var(--z-tip);max-width:min(280px,calc(100vw - 16px));margin:0;padding:var(--s1) var(--s2);
   overflow:visible;border:0;border-radius:var(--r1);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);
   font:500 max(var(--fs-floor-11),var(--fs-11))/1.35 var(--font-body);letter-spacing:normal;text-transform:none;
   white-space:pre-line;pointer-events:none;opacity:0;transition:opacity var(--dur-instant) var(--ease-enter)}
