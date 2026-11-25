@@ -22,7 +22,11 @@
  *   link        the data channel's selected candidate pair is reported (host / srflx / relay).
  *   Any page error, or a console error, on either page fails the run.
  *
- *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --port=4248
+ *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist
+ *     (inside a hold the preview and the rooms service bind the slot's block, $COT_CAPTURE_PREVIEW_PORT and
+ *     $COT_CAPTURE_ROOMS_PORT (tools/capture-ports.mjs), and the pages dial that rooms port with ?roomsPort=, so two render
+ *     slots never share the LAN helper's 8792; --port and --rooms-port name others, and outside a hold they default to
+ *     4248 and 8792)
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=3 --play=120 --maps=verdant,winter --joiner-map=desert --json
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=1 --play=20 --host-throttle=4   # a slow laptop hosting
  *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay
@@ -54,8 +58,9 @@ const json = process.argv.includes('--json');
 const headful = process.argv.includes('--headful');
 const distDir = resolve(root, argValue('dist', 'dist'));
 const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-two-peer-e2e')));
-const previewPort = Number(argValue('port', 4248));
-const roomsPort = Number(argValue('rooms-port', 8792));
+// unnamed ports inside a capture hold: its slot block's first preview port and rooms port (tools/capture-ports.mjs, 277)
+const previewPort = Number(argValue('port', process.env.COT_CAPTURE_PREVIEW_PORT || 4248));
+const roomsPort = Number(argValue('rooms-port', process.env.COT_CAPTURE_ROOMS_PORT || 8792));
 const battles = Math.max(1, Number(argValue('battles', 2)));
 const playS = Number(argValue('play', 120));
 // the room's battlefield for each battle in turn (the host's Garage pick); the joiner plans --joiner-map before each
@@ -107,7 +112,8 @@ const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
 // debug HUD over the Garage's rooms entry)
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+// a rooms service off the LAN helper's 8792 is dialled with ?roomsPort= (endpoint.ts, loopback pages only)
+const BOOT_QUERY = `nosplash=1&tier=desktop&gfxreset=1${roomsPort !== 8792 ? `&roomsPort=${roomsPort}` : ''}`;
 const VIEWPORT = { width: 1024, height: 640, deviceScaleFactor: 1 };
 
 const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${line}\n`); };
