@@ -11,7 +11,7 @@
  *   itself a gate. The host (A) creates a LAN room on its Garage's map (--maps, in turn), B joins by code from the same
  *   page, A starts; both play --play seconds over WebRTC, leave the battle to the Garage and leave the room.
 
- * Gates (exit 1 on any failure):
+ * Gates (exit 1 on any failure; exit 2: --ice=relay with no relay configured):
  *   one map     every second of every battle, on both pages, exactly one `world-*` root of the scene is drawn (visible
  *               and in the scene), and it is the battlefield the round names (round.mapId); the black-world guard's
  *               tracked world is that one too.
@@ -23,6 +23,10 @@
  *
  *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --port=4248
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=3 --play=120 --maps=verdant,winter --joiner-map=desert --json
+ *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay
+ *     (relay-only through real TURN: run it in a terminal whose environment holds the rooms Worker's relay variables, set by
+ *     hand there and never written to a file; without them the run refuses, exit 2, naming them. Every link's selected
+ *     pair must be relay/relay and the status model's Path, the F3 row, must say via TURN.)
  *
  * Out: --out (default .qa-dev/mp-two-peer-e2e, gitignored): report.json, a still of each page at each battle's start and
  * after its play, and each page's scene roots at those moments.
@@ -34,6 +38,7 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { preview } from 'vite';
 import { createRoomsServer } from '../server/rooms/serve.ts';
+import { createRelayIssuer, pickRelayEnv } from '../server/relayCredentials.ts';
 import { openRooms, pressControl } from './mp-rooms-entry.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
@@ -56,6 +61,15 @@ const hostMaps = argValue('maps', 'verdant,winter').split(',').filter(Boolean);
 const joinerMap = argValue('joiner-map', 'desert');
 const rttP95Bound = Number(argValue('rtt-p95', 120));
 const ackP95Bound = Number(argValue('ack-p95', 12));
+// --mode=private: an internet room (the Play menu's Private), whose every connection asks the room for its ICE servers; a
+// LAN room uses none (src/mp/transport/iceConfig.ts). --ice=relay (implies private): every peer connection on both pages is
+// built relay-only (iceTransportPolicy 'relay'), so a link exists only through the TURN servers the room granted, and the
+// room service mints them from this process's environment (server/relayCredentials.ts). The tool never reads, prints or
+// writes the relay variables: the issuer says whether they configure a relay, and a run without one refuses by their names.
+const forceRelay = argValue('ice', '') === 'relay';
+const roomKind = forceRelay || argValue('mode', 'lan') === 'private' ? 'private' : 'lan';
+const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
+  + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
 // debug HUD over the Garage's rooms entry)
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
@@ -65,7 +79,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -136,6 +150,8 @@ function netProbe() {
     maxCorrectionM: prediction?.maxCorrectionM ?? null, lastPositionErrorM: prediction?.lastPositionErrorM ?? null,
     maxFreePositionErrorM: prediction?.maxFreePositionErrorM ?? null, hardSnaps: prediction?.hardSnaps ?? null, tickJumps: prediction?.tickJumps ?? null,
     health: v2?.network?.health ?? null, role: v2?.session?.p2p?.role ?? null,
+    // the F3 panel's Path row reads these (src/ui/multiplayerStatus.ts formatPanelRows)
+    candidateType: window.__MULTIPLAYER_V2?.networkStatus?.candidateType ?? null, viaTurn: window.__MULTIPLAYER_V2?.networkStatus?.viaTurn ?? null,
   };
 }
 
@@ -157,12 +173,17 @@ async function linkProbe() {
 }
 
 /** Init script: keep every RTCPeerConnection the page makes, for the link probe. */
-function installPcRecorder() {
+function installPcRecorder(relayOnly = false) {
   if (window.__MP2_PCS) return;
   const pcs = window.__MP2_PCS = [];
   const Native = window.RTCPeerConnection;
   if (!Native) return;
-  window.RTCPeerConnection = class extends Native { constructor(...args) { super(...args); pcs.push(this); } };
+  window.RTCPeerConnection = class extends Native {
+    constructor(configuration, ...rest) {
+      super(relayOnly ? { ...(configuration ?? {}), iceTransportPolicy: 'relay' } : configuration, ...rest);
+      pcs.push(this);
+    }
+  };
 }
 
 const p95 = (values) => {
@@ -244,8 +265,15 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { void st
 
 try {
   await mkdir(outputDir, { recursive: true });
-  rooms = await createRoomsServer({ host: '127.0.0.1', port: roomsPort, seatSecret: randomBytes(24).toString('hex'), matchTransport: 'p2p' });
-  step('rooms', { url: rooms.url, transport: 'p2p' });
+  // a private room's grants come from this process's relay variables (none set: STUN-less host candidates, as the LAN helper)
+  const relay = createRelayIssuer({ env: pickRelayEnv(process.env), warn: (line) => report.findings.push(`relay issuer: ${line}`) });
+  if (forceRelay && relay.source === 'none') {
+    report.refused = `--ice=relay needs a relay in this process's environment: set ${RELAY_VARIABLES} in your own terminal (never in a file or a chat)`;
+    throw new Error(report.refused);
+  }
+  rooms = await createRoomsServer({ host: '127.0.0.1', port: roomsPort, seatSecret: randomBytes(24).toString('hex'), matchTransport: 'p2p',
+    ...(roomKind === 'private' ? { relayCredentials: () => relay.issue() } : {}) });
+  step('rooms', { url: rooms.url, transport: 'p2p', roomKind, relaySource: relay.source, forceRelay });
   server = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port: previewPort, strictPort: true, open: false } });
   const origin = `http://127.0.0.1:${previewPort}`;
   step('preview', { origin, dist: distDir });
@@ -260,7 +288,7 @@ try {
   for (const [label, browser] of [['A', browsers[0]], ['B', browsers[1]]]) {
     const page = await (await browser.createBrowserContext()).newPage();
     await page.setViewport(VIEWPORT);
-    await page.evaluateOnNewDocument(installPcRecorder);
+    await page.evaluateOnNewDocument(installPcRecorder, forceRelay);
     observe(page, label);
     pages[label] = page;
   }
@@ -293,7 +321,7 @@ try {
     await selectGarageMap(A, roomMap);
     await openRoomsPanel(A);
     await waitFor(A, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-    await press(A, '.cot-play .modes [data-value="lan"]');
+    await press(A, `.cot-play .modes [data-value="${roomKind}"]`);
     await A.evaluate(() => {
       const name = document.querySelector('.cot-play [data-field="name"]');
       if (name) name.value = 'Alpha Lead';
@@ -312,7 +340,7 @@ try {
     // ---- the joiner joins by code from the same page (an invite link would reload it and drop its planned world)
     await openRoomsPanel(B);
     await waitFor(B, () => document.querySelector('.cot-play')?.classList.contains('show'), 'B play menu', 30_000);
-    await press(B, '.cot-play .modes [data-value="lan"]');
+    await press(B, `.cot-play .modes [data-value="${roomKind}"]`);
     await B.evaluate((code) => {
       const name = document.querySelector('.cot-play [data-field="name"]');
       if (name) name.value = 'Bravo Wing';
@@ -423,6 +451,16 @@ try {
       if (summary.reconnects > 0) fail(`${label} battle ${battle}: ${summary.reconnects} reconnects`);
       if (summary.stalls > 0) fail(`${label} battle ${battle}: ${summary.stalls} stalls`);
       if (summary.secondsWithoutSnapshot > 1) fail(`${label} battle ${battle}: ${summary.secondsWithoutSnapshot} seconds without a snapshot`);
+      summary.path = { candidateType: last.candidateType ?? null, viaTurn: last.viaTurn ?? null };
+      if (forceRelay) {
+        // relay-only: every live link through TURN at both ends, and the F3 panel's Path row says so (the peer's
+        // candidate type, the host's "via TURN")
+        const links = record.links[label] ?? [];
+        if (!links.length || links.some((link) => link.state === 'connected' && (link.local !== 'relay' || link.remote !== 'relay'))) {
+          fail(`${label} battle ${battle}: --ice=relay, but a link's selected pair is not relay/relay: ${JSON.stringify(links)}`);
+        }
+        if (last.viaTurn !== true) fail(`${label} battle ${battle}: --ice=relay, but the status model (the F3 Path row) says viaTurn ${last.viaTurn}`);
+      }
     }
 
     // ---- both leave to the Garage (the room is kept); the match ends once no commander is in it
@@ -459,4 +497,5 @@ try {
 }
 if (json) process.stdout.write(`${JSON.stringify({ pass: report.pass, failures: report.failures, out: outputDir })}\n`);
 else log(`${report.pass ? 'PASS' : 'FAIL'} (${(report.wallMs / 1000).toFixed(0)} s) ${outputDir}/report.json`);
-process.exit(report.pass ? 0 : 1);
+if (report.refused) process.stderr.write(`[mp-two-peer-e2e] refused: ${report.refused}\n`);
+process.exit(report.refused ? 2 : report.pass ? 0 : 1);

@@ -2818,6 +2818,40 @@ accounts for part of "doesn't work super well p2p". What a real home network add
 measured here; `tools/mp-p2p-e2e.mjs --site=… --mode=private` and `mp-p2p-soak --ice=relay` (with relay secrets) are
 those checks.
 
+**The real network, how to check it.** One machine selects host candidates whatever the ICE servers, so two checks remain.
+(1) Relay-only through real TURN on one machine: `node tools/with-capture-lock.mjs --lock-class=render -- node
+tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay` in a terminal whose environment holds the rooms Worker's
+relay variables (`COT_CLOUDFLARE_TURN_KEY_ID` and `COT_CLOUDFLARE_TURN_API_TOKEN`, or a coturn's `COT_TURN_URLS` and
+`COT_TURN_SHARED_SECRET`), set by hand there and never written to a file. `--mode=private` makes each room an internet
+room, whose connections ask the room for a grant (a LAN room uses no ICE servers, `src/mp/transport/iceConfig.ts`);
+`--ice=relay` builds every peer connection relay-only and gates every selected pair relay/relay and the status model's
+`viaTurn`. Without a relay configured the run refuses (exit 2) naming the variables; the tool never reads their values,
+the issuer (`server/relayCredentials.ts`) says whether they configure one. (2) Two devices on two networks against the
+live site: the host on a laptop on home Wi-Fi (Play, Private, Create), the joiner on a phone on cellular data with Wi-Fi off
+(the invite link), two minutes of play; the F3 panel's **Path** row on the phone names the link (`direct`, `direct (NAT)`,
+`relayed`, `via TURN`; the host's reads `this browser`, with `via TURN` when any peer is relayed).
+
+**A lead: the host's own controls right after the reveal (277).** In the slot runs (under the capture lock) the host's
+own seat acknowledged its input 2–10 ticks behind from the first second. In four short runs outside the lock on the same
+machine under other sessions' load, it started 36–48 ticks behind (0.6–0.8 s), every tick of it intrinsic (no lead), and
+drained about 3 ticks a second (48, 45, 42, 38, 36, 32, 29, 26, 24 over nine seconds), while the joiner settled in three.
+That is a backlog on the host's loopback into its own Worker after the countdown, and on a slow host it is the host's
+first ten-odd seconds of control. Not yet explained; the next step is the host Worker's tick timeline against the page's
+sampled ticks over the first 20 s on a throttled host (`mp-p2p-e2e --host-throttle`).
+
+**Parked: the host's data channel off the main thread (measured proposal, 2026-11-25).** The host relays every peer's
+frames to its Worker on its main thread (§13.24), so its frames sit in every peer's path twice. Measured over the six
+two-minute battles above, second by second: the host's own seat (loopback, no data channel) has wire rtt p50 38–46 ms,
+p95 44–64; the peer (through the host's main thread twice, ICE pair 1 ms) p50 40–50, p95 49–76; the peer less the host,
+median −4 to +5 ms, p95 +5 to +22 ms: the most moving the channel into the Worker could save at p95. The shared ~40 ms
+is the receiving pages' own frame time, which it does not touch, and the link's intrinsic input cost is 2–3 ticks of
+6–8 (the rest is the prediction's lead), so at most one tick. Its value is the tail: in 276's first battle a host-side
+stall took the peer's acknowledgement to 50 ticks (the host's own seat to 39), and with the channel in the Worker a host
+main-thread stall no longer holds the peers' input. Feasibility is unchecked (a transferable `RTCDataChannel`, or a peer
+connection in a Worker, in every supported browser). Built only if the real-network runs show host stalls reaching
+peers: step 0, a browser probe of data-channel transfer to a Worker; step 1, the host's relay hop (data channel
+`onmessage` to the Worker's receipt) instrumented p50/p95/max on a real-network run.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
