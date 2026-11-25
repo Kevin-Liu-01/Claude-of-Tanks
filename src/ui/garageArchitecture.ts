@@ -587,8 +587,10 @@ export function createGarageArchitectureController(
     requestRender();
     if (record.architecture !== 'field_shed') {
       const wanted = (): boolean => current(record) && record.build === build;
-      // its map's buildings first (a page's pack presents without them), then its far ring
-      void standLateStructures(build, wanted).finally(() => standFarRing(_variant.mapId, build.root, wanted));
+      // its map's buildings first (a page's pack presents without them), then its far ring; the buildings only while it is
+      // the selection (a cached pack's stop at their next slice, so the next switch has the thread, and resume when shown)
+      void standLateStructures(build, () => wanted() && selected?.id === record.key)
+        .finally(() => standFarRing(_variant.mapId, build.root, wanted));
     }
     return true;
   };
