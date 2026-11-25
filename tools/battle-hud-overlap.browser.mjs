@@ -21,7 +21,8 @@
 // clear by the planners, which read its live box, and one with a class no planner reads (`unseen`) must fail the judge.
 // One place per lane (notices-polish-277; Kevin 2026-11-24: "it should be in one place, that bottom spot is saved for kills"):
 // after a window's states, each notice lane's seat over its +notices states must stand at one height and in one band, the
-// condition lane over the middle, nothing but the kill card in the kill card's seat (judge laneProblems); every kind's lane
+// condition lane over the middle, the event lane in one seat too, nothing but the kill card in the kill card's seat (judge
+// laneProblems); every kind's lane
 // is its raise's (judge kindLanes, held in Node by the judge's receipt: no kind in two lanes).
 // The judge is tools/battle-hud-overlap-judge.mjs (Node receipt: tools/battle-hud-overlap-judge.selftest.mjs).
 // The full rendered regression (tools/battle-hud-layout.browser.mjs, Playwright) covers more windows and locales; this

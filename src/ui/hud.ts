@@ -1409,7 +1409,7 @@ import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
 import { plateObstacles, sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap, worldPlateGap,
   worldPlateSink } from './sightFurniture.ts';
-import { damageFigureMarkup, hitOutcomeFor, INCOMING_DAMAGE_INK, incomingHitFeedbackFor, weaponDisplayName } from './hitEventFormat.ts';
+import { damageFigureMarkup, hitOutcomeFor, INCOMING_DAMAGE_INK, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   guidedMissileSlot,
@@ -8846,13 +8846,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    if (allied) killRibbon.zone();
     events.raise({ kind: 'objective', text: t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), priority: NOTICE_PRIORITY.turned,
       severity: allied ? 'success' : 'error', icon: 'modeZones' });
-  });
-  // the personal stream's spots (the direction's 06-battle-hud .stream): each enemy the player lit
-  on('tank:spotted', ({ id, spotterId }) => {
-    if (spotterId != null && playerId != null && spotterId === playerId && id !== playerId) killRibbon.spot();
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
@@ -8980,8 +8975,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
-      // (notices-polish-277) the round and its range ride with the damage: the kill card names what made the kill
-      killRibbon.damage(hit.targetId, hullPointsRemoved(hit), { weapon: weaponDisplayName(hit), distanceM: hit.flightDistM ?? null });
       // Zero-damage and pass-through outcomes use the steel confirmation;
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.

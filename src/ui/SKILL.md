@@ -29,8 +29,9 @@ kind in `noticeKinds.ts` (its subject; a warning carries art for every variant; 
 tank's own held off the binoculars, the drone and the gunship; Air Support's air lane all
 condition-lane plates; `noticeKinds.selftest.mjs`); every notice, the kill card and the rim
 warnings take the one hexagon in `hexPlate.ts` (no pill, no circle: `hexPlate.selftest.mjs`);
-each lane has one place (`guidancePlan.ts conditionLane` under the score, reserved; the event
-lane by the sight; the kill card alone at the foot: the overlap probe's lane check);
+each lane has one place (`guidancePlan.ts conditionLane` under the score, reserved; `eventSeat`
+the event lane's under it, clear of the sight in every view; the kill card alone at the foot;
+a view's furniture plans round them: the overlap probe's lane check);
 `battleNoticeCensus.selftest.mjs` fails a new announcing surface until it is theirs
 or named there with its reason; `captionLine.ts` draws the crew radio's captions where
 the guidance plan seats them;

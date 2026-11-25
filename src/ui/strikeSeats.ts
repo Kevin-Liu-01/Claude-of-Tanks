@@ -62,8 +62,25 @@ function seatIn(prefs: readonly { x: number; y: number }[], size: SeatSize, bloc
       .sort((a, b) => Math.abs(a.x - at.x) - Math.abs(b.x - at.x))[0];
     if (best) return best;
   }
+  // (notices-polish-277) then the nearest clear seat up or down from the first preference, at its own left or at the edges:
+  // with the notice lanes reserved (the condition lane, the event lane's seat) every designed seat could be taken, and the
+  // stylesheet's own then set the call-ins on "Incoming artillery" at 390x844 and 844x390 (the overlap probe)
+  const first = prefs[0];
+  if (first) {
+    for (let dy = SEAT_SWEEP_STEP; dy < height; dy += SEAT_SWEEP_STEP) {
+      for (const y of [first.y + dy, first.y - dy]) {
+        for (const x of [first.x, SEAT_EDGE, width - SEAT_EDGE - size.w]) {
+          const at = { x: Math.round(x), y: Math.round(y), w: size.w, h: size.h };
+          if (fits(at)) return at;
+        }
+      }
+    }
+  }
   return null;
 }
+
+/** The sweep's step (px) when no designed seat is clear. */
+const SEAT_SWEEP_STEP = 4;
 
 /** The seats, or null when the call-ins have no clear seat (the layout then keeps the stylesheet's own). */
 export function planStrikeSeats(input: StrikeSeatInput): StrikeSeats | null {

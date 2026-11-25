@@ -136,6 +136,10 @@ const band = (box, height) => ((box.y + box.bottom) / 2 < height / 2 ? 'top' : '
 
 /** The HUD's head in one state: the foot of the score, the objective and the zone chips (the lane stands under it). */
 const HEAD = ['.cot-top', '.cot-mode-status.show', '.cot-pips.show'];
+/** The fixed instruments and controls a lane's place is chosen among (battleHudLayout.ts HUD_FIXED): where those crossing a
+ *  lane's own column differ between states (a mode's second systems column), the lane's place may differ with them. */
+const FIXED = ['.cot-vehicle-controls', '.cot-cons', '.cot-con', '.cot-shell', '.cot-dp', '.cot-drive', '.cot-minimap',
+  '.cot-touch.on .joy', '.cot-touch.on .round', '.cot-touch.on .mobile-chrome', '.cot-touch.on .quick'];
 const headFoot = (rects) => Math.max(0, ...rects.filter((r) => HEAD.includes(r.selector) && r.y < 200).map((r) => r.bottom));
 
 /**
@@ -143,10 +147,15 @@ const headFoot = (rects) => Math.max(0, ...rects.filter((r) => HEAD.includes(r.s
  * - The condition lane keeps one place: its top the same in every state (within `tolerance` px), or the same distance under
  *   the HUD's head where a mode's head is taller (a sector mode's chips: that battle's lane starts under them, and never
  *   moves in it); it stands over the window's middle.
+ * - The event lane keeps one seat by the same rule (guidancePlan.ts eventSeat; Main 2026-11-25: "one place" holds for the
+ *   alert too, the views' furniture planning round it), in one band.
+ * - Both are held to one place among the states whose fixed controls crossing the lane's own column (its places' span, the
+ *   upper four fifths of the window) are the same: the views (the drone's, the gunship's, the binoculars') hide the tank's
+ *   controls, none of which stood in the seat's column, and are compared with the tank's; a mode whose own controls stand
+ *   there (Combined Arms' second systems column at 390x844) is its own layout, told in a note.
  * - The kill card's seat holds nothing but the kill card.
- * - The event lane's seat is recorded with any movement as a note (the planners still move the alert round a view's sight
- *   and controls; Main 2026-11-25: report it, the fix is the planner yielding, not the lane moving).
- * Returns { problems, notes, record } (record: { lane: { state: [x, y, right, bottom] } }).
+ * Returns { problems, notes, record } (record: { lane: { state: [x, y, right, bottom] } }; notes stay for what is told,
+ * not failed).
  */
 export function laneProblems(seen, height, tolerance = 2) {
   const record = {}, problems = [], notes = [];
@@ -158,21 +167,31 @@ export function laneProblems(seen, height, tolerance = 2) {
       if (box) at[state] = [Math.round(box.x), Math.round(box.y), Math.round(box.right), Math.round(box.bottom)];
     }
     record[lane] = at;
-    const boxes = Object.entries(at);
-    if (!boxes.length || lane === 'kill') continue;
-    const spread = (values) => Math.max(...values) - Math.min(...values);
-    const tops = boxes.map(([, b]) => b[1]);
-    const underHead = boxes.map(([s, b]) => b[1] - heads[s]);
-    const moves = spread(tops) > tolerance && spread(underHead) > tolerance;
-    const bands = new Set(boxes.map(([, b]) => band({ y: b[1], bottom: b[3] }, height)));
-    const where = boxes.map(([s, b]) => `${s} y${b[1]}`).join(', ');
-    if (lane === 'event') {
-      if (moves || bands.size > 1) notes.push(`lane event: the planners move its seat (${where})`);
-      continue;
+    const all = Object.entries(at);
+    if (!all.length || lane === 'kill') continue;
+    // (the lane's column: its places' span; the fixed controls crossing it in each state make that state's layout)
+    const x0 = Math.min(...all.map(([, b]) => b[0])) - 6, x1 = Math.max(...all.map(([, b]) => b[2])) + 6;
+    const layoutOf = (state) => JSON.stringify((seen.find((s) => s.state === state)?.rects ?? [])
+      .filter((r) => FIXED.includes(r.selector) && r.x < x1 && r.right > x0 && r.y < height * 0.8)
+      .map((r) => [r.selector, Math.round(r.x / 4), Math.round(r.y / 4), Math.round(r.right / 4), Math.round(r.bottom / 4)]).sort());
+    const layouts = new Map();
+    for (const entry of all) {
+      const key = layoutOf(entry[0]);
+      if (!layouts.has(key)) layouts.set(key, []);
+      layouts.get(key).push(entry);
     }
-    if (moves) problems.push(`lane ${lane}: its seat moves (${where})`);
-    if (bands.size > 1) problems.push(`lane ${lane}: in both bands (${boxes.map(([s, b]) => `${s} ${band({ y: b[1], bottom: b[3] }, height)}`).join(', ')})`);
-    if (bands.has('bottom')) problems.push(`lane ${lane}: under the middle, where the kill card stands`);
+    if (layouts.size > 1) notes.push(`lane ${lane}: ${layouts.size} fixed layouts across its column (${[...layouts.values()].map((g) => g.map(([s]) => s).join('/')).join(' | ')})`);
+    for (const boxes of layouts.values()) {
+      const spread = (values) => Math.max(...values) - Math.min(...values);
+      const tops = boxes.map(([, b]) => b[1]);
+      const underHead = boxes.map(([s, b]) => b[1] - heads[s]);
+      const moves = spread(tops) > tolerance && spread(underHead) > tolerance;
+      const bands = new Set(boxes.map(([, b]) => band({ y: b[1], bottom: b[3] }, height)));
+      const where = boxes.map(([s, b]) => `${s} y${b[1]}`).join(', ');
+      if (moves) problems.push(`lane ${lane}: its seat moves (${where})`);
+      if (bands.size > 1) problems.push(`lane ${lane}: in both bands (${boxes.map(([s, b]) => `${s} ${band({ y: b[1], bottom: b[3] }, height)}`).join(', ')})`);
+      if (lane === 'condition' && bands.has('bottom')) problems.push(`lane ${lane}: under the middle, where the kill card stands`);
+    }
   }
   for (const { state, rects } of seen) {
     const kill = rects.find((r) => r.selector === LANE_SEATS.kill);

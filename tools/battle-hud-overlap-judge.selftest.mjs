@@ -39,8 +39,11 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   // the alert's new height replans (the touch plan seats the condition lane under it at the height it shows)
   assert.match(layout, /if \(target\.classList\?\.contains\('cot-alert'\)\) \{\s*const height = \(target as HTMLElement\)\.offsetHeight \?\? 0;\s*if \(height > 0 && Math\.abs/,
     'a new alert height is a plan input, from a resize or a mutation alike');
-  assert.match(layout, /const compactAlertH = compactAlertBox\?\.height \?\? compactAlertHeights\.get\(alertWords\) \?\? TOUCH_COMPACT_ALERT_LINES_H;/,
-    'the compact candidate at the height its words last showed compact, not a one-line guess');
+  // (notices-polish-277) the alert has the event lane's seat, and the detection plans round it at the height the alert
+  // shows (no compact candidate to guess: the plan seats no alert)
+  assert.match(layout, /obstacles\.push\(\{ \.\.\.seat, y1: Math\.max\(seat\.y1, seat\.y0 \+ \(alertBox\?\.height \?\? compactAlertBox\?\.height \?\? TOUCH_ALERT_RESERVE_H\)\) \}\);/,
+    'the detection keeps off the seat as tall as the alert shows');
+  assert.match(layout, /alertTop = seat\.y0;[\s\S]*alertTop = seat\.y0;/, 'both layouts seat the alert in the event lane\'s seat');
   assert.match(layout, /for \(const box of \[\.\.\.viewControls\]\.sort[\s\S]{0,240}ribbonTop = box\.top;/, 'the ribbon rests over a view control');
   // (the old escape: the flight console dropped where keeping off it cost the reticle clearance)
   assert.doesNotMatch(layout, /plainObstacles|obstacles\.slice\(0, plain/, 'no plan drops a view control to keep the reticle clear');
@@ -142,9 +145,21 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   const sector = { state: 'mode-zone_control+notices', rects: [head(90), { ...head(138), selector: '.cot-pips.show' }, seat('condition', 750, 144, 420, 64),
     seat('event', 800, 290, 320, 40)] };
   const verdict0 = laneProblems([...still, sector], 1080);
-  assert.deepEqual(verdict0.problems, [], 'one place under the head');
-  assert.deepEqual(verdict0.notes, ['lane event: the planners move its seat (idle+notices y200, sniper+notices y201, mode-zone_control+notices y290)'],
-    'the event lane\'s movement is reported');
+  assert.deepEqual(verdict0.problems, ['lane event: its seat moves (idle+notices y200, sniper+notices y201, mode-zone_control+notices y290)'],
+    'the condition lane holds one place under the head; an event seat that moves fails (Main 2026-11-25)');
+  const seated = { ...sector, rects: [...sector.rects.slice(0, 3), seat('event', 800, 248, 320, 40)] };
+  assert.deepEqual(laneProblems([...still, seated], 1080).problems, [], 'the event seat the same distance under the head');
+  // (a mode whose own controls stand in the seat's column is its own layout: its seat may stand elsewhere, told in a note;
+  // a view that hides controls outside the column is compared with the rest)
+  const column = { selector: '.cot-vehicle-controls', name: 'systems', x: 1000, y: 210, right: 1100, bottom: 600 };
+  const own = { state: 'mode-combined_arms+notices', rects: [head(90), seat('condition', 750, 96, 420, 64), seat('event', 800, 620, 320, 40), column] };
+  const apart = laneProblems([...still, own], 1080);
+  assert.deepEqual(apart.problems, [], 'a second fixed layout across the column holds its own seat');
+  assert.ok(apart.notes.some((n) => n.startsWith('lane event: 2 fixed layouts')), 'and says so');
+  const hidden = { state: 'drone+notices', rects: [head(90), seat('condition', 750, 96, 420, 64), seat('event', 800, 300, 320, 40)] };
+  const sideColumn = { ...column, x: 1300, right: 1400 };
+  assert.ok(laneProblems([{ ...still[0], rects: [...still[0].rects, sideColumn] }, hidden], 1080).problems.some((p) => p.startsWith('lane event: its seat moves')),
+    'controls outside the column hidden by a view leave one layout: a seat that moves there fails');
   // (the 276 report: INCOMING at the kill card's seat in one state, under the score in another)
   const bouncing = [still[0], { state: 'binoculars+notices', rects: [head(90), seat('condition', 750, 792, 420, 64), seat('event', 800, 200, 320, 40),
     seat('kill', 699, 867, 522, 73)] }];

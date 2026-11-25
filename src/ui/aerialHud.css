@@ -364,6 +364,15 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  /* (on FIRE's floor, their words on one line: 12 px higher, its word stood off FIRE's at 390x844 and 320x568, gauntlet r17) */
  html[data-flight=gunship] .cot-touch .scope{bottom:max(22px,env(safe-area-inset-bottom))!important}
 }
+/* (notices-polish-277) a short landscape's console in one row of six, its designation off: two rows and the designation
+   stood 104 px tall at 844x390, into the event lane's seat under the sight (guidancePlan.ts eventSeat; the overlap probe's
+   gunship+notices): a view's furniture yields to the notice lanes */
+@media(pointer:coarse) and (orientation:landscape) and (min-height:291px) and (max-height:430px){
+ .cot-flight-hud[data-kind=gunship] .flight-console{grid-template-columns:repeat(6,minmax(0,1fr));width:calc(100% - 184px)}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-designation,.gunship-solution-label){display:none}
+ .cot-flight-hud[data-kind=gunship] .flight-weapons{grid-column:1/4;grid-row:1}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-view-switch,.flight-supply){grid-row:1}
+}
 @media(max-height:290px){
  .cot-flight-hud[data-kind=gunship] :is(.flight-designation,.gunship-solution-label){display:none}
  .cot-flight-hud[data-kind=gunship] .flight-weapons{grid-row:1}

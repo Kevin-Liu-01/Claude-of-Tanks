@@ -1,4 +1,4 @@
-// The kill card and the personal event stream (brand-ui H3, the direction's 06-battle-hud.html .ribbon; notices-polish-277,
+// The kill card (brand-ui H3, the direction's 06-battle-hud.html .ribbon; notices-polish-277,
 // Kevin 2026-11-24 on live 276: "for a kill card, make it look a lot better and organized and make the tank actually
 // viewable. rn it gets cut off. also make it a hexagon!!"). Copyright © 2026 Kevin B. Liu.
 //
@@ -8,19 +8,16 @@
 //                                    ramming, a drone), the streak's multiplier from the second kill in its window
 //   [flag] Callsign                  the victim, callsign first (SPEC 12.2.3)
 //   Leopard 2A6 · Enemy              its vehicle and its side
-//   You · 120 mm DM53 APFSDS · 840 m who made it, with what and from how far (the player's last hit on it, where the
-//                                    hit carried them)
-//   +640 damage · 1 zone · 2 spotted what the streak earned (+kills, +damage, the zones the side took, the tanks the
-//                                    player lit in the streak's window), only when there is any
 // and beside them the destroyed hull's own 3/4 render whole: fitted to its silhouette's bounds with padding
 // (portraitFraming.ts fitPortraitInBox over the render's measured pixels), so a long gun, a tall launcher or a squat
-// casemate all show entire. It holds 2.4 s after the latest kill (SPEC 12.2.1) and steps aside while a notice meets its
-// place (battleHudLayout.ts yieldKillRibbon). The mouse layouts wide and tall enough for it show it (laptop and desktop,
-// 720 px and up); every other layout reads the same kill in the feed.
+// casemate all show entire. (Kevin 2026-11-25, on the proposal: "remove the bottom 2 lines in this": the round and its
+// range, and the streak's earnings, are gone from the card.) It holds 2.4 s after the latest kill (SPEC 12.2.1) and steps
+// aside while a notice meets its place (battleHudLayout.ts yieldKillRibbon). The mouse layouts wide and tall enough for it
+// show it (laptop and desktop, 720 px and up); every other layout reads the same kill in the feed.
 
 import { createElement as el } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { formatNumber, t } from './i18n.ts';
+import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { hexPlateClip } from './hexPlate.ts';
@@ -29,18 +26,9 @@ import { fitPortraitInBox, measurePortraitFullBounds, type PortraitPixelBounds }
 /** How long the card holds after the latest kill, and how soon another kill extends the streak. */
 const RIBBON_HOLD_MS = 2400;
 const STREAK_WINDOW_MS = 8000;
-/** How many of the latest spots and captures the stream remembers. */
-const RECENT = 8;
 /** The render's box (px; a tight card scales it by its own factor, the same proportions): the fit is computed for this
  *  aspect and written as shares of the box. */
-const KILL_CARD_ART = Object.freeze({ w: 196, h: 92, pad: 0.05 });
-
-/** How many of `times` fall in the streak's window before `now`. */
-function inWindow(times: Float64Array, now: number): number {
-  let count = 0;
-  for (let i = 0; i < times.length; i++) if (now - times[i] <= STREAK_WINDOW_MS) count++;
-  return count;
-}
+const KILL_CARD_ART = Object.freeze({ w: 176, h: 80, pad: 0.05 });
 
 const CSS = `
 .cot-ribbon{--kc-point:22px;--kc-art-w:${KILL_CARD_ART.w}px;--kc-art-h:${KILL_CARD_ART.h}px;--kc-fill:var(--hud-plate-strong);
@@ -63,7 +51,7 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon.on.yield,body.cot-spectating .cot-ribbon.on,html[data-cot-scoped] .cot-ribbon.on{opacity:0;visibility:hidden}
 .cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .copy{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
-.cot-ribbon .head,.cot-ribbon .who,.cot-ribbon .what,.cot-ribbon .how{display:flex;align-items:center;gap:8px;min-width:0}
+.cot-ribbon .head,.cot-ribbon .who,.cot-ribbon .what{display:flex;align-items:center;gap:8px;min-width:0}
 .cot-ribbon .w{flex:none;font:700 var(--battle-fs-12)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent)}
 /* (the cause in the card's capitals, as its word: a title-case "Fire" beside it read as another kit, gauntlet r5) */
 .cot-ribbon .cause{display:contents}
@@ -78,19 +66,10 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .cs{flex:1 1 auto;min-width:4ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 var(--battle-fs-20)/1.1 var(--hud-font)}
 .cot-ribbon .fl{display:flex;flex:none}.cot-ribbon .fl:empty{display:none}
 .cot-ribbon .fl .cot-flag{display:block;border-radius:1px;box-shadow:var(--flag-ring)}
-.cot-ribbon .what,.cot-ribbon .how{font:500 var(--battle-fs-13)/1.2 var(--font-body);color:var(--ink-2);white-space:nowrap}
+.cot-ribbon .what{font:500 var(--battle-fs-13)/1.2 var(--font-body);color:var(--ink-2);white-space:nowrap}
 .cot-ribbon .vn{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cot-ribbon .vn[hidden]{display:none}
 .cot-ribbon .side{flex:none;color:var(--text-enemy);font-weight:700;text-transform:uppercase;letter-spacing:var(--track-label-s);font-size:var(--battle-fs-11)}
-.cot-ribbon .by{flex:none;color:var(--text-own);font-weight:700}
-.cot-ribbon .wp{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.cot-ribbon .wp:empty,.cot-ribbon .rg:empty{display:none}
-.cot-ribbon .rg{flex:none;font-family:var(--font-data);color:var(--ink-1)}
-.cot-ribbon .how>:not(:first-child)::before{content:'·';margin-right:8px;color:var(--ink-3)}
-.cot-ribbon .stream{display:flex;gap:12px;margin-top:2px;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--accent)}
-.cot-ribbon .stream>span{display:flex;align-items:center;gap:4px;white-space:nowrap}
-.cot-ribbon .stream>span[hidden],.cot-ribbon .stream[hidden]{display:none}
-.cot-ribbon .stream svg{width:12px;height:12px;flex:none}
 .cot-ribbon .gi{display:flex}
 /* the destroyed hull, whole: its render placed by its own silhouette's bounds (fitPortraitInBox), never cropped */
 .cot-ribbon .art{position:relative;flex:none;width:var(--kc-art-w);height:var(--kc-art-h)}
@@ -123,27 +102,14 @@ interface RibbonCause {
   label: string;
 }
 
-/** The player's hit on a tank as the card names it: the round as a weapon (hitEventFormat.ts weaponDisplayName), and how
- *  far it flew (m), where the hit carried them. */
-interface RibbonShot {
-  readonly weapon: string;
-  readonly distanceM: number | null;
-}
-
 interface KillRibbonRuntime {
   root: HTMLElement;
-  /** The player hit a tank for `amount` (summed into the stream when it dies), with the round and its range. */
-  damage(targetId: string, amount: number, shot?: RibbonShot): void;
   /** The player destroyed `victim`. */
   kill(victim: RibbonVictim, cause: RibbonCause): void;
   /** Whether the card shows a kill here now (a mouse layout from 768 px wide and not short, not spectating, not in the
    *  scope): the feed then leaves the player's own kill to it (one datum, one place: UI-LOCKDOWN B1). */
   shows(): boolean;
-  /** The player lit an enemy (the stream counts the spots of the streak's window). */
-  spot(): void;
-  /** The player's side took a zone. */
-  zone(): void;
-  /** A battle ends or restarts: forget the streak and the damage ledger. */
+  /** A battle ends or restarts: forget the streak. */
   clear(): void;
 }
 
@@ -186,23 +152,6 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   const what = el('div', 'what', copy);
   const vehicle = el('span', 'vn', what);
   const side = el('span', 'side', what);
-  const how = el('div', 'how', copy);
-  const by = el('b', 'by', how);
-  const weapon = el('span', 'wp', how);
-  const range = el('span', 'rg', how);
-  const stream = el('div', 'stream', copy);
-  const killsItem = el('span', 'k', stream);
-  el('span', 'gi', killsItem).innerHTML = uiIconSVG('skull', 12);
-  const killsText = el('span', '', killsItem);
-  const damageItem = el('span', 'd', stream);
-  el('span', 'gi', damageItem).innerHTML = uiIconSVG('damage', 12);
-  const damageText = el('span', '', damageItem);
-  const zonesItem = el('span', 'z', stream);
-  el('span', 'gi', zonesItem).innerHTML = uiIconSVG('modeZones', 12);
-  const zonesText = el('span', '', zonesItem);
-  const spotsItem = el('span', 's', stream);
-  el('span', 'gi', spotsItem).innerHTML = uiIconSVG('optics', 12);
-  const spotsText = el('span', '', spotsItem);
   const art = el('div', 'art', root);
   art.setAttribute('aria-hidden', 'true');
   const picture = el('img', '', art) as HTMLImageElement;
@@ -210,33 +159,10 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   picture.decoding = 'async';
   picture.draggable = false;
   const silhouette = el('span', 'sil', art);
-  // the latest spots and captures, as times: a fixed ring each, so an event allocates nothing
-  const spotTimes = new Float64Array(RECENT).fill(-Infinity);
-  const zoneTimes = new Float64Array(RECENT).fill(-Infinity);
-  let spotNext = 0, zoneNext = 0;
-  const dealt = new Map<string, number>();
-  const shots = new Map<string, RibbonShot>();
-  let streak = 0, streakDamage = 0, lastKillMs = -Infinity;
+  let streak = 0, lastKillMs = -Infinity;
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
   /** The render the card asked for last: a fit that lands after the next kill's is dropped. */
   let wanted = '';
-
-  function paintStream(): void {
-    const now = performance.now();
-    killsText.textContent = t('hud.ribbon.kills', { count: streak });
-    // (a streak's count is its multiplier's: the stream says it only for a single kill, gauntlet r2 read "×3 TRIPLE" and
-    // "+3 kills" together)
-    killsItem.hidden = streak >= 2;
-    damageItem.hidden = streakDamage <= 0;
-    damageText.textContent = t('hud.ribbon.damage', { amount: formatNumber(Math.round(streakDamage)) });
-    const zones = inWindow(zoneTimes, now), spots = inWindow(spotTimes, now);
-    zonesItem.hidden = zones <= 0;
-    zonesText.textContent = t('hud.ribbon.zones', { count: zones });
-    spotsItem.hidden = spots <= 0;
-    spotsText.textContent = t('hud.ribbon.spots', { count: spots });
-    // (a streak with nothing to add drops the band itself: an empty ruled strip hung under the plate, gauntlet r3)
-    stream.hidden = killsItem.hidden && damageItem.hidden && zonesItem.hidden && spotsItem.hidden;
-  }
 
   /** The victim's render, whole in its box: fitted to its measured silhouette, or its side silhouette where it has none. */
   function paintArt(specId: string | null): void {
@@ -267,36 +193,17 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
 
   return {
     root,
-    damage(targetId, amount, shot) {
-      if (!targetId || !(amount > 0)) return;
-      dealt.set(targetId, (dealt.get(targetId) ?? 0) + amount);
-      if (shot) shots.set(targetId, shot);
-    },
     kill(victim, cause) {
       const now = performance.now();
-      if (now - lastKillMs > STREAK_WINDOW_MS) { streak = 0; streakDamage = 0; }
+      if (now - lastKillMs > STREAK_WINDOW_MS) streak = 0;
       lastKillMs = now;
       streak++;
-      streakDamage += dealt.get(victim.id) ?? 0;
-      dealt.delete(victim.id);
-      const shot = shots.get(victim.id) ?? null;
-      shots.delete(victim.id);
       word.textContent = t('hud.kill.shot');
       flagHost.innerHTML = victim.flag;
       callsign.textContent = victim.callsign;
       vehicle.textContent = victim.vehicle;
       vehicle.hidden = !victim.vehicle || victim.vehicle === victim.callsign;
       side.textContent = t('hud.enemy');
-      by.textContent = t('hud.feed.you');
-      // (a ram, a fire or a rack's blast is the cause chip's to say; a shot's round and range where its hit carried them)
-      const shotKill = !CAUSE_CHIPS.has(cause.cause) || cause.cause === 'ammorack';
-      // (the round by its designation and type, "M829A4 APFSDS": the calibre before it cut the type off at the card's width;
-      // the whole name stays its title)
-      const round = shotKill ? shot?.weapon ?? '' : '';
-      weapon.textContent = round.replace(/^\d+\s*mm\s+/i, '');
-      weapon.title = round;
-      range.textContent = shotKill && shot?.distanceM != null && shot.distanceM > 0
-        ? t('hud.killCard.distance', { m: formatNumber(Math.round(shot.distanceM)) }) : '';
       causeHost.replaceChildren();
       if (CAUSE_CHIPS.has(cause.cause)) {
         const chip = el('span', 'cot-c-chip', causeHost);
@@ -307,7 +214,6 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       multi.hidden = streak < 2;
       multiCount.textContent = `×${streak}`;
       paintArt(victim.specId);
-      paintStream();
       root.classList.add('on');
       if (hideTimer) clearTimeout(hideTimer);
       hideTimer = setTimeout(() => { hideTimer = null; root.classList.remove('on'); }, RIBBON_HOLD_MS);
@@ -319,22 +225,8 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       const doc = root.ownerDocument ?? document;
       return !doc.body.classList.contains('cot-spectating') && !doc.documentElement.hasAttribute('data-cot-scoped');
     },
-    spot() {
-      spotTimes[spotNext] = performance.now();
-      spotNext = (spotNext + 1) % RECENT;
-      if (root.classList.contains('on')) paintStream();
-    },
-    zone() {
-      zoneTimes[zoneNext] = performance.now();
-      zoneNext = (zoneNext + 1) % RECENT;
-      if (root.classList.contains('on')) paintStream();
-    },
     clear() {
-      dealt.clear();
-      shots.clear();
-      spotTimes.fill(-Infinity);
-      zoneTimes.fill(-Infinity);
-      streak = 0; streakDamage = 0; lastKillMs = -Infinity;
+      streak = 0; lastKillMs = -Infinity;
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       root.classList.remove('on');
     },

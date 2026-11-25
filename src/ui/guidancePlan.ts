@@ -88,6 +88,8 @@ export interface GuidanceInput {
    *  line keep off it whether a toast shows or not (notices-polish-277). None: the toasts seek their place (the receipts'
    *  older layouts). */
   readonly lane?: GuidanceBox | null;
+  /** The event lane's fixed seat (eventSeat): the card and the caption line keep off it as off the condition lane. */
+  readonly seat?: GuidanceBox | null;
 }
 
 interface GuidancePlace extends GuidanceBox {
@@ -244,7 +246,8 @@ function place(size: GuidanceSize, minW: number, minH: number | null, input: Gui
 /** The input with its condition lane among the boxes never covered: the card and the caption line keep off it whether a
  *  toast shows or not. */
 function laneKept(input: GuidanceInput): GuidanceInput {
-  return input.lane ? { ...input, never: [...input.never, input.lane] } : input;
+  const kept = [input.lane, input.seat].filter((box): box is GuidanceBox => !!box);
+  return kept.length ? { ...input, never: [...input.never, ...kept] } : input;
 }
 
 /** The card's place: the first phase on a touch layout, where the centre notices are then planned round it. */
@@ -373,4 +376,48 @@ export function cardNaturalSize(held: { readonly step: string; readonly size: Gu
 /** True when two guidance places (or a place and any box) overlap (receipts). */
 export function guidanceOverlaps(a: GuidanceBox, b: GuidanceBox): boolean {
   return crosses(a, b, 0);
+}
+
+/** The event lane's seat (px): a mouse layout's alert, a touch layout's (its planner's slot width, 214). */
+export const EVENT_SEAT = Object.freeze({ mouse: { w: 320, h: 44 }, touch: { w: 214, h: 40 } });
+
+/**
+ * The event lane's one seat (notices-polish-277; Main 2026-11-25, Kevin's rule "one place": the alert moved 162 to 210 px on
+ * a desktop and across five heights on a portrait phone, under the sight among them): on the window's centre line, the first
+ * band from under the condition lane (`laneBottom`) clear of `blocked`, the battle sight's ring (raised or not) and the HUD's
+ * fixed instruments, never a view's own furniture (the scope's circle and readouts, a flight's console: those plan round the
+ * seat). Where the condition lane leaves no band over the sight (a short landscape) it is the first band under the ring.
+ * The same seat in every state of a layout.
+ */
+export function eventSeat(width: number, height: number, laneBottom: number, size: GuidanceSize, fixed: readonly GuidanceBox[],
+  sight: readonly GuidanceBox[], compact: GuidanceSize | null = null): GuidanceBox {
+  const cx = width / 2;
+  const first = Math.ceil(laneBottom + GUIDANCE_GAP);
+  const sizes = compact ? [size, compact] : [size];
+  const boxAt = (seat: GuidanceSize, y0: number) => {
+    const w = Math.min(seat.w, width - GUIDANCE_GAP * 4);
+    return { x0: cx - w / 2, y0, x1: cx + w / 2, y1: y0 + seat.h };
+  };
+  // the seat at its width, then (where no band takes it: Combined Arms' second systems column at 390x844 left none) at the
+  // alert's compact width, which the layout then shows compact (battleHudLayout.ts)
+  for (const seat of sizes) {
+    for (let y0 = first; y0 + seat.h <= height - GUIDANCE_GAP; y0 += STEP) {
+      const box = boxAt(seat, y0);
+      if (![...fixed, ...sight].some((b) => crosses(box, b, GUIDANCE_GAP))) return box;
+    }
+  }
+  // where no band keeps the margin from everything, the band that covers the least of the fixed controls (their boxes, no
+  // margin), never the sight's ring: the first band under the condition lane covered the crosshair at 844x390, where a
+  // touch button stood 2 px inside the margin of the band under the ring
+  let best: GuidanceBox | null = null, least = Infinity;
+  for (const seat of sizes) {
+    for (let y0 = first; y0 + seat.h <= height - GUIDANCE_GAP; y0 += STEP) {
+      const box = boxAt(seat, y0);
+      if (sight.some((b) => crosses(box, b, GUIDANCE_GAP))) continue;
+      let covered = 0;
+      for (const b of fixed) covered += Math.max(0, Math.min(box.x1, b.x1) - Math.max(box.x0, b.x0)) * Math.max(0, Math.min(box.y1, b.y1) - Math.max(box.y0, b.y0));
+      if (covered < least) { least = covered; best = box; }
+    }
+  }
+  return best ?? boxAt(size, first);
 }
