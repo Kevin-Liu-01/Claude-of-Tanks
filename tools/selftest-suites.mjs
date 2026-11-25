@@ -332,6 +332,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayViewer.selftest.mjs',
     // replay-fixes-277: a replay seats its recording's roster as recorded, on a pool in any registration order (no world)
     'src/game/replay/replayRosterSeat.selftest.mjs',
+    // replay-fixes-277: an opened or dropped replay file is checked before any battle (size, gzip, magic, version, whole)
+    'src/game/replay/replayImport.selftest.mjs',
     // replay-fixes-277 (277): the battle pool is in id order whatever order the fleet registered in (no world)
     'src/game/battlePoolOrder.selftest.mjs',
     // replay-lazy-276: the battle recorder behind its lazy chunk: idle before it loads, every tap and wrapped rule bound

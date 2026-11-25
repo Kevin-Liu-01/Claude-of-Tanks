@@ -382,5 +382,20 @@
   },
   "replay.mark.end": {
     "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. The last timeline marker: the battle ended."
+  },
+  "garage.record.replayOpen": {
+    "context": "Claude of Tanks, a browser tank game. A button in the Service Record's Replays tab: opens a replay file from the player's device to watch it. \"Replay\" means a recorded playback of a battle; keep the same word as the tab. Short button label."
+  },
+  "replay.import.notReplay": {
+    "context": "Claude of Tanks, a browser tank game. Shown in the Service Record's Replays tab when the file the player opened or dropped is not a replay of this game. Keep \"Claude of Tanks\" untranslated."
+  },
+  "replay.import.format": {
+    "context": "Claude of Tanks, a browser tank game. Shown when a replay file was saved in another file format than this version of the game reads. {version} and {current} are format numbers (1, 2, ...), not game versions."
+  },
+  "replay.import.tooBig": {
+    "context": "Claude of Tanks, a browser tank game. Shown when the file the player opened is far larger than any replay (over 2 MB), so it is not read."
+  },
+  "replay.import.damaged": {
+    "context": "Claude of Tanks, a browser tank game. Shown when a replay file is cut short or corrupted and cannot be read."
   }
 }

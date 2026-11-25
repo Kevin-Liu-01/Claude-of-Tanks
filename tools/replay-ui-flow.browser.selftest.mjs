@@ -4,7 +4,9 @@
  * entered from the Garage's own Deploy key and driven with real keys, then each way the game offers to watch it:
  *
  *   A  leave from Settings, open the Service Record (R), its Replays tab, the newest row's Watch;
- *   B  a second battle ended by its clock, the end screen's Watch replay.
+ *   B  a second battle ended by its clock, the end screen's Watch replay;
+ *   C  A's file, saved by the row's Download replay, opened on a fresh profile through Open replay file (a file that is
+ *      not a replay and one of another format first: each says why in the tab and enters nothing).
  *
  * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
  * notice, whose transport enables, whose clock runs when Play is pressed (at 4x), and which plays to the recording's end
@@ -14,14 +16,15 @@
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
  *   node tools/replay-ui-flow.browser.selftest.mjs [--dist=<built dist> | --url=<origin>] [--out=<dir>] [--port=4238]
- *     [--seconds=20] [--paths=A,B]
+ *     [--seconds=20] [--paths=A,B,C]
  *
  * --dist serves a build (vite preview), --url opens a running origin, and with neither it starts a dev server. Takes the shared
  * capture lock (render class; nests in a with-capture-lock hold): the manual `browser` suite's
  * (npm run test:heavy -- browser). One browser and one vite child, both stopped by their own handles. Exit 0 on PASS, 1 on
  * FAIL. First-party tooling: Kevin B. Liu.
  */
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
@@ -61,7 +64,7 @@ const WATCH_INDEXER = `(() => {
 })();`;
 
 export function parseFlowArgs(argv) {
-  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B'], url: null, width: 1600, height: 900 };
+  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, width: 1600, height: 900 };
   for (const arg of argv) {
     const m = /^--([a-z]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -69,12 +72,12 @@ export function parseFlowArgs(argv) {
     else if (m[1] === 'dist') out.dist = m[2];
     else if (m[1] === 'port') out.port = Number(m[2]);
     else if (m[1] === 'seconds') out.seconds = Number(m[2]);
-    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => p === 'A' || p === 'B');
+    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => p === 'A' || p === 'B' || p === 'C');
     else if (m[1] === 'url') out.url = m[2].replace(/\/$/, '');
     else throw new Error(`unknown flag --${m[1]}`);
   }
   out.out ??= mkdtempSync(path.join(tmpdir(), 'replay-ui-flow-'));
-  if (!out.paths.length) throw new Error('--paths takes A and/or B');
+  if (!out.paths.length) throw new Error('--paths takes A, B and/or C');
   return out;
 }
 
@@ -247,8 +250,67 @@ export async function openSavedReplay(page, options, shot, log) {
     return { ok: false, why: 'the Replays tab listed no Watch button' };
   }
   await shot('record-replays');
+  if (!options.openOnly) {
+    // Download replay from the row: the page's own Blob download from the click, caught where the browser saves it
+    const downloads = path.join(options.out, 'downloads');
+    mkdirSync(downloads, { recursive: true });
+    // (each path's page is in a browser context of its own: the download behaviour is set for that context)
+    const cdp = await page.browser().target().createCDPSession();
+    const contextId = page.browserContext().id;
+    await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, ...(contextId ? { browserContextId: contextId } : {}) });
+    await clickVisible(page, '[data-replay-download]');
+    const until = Date.now() + 15_000;
+    let file = null;
+    while (!file && Date.now() < until) {
+      await sleep(250);
+      file = readdirSync(downloads).find((name) => name.endsWith('.cotreplay')) ?? null;
+    }
+    log.push({ at: 'download', file, bytes: file ? statSync(path.join(downloads, file)).size : null });
+    if (!file) return { ok: false, why: 'Download replay saved no .cotreplay file' };
+  }
   await clickVisible(page, '[data-replay-watch]');
   if (options.openOnly) return { ok: true, why: 'opened' };
+  const result = await watchToEnd(page, shot, log);
+  if (result.ok) await leaveViewer(page);
+  return result;
+}
+
+/** A file through Open replay file (the browser's own file chooser from the button's press). */
+export async function openReplayFile(page, file) {
+  const [chooser] = await Promise.all([page.waitForFileChooser({ timeout: 15_000 }), clickVisible(page, '.cot-record-replays-head [data-replay-open]')]);
+  await chooser.accept([file]);
+}
+const importNote = (page) => page.evaluate(() => document.querySelector('.cot-record-replays-note')?.textContent ?? null);
+
+/** C: on a fresh profile, path A's downloaded file opened from the Replays tab plays to its end; a file that is not a
+ *  replay and one of another format say so in the tab, entering nothing. */
+async function pathC(page, options, shot, log) {
+  const downloads = path.join(options.out, 'downloads');
+  const name = existsSync(downloads) ? readdirSync(downloads).find((entry) => entry.endsWith('.cotreplay')) : null;
+  if (!name) return { ok: false, why: 'no downloaded replay to open (path C follows path A)' };
+  const good = path.join(downloads, name);
+  const notReplay = path.join(options.out, 'C-not-a-replay.cotreplay');
+  writeFileSync(notReplay, 'this is not a replay');
+  const packed = readFileSync(good);
+  const raw = packed[0] === 0x1f && packed[1] === 0x8b ? gunzipSync(packed) : packed;
+  const future = Buffer.from(raw); future[4] += 1;
+  const otherFormat = path.join(options.out, 'C-other-format.cotreplay');
+  writeFileSync(otherFormat, future);
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
+  await page.keyboard.press('KeyR');
+  await page.waitForSelector('[data-record-tab="replays"]', { visible: true, timeout: 30_000 });
+  await clickVisible(page, '[data-record-tab="replays"]');
+  await page.waitForSelector('.cot-record-replays-head [data-replay-open]', { visible: true, timeout: 30_000 });
+  for (const [file, tag, expected] of [[notReplay, 'not-replay', /isn't a Claude of Tanks replay/], [otherFormat, 'other-format', /format \d+/]]) {
+    await openReplayFile(page, file);
+    try { await page.waitForFunction(() => !!document.querySelector('.cot-record-replays-note'), { timeout: 15_000 }); } catch { /* read below */ }
+    const note = await importNote(page);
+    log.push({ at: `refuse-${tag}`, note, phase: await page.evaluate(() => window.__DEBUG?.game?.phase ?? null) });
+    await shot(`refused-${tag}`);
+    if (!note || !expected.test(note)) return { ok: false, why: `a ${tag} file said ${JSON.stringify(note)}` };
+  }
+  log.push({ at: 'open', file: name, bytes: packed.length });
+  await openReplayFile(page, good);
   const result = await watchToEnd(page, shot, log);
   if (result.ok) await leaveViewer(page);
   return result;
@@ -332,7 +394,7 @@ export async function runFlow(options) {
         say(`battle pool: ${receipt.pool.same ? 'the page\'s is Node\'s' : `the page's parts from Node's at ${receipt.pool.partsAt}`}`);
       }
       let result;
-      try { result = await (name === 'A' ? pathA : pathB)(page, options, shot, log); } catch (error) {
+      try { result = await ({ A: pathA, B: pathB, C: pathC })[name](page, options, shot, log); } catch (error) {
         await shot('error');
         result = { ok: false, why: `threw: ${error.message}` };
       }

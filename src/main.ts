@@ -4154,7 +4154,11 @@ async function watchSavedReplay(id: number | null): Promise<void> {
   if (!stored) return;
   const { module: replay } = await replayRecording.preload();
   const file = await replay.unpackReplay(stored.data);
-  const recording = replay.decodeReplay(file);
+  await watchReplayRecording(replay.decodeReplay(file), file);
+}
+/** Watch a decoded recording (`file`: its raw bytes): a saved one, or a file the player opened (importReplayFile). */
+async function watchReplayRecording(recording: ReplayRecording, file: Uint8Array): Promise<void> {
+  const { module: replay } = await replayRecording.preload();
   const [viewer] = await Promise.all([replayViewerOwner.preload(), watchOwner.preload()]);
   const refusal = viewer.refusal(recording);
   if (refusal) {
@@ -4189,6 +4193,38 @@ const replayIdOf = (payload: unknown): number | null => {
   const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
   return typeof id === 'number' && Number.isFinite(id) ? id : null;
 };
+/**
+ * A replay file the player opened (the Replays tab's Open replay file) or dropped on the Garage (replay-fixes-277):
+ * checked before anything is entered (game/replay/replayImport.ts: its size before it is read, then the magic, the
+ * format version and the whole recording), kept in the Replays list (best effort: a private window keeps none) and
+ * watched as a saved one. A file that is not a replay this build reads opens the Replays tab with the reason.
+ */
+async function importReplayFile(file: Blob): Promise<void> {
+  const { module: replay } = await replayRecording.preload();
+  const tooBig = replay.replayImportSizeProblem(file.size);
+  const checked = tooBig ? { ok: false as const, problem: tooBig } : await replay.checkReplayFile(new Uint8Array(await file.arrayBuffer()));
+  if (!checked.ok) {
+    await garage.openReplays(checked.problem);
+    return;
+  }
+  await replay.saveReplay(checked.raw, checked.recording.header, checked.recording.end);
+  garage.closeRecord();
+  await watchReplayRecording(checked.recording, checked.raw);
+}
+bus.on('ui:replayImport', (payload) => {
+  const file = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'file') : null;
+  if (file instanceof Blob) void importReplayFile(file).catch((error) => console.error('[replay] import failed', error));
+});
+// a file dropped on the Garage opens as a replay (anything else says why in the Replays tab); a battle takes no drop
+window.addEventListener('dragover', (event) => {
+  if (game.phase === 'garage' && event.dataTransfer?.types.includes('Files')) event.preventDefault();
+});
+window.addEventListener('drop', (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (game.phase !== 'garage' || !file) return;
+  event.preventDefault();
+  bus.emit('ui:replayImport', { file: file as unknown as RuntimeValue });
+});
 bus.on('ui:replayWatch', (payload) => { void watchSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] watch failed', error)); });
 bus.on('ui:replayDownload', (payload) => { void downloadSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] download failed', error)); });
 // Couch mode (docs/COUCH-MODE.md): the lobby that seats the phones, each seat's controls, the per-tick input stage and

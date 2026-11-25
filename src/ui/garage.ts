@@ -102,6 +102,7 @@ import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoi
 import { unseenAwardCount } from '../game/serviceRecord.ts';
 import type { RecordViewNames } from './serviceRecordView.ts';
 import type { createServiceRecordDialog } from './serviceRecordDialog.ts';
+import type { ReplayImportProblem } from '../game/replay/replayImport.ts';
 import type { PlayMode } from '../mp/session/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -313,6 +314,10 @@ export interface GarageRuntime {
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
+  /** The Service Record on its Replays tab, with why an opened replay file was refused (null: none) (replay-fixes-277). */
+  openReplays(problem: ReplayImportProblem | null): Promise<void>;
+  /** Close the Service Record (an opened replay file is entering its battle). */
+  closeRecord(): void;
 }
 
 /** Each battle rule's glyph (src/ui/icons): the Deploy screen's choices and the Deploy button read the definitions' own
@@ -5472,6 +5477,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     noteBattleLoadFailed() {
       markLoadFailed([battleBtn], t('battle.entryFailed.reload'));
     },
+
+    async openReplays(problem) {
+      if (!serviceRecord?.isOpen()) await openServiceRecord();
+      serviceRecord?.showReplays(problem);
+    },
+    closeRecord() { closeServiceRecord({ restoreFocus: false }); },
 
     replayEntry({ watch, couch }) {
       if (couch) {

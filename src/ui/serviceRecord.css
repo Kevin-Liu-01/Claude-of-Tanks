@@ -223,6 +223,9 @@
 
 /* the replays (replay-system-275): one plate per saved battle as the log draws it, its length, then Watch and Download */
 .cot-record-replays{display:grid;gap:var(--s2);margin:0;padding:0;list-style:none}
+/* (replay-fixes-277) Open replay file and, after a refused file, why */
+.cot-record-replays-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);margin:0 0 var(--s3)}
+.cot-record-replays-note{margin:0;min-width:0;font:500 var(--fs-13)/1.35 var(--font-ui);color:var(--danger)}
 .cot-record-replay{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(104px,auto) auto;align-items:center;gap:var(--s4);
   padding:var(--s3) var(--s4);border:1px solid var(--line-1);background:var(--surface-raised)}
 .cot-record-replay>.cot-record-vehicle{height:64px}

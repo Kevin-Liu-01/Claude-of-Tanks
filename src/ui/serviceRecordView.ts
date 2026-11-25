@@ -17,6 +17,7 @@ import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { button, emptyState, skeleton, statTile, tag } from './components/components.ts';
 import type { IconId } from './icons/icon.ts';
 import type { SavedReplaySummary } from '../game/replay/replayStore.ts';
+import type { ReplayImportProblem } from '../game/replay/replayImport.ts';
 // The garage's Service Record: career totals, the medal case, achievement
 // tiers and the last battles, each with its kills laid out as a chain of
 // thought. Rendered on demand into the record dialog (serviceRecordDialog.ts
@@ -303,10 +304,30 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
   return `<ol class="cot-record-history">${rows}</ol>`;
 }
 
-/** The saved recordings, each with Watch and Download (the dialog emits ui:replayWatch / ui:replayDownload by its id). */
-function replays(list: RecordReplays, names: RecordViewNames): string {
-  if (list === 'loading') return `<div class="cot-record-replays" aria-busy="true">${skeleton('cot-record-replay-skel')}</div>`;
-  if (!list.length) return emptyState({ text: t('garage.record.replaysEmpty'), icon: 'film', className: 'cot-record-empty' });
+/** Why an opened file is not a replay this build reads (replayImport.ts), in the player's words. */
+export function replayImportProblemText(problem: ReplayImportProblem): string {
+  switch (problem.code) {
+    case 'too_big': return t('replay.import.tooBig');
+    case 'format': return t('replay.import.format', { version: problem.version, current: problem.current });
+    case 'damaged': return t('replay.import.damaged');
+    default: return t('replay.import.notReplay');
+  }
+}
+
+/** The tab's head: Open replay file (the dialog's file input) and, after a refused file, the reason. */
+function replaysHead(problem: ReplayImportProblem | null): string {
+  return `<div class="cot-record-replays-head">` +
+    button({ label: t('garage.record.replayOpen'), icon: 'plus', size: 36, attrs: { 'data-replay-open': '' } }) +
+    (problem ? `<p class="cot-record-replays-note" role="alert">${safe(replayImportProblemText(problem))}</p>` : '') +
+    `</div>`;
+}
+
+/** The saved recordings, each with Watch and Download (the dialog emits ui:replayWatch / ui:replayDownload by its id),
+ *  under Open replay file (ui:replayImport with the chosen file). */
+function replays(list: RecordReplays, names: RecordViewNames, problem: ReplayImportProblem | null): string {
+  const head = replaysHead(problem);
+  if (list === 'loading') return `${head}<div class="cot-record-replays" aria-busy="true">${skeleton('cot-record-replay-skel')}</div>`;
+  if (!list.length) return head + emptyState({ text: t('garage.record.replaysEmpty'), icon: 'film', className: 'cot-record-empty' });
   const rows = list.map((entry) => {
     const mode = entry.gameMode ?? '';
     // (leave-no-loss-276) a recording's result as the records name it; one outside the set shows none, never a defeat
@@ -323,17 +344,18 @@ function replays(list: RecordReplays, names: RecordViewNames): string {
       button({ label: t('garage.record.replayDownload'), icon: 'moveBack', size: 36, attrs: { 'data-replay-download': entry.id } }) +
       `</span></li>`;
   }).join('');
-  return `<ol class="cot-record-replays">${rows}</ol>`;
+  return `${head}<ol class="cot-record-replays">${rows}</ol>`;
 }
 
-/** The markup for one tab of the record (`saved`: the replays tab's list, empty until the dialog has loaded it). */
+/** The markup for one tab of the record (`saved`: the replays tab's list, empty until the dialog has loaded it;
+ *  `importProblem`: why the last opened file was refused). */
 export function recordTabMarkup(tab: RecordTab, names: RecordViewNames, view: ServiceRecordView = getServiceRecord(),
-  saved: RecordReplays = []): string {
+  saved: RecordReplays = [], importProblem: ReplayImportProblem | null = null): string {
   switch (tab) {
     case 'medals': return medals(view);
     case 'achievements': return achievements(view);
     case 'history': return history(view, names);
-    case 'replays': return replays(saved, names);
+    case 'replays': return replays(saved, names, importProblem);
     default: return overview(view);
   }
 }

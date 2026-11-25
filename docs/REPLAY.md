@@ -384,3 +384,17 @@ The root hazard, fixed for 277: the battle pool (`game.allTanks`) is built in `r
 never the catalogs' registration order, so a seeded draw is the same roster on the page, in a Worker and in Node
 (`src/game/battlePoolOrder.selftest.mjs`; the UI-flow receipt holds the built page's pool to Node's, id for id). The
 catalogs keep their registration order for the Garage.
+
+## Replay files: download and open (replay-fixes-277, 2026-11-24)
+
+The file is the recorder's own `.cotreplay` (gzipped where the browser could; the format's magic `COTR` and version byte
+first). Download replay (the end screen, a Replays row) saves it from the press as a Blob through an anchor. A file
+opens from the Replays tab's Open replay file or dropped on the Garage: `game/replay/replayImport.ts` checks it before
+anything is entered (refused over 2 MB before it is read; then gzip, the magic, the format version and the whole
+recording). A good file joins the Replays list and is watched as a saved one; a file from another build opens its
+timeline alone with the refusal (§7). A file that is not a replay, one of another format ("This replay uses format 2;
+this version of the game reads format 1."), a damaged one and a too-large one say why in the Replays tab and enter
+nothing. Size: 5.0-5.6 KB for 20-28 s solo battles, of which ~5 KB is fixed (the header, the hulls' footprints and
+actions); the seat stream adds ~2.5 KB per minute (§1), so a 7-minute battle is ~20-25 KB. Receipts:
+`src/game/replay/replayImport.selftest.mjs`, and the UI-flow receipt's path C (A's downloaded file opened on a fresh
+profile through the browser's own file chooser, after a non-replay and an other-format file are refused).
