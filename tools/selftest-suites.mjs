@@ -1037,6 +1037,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/foreign-gpu.selftest.mjs',
     // tree-breakdown-277: every frame-budget sample keeps its clock and the machine's thermal state at each end
     'tools/probe-sample-clock.selftest.mjs',
+    // tree-breakdown-277: each view's A/A spread beside its delta; under four pairs, inside it or near the bar is inconclusive
+    'tools/aa-noise-rule.selftest.mjs',
     // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
     // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
     'tools/probe-unit-stop.selftest.mjs',

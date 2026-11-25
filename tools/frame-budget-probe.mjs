@@ -7,7 +7,7 @@
 //        [--sides=13x14] [--spec=t90m] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
 //        [--queries=,<query>] [--toggle=<name> [--toggle-cycles=N] [--toggle-warm]] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
 //        [--hide-bots[=0|1]] [--gpu-quiet=25] [--gpu-quiet-wait-min=15] [--out=<dir>] [--tag=<tag>]
-//   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
+//   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new] [--bar-pct=<n>] [--aa-noise=<file>]
 //
 // Every root is a checkout with a production build in <root>/dist (`npm run build`); the probe serves one root at
 // a time through `vite preview` on --port (127.0.0.1) and opens a fresh headless Chrome (hardware ANGLE, the repo's
@@ -74,6 +74,14 @@
 // sample now keeps its clock (start, end) and the machine's thermal state at each end (thermalState: macOS
 // ProcessInfo.thermalState and pmset's CPU speed limit, no sudo), and so does the 15 s machine sampler. A bump can then
 // be told apart: one that follows slot position, or one that follows clock time or heat (tools/probe-sample-clock.selftest.mjs).
+//
+// The A/A noise rule (2026-11-25, tree-breakdown-277; docs/PERFORMANCE.md "Frame budget"): one dist against itself on
+// ruinspires desktop read up to +21.7 % GPU at chase 1080p from one ABBA. A delta is only as good as its view's A/A
+// spread. tools/frame-budget-aa-noise.json keeps each view's spread: the widest single-ABBA delta of the clean A/A runs on
+// record. `--report` puts it beside every delta (judgeReport). A delta of fewer than four pairs (one ABBA is two) inside
+// the spread is INCONCLUSIVE, never a pass or a fail, and so is one within twice the spread of the bar the caller passes
+// as --bar-pct. A view with no A/A of its own map borrows the widest spread on record at that view, and says so.
+// Measure a near-bar change with --pattern=ABBAABBA (four pairs) or more (tools/aa-noise-rule.selftest.mjs).
 
 import { browserGuardOf, launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
@@ -105,7 +113,7 @@ const DEFAULTS = Object.freeze({
   sides: '13x14', spec: 't90m', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
   twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
-  hideBots: 'auto', gpuQuiet: 25, gpuQuietWaitMin: 15, gpuWindowMs: 10_000,
+  hideBots: 'auto', gpuQuiet: 25, gpuQuietWaitMin: 15, gpuWindowMs: 10_000, barPct: null, aaNoise: null,
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -412,6 +420,8 @@ export function parseFrameProbeArgs(argv) {
       case 'scene-check': o.sceneCheck = need() !== 'off'; break;
       case 'gpu-quiet': o.gpuQuiet = Number(need()); break;
       case 'gpu-quiet-wait-min': o.gpuQuietWaitMin = Number(need()); break;
+      case 'bar-pct': o.barPct = Number(need()); break;
+      case 'aa-noise': o.aaNoise = path.resolve(need()); break;
       default: throw new Error(`Unknown argument --${name}`);
     }
   }
@@ -1763,6 +1773,72 @@ export function buildProfileReport(records) {
   return out;
 }
 
+// ---------------------------------------------------------------------------------------------- the A/A noise rule
+
+/** The committed A/A spreads of this machine (tools/frame-budget-aa-noise.json; see "The A/A noise rule" in the header). */
+export const AA_NOISE_FILE = new URL('./frame-budget-aa-noise.json', import.meta.url);
+/** A verdict near the bar needs at least this many pairs (one ABBA is two). */
+export const MIN_PAIRS_NEAR_BAR = 4;
+/** The A/A spreads on record ({ views: [] } when the file is missing or unreadable). */
+export function readAaNoise(file = AA_NOISE_FILE) {
+  try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return { views: [] }; }
+}
+/** The A/A spread for one report row: this map's on this tier, else the widest of another map's at the same view and
+ *  viewport (the conservative stand-in, named as such), else null. */
+export function aaNoiseFor(noise, { mapId, viewport, view, tier = 'desktop' }) {
+  const same = (noise?.views ?? []).filter((v) => v.viewport === viewport && v.view === view && (v.tier ?? 'desktop') === tier);
+  const exact = same.find((v) => v.map === mapId);
+  const stand = exact ?? [...same].sort((a, b) => (b.gpuFramePct ?? 0) - (a.gpuFramePct ?? 0))[0];
+  return stand ? { ...stand, from: exact ? stand.map : `${stand.map} (no A/A of ${mapId} on record)` } : null;
+}
+/**
+ * One delta against its view's A/A spread and, when there is one, the bar. A delta of fewer than MIN_PAIRS_NEAR_BAR pairs
+ * inside the A/A spread is inconclusive, never a pass or a fail; so is one within twice the spread of the bar. Returns
+ * { verdict, why }: verdict is 'inconclusive', 'pass', 'fail' (against the bar: a delta over it fails), 'outside-noise'
+ * or 'inside-noise' (no bar), or 'unjudged' (no spread on record, or no delta).
+ */
+export function judgeDelta({ delta, spread, pairs, bar = null, unit = '%', minPairs = MIN_PAIRS_NEAR_BAR }) {
+  if (!Number.isFinite(delta)) return { verdict: 'unjudged', why: 'no delta' };
+  if (!Number.isFinite(spread) || spread < 0) return { verdict: 'unjudged', why: 'no A/A spread on record for this view' };
+  const enough = pairs >= minPairs;
+  if (!enough && Math.abs(delta) <= spread) {
+    return { verdict: 'inconclusive', why: `inside the A/A spread ±${spread} ${unit} with ${pairs} pair(s); needs ≥${minPairs}` };
+  }
+  if (bar !== null && !enough && Math.abs(delta - bar) <= 2 * spread) {
+    return { verdict: 'inconclusive', why: `within 2× the A/A spread (±${spread} ${unit}) of the bar ${bar} ${unit} with ${pairs} pair(s); needs ≥${minPairs}` };
+  }
+  if (bar !== null) return { verdict: delta > bar ? 'fail' : 'pass', why: `${delta > bar ? 'over' : 'under'} the bar ${bar} ${unit} (${pairs} pairs; A/A spread ±${spread} ${unit})` };
+  return Math.abs(delta) <= spread
+    ? { verdict: 'inside-noise', why: `inside the A/A spread ±${spread} ${unit} (${pairs} pairs)` }
+    : { verdict: 'outside-noise', why: `outside the A/A spread ±${spread} ${unit} (${pairs} pairs)` };
+}
+/**
+ * The rule on a report (in place): each A/B row gets its view's A/A noise (row.noise) and a judgement of the GPU median,
+ * GPU p25 (in % of the first label's) and CPU (ms) deltas (row.judgement). A VOID or TAINTED row is judged 'void' or
+ * 'tainted' whatever its deltas. `barPct` is the caller's bar for the GPU deltas (a cost the change may add, in %).
+ */
+export function judgeReport(report, { noise = readAaNoise(), barPct = null, tier = 'desktop' } = {}) {
+  for (const row of Object.values(report)) {
+    if (row.toggle || !row.deltas) continue;
+    const [a] = Object.keys(row.byLabel);
+    const n = aaNoiseFor(noise, { mapId: row.mapId, viewport: row.viewport, view: row.view, tier });
+    row.noise = n && { from: n.from, abbas: n.abbas, gpuFramePct: n.gpuFramePct, gpuFrameP25Pct: n.gpuFrameP25Pct, cpuFrameMs: n.cpuFrameMs };
+    const pct = (key) => {
+      const d = row.deltas[key], base = row.byLabel[a]?.[key];
+      return d?.pairs && base ? +((d.med / base) * 100).toFixed(1) : null;
+    };
+    const blocked = row.void ? { verdict: 'void', why: 'the pages disagree' } : row.tainted ? { verdict: 'tainted', why: 'another program used the GPU during a pair' } : null;
+    const judge = (key, delta, spread, unit, bar) => ({ delta, unit, pairs: row.deltas[key]?.pairs ?? 0, spread: spread ?? null,
+      ...(blocked ?? judgeDelta({ delta, spread, pairs: row.deltas[key]?.pairs ?? 0, bar, unit })) });
+    row.judgement = {
+      gpuFrame: judge('gpuFrame', pct('gpuFrame'), n?.gpuFramePct, '%', barPct),
+      gpuFrameP25: judge('gpuFrameP25', pct('gpuFrameP25'), n?.gpuFrameP25Pct, '%', barPct),
+      cpuFrame: judge('cpuFrame', row.deltas.cpuFrame?.pairs ? row.deltas.cpuFrame.med : null, n?.cpuFrameMs, 'ms', null),
+    };
+  }
+  return report;
+}
+
 /** Markdown for a report: one table per map × viewport × view (and toggle). */
 function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
   const ratios = proxyRatios(MID_RANGE_PROXIES[proxy]);
@@ -1791,6 +1867,13 @@ function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
     if (labels.some((l) => row.byLabel[l].cache)) lines.push(`| **static shadow cache** | ${labels.map((l) => cacheCell(row.byLabel[l].cache)).join(' | ')} | | | |`);
     const proj = labels.map((l) => projectFrameMs({ gpuMs: row.byLabel[l].gpuFrameP25 ?? row.byLabel[l].gpuFrame, cpuMs: row.byLabel[l].cpuFrame }, ratios));
     lines.push(`| **projected ${proxy} frame (p25 GPU)** | ${proj.map((p) => `${p.frameMs} ms (${p.bound})`).join(' | ')} | | | |`, '');
+    // the A/A noise rule: each delta beside its view's A/A spread, and what it may conclude
+    if (row.judgement) {
+      const j = row.judgement;
+      const noiseText = row.noise ? `GPU ±${row.noise.gpuFramePct} %, p25 ±${row.noise.gpuFrameP25Pct} %, CPU ±${row.noise.cpuFrameMs} ms (${row.noise.abbas} A/A ABBAs, ${row.noise.from})` : 'none on record';
+      const one = (name, x) => `${name} ${x.delta === null ? '—' : `${x.delta > 0 ? '+' : ''}${x.delta} ${x.unit}`} → **${x.verdict.toUpperCase()}** (${x.why})`;
+      lines.push(`A/A noise: ${noiseText}`, '', `- ${one('GPU median', j.gpuFrame)}`, `- ${one('GPU p25', j.gpuFrameP25)}`, `- ${one('CPU', j.cpuFrame)}`, '');
+    }
   }
   return lines.join('\n');
 }
@@ -1803,7 +1886,8 @@ if (isMainModule(import.meta.url)) {
   catch (error) { console.error(error.message); process.exit(1); }
   if (options.report) {
     const records = readSlotRecords(options.report);
-    const report = buildFrameReport(records, options.labels, { twinTris: options.twinTrisTol, draws: options.drawsTol, stable: options.stableTol });
+    const report = judgeReport(buildFrameReport(records, options.labels, { twinTris: options.twinTrisTol, draws: options.drawsTol, stable: options.stableTol }),
+      { noise: readAaNoise(options.aaNoise ?? AA_NOISE_FILE), barPct: options.barPct, tier: options.tier });
     const profiles = buildProfileReport(records);
     const outDir = options.report[0];
     writeFileSync(path.join(outDir, 'frame-report.json'), JSON.stringify({ ...report, cpuProfiles: profiles }, null, 1));
