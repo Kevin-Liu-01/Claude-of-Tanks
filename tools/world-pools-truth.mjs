@@ -5,7 +5,7 @@
 //
 //   capture: node tools/world-pools-truth.mjs --root=<tree with dist> --label=<name> --load=<1|2> [--maps=verdant,monsoon,autumn]
 //              [--views=chase,centre-far,bird,side] [--viewport=1600x900] [--tier=desktop|mobile] [--preset=high] [--bots]
-//              [--port=5373] [--out=<dir>] [--battlefield-split-only]
+//              [--port=<n>] [--out=<dir>] [--battlefield-split-only]
 //   compare: node tools/world-pools-truth.mjs --compare --out=<dir> --labels=base,new [--threshold=8] [--png]
 //
 // Capture, per map and view: the frame twice (the A/A floor: 0 px in one task); where the page has the draw batches
@@ -167,11 +167,12 @@ async function capture() {
   const [width, height] = arg('viewport', '1600x900').split('x').map(Number);
   const tier = arg('tier', 'desktop');
   const preset = arg('preset', tier === 'desktop' ? 'high' : 'mobile');
-  const port = Number(arg('port', 5373));
+  let port = Number(arg('port', 0)); // 0: the capture slot's first free preview port, else an OS-assigned one
   const report = { root, label, load, tier, preset, viewport: `${width}x${height}`, loadAtStart: os.loadavg().map((v) => +v.toFixed(1)), maps: {} };
   let server = null, hold = null, browser = null;
   try {
     server = await openPreview(root, port);
+    port = server.port;
     hold = await openCaptureHold({ label: 'world-pools-truth', timeoutMs: 3 * 60 * 60 * 1000, lockClass: 'render', command: 'tools/world-pools-truth.mjs' });
     const startedAt = Date.now();
     for (const mapId of maps) {

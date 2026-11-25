@@ -13,7 +13,7 @@
 //   - screenshots: the desktop card with its QR, the phone page live, the desktop driving.
 // Holds the capture lock (one ticket, under 18 minutes). Report: .qa-dev/pad-e2e/report.json.
 //
-//   node tools/pad-e2e.browser.mjs [--samples=40] [--port=5296] [--out=.qa-dev/pad-e2e]
+//   node tools/pad-e2e.browser.mjs [--samples=40] [--port=<n>] [--out=.qa-dev/pad-e2e]
 import http from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -29,7 +29,8 @@ import { PAD_GUN_STATE, PAD_LINK_PATH, PAD_LINK_STATE, PAD_PHONE_STATE, PAD_TOUR
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const samples = Number(arg('samples', 40));
-const port = Number(arg('port', 5296));
+// --port=<n> pins the dev server's port; by default it binds an OS-assigned one (two runs never collide: capture-ports.mjs)
+let port = Number(arg('port', 0));
 const outDir = resolve(root, arg('out', '.qa-dev/pad-e2e'));
 mkdirSync(outDir, { recursive: true });
 const HOLD_MS = 18 * 60 * 1000;
@@ -79,6 +80,7 @@ try {
   vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/pad-e2e-vite-cache'), logLevel: 'error',
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
   await vite.listen();
+  port = vite.httpServer.address().port;
   // the first transform of each document is slow under load (page catalogs, the module graph): warm both before the ticket
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});

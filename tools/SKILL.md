@@ -179,7 +179,16 @@ FIFO holds between classes: a render never passes a ready timing ticket (or
 an older copy's unclassed one, which stays exclusive). The class comes from
 `--lock-class=render|timing`, else acquire's `lockClass`, else
 `COT_SHOTS_LOCK_CLASS`, else the command's script names (`classifyCommand`);
-`--status` shows it. A tool holds through `tools/capture-hold.mjs`, never a
+`--status` shows it. Each slot owns a port block (`tools/capture-ports.mjs`,
+capture-slot-ports-277): the hold hands its children `COT_CAPTURE_SLOT`,
+`COT_CAPTURE_PREVIEW_PORT(S)` and `COT_CAPTURE_ROOMS_PORT` (slot 0: 4400-4419
+and 8800; slot 1: 4420-4439 and 8801; an exclusive hold uses slot 0), and
+`startViteChild`, `openPreview` and the mp tools bind inside it, or on an
+OS-assigned port outside a hold. A built client dials a tool's own rooms
+service with `?roomsPort=` (loopback pages only). A lane script serves a dist
+with `node tools/with-preview.mjs --root=<dir> -- <command>`
+(`$COT_PREVIEW_URL`), which stops only the server it started; never pick a
+fixed port or stop a server by its port. A tool holds through `tools/capture-hold.mjs`, never a
 lock of its own: `withCaptureHold(work, options)` (or `runWarmHold` on it)
 for a tool that works in units, `openCaptureHold()` (two lines: the acquire
 and the release) for a script or a browser receipt. The wrapper owns the

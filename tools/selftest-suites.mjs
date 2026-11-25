@@ -1035,6 +1035,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/with-capture-lock.selftest.mjs',
     // 277: heavy work outside the lock waits while a timing hold runs (prebuild, test:lane's tanks tier, tank:regen:changed)
     'tools/timing-gate.selftest.mjs',
+    // capture-slot-ports-277: each render slot hands its children its own port block; two concurrent holds serve their
+    // previews (tools/with-preview.mjs) inside their blocks, and one hold's teardown leaves the other's server alive
+    'tools/capture-slot-ports.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     // probe-fresh-browser-276: one guarded browser per staging, the previous one reaped (the tree stays flat under the 10 GB cap)
     'tools/frame-budget-probe-browsers.selftest.mjs',

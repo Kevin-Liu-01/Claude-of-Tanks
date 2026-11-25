@@ -8,7 +8,7 @@
 // main-thread time inside WebGL's compile, link and status calls, the network (requests, bytes, cache hits) and long tasks.
 //
 //   node tools/time-to-battle-probe.mjs --roots=<A>,<B> --labels=main,pr --maps=verdant,titan_gorge,monsoon --out=<dir>
-//        [--runs=cold,warm] [--reps=1] [--spec=t90m] [--sides=13x14] [--profile] [--port=5491] [--session-mutex=<dir>]
+//        [--runs=cold,warm] [--reps=1] [--spec=t90m] [--sides=13x14] [--profile] [--port=<n>] [--session-mutex=<dir>]
 //        [--warm=page|relaunch] [--browser-args=<flag>|<flag>]
 //
 // cold: a fresh browser profile (empty HTTP cache, empty GPU program cache, no storage) — a first visit. warm: a second
@@ -27,6 +27,7 @@ import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, installObservers, markUnitsLeft, pinnedOpponents, profileSelfByChunk, runProbeUnit } from './frame-budget-probe.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { bindFirstFree } from './capture-ports.mjs';
 
 const TOOL = 'time-to-battle';
 const log = (m) => console.log(`[${TOOL} ${new Date().toTimeString().slice(0, 8)}] ${m}`);
@@ -322,7 +323,10 @@ export async function runTimeToBattle(opt, { acquireLocks = acquireProbeLocks, s
   const [allies, enemies] = (opt.sides ?? '13x14').split('x').map(Number);
   const out = path.resolve(opt.out);
   mkdirSync(out, { recursive: true });
-  const port0 = Number(opt.port ?? 5491);
+  // --port=<n> pins the previews to n, n+1, ...; by default each binds the capture slot's next free preview port
+  // (capture-ports.mjs), or an OS-assigned one outside a hold
+  const pinned = opt.port === undefined ? null : Number(opt.port);
+  const ports = [];
   const startedAt = Date.now();
   const budgetMs = Number(process.env.PERF_BUDGET_MS || opt['budget-ms'] || 3600e3);
   const unitMs = Number(opt['unit-ms'] ?? 330000);
@@ -336,7 +340,10 @@ export async function runTimeToBattle(opt, { acquireLocks = acquireProbeLocks, s
   try {
     for (let i = 0; i < roots.length; i++) {
       if (!existsSync(path.join(roots[i], 'dist', 'index.html'))) throw new Error(`${roots[i]} has no dist`);
-      servers.push(await startPreview({ root: roots[i], configFile: false, logLevel: 'error', preview: { host: '127.0.0.1', port: port0 + i, strictPort: true } }));
+      const { server, port } = await bindFirstFree((tried) => startPreview({ root: roots[i], configFile: false, logLevel: 'error',
+        preview: { host: '127.0.0.1', port: tried, strictPort: true } }), { ports: pinned === null ? null : [pinned + i], fallback: pinned === null });
+      servers.push(server);
+      ports.push(server.httpServer?.address?.()?.port ?? port);
     }
     // the opponents both catalogs share (a throwaway profile per build: the measured profiles stay cold)
     // (a resumed run keeps the roster it pinned)
@@ -347,7 +354,7 @@ export async function runTimeToBattle(opt, { acquireLocks = acquireProbeLocks, s
       log(`opponents from ${rosterFile}: ${opponents.join(',')}`);
     } else {
       const catalogs = [];
-      for (let i = 0; i < roots.length; i++) catalogs.push(new Set(await catalog(port0 + i)));
+      for (let i = 0; i < roots.length; i++) catalogs.push(new Set(await catalog(ports[i])));
       const shared = [...catalogs[0]].filter((id) => catalogs.every((c) => c.has(id)));
       opponents = pinnedOpponents(shared, specId, allies + enemies);
       log(`${shared.length} shared catalog ids; opponents ${opponents.join(',')}`);
@@ -380,7 +387,7 @@ export async function runTimeToBattle(opt, { acquireLocks = acquireProbeLocks, s
                 if (run !== runs[0] && opt.warm === 'relaunch') { await browser.close().catch(() => {}); browser = await launch(); }
                 let rec;
                 try {
-                  rec = await runPage(browser, { port: port0 + i, mapId, specId, opponents, allies, enemies, profile: !!opt.profile, label: labels[i], run });
+                  rec = await runPage(browser, { port: ports[i], mapId, specId, opponents, allies, enemies, profile: !!opt.profile, label: labels[i], run });
                 } catch (error) {
                   if (locks.signal.aborted) throw error; // the hold's stop cut it: the unit is left, not a failed run
                   log(`${mapId} ${labels[i]} ${run} FAILED: ${String(error?.message || error).slice(0, 300)}`);

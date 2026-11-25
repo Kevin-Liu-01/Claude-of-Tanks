@@ -91,6 +91,7 @@ import os from 'node:os';
 import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
+import { bindFirstFree } from './capture-ports.mjs';
 import puppeteer from 'puppeteer';
 import {
   HULL_RELATIVE_POSES, MAP_PROBE_BROWSER_ARGS, MAP_PROBE_FOV, applyGroundPose, beginSoloBattle, isMainModule,
@@ -1085,10 +1086,13 @@ function defaultReleaseMutex(dir) {
   releaseSessionMutexAt(dir);
 }
 
-export async function openPreview(root, port) {
+/** A preview of `root`'s dist on `port`, or (port 0 or absent) on the capture slot's first free preview port, else an
+ *  OS-assigned one (capture-ports.mjs). Resolves { close, port: the port bound }. */
+export async function openPreview(root, port = 0) {
   if (!existsSync(path.join(root, 'dist', 'index.html'))) throw new Error(`root ${root} has no dist/index.html (run npm run build there)`);
-  const server = await preview({ root, configFile: false, logLevel: 'error', preview: { host: '127.0.0.1', port, strictPort: true } });
-  return { close: () => server.close() };
+  const { server } = await bindFirstFree((tried) => preview({ root, configFile: false, logLevel: 'error', preview: { host: '127.0.0.1', port: tried, strictPort: true } }),
+    { ports: port ? [port] : null, fallback: !port });
+  return { close: () => server.close(), port: server.httpServer.address().port };
 }
 
 export async function poseView(page, name) {

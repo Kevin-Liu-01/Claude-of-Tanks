@@ -51,6 +51,7 @@ import { constants } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { refuseGuardedLaunches, setBrowserGuardContext, stopGuardedBrowsers } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
+import { previewPortCandidates } from './capture-ports.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -74,15 +75,18 @@ export async function thawPage(page, session) {
  * with it the lock's heartbeats. `mode: 'preview'` serves the built `outDir` (default dist) through the project's
  * config — no transforms, no Vite client, the fastest page loads — and `mode: 'dev'` serves the sources without an HMR
  * websocket (`ws: false`); `config` replaces the inline Vite config whole (e.g. `configFile: false` and a private
- * `cacheDir`: give it `server.ws: false` too). The child exits with its parent. Resolves { url, child, close }.
+ * `cacheDir`: give it `server.ws: false` too). It binds the first free port of `ports` (default: the capture slot's
+ * preview block, capture-ports.mjs, else an OS-assigned one), so two render holds never share a port; the URL it
+ * resolves names the port bound. `close` stops this child alone (its own process handle, never a port): another
+ * hold's server is never touched. The child exits with its parent. Resolves { url, child, close }.
  */
-export function startViteChild({ root = process.cwd(), mode = 'preview', outDir = 'dist', port = 5600 + (process.pid % 300),
+export function startViteChild({ root = process.cwd(), mode = 'preview', outDir = 'dist', ports = null,
   config = null, timeoutMs = 300_000, env = process.env } = {}) {
   const inline = config ?? (mode === 'preview'
-    ? { root, logLevel: 'error', build: { outDir }, preview: { host: '127.0.0.1', port, strictPort: false } }
-    : { root, logLevel: 'error', server: { host: '127.0.0.1', port, strictPort: false, hmr: false, ws: false, watch: null } });
+    ? { root, logLevel: 'error', build: { outDir }, preview: { host: '127.0.0.1' } }
+    : { root, logLevel: 'error', server: { host: '127.0.0.1', hmr: false, ws: false, watch: null } });
   const entry = fileURLToPath(new URL('./vite-child.mjs', import.meta.url));
-  const child = spawn(process.execPath, [entry, JSON.stringify({ mode, config: inline })], { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [entry, JSON.stringify({ mode, config: inline, ports: ports ?? previewPortCandidates(env) })], { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
   let output = '';
   return new Promise((resolveServer, rejectServer) => {
     const timer = setTimeout(() => { child.kill('SIGTERM'); rejectServer(new Error(`vite ${mode}: not serving after ${timeoutMs} ms\n${output.slice(-2000)}`)); }, timeoutMs);

@@ -97,7 +97,7 @@ try {
             root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
             optimizeDeps: { noDiscovery: true },
             // no HMR socket: a frozen page must not take a Vite reload at the thaw (capture-hold.mjs, 2026-10-23)
-            server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: false, hmr: false, ws: false, watch: null },
+            server: { host: '127.0.0.1', hmr: false, ws: false, watch: null },
           },
         });
         let browser = null;

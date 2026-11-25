@@ -37,7 +37,7 @@ const server = await createServer({
   cacheDir,
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
-  server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
+  server: { host: '127.0.0.1', port: 0, strictPort: true, hmr: false, watch: null }, // port 0: OS-assigned (capture-ports.mjs)
 });
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');

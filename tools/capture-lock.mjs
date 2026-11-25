@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { portBlockEnv } from './capture-ports.mjs';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
@@ -480,6 +481,8 @@ const pause = (ms, signal) => new Promise((resolve) => {
 });
 
 const slotText = (record) => `pid ${record.pid}\n${JSON.stringify(record)}\n`;
+/** A slot file's index (`slot-<k>.holder` → k): the port block a member's work binds (capture-ports.mjs). */
+const slotIndex = (name) => Number(SLOT_FILE.exec(name)[1]);
 const isGroupToken = (token, id) => token.id === id && Number.isSafeInteger(token.group?.max) && token.group.max > 0;
 const groupMax = (token) => Math.min(token.group.max, 8);
 
@@ -1065,8 +1068,9 @@ export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAUL
 // hold of this same process) acquire() says so once and queues as usual; this process's own other holds never count.
 const NESTED_HOLD_ENV = 'COT_SHOTS_HELD';
 
-/** The live hold `token` (`<pid>:<nonce>`) names at `lockDir`: { pid, nonce, lockClass }, or null (no token, a malformed
- *  one, or no live hold of that pid and nonce there now). */
+/** The live hold `token` (`<pid>:<nonce>`) names at `lockDir`: { pid, nonce, lockClass, slot }, or null (no token, a
+ *  malformed one, or no live hold of that pid and nonce there now). `slot` is the render member's slot index, 0 for an
+ *  exclusive hold (capture-ports.mjs: the port block its children bind). */
 function nestedParent(token, lockDir, lockStaleMs) {
   const match = /^(\d+):([0-9a-f]{24})$/.exec(String(token ?? ''));
   if (!match) return null;
@@ -1078,11 +1082,11 @@ function nestedParent(token, lockDir, lockStaleMs) {
   if (owner.state !== 'ok') return null;
   if (isGroupToken(owner.token, at.id)) {
     const slot = readSlots(lockDir).find((entry) => entry.record?.nonce === nonce && entry.record.pid === pid);
-    return slot && slotLive(slot, lockStaleMs) ? { pid, nonce, lockClass: 'render' } : null;
+    return slot && slotLive(slot, lockStaleMs) ? { pid, nonce, lockClass: 'render', slot: slotIndex(slot.name) } : null;
   }
   if (owner.token.id !== at.id || owner.token.nonce !== nonce || owner.token.pid !== pid) return null;
   return ownerLiveness(owner.token, Date.now() - at.mtimeMs, lockStaleMs).alive
-    ? { pid, nonce, lockClass: LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'timing' } : null;
+    ? { pid, nonce, lockClass: LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'timing', slot: 0 } : null;
 }
 
 /** The live hold at `lockDir` an ancestor of this process owns (the owner record, or a live render member's slot), as
@@ -1422,14 +1426,25 @@ export function createCaptureLock({
     }).length;
   }
 
-  /** The environment a child started under this hold needs to nest in it ({} while nothing is held). */
+  /** This hold's slot index: a render member's slot, 0 for an exclusive hold, the parent's for a nested one; null while
+   *  nothing is held. Two render members never share one, so their port blocks (capture-ports.mjs) never overlap. */
+  function heldSlot() {
+    if (!hold) return null;
+    if (hold.nested) return hold.parent.slot ?? 0;
+    return hold.slot ? slotIndex(hold.slot) : 0;
+  }
+
+  /** The environment a child started under this hold needs ({} while nothing is held): the nested-hold token and the
+   *  slot's port block (capture-ports.mjs portBlockEnv), so its servers bind inside this slot's ports. */
   function nestedEnv() {
     if (!hold) return {};
-    return { [NESTED_HOLD_ENV]: hold.nested ? `${hold.parent.pid}:${hold.parent.nonce}` : `${process.pid}:${hold.nonce}` };
+    return { [NESTED_HOLD_ENV]: hold.nested ? `${hold.parent.pid}:${hold.parent.nonce}` : `${process.pid}:${hold.nonce}`,
+      ...portBlockEnv(heldSlot()) };
   }
 
   const api = { acquire, refresh, release, checkpoint, waiting, nestedEnv, get lastTicket() { return lastTicket; },
     get heldTicket() { return hold?.ticket ?? null; }, get heldClass() { return hold ? holdTerms.lockClass : null; },
+    get heldSlot() { return heldSlot(); },
     /** Whether this instance holds the lock now (its own hold or a nested one): the one record of it, never a caller's flag. */
     get held() { return hold !== null; },
     /** Whether the hold is a nested one (a child's, inside its parent's hold). */

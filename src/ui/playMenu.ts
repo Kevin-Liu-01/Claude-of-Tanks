@@ -664,12 +664,17 @@ function bindSegmentedSetting(group: MenuSelectElement): void {
  * official site, the LAN helper on a local host, null when this origin names none (a misconfigured value counts
  * as none: the failure panel says the room service is unavailable rather than presenting a URL error).
  */
+// A loopback page's `?roomsPort=` (endpoint.ts roomsPortOverride), read once at boot: the room's invite address replaces
+// the query later, and every reconnect must keep dialling the same helper.
+const bootRoomsPort = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('roomsPort');
+
 function menuRoomsUrl(): string | null {
   try {
     return resolveRoomsUrl({
       configured: import.meta.env.VITE_ROOMS_URL,
       protocol: location.protocol,
       hostname: location.hostname,
+      roomsPort: bootRoomsPort,
     });
   } catch { return null; }
 }

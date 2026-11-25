@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as endpoint from './endpoint.ts';
-import { LAN_ROOMS_PORT, configuredRoomsUrl, resolveRoomsUrl } from './endpoint.ts';
+import { LAN_ROOMS_PORT, configuredRoomsUrl, resolveRoomsUrl, roomsPortOverride } from './endpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST, OFFICIAL_TELEMETRY_URL, isOfficialSiteHost } from '../../officialHost.ts';
 import { SITE_ORIGIN } from '../../presentation/siteMetadata.ts';
 
@@ -32,6 +32,19 @@ const telemetrySource = readFileSync(new URL('../../entry/telemetry.ts', import.
 assert.equal(/OFFICIAL_SITE_HOST = '([^']+)'/.exec(telemetrySource)?.[1], OFFICIAL_SITE_HOST, 'telemetry.ts repeats OFFICIAL_SITE_HOST verbatim');
 assert.equal(/OFFICIAL_TELEMETRY_URL = '([^']+)'/.exec(telemetrySource)?.[1], OFFICIAL_TELEMETRY_URL, 'telemetry.ts repeats OFFICIAL_TELEMETRY_URL verbatim');
 console.log('endpoint.selftest: configured / official / LAN / preview room hosts, the sensitive placeholder, the Worker names');
+
+// ?roomsPort= (capture-slot-ports-277): a tool's own rooms service on its capture slot's port, on a loopback page alone.
+assert.equal(resolveRoomsUrl({ configured: '', protocol: 'http:', hostname: '127.0.0.1', roomsPort: '8801' }), 'ws://127.0.0.1:8801', 'a loopback page dials the named helper port');
+assert.equal(resolveRoomsUrl({ configured: '', protocol: 'http:', hostname: 'localhost', roomsPort: 8800 }), 'ws://localhost:8800');
+assert.equal(resolveRoomsUrl({ configured: '', protocol: 'http:', hostname: '::1', roomsPort: '8800' }), 'ws://[::1]:8800');
+assert.equal(resolveRoomsUrl({ configured: '', protocol: 'http:', hostname: '192.168.1.20', roomsPort: '8801' }), `ws://192.168.1.20:${LAN_ROOMS_PORT}`, 'a LAN page ignores it');
+assert.equal(resolveRoomsUrl({ configured: '', protocol: 'https:', hostname: 'claude-of-tanks-abc.vercel.app', roomsPort: '8801' }), null, 'a public host ignores it');
+assert.equal(resolveRoomsUrl({ configured: '', ...official, roomsPort: '8801' }), OFFICIAL_ROOMS_URL, 'the official site ignores it');
+assert.equal(resolveRoomsUrl({ configured: 'ws://127.0.0.1:9000', protocol: 'http:', hostname: '127.0.0.1', roomsPort: '8801' }), 'ws://127.0.0.1:9000', 'a configured host wins');
+for (const bad of ['80', '0', '70000', '88a1', ' ', null, undefined, '8801.5', '+8801']) {
+  assert.equal(roomsPortOverride(bad, '127.0.0.1'), null, `${JSON.stringify(bad)} is no port`);
+}
+console.log('endpoint.selftest: ?roomsPort= names the helper port on loopback pages only; LAN, public and official hosts ignore it');
 
 // The ICE credential endpoint left with the relay credentials' move into the room (2026-10-02, docs/MULTIPLAYER-V2.md
 // §13.14): a page resolves the room host alone, and a private room's ICE comes from the room it is seated in.

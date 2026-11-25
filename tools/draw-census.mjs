@@ -5,7 +5,7 @@
 // reaches the GPU (an instanced call with count 0 is a submission, not a draw) to its object's world subtree and name.
 //
 //   node tools/draw-census.mjs --root=<checkout with dist> [--maps=verdant,monsoon,whiteout] [--views=chase,centre-far]
-//     [--viewport=1920x1080] [--tier=desktop|mobile] [--preset=high] [--frames=3] [--port=5371] [--out=<dir>] [--tag=<tag>]
+//     [--viewport=1920x1080] [--tier=desktop|mobile] [--preset=high] [--frames=3] [--port=<n>] [--out=<dir>] [--tag=<tag>]
 //     [--bots] (the frozen bots stay drawn: their hulls' draws, the far LOD's among them) [--query=<page query>]
 //
 // Staging is the frame-budget probe's (docs/PERFORMANCE.md "Frame budget"): the preset pinned before boot, 14 v 14 with
@@ -29,7 +29,7 @@ const [width, height] = arg('viewport', '1920x1080').split('x').map(Number);
 const tier = arg('tier', 'desktop');
 const preset = arg('preset', tier === 'desktop' ? 'high' : '');
 const frames = Number(arg('frames', 3));
-const port = Number(arg('port', 5371));
+let port = Number(arg('port', 0)); // 0: the capture slot's first free preview port, else an OS-assigned one
 const out = path.resolve(arg('out', path.join(root, '.qa-dev/draw-census')));
 const tag = arg('tag', 'census');
 const query = arg('query', '');
@@ -98,6 +98,7 @@ const report = { root, tier, preset, viewport: `${width}x${height}`, maps: {}, l
 let hold = null; let browser = null; let server = null;
 try {
   server = await openPreview(root, port);
+  port = server.port;
   hold = await openCaptureHold({ label: 'draw-census', timeoutMs: 3 * 60 * 60 * 1000, lockClass: 'render', command: 'tools/draw-census.mjs' });
   const startedAt = Date.now();
   browser = await launchGuardedBrowser(puppeteer, { headless: true, timeout: 120000, protocolTimeout: 600000,

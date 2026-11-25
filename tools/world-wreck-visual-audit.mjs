@@ -27,7 +27,7 @@ const server = await createServer({
   logLevel: 'error',
   server: {
     host: '127.0.0.1',
-    port: 7900 + (process.pid % 80),
+    port: 0, // OS-assigned (capture-ports.mjs): a pid-spread guess could still collide
     strictPort: true,
     hmr: false,
     watch: null,

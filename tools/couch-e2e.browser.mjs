@@ -7,7 +7,7 @@
 // tank and no other; the latency
 // from a phone's event to its tank's input in a desktop frame is measured with every phone linked; a phone that
 // vanishes with its throttle held stops its tank. Run alone (one capture ticket, under 20 minutes):
-//   node tools/couch-e2e.browser.mjs [--phones=8] [--joinPhones=4] [--samples=40] [--port=5297] [--out=.qa-dev/couch-e2e]
+//   node tools/couch-e2e.browser.mjs [--phones=8] [--joinPhones=4] [--samples=40] [--port=<n>] [--out=.qa-dev/couch-e2e]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { resolve } from 'node:path';
@@ -24,7 +24,8 @@ const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const phones = Math.max(2, Math.min(8, Number(arg('phones', 8))));
 const samples = Number(arg('samples', 40));
-const port = Number(arg('port', 5297));
+// --port=<n> pins the dev server's port; by default it binds an OS-assigned one (two runs never collide: capture-ports.mjs)
+let port = Number(arg('port', 0));
 const outDir = resolve(root, arg('out', '.qa-dev/couch-e2e'));
 mkdirSync(outDir, { recursive: true });
 const HOLD_MS = 18 * 60 * 1000;
@@ -71,6 +72,7 @@ try {
   vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/couch-e2e-vite-cache'), logLevel: 'error',
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
   await vite.listen();
+  port = vite.httpServer.address().port;
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }

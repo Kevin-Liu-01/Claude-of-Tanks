@@ -11,7 +11,7 @@ const option = (name, fallback = '') => {
   const direct = argv.find((arg) => arg.startsWith(`--${name}=`));
   return direct ? direct.slice(name.length + 3) : fallback;
 };
-const baseUrl = option('url', 'http://127.0.0.1:4178').replace(/\/$/, '');
+const baseUrl = option('url', process.env.COT_PREVIEW_URL || 'http://127.0.0.1:4178').replace(/\/$/, '');
 const cpuRate = Math.max(1, Number(option('cpu-rate', '4')) || 4);
 const sampleMs = Math.max(1_000, Number(option('sample-ms', '5000')) || 5_000);
 const gate = !argv.includes('--no-gate');
