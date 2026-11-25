@@ -12,6 +12,8 @@ import { replayRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 import type { WatchSession } from '../game/watchSeat.ts';
 import { replayRefusal } from '../game/replay/replayBuild.ts';
 import type { ReplayIndex } from '../game/replay/replayIndexer.ts';
+import { trackPose } from '../game/replay/replayTrack.ts';
+import type { ReplayPose } from '../game/replayPose.ts';
 import { indexReplayInWorker, type ReplayIndexTask } from '../game/replay/replayIndexerClient.ts';
 import { rosterMismatch } from '../game/replay/replaySetup.ts';
 import { replayCollisionManifest, REPLAY_TERRAIN_SEED } from '../game/replay/replayWorldManifest.ts';
@@ -64,6 +66,17 @@ export interface ReplayViewerRuntime {
   isActive(): boolean;
   advance(realS: number): void;
   stop(): void;
+  /** For the tools (replay-fixes-277): every hull as drawn (its visual's world position) beside the track's pose at the
+   *  clock's moment, so a receipt reads what the page draws, never only the posed data. Null without a track. */
+  probe(): ReplayViewerProbe | null;
+}
+
+export interface ReplayViewerProbe {
+  timeS: number;
+  durationS: number;
+  hulls: Array<{ id: string; drawn: [number, number, number] | null; track: [number, number, number] | null; visible: boolean }>;
+  seek(timeS: number): void;
+  ride(id: string): boolean;
 }
 
 export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): ReplayViewerRuntime {
@@ -118,7 +131,10 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     paint();
   };
 
+  let shownIndex: ReplayIndex | null = null;
+  const probePose: ReplayPose = { pos: [0, 0, 0], yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
   const begin = (index: ReplayIndex): void => {
+    shownIndex = index;
     viewer = createReplayViewer(index, {
       hulls: game.tanks,
       watch: {
@@ -184,6 +200,29 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
 
     isActive: () => active,
 
+    probe() {
+      const shown = viewer, track = shownIndex?.track ?? null;
+      if (!shown || !track || !active) return null;
+      const timeS = shown.clock.timeS;
+      const hulls = game.tanks.map((hull) => {
+        const root = (hull.visual as { root?: { matrixWorld?: { elements: ArrayLike<number> }; visible?: boolean } } | null | undefined)?.root;
+        const m = root?.matrixWorld?.elements;
+        const index = track.hulls.findIndex((entry) => entry.id === hull.id);
+        const onTrack = index >= 0 && trackPose(track, index, timeS, probePose);
+        return {
+          id: hull.id,
+          drawn: m ? [m[12]!, m[13]!, m[14]!] as [number, number, number] : null,
+          track: onTrack ? [probePose.pos[0], probePose.pos[1], probePose.pos[2]] as [number, number, number] : null,
+          visible: root?.visible !== false,
+        };
+      });
+      return {
+        timeS, durationS: shown.clock.durationS, hulls,
+        seek: (t: number) => { shown.scrub(t); paint(); },
+        ride: (id: string) => ports.watch()?.rideId(id) ?? false,
+      };
+    },
+
     // the battle frame calls it only while the battle is in view (game/battleFrameRuntime.ts): the first call offers the
     // transport
     advance(realS) {
@@ -194,6 +233,7 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
 
     stop() {
       generation++;
+      shownIndex = null;
       active = false;
       task?.cancel();
       task = null;
