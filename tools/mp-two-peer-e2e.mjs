@@ -74,6 +74,18 @@ const roomKind = forceRelay || argValue('mode', 'lan') === 'private' ? 'private'
 // clock's seed and boot land in its first seconds. --ack-by=<s>: the startup gate's second (3 by default).
 const hostThrottle = Number(argValue('host-throttle', 0));
 const ackBy = Number(argValue('ack-by', 3));
+// (Kevin 2026-11-25, a friend on the live site: "it didnt load fast enough ... he got stuck at 56%") the joiner as that
+// friend: --joiner-cold opens the invite link in its fresh profile for its first battle (no Garage before it);
+// --joiner-net=<down kbps>,<rtt ms>[,<up kbps>] and --joiner-cpu=<rate> throttle its page (CDP) from its first request;
+// --joiner-ice=blocked builds its peer connections relay-only with no relay server, so its link can never connect (two
+// NATs with no usable TURN). Gates: the joiner's battle on screen within --join-bound seconds of the start press, and no
+// loading state (the loader's percent and stage) unchanged for more than --stall-bound seconds.
+const joinerCold = process.argv.includes('--joiner-cold');
+const joinerNet = argValue('joiner-net', '').split(',').map(Number).filter((value) => value > 0);
+const joinerCpu = Number(argValue('joiner-cpu', 0));
+const joinerBlocked = argValue('joiner-ice', '') === 'blocked';
+const joinBoundS = Number(argValue('join-bound', 0));
+const stallBoundS = Number(argValue('stall-bound', 10));
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -85,7 +97,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostThrottle, ackBy, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -183,17 +195,35 @@ async function linkProbe() {
 }
 
 /** Init script: keep every RTCPeerConnection the page makes, for the link probe. */
-function installPcRecorder(relayOnly = false) {
+function installPcRecorder(relayOnly = false, blocked = false) {
   if (window.__MP2_PCS) return;
   const pcs = window.__MP2_PCS = [];
   const Native = window.RTCPeerConnection;
   if (!Native) return;
   window.RTCPeerConnection = class extends Native {
     constructor(configuration, ...rest) {
-      super(relayOnly ? { ...(configuration ?? {}), iceTransportPolicy: 'relay' } : configuration, ...rest);
+      // blocked: relay-only with no relay server gathers no candidate, so ICE never connects (two NATs, no TURN)
+      const next = blocked ? { ...(configuration ?? {}), iceServers: [], iceTransportPolicy: 'relay' }
+        : relayOnly ? { ...(configuration ?? {}), iceTransportPolicy: 'relay' } : configuration;
+      super(next, ...rest);
       pcs.push(this);
     }
   };
+}
+
+/** Init script: the battle loader's percent and stage every 250 ms while it is on (the joiner's loading timeline). */
+function installLoadRecorder() {
+  if (window.__MP2_LOAD) return;
+  const rows = window.__MP2_LOAD = [];
+  let last = '';
+  setInterval(() => {
+    const root = document.querySelector('.cot-bl');
+    const on = !!root && root.classList.contains('on');
+    const pct = root?.querySelector('.fpct')?.textContent?.trim() ?? '';
+    const stage = root?.querySelector('.fstage .st')?.textContent?.trim() ?? '';
+    const key = `${on}|${pct}|${stage}`;
+    if (key !== last && rows.length < 4000) { last = key; rows.push({ atMs: Math.round(performance.now()), on, pct, stage }); }
+  }, 250);
 }
 
 const p95 = (values) => {
@@ -298,11 +328,22 @@ try {
   for (const [label, browser] of [['A', browsers[0]], ['B', browsers[1]]]) {
     const page = await (await browser.createBrowserContext()).newPage();
     await page.setViewport(VIEWPORT);
-    await page.evaluateOnNewDocument(installPcRecorder, forceRelay);
+    await page.evaluateOnNewDocument(installPcRecorder, forceRelay, label === 'B' && joinerBlocked);
+    if (label === 'B') await page.evaluateOnNewDocument(installLoadRecorder);
     observe(page, label);
     pages[label] = page;
   }
   const { A, B } = pages;
+  if (joinerNet.length || joinerCpu > 1) {
+    const cdp = await B.createCDPSession();
+    if (joinerNet.length) {
+      const [downKbps, rttMs = 50, upKbps = Math.max(256, Math.round(joinerNet[0] / 4))] = joinerNet;
+      await cdp.send('Network.enable');
+      await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: rttMs,
+        downloadThroughput: Math.round(downKbps * 1000 / 8), uploadThroughput: Math.round(upKbps * 1000 / 8) });
+    }
+    if (joinerCpu > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: joinerCpu });
+  }
   if (hostThrottle > 1) {
     const cdp = await A.createCDPSession();
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: hostThrottle });
@@ -310,7 +351,8 @@ try {
 
   // ---- both Garages: the host's battlefield is each room's (the play menu syncs the Garage's pick into it)
   await bootPage(A, `${origin}/?${BOOT_QUERY}`, 'A');
-  await bootPage(B, `${origin}/?${BOOT_QUERY}`, 'B');
+  let joinerBooted = false;
+  if (!joinerCold) { await bootPage(B, `${origin}/?${BOOT_QUERY}`, 'B'); joinerBooted = true; }
 
   for (let battle = 1; battle <= battles; battle++) {
     const roomMap = hostMaps[(battle - 1) % hostMaps.length];
@@ -320,6 +362,7 @@ try {
     // ---- the joiner plans its own battlefield first, as a player does: its Garage's map, the pointer over BATTLE
     // (garage.ts signalBattleIntent: the planned battlefield is prefetched), so a hidden world is resident before the
     // room's is built (the merge's precondition; without it the run proves nothing)
+    if (joinerBooted) {
     await selectGarageMap(B, joinerMap);
     await B.hover('.cot-battle').catch(() => {});
     try {
@@ -330,6 +373,7 @@ try {
     await B.mouse.move(5, 5);
     record.joinerPlanned = await B.evaluate(sceneProbe);
     step(`battle-${battle}-b-planned`, { resident: record.joinerPlanned.residentIds, worlds: record.joinerPlanned.worlds });
+    }
 
     // ---- the host creates a LAN room for two on its Garage's map
     await selectGarageMap(A, roomMap);
@@ -351,6 +395,17 @@ try {
     step(`battle-${battle}-a-room`, { code: roomCode, map: roomState()?.settings?.mapId ?? null });
     if (roomState()?.settings?.mapId !== roomMap) report.findings.push(`battle ${battle}: the room plays ${roomState()?.settings?.mapId}, not ${roomMap}`);
 
+    if (!joinerBooted) {
+      // ---- the cold joiner: the invite link in a fresh profile, its first page of the site (the friend's way in)
+      const invite = new URL(await A.evaluate(() => location.href));
+      for (const [key, value] of new URLSearchParams(BOOT_QUERY)) invite.searchParams.set(key, value);
+      const openedAt = elapsedMs();
+      await bootPage(B, invite.href, 'B (cold invite)');
+      record.joinerBootMs = elapsedMs() - openedAt;
+      joinerBooted = true;
+      await waitFor(B, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), 'B joined (invite)', 120_000);
+      step(`battle-${battle}-b-cold-joined`, { bootMs: record.joinerBootMs });
+    } else {
     // ---- the joiner joins by code from the same page (an invite link would reload it and drop its planned world)
     await openRoomsPanel(B);
     await waitFor(B, () => document.querySelector('.cot-play')?.classList.contains('show'), 'B play menu', 30_000);
@@ -364,6 +419,7 @@ try {
     }, roomCode);
     await press(B, '.cot-play [data-action="join"]');
     await waitFor(B, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), 'B joined', 60_000);
+    }
     const joinError = await B.evaluate(() => (document.querySelector('.cot-play .status')?.classList.contains('err') ? document.querySelector('.cot-play .status').textContent : ''));
     if (joinError) throw new Error(`B could not join ${roomCode}: ${joinError}`);
     await B.evaluate(() => {
@@ -386,11 +442,49 @@ try {
     const pressedAt = elapsedMs();
     step(`battle-${battle}-start`);
     const revealed = {};
-    await Promise.all([['A', A], ['B', B]].map(async ([label, page]) => {
+    const loadMark = await B.evaluate(() => (window.__MP2_LOAD ?? []).length);
+    const revealWaits = await Promise.allSettled([['A', A], ['B', B]].map(async ([label, page]) => {
+      if (joinerBlocked && label === 'B') {
+        await waitFor(page, () => !document.querySelector('.cot-bl')?.classList.contains('on') && !!window.__NETWORK_ENTRY_FAILURE, 'B told it cannot reach the host', 120_000);
+        return;
+      }
       await waitFor(page, inBattle, `${label} battle ${battle} revealed`, 240_000);
       revealed[label] = elapsedMs() - pressedAt;
     }));
     record.revealMs = revealed;
+    // the joiner's loading timeline from the start press: each change of the loader's percent or stage
+    const loadRows = (await B.evaluate((from) => (window.__MP2_LOAD ?? []).slice(from), loadMark)) ?? [];
+    const t0 = loadRows[0]?.atMs ?? 0;
+    record.joinerLoad = loadRows.map((row) => ({ s: +((row.atMs - t0) / 1000).toFixed(1), on: row.on, pct: row.pct, stage: row.stage }));
+    let longest = { s: 0, pct: '', stage: '' };
+    for (let index = 0; index < loadRows.length; index++) {
+      const row = loadRows[index];
+      if (!row.on) continue;
+      const end = loadRows[index + 1]?.atMs ?? (await B.evaluate(() => Math.round(performance.now())));
+      const heldS = (end - row.atMs) / 1000;
+      if (heldS > longest.s) longest = { s: +heldS.toFixed(1), pct: row.pct, stage: row.stage };
+    }
+    record.joinerLongestHold = longest;
+    step(`battle-${battle}-joiner-load`, { revealS: revealed.B ? +(revealed.B / 1000).toFixed(1) : null, longestHold: longest, rows: record.joinerLoad.length });
+    if (longest.s > stallBoundS) fail(`battle ${battle}: the joiner's loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
+    if (joinBoundS && !(revealed.B <= joinBoundS * 1000)) fail(`battle ${battle}: the joiner's battle was not on screen within ${joinBoundS} s of the start (${revealed.B ? (revealed.B / 1000).toFixed(1) + ' s' : 'never'})`);
+    if (joinerBlocked) {
+      // (a link that can never connect) the joiner is told, in words, with Rejoin: the lobby back with the host_unreachable
+      // sentence within --join-bound of the start, and its loader never still for more than --stall-bound on the way
+      const status = await B.evaluate(() => ({ text: document.querySelector('.cot-play .status')?.textContent ?? '',
+        err: document.querySelector('.cot-play .status')?.classList.contains('err') ?? false,
+        rejoin: !!document.querySelector('.cot-play [data-action="rejoin"]:not([hidden])'),
+        failure: window.__NETWORK_ENTRY_FAILURE ?? null, loaderOn: document.querySelector('.cot-bl')?.classList.contains('on') ?? false }));
+      const toldAtS = loadRows.findLast?.((row) => row.on)?.atMs !== undefined ? +(((loadRows.findLast((row) => row.on).atMs - t0) / 1000) + 0.25).toFixed(1) : null;
+      record.blocked = { status, toldAfterS: toldAtS };
+      step(`battle-${battle}-joiner-blocked`, record.blocked);
+      if (status.failure?.reason !== 'host_unreachable') fail(`battle ${battle}: the blocked joiner's failure is ${status.failure?.reason ?? 'none'}, not host_unreachable`);
+      if (!/reach the host/i.test(status.text)) fail(`battle ${battle}: the blocked joiner's lobby does not say the host could not be reached: "${status.text}"`);
+      if (joinBoundS && !(toldAtS !== null && toldAtS <= joinBoundS)) fail(`battle ${battle}: the blocked joiner was told after ${toldAtS} s (> ${joinBoundS} s)`);
+      break;
+    }
+    const stuck = revealWaits.find((wait) => wait.status === 'rejected');
+    if (stuck) throw stuck.reason;
     for (const [label, page] of [['A', A], ['B', B]]) {
       await page.bringToFront().catch(() => {});
       const probe = await page.evaluate(sceneProbe);
