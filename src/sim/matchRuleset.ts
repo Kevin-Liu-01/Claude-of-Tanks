@@ -1292,13 +1292,14 @@ const MARS_TURBO: TurboRules = Object.freeze({ forwardMps: 9, liftMps: 2.2, cool
 /**
  * A mode's air spin as a dodge (flip-boost-276; owner 2026-11-24: "make the flip work a lot better as an actual boost",
  * "doing a and d and s should do barrel rolls and a reverse flip too"): the move a press picks from the drive it is
- * pressed with (movement.ts airSpinAxisFor) takes this shove at once. W or no drive: the front flip adds `forwardMps` to
+ * pressed with (movement.ts airSpinAxisFor) takes this shove, since thrust-flips-277 from its thrusters' main burn over the
+ * turn's first 0.15 s (sim/hullThrusters.ts: the nozzles are sized to deliver it). W or no drive: the front flip adds `forwardMps` to
  * the run speed; S: the back flip takes `backMps` off it; A or D: the barrel roll shoves the hull `sideMps` to that side,
  * held while it rolls. In flight it also stops the fall; on the ground it lifts the hull at `hopMps`, the mode's own jump:
  * the turn waits until the hull is clear of what it sweeps (movement.ts AIR_SPIN_CLEAR_SCALE), and a lower hop left a
  * 50 t hull too little air to finish a turn it could begin (it landed on its roof). One a flight (a ground dodge's flight
  * included), then `cooldownS`. Measured in sim/flipBoost.selftest.mjs on the turbo fixture (65 km/h, 50 t) from a
- * full-throttle run: within the 0.6 s turn the front flip is metres ahead of the run and the roll metres to its side.
+ * full-throttle run: within 0.6 s the front flip is metres ahead of the run and the roll metres to its side.
  */
 export interface AirSpinRules {
   readonly forwardMps: number;

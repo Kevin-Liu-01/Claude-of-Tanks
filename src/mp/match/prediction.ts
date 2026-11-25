@@ -19,7 +19,7 @@ import type {
   MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
   TankState,
 } from '../../sim/movement.ts';
-import type { RulesetPhysics } from '../../sim/matchRuleset.ts';
+import type { AirSpinRules, RulesetPhysics } from '../../sim/matchRuleset.ts';
 import {
   ENTITY_FLAGS, HELD_INPUT_LEASE_TICKS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
   dequantizeMultiplier, dequantizeVelocity, wrapAngle,
@@ -43,6 +43,9 @@ export interface PredictionWorld {
   physics?: RulesetPhysics | null;
   /** The room's impact physics at the gravity the authority sends (Gravity mode's Earth rewrites the rebound). */
   physicsAt?: ((gravityScale: number) => RulesetPhysics) | null;
+  /** The room's air spin (thrust-flips-277): a replayed flip or roll's burn shoves the hull by its rules, as the
+   *  authority's does; absent = a mode without one. */
+  airSpin?: AirSpinRules | null;
   /**
    * Called with the authority's own pose after every rewind, before the replay. The authority resolved every contact
    * at that tick, so a disclosed hull this pose already penetrates is presented where it used to be (the interpolation
@@ -239,6 +242,7 @@ export class LocalPredictor {
   private readonly sim: {
     spec: MovementSpec; state: TankState; combat: MovementCombatState; contactGeom: MovementContactGeometry | null;
     modeSpeedMultiplier: number; modeGravityScale: number; modePhysics: RulesetPhysics | null; rigidGear: boolean;
+    modeAirSpin: AirSpinRules | null;
     input: { throttle: number; steer: number; brake: boolean; aimLocked: boolean; aimPoint: Vector3 };
   };
   private readonly correction: Correction = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
@@ -287,6 +291,7 @@ export class LocalPredictor {
     this.sim = {
       spec, state, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
       contactGeom: world.contactGeom ?? null, modeSpeedMultiplier: 1, modeGravityScale: 1, modePhysics: world.physics ?? null, rigidGear: false,
+      modeAirSpin: world.airSpin ?? null,
       input: { throttle: 0, steer: 0, brake: false, aimLocked: false, aimPoint: state.aimPoint.clone() },
     };
     for (const name of VIEWER_MODULES) this.sim.combat.modules![name] = { state: 'ok' };

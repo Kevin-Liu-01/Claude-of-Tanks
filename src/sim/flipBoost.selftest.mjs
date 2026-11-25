@@ -3,9 +3,11 @@
 //
 // Pins, on the shared per-hull action step both drivers call (sim/hullActions.ts) and the solo player's press
 // (game/playerBattleActions.ts), in Turbo Ball and Gravity (mars):
-//   - each move's shove, at once on the press, and its turn: W or no drive a front flip (+forwardMps along the heading,
-//     pitch nose-down), S a back flip (-backMps, pitch nose-up), A a barrel roll left and D right (sideMps toward the side
-//     the steer turns to, about the long axis); in flight the dodge stops the fall; the roll's shove carries while it rolls;
+//   - each move's shove and its turn: W or no drive a front flip (+forwardMps along the heading, pitch nose-down), S a back
+//     flip (-backMps, pitch nose-up), A a barrel roll left and D right (sideMps toward the side the steer turns to, about
+//     the long axis, the side away from the travel lifting: hullThrusters.ts airSpinSense); since thrust-flips-277 the
+//     press moves nothing along the move and the thrusters' main burn delivers the shove (within 15 %) over 6-15 ticks;
+//     in flight the dodge stops the fall; the roll's shove carries while it rolls;
 //   - it out-runs the drive: a ground dodge from a full-throttle run is metres ahead of the run within the turn, the roll
 //     metres to the side;
 //   - the cooldown (AirSpinRules.cooldownS): refused while it cools, taken once it has run;
@@ -13,7 +15,8 @@
 //     (F and the air spin's own bit alike); the ground gives it back;
 //   - the ground dodge: on its tracks the press hops the hull into the turn, which ends before it lands, on its tracks;
 //     refused on its roof;
-//   - the ball: a hull mid-dodge strikes it harder than the run alone, and the barrel roll's sideways shove strikes it;
+//   - the ball: a hull that flies at it mid-dodge strikes it harder than the run alone, and the barrel roll's sideways
+//     shove strikes it;
 //   - page/authority parity: the solo player's press and the action bit from identical hulls leave byte-identical hulls
 //     every tick, F and the air spin's tile, all four moves;
 //   - planted controls, each of which the receipt's own checks must catch: a cosmetic flip (no shove) fails the out-run
@@ -21,7 +24,8 @@
 //     late is found at its tick.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createTankState, updateTank, SIM_DT, AIR_SPIN_AXES, canTankAirSpin } from './movement.ts';
+import { createTankState, resetTankVerticalState, updateTank, SIM_DT, AIR_SPIN_AXES, canTankAirSpin } from './movement.ts';
+import { airSpinSense } from './hullThrusters.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { applyHullActions } from './hullActions.ts';
 import { airSpinReadyIn, pressSelfRight, requestHullAirSpin } from './modeMoves.ts';
@@ -97,29 +101,33 @@ for (const mode of MODES) {
     const v0 = velocity(e.state), speed0 = e.state.speed;
     e.input.actionBits = PLAYER_ACTION_BITS.AIR_SPIN;
     applyHullActions(e, host);
-    const v1 = velocity(e.state), dv = { x: v1.x - v0.x, z: v1.z - v0.z };
+    const v1 = velocity(e.state);
     assert.equal(e.state._airSpinAxis, move.axis, `${mode} ${move.name}: the move's axis`);
     assert.deepEqual(heard, [move.axis], `${mode} ${move.name}: heard`);
-    const along = dot(dv, FWD), side = dot(dv, SIDE);
-    if (Math.abs(move.axis) === 1) {
-      const want = move.axis === AIR_SPIN_AXES.FRONT_FLIP ? rules.forwardMps : -rules.backMps;
-      assert.ok(Math.abs(along - want) < 1e-9 && Math.abs(side) < 1e-9, `${mode} ${move.name}: ${want} m/s along the heading (${along.toFixed(3)}, side ${side.toFixed(3)})`);
-      assert.ok(Math.abs(e.state.speed - speed0 - want) < 1e-9, `${mode} ${move.name}: into the run speed`);
-    } else {
-      const want = move.axis === AIR_SPIN_AXES.ROLL_LEFT ? rules.sideMps : -rules.sideMps;
-      assert.ok(Math.abs(side - want) < 1e-9 && Math.abs(along) < 1e-9, `${mode} ${move.name}: ${want} m/s to the side (${side.toFixed(3)}, along ${along.toFixed(3)})`);
-    }
+    assert.ok(Math.abs(v1.x - v0.x) < 1e-9 && Math.abs(v1.z - v0.z) < 1e-9 && e.state.speed === speed0,
+      `${mode} ${move.name}: the press moves nothing along the move (thrust-flips-277: the burn does)`);
     assert.ok(e.state._ride.v >= 0 && e.state.verticalSpeed >= 0, `${mode} ${move.name}: the fall stopped`);
-    // the turn: a whole one about the move's axis, the other axis held near level
+    // the turn: a whole one about the move's axis, the other axis held near level; the shove over the main burn
     const [spun, held] = Math.abs(move.axis) === 1 ? ['visualPitch', 'visualRoll'] : ['visualRoll', 'visualPitch'];
-    let turned = 0, last = e.state[spun], drift = 0, ticks = 0;
+    let turned = 0, last = e.state[spun], drift = 0, ticks = 0, burnTicks = 0, burnt = null;
     const startSide = dot(e.state.pos, SIDE), startAlong = dot(e.state.pos, FWD);
     updateTank(e, field, SIM_DT, null); clock.t += SIM_DT;
     turned += wrap(e.state[spun] - last); last = e.state[spun]; ticks++;
     while (e.state._airSpinAxis && ticks < 120) {
+      if (e.state._thrust.main > 0) burnTicks = ticks; else if (burnTicks && !burnt) burnt = velocity(e.state);
       tick(e); turned += wrap(e.state[spun] - last); last = e.state[spun]; drift = Math.max(drift, Math.abs(e.state[held])); ticks++;
     }
-    assert.ok(Math.abs(Math.abs(turned) - 2 * Math.PI) < 0.35 && Math.sign(turned) === Math.sign(move.axis),
+    assert.ok(burnt && burnTicks >= 6 && burnTicks <= 15, `${mode} ${move.name}: the main burn fires over tenths of a second (${burnTicks} ticks), not at once`);
+    const dv = { x: burnt.x - v0.x, z: burnt.z - v0.z };
+    const along = dot(dv, FWD), side = dot(dv, SIDE);
+    if (Math.abs(move.axis) === 1) {
+      const want = move.axis === AIR_SPIN_AXES.FRONT_FLIP ? rules.forwardMps : -rules.backMps;
+      assert.ok(Math.abs(along - want) < 0.15 * Math.abs(want) && Math.abs(side) < 1e-6, `${mode} ${move.name}: the burn shoves ${want} m/s along the heading (${along.toFixed(3)}, side ${side.toFixed(3)})`);
+    } else {
+      const want = move.axis === AIR_SPIN_AXES.ROLL_LEFT ? rules.sideMps : -rules.sideMps;
+      assert.ok(Math.abs(side - want) < 0.15 * Math.abs(want) && Math.abs(along) < 1e-6, `${mode} ${move.name}: the burn shoves ${want} m/s to the side (${side.toFixed(3)}, along ${along.toFixed(3)})`);
+    }
+    assert.ok(Math.abs(Math.abs(turned) - 2 * Math.PI) < 0.35 && Math.sign(turned) === airSpinSense(move.axis),
       `${mode} ${move.name}: one whole turn about its ${spun === 'visualPitch' ? 'pitch' : 'long'} axis (${turned.toFixed(2)} rad)`);
     assert.ok(drift < 0.35, `${mode} ${move.name}: the other axis held (${drift.toFixed(2)} rad)`);
     if (Math.abs(move.axis) === 2) {
@@ -244,14 +252,22 @@ function strike(move, airSpin, speed = 12) {
   if (airSpin) striker.modeAirSpin = airSpin; // the controller stamps the ruleset's; a planted rule goes on after it
   const ball = match.state.ball;
   ball.vx = 0; ball.vy = 0; ball.vz = 0;
-  // the hull 5 m short of the ball along the move's direction, already at speed
+  // the hull short of the ball along the move's direction (9 m for a run or a flip, 7 m for a roll from a standstill) and
+  // 3 m up, already at speed: it flies at the ball under the move's burn (thrust-flips-277: the burn, not the press,
+  // shoves it, over its first 0.15 s) until it touches it
   const dir = Math.abs(move.axis) === 2 ? { x: SIDE.x * Math.sign(move.axis), z: SIDE.z * Math.sign(move.axis) } : FWD;
-  striker.state.pos.set(ball.x - dir.x * 5, 0, ball.z - dir.z * 5);
+  const short = Math.abs(move.axis) === 2 ? 7 : 9;
+  striker.state.pos.set(ball.x - dir.x * short, 3, ball.z - dir.z * short);
+  resetTankVerticalState(striker.state, 3, 0, false);
   striker.state.yaw = YAW; striker.state.speed = Math.abs(move.axis) === 2 ? 0 : speed;
-  striker.state.grounded = false; striker.state._ride.grounded = false;
   striker.input.throttle = move.throttle; striker.input.steer = move.steer;
   if (move.axis) requestHullAirSpin(striker, 100);
-  match.step(SIM_DT, 100);
+  striker.input.throttle = 0; striker.input.steer = 0;
+  for (let n = 0; n < 60 && !ball.lastTouchId; n++) {
+    updateTank(striker, field, SIM_DT, null);
+    match.step(SIM_DT, 100 + n * SIM_DT);
+  }
+  assert.equal(ball.lastTouchId, 'striker', `the striker reaches the ball (${move.axis})`);
   return Math.hypot(ball.vx, ball.vz);
 }
 {
@@ -324,4 +340,4 @@ for (const mode of MODES) {
 }
 assert.equal(parity('mars', MOVES[3], 'tile', 1), 5, 'planted: the page\'s press a tick late is found at its tick');
 
-console.log('flipBoost: in Turbo Ball and Gravity the air spin dodges: W/none a front flip +forward, S a back flip -back, A/D a barrel roll to the side, at once, the fall stopped; it out-runs the drive; a cooldown; one a flight, the ground giving it back; a ground dodge hops into a turn that ends in the air; mid-dodge the ball is struck harder, the roll striking it sideways; the page\'s press and the authority\'s bit are byte-identical; four planted controls caught');
+console.log('flipBoost: in Turbo Ball and Gravity the air spin dodges: W/none a front flip +forward, S a back flip -back, A/D a barrel roll to the side, each under its thruster burn, the fall stopped; it out-runs the drive; a cooldown; one a flight, the ground giving it back; a ground dodge hops into a turn that ends in the air; mid-dodge the ball is struck harder, the roll striking it sideways; the page\'s press and the authority\'s bit are byte-identical; four planted controls caught');

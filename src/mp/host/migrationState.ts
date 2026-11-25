@@ -28,7 +28,7 @@ import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
-import { encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
+import { airSpinRateOf, encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -941,7 +941,10 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
         entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
       }
-      if (lifeGoesOn && typeof extras.airSpin === 'number') restoreAirSpin(tank, extras.airSpin, gapS);
+      // (thrust-flips-277) with the rate it turns at: the turn rides its momentum, and the burn reads it
+      if (lifeGoesOn && typeof extras.airSpin === 'number') {
+        restoreAirSpin(tank, extras.airSpin, gapS, Number.isFinite(extras.airSpinRate) ? extras.airSpinRate! : null);
+      }
       // the air spin's cooldown and the flight's spent dodge (flip-boost-276): a new host refuses a second as the old did
       if (lifeGoesOn && Number.isFinite(extras.airSpinReadyIn)) {
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
@@ -1051,7 +1054,11 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
       const airSpin = encodeAirSpin(entity.state._airSpinAxis ?? 0, entity.state._airSpinLeft ?? 0);
-      if (airSpin !== 0) extras.airSpin = airSpin;
+      if (airSpin !== 0) {
+        extras.airSpin = airSpin;
+        const airSpinRate = airSpinRateOf(entity.state);
+        if (airSpinRate !== 0 && Number.isFinite(airSpinRate)) extras.airSpinRate = airSpinRate;
+      }
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
       if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
       if (entity.state._flipUsed === true) extras.flipUsed = true;

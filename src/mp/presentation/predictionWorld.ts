@@ -278,5 +278,7 @@ export function createPredictionWorld({
   };
   const gameMode = normalizeGameMode(mode || 'standard');
   const physicsAt = (gravityScale: number): RulesetPhysics => rulesetPhysicsAt(gameMode, gravityScale);
-  return { heightField: support, collide, contactGeom: null, physics, physicsAt, anchor, beginStep };
+  // the mode's air spin (thrust-flips-277): a replayed burn shoves the hull by the rules the authority's burn reads
+  const airSpin = matchRulesetFor(gameMode).airSpin ?? null;
+  return { heightField: support, collide, contactGeom: null, physics, physicsAt, airSpin, anchor, beginStep };
 }
