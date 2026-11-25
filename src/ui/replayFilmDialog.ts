@@ -9,6 +9,7 @@
 import { createModal } from './modal.ts';
 import { segmented, wireRoving } from './components/components.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { REPLAY_FILM_LONG_S, REPLAY_FILM_RATES, REPLAY_FILM_SIZES } from '../game/replay/replayFilm.ts';
 
 export interface ReplayFilmChoice {
@@ -35,7 +36,7 @@ const STYLE_ID = 'cot-replay-film-style';
 const STYLE = `
 .cot-replay-film .grid{display:grid;gap:var(--s3)}
 .cot-replay-film fieldset{margin:0;padding:0;border:0;display:grid;gap:var(--s1)}
-.cot-replay-film legend{padding:0;margin:0 0 var(--s1);font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.cot-replay-film legend{padding:0;margin:0 0 var(--s1);font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
 .cot-replay-film .opts{display:flex;flex-wrap:wrap;gap:var(--s2)}
 .cot-replay-film .opt{display:inline-flex;align-items:center;gap:var(--s2);min-height:36px;padding:0 var(--s3);border-radius:var(--control-radius);
  box-shadow:var(--ring-2);font:500 var(--fs-14)/1 var(--font-ui);color:var(--ink-1);cursor:pointer}
@@ -56,12 +57,7 @@ const clock = (seconds: number): string => {
 const megabytes = (bytes: number): string => `${(bytes / 1e6).toFixed(1)} MB`;
 
 export function createReplayFilmDialog(ports: ReplayFilmDialogPorts) {
-  if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = STYLE;
-    document.head.append(style);
-  }
+  if (typeof document !== 'undefined') ensureStyle(STYLE_ID, STYLE, 'surfaces');
   let running: AbortController | null = null;
   const modal = createModal({
     surface: 'replay-film', title: t('replay.export.title'), size: 'medium', closeLabel: t('replay.export.close'),

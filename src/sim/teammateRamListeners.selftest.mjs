@@ -24,10 +24,14 @@ const listenersOf = (name) => files.filter((file) => readFileSync(new URL(file, 
   const text = line.trim();
   return text.includes(`'${name}'`) && !text.startsWith('//') && !text.startsWith('*') && !new RegExp(`emit\\(\\s*'${name}'`).test(text);
 })).sort();
-assert.deepEqual(listenersOf('tank:ram'), ['audio/audioEngine.ts', 'game/replay/replayRecorder.ts'],
+// game/replay/replayCues.ts (replay-fixes-277) names both events in REPLAY_CUE_EVENTS, the cues a replay keeps from its
+// re-simulation and plays back on the page's bus tagged replay: true: it adds no listener of a live battle, so it is
+// named here, not counted against the two.
+const CUE_SET = 'game/replay/replayCues.ts';
+assert.deepEqual(listenersOf('tank:ram'), ['audio/audioEngine.ts', CUE_SET, 'game/replay/replayRecorder.ts'],
   'tank:ram has two listeners on the page, the audio engine\'s onTankRam (the crunch, the cab\'s knock, the crew\'s call) and the '
   + 'replay recorder\'s timeline mark (a record only): any new one is checked here');
-assert.deepEqual(listenersOf('tank:impact'), ['audio/audioEngine.ts', 'pad/padCues.ts'],
+assert.deepEqual(listenersOf('tank:impact'), ['audio/audioEngine.ts', CUE_SET, 'pad/padCues.ts'],
   'tank:impact has two, the audio engine\'s thud and the paired phone\'s impact buzz: any new one is checked here');
 
 // ---- 2. the paired phone's cue for a teammate ram ----------------------------------------------------------------------

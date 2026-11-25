@@ -425,7 +425,8 @@ assert.ok(inertStudioAt >= 0 && inertStudioAt < mainFrameAt,
   'an inert Studio presentation must exist before the frame scheduler can tick');
 assert.ok(liveStudioAt > mainFrameAt,
   'the lazy Studio presentation replaces the inert owner after composition');
-assert.match(mainSource, /syncViewportPixelRatio: viewport\.syncPixelRatio/,
+// (replay-fixes-277) the MP4 film holds the page's size while it renders; otherwise the real owner syncs
+assert.match(mainSource, /syncViewportPixelRatio: \(\) => \(replayFilmHeld \? false : viewport\.syncPixelRatio\(\)\)/,
   'production composition uses the real viewport owner, not a test-only forced resize');
 assert.match(mainSource, /isTransitionHoldingSceneForFadeIn: \(\) => transition\.holdingSceneForFadeIn/,
   'production frames consume the transition owner lease, not veil visibility through fade-out');

@@ -129,6 +129,8 @@ const MOTION = {
   settings: vocab('src/ui/settings.ts', 'cot-set-panel', 'rise'),
   'settings-quality': own('pickers'), 'settings-colour-preset': own('pickers'), 'settings-crew-voice': own('pickers'),
   'hud-editor': own('modal'),
+  // the replay's Export video (replay-fixes-277) opens through the shared modal (replayFilmDialog.ts createModal)
+  'replay-film': own('modal'),
   'gallery-rival': own('pickers'), 'gallery-sort': own('pickers'), 'gallery-camera-view': own('pickers'), 'markup-primitive': own('pickers'),
   'gallery-drawing': SITE, 'public-nav-menu': SITE, 'home-trailer': SITE, 'docs-archive': SITE, 'docs-fleet-filter': own('pickers'),
   'media-library': SITE, 'pad-options': SITE, 'media-archive': SITE,

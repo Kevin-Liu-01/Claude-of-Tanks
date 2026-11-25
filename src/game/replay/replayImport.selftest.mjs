@@ -20,7 +20,7 @@ const raw = encodeReplay({ header, seats: writer.take(), actions: [], events: [[
 for (const file of [new Uint8Array(gzipSync(raw)), raw]) {
   const checked = await checkReplayFile(file);
   assert.equal(checked.ok, true, 'a recording opens');
-  assert.deepEqual([...checked.raw], [...raw], 'its raw bytes come back');
+  assert.equal(Buffer.from(checked.raw).toString('hex'), Buffer.from(raw).toString('hex'), 'its raw bytes come back');
   assert.equal(checked.recording.seatSteps.length, 600);
   assert.equal(checked.recording.header.recordedAtMs, header.recordedAtMs);
 }

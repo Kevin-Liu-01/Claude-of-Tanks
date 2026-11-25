@@ -48,7 +48,7 @@ export const MODALS = Object.freeze({
   settings: { how: 'lift', file: 'src/ui/settings.ts', selector: '.cot-settings' },
   // the shared shell (src/ui/modal.ts) and every dialog made with it
   ...Object.fromEntries(['modal', 'garage-technical', 'garage-return-failure', 'battle-entry-failure', 'service-record', 'camo-studio',
-    'context-info', 'couch-lobby', 'couch-briefing', 'hud-editor'].map((id) => [id, { how: 'lift', file: 'src/ui/modal.ts', selector: '.cot-modal-root' }])),
+    'context-info', 'couch-lobby', 'couch-briefing', 'hud-editor', 'replay-film'].map((id) => [id, { how: 'lift', file: 'src/ui/modal.ts', selector: '.cot-modal-root' }])),
   'tech-tree': { how: 'lift', file: 'src/ui/techTree.css', selector: '.cot-tt', owner: 'src/ui/techTree.ts' },
   rooms: { how: 'lift', file: 'src/ui/playMenu.ts', selector: '.cot-play' },
   deploy: { how: 'lift', file: 'src/ui/deploy.css', selector: '.cot-garage .cot-battle-menu.open', owner: 'src/ui/garage.ts' },
