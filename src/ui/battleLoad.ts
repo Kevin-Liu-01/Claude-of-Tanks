@@ -57,6 +57,7 @@ const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Loading multiplayer runtime': 'battleLoad.stage.loadingMultiplayer',
   'Opening battle channel': 'battleLoad.stage.openingBattleChannel',
   'Securing match channel': 'battleLoad.stage.securingMatchChannel',
+  'Opening match channel': 'battleLoad.stage.openingMatchChannel',
   'Synchronizing authority': 'battleLoad.stage.synchronizingAuthority',
   'Priming wreck variants': 'battleLoad.stage.primingWreckVariants',
   'Surveying terrain': 'battleLoad.stage.surveyingTerrain',
@@ -570,6 +571,8 @@ export interface BattleLoadScreen {
     seats?: BattleLoadSeats | null,
   ): void;
   progress(fraction: number, label?: string): void;
+  /** (mp-fixes-277) The match link's wait (a network entry at 56 %): the stage line says what it is doing, each second. */
+  linkWait(state: { kind: 'connecting' | 'hostLoading' | 'joining'; attempt: number; seconds: number }): void;
   countdown(seconds: number): void;
   /** Fade out, then drop out of layout. A later show() that reopens the cover first ends the fade and settles its promise
    *  at once; a caller tells the two apart by `covering` after the await (false: hidden; true: reopened). */
@@ -1109,6 +1112,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
           stageEl.textContent = stage;
         }
       }
+    },
+
+    linkWait(state) {
+      // (mp-fixes-277; Kevin 2026-11-25, a friend "stuck at 56%": 66 s of "Opening match channel" and nothing else)
+      const key = state.kind === 'connecting' ? 'battleLoad.stage.connectingHost'
+        : state.kind === 'hostLoading' ? 'battleLoad.stage.waitingHost' : 'battleLoad.stage.joiningBattle';
+      const stage = t(key, { attempt: Math.max(1, state.attempt), s: Math.max(0, state.seconds) });
+      if (stage !== shownStage) { shownStage = stage; stageEl.textContent = stage; }
     },
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */

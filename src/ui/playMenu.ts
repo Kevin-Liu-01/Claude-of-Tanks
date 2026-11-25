@@ -182,6 +182,8 @@ interface MenuSelectElement extends HTMLDivElement {
  */
 const ENTRY_REFUSAL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   match_ended: 'playMenu.entryRefusal.matchEnded',
+  // (mp-fixes-277) the round's link never carried a frame: no path to the host (browserComposition HostUnreachableError)
+  host_unreachable: 'playMenu.entryRefusal.hostUnreachable',
   build_mismatch: 'playMenu.entryRefusal.buildMismatch',
   build_host_older: 'playMenu.entryRefusal.buildHostOlder',
   build_host_newer: 'playMenu.entryRefusal.buildHostNewer',

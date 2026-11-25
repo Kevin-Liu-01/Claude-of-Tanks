@@ -8,6 +8,8 @@ import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { getEntryTelemetry } from '../entry/telemetry.ts';
 import { resolvePresetName } from './quality.ts';
 import { installBlackWorldGuard, type BlackWorldGuard, type BlackWorldGuardPorts, type GuardPost } from './blackWorldGuard.ts';
+import { activeWorld, isBattlefieldRoot } from '../world/activeWorld.ts';
+import { currentBattleScope } from '../game/battleScope.ts';
 
 export interface BlackWorldGuardArming {
   renderer: unknown;
@@ -15,7 +17,6 @@ export interface BlackWorldGuardArming {
   camera: unknown;
   post: unknown;
   game: BlackWorldGuardPorts['game'];
-  getWorld?: BlackWorldGuardPorts['getWorld'];
   /** The battle entry lifecycle (battleEntryLifecycle.ts): pending while an entry runs, renderingCovered under its cover. */
   lifecycle?: { readonly pending?: boolean; readonly renderingCovered?: boolean } | null;
   combatWarm?: unknown;
@@ -35,10 +36,12 @@ export function armBlackWorldGuard(arming: BlackWorldGuardArming): BlackWorldGua
     camera,
     post: post as GuardPost,
     game: arming.game,
-    getWorld: arming.getWorld ?? (() => {
-      const group = arming.scene.children.find((child) => child.name.startsWith('world-')) ?? null;
-      return group ? { group } : null;
-    }),
+    // (mp-fixes-277) the battlefield from its one owner (src/world/activeWorld.ts), for every entry alike: the network
+    // round armed this with no world port, and the old fallback (the first scene child named world-*) tracked a hidden
+    // battlefield the Garage had planned, whose heal drew two maps
+    getWorld: activeWorld,
+    isBattlefieldRoot,
+    battleId: () => currentBattleScope()?.id ?? null,
     isCovered: () => !!lifecycle && (lifecycle.pending === true || lifecycle.renderingCovered === true),
     combatWarm: (arming.combatWarm ?? null) as BlackWorldGuardPorts['combatWarm'],
     // (round 2, eng D2: no graphics-recovery relief of its own any more; H4's context restore takes the renderer's own

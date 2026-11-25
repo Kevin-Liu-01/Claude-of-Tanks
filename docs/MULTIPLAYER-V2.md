@@ -2773,6 +2773,135 @@ interpolates and reconciles because the network is real.
   pair. A building the own ram brings down yields to the drawn hull as to the authority's: 0 hard snaps, the largest
   drawn-vs-authority gap 0.95 m, thrown back 0.31 m.
 
+### 13.33 One battlefield drawn, from its owner (mp-fixes-277, 2026-11-25)
+
+Kevin, 2026-11-24, after 276 shipped: "multiplayer is broken, it doesnt work super well p2p and still merges 2 maps".
+
+**Seen in two browsers.** `tools/mp-two-peer-e2e.mjs` (`npm run test:net:v2:two-peer`) runs two separate headless Chromes
+on a built site (vite preview) and the in-process room service with the browser-hosted match (`server/rooms`, the
+roomActor and p2pMatchHost the rooms Durable Object runs) on the LAN port. Before each battle the joiner plans its own
+battlefield as a player does (its Garage's map, the pointer over BATTLE prefetches it), so a hidden world is resident
+before the room's is built. The host creates a LAN room on its Garage's map, the joiner joins by code, and both play
+120 s, leave and leave the room, three battles in a row. On 276's build (main 1c611b1ca6) the joiner drew two
+battlefields in every second of all three battles (359 of 359: Desert's dunes over Verdant, Verdant's trees and pylons
+through the sand, Verdant's minimap), and its Garage still drew Desert after each one; the host, whose planned world was
+the room's, drew one. On the fix every second of every battle on both pages drew one world, the round's (0 of 365).
+
+**The cause.** A network round armed the black-world guard (`engine/blackWorldGuard.ts`) with no world port, and the
+install fell back to the first scene child named `world-*`. Every built battlefield stays in the scene hidden
+(`world/worldActivationRuntime.ts`), so on a page whose Garage had planned another map first, the guard tracked that
+hidden world. It read the presented battlefield as missing every frame (CPU.ROOTS, decisive), opened a `roots-hidden`
+incident and healed it with H1, which set the hidden world visible; nothing hides it again, so it followed the player into
+the Garage and the next battles. A solo battle passed its own world port, which is why only rooms showed it. A second
+path of the same class: the guard kept the world and the roots it noted at the first reveal for as long as the phase
+stayed `battle`, so a round written over a round could have the last round's world re-added and re-shown by H1.
+mp-one-map-274 (`worldActivationOneWorld.selftest.mjs`) fixed a different path, the warm's lift.
+
+**The fix (the class).** `src/world/activeWorld.ts` is the one reference to the battlefield on screen, bound by its owner,
+the activation runtime: the presented world (dormant under the Garage) and whether a root is a battlefield. The guard's
+install reads it for every entry, and no entry passes a world of its own; the ROOTS check and H1 read the live world;
+a battlefield is never a reveal root; every battle scope (`game/battleScope.ts`, battle→battle included) notes its own
+reveal. No module of src finds a battlefield by name (`src/world/activeWorld.selftest.mjs` scans for it). No protocol
+change. Receipts: `blackWorldGuard.selftest.mjs` (a hidden planned world first in the scene, the old fallback as the
+negative control that draws both; a round swap and an H1 incident in round two, red on 276's guard),
+`worldActivationOneWorld.selftest.mjs` section 6, `activeWorld.selftest.mjs`, and the two-browser run above.
+
+**The link, measured (one machine, so every pair is host↔host: no NAT, STUN or TURN is exercised).** Over the six
+2-minute battles on each build, per page: snapshots at 20 Hz every second, 0 stalls, 0 reconnects, 0 seconds without a
+snapshot, 0 hard snaps; the ICE pair's own round trip 1 ms. The wire's ping round trip (PING to PONG through both pages'
+main threads and the host's Worker) p95 44–76 ms, and input acknowledgement lag p95 6–12 ticks (one host spike to 39–50
+ticks in the first battle under machine load); 0–14 visible corrections per page per battle, the largest 1.73 m. The gap
+between 1 ms on the wire and ~50 ms in the game is the two rendering pages' frames: the host relays every peer's frames
+to its Worker on its main thread (§13.24), so its frame time is in every peer's round trip. The joiner of a merged page
+drove on one map's ground and collision under another's terrain and trees, which reads as broken sync: the merge
+accounts for part of "doesn't work super well p2p". What a real home network adds (NAT traversal, relayed links) is not
+measured here; `tools/mp-p2p-e2e.mjs --site=… --mode=private` and `mp-p2p-soak --ice=relay` (with relay secrets) are
+those checks.
+
+**The real network, how to check it.** One machine selects host candidates whatever the ICE servers, so two checks remain.
+(1) Relay-only through real TURN on one machine: `node tools/with-capture-lock.mjs --lock-class=render -- node
+tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay` in a terminal whose environment holds the rooms Worker's
+relay variables (`COT_CLOUDFLARE_TURN_KEY_ID` and `COT_CLOUDFLARE_TURN_API_TOKEN`, or a coturn's `COT_TURN_URLS` and
+`COT_TURN_SHARED_SECRET`), set by hand there and never written to a file. `--mode=private` makes each room an internet
+room, whose connections ask the room for a grant (a LAN room uses no ICE servers, `src/mp/transport/iceConfig.ts`);
+`--ice=relay` builds every peer connection relay-only and gates every selected pair relay/relay and the status model's
+`viaTurn`. Without a relay configured the run refuses (exit 2) naming the variables; the tool never reads their values,
+the issuer (`server/relayCredentials.ts`) says whether they configure one. (2) Two devices on two networks against the
+live site: the host on a laptop on home Wi-Fi (Play, Private, Create), the joiner on a phone on cellular data with Wi-Fi off
+(the invite link), two minutes of play; the F3 panel's **Path** row on the phone names the link (`direct`, `direct (NAT)`,
+`relayed`, `via TURN`; the host's reads `this browser`, with `via TURN` when any peer is relayed).
+
+**The opening: a clock seeded from a boot (fixed, f2c8e1ef5d).** On 276 a seat's first battle on a page could start
+with its controls answered late: in the slot runs under the capture lock, one cold run's joiner was 51 ticks behind at
+the reveal (51, 48, 44, 41, 37, 33 … over 16 s, 20 visible corrections), another's host 24 (24, 20, 17, 14, 11, 7).
+The client clock's offset was 784 ms and 343 ms ahead of the authority and drained at exactly its 50 ms/s slew, the
+input lag with it. The clock's first sample is the HELLO → WELCOME exchange; a seat that links while the host's Worker
+boots the match (the host itself, or an early joiner) waits through that boot, and the round trip's midpoint seeds the
+offset half the boot ahead. The WELCOME's 8-ping burst puts the filtered target right within ~1.6 s, but the active offset
+could only slew to it, so every input sampled meanwhile was stamped that far in the future. Now `ServerClock` calibrates
+(`calibrationSamples`, 9: the HELLO sample and the burst): until then the active offset is the filtered target, after it
+the slew hides a converged estimate's corrections as before. Two cold runs on the fix: both seats 5–8 ticks from the
+first second, 0 offset error at the reveal, PASS. `tools/mp-two-peer-e2e.mjs` gates it (`--ack-by`, 3: from that second
+each page's acknowledgement lag is within `--ack-p95`), and `clock.selftest.mjs` holds the boot-delayed HELLO with the old
+clock as its control.
+
+**Parked: the host's data channel off the main thread (measured proposal, 2026-11-25).** The host relays every peer's
+frames to its Worker on its main thread (§13.24), so its frames sit in every peer's path twice. Measured over the six
+two-minute battles above, second by second: the host's own seat (loopback, no data channel) has wire rtt p50 38–46 ms,
+p95 44–64; the peer (through the host's main thread twice, ICE pair 1 ms) p50 40–50, p95 49–76; the peer less the host,
+median −4 to +5 ms, p95 +5 to +22 ms: the most moving the channel into the Worker could save at p95. The shared ~40 ms
+is the receiving pages' own frame time, which it does not touch, and the link's intrinsic input cost is 2–3 ticks of
+6–8 (the rest is the prediction's lead), so at most one tick. Its value is the tail: in 276's first battle a host-side
+stall took the peer's acknowledgement to 50 ticks (the host's own seat to 39), and with the channel in the Worker a host
+main-thread stall no longer holds the peers' input. Feasibility is unchecked (a transferable `RTCDataChannel`, or a peer
+connection in a Worker, in every supported browser). Built only if the real-network runs show host stalls reaching
+peers: step 0, a browser probe of data-channel transfer to a Worker; step 1, the host's relay hop (data channel
+`onmessage` to the Worker's receipt) instrumented p50/p95/max on a real-network run.
+
+**The joiner stuck at 56 % (Kevin, 2026-11-25: a friend on the live site "got stuck at 56%").** The network entry maps
+its world build to 8–56 %, and at exactly 56 % the stage is "Opening match channel": the joiner's own work is done and it
+waits for its data channel to the host and the host's WELCOME; only then do the tanks move the bar to 83–85 %. A cold
+joiner whose ICE can never connect (`tools/mp-two-peer-e2e.mjs --joiner-cold --joiner-ice=blocked`: relay-only with no
+relay server, two NATs with no usable TURN) held a still 56 % for 66 s while the transport re-offered every 3.5 s, then
+failed with "no connection for 62156 ms". With a working link a slow joiner does not stall there (4 Mbps down, 100 ms,
+4× CPU: 62 s from the start press to the battle, 28.6 s of it the world build and 21 s at 88 % "Preparing effects";
+10 Mbps: 34 s). Fixed for 276.1: a link that never opened gives up 30 s after open (`RTC_FIRST_OPEN_WINDOW_MS`; one that
+opened keeps the reconnect window), the loader says each second what the link is doing ("Connecting to the host ·
+attempt 3 · 12 s", "Waiting for the host to load", "Joining the battle"), and a link that never carried a frame fails as
+`host_unreachable`, worded in the lobby with Rejoin battle.
+
+**Production TURN.** The rooms Worker mints relays only from its secrets `COT_CLOUDFLARE_TURN_KEY_ID` and
+`COT_CLOUDFLARE_TURN_API_TOKEN` (§13.14); unset, every grant is `COT_STUN_URLS` alone. The cot-rooms deploys of 2026-10-09
+and 2026-10-13 record them unset ("relay probe: 1 STUN server, relay false"), and nothing since records them set, so a
+seat behind a symmetric or carrier-grade NAT has no path to its host: the likely cause of the friend's 56 %. Setting them
+(`npx wrangler secret put` in `cloudflare/rooms`, no redeploy) gives every seat Cloudflare's TURN, TCP/TLS on 443
+included. The client counts each STUN-only grant as the `ice_degraded` telemetry note `no_relay`.
+
+**Battle loading on a thin link (277).** A cold joiner on 4 Mbps fetched ~20 MB during its entry: images 12.4 MB (the
+map's terrain photograph sets most of it), battle sounds 5.3 MB, the effects' volume media 2.3 MB, scripts 2.8 MB
+(`tools/mp-two-peer-e2e.mjs` records the entry's fetches by kind and the heaviest files). The sounds were fetched at
+`fetch()`'s default High priority beside the script chunks the entry awaits; they now ask for Low (audio/assetLibrary.ts),
+behind the scripts and with the terrain photographs (detached `Image()` loads Chrome already fetches at Low). The entry
+never awaits those photographs: the terrain builds on its procedural layers and the photograph sets replace them in place
+when they land (world/sourcedTextures.ts), which can pop on screen. The texture-diet lane cuts the sets (a 1K set ~56 %
+smaller, a 512 tier for phones and the low presets). **Pass rule for a crossfade of that swap** (Main, 2026-11-25): once
+texture-diet has landed, if a terrain photograph set lands after the reveal in more than 20 % of cold entries at 10 Mbps
+(the tool's `joinerTerrainPhotos` / `solo.terrainPhotos`, seconds against the reveal), the crossfade is built (the
+Garage's handover, 870673a410: a ghost on the old surface fading over 400 ms; the battle terrain's transparent variant
+compiled under the cover, the regen marking accepted); otherwise it stays parked.
+
+**Parked: a relay through the Room Durable Object (measured proposal, 2026-11-25).** If TURN-relayed links still fail,
+the guaranteed fallback is to carry the match over the room's WebSocket: a `RoomRelayTransport` on the peer (binary
+envelopes `{ to, frame }`) and the host's acceptor bridging them to its core like a data channel, a room protocol
+addition (a `ROOM_PROTOCOL_VERSION` bump, the Worker first). §13.1's rule is why it is parked: on Workers Free every
+WebSocket message to the Durable Object is billed against 100,000 requests a day shared with telemetry (§13.29). A
+relayed peer brings ~40–50 incoming messages a second (20 Hz snapshots from the host, 20–30 input frames); billed 1:1
+that is ~160k requests an hour, one relayed player spending the day's allowance in ~40 minutes and taking multiplayer
+down for everyone until 00:00 UTC; billed at the 20:1 ratio Cloudflare documents for Durable Object WebSockets (to be
+confirmed against the current pricing and the Free cap), ~8k an hour, about 12 relayed player-hours a day. The relayed
+peer gains two hops through the Durable Object's location (+20–80 ms). Built only if relayed failures persist, and then
+capped (two relayed seats a room, a daily relay budget in the room's limiter) so it can never take multiplayer down.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

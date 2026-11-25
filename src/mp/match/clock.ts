@@ -23,6 +23,8 @@ export interface ServerClockOptions {
   maxSlewWindowMs?: number;
   /** An offset error above this snaps instead of slewing (a tab that slept for seconds). */
   hardResyncMs?: number;
+  /** Samples before the clock slews: until then the active offset is the filtered target (the HELLO sample and the burst). */
+  calibrationSamples?: number;
   /** RTT low-pass and jitter estimator gain. */
   rttAlpha?: number;
 }
@@ -55,6 +57,16 @@ export class ServerClock {
   readonly sampleWindow: number;
   readonly slewMsPerS: number;
   readonly maxSlewWindowMs: number;
+  /**
+   * (mp-fixes-277) The samples a clock takes before it has an estimate at all: the HELLO -> WELCOME exchange and the
+   * WELCOME's ping burst (matchClient pingBurstCount, 8). Until then the active offset adopts the filtered target at once;
+   * the slew hides corrections to a converged estimate, never the first one. The host's own first sample is its HELLO
+   * waiting through its Worker's boot of the match: a round trip of seconds whose midpoint put the clock half of it ahead
+   * of the authority. Slewed at 50 ms/s, a 442 ms seed error outlived the countdown and the reveal (Kevin, 276: "doesnt
+   * work super well p2p"), and every input the host sampled meanwhile was stamped that far in the future: its own controls
+   * answered ~0.4-0.8 s late for its first battle's first ten-odd seconds.
+   */
+  readonly calibrationSamples: number;
   readonly hardResyncMs: number;
   readonly rttAlpha: number;
   private readonly samples: ClockSample[] = [];
@@ -73,12 +85,15 @@ export class ServerClock {
     maxSlewWindowMs = 250,
     hardResyncMs = 2000,
     rttAlpha = 0.2,
+    calibrationSamples = 9,
   }: ServerClockOptions = {}) {
     this.sampleWindow = sampleWindow;
     this.slewMsPerS = slewMsPerS;
     this.maxSlewWindowMs = maxSlewWindowMs;
     this.hardResyncMs = hardResyncMs;
     this.rttAlpha = rttAlpha;
+    // (a window too small to ever fill past it would never leave calibration)
+    this.calibrationSamples = Math.max(0, Math.min(calibrationSamples, sampleWindow - 1));
   }
 
   get isSeeded(): boolean { return this.seeded; }
@@ -159,6 +174,8 @@ export class ServerClock {
       this.seeded = true;
       this.lastAdvanceMs = nowMs;
     }
+    // calibrating (no estimate yet): the active offset is the filtered one, whatever the seed said
+    if (this.samples.length <= this.calibrationSamples) this.offsetMs = this.targetOffsetMs;
     return sample;
   }
 

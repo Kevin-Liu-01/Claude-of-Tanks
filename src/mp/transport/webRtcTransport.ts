@@ -196,6 +196,15 @@ export const ICE_GATHER_CAP_MS = 2500;
 export const RTC_OFFER_CONNECT_TIMEOUT_MS = 3500;
 
 /**
+ * (mp-fixes-277; Kevin, 2026-11-25: his friend on the live site "got stuck at 56%") A link that has never opened is given
+ * this long before the transport gives up, not the reconnect window's whole minute: a channel that opened once and
+ * dropped may come back, but a first offer that nothing answers in 30 s (re-offered every RTC_OFFER_CONNECT_TIMEOUT_MS)
+ * is two networks with no path between them, and the joiner waited 62 s on a still loading screen before it was told.
+ * A host still booting answers its offers and holds the HELLO on an open channel (wire HOLD), so it is not cut short.
+ */
+export const RTC_FIRST_OPEN_WINDOW_MS = 30_000;
+
+/**
  * Resolves once the connection's ICE gathering is complete, or after `capMs`; null when there is nothing to wait for (a
  * runtime that reports no gathering state, or gathering already complete) so the caller sends without an extra turn.
  */
@@ -258,6 +267,8 @@ export interface WebRtcTransportOptions {
   maxFrameBytes?: number;
   /** An offer whose channel has not opened this long after it left is re-offered at once (RTC_OFFER_CONNECT_TIMEOUT_MS). */
   offerConnectTimeoutMs?: number;
+  /** A link that has never opened gives up after this long (RTC_FIRST_OPEN_WINDOW_MS), within the reconnect window. */
+  firstOpenWindowMs?: number;
   clock?: () => number;
   setTimer?: (callback: () => void, delayMs: number) => TimerHandle;
   clearTimer?: (handle: TimerHandle) => void;
@@ -299,6 +310,8 @@ export class WebRtcTransport implements Transport {
   private readonly autoReconnect: boolean;
   private readonly maxFrameBytes: number;
   private readonly offerConnectTimeoutMs: number;
+  private readonly firstOpenWindowMs: number;
+  private everOpened = false;
   private readonly clock: () => number;
   private readonly setTimer: (callback: () => void, delayMs: number) => TimerHandle;
   private readonly clearTimer: (handle: TimerHandle) => void;
@@ -335,6 +348,7 @@ export class WebRtcTransport implements Transport {
     autoReconnect = true,
     maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
     offerConnectTimeoutMs = RTC_OFFER_CONNECT_TIMEOUT_MS,
+    firstOpenWindowMs = RTC_FIRST_OPEN_WINDOW_MS,
     clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
     setTimer = (callback, delayMs) => setTimeout(callback, delayMs),
     clearTimer = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -351,6 +365,7 @@ export class WebRtcTransport implements Transport {
     this.autoReconnect = autoReconnect;
     this.maxFrameBytes = maxFrameBytes;
     this.offerConnectTimeoutMs = offerConnectTimeoutMs;
+    this.firstOpenWindowMs = firstOpenWindowMs;
     this.clock = clock;
     this.setTimer = setTimer;
     this.clearTimer = clearTimer;
@@ -389,7 +404,9 @@ export class WebRtcTransport implements Transport {
     // a reopened transport hears its signaler again (audit M2, 2026-11-02: close() unsubscribed it for good)
     this.unsubscribeSignals ??= this.signaler.onSignal((signal) => this.receiveSignal(signal));
     this.attempt = 0;
-    this.lostAtMs = null;
+    // (mp-fixes-277) a link that never opened has had no connection since it was opened: its first-open window counts from
+    // here, not from its first failed offer
+    this.lostAtMs = this.everOpened ? null : this.clock();
     this.connect();
   }
 
@@ -608,6 +625,7 @@ export class WebRtcTransport implements Transport {
     this.stats.opens++;
     this.timeline.openAtMs = this.clock();
     this.pairTypes = null;
+    this.everOpened = true;
     this.transition('open', { attempt, resumed });
     this.readCandidatePair(link);
   }
@@ -663,7 +681,7 @@ export class WebRtcTransport implements Transport {
     }
     const nowMs = this.clock();
     this.lostAtMs ??= nowMs;
-    if (nowMs - this.lostAtMs >= this.reconnectPolicy.windowMs) {
+    if (nowMs - this.lostAtMs >= this.giveUpAfterMs()) {
       this.close(TRANSPORT_CLOSE.EXHAUSTED, `no connection for ${Math.round(nowMs - this.lostAtMs)} ms`);
       return;
     }
@@ -679,13 +697,21 @@ export class WebRtcTransport implements Transport {
       this.retryTimer = null;
       if (this.currentState !== 'reconnecting') return;
       const elapsedMs = this.clock() - (this.lostAtMs ?? this.clock());
-      if (elapsedMs >= this.reconnectPolicy.windowMs) {
+      if (elapsedMs >= this.giveUpAfterMs()) {
         this.close(TRANSPORT_CLOSE.EXHAUSTED, `no connection for ${Math.round(elapsedMs)} ms`);
         return;
       }
       this.connect();
     }, delayMs);
   }
+
+  /** The reconnect window, or the first-open window while this transport has never had an open channel. */
+  private giveUpAfterMs(): number {
+    return this.everOpened ? this.reconnectPolicy.windowMs : Math.min(this.reconnectPolicy.windowMs, this.firstOpenWindowMs);
+  }
+
+  /** Whether a channel ever opened on this transport (a link that never did cannot reach its host). */
+  get hasOpened(): boolean { return this.everOpened; }
 
   private dropConnection(): void {
     const connection = this.connection;

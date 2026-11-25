@@ -140,6 +140,7 @@
     "test:net:v2:p2p": "node tools/mp-p2p-e2e.mjs",
     "test:net:v2:p2p:headless": "node tools/mp-p2p-headless.mjs",
     "test:net:v2:p2p:soak": "node tools/mp-p2p-soak.mjs",
+    "test:net:v2:two-peer": "node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist",
     "typecheck:rooms": "npm --prefix cloudflare/rooms run typecheck",
     "test:telemetry:cloudflare": "npm --prefix cloudflare/telemetry test",
     "typecheck:telemetry:cloudflare": "npm --prefix cloudflare/telemetry run typecheck",
