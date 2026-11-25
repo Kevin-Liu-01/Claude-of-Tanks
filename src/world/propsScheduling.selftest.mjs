@@ -366,7 +366,8 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false, f.args[0][6]]]);
   assert.equal(f.args[0][6].worker, true);
   assert.equal(f.args[0][6].signal.aborted, false);
-  assert.deepEqual(ticks, [[1, 180], [2, 180], [3, 180]]);
+  // (mp-fixes-277) a fine build's total moves with its ticks: done + 600, a fraction that keeps moving and never saturates
+  assert.deepEqual(ticks, [[1, 601], [2, 602], [3, 603]]);
   assert.equal(result._buildDetail.sliceCount, 4);
   assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
   assert.equal(f.events.at(-2)[0], 'complete');
@@ -835,8 +836,8 @@ for (const cancelAt of ['ground-foundation-layers', 'ground-foundations', 'groun
       // (battle-spikes-253) and a slice a scar before the scars' boundary
       const scarSlices = f.events.filter(([, value]) => value?.stage === 'ground-scars').length - 1;
       assert.ok(scarSlices > 0, 'the scars yield a slice each');
-      assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 180]),
-        [0, 180], [0, 180], [0, 180], ...Array.from({ length: scarSlices }, () => [0, 180]), [0, 180], [1, 180]]);
+      assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 600]),
+        [0, 600], [0, 600], [0, 600], ...Array.from({ length: scarSlices }, () => [0, 600]), [0, 600], [1, 601]]);
       assert.ok(h.kinds().includes('churn'));
     } else {
       await assert.rejects(pending, error => error === failure);
@@ -872,7 +873,7 @@ for (const cancelAt of [0, 2, 4, 6, 7, 90]) {
     assert.deepEqual(h.commands, []);
     assert.deepEqual(h.kinds(), []);
     assert.deepEqual(h.randoms, []);
-    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 600]));
     assert.equal(iterator.next().done, true);
     assert.equal(f.runtime._buildDetail, undefined);
     assert.equal(f.args[0][6].signal.aborted, true);
@@ -954,7 +955,7 @@ for (const cancelAt of [0, 1, null]) {
   }, true);
   if (cancelAt === null) {
     await pending;
-    assert.deepEqual(ticks, [[0, 180], [0, 180], [1, 180]]);
+    assert.deepEqual(ticks, [[0, 600], [0, 600], [1, 601]]);
     assert.deepEqual(h.completed, streetControl.completed);
     assert.deepEqual(h.randoms, streetControl.randoms, 'new waits preserve deterministic operation order');
     assert.deepEqual(f.events.filter(([event]) => event === 'work').map(([, step]) => step), [
@@ -964,7 +965,7 @@ for (const cancelAt of [0, 1, null]) {
     ]);
   } else {
     await assert.rejects(pending, error => error === failure);
-    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 600]));
     assert.deepEqual(h.completed, streetControl.completed.slice(0, cancelAt + 1));
     assert.deepEqual(h.randoms, streetControl.randoms.slice(0, cancelAt + 1));
     assert.equal(h.iterator.next().done, true, 'IteratorClose prevents every later family');

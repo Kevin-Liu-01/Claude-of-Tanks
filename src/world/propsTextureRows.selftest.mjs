@@ -264,7 +264,9 @@ try {
     let ticks = 0;
     const result = await owner.api.createPropsAsync(...args.slice(0, 4), async (done, total) => {
       assert.equal(done, ++ticks);
-      assert.equal(total, 180);
+      // (mp-fixes-277) a fine build's total moves with it (i/(i+600)): the fraction never reaches 1 before the build ends
+      assert.equal(total, done + 600);
+      assert.ok(done / total < 1);
       assert.equal(owner.runtime.textures, undefined, 'no partial texture owner at an awaited checkpoint');
       assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));

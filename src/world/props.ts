@@ -3703,7 +3703,9 @@ export async function recordWreckBakeRequests(
  * `tick(done, total)` between placement families (buildings, rowhouses,
  * walls, trucks, crops, street furniture, wrecks, pool finalization) so the
  * loading screen keeps painting. Byte-identical output: both wrappers drain
- * the same generator, same rng draw order.
+ * the same generator, same rng draw order. A fine build's `total` moves with
+ * `done` (done + 600: the slice count is not known ahead), so its fraction keeps
+ * moving and never reaches 1 before the build ends.
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
 export async function createPropsAsync(
@@ -3743,7 +3745,11 @@ export async function createPropsAsync(
   let nextStartedAt = performance.now();
   let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
-  const total = fineSlices ? 180 : 9;
+  // (mp-fixes-277) the build's slices are not known before it runs (verdant: 2,554), so a fine build's progress is i/(i+K),
+  // never saturating: a fixed 180 let the bar reach the props' end after ~7 % of the work and hold there for the rest
+  // (a cold 4x-CPU solo entry held "Placing structures" 15 s). A coarse build keeps its nine steps.
+  const PROPS_PROGRESS_HALF = 600;
+  const totalAt = (done: number): number => (fineSlices ? done + PROPS_PROGRESS_HALF : 9);
   // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
   // that rejects after one is never taken for a worker failure and baked again
   let tickFailed = false;
@@ -3752,7 +3758,7 @@ export async function createPropsAsync(
     const startedAt = performance.now();
     const settled = (): void => { recordPropsAwait(timing, startedAt); };
     try {
-      const pending = tick?.(i, total);
+      const pending = tick?.(i, totalAt(i));
       // Observe settlement without wrapping the returned promise or inserting
       // another awaited hop into the caller's original pacing continuation.
       if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
