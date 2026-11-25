@@ -25,6 +25,7 @@
  * still be captured.
  */
 
+import { isTypingTarget } from './keyboardOwnership.ts';
 import { TRANSITION_SHOTS } from './featuredShots.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import { preloadImage } from './imagePreload.ts';
@@ -514,7 +515,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
           resolve();
         };
         const go = (ev: Event) => {
-          if (dismissed) return;
+          if (dismissed || isTypingTarget(ev)) return;
           // Credits and GitHub are deliberate splash controls, not entry
           // gestures. Let them remain interactive without dismissing the
           // game gate underneath the modal/link click.

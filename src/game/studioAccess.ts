@@ -137,6 +137,8 @@ export function createStudioAccess({
 
   const installKeyboard = (): void => {
     if (keyboardInstalled || !keyTarget) return;
+    // typing-keys: F8 only, a key no field types; the Studio opens from the Garage's search too
+    // typing-keys: F8 only, a key no field types; the Studio opens from the Garage's search too
     keyTarget.addEventListener('keydown', onKeyDown, true);
     keyboardInstalled = true;
   };

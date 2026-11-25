@@ -361,3 +361,21 @@ it; world changes (felled trees, structures, craters) are not replayed; effects 
 not replay; a mode's battlefield variant is not passed to the indexer; watching a replay sets the Garage's selected
 tank to the recording's. The notices-276 view-controls list (`src/ui/hudViewControls.ts`) is not on this base yet; the
 bar's box is registered there on the restack.
+
+## 276.x hotfix: a replay seats its recorded roster (replay-fixes-277, 2026-11-24)
+
+Live 276 (Kevin: "the replays dont actually work"): most replays opened to "This replay can't be played." and never
+moved. The page entered the recording's battle correctly, but the indexer's Worker, setting the same battle up again,
+drew another roster from the same seed and ordinal and refused the run (`roster`). The draw shuffles `game.allTanks`,
+which is built in the order the fleet registered, and the page's import graph registers the spec packs in another order
+than the Worker's and Node's (`authorityFleet` → `fleetRegistration`): on 276's build the two orders part at the 80th
+hull. A battle whose draw happened not to reach that part replayed; most did not. Neither earlier check saw it: the
+Node round trip and `replay-verify` draw in Node on both sides, and the recorder's browser check never opened the viewer.
+
+The fix: a replay never draws its roster again. `runRecordedSetup` hands `setupBattle` the header's roster
+(`recordedRoster`) and `rosterState.seatRecordedRoster` seats those hulls in the recorded order on the recorded sides
+(same-nation repeats rebuilt as the picker builds them; the TEAM NATIONS record read off the sides), on the page and in
+the Worker alike. Receipts: `src/game/replay/replayRosterSeat.selftest.mjs` (default tier: a reordered pool draws
+another roster, the recorded one seats exactly) and `tools/replay-ui-flow.browser.selftest.mjs` (manual `browser`
+suite: a battle played with real keys, left and watched from the Service Record; another ended and watched from its end
+screen; each must play to its end with no notice and a hull moving, and the indexer's reply is in the receipt).

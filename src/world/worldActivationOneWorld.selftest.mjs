@@ -248,7 +248,7 @@ async function presentBattle(h, mapId) {
   const worlds = scene.children.filter((child) => child.name && child.name !== 'garage');
   assert.equal(worlds[0]?.name, 'desert', 'the planned battlefield is the first world in the scene (what a name search found)');
   assert.equal(activeWorld()?.mapId, 'verdant', 'the reference is the presented battlefield');
-  assert.equal(activeWorld()?.group, room.group);
+  assert.ok(activeWorld()?.group === room.group);
   assert.ok(isBattlefieldRoot(worlds[0]) && isBattlefieldRoot(room.group), 'both are battlefield roots');
   assert.equal(isBattlefieldRoot(scene.children.find((child) => child.name === 'garage')), false, 'the Garage is not');
   h.runtime.setDormant(true);

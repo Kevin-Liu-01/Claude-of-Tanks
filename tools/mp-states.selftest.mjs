@@ -61,6 +61,8 @@ assert.equal(JSON.stringify({ phase: SESSION_PHASE.lobby }), '{"phase":"lobby"}'
     // (268, origin/main) the e2e's RTCPeerConnection rows count the browser's own connectionState words, not a protocol state
     // (round 2 U40) and the peer connection's own connectionState word, which the wider field pattern now reads
     'tools/mp-p2p-e2e.mjs': ["pc.connectionState === 'closed'", "entry.state === 'failed'"],
+    // (mp-fixes-277) the browser's own RTCPeerConnection state, not a protocol state: a closed link has no pair to read
+    'tools/mp-two-peer-e2e.mjs': ["pc.connectionState === 'closed'"],
     // the headless peer harness reports its own match phases ('ended' among them): two vocabularies (findings 24 #8)
     'tools/mp-p2p-soak.mjs': ["entry.phase === 'closed'", "entry.phase === 'ended'", "entry.phase === 'failed'"],
     // the authority's own MatchPhase (src/sim/authoritativeMatch.ts), not a protocol state

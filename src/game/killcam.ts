@@ -1,3 +1,4 @@
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { hullPointsRemoved } from './hullPointsRemoved.ts';
@@ -2279,7 +2280,7 @@ export function createKillCam(deps: KillcamDeps) {
   /** Esc leaves the replay in one press (the finale too); Space and Enter step a beat on (onSkipKey); other keys are the
    *  battle's again. */
   function onReplayKey(event: KeyboardEvent) {
-    if (!active || !pb || staged) return;
+    if (!active || !pb || staged || isTypingTarget(event)) return;
     if (event.code === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -6279,7 +6280,7 @@ export function createKillCam(deps: KillcamDeps) {
       if (ent) retarget(ent, list, false);
     }
     function onKey(e: KeyboardEvent): void {
-      if (!on || e.repeat) return;
+      if (!on || e.repeat || isTypingTarget(e)) return;
       // (death-flow-275; Kevin 2026-11-22: "use a and d and q and e") A / Q step back and D / E on, through the one list
       // (the own wreck, then the living allies), as Watch's Q / E step; the arrows too. A dead crew drives nothing, so the
       // movement keys are free here.

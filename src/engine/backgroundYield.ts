@@ -28,6 +28,7 @@ function installPressGate(): void {
     pressHold = untilPaint().catch(() => undefined).finally(() => { pressHold = null; });
   };
   window.addEventListener('pointerdown', hold, { capture: true, passive: true });
+  // typing-keys: passive: yields background work to the next paint; acts on no key
   window.addEventListener('keydown', hold, { capture: true, passive: true });
 }
 

@@ -158,6 +158,7 @@ export function createLazyAudio({
     const state: string | undefined = context?.state;
     return state === 'suspended' || state === 'interrupted';
   };
+  // typing-keys: any key is a gesture that may start the audio; acts on no key
   const GESTURES = ['pointerdown', 'pointerup', 'keydown'] as const;
   let gestureArmed = false;
   const disarmGesture = (): void => {

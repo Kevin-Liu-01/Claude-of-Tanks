@@ -110,6 +110,7 @@ interface FrameLoopScheduler {
   };
 }
 
+// typing-keys: wake only: any input resumes the frame loop; acts on no key
 const INPUT_EVENTS = Object.freeze([
   'pointerdown',
   'touchstart',

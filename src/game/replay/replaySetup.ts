@@ -1,10 +1,11 @@
 /**
  * A recording's battle set up again (replay-system, docs/REPLAY.md "Setup is captured"): the one place that turns a
  * header back into the battle its recorder saw. The headless replayer (replayRunner.ts) and the page's viewer
- * (app/replayViewerRuntime.ts) both call it, so the two seat the same roster: the roster seed, the battle count, the
- * previous battles' bots (Sets on the page, arrays in the file), the debug roster flags and every localStorage value
- * setup read (served by a stand-in for the length of the setup call only) go round the caller's own setupBattle. The
- * caller adds what only it knows (its world, deferred visuals). Node-runnable.
+ * (app/replayViewerRuntime.ts) both call it, so the two seat the same roster: the recorded roster itself (seated as
+ * recorded, never drawn again: replay-fixes-277), the roster seed, the battle count, the previous battles' bots (Sets on
+ * the page, arrays in the file), the debug roster flags and every localStorage value setup read (served by a stand-in for
+ * the length of the setup call only) go round the caller's own setupBattle. The caller adds what only it knows (its
+ * world, deferred visuals). Node-runnable.
  */
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { ReplayHeader } from '../../sim/replayFormat.ts';
@@ -16,6 +17,8 @@ export interface RecordedSetupOptions {
   campaignOperationId?: string;
   deferOpeningRoutes: boolean;
   seed?: number;
+  /** The recorded roster, seated as recorded (state.ts setupBattle, rosterState.seatRecordedRoster), never drawn again. */
+  recordedRoster: readonly { id: string; specId: string; team: string }[];
 }
 
 /** What the page needs to enter the recording's battle before setup runs: its map, the player's tank and the mode. */
@@ -95,6 +98,7 @@ export function runRecordedSetup<TResult>(game: SetupGame, header: ReplayHeader,
     ...(typeof options.campaignOperationId === 'string' ? { campaignOperationId: options.campaignOperationId } : {}),
     deferOpeningRoutes: options.deferOpeningRoutes === true,
     ...(typeof record.seed === 'number' ? { seed: record.seed } : {}),
+    recordedRoster: header.roster.map((entry) => ({ id: entry.id, specId: entry.specId, team: entry.team })),
   };
   const releaseStorage = storage === 'call' ? installRecordedStorage(header) : null;
   const root = globalThis as { __DEBUG?: unknown };

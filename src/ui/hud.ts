@@ -1,3 +1,4 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { botCallsign, PLAYER_CALLSIGN } from './botCallsigns.ts';
@@ -2893,12 +2894,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || !document.pointerLockElement || document.body.classList.contains('cot-si-report')
         || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
-        (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
+        isTypingTarget(event) || (event.target instanceof Element && event.target.closest('.cot-room-chat'))) return;
     event.preventDefault();
     if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
     else if (!event.repeat) root.classList.toggle('rosters-expanded');
   }, true);
   const collapseRosters = (): void => { root.classList.remove('rosters-expanded'); };
+  // typing-keys: a release only lets the held rosters go
   window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 

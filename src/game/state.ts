@@ -197,8 +197,10 @@ import {
   pickBattleParticipants,
   pickNationalBattle,
   rememberBattleBots,
+  seatRecordedRoster,
   splitBattleAllies,
   type BattleTeamNations,
+  type RecordedRosterSeat,
 } from './rosterState.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 export { soloRosterPlan } from './soloRosterPlan.ts';
@@ -555,6 +557,9 @@ interface SetupBattleOptions {
   couch?: CouchBattle;
   /** The battle's seed (every stream of it); absent, rosterState soloMatchSeed (a random battle's own, a staged roster's fixed). */
   seed?: number;
+  /** A replay's recorded roster (game/replay/replaySetup.ts): these hulls in this order on these sides, never drawn again
+   *  (rosterState.seatRecordedRoster). */
+  recordedRoster?: readonly RecordedRosterSeat[];
 }
 
 interface CameraRig {
@@ -1365,9 +1370,19 @@ export function setupBattle(
   // RANDOM (and a forced debug roster) keeps the era-ranked pool and the tier-balanced split
   game._nationalAllyIds = null;
   game.teamNations = rosterPlan.national === 'random' ? { teamNations: 'random', allied: null, enemy: null, notes: [] } : null;
-  const national = rosterPlan.national && rosterPlan.national !== 'random' && !soloDebugFlags()?.forceRoster?.length
+  // a replay seats its recording's roster as recorded (replay-fixes-277: a draw in the replay indexer's Worker shuffles the
+  // pool in another registration order than the page's, so it drew another roster and refused the replay)
+  const recorded = opts.recordedRoster?.length
+    ? seatRecordedRoster(game, playerSpecId, opts.recordedRoster, rosterPlan.national === 'random' ? 'random' : rosterPlan.national ? 'mono' : null)
+    : null;
+  if (opts.recordedRoster?.length && !recorded) throw new Error('replay: the recorded roster names a hull this build does not field');
+  const national = !recorded && rosterPlan.national && rosterPlan.national !== 'random' && !soloDebugFlags()?.forceRoster?.length
     ? pickNationalBattle(game, playerSpecId, game.battleCount, rosterPlan.national) : null;
-  if (national) {
+  if (recorded) {
+    game.tanks = recorded.participants as SoloEntity[];
+    game._nationalAllyIds = recorded.allyIds;
+    game.teamNations = recorded.record;
+  } else if (national) {
     game.tanks = national.participants as SoloEntity[];
     game._nationalAllyIds = new Set(national.allies.map((entity) => entity.id));
     game.teamNations = national.record;

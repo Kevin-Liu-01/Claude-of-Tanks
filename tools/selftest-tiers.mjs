@@ -850,6 +850,7 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/battle-geometry-sharing.browser.selftest.mjs',
     'tools/black-world.browser.selftest.mjs',
     'tools/destruction-first-use.browser.selftest.mjs',
+    'tools/replay-ui-flow.browser.selftest.mjs',
   ]),
   // round 5 U12 (2026-11-02 audit, sm-fix): the census's two houses cost about 1.7 s of its 4.1-4.4 s of CPU; the default
   // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves what only their destruction stamps or

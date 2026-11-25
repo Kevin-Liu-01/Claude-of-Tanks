@@ -9,6 +9,7 @@
  *
  * The rig is used, never modified (rig.setExternalPose / rig.release, as the killcam does).
  */
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import * as THREE from 'three';
 import type { BattleEndingPlan, EndingFocus } from './battleEnding.ts';
 
@@ -76,7 +77,7 @@ export function createBattleEndingCamera({
   let azimuth0 = 0;
   let onSkip: (() => void) | null = null;
 
-  const skipListener = (): void => { onSkip?.(); };
+  const skipListener = (event: Event): void => { if (!isTypingTarget(event)) onSkip?.(); };
   const arm = (): void => {
     if (!win) return;
     for (const type of SKIP_EVENTS) win.addEventListener(type, skipListener, true);

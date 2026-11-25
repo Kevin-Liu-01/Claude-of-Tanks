@@ -1,3 +1,4 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
 import { layoutViewportSize, placeFloat } from './responsiveLayout.ts';
 
 /** A single reusable, viewport-clamped tooltip for delegated hover/focus/tap targets. */
@@ -55,7 +56,7 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
   const focus = (event: FocusEvent) => { if (dismissing) return; const target = targetOf(event.target); if (target) show(target); };
   const click = (event: MouseEvent) => { const target = targetOf(event.target); if (target) { event.preventDefault(); show(target); } };
   const outside = (event: PointerEvent) => { if (anchor && !anchor.contains(event.target as Node) && !tip.contains(event.target as Node)) hide(); };
-  const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && anchor) { hide(); event.preventDefault(); event.stopImmediatePropagation(); } };
+  const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && anchor && !isTypingTarget(event)) { hide(); event.preventDefault(); event.stopImmediatePropagation(); } };
   host.addEventListener('pointerover', enter); host.addEventListener('pointerout', leave);
   host.addEventListener('focusin', focus); host.addEventListener('focusout', leave); host.addEventListener('click', click);
   tip.addEventListener('pointerenter', () => clearTimeout(timer)); tip.addEventListener('pointerleave', leave);

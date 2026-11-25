@@ -341,6 +341,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayViewerCore.selftest.mjs',
     // replay-system (P2): the viewer's controller with stub ports: posing, the feed, marks, filters, refused and drifted
     'src/game/replay/replayViewer.selftest.mjs',
+    // replay-fixes-277: a replay seats its recording's roster as recorded, on a pool in any registration order (no world)
+    'src/game/replay/replayRosterSeat.selftest.mjs',
     // replay-lazy-276: the battle recorder behind its lazy chunk: idle before it loads, every tap and wrapped rule bound
     // after, a battle set up after the preload recorded from its first step
     'src/game/replayRecordingAccess.selftest.mjs',
@@ -1789,6 +1791,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/shotSchematic.selftest.mjs',
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
+    // typing-keys-277 (Kevin, 276: a space typed into the Garage search was the handbrake): a field gets every key typed into it,
+    // and every global key listener asks keyboardOwnership.ts isTypingTarget first
+    'src/game/typingKeys.selftest.mjs',
+    'tools/typing-keys-census.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
     // texture-diet-277: every graphics level's preview and note match engine/quality.ts
     'src/ui/settingsQualityLevels.selftest.mjs',
@@ -3523,6 +3529,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
     'tools/battle-geometry-sharing.browser.selftest.mjs',
+    // replay-fixes-277: a battle played, left and watched from the Service Record, another ended and watched from its
+    // end screen, each replay playing to its end (live 276: the indexer's Worker drew another roster and refused them)
+    'tools/replay-ui-flow.browser.selftest.mjs',
     // 2026-11-06 (crew-languages-270): the crew voice picker lists languages, and a real touch drag (wheel on desktop)
     // reaches and chooses its last row and an RTL row on a phone sheet
     'tools/crew-voice-picker.browser.selftest.mjs',

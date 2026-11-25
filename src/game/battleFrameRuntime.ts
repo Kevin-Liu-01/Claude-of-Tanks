@@ -301,7 +301,14 @@ export function createBattleFrameRuntime({
         countdown.show(0);
       }
       rollout(true);
-      if (!entryCovered) replay!.advance(appliedDtSeconds);
+      if (!entryCovered) {
+        replay!.advance(appliedDtSeconds);
+        // (replay-fixes-277, Kevin 11-25: "no one is actually moving") the poser wrote every hull's state; the solo
+        // presentation draws its fixed-step render poses (captureSoloPoses), which only a step advanced, so a replay's
+        // tanks stood at their setup poses. Advance them from the posed state each frame (sampled at alpha 1: the pose)
+        frameStages?.stage(FRAME_STAGE.pose);
+        presentation.captureSoloPose();
+      }
       simulationAccumulator = 0;
     } else if (networkActive) {
       countdown.show(game.preBattleS);

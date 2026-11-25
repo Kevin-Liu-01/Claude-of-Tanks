@@ -1,3 +1,4 @@
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import { t } from '../ui/i18n.ts';
 import { assertAppPhaseTransition, assertGarageScreenSettled, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { isBootReady, whenBootReady } from '../app/bootReadiness.ts';
@@ -1941,13 +1942,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
-  function typingInUI(e: KeyboardEvent): boolean {
-    const t = e.target;
-    if (!(t instanceof HTMLElement)) return false;
-    return t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' ||
-      t.tagName === 'TEXTAREA' || t.isContentEditable);
-  }
-
   function onKeyDown(e: KeyboardEvent): void {
     if (filming) return; // an offline film owns the Studio until it ends
     if (e.code === 'F8' && !e.repeat) {
@@ -1966,7 +1960,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (!e.repeat) panel.openCommands();
       return;
     }
-    if (!active || typingInUI(e)) return;
+    if (!active || isTypingTarget(e)) return;
     // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y redo
     if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {
       e.preventDefault();
@@ -1991,6 +1985,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function onKeyUp(e: KeyboardEvent): void { keys.delete(e.code); }
 
   window.addEventListener('keydown', onKeyDown);
+  // typing-keys: a release only forgets a held key
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('pointerdown', onPointerDown, true);
   window.addEventListener('pointermove', onPointerMove, true);

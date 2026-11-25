@@ -1,3 +1,5 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
+import { rosterQueryWords, rosterSearchEntryForSpec, rosterSearchMatches } from './rosterSearch.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { vehicleActionsFor } from './vehicleActionList.ts';
 import type { CouchBattle } from '../game/couchSeats.ts';
@@ -2573,6 +2575,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderEqPicker();
     // the focus lands on the slot's own item (or Empty), where the arrows start
     eqPicker.focus();
+    // typing-keys: Tab containment only: a field inside the picker tabs within it too
     document.addEventListener('keydown', eqKeydown);
   }
   /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
@@ -2875,14 +2878,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // every national strip, re-counts the flags and keeps the strip on a nation with a match.
   let rosterFacetMatch: ((specId: string) => boolean) | null = null;
   // The inline search narrows with the Filter panel: one predicate, so every count and strip agrees with both.
-  let rosterQuery = '';
-  const rosterNames = new Map(allSpecs.map((spec) => [spec.id,
-    `${spec.label?.displayName || ''} ${spec.label?.shortName || ''} ${spec.name} ${spec.id.replace(/_/g, ' ')}`.toLowerCase()]));
+  // (typing-keys-277) word by word (rosterSearch.ts): "t 72 b3", "T-72B3" and "b3 t72" find the same tanks
+  let rosterWords: readonly string[] = [];
+  const rosterNames = new Map(allSpecs.map((spec) => [spec.id, rosterSearchEntryForSpec(spec)]));
   // the favourites (shared with the Tank Gallery, favouriteTanks.ts) narrow the same predicate while their chip is on
   const favouriteTanks = readFavouriteTanks();
   let favouritesOnly = false;
   const facetVisible = (specId: string): boolean => (!rosterFacetMatch || rosterFacetMatch(specId))
-    && (!rosterQuery || (rosterNames.get(specId) || '').includes(rosterQuery))
+    && rosterSearchMatches(rosterNames.get(specId), rosterWords)
     && (!favouritesOnly || favouriteTanks.has(specId));
   const facetToggle = document.createElement('button');
   facetToggle.type = 'button';
@@ -2939,14 +2942,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     rosterCount.textContent = t('garage.roster.count', { shown, total: allSpecs.length });
     // the count stands only while a search, the filter or the favourites narrow the strip: the chosen nation's chip and
     // All already name the plain figures (one datum, one place)
-    rosterCount.hidden = !(rosterFacetMatch || rosterQuery || favouritesOnly);
+    rosterCount.hidden = !(rosterFacetMatch || rosterWords.length || favouritesOnly);
     rosterEmptyEl.hidden = shown > 0;
     rosterEmptyEl.parentElement?.classList.toggle('is-empty', shown === 0);
   };
   rosterEmptyEl.querySelector('[data-roster-clear]')?.addEventListener('click', () => {
     emit('ui:click', {});
     rosterSearchInput.value = '';
-    rosterQuery = '';
+    rosterWords = [];
     favouritesOnly = false;
     renderFavourites();
     setRosterFacetFilter(rosterFacetMatch);
@@ -2954,7 +2957,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
-    rosterQuery = rosterSearchInput.value.trim().toLowerCase();
+    rosterWords = rosterQueryWords(rosterSearchInput.value);
     setRosterFacetFilter(rosterFacetMatch);
   });
   rosterSearchInput.addEventListener('keydown', (event) => {
@@ -2966,7 +2969,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     if (event.key !== 'Escape') return;
     event.stopPropagation();
-    if (rosterSearchInput.value) { rosterSearchInput.value = ''; rosterQuery = ''; setRosterFacetFilter(rosterFacetMatch); }
+    if (rosterSearchInput.value) { rosterSearchInput.value = ''; rosterWords = []; setRosterFacetFilter(rosterFacetMatch); }
     else rosterSearchInput.blur();
   });
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
@@ -5170,7 +5173,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       containModalTab(e, drawer, drawer);
       return;
     }
-    const typing = target?.closest('input,select,textarea,[contenteditable="true"]');
+    // a field takes its own keys (the search's space, Kevin 276); any other input (a slider, a box) keeps its arrows too
+    const typing = isTypingTarget(e) || !!target?.closest('input,select,textarea,[contenteditable="true"]');
     // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
     const deployOpen = battleMenu.classList.contains('open');
     if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {

@@ -143,6 +143,8 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
     event.stopImmediatePropagation();
     if (event.code === 'Escape') { event.preventDefault(); close(); }
   };
+  // typing-keys: photo mode hides every field (the stage is the picture), so no key it takes is typed text; it imports
+  // no entry module (the header), so it names this exception rather than ask keyboardOwnership.ts
   window.addEventListener('keydown', onKey, true);
   bar.querySelector('[data-photo-exit]')?.addEventListener('click', () => { host.click(); close(); });
 
