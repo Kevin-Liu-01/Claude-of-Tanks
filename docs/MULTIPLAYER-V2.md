@@ -2877,6 +2877,19 @@ seat behind a symmetric or carrier-grade NAT has no path to its host: the likely
 (`npx wrangler secret put` in `cloudflare/rooms`, no redeploy) gives every seat Cloudflare's TURN, TCP/TLS on 443
 included. The client counts each STUN-only grant as the `ice_degraded` telemetry note `no_relay`.
 
+**Battle loading on a thin link (277).** A cold joiner on 4 Mbps fetched ~20 MB during its entry: images 12.4 MB (the
+map's terrain photograph sets most of it), battle sounds 5.3 MB, the effects' volume media 2.3 MB, scripts 2.8 MB
+(`tools/mp-two-peer-e2e.mjs` records the entry's fetches by kind and the heaviest files). The sounds were fetched at
+`fetch()`'s default High priority beside the script chunks the entry awaits; they now ask for Low (audio/assetLibrary.ts),
+behind the scripts and with the terrain photographs (detached `Image()` loads Chrome already fetches at Low). The entry
+never awaits those photographs: the terrain builds on its procedural layers and the photograph sets replace them in place
+when they land (world/sourcedTextures.ts), which can pop on screen. The texture-diet lane cuts the sets (a 1K set ~56 %
+smaller, a 512 tier for phones and the low presets). **Pass rule for a crossfade of that swap** (Main, 2026-11-25): once
+texture-diet has landed, if a terrain photograph set lands after the reveal in more than 20 % of cold entries at 10 Mbps
+(the tool's `joinerTerrainPhotos` / `solo.terrainPhotos`, seconds against the reveal), the crossfade is built (the
+Garage's handover, 870673a410: a ghost on the old surface fading over 400 ms; the battle terrain's transparent variant
+compiled under the cover, the regen marking accepted); otherwise it stays parked.
+
 **Parked: a relay through the Room Durable Object (measured proposal, 2026-11-25).** If TURN-relayed links still fail,
 the guaranteed fallback is to carry the match over the room's WebSocket: a `RoomRelayTransport` on the peer (binary
 envelopes `{ to, frame }`) and the host's acceptor bridging them to its core like a data channel, a room protocol
