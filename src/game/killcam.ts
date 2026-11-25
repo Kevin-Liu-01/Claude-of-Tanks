@@ -4067,7 +4067,10 @@ export function createKillCam(deps: KillcamDeps) {
     const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
     if (fxs && fxs.destruction) {
       _p.set(snap.pose.pos[0], snap.pose.pos[1], snap.pose.pos[2]);
-      fxs.destruction(_p, null, cause);
+      // (fire-center-277) the replayed kill over the victim's measured hull centre, as the live one stood
+      fxs.destruction(_p, null, cause, null, {
+        hull: { spec: snap.targetEnt?.spec ?? null, root: vis?.root ?? null, pos: _p, yaw: snap.pose.yaw },
+      });
     }
     // AUDIO SEAM (killcam r2): the live blast/turret-pop samples fired at the
     // real kill (tank:destroyed) — re-emitting that event would double-count

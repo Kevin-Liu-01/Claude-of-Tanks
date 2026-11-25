@@ -205,7 +205,8 @@ interface StudioFxRuntime {
   propCrush?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
   loosePropHit?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
   destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string, wreckOf?: string | null,
-    opts?: { shellBurst?: boolean }): void;
+    opts?: { shellBurst?: boolean; hull?: { spec?: object | null; root?: THREE.Object3D | null;
+      pos?: { x: number; y: number; z: number } | null; yaw?: number } | null }): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
@@ -2606,7 +2607,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function fireTankKill({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _v2.copy(actor.state.pos);
-    fx.destruction(_v2, actor.visual, params.cause || 'ammorack');
+    // (fire-center-277) the kill over the actor's measured hull centre, as a battle's stands
+    fx.destruction(_v2, actor.visual, params.cause || 'ammorack', null,
+      { hull: { spec: actor.spec, root: actor.visual?.root ?? null, pos: actor.state.pos, yaw: actor.state.yaw } });
     filmCue('tank', _v2.x, _v2.y, _v2.z, actor.spec.gun.caliberMm,
       params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack');
     if (cinematicFor(params)) ensureCinematics().tankKill(id, cineActor(actor), params.cause || 'ammorack');
