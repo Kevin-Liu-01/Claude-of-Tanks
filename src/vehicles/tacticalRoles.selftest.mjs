@@ -71,12 +71,16 @@ assert.deepEqual(penetration(),baseline,'unrelated clone tuning cannot move pene
 
 // Production browser/dedicated facades can load in either order. Re-running a
 // donor synchronization after final assembly must never reset approved values.
+// (reds-sweep2-276) A launcher tube's aim is read as the sim reads it (sim/gunPose.ts: `tip.pitch ?? 0`, `tip.yaw ?? 0`).
+// The measured combat rig (81d4d9c898, combatAnatomy.ts applyCombatGunRig, in with sim-det-trig-b) seats each tube with
+// its measured pitch and yaw, 0 where the authored tube left them out; the browser facade seats a rig per id as a battle
+// asks for it, the tank factory all at load, so an explicit 0 in place of an absent one is the same aim, not a balance move
 for(const order of [['fleetFactory','tankFactory'],['tankFactory','fleetFactory']]) {
   execFileSync(process.execPath,['--input-type=module','-e',`
     import assert from 'node:assert/strict';
     await import('./src/vehicles/${order[0]}.ts');
     const {TANK_SPECS,ALL_TANK_IDS}=await import('./src/vehicles/specs.ts');
-    const stats=()=>JSON.stringify(ALL_TANK_IDS.map(id=>{const s=TANK_SPECS[id];return [id,s.hp,s.hullTraverseDegS,s.turretTraverseDegS,s.gun]}));
+    const stats=()=>JSON.stringify(ALL_TANK_IDS.map(id=>{const s=TANK_SPECS[id];const gun=s.gun.launcherMuzzles?{...s.gun,launcherMuzzles:s.gun.launcherMuzzles.map(t=>({...t,pitch:t.pitch??0,yaw:t.yaw??0}))}:s.gun;return [id,s.hp,s.hullTraverseDegS,s.turretTraverseDegS,gun]}));
     const before=stats(); await import('./src/vehicles/${order[1]}.ts');
     for(const [file,fn] of [['sourceXFleetSpecs','synchronizeSourceXCombatMetadata'],['sourceXSecondWaveSpecs','synchronizeSecondWaveXCombatMetadata'],['suppliedSourceFleetSpecs','synchronizeSuppliedSourceCombatMetadata'],['ifvReplicaSpecs','synchronizeIfvReplicaCombatMetadata'],['xk2Specs','synchronizeXk2CombatMetadata']]) (await import('./src/vehicles/'+file+'.ts'))[fn]();
     assert.equal(stats(),before,'facade order and synchronization preserve fleet balance');
