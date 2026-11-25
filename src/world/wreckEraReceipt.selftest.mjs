@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // The real wreck path needs neither a browser nor a Canvas fixture. A loader
 // hook only observes its actual factory call and restores the default option
@@ -67,6 +68,7 @@ try {
     { materialMode: 'geometry-only', geometryReceipt: true },
     { materialMode: 'geometry-only', eraVisualBindingReceipt: true },
   ]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank('t90am', null, { camoSeed: 4532, quality: 'low', proceduralOnly: true, ...options });
     try { assertReceipt(visual.root); } finally { visual.dispose(); }
   }

@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['leo2_improved', 'leo2a7v']);
 
@@ -18,6 +19,7 @@ const size = (object) => new THREE.Box3().setFromObject(object, true).getSize(ne
 // re-measured on the rebuild: 3.662 m across the deep skirts, the release hull's 7.912 m (release 265: re-measured on the
 // merged tree, the stern rack's rails setting the rear at z -4.165) and seven 0.348 m road wheels.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('leo2_improved', null, { proceduralOnly: true, quality, geometryReceipt: true });
   const hull = tank.root.getObjectByName('rig_hull');
   const turret = tank.root.getObjectByName('rig_turret');

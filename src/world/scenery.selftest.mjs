@@ -35,6 +35,7 @@ import { composeScenery } from './scenery.ts';
 import { buildFieldWorks } from './fieldWorks.ts';
 import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
 import { collisionFootprintContainsPoint } from './collision.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function mulberry32(a) {
   return () => {
@@ -636,6 +637,7 @@ function fieldWorksClearances(mapId, config, heightField, dressing, flora, works
 await models.preloadPropModels();
 let mapsWithScenery = 0;
 for (const mapId of maps.MAP_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const config = maps.getMapConfig(mapId);
   if (!config.scenery) continue;
   mapsWithScenery++;

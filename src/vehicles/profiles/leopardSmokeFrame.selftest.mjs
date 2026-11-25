@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders,KIT} from '../tankFactoryCore.ts';
 import {buildLeopard2A7VX,buildLeopard2A6MX,buildLeopard2A4MX} from './leopardX.ts';
 import {buildLeopardRevolution} from './leopardRevolution.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const cases=[
   ['leo2a7v',buildLeopard2A7VX,.043,.22,.034,12,-.48,1],
@@ -137,6 +138,7 @@ function nativeRetained(c){
 }
 function dispose(c){c.tank.dispose();for(const p of c.pairs){p.body.dispose();p.cap.dispose();}}
 for(const c of cases)for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const old=capture(c,quality,true),current=capture(c,quality,false),[id]=c;
   assert.deepEqual(current.retained,old.retained,'Every non-cap authored emission is byte-identical');
   assert.deepEqual(nativeRetained(current),nativeRetained(old),

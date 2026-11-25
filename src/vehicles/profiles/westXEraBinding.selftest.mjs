@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildMerkava3DX} from './merkavaX.ts';
 import {buildKF51X} from './kf51X.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const CASES=[
   {id:'merkava3d',build:buildMerkava3DX,owner:'turret',prefix:'merkava_merkava3d_turret_era_',parts:3},
@@ -108,6 +109,7 @@ function testDepletion(tank,c,quality) {
 for(const c of CASES)for(const quality of ['high','low']) {
   // Exercise the same current builder with registration bypassed solely to
   // prove adding cluster metadata neither adds nor moves any physical surface.
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   registerProfiledBuilders({[c.id]:P=>{
     const register=P.destructibleCluster;
     P.destructibleCluster=(_name,fill)=>fill();

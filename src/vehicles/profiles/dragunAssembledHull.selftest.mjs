@@ -5,6 +5,7 @@ import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {sourceOpeningRayProbe} from '../../../tools/source-opening-rays.mjs';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed calipers in the original canonical frame; the
 // accepted assembly changes only its detached door. No external geometry is loaded.
@@ -15,6 +16,7 @@ const f=VEHICLE_SIZE_FACTORS[id]??1,at=p=>p.map(v=>v*f);
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id));
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((level,i)=>level.object.visible=i===0);}});
   const probe=sourceOpeningRayProbe(tank.root);

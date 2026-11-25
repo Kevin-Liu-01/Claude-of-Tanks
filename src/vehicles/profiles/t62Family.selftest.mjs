@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const restore = installCanvasFixture();
 const { createTank } = await import('../tankFactory.ts');
@@ -22,6 +23,7 @@ function worldBox(object) {
 const builds = {};
 try {
   for (const id of ['t62_1975', 't62mv1']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
     const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
     const hr = hull.userData.t62FamilyReceipt, tr = turret.userData.t62FamilyReceipt;

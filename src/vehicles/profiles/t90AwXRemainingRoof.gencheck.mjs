@@ -6,6 +6,7 @@ import {KIT} from './kit.ts';
 import {addT90AWAAReceiver} from './t90AwXAAReceiver.ts';
 import {addT90AWOpticalHeads} from './t90AwXOpticalHeads.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.remaining-roof-heldouts.json',import.meta.url),'utf8'));
 const pivot=new THREE.Vector3(...T90_AW_X_SOURCE_DATUMS.turretPivot);
 function hit(ms,p,d,far=2){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
@@ -54,6 +55,7 @@ try{
   for(const p of [[-.66315,2.67533,.20082],[-.5090,2.67533,.20082]])assert.ok(own.meshes.some(m=>inside(m,p)),'transverse pin reaches the actual fork interface');
   for(const p of [[-.45,2.706,.258],[-.45,2.65,.263]])assert.ok(own.meshes.filter(m=>inside(m,p)).length>=2,`actual guard/chute/receiver contact: ${p}`);
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       t.root.updateMatrixWorld(true);const ms=[],weapons=[];

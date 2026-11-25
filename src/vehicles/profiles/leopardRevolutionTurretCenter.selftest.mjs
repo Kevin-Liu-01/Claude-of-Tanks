@@ -4,10 +4,12 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['leo2_revolution_proto']);
 const close = (a,b,epsilon=1e-5) => assert.ok(Math.abs(a-b)<epsilon, `${a} != ${b}`);
 for (const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec=getSpec('leo2_revolution_proto');
   const tank=createTank(spec.id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {

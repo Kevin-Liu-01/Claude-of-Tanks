@@ -5,6 +5,7 @@ import {ConvexHull} from 'three/addons/math/ConvexHull.js';
 import {enableCombatAnatomyMeasurementMode} from '../src/vehicles/combatAnatomyMeasurementMode.ts';
 import {assertTos1aTagilTurretCells} from '../src/vehicles/tos1aTagilAnatomy.test-support.mjs';
 import {COMBAT_ANATOMY_CALIBRATIONS} from '../src/vehicles/combatAnatomyCalibrations.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 enableCombatAnatomyMeasurementMode();
 const {createTank}=await import('../src/vehicles/tankFactory.ts');
 const {TANK_SPECS}=await import('../src/vehicles/specs.ts');
@@ -123,6 +124,7 @@ function posedDamage(tank,spec){
 }
 const results=[];
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options={quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
   registerProfiledBuilders({tos1a_tagil:p=>buildTos1aTagil(new Proxy(p,{get(target,method){
     if(method!=='addModuleVisual')return Reflect.get(target,method);

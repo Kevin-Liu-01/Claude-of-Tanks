@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function visibleHullHit(root,x,z) {
   return new THREE.Raycaster(new THREE.Vector3(x,2,z),new THREE.Vector3(0,-1,0),0,2)
@@ -16,6 +17,7 @@ function near(hit,expected,tolerance,label) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90m',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);

@@ -8,6 +8,7 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {matrix,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 import {findStaticMergePart} from '../staticMergeParts.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The frozen pre-apron emission digest (and its reconstruction of the two removed rails) is retired: whole-tank
 // change detection of mbt70 is the fleet geometry ledger's. The omit-build below is the live same-run baseline
@@ -211,6 +212,7 @@ function motion(c){
  return{minimumM:minimum,strokes};
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const current=capture(quality),old=capture(quality,true);
   try{
   if(quality==='high')assert.ok(current.tank.root.userData.battleDetailGroupCount>0,'Native batched battle detail groups actually installed');

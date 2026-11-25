@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function opaqueMeshes(root){
   const meshes=[];
@@ -98,6 +99,7 @@ function checkAntennas(meshes){
   }
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);const meshes=opaqueMeshes(tank.root);checkCases(meshes);checkRoof(meshes);checkDrumAir(meshes);checkDrumAttachment(tank);checkAntennas(meshes);checkLibraryGun(tank);}
   finally{tank.dispose();}

@@ -17,6 +17,7 @@ import { displayTier } from '../../techTree/tiers.ts';
 import { buildM113HullSteps } from './m113.ts';
 import { M113_BASE, m113Datums } from '../m113Datums.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const M113 = 'aus-m113-20261102.json', ABRAMS = 'aus-abrams-20261102.json';
 // muzzle: the gun at rest is the build's front (null where the hull's nose leads, as on the Redback)
@@ -57,6 +58,7 @@ for (const [id, row] of Object.entries(IDS)) {
   assert.equal(target.caliberMm, row.caliber, `${id}: the packet's calibre`);
   assert.equal(target.crew, spec.armor.crew.length, `${id}: the packet's crew is the spec's`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);

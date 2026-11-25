@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['carro45t']);
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('carro45t', null, {
     proceduralOnly: true,
     geometryReceipt: true,

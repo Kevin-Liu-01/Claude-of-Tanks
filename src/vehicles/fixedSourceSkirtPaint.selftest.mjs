@@ -6,6 +6,7 @@ import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 import {FIXED_SOURCE_SKIRTS,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
 import {CAMO_UV_REPEATS_PER_M} from './camoWorldScale.ts';
 import { geometryHash as kitGeometryHash } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned pre-finish profile source digests are gone. The live
 // differential stays: the same build with only the declared fixed sheets returned to the rubber bucket
@@ -35,6 +36,7 @@ function paint(tank,id){const skin=tank.root.getObjectByName('hullFixedPaintedBo
 const restore=installCanvasFixture();let checks=0;
 try{for(const id of Object.keys(FIXED_SOURCE_SKIRTS)){
   for(const quality of ['high','low'])for(const camoPattern of ['factory','winter']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const build=()=>createTank(id,null,{quality,camoPattern,materialMode:'rendered',proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     const before=withHistoricalFixedSkirtFinish(id,build),after=build();
     try{

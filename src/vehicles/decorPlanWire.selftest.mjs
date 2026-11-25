@@ -11,6 +11,7 @@ import { createTankSteps } from './tankFactoryCore.ts';
 import { decorPlanFrom, decorPlanRequest, decorPlanTransfer, planDecorRequest } from './decorPlanWire.ts';
 import { tankGraphFrom, tankGraphTransfer, tankGraphWire } from './tankGraphWire.ts';
 import { digestTankRoot, ledgerBuildOptions } from '../../tools/fleet-geometry-digest.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // the graph wire: values, references, levels
 {
@@ -69,6 +70,7 @@ const build = (id, options) => {
 };
 for (const id of ['leo2a5', 'merkava1b']) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const options = { ...ledgerBuildOptions(quality), decor: true };
     const inline = build(id, options);
     const planned = build(id, { ...options, decorPlanner: acrossRealm });

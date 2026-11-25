@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {KIT} from '../tankFactoryCore.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 assert.throws(()=>roundedTrackContact([[0,0]],0,0),/radius/);
 const course=roundedTrackContact([[3,1],[2,0],[-2,0],[-3,1]],0,.4);
@@ -20,6 +21,7 @@ function minimumShoeY(mesh) {
 for(const id of['amx30b','amx40'])for(const quality of['high','low']) {
   // Observe the REAL running-gear unit returned to the actual factory. No
   // alternate mesh or test-only layout replaces the production geometry.
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original=KIT.buildRunningGear;let gear,tank;
   KIT.buildRunningGear=(...args)=>{gear=original(...args);return gear;};
   try{tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});}

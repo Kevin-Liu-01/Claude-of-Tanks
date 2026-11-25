@@ -22,6 +22,7 @@ import {
   SurfaceGrid, closestOnTriangle, densePoints, gunHullProbe, gunHullSweep, meshTriangles, meshesUnder,
 } from '../gunHullClearance.test-support.mjs';
 import { PL01_CHEEK_R_M, PL01_DRUM_R_M, PL01_MANTLET_ARC_M } from './pl01GunAssembly.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180, CUT_KEEP_M = .003, TUBE_KEEP_M = .01, STROKES_M = [0, .135];
 const BARREL_KEEP = .025, MOUNT_KEEP = .020;
@@ -113,6 +114,7 @@ function housingProbe(id) {
 
 const report = {};
 for (const id of ['pl01', 'pl01_105']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = housingProbe(id);
   try {
     const { receipt } = probe;
@@ -160,6 +162,7 @@ for (const id of ['pl01', 'pl01_105']) {
 }
 
 for (const id of process.env.PL01_HOUSING_ONLY ? [] : ['pl01', 'pl01_105']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id);
   try {
     const { spec } = probe;

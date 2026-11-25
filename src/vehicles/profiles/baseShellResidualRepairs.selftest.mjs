@@ -5,6 +5,7 @@ import { shellPart, mirroredSurfaceError } from '../../../tools/base-shell-audit
 import { properSurfaceCrossings, shellEdgeTopology } from '../../../tools/base-shell-integrity.mjs';
 import '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near=(a,b,message)=>assert.ok(Math.abs(a-b)<3e-6,`${message}: ${a} / ${b}`);
 const intact=(part,label)=>{
@@ -45,6 +46,7 @@ for(const [label,g]of Object.entries({oldKnee,oldClosure,oldReturn,oldTail,oldM4
 const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',abramsx:'tail',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
 let checked=0;
 for(const [id,family]of Object.entries(families))for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const emissions=[];
  const tank=createTank(id,null,{quality,proceduralOnly:true,camoSeed:4242,geometryReceipt:true,
   partCensus(bucket,g,source){if(source==='add'&&['hull','turret','hullExternalArmor'].includes(bucket))emissions.push({bucket,g,site:new Error().stack??''});}});

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source-frame and held-out source-ray values. This test uses the
 // actual registered ID, never the superseded photo builder or source geometry.
@@ -79,6 +80,7 @@ function articulation(t){
 }
 
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];

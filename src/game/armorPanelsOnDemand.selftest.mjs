@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../vehicles/canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createBattleVisualStreamer } = await import('./battleVisualStreamer.ts');
@@ -48,6 +49,7 @@ const { createArmorAimOverlay } = await import('./armorAimOverlay.ts');
   const ids = ['t72b3', 'leo2a6'];
   const targets = [];
   for (const id of ids) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     await ensureTankBuilder(id);
     const spec = getSpec(id);
     const visual = createTank(id, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,

@@ -9,6 +9,7 @@ import {ABRAMS_SOURCE_X_GUIDE_PROFILE as PROFILE} from './profiles/abramsSourceX
 import {getSpec} from './specs.ts';
 import {createTankState} from '../sim/movement.ts';
 import { geometryHash } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Independent source120 intervals, selected OBJ85c33cee…bd29, canonical
 // [-rawX, rawY+.203945, .357965-rawZ]. Ground guide is a thin hollow wedge,
@@ -147,6 +148,7 @@ for(const invalid of[{...PROFILE,wallM:NaN},{...PROFILE,wallM:.1},{...PROFILE,ti
 
 let builds=0;
 for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const current=make(id,quality),old=make(id,quality,true);
   try{
     assert.deepEqual(bodyRows(current.tank.root),bodyRows(old.tank.root),`${id}/${quality}: every non-guide visible buffer/owner and every shoe/course matrix stays exact`);

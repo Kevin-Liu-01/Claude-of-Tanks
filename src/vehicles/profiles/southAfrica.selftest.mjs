@@ -13,6 +13,7 @@ import { ensureInteriorFills } from '../interiorFills.ts';
 import { TECH_TREES, nodeForVehicle, rootOf } from '../../techTree/trees.ts';
 import { displayTier } from '../../techTree/tiers.ts';
 import { TTD_DATUMS } from './ttd.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const CENT = 'olifant-centurions-20261102.json';
 const IDS = {
@@ -53,6 +54,7 @@ for (const [id, row] of Object.entries(IDS)) {
   assert.equal(target.caliberMm, row.caliber, `${id}: the packet's calibre`);
   assert.equal(target.crew, spec.armor.crew.length, `${id}: the packet's crew is the spec's`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);
@@ -75,7 +77,12 @@ const receipt = (id, key) => {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'low', camoSeed: 4242 });
   try { return { ...tank.root.getObjectByName('rig_turret').userData[key] }; } finally { tank.dispose?.(); }
 };
-const [semel, mk1, mk1a, mk1b] = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b'].map((id) => receipt(id, 'olifantMarkReceipt'));
+const marks = [];
+for (const id of ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
+  marks.push(receipt(id, 'olifantMarkReceipt'));
+}
+const [semel, mk1, mk1a, mk1b] = marks;
 assert.deepEqual([semel.gun, mk1.gun, mk1a.gun, mk1b.gun], ['20pdrB', '20pdrB', 'l7', 'l7'], 'the 20-pdr Semel and Mk 1, the 105 mm Mk 1A and Mk 1B');
 assert.deepEqual([semel.skirts, mk1.skirts, mk1a.skirts, mk1b.skirts], ['plates', 'off', 'off', 'armoured'],
   'the Semel on the Mk 5\'s side plates, the Mk 1 and Mk 1A skirtless in the bush, the Mk 1B\'s armoured skirts');

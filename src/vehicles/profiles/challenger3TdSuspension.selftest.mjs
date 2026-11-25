@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { auditTankWheelQuality } from '../wheelQuality.ts';
 import { measureSpatialArmClearance } from '../suspensionClearance.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const S = 1.10, DZ = 0.195;
 const STATIONS = [-2.571, -1.448, -0.537, 0.540, 1.434, 2.363];
@@ -46,6 +47,7 @@ function unitSills(root) {
 }
 
 for (const id of ['challenger3_td', 'challenger3_td_rws']) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);

@@ -3,6 +3,7 @@ import {BufferGeometry,Float32BufferAttribute,Vector3} from 'three';
 import {createTank,KIT} from '../tankFactory.ts';
 import {shellPart,mirroredSurfaceError} from '../../../tools/base-shell-audit-math.mjs';
 import {properSurfaceCrossings} from '../../../tools/base-shell-integrity.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function assertClosedConvex(part,label) {
   const edges=new Map();
@@ -51,6 +52,7 @@ const flatChinFaces=oldChinPart.triangles.filter(t=>
  || t.points.every(p=>Math.abs(p[2]-3.51-(p[1]-.9)*5)<1e-6));
 assert.equal(flatChinFaces.length,8,'historical broad front, back, upper and lower faces are planar');
 for(const quality of ['high','low'])for(const id of ['xk2_black_panther','k2b']) {
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const emissions=[];
  const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false,camoSeed:4242,
   partCensus(bucket,g,source){if(source==='add'&&g.userData.primaryStockRole==='k2-bow-chin')emissions.push(shellPart(g));}});
@@ -82,6 +84,7 @@ for(const quality of ['high','low'])for(const id of ['xk2_black_panther','k2b'])
 oldChin.dispose();
 
 for(const quality of ['high','low'])for(const id of ['spz_puma','k2b']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const parts=[];
   const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false,camoSeed:4242,
     partCensus(bucket,g,source) {

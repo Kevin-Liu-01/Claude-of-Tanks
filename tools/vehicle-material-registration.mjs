@@ -18,6 +18,7 @@ import { installCanvasFixture } from '../src/vehicles/canvasFixture.test-support
 import {
   auditVehicleMaterialRegistration, createCascadeRecorder, leakedRegistrations,
 } from '../src/vehicles/vehicleMaterialRegistrationAudit.test-support.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => {
@@ -38,6 +39,7 @@ let failed = 0;
 const started = performance.now();
 for (const id of ids) {
   for (const quality of qualities) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const before = new Set(recorder.registered);
     const row = { id, quality, checked: 0, faults: [], leaked: [] };
     try {

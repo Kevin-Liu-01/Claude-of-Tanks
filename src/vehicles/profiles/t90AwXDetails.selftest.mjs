@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function sensor(mesh){
   for(const[y,back,front]of [[2.3,-.8407623615,-.7804975663],[2.5,-.8486330350,-.7721269290],
     [2.56,-.8545299684,-.7659928487],[2.62,-.9039299488,-.7173299789],[2.7,-.8653299809,-.7554299831],
@@ -56,6 +57,7 @@ function cases(mesh){
   }
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const mesh=t.root.getObjectByName('turretDetail');sensor(mesh);sideArmor(t);cases(mesh);}
   finally{t.dispose();}

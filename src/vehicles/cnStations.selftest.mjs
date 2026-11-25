@@ -38,6 +38,7 @@ import { createAuxiliaryPresentation } from '../fx/auxiliaryPresentation.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { RIDING_CRADLE_RECOIL_M } from './machineGunGeometry.ts';
 import { stationSelfClearance, SurfaceGrid, meshTriangles } from './cnTurretGeometry.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const EXPECT = {
   // 252: the Qilin's QJC-88 in the Kunlun's rim socket on its own Type 96B cupola turns the full circle at full depression
@@ -60,6 +61,7 @@ assert.equal(auxiliaryWeaponProfile(12.7, 't72b3m_kunlun').rangeM, 240, 'Kunlun:
 
 const vector = (a) => new THREE.Vector3(...a);
 for (const [id, want] of Object.entries(EXPECT)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const l = NATIONAL_ROOF_LOADOUTS[id];
   assert.equal(l.name, want.name, `${id}: loadout name`);
   assert.equal(l.caliber, 12.7, `${id}: calibre-true 12.7 mm`);

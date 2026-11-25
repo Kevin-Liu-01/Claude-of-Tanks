@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { smEngineDeckSupportRoof } from './t90SMXEngineDeck.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function top(root, x, z) {
   return new THREE.Raycaster(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0), 0, 2)
@@ -19,6 +20,7 @@ assert.equal(smEngineDeckSupportRoof(-3.43, 1.317), 1.317, 'rear nose is never r
 assert.equal(smEngineDeckSupportRoof(-2.85, 1.56), 1.485, 'carrier cannot occlude the source lower deck');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('t90sm', null, { quality, proceduralOnly: true, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);

@@ -7,6 +7,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChallenger1X } from './challenger1X.ts';
 import { addChallenger1SourceHood } from './challenger1XSourceHood.ts';
 import { CHALLENGER1_SUPPLIED_DATUMS as D } from './challenger1XSuppliedFrame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const close = (a, b, label, eps = 3e-6) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= eps, `${label}: ${a}, expected ${b}`);
 const ray = (objects, o, d, far = 4) => new THREE.Raycaster(new THREE.Vector3(...o), new THREE.Vector3(...d), 0, far).intersectObjects(objects, false)[0];
 const meshes = root => { const a = []; root.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking && !m.name.includes('ShadowProxy') && m.material?.colorWrite !== false) a.push(m); }); return a; };
@@ -81,6 +82,7 @@ function contacts(parts, base) {
   assert.deepEqual(parts.filter((_, i) => !connected.has(i)).map(p => p.name), [], 'every hood part has an actual surface-crossing attachment path to permanent geometry');
 }
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let newCount = 0;
   registerProfiledBuilders({ challenger1_mk3: p => buildChallenger1X(new Proxy(p, { get(o, key) {
     if (['add', 'addEquipment', 'addCupola', 'addMudguard'].includes(key)) return (...args) => {

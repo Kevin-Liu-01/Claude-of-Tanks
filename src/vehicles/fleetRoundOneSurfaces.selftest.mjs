@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Fleet lane round 1 (2026-10-08): the surface fixes from the fleet audit, measured on built vehicles.
 // (2026-10-09, fix/camo-defaults: the bore-wrapped gun camouflage, factoryGeometry.ts boreCylinderUV, left with the rest
@@ -20,6 +21,7 @@ const build = (id) => createTank(id, null, { decor: true, quality: 'high', geome
 // --- built hulls: the insets' cavity material, the framed sight panes
 const tankLog = [];
 for (const id of ['t90m', 'm1a2_abrams_sepv3', 'leo2a6_ua', 'challenger3_proto']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = build(id);
   tank.root.updateMatrixWorld(true);
   let gun = null, insets = 0, cavityInsets = 0;
@@ -56,6 +58,7 @@ for (const id of ['t90m', 'm1a2_abrams_sepv3', 'leo2a6_ua', 'challenger3_proto']
   const counts = [];
   const FRAME_OF = { turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount' };
   for (const id of ['t90m', 'amx56']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const panes = [], parts = { turretDetail: [], hullDetail: [], gunMount: [] };
     createTank(id, null, { proceduralOnly: true, decor: true, quality: 'high', geometryQuality: 'high', camoSeed: 4242,
       partCensus: (bucket, part) => {

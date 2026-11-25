@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Full-source held-out forward rays, recorded independently before reseating
 // the buried draft lights/eyes. Source files are never needed by this test.
 for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const t=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   t.root.updateMatrixWorld(true);const meshes=[];

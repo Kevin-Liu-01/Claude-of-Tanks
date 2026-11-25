@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const SOURCE={yaw:[.00489819586996,1.33032792438745,.248076543568282],
   gun:[.002245869663885,1.629788855115796,1.37094868816255],muzzle:6.558946867971733,floor:6.453155544449773};
@@ -79,6 +80,7 @@ function gearAndEra(t){
   }
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t72bu',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frames(t);bore(t);sourceForms(t);gearAndEra(t);}finally{t.dispose();}
 }

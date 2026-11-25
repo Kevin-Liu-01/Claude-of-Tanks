@@ -9,6 +9,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {baseShellAuditScope,baseShellInputFingerprint} from './base-shell-audit-inputs.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args=process.argv.slice(2), opt=(n,d)=>args.find(a=>a.startsWith(`--${n}=`))?.slice(n.length+3)??d;
 const root=path.resolve(opt('root',process.cwd()));
@@ -53,6 +54,7 @@ function exposedAt(p,triIndex,parts){
 const report={head,sourceBefore,sourceAfterImports:sourceFingerprint(),scope:ids,qualities,excluded:ALL_TANK_IDS.filter(id=>!ids.includes(id)),rows:[],errors:[],status:'running',limitations:['Candidate triage only; no native visual acceptance.','Part census captures additions before later P.clear/replacement; each part now carries independent final drawable-buffer correspondence in its canonical owner frame. Unmapped captures require source adjudication and are never automatically discarded.','Closed negative signed volume nominates reversed or self-crossed stock; source, crossing and exposure adjudication remain required.','Mirror sample discrepancy is nearest-surface distance on equal reflected boundary sets; not a fidelity gate.','Part source filtering may include legacy equipment or untagged ERA; source review remains required.','All emitted triangles are screened for strict noncoplanar crossings; shared-vertex and coplanar contact/overlap require separate topology or source review.','Historical exposureWitness uses all captured same-owner stock, possibly including removed donors. nativePrimaryOnlyExposureWitness includes only fully mapped same-owner stock; equipment, fills and opposite-owner stock may still cover it.', 'Native correspondence is winding-aware and count-aware at 10 micrometres and uses drawable ranges/materials/transforms. Equal duplicate captured geometry cannot be assigned unique original-object identity from buffers alone.', 'Unsupported native mesh representations make correspondence incomplete; raw source witnesses remain retained.']};
 fs.mkdirSync(path.dirname(out),{recursive:true});const save=()=>fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');save();
 for(const id of ids)for(const quality of qualities){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  let tank;try{
  const collected=[];let ordinal=0;
  tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,batchStatic:false,partCensus(bucket,g,source){if(source!=='add'||!['hull','turret','hullExternalArmor','turretExternalArmor'].includes(bucket))return;const site=(new Error().stack??'').split('\n').filter(s=>s.includes('/src/vehicles/')&&!s.includes('/tankFactoryCore.ts:6917')).slice(0,5).map(s=>s.trim().replaceAll(root+'/',''));collected.push({g,bucket,ordinal:ordinal++,site});}});

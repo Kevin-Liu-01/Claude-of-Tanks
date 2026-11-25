@@ -10,6 +10,7 @@ import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generate
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
 import { DRONE_DOCK_EXEMPT } from '../sim/droneDockExempt.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids = [
   't64bv_donbas', 'm1a1_abrams_fep',
@@ -23,6 +24,7 @@ const ids = [
 // "our strv 121 should also get a ton btw to distinguishh it as swedish"): the Strv 121 wears a fleet suit and leaves it too
 // (262: the rebuilt PT-91 Twardy shows its ERAWA tiles bare, as the serial tanks do)
 for (const id of ['t90a_2004', 't84bm_oplot_m', 'pt91a_twardy']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -180,7 +182,7 @@ function checkSuited(section, id, body, into = failures) {
     'both planted failures are named');
 }
 
-for (const id of ids) checkSuited('suited', id, (track) => {
+for (const id of ids) { await betweenBuilds(); checkSuited('suited', id, (track) => {
   const tank = track(createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -270,16 +272,16 @@ for (const id of ids) checkSuited('suited', id, (track) => {
       `${id} gun shroud stops behind the live muzzle anchor`);
   }
 
-});
+}); }
 
 // the suits with their own field configs (the Ukrainian national rebuilds, push 3: nationalUkraineProtection.ts) are held
 // to the same contact rule (262: the old A4's suit retired with its build; the 2A2 now drives unsuited)
-for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) checkSuited('own contact', id, (track) => {
+for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) { await betweenBuilds(); checkSuited('own contact', id, (track) => {
   const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
   assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
-});
+}); }
 
 // 2026-10-08 (round 5; the lane lead on push 3b's field roof cage: "the turret-roof net must not pass through the cage
 // bars or legs"; "drape the net over the cage top and let it fall over the wing edges, the way Ukrainian crews hang nets
@@ -321,7 +323,7 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
     }
     return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
   };
-  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) checkSuited('roof cage', id, (track) => {
+  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) { await betweenBuilds(); checkSuited('roof cage', id, (track) => {
     const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret');
@@ -375,7 +377,7 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
       assert.deepEqual(crossings.slice(0, 8), [], `${id}: ${crossings.length} suit triangles pass into the cage`);
     }
     assert.ok(netted >= 1, `${id} drapes a net over its roof cage`);
-  });
+  }); }
 }
 
 // 2026-10-08 (round 5, the lane lead's integration rehearsal): the suit is laid after assembly through the port's
@@ -453,7 +455,7 @@ for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman
 const POLISH_FIELD_SUITS = Object.fromEntries(Object.entries(NATIONAL_POLAND_GHILLIE_CONFIGS).filter(([, cfg]) => cfg.fieldClearanceM !== undefined));
 assert.deepEqual(Object.keys(POLISH_FIELD_SUITS), ['t80u_husarz', 't72b3_zubr', 't72b3_zubr_ii'],
   'the Husarz and both Zubrs wear the Polish field suit');
-for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) checkSuited('fleet', id, (track) => {
+for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) { await betweenBuilds(); checkSuited('fleet', id, (track) => {
   const tank = track(createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' }));
   tank.root.updateMatrixWorld(true);
   const rigs = { hull: tank.root.getObjectByName('rig_hull'), turret: tank.root.getObjectByName('rig_turret'), gun: tank.root.getObjectByName('rig_gun') };
@@ -562,7 +564,7 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
       }
     }
   }
-});
+}); }
 assert.deepEqual(failures, [], `${failures.length} suited-tank failure(s), every one:\n  ${failures.join('\n  ')}`);
 
 console.log('Shared physical-ghillie suit selftest passed');

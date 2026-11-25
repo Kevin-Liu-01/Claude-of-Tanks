@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { ownFittingGeometry, disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { staticMergePartsOf } from './staticMergeParts.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const files = new Map([
   [new URL('./profiles/kit.ts', import.meta.url).href, [
@@ -126,6 +127,7 @@ async function nativeChild(reference) {
   const { createTankState } = await import('../sim/movement.ts');
   const results = []; let buffers = 0, detachedCases = 0, batchCases = 0;
   for (const id of ['m1a1_abrams_hc', 'challenger3']) for (const quality of ['high', 'low']) for (const batchStatic of [false, true]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const options = { quality, materialMode: 'geometry-only', proceduralOnly: true, camoSeed: 4242, decor: true,
       batchStatic, deferStaticBatch: !batchStatic, battleDetailLod: batchStatic };
     const a = createTank(id, null, options), b = createTank(id, null, options);

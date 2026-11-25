@@ -7,6 +7,7 @@ import {addStrv122XSuppliedCupola} from './strv122XSuppliedCupola.ts';
 import {addStrv122XSuppliedEquipment} from './strv122XSuppliedEquipment.ts';
 import {STRV122_SUPPLIED_DATUMS as D} from './strv122XSuppliedFrame.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const hit=(a,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(a,false)[0];
@@ -129,6 +130,7 @@ function nightMasks(root){
 }
 const parts=capturedParts();
 try{for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('strv122',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242});
   try{
     t.root.updateMatrixWorld(true);const all=[],probes=[];

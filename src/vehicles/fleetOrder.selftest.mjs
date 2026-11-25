@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const { createTank } = await import('./tankFactory.ts');
 const { ALL_TANK_IDS, TANK_CATALOGS, TANK_SPECS } = await import('./specs.ts');
@@ -32,6 +33,7 @@ for (const [name, family] of Object.entries(NATIVE_VARIANT_FAMILIES)) {
 const engineCtx = { setupShadowMaterial: (material) => material, anisotropy: 1 };
 for (const [name, family] of Object.entries(NATIVE_VARIANT_FAMILIES)) {
   for (const id of family) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, engineCtx, {
       quality: 'low',
       proceduralOnly: true,

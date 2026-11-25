@@ -10,6 +10,7 @@ import { combatAnatomyCalibration, registerCombatAnatomyCalibrations } from './c
 import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from './materials.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Round 35 (owner 2026-09-21): "fix our camos completely: the look of identical camos looks completely different if
 // you switch between tanks. this system is busted". One pattern id is one tile that covers the same world metres on
@@ -76,6 +77,7 @@ const authored = {};
 let projected = 0;
 try {
   for (const id of HULLS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const spec = getSpec(id);
     authored[id] = spec.visual.camoScale ?? null;
     const tank = createTank(id, null, { quality: 'low', camoPattern: 'factory', materialMode: 'rendered',
@@ -107,6 +109,7 @@ assert.ok(new Set(Object.values(authored)).size >= 3, `the hulls really author d
   const restore = installCanvasFixture();
   try {
     for (const id of ['t90am', 'type74']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const options = { quality: 'low', camoPattern: 'factory', materialMode: 'rendered', proceduralOnly: true, geometryReceipt: true, batchStatic: false, camoSeed: 4242 };
       const positions = (tank) => { const a = tank.root.getObjectByName('turret').geometry.attributes.position.array.slice(); tank.dispose?.(); return a; };
       const seated = positions(createTank(id, null, options));

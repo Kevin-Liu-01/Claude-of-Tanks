@@ -17,6 +17,7 @@ import { getSpec } from '../specs.ts';
 import { BRADLEY_TURRET_RING } from '../modern3.ts';
 import { CLASSIC_GUN_PIVOT, CLASSIC_TOW_MOUTHS, CLASSIC_MUZZLE_Z, CLASSIC_GUN_PITCH_BY_YAW_DEG } from '../bradleyClassicTurretLayout.ts';
 import { bradleySourceArmorInput } from '../modern3Specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'm3a2_bradley', CLASSIC = 'm2a2_bradley';
 const m3 = getSpec(ID), m2 = getSpec(CLASSIC);
@@ -56,6 +57,7 @@ assert.equal(target.test, 'src/vehicles/profiles/m3a2Bradley.selftest.mjs');
 assert.deepEqual(Object.keys(packet.targets), [CLASSIC], `the packet holds the ${CLASSIC} only (${ID} is not in this packet)`);
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const m3a2 = createTank(ID, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   try {
     m3a2.root.updateMatrixWorld(true);

@@ -24,6 +24,7 @@ import { join, resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim: builders paint their canvas textures as in the browser
 import { uniqueIds } from './id-list.mjs';
 import { OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, ownerSoups, pocketClasses, roofPockets } from './roof-pocket.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -47,6 +48,7 @@ async function measure(list) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
   const rows = [];
   for (const id of list) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const started = Date.now();
     let tank;
     try {

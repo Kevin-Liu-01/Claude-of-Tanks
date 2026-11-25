@@ -16,6 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { hitboxFitCensus, FLOAT_TOL_M, CELL_BRIDGE_TOL_M } from './hitbox-fit-census-lib.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** A cell bridge may read this much deeper (m) than its ledger row before it fails (build-to-build float noise). */
 const LEDGER_SLACK_M = 0.01;
@@ -38,6 +39,7 @@ ledger.about = 'tools/hitbox-fit-census.mjs: per tank, its convex cells bridging
 const out = [], failures = [];
 const started = performance.now();
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t0 = performance.now();
   let row;
   try { row = await hitboxFitCensus(id, { all: flag('all-rows'), applyFits: flag('apply-fits') }); }

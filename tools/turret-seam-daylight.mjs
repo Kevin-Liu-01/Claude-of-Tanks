@@ -24,6 +24,7 @@ import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -144,6 +145,7 @@ async function writeImage(path, r, kind) {
 const report = [];
 if (flag('images')) mkdirSync(outDir, { recursive: true });
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high' }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); continue; }
   try {

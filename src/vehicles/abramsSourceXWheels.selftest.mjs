@@ -6,6 +6,7 @@ import { createTankState } from '../sim/movement.ts';
 import { auditTankWheelQuality } from './wheelQuality.ts';
 import { buildAbramsSourceXRoadWheelGeometry } from './profiles/abramsSourceXWheels.ts';
 import { ABRAMS_SOURCE_X_ROAD_Z } from './profiles/abramsSourceXHull.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const material = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
 function axialHit(meshes, radius, side) {
@@ -19,6 +20,7 @@ function guideAir(meshes, radius) {
   return ray.intersectObjects(meshes).length;
 }
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const solids = buildAbramsSourceXRoadWheelGeometry(quality === 'high');
   const meshes = [solids.tire, solids.disc].map(geometry => new THREE.Mesh(geometry, material));
   for (const mesh of meshes) mesh.updateMatrixWorld(true);

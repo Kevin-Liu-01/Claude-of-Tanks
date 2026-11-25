@@ -6,6 +6,7 @@ import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 import { T64_GEAR, T64_ROAD_STATIONS } from './t64RunningGear.ts';
 import { T64_DATUMS } from '../t64Armor.ts';
 import { T64_FRAME } from './t64Foundation.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 262 (owner 2026-10-27: the T-64BM1M "should be designed from scratchh as well", then "make these new tanks were making
 // fully nnew tnaks"): the T-64BM1M, the T-64BV and the T-64B1V mod. 2022 are true T-64s on one first-party base
@@ -33,6 +34,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(T64_FRAME)), JSON.parse(JSON.stringif
 'the builders\' T64_FRAME is t64Armor.ts T64_DATUMS');
 
 for (const [id, variant] of [['t64bm1m', 'bm1m'], ['t64bv', 'bv'], ['t64b1v_2022', 'b1v2022'], ['pt64_tur', 'tur']]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(FLEET_RENEWAL_DONORS[id], undefined, `${id}: no renewal donor frame (the T-64 frame, t64Armor.ts)`);
   near(getSpec(id).visual.trackWidthM, T64_DATUMS.trackWidthM, `${id}: the T-64's 540 mm track`);
   const tank = build(id);

@@ -8,6 +8,7 @@ import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { PRODUCTION_TANK_IDS, TANK_SPECS } from '../vehicles/specs.ts';
 import { publishedTrackContact, validatedContactGeometry } from './trackContact.ts';
 import { createTankState, updateTank, SIM_DT } from './movement.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 await ensureAuthorityFleet([...PRODUCTION_TANK_IDS]);
 
@@ -33,6 +34,7 @@ assert.deepEqual(defaulted, [], 'no playable tank runs the synthetic default sup
 // 2. The published receipt is the drawn model's, validated the same way solo play validates it (game/state.ts).
 const { createTank } = await import('../vehicles/tankFactory.ts');
 for (const id of ['t90am', 'challenger3', 'udes03']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', batchStatic: false, decor: false });
   try {
     const drawn = validatedContactGeometry(tank.contactGeom, TANK_SPECS[id].dims);

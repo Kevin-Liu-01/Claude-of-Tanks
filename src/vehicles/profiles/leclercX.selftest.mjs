@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (meshes, origin, direction, far = 12) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far,
@@ -138,6 +139,7 @@ function checkMovingGear(root, all, gear) {
 // imported into this regression.
 const faceTriangles = new Map();
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original = KIT.buildRunningGear;
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };

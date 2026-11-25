@@ -19,6 +19,7 @@ import { TYPE74_HULL_STATIONS as HULL } from './type74Family.ts';
 import {
   TYPE87_GUNS as G, TYPE87_HULL as H, TYPE87_RADARS as R, TYPE87_RING as RING, TYPE87_TRUNNION as AXIS, TYPE87_TURRET as T,
 } from './type87Frame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'type87_aw';
 const DEG = Math.PI / 180;
@@ -108,6 +109,7 @@ function bodyTop(root) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

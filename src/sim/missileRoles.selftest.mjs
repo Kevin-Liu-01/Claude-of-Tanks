@@ -8,10 +8,12 @@ import { SIM_DT } from './movement.ts';
 import { sustainedPrimaryDpm } from '../vehicles/balanceAudit.ts';
 import { createTankState } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const flat={getHeightAt:()=>0,getGroundType:()=>'hard',getNormalAt:()=>new Vector3(0,1,0)};
 const input={throttle:0,steer:0,brake:true,fire:true,aimYaw:0,aimPitch:.25,aimDistance:300,shellSlot:0,actionBits:0};
 const roles={ztz100_prototype:[0,21,741,762],object695:[0,39,78,117,957,996],griffin_viper:Array.from({length:18},(_,i)=>i*60)};
 for(const [id,expected]of Object.entries(roles)){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const match=createAuthoritativeMatch({mapId:'verdant',countdownS:0,seed:12,
     worldCollision:{mapId:'verdant',heightField:flat,obstacles:[]},players:[
       {id:'shooter',specId:id,team:'alpha',spawn:{x:0,z:0,yaw:0}},

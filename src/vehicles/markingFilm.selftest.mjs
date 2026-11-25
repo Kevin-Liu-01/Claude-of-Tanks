@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { MARKING_FILM_LIFT_M, markingFilmGeometry } from './markingFilm.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const TOLERANCE_M = 0.0003;
 const raycaster = new THREE.Raycaster();
@@ -137,6 +138,7 @@ console.warn = warn;
 // flat seats, and the seats whose quads stood furthest off their armour (vehicleMarkingSeatGroups maximumSurfaceErrorM)
 const IDS = (process.env.MARKING_FILM_IDS || 'm1a2_abrams,leclerc_s2,type10b,warrior_tes_h,t80u_yun').split(',');
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const marks = [];

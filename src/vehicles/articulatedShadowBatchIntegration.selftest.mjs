@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { createTankState } from '../sim/movement.ts';
 import { getSpec } from './specs.ts';
 import { SHADOW_ONLY_LAYER } from '../engine/renderLayers.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const options = { proceduralOnly: true, geometryReceipt: true, camoSeed: 4242,
   quality: 'high', batchStatic: true, battleDetailLod: true };
@@ -16,6 +17,7 @@ lightCamera.updateMatrixWorld(true);
 const inverse = new THREE.Matrix4(), actual = new THREE.Matrix4(), expected = new THREE.Matrix4();
 
 for (const id of ['m1a1_abrams_hc', 'jpz_e100']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, options);
   try {
     const root = visual.root;

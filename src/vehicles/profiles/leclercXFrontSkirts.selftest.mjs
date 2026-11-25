@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source witnesses read the first source surface: main's field kit (5f8eefaa4: screens, pads, ghillie, roof
 // weapon, rear stowage) hangs outside the reconstructed armor and is skipped by the census filter.
@@ -11,6 +12,7 @@ const ray = (meshes, p, d, far = 5) => kit.hits(new THREE.Raycaster(new THREE.Ve
   new THREE.Vector3(...d), 0, far), meshes)[0];
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const census = fieldKitCensus();
   const tank = createTank('leclerc_xlr', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false, partCensus: census.partCensus });

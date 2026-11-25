@@ -8,6 +8,7 @@ import {
   registerProfiledBuilders,
   robustFloorY,
 } from './tankFactoryCore.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function referenceRobustFloorY(values) {
   const sorted = values.slice().sort((a, b) => a - b);
@@ -133,6 +134,7 @@ Object.defineProperty(performance, 'now', {
 });
 try {
   for (const staged of [false, true]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     diagnosticClock = 0;
     const options = { proceduralOnly: true, geometryReceipt: true };
     let tank, checkpoints = 0;

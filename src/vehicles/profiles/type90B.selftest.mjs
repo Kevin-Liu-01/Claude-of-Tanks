@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { TYPE90B_ROLLER_PLATE } from '../type90bArmor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const bounds = (tank) => { tank.root.updateMatrixWorld(true); return new THREE.Box3().setFromObject(tank.root); };
 
@@ -23,6 +24,7 @@ assert.ok(plate.verts.every(([, y, z]) => y > TYPE90B_ROLLER_PLATE.foot[0] - 0.0
 assert.equal(b.armor.hullPlates.length, t90.armor.hullPlates.length + 1, 'type90b: one plate more than the Type 90');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('type90b', null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   const base = createTank('type90', null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   try {

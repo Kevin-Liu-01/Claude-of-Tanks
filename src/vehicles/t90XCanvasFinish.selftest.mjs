@@ -5,6 +5,7 @@ import {createTank} from './tankFactory.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {T90_X_PROFILES} from './profiles/t90X.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // the T-90M cradle cover is painted with the vehicle scheme since 2026-09-16 (owner: "green mantlet");
 // only the Vladimir keeps a bare canvas boot
@@ -61,6 +62,7 @@ function assertCloth(tank){
 const restore=installCanvasFixture();let builds=0;
 try{for(const [id,count] of Object.entries(targets))for(const quality of ['high','low'])
   for(const scheme of ['factory','winter']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     console.log(`t90-x-canvas-finish: ${id} ${quality} ${scheme}`);
     const old=make(id,quality,scheme,true),next=make(id,quality,scheme,false);
     try{

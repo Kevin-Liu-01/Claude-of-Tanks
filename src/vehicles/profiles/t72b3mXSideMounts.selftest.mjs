@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { renderedMarkingFootprints } from '../markingFootprints.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The held-out per-mesh preservation ledger (docs/references/tanks/t72b3m_x.side-mount-preservation.json, rewritten by
 // COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_2016 is the fleet geometry ledger's. The marking
@@ -185,6 +186,7 @@ function attachment(tank,all){
 }
 
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);const all=physicalMeshes(tank.root),detail=tank.root.getObjectByName('hullDetail');

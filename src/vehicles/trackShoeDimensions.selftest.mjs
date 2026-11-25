@@ -5,6 +5,7 @@ import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { KIT, trackPatternWithDimensions } from './tankFactoryCore.ts';
 import { TRACK_PATTERN_IDS, trackPatternFor } from './trackPatterns.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Russian X track standard 2026-09-12 (owner decision, applied to t90m too):
 // the measured T-90M shoe carries the .036 pad and .018 web; horn, grouser,
@@ -37,6 +38,7 @@ for(const invalid of [{padHeight:0},{hornHeight:-.1},{pinRadius:NaN},
 // change detection. Each default construction still emits exactly its own native stock.
 const WHEEL_INSETS={t90am:true,t90a_2004:true,m1a1_abrams_hc:false,leo2a4_v:false};
 for(const [id,insets] of Object.entries(WHEEL_INSETS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     assert.ok(tank.root.getObjectByName('gearTrackPads')?.geometry,`${id}: native track shoes`);
@@ -101,6 +103,7 @@ try {
 // tire/hub faces are recorded witness positions the build is held to;
 // the wider shoe envelope is not used as a target for wheel-face growth.
 for(const [id,sourceFaceX] of [['t90a',1.7089],['t90m',1.66133],['t90sm',1.6334]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const tire=visual.root.getObjectByName('gearRoadWheelTires');
@@ -151,6 +154,7 @@ for(const [id,outerSpan,fullSpan] of [
   ['t90a',.0630,.1610],['t90a_vladimir',.0650,.1880],
   ['t90m',.0580,.1100],['t90sm',.0635,.1468],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const geometry=visual.root.getObjectByName('gearTrackPads').geometry;
@@ -167,6 +171,7 @@ for(const [id,outerSpan,fullSpan] of [
 // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node), so the round-46b rollerless assertion is
 // reversed — the T-90A X and T-90A Vladimir X carry their six source-measured rollers again.
 for(const id of ['t90a','t90a_vladimir']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const discs=visual.root.getObjectByName('gearReturnRollerDiscs');

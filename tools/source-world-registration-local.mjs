@@ -11,6 +11,7 @@ import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
 import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
 import { SOURCE_WORLD_BUILD_OFFSETS, SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 if (!globalThis.ProgressEvent) globalThis.ProgressEvent=class {
   constructor(type, values) { this.type=type;Object.assign(this,values); }
 };
@@ -23,6 +24,7 @@ const frame=visual=>{
     turret:datum('rig_turret'),gun:datum('rig_gun')};
 };
 for (const [id,certificate] of Object.entries(SOURCE_WORLD_FRAMES)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const source=configs[id];
   const bytes=fs.readFileSync(new URL(`../public${source.glb.path}`,import.meta.url));
   const sha256=createHash('sha256').update(bytes).digest('hex');

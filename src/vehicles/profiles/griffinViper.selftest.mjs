@@ -9,6 +9,7 @@ import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_SCALE as S } from './griffinPropo
 import { createTankState } from '../../sim/movement.ts';
 import { verifyFixedLauncherSeats, verifyFixedLauncherNoRecoil, fixedLauncherNegatives } from '../fixedLauncherArticulation.test-support.mjs';
 import { boundsWithoutCamouflage } from '../camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const F=.90; // whole-vehicle reduction, independent of the earlier turret proportion
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 const spec=getSpec('griffin_viper');
@@ -22,6 +23,7 @@ assert(racks[0].parts.every(p=>p.max[0]<0||p.min[0]>0),'no missile damage volume
 for(const filled of [false,true]) {
 if(filled)await ensureInteriorFills(['griffin_viper','griffin50mm']);
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
   const tank=createTank(spec.id,null,options),donor=createTank('griffin50mm',null,options);
   try{
@@ -90,6 +92,7 @@ T.BufferGeometry.prototype.applyMatrix4 = function(matrix) {
 };
 try {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     cableStock = [];
     const tank = createTank(spec.id, null, {
       quality, geometryReceipt: true, proceduralOnly: true, decor: true,

@@ -13,6 +13,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 import { applyInteriorFills } from '../src/vehicles/interiorFills.ts';
 import { verifyPhysicalMuzzleBore } from '../src/vehicles/physicalMuzzleBore.ts';
 import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // Declared physical bore air (2026-10-03, tools/physical-bore-air.mjs): a profile's verified open muzzle recess is never
 // body interior. Pins: (1) the generator, the shared measurement, the CLI, the fleet gate and the fill-policy receipt
@@ -42,6 +43,7 @@ const near = (actual, expected, tolerance, label) => assert.ok(Math.abs(actual -
 
 let report = {};
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = build(quality);
   try {
     // (2) the factory's record of the bore it verified (barrel(): 0.0625 m bore, openGunTube's 0.20 m recess)

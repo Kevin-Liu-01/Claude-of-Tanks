@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { carriesNoRoofWeapon } from '../roofWeaponPolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const box = (object, keep = () => true) => {
   const b = new THREE.Box3(), v = new THREE.Vector3();
@@ -53,6 +54,7 @@ const LENGTH = { centurion5_avre: 8.00, olifant_mk2: 7.68, centurion5_1_aus: 8.0
 const WIDTH = { olifant_mk2: [3.40, 3.45] };
 const SLEEVED = new Set(['centurion5_2', 'centurion13', 'strv105']);
 for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const root = tank.root, turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');

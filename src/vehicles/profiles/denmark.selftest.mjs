@@ -16,6 +16,7 @@ import { ensureInteriorFills } from '../interiorFills.ts';
 import { TECH_TREES, nodeForVehicle, rootOf } from '../../techTree/trees.ts';
 import { displayTier } from '../../techTree/tiers.ts';
 import { COUNTRY_ALLIES, countryOfVehicle } from '../../sim/countries.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const PACKETS = {
   'leo1a3dk': 'leopard-1a3-dk-20261029.json',
@@ -43,6 +44,7 @@ for (const [id, file] of Object.entries(PACKETS)) {
   assert.equal(displayTier(id), TIERS[id], `${id}: Main's tier`);
   assert.equal(nodeForVehicle(id)?.tree.id, 'denmark', `${id}: drawn in the Denmark tree`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);

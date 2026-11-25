@@ -6,11 +6,13 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createTank } from './tankFactory.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ID = 't72b3';
 assert.ok(combatAnatomyCalibration(ID)?.turretRing, `${ID}: its calibration carries the ring receipt (its turret is seated)`);
 let zones = 0;
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t = createTank(ID, null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false, camoSeed: 4242 });
   try {
     const armor = t.root.getObjectByName('turretExternalArmor');

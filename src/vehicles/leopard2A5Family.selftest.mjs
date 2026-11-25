@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createTank } = await import('./tankFactory.ts');
@@ -39,6 +40,7 @@ for (const id of ['leo2a4_v', 'leo2a4m', 'leo2a5', 'strv121', 'strv122']) assert
 await ensureInteriorFills(family);
 let builds = 0;
 for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; k < 8; k++) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const camoSeed = 4000 + k * 397;
   let tank;
   assert.doesNotThrow(() => { tank = createTank(id, null, { quality, camoSeed, proceduralOnly: true }); }, `${id} ${quality} seed ${camoSeed} builds`);

@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
@@ -99,6 +100,7 @@ const settleFar = async (visual, state, dist = 200) => {
 };
 const rows = [];
 for (const id of ['m1a2_abrams_sepv3', 't90m']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureTankBuilder(id);
   const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
   const identity = build(id, 'identity'), dual = build(id, 'dual');

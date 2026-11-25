@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Release 240: the Leopards hold published ring receipts, so the turret seat (turretSeatRace.ts) stands their undersides
 // (the lower pans with them) on one plane, the seam over the deck round the ring, closed inside the rim by the turret's
@@ -22,6 +23,7 @@ const CASES = [
 ];
 
 for (const { id, y: [minY, maxY], samples } of CASES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   try {
     const turretRig = visual.root.getObjectByName('rig_turret');

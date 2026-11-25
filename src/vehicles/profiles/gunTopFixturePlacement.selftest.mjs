@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (actual, expected, tolerance = 1e-5) => Math.abs(actual - expected) <= tolerance;
 const sizeOf = (part) => part.max.map((value, axis) => value - part.min[axis]);
@@ -38,6 +39,7 @@ function findPart(parts, bucket, size, centerZ) {
 // parallel cannon/coax parts remain asymmetric; every user-reviewed square
 // reference housing is instead governed by this centered top-seat contract.
 for (const fixture of cases) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(fixture.id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

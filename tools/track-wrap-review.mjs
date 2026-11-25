@@ -25,6 +25,7 @@ import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { endWrapRows, endWrapFlags } from './track-end-wrap.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
@@ -74,6 +75,7 @@ function sideEndWrap(wrapRows, unit, side) {
 
 const rows = []; let cuts = 0, gaps = 0, wraps = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); continue; }
   // receipts live on the builder's hull group, which is not always the rig node
   const receipts = []; tank.root.traverse((o) => { const list = o.userData?.runningGearReceipts; if (Array.isArray(list)) receipts.push(...list); });

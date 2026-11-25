@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import '../../tools/tank-surface-collect.mjs';
 import { createTank } from './tankFactory.ts';
 import { ensureInteriorFills } from './interiorFills.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Owner Gallery selections, 2026-09-30. Positions are in each mesh's local
 // authored frame, independent of presentation centering and random UUIDs.
@@ -36,6 +37,7 @@ function blocksProbe(mesh, x, y, z) {
 }
 
 for (const [id, rows] of Object.entries(probes)) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality, proceduralOnly: true, batchStatic: false });
   try {
     for (const [bucket, x, y, z] of rows) for (const side of [-1, 1]) {

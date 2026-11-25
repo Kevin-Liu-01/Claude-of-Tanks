@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
@@ -39,6 +40,7 @@ const paintMode = (material) => {
 
 try {
   for (const id of ['t72b3', 'm2a2_bradley']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     await ensureTankBuilder(id);
     const visual = createTank(id, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,
       battleDetailLod: true, eraVisualBindingReceipt: false, staticDrawMerge: 'dual' });

@@ -9,6 +9,7 @@ import {stripActivatedEra} from '../game/eraActivation.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Independent named-module census, not the generated triangle count. Passive
 // western armor/cages and the thirteen non-reactive variants are not ERA.
@@ -187,6 +188,7 @@ for(const id of ids){
   const donorSnapshot=JSON.stringify(donor.armor);
   const qualities=ERA_IDS.includes(id)?['high','low']:['low'];
   for(const quality of qualities){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     // Native factory startup installs its real trackShapes in the spec. Take
     // the immutability witness afterward; combat must not rewrite that data.

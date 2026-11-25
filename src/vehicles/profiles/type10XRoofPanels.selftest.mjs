@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE10_X_DATUMS} from './type10X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const identity=new THREE.Matrix4();
 function hit(root,position,direction,far=5,pose=identity) {
@@ -47,6 +48,7 @@ function evidence(tank,pose=identity) {
   }
 }
 for(const quality of['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('type10',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);evidence(tank);

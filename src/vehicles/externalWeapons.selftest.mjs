@@ -6,6 +6,7 @@ import { createTankState } from '../sim/movement.ts';
 import { traceTank, tankPoseFromState } from '../sim/armor.ts';
 import { createCombatState, resolveShellHit, startMagazineReload, startReload } from '../sim/damage.ts';
 import { createShell } from '../sim/ballistics.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids=PRODUCTION_TANK_IDS.filter(id=>getSpec(id).gun.shells.some(w=>w.launcherTubes>0));
 // Includes the independent M6's four-cell Stinger installation.
@@ -26,6 +27,7 @@ for(const id of ids){
   assert(spec.armor.modules.some(module=>module.module==='missileRack'),
     `${id}: launcher is linked to a real damageable module`);
   for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
     try{
       const native=tank.root.userData.weaponGeometryParts;

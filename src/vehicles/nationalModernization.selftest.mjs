@@ -25,6 +25,7 @@ assert.deepEqual(
 import {buildT80UXHullCore} from './profiles/t80uX.ts';
 import {buildT72B3MXHullCore} from './profiles/t72b3mX.ts';
 import {buildT72B3XHullCore} from './profiles/t72b3X.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const vertexKey=(x,y,z)=>[x,y,z].map(v=>Math.round(v*10000)).join(',');
 const coreVertices=[buildT80UXHullCore,buildT72B3MXHullCore,buildT72B3XHullCore].map(build=>{
  const points=new Set();build({add(_bucket,g,x=0,y=0,z=0){
@@ -187,11 +188,13 @@ function physicalMounts(tank,c){
 }
 for(const quality of ['high','low']) {
  for(const donorId of ['t80u','t72b3m_2016','t72b3']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank(donorId,null,{proceduralOnly:true,quality,geometryReceipt:true});
   hulls.set(`${quality}:${donorId}`,fingerprint(t.root.getObjectByName('hull').geometry));gears.set(`${quality}:${donorId}`,gearDatums(t.root));t.dispose();
  }
  const silhouettes=new Set(),hullShapes=new Set();
  for(const c of configs){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(ALL_TANK_IDS.filter(id=>id===c.id).length,1);
   const spec=getSpec(c.id);assert.deepEqual(decorManifestFor(spec,()=>.5),[],`${c.id}: authored equipment has no unsupported generic overlay`);assert(!/concept/i.test(spec.name),`${c.id}: the owner dropped the concept tag from the national names (2026-10-21); the status facet keeps the class`);assert.equal(spec.nation,c.nation);
   assert.equal(spec.gun.caliberMm,125);assert.ok(tankTier(c.id)>=tankTier(c.id.startsWith('t80u')?'t80u':'t72b3'),`${c.id}: not under its base (258)`);

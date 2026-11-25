@@ -6,6 +6,7 @@ import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 import {combatAnatomyCalibration} from './combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 267: the BMPT-72 (bmpt_terminator2) rides the T-72B3M (2016) X hull (it was the T-80U's)
 // 274: the T-84 left this list with its Oplot concept; it draws the T-80U X hull (t80Marks.selftest.mjs holds it)
@@ -24,6 +25,7 @@ for(const id of FLEET_RENEWAL_NEW_IDS) {
   assert.equal(new Set(modules).size,modules.length,'hybrid modules have one damage owner');
 }
 for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(donors)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options={quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242};
   const tank=createTank(id,null,options),donor=createTank(donorId,null,options);
   try {
@@ -61,6 +63,7 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
 // a voxel grid between roof optics, ERA, smoke tubes and the turret casting.
 await ensureInteriorFills(['t80uk']);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t80uk',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     const fills=[];t.root.traverse(o=>{if(o.isMesh&&/InteriorFill/.test(o.name))fills.push(o)});

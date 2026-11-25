@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { measurePresentationFloor, measureRestContact } from './restPoseContact.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Batch-static builds (the game's battle and garage builds) pack every sprocket and idler into two BatchedMeshes
 // (running-gear course 1 in tankFactoryCore). A BatchedMesh is also isMesh, and its shared buffer is origin-local.
@@ -51,6 +52,7 @@ const contact = (id, batchStatic, quality) => {
 };
 for (const [id, quality] of [['t90am', 'high'], ['t90am', 'low'], ['t90a_2004', 'high'], ['bmpt_t90', 'high'], ['m1a1_abrams_hc', 'high'],
   ['m1a1_abrams_aim', 'high'], ['leo2a2', 'high']]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const batched = contact(id, true, quality), plain = contact(id, false, quality);
   assert.deepEqual(batched.batches.sort(), ['gearEndWheelBody', 'gearEndWheelHardware'], `${id}: course 1 batches its end wheels`);
   assert.equal(plain.batches.length, 0, `${id}: course 2 draws plain end-wheel meshes`);

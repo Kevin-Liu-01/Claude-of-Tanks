@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Frozen authored dimensions, not values read back from the shoe generator.
 const studies = [
@@ -13,6 +14,7 @@ const studies = [
 ];
 const material = new THREE.MeshBasicMaterial({side: THREE.FrontSide});
 for (const quality of ['high', 'low']) for (const [id, width, pad, grouser, web, horn] of studies) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {proceduralOnly:true, quality, camoSeed:4242, geometryReceipt:true});
   try {
     const shoes = tank.root.getObjectByName('gearTrackPads');

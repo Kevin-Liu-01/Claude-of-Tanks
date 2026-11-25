@@ -9,11 +9,13 @@ import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 
 const results = [];
 for (const id of ['t90am', 'm1a1_abrams_hc', 'bmp2']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
   try {

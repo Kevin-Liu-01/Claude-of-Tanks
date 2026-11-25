@@ -5,6 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { KIT, registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildStrv122X } from './strv122XPhotoDraft.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Historical photo contract only; actual supplied-ID tests are separate.
 registerProfiledBuilders({ strv122: buildStrv122X });
@@ -85,6 +86,7 @@ function checkGalix(meshes, turret) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original = KIT.buildRunningGear;
   let gear, tank;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };

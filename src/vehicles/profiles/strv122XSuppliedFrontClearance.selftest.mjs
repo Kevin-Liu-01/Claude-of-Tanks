@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent exact triangle/edge distances in the original two-cell region
 // plus a surrounding margin. No voxel threshold or source datum is changed.
@@ -82,6 +83,7 @@ function ceilingAndRoof(hull){
 }
 verifyDistances();
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   tank.root.updateMatrixWorld(true);let band=[],hull=[];let hullMesh;

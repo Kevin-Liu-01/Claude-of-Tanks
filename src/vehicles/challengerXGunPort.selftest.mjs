@@ -8,8 +8,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TURRET_GUN_PORT_KEEP_M, turretGunPortProbe } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 for (const id of ['challenger_x', 'challenger_x_sleek']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = turretGunPortProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] <= -10 && probe.pitchesDeg.at(-1) >= 20, `${id}: the sweep spans the published -10 to +20 degrees`);

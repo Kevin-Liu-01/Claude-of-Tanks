@@ -18,6 +18,7 @@
 //   node tools/turret-ring-side-caps.mjs [--ids=mbt70,...] [--all] [--check]
 import * as THREE from 'three';
 import { uniqueIds } from './id-list.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 await import('./tank-surface-collect.mjs');
 const { createTank, ensureTankBuilder } = await import('../src/vehicles/fleetFactory.ts');
@@ -61,6 +62,7 @@ function hullTriangles(root, hull, turret) {
 
 const failures = [];
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let visual = null;
   try {
     await ensureTankBuilder(id);

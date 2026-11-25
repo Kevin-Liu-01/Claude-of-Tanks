@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { measureTurretBarrelCircularity } from './turretBarrelCircularity.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function createBarrelFixture(scaleX = 1, offsetX = 0) {
   const root = new THREE.Group();
@@ -141,6 +142,7 @@ for (const id of [
   'pantsir_s1',
   'm163_vads',
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

@@ -10,6 +10,7 @@ import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { buildK21X } from './k21X.ts';
 import { KIT } from './kit.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent complete-source first-hit calipers from the approved assembled K21.
 // Target SHA e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b.
@@ -199,6 +200,7 @@ function checkMovingClearance(tank,parts,quality) {
 const report=[];
 try {
   for(const quality of ['high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const built=buildCaptured(quality),{tank,parts}=built;
     try {
       const root=tank.root,maxResidual=checkWitnesses(root);

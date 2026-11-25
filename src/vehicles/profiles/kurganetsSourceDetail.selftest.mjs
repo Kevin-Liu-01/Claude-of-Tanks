@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['kurganets25']);
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
@@ -10,6 +11,7 @@ await ensureInteriorFills(['kurganets25']);
 // below stays a source-frame number (its tolerance then binds the installed stock `f` times tighter).
 const f = VEHICLE_SIZE_FACTORS.kurganets25 ?? 1;
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('kurganets25', null,
     { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {

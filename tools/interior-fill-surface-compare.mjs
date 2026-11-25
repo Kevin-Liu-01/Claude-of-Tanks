@@ -39,6 +39,7 @@ import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, existsSy
 import { uniqueIds } from './id-list.mjs';
 import { resolve, join } from 'node:path';
 import { materialClass } from './tank-surface-collect.mjs'; // installs the node canvas shim builders paint through
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const [mode] = process.argv.slice(2);
 const args = process.argv.slice(3);
@@ -122,6 +123,7 @@ async function dump() {
   if (!ids.length) throw new Error('dump needs --all or --ids');
   const skipExisting = flag('resume');
   for (const id of ids) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     if (skipExisting && existsSync(join(outDir, `${id}.json`))) continue;
     const started = performance.now();
     await ensureTankBuilder(id);

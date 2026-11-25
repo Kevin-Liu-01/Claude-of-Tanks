@@ -24,6 +24,7 @@ import { buildHorizonRing } from './maps/horizon.ts';
 import { HORIZON_FOREST_PLACEMENT_STRIDE as STRIDE } from './horizonVista.ts';
 import { bindHorizonForestImpostors, resolveHorizonForestTrees } from './horizonForestImpostors.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 /** Verdant's bound ring forest as the owner approved it (598069b82; ring-digest of quads' matrices, colours, rows). */
 const VERDANT_RING_DIGEST = 'd92dab7742fb94b677407b39017a4f76f187ca39d5fb230eca7461bdfecfabbf';
@@ -106,6 +107,7 @@ try {
   for (const id of ['airfield', 'longleaf']) assert.ok(speciesMaps.includes(id), `${id} stands its ring by species`);
   assert.ok(!speciesMaps.includes('verdant'));
   for (const id of speciesMaps) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { world, fresh } = build(id);
     const own = world._ringSpeciesHeightM, library = world._treeImpostors;
     assert.ok(own && Object.keys(own).length > 0, `${id}: per-species statures`);
@@ -140,6 +142,7 @@ try {
   const underMaps = MAP_IDS.filter(id => getMapConfig(id).vegetation?.ringUnderstory);
   assert.ok(underMaps.includes('airfield') && !underMaps.includes('verdant'), 'Kestrel grows an understorey, Verdant none');
   for (const id of underMaps) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { world, fresh } = build(id);
     const under = world._ringUnderstory, library = world._treeImpostors;
     const forest = fresh();

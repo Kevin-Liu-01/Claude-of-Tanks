@@ -19,6 +19,7 @@ import { conformStudioActor, studioSupportBelly } from '../src/game/studioActorS
 import { sampleActorTrack } from '../src/game/studioTimeline.ts';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const GEAR = /^gear(?:RoadWheel|TrackPads|TrackBand|Track)/;
@@ -146,6 +147,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const world = createDedicatedWorldCollision(scene.map);
   const out = { map: scene.map, timeOfDay: scene.timeOfDay, actors: [] };
   for (const actor of scene.actors.filter((a) => names.includes('all') || names.includes(a.name))) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const keys = scene.storyboard?.actorTracks?.find((t) => t.actor === actor.name)?.keys ?? null;
     out.actors.push(await replayStudioActorGaps({ world, map: scene.map, actor, keys, times }));
   }

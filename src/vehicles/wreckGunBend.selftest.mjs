@@ -15,6 +15,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const { bendGeometry, cutAtKink, kinkPoint, planBend, wreckRandom } = await import('./wreckDents.ts');
@@ -137,6 +138,7 @@ const failures = [];
 let bent = 0;
 const gunInv = new THREE.Matrix4(), toGun = new THREE.Matrix4();
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureTankBuilder(id);
   // the battle roster's bot build (rosterState.ts)
   const visual = createTank(id, null, { camoSeed: 4242, quality: 'high', geometryQuality: battleGeometryQuality(false, 'desktop'),

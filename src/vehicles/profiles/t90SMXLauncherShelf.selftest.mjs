@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMLeftLauncherShelf} from './t90SMXLauncherShelf.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function first(root,x,z) {
   return new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0),0,2)
@@ -12,6 +13,7 @@ function first(root,x,z) {
     });
 }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=new THREE.Group(),material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
   helper.position.set(.008,1.532,.359);

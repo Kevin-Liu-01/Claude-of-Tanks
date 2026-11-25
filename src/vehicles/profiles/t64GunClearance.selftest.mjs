@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const T64_TUBE_KEEP_M = .02, MASK_FRONT_M = .62, DEG = Math.PI / 180;
 const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), q = new THREE.Vector3();
@@ -91,6 +92,7 @@ function tubeClearance(tank, pitch) {
 }
 
 for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {

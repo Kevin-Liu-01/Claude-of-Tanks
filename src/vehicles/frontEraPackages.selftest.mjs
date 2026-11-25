@@ -38,6 +38,7 @@ import {auxiliaryState, requestAuxiliary, stepRoofGun, auxiliaryShot} from '../s
 import {Solid, trianglesOf, trianglesIn, surfaceSamples, deepest} from './frontEraSolids.test-support.mjs';
 import {tankPoseFromState, traceTank} from '../sim/armor.ts';
 import {eraCoverage} from './frontEraCoverage.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // (FRONT_ERA_IDS=<id,...>: a debugging subset)
 const IDS = process.env.FRONT_ERA_IDS?.split(',') ?? ['t72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
@@ -205,6 +206,7 @@ const isShadow = o => o.userData.shadowOnly || o.userData.authoredShadowProxy ||
 
 const report = {};
 for (const id of IDS) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const label = `${id}/${quality}`, high = quality === 'high';
   const fresh = [], stock = {hull: [], turret: []}, others = {hull: [], turret: []};
   const t = createTank(id, null, {proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242, partCensus(bucket, g) {

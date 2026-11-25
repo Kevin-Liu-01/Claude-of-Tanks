@@ -5,9 +5,11 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const insetM=.05;
 for(const id of ['challenger1_mk1','challenger1_mk2','challenger1_mk3'])for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const t=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality});
  try{
   t.root.updateMatrixWorld(true);

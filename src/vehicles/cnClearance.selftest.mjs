@@ -39,6 +39,7 @@ import { AUXILIARY_ROOF_GUNS } from './auxiliaryRoofGuns.generated.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { SurfaceGrid, meshTriangles, densePoints, censusPart } from './cnTurretGeometry.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180, T0 = Date.now();
 const secs = (t) => ((Date.now() - t) / 1000).toFixed(0);
@@ -116,6 +117,7 @@ function boxSightFloatOverFleetBoot() {
 
 // CN_CLEARANCE_IDS=<ids> limits a local run (the suite runs all three)
 for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80u_yun').split(',')) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t0 = Date.now(), spec = getSpec(id), l = NATIONAL_ROOF_LOADOUTS[id], donor = NATIONAL_DONOR_TURRETS[id];
   const kit = [], census = [];
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242,

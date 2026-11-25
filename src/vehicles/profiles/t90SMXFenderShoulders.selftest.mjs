@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function ray(mesh,origin,direction){
   return new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,8).intersectObject(mesh,false)[0];
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);const hull=tank.root.getObjectByName('hull');

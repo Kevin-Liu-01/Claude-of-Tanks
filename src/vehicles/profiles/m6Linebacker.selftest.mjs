@@ -14,10 +14,12 @@ import {placeBradleyA3CheekEra} from './bradleyA3Turret.ts';
 import {BRADLEY_TURRET as A2} from '../modern3.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const baseline=JSON.parse(readFileSync(new URL('./m6Linebacker.preservation.json',import.meta.url)));
 const options={proceduralOnly:true,geometryReceipt:true,batchStatic:false,decor:false,camoSeed:4242};
 for(const row of baseline.rows){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(row.id,null,{...options,quality:row.quality}),meshes=[];
   tank.root.traverse(o=>{if(o.geometry&&(row.scope==='all'||/^(hull|gear|track)/.test(o.name)))
     meshes.push([o.name,geometryHash(o.geometry),o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()]);});
@@ -46,6 +48,7 @@ assert.ok(getSpec('m3a3_bradley').armor.hullPlates.some(p=>p.name==='m3a3_glacis
 near(L.halfWidth*2,.483,1e-6,'pod body reduced by 30 percent');
 near(L.front-L.rear,1.218,1e-6,'pod length reduced by 30 percent');
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(spec.id,null,{...options,quality});
   try{
     const root=tank.root,hull=root.getObjectByName('rig_hull'),turret=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun');

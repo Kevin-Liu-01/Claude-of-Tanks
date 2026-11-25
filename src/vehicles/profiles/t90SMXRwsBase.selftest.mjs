@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function visible(hit) {
   for (let object=hit.object; object; object=object.parent) if (!object.visible) return false;
@@ -14,6 +15,7 @@ function first(root, origin, direction) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm', null, {quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);

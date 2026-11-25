@@ -31,6 +31,7 @@ import {
   turretRingSides,
 } from './turretRingWell.ts';
 import { bakeTankWreck } from '../world/wrecks.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // the browser's demand-loaded fleet (the bake builds through it too): the T-72B3's builders, anatomy and fills
 await ensureTankBuilder('t72b3');
@@ -392,6 +393,7 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   const runs = [];
   const materials = [];
   for (const withReceipt of [true, false]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     registerCombatAnatomyCalibrations({ [id]: withReceipt ? { ...calibration, turretRing: receipt } : calibration });
     const visual = createTank(id, null, { camoSeed: 77, quality: 'low', geometryQuality: 'high', batchStatic: true,
       battleDetailLod: true, eraVisualBindingReceipt: false });

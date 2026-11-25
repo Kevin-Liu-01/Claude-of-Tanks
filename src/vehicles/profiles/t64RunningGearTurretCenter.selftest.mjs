@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-64BV1 and UA
 // Donbas use modernized t72b3 foundations") retired the old T-64 builder, its tall 285 mm-wheel course and the
@@ -32,6 +33,7 @@ const donorCounts = ['gearRoadWheelTires', 'gearReturnRollerTires', 'gearSuspens
 donor.dispose();
 
 for (const [id, variant] of [['t64bv1', 'bv1'], ['t64bv_donbas', 'donbas']]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(FLEET_RENEWAL_DONORS[id], 't72b3', `${id}: the renewal builds it on the T-72B3 study`);
   const tank = build(id);
   try {

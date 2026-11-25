@@ -14,6 +14,7 @@ import { getMapConfig } from './maps/index.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function canvasFixture() {
   const saved = new Map(['document', 'ImageData'].map(k => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
@@ -176,7 +177,7 @@ try {
   // the device tier resolves once per module: the desktop pass runs unresolved (getDeviceTier reads 'desktop'),
   // the mobile pass resolves it from the query at the end (foliageAtlasPadding's pattern)
   assert.equal(getDeviceTier(), 'desktop');
-  for (const id of ['verdant', 'autumn', 'fjord']) receipts.push(produce(id));
+  for (const id of ['verdant', 'autumn', 'fjord']) { await betweenBuilds(); receipts.push(produce(id)); }
   const verdant = receipts[0];
   assert.ok(verdant.stand >= 200 && verdant.stand <= 2000, `Verdant's stands plant hundreds, not thousands (${verdant.stand})`);
   assert.ok(verdant.rim >= 100 && verdant.rim <= 2500, `Verdant's rim blocks plant hundreds (${verdant.rim})`); // round 77b

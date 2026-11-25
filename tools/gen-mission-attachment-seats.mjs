@@ -15,6 +15,7 @@ import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
 import {DRONE_DOCK_EXEMPT} from '../src/sim/droneDockExempt.ts';
 import {LIVED_IN_RACKS,publishedStowageRacks,seatRackOverlaps} from '../src/vehicles/stowageRacks.ts';
 import {partArgs,writePartRows} from './changed-only/parts.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
 const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=uniqueIds(value('--ids',Object.keys(TANK_SPECS).join(',')).split(','),'gen-mission-attachment-seats --ids');
 const seeds=value('--seeds','4000,4242,8191').split(',').map(Number),qualities=value('--qualities','high,low').split(',');
@@ -202,6 +203,7 @@ function flush(){
  fs.writeFileSync(MISSION_DOCK_SEATS_PATH,missionDockSeatsSource(records));
 }
 for(const id of ids){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const taken=parts.take(id);
  if(taken){
   if(taken.record)records[id]=taken.record;else delete records[id];

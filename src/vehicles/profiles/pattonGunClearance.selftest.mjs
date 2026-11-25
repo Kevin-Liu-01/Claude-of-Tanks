@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 import { createTank } from '../tankFactory.ts';
 import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 /** id -> [elevation, depression] in degrees, from the sources. */
@@ -18,6 +19,7 @@ const SOURCE_RANGE = { m46_patton: [20, 10], m47_patton: [19, 10], m48a5_patton:
 const ids = process.env.PATTON_GUN_IDS?.split(',') ?? Object.keys(SOURCE_RANGE);
 
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const [elevation, depression] = SOURCE_RANGE[id];
   const probe = gunHullProbe(id);
   try {

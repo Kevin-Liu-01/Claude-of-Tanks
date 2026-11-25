@@ -11,6 +11,7 @@ import { registerHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as THREE from 'three';
 import { DEFERRED_ASSEMBLY_BUILDS, deferredAssemblyDifference, deferredAssemblyReceipt, drainTimedSteps } from '../../tools/deferred-assembly-receipt.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const coreUrl = pathToFileURL(fileURLToPath(new URL('./tankFactoryCore.ts', import.meta.url))).href;
 const CAPTURE = '    // No earlier yield: all core resources now belong to visual.dispose().';
@@ -41,6 +42,7 @@ function same(id, name, inCore, deferred) {
 // slice (a Ukrainian field net with its working clearances) under the battle build
 for (const [id, names] of [['m1a2_abrams_tusk', ['battleHigh', 'garage']], ['ua_challenger2', ['battleHigh']]]) {
   for (const name of names) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const options = DEFERRED_ASSEMBLY_BUILDS[name];
     const inCore = drainTimedSteps(createTankSteps(id, null, { ...options, assemblyInCore: true }));
     const deferred = drainTimedSteps(createTankSteps(id, null, options));
@@ -69,6 +71,7 @@ THREE.Material.prototype.dispose = observe(originals[1]);
 THREE.Texture.prototype.dispose = observe(originals[2]);
 try {
   for (const depth of [1, 4, 12]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     disposed.clear(); capture = undefined;
     const registered = new Set();
     const context = {

@@ -10,6 +10,7 @@ import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {matrix,finiteClearance,continuousShoeClearance,moving} from '../returnRollerPhysicsTest.mjs';
 import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The literal published 6aa3bb6bf gear inputs (a frozen preservation witness) are retired: whole-tank change
 // detection of t14_armata is the fleet geometry ledger's. Four rollers/side is an inferred T14 layout; this test
@@ -88,6 +89,7 @@ function mounts(c,bounds){
 }
 
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const old=capture('t14_armata',buildT14X,quality,true),current=capture('t14_armata',buildT14X,quality,false);
  try{
   assert.ok(old.port.hullG.getObjectByName('gearReturnRollerTires') === undefined);

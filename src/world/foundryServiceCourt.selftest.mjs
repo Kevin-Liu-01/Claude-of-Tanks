@@ -10,6 +10,7 @@ import { createVegetation } from './vegetation.ts';
 import { appendStructureCollisionBand } from './structureCollision.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Complete current producer, not a fabricated six-object scene. Raster bindings
 // below are deliberately inert: this certifies geometry/placement/ownership,
@@ -396,6 +397,7 @@ try {
   {
   results=[];
   for(const active of [false,true]){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     assert.equal(getDeviceTier(),'desktop','full producers precede the final mobile mask check');
     enabled=active;state={plans:[],planGeometry:[],mergedMeshes:new Set()};globalThis.__courtRng=[];
     const field=createHeightField(1337,config);

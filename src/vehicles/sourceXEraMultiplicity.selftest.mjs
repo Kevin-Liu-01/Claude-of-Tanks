@@ -5,6 +5,7 @@ import { getSpec } from './specs.ts';
 import { createShell } from '../sim/ballistics.ts';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { createCombatState, estimatePenRatio, resolveShellHit } from '../sim/damage.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const state=()=>({pos:new Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const pose=tankPoseFromState(state());
@@ -92,7 +93,7 @@ function fixtureOutcome(plates) {
   return {he:eventFor(spec,from,to,HE,hits),ke:estimatePenRatio(KE,0,info),ce:estimatePenRatio(CE,0,info)};
 }
 
-for(const quality of ['high','low'])actualSmSeam(quality);
+for(const quality of ['high','low']){ await betweenBuilds(); actualSmSeam(quality); }
 const surface=plate('bank_R',1),v=surface.verts;
 const one=fixtureOutcome([surface]);
 const split=fixtureOutcome([{...surface,verts:[v[0],v[1],v[2],v[2]]},

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;
@@ -10,6 +11,7 @@ const EXPECTED_CROWS_RISER_HEIGHT_M = Object.freeze({
 });
 
 for (const id of ['m1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

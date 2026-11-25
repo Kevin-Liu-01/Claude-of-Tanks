@@ -4,6 +4,7 @@ import '../../../tools/tank-surface-collect.mjs';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Weld by position only for test selection: material seams must not split a
 // real closed primitive. All checks use emitted geometry, not userData bounds.
@@ -141,6 +142,7 @@ function verifySeats(tank,id){
 }
 await ensureInteriorFills(['merkava3d','merkava4_trophy']);
 for(const quality of['high','low'])for(const id of['merkava3d','merkava4_trophy']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,batchStatic:false});
  try{
   const rig=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun'),spec=getSpec(id);

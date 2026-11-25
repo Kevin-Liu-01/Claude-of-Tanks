@@ -8,6 +8,7 @@ import { addChieftain5XSourceHull } from './chieftain5XSourceHull.ts';
 import { addChieftain5XSourceHullEquipment } from './chieftain5XSourceHullEquipment.ts';
 import { addChieftain5XSourceTurretEquipment } from './chieftain5XSourceTurretEquipment.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed original-source witnesses, not camera bins or candidate-derived targets.
 // Canonical SHA2a781a79…268e79 retains all eleven owners. Only concealed case
@@ -102,6 +103,7 @@ function webAndShoes(tank) {
 }
 receivingContacts();
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let gear; const original = KIT.buildRunningGear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   let tank;

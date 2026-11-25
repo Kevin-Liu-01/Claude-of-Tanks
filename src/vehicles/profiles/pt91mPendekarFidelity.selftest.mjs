@@ -8,6 +8,7 @@ import {sampleArmorRay} from './armorFaceSampling.ts';
 import {KIT} from './kit.ts';
 import {T72BU_X_SOURCE_DATUMS as DATUMS} from '../t72buXArmor.ts';
 import {createTankState} from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The old standalone target and its assertions are preserved verbatim
 // in docs/references/tanks/pt91m.legacy-fidelity-selftest.txt. Owner 2026-10-06
@@ -41,6 +42,7 @@ function selectComponent(parts,size,label,extra=()=>true){const hits=parts.filte
 function componentTriangles(part,offset=new T.Vector3()){const rows=[];for(let i=0;i<part.points.length;i+=3){const v=part.points.slice(i,i+3).map(p=>p.clone().add(offset));rows.push({t:new T.Triangle(...v),b:new T.Box3().setFromPoints(v)});}return rows;}
 let checks=0;
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const options={proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242,batchStatic:false};
  const donor=createTank('t72bu',null,options),tank=createTank('pt91m',null,options);
  try{

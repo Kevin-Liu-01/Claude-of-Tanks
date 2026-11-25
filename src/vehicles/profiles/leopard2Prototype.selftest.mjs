@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const { createTank } = await import('../tankFactory.ts');
@@ -31,6 +32,7 @@ const donor = getSpec('leo2a2').gun.shells.find((round) => round.type === 'APFSD
 assert.deepEqual({ ...ke, name: donor.name }, donor, 'the round\'s game numbers stand');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

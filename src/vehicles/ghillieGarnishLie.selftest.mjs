@@ -36,6 +36,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const { createTank } = await import('./tankFactory.ts');
@@ -262,6 +263,7 @@ function roofNet(net) {
 const failures = [];
 const summary = [];
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality: 'high', geometryReceipt: true, proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
   const DEBUG = DEBUG_ID === id;

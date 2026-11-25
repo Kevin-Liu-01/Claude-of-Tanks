@@ -28,6 +28,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 await import('./tank-surface-collect.mjs'); // the node canvas the builders paint through
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
@@ -206,14 +207,14 @@ for (const id of ids) {
   await ensureInteriorFills([id]);
   const row = { id };
   if (fingerprintsOnly) {
-    for (const config of Object.keys(BUILDS)) row[config] = buildFingerprint(id, config);
+    for (const config of Object.keys(BUILDS)) { await betweenBuilds(); row[config] = buildFingerprint(id, config); }
     appendFileSync(JSONL, JSON.stringify(row) + '\n');
     console.log(`${id}: ${row.icons} ${row.battle}`);
     continue;
   }
   if (spec.armor?.turretless) {
     row.turretless = true;
-    for (const config of Object.keys(BUILDS)) row[`${config}Fp`] = buildFingerprint(id, config);
+    for (const config of Object.keys(BUILDS)) { await betweenBuilds(); row[`${config}Fp`] = buildFingerprint(id, config); }
     row.checks = {};
     if (base.has(id)) for (const config of Object.keys(BUILDS)) row.checks[`${config}Base`] = row[`${config}Fp`] === base.get(id)[config];
     row.pass = Object.values(row.checks).every(Boolean);

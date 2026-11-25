@@ -23,6 +23,7 @@ import { vehicleShadowDetailOf } from '../engine/nearVehicleShadowDetail.ts';
 import { createTankState } from '../sim/movement.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { notCamouflage } from './camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 1/2: the simulation never reads the scene graph, so the suit cannot reach a trace, a contact or a hit box
 const simDir = new URL('../sim/', import.meta.url);
@@ -51,6 +52,7 @@ await ensureInteriorFills(IDS);
 let meshes = 0;
 for (const id of IDS) {
   for (const [build, options] of Object.entries(BUILDS)) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, camoSeed: 4242, ...options });
     try {
       tank.root.updateMatrixWorld(true);

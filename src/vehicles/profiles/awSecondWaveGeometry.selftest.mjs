@@ -6,6 +6,7 @@ import {createTank} from '../tankFactory.ts';import {getSpec} from '../specs.ts'
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import {createTankState} from '../../sim/movement.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 // Independent source scalar witnesses; never import builder datums as targets.
 const SOURCES={
   t90:{yaw:[-.00094997882843,1.408079981803894,.115670447585103],gun:[-.0007899813354,1.726339995861054,1.271363670175725],
@@ -216,6 +217,7 @@ function antennas(t,id){
 }
 const selected=process.env.AW_SOURCE_IDS?.split(',');
 for(const[id,s]of Object.entries(SOURCES))for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if(selected&&!selected.includes(id))continue;
   const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frame(t,id,s);bore(t,s);gear(t,s);reactive(t,s);equipment(t,id);antennas(t,id);staggerMotion(t,id,s);}finally{t.dispose();}

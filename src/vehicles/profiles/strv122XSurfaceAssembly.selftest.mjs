@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildStrv122X} from './strv122XPhotoDraft.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Preserve the photo-draft contract without qualifying the supplied-file ID.
 registerProfiledBuilders({strv122:buildStrv122X});
@@ -33,6 +34,7 @@ function roofAir(meshes,turret) {
   }
 }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('strv122',null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const LIFT_M = 0.012;
 const CASES = [
@@ -17,6 +18,7 @@ const CASES = [
 ];
 
 for (const quality of ['high', 'low']) for (const [id, authoredPivotY] of CASES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const isM1A1 = authoredPivotY === 1.57;
   const expectedY = authoredPivotY + LIFT_M + (isM1A1 ? .050 : 0);
   const tank = createTank(id, null, {

@@ -18,6 +18,7 @@ import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ESCORT_FIELD_KITS, escortKitTop } from '../escortFieldKitLayout.ts';
 import { PL01_GLACIS_FOLD, PL01_HULL_SIDE_X, pl01DeckY } from '../pl01HullLine.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const SIDE_X = PL01_HULL_SIDE_X;
 const TOL = 0.005;
@@ -112,6 +113,7 @@ function withRaisedSkirts(geometry) {
 }
 
 for (const id of ['pl01', 'pl01_105']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const geometry = hullGeometry(id);
   const r = audit(geometry);
   console.log(`${id}: ${fmt(r)}`);

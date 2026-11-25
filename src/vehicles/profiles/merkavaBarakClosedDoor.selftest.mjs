@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
 import {sourceOpeningRayProbe} from '../../../tools/source-opening-rays.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent calipers of the owner's closed-door target. Probe the complete
 // rendered model, including loaded fills, rather than trusting part metadata.
@@ -60,6 +61,7 @@ function checkDoorHardware(root) {
 }
 await ensureInteriorFills(['merkava4_barak']);
 for(const quality of['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('merkava4_barak',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try{
     tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((l,i)=>l.object.visible=i===0);}});

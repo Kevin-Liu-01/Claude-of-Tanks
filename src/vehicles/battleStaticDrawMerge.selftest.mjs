@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { battleStaticDrawMerge, createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
@@ -97,6 +98,7 @@ function drawn(visual) {
 }
 const rows = [];
 for (const [ID, minSaved] of [['m1a2_abrams_sepv3', 55], ['leo2a7v', 25]]) {
+await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
 await ensureTankBuilder(ID);
 const build = (mode) => createTank(ID, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,
   battleDetailLod: true, eraVisualBindingReceipt: false, staticDrawMerge: mode });

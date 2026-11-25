@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (meshes, origin, direction, far = 15) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far,
@@ -141,6 +142,7 @@ function measuredTank(quality) {
 // generated receipts. Source units are the independently qualified .025 m
 // anchor; flattened glTF origins are explicitly not mechanical datums.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { tank, gear } = measuredTank(quality);
   try {
     const root = tank.root;

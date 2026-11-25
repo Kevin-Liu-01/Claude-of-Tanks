@@ -5,6 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildArieteX } from './arieteXPhotoDraft.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Isolated historical PHOTO primitive regression. The actual supplied-file X
 // is tested separately; this must never count as its visual acceptance.
@@ -96,6 +97,7 @@ function checkRearStowage(meshes, yaw) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('c1_ariete', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {

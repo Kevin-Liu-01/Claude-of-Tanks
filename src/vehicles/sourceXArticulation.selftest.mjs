@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec, TANK_SPECS } from './specs.ts';
 import { donorSpec } from './donorSpecs.ts'; // 2026-09-24: retired donors (merkava4 …) resolve through the unregistered templates
 import { SOURCE_X_IDS, SOURCE_X_DONORS, synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const donorArmor = new Map(SOURCE_X_IDS.map(id => [id,
   structuredClone(donorSpec(TANK_SPECS, SOURCE_X_DONORS[id]).armor)]));
@@ -55,6 +56,7 @@ function gap(a, b) {
 // diagnoses all new IDs at both LODs before the slower complete release suite.
 const failures = [];
 for (const id of SOURCE_X_IDS) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false, camoSeed: 4242 });
   try {

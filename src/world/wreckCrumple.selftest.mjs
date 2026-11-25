@@ -11,6 +11,7 @@ import { bendGeometry, kinkPoint, planBend, planDents, wreckRandom } from '../ve
 import { crumpleBurntVehicle, crumpleWreckGeometry, planWreckCrumple } from './wreckCrumple.ts';
 import { bakeTankWreck } from './wrecks.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const finiteUnit = (normal, label) => {
   for (let i = 0; i < normal.count; i++) {
@@ -65,6 +66,7 @@ const finiteUnit = (normal, label) => {
 
 // ---- the baked hulks ------------------------------------------------------------------------------------------------
 for (const [specId, seed, pop] of [['t90am', 2526, false], ['m1a1_abrams_hc', 2002, true]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureTankBuilder(specId);
   const visual = createTank(specId, {}, { camoSeed: 4532, quality: 'low', geometryQuality: 'low', materialMode: 'geometry-only',
     eraVisualBindingReceipt: false, proceduralOnly: true });

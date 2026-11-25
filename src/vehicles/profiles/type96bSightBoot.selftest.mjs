@@ -28,6 +28,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { SurfaceGrid, meshTriangles, densePoints, censusPart } from '../cnTurretGeometry.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const D = Math.PI / 180;
 // type96bX.ts buildType96Turret: Object_6's stations (source z, half width, underside, top) about the trunnion at
@@ -77,6 +78,7 @@ function depthUnder(pts, e, top) {
 
 const T0 = Date.now();
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec('type96b'), census = [], t0 = Date.now(), secs = (t) => ((Date.now() - t) / 1000).toFixed(0);
   const tank = createTank('type96b', null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242,
     partCensus(bucket, g) { census.push(censusPart(bucket, g)); } });

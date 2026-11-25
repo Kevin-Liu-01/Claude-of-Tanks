@@ -3,6 +3,7 @@ import {Box3,Vector3} from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec,PRODUCTION_TANK_IDS} from './specs.ts';
 import {censusEquipment} from '../../tools/source-equipment-policy.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const configurations=[['dardo','Italy',25,0,false],['lrmv_lynx','Italy',30,0,false],['borsuk','Poland',30,2,true]];
 for(const [id,nation,caliber,tubes,remote] of configurations){
   assert(PRODUCTION_TANK_IDS.includes(id));
@@ -13,6 +14,7 @@ for(const [id,nation,caliber,tubes,remote] of configurations){
   assert.equal(spec.armor.crew.some(c=>c.turretLocal),!remote);
   assert.equal(spec.gun.shells.some(s=>s.guided),tubes>0);
   for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,decor:false});
     try{
       tank.root.updateMatrixWorld(true);

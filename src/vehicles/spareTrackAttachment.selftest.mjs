@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { KIT } from './tankFactoryCore.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const BASE_OFFSET_M = 0.041;
 const CARRIER_FAMILY = 'cot-spare-track-carrier-v2';
@@ -65,6 +66,7 @@ const SEATED_OWNERS = [
 ];
 let checkedRuns = 0;
 for (const id of SEATED_OWNERS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

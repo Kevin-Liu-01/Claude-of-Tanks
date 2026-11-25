@@ -6,6 +6,7 @@ import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['m1a3']);
 
@@ -91,6 +92,7 @@ function verticalHit(tank, names, x, y, z, direction) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const ax = createTank('abramsx', null, {proceduralOnly:true, quality, geometryReceipt:true});
   const shell = ax.root.getObjectByName('turret');
   assert.ok(shell?.isMesh);

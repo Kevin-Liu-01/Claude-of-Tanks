@@ -12,6 +12,7 @@ import { uniqueIds } from './id-list.mjs';
 // 275 (lane roof-station-keepout-275): the decor inside each roof station's traverse, measured on this build (decorations.ts
 // keeps it out by construction, src/vehicles/stationSweepKeepOut.ts; roofStationKeepOut.selftest fails on any entry)
 import { decorInStationArcs } from './roof-station-probe.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const check=process.argv.includes('--check');
 // --ids=a,b (2026-10-16, changed-only regen): rebuild only those vehicles and keep every other row exactly as generated.
 // Rows stay in ALL_TANK_IDS order, ids without a row are always built, and the roof-gun table and the garage summary are
@@ -54,6 +55,7 @@ const gunOwned=o=>{for(let p=o;p;p=p.parent)if(p.name==='rig_gun'||p.name==='rig
 // (+0: a coordinate that rounds to zero from below is -0, which the compact roof-gun form cannot give back; 262)
 const round=a=>a.map(x=>+x.toFixed(4)+0);
 for(const id of ALL_TANK_IDS){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  if(!measure(id)){
   rows[id]=previous.rows[id];
   if(Object.hasOwn(previous.inert,id))inert[id]=previous.inert[id];

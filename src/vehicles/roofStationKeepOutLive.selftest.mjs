@@ -18,6 +18,7 @@ import { ensureInteriorFills } from './interiorFills.ts';
 import { planTankDecorationsSteps } from './decorations.ts';
 import { isRoofStation } from './stationSweepKeepOut.ts';
 import { decorInStationArcs } from '../../tools/roof-station-probe.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -60,6 +61,7 @@ assert.ok(control.hits.length > 0, 'object148_proto planned without the keep-out
 assert.equal(control.turnedAway, 0, 'with its stations hidden the keep-out has nothing to turn away');
 let turnedAway = 0;
 for (const id of SAMPLE) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const r = survey(id);
   assert.deepEqual(r.hits, [], `${id}: no decor inside a roof station's traverse`);
   assert.ok(r.turnedAway > 0, `${id}: the keep-out turned decor away`);

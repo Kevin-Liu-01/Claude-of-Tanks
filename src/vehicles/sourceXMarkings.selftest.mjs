@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { SOURCE_X_IDS } from './sourceXFleetSpecs.ts';
 import { SURFACE_MARKING_STYLE } from './vehicleMarkings.ts';
 import { renderedMarkingFootprints } from './markingFootprints.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-23 (lane 243): markings are films cut to the armour under their seats (markingFilm.ts), so a footprint is no
 // longer a quad's four corners. Each draw records its seats' footprints (low detail's batch included);
@@ -64,6 +65,7 @@ function assertSpentSupport(tank, footprints, id) {
 }
 
 for (const id of SOURCE_X_IDS) for (const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const label=`${id}/${quality}`;
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
   try {

@@ -5,6 +5,7 @@ import { combatAnatomyCalibration } from '../combatAnatomy.ts';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createType99Armor } from './type99Armor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const pose = {
   pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
@@ -72,6 +73,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
 // Integration: registration uses each distinct envelope, keeps the A2 armor
 // factor, and publishes the runtime-derived track prisms used by shell traces.
 for (const id of ['ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   const calibration = combatAnatomyCalibration(id);

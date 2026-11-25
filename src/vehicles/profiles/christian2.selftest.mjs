@@ -19,6 +19,7 @@ import { LEOPARD2_HULL as H } from '../leopard2HullDatums.ts';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 import { firstPartyConcept } from '../../../tools/first-party-concept-policy.mjs';
 import { assertConceptDatums } from '../../../tools/first-party-concept-datums.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const options = { proceduralOnly: true, geometryReceipt: true, batchStatic: false, decor: false, camoSeed: 4242 };
@@ -36,6 +37,7 @@ assert.ok(spec.armor.turretPlates.some((p) => p.name === 'mantlet' && p.gunFollo
 
 // 2. none of the Type 90 X's stock
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const hashes = (id) => {
     const tank = createTank(id, null, { ...options, quality }), out = new Set();
     tank.root.traverse((o) => { if (o.isMesh && o.geometry && STOCK.test(o.name) && !suit(o)) out.add(geometryHash(o.geometry)); });

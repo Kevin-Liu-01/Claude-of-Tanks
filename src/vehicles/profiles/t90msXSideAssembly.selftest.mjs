@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const witnesses=[
   [-1,-1.4,-1.18269320],[-1,-1,-1.30707748],[-1,-.7,-1.40006445],
   [-1,-.4,-1.49090863],[-1,-.1,-1.58466190],[-1,.2,-1.67782528],
@@ -8,6 +9,7 @@ const witnesses=[
   [1,-.4,1.48885078],[1,-.1,1.58233326],[1,.2,1.65982083],
 ];
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90ms_tagil',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);

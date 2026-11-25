@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Owner 2026-09-18: "minimum amount of missiles for IFVs with missiles should be how many tubes present. so the bmpt t90_1992
 // should have minimum 8 since it has 8 tubes". Every guided round declares the launcher tubes modelled for it
@@ -21,6 +22,7 @@ for (const id of PRODUCTION_TANK_IDS) {
 assert.ok(guided.length >= 20, `the fleet fields guided rounds (${guided.length})`);
 const published = [];
 for (const { id, shell } of guided) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {
     let census = null, weaponCensus = null;

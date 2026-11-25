@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { OWNER_RULES, ownerSoups, roofPockets } from '../../../tools/roof-pocket.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // the owner's markup (turret-local boxes, condensed in owner-shots/20261027-leclerc-s1-gap-markup.json) and the corners
 const MARKED = {
@@ -29,6 +30,7 @@ const under = (p, [lo, hi]) => p.box[0] <= hi[0] + 0.05 && p.box[3] >= lo[0] - 0
 
 const T0 = Date.now();
 for (const id of Object.keys(REMAINING_CM2)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const soup = ownerSoups(tank).turret, pockets = roofPockets(soup.tri, { ...OWNER_RULES.turret, body: soup.body });

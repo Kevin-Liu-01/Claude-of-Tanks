@@ -3,10 +3,12 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ids = ['warrior_tes_h', 'kurganets25', 'bmp3m_dragun125', 'k21'];
 await ensureInteriorFills(ids);
 for (const quality of ['high', 'low']) for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     const root = tank.root;

@@ -14,12 +14,14 @@ import { createTank } from './tankFactory.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const BORED = { t80u_yun: 'wedge', t72b3m_hetman_ii: 'wedge', t72b3m_wilk: 'wedge', t72b3_zubr: 'cradle', t72b3_zubr_ii: 'casemate',
   t80u_zoria: 'fork', t72b3_sich: 'fork', t72b3m_hetman: 'shield', t80u_husarz: 'shield', t72b3m_bulat_m: 'shield',
   t80u_bars_m: 'drum', t72b3_bastion_m: 'drum' };
 const STROKE = .0015;
 for (const [id, mount] of Object.entries(BORED)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const l = NATIONAL_ROOF_LOADOUTS[id];
   assert.equal(l.mount, mount, `${id}: the ${mount} station`);
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });

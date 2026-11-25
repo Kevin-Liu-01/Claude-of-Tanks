@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ORACLE_BLIND_PARTS } from './oracle-blind-parts.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const SCOPES = new Set(['trackProfile']);
 for (const [id, target] of Object.entries(ORACLE_BLIND_PARTS)) {
@@ -25,6 +26,7 @@ for (const [id, target] of Object.entries(ORACLE_BLIND_PARTS)) {
     }
   }
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true });
     try {
       const hull = tank.root.getObjectByName('rig_hull');

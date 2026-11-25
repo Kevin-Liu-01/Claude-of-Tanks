@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { VT4A1_TURRET_OUTLINE, ZTZ99A2_TURRET_OUTLINE, ZTZ99A_TURRET_OUTLINE } from './chineseTurretOutlines.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function signature(mesh) {
   const positions = mesh.geometry.attributes.position.array;
@@ -81,6 +82,7 @@ for (const audit of [
   { id: 'ztz99a', fitted: true },
   { id: 'ztz99a2', fitted: true },
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
   const gunMount = tank.root.getObjectByName('gunMount');
   assert(gunMount?.geometry, `${audit.id}: merged gun mount exists`);
@@ -129,6 +131,7 @@ for (const audit of [
   { id: 'ztz99a', receipt: 'ztz99a2TurretIntegrationReceipt', outline: ZTZ99A_TURRET_OUTLINE },
 ].map((a) => ({ ...a, permanentPoints: [roofCorner(a.outline, 2, 1), roofCorner(a.outline, 3, -1)],
   channel: { halfWidth: 0.40, minZ: 0.62 } }))) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
   const turretRig = tank.root.getObjectByName('rig_turret');
   const turret = tank.root.getObjectByName('turret');

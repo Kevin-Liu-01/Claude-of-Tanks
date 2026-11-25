@@ -16,6 +16,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { PGZ09_GUNS, PGZ09_LAYOUT, PGZ95_GUNS, PGZ95_LAUNCHER_MUZZLES, PGZ95_LAYOUT } from './chineseAirDefenseLayout.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const build = (id) => createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
@@ -38,6 +39,7 @@ const ROWS = [
 ];
 
 for (const { id, L, muzzleZ, faceR, bores, tubes } of ROWS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = build(id);
   try {

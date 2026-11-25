@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { CHIEFTAIN5_X_DATUMS } from './chieftain5X.ts';
 import { CHIEFTAIN10_X_DATUMS } from './chieftain10X.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const D5 = CHIEFTAIN5_X_DATUMS.chieftain5, D10 = CHIEFTAIN10_X_DATUMS.chieftain_mk10;
 
@@ -111,6 +112,7 @@ assert.equal(count(mk3, 'turretDetail', (p) => p.oldKit === 'grabRail'), 12, 'ch
 
 // LOW builds stay whole.
 for (const id of ['chieftain3', 'chieftain_mk9']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', geometryReceipt: true });
   try {
     let triangles = 0;

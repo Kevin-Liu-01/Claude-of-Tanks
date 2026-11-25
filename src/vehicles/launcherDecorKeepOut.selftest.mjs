@@ -20,6 +20,7 @@ import { TANK_SPECS } from './specs.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { ensureInteriorFills } from './interiorFills.ts';
 import { LAUNCHER_KEEP_OUT_CLEAR, launcherKeepOut, launcherKeepOutVolumes, planTankDecorationsSteps } from './decorations.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -95,6 +96,7 @@ assert.ok(drop > 0.3, `griffin_viper: the pods' keep-out is swept over the gun's
 let turnedAway = 0, loads = 0;
 const dressed = [];
 for (const id of launcherIds) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const r = survey(id);
   // the keep-out stands in every frame the anatomy puts missile-rack stock in
   for (const frame of new Set(TANK_SPECS[id].armor.externalWeapons.filter((p) => p.module === 'missileRack').map(frameOf))) {

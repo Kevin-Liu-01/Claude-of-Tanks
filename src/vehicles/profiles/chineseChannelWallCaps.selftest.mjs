@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 227 gun-gaps r3 (owner 2026-10-17, "fix any of these" with the C2 gun gap). The Chinese throat stock removes a
 // 0.80 m channel for the gun and caps each cut wall (chineseGunOpening.ts halfStock). The chevron ERA cassettes are thin
@@ -74,6 +75,7 @@ function channelWallEdges(id) {
 
 const report = [];
 for (const id of ['ztz99a2', 'ztz99a', 'vt4a1']) { // (252: the Qilin's turret is a Type 96B now, with no Chinese gun channel)
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { meshes, edges, intrusionM } = channelWallEdges(id);
   assert.ok(meshes > 0, `${id}: the turret shell (${OWNER}) must be built`);
   assert.ok(edges.length >= 6, `${id}: the shell must be cut at the gun channel walls (read ${edges.length} wall edges)`);

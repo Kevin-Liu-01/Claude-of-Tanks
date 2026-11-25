@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const source=JSON.parse(readFileSync(new URL('../../../docs/references/tanks/t90a_x.smoke-fixtures.json',import.meta.url),'utf8'));
 
 function hits(root,origin,direction,far) {
@@ -12,6 +13,7 @@ function hits(root,origin,direction,far) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90a',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);

@@ -9,6 +9,7 @@ import { ARIETE_X_FAMILY_SCALE as ARIETE_SCALE } from './profiles/arieteXFamilyF
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { tankSeedId } from './tankIdAliases.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned permanent-armor/module/crew/collision digests, the
 // whole-model geometry fingerprints and the historical guard-paint and Strv 122 wheel/link inverses that
@@ -60,6 +61,7 @@ for (const [id, expected] of Object.entries(cases)) {
     assert.deepEqual([plate.physicalMm, plate.keMm, plate.ceMm], [original.physicalMm, original.keMm, original.ceMm]);
   }
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
     try {
       // Physical stock/posed protection below always uses the real painted tank.

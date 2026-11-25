@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const closure = buildChallenger3RearTurretClosure();
 const positions = closure.getAttribute('position');
@@ -34,6 +35,7 @@ closure.dispose();
 
 for (const id of ['challenger3_proto', 'challenger3']) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, null, {
       proceduralOnly: true, quality: 'high', geometryQuality: quality, camoSeed: 4242, geometryReceipt: true,
     });

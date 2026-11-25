@@ -17,6 +17,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildWorldCollisionData } from './headlessWorldCollision.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const EYE_UP_M = 3.4, AT_UP_M = 2.2, NEAR_M = 12, FAR_M = 15, ROAD_BAND_M = 8, SPACING_M = 30, TALL_M = 2, TRIES = 200000;
 
@@ -169,6 +170,7 @@ const options = parse(process.argv.slice(2));
 const out = { tool: 'street-poses', seed: options.seed, rule: options.focus ? `road band ${ROAD_BAND_M} m, focus (${options.focus}) ${FOCUS_NEAR_M}-${FOCUS_FAR_M} m, eye +${EYE_UP_M} m`
   : `road band ${ROAD_BAND_M} m, facade ${NEAR_M}-${FAR_M} m, eye +${EYE_UP_M} m`, maps: {} };
 for (const mapId of options.maps) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   out.maps[mapId] = await posesFor(mapId, options);
   const n = Object.keys(out.maps[mapId].poses).length;
   console.log(`street-poses: ${mapId} ${n}/${options.count} poses in ${out.maps[mapId].tries} tries`);

@@ -12,6 +12,7 @@ import {nativeStructuralStock,mapCapturedStock} from '../../../tools/base-shell-
 import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
 import {turretSeatPlane} from '../turretSeatPlane.ts';
 import {footBandSeatY} from '../turretSeatRace.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 const key=p=>p.map(n=>Math.round(n*1e5)).join(',');
@@ -94,6 +95,7 @@ function movingTrackClearance(tank,id,parts){
 
 let checked=0,nonplanarOutward=0,trackChecks=0;
 for(const id of ids)for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const captures=[],bodies=[];
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,
   partCensus(bucket,g,source){

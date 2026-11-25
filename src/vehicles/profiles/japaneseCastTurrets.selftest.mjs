@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 262 (owner, 2026-10-27, with his STB-1 model: "both the type 74 and stb should be based from this"): the STB-1 and the
 // production Type 74 share the Type 74 family's cast turret measured on that model (profiles/type74Family.ts): one
@@ -26,6 +27,7 @@ const CASES = {
 const receipts = new Map();
 
 for (const [id, expected] of Object.entries(CASES)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

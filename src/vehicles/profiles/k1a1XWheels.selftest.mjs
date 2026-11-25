@@ -4,6 +4,7 @@ import * as T from 'three';
 import {createTank,KIT}from '../tankFactory.ts';
 import {auditTankWheelQuality}from '../wheelQuality.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const names=['k1SourceWheelFacesL','k1SourceWheelFacesR'];
 function build(quality,legacy=false){
  const old=KIT.buildRunningGear;let gear;
@@ -64,6 +65,7 @@ function movingFaces(root){
  assert.deepEqual(auditTankWheelQuality(root).issues,[],'actual native arms remain clear');
 }
 for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const before=build(quality,true),after=build(quality);
  try{
   assert.equal(unchanged(before.tank.root),unchanged(after.tank.root),'all non-wheel buffers, end drums and course are unchanged');

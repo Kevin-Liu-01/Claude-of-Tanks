@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const TOUCH_M = 0.015;
 const CELL_M = 0.1;
@@ -177,6 +178,7 @@ const line = (id, what, f) => {
 };
 try {
   for (const id of IDS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
       const result = contactCensus(tank.root);

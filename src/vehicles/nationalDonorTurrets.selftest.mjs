@@ -13,6 +13,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { combatAnatomyCalibration, registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
 function vertexSet(mesh) {
@@ -35,6 +36,7 @@ function authored(ids, build) {
 
 const donors = new Map();
 for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (!donors.has(d.donor)) {
     const donor = authored([d.donor], () => createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
     donors.set(d.donor, { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) });

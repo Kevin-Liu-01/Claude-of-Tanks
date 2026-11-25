@@ -7,6 +7,7 @@ import { synchronizeIfvReplicaCombatMetadata } from '../ifvReplicaSpecs.ts';
 import { synchronizeSuppliedSourceCombatMetadata } from '../suppliedSourceFleetSpecs.ts';
 import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const id='marder2',s=getSpec(id);
 assert.equal(s.name,'Marder 2');assert.equal(tankTier(id),5); // 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
@@ -18,6 +19,7 @@ for(let i=0;i<2;i++){synchronizeIfvReplicaCombatMetadata();synchronizeSuppliedSo
 for(const [id,before]of tuning)assert.equal(JSON.stringify(getSpec(id).gun),before,`${id}: independent Marder registration never replaces an existing weapon`);
 await ensureInteriorFills([id]);
 for(const quality of ['high','low']) {
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false,decor:false});
  try {
   tank.root.updateMatrixWorld(true);

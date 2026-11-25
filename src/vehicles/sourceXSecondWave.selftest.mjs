@@ -8,6 +8,7 @@ import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
 import { displayTier } from '../techTree/tiers.ts';
 import { donorSpec } from './donorSpecs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the nineteen pinned pre-work donor fingerprints are gone; the
 // fleet geometry ledger owns whole-tank change detection. Each draft is compared with its donor built
@@ -63,6 +64,7 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, {...options,quality});
     try {
       assert.ok(tank.root.getObjectByName('hull')?.geometry);

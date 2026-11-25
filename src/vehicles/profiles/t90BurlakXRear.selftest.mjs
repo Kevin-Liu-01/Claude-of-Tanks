@@ -9,6 +9,7 @@ import {createShell} from '../../sim/ballistics.ts';
 import {stripActivatedEra} from '../../game/eraActivation.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { boundsWithoutCamouflage, notCamouflage } from '../camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function hit(ms,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 // camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets
 // and garnish; do not re-add it (camouflageBounds.test-support.mjs)
@@ -114,6 +115,7 @@ function helperClosure(){
 }
 helperClosure();
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90a_burlak',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const m=visible(t);cradles(m);cables(m);eyes(m);skirts(t,m);gameplay(t);physicalSeats(t);
     const b=boundsWithoutCamouflage(t.root);near(b.min.x,-2.05973503,.000002,'unchanged full model left extremum');near(b.max.x,2.05073503,.000002,'unchanged full model right extremum');

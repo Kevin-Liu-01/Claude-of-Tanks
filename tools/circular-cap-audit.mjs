@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { findCoplanarSurfaceOverlaps } from './coplanar-surface-overlap.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** Plug into the existing HIGH/LOW passes: no extra fleet construction. Keep
  * collecting after a finding so one bad tank cannot hide later failures. */
@@ -60,6 +61,7 @@ async function main() {
   for (const q of quality === 'both' ? ['high', 'low'] : [quality]) {
     const audit = createCircularCapAudit({ quality: q, out: `${out}/${q}.json` });
     for (const id of ids.length ? ids : ALL_TANK_IDS) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const tank = createTank(id, null, { proceduralOnly: true, quality: q, camoSeed: 4242, geometryReceipt: true, batchStatic: false });
       try { audit.check(id, tank); } finally { tank.dispose(); }
     }

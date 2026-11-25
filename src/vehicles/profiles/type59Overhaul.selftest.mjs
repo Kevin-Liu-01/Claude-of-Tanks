@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (value, expected, epsilon = 1e-6) => Math.abs(value - expected) <= epsilon;
 
@@ -27,6 +28,7 @@ function bounds(root, skip = null, filter = () => true) {
 }
 
 for (const id of ['type59', 't55a']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);

@@ -6,6 +6,7 @@ import { launcherMuzzleIndex, usesLauncherMuzzles } from '../sim/launcherPolicy.
 import { createTankState, SIM_DT } from '../sim/movement.ts';
 import { createCombatState } from '../sim/damage.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids = PRODUCTION_TANK_IDS.filter(id => {
   const gun = getSpec(id).gun;
@@ -58,6 +59,7 @@ for (const id of ids) {
     }
   }
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242, decor: false, batchStatic: false });
     const stock = [];
     try {

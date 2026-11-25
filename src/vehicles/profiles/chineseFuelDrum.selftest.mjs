@@ -10,6 +10,7 @@ import {tankSeedId} from '../tankIdAliases.ts';
 // The cn_ prefix is schema-1 vocabulary: the rename drops it (cn_t80u_modern -> t80u_yun), so test the schema-1 id.
 const chineseConcept=(id)=>tankSeedId(id).startsWith('cn_');
 import {shellEdgeTopology} from '../../../tools/base-shell-integrity.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ids=['vt4a1','ztz99a','ztz99a2','t80u_yun','t72b3m_kunlun','t72b3_qilin'];
 const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -109,6 +110,7 @@ for(const segments of [32,48]){
  g.dispose();
 }
 for(const quality of ['high','low'])for(const id of ids){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const parts=[];
  const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242,
   partCensus(bucket,g){parts.push({bucket,g,role:g.userData.chineseFuelDrum?.role,cradle:g.userData.chineseFuelCradle,cage:g.userData.chineseModernization});}});

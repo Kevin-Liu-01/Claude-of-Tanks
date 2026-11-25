@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { sourceCornerZ } from './t14XCorner.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const hit = (mesh, origin, direction) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, 12,
@@ -174,6 +175,7 @@ function cornerPartitionChecks(turret) {
 // metadata). Material-fused nodes cannot support honest component
 // silhouette masks, so explicit occupied/empty-space probes are essential.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('t14_armata', null, { quality, proceduralOnly: true, geometryReceipt: true });
   const structuralGeometry = tank.root.getObjectByName('turret')?.geometry;
   let structuralDisposals = 0;

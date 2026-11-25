@@ -16,6 +16,7 @@ import { measureImpostorBakeCoverage, readNearMipLaw, recordImpostorBake } from 
 import {
   TREE_IMPOSTOR_BAKE_ALPHA_TEST, TREE_IMPOSTOR_BAKE_MIP_BOOST, TREE_IMPOSTOR_BAKE_MIP_MAX,
 } from '../src/world/treeImpostors.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const MAPS = ['airfield', 'orchard', 'skybridge', 'caldera', 'ruinspires'];
 const THIN_NEEDLES = new Set(['pine', 'aleppoPine', 'pinyon', 'redPine']);
@@ -33,6 +34,7 @@ const rows = [];
 const seenForms = new Set();
 let tile64 = false;
 for (const id of MAPS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const recorded = recordImpostorBake(id);
   // the bake program: the give-back, then the cut (the foliage bake materials; the bark's cut is 0)
   const foliage = recorded.ground.meshes.filter(m => m.alphaTest > 0);

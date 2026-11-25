@@ -6,6 +6,7 @@ import {
   setVehicleReadabilityScale, getVehicleReadabilityScale,
 } from './vehicleReadability.ts';
 import { createTank } from './tankFactory.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function shaderFor(material) {
   const source = material.isMeshPhysicalMaterial ? THREE.ShaderLib.physical : THREE.ShaderLib.standard;
@@ -174,6 +175,7 @@ const csmContext = {
 };
 try {
   for (const [id, scale] of [['m1a1', 1], ['merkava4b', .12]]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     setVehicleReadabilityScale(scale);
     const visual = createTank(id, id === 'merkava4b' ? csmContext : null,
       { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });

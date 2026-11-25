@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source Object_29 sections and Object_40 outer-plane calipers.
 // Original source and measurement hashes live in the Kurg reference packet.
@@ -39,6 +40,7 @@ function verifyMasts(root) {
 }
 let count = 0;
 for (const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('kurganets25', null, { proceduralOnly:true, quality, geometryReceipt:true, camoSeed:4242 });
   try {
     tank.root.updateMatrixWorld(true);verifyMasts(tank.root);

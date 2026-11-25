@@ -4,6 +4,7 @@ import {createTank} from './tankFactory.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildAbramsX} from './profiles/abramsSourceX.ts';
 import {KIT} from './profiles/kit.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const rearRay=(meshes,x,y,far=.6)=>new T.Raycaster(new T.Vector3(x,y,-4.1),new T.Vector3(0,0,1),0,far).intersectObjects(meshes,false);
 const ray=(meshes,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false);
@@ -32,6 +33,7 @@ const leafWitnesses=[
  [1,1.041181028,1.037520004,1.060177835],
 ];
 for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const stock=[],hull=[],beforeRows=[];
  registerProfiledBuilders({m1a2_abrams_sepv2:P=>buildAbramsX(new Proxy(P,{get(target,key){
   if(key==='addEquipment'||key==='add')return(bucket,g,...args)=>{

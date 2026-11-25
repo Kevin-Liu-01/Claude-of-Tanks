@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source-only datums from the canonical supplied files. Complete native rays
 // include the loaded interior stock, so a later shell/fill cannot hide a lens.
@@ -20,6 +21,7 @@ function firstHit(tank, owner, x, y, z, direction) {
   return { mesh:hits[0].object.name, point:owner.worldToLocal(hits[0].point.clone()) };
 }
 for (const quality of ['high','low']) for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.ok(hasInteriorFills(id), `${id}: generated interior record must be loaded`);
   const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true});
   let roofGunDisposals = null;

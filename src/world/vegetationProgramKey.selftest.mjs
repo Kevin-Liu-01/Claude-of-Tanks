@@ -7,6 +7,7 @@ import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Exercise ordinary production imports, including the actual material stages,
 // shader helpers, CSM setup and resource declarations. Only 2D texture pixels
@@ -717,6 +718,7 @@ const restoreCanvas = installCanvasFixture();
 const environment = programEnvironment();
 try {
   for (const fade of [false, true]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const world = library(species, fade, environment), other = library(species, fade, environment);
     const rows = checkSpeciesShaderKeys(world, species, environment);
     const otherRows = checkSpeciesShaderKeys(other, species, environment);

@@ -10,6 +10,7 @@ import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {rollerSuspensionFixtures,finiteClearance as completeStockClearance} from '../returnRollerPhysicsTest.mjs';
 import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const cases=[['merkava3d',buildMerkava3DX],['merkava4',buildMerkava4X]];
 // The pre-roller witness (a source replay of merkavaX.ts without the lining call and the literal pre-roller gear
@@ -415,6 +416,7 @@ function moving(c,bounds,spindles,rollers,unlined,lining){
  return {minimum,minimumWheelClearanceM,maximumFarCarrierContactM,strokes,wheelStockNames:wheelStock.map(mesh=>mesh.name)};
 }
 for(const [id,build]of cases)for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const current=capture(id,build,quality),unlined=capture(id,build,quality,true);
  const omitted=id==='merkava4'?null:capture(id,build,quality,false,{omitRollers:true});
  try{
@@ -524,6 +526,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
  assert.equal(disposedRotorInstances,1,'Native rotor instance buffer disposed exactly once');
 }
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const legacy=capture('merkava4',buildMerkava4X,quality,false,{oldCarrier:true});
  try{
   const bounds=axialRollerStock(legacy,rollerBounds(legacy)),shoe=legacy.port.hullG.getObjectByName('gearTrackPads');let worst=Infinity;
@@ -554,6 +557,7 @@ for(const quality of['high','low']){
 }
 for(const quality of['high','low']){
  for(const id of['t62mv1','t62_1975']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const control=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
   try{
    for(const name of['gearReturnRollerTires','gearReturnRollerDiscs','gearReturnRollerRotors','gearMerkavaReturnSpindles'])

@@ -61,6 +61,7 @@ const { turretRingPlateDents, turretRingDentShare, capTurretRingDents, createTur
 const { getSpec } = await import('../src/vehicles/specs.ts');
 const { combatAnatomyCalibration, registerCombatAnatomyCalibrations } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 import { readFileSync } from 'node:fs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback = '') => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -919,6 +920,7 @@ for (const id of ids) {
   if (!SKIP_LIVE) {
     for (const [build, seeds] of [['player', SEEDS.slice(0, 1)], ['bot', SEEDS], ['gallery', SEEDS.slice(0, 1)]]) {
       for (const seed of seeds) {
+        await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
         let row;
         try { row = liveProbe(id, build, seed); } catch (error) { row = { id, build, seed, error: String(error?.stack || error).slice(0, 600) }; }
         row.kind = 'live';

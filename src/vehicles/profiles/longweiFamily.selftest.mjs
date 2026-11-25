@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { LONGWEI_FAMILY } from '../longweiFamilyConfig.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (actual, expected, label, tolerance = 0.002) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual.toFixed(4)}, expected ${expected}`);
@@ -32,6 +33,7 @@ longwei.dispose();
 for (const m of LONGWEI_FAMILY) {
   let envelope = null;
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = build(m.id, quality), host = build(m.host, quality);
     try {
       const turretRig = tank.root.getObjectByName('rig_turret');

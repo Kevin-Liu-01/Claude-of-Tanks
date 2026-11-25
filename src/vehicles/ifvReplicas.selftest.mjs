@@ -6,6 +6,7 @@ import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import { censusEquipment } from '../../tools/source-equipment-policy.mjs';
 import { verifyCv9040CTrunnions } from './cv9040CTrunnions.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const pairs=[['spz_wotan','puma_s1',30,2],['cv90','cv9040c',40,0],['raiju_ifv','type89',35,2]];
 const originals=new Map([...pairs.map(([id])=>id),'cv90_mk4_concept','cv90_mk4'].map(id=>[id,structuredClone(getSpec(id))]));
@@ -35,6 +36,7 @@ for(const [original,id,caliber,tubes] of pairs){
   assert.equal(s.gun.launcherMuzzles?.length??0,tubes);
   const previous=createTank(original,null,{proceduralOnly:true,quality:'high',geometryReceipt:true,decor:false});
   try{for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,decor:false});
     try{
       tank.root.updateMatrixWorld(true);

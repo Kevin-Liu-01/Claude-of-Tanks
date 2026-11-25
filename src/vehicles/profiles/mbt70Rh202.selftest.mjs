@@ -15,6 +15,7 @@ import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
 import { stationSelfClearance } from '../cnTurretGeometry.test-support.mjs';
 import { stationDepression, stationProbe } from '../../../tools/roof-station-arcs.mjs';
 import { MBT70_RH202_RECOIL_M } from './mbt70Rh202.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const CLEARANCE_M = 0.0015;
 const kit = AUXILIARY_INVENTORY.mbt70;
@@ -34,6 +35,7 @@ assert.ok(profile.rangeM > heavy.rangeM && profile.rangeM < cannon.rangeM, 'rang
 assert.equal(auxiliaryWeaponProfile(20).shell.caliberMm, 30, 'other 20-30 mm stations keep the shared cannon profile');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('mbt70', null, { proceduralOnly: true, geometryReceipt: true, decor: true, quality });
   tank.root.updateMatrixWorld(true);
   const turret = tank.root.getObjectByName('rig_turret');

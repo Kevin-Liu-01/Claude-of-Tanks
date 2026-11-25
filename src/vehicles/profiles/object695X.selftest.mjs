@@ -14,6 +14,7 @@ import { tankTier } from '../tier.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 import { MODULE_DEPTH_FLOOR_M } from '../../../tools/crew-seat-fit.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Original concept, not a supplied-source or historical turret claim.
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
@@ -247,6 +248,7 @@ registerProfiledBuilders({object695:P=>OBJECT695_X_PROFILES.object695.build(new 
 if(!process.argv.includes('--cold'))await ensureInteriorFills(['object695']);
 const costs=[];
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   parts.length=0;
   const tank=createTank(spec.id,null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false,camoSeed:4242});
   try{
@@ -294,6 +296,7 @@ for(const quality of ['high','low']){
   }finally{tank.dispose();}
 }
 for (const quality of ['high', 'low']) for (const fault of ['missing-foot', 'missing-tower', 'shifted-tower', 'thin-tower', 'missing-crossbeam']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   supportFault = fault; alteredSupports = 0;
   const tank = createTank(spec.id, null, { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false, camoSeed: 4242 });
   try {

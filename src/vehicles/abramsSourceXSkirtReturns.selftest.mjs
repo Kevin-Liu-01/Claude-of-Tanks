@@ -5,6 +5,7 @@ import { getSpec } from './specs.ts';
 import { registerProfiledBuilders } from './tankFactoryCore.ts';
 import { buildAbramsX } from './profiles/abramsSourceX.ts';
 import { KIT } from './profiles/kit.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Recorded witness faces of the four curved returns (fixed numbers the build is held to).
 // The curved sheets and small chamfers are built from sparse scalar sections.
@@ -53,6 +54,7 @@ function returnWitnesses(meshes, label) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const captured = [], bindings = [];
   registerProfiledBuilders({ m1a2_abrams_sepv2: port => buildAbramsX(new Proxy(port, {
     get(target, key) {

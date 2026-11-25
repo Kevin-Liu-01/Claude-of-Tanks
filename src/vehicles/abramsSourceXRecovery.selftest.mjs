@@ -8,6 +8,7 @@ import { createTankState } from '../sim/movement.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 import { decorManifestFor } from './decorations.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const untouched = ['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1','abramsx','m1a3'];
 for (const id of [...ABRAMS_SOURCE_X_IDS, ...untouched]) assert.equal(isTankBuilderReady(id), false);
@@ -18,6 +19,7 @@ try {
   await ensureTankBuilders(ABRAMS_SOURCE_X_IDS);
   for (const id of untouched) assert.equal(isTankBuilderReady(id), false, `${id}: no original/concept builder eagerly loaded`);
   for (const quality of ['high','low']) for (const id of ABRAMS_SOURCE_X_IDS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     assert.ok(isTankBuilderReady(id));
     assert.ok(combatAnatomyCalibration(id), `${id}: own archived anatomy available through typed loader`);
     assert.ok(vehicleMarkingSeats(id), `${id}: own marking seats available through typed loader`);

@@ -9,6 +9,7 @@
 // and the window is the owning lane's geometry fix to make.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180, T0 = Date.now();
 /** id -> the yaw windows [from, to] (absolute degrees) where its gun mount stands in a known conflict with the hull, or
@@ -158,6 +159,7 @@ const SUIT_TOO_CLOSE = new Set([]);
 // GUN_CLEARANCE_IDS=<ids> limits a local run (the suite runs them all)
 const ids = process.env.GUN_CLEARANCE_IDS?.split(',') ?? Object.keys(CURVES);
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t0 = Date.now(), probe = gunHullProbe(id, { suit: !SUIT_TOO_CLOSE.has(id) }), windows = CURVES[id] ?? [];
   try {
     const { spec } = probe, partsAt = (yd) => {

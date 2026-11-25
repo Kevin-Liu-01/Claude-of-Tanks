@@ -28,6 +28,7 @@ import { uniqueIds } from './id-list.mjs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './tank-surface-collect.mjs'; // node canvas shim: materials are set as shipped
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -148,6 +149,7 @@ const rows = [];
 const MAJOR_AREA_M2 = Number(opt('major-area', '0.15'));
 let camoViolationTotal = 0, bareViolationTotal = 0, majorTotal = 0, clusterOverrideTotal = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = TANK_SPECS[id];
   const parts = [];
   const partCensus = (bucket, part, source) => {

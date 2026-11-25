@@ -22,6 +22,7 @@ import { NATIONAL_UKRAINE_GHILLIE } from './profiles/nationalUkraineProtection.t
 import { NATIONAL_POLAND_GHILLIE_CONFIGS } from './nationalPolandProtectionConfig.ts';
 import { GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { decorManifestFor, planTankDecorationsSteps } from './decorations.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -67,6 +68,7 @@ function survey(id) {
 
 const under = [], turnedAway = [], drapesOnly = [];
 for (const id of suited) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { roofs, plan } = survey(id);
   // (a suit of drapes alone, the Strv 121's, lays no roof cloth)
   if (!roofs.hull.length && !roofs.turret.length) { drapesOnly.push(id); continue; }

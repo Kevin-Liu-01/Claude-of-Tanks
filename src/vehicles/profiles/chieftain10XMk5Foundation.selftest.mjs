@@ -8,6 +8,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftainMk10X, CHIEFTAIN10_X_DATUMS } from './chieftain10X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { renderedMarkingFootprints } from '../markingFootprints.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const hash = x => createHash('sha256').update(x).digest('hex');
 const stable = v => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object'
@@ -389,6 +390,7 @@ const coldMk5Spec = stable(getSpec('chieftain5'));
 const currentPaintPositions = [];
 let warmedMk5Hash;
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const afterOwnBuild = checkMk5(quality, coldMk5Spec);
   if (warmedMk5Hash) assert.equal(afterOwnBuild, warmedMk5Hash, 'complete warmed Mk5 metadata is quality-independent');
   warmedMk5Hash = afterOwnBuild;

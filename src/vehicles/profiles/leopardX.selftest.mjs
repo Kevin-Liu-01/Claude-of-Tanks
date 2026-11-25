@@ -5,6 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { isOpenLatticeMesh } from '../../../tools/standard-continuity-policy.mjs';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed measurements recorded BEFORE authoring (see each reference
 // packet). Do not replace these with
@@ -60,6 +61,7 @@ const instancedVertexBounds = (mesh) => {
 };
 
 for (const [id, source] of Object.entries(sources)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly:true, geometryReceipt:true, quality:'high' });
   try {
     tank.root.updateMatrixWorld(true);

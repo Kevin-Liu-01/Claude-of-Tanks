@@ -7,6 +7,7 @@ import {buildMerkava4X} from './merkavaX.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {getSpec} from '../specs.ts';
 import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID='merkava4';
 const labels=new Set(['merkava4-x-front-side-return','merkava4-x-front-corner-return','merkava4-x-rear-side-return']);
@@ -242,6 +243,7 @@ function nativeGearHash(tank){
 }
 
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const before=capture(quality,true),c=capture(quality);
   try{
     assert.deepEqual(c.retained,before.retained,'All pre-existing profile-authored geometry and paint/rubber/equipment buckets stay exact');

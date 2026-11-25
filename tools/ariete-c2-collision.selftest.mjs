@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {enableCombatAnatomyMeasurementMode} from '../src/vehicles/combatAnatomyMeasurementMode.ts';
 import {COMBAT_ANATOMY_CALIBRATIONS} from '../src/vehicles/combatAnatomyCalibrations.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 enableCombatAnatomyMeasurementMode();
 const {createTank}=await import('../src/vehicles/tankFactory.ts');
 const {TANK_SPECS}=await import('../src/vehicles/specs.ts');
@@ -96,6 +97,7 @@ function runtimeRays(captured){
 }
 const results=[];
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options={quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
   const before=createTank('c2_ariete',null,options),beforeHash=snapshot(before.root);before.dispose();
   const captured=captureArieteC2Collision(()=>createTank('c2_ariete',null,options));

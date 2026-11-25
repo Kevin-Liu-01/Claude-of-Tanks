@@ -8,6 +8,7 @@
 // placement and identity keeps its own; the coal piles are crushable clutter a hull flattens. Real props builds in Node.
 import assert from 'node:assert/strict';
 import { installWorldBuildFixture } from '../../tools/headlessWorldCollision.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
   import('./maps/index.ts'), import('./terrain.ts'), import('./vegetation.ts'), import('./props.ts'), import('./propsModelStore.ts'),
@@ -36,6 +37,7 @@ for (const kind of ['well', 'monument']) {
 // record; a ram over the threshold breaks them and frees the way. (The maps lane, 228: Steinburg's square takes its civic
 // plan's memorial column in the monument's place — fortified cover, below.)
 for (const [mapId, kinds] of [['urban', ['well']], ['foundry', ['monument']]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const built = await build(mapId);
   for (const kind of kinds) {
     const index = built.destructibles.findIndex((d) => d.kind === kind);

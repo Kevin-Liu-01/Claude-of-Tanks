@@ -6,6 +6,7 @@ import { BASKET_PLAN_SCALE, addChieftain10XBasket } from './chieftain10XBasket.t
 import { TURRET_SEAT_COLLAR_NAME, buildTurretSeatRaceGeometry, seatTurretOverDeck } from '../turretSeatRace.ts';
 import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed, complete-source turret witnesses, not isolated candidate targets.
 // Canonical SHA256 252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85.
@@ -200,6 +201,7 @@ try {
   surfaces(drawn, 0, fit);
   fitsTheRing(drawn);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const before = build(quality, true), after = build(quality);
     try {
       assert.equal(after.submissions, before.submissions, 'all non-target submitted geometry and transforms unchanged');

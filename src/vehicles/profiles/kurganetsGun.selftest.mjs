@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source witnesses: the receiver sits above an open-topped
 // recess, not inside the former continuous turret roof. See the 2026-09-21
@@ -11,6 +12,7 @@ import { createTankState } from '../../sim/movement.ts';
 const id = 'kurganets25', scale = .90; // Owner-approved complete vehicle resize.
 await ensureInteriorFills([id]);
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly:true, geometryReceipt:true,
     quality, camoSeed:4242, batchStatic:false });
   try {

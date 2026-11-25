@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function visibleMeshes(t){const meshes=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)meshes.push(m);});return meshes;}
 function top(meshes,x,z){return new THREE.Raycaster(new THREE.Vector3(x,1.8,z),new THREE.Vector3(0,-1,0),0,1).intersectObjects(meshes,false)[0];}
 function exhaust(meshes){
@@ -59,6 +60,7 @@ function rootEngagement(t){
   }
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const meshes=visibleMeshes(t);exhaust(meshes);cradles(meshes);skirts(meshes);rootEngagement(t);}
   finally{t.dispose();}

@@ -11,9 +11,11 @@
 // Negative controls: the gun slid 30 mm sideways reaches a cheek; the mouth without its shield shows the receiver face.
 import assert from 'node:assert/strict';
 import { GUN_SHIELD_KEEP_M, gunShieldProbe } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const T0 = Date.now(), report = {}, fits = {};
 for (const id of ['stb1', 'type74']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunShieldProbe(id);
   try {
     const { fit } = probe;

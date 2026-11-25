@@ -21,6 +21,7 @@ import { dirname, join } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { uniqueIds } from './id-list.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const args = process.argv.slice(2);
@@ -193,6 +194,7 @@ function motionCheck(tank, root, hull, items) {
 const rows = [];
 let defects = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const parts = [], added = new Map(), buckets = new Set();
   const limit = Error.stackTraceLimit;
   Error.stackTraceLimit = 40;

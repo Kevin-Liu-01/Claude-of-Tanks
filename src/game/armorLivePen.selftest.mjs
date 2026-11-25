@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../vehicles/canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const { createArmorAimOverlay } = await import('./armorAimOverlay.ts');
@@ -64,6 +65,7 @@ function reticleVerdict(muzzle, point) {
 const seen = { pen: 0, marginal: 0, nopen: 0 };
 let compared = 0;
 for (const id of ['t72b3', 'leo2a6']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureTankBuilder(id);
   const spec = getSpec(id);
   const visual = createTank(id, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,

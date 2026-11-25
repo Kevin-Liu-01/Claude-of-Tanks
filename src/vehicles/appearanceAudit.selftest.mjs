@@ -4,6 +4,7 @@ import {
   auditTankAppearance, normalizeTankAppearance, tagVehicleMaterial,
   VEHICLE_APPEARANCE_PALETTE,
 } from './appearanceAudit.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const root = new THREE.Group();
 const badTrack = tagVehicleMaterial(new THREE.MeshStandardMaterial({ color: 0x6e603c }), 'trackSteel');
@@ -99,6 +100,7 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
     carro45t: { materialsMax: 23, before: 23 },
   };
   for (const [id, want] of Object.entries(expected)) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = build(id);
     const roles = rolesOf(tank.root);
     const materials = materialsOf(tank.root);

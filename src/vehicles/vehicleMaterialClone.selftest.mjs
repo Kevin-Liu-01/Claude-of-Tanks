@@ -16,6 +16,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from '../game/juggernautVisual.ts';
 import { programVariantOf, programVariantOrigin } from '../engine/programVariants.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function installCanvasFixture() {
   const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -139,6 +140,7 @@ try {
   // through program-variant twins: each twin's skin registers through its original, under its own cascade entry
   let twinSkins = 0;
   for (const [id, extra] of [['m1a1_abrams_hc', null], ['m60a1', null], ['t72b3m_2022', null], ['m1a1_abrams_hc', { batchStatic: true }]]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high', ...extra });
     visuals.push(visual);
     if (extra?.batchStatic) assert.ok(visual.root.userData.programVariants?.twins > 0, `${id}: the battle build splits its program variants`);

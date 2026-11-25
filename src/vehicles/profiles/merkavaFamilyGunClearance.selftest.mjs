@@ -12,6 +12,7 @@
 // depression, straight ahead, the gun meets the glacis.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 /** The half-arc (deg) about straight ahead where each mark's gun reaches its full depression (the sweep's curve). */
@@ -22,6 +23,7 @@ const FULL_DEPRESSION_ARC = Object.freeze({
 const SKIP = Object.freeze({ merkava2d: [[139, 145]] });
 const IDS = process.env.MERKAVA_GUN_IDS?.split(',') ?? Object.keys(FULL_DEPRESSION_ARC);
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id), skip = SKIP[id] ?? [];
   const partsAt = (yd) => (skip.some(([a, b]) => yd >= a && yd <= b) ? null : 'all');
   try {

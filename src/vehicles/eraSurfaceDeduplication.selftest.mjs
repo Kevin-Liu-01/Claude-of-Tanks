@@ -6,6 +6,7 @@ import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the oracle used to be the pre-reuse implementation read from git
 // history (12a5b9aec) and authenticated by a pinned source digest. It is now this naive reference of the
@@ -183,6 +184,7 @@ async function nativeChild(reference) {
     const results = [];
     for (const cycle of [0, 1]) for (const id of ['m1a1_abrams_hc', 'challenger3', 'challenger2', 'leo2_revolution']) {
       for (const quality of ['high', 'low']) {
+        await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
         active = { calls: 0, inputFaces: 0, outputFaces: 0, legacyReads: 0, currentReads: 0, selections: [] };
         const visual = createTank(id, null, { quality, materialMode: 'geometry-only', proceduralOnly: true,
           camoSeed: 4242, decor: true, batchStatic: true });

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 await import('./suppliedSourceArmorInitialization.test-support.mjs');
 const {createTank}=await import('./tankFactory.ts');
 const {getSpec}=await import('./specs.ts');
@@ -106,6 +107,7 @@ function stockHash(root) {
 await ensureInteriorFills(cases.map(({id}) => id));
 for (const {id, donor, donorReactive, donorBefore} of cases) {
   for (const quality of ['high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,deferStaticBatch:true});
     try {
       assert.deepEqual(tank.root.userData.eraVisualBindingReceipt.plates, [], `${id}/${quality}: no orphan binding`);

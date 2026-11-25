@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ALL_TANK_IDS, SAVED_TANK_IDS, getSpec } from '../specs.ts';
 import { LEO1_TURRET, LEO1_TURRET_FAMILY } from './leopard1Turret.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Release 275 (owner 2026-11-21: "make all leopard 1a... tanks' turrets be same height and properly shaped based on
 // those turrets because all the other countries leopard 1a... variants have weirdly tall turrets"): every Leopard 1 in
@@ -26,6 +27,7 @@ const down = (object, x, z) => new THREE.Raycaster(new THREE.Vector3(x, 8, z), n
   .intersectObject(object, false)[0]?.point.y;
 
 for (const id of fleet) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   tank.root.updateMatrixWorld(true);
   const ring = new THREE.Vector3();

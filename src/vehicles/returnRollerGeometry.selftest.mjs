@@ -9,6 +9,7 @@ import {efficientReturnRoller} from './efficientReturnRoller.ts';
 import {normalizeTankAppearance,tagVehicleMaterial} from './appearanceAudit.ts';
 import {auditTankWheelQuality} from './wheelQuality.ts';
 import { geometryHash as kitGeometryHash, graphLabels } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const BASE={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
  sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,
@@ -110,6 +111,7 @@ for(const value of[null,{},true]){assert.throws(()=>fixture('high',{returnRoller
 // Real factory lifecycle/material/frame integration, not an activated A6M
 // profile or a new claim that its inherited roller station/contact fits.
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const base=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
  const build=KIT.buildRunningGear;let captured,rotor,rotorDisposed=0;
  KIT.buildRunningGear=(P,cfg)=>{

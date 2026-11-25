@@ -4,6 +4,7 @@ import {createTank} from './tankFactory.ts';
 import {getSpec,PRODUCTION_TANK_IDS} from './specs.ts';
 import {createTankState} from '../sim/movement.ts';
 import {createHash} from 'node:crypto';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function submitted(object,root){
   for(let node=object;node;node=node.parent){if(!node.visible)return false;if(node===root)return true;}
@@ -22,6 +23,7 @@ const ids=PRODUCTION_TANK_IDS.filter(id=>['m1a1_abrams_hc','t90am','t90m_proryv'
  || getSpec(id).armor.externalWeapons?.length);
 let checks=0, guns=0, smoke=0, era=0;
 for(const id of ids)for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});
  try{
   const spec=getSpec(id),state=createTankState(spec,new Vector3(),0);

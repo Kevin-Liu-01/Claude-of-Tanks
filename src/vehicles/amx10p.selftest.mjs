@@ -6,6 +6,7 @@ import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { decorManifestFor } from './decorations.ts';
 import { censusEquipment } from '../../tools/source-equipment-policy.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 for (const [id, caliber, turretCrew] of [['amx10p',20,2],['amx10p_25',25,1]]) {
   assert(PRODUCTION_TANK_IDS.includes(id), `${id}: playable roster`);
@@ -18,6 +19,7 @@ for (const [id, caliber, turretCrew] of [['amx10p',20,2],['amx10p_25',25,1]]) {
   assert.equal(spec.armor.crew.length,3);
   assert.equal(spec.armor.crew.filter(member=>member.turretLocal).length,turretCrew,'Toucan two-man / Dragar one-man topology');
   for (const quality of ['high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const mounts=[];
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,decor:false,
       partCensus:(bucket,geometry)=>{

@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const owner = (bucket) => (bucket.startsWith('turret') ? 'turret' : bucket.startsWith('gun') ? 'gun' : 'hull');
 const label = (p) => `${p.bucket}[${p.box.min.toArray().map((v) => v.toFixed(3))}..${p.box.max.toArray().map((v) => v.toFixed(3))}]`;
@@ -162,6 +163,7 @@ for (const quality of ['high', 'low']) {
 
   // ---- the A2 hull's three tanks: the ZTZ-99A2, its prototype and the VT-4A1
   for (const id of ['ztz99a2', 'ztz99a', 'vt4a1']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { tank, parts } = build(id, quality);
     try {
       for (const o of ['turret', 'gun', 'hull']) assert.deepEqual(apartOf(parts.filter((p) => owner(p.bucket) === o)).map(label), [],

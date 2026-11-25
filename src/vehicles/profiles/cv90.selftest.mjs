@@ -4,6 +4,7 @@ import { Box3, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Round 267 rebuild: `cv90` is the modernised 40 mm Strf 9040 and `cv90_mk4_concept` a CV90 Mk IV hull with a modern
 // two-man 50 mm turret. Both share the CV90 hull/armour/stern/running-gear construction in place (cv90.ts) with their
@@ -69,6 +70,7 @@ const expected = Object.freeze({
 
 const bounds = new Map();
 for (const [id, target] of Object.entries(expected)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   assert.ok(spec, `${id} is registered`);
   assert.equal(spec.name, target.name);

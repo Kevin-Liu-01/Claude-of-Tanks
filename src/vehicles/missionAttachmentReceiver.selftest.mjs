@@ -7,6 +7,7 @@ import {MISSION_RECEIVER_SEATS} from './missionAttachmentReceiver.ts';
 import {leopardA6UaDockSeat} from './leopardA6UaLayout.ts';
 import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesClear} from '../sim/missionAttachment.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids=['leo2a6_ua','ua_m1a1','t80u_zoria'];
 const UA_DOCK=leopardA6UaDockSeat();
@@ -56,6 +57,7 @@ function receiverFailures(id,parts,stock,rows){
 await ensureInteriorFills(ids);
 let cases=0,partsChecked=0;
 for(const id of ids)for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const spec=getSpec(id),tank=createTank(id,null,{quality,camoSeed:4242,proceduralOnly:true,geometryReceipt:true});tank.root.updateMatrixWorld(true);
  const receiver=tank.root.getObjectByName('turretMissionReceiver'),turret=tank.root.getObjectByName('rig_turret');
  assert(receiver?.isMesh,`${id}: actual permanent receiver exists`);assert.ok(receiver.parent === turret,`${id}: receiver follows native turret`);

@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { startCpuBurners } from '../../tools/cpu-burners.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 't64bv_donbas'];
@@ -47,6 +48,7 @@ async function child(mode, id) {
   const { createTank } = await import('./tankFactory.ts');
   if (mode === 'loaded') {
     for (const other of OTHERS) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const tank = createTank(other, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
       await new Promise((resolve) => setTimeout(resolve, 0));
       tank.dispose?.();

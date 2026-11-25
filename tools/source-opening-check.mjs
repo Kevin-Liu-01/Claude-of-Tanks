@@ -7,6 +7,7 @@ import {ensureInteriorFills,hasInteriorFills} from '../src/vehicles/interiorFill
 import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
 import {sourceOpeningWitnesses} from './source-opening-witnesses.mjs';
 import {sourceOpeningRayProbe} from './source-opening-rays.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** Native loaded-fill geometry and the complete original source are measured
  * at the real browser raster coordinates, never nominal rounded labels. */
@@ -70,6 +71,7 @@ async function measureArieteOpenings(id,scan,qualityScans){
   return fail('Missing actual loaded LOW continuity raster');
  const qualities=[];
  for(const [quality,actualScan]of [['high',scan],['low',low.holes]]){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const result=await measureQuality(id,actualScan,configuration,sourceReceipt,quality);
   qualities.push({...result,quality,scan:actualScan});
  }

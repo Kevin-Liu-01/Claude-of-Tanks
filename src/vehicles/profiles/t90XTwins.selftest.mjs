@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-10-30 (lane t90-family-266; the owner: "for all of these we can just take inspirration annd update from the
 // later t90s we added that have far more accurate models", then "our new versiosn now just look way too identical to
@@ -42,6 +43,7 @@ function census(id, rigs) {
 const total = (counts) => [...counts.values()].reduce((a, b) => a + b, 0);
 const rows = [];
 for (const [id, twin, rigs, kit] of TWINS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const mark = census(id, rigs), source = census(twin, rigs);
   let shared = 0;
   for (const [key, n] of source) shared += Math.min(n, mark.get(key) ?? 0);

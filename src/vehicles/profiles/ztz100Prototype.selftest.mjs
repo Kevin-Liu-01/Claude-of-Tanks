@@ -11,6 +11,7 @@ import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L, ZTZ100_PROTOTYPE_CANISTER as C } from './ztz100Prototype.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const id = 'ztz100_prototype', spec = TANK_SPECS[id];
 assert.deepEqual(spec.armor.turretPivot, [0, 1.41, -.55]);
@@ -210,6 +211,7 @@ assert.throws(() => assertFillAir([{ min: [-1.25, 2.15, 1.16], max: [-1.21, 2.19
 const results = [];
 try {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     primitives = [];
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality,
       batchStatic: false, deferStaticBatch: true, camoSeed: 4242 });

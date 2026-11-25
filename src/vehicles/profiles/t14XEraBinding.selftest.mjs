@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildT14X} from './t14X.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function fingerprint(root){
   root.updateMatrixWorld(true);const triangles=[],point=new THREE.Vector3();
@@ -21,6 +22,7 @@ function fingerprint(root){
 function ray(mesh,origin,direction){return new THREE.Raycaster(new THREE.Vector3(...origin),
   new THREE.Vector3(...direction),0,12).intersectObject(mesh,false)[0]?.point;}
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   registerProfiledBuilders({t14_armata:P=>{
     const original=P.destructibleCluster;P.destructibleCluster=(_name,fill)=>fill();
     try{buildT14X(P);}finally{P.destructibleCluster=original;}

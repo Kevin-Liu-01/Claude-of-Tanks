@@ -11,6 +11,7 @@ import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
 import { treeBiomeShrub, treeBiomeWindToward } from './treeBiomes.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function canvasFixture() {
   const saved = new Map(['document', 'ImageData', 'location'].map(k => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
@@ -59,6 +60,7 @@ const restore = canvasFixture();
 const report = {};
 try {
   for (const mapId of ['coastal', 'verdant']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const cfg = getMapConfig(mapId), field = createHeightField(1337, cfg);
     const veg = createVegetation(field, { setupShadowMaterial() {} }, 2001, cfg);
     try {

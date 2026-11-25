@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { cloneVehicleMaterial } from './materials.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function installCanvasFixture() {
   const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -93,6 +94,7 @@ let suitMeshes = 0, leafMeshes = 0, decorMeshes = 0;
 try {
   // a leafy suit, the ULCANS multispectral cover (painted garnish), a spruce suit
   for (const id of ['t64bv_donbas', 'm1a1_abrams_fep', 'strv103b']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     visuals.push(visual);
     visual.root.traverse((object) => {

@@ -22,6 +22,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 import { isMainModule } from './map-probe-runtime.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const PLAN_FILE = new URL('../src/world/maps/wreckBakePlan.ts', import.meta.url);
 const SELF = fileURLToPath(import.meta.url);
@@ -125,6 +126,7 @@ async function recordTier(tier, ids) {
   };
   for (const mapId of ids) {
     for (const assault of [false, true]) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const t0 = Date.now();
       const base = mapsMod.getMapConfig(mapId);
       const config = assault ? { ...base, assaultTrenches: true } : base;

@@ -8,10 +8,12 @@
 // astern, where the barrel crosses the unditching log and the stern drums.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 // (the PT-84 Orzeł, Sokół and Żbik, the Polish concepts on the same base, lay their 120 mm KBM2 over the same range)
 for (const id of ['bm_oplot_m', 'bm_oplot_t', 't84bm_oplot_m', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id);
   try {
     assert.equal(probe.spec.gunDepressionDeg, 5, `${id}: the KBA-3 depresses to -5 degrees (source range)`);

@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { notCamouflage } from '../camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function hullFrameRays(tank) {
   const hull=tank.root.getObjectByName('rig_hull'), surfaces=[];
@@ -137,6 +138,7 @@ function checkAftInstalledWheels(tank) {
 }
 
 for(const quality of['high','low'])for(const id of['bmp3m_dragun125','k21','type96b']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {
     const bore=tank.root.userData.physicalMuzzleBoreVerification;
@@ -167,6 +169,7 @@ for(const quality of['high','low'])for(const id of['bmp3m_dragun125','k21','type
 await ensureInteriorFills(['aft10']);
 assert.ok(hasInteriorFills('aft10'),'AFT slot/stock witnesses include the loaded generated fill record');
 for(const quality of['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('aft10',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   const frontSide=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
   try {

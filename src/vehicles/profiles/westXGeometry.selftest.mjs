@@ -7,6 +7,7 @@ import { K2_X_PROFILES } from './k2X.ts';
 import { KF51_X_PROFILES } from './kf51X.ts';
 import { MERKAVA_X_PROFILES } from './merkavaX.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 registerProfiledBuilders(Object.fromEntries(Object.entries({
   ...K2_X_PROFILES, ...KF51_X_PROFILES, ...MERKAVA_X_PROFILES,
@@ -42,6 +43,7 @@ const verticalHit = (object, x, z, up = false) => new THREE.Raycaster(
 ).intersectObject(object, false)[0]?.point.y;
 
 for (const quality of ['high', 'low']) for (const [id, source] of Object.entries(sources)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
   try {
     tank.root.updateMatrixWorld(true);

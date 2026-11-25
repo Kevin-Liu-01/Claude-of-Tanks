@@ -16,6 +16,7 @@ import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import {
   GEPARD_BORE, GEPARD_GUN_COVER, GEPARD_MUZZLE_Z, GEPARD_RING, GEPARD_SEARCH_RADAR, GEPARD_TRUNNION, GEPARD_TURRET,
 } from './gepardFrame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'gepard_1a2';
 const DEG = Math.PI / 180;
@@ -80,6 +81,7 @@ function bodyTop(root) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

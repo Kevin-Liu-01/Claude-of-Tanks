@@ -35,6 +35,7 @@ import { uniqueIds } from './id-list.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from '../src/vehicles/interiorFillLoaders.generated.ts';
 import { interiorFillSpans } from '../src/vehicles/interiorFills.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const COMPONENTS = ['hull', 'turret', 'gun'];
 const CELL_M = 0.5;
@@ -201,6 +202,7 @@ async function measureIds(ids, { fillsFrom = null } = {}) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
   const rows = {};
   for (const id of ids) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const t0 = performance.now();
     const record = await committedFillRecord(id, fillsFrom);
     if (!record) { rows[id] = { id, record: false }; console.log(`${id}: no fill record`); continue; }

@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // AW's supplied manned-turret configuration is explicitly 50 mm, not the 35 mm
 // real-world option. The measured outer brake and firing plane are unchanged.
@@ -59,6 +60,7 @@ await ensureInteriorFills([id]); assert.ok(hasInteriorFills(id));
 const results = [], spec = getSpec(id);
 assert.equal(spec.gun.caliberMm, 50, 'publisher-specific 50 mm configuration');
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality, camoSeed: 4242,
     geometryReceipt: true, batchStatic: false });
   const originals = new Map();

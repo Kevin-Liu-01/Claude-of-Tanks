@@ -26,6 +26,7 @@ import { decorManifestFor, dockKeepOut } from './decorations.ts';
 import { LIVED_IN_RACKS, missionDockKeepOutBoxes, publishedStowageRacks, seatRackOverlaps } from './stowageRacks.ts';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -74,6 +75,7 @@ assert.deepEqual(flagged, [], `mission seats over a stowage rack the lived-in de
 const built = [];
 try {
   for (const id of new Set([...Object.keys(LIVED_IN_RACKS), ...PUBLISHED_RACK_IDS])) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const seat = MISSION_ATTACHMENT_SEATS[id];
     if (!seat) continue;
     // (the decor's keep-out is the same boxes)

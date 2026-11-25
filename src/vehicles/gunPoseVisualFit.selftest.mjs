@@ -26,6 +26,7 @@ import { gunWorldPose } from '../sim/gunPose.ts';
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import { mechanicalGunPitchFloor, minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // the rig's lazy materials paint on canvases; their pixels are not measured here
 installCanvasFixture();
@@ -64,6 +65,7 @@ function gap(tank, entity, mount) {
 const rows = [];
 let built = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, decor: false, batchStatic: false });
   built++;

@@ -18,6 +18,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { GM352_HULL, GM352_RING, PANTSIR, TUNGUSKA, rackMouths } from './gm352Layout.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const ROWS = {
@@ -64,6 +65,7 @@ for (const [id, { L, mouths }] of Object.entries(ROWS)) {
 // ---- the build stands on it ----------------------------------------------------------------------------------------
 const hullShell = {};
 for (const quality of ['high', 'low']) for (const [id, { L, mouths }] of Object.entries(ROWS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true });
   try {
     const root = tank.root, turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');
@@ -135,6 +137,7 @@ for (const quality of ['high', 'low']) for (const [id, { L, mouths }] of Object.
 
 // ---- clearance through the arc -------------------------------------------------------------------------------------
 for (const [id, { L }] of Object.entries(ROWS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id, { suit: false });
   try {
     let worst = { d: Infinity };

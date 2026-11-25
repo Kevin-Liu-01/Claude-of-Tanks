@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // (262: the 2A2 and the 2A3 OTCO left this family's hull for the new Leopard construction, profiles/leopard2a3B4.ts)
 // (264: the 2A4, 2A4 V, 2A4M, 2A4M CAN, 2A4 OTCO, Improved and Strv 121 followed them, profiles/leopard2A4Family.ts)
@@ -15,6 +16,7 @@ const fenderSkirtClosureIds = [
 ];
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -114,6 +116,7 @@ for (const [id, expectedHalfW] of expectedHalfWidths) {
 }
 
 for (const id of fenderSkirtClosureIds) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

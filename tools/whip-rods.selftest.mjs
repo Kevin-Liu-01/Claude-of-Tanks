@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim: builders paint their canvas textures as in the browser
 import { NOT_WHIPS, notWhip, whipRods } from './whip-rods.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
 const mesh = (geometry, x, y, z, parent) => { const m = new THREE.Mesh(geometry); m.position.set(x, y, z); parent.add(m); return m; };
@@ -69,6 +70,7 @@ assert.equal(notWhip('m41a3', [-0.06, 2.45, -0.32]), null);
 // it, so it reads as a rod, not a whip: its tag is held by its foot) beside its tagged 2.3 m whip
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 for (const [id, count, feet] of [['m41a3', 2, []], ['t90ms_tagil', 1, [[-0.796, 2.107, -2.345]]]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const rods = rodsOf(tank.root), whips = rods.filter((r) => r.whip);

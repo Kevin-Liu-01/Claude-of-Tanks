@@ -7,6 +7,7 @@ import ts from 'typescript-compiler-api';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources, visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (frozen pins retired): the receipt used to embed the cd62def6e bush card owners (sha256-pinned), swap them
 // into a "before" producer and require the complete Autumn/Verdant vegetation build to match it outside the two bush
@@ -175,6 +176,7 @@ function negativeControl(a) {
 const restore = canvasFixture(), receipts = [];
 try {
   for (const id of ['autumn', 'verdant']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const b = produce(current, id), again = produce(current, id);
     assert.deepEqual(again.exact, b.exact, id + ': a rebuild reproduces every placement/cover/tree/grass buffer and owner-sharing');
     assert.deepEqual(again.rng, b.rng, id + ': a rebuild reproduces every complete-producer RNG stream count/tail');

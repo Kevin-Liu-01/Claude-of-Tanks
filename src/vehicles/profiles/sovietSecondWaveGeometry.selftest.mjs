@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed independent scalar source witnesses. No profile installation, source
 // loader, candidate-derived target or missing-ID fallback is permitted here.
@@ -92,6 +93,7 @@ function checkKnownSourceFixtures(tank,id){
   }
 }
 for(const [id,source]of Object.entries(SOURCES))for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);checkFrames(tank,id,source);checkGear(tank,id,source);

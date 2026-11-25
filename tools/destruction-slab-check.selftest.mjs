@@ -12,6 +12,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { bandFootprintOf, drawnTopOf, footprintOf, judgeSlabs, matrixTrouble, shapeOf, isSlab } from './destruction-slab-check.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** Two triangles of a quad (corners in order). */
 const quad = (a, b, c, d) => [...a, ...b, ...c, ...a, ...c, ...d];
@@ -202,6 +203,7 @@ if (process.argv.includes('--named')) {
   const named = [['verdant', [9, 11, 17, 18]], ['polders', [46]], ['reservoir', [7]], ['urban', [190]], ['copper_mesa', [39]], ['skybridge', [2]]];
   const fails = [];
   for (const [mapId, ids] of named) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const report = await runSlabCheck({ mapId, ids, rounds: 60, storeys: [0, 1, 2, 3] });
     for (const row of report.rows) if (!row.pass) fails.push(`${mapId} #${row.id} ${row.builder}: ${row.worst[0]?.mesh} ${row.worst[0]?.reasons?.join('; ')}`);
     console.log(`destruction-slab-check selftest --named: ${mapId} ${report.rows.map((r) => `#${r.id} ${r.builder} ${r.pass ? 'PASS' : 'FAIL'}`).join(', ')}`);

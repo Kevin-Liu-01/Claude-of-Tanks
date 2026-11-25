@@ -8,6 +8,7 @@ import {
 import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_LED_COLOR } from '../engine/nightEmissionMaterial.ts';
 import { createNightLightingRuntime, bindNightOwnGunUniforms, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // the t90 family prefix is schema-1 vocabulary
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const close = (actual, expected, message) => assert.ok(actual.distanceTo(expected) < 2e-6, message);
 const material = new THREE.MeshStandardMaterial({ emissive: 0x010203, emissiveIntensity: .2 });
@@ -338,6 +339,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     griffin_viper:4,puma_s1:4,type89:2,amx10p:2,amx10p_25:2,marder2:2};
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     const hash = createHash('sha256');
     let meshCount = 0, vertices = 0, maskBytes = 0;

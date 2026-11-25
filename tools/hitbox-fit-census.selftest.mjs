@@ -14,6 +14,7 @@ import {
   FLOAT_TOL_M, hitboxFitCensus, plateFitReceipts, plateKey, polygonSamples, surfaceDistance, visibleTriangles,
 } from './hitbox-fit-census-lib.mjs';
 import { applyPlateFits } from '../src/vehicles/combatAnatomy.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // 1. The measure. A 2 x 1 x 4 m hull (x ±1, y 0..1, z ±2); a drawn right skirt sheet (x 1.3, y 0.5..1, z ±1.5); road
 //    wheels on the left (x -1.0..-1.1); a hidden rack behind.
@@ -127,6 +128,7 @@ console.log('hitbox-fit-census.selftest: the measure and crop, fit, drop or hold
 //    overhanging skirts and wedges (leo2a5), the M1A3's stand-off skirts and cages, and the T-90M's rear slat cage.
 const PINNED = ['abramsx', 'm1a1', 't72b3_zhuque', 'leo2a5', 'm1a3', 't90m'];
 for (const id of PINNED) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const row = await hitboxFitCensus(id);
   const floating = row.rows.filter((r) => r.floating && r.type !== 'cell' && !r.held);
   assert.deepEqual(floating.map((r) => `${r.frame} ${r.name} (${r.kind}) ${r.centreM} m off`), [],

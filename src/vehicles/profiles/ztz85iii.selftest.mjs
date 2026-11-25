@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'ztz85_iii';
 await ensureInteriorFills([ID]);
@@ -15,6 +16,7 @@ const near = (actual, expected, label, tolerance = 0.01) =>
 const box = (object) => new THREE.Box3().setFromObject(object);
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

@@ -11,6 +11,7 @@ import { INTERNAL_LAYOUT_BY_TANK } from '../internalLayoutRegistry.ts';
 import {
   RAMKA_ATAKA, RAMKA_BARREL_X, RAMKA_MUZZLE_Z, RAMKA_RING, RAMKA_TRUNNION,
 } from './bmptTerminatorStation.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'bmpt_terminator';
 const near = (actual, expected, label, tolerance = 0.002) =>
@@ -50,6 +51,7 @@ assert.ok(HUB_OUT > HUMP_OUT, 'the hub stands proud of its hump');
 assert.ok(HUMP_IN - CRADLE_HALF >= 0.01 - 1e-9, 'the cradle turns 1 cm off the humps');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

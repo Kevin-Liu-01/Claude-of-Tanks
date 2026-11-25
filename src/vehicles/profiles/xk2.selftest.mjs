@@ -6,6 +6,7 @@ import {getSpec} from '../specs.ts';
 import {XK2_FRAME as D} from './xk2Frame.ts';
 import {synchronizeSourceXCombatMetadata} from '../sourceXFleetSpecs.ts';
 import {combatAnatomyCalibration,registerCombatAnatomyCalibrations} from '../combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const options={proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
 const turretStock=tank=>neutralStock(tank.root.getObjectByName('rig_turret'));
@@ -41,6 +42,7 @@ function authoredTurretStocks(quality){
   }
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const [authored,donorAuthored]=authoredTurretStocks(quality);
   assert.deepEqual(authored,donorAuthored,`${quality}: complete donor turret, gun and fittings preserved`);
   const tank=createTank('xk2_black_panther',null,{...options,quality});

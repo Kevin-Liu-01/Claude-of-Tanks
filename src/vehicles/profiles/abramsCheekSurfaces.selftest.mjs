@@ -4,10 +4,12 @@ import {createTank} from '../tankFactory.ts';
 import {orientedSlab} from './kit.ts';
 import {shellPart,mirroredSurfaceError,slabWarps} from '../../../tools/base-shell-audit-math.mjs';
 import {shellEdgeTopology,properSurfaceCrossings} from '../../../tools/base-shell-integrity.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Actual family builders, including roster names whose stable IDs still say A2.
 const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 for(const quality of ['high','low'])for(const id of ids){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const cheeks=[];
  const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,
   partCensus(bucket,g,source){

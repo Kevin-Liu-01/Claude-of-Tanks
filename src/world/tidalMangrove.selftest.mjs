@@ -12,6 +12,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createProps, preloadPropModels } from './props.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { wreckDonorsFor } from './wreckRoster.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Real production builders and buffers; Canvas2D pigment is a fixture, not
 // pixel evidence. No WebGL, browser, extra rendering or image acceptance.
@@ -590,6 +591,7 @@ for (const tone of [mangrove.vegetation.grassTexTone, mangrove.vegetation.tuftTo
 }
 
 for (const seed of [1337, 2025, 7719]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const field = createHeightField(seed, mangrove);
   // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); this receipt's reviewed
   // comparison is the tidal stilt willow against the legacy swept-root willow, so both builds keep the legacy trees

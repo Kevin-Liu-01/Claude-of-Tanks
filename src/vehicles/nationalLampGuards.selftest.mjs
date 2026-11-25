@@ -29,6 +29,7 @@ import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
 import { NATIONAL_LAMP_GUARD_INSET_M } from './profiles/nationalRoofSystems.ts';
 import { censusPart, seatingCensus, penetrationDepth, insideClosed } from './cnTurretGeometry.test-support.mjs';
 import { zFightCensus } from './coplanarOverlap.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const IDS = ['t80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk', 't72b3_zubr', 't80u_bars_m',
   't72b3m_bulat_m', 't72b3_bastion_m', 't72b3m_hetman_ii', 't72b3_zubr_ii'];
@@ -104,6 +105,7 @@ function narrowed(p, width) {
 for (const quality of ['high', 'low']) {
   // NATIONAL_LAMP_IDS=<ids> limits a local run (the suite runs all eleven)
   for (const id of (process.env.NATIONAL_LAMP_IDS ?? IDS.join(',')).split(',')) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const parts = [];
     const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242,
       partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), lens: g.userData?.vehicleNightLens?.kind ?? null, bezel: Boolean(g.userData?.glassSurround),

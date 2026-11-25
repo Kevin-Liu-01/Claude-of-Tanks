@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const IDS=['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m'];
 const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -111,6 +112,7 @@ function hullSweep(tank,geometries,offset=0){
 const reports=[];
 try {
  for(const id of IDS)for(const quality of['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   const geometries=[];
   try {

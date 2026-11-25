@@ -5,6 +5,7 @@ import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const id = 'bmp3m_dragun125';
 const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'amx56', 't80uk',
@@ -101,6 +102,7 @@ cube.geometry.dispose(); cube.material.dispose();
 
 const results = [];
 for (const configuredId of configuredIds) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(configuredId, null, { proceduralOnly: true, quality });
   try {
     const { tris, meshes } = collectTriangles(tank.root);
@@ -122,6 +124,7 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
   } finally { tank.dispose(); }
 }
 for (const launcherId of launcherIds) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(launcherId, null, { proceduralOnly: true, quality, geometryReceipt: true });
   try {
     const { tris, meshes } = collectTriangles(tank.root);

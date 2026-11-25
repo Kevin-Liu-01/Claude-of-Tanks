@@ -6,6 +6,7 @@ import {buildAbramsX,ABRAMS_SOURCE_X_FRAME as FRAME} from './profiles/abramsSour
 import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {KIT} from './profiles/kit.ts';
 import { nearStrict as near } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // The aft shoulder roof is one flat structural datum at every probed station;
 // positive-X raised service covers remain their own separate equipment.
@@ -14,6 +15,7 @@ const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const ray=(targets,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(targets,false);
 let builds=0,poses=0,contacts=0,air=0;
 for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const hull=[],turret=[],brackets=[];
  registerProfiledBuilders({[id]:P=>buildAbramsX(new Proxy(P,{get(target,key){
   if(key!=='add'&&key!=='addEquipment')return Reflect.get(target,key);

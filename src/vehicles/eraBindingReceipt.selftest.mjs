@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { registerProfiledBuilders } from './tankFactoryCore.ts';
 import { buildLeopard2A7VX } from './profiles/leopardX.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const owners = ['hull', 'turret'];
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -67,6 +68,7 @@ for (const quality of ['high', 'low']) {
     const faceCount = surfaces.reduce((sum, [, faces]) => sum + faces.length, 0);
     assert.equal(faceCount, 231, 'every selected SM cassette facet remains in its canonical zone');
     for (const reverse of [false, true]) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       spec.armor = expandedArmor(canonical, baseline.receipt, reverse);
       const expanded = capture(spec.id, quality);
       assert.equal(owners.reduce((n, owner) => n + spec.armor[`${owner}Plates`]
@@ -99,6 +101,7 @@ for (const quality of ['high', 'low']) {
 const legacyFrame = [[-1.5, 1.4717770034843207, 2.1], [1.5, 1.4717770034843207, 2.1],
   [1.5, 1.3154006968641117, 2.8399999999999994], [-1.5, 1.3154006968641114, 2.84]];
 for (const quality of ['high', 'low']) for (const mode of ['legacy', 'mixed']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec('leo2a7v'), original = spec.armor;
   registerProfiledBuilders({ leo2a7v: port => {
     buildLeopard2A7VX(port);

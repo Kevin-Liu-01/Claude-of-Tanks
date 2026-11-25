@@ -3,6 +3,7 @@ import { Box3, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { MARDER1A3_HULL, MARDER1A3_TURRET_RING } from './marder1a3.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 274 (owner 2026-11-20: "update the marder 1a3's turret and hull. redesign it too"): the Marder 1A3 stands on its own
 // hull and two-man turret (profiles/marder1a3.ts), not the Bradley donor. The build holds the published envelope
@@ -14,6 +15,7 @@ assert.deepEqual(spec.armor.turretPivot, [MARDER1A3_TURRET_RING.x, MARDER1A3_TUR
 assert.ok(spec.gun.shells.some((s) => s.guided), 'the spec carries the MILAN');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true,
     batchStatic: false, decor: false });
   try {

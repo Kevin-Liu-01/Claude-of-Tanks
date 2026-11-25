@@ -5,6 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 267 rebuild (ifv-kf51-modern-267): the Raijū is a modernised Type 89 FV measured from the real vehicle, with bolted
 // glacis, side and cheek modules, twin launcher pods, a gunner's and a panoramic commander's sight, laser warners, a
@@ -39,6 +40,7 @@ assert.doesNotMatch(source, /height:\s*\[/,
 
 const S = 0.9;
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(spec.id, null, { proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);

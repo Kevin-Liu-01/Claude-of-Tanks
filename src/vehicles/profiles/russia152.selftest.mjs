@@ -10,6 +10,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
 import { stationDepression, stationProbe } from '../../../tools/roof-station-arcs.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const PACKET = JSON.parse(readFileSync(new URL('../../../docs/references/photos/russia-152-20261104.json', import.meta.url), 'utf8'));
 const IDS = ['object292', 'object477_molot', 'object195', 't14_152'];
@@ -39,6 +40,7 @@ const source292 = readFileSync(new URL('./object292X.ts', import.meta.url), 'utf
 assert.ok(source292.includes("from './t80uX.ts'") && !/from '\.\/(t80|russia)\.ts'/.test(source292), 'the Object 292 is built on the T-80U X, not the legacy T-80 builders');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tanks = Object.fromEntries([...IDS, 't80u', 't14_armata'].map((id) => [id,
     createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 })]));
   try {
@@ -80,6 +82,7 @@ for (const quality of ['high', 'low']) {
 // full depression outside the table, each table entry and the smaller of two neighbouring entries between them, and the
 // arc ends within 4 degrees of the stock it keeps clear of
 for (const [id, name, calibre] of ROOF_GUNS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
   try {
     tank.root.updateMatrixWorld(true);

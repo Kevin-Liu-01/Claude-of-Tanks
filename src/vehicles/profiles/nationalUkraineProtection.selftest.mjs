@@ -8,6 +8,7 @@ import {NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {ukraineDonorSuit} from './ukraineDonorTurretKit.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../../tools/mission-attachment-geometry.mjs';
 import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ids=['t80u_zoria','t72b3m_hetman','t72b3_sich','t72b3m_hetman_ii'];
 assert.deepEqual(Object.keys(NATIONAL_UKRAINE_GHILLIE).sort(),[...ids].sort());
@@ -87,6 +88,7 @@ function fullMainGunEnvelope(tank,spec,addedHull){
 }
 
 for(const quality of ['high','low'])for(const id of ids){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const material=new MeshBasicMaterial({side:DoubleSide}),stock={hull:[],turret:[]},pads=[],counts={hull:0,turret:0},addedHull=[];
  let rods=0,lashings=0,newHullEra=0;
  // Trace authoring ownership through the common cassette/seating helpers;

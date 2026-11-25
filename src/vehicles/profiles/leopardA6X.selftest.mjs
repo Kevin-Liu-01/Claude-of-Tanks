@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent fixed canonical-source witnesses. These are not imported from
 // builder datums or generated anatomy. Original metre-scale GLB: b98d8199…4477.
@@ -113,6 +114,7 @@ function actualArmClearance(root) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original = KIT.buildRunningGear;
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };

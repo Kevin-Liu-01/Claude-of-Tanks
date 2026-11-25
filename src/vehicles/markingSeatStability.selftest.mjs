@@ -14,6 +14,7 @@
 //   3. without a verified record the solver's own search runs as before (the seat it finds is a verified one).
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const warn = console.warn;
@@ -45,6 +46,7 @@ const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 // 1. stable re-solves
 for (const id of ['type90a', 'cv90', 'merkava4b', 'pt91a_twardy', 'm1a1_abrams_fep']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const record = vehicleMarkingSeats(id);
   assert.ok(record?.length, `${id}: a verified record is registered`);
   assert.deepEqual(solvedSeats(id), record.map((seat) => ({ ...seat })), `${id}: a re-solve keeps every seat that still reads as recorded`);

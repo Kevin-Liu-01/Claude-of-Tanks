@@ -22,6 +22,7 @@ import { digestTankRoot, fleetRoster, ledgerBuildOptions } from '../../../tools/
 import { COMBAT_ANATOMY_GROUP_LOADERS } from '../combatAnatomyLoaders.generated.ts';
 import { getSpec } from '../specs.ts';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const BASELINE = fileURLToPath(new URL('./fleetScope276.baseline.json', import.meta.url));
 const TARGETS = Object.freeze(['ztz99a2', 'ztz99a', 'vt4a1']);
@@ -43,6 +44,7 @@ for (const load of Object.values(COMBAT_ANATOMY_GROUP_LOADERS)) Object.assign(an
 
 const rows = {};
 for (const id of fleetRoster()) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, ledgerBuildOptions('high'));
   try {
     rows[id] = { armor: fingerprint(getSpec(id).armor), build: digestTankRoot(tank.root).digest, anatomy: fingerprint(anatomy[id] ?? null) };

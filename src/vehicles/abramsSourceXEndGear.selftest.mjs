@@ -5,6 +5,7 @@ import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { KIT } from './tankFactoryCore.ts';
 import { ABRAMS_SOURCE_X_DRIVE_CROWN_M } from './profiles/abramsSourceXHull.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
 const bad = new THREE.PlaneGeometry(.2, .2), solid = KIT.box(.1, .2, .3);
@@ -69,6 +70,7 @@ function rearWrapWitnesses(tank, label) {
   return result;
 }
 for (const quality of ['high', 'low']) for (const batchStatic of [false, true]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('m1a2_abrams_sepv2', null,
     { proceduralOnly: true, geometryReceipt: true, quality, batchStatic });
   try {

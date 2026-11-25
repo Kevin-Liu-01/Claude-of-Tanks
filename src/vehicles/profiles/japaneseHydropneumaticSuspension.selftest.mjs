@@ -4,11 +4,13 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const IDS = ['type74', 'stb1'];
 const flatTerrain = { getHeightAt: () => 0, getGroundType: () => 'hard' };
 
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   assert.equal(specialActionKind(spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
     `${id}: exposes suspension aim as its context action`);

@@ -17,6 +17,7 @@ import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { roadWheelAxialExtents } from './wheel-axial-extents.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
@@ -34,6 +35,7 @@ function lightness(color) { if (!color) return null; const r = color.r, g = colo
 
 const rows = []; let flagged = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); flagged++; continue; }
   const spec = TANK_SPECS[id]; const root = tank.root; root.updateMatrixWorld(true);
   const hull = root.getObjectByName('rig_hull');
