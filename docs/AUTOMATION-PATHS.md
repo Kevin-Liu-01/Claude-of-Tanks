@@ -90,6 +90,7 @@ Through `__DEBUG.startBattle` (no countdown, no cover):
 - `tools/pad-e2e.browser.mjs`
 - `tools/pause-probe.mjs`
 - `tools/perfprobe.mjs`
+- `tools/photo-mode-gauntlet.browser.mjs`
 - `tools/reticle-shot-parity-probe.mjs`
 - `tools/reviveprobe.mjs`
 - `tools/salvo-indicator-probe.mjs`
@@ -125,6 +126,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/phone-smoke-reach.browser.mjs`
 - `tools/render-stability-audit.mjs`
 - `tools/second-solo-battle.browser.selftest.mjs`
+- `tools/settings-unify.browser.mjs`
 - `tools/shadow-render-truth.mjs`
 - `tools/suspension-strip-probe.mjs`
 - `tools/track-system-audit.mjs`

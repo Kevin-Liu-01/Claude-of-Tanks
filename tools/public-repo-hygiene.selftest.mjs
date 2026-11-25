@@ -67,6 +67,7 @@ const maintainedStandaloneTools = new Set([
   'tools/gun-face-split-table.mjs', // 266 (gunface-span-265): the gun-face split's fleet table, frontal turret hits moved per id (CPU, run by hand)
   'tools/wreck-census.mjs', // wrecks-270: every map's placed hulks, their states, clearances and in-view repeats (Node, run by hand)
   'tools/armour-default.browser.mjs', // 273 (armour-default-273): armour colours on once for saved-off profiles, the first-battle tip, H sticks (headless Chrome, run by hand)
+  'tools/settings-unify.browser.mjs', // 278 (settings-unify-278): the one pause screen in a solo battle: Settings paused, Resume, Photo mode and back, Leave (headless Chrome, run by hand under the capture lock)
   'tools/settings-quality-stills.mjs', // 277 (texture-diet-277): Settings' graphics levels with their previews at 1920x1080 and 390x844 (headless Chrome, run by hand)
 ]);
 // 2026-09-23: the marketing generators are governed too (owner cleanup ruling:
