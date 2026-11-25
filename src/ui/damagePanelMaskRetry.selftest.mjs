@@ -8,6 +8,7 @@
 // ignores late callbacks from the old build.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import ts from 'typescript-compiler-api';
 import { createDamagePanel, DAMAGE_PANEL_MASK_RETRY } from './damagePanel.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { createEntryTelemetry } from '../entry/telemetry.ts';
@@ -417,9 +418,32 @@ try {
     assert.deepEqual(warnings, []);
   }
   {
+    // (reds-sweep2-276) read as clearBattle's own statements, not adjacent text: replay-system (9aa77f7e3f) stops the
+    // replay viewer beside the watch owner, and the old regex pinned the release to the line after watchOwner's stop.
+    // The claim: the release is an unconditional statement of clearBattle's body before the keepScreens return, and the
+    // clear() comes after that return (so only the veiled teardown drops the plan)
     const source = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-    assert.match(source, /watchOwner\.current\?\.stop\(\);\n\s+currentDamagePanel\(\)\?\.release\(\);\n\s+if \(keepScreens\) return;\n\s+currentDamagePanel\(\)\?\.clear\(\);/,
+    const file = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const owners = [];
+    const visit = (node) => {
+      // the presentation's clearBattle (the one taking keepScreens; the exit flow's clearBattle hands a visual on)
+      if (ts.isPropertyAssignment(node) && node.name.getText(file) === 'clearBattle' && ts.isArrowFunction(node.initializer)
+        && node.initializer.parameters.some((param) => param.name.getText(file).includes('keepScreens'))) owners.push(node.initializer);
+      ts.forEachChild(node, visit);
+    };
+    visit(file);
+    assert.equal(owners.length, 1, 'main.ts has one clearBattle taking keepScreens');
+    const body = owners[0].body.statements;
+    const at = (text) => body.findIndex((node) => node.getText(file).replace(/\s+/g, ' ') === text);
+    const release = at('currentDamagePanel()?.release();');
+    const keep = at('if (keepScreens) return;');
+    const clear = at('currentDamagePanel()?.clear();');
+    assert.ok(release >= 0 && keep > release && clear > keep,
       'main.ts clearBattle releases the panel at every teardown, keepScreens included, and clears it under the veil');
+    const leaves = (node) => ts.isReturnStatement(node) || ts.isThrowStatement(node)
+      || (!ts.isFunctionLike(node) && (ts.forEachChild(node, leaves) ?? false));
+    assert.ok(!body.slice(0, release).some(leaves),
+      'main.ts clearBattle releases the panel at every teardown (nothing before the release can leave clearBattle)');
   }
 
   // Without an injected sink (Node has no page beacon) the terminal failure
