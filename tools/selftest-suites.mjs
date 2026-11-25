@@ -1033,6 +1033,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frame-budget-probe-browsers.selftest.mjs',
     // tree-breakdown-277: the guard's tree peak broken down by process type and top pids, with the probe's vite beside it
     'tools/tree-breakdown.selftest.mjs',
+    // tree-breakdown-277: foreign GPU outside the probe's own process tree at any depth, the quiet-GPU gate, tainted pairs
+    'tools/foreign-gpu.selftest.mjs',
     // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
     // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
     'tools/probe-unit-stop.selftest.mjs',

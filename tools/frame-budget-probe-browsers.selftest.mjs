@@ -78,7 +78,7 @@ const fakeLocks = async () => ({ signal: new AbortController().signal, refresh()
 async function probeRun({ launchBrowser, guardOf }) {
   const out = scratch(), root = builtTree(), staged = [];
   const options = parseFrameProbeArgs([`--roots=${root},${root}`, '--labels=base,new', '--maps=ruinspires', '--pattern=ABBA',
-    `--out=${out}`, '--scene-check=off', '--tag=t']);
+    `--out=${out}`, '--scene-check=off', '--gpu-quiet=0', '--tag=t']);
   const restaged = new Set();
   // the page's work: grow the stand-in; s1's first staging is sent back, s2's page fails, the others return a record
   const stage = async (page, _options, slot) => {

@@ -84,7 +84,7 @@ try {
   // ---- frame-budget-probe: the cut slot is left for the next hold (a 'failed' record it measures again), not FAILED --------
   await check('frame-budget-probe', async () => {
     const out = scratch(), root = builtTree();
-    const options = parseFrameProbeArgs([`--roots=${root}`, '--labels=a', '--maps=verdant', '--pattern=AA', `--out=${out}`, '--scene-check=off', '--tag=t']);
+    const options = parseFrameProbeArgs([`--roots=${root}`, '--labels=a', '--maps=verdant', '--pattern=AA', `--out=${out}`, '--scene-check=off', '--gpu-quiet=0', '--tag=t']);
     const { acquireLocks, inFlight } = stoppedPair();
     const measured = [];
     const { result, error, exitCode } = await quietly(() => runFrameProbe(options, { acquireLocks, launchBrowser: async () => standIn,
@@ -278,7 +278,7 @@ try {
   const writers = {
     'frame-budget-probe': failedThenSignalled('frame-budget-probe', [['parseFrameProbeArgs, runFrameProbe', './frame-budget-probe.mjs']], ({ out, root }) => [
       `let slots = 0;`,
-      `await runFrameProbe(parseFrameProbeArgs([${root('roots')}, '--labels=a', '--maps=verdant', '--pattern=AA', ${out}, '--scene-check=off', '--tag=t']), {`,
+      `await runFrameProbe(parseFrameProbeArgs([${root('roots')}, '--labels=a', '--maps=verdant', '--pattern=AA', ${out}, '--scene-check=off', '--gpu-quiet=0', '--tag=t']), {`,
       '  acquireLocks, launchBrowser: async () => standIn, openServer: async () => server,',
       // the first slot fails while held; the second is cut by the signal
       '  measure: async () => { if (slots++ === 0) throw new Error(\'page crashed\'); return cut(); } });',
@@ -323,7 +323,7 @@ try {
       let slots = 0;
       // the first slot fails while held; with cutSecond a second slot is cut by the cap stop
       return runFrameProbe(parseFrameProbeArgs([`--roots=${root}`, '--labels=a', '--maps=verdant', `--pattern=${cutSecond ? 'AA' : 'A'}`,
-        `--out=${scratch()}`, '--scene-check=off', '--tag=t']), { acquireLocks: pair.acquireLocks, launchBrowser: async () => standIn,
+        `--out=${scratch()}`, '--scene-check=off', '--gpu-quiet=0', '--tag=t']), { acquireLocks: pair.acquireLocks, launchBrowser: async () => standIn,
         openServer: async () => standIn, measure: async () => { if (slots++ === 0) throw new Error('page crashed'); return pair.stop(); } });
     });
     for (const [shape, { result, error, exitCode, said }] of Object.entries(runs)) {

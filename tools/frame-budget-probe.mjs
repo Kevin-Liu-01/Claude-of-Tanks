@@ -6,7 +6,7 @@
 //        [--pattern=ABBA] [--views=chase,centre-far] [--viewports=1600x900,1920x1080] [--frames=240] [--block=30] \
 //        [--sides=13x14] [--spec=t90m] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
 //        [--queries=,<query>] [--toggle=<name> [--toggle-cycles=N] [--toggle-warm]] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
-//        [--hide-bots[=0|1]] [--out=<dir>] [--tag=<tag>]
+//        [--hide-bots[=0|1]] [--gpu-quiet=25] [--gpu-quiet-wait-min=15] [--out=<dir>] [--tag=<tag>]
 //   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
 //
 // Every root is a checkout with a production build in <root>/dist (`npm run build`); the probe serves one root at
@@ -59,6 +59,15 @@
 // are unchanged, and every slot starts from the same cold browser, where a later slot used to inherit the GPU process
 // of the slots before it. Each slot record keeps its stagings' guard peaks (`browsers`: peak tree and renderer MB),
 // so a run shows whether the tree stays flat across slots (tools/frame-budget-probe-browsers.selftest.mjs).
+//
+// Foreign GPU (2026-11-25, tree-breakdown-277): the second A/A of one dist on ruinspires had two samples at +164 % and
+// +71 % GPU while the 1-min load stayed under 15. Each lined up with another program's GPU process at 88-141 % CPU, which
+// the load average cannot see. foreignGpuCpu also counted the probe's own GPU process as foreign: it left out only direct
+// children of the probe, and Chrome's GPU process is a grandchild. It now leaves out the probe's whole process tree.
+// Before each slot the probe waits until the foreign GPU CPU, averaged over 10 s, is at most --gpu-quiet (25 %; 0 turns
+// the gate off), for up to --gpu-quiet-wait-min (15). While the slot runs, it samples every 2 s. A slot in which any
+// 10 s window went over the limit is tainted (record.foreignGpu.tainted), and the report marks each pair that has a
+// tainted slot (tools/foreign-gpu.selftest.mjs).
 
 import { browserGuardOf, launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
@@ -90,7 +99,7 @@ const DEFAULTS = Object.freeze({
   sides: '13x14', spec: 't90m', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
   twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
-  hideBots: 'auto',
+  hideBots: 'auto', gpuQuiet: 25, gpuQuietWaitMin: 15, gpuWindowMs: 10_000,
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -395,6 +404,8 @@ export function parseFrameProbeArgs(argv) {
       case 'draws-tol': o.drawsTol = Number(need()); break;
       case 'stable-tol': o.stableTol = Number(need()); break;
       case 'scene-check': o.sceneCheck = need() !== 'off'; break;
+      case 'gpu-quiet': o.gpuQuiet = Number(need()); break;
+      case 'gpu-quiet-wait-min': o.gpuQuietWaitMin = Number(need()); break;
       default: throw new Error(`Unknown argument --${name}`);
     }
   }
@@ -824,19 +835,86 @@ async function profileMainThread(page, seconds) {
 // ---------------------------------------------------------------------------------------------- host side
 
 function loadAverage() { return os.loadavg().map((v) => +v.toFixed(2)); }
-/** CPU of other processes' GPU processes (headless Chrome, Playwright): the shared GPU's foreign load, by proxy. */
-export function foreignGpuCpu() {
+/** `ps -axo pid=,ppid=,pcpu=,command=` output as rows. */
+export function parseCpuRows(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*(\d+)\s+(\d+)\s+([\d.]+)\s+(.*)$/);
+    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), cpu: Number(m[3]), command: m[4] });
+  }
+  return rows;
+}
+/** Whether `pid` is `root` or descends from it through any number of parents (a parent cycle ends the walk). */
+export function inTreeOf(pid, root, ppidOf) {
+  const seen = new Set();
+  for (let p = pid; p > 1 && !seen.has(p); p = ppidOf.get(p) ?? 0) {
+    if (p === root) return true;
+    seen.add(p);
+  }
+  return false;
+}
+/**
+ * CPU of the GPU processes outside this process's own tree (another tool's headless Chrome, the user's browser): the
+ * shared GPU's foreign load, by proxy. The probe's own GPU process is a grandchild (probe -> Chrome -> GPU) and is
+ * reported apart as `own`. `rows` and `ownPid` are for a receipt; by default they are this machine's `ps` and this process.
+ */
+export function foreignGpuCpu({ rows = null, ownPid = process.pid } = {}) {
   try {
-    const rows = execSync('ps -axo pid=,ppid=,pcpu=,command=', { encoding: 'utf8' }).split('\n');
-    let sum = 0, n = 0;
-    for (const row of rows) {
-      const m = row.match(/^\s*(\d+)\s+(\d+)\s+([\d.]+)\s+(.*)$/);
-      if (!m || !/--type=gpu-process/.test(m[4])) continue;
-      if (Number(m[2]) === process.pid) continue;
-      sum += Number(m[3]); n++;
+    rows ??= parseCpuRows(execSync('ps -axo pid=,ppid=,pcpu=,command=', { encoding: 'utf8' }));
+    const ppidOf = new Map(rows.map((r) => [r.pid, r.ppid]));
+    let cpu = 0, n = 0, ownCpu = 0, ownN = 0;
+    for (const r of rows) {
+      if (!/--type=gpu-process/.test(r.command)) continue;
+      if (inTreeOf(r.pid, ownPid, ppidOf)) { ownCpu += r.cpu; ownN++; } else { cpu += r.cpu; n++; }
     }
-    return { cpu: +sum.toFixed(1), processes: n };
+    return { cpu: +cpu.toFixed(1), processes: n, own: { cpu: +ownCpu.toFixed(1), processes: ownN } };
   } catch { return { cpu: -1, processes: -1 }; }
+}
+/**
+ * A rolling window of foreign GPU CPU samples. `add(at, cpu)` returns the mean over the last `windowMs` and whether the
+ * window is full (`windowMs` since the first sample), or null when detection is unavailable (cpu < 0). `summary()` gives
+ * the highest full-window mean, and `tainted` when that mean went over `limit` (a limit of 0 never taints).
+ */
+export function gpuWindow({ limit, windowMs = 10_000 } = {}) {
+  const recent = [];
+  let first = null, samples = 0, max = 0, maxWindowMean = 0;
+  return {
+    add(at, cpu) {
+      if (!(cpu >= 0)) return null;
+      first ??= at;
+      samples++;
+      max = Math.max(max, cpu);
+      recent.push({ at, cpu });
+      while (recent[0].at <= at - windowMs) recent.shift();
+      const mean = recent.reduce((sum, r) => sum + r.cpu, 0) / recent.length;
+      const full = at - first >= windowMs;
+      if (full) maxWindowMean = Math.max(maxWindowMean, mean);
+      return { mean: +mean.toFixed(1), full };
+    },
+    summary() {
+      return { limit, windowMs, samples, max: +max.toFixed(1), maxWindowMean: +maxWindowMean.toFixed(1),
+        tainted: limit > 0 && maxWindowMean > limit };
+    },
+  };
+}
+/**
+ * The run gate: wait until the foreign GPU CPU, averaged over `windowMs`, is at most `limit`, for up to `maxWaitMs`.
+ * The load average cannot see another program on the GPU. Returns { quiet, waitedMs, mean }. A limit of 0 skips the gate,
+ * and so does detection being unavailable. `sample`, `pause`, `now` and `aborted` are for a receipt.
+ */
+export async function waitForQuietGpu({ limit, windowMs = 10_000, everyMs = 1000, maxWaitMs = 15 * 60_000, sample = foreignGpuCpu,
+  pause = sleep, now = Date.now, aborted = () => false } = {}) {
+  if (!(limit > 0)) return { quiet: true, waitedMs: 0, skipped: 'off' };
+  const started = now();
+  const recent = gpuWindow({ limit, windowMs });
+  for (;;) {
+    const reading = recent.add(now(), sample().cpu);
+    const waitedMs = now() - started;
+    if (reading === null) return { quiet: true, waitedMs, skipped: 'unavailable' };
+    if (reading.full && reading.mean <= limit) return { quiet: true, waitedMs, mean: reading.mean };
+    if (waitedMs >= maxWaitMs || aborted()) return { quiet: false, waitedMs, mean: reading.mean };
+    await pause(everyMs);
+  }
 }
 
 /**
@@ -1293,7 +1371,8 @@ export function formatTreePeak(browsers) {
  *  drives it without a browser: the locks, the browser launch, the preview server, the slot's measurement
  *  (`measure(openBrowser, options, slot, gate)`) and the guard record of a launched browser (its peaks). */
 export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions, guardOptions) => launchGuardedBrowser(puppeteer, launchOptions, guardOptions),
-  openServer = openPreview, measure = measureSlot, guardOf = browserGuardOf } = {}) {
+  openServer = openPreview, measure = measureSlot, guardOf = browserGuardOf, quietGpu = waitForQuietGpu, gpuSample = foreignGpuCpu,
+  gpuEveryMs = 2000 } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${line}`);
   const slotFile = (key) => path.join(options.out, `${options.tag}-${key}.json`);
@@ -1309,7 +1388,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   const machine = { cores: os.cpus().length, loadStart: loadAverage(), samples: [] };
-  const sampler = setInterval(() => machine.samples.push({ at: new Date().toISOString(), load1: +os.loadavg()[0].toFixed(2), foreignGpu: foreignGpuCpu() }), 15000);
+  const sampler = setInterval(() => machine.samples.push({ at: new Date().toISOString(), load1: +os.loadavg()[0].toFixed(2), foreignGpu: gpuSample() }), 15000);
   const started = Date.now();
   let browser = null, server = null, serving = null, ok = true, remaining = 0, voided = 0;
   // the pages' agreement: every staging's scene reading per slot (a resumed slot's from its record), judged per map in
@@ -1383,11 +1462,26 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
           server = await openServer(slot.root, options.port);
           serving = slot.root;
         }
-        const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
+        // (tree-breakdown-277) the GPU gate: another program on the GPU is invisible to the load average
+        const gate = await quietGpu({ limit: options.gpuQuiet, windowMs: options.gpuWindowMs, maxWaitMs: options.gpuQuietWaitMin * 60_000,
+          sample: gpuSample, aborted: () => locks.signal.aborted });
+        if (gate.waitedMs > options.gpuWindowMs + 2000 || !gate.quiet) {
+          log(`${slot.key} GPU gate: ${gate.quiet ? 'quiet' : 'still busy, measuring anyway'} after ${Math.round(gate.waitedMs / 1000)} s (foreign GPU ${gate.mean}% over ${options.gpuWindowMs / 1000} s, limit ${options.gpuQuiet}%)`);
+        }
+        const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = gpuSample(), slotStarted = Date.now();
         let record;
         slotBrowsers = [];
+        // the slot's own foreign-GPU window: a slot in which any full window went over the limit is tainted
+        const gpuSeen = gpuWindow({ limit: options.gpuQuiet, windowMs: options.gpuWindowMs });
+        const gpuSampler = setInterval(() => gpuSeen.add(Date.now(), gpuSample().cpu), gpuEveryMs);
         // (round 3 A5) a slot the hold's stop cut (its browser stopped under it) is the next hold's, never a FAILED run
-        const unit = await runProbeUnit(locks, () => measure(openBrowser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        let unit;
+        try {
+          unit = await runProbeUnit(locks, () => measure(openBrowser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        } finally {
+          clearInterval(gpuSampler);
+        }
+        const foreignGpu = { gate, before: foreignBefore, during: gpuSeen.summary() };
         // the slot's last browser closes before anything else: the next slot stages in a browser of its own
         await closeBrowser();
         const browsers = slotBrowsers;
@@ -1404,7 +1498,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
           record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
           record.browsers = browsers;
           record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
-          record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
+          record.foreignGpu = { ...foreignGpu, after: gpuSample(), tainted: foreignGpu.during.tainted };
           if (record.void) {
             voided++;
             log(`${slot.key} VOID: ${record.void} | tree peak ${formatTreePeak(browsers)}`);
@@ -1430,7 +1524,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
             record.void = `the scene changed mid-run: ${fs.calls} draws / ${fs.tris} triangles measured against ${record.scene.calls} / ${record.scene.tris} staged`;
             voided++;
           }
-          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s | tree peak ${formatTreePeak(browsers)}${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
+          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% (max ${options.gpuWindowMs / 1000} s mean ${foreignGpu.during.maxWindowMean}%${foreignGpu.during.tainted ? ' TAINTED' : ''}) | ${Math.round((Date.now() - slotStarted) / 1000)} s | tree peak ${formatTreePeak(browsers)}${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
         } catch (error) {
           ok = false;
           record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId, browsers };
@@ -1571,6 +1665,14 @@ export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
         if (j.verdict !== 'agree') voids.push(...j.notes);
       }
       if (voids.length) row.void = voids;
+      // (tree-breakdown-277) a pair (the units pairDeltas pairs: 0-1, 2-3, ...) with a slot that saw foreign GPU use over the
+      // gate's limit is tainted: its delta may be another program's, not the build's
+      const tainted = [];
+      for (let i = 0; i + 1 < row.units.length; i += 2) {
+        const pair = [row.units[i], row.units[i + 1]];
+        if (pair.some((u) => u.foreignGpu?.tainted)) tainted.push(pair.map((u) => `${u.label} s${u.order}${u.foreignGpu?.tainted ? ` (foreign GPU ${u.foreignGpu.during.maxWindowMean}%)` : ''}`).join(' / '));
+      }
+      if (tainted.length) row.tainted = tainted;
     }
     const stepNames = [...new Set(row.units.flatMap((u) => Object.keys(u.unit.steps)))];
     row.stepNames = stepNames;
@@ -1634,6 +1736,7 @@ function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
     const labels = Object.keys(row.byLabel);
     lines.push(`### ${row.mapId} · ${row.view} · ${row.viewport}${row.toggle ? ` · toggle ${row.toggle}` : ''}`, '');
     if (row.void) lines.push(`**VOID — the pages disagree; the deltas below compare different scenes:** ${row.void.join('; ')}`, '');
+    if (row.tainted) lines.push(`**TAINTED — another program used the GPU over the gate's limit during pair(s):** ${row.tainted.join('; ')}`, '');
     lines.push(`| step | ${labels.map((l) => `${l} GPU ms`).join(' | ')} | Δ GPU (pairs) | ${labels.map((l) => `${l} CPU ms`).join(' | ')} | ${labels.map((l) => `${l} draws`).join(' | ')} |`);
     lines.push(`| --- | ${labels.map(() => '---:').join(' | ')} | ---: | ${labels.map(() => '---:').join(' | ')} | ${labels.map(() => '---:').join(' | ')} |`);
     for (const p of row.stepNames) {
