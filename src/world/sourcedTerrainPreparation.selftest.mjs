@@ -23,6 +23,8 @@ const COLOR = [100, 150, 200, 255, 80, 40, 20, 255, 255, 128, 64, 255, 20, 30, 4
 const NORMAL = [127, 128, 255, 255, 140, 120, 250, 255, 110, 150, 245, 255, 128, 127, 255, 255];
 const ROUGH = [200, 200, 200, 255, 100, 100, 100, 255, 50, 50, 50, 255, 255, 255, 255, 255];
 const AO = [128, 128, 128, 255, 255, 255, 255, 255, 64, 64, 64, 255, 0, 0, 0, 255];
+// (texture-diet-277) a terrain set's tier packs both in one ORM map: occlusion red, roughness green
+const ORM = [0, 1, 2, 3].flatMap((i) => [AO[i * 4], ROUGH[i * 4], 0, 255]);
 
 class TestCanvas {
   width = 0;
@@ -68,8 +70,7 @@ async function withFixture(run) {
     height = 2;
     set src(url) {
       assert.equal(requests.has(url), false, `one image request per cache key: ${url}`);
-      this.pixels = new Uint8ClampedArray(/NormalGL|nor_gl/.test(url) ? NORMAL
-        : /Roughness|rough_/.test(url) ? ROUGH : /AmbientOcclusion|_ao_/.test(url) ? AO : COLOR);
+      this.pixels = new Uint8ClampedArray(/NormalGL/.test(url) ? NORMAL : /_ORM\./.test(url) ? ORM : COLOR);
       if (native) {
         this.raster = native.createCanvas(2, 2);
         this.raster.getContext('2d').putImageData(new native.ImageData(this.pixels, 2, 2), 0, 0);
@@ -162,7 +163,7 @@ function noTextureAllocation(run) {
 await withFixture(async f => {
   let preparation;
   noTextureAllocation(() => { preparation = f.prepareSourcedTerrain('winter'); });
-  assert.equal(f.requests.size, 12, 'all three image sets start immediately');
+  assert.equal(f.requests.size, 9, 'all three image sets (Color, NormalGL, ORM each) start immediately');
   assert.equal(f.canvasCount(), 0, 'starting image IO does not compose canvases');
   assert.equal(f._compositeCache.size + f._normalCache.size, 0);
   for (const key of ['G', 'D', 'R', 'M']) assert.equal(preparation.tryCreateLayer(key, 16), null);
@@ -232,7 +233,7 @@ await withFixture(async f => {
 for (const missing of ['Color', 'NormalGL', 'optional']) await withFixture(async f => {
   const preparation = f.prepareSourcedTerrain('verdant');
   const fail = url => url.includes('Grass004') && (missing === 'optional'
-    ? /Roughness|AmbientOcclusion/.test(url) : url.includes(missing));
+    ? /_ORM\./.test(url) : url.includes(missing));
   await f.settle(() => true, fail);
   await preparation.ready;
   assert.equal(f.warnings.length, 0, 'preparation reports failures only when applied');
@@ -251,7 +252,7 @@ for (const missing of ['Color', 'NormalGL', 'optional']) await withFixture(async
   assert.deepEqual(layerSnapshot(target), before);
   assert.deepEqual(layerSnapshot(target), layerSnapshot(legacy));
   assert.equal(expected[0].applied, missing === 'optional');
-  assert.equal(expected[0].failures.length, missing === 'optional' ? 2 : 1);
+  assert.equal(expected[0].failures.length, 1, 'one failed file: the missing map, or the one packed ORM (AO and roughness)');
 });
 
 for (const [mapId, settings, sourceName] of [
@@ -275,7 +276,7 @@ for (const [mapId, settings, sourceName] of [
 
 for (const mapId of ['desert', 'badlands']) await withFixture(async f => {
   const preparation = f.prepareSourcedTerrain(mapId);
-  assert.equal(f.requests.size, 4, 'G and D share the same four sand source images');
+  assert.equal(f.requests.size, 3, 'G and D share the same three sand source images');
   await f.settle(); await preparation.ready;
   const G = f.own(preparation.tryCreateLayer('G', 16));
   const D = f.own(preparation.tryCreateLayer('D', 16));
