@@ -86,6 +86,11 @@ const joinerCpu = Number(argValue('joiner-cpu', 0));
 const joinerBlocked = argValue('joiner-ice', '') === 'blocked';
 const joinBoundS = Number(argValue('join-bound', 0));
 const stallBoundS = Number(argValue('stall-bound', 10));
+// --solo: one cold page (the joiner's throttles apply) enters a solo battle on the first --maps battlefield in --spec, the
+// player's covered path (__DEBUG.beginSoloBattle), measured as the joiner is: the loader's timeline, its longest still
+// state (--stall-bound), the time to the battle (--join-bound), the entry trace and the bytes it fetched.
+const solo = process.argv.includes('--solo');
+const soloSpec = argValue('spec', 'm1a2_abrams_sepv3');
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -97,7 +102,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -292,6 +297,61 @@ async function explained(page, selector, error) {
 
 const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
 
+/** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
+async function runSolo(origin) {
+  const browser = await launchGuardedBrowser(puppeteer, {
+    headless: !headful, protocolTimeout: 360_000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],
+  });
+  browsers.push(browser);
+  const page = await (await browser.createBrowserContext()).newPage();
+  await page.setViewport(VIEWPORT);
+  await page.evaluateOnNewDocument(installLoadRecorder);
+  observe(page, 'S');
+  if (joinerNet.length || joinerCpu > 1) {
+    const cdp = await page.createCDPSession();
+    if (joinerNet.length) {
+      const [downKbps, rttMs = 50, upKbps = Math.max(256, Math.round(joinerNet[0] / 4))] = joinerNet;
+      await cdp.send('Network.enable');
+      await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: rttMs,
+        downloadThroughput: Math.round(downKbps * 1000 / 8), uploadThroughput: Math.round(upKbps * 1000 / 8) });
+    }
+    if (joinerCpu > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: joinerCpu });
+  }
+  const bytes = () => page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null);
+  const openedAt = elapsedMs();
+  await bootPage(page, `${origin}/?${BOOT_QUERY}`, 'S');
+  const out = { map: hostMaps[0], spec: soloSpec, bootMs: elapsedMs() - openedAt, bytesAtBoot: await bytes() };
+  const mark = await page.evaluate(() => (window.__MP2_LOAD ?? []).length);
+  const startedAt = elapsedMs();
+  await page.evaluate((specId, mapId) => {
+    window.__SOLO = { done: false, error: null };
+    Promise.resolve(window.__DEBUG.beginSoloBattle({ specId, mapId, randomRoster: false }))
+      .then(() => { window.__SOLO.done = true; }, (error) => { window.__SOLO.done = true; window.__SOLO.error = String(error?.message ?? error).slice(0, 300); });
+  }, soloSpec, hostMaps[0]);
+  await waitFor(page, readinessExpression('battleRevealed'), 'S solo battle revealed', 300_000);
+  out.revealMs = elapsedMs() - startedAt;
+  out.bytesAtReveal = await bytes();
+  const rows = (await page.evaluate((from) => (window.__MP2_LOAD ?? []).slice(from), mark)) ?? [];
+  const t0 = rows[0]?.atMs ?? 0;
+  out.load = rows.map((row) => ({ s: +((row.atMs - t0) / 1000).toFixed(1), on: row.on, pct: row.pct, stage: row.stage }));
+  let longest = { s: 0, pct: '', stage: '' };
+  for (let index = 0; index < rows.length; index++) {
+    if (!rows[index].on) continue;
+    const end = rows[index + 1]?.atMs ?? t0;
+    const heldS = (end - rows[index].atMs) / 1000;
+    if (heldS > longest.s) longest = { s: +heldS.toFixed(1), pct: rows[index].pct, stage: rows[index].stage };
+  }
+  out.longestHold = longest;
+  out.trace = await page.evaluate(() => (window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null)).catch(() => null);
+  step('solo-entry', { revealS: +(out.revealMs / 1000).toFixed(1), longestHold: longest, bytes: { boot: out.bytesAtBoot, reveal: out.bytesAtReveal } });
+  if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
+  if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
+  await still(page, 'solo-reveal.png');
+  return out;
+}
+
 let rooms = null;
 let server = null;
 const browsers = [];
@@ -320,6 +380,12 @@ try {
   const origin = `http://127.0.0.1:${previewPort}`;
   step('preview', { origin, dist: distDir });
 
+  if (solo) {
+    report.solo = await runSolo(origin);
+    if (report.errors.length) fail(`${report.errors.length} page or console errors (first: ${report.errors[0].page} ${report.errors[0].text.slice(0, 160)})`);
+    report.pass = report.failures.length === 0;
+    throw Object.assign(new Error('solo done'), { soloDone: true });
+  }
   const launch = () => launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
@@ -637,8 +703,10 @@ try {
   if (report.errors.length) fail(`${report.errors.length} page or console errors (first: ${report.errors[0].page} ${report.errors[0].text.slice(0, 160)})`);
   report.pass = report.failures.length === 0;
 } catch (error) {
-  report.failures.push(`run stopped: ${error.message}`);
-  report.pass = false;
+  if (!error?.soloDone) {
+    report.failures.push(`run stopped: ${error.message}`);
+    report.pass = false;
+  }
 } finally {
   report.wallMs = elapsedMs();
   await writeFile(join(outputDir, 'report.json'), JSON.stringify(report, null, 2)).catch(() => {});
