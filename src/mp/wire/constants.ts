@@ -91,7 +91,11 @@ export const WIRE_VERSION = 13;
 // 16 (combined-arms-276, release 276): a new battle mode id, Combined Arms (BATTLE_MODE_IDS), which a 275 Rooms Worker or
 // tab would refuse or play as Standard: a 275 tab and a 276 tab never share a match. The wire is unchanged (13). The Rooms
 // Worker ships first. One bump for the release: a later 276 change rides 16 unreleased.
-export const PROTOCOL_VERSION = 16; // wire 13 (u32 action bits)
+// 17 (aircraft-solid-277, release 277): the authority's air rules, which a 276 build plays differently: a round or a drone
+// strikes an Air Support aircraft where its path enters the airframe's boxes, of either side (friendly fire), and a downed
+// aircraft's wreck is a solid the hulls meet and the rounds stop on (the mode state's `air.wrecks`, the migration
+// checkpoint's `wrecks`). The wire is unchanged (13). The Rooms Worker ships first. A later 277 change rides 17 unreleased.
+export const PROTOCOL_VERSION = 17; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
 /**

@@ -539,7 +539,7 @@ const scene = new THREE.Scene();
 // (2026-10-16, the perf lane: 226's bundle budget) the presentation's module is its own chunk, fetched when the boot is
 // idle (matchModeWorldLazy.ts): the Garage draws no objective
 /** The point an aircraft's smoke or burst is drawn at (airSupportWorld.ts aircraftFx), reused. */
-const _aircraftFxAt = new THREE.Vector3();
+const _aircraftFxAt = new THREE.Vector3(), _aircraftFxNormal = new THREE.Vector3();
 const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   groundHeight: (x, z, ceiling) => groundSampler(x, z, ceiling),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
@@ -552,6 +552,10 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   aircraftFx: {
     smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
     crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
+    // (aircraft-solid-277) a round on an airframe: a penetration's sparks off its skin, an explosive's burst on it
+    hit(x, y, z, nx, ny, nz, caliberMm, explosive) {
+      fxRuntimeAccess.current?.impact(explosive ? 'he_pen' : 'pen', _aircraftFxAt.set(x, y, z), _aircraftFxNormal.set(nx, ny, nz), caliberMm);
+    },
   },
   // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)
   hullPosition: (id) => {

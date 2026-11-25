@@ -151,6 +151,7 @@ import { createFireCredit, createRecentDamage, fireDeathCause, type FireCredit, 
 import {
   createWreckEnvironment, createWreckTurrets, wreckGroundSampler, type WreckTurrets,
 } from '../sim/wreckTurrets.ts';
+import { appendNavigationWrecks } from '../sim/airframeVolumes.ts';
 import type { RigidEnvironment } from '../sim/rigidBody.ts';
 import {
   DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
@@ -1740,6 +1741,7 @@ function structureYield(game: SoloGameState, entity: SoloEntity, obstacle: SoloO
     state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
 }
 
+const _withWrecks: SoloObstacle[] = [];
 function resolveObstacleCollisions(
   game: SoloGameState,
   world: SoloWorld,
@@ -1755,7 +1757,7 @@ function resolveObstacleCollisions(
   const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
   const broadRadius = Math.sqrt(halfLength * halfLength + halfWidth * halfWidth) + 0.01;
   const query = stepObstacleQuery(game, world);
-  const candidates = query
+  const near = query
     ? query(
       centerX - broadRadius,
       centerZ - broadRadius,
@@ -1764,6 +1766,15 @@ function resolveObstacleCollisions(
       nearby,
     )
     : obstacles;
+  // (aircraft-solid-277) a downed aircraft's wreck is a solid the hulls meet (sim/airframeVolumes.ts), after the world's
+  const wrecks = game.matchModeController?.airSupport?.wreckRecords();
+  let candidates = near;
+  if (wrecks?.length) {
+    _withWrecks.length = 0;
+    for (const record of near) _withWrecks.push(record);
+    for (const record of wrecks) _withWrecks.push(record);
+    candidates = _withWrecks;
+  }
   const selfSpeed = self ? Math.abs(self.state.speed) : 0;
   // the hull's vertical span: a structure part it clears or stays under is no obstacle (2026-09-19)
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
@@ -2183,7 +2194,7 @@ function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   }
   stepShell(shell, SIM_DT);
   // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
-  return !!game.matchModeController?.tryHitBall(shell) || !!game.matchModeController?.airSupport?.tryHitAircraft(shell, game.timeS);
+  return !!game.matchModeController?.tryHitBall(shell) || !!game.matchModeController?.airSupport?.tryHitAircraft(shell, game.timeS, SIM_DT);
 }
 
 function traceNearestTank(
@@ -2303,6 +2314,8 @@ function resolveTankShellImpact(
   }
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, intersections[0].point, entity, intersections);
+    // (aircraft-solid-277) a crash onto a hull: the wreck lies on the ground the hull stands on (the authority's rule)
+    recordCrashWreck(game, shell, intersections[0].point.x, entity.state.pos.y, intersections[0].point.z);
   } else {
     emitHitOutcome(
       game,
@@ -2403,6 +2416,31 @@ function traceBlockingWorldShellHit(
   return null;
 }
 
+/** (aircraft-solid-277) A downed aircraft's wreck nearer along the round's path than the world's hit and the hull's stops it
+ *  there, as any solid does (sim/airframeVolumes.ts; the authority's wreckOrWorldHit). */
+const _wreckHit: BlockingWorldShellHit = { hit: { dist: 0, point: new THREE.Vector3(), normal: new THREE.Vector3(), kind: 'prop', record: null },
+  distance: 0 };
+function wreckOrWorldHit(game: SoloGameState, shell: DamageShell, worldTrace: BlockingWorldShellHit | null, tankDistance: number,
+  segmentLength: number): BlockingWorldShellHit | null {
+  const wreck = game.matchModeController?.airSupport?.wreckAlong(shell.prevPos, shell.pos);
+  if (!wreck) return worldTrace;
+  const distance = wreck.t * segmentLength;
+  if ((worldTrace && worldTrace.distance <= distance) || tankDistance <= distance) return worldTrace;
+  _wreckHit.distance = distance;
+  _wreckHit.hit.dist = distance;
+  _wreckHit.hit.point.copy(shell.prevPos).lerp(shell.pos, wreck.t);
+  _wreckHit.hit.normal!.set(wreck.nx, wreck.ny, wreck.nz);
+  _wreckHit.hit.record = wreck.record;
+  return _wreckHit;
+}
+
+/** (aircraft-solid-277) A downed aircraft's crash round burst at (x, z): its wreck lies there on `groundY`. */
+function recordCrashWreck(game: SoloGameState, shell: DamageShell, x: number, groundY: number, z: number): void {
+  const strikeId = (shell as { strikeId?: number }).strikeId;
+  if (typeof strikeId !== 'number' || shell.spec.reloadGroup !== 'air-crash') return;
+  game.matchModeController?.airSupport?.recordWreck(strikeId, x, groundY, z, game.timeS);
+}
+
 function resolveWorldShellImpact(
   game: SoloGameState,
   bus: EventBus,
@@ -2445,6 +2483,9 @@ function resolveWorldShellImpact(
     // the building it struck (2026-10-10: every round's hole on it, not only a burst's that names it in its blast)
     ...(typeof hit.record?.structureIdx === 'number' ? { structureId: hit.record.structureIdx } : {}),
   });
+  // (aircraft-solid-277) a downed aircraft's crash round: its wreck lies where it burst, on the ground its crater left
+  recordCrashWreck(game, shell, hit.point.x, hit.kind === 'terrain' ? world.heightField.getHeightAt(hit.point.x, hit.point.z) : hit.point.y,
+    hit.point.z);
 }
 
 /**
@@ -2487,13 +2528,13 @@ function stepLiveShell(
   }
   _seg.multiplyScalar(1 / segmentLength);
   const nearest = traceNearestTank(game, shell, segmentLength);
-  const worldTrace = traceBlockingWorldShellHit(
+  const worldTrace = wreckOrWorldHit(game, shell, traceBlockingWorldShellHit(
     world,
     bus,
     shell,
     segmentLength,
     nearest.distance,
-  );
+  ), nearest.distance, segmentLength);
   const tankStop = nearest.entity && nearest.intersections ? nearest.distance : Infinity;
   // the proving ground's plate rack, nearer than the hull and the world the step meets (null in every other battle)
   const plates = game._provingRange?.plates;
@@ -2584,7 +2625,9 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
-      collectNavigationWrecks(game.tanks, game._navigationWrecks));
+      // (aircraft-solid-277) and the aircraft wrecks' parts a hull meets, as the authority adds them
+      appendNavigationWrecks(game.matchModeController?.airSupport?.wreckRecords() ?? [], game._navigationWrecks,
+        collectNavigationWrecks(game.tanks, game._navigationWrecks)));
   }
   const proving = game.ruleset.provingGround;
   const training = !!game.ruleset.training;

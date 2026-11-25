@@ -2159,8 +2159,9 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     beatLog.strike(p.kind, p.timeS);
   });
   bus.on('mode:aircraft_down', (payload) => {
-    const p = eventPayload<{ by?: RuntimeValue; kind?: RuntimeValue; timeS?: number } | null>(payload);
-    if (!isPlayerId(p?.by)) return;
+    const p = eventPayload<{ by?: RuntimeValue; kind?: RuntimeValue; friendly?: RuntimeValue; timeS?: number } | null>(payload);
+    // (aircraft-solid-277) a team kill of our own side's aircraft is not one the player brought down
+    if (!isPlayerId(p?.by) || p?.friendly === true) return;
     facts.aircraftDown++;
     beatLog.downed(typeof p?.kind === 'string' ? p.kind : '', p?.timeS);
   });
