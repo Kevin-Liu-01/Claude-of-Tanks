@@ -168,7 +168,8 @@ fx.resetAll();
 
 // ---- centred (fire-center-277): a fire burns over its hull's middle and out of its top, never inside the hull ----
 // (275's look clip: licks born 1 m over the hull's origin were inside the hull. Kevin 2026-11-24: "tank fires need to be
-// from the center of tank". A hit's point no longer moves the fire; the measured fleet's centres: fireCentre.selftest.)
+// from the center of tank"; a hull with no measured anatomy, as here, burns over its middle. A hit's point no longer
+// moves the fire; the measured fleet burns on its engine decks: hullFireAnchor.selftest.)
 {
   const LICK_BASE = 0.95; // emitColumnTongue: a lick is born 0.95-1.35 m over its column's point
   const dims = { heightM: 2.4, hullLengthM: 7.0 };

@@ -41,7 +41,7 @@ import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
 import { shooterVelocityGain, subjectPointVelocity, syncSubjectEmitterAnchor } from './effectAttachments.ts';
-import { hullCentreWorld, hullFireFrame, hullFireRise, type HullCentrePose } from './hullFireAnchor.ts';
+import { hullCentreWorld, hullFireFrame, hullFireRise, hullFireWorld, type HullCentrePose } from './hullFireAnchor.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -1035,8 +1035,8 @@ const _gpPos = new THREE.Vector3(); // gunshipMuzzleFx's gun port
 const _gpSide = new THREE.Vector3(); // gunshipMuzzleFx's level heading toward the guns' target
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
 const _subjectAnchor = new THREE.Vector3(); // moving-emitter attachment scratch
-// (fire-center-277) syncLiveFireAnchor's scratch: the hull's centre in the world, its root's pose, the world's up in the hull
-const _fireCentre = new THREE.Vector3(), _fireAt = new THREE.Vector3(), _fireScale = new THREE.Vector3(), _fireUp = new THREE.Vector3();
+// (fire-center-277) syncLiveFireAnchor's scratch: the fire's point in the world, its root's pose, the world's up in the hull
+const _firePoint = new THREE.Vector3(), _fireAt = new THREE.Vector3(), _fireScale = new THREE.Vector3(), _fireUp = new THREE.Vector3();
 const _fireQ = new THREE.Quaternion();
 const _hullCentre: number[] = [0, 0, 0]; // hullCentreWorld's answer
 const _firePose: HullCentrePose = { root: null, pos: null, yaw: 0 };
@@ -5206,11 +5206,11 @@ function* createFxSteps(
   }
 
   /**
-   * (fire-center-277, Kevin 2026-11-24: "tank fires need to be from the center of tank. rn its not, fix.") A live fire
-   * burns over its hull's measured centre (hullFireAnchor.ts: the drawn hull's bounds, not the model's origin; 275 put
-   * it at a hit's point or 0.3 of the length behind the origin) and comes up out of the hull's top there, every frame
-   * by the hull's pose now: its visual root's whole transform (yaw, pitch, roll, a flip, a mode's scale), else its
-   * state's place and yaw. A hit's point does not move it (the damage keeps its own place; the fire reads centred).
+   * (fire-center-277; Kevin 2026-11-25: "technically they should be over engines cuz thats how fires start") A live
+   * fire burns on its hull's engine deck (hullFireAnchor.ts: over the engine box the hit system uses, the skin's top
+   * there; 275 put it at a hit's point or 0.3 of the length behind the model's origin) and comes up out of the hull
+   * there, every frame by the hull's pose now: its visual root's whole transform (yaw, pitch, roll, a flip, a mode's
+   * scale), else its state's place and yaw. A hit's point does not move it.
    * False when the hull has no fire frame (no calibration, no dims): the caller keeps its point on the root.
    */
   function syncLiveFireAnchor(col: SmokeColumn, subject: FxEntity | null): boolean {
@@ -5219,19 +5219,19 @@ function* createFxSteps(
     if (!subject || !frame) return false;
     const root = subject.visual?.root as THREE.Object3D | undefined;
     _firePose.root = root ?? null; _firePose.pos = subject.state?.pos ?? null; _firePose.yaw = hullYawOf(subject);
-    if (!hullCentreWorld(spec, _firePose, _hullCentre)) return false;
-    _fireCentre.set(_hullCentre[0], _hullCentre[1], _hullCentre[2]);
+    if (!hullFireWorld(spec, _firePose, _hullCentre)) return false; // the fire's point (shares the centre's scratch)
+    _firePoint.set(_hullCentre[0], _hullCentre[1], _hullCentre[2]);
     let rise: number;
     if (root && root.matrixWorld && typeof root.updateWorldMatrix === 'function') {
       root.matrixWorld.decompose(_fireAt, _fireQ, _fireScale);
       _fireUp.set(0, 1, 0).applyQuaternion(_fireQ.invert()); // the world's up in the hull frame
       rise = hullFireRise(frame, _fireUp.x, _fireUp.y, _fireUp.z) * Math.abs(_fireScale.y || 1);
     } else {
-      rise = frame.max[1] - frame.centre[1];
+      rise = frame.fireTop - frame.fire[1];
     }
-    col.pos[0] = _fireCentre.x;
-    col.pos[1] = _fireCentre.y + rise - LIVE_FIRE_LICK_BASE_M;
-    col.pos[2] = _fireCentre.z;
+    col.pos[0] = _firePoint.x;
+    col.pos[1] = _firePoint.y + rise - LIVE_FIRE_LICK_BASE_M;
+    col.pos[2] = _firePoint.z;
     return true;
   }
 

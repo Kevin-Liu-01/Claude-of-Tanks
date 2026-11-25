@@ -1,18 +1,19 @@
-// fire-center-277 (Kevin 2026-11-24: "tank fires need to be from the center of tank. rn its not, fix."): for every tank in
-// the fleet, its live fire on the real FX runtime (fx/effects.ts) burns over its hull's measured centre (the drawn hull's
-// bounds, combatAnatomyCalibration(id).hull, which tools/gen-combat-anatomy.mjs measures off each build) and comes up out
-// of the hull's top there, upright, pitched and rolled, and flipped, with a hit at the bow before the fire.
-//  - in hull space, upright: the fire's horizontal offset from the hull's centre is within BOUND of the hull's length;
-//  - every pose: the fire stands on the world's vertical through the hull's centre (within BOUND of the length), and its
-//    licks' base lies on the hull's skin over the centre (out of it, never inside);
-//  - every id has a measured hull (no id falls back to its dims);
-//  - (the follow-up, Main) its kill and its wreck column stand over the same centre: the sim's and the room's
-//    tank:destroyed (which name the hull's origin; the wreck's entity resolves) and a replay or Studio kill naming its
-//    hull (opts.hull), in every pose.
+// fire-center-277: every tank's (313) hull-anchored effects on the real FX runtime (fx/effects.ts, fx/hullFireAnchor.ts),
+// upright, pitched and rolled, on its side and flipped:
+//  - its live fire burns on its engine deck (Kevin 2026-11-25: "technically they should be over engines cuz thats how
+//    fires start"; sim/damage.ts lights fires from the engine, the transmission or a destroyed fuel tank): over the engine
+//    box the hit system uses (the finalized spec's armor.modules), with a hit at the bow before the fire:
+//    - upright, in hull space: inside the engine box's footprint, and within BOUND of the hull's length of its middle;
+//    - every pose: on the world's vertical through that point (within BOUND), its licks' base on the hull's skin (out of
+//      it, never inside the measured hull), upright over the engine's top;
+//  - (Main's follow-up) its kill and wreck column stand over the hull's measured centre (the drawn hull's bounds,
+//    combatAnatomyCalibration(id).hull, not the model's origin): the sim's and the room's tank:destroyed (which name the
+//    origin; the wreck's entity resolves), and a replay or Studio kill naming its hull (opts.hull);
+//  - every id has a measured hull and an engine box (none falls back to its dims or its centre).
 // Data only: no tank is built (the calibrations are the builds' receipts). Fails listing the ids.
-// Negative control: effects.ts before fire-center-277 (a hit's point, else 0.3 of the length behind the origin) fails
-// every id; with the fire's fix and the kill at the origin, the kills of the ids whose origin is off the drawn hull's
-// middle fail (t95, m46_patton, m47_patton and others).
+// Negative controls: effects.ts before fire-center-277 (a hit's point, else 0.3 of the length behind the origin) fails
+// every id; with the kill at the origin, the kills of the ids whose origin is off the drawn hull's middle fail (t95,
+// m46_patton, m47_patton, vt4a1, ztz99a and others); with the fire over the hull's centre (40b682c62e), every fire fails.
 import '../vehicles/fleetRegistration.ts';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -20,6 +21,7 @@ import * as THREE from 'three';
 import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from '../vehicles/combatAnatomyCalibrations.ts';
 import { registerCombatAnatomyCalibrations } from '../vehicles/combatAnatomyCalibrationRegistry.ts';
+import { finalizeCombatAnatomy } from '../vehicles/combatAnatomy.ts';
 import { createFx } from './effects.ts';
 import { hullFireFrame } from './hullFireAnchor.ts';
 
@@ -30,7 +32,7 @@ globalThis.document ??= { createElement: () => createCanvas(1, 1) };
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 
 const BOUND = 0.05; // of the hull's length
-const LICK_BASE_M = 0.8; // effects.ts LIVE_FIRE_LICK_BASE_M: a live fire's point stands this far under the hull's top
+const LICK_BASE_M = 0.8; // effects.ts LIVE_FIRE_LICK_BASE_M: a live fire's point stands this far under the hull's skin
 const SKIN_TOL_M = 0.03;
 
 const scene = new THREE.Scene();
@@ -68,13 +70,16 @@ function killCentred(key, what, L) {
 }
 const ids = [...ALL_TANK_IDS];
 assert.equal(ids.length, 313, `the fleet's ${ids.length} ids (the brief's 313)`);
-const _w = new THREE.Vector3(), _c = new THREE.Vector3(), _l = new THREE.Vector3();
+const _w = new THREE.Vector3(), _c = new THREE.Vector3(), _e = new THREE.Vector3(), _l = new THREE.Vector3();
 for (const [n, id] of ids.entries()) {
-  const spec = getSpec(id), cal = COMBAT_ANATOMY_CALIBRATIONS[id];
+  const spec = finalizeCombatAnatomy(getSpec(id)), cal = COMBAT_ANATOMY_CALIBRATIONS[id];
+  const engine = (spec.armor?.modules ?? []).find((m) => m.module === 'engine' && !m.turretLocal && !m.external);
+  if (!engine) { fails.push(`${id}: no engine box`); continue; }
   if (!cal?.hull) { fails.push(`${id}: no measured hull`); continue; }
   const min = cal.hull.min, max = cal.hull.max;
   const L = max[2] - min[2];
   const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
+  const ex = (engine.min[0] + engine.max[0]) / 2, ez = (engine.min[2] + engine.max[2]) / 2;
   for (const pose of POSES) {
     const root = new THREE.Group();
     root.rotation.order = 'YXZ';
@@ -84,7 +89,7 @@ for (const [n, id] of ids.entries()) {
     const e = { id, spec, visual: { root, isDestroyed: () => false }, state: { pos: root.position, yaw: pose.rot[1] },
       combat: { destroyed: false, fire: { burning: true } } };
     entities.set(id, e);
-    // a hit at the bow before the fire: the fire still burns over the middle
+    // a hit at the bow before the fire: the fire still burns on the engine deck
     _w.set(cx, (min[1] + max[1]) / 2, max[2]).applyMatrix4(root.matrixWorld);
     bus.emit('shell:hit', { targetId: id, kind: 'pen', caliberMm: 120, pos: [_w.x, _w.y, _w.z], normal: [0, 0, 1] });
     bus.emit('tank:fire', { id, burning: true });
@@ -108,25 +113,32 @@ for (const [n, id] of ids.entries()) {
     // the licks' base (the fire's point + LICK_BASE up the world), in hull space
     _l.set(at.pos[0], at.pos[1] + LICK_BASE_M, at.pos[2]);
     root.worldToLocal(_l);
-    // its distance from the world's vertical through the hull's centre
-    const offVertical = Math.hypot(at.pos[0] - _c.x, at.pos[2] - _c.z) / L;
-    const offHull = pose.name === 'upright' ? Math.hypot(_l.x - cx, _l.z - cz) / L : 0;
+    // its distance from the world's vertical through the engine's middle
+    _e.set(ex, (engine.min[1] + engine.max[1]) / 2, ez).applyMatrix4(root.matrixWorld);
+    const offVertical = Math.hypot(at.pos[0] - _e.x, at.pos[2] - _e.z) / L;
+    const offHull = pose.name === 'upright' ? Math.hypot(_l.x - ex, _l.z - ez) / L : 0;
     const k = Math.max(offVertical, offHull);
     if (k > worst.k) worst = { id: `${id} ${pose.name}`, k };
-    if (k > BOUND) fails.push(`${id} ${pose.name}: ${(k * 100).toFixed(1)}% of the hull's length off its centre`);
-    // on the skin: on one of the fire box's faces (the hull's measured box, its top the turret's roof where the turret
-    // covers the centre), never inside the hull's box
+    if (k > BOUND) fails.push(`${id} ${pose.name}: the fire ${(k * 100).toFixed(1)}% of the hull's length off its engine`);
+    if (pose.name === 'upright') {
+      const inFoot = _l.x >= engine.min[0] - SKIN_TOL_M && _l.x <= engine.max[0] + SKIN_TOL_M
+        && _l.z >= engine.min[2] - SKIN_TOL_M && _l.z <= engine.max[2] + SKIN_TOL_M;
+      if (!inFoot) fails.push(`${id}: the fire is not over its engine (${_l.x.toFixed(2)}, ${_l.z.toFixed(2)})`);
+      if (_l.y < engine.max[1] - SKIN_TOL_M) fails.push(`${id}: the fire's licks are born below its engine's top (${_l.y.toFixed(2)})`);
+    }
+    // on the skin: on one of the fire box's faces (the hull's measured box, its top the skin over the engine), never
+    // inside the hull's box under that skin
     const box = hullFireFrame(spec);
-    if (box?.source !== 'calibration') { fails.push(`${id}: the fire's box is not the measured hull`); continue; }
-    const fmin = box.min, fmax = box.max;
+    if (box?.source !== 'calibration' || box.anchor !== 'engine') { fails.push(`${id}: the fire's frame is not the measured hull's engine deck`); continue; }
+    const fmin = box.min, fmax = [box.max[0], box.fireTop, box.max[2]];
     const onFace = (axis) => Math.abs(_l.getComponent(axis) - fmin[axis]) < SKIN_TOL_M || Math.abs(_l.getComponent(axis) - fmax[axis]) < SKIN_TOL_M;
-    const inside = [0, 1, 2].every((a) => _l.getComponent(a) > min[a] + SKIN_TOL_M && _l.getComponent(a) < max[a] - SKIN_TOL_M);
-    if (inside || !(onFace(0) || onFace(1) || onFace(2)) || (pose.name === 'upright' && _l.y < max[1] - SKIN_TOL_M)) {
+    const inside = [0, 1, 2].every((a) => _l.getComponent(a) > fmin[a] + SKIN_TOL_M && _l.getComponent(a) < fmax[a] - SKIN_TOL_M);
+    if (inside || !(onFace(0) || onFace(1) || onFace(2))) {
       fails.push(`${id} ${pose.name}: the licks are born inside or off the hull (${_l.toArray().map((v) => v.toFixed(2))})`);
     }
   }
 }
 fx.resetAll();
-assert.deepEqual(fails, [], `hull effects off their hull's centre or fires not out of its top (${fails.length}):\n  ${fails.join('\n  ')}`);
+assert.deepEqual(fails, [], `fires off their engine deck or kills off their hull's centre (${fails.length}):\n  ${fails.join('\n  ')}`);
 
-console.log(`fireCentre.selftest: all ${ids.length} tanks' live fires burn over their measured hull centre (worst ${(worst.k * 100).toFixed(2)}% of the hull's length, ${worst.id}; bound ${BOUND * 100}%) upright, tilted, on their side and flipped, with a bow hit first, and come up out of the hull's top; their ${kills} kills and wreck columns (tank:destroyed's, and a replay's naming its hull) stand over the same centre (worst ${(worstKill.k * 100).toFixed(2)}%${worstKill.id ? `, ${worstKill.id}` : ""})`);
+console.log(`hullFireAnchor.selftest: all ${ids.length} tanks' live fires burn on their engine deck (over the hit system's engine box, worst ${(worst.k * 100).toFixed(2)}% of the hull's length, ${worst.id}; bound ${BOUND * 100}%) upright, tilted, on their side and flipped, with a bow hit first, and come up out of the hull's skin; their ${kills} kills and wreck columns (tank:destroyed's, and a replay's naming its hull) stand over the measured hull centre (worst ${(worstKill.k * 100).toFixed(2)}%${worstKill.id ? `, ${worstKill.id}` : ''})`);
