@@ -449,6 +449,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gen-interior-fills-memory.selftest.mjs',
     // roadlife-retention-277: a WeakRef target built in an await-only loop stays alive until betweenBuilds() ends the job
     'tools/build-loop-yield.selftest.mjs',
+    // build-loop-yield-277: every Node loop that builds tank after tank or world after world awaits betweenBuilds() (file:line)
+    'tools/build-loop-census.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
     'tools/interior-fill-exposure.selftest.mjs',
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
