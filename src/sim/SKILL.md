@@ -83,3 +83,8 @@ solo battle) and `node src/sim/counterDroneRuns.selftest.mjs` (every pinned pilo
 exactly, the owner's band), and for new or re-armed stations
 `node tools/counter-drone-engage.mjs --ids=<ids> --check` (per vehicle: class, hovers
 against the owner's literal counts, attack runs, elevation reach, the pins).
+Air Support's aircraft are solids (aircraft-solid-277): `airframeVolumes.ts` holds each airframe's boxes (fitted to the
+drawn A-10, fighter and AC-130; a change to an airframe builder re-runs `node src/sim/airframeVolumes.selftest.mjs`), the
+swept hit test (rounds and drones of either side: friendly fire), and the wreck law both drivers lay a downed aircraft's
+wreck by; the wreck's collision record joins the hulls' obstacles and its boxes stop rounds on both drivers
+(`node src/sim/aircraftSolid.selftest.mjs`).
