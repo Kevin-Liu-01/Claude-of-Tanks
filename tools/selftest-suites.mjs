@@ -434,6 +434,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hull-contact-census.selftest.mjs',
     // hitbox-fit-274 (the owner, 2026-11-18: floating hit boxes): crop, fit or drop, and the pinned ids' layers on their builds
     'tools/hitbox-fit-census.selftest.mjs',
+    // hull-plates-fit-277 (Main, fire-center-277: the T95's, M46's and M47's track plates ran past their bows): the plates the
+    // trace skips (a track pair with a prism, main plates under cells) stand on the drawn build, fleet-wide, spec data only
+    'tools/plate-overhang-census.selftest.mjs',
     // 274.0 (coordinator ruling): a fitted piece of other than four corners is a planar convex outline the trace reads whole
     'src/vehicles/plateFitPolygons.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
