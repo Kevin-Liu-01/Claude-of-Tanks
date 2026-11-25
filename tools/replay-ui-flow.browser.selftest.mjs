@@ -296,7 +296,14 @@ async function watchToEnd(page, shot, log) {
   if (last.note) return { ok: false, why: `the viewer said "${last.note}" (indexer: ${JSON.stringify(last.jobs)})` };
   if (!end || end.now < end.end) return { ok: false, why: `playback stopped at ${last.clock} (note ${JSON.stringify(last.note)})` };
   if (!moved) return { ok: false, why: 'the clock ran but no hull moved' };
-  return { ok: true, why: `played ${span.end} s to the end at 4x in ${((Date.now() - started) / 1000).toFixed(1)} s` };
+  // (replay-fixes-277 part 2) the battle's effects played: the cues a whole play crosses (the receipt's own drive fires
+  // every 2 s, so a battle has shots), and shells drawn in flight
+  const effects = await page.evaluate(() => { const p = window.__COT_REPLAY.viewer?.(); return p ? { played: p.cuesPlayed, total: p.cuesTotal, shellsPeak: p.shellsPeak } : null; });
+  log.push({ at: 'effects', ...effects });
+  if (!effects || effects.total === 0) return { ok: false, why: 'the replay holds no effects (no shot, hit or kill cue)' };
+  if (effects.played < effects.total * 0.9) return { ok: false, why: `a whole play crossed ${effects.played} of ${effects.total} cues` };
+  if (effects.shellsPeak === 0) return { ok: false, why: 'no shell was drawn in flight' };
+  return { ok: true, why: `played ${span.end} s to the end at 4x in ${((Date.now() - started) / 1000).toFixed(1)} s (${effects.played} cues, up to ${effects.shellsPeak} shells drawn)` };
 }
 
 /** The saved recording `id`'s file, as stored, beside the receipt (tools/replay-verify.mjs reads it). */
@@ -422,6 +429,18 @@ async function pathC(page, options, shot, log) {
   return result;
 }
 
+/** The fraction of pixels (160 x 90 luminance, ffmpeg) two frames of a film differ in by > 24 levels; null without ffmpeg. */
+function filmChange(file, atS, bS) {
+  const frame = (t) => execFileSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', file, '-frames:v', '1', '-vf', 'scale=160:90,format=gray',
+    '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 });
+  try {
+    const a = frame(atS), b = frame(bS);
+    let changed = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) if (Math.abs(a[i] - b[i]) > 24) changed++;
+    return changed / Math.max(1, Math.min(a.length, b.length));
+  } catch { return null; }
+}
+
 /** The MP4 a film saved: its size, and (where ffprobe is installed) its codec, size, rate and length as a player reads them. */
 function probeFilm(file) {
   const head = readFileSync(file).subarray(0, 12);
@@ -457,6 +476,9 @@ async function pathD(page, options, shot, log) {
   await page.mouse.click(track.x + track.w * ((length.end - seconds - 0.4) / length.end), track.y);
   await sleep(300);
   if (/pause/i.test(await page.evaluate(() => document.querySelector('.cot-replay .play')?.getAttribute('aria-label') ?? ''))) await clickVisible(page, '.cot-replay .play');
+  // ride the player's tank (it drove the whole battle), so the film's picture follows a moving hull
+  await page.evaluate(() => { const p = window.__COT_REPLAY.viewer?.(); if (p?.hulls[0]) p.ride(p.hulls[0].id); });
+  await sleep(1500);
   await shot('before-export');
   // Export video on the strip: a real press on its button
   const film = await page.evaluate(() => { const r = document.querySelector('.cot-replay .film')?.getBoundingClientRect(); return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; });
@@ -505,6 +527,10 @@ async function pathD(page, options, shot, log) {
     // (the playhead is set by a press on the timeline, read back in whole seconds: the range starts within ~1 s of it)
     if (Math.abs(probe.durationS - seconds) > 1.5) return { ok: false, why: `the film runs ${probe.durationS} s, not ~${seconds} s` };
   }
+  // what the film shows must be the battle moving: its frames 10 s apart differ in >= 3% of their pixels (decoded small)
+  const change = filmChange(path.join(downloads, file), 2, 12);
+  log.push({ at: 'film-change', change });
+  if (change !== null && change < 0.03) return { ok: false, why: `the film's frames at 2 s and 12 s differ in ${(change * 100).toFixed(2)}% of pixels` };
   return { ok: true, why: `${probe.durationS ?? '?'} s at ${width}x${height}@${fps}${options.hud ? ' with the HUD' : ''}: ${(probe.bytes / 1e6).toFixed(2)} MB, exported in ${(exportMs / 1000).toFixed(1)} s` };
 }
 const seconds_ = (clock) => {

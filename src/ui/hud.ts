@@ -8642,6 +8642,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       icon: 'modeDrone', art: 'drone', durationMs: EVENT_HOLD_MS, dismissible: false, priority: NOTICE_PRIORITY.answered });
   });
   on('tank:destroyed', (p) => {
+    // (replay-fixes-277) a replay's kill reaches the feed through hud.replayKill (its marks); its cue only draws the kill
+    if ((p as { replay?: boolean }).replay) return;
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
     pushKill(p);

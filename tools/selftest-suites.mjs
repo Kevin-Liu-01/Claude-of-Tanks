@@ -336,6 +336,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayImport.selftest.mjs',
     // replay-fixes-277: a replay film ticks the page exactly 1/fps apart over its range at 1x and gives the page back (stubs)
     'src/game/replay/replayFilm.selftest.mjs',
+    // replay-fixes-277 (276.2): a replay's effects kept by the indexer and played at their steps on a forward play (no world)
+    'src/game/replay/replayCues.selftest.mjs',
     // replay-fixes-277 (277): the battle pool is in id order whatever order the fleet registered in (no world)
     'src/game/battlePoolOrder.selftest.mjs',
     // replay-lazy-276: the battle recorder behind its lazy chunk: idle before it loads, every tap and wrapped rule bound

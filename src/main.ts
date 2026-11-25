@@ -4136,6 +4136,8 @@ const replayViewerOwner = createLazyRuntimeOwner(
     // (Settings or the film dialog own the keys: Esc closes the dialog, it does not leave the replay)
     isInputHeld: () => settings.isOpen() || replayFilmDialogOpen,
     reportError: (message, error) => console.error(message, error),
+    // (replay-fixes-277) the battle's effects on the page's bus as it emitted them, tagged `replay` (replayCues.ts)
+    emit: (type, payload) => bus.emit(type, payload as unknown as RuntimeValue),
     openFilmExport: () => { void openReplayFilmDialog().catch((error) => console.error('[replay] the film dialog failed', error)); },
   }),
 );
@@ -4166,7 +4168,7 @@ async function watchReplayRecording(recording: ReplayRecording, file: Uint8Array
   const refusal = viewer.refusal(recording);
   if (refusal) {
     viewer.showTimeline({ header: recording.header, end: recording.end, events: recording.events, track: null, indexedSteps: 0,
-      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` } });
+      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` }, cues: [] });
     return;
   }
   if (game.phase === 'battle') await leaveBattleToGarage();

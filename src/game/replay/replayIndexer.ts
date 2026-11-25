@@ -11,6 +11,7 @@
 import type { ReplayEnd, ReplayEventMark, ReplayHeader, ReplayRecording } from '../../sim/replayFormat.ts';
 import { createReplayRun, ReplayMismatch } from './replayRunner.ts';
 import { createReplayTrackBuilder, type ReplayTrack } from './replayTrack.ts';
+import { replayCueOf, type ReplayCue } from './replayCues.ts';
 
 export interface ReplayIndex {
   header: ReplayHeader;
@@ -24,6 +25,8 @@ export interface ReplayIndex {
   lastTick: number;
   /** Why the track stops short (refused, a drift, a roster the run could not seat), or null. */
   problem: { code: string; tick: number; message: string } | null;
+  /** The effects' events as the re-simulation emitted them, in order (replayCues.ts; replay-fixes-277); none when refused. */
+  cues: ReplayCue[];
 }
 
 export interface IndexOptions {
@@ -38,11 +41,16 @@ export function indexReplay(recording: ReplayRecording, world: Parameters<typeof
   const { header, end, events } = recording;
   const lastTickOf = () => Math.min(recording.seatSteps.length, end.stagedAtTick != null ? end.stagedAtTick - 1 : Infinity);
   let run: ReturnType<typeof createReplayRun>;
+  const cues: ReplayCue[] = [];
   try {
-    run = createReplayRun(recording, world, { localDigest: options.localDigest });
+    run = createReplayRun(recording, world, { localDigest: options.localDigest, onEvent: (type, payload, tick) => {
+      // (an event in the step past the last replayable one is the battle the recording does not hold)
+      const cue = replayCueOf(type, payload, tick);
+      if (cue) cues.push(cue);
+    } });
   } catch (error) {
     if (!(error instanceof ReplayMismatch)) throw error;
-    return { header, end, events, track: null, indexedSteps: 0, lastTick: lastTickOf(), problem: { code: error.code, tick: 0, message: error.message } };
+    return { header, end, events, track: null, indexedSteps: 0, lastTick: lastTickOf(), problem: { code: error.code, tick: 0, message: error.message }, cues: [] };
   }
   const every = Math.max(1, options.progressEvery ?? 600);
   try {
@@ -54,7 +62,8 @@ export function indexReplay(recording: ReplayRecording, world: Parameters<typeof
     options.onProgress?.(run.tick, run.lastTick);
     const mismatch = run.mismatch;
     return { header, end, events, track: builder.finish(), indexedSteps: run.tick, lastTick: run.lastTick,
-      problem: mismatch ? { code: mismatch.code, tick: mismatch.tick, message: mismatch.message } : null };
+      problem: mismatch ? { code: mismatch.code, tick: mismatch.tick, message: mismatch.message } : null,
+      cues: cues.filter((cue) => cue.tick <= run.tick) };
   } finally {
     run.dispose();
   }
