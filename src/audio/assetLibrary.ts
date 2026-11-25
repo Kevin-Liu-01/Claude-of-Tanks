@@ -161,6 +161,14 @@ function bufferBytes(buffer: AudioBuffer): number {
  * first press anywhere finds its sound ready (2026-10-13). The files and rates are the library's own; a failure leaves
  * that asset out (the library loads it later as usual).
  */
+/**
+ * (mp-fixes-277; Kevin 2026-11-25, a friend's join "didnt load fast enough") Sounds are fetched at low priority: a cold
+ * joiner on 4 Mbps fetched ~5 MB of battle sounds beside the terrain photographs its entry waited on, the two sharing
+ * the one thin link. The browser now serves the photographs (images, scripts: default priority) first while both are in
+ * flight; on a fast link nothing waits. The entry's own wait on the sounds (warmBattleEvents, its 3.5 s cap) is unchanged.
+ */
+const AUDIO_FETCH_INIT: RequestInit = { priority: 'low' };
+
 export async function predecodeAssets(ids: Iterable<string>, { base = '/', fetchImpl = (...args: Parameters<typeof fetch>) => fetch(...args),
   createDecoder = defaultDecoder }: Pick<AssetLibraryOptions, 'base' | 'fetchImpl' | 'createDecoder'> = {}): Promise<Map<string, AudioBuffer[]>> {
   const root = base.endsWith('/') ? base : `${base}/`;
@@ -171,7 +179,7 @@ export async function predecodeAssets(ids: Iterable<string>, { base = '/', fetch
     if (!rec || !decoder) return;
     try {
       const buffers = await Promise.all(Array.from({ length: rec.n }, async (_, i) => {
-        const res = await fetchImpl(`${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
+        const res = await fetchImpl(`${root}audio/sfx/${rec.g}/${id}_${i}.webm`, AUDIO_FETCH_INIT);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return decoder.decodeAudioData(await res.arrayBuffer());
       }));
@@ -248,7 +256,7 @@ export function createAssetLibrary({
   async function fetchOne(url: string, rate: number): Promise<Fetched> {
     let bytes: ArrayBuffer;
     try {
-      const res = await fetchImpl(url);
+      const res = await fetchImpl(url, AUDIO_FETCH_INIT);
       if (!res.ok) { failed++; return NOT_FETCHED; }
       bytes = await res.arrayBuffer();
     } catch {

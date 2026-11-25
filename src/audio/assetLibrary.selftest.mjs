@@ -179,4 +179,15 @@ assert.ok(mobile.pick('gun_120_close', Math.random), 'and still picks it');
   }
 }
 
-console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight, a partly loaded sound and a crew pack refill what the network failed passed');
+// ---- (mp-fixes-277; a friend's join "didnt load fast enough") every sound is fetched at low priority: on a thin link the
+// browser serves the terrain photographs the entry waits on first
+{
+  const inits = [];
+  const lib = createAssetLibrary({ ...options, fetchImpl: async (url, init) => { inits.push(init?.priority ?? null); return fetchImpl(url); } });
+  await lib.ready;
+  await lib.loadVoice('ru');
+  assert.ok(inits.length > 0, 'the library fetched its sounds');
+  assert.deepEqual([...new Set(inits)], ['low'], `every sound fetch asks for low priority (${[...new Set(inits)]})`);
+}
+
+console.log('assetLibrary.selftest: every sound fetched at low priority, pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight, a partly loaded sound and a crew pack refill what the network failed passed');
