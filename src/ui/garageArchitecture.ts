@@ -585,8 +585,65 @@ export function createGarageArchitectureController(
     trim();
     publish();
     requestRender();
-    if (record.architecture !== 'field_shed') standFarRing(_variant.mapId, build.root, () => current(record) && record.build === build);
+    if (record.architecture !== 'field_shed') {
+      const wanted = (): boolean => current(record) && record.build === build;
+      // its map's buildings first (a page's pack presents without them), then its far ring
+      void standLateStructures(build, wanted).finally(() => standFarRing(_variant.mapId, build.root, wanted));
+    }
     return true;
+  };
+
+  /**
+   * (garage-env-276, the cold first visit; Kevin 2026-11-24, "fade them in") A shown pack's late layer: its map's
+   * buildings, set pieces and battle prints, built once it is on screen, in slices, their textures uploaded as a warm
+   * uploads them, then faded in (garageEnvironmentKit.ts GarageEnvironmentBuild.standLateStructures). Never on a
+   * switch's path.
+   */
+  const standLateStructures = (build: GarageEnvironmentBuild, wanted: () => boolean): Promise<void> => {
+    if (typeof document === 'undefined' || !build.standLateStructures) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const run = (): void => {
+        if (disposed || !wanted()) { resolve(); return; }
+        const live = (): boolean => !disposed && wanted();
+        build.standLateStructures!(live, (group) => uploadTextures(group, live)).catch(() => false).then(() => resolve());
+      };
+      const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (typeof idle === 'function') idle(run, { timeout: 300 });
+      else setTimeout(run, 100);
+    });
+  };
+
+  /**
+   * Uploads each texture an object draws, once (the latch is the session's), a slice a frame (garageSlicer.ts). False
+   * when `live` turns false between uploads.
+   */
+  const uploadTextures = async (object: THREE.Object3D, live: () => boolean): Promise<boolean> => {
+    const { renderer } = engineCtx;
+    if (!renderer) return true;
+    const textures = new Set<THREE.Texture>();
+    object.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        const candidate = material as THREE.MeshStandardMaterial;
+        if (candidate.map) textures.add(candidate.map);
+        if (candidate.normalMap) textures.add(candidate.normalMap);
+      }
+    });
+    // (garage-env-276, the cold first visit) the uploads fill a slice, then yield to the next frame (garageSlicer.ts)
+    const slicer = createGarageSlicer(nextGarageFrame);
+    for (const texture of textures) {
+      if (!live()) return false;
+      if (initializedTextures.has(texture)) continue;
+      // (2026-11-02 audit R5) only an upload is latched: a loader image that missed the 600 ms race has nothing to
+      // upload yet (three uploads only a texture whose version moved), and latching it skipped its warm for good
+      if (texture.version === 0) continue;
+      renderer.initTexture(texture);
+      initializedTextures.add(texture);
+      if (!slicer.due()) continue;
+      await slicer.yield();
+    }
+    return live();
   };
 
   /**
@@ -702,16 +759,6 @@ export function createGarageArchitectureController(
         advance(record, 'warmed');
         return build;
       }
-      const textures = new Set<THREE.Texture>();
-      build.root.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
-        for (const material of materials) {
-          const candidate = material as THREE.MeshStandardMaterial;
-          if (candidate.map) textures.add(candidate.map);
-          if (candidate.normalMap) textures.add(candidate.normalMap);
-        }
-      });
       await Promise.race([
         build.texturesReady || Promise.resolve(),
         new Promise((resolve) => setTimeout(resolve, TEXTURE_READY_TIMEOUT_MS)),
@@ -721,20 +768,10 @@ export function createGarageArchitectureController(
       // the same library objects, so reinitializing all twelve images on every
       // switch only stretched a cheap 8-15 ms geometry build across hundreds
       // of milliseconds of redundant presentation frames.
-      // (garage-env-276, the cold first visit) the uploads fill a slice, then yield to the next frame (garageSlicer.ts)
-      const slicer = createGarageSlicer(nextGarageFrame);
-      for (const texture of textures) {
-        // a cancelled prewarm stops between uploads; it stays built, and a later request warms it
-        if (record.cancelled) { advance(record, 'attached'); return null; }
-        if (initializedTextures.has(texture)) continue;
-        // (2026-11-02 audit R5) only an upload is latched: a loader image that missed the 600 ms race has nothing to
-        // upload yet (three uploads only a texture whose version moved), and latching it skipped its warm for good
-        if (texture.version === 0) continue;
-        renderer.initTexture(texture);
-        initializedTextures.add(texture);
-        if (!slicer.due()) continue;
-        await slicer.yield();
-        if (!live()) return null;
+      // (a cancelled prewarm stops between uploads; it stays built, and a later request warms it)
+      if (!(await uploadTextures(build.root, () => live() && !record.cancelled))) {
+        if (live() && record.cancelled) advance(record, 'attached');
+        return null;
       }
       // garageStage submits exact opaque, transparent, instanced, alpha-test,
       // vertex-color, and CSM program seeds during the covered Verdant boot.
@@ -862,7 +899,10 @@ export function createGarageArchitectureController(
       const release = kit.pinGarageEnvironmentCaches(variant);
       try {
         const wanted = (): boolean => !disposed;
-        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted)) === false) if (disposed) return null;
+        // (built whole, off the switch's path: no late layer)
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted, undefined, { lateStructures: false })) === false) {
+          if (disposed) return null;
+        }
         const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender, { kitPlacement: null });
         // (half a metre past the walls: the upstand's thickness)
         const clip = kit.clipGarageEnvironmentToExterior(build.root, footprint.halfXM + 0.5, footprint.halfZM + 0.5);

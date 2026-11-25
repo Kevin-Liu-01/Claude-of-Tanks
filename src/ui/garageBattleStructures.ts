@@ -170,7 +170,9 @@ export function* buildGarageStructureSteps(
     rng, buckets, wallBucket);
   addCatalogExterior(buckets, { id: staging.catalogId, info: dimensions, variant: staging.index });
   settleCatalogCuts(buckets);
-  yield undefined;
+  // (garage-env-276, the cold first visit) the base's footprint, yielded: a page's prepare stops here (its draws from the
+  // pack's sequence are all made) and builds the rest after the pack presents
+  yield dimensions;
   let rebuilt = false;
   if (map.style) {
     const regional = yield* rebuildRegionalStructureSteps(map.style, staging.catalogId,
