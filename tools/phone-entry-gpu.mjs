@@ -80,7 +80,7 @@ export function installGpuTracker(loseOverBytes) {
     loseOverBytes, modeledLosses: 0, windowPeak: 0, windowPeakAt: 0, windowPeakStage: '', windowPeakWorlds: null,
     stage: '', timeline: [], lostAt: [],
     // the bytes newly allocated since the last animation frame, and the largest such frame in the window
-    frameBytes: 0, frameMax: 0, frameMaxAt: 0, frameMaxStage: '',
+    frameBytes: 0, frameMax: 0, frameMaxAt: 0, frameMaxStage: '', frameItems: [], frameMaxItems: [], lastShape: '',
   };
   const records = new WeakMap(); // texture | buffer | renderbuffer -> { kind, parts: Map<key, bytes>, total, generation, shape }
   const liveRecords = new Set(); // the same records, for the census of the largest at the peak
@@ -144,6 +144,7 @@ export function installGpuTracker(loseOverBytes) {
     }
     if (shape && (key === '*' || key.endsWith(':0') || key === '0')) record.shape = shape;
     const old = record.total;
+    T.lastShape = record.shape || shape;
     // '*' (immutable storage) replaces every part
     if (key === '*') record.parts.clear();
     record.parts.set(key, bytes);
@@ -161,7 +162,11 @@ export function installGpuTracker(loseOverBytes) {
   };
   const adjust = (kind, delta) => {
     if (!delta) return;
-    if (delta > 0) T.frameBytes += delta;
+    if (delta > 0) {
+      T.frameBytes += delta;
+      // what the frame allocated, by the allocation (1 MB and up): the largest frame's list says what it was made of
+      if (delta >= 1048576 && T.frameItems.length < 64) T.frameItems.push({ kind, shape: T.lastShape, mb: +(delta / 1048576).toFixed(2) });
+    }
     T[kind] += delta;
     T.live += delta;
     if (T.live > T.peak) T.peak = T.live;
@@ -307,8 +312,10 @@ export function installGpuTracker(loseOverBytes) {
     const frame = () => {
       if (T.recording && T.frameBytes > T.frameMax) {
         T.frameMax = T.frameBytes; T.frameMaxAt = Math.round(performance.now()); T.frameMaxStage = T.stage;
+        T.frameMaxItems = T.frameItems;
       }
       T.frameBytes = 0;
+      T.frameItems = [];
       window.requestAnimationFrame(frame);
     };
     window.requestAnimationFrame(frame);
@@ -459,7 +466,7 @@ const beginWindow = (page) => page.evaluate(() => {
   T.windowStartLinks = T.links; T.windowStartLosses = T.losses; T.windowStartModeled = T.modeledLosses;
   T.windowStartAt = Math.round(performance.now()); T.armed = true;
   T.windowPeakCensusAt = 0; T.windowPeakCensus = T.census();
-  T.frameBytes = 0; T.frameMax = 0; T.frameMaxAt = 0; T.frameMaxStage = '';
+  T.frameBytes = 0; T.frameMax = 0; T.frameMaxAt = 0; T.frameMaxStage = ''; T.frameItems = []; T.frameMaxItems = [];
   T.recording = true; T.timeline.length = 0;
   return { live: T.live, links: T.links };
 });
@@ -469,7 +476,7 @@ const endWindow = (page) => page.evaluate(() => {
   T.recording = false;
   return {
     peak: T.windowPeak, peakAtS: +((T.windowPeakAt - T.windowStartAt) / 1000).toFixed(1), peakStage: T.windowPeakStage,
-    frameMax: T.frameMax, frameMaxAtS: +((T.frameMaxAt - T.windowStartAt) / 1000).toFixed(1), frameMaxStage: T.frameMaxStage,
+    frameMax: T.frameMax, frameMaxItems: T.frameMaxItems, frameMaxAtS: +((T.frameMaxAt - T.windowStartAt) / 1000).toFixed(1), frameMaxStage: T.frameMaxStage,
     peakWorlds: T.windowPeakWorlds, peakCensus: T.windowPeakCensus, revealedCensus: T.census(), live: T.live, links: T.links - T.windowStartLinks,
     losses: T.losses - T.windowStartLosses, modeledLosses: T.modeledLosses - T.windowStartModeled, lostAt: T.lostAt.slice(-4),
     timeline: T.timeline.map((row) => ({ s: +((row.atMs - T.windowStartAt) / 1000).toFixed(2), mb: +(row.live / 1048576).toFixed(1),
