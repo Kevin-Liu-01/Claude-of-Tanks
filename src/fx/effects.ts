@@ -41,7 +41,7 @@ import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
 import { shooterVelocityGain, subjectPointVelocity, syncSubjectEmitterAnchor } from './effectAttachments.ts';
-import { hullFireFrame, hullFireRise } from './hullFireAnchor.ts';
+import { hullCentreWorld, hullFireFrame, hullFireRise, type HullCentrePose } from './hullFireAnchor.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -240,6 +240,11 @@ interface FxVisual {
   /** (2026-11-02 audit F10) The visual's life: bumped by every reset and its disposal (a deferred wreck checks it). */
   wreckLife?(): number;
   applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
+}
+
+/** (fire-center-277) a dead hull as a kill's caller knows it: its spec, and its root or its state's place and yaw */
+interface HullKill extends HullCentrePose {
+  spec?: object | null;
 }
 
 interface FxDecalVisual {
@@ -667,8 +672,10 @@ export interface FxRuntime {
     cause?: DestructionCause,
     /** wreck r1: the destroyed entity's id — its smoke column rides and leaves with the corpse. */
     wreckOf?: string | null,
-    /** shellBurst: a shell hitting open ground (the Studio's stand-in blast), not a tank — its column is smoke only. */
-    opts?: { shellBurst?: boolean },
+    /** shellBurst: a shell hitting open ground (the Studio's stand-in blast), not a tank — its column is smoke only.
+     *  hull: (fire-center-277) the dead hull, for a caller whose wreckOf does not resolve (the killcam, the Studio): the
+     *  kill and its column stand over its measured centre. */
+    opts?: { shellBurst?: boolean; hull?: HullKill | null },
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
   exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
@@ -1031,6 +1038,9 @@ const _subjectAnchor = new THREE.Vector3(); // moving-emitter attachment scratch
 // (fire-center-277) syncLiveFireAnchor's scratch: the hull's centre in the world, its root's pose, the world's up in the hull
 const _fireCentre = new THREE.Vector3(), _fireAt = new THREE.Vector3(), _fireScale = new THREE.Vector3(), _fireUp = new THREE.Vector3();
 const _fireQ = new THREE.Quaternion();
+const _hullCentre: number[] = [0, 0, 0]; // hullCentreWorld's answer
+const _firePose: HullCentrePose = { root: null, pos: null, yaw: 0 };
+const _killAt = new THREE.Vector3(); // centreKillPoint's answer
 const _UP = new THREE.Vector3(0, 1, 0);  // read-only
 const _c0 = new THREE.Color();
 
@@ -5178,6 +5188,24 @@ function* createFxSteps(
   }
 
   /**
+   * (fire-center-277 follow-up, Main: kill effects and wreck columns on the same centre) A kill's point on the ground
+   * under its hull's measured centre: every caller names the hull's origin (the sim's and the room's tank:destroyed, the
+   * killcam's pose, the Studio's actor), off the drawn hull's middle by up to 1.7 m (the T95). The fireball, debris,
+   * scorch, dust, light and the wreck's column (which rides the corpse from this point) all stand over the centre; the
+   * point's height stays the caller's (the kill's effects are laid out from the ground at the hull). The hull is the
+   * wreck's entity (wreckOf), else the caller's; one with no fire frame keeps the caller's point.
+   */
+  function centreKillPoint(pos: THREE.Vector3, wreckOf: string | null, hull: HullKill | null | undefined): THREE.Vector3 {
+    const ent = wreckOf != null ? decalEntityFor(wreckOf) : null;
+    if (ent) {
+      _firePose.root = ent.visual?.root ?? null; _firePose.pos = ent.state?.pos ?? null; _firePose.yaw = hullYawOf(ent);
+      if (hullCentreWorld((ent as { spec?: object }).spec, _firePose, _hullCentre)) return _killAt.set(_hullCentre[0], pos.y, _hullCentre[2]);
+    }
+    if (hull && hullCentreWorld(hull.spec, hull, _hullCentre)) return _killAt.set(_hullCentre[0], pos.y, _hullCentre[2]);
+    return pos;
+  }
+
+  /**
    * (fire-center-277, Kevin 2026-11-24: "tank fires need to be from the center of tank. rn its not, fix.") A live fire
    * burns over its hull's measured centre (hullFireAnchor.ts: the drawn hull's bounds, not the model's origin; 275 put
    * it at a hit's point or 0.3 of the length behind the origin) and comes up out of the hull's top there, every frame
@@ -5186,23 +5214,20 @@ function* createFxSteps(
    * False when the hull has no fire frame (no calibration, no dims): the caller keeps its point on the root.
    */
   function syncLiveFireAnchor(col: SmokeColumn, subject: FxEntity | null): boolean {
-    const frame = subject ? hullFireFrame((subject as { spec?: object }).spec) : null;
+    const spec = subject ? (subject as { spec?: object }).spec : null;
+    const frame = hullFireFrame(spec);
     if (!subject || !frame) return false;
-    const c = frame.centre;
     const root = subject.visual?.root as THREE.Object3D | undefined;
+    _firePose.root = root ?? null; _firePose.pos = subject.state?.pos ?? null; _firePose.yaw = hullYawOf(subject);
+    if (!hullCentreWorld(spec, _firePose, _hullCentre)) return false;
+    _fireCentre.set(_hullCentre[0], _hullCentre[1], _hullCentre[2]);
     let rise: number;
     if (root && root.matrixWorld && typeof root.updateWorldMatrix === 'function') {
-      root.updateWorldMatrix(true, false);
-      _fireCentre.set(c[0], c[1], c[2]).applyMatrix4(root.matrixWorld);
       root.matrixWorld.decompose(_fireAt, _fireQ, _fireScale);
       _fireUp.set(0, 1, 0).applyQuaternion(_fireQ.invert()); // the world's up in the hull frame
       rise = hullFireRise(frame, _fireUp.x, _fireUp.y, _fireUp.z) * Math.abs(_fireScale.y || 1);
     } else {
-      const at = subject.state?.pos;
-      if (!at || !Number.isFinite(at.x)) return false;
-      const yaw = hullYawOf(subject), cy = Math.cos(yaw), sy = Math.sin(yaw);
-      _fireCentre.set(at.x + cy * c[0] + sy * c[2], at.y + c[1], at.z + cy * c[2] - sy * c[0]);
-      rise = frame.max[1] - c[1];
+      rise = frame.max[1] - frame.centre[1];
     }
     col.pos[0] = _fireCentre.x;
     col.pos[1] = _fireCentre.y + rise - LIVE_FIRE_LICK_BASE_M;
@@ -8146,7 +8171,8 @@ function* createFxSteps(
      * Vehicle destruction: fireball, debris, persistent smoke column; calls
      * visual.setDestroyed() at t ≈ 0.15 s when visual given (turret pop only
      * on ammo-rack kills).
-     * @param {THREE.Vector3} pos hull center (world)
+     * @param {THREE.Vector3} pos the hull's place (world; callers name its origin): a tank's kill stands over its hull's
+     *   measured centre (centreKillPoint, by wreckOf's entity or opts.hull), at this point's height
      * @param {object|null} visual TankVisual or null
      * @param {'ammorack'|'shot'|'fire'} [cause] kill cause (varies the show)
      */
@@ -8155,9 +8181,11 @@ function* createFxSteps(
       visual: FxVisual | null,
       cause: DestructionCause = 'ammorack',
       wreckOf: string | null = null,
-      opts: { shellBurst?: boolean } = {},
+      opts: { shellBurst?: boolean; hull?: HullKill | null } = {},
     ): void {
-      spawnDestruction(pos, visual, 0, cause, wreckOf, !!opts.shellBurst);
+      // (fire-center-277) a tank's kill over its hull's measured centre (a shell burst on open ground has no hull)
+      const at = opts.shellBurst ? pos : centreKillPoint(pos, wreckOf, opts.hull);
+      spawnDestruction(at, visual, 0, cause, wreckOf, !!opts.shellBurst);
     },
 
     /**

@@ -5,10 +5,14 @@
 //  - in hull space, upright: the fire's horizontal offset from the hull's centre is within BOUND of the hull's length;
 //  - every pose: the fire stands on the world's vertical through the hull's centre (within BOUND of the length), and its
 //    licks' base lies on the hull's skin over the centre (out of it, never inside);
-//  - every id has a measured hull (no id falls back to its dims).
+//  - every id has a measured hull (no id falls back to its dims);
+//  - (the follow-up, Main) its kill and its wreck column stand over the same centre: the sim's and the room's
+//    tank:destroyed (which name the hull's origin; the wreck's entity resolves) and a replay or Studio kill naming its
+//    hull (opts.hull), in every pose.
 // Data only: no tank is built (the calibrations are the builds' receipts). Fails listing the ids.
 // Negative control: effects.ts before fire-center-277 (a hit's point, else 0.3 of the length behind the origin) fails
-// every id.
+// every id; with the fire's fix and the kill at the origin, the kills of the ids whose origin is off the drawn hull's
+// middle fail (t95, m46_patton, m47_patton and others).
 import '../vehicles/fleetRegistration.ts';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -52,7 +56,16 @@ const POSES = [
 ];
 
 const fails = [];
-let worst = { id: null, k: 0 };
+let worst = { id: null, k: 0 }, worstKill = { id: null, k: 0 }, kills = 0;
+/** a kill's wreck column (it rides the corpse from the kill's point): on the world's vertical through the centre _c */
+function killCentred(key, what, L) {
+  const col = fx.getAttachmentDebug().subjects.find((s) => s.id === key);
+  if (!col) { fails.push(`${what}: no wreck column`); return; }
+  kills++;
+  const k = Math.hypot(col.pos[0] - _c.x, col.pos[2] - _c.z) / L;
+  if (k > worstKill.k) worstKill = { id: what, k };
+  if (k > BOUND) fails.push(`${what}: ${(k * 100).toFixed(1)}% of the hull's length off its centre`);
+}
 const ids = [...ALL_TANK_IDS];
 assert.equal(ids.length, 313, `the fleet's ${ids.length} ids (the brief's 313)`);
 const _w = new THREE.Vector3(), _c = new THREE.Vector3(), _l = new THREE.Vector3();
@@ -78,13 +91,24 @@ for (const [n, id] of ids.entries()) {
     frames(2);
     const at = fx.getAttachmentDebug().subjects.find((s) => s.id === id);
     bus.emit('tank:fire', { id, burning: false });
+    // _c: the hull's measured centre in the world
+    _c.set(cx, (min[1] + max[1]) / 2, cz).applyMatrix4(root.matrixWorld);
+    // ---- the kill and its wreck column (the sim's and the room's tank:destroyed name the hull's origin; the wreck's
+    // entity resolves) ----
+    e.combat.destroyed = true; e.combat.fire.burning = false;
+    e.visual.isDestroyed = () => true; e.visual.setDestroyed = () => {};
+    bus.emit('tank:destroyed', { id, cause: 'shot', pos: [root.position.x, root.position.y, root.position.z] });
+    killCentred(`wreck:${id}`, `${id} ${pose.name} kill`, L);
+    // ---- a kill whose wreck does not resolve here names its hull (the killcam's replay, the Studio's actor) ----
+    fx.destruction(root.position.clone(), null, 'shot', `ghost:${id}`, { hull: { spec, root } });
+    killCentred(`wreck:ghost:${id}`, `${id} ${pose.name} replayed kill`, L);
+    fx.resetAll();
     entities.delete(id);
     if (!at?.resolved) { fails.push(`${id} ${pose.name}: no live fire on the hull`); continue; }
     // the licks' base (the fire's point + LICK_BASE up the world), in hull space
     _l.set(at.pos[0], at.pos[1] + LICK_BASE_M, at.pos[2]);
     root.worldToLocal(_l);
     // its distance from the world's vertical through the hull's centre
-    _c.set(cx, (min[1] + max[1]) / 2, cz).applyMatrix4(root.matrixWorld);
     const offVertical = Math.hypot(at.pos[0] - _c.x, at.pos[2] - _c.z) / L;
     const offHull = pose.name === 'upright' ? Math.hypot(_l.x - cx, _l.z - cz) / L : 0;
     const k = Math.max(offVertical, offHull);
@@ -103,6 +127,6 @@ for (const [n, id] of ids.entries()) {
   }
 }
 fx.resetAll();
-assert.deepEqual(fails, [], `fires off their hull's centre or not out of its top (${fails.length}):\n  ${fails.join('\n  ')}`);
+assert.deepEqual(fails, [], `hull effects off their hull's centre or fires not out of its top (${fails.length}):\n  ${fails.join('\n  ')}`);
 
-console.log(`fireCentre.selftest: all ${ids.length} tanks' live fires burn over their measured hull centre (worst ${(worst.k * 100).toFixed(2)}% of the hull's length, ${worst.id}; bound ${BOUND * 100}%) upright, tilted, on their side and flipped, with a bow hit first, and come up out of the hull's top`);
+console.log(`fireCentre.selftest: all ${ids.length} tanks' live fires burn over their measured hull centre (worst ${(worst.k * 100).toFixed(2)}% of the hull's length, ${worst.id}; bound ${BOUND * 100}%) upright, tilted, on their side and flipped, with a bow hit first, and come up out of the hull's top; their ${kills} kills and wreck columns (tank:destroyed's, and a replay's naming its hull) stand over the same centre (worst ${(worstKill.k * 100).toFixed(2)}%${worstKill.id ? `, ${worstKill.id}` : ""})`);

@@ -9,6 +9,8 @@
  * Its flames rise out of the top over that centre: the deck, or the turret's roof when the turret covers the centre at
  * every bearing (the deck there is under the turret, and flames born in it would be hidden).
  * A spec with no calibration (a Studio stand-in, a test hull) burns over its dims' middle on the 275 deck share.
+ * The same centre places a tank's kill and its wreck column (hullCentreWorld; effects.ts centreKillPoint): one source for
+ * every hull-anchored effect.
  */
 import { combatAnatomyCalibration } from '../vehicles/combatAnatomyCalibrationRegistry.ts';
 
@@ -78,4 +80,41 @@ export function hullFireRise(frame: HullFireFrame, ux: number, uy: number, uz: n
   if (Math.abs(uy) > 1e-6) t = Math.min(t, (uy > 0 ? frame.max[1] - c[1] : c[1] - frame.min[1]) / Math.abs(uy));
   if (Math.abs(uz) > 1e-6) t = Math.min(t, (uz > 0 ? frame.max[2] - c[2] : c[2] - frame.min[2]) / Math.abs(uz));
   return Number.isFinite(t) ? t : frame.max[1] - c[1];
+}
+
+/** A hull's pose for its centre: its visual root (whole transform), else its state's place and yaw. */
+export interface HullCentrePose {
+  root?: { matrixWorld?: { elements: ArrayLike<number> }; updateWorldMatrix?(parents: boolean, children: boolean): void } | null;
+  pos?: { x: number; y: number; z: number } | null;
+  yaw?: number;
+}
+
+/**
+ * (fire-center-277 follow-up, Main: one source for every hull-anchored effect) The hull's measured centre (its fire
+ * frame's middle: the drawn hull's, not the model's origin) in the world, by its root's whole transform (yaw, pitch,
+ * roll, a flip, a mode's scale), else its state's place and yaw; written to `out` [x, y, z]. False when the spec has no
+ * frame or the pose resolves to nothing: the caller keeps its own point. Allocation-free.
+ */
+export function hullCentreWorld(spec: FireSpec | null | undefined, pose: HullCentrePose | null | undefined,
+  out: number[]): boolean {
+  const frame = hullFireFrame(spec);
+  if (!frame || !pose) return false;
+  const c = frame.centre;
+  const root = pose.root;
+  if (root?.matrixWorld?.elements && typeof root.updateWorldMatrix === 'function') {
+    root.updateWorldMatrix(true, false);
+    const e = root.matrixWorld.elements;
+    out[0] = e[0] * c[0] + e[4] * c[1] + e[8] * c[2] + e[12];
+    out[1] = e[1] * c[0] + e[5] * c[1] + e[9] * c[2] + e[13];
+    out[2] = e[2] * c[0] + e[6] * c[1] + e[10] * c[2] + e[14];
+    return true;
+  }
+  const at = pose.pos;
+  if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) return false;
+  const yaw = typeof pose.yaw === 'number' && Number.isFinite(pose.yaw) ? pose.yaw : 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  out[0] = at.x + cy * c[0] + sy * c[2];
+  out[1] = at.y + c[1];
+  out[2] = at.z + cy * c[2] - sy * c[0];
+  return true;
 }
