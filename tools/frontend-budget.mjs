@@ -417,9 +417,20 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   playerBattleActions ~0.4 KB (notices, death-flow, turbo-spin, air-support together); phonePause.ts splits into its
   //   own chunk (+1 request; main.ts and settings.ts changed by those lanes) and aerialVision's chunk goes (-1; notices'
   //   aerialHud). fix/minimap-aircraft-glyph-275's move is chunk-neutral. The other rows hold their pins.
-  game: { brotliBytes: 1276200, requests: 156, entryBrotliBytes: 252884 },
-  cn: { brotliBytes: 1324601, requests: 157, entryBrotliBytes: 252884 },
-  gallery: { brotliBytes: 802120, requests: 85 },
+  // 2026-11-24 (integrator 276, coordinator ruling, at the release build of integ/276 9b4532f42c, after replay-lazy-276 put
+  //   the replay recorder, store, setup and seat control behind replayRecordingAccess): five pins re-set at their measure,
+  //   attributed per module (sourcemapped builds of 275.0 c7d111fad4 and the head). game +6,067 B brotli, cn +6,521,
+  //   entry +7,266 (both), requests +3 (game, cn): new preloaded chunks battleScope.ts (battle-teardown-276, the one phase
+  //   owner, ~0.7 KB), detRotation.ts (sim-det-trig-b, the deterministic core, ~0.8 KB), chineseTurretOutlines.ts
+  //   (cn-turrets-276, ~0.9 KB) and pl01HullLine.ts (pl01-skirts-276, ~0.3 KB), the Garage's tank builders; donorBustleCut's
+  //   chunk goes (-1). Entry: input.ts (19.4 KB raw) and armourOverlayDefault.ts leave the preloaded rosterState chunk for
+  //   main (sim-det-trig-b 60e3569048 moved getStoredDifficulty out, so state.ts no longer imports input.ts: a placement,
+  //   the page total unchanged), main.ts +3.8 KB raw (the 276 wiring: replay, teardown, notices, hud-bands), the replay
+  //   recorder's lazy port replayRecordingAccess.ts +1.2 KB raw. gallery +964 B, +1 request: chineseTurretOutlines and
+  //   pl01HullLine in, donorBustleCut out. The other rows hold their pins.
+  game: { brotliBytes: 1282267, requests: 159, entryBrotliBytes: 260150 },
+  cn: { brotliBytes: 1331122, requests: 160, entryBrotliBytes: 260150 },
+  gallery: { brotliBytes: 803084, requests: 86 },
   home: { brotliBytes: 30144, requests: 8 },
   docs: { brotliBytes: 38686, requests: 12 },
   notFound: { brotliBytes: 19929, requests: 7 },
