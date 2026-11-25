@@ -406,6 +406,7 @@ try {
       record.joinerBootMs = elapsedMs() - openedAt;
       joinerBooted = true;
       await waitFor(B, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), 'B joined (invite)', 120_000);
+      record.joinerJoinedAtPageMs = await B.evaluate(() => performance.now()).catch(() => 0);
       record.joinerBytesAtJoin = await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null);
       step(`battle-${battle}-b-cold-joined`, { bootMs: record.joinerBootMs, bytes: record.joinerBytesAtJoin });
     } else {
@@ -469,6 +470,24 @@ try {
     }
     record.joinerLongestHold = longest;
     // what the joiner downloaded: at its join (boot + lobby prefetch) and by its reveal (the entry), from resource timing
+    // what the entry fetched, by kind and by the heaviest files (resources that finished after the join)
+    record.joinerEntryFetches = await B.evaluate((joinedAt) => {
+      const rows = performance.getEntriesByType('resource').filter((entry) => entry.responseEnd >= joinedAt);
+      const kindOf = (name) => {
+        const path = new URL(name, location.href).pathname;
+        if (/\.(js|mjs)$/.test(path)) return 'script';
+        if (/\.(png|jpe?g|webp|avif|ktx2|basis|dds)$/.test(path)) return 'image';
+        if (/\.(bin|glb|gltf|dat|br|json)$/.test(path)) return 'data';
+        if (/\.(wasm)$/.test(path)) return 'wasm';
+        if (/\.(mp3|ogg|opus|wav|m4a)$/.test(path)) return 'audio';
+        return 'other';
+      };
+      const byKind = {};
+      for (const entry of rows) { const kind = kindOf(entry.name); byKind[kind] = (byKind[kind] ?? 0) + (entry.transferSize || 0); }
+      const top = rows.sort((x, y) => (y.transferSize || 0) - (x.transferSize || 0)).slice(0, 15)
+        .map((entry) => ({ path: new URL(entry.name, location.href).pathname.slice(0, 90), bytes: entry.transferSize || 0, encoded: entry.encodedBodySize || 0, decoded: entry.decodedBodySize || 0 }));
+      return { count: rows.length, byKind, top };
+    }, record.joinerJoinedAtPageMs ?? 0).catch(() => null);
     record.joinerBytes = { atJoin: record.joinerBytesAtJoin ?? null, atReveal: await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null) };
     // the entry's own stage timings on the joiner (browserComposition markStage: where the time under one label went)
     record.joinerTrace = await B.evaluate(() => {
@@ -477,10 +496,13 @@ try {
     }).catch(() => null);
     step(`battle-${battle}-joiner-load`, { revealS: revealed.B ? +(revealed.B / 1000).toFixed(1) : null, longestHold: longest, rows: record.joinerLoad.length });
     if (longest.s > stallBoundS) fail(`battle ${battle}: the joiner's loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
-    if (joinBoundS && !(revealed.B <= joinBoundS * 1000)) fail(`battle ${battle}: the joiner's battle was not on screen within ${joinBoundS} s of the start (${revealed.B ? (revealed.B / 1000).toFixed(1) + ' s' : 'never'})`);
+    if (joinBoundS && !joinerBlocked && !(revealed.B <= joinBoundS * 1000)) fail(`battle ${battle}: the joiner's battle was not on screen within ${joinBoundS} s of the start (${revealed.B ? (revealed.B / 1000).toFixed(1) + ' s' : 'never'})`);
     if (joinerBlocked) {
       // (a link that can never connect) the joiner is told, in words, with Rejoin: the lobby back with the host_unreachable
-      // sentence within --join-bound of the start, and its loader never still for more than --stall-bound on the way
+      // sentence within --join-bound of the start, and its loader never still for more than --stall-bound on the way.
+      // The failure is recorded before the Garage restore; the lobby words it after (offerRoomAfterFailure): wait for it.
+      await waitFor(B, () => document.querySelector('.cot-play .status')?.classList.contains('err') === true, 'B lobby names the failure', 20_000)
+        .catch((error) => report.findings.push(error.message.slice(0, 200)));
       const status = await B.evaluate(() => ({ text: document.querySelector('.cot-play .status')?.textContent ?? '',
         err: document.querySelector('.cot-play .status')?.classList.contains('err') ?? false,
         rejoin: !!document.querySelector('.cot-play [data-action="rejoin"]:not([hidden])'),
@@ -564,14 +586,17 @@ try {
         lossRate: last.lossRate, role: last.role, health: [...new Set(samples.map((s) => s.health))], link: record.links[label],
       };
       step(`battle-${battle}-${label}-sync`, summary);
-      if (summary.rttP95 !== null && summary.rttP95 > rttP95Bound) fail(`${label} battle ${battle}: rtt p95 ${summary.rttP95} ms > ${rttP95Bound}`);
-      if (summary.ackP95 !== null && summary.ackP95 > ackP95Bound) fail(`${label} battle ${battle}: input ack lag p95 ${summary.ackP95} ticks > ${ackP95Bound}`);
+      // (a throttled joiner's steady state carries the throttle: its bounds are reported, not gated)
+      const gate = label === 'B' && (joinerNet.length || joinerCpu > 1)
+        ? (line) => report.findings.push(`throttled joiner (not gated): ${line}`) : fail;
+      if (summary.rttP95 !== null && summary.rttP95 > rttP95Bound) gate(`${label} battle ${battle}: rtt p95 ${summary.rttP95} ms > ${rttP95Bound}`);
+      if (summary.ackP95 !== null && summary.ackP95 > ackP95Bound) gate(`${label} battle ${battle}: input ack lag p95 ${summary.ackP95} ticks > ${ackP95Bound}`);
       // (the host's startup backlog, 277) the first seconds: by --ack-by the lag is within the bound, and stays there
       const opening = samples.slice(0, ackBy + 3).map((sample) => sample.ackLagTicks);
       summary.openingAck = opening;
       summary.openingOffsetErrorMs = samples.slice(0, ackBy + 3).map((sample) => (sample.offsetErrorMs === null ? null : Math.round(sample.offsetErrorMs)));
       const late = opening.slice(ackBy).filter((ticks) => Number.isFinite(ticks) && ticks > ackP95Bound);
-      if (late.length) fail(`${label} battle ${battle}: input ack lag still ${Math.max(...late)} ticks at second ${ackBy}+ (> ${ackP95Bound}; first seconds ${opening.join(', ')})`);
+      if (late.length) gate(`${label} battle ${battle}: input ack lag still ${Math.max(...late)} ticks at second ${ackBy}+ (> ${ackP95Bound}; first seconds ${opening.join(', ')})`);
       if (summary.reconnects > 0) fail(`${label} battle ${battle}: ${summary.reconnects} reconnects`);
       if (summary.stalls > 0) fail(`${label} battle ${battle}: ${summary.stalls} stalls`);
       if (summary.secondsWithoutSnapshot > 1) fail(`${label} battle ${battle}: ${summary.secondsWithoutSnapshot} seconds without a snapshot`);
