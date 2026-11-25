@@ -90,6 +90,15 @@ const stallBoundS = Number(argValue('stall-bound', 10));
 // player's covered path (__DEBUG.beginSoloBattle), measured as the joiner is: the loader's timeline, its longest still
 // state (--stall-bound), the time to the battle (--join-bound), the entry trace and the bytes it fetched.
 const solo = process.argv.includes('--solo');
+// --seed=<n> (277 by default; --seed=random for the room's own Math.random): the in-process room service draws its match
+// seeds (and room codes) from a generator on this seed, so a run's matches draw the same bots, vehicles and 'random' map
+// as another run's and their timings compare (the roster stage swung 6.8-12.4 s with the bots a run drew).
+const seedArg = argValue('seed', '277');
+const roomRandom = seedArg === 'random' ? undefined : (() => {
+  let state = (Number(seedArg) >>> 0) || 277;
+  return () => { state = (state + 0x6D2B79F5) | 0; let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+})();
 const soloSpec = argValue('spec', 'm1a2_abrams_sepv3');
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
@@ -102,7 +111,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, seed: seedArg, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -383,6 +392,7 @@ try {
     throw new Error(report.refused);
   }
   rooms = await createRoomsServer({ host: '127.0.0.1', port: roomsPort, seatSecret: randomBytes(24).toString('hex'), matchTransport: 'p2p',
+    ...(roomRandom ? { random: roomRandom } : {}),
     ...(roomKind === 'private' ? { relayCredentials: () => relay.issue() } : {}) });
   step('rooms', { url: rooms.url, transport: 'p2p', roomKind, relaySource: relay.source, forceRelay });
   server = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port: previewPort, strictPort: true, open: false } });
