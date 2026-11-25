@@ -30,18 +30,38 @@ interface Held { readonly cls: 'decor' | 'idle'; readonly start: () => void }
 
 const running = { decor: 0, idle: 0 };
 const held: Held[] = [];
-let openWindows = 0;
+/** Each open window's deadline (now() + WINDOW_MAX_MS); a window past it counts as closed. */
+const windows = new Set<{ deadline: number }>();
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 let stats = { held: 0, maxWaitMs: 0 };
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+function openWindowCount(): number {
+  const at = now();
+  for (const entry of windows) if (entry.deadline <= at) windows.delete(entry);
+  return windows.size;
+}
+
+/**
+ * While something is held, one timer stands at the earliest window deadline, so a window whose close was lost still
+ * lets its fetches go. Nothing held, no timer: an entry that holds nothing arms none (the card's own tests drive a fake
+ * timer queue).
+ */
+function armExpiry(): void {
+  if (expiryTimer !== null || held.length === 0 || windows.size === 0) return;
+  let earliest = Infinity;
+  for (const entry of windows) earliest = Math.min(earliest, entry.deadline);
+  expiryTimer = setTimeout(() => { expiryTimer = null; pump(); armExpiry(); }, Math.max(0, earliest - now()) + 1);
+}
+
 /** True while a battle entry holds the lower classes. */
 export function fetchWindowOpen(): boolean {
-  return openWindows > 0;
+  return openWindowCount() > 0;
 }
 
 function canStart(cls: 'decor' | 'idle'): boolean {
-  if (openWindows === 0) return true;
+  if (openWindowCount() === 0) return true;
   if (cls === 'decor') return running.decor < DECOR_SLOTS;
   return running.idle < IDLE_SLOTS && running.decor === 0 && !held.some((entry) => entry.cls === 'decor');
 }
@@ -77,33 +97,34 @@ export function classFetch<T>(cls: FetchClass, start: () => Promise<T>): Promise
     stats.held++;
     held.push({ cls, start: run });
     pump();
+    armExpiry();
   });
 }
 
 /**
  * Open the entry window (the loading card is up). The handle's close() is idempotent; every held fetch starts once the
- * last window closes. The window closes itself after WINDOW_MAX_MS.
+ * last window closes. The window closes itself after `maxMs` (WINDOW_MAX_MS).
  */
-export function openFetchWindow(): { close(): void } {
-  openWindows++;
-  let closed = false;
-  const close = (): void => {
-    if (closed) return;
-    closed = true;
-    clearTimeout(timer);
-    openWindows = Math.max(0, openWindows - 1);
-    pump();
+export function openFetchWindow(maxMs = WINDOW_MAX_MS): { close(): void } {
+  const entry = { deadline: now() + maxMs };
+  windows.add(entry);
+  return {
+    close() {
+      if (!windows.delete(entry)) return;
+      if (windows.size === 0 && expiryTimer !== null) { clearTimeout(expiryTimer); expiryTimer = null; }
+      pump();
+    },
   };
-  const timer = setTimeout(close, WINDOW_MAX_MS);
-  return { close };
 }
 
 /** (receipts, the harness) what the classes did: fetches held, the longest hold, and what is running or held now. */
 export function fetchClassStats(): { open: boolean; held: number; maxWaitMs: number; running: { decor: number; idle: number }; waiting: number } {
-  return { open: openWindows > 0, held: stats.held, maxWaitMs: Math.round(stats.maxWaitMs), running: { ...running }, waiting: held.length };
+  return { open: openWindowCount() > 0, held: stats.held, maxWaitMs: Math.round(stats.maxWaitMs), running: { ...running }, waiting: held.length };
 }
 
 /** (selftests) back to a fresh page's state. */
 export function resetFetchClassesForTest(): void {
-  running.decor = 0; running.idle = 0; held.length = 0; openWindows = 0; stats = { held: 0, maxWaitMs: 0 };
+  running.decor = 0; running.idle = 0; held.length = 0; windows.clear();
+  if (expiryTimer !== null) { clearTimeout(expiryTimer); expiryTimer = null; }
+  stats = { held: 0, maxWaitMs: 0 };
 }

@@ -72,6 +72,28 @@ function harness() {
   window.close();
 }
 
+// ---- a window whose close was lost lets its fetches go at its deadline; an entry that holds nothing arms no timer
+{
+  resetFetchClassesForTest();
+  const realSetTimeout = globalThis.setTimeout;
+  let armed = 0;
+  globalThis.setTimeout = (fn, ms) => { armed++; return realSetTimeout(fn, ms); };
+  try {
+    openFetchWindow(30);
+    assert.equal(armed, 0, 'opening a window arms no timer');
+    const order = [];
+    const running = [classFetch('decor', () => new Promise(() => {})), classFetch('decor', () => new Promise(() => {}))];
+    void running;
+    const third = classFetch('decor', async () => { order.push('d2'); return 'late'; });
+    await new Promise((done) => setImmediate(done));
+    assert.deepEqual(order, [], 'the third decor waits for a slot');
+    assert.equal(armed, 1, 'a held fetch arms one expiry timer');
+    assert.equal(await third, 'late', 'the lost window expires and its held fetch starts');
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+}
+
 // ---- the window's owner and the classes' callers are wired as described
 {
   const read = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
