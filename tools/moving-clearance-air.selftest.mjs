@@ -13,6 +13,7 @@ import { voxelise } from './tank-voxel-body.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ensureInteriorFills } from '../src/vehicles/interiorFills.ts';
 import { M1A1_GUN_PITCH_BY_YAW } from '../src/vehicles/m1a1GunLimits.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // Moving-part clearance air (2026-10-06, tools/moving-clearance-air.mjs). Pins: (1) the generator, the shared
 // measurement, the CLI and the fleet gate read the one rule, and the M1A1 clearance decides gun ownership by object,
@@ -106,6 +107,7 @@ assert.deepEqual(recorded, [...ids].sort(), 'every legacy M1A1 mount, and only t
 await ensureInteriorFills(['m1a1_abrams_hc', 'm1a1ha']);
 const report = {};
 for (const id of ['m1a1_abrams_hc', 'm1a1ha']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true });
   try {
     const { tris, meshes } = collectTriangles(tank.root);

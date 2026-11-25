@@ -1,6 +1,7 @@
 // Owner 2026-10-08: every cannon gets a real bore with a sparse interior; flat masks are retired.
 import assert from 'node:assert/strict';
 import { ALLOWED_BORE_METHODS, inventoryOne } from './muzzle-bore-inventory.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // Representative formerly capped tubes, shaped brakes and low-detail mouths.
 // Their outer source geometry remains covered by separate profile regressions.
@@ -9,6 +10,7 @@ const CONVERTED = ['k2b', 'k1e1', 'type10_tk_x', 'spz_puma', 'chieftain_mk10',
   't72b3m_2016', 'challenger1_mk3', 't72bu', 'chieftain5', 't90', 't90a_burlak', 't90ms_tagil', 'm60a2'];
 for (const id of CONVERTED) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const row = inventoryOne(id, quality);
     assert.equal(row.method, 'physical-carved', `${id} ${quality}: native muzzle has a verified physical recess`);
     assert.ok(row.recess.inwardWallTris >= 12, `${id} ${quality}: real inward-facing stock is present`);

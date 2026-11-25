@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as THREE from 'three';
 import {createTank} from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const page=fs.readFileSync(new URL('./icons-page.html',import.meta.url),'utf8');
 const extract=name=>{
@@ -53,6 +54,7 @@ function verifyLegacyCameras(center,size,extentZ,box,old) {
   }
 }
 for(const id of INSET_IDS)for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4100});
   try {
     tank.root.updateMatrixWorld(true);

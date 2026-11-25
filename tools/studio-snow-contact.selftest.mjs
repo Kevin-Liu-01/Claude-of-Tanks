@@ -23,6 +23,7 @@ import {
 } from '../src/engine/vehicleGroundOcclusion.ts';
 import { decodeSceneSnow, encodeSceneAlpha } from '../src/engine/sceneAlpha.ts';
 import { replayStudioActorGaps } from './studio-contact-gap.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // the scenes' first keys (shots/media-r5 site50 renders-fleet, cinema receipts of 2026-10-13)
 const TAKES = [
@@ -38,6 +39,7 @@ const rows = [];
 
 // ---- 1. the support solve seats both heroes on the rendered snow
 for (const t of TAKES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const keys = t.keys.map(([tMs, x, z, facingDeg], i) => ({ id: `k${i}`, tMs, pos: [x, z], facingDeg, turretDeg: 0, gunDeg: 1, transition: 'linear' }));
   const { samples: [s] } = await replayStudioActorGaps({ map: t.map, actor: t.actor, keys, times: [400] });
   assert.ok(s.vertices > 1000, `${t.take}: the running gear measured (${s.vertices} vertices)`);
@@ -62,6 +64,7 @@ const BARE_W = u.uVehGroundSnow.value * decodeSceneSnow(encodeSceneAlpha(0.5, 0)
 assert.equal(SNOW_W, 1, 'snowy terrain: the whole law'); assert.equal(BARE_W, 0, 'bare ground: the ordinary law');
 const UP = { x: 0, y: 1, z: 0 };
 for (const t of TAKES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureAuthorityFleet([t.actor.id]);
   const visual = createTank(t.actor.id, null, { proceduralOnly: true, quality: 'high' });
   visual.root.updateMatrixWorld(true);

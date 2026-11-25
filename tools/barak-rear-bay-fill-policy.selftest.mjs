@@ -4,6 +4,7 @@ import {BARAK_SOURCE_CONFIGURATION} from'./barak-source-openings.mjs';
 import {barakBayIntersectsCell,verifyBarakBayIdentity,verifyBarakBayNativeStock,createBarakBayFillPolicy}from'./barak-rear-bay-fill-policy.mjs';
 import {createTank} from'../src/vehicles/tankFactory.ts';
 import {ensureInteriorFills} from'../src/vehicles/interiorFills.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 verifyBarakBayIdentity(BARAK_SOURCE_CONFIGURATION,BARAK_SOURCE_CONFIGURATION.source.sha256);
 assert.throws(()=>verifyBarakBayIdentity(BARAK_SOURCE_CONFIGURATION,'0'.repeat(64)),/canonical source changed/);
@@ -20,6 +21,7 @@ assert.throws(()=>barakBayIntersectsCell([NaN,0,0],[1,1,1]),/finite positive/);
 await ensureInteriorFills(['merkava4_barak']);
 const rows=[];
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank('merkava4_barak',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  try{
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((l,i)=>l.object.visible=i===0)}});

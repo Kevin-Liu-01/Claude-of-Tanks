@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { committedFillRecord, fillExposure, lanePending, laneScope } from './interior-fill-exposure.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // --lane (tank:release:check): the selected ids, plus each id whose fill record line or hull/turret/gun digest moved
 // against the base; an id with no record now has nothing to expose. Only the pending ids are built for digests.
@@ -28,6 +29,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 }
 
 for (const id of ['kv2', 'challenger2']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const record = await committedFillRecord(id);
   assert.ok(record, `${id}: a committed fill record`);
   const tank = createTank(id, null, { proceduralOnly: true });

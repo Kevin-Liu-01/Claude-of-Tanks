@@ -8,6 +8,7 @@ import './tank-surface-collect.mjs'; // node canvas/document shim the builders p
 import { TRACK_LANE_BAND_PAD_VOXELS, TRACK_LANE_SHOE_PAD_VOXELS, insideTrackLane, trackLaneBoxes, trackLaneBoxesForVoxel, trackLaneVoxelMask } from './track-lane-boxes.mjs';
 import { isTrackShoeMesh } from './track-clip-classification.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // Track lane boxes (2026-09-21): one definition of "the volume the track sweeps" shared by the fill generator and
 // the watertight check. Pins: (1) both tools are wired to the shared module and the generator keeps no private copy;
@@ -48,6 +49,7 @@ const flat = (box) => [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, bo
 const _m = new THREE.Matrix4(), _w = new THREE.Matrix4();
 let maskVoxels = 0;
 for (const [id, fixture] of Object.entries(FIXTURE)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true });
   try {
     const lanes = trackLaneBoxesForVoxel(tank.root, VOXEL);

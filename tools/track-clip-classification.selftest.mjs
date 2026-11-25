@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { expectedTrackBandCount, isTrackShoeMesh } from './track-clip-classification.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const tank = createTank('leo2_revolution', null, { proceduralOnly: true, geometryReceipt: true });
 try {
@@ -25,6 +26,7 @@ try {
 }
 // two bands per running-gear unit: one unit on a conventional tank, two on the four-track T95
 for (const [id, units] of [['leo2_revolution', 1], ['t95', 2]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const built = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   try {
     const bands = [];

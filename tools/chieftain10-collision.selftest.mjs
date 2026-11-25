@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {enableCombatAnatomyMeasurementMode} from '../src/vehicles/combatAnatomyMeasurementMode.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 enableCombatAnatomyMeasurementMode();
 const {createTank}=await import('../src/vehicles/tankFactory.ts');
 const {captureChieftain10Collision,chieftain10StockCells}=await import('./chieftain10-collision.mjs');
@@ -132,6 +133,7 @@ function syntheticConcavity() {
 syntheticConcavity();
 let previousCells;
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options={quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
   const before=createTank('chieftain_mk10',null,options);let beforeHash;
   try {beforeHash=snapshot(before.root);}finally{before.dispose();}

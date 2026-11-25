@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { trackClipQuality, trackClipOptions, createTrackClipTank } from './track-clip-options.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 assert.deepEqual(trackClipOptions([]), { quality: 'high', outDir: 'shots' });
 assert.deepEqual(trackClipOptions(['--exact', '--strict', '--quality=low', '--out-dir=private/low']), { quality: 'low', outDir: 'private/low' });
 assert.deepEqual(trackClipOptions(['--quality=high']), { quality: 'high', outDir: 'shots' });
@@ -8,6 +9,7 @@ for (const value of ['', 'HIGH', 'mobile', 'medium', null, false]) assert.throws
 for (const args of [['--quality', 'low'], ['--out-dir', 'private'], ['--quality='], ['--quality=low', '--quality=high'], ['--out-dir='], ['--out-dir=a', '--out-dir=b']]) assert.throws(() => trackClipOptions(args));
 const ctx = {}, sentinel = {};
 for (const quality of [undefined, 'high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let calls = 0;
   assert.equal(createTrackClipTank((id, context, options) => {
     calls++; assert.equal(id, 'control'); assert.equal(context, ctx);

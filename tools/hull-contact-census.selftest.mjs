@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { bodyIslands, collectHullStock, collectStock, hullBellyPits, markHiddenIslands, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const at = (g, x, y, z, rx = 0) => g.rotateX(rx).translate(x, y, z);
 const box = (w, h, d, x, y, z, rx = 0) => stockPart('hull', at(new THREE.BoxGeometry(w, h, d), x, y, z, rx));
@@ -47,6 +48,7 @@ const inFlapEnvelope = (island) => Math.min(Math.abs(island.min[0]), Math.abs(is
 }
 // Leopard 2A5M and KF51 EVO: no rear flap, hanger or mudguard plate floats.
 for (const id of ['leo2a5m', 'kf51_evo']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { parts } = collectHullStock(id);
   const islands = bodyIslands(parts, 'hull');
   assert.deepEqual(islands.filter((island) => island.flap || inFlapEnvelope(island))
@@ -61,10 +63,12 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
   const floating = (id) => bodyIslands(collectStock(id).parts, 'turret').filter((island) => (island.gapM ?? 1) >= 0.015)
     .map((island) => island.min.map((v) => v.toFixed(2)).join());
   for (const id of ['challenger_x', 'challenger_x_sleek']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
   }
   // release 262 (the three marks' own fits): the commander's L37 rides the cupola and the front box sits on the roof
   for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     assert.deepEqual(floating(id), [], `${id}: every turret fitting sits on the turret as rendered`);
   }
 }

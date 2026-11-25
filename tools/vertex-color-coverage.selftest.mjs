@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../src/vehicles/canvasFixture.test-support.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // 2026-10-11 (integ/215): the ten Garage packs' instanced ground-cover tufts carry a colour attribute since garage look
 // round 2 (ad48a9f63), so their ten KNOWN rows are gone; nothing is in flight.
@@ -64,6 +65,7 @@ const { ensureInteriorFills } = await import('../src/vehicles/interiorFills.ts')
 const fleet = Object.keys(TANK_SPECS);
 await ensureInteriorFills(fleet);
 for (const id of fleet) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality, camoSeed: 4242 });
   record(offenders(`tank:${id}:${quality}`, tank.root));
   tank.dispose();
@@ -97,6 +99,7 @@ for (const nation of Object.keys(droneModel.DRONE_DESIGNS)) for (const detail of
   pool.reset();
 }
 for (const id of ['m1a1_abrams_hc', 'bmpt_t90', 'ua_m1a1']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { quality: 'high', camoSeed: 4242 });
   syncMissionAttachment(tank.root, TANK_SPECS[id], { kind: 'drone', active: false, cooldownS: 0 }, false);
   const dock = tank.root.getObjectByName('Reusable mission payload rail');

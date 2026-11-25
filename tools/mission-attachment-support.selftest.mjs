@@ -5,6 +5,7 @@ import {getSpec} from '../src/vehicles/specs.ts';
 import {ensureInteriorFills} from '../src/vehicles/interiorFills.ts';
 import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear} from '../src/sim/missionAttachment.ts';
 import {collectMissionStock,nativeRoofHeight,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from './mission-attachment-geometry.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 // Independent authoring witnesses: these are the bare permanent housing top
 // facets, not values imported from the tool's support-permission atlas. The
@@ -109,6 +110,7 @@ await ensureInteriorFills(cases.map(w=>w.id));
 for(const witness of cases) {
  let reference;
  for(const quality of ['high','low'])for(const seed of [4000,4242,8191]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec=getSpec(witness.id),tank=createTank(witness.id,null,{quality,camoSeed:seed,proceduralOnly:true,geometryReceipt:true});
   try {
    tank.root.updateMatrixWorld(true);
