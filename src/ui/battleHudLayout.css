@@ -17,6 +17,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
   max-width:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));max-height:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));
 }
+/* (notices-polish-277) a touch map's steps keep the layout's cap too (battleHudLayout.ts --hud-map-max: a short landscape's
+   consumables column under it), over the sizes its own rules give it */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{max-width:var(--hud-map-max,none);max-height:var(--hud-map-max,none)}
 /* (the wide top's plate sizes its content box, so its cap leaves out the plate's insets and the grid's gutter) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-minimap{
   --mm-cap:calc(var(--hud-map-max,100vw) - var(--mm-pl) - var(--mm-pr) - var(--mm-g));
@@ -206,16 +209,33 @@ body[data-hud-guidance~=captions] .cot-caption-line{left:var(--hud-caption-left)
 /* (its notices on the battle's one notice plate, the centre's angled one, their glyph and words centred on their action:
    in the kit's rounded plate a parked gun-limit chip read as another kit beside DETECTED, and the reconnect notice's line
    stood 9 px over its Leave button's middle, gauntlet r18) */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,calc(100% - var(--notice-point)) 100%,var(--notice-point) 100%,0 50%);
-  --notice-point:8px;--notice-fill:var(--hud-plate-strong);--notice-line:var(--line-2);position:relative;align-items:center;border-radius:0;background:none;box-shadow:none;isolation:isolate}
+/* (notices-polish-277) the cut itself is the HUD's one hexagon, declared with the HUD's plates (hud.ts, hexPlate.ts) */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice{--notice-point:8px;--notice-fill:var(--hud-plate-strong);--notice-line:var(--line-2);position:relative;align-items:center;border-radius:0;background:none;box-shadow:none;isolation:isolate}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before,body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{content:'';position:absolute;z-index:var(--z-under);pointer-events:none;clip-path:var(--notice-cut)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before{inset:0;background:var(--notice-line)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{inset:1px;background:var(--notice-fill)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong))}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong))}
-/* (notices-276b) a one-line status kind's pill (noticeKinds.ts data-shape; the HUD's own lanes by hud.ts's rule) */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-shape=pill]{--notice-cut:inset(0 round 999px)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box-shadow:var(--focus-ring)}
+/* (notices-polish-277; Kevin 2026-11-24: "make all warnings have mictures ... make those notifications look alot better too")
+   an INCOMING warning reads at a glance: its hexagon's edge in the warning's tone (a friendly run's in the accent), the
+   call-in in the HUD's capitals, its countdown the large figure, and its picture wider in the plate's empty side (every
+   call-in has one, noticeKinds.selftest.mjs) */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-air-incoming{--notice-line:color-mix(in srgb,var(--text-warn) 62%,var(--line-2));
+  --notice-art-w:184px;--notice-art-room:92px;min-height:60px;padding-block:var(--s2)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-air-incoming[data-severity=info]{--notice-line:color-mix(in srgb,var(--accent) 55%,var(--line-2))}
+body[data-cot-battle-layout] .cot-battle-notices .cot-air-incoming .cot-c-notice__glyph{width:24px;height:24px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-air-incoming .cot-c-notice__glyph svg{width:24px;height:24px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-air-incoming .cot-c-notice__text{font:700 var(--battle-fs-14)/1.15 var(--hud-font,system-ui);
+  letter-spacing:var(--track-label-s);text-transform:uppercase}
+body[data-cot-battle-layout] .cot-battle-notices .cot-air-incoming .cot-c-notice__detail{font:700 var(--battle-fs-20)/1 var(--font-data);color:var(--text-warn)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-air-incoming[data-severity=info] .cot-c-notice__detail{color:var(--text-accent)}
+/* (its narrow form, a condition lane under a warning's one-row width: battleHudLayout.ts data-lane-narrow, a portrait
+   phone's band between its map and its systems column) the words a step smaller and untracked, the picture narrower, so a
+   warning keeps one row in the lane's height */
+body[data-cot-battle-layout][data-lane-narrow] .cot-battle-notices .cot-c-notice.cot-air-incoming{--notice-art-w:112px;--notice-art-room:40px;gap:var(--s2)}
+body[data-cot-battle-layout][data-lane-narrow] .cot-battle-notices .cot-air-incoming .cot-c-notice__text{font-size:var(--battle-fs-12);letter-spacing:0}
+body[data-cot-battle-layout][data-lane-narrow] .cot-battle-notices .cot-air-incoming .cot-c-notice__detail{font-size:var(--battle-fs-16)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 /* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
    notification part maybe on right that shows what it is") every first-use hint (firstUseHints.ts, the armour tip the
@@ -629,7 +649,11 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 /* Owner 2026-10-17 (out of ammo, critic r9): where the chip sits under the sight, the reticle seats it (hud.ts
    placeAimWarning) under the rack, the countdown and the ring, as the mouse layout's canvas chip, and the scope's readouts
    start under it; its box is the canvas chip's ink, 24 px tall. A short landscape keeps it in the left lane (below). */
-.cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;display:flex;align-items:center;justify-content:center}
+/* (notices-polish-277; Kevin 2026-11-24: "as it disappears it looks like that space disappears") the seat holds through
+   the chip's exit as well: cot-m-drop keeps a hiding chip on screen for its leave, so a seat behind :not([hidden]) jumped
+   it back to the centre as it went (its seat in the base rule under the HUD, over the scope's top by specificity as
+   before; [hidden] only ends its display) */
+.cot-hud .cot-aim-warning[data-seat='sight']{left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;align-items:center;justify-content:center}
 /* (up to 340 px tall the joystick under the map and the seats beside it leave it no larger step: at 1.5 it ran 15 px onto
    the stick at 568x256, and at 568x320 it sent the objective under the score and the detection onto the hull panel; on a
    portrait phone up to 340 px wide it left the systems slot one 88 px column of six over the left FIRE, the layout
@@ -648,17 +672,11 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 }
 
 /* UI-LOCKDOWN B14: where a touch layout parks the chip off the sight it is the kit's notice in the battle's region (hud.ts
-   syncAimNotice), and the region stands where the chip parked; on touch it shows no other notice (the network's is the
-   strip's words for a screen reader there: multiplayerStatus.ts). The chip's compact plate, its glyph and 11 px words,
-   and no touch target over the joystick under it. */
+   syncAimNotice); (notices-polish-277, Kevin's "one place") the region stands in the condition lane there as everywhere,
+   no longer under the map or over the sight (under the map it met the consumables at 844x390, the overlap census on main).
+   The chip's compact plate, its glyph and 11 px words, and no touch target. */
 .cot-battle-notices .cot-aim-notice{align-items:center;gap:6px;min-width:32px;min-height:24px;padding:4px var(--s3);font:700 var(--battle-fs-11)/12px var(--hud-font,system-ui);text-transform:uppercase;pointer-events:none}
 .cot-battle-notices .cot-aim-notice .cot-c-notice__glyph,.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph svg{width:16px;height:16px}
-@media (max-height:549px) and (orientation:landscape){
-  /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  /* (mobile-hud-274: only while the region holds the chip alone; a toast of its own (the armour colours' tip, 273) takes
-     the guidance's place, data-hud-guidance~=toasts: seated at the chip's, the tip covered the left edge's section) */
-  body[data-cot-battle-layout].cot-touch-layout:not([data-hud-guidance~=toasts]) .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
-}
 /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
    300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
 @media (max-height:549px) and (min-height:300px) and (orientation:landscape){
@@ -668,11 +686,8 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
 }
 /* r10g (the coordinator): a portrait phone 340 px wide or less parks the chip off the sight, where no seat by it kept clear
-   of the left FIRE button, the map and the speedometer: in the notices' row over the sight, on one line, as wide as that
-   row, giving way while a notice shows (battleHudLayout.ts slotChip; under the map it met the systems slot, the layout
-   receipt at 320x568) */
+   of the left FIRE button, the map and the speedometer: on one line (in the condition lane, notices-polish-277) */
 @media (max-width:340px) and (orientation:portrait){
-  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{top:var(--hud-aim-warning-top,204px);width:max-content;max-width:var(--hud-touch-alert-w,176px)}
   body.cot-touch-layout .cot-battle-notices .cot-aim-notice{height:24px;min-height:0;padding:0 var(--s2);white-space:nowrap}
   .cot-battle-notices[data-under-notice] .cot-aim-notice{visibility:hidden}
 }

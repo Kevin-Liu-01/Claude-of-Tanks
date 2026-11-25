@@ -9,6 +9,7 @@ import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap, drawAircraftGlyph } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createBattlePointers } from './pointers/battlePointers.ts';
+import { hexPlateClip } from './hexPlate.ts';
 import { createAirSupportHud } from './airSupportHud.ts';
 import type { AirSupportView } from '../sim/airSupport.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
@@ -1976,7 +1977,10 @@ html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
    beside the media queries that size it) keeps the glyph */
-.cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
+/* (notices-polish-277) its row's layout on the base rule, never behind :not([hidden]): the chip leaves on cot-m-drop, on
+   screen while hidden, and a gap gated on its shown state closed as it went (Kevin: "that space disappears"); [hidden]
+   ends only its display (battleHudLayout.css), at the exit's end */
+.cot-aim-warning{display:flex;align-items:center;justify-content:center;gap:6px}
 .cot-aim-warning .g{display:flex;flex:none;color:var(--notice-tone)}.cot-aim-warning .g svg{display:block;width:16px;height:16px}
 /* a compact alert keeps its words, two 11 px lines in the touch planner's compact width (battleHudLayout.css
    alert-compact: gauntlet r3 found a notice reduced to its glyph in a square); a mouse window that seats its alert in the
@@ -2418,17 +2422,17 @@ body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 /* ... on the HUD's own notice plate (owner 2026-10-25: "i wonder if we should make notificatison special shapes, like
    hexagons, again"): every battle notice the same long hexagon, the score plate's and the mission plate's slant at both
    ends, its edge and its fill two layers under the words (a ring cannot follow a clip) */
-.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,
-  calc(100% - var(--notice-point)) 100%,var(--notice-point) 100%,0 50%);--notice-point:8px;--notice-fill:var(--hud-plate-strong);
+/* (notices-polish-277) the cut is the HUD's one hexagon (hexPlate.ts), which the rim warnings and the kill card draw too;
+   the battle region's notices take it here as well (battleHudLayout.css keeps their fill and edge) */
+.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout{--notice-cut:${hexPlateClip('var(--notice-point)')};--notice-point:8px;--notice-fill:var(--hud-plate-strong);
   --notice-line:var(--line-2);border:0;border-radius:0;background:none;box-shadow:none;isolation:isolate;}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::before,:is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::after{content:'';position:absolute;
   z-index:-1;pointer-events:none;clip-path:var(--notice-cut);}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::before{inset:0;background:var(--notice-line);}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning,.binocular-readout)::after{inset:1px;background:var(--notice-fill);}
-/* (notices-276b; Kevin 2026-11-24: "hexagons look better for the bigger notis") the two shapes, by the notice's kind
-   (noticeKinds.ts, data-shape): every large or subject notice the hexagon above, Air Support's readout with them; a
-   one-line status the pill, the same edge and fill rounded at both ends */
-.cot-hud [data-shape=pill]{--notice-cut:inset(0 round 999px);}
+/* (notices-polish-277; Kevin 2026-11-24: "why does auto aim off have rounded borders?? hexagons pls") one shape for every
+   notice kind: 276b's rounded pill for the one-line kinds is gone */
+.cot-battle-notices .cot-c-notice{--notice-cut:${hexPlateClip('var(--notice-point)')};}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong));}
 :is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong));}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -8842,13 +8846,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    if (allied) killRibbon.zone();
     events.raise({ kind: 'objective', text: t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), priority: NOTICE_PRIORITY.turned,
       severity: allied ? 'success' : 'error', icon: 'modeZones' });
-  });
-  // the personal stream's spots (the direction's 06-battle-hud .stream): each enemy the player lit
-  on('tank:spotted', ({ id, spotterId }) => {
-    if (spotterId != null && playerId != null && spotterId === playerId && id !== playerId) killRibbon.spot();
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
@@ -8976,7 +8975,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
-      killRibbon.damage(hit.targetId, hullPointsRemoved(hit));
       // Zero-damage and pass-through outcomes use the steel confirmation;
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.

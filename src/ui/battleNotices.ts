@@ -42,9 +42,9 @@ export const NOTICE_PRIORITY = Object.freeze({ lost: 4, threat: 3, turned: 2, an
 /** The battle region's name. */
 const REGION = 'battle';
 
-/** A battle condition: the kit's toast, in the battle's region, with its id and its kind (noticeKinds.ts: its subject and
- *  its shape, which the lane writes). */
-type BattleNoticeOptions = Omit<ToastOptions, 'region' | 'shape' | 'id'> & { readonly id: string; readonly kind: NoticeKind };
+/** A battle condition: the kit's toast, in the battle's region, with its id and its kind (noticeKinds.ts: its subject; its
+ *  place the condition lane's, guidancePlan.ts conditionLane). */
+type BattleNoticeOptions = Omit<ToastOptions, 'region' | 'id'> & { readonly id: string; readonly kind: NoticeKind };
 
 /** Where a battle surface raises its conditions (the kit's region by default; a receipt passes its own). */
 export interface BattleNoticePort {
@@ -81,7 +81,7 @@ const show = (options: BattleNoticeOptions): void => {
   void kit.load().then((module) => {
     // (the kit came after the condition was replaced, dismissed, or its battle ended: nothing to draw)
     if (raised.get(options.id) !== options || !raisedScope?.live) return;
-    module.notify({ ...toast, shape: noticeKind(kind).shape, region: REGION });
+    module.notify({ ...toast, region: REGION });
     relayout();
   }, () => {});
 };

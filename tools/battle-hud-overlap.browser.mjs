@@ -19,6 +19,11 @@
 // on a control fails; a lane with nothing shown fails unless the guidance plan holds it back (toasts-wait). --plant proves
 // both halves in each notice state: a control planted over the notices with a view control's class (`seen`) must be kept
 // clear by the planners, which read its live box, and one with a class no planner reads (`unseen`) must fail the judge.
+// One place per lane (notices-polish-277; Kevin 2026-11-24: "it should be in one place, that bottom spot is saved for kills"):
+// after a window's states, each notice lane's seat over its +notices states must stand at one height and in one band, the
+// condition lane over the middle, the event lane in one seat too, nothing but the kill card in the kill card's seat (judge
+// laneProblems); every kind's lane
+// is its raise's (judge kindLanes, held in Node by the judge's receipt: no kind in two lanes).
 // The judge is tools/battle-hud-overlap-judge.mjs (Node receipt: tools/battle-hud-overlap-judge.selftest.mjs).
 // The full rendered regression (tools/battle-hud-layout.browser.mjs, Playwright) covers more windows and locales; this
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
@@ -31,7 +36,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { datumProblems } from './datum-census.mjs';
 import { markerProblems } from './marker-census.mjs';
-import { INSTRUMENTS, PLANTS, PLANT_SELECTOR, measureInstruments, noticeCoverage, overlapProblems } from './battle-hud-overlap-judge.mjs';
+import { INSTRUMENTS, PLANTS, PLANT_SELECTOR, laneProblems, measureInstruments, noticeCoverage, overlapProblems } from './battle-hud-overlap-judge.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { default: puppeteer } = await import('puppeteer');
@@ -100,6 +105,8 @@ try {
   for (const [name, width, height, touch] of [...CASES, ...extra]) {
     if (arg('case', '') && !arg('case', '').split(',').includes(name)) continue;
     const runs = [...(noticesOnly ? [] : STATES.map((state) => [state, false])), ...NOTICE_STATES.map((state) => [state, true])];
+    // (notices-polish-277) each lane's seat in every +notices state of this window: one place per lane (laneProblems)
+    const laneSeen = [];
     for (const [state, notices] of runs) {
       if (arg('state', '') && !arg('state', '').split(',').includes(state)) continue;
       const label = notices ? `${state}+notices` : state;
@@ -129,6 +136,7 @@ try {
         problems.push('fixture: no live battle scope (a condition raised outside a battle is never shown)');
       }
       let coverage = null;
+      if (notices) laneSeen.push({ state: label, rects });
       if (notices) {
         coverage = noticeCoverage(rects, await page.evaluate(() => document.body.dataset.hudGuidance ?? ''));
         if (coverage.event !== 'shown') problems.push('notice: the event lane shows nothing');
@@ -190,10 +198,19 @@ try {
         + `${coverage ? ` event ${coverage.event} condition ${coverage.condition}` : ''} ${problems.join(' | ')}`);
       await page.close();
     }
+    if (laneSeen.length > 1) {
+      const lanes = laneProblems(laneSeen, height);
+      failures += lanes.problems.length;
+      report.push({ case: name, state: 'lanes', problems: lanes.problems, notes: lanes.notes, lanes: lanes.record });
+      console.log(`${lanes.problems.length ? 'FAIL' : 'ok  '} ${name.padEnd(9)} ${'lanes'.padEnd(26)} `
+        + `${Object.entries(lanes.record).map(([lane, at]) => `${lane} ${[...new Set(Object.values(at).map((b) => b[1]))].join('/') || '-'}`).join(' ')} ${lanes.problems.join(' | ')}`);
+      for (const note of lanes.notes) console.log(`     note: ${note}`);
+    }
   }
 } finally {
   await browser.close();
 }
 await writeFile(resolve(out, 'report.json'), JSON.stringify(report, null, 1));
-console.log(`battle-hud-overlap: ${failures ? `FAIL (${failures})` : 'PASS'}; ${report.length} states measured; ${resolve(out, 'report.json')}`);
+console.log(`battle-hud-overlap: ${failures ? `FAIL (${failures})` : 'PASS'}; ${report.filter((r) => r.state !== 'lanes').length} states measured, `
+  + `the lanes in ${report.filter((r) => r.state === 'lanes').length} windows; ${resolve(out, 'report.json')}`);
 process.exitCode = failures ? 1 : 0;

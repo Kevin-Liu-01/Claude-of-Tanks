@@ -57,9 +57,10 @@ assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severi
 assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=error\]\{--notice-fill:color-mix\(in srgb,var\(--text-danger\) 9%,var\(--hud-plate-strong\)\);\}/);
 // (owner 2026-10-25, "make notificatison special shapes, like hexagons, again": the HUD's notices share one long hexagon,
 // its line all round as the layer under the fill, never one edge)
-assert.match(hud, /\.cot-sixth,\.cot-alert,\.cot-aim-warning,\.binocular-readout\{--notice-cut:polygon\(/, 'the notices share one angled plate, Air Support\'s readout with them');
-// (notices-276b, Kevin 2026-11-24: "hexagons look better for the bigger notis") the one-line kinds' pill, by data-shape
-assert.match(hud, /\.cot-hud \[data-shape=pill\]\{--notice-cut:inset\(0 round 999px\);\}/, 'a one-line status kind is the pill');
+assert.match(hud, /\.cot-sixth,\.cot-alert,\.cot-aim-warning,\.binocular-readout\{--notice-cut:\$\{hexPlateClip\(/, 'the notices share one angled plate (hexPlate.ts), Air Support\'s readout with them');
+// (notices-polish-277, Kevin 2026-11-24: "why does auto aim off have rounded borders?? hexagons pls") no pill: every kind the
+// hexagon (hexPlate.selftest.mjs holds the census)
+assert.doesNotMatch(hud, /data-shape=pill|round 999px/, 'no one-line kind is a pill');
 assert.match(hud, /::before\{inset:0;background:var\(--notice-line\);\}/, 'its line runs all round, under the fill');
 assert.match(hud, /::after\{inset:1px;background:var\(--notice-fill\);\}/, 'its fill 1 px inside the line');
 assert.doesNotMatch(hud, /--notice-edge/, 'the old edge variable is gone');

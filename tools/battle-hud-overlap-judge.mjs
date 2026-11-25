@@ -96,3 +96,109 @@ export function noticeCoverage(rects, guidanceFlags) {
     condition: has(NOTICES[1]) ? 'shown' : String(guidanceFlags || '').split(' ').includes('toasts-wait') ? 'waits' : 'missing',
   };
 }
+
+// ---- the notices' lanes (notices-polish-277; Kevin 2026-11-24: "this notification type ... needs to not bounce from top or
+// bottom of screen, it should be in one place, that bottom spot is saved for kills")
+
+/** The lanes a notice is shown in, each its own seat: the condition lane (battleNotices.ts, the kit's region: one place under
+ *  the score, guidancePlan.ts conditionLane), the event lane (battleNoticeEvents.ts, the planners' alert seat), and the kill
+ *  card's seat at the foot (hudKillRibbon.ts), which no notice takes. */
+export const LANE_SEATS = Object.freeze({ condition: NOTICES[1], event: NOTICES[0], kill: '.cot-ribbon.on' });
+
+/**
+ * Every notice kind's lane, from the modules that raise them (their sources): a `.condition({ kind: ... })` raise is the
+ * condition lane's, an `events.raise({ kind: ... })` or a BATTLE_EVENT payload the event lane's. A kind raised in both is a
+ * kind in two places: it is returned under `both`. `sources` maps a file to its text.
+ */
+export function kindLanes(sources, kinds) {
+  const lanes = new Map();
+  const note = (kind, lane) => { if (kinds.includes(kind)) (lanes.get(kind) ?? lanes.set(kind, new Set()).get(kind)).add(lane); };
+  for (const text of Object.values(sources)) {
+    // (a raise's object literal, up to its first few hundred characters: its kind is written first or near it)
+    // (each raise's head, then its next few hundred characters, so one raise's text never hides the next raise)
+    for (const m of text.matchAll(/(\.condition|events\.raise|emit\(BATTLE_EVENT,)\s*\(?\s*\{/g)) {
+      const verb = m[1], call = text.slice(m.index, m.index + 300);
+      const kind = /\bkind:\s*(?:rollover \? )?'([A-Za-z]+)'/.exec(call)?.[1];
+      const alt = /\bkind:\s*rollover \? '([A-Za-z]+)' : '([A-Za-z]+)'/.exec(call);
+      const lane = verb === '.condition' ? 'condition' : 'event';
+      if (alt) { note(alt[1], lane); note(alt[2], lane); } else if (kind) note(kind, lane);
+    }
+    // (a plate raised through a helper that passes its kind on: Air Support's plate(id, kind, ...) into notices.condition)
+    for (const m of text.matchAll(/\bplate\([A-Z_]+, '([A-Za-z]+)'/g)) note(m[1], 'condition');
+  }
+  const out = {}, both = [];
+  for (const [kind, set] of lanes) { out[kind] = [...set].sort(); if (set.size > 1) both.push(kind); }
+  return { lanes: out, both: both.sort() };
+}
+
+/** The band a box stands in: over the window's middle (`top`) or under it (`bottom`). */
+const band = (box, height) => ((box.y + box.bottom) / 2 < height / 2 ? 'top' : 'bottom');
+
+/** The HUD's head in one state: the foot of the score, the objective and the zone chips (the lane stands under it). */
+const HEAD = ['.cot-top', '.cot-mode-status.show', '.cot-pips.show'];
+/** The fixed instruments and controls a lane's place is chosen among (battleHudLayout.ts HUD_FIXED): where those crossing a
+ *  lane's own column differ between states (a mode's second systems column), the lane's place may differ with them. */
+const FIXED = ['.cot-vehicle-controls', '.cot-cons', '.cot-con', '.cot-shell', '.cot-dp', '.cot-drive', '.cot-minimap',
+  '.cot-touch.on .joy', '.cot-touch.on .round', '.cot-touch.on .mobile-chrome', '.cot-touch.on .quick'];
+const headFoot = (rects) => Math.max(0, ...rects.filter((r) => HEAD.includes(r.selector) && r.y < 200).map((r) => r.bottom));
+
+/**
+ * One window's lanes over every state it was measured in: `seen` is [{ state, rects }] (the probe's +notices states).
+ * - The condition lane keeps one place: its top the same in every state (within `tolerance` px), or the same distance under
+ *   the HUD's head where a mode's head is taller (a sector mode's chips: that battle's lane starts under them, and never
+ *   moves in it); it stands over the window's middle.
+ * - The event lane keeps one seat by the same rule (guidancePlan.ts eventSeat; Main 2026-11-25: "one place" holds for the
+ *   alert too, the views' furniture planning round it), in one band.
+ * - Both are held to one place among the states whose fixed controls crossing the lane's own column (its places' span, the
+ *   upper four fifths of the window) are the same: the views (the drone's, the gunship's, the binoculars') hide the tank's
+ *   controls, none of which stood in the seat's column, and are compared with the tank's; a mode whose own controls stand
+ *   there (Combined Arms' second systems column at 390x844) is its own layout, told in a note.
+ * - The kill card's seat holds nothing but the kill card.
+ * Returns { problems, notes, record } (record: { lane: { state: [x, y, right, bottom] } }; notes stay for what is told,
+ * not failed).
+ */
+export function laneProblems(seen, height, tolerance = 2) {
+  const record = {}, problems = [], notes = [];
+  const heads = Object.fromEntries(seen.map(({ state, rects }) => [state, headFoot(rects)]));
+  for (const [lane, selector] of Object.entries(LANE_SEATS)) {
+    const at = {};
+    for (const { state, rects } of seen) {
+      const box = rects.find((r) => r.selector === selector);
+      if (box) at[state] = [Math.round(box.x), Math.round(box.y), Math.round(box.right), Math.round(box.bottom)];
+    }
+    record[lane] = at;
+    const all = Object.entries(at);
+    if (!all.length || lane === 'kill') continue;
+    // (the lane's column: its places' span; the fixed controls crossing it in each state make that state's layout)
+    const x0 = Math.min(...all.map(([, b]) => b[0])) - 6, x1 = Math.max(...all.map(([, b]) => b[2])) + 6;
+    const layoutOf = (state) => JSON.stringify((seen.find((s) => s.state === state)?.rects ?? [])
+      .filter((r) => FIXED.includes(r.selector) && r.x < x1 && r.right > x0 && r.y < height * 0.8)
+      .map((r) => [r.selector, Math.round(r.x / 4), Math.round(r.y / 4), Math.round(r.right / 4), Math.round(r.bottom / 4)]).sort());
+    const layouts = new Map();
+    for (const entry of all) {
+      const key = layoutOf(entry[0]);
+      if (!layouts.has(key)) layouts.set(key, []);
+      layouts.get(key).push(entry);
+    }
+    if (layouts.size > 1) notes.push(`lane ${lane}: ${layouts.size} fixed layouts across its column (${[...layouts.values()].map((g) => g.map(([s]) => s).join('/')).join(' | ')})`);
+    for (const boxes of layouts.values()) {
+      const spread = (values) => Math.max(...values) - Math.min(...values);
+      const tops = boxes.map(([, b]) => b[1]);
+      const underHead = boxes.map(([s, b]) => b[1] - heads[s]);
+      const moves = spread(tops) > tolerance && spread(underHead) > tolerance;
+      const bands = new Set(boxes.map(([, b]) => band({ y: b[1], bottom: b[3] }, height)));
+      const where = boxes.map(([s, b]) => `${s} y${b[1]}`).join(', ');
+      if (moves) problems.push(`lane ${lane}: its seat moves (${where})`);
+      if (bands.size > 1) problems.push(`lane ${lane}: in both bands (${boxes.map(([s, b]) => `${s} ${band({ y: b[1], bottom: b[3] }, height)}`).join(', ')})`);
+      if (lane === 'condition' && bands.has('bottom')) problems.push(`lane ${lane}: under the middle, where the kill card stands`);
+    }
+  }
+  for (const { state, rects } of seen) {
+    const kill = rects.find((r) => r.selector === LANE_SEATS.kill);
+    if (!kill) continue;
+    for (const notice of rects.filter((r) => NOTICES.includes(r.selector))) {
+      if (band(notice, height) === 'bottom' && notice.x < kill.right && notice.right > kill.x) problems.push(`lane kill: ${notice.name} in the kill card's seat (${state})`);
+    }
+  }
+  return { problems, notes, record };
+}

@@ -380,3 +380,34 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
 // (the caption line waits where no band below the middle clears the sight, the instruments and the notices: count them)
 console.log(`guidancePlan.selftest: the caption line placed below the sight or waiting (${captionWaits.length} waits: ${captionWaits.join(', ')})`);
 console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''}; the card's words whole or a type step smaller wherever a place holds them${compacts.length ? `, a type step smaller at ${compacts.length}` : ''}${scrolls.length ? `, tight (the card fits its words itself) at ${scrolls.length}: ${scrolls.slice(0, 6).join(', ')}` : ''})`);
+
+// ---- (notices-polish-277) the notice lanes' places: the condition lane under the score, the event lane's seat under it
+{
+  const { conditionLane, eventSeat, EVENT_SEAT } = await import('./guidancePlan.ts');
+  const box = (x0, y0, x1, y1) => ({ x0, y0, x1, y1 });
+  // a desktop: the lane 6 px under the head, as wide as the kit's column; the seat 6 px under the lane
+  const lane = conditionLane(1440, 900, 44, 64, []);
+  assert.deepEqual(lane, box(510, 50, 930, 114));
+  const ring = [box(720 - 138, 450 - 138, 720 + 138, 450 + 138)];
+  assert.deepEqual(eventSeat(1440, 900, lane.y1, EVENT_SEAT.mouse, [], ring), box(560, 120, 880, 164), 'the seat stacked under the lane');
+  // a portrait phone: the lane under its map and chrome, where the band beside the score is narrower than a warning's row
+  const phoneLane = conditionLane(390, 844, 66, 60, [box(12, 108, 104, 200), box(324, 74, 390, 122)]);
+  assert.equal(phoneLane.y0, 206, 'under the map');
+  // a second systems column in the seat's band and below it to the sight: the compact width beside it, or under the sight
+  const phoneRing = [box(195 - 61.5, 422 - 61.5, 195 + 61.5, 422 + 61.5)];
+  const column = box(264, 288, 376, 460);
+  const compact = eventSeat(390, 844, phoneLane.y1, EVENT_SEAT.touch, [column], phoneRing, TOUCH_COMPACT_ALERT);
+  assert.deepEqual(compact, box(88, 490, 302, 530), 'the seat under the ring, clear of the column (the probe\'s Combined Arms at 390x844)');
+  // ... and with the consumables beside it there and the controls filling the foot, at the compact width (the full width
+  // is taken anywhere down the screen first)
+  const cons = box(8, 480, 120, 592), foot = box(0, 600, 390, 844);
+  const narrow = eventSeat(390, 844, phoneLane.y1, EVENT_SEAT.touch, [column, cons, foot], phoneRing, TOUCH_COMPACT_ALERT);
+  assert.equal(narrow.x1 - narrow.x0, TOUCH_COMPACT_ALERT.w, `the compact width beside them (${JSON.stringify(narrow)})`);
+  // no band keeps its margin: the least covered band, never the ring (844x390's touch button 2 px inside the margin)
+  const shortRing = [box(422 - 61.5, 195 - 61.5, 422 + 61.5, 195 + 61.5)];
+  const button = box(465, 305, 497, 337), panel = box(347, 342, 497, 382);
+  const short = eventSeat(844, 390, 180, EVENT_SEAT.touch, [button, panel], shortRing, TOUCH_COMPACT_ALERT);
+  assert.ok(!shortRing.some((r) => short.y0 < r.y1 && short.y1 > r.y0), `never on the sight (${JSON.stringify(short)})`);
+  assert.ok(short.y1 <= button.y0, 'and over nothing it could keep off');
+}
+console.log('guidancePlan.selftest: the notice lanes\' places (the condition lane, the event seat, its compact width, its fallback off the sight)');

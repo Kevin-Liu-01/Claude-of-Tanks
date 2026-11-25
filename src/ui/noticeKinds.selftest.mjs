@@ -1,13 +1,13 @@
 // noticeKinds.selftest.mjs — the battle notices' kinds (notices-276b; Kevin 2026-11-24: "should we combine stuff, the art
 // system is awesome, and theres so much and hexagons look better for the bigger notis", the plan he approved through Main):
-// - every kind declares its subject and its shape: a large or subject kind the hexagon plate, with art or without, a
-//   one-line status the pill, never with art;
+// - every kind declares its subject (notices-polish-277: and no shape; every kind is the HUD's one hexagon);
 // - the lanes read it: the event lane writes the shape and, off the tank (Air Support's binoculars, the drone's feed, the
 //   gunship), holds the tank's own events and shows them back on the tank if still fresh, a crew's danger and the battle's
 //   turns showing in every view; the condition lane takes the tank's conditions down off the tank and raises the ones
 //   still raised back on it;
 // - the air subject has one lane: Air Support raises plates in the condition lane alone (no event), so no two notices
 //   on one air subject show at once.
+// - (notices-polish-277) every warning kind carries a picture for every variant it raises.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { NOTICE_KINDS, VIEW_HOLD_MS, noticeKind, shownInView } from './noticeKinds.ts';
@@ -18,9 +18,25 @@ import { createBattleEventLane, EVENT_HOLD_MS } from './battleNoticeEvents.ts';
 const SUBJECTS = new Set(['tank', 'crew', 'air', 'battle', 'link', 'teaching']);
 for (const [kind, declared] of Object.entries(NOTICE_KINDS)) {
   assert.ok(SUBJECTS.has(declared.subject), `${kind}: a subject`);
-  assert.ok(declared.shape === 'plate' || declared.shape === 'pill', `${kind}: a shape`);
-  if (declared.shape === 'pill') assert.ok(!declared.art, `${kind}: a pill carries no art`);
-  if (declared.subject === 'air') assert.ok(declared.shape === 'plate' && declared.art, `${kind}: an air plate carries its airframe`);
+  // (notices-polish-277) one shape for every kind, the HUD's hexagon: no kind declares one
+  assert.ok(!('shape' in declared), `${kind}: no shape of its own`);
+  if (declared.subject === 'air') assert.ok(declared.art, `${kind}: an air plate carries its airframe`);
+}
+// (notices-polish-277; Kevin 2026-11-24: "make all warnings have mictures. i see artillery doesnt") a warning is a plate with
+// art, and every variant it raises names a render on disk: each call-in's INCOMING plate by its own picture
+const warnings = Object.entries(NOTICE_KINDS).filter(([, declared]) => declared.warning).map(([kind]) => kind);
+assert.deepEqual(warnings, ['airIncoming'], 'the warnings: the air runs over the crew');
+for (const kind of warnings) assert.ok(NOTICE_KINDS[kind].art, `${kind}: a warning carries art`);
+{
+  const { STRIKE_ART } = await import('./airSupportHud.ts');
+  const { noticeArtUrl } = await import('./components/noticeArt.ts');
+  const { AIR_STRIKE_KINDS } = await import('../sim/matchRuleset.ts');
+  const { existsSync } = await import('node:fs');
+  for (const strike of AIR_STRIKE_KINDS) {
+    const url = noticeArtUrl(STRIKE_ART[strike]);
+    assert.ok(url, `INCOMING ${strike}: a picture (airSupportHud.ts STRIKE_ART)`);
+    assert.ok(existsSync(`public${url}`), `INCOMING ${strike}: ${url} on disk (node tools/genAircraftAssets.mjs --ids=${STRIKE_ART[strike]})`);
+  }
 }
 assert.equal(noticeKind('nonsense'), NOTICE_KINDS.objective, 'an unknown kind reads as a battle plate');
 for (const view of ['binoculars', 'drone', 'gunship']) {
@@ -59,9 +75,9 @@ assert.match(lane, /raised\.set\(options\.id, options\);\s*if \(shownInView\(opt
 assert.match(lane, /for \(const options of raised\.values\(\)\) \{\s*if \(noticeKind\(options\.kind\)\.subject !== 'tank'\) continue;\s*if \(shownInView\(options\.kind, next\)\) show\(options\); else takeDown\(options\.id\);/,
   'a view change takes them down or raises them again');
 assert.match(lane, /dismiss\(id\) \{\s*raised\.delete\(id\);/, 'one dismissed while held does not come back');
-assert.match(lane, /shape: noticeKind\(kind\)\.shape/, 'the kit draws the kind\'s shape');
+assert.doesNotMatch(lane, /\bshape\b/, 'no shape handed to the kit: every kind is the HUD\'s hexagon (notices-polish-277)');
 
-// ---- the event lane, live: the shape written; the tank's own held off the tank and back on it
+// ---- the event lane, live: the tank's own held off the tank and back on it
 let now = 0;
 const timers = new Map();
 let serial = 0;
@@ -98,7 +114,7 @@ try {
 
   events.raise(aps);
   assert.equal(text(), 'APS INTERCEPTED');
-  assert.equal(seat.dataset.shape, 'pill', 'a one-line status is the pill');
+  assert.equal(seat.dataset.shape, undefined, 'no shape of its own: the seat is the hexagon');
   // the binoculars come up: the shown tank event is taken down and held, a new one held, the battle's turn shows
   events.view('binoculars');
   assert.equal(text(), null, 'the tank\'s own event leaves with the view');
@@ -106,7 +122,6 @@ try {
   assert.equal(text(), null, 'and one raised now waits behind the binoculars');
   events.raise(flag);
   assert.equal(text(), 'FLAG CAPTURED', 'the battle turning shows in every view');
-  assert.equal(seat.dataset.shape, 'plate', 'on the hexagon plate');
   advance(EVENT_HOLD_MS + 50);
   assert.equal(text(), null);
   // back on the tank: the held ones still fresh show, the higher rung first

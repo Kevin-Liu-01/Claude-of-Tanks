@@ -333,10 +333,12 @@ try {
       'roster-wide-left','roster-wide-right'])
       assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
     assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
-    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under the detection's
-    // one 32 px row
-    assert.equal(touch.properties.get('--hud-notice-top'),`${Math.floor(Math.max(62+8,768*.12))}px`);
-    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+32+8)}px`);
+    // (notices-polish-277) one place per lane under the score: the condition lane 6 px under it (60 px), the event lane's
+    // seat 6 px under that (the alert's top), the detection under the seat (its 40 px reserve and the plan's gap)
+    assert.deepEqual(['condition-lane-top','condition-lane-bottom','event-seat-top'].map((n)=>touch.properties.get(`--hud-${n}`)),
+      ['68px','128px','134px'],'the lanes stack under the score');
+    assert.equal(touch.properties.get('--hud-alert-top'),'134px','the alert in the event lane\'s seat');
+    assert.equal(touch.properties.get('--hud-notice-top'),'180px','the detection under the seat');
     // the mouse layout of the same window plans and carries it (the check above is not blind)
     mouseNoticePlanWork.bands=-1;
     const mouse=harness();
@@ -409,14 +411,16 @@ try {
       assert.equal(run.frames.size,1,'the scope going down relayouts too');run.flush();
       assert.equal(banner.dataset.placement,'ready','and the card shows again');
     }
-    // The layout marks a wait on the feed ('f') only where the card's place cuts the lane that shows a row: at 390 x 844
+    // The layout marks a wait on the feed ('f') only where the card's place cuts the lane that shows a row: at 540 x 844
     // (the phone's census boxes, the bottom filled by a stretched ammunition rail so that, as on the census, every place
     // for the card cuts a lane; on the centre line it cuts both) a kill row in either lane holds the card, marked, and an
     // empty feed neither holds nor marks it (the receipt's medalWaitCause trusts this mark).
     {
-      const feed=(left,right,detected=false)=>{
+      // (notices-polish-277) on a 540 px phone-class window: at 390-480 px the condition lane and the event lane's seat stack
+      // under the map (the band beside it holds neither), and the card finds no place clear of them and the sight (below)
+      const feed=(left,right,detected=false,width=540)=>{
         let banner;const lane=n=>({childElementCount:n,children:Array.from({length:n},()=>({hidden:false})),classList:{contains:()=>false}});
-        const run=harness({width:390,height:844,bodyData:{cotWidth:'phone'},
+        const run=harness({width,height:844,bodyData:{cotWidth:'phone'},
           inRoot:{'.cot-kill-lane.l':()=>lane(left),'.cot-kill-lane.r':()=>lane(right),'.cot-sixth.on':()=>detected?{}:null},
           extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),'.cot-mode-status.show':node([],rect(77,61,236,41)),
             '.cot-dp':node([],rect(8,579,120,137)),'.cot-drive':node([],rect(140,635,81,81)),'.cot-vehicle-controls':node([],rect(12,744,366,32)),
@@ -425,6 +429,9 @@ try {
         return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement,run.properties,banner.dataset.size];
       };
       const [right,rightPlace]=feed(0,3),[left,leftPlace]=feed(3,0),[none,nonePlace]=feed(0,0);
+      const [narrow,narrowPlace,narrowProps]=feed(0,0,false,390);
+      assert.deepEqual([narrow,narrowPlace,narrowProps.get('--hud-condition-lane-top'),narrowProps.get('--hud-event-seat-top')],['m-','deferred','220px','290px'],
+        'a 390 px mouse window: both lanes under the map, the card waits with no place (the trade-off reported with notices-polish-277)');
       assert.match(right,/^m\d\w*wf$/,`a right-lane kill row holds the card, marked as the feed's (${right})`);
       assert.equal(rightPlace,'deferred');
       assert.match(left,/^m\d\w*wf$/,`a left-lane kill row holds the centred card too, marked as the feed's (${left})`);
@@ -433,9 +440,9 @@ try {
       // with the detection lit and no kill row: it waits exactly where its written place meets the detection's, never
       // marked as the feed's
       const [lit,litPlace,props,size]=feed(0,0,true);
-      const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,390-32);
-      const det={x:390/2-dw/2,y:px('--hud-notice-top'),w:dw,h:DETECTION_H};
-      const card={x:390/2-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
+      const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,540-32);
+      const det={x:540/2-dw/2,y:px('--hud-notice-top'),w:dw,h:DETECTION_H};
+      const card={x:540/2-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
       const meets=card.x<det.x+det.w+g&&card.x+card.w>det.x-g&&card.y<det.y+det.h+g&&card.y+card.h>det.y-g;
       assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
         `the lit detection holds the card exactly where their places meet, never marked as the feed's (${lit}, ${litPlace}, meets ${meets})`);
@@ -547,6 +554,9 @@ try {
     // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
     // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
     // gauntlet r5)
+    // (notices-polish-277) the condition lane's place is the first band under the score as wide as a warning's row: under
+    // the map and the touch chrome here; with no condition showing the side lanes keep their rows round it
+    assert.deepEqual([phone.px('condition-lane-top'), phone.px('condition-lane-bottom')], [209, 269], '390x844: the condition lane under the map and the chrome');
     assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
@@ -754,8 +764,8 @@ try {
     // for the compact plate), and waits hidden (r10 critic: no receipt read either rule)
     const layoutCss = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
     const aerialCss = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
-    assert.ok(layoutCss.includes(".cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
-      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule');
+    assert.ok(layoutCss.includes(".cot-hud .cot-aim-warning[data-seat='sight']{left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
+      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule (held through its exit, notices-polish-277)');
     assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}")
       && aerialCss.includes("@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}")
       && aerialCss.includes("body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}")

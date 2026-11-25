@@ -19,7 +19,7 @@
 // - a slot keeps one event per slot, the newer state replacing the older in place (273: the armour overlay's OFF
 //   outliving the ON pressed a moment after it);
 // - "A · B" words show A as the line and B as its detail; an event with keys shows its key line as the detail instead;
-// - (notices-276b) every event names its kind (noticeKinds.ts): its shape is the seat's data-shape, and while the crew looks
+// - (notices-276b) every event names its kind (noticeKinds.ts), and while the crew looks
 //   through another view (view()) a tank kind is held, the latest of each, and shown when the view returns to the tank if
 //   it is under VIEW_HOLD_MS old; a tank event showing as the view changes is taken down and held with them.
 import type { ActionId } from '../game/input.ts';
@@ -29,7 +29,7 @@ import { NoticeQueue, noticeContentHtml, type QueuedToast } from './components/n
 import { markDatum } from './dom.ts';
 import type { IconId } from './icons/icon.ts';
 import type { NoticeArtId } from './components/noticeArt.ts';
-import { noticeKind, shownInView, VIEW_HOLD_MS, type NoticeKind, type NoticeView } from './noticeKinds.ts';
+import { shownInView, VIEW_HOLD_MS, type NoticeKind, type NoticeView } from './noticeKinds.ts';
 
 type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 
@@ -111,7 +111,6 @@ export function createBattleEventLane(host: EventLaneHost) {
       detailHtml: keys || undefined, detail: keys ? undefined : rest.join(' · ') || undefined,
     }) + (toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '');
     el.dataset.severity = severity;
-    el.dataset.shape = noticeKind(event.kind).shape;
     el.setAttribute('role', severity === 'error' ? 'alert' : 'status');
     el.classList.add('show');
   }
