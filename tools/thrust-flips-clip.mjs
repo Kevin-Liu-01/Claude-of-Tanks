@@ -7,7 +7,7 @@
 // page into a Turbo Ball battle; the hold only films.
 //
 //   node <lane>/tools/thrust-flips-clip.mjs --out=DIR [--map=airfield] [--mode=turbo_ball|mars] [--arrows] [--port=4258]
-//                                           [--moves=front,back,roll] [--frames=8] [--step=0.1] [--webm] [--dry]
+//                                           [--moves=front,back,roll] [--frames=8] [--step=0.1] [--webm] [--dry] [--side-rise=3]
 //
 // For each move (front: W, back: S, roll: A) the hull jumps (F), and 0.42 s into the climb the page's clock is slowed
 // (performance.now and requestAnimationFrame scaled, installed before the page's own scripts) and F is pressed with the
@@ -39,6 +39,8 @@ const port = Number(arg('port', '4258'));
 const FRAMES = Number(arg('frames', '8'));
 const STEP_S = Number(arg('step', '0.1'));
 const SLOW = Number(arg('slow', '0.015'));
+/** The side camera's height over the hull at the press (m; --side-rise: over a wood's crowns). */
+const SIDE_RISE = Number(arg('side-rise', '3'));
 /** Each move's key and the air spin's axis it picks (movement.ts AIR_SPIN_AXES). */
 const MOVES = Object.freeze({
   front: { key: 'KeyW', label: 'front flip (W)', axis: -1 },
@@ -111,7 +113,7 @@ const stage = () => {
 };
 
 /** Two static cameras set at the press (window.__cams), and the one drawn (window.__cam), held every frame. */
-const setCameras = (roll) => {
+const setCameras = ([roll, sideRise]) => {
   const D = window.__DEBUG, V = D.camera.position.constructor, s = D.game.player.state, p = s.pos;
   const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
   // the hull's right: -x at heading 0 (a positive steer turns toward +x, the hull's left)
@@ -121,8 +123,8 @@ const setCameras = (roll) => {
   window.__cams = {
     chase: { eye: new V(p.x - fx * 18, p.y + 4, p.z - fz * 18), at: new V(cx, cy, cz), fov: 46 },
     side: roll
-      ? { eye: new V(p.x - fx * 13 + rx * 13, p.y + 3, p.z - fz * 13 + rz * 13), at: new V(cx, cy, cz), fov: 46 }
-      : { eye: new V(cx + rx * 20, p.y + 3, cz + rz * 20), at: new V(cx, cy, cz), fov: 46 },
+      ? { eye: new V(p.x - fx * 13 + rx * 13, p.y + sideRise, p.z - fz * 13 + rz * 13), at: new V(cx, cy, cz), fov: 46 }
+      : { eye: new V(cx + rx * 20, p.y + sideRise, cz + rz * 20), at: new V(cx, cy, cz), fov: 46 },
   };
   window.__cam = 'chase';
   if (!window.__camLoop) {
@@ -163,7 +165,7 @@ async function filmMove(page, name) {
   await page.keyboard.down(move.key);
   await page.waitForFunction((t0) => window.__DEBUG.game.timeS >= t0 + 0.42, { timeout: 5000, polling: 'raf' }, jumpT);
   await page.evaluate((slow) => { window.__timeScale = slow; }, SLOW);
-  await page.evaluate(setCameras, name === 'roll');
+  await page.evaluate(setCameras, [name === 'roll', SIDE_RISE]);
   await frames(page, 3);
   await page.keyboard.down('KeyF'); await frames(page, 4); await page.keyboard.up('KeyF');
   await page.waitForFunction(() => window.__DEBUG.game.player.state._airSpinAxis !== 0, { timeout: 8000, polling: 'raf' });
@@ -194,6 +196,20 @@ async function filmMove(page, name) {
         const file = `${name}-${cam}-${k}.png`;
         await page.screenshot({ path: path.join(out, file) });
         record.stills.push({ k, cam, file, hull: await page.evaluate(hullNow) });
+        if (arrows && cam === 'chase') {
+          // the drawn force arrows (the debug view), as the scene holds them
+          record.stills.at(-1).arrows = await page.evaluate(() => {
+            const rig = window.__DEBUG.game.player.visual?.root?.getObjectByName('hullThrusterPlumes');
+            const out = [];
+            rig?.traverse((o) => {
+              if (!(o.children.length === 2 && o.children[1].material?.depthTest === false)) return;
+              const p = o.getWorldPosition(o.position.clone());
+              out.push({ visible: o.visible, parentVisible: rig.visible, at: [p.x, p.y, p.z].map((v) => +v.toFixed(1)),
+                shaft: +o.children[0].scale.y.toFixed(2) });
+            });
+            return out;
+          });
+        }
       }
     }
   } finally {

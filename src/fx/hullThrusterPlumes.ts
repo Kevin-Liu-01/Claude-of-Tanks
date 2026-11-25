@@ -15,7 +15,7 @@
  * `setDebugArrows(true)` (main.ts: the `thrustArrows=1` query).
  */
 import {
-  AdditiveBlending, ArrowHelper, BufferAttribute, Color, ConeGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
+  AdditiveBlending, BufferAttribute, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
   Quaternion, SphereGeometry, Vector3, type Object3D,
 } from 'three';
 import {
@@ -69,7 +69,7 @@ interface Slot {
   group: Group;
   outer: Mesh;
   core: Mesh;
-  arrow: ArrowHelper | null;
+  arrow: Group | null;
   /** Live this frame: the exhaust's world direction and intensity, for the particles. */
   intensity: number;
 }
@@ -117,6 +117,23 @@ function ensureShared(): void {
   });
   outerMaterial = material();
   coreMaterial = material();
+}
+
+/** A debug force arrow: a shaft from its origin up +Y (scaled to the length less the head) and a head, drawn over the
+ *  hull and its flames (the force is the point of the view). One material per arrow, shared by its two parts. */
+const ARROW_HEAD = 0.7;
+const ARROW_DIM = 0.22;
+let arrowShaft: CylinderGeometry | null = null;
+let arrowHead: ConeGeometry | null = null;
+function makeArrow(parent: Group): Group {
+  arrowShaft ??= new CylinderGeometry(0.09, 0.09, 1, 8).translate(0, 0.5, 0);
+  arrowHead ??= new ConeGeometry(0.32, ARROW_HEAD, 12).translate(0, ARROW_HEAD / 2, 0);
+  const material = new MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false, toneMapped: false, fog: false });
+  const arrow = new Group();
+  const shaft = new Mesh(arrowShaft, material), head = new Mesh(arrowHead, material);
+  for (const part of [shaft, head]) { part.renderOrder = 30; part.frustumCulled = false; arrow.add(part); }
+  parent.add(arrow);
+  return arrow;
 }
 
 const ARROW_COLOURS: Record<HullNozzle['role'] | 'lift', number> = {
@@ -186,16 +203,18 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
     slot.group.visible = true;
     slot.intensity = Math.min(1, k);
     if (arrows) {
-      if (!slot.arrow) {
-        slot.arrow = new ArrowHelper(new Vector3(0, 1, 0), new Vector3(), 1, ARROW_COLOURS[role], 0.35, 0.22);
-        slot.arrow.renderOrder = 30;
-        rig.group.add(slot.arrow);
-      }
+      if (!slot.arrow) slot.arrow = makeArrow(rig.group);
+      // the push on the hull, its head at the nozzle's mount (drawn from it, it pointed into the hull and hid there)
+      const length = Math.max(1.4, thrust * 0.06);
+      worldDir.set(nozzle.dx, nozzle.dy, nozzle.dz).normalize();
       slot.arrow.visible = true;
-      slot.arrow.position.set(nozzle.x, nozzle.y, nozzle.z);
-      slot.arrow.setDirection(worldDir.set(nozzle.dx, nozzle.dy, nozzle.dz).normalize());
-      slot.arrow.setLength(Math.max(0.5, thrust * 0.035), 0.35, 0.22);
-      slot.arrow.setColor(ARROW_COLOURS[role]);
+      slot.arrow.position.set(nozzle.x - worldDir.x * length, nozzle.y - worldDir.y * length, nozzle.z - worldDir.z * length);
+      slot.arrow.quaternion.setFromUnitVectors(up, worldDir);
+      const [shaft, head] = slot.arrow.children as Mesh[];
+      shaft!.scale.set(1, Math.max(0.1, length - ARROW_HEAD), 1);
+      head!.position.y = length - ARROW_HEAD;
+      // dimmed: the battle's exposure lifts an untonemapped colour toward white, and the roles must read apart
+      (shaft!.material as MeshBasicMaterial).color.setHex(ARROW_COLOURS[role]).multiplyScalar(ARROW_DIM);
     }
     return index + 1;
   };
@@ -292,7 +311,7 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
       }
       if (arrows) {
         if (!rig.com) {
-          rig.com = new Mesh(new SphereGeometry(0.22, 12, 8), new MeshBasicMaterial({ color: 0xffffff, depthTest: false, toneMapped: false }));
+          rig.com = new Mesh(new SphereGeometry(0.28, 12, 8), new MeshBasicMaterial({ color: 0xffffff, depthTest: false, toneMapped: false }));
           rig.com.renderOrder = 31;
           rig.group.add(rig.com);
         }
