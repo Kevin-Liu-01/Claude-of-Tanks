@@ -16,6 +16,7 @@
  *               and in the scene), and it is the battlefield the round names (round.mapId); the black-world guard's
  *               tracked world is that one too.
  *   agreement   both pages enter the same match on the same map id, and the joiner's battlefield is the host's.
+ *   opening     by --ack-by seconds after the reveal (3) each page's input acknowledgement lag is within --ack-p95, and stays
  *   sync        each peer's p95 round trip <= --rtt-p95 (ms), p95 input acknowledgement lag <= --ack-p95 (ticks), no
  *               reconnect, no stall, snapshots every second; corrections and snaps are reported.
  *   link        the data channel's selected candidate pair is reported (host / srflx / relay).
@@ -23,6 +24,7 @@
  *
  *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --port=4248
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=3 --play=120 --maps=verdant,winter --joiner-map=desert --json
+ *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=1 --play=20 --host-throttle=4   # a slow laptop hosting
  *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay
  *     (relay-only through real TURN: run it in a terminal whose environment holds the rooms Worker's relay variables, set by
  *     hand there and never written to a file; without them the run refuses, exit 2, naming them. Every link's selected
@@ -68,6 +70,10 @@ const ackP95Bound = Number(argValue('ack-p95', 12));
 // writes the relay variables: the issuer says whether they configure a relay, and a run without one refuses by their names.
 const forceRelay = argValue('ice', '') === 'relay';
 const roomKind = forceRelay || argValue('mode', 'lan') === 'private' ? 'private' : 'lan';
+// --host-throttle=<rate>: the host's page under CDP CPU throttling from its boot (a slow laptop hosting), where its own
+// clock's seed and boot land in its first seconds. --ack-by=<s>: the startup gate's second (3 by default).
+const hostThrottle = Number(argValue('host-throttle', 0));
+const ackBy = Number(argValue('ack-by', 3));
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -79,7 +85,7 @@ const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${lin
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, roomKind, forceRelay, hostThrottle, ackBy, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -150,6 +156,10 @@ function netProbe() {
     maxCorrectionM: prediction?.maxCorrectionM ?? null, lastPositionErrorM: prediction?.lastPositionErrorM ?? null,
     maxFreePositionErrorM: prediction?.maxFreePositionErrorM ?? null, hardSnaps: prediction?.hardSnaps ?? null, tickJumps: prediction?.tickJumps ?? null,
     health: v2?.network?.health ?? null, role: v2?.session?.p2p?.role ?? null,
+    // the client clock (src/mp/match/clock.ts): the active offset against the filtered target the pongs give, and its samples
+    offsetMs: match?.serverOffsetMs ?? null, offsetTargetMs: match?.serverOffsetTargetMs ?? null,
+    offsetErrorMs: match && Number.isFinite(match.serverOffsetMs) && Number.isFinite(match.serverOffsetTargetMs) ? match.serverOffsetMs - match.serverOffsetTargetMs : null,
+    clockSamples: match?.clockSamples ?? null, leadTicks: match?.inputLeadTicks ?? null,
     // the F3 panel's Path row reads these (src/ui/multiplayerStatus.ts formatPanelRows)
     candidateType: window.__MULTIPLAYER_V2?.networkStatus?.candidateType ?? null, viaTurn: window.__MULTIPLAYER_V2?.networkStatus?.viaTurn ?? null,
   };
@@ -293,6 +303,10 @@ try {
     pages[label] = page;
   }
   const { A, B } = pages;
+  if (hostThrottle > 1) {
+    const cdp = await A.createCDPSession();
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: hostThrottle });
+  }
 
   // ---- both Garages: the host's battlefield is each room's (the play menu syncs the Garage's pick into it)
   await bootPage(A, `${origin}/?${BOOT_QUERY}`, 'A');
@@ -448,6 +462,12 @@ try {
       step(`battle-${battle}-${label}-sync`, summary);
       if (summary.rttP95 !== null && summary.rttP95 > rttP95Bound) fail(`${label} battle ${battle}: rtt p95 ${summary.rttP95} ms > ${rttP95Bound}`);
       if (summary.ackP95 !== null && summary.ackP95 > ackP95Bound) fail(`${label} battle ${battle}: input ack lag p95 ${summary.ackP95} ticks > ${ackP95Bound}`);
+      // (the host's startup backlog, 277) the first seconds: by --ack-by the lag is within the bound, and stays there
+      const opening = samples.slice(0, ackBy + 3).map((sample) => sample.ackLagTicks);
+      summary.openingAck = opening;
+      summary.openingOffsetErrorMs = samples.slice(0, ackBy + 3).map((sample) => (sample.offsetErrorMs === null ? null : Math.round(sample.offsetErrorMs)));
+      const late = opening.slice(ackBy).filter((ticks) => Number.isFinite(ticks) && ticks > ackP95Bound);
+      if (late.length) fail(`${label} battle ${battle}: input ack lag still ${Math.max(...late)} ticks at second ${ackBy}+ (> ${ackP95Bound}; first seconds ${opening.join(', ')})`);
       if (summary.reconnects > 0) fail(`${label} battle ${battle}: ${summary.reconnects} reconnects`);
       if (summary.stalls > 0) fail(`${label} battle ${battle}: ${summary.stalls} stalls`);
       if (summary.secondsWithoutSnapshot > 1) fail(`${label} battle ${battle}: ${summary.secondsWithoutSnapshot} seconds without a snapshot`);
