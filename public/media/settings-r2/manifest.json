@@ -1,0 +1,596 @@
+{
+ "libraryId": "claude-of-tanks-settings-r2",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The Settings screen's graphics-quality previews: one frame per level on both ladders, the engine's own render of the pinned verdant battle at the chase camera, each level's world built under it; desktop levels on a 1280 x 720 retina display (2x), phone levels on an 844 x 390 phone (3x, tier=mobile, its centred 16:9 cut); published at 1280 x 720, shown at 640 x 360 CSS pixels.",
+ "generatedBy": "tools/quality-previews.mjs (tools/ground-surface-shots.mjs, then cwebp)",
+ "encoder": "cwebp 1.6.0 / dwebp 1.6.0 -q 80 -sharp_yuv -m 6",
+ "capture": {
+  "map": "verdant",
+  "pose": "chase"
+ },
+ "count": 9,
+ "items": [
+  {
+   "id": "quality-ultralow",
+   "preset": "ultralow",
+   "label": "Ultra Low",
+   "device": "preview-desktop",
+   "file": "quality-ultralow.webp",
+   "src": "/media/settings-r2/quality-ultralow.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 124340,
+   "sha256": "80caf40a0f46df2a02fe4e9ce7643b9c031c187a2369ef9c739ba67d1ac06f14",
+   "frame": {
+    "width": 2560,
+    "height": 1440,
+    "cut": [
+     0,
+     0,
+     2560,
+     1440
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0,
+    "msaaSamples": 0,
+    "tallGrass": 0.1,
+    "maxPixelRatio": 0.8,
+    "dynMin": 1,
+    "nativeDynMin": 0.75,
+    "rcasMinScale": 0.4,
+    "aoScale": 0,
+    "bloomScale": 0.35,
+    "bloom": false,
+    "volumetricClouds": false,
+    "terrainLite": true,
+    "lightWorld": true,
+    "shadowMapSizes": [
+     1024,
+     1024,
+     512,
+     512
+    ],
+    "shadowMaxFar": 200
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-low",
+   "preset": "low",
+   "label": "Low",
+   "device": "preview-desktop",
+   "file": "quality-low.webp",
+   "src": "/media/settings-r2/quality-low.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 134822,
+   "sha256": "d95524b1c19395de530439603bccf95c4abd63a886430a449c5e0ca19d1968b6",
+   "frame": {
+    "width": 2560,
+    "height": 1440,
+    "cut": [
+     0,
+     0,
+     2560,
+     1440
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0.45,
+    "msaaSamples": 0,
+    "tallGrass": 0.25,
+    "maxPixelRatio": 1,
+    "dynMin": 1,
+    "autoNativeDynMin": 0.67,
+    "aoScale": 0,
+    "bloomScale": 0.5,
+    "shadowMapSizes": [
+     2048,
+     2048,
+     1024,
+     1024
+    ],
+    "shadowMaxFar": 380
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-medium",
+   "preset": "medium",
+   "label": "Medium",
+   "device": "preview-desktop",
+   "file": "quality-medium.webp",
+   "src": "/media/settings-r2/quality-medium.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 137894,
+   "sha256": "74e9d50d3ffd345dff38c629c248a0b01a0edca0badb63d3bc7c60ccebb9e620",
+   "frame": {
+    "width": 2560,
+    "height": 1440,
+    "cut": [
+     0,
+     0,
+     2560,
+     1440
+    ]
+   },
+   "settings": {
+    "ambience": 0.7,
+    "msaaSamples": 0,
+    "taa": false,
+    "contactShadows": true,
+    "groundBounce": true,
+    "sunShafts": true,
+    "lensFlare": true,
+    "vehicleOcclusion": true,
+    "tallGrass": 0.5,
+    "maxPixelRatio": 1,
+    "dynMin": 1,
+    "autoNativeDynMin": 0.67,
+    "aoScale": 0,
+    "bloomScale": 0.5,
+    "shadowMapSizes": [
+     2048,
+     2048,
+     1024,
+     1024
+    ],
+    "shadowMaxFar": 520,
+    "shadowTent": [
+     5,
+     3,
+     3,
+     3
+    ],
+    "shadowTentDeck": [
+     7,
+     7,
+     3,
+     3
+    ]
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-high",
+   "preset": "high",
+   "label": "High",
+   "device": "preview-desktop",
+   "file": "quality-high.webp",
+   "src": "/media/settings-r2/quality-high.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 171606,
+   "sha256": "88a94602a3f0e0371bcb1f72b7215d720ed1714cadd33ea706624abb2b210367",
+   "frame": {
+    "width": 2560,
+    "height": 1440,
+    "cut": [
+     0,
+     0,
+     2560,
+     1440
+    ]
+   },
+   "settings": {
+    "ambience": 1,
+    "msaaSamples": 0,
+    "taa": false,
+    "contactShadows": true,
+    "groundBounce": true,
+    "sunShafts": true,
+    "lensFlare": true,
+    "vehicleOcclusion": true,
+    "tallGrass": 1,
+    "maxPixelRatio": 1.5,
+    "adaptiveBasePixelRatio": 1.5,
+    "dynMin": 0.9,
+    "nativeDynMin": 0.67,
+    "autoDynMin": 0.667,
+    "autoDynHold": 0.8334,
+    "rcasMinScale": 0.49,
+    "aoScale": 0,
+    "bloomScale": 0.6,
+    "shadowSplitsM": [
+     30,
+     89,
+     320
+    ],
+    "shadowMapSizes": [
+     2048,
+     2048,
+     4096,
+     1024
+    ],
+    "shadowMaxFar": 700,
+    "shadowTent": [
+     9,
+     3,
+     3,
+     3
+    ],
+    "shadowTentDeck": [
+     7,
+     7,
+     3,
+     3
+    ]
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-ultra",
+   "preset": "ultra",
+   "label": "Ultra",
+   "device": "preview-desktop",
+   "file": "quality-ultra.webp",
+   "src": "/media/settings-r2/quality-ultra.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 169516,
+   "sha256": "f484cf9a84443ded7f539a8be0dcda55fd59033f6bf95fdc8a8f6282f07c683f",
+   "frame": {
+    "width": 2560,
+    "height": 1440,
+    "cut": [
+     0,
+     0,
+     2560,
+     1440
+    ]
+   },
+   "settings": {
+    "ambience": 1,
+    "msaaSamples": 4,
+    "taa": false,
+    "contactShadows": true,
+    "groundBounce": true,
+    "sunShafts": true,
+    "lensFlare": true,
+    "vehicleOcclusion": true,
+    "tallGrass": 1,
+    "maxPixelRatio": 2,
+    "dynMin": 0.75,
+    "aoScale": 0,
+    "bloomScale": 1,
+    "shadowMapSizes": [
+     4096,
+     4096,
+     4096,
+     2048
+    ],
+    "shadowMaxFar": 700,
+    "shadowTent": [
+     9,
+     3,
+     3,
+     3
+    ],
+    "shadowTentDeck": [
+     7,
+     7,
+     3,
+     3
+    ]
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-mobile-ultralow",
+   "preset": "mobile-ultralow",
+   "label": "Ultra Low",
+   "device": "preview-phone",
+   "file": "quality-mobile-ultralow.webp",
+   "src": "/media/settings-r2/quality-mobile-ultralow.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 84040,
+   "sha256": "eb633207ce2142af2b47d5bb53e05bb673fe0862917ce0d6c27737b7dd6651de",
+   "frame": {
+    "width": 2532,
+    "height": 1170,
+    "cut": [
+     226,
+     0,
+     2080,
+     1170
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0,
+    "msaaSamples": 0,
+    "maxPixelRatio": 1,
+    "aoScale": 0,
+    "bloomScale": 0.35,
+    "bloom": false,
+    "volumetricClouds": false,
+    "terrainLite": true,
+    "lightWorld": true,
+    "shadowMapSizes": [
+     512,
+     512,
+     512,
+     512
+    ],
+    "shadowMaxFar": 180,
+    "textureScale": 0.5,
+    "vehicleTextureScale": 0.75,
+    "textureCap": 2048,
+    "dynMin": 1
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-mobile-low",
+   "preset": "mobile-low",
+   "label": "Performance",
+   "device": "preview-phone",
+   "file": "quality-mobile-low.webp",
+   "src": "/media/settings-r2/quality-mobile-low.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 83830,
+   "sha256": "b41f9f9a84e2ad84d13872d940e9ca15345b9b9304b36370b60846f320c1cdb1",
+   "frame": {
+    "width": 2532,
+    "height": 1170,
+    "cut": [
+     226,
+     0,
+     2080,
+     1170
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0.3,
+    "msaaSamples": 0,
+    "maxPixelRatio": 1,
+    "adaptiveBasePixelRatio": 1,
+    "aoScale": 0,
+    "bloomScale": 0.35,
+    "shadowMapSizes": [
+     768,
+     768,
+     512,
+     512
+    ],
+    "shadowMaxFar": 260,
+    "textureScale": 0.5,
+    "vehicleTextureScale": 0.75,
+    "textureCap": 2048,
+    "dynMin": 1
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-mobile",
+   "preset": "mobile",
+   "label": "Balanced",
+   "device": "preview-phone",
+   "file": "quality-mobile.webp",
+   "src": "/media/settings-r2/quality-mobile.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 112144,
+   "sha256": "c09a8004067854402e36d6b2e79cdfa655b57595a3e010a3a24aed7634f1abac",
+   "frame": {
+    "width": 2532,
+    "height": 1170,
+    "cut": [
+     226,
+     0,
+     2080,
+     1170
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0.4,
+    "msaaSamples": 0,
+    "maxPixelRatio": 1.4,
+    "adaptiveBasePixelRatio": 1.25,
+    "aoScale": 0,
+    "bloomScale": 0.5,
+    "shadowMapSizes": [
+     1024,
+     768,
+     512,
+     512
+    ],
+    "shadowMaxFar": 300,
+    "textureScale": 0.5,
+    "vehicleTextureScale": 0.75,
+    "textureCap": 2048,
+    "dynMin": 0.715
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  },
+  {
+   "id": "quality-mobile-high",
+   "preset": "mobile-high",
+   "label": "Quality",
+   "device": "preview-phone",
+   "file": "quality-mobile-high.webp",
+   "src": "/media/settings-r2/quality-mobile-high.webp",
+   "width": 1280,
+   "height": 720,
+   "bytes": 114906,
+   "sha256": "ef6d483b9f8b1f622b37a23dbd95711133df52858cfd4a9a1f2022130bb7373b",
+   "frame": {
+    "width": 2532,
+    "height": 1170,
+    "cut": [
+     226,
+     0,
+     2080,
+     1170
+    ]
+   },
+   "settings": {
+    "terrainTextureTier": "512",
+    "ambience": 0.5,
+    "msaaSamples": 2,
+    "maxPixelRatio": 1.7,
+    "adaptiveBasePixelRatio": 1.5,
+    "aoScale": 0,
+    "bloomScale": 0.55,
+    "shadowMapSizes": [
+     1536,
+     1024,
+     768,
+     512
+    ],
+    "shadowMaxFar": 340,
+    "textureScale": 0.5,
+    "vehicleTextureScale": 0.75,
+    "textureCap": 2048,
+    "dynMin": 0.75
+   },
+   "shot": {
+    "resolved": {
+     "cam": [
+      -175.60690395670395,
+      10.0532117375475,
+      -360.48177788070177
+     ],
+     "dir": [
+      0.4282474046021652,
+      -0.09983341664682831,
+      0.8981299735406509
+     ],
+     "fov": 60
+    },
+    "groundSettled": true
+   }
+  }
+ ]
+}

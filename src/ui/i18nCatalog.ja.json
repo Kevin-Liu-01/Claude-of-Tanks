@@ -1271,7 +1271,7 @@
   "settings.preset.ultraLow": "最低",
   "settings.preset.mobileUltraLow": "最低",
   "settings.preset.note.auto": "このコンピューターに合った画質を選び、フレームレートが下がり続けると1段階下げます。",
-  "settings.preset.note.ultra": "高密度画面で最大2倍の解像度、4倍のエッジ平滑化、700 mまでの最も鮮明な影、すべての光エフェクト。",
+  "settings.preset.note.ultra": "高密度画面で最大2倍の解像度、4倍のエッジ平滑化、すべての草、700 mまでの最も鮮明な影、すべての光エフェクト。",
   "settings.preset.note.high": "高密度画面で最大1.5倍の解像度、すべての草、700 mまでの影、すべての光エフェクト。",
   "settings.preset.note.medium": "ネイティブ解像度、草は半分、520 mまでの影、すべての光エフェクト。",
   "settings.preset.note.low": "ネイティブ解像度、草は4分の1、380 mまでの影、光エフェクトなし、地面テクスチャは半分のサイズ。",

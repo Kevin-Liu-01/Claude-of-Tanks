@@ -1271,7 +1271,7 @@
   "settings.preset.ultraLow": "Ultrabaixa",
   "settings.preset.mobileUltraLow": "Ultrabaixa",
   "settings.preset.note.auto": "Escolhe um nível para este computador e desce um nível se a taxa de quadros continuar caindo.",
-  "settings.preset.note.ultra": "Até 2× de resolução em telas de alta densidade, suavização de bordas 4×, as sombras mais nítidas até 700 m e todos os efeitos de luz.",
+  "settings.preset.note.ultra": "Até 2× de resolução em telas de alta densidade, suavização de bordas 4×, toda a grama, as sombras mais nítidas até 700 m e todos os efeitos de luz.",
   "settings.preset.note.high": "Até 1,5× de resolução em telas de alta densidade, toda a grama, sombras até 700 m e todos os efeitos de luz.",
   "settings.preset.note.medium": "Resolução nativa, metade da grama, sombras até 520 m e todos os efeitos de luz.",
   "settings.preset.note.low": "Resolução nativa, um quarto da grama, sombras até 380 m, sem efeitos de luz e texturas do chão com metade do tamanho.",

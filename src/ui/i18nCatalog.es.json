@@ -1271,7 +1271,7 @@
   "settings.preset.ultraLow": "Ultrabaja",
   "settings.preset.mobileUltraLow": "Ultrabaja",
   "settings.preset.note.auto": "Elige un nivel para este equipo y baja un nivel si la tasa de fotogramas sigue cayendo.",
-  "settings.preset.note.ultra": "Hasta 2× de resolución en pantallas de alta densidad, suavizado de bordes 4×, las sombras más nítidas hasta 700 m y todos los efectos de luz.",
+  "settings.preset.note.ultra": "Hasta 2× de resolución en pantallas de alta densidad, suavizado de bordes 4×, toda la hierba, las sombras más nítidas hasta 700 m y todos los efectos de luz.",
   "settings.preset.note.high": "Hasta 1,5× de resolución en pantallas de alta densidad, toda la hierba, sombras hasta 700 m y todos los efectos de luz.",
   "settings.preset.note.medium": "Resolución nativa, la mitad de la hierba, sombras hasta 520 m y todos los efectos de luz.",
   "settings.preset.note.low": "Resolución nativa, una cuarta parte de la hierba, sombras hasta 380 m, sin efectos de luz y texturas del suelo a mitad de tamaño.",

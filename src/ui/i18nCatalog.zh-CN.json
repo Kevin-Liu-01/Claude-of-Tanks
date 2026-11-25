@@ -1285,7 +1285,7 @@
   "settings.preset.ultraLow": "超低",
   "settings.preset.mobileUltraLow": "移动端·超低",
   "settings.preset.note.auto": "为这台电脑选择画质等级；帧率持续下降时自动降一级。",
-  "settings.preset.note.ultra": "高密度屏幕上最高 2 倍分辨率、4 倍边缘平滑、最清晰的阴影（至 700 米）和全部光效。",
+  "settings.preset.note.ultra": "高密度屏幕上最高 2 倍分辨率、4 倍边缘平滑、全部草地、最清晰的阴影（至 700 米）和全部光效。",
   "settings.preset.note.high": "高密度屏幕上最高 1.5 倍分辨率、全部草地、阴影至 700 米和全部光效。",
   "settings.preset.note.medium": "原生分辨率、一半草地、阴影至 520 米和全部光效。",
   "settings.preset.note.low": "原生分辨率、四分之一草地、阴影至 380 米、无光效，地面纹理减半。",

@@ -1271,7 +1271,7 @@
   "settings.preset.ultraLow": "Ultraniedrig",
   "settings.preset.mobileUltraLow": "Ultraniedrig",
   "settings.preset.note.auto": "Wählt eine Stufe für diesen Computer und geht eine Stufe zurück, wenn die Bildrate weiter sinkt.",
-  "settings.preset.note.ultra": "Bis zu 2-fache Auflösung auf Bildschirmen mit hoher Pixeldichte, 4-fache Kantenglättung, die schärfsten Schatten bis 700 m und alle Lichteffekte.",
+  "settings.preset.note.ultra": "Bis zu 2-fache Auflösung auf Bildschirmen mit hoher Pixeldichte, 4-fache Kantenglättung, das ganze Gras, die schärfsten Schatten bis 700 m und alle Lichteffekte.",
   "settings.preset.note.high": "Bis zu 1,5-fache Auflösung auf Bildschirmen mit hoher Pixeldichte, das ganze Gras, Schatten bis 700 m und alle Lichteffekte.",
   "settings.preset.note.medium": "Native Auflösung, die Hälfte des Grases, Schatten bis 520 m und alle Lichteffekte.",
   "settings.preset.note.low": "Native Auflösung, ein Viertel des Grases, Schatten bis 380 m, keine Lichteffekte und Bodentexturen in halber Größe.",

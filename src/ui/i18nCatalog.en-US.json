@@ -1271,7 +1271,7 @@
   "settings.preset.ultraLow": "Ultra low",
   "settings.preset.mobileUltraLow": "Ultra low",
   "settings.preset.note.auto": "Picks a level for this computer and steps down a level if the frame rate keeps dropping.",
-  "settings.preset.note.ultra": "Up to 2× resolution on high-density screens, 4× edge smoothing, the sharpest shadows to 700 m and every light effect.",
+  "settings.preset.note.ultra": "Up to 2× resolution on high-density screens, 4× edge smoothing, all the grass, the sharpest shadows to 700 m and every light effect.",
   "settings.preset.note.high": "Up to 1.5× resolution on high-density screens, all the grass, shadows to 700 m and every light effect.",
   "settings.preset.note.medium": "Native resolution, half the grass, shadows to 520 m and every light effect.",
   "settings.preset.note.low": "Native resolution, a quarter of the grass, shadows to 380 m, no light effects and half-size ground textures.",
