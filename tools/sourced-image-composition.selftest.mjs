@@ -13,7 +13,10 @@ assert.deepEqual(cases.map(row => [row.id, row.set]), [
   ['terrain-urban-G', 'grass'], ['terrain-urban-D', 'dirt'], ['terrain-urban-R', 'cobble'],
   ['building-urban-plaster', 'plaster'], ['building-urban-wood', 'wood'], ['building-urban-stone', 'brick'],
 ]);
-assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 24);
+// (texture-diet-277) the terrain sets load their 1K tier's three WebPs (colour, normal, packed ORM), the buildings four JPGs
+assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 3 * 3 + 3 * 4);
+assert.ok(cases.filter(row => row.kind === 'terrain').every(row => Object.keys(row.images).sort().join() === 'color,normal,orm'
+  && row.images.orm.startsWith('/textures/terrain/1k/') && row.options.roughChannel === 1));
 assert.ok(cases.filter(row => row.kind === 'terrain').every(row => row.options.roughInAlpha === true));
 assert.ok(cases.filter(row => row.kind === 'building').every(row => row.options.roughInAlpha === false));
 assert.equal(cases.some(row => row.id.includes('roof')), false, 'Do not reintroduce removed sourced roofs');
@@ -65,6 +68,13 @@ function fixture(kind = 'terrain', policy = 'decode') {
     }) };
 }
 for (const kind of ['terrain', 'building']) for (const policy of ['onload', 'decode']) validateCompositionTrial(fixture(kind, policy));
+// a tiered set: three images (colour, normal, ORM), two readbacks (colour, and the ORM once for AO and roughness)
+const tieredFixture = fixture('terrain', 'decode');
+tieredFixture.images.pop();
+for (const measure of tieredFixture.measurements) measure.readbacks.pop();
+validateCompositionTrial(tieredFixture);
+assert.throws(() => validateCompositionTrial({ ...tieredFixture, measurements: fixture('terrain', 'decode').measurements }),
+  'a tiered set never reads its packed map twice');
 const bad = mutate => { const row = fixture(); mutate(row); assert.throws(() => validateCompositionTrial(row)); };
 bad(row => { row.status = 'failed'; });
 bad(row => { row.images[0].decodeStatus = 'fallback'; });
@@ -112,6 +122,7 @@ assert.equal(missingErrors.length, 1);
 const measurement = measureSourceComposition.toString();
 assert.ok(measurement.includes("await import('/src/world/sourcedTextures.ts')"));
 assert.ok(measurement.includes("input.kind === 'terrain' ? loaded.ao : null"));
+assert.ok(measurement.includes('input.options.roughChannel ?? 0'), 'the building surface reads roughness from the set\'s channel');
 assert.ok(measurement.indexOf("measure(owner, loaded, 'first')") < measurement.indexOf('await new Promise(resolve => setTimeout'));
 assert.ok(measurement.indexOf("measure(owner, loaded, 'delayed-reuse')") < measurement.indexOf('first.map('));
 assert.ok(!/requestAnimationFrame|AudioContext|readPixels/.test(measurement));

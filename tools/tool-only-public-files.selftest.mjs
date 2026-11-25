@@ -42,7 +42,12 @@ const runtimeFiles = execFileSync('git', ['ls-files', 'src', 'site', 'api', 'clo
   'middleware.ts', 'index.html', '404.html', 'vercel.json', 'public/site.webmanifest'], { cwd: ROOT, encoding: 'utf8' })
   .trim().split('\n')
   .filter((file) => /\.(?:ts|js|mjs|html|json|webmanifest|css)$/.test(file))
-  .filter((file) => !/\.(?:selftest|test-support|browser\.selftest)\.mjs$|\.test\.ts$/.test(file));
+  .filter((file) => !/\.(?:selftest|test-support|browser\.selftest)\.mjs$|\.test\.ts$/.test(file))
+  // (texture-diet-277) the texture-tier generators' ledgers pin their JPG sources by name: tools/terrain-texture-tiers.mjs
+  // and its selftest read them, no runtime module imports them (checked below)
+  .filter((file) => !/TextureTiers\.ledger\.json$/.test(file));
+const tierLedgerImporters = runtimeFiles.filter((file) => /TextureTiers\.ledger\.json/.test(readFileSync(resolve(ROOT, file), 'utf8')));
+assert.deepEqual(tierLedgerImporters, [], 'no runtime module reads a texture-tier ledger, so the census may skip them');
 assert.ok(runtimeFiles.length > 500, `runtime source census found only ${runtimeFiles.length} files`);
 const naming = [];
 for (const file of runtimeFiles) {
