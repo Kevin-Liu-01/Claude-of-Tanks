@@ -2831,13 +2831,19 @@ live site: the host on a laptop on home Wi-Fi (Play, Private, Create), the joine
 (the invite link), two minutes of play; the F3 panel's **Path** row on the phone names the link (`direct`, `direct (NAT)`,
 `relayed`, `via TURN`; the host's reads `this browser`, with `via TURN` when any peer is relayed).
 
-**A lead: the host's own controls right after the reveal (277).** In the slot runs (under the capture lock) the host's
-own seat acknowledged its input 2–10 ticks behind from the first second. In four short runs outside the lock on the same
-machine under other sessions' load, it started 36–48 ticks behind (0.6–0.8 s), every tick of it intrinsic (no lead), and
-drained about 3 ticks a second (48, 45, 42, 38, 36, 32, 29, 26, 24 over nine seconds), while the joiner settled in three.
-That is a backlog on the host's loopback into its own Worker after the countdown, and on a slow host it is the host's
-first ten-odd seconds of control. Not yet explained; the next step is the host Worker's tick timeline against the page's
-sampled ticks over the first 20 s on a throttled host (`mp-p2p-e2e --host-throttle`).
+**The opening: a clock seeded from a boot (fixed, f2c8e1ef5d).** On 276 a seat's first battle on a page could start
+with its controls answered late: in the slot runs under the capture lock, one cold run's joiner was 51 ticks behind at
+the reveal (51, 48, 44, 41, 37, 33 … over 16 s, 20 visible corrections), another's host 24 (24, 20, 17, 14, 11, 7).
+The client clock's offset was 784 ms and 343 ms ahead of the authority and drained at exactly its 50 ms/s slew, the
+input lag with it. The clock's first sample is the HELLO → WELCOME exchange; a seat that links while the host's Worker
+boots the match (the host itself, or an early joiner) waits through that boot, and the round trip's midpoint seeds the
+offset half the boot ahead. The WELCOME's 8-ping burst puts the filtered target right within ~1.6 s, but the active offset
+could only slew to it, so every input sampled meanwhile was stamped that far in the future. Now `ServerClock` calibrates
+(`calibrationSamples`, 9: the HELLO sample and the burst): until then the active offset is the filtered target, after it
+the slew hides a converged estimate's corrections as before. Two cold runs on the fix: both seats 5–8 ticks from the
+first second, 0 offset error at the reveal, PASS. `tools/mp-two-peer-e2e.mjs` gates it (`--ack-by`, 3: from that second
+each page's acknowledgement lag is within `--ack-p95`), and `clock.selftest.mjs` holds the boot-delayed HELLO with the old
+clock as its control.
 
 **Parked: the host's data channel off the main thread (measured proposal, 2026-11-25).** The host relays every peer's
 frames to its Worker on its main thread (§13.24), so its frames sit in every peer's path twice. Measured over the six
