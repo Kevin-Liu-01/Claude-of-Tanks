@@ -1022,14 +1022,21 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // the camera above — and its sunlit faces glared. Open, the room draws in its building's own material, lit as the
   // building's outside is (the faces the fracture redraws and the kit's rims draw in it too); with none, a room material
   // at the sky's full share and no light of its own
-  const roomMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  // (webcontent-diet-278) keyed weakly by the world's own bucket material: this runtime lives for the page, and a room
+  // material keeps its source (userData.roomSource), whose program key closes over the props build that made it. Keyed by
+  // the texture's uuid in a plain Map, a room kept a released battlefield whole through the next battle (a phone's second
+  // battle held all of world-verdant; tools/battle-retention-probe.mjs). A room only its own source reaches dies with it.
+  const roomMaterials = new WeakMap<THREE.Material, Map<string, THREE.MeshStandardMaterial>>();
+  const sourcelessRooms = new Map<string, THREE.MeshStandardMaterial>();
   function roomMaterialFor(source: THREE.Material | null | undefined, open = false): THREE.Material {
     if (open && source) return source;
     const map = (source as (THREE.Material & { map?: THREE.Texture | null }) | null | undefined)?.map ?? null;
     const own = (source as THREE.MeshStandardMaterial | null | undefined)?.envMapIntensity;
     const env = open ? (typeof own === 'number' && Number.isFinite(own) ? own : 1) : 0.35;
     const key = `${map ? map.uuid : 'none'}${open ? `|open ${env}` : ''}`;
-    let m = roomMaterials.get(key);
+    let rooms = source ? roomMaterials.get(source) : sourcelessRooms;
+    if (!rooms) { rooms = new Map(); roomMaterials.set(source!, rooms); }
+    let m = rooms.get(key);
     if (!m) {
       const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: map ?? ROOM_WHITE, roughness: 1, metalness: 0,
         vertexColors: true, envMapIntensity: env, emissive: open ? new THREE.Color(0, 0, 0) : new THREE.Color(0.012, 0.0105, 0.009) });
@@ -1038,7 +1045,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (open) mat.userData.openToSky = true;
       mat.onBeforeCompile = (shader) => { bindMaterialEnvIntensity(shader as unknown as { uniforms: Record<string, THREE.IUniform> }, mat); };
       mask.patch(mat);
-      roomMaterials.set(key, mat);
+      rooms.set(key, mat);
       m = mat;
     }
     return m;
