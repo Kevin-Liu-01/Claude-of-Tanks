@@ -473,7 +473,8 @@ function addGuns(P: TankBuilderPort): void {
     P.addGunExtra(box(0.014, 0.30, 0.44), s * (x1 + 0.004), 0.17, 0.06);
     P.addGunExtraDark(box(0.02, 0.03, 0.10), s * (x1 + 0.014), 0.17, 0.24);
     // The barrel (photos 02, 04): the jacket out of the nose, a clamp, the L/90 tube, the large perforated brake whose
-    // face is the bore mouth, two rows of four ports round it.
+    // face is the bore mouth, two rows of four ports round it. The core carves each bore into that face (276: a dark disc
+    // stood 2 mm proud of it, and the drawn mouth the combat rig measures stood on the disc, 3.302 m).
     const bx = s * BORE.x, by = BORE.y, barrel = `gunBarrel${index}`, dark = `gunBarrel${index}Dark`;
     P.add(barrel, cylZ(0.068, 0.42, n), bx, by, H.noseZ + 0.16);
     P.add(dark, cylZ(0.078, 0.05, n), bx, by, H.noseZ + 0.38);
@@ -484,7 +485,6 @@ function addGuns(P: TankBuilderPort): void {
       const a = k * Math.PI / 2;
       P.add(dark, box(0.022, 0.05, 0.08), bx + Math.cos(a) * (BRAKE.r - 0.006), by + Math.sin(a) * (BRAKE.r - 0.006), z, 0, 0, a);
     }
-    P.add(dark, cylZ(0.030, 0.012, n), bx, by, LOARA_MUZZLE_Z - 0.004);
   }
   P.muzzleZ = LOARA_MUZZLE_Z;
 }
