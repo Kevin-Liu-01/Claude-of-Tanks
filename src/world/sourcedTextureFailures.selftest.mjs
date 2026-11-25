@@ -9,7 +9,8 @@ class ImageFixture {
   height = 1;
   set src(url) {
     urls.push(url);
-    const fail = /Grass004.*Color|Plaster007.*NormalGL|Ground071.*Roughness|Rock058.*AmbientOcclusion/.test(url);
+    // (texture-diet-277) a terrain set loads its tier's Color, NormalGL and packed ORM (occlusion + roughness)
+    const fail = /Grass004.*Color|Plaster007.*NormalGL|Ground071.*ORM|Rock058.*ORM/.test(url);
     queueMicrotask(() => fail ? this.onerror() : this.onload());
   }
 }
@@ -33,15 +34,15 @@ try {
   assert.equal(terrain[0].applied, false, 'missing albedo preserves the procedural fallback');
   assert.match(terrain[0].failures[0], /Grass004.*Color/);
   assert.equal(layers.G.albedo.swaps, 0);
-  assert.equal(terrain[1].applied, true, 'optional roughness fallback remains usable in normal gameplay');
-  assert.match(terrain[1].failures[0], /Ground071.*Roughness/);
+  assert.equal(terrain[1].applied, true, 'a missing packed ORM (roughness and AO) stays an optional fallback in normal gameplay');
+  assert.match(terrain[1].failures[0], /Ground071.*ORM/);
   assert.equal(terrain[2].applied, true);
-  assert.match(terrain[2].failures[0], /Rock058.*AmbientOcclusion/);
+  assert.match(terrain[2].failures[0], /Rock058.*ORM/);
   assert.equal(buildings[0].applied, false);
   assert.match(buildings[0].failures[0], /Plaster007.*NormalGL/);
   assert.equal(building.albedo.swaps, 0);
   assert.equal(warnings.length, 4, 'all four source failures are visible to capture tooling');
-  assert.equal(urls.length, 16, 'existing four images per set, no retry or extra preload');
+  assert.equal(urls.length, 3 * 3 + 4, 'three images per terrain set and four per building set, no retry or extra preload');
   for (const receipt of [...terrain, ...buildings]) {
     assert.deepEqual(Object.keys(receipt).sort(), ['applied', 'failures', 'target']);
     assert.ok(receipt.failures.every((failure) => typeof failure === 'string'), 'receipts retain text, not images/errors');
