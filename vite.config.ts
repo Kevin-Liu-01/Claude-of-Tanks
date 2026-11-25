@@ -40,6 +40,7 @@ import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 import { gameEntryMeta } from './tools/viteGameEntryMeta.ts';
+import { battleChunkPrefetch } from './tools/viteBattleChunkPrefetch.ts';
 import { responsiveSeed } from './tools/viteResponsiveSeed.ts';
 import { speculationRules } from './tools/viteSpeculationRules.ts';
 
@@ -335,6 +336,9 @@ export default defineConfig({
     // brand-ui BUI-F7: the public pages name the game's entry chunk for the Play button's hover prefetch (the game's
     // own documents are left byte for byte as they were).
     gameEntryMeta(),
+    // 2026-11-25 (entry-cpu-278, tools/viteBattleChunkPrefetch.ts): the game document lists the solo battle's chunks (an inert
+    // JSON script) for src/app/battleChunkPrefetch.ts to preload behind the ready Garage
+    battleChunkPrefetch(),
     {
       name: 'cot-routes',
       configureServer(server) {

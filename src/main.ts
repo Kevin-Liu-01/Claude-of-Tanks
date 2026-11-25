@@ -278,6 +278,7 @@ type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
+import { startBattleChunkPrefetch } from './app/battleChunkPrefetch.ts';
 import { openSurfaceIds } from './ui/components/surfaceStack.ts';
 import {
   answerTutorialOffer, markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
@@ -5191,6 +5192,9 @@ studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error(
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
 // 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
 primeMapLqipWhenIdle();
+// (entry-cpu-278) the solo battle's code behind the ready Garage: low-priority modulepreloads at the 'idle' fetch class, so a
+// press after a few seconds here no longer waits ~6 s on a thin link for 2.8 MB of chunks (src/app/battleChunkPrefetch.ts)
+if (!STUDIO_BOOT_INTENT) startBattleChunkPrefetch({ document });
 // 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): a tab opened on a room invite is on its way into a room
 // and, on a return, straight into a running match. The Garage's idle work (the neighbouring heroes, the dressing set
 // pieces) would share the main thread with the room's join and the battle entry, so it waits: a return to the Garage

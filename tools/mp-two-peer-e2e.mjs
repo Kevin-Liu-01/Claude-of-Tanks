@@ -117,6 +117,10 @@ const revealTimeoutMs = Number(argValue('reveal-timeout-s', 300)) * 1000;
 // --chrome=<executable>: the solo page's browser binary (a fresh temporary profile either way). V8's sampler deadlocked
 // Chrome for Testing 151's renderer in native code at a random point of the entry (entry-cpu-278: four runs, at 1x and 4x)
 const chromePath = argValue('chrome', '');
+// --garage-dwell-s=<s> (entry-cpu-278): the solo page sits in its ready Garage this long before the press, as a player does
+// (0 by default: the press at once, the worst case). The report records what the Garage's battle chunk preload had done
+// by the press (window.__BATTLE_CHUNK_PREFETCH, src/app/battleChunkPrefetch.ts).
+const garageDwellS = Number(argValue('garage-dwell-s', 0));
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -404,6 +408,28 @@ async function runSolo(origin) {
   const openedAt = elapsedMs();
   await bootPage(page, `${origin}/?${BOOT_QUERY}`, 'S');
   const out = { map: hostMaps[0], spec: soloSpec, bootMs: elapsedMs() - openedAt, bytesAtBoot: await bytes() };
+  if (garageDwellS > 0) {
+    // the Garage's frames over the dwell (rAF deltas): the preload must leave them as they were
+    out.garageFrames = await page.evaluate((ms) => new Promise((done) => {
+      const deltas = [];
+      const start = performance.now();
+      let last = start;
+      const tick = (now) => {
+        deltas.push(now - last);
+        last = now;
+        if (now - start < ms) requestAnimationFrame(tick);
+        else {
+          const sorted = [...deltas].sort((a, b) => a - b);
+          done({ frames: deltas.length, longestMs: +sorted.at(-1).toFixed(1), p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
+            over50: deltas.filter((delta) => delta > 50).length });
+        }
+      };
+      requestAnimationFrame(tick);
+    }), garageDwellS * 1000);
+    out.garageDwellS = garageDwellS;
+    out.bytesAtPress = await bytes();
+  }
+  out.chunkPrefetchAtPress = await page.evaluate(() => (window.__BATTLE_CHUNK_PREFETCH ? { ...window.__BATTLE_CHUNK_PREFETCH } : null)).catch(() => null);
   const mark = await page.evaluate(() => (window.__MP2_LOAD ?? []).length);
   const startedAt = elapsedMs();
   net.entryAt = Date.now();
