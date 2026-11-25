@@ -4,15 +4,17 @@
 // wind clock set, each frame rendered and read back in one page task, as tools/world-pools-truth.mjs does).
 //
 //   node tools/far-hull-truth.mjs --root=<tree with dist> [--label=new] [--maps=verdant,monsoon,autumn]
-//     [--views=far-allies,far-low,far-side] [--viewport=1600x900] [--tier=desktop|mobile] [--preset=high] [--port=5381]
-//     [--out=<dir>] [--bisect] [--turn]
+//     [--views=far-allies,far-low,far-side] [--viewport=1600x900] [--tier=desktop|mobile] [--preset=high] [--port=0]
+//     [--out=<dir>] [--bisect] [--turn] [--control=tint] [--place=<queue key>]
 //
 // Per map and view: the frame with the far hull draw (A), again (the A/A floor), with the stand-ins as they were
 // (B: window.__FAR_HULL_DEBUG.set(false)) and with the draw again (A'); the colour frames A and B as PNG, a difference
 // map (red where B is darker by more than 8/255 in luminance, green brighter), each far vehicle's screen box (the crops
 // the blind A/B shows), the frame's draw calls either way and every vehicle's far hull draw record (what it carries, its
-// fallbacks by reason). The bots are frozen and shown; the far LOD builds one vehicle at a time, so each view waits until
-// every vehicle past the far range shows it.
+// fallbacks by reason). --control=tint scales every far hull draw's colour by 0.8 before A (the pixel test's
+// sensitivity control: A against B must then differ wherever a far vehicle shows). The bots are frozen and shown; the
+// far LOD builds one vehicle at a time, so each view waits until every vehicle past the far
+// range shows it.
 import path from 'node:path';
 import os from 'node:os';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -95,6 +97,12 @@ function installHelpers() {
     capture() {
       const sw = window.__FAR_HULL_DEBUG;
       if (!sw) return { error: 'no __FAR_HULL_DEBUG in this build' };
+      // --control=tint (the receipt's sensitivity control): every far hull draw's colour scaled by 0.8, so A must differ
+      let tinted = 0;
+      if (window.__FHT_TINT) D.scene.traverse((o) => {
+        if (o.name !== 'farLodHullDraw' || !o.material?.color || o.material.userData.fhtTinted) return;
+        o.material.color.multiplyScalar(0.8); o.material.userData.fhtTinted = true; tinted++;
+      });
       sw.set(true);
       const callsA = frame(); const A = rgba(); const lA = lumOf(A);
       frame(); const lA2 = lumOf(rgba());
@@ -124,7 +132,7 @@ function installHelpers() {
         bisect.sort((a, b) => a.px8 - b.px8);
       }
       const shaderErrors = D.renderer.info.programs?.filter?.((p) => p.diagnostics && !p.diagnostics.runnable).length ?? null;
-      return { width: cv.width, height: cv.height, callsA, callsB, floor: diff(lA, lA2), ab: diff(lA, lB), again: diff(lA, lA3),
+      return { width: cv.width, height: cv.height, tinted, callsA, callsB, floor: diff(lA, lA2), ab: diff(lA, lB), again: diff(lA, lA3),
         boxes: boxes(), shaderErrors, bisect, a: b64(rgbOf(A)), b: b64(rgbOf(B)) };
     },
     release() { hold?.release?.(); if (clouds) clouds.frozen = false; },
@@ -139,13 +147,13 @@ const views = arg('views', Object.keys(FAR_POSES).join(',')).split(',');
 const tier = arg('tier', 'desktop');
 const preset = arg('preset', tier === 'desktop' ? 'high' : 'mobile');
 const [width, height] = arg('viewport', tier === 'desktop' ? '1600x900' : '1280x720').split('x').map(Number);
-const port = Number(arg('port', 5381));
+const port = Number(arg('port', 0)); // 0: the capture slot's preview block (capture-ports.mjs), else an OS-assigned port
 const report = { root, label, tier, preset, viewport: `${width}x${height}`, loadAtStart: os.loadavg().map((v) => +v.toFixed(1)), maps: {} };
 let server = null, hold = null, browser = null;
 let entry_turn = null;
 try {
   server = await openPreview(root, port);
-  hold = await openCaptureHold({ label: 'far-hull-truth', timeoutMs: 3 * 60 * 60 * 1000, lockClass: 'render', command: 'tools/far-hull-truth.mjs' });
+  hold = await openCaptureHold({ label: 'far-hull-truth', place: arg('place', undefined), timeoutMs: 3 * 60 * 60 * 1000, lockClass: 'render', command: 'tools/far-hull-truth.mjs' });
   const startedAt = Date.now();
   for (const mapId of maps) {
     if (Date.now() - startedAt > 18 * 60 * 1000) { report.stopped = 'past 18 minutes of hold'; break; }
@@ -159,7 +167,7 @@ try {
     const mobile = tier === 'mobile';
     await page.setViewport({ width, height, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile });
     await page.evaluateOnNewDocument(installObservers, { preset, allies: 13, enemies: 14 });
-    await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=${tier}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+    await page.goto(`http://127.0.0.1:${server.port}/?nosplash=1&tier=${tier}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
     await page.evaluate(() => { window.__DEBUG.renderer.debug.checkShaderErrors = true; });
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
@@ -188,6 +196,7 @@ try {
     }
     const helpers = await page.evaluate(installHelpers);
     if (process.argv.includes('--bisect')) await page.evaluate(() => { window.__FHT_BISECT = true; });
+    if (arg('control', '') === 'tint') await page.evaluate(() => { window.__FHT_TINT = true; });
     const entry = report.maps[mapId] = { helpers, views: {}, errors, turn: entry_turn };
     for (const view of views) {
       await page.evaluate(farPose, FAR_POSES[view]);

@@ -491,11 +491,11 @@ function farHullPatch(uniforms: FarHullUniforms) {
     const open = vs.indexOf('{', main) + 1;
     const body = expandIncludes(vs.slice(open))
       .replace(/\bmodelViewMatrix\b/g, 'farModelView').replace(/\bnormalMatrix\b/g, 'farNormalMatrix').replace(/\bmodelMatrix\b/g, 'farModel');
-    const fetch = (k: number): string => `texelFetch( uFarRecords, ivec2( ${k}, farRow ), 0 )`;
+    const texel = (k: number): string => `texelFetch( uFarRecords, ivec2( ${k}, farRow ), 0 )`;
     vs = `attribute float farPiece;\nattribute float farNightMask;\nuniform highp sampler2D uFarRecords;\nuniform mat4 uFarParts[ ${FAR_HULL_MAX_PARTS} ];\n`
       + `uniform float uFarTie;\nuniform float uFarUnit;\n${RECORD_VARYINGS}${vs.slice(0, open)}\n`
       + `\tint farRow = int( farPiece + 0.5 );\n`
-      + `\tvFarSurfA = ${fetch(0)};\n\tvFarSurfB = ${fetch(1)};\n\tvFarSurfC = ${fetch(2)};\n\tvFarSurfD = ${fetch(3)};\n\tvFarSurfE = ${fetch(4)};\n\tvFarSurfF = ${fetch(5)};\n\tvFarNightMask = farNightMask;\n`
+      + `\tvFarSurfA = ${texel(0)};\n\tvFarSurfB = ${texel(1)};\n\tvFarSurfC = ${texel(2)};\n\tvFarSurfD = ${texel(3)};\n\tvFarSurfE = ${texel(4)};\n\tvFarSurfF = ${texel(5)};\n\tvFarNightMask = farNightMask;\n`
       + `\tmat4 farModel = modelMatrix * uFarParts[ int( vFarSurfC.x + 0.5 ) ];\n`
       + `\tmat4 farModelView = viewMatrix * farModel;\n`
       + `\tmat3 farNormalMatrix = transpose( inverse( mat3( farModelView ) ) );\n${body}`;
@@ -821,6 +821,8 @@ export function farHullDrawEnabled(): boolean { return farHullDrawOn; }
 /** A vehicle's re-show of its far LOD, run when the switch moves. */
 export function registerFarHullVehicle(root: THREE.Object3D, apply: () => void): void {
   (root as THREE.Object3D & { [FAR_HULL_APPLY]?: () => void })[FAR_HULL_APPLY] = apply;
+  // every build registers (fleet tools build hundreds in one process): the collected ones' refs go as the set grows
+  if (farHullVehicles.size >= 256) for (const ref of farHullVehicles) if (!ref.deref()) farHullVehicles.delete(ref);
   farHullVehicles.add(new WeakRef(root));
 }
 
