@@ -808,6 +808,8 @@ const bus = createBus(devTrace
   list: async () => (await replayRecording.preload()).module.listReplays(),
   load: async (id: number) => (await replayRecording.preload()).module.loadReplayFile(id),
   lastTrace: () => lastReplayTrace,
+  // the watched replay filmed to an MP4 and saved (exportReplayFilm; tools/replay-ui-flow.browser.selftest.mjs films one)
+  film: (request: ReplayFilmRequest) => exportReplayFilm(request),
 };
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
@@ -4177,6 +4179,65 @@ async function watchReplayRecording(recording: ReplayRecording, file: Uint8Array
     pendingReplay = null;
   }
 }
+/** A replay film rendering (replayFilm.ts): the live frame loop and the viewport's own resize wait for it. */
+let replayFilmHeld = false;
+/** Film options a press (or a tool) asks for: the size and rate, the range in battle seconds, the HUD drawn over it. */
+interface ReplayFilmRequest {
+  width: number;
+  height: number;
+  fps: number;
+  fromS?: number;
+  toS?: number;
+  signal?: AbortSignal;
+  onProgress?: (progress: { stage: string; frame: number; frames: number; elapsedMs: number; remainingMs: number | null }) => void;
+}
+/**
+ * Film the watched replay to an MP4 (replay-fixes-277; Kevin 11-24 "export it as a mp4"): offline, one main frame per film
+ * frame at exactly 1/fps of battle time, through the viewer's camera, encoded by the Studio's first-party WebCodecs path
+ * (studioFilmExport.ts, H.264 in MP4 only; a browser that cannot is told so, never handed a WebM). The file is saved from
+ * the press as a Blob through an anchor. Null when no replay is being watched.
+ */
+async function exportReplayFilm(request: ReplayFilmRequest): Promise<{ bytes: number; frames: number; elapsedMs: number; codec: string; name: string } | null> {
+  const runtime = replayViewerOwner.current;
+  const clock = runtime?.filmClock() ?? null;
+  if (!runtime || !clock) return null;
+  const [{ createReplayFilmSession, replayFilmBitrate }, { exportFilm, mp4EncodeSupported }] = await Promise.all([
+    import('./game/replay/replayFilm.ts'), import('./game/studioFilmExport.ts'),
+  ]);
+  if (!(await mp4EncodeSupported(request.width, request.height, request.fps))) throw new Error('replay film: this browser cannot encode MP4 video');
+  const session = createReplayFilmSession({
+    canvas: renderer.domElement,
+    readSize: () => { const size = renderer.getSize(new THREE.Vector2()); return { width: size.x, height: size.y, pixelRatio: renderer.getPixelRatio() }; },
+    applySize: (width, height, pixelRatio) => {
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / Math.max(1, height);
+      camera.updateProjectionMatrix();
+      post.setSize(width, height);
+      lighting.updateFrustums?.();
+    },
+    hold: (on) => {
+      replayFilmHeld = on;
+      // the live size owners rejoin once the film lets go (the container's size and ratio, as a resize applies them)
+      if (!on) { viewport.apply(); frameLoop.restart(); }
+    },
+    tick: (nowMs) => mainFrame.tick(nowMs),
+    clock,
+    now: () => performance.now(),
+  }, { width: request.width, height: request.height, fps: request.fps, fromS: request.fromS ?? 0, toS: request.toS ?? clock.durationS });
+  const result = await exportFilm({ begin: session.begin, renderNext: session.renderNext, end: session.end, canvas: session.canvas },
+    { width: request.width, height: request.height, fps: request.fps, container: 'mp4', bitrate: replayFilmBitrate(request.width, request.height, request.fps),
+      signal: request.signal, onProgress: request.onProgress });
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const name = `claude-of-tanks-replay-${stamp}.mp4`;
+  const url = URL.createObjectURL(result.blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  return { bytes: result.bytes, frames: result.frames, elapsedMs: Math.round(result.elapsedMs), codec: result.codec, name };
+}
 /** Save a replay's file (as stored: gzipped where the browser could) under its battle's date. */
 async function downloadSavedReplay(id: number | null): Promise<void> {
   const stored = await savedReplayFile(id);
@@ -4424,7 +4485,8 @@ const mainFrame = createMainFrameRuntime({
   game,
   scheduleFrame: () => frameLoop.schedule(),
   isGraphicsContextLost: () => graphicsContextLost,
-  syncViewportPixelRatio: viewport.syncPixelRatio,
+  // a replay film owns the renderer's size while it renders (game/replay/replayFilm.ts): the viewport waits for it
+  syncViewportPixelRatio: () => (replayFilmHeld ? false : viewport.syncPixelRatio()),
   battleEntryLifecycle,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
@@ -4508,7 +4570,8 @@ const mainFrame = createMainFrameRuntime({
 // rAF re-arming is latched (rafQueued) so fallback ticks can never stack
 // extra rAF callbacks for a speed burst when frames come back.
 const frameLoop = createFrameLoopScheduler({
-  tick: mainFrame.tick,
+  // (replay-fixes-277) a replay film ticks the page itself, one fixed step per film frame: the live loop waits
+  tick: (nowMs) => { if (!replayFilmHeld) mainFrame.tick(nowMs); },
   isBootComplete: () => bootComplete,
   hasBackgroundWork: onlineMatchActive,
   backgroundTick: (nowMs) => { onlineMatch.current?.pumpBackground(nowMs); },

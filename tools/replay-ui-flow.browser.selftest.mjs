@@ -6,7 +6,9 @@
  *   A  leave from Settings, open the Service Record (R), its Replays tab, the newest row's Watch;
  *   B  a second battle ended by its clock, the end screen's Watch replay;
  *   C  A's file, saved by the row's Download replay, opened on a fresh profile through Open replay file (a file that is
- *      not a replay and one of another format first: each says why in the tab and enters nothing).
+ *      not a replay and one of another format first: each says why in the tab and enters nothing);
+ *   D  (asked for: --paths=...,D) a battle's replay filmed to an MP4 (--film=1280x720@30:30) and read back (ffprobe
+ *      where installed): H.264 at the size asked, as long as the range; its size and render time in the receipt.
  *
  * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
  * notice, whose transport enables, whose clock runs when Play is pressed (at 4x), and which plays to the recording's end
@@ -16,7 +18,7 @@
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
  *   node tools/replay-ui-flow.browser.selftest.mjs [--dist=<built dist> | --url=<origin>] [--out=<dir>] [--port=4238]
- *     [--seconds=20] [--paths=A,B,C]
+ *     [--seconds=20] [--paths=A,B,C[,D]] [--film=1280x720@30:30]
  *
  * --dist serves a build (vite preview), --url opens a running origin, and with neither it starts a dev server. Takes the shared
  * capture lock (render class; nests in a with-capture-lock hold): the manual `browser` suite's
@@ -25,6 +27,7 @@
  */
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
@@ -64,7 +67,7 @@ const WATCH_INDEXER = `(() => {
 })();`;
 
 export function parseFlowArgs(argv) {
-  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, width: 1600, height: 900 };
+  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, film: null, width: 1600, height: 900 };
   for (const arg of argv) {
     const m = /^--([a-z]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -72,12 +75,14 @@ export function parseFlowArgs(argv) {
     else if (m[1] === 'dist') out.dist = m[2];
     else if (m[1] === 'port') out.port = Number(m[2]);
     else if (m[1] === 'seconds') out.seconds = Number(m[2]);
-    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => p === 'A' || p === 'B' || p === 'C');
+    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => ['A', 'B', 'C', 'D'].includes(p));
     else if (m[1] === 'url') out.url = m[2].replace(/\/$/, '');
+    // D's film: <width>x<height>@<fps>:<seconds> (default 1280x720@30:30)
+    else if (m[1] === 'film') out.film = m[2];
     else throw new Error(`unknown flag --${m[1]}`);
   }
   out.out ??= mkdtempSync(path.join(tmpdir(), 'replay-ui-flow-'));
-  if (!out.paths.length) throw new Error('--paths takes A, B and/or C');
+  if (!out.paths.length) throw new Error('--paths takes A, B, C and/or D');
   return out;
 }
 
@@ -316,6 +321,63 @@ async function pathC(page, options, shot, log) {
   return result;
 }
 
+/** The MP4 a film saved: its size, and (where ffprobe is installed) its codec, size, rate and length as a player reads them. */
+function probeFilm(file) {
+  const head = readFileSync(file).subarray(0, 12);
+  const probe = { bytes: statSync(file).size, ftyp: head.subarray(4, 8).toString('latin1') };
+  try {
+    const json = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries',
+      'stream=codec_name,profile,width,height,r_frame_rate,nb_frames:format=duration', '-of', 'json', file], { encoding: 'utf8' }));
+    probe.stream = json.streams?.[0] ?? null;
+    probe.durationS = Number(json.format?.duration);
+  } catch (error) { probe.ffprobe = String(error.message ?? error).slice(0, 200); }
+  return probe;
+}
+
+/** D: a battle long enough for the film, its replay opened from the Service Record, filmed to an MP4 (the page's own
+ *  exportReplayFilm, saved from a Blob through an anchor) and read back: an MP4 of H.264 at the size and rate asked,
+ *  as long as the range. */
+async function pathD(page, options, shot, log) {
+  const [size, rest] = (options.film ?? '1280x720@30:30').split('@');
+  const [width, height] = size.split('x').map(Number);
+  const [fps, seconds] = rest.split(':').map(Number);
+  await enterBattle(page);
+  await drive(page, Math.max(options.seconds, seconds + 4));
+  const opened = await openSavedReplay(page, { ...options, openOnly: true }, shot, log);
+  if (!opened.ok) return opened;
+  await page.waitForFunction(() => { const b = document.querySelector('.cot-replay .play'); return b && !b.disabled; }, { timeout: 240_000 });
+  const downloads = path.join(options.out, 'films');
+  mkdirSync(downloads, { recursive: true });
+  const cdp = await page.browser().target().createCDPSession();
+  const contextId = page.browserContext().id;
+  await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, ...(contextId ? { browserContextId: contextId } : {}) });
+  const started = Date.now();
+  let film;
+  try {
+    film = await page.evaluate((request) => window.__COT_REPLAY.film(request), { width, height, fps, fromS: 0, toS: seconds });
+  } catch (error) {
+    return { ok: false, why: `the film failed: ${String(error.message ?? error).slice(0, 300)}` };
+  }
+  const exportMs = Date.now() - started;
+  let file = null;
+  for (const until = Date.now() + 30_000; !file && Date.now() < until;) {
+    await sleep(250);
+    file = readdirSync(downloads).find((name) => name.endsWith('.mp4')) ?? null;
+  }
+  await sleep(500);
+  const probe = file ? probeFilm(path.join(downloads, file)) : null;
+  log.push({ at: 'film', request: { width, height, fps, seconds }, film, exportMs, file, probe });
+  await shot('after-film');
+  if (!film || !file) return { ok: false, why: `no MP4 was saved (${JSON.stringify(film)})` };
+  if (probe.ftyp !== 'ftyp') return { ok: false, why: `the file is not an MP4 (box ${probe.ftyp})` };
+  const stream = probe.stream;
+  if (stream) {
+    if (stream.codec_name !== 'h264' || stream.width !== width || stream.height !== height) return { ok: false, why: `the film reads as ${JSON.stringify(stream)}` };
+    if (Math.abs(probe.durationS - seconds) > 0.1) return { ok: false, why: `the film runs ${probe.durationS} s, not ${seconds} s` };
+  }
+  return { ok: true, why: `${seconds} s at ${width}x${height}@${fps}: ${(probe.bytes / 1e6).toFixed(2)} MB, rendered in ${(exportMs / 1000).toFixed(1)} s` };
+}
+
 async function pathB(page, options, shot, log) {
   await enterBattle(page);
   log.push({ at: 'battle', recorder: await recorderState(page) });
@@ -394,7 +456,7 @@ export async function runFlow(options) {
         say(`battle pool: ${receipt.pool.same ? 'the page\'s is Node\'s' : `the page's parts from Node's at ${receipt.pool.partsAt}`}`);
       }
       let result;
-      try { result = await ({ A: pathA, B: pathB, C: pathC })[name](page, options, shot, log); } catch (error) {
+      try { result = await ({ A: pathA, B: pathB, C: pathC, D: pathD })[name](page, options, shot, log); } catch (error) {
         await shot('error');
         result = { ok: false, why: `threw: ${error.message}` };
       }

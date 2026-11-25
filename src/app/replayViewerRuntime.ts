@@ -18,7 +18,8 @@ import { replayCollisionManifest, REPLAY_TERRAIN_SEED } from '../game/replay/rep
 import { createReplayViewer, type ReplayViewer } from '../game/replay/replayViewer.ts';
 import type { PosedHull } from '../game/replay/replayPosing.ts';
 import type { TimelineMark } from '../game/replay/replayTimeline.ts';
-import { replayKeyAction } from '../game/replay/replayPlayback.ts';
+import { REPLAY_SPEEDS, replayKeyAction } from '../game/replay/replayPlayback.ts';
+import type { ReplayFilmPorts } from '../game/replay/replayFilm.ts';
 import { createReplayBar, type ReplayBar } from '../ui/replayBar.ts';
 
 /** A hull as the viewer reads and poses it, with the visual it shows or hides and wrecks. */
@@ -64,6 +65,9 @@ export interface ReplayViewerRuntime {
   isActive(): boolean;
   advance(realS: number): void;
   stop(): void;
+  /** The viewer's clock for a film (game/replay/replayFilm.ts: seek through the viewer, play at 1x), or null before the
+   *  index is built (replay-fixes-277). */
+  filmClock(): ReplayFilmPorts['clock'] | null;
 }
 
 export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): ReplayViewerRuntime {
@@ -183,6 +187,20 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     },
 
     isActive: () => active,
+
+    filmClock() {
+      const shown = viewer;
+      if (!shown || !active) return null;
+      return {
+        // through the viewer, so a seek back resets the wrecks it crossed (as a scrub does)
+        seek: (timeS) => { shown.scrub(timeS); paint(); },
+        play: () => shown.clock.play(),
+        pause: () => shown.clock.pause(),
+        setSpeed: (speed) => shown.clock.setSpeedIndex(Math.max(0, REPLAY_SPEEDS.indexOf(speed as (typeof REPLAY_SPEEDS)[number]))),
+        get timeS() { return shown.clock.timeS; },
+        get durationS() { return shown.clock.durationS; },
+      };
+    },
 
     // the battle frame calls it only while the battle is in view (game/battleFrameRuntime.ts): the first call offers the
     // transport

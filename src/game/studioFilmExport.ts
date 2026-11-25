@@ -119,6 +119,17 @@ async function chooseEncoder(options: FilmExportOptions, bitrate: number): Promi
   throw new Error(t('studio.error.encodeUnsupported', { width, height, fps }));
 }
 
+/**
+ * Whether this browser encodes H.264 into MP4 at this size and rate (replay-fixes-277: the replay export offers MP4 only,
+ * never a WebM under an .mp4 name, so its button says so and stays off where this is false).
+ */
+export async function mp4EncodeSupported(width: number, height: number, fps: number): Promise<boolean> {
+  try {
+    const choice = await chooseEncoder({ width, height, fps, container: 'mp4' }, defaultFilmBitrate(width, height, fps));
+    return choice.container === 'mp4';
+  } catch { return false; }
+}
+
 function abortError(): Error {
   const error = new Error(t('studio.error.exportCancelled'));
   error.name = 'AbortError';
