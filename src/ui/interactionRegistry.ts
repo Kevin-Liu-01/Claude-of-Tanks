@@ -168,9 +168,12 @@ export const INTERACTION_SITES = Object.freeze({
 
   // ---- the battle (premiere-battle)
   'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'segmented', marks: ['segmented:.cot-scope-vision-seg'], lane: 'premiere-battle' },
+  // (replay-fixes-277) Export video over a watched replay: the film's size, rate and range
+  'replay-film-size': { chooses: 'setting', options: 2, screen: 'battle', owner: 'src/ui/replayFilmDialog.ts', build: 'segmented', marks: ['segmented:.cot-replay-film-size'], lane: 'premiere-battle' },
+  'replay-film-rate': { chooses: 'setting', options: 2, screen: 'battle', owner: 'src/ui/replayFilmDialog.ts', build: 'segmented', marks: ['segmented:.cot-replay-film-fps'], lane: 'premiere-battle' },
+  'replay-film-range': { chooses: 'setting', options: 2, screen: 'battle', owner: 'src/ui/replayFilmDialog.ts', build: 'segmented', marks: ['segmented:.cot-replay-film-range'], lane: 'premiere-battle' },
   /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
   // (replay-system) what the replay's timeline shows: every mark, the kills, or the ridden tank's own
-  'replay-filter': { chooses: 'view', options: 3, screen: 'battle', owner: 'src/ui/replayBar.ts', build: 'segmented', marks: ['segmented:.cot-replay-filter'], lane: 'premiere-battle' },
   'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
   // ---- the Studio (premiere-gallery-studio)

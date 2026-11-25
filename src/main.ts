@@ -271,8 +271,6 @@ import { createReplayRecordingAccess } from './game/replayRecordingAccess.ts';
 import type { RecorderGame, ReplaySetupOptions } from './game/replay/replayRecorder.ts';
 import type { ReplayRecording } from './sim/replayFormat.ts';
 import type { runRecordedSetup } from './game/replay/replaySetup.ts';
-// (the replay bar's segmented filter: the kit is already in the boot chunk with the Garage; the lazy bar takes it as a port)
-import { segmented, wireRoving } from './ui/components/components.ts';
 import type { replayCollisionManifest } from './game/replay/replayWorldManifest.ts';
 type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
@@ -4133,9 +4131,10 @@ const replayViewerOwner = createLazyRuntimeOwner(
     watch: () => watchOwner.current?.controller ?? null,
     hud: { root: () => currentHud()?.root ?? null, replayKill: (kill) => currentHud()?.replayKill(kill) },
     leave: () => { void leaveBattleToGarage().catch((error) => console.error('[replay] leave failed', error)); },
-    isInputHeld: () => settings.isOpen(),
+    // (Settings or the film dialog own the keys: Esc closes the dialog, it does not leave the replay)
+    isInputHeld: () => settings.isOpen() || replayFilmDialogOpen,
     reportError: (message, error) => console.error(message, error),
-    kit: { segmented, wireRoving },
+    openFilmExport: () => { void openReplayFilmDialog().catch((error) => console.error('[replay] the film dialog failed', error)); },
   }),
 );
 /** The saved replay `id`'s stored bytes (the battle just ended when null, saved first), or null. */
@@ -4188,6 +4187,8 @@ interface ReplayFilmRequest {
   fps: number;
   fromS?: number;
   toS?: number;
+  /** Draw the HUD over the film (Include HUD, off by default): game/replay/replayFilmHud.ts. */
+  hud?: boolean;
   signal?: AbortSignal;
   onProgress?: (progress: { stage: string; frame: number; frames: number; elapsedMs: number; remainingMs: number | null }) => void;
 }
@@ -4205,7 +4206,10 @@ async function exportReplayFilm(request: ReplayFilmRequest): Promise<{ bytes: nu
     import('./game/replay/replayFilm.ts'), import('./game/studioFilmExport.ts'),
   ]);
   if (!(await mp4EncodeSupported(request.width, request.height, request.fps))) throw new Error('replay film: this browser cannot encode MP4 video');
+  // Include HUD: the live HUD drawn over each frame (ui/replayFilmHud.ts reads it as laid out; off, a clean film)
+  const hud = request.hud ? (await import('./ui/replayFilmHud.ts')).createReplayFilmHud(() => currentHud()?.root ?? null) : null;
   const session = createReplayFilmSession({
+    ...(hud ? { overlay: hud.overlay, makeCanvas: hud.makeCanvas } : {}),
     canvas: renderer.domElement,
     readSize: () => { const size = renderer.getSize(new THREE.Vector2()); return { width: size.x, height: size.y, pixelRatio: renderer.getPixelRatio() }; },
     applySize: (width, height, pixelRatio) => {
@@ -4237,6 +4241,26 @@ async function exportReplayFilm(request: ReplayFilmRequest): Promise<{ bytes: nu
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
   return { bytes: result.bytes, frames: result.frames, elapsedMs: Math.round(result.elapsedMs), codec: result.codec, name };
+}
+/** Export video's dialog over the watched replay (ui/replayFilmDialog.ts), built on its first press. */
+let replayFilmDialog: { open(trigger?: HTMLElement | null): void; isOpen(): boolean; close(): void } | null = null;
+let replayFilmDialogOpen = false;
+async function openReplayFilmDialog(): Promise<void> {
+  const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (!replayFilmDialog) {
+    const [{ createReplayFilmDialog }, { mp4EncodeSupported }] = await Promise.all([import('./ui/replayFilmDialog.ts'), import('./game/studioFilmExport.ts')]);
+    replayFilmDialog = createReplayFilmDialog({
+      span: () => {
+        const clock = replayViewerOwner.current?.filmClock();
+        return { durationS: clock?.durationS ?? 0, timeS: clock?.timeS ?? 0 };
+      },
+      supported: (width, height, fps) => mp4EncodeSupported(width, height, fps),
+      film: (choice, signal, onProgress) => exportReplayFilm({ ...choice, signal,
+        onProgress: (progress) => onProgress(progress.frame, progress.frames, progress.remainingMs) }),
+      onOpenChange: (open) => { replayFilmDialogOpen = open; },
+    });
+  }
+  replayFilmDialog.open(trigger);
 }
 /** Save a replay's file (as stored: gzipped where the browser could) under its battle's date. */
 async function downloadSavedReplay(id: number | null): Promise<void> {

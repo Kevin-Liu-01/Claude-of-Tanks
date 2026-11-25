@@ -117,6 +117,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'media-archive': { screen: 'site', owner: 'src/presentation/mediaArchive.ts', box: 'dialog[open]', modal: true, open: {} },
 
   // ---- the battle
+  // (replay-fixes-277) Export video over a watched replay (the replay strip's film button)
+  'replay-film': { screen: 'battle', owner: 'src/ui/replayFilmDialog.ts', box: '.cot-modal', modal: true, open: {} },
   'spectate-ally': { screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', box: '.cot-spec-pick', open: {} },
   // the touch layout's ammunition rack, opened from its slot
   'hud-ammo-rack': { screen: 'battle', owner: 'src/ui/hud.ts', box: '.cot-shells.touch-open', open: {} },

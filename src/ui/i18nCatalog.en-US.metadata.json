@@ -397,5 +397,59 @@
   },
   "replay.import.damaged": {
     "context": "Claude of Tanks, a browser tank game. Shown when a replay file is cut short or corrupted and cannot be read."
+  },
+  "replay.export.open": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The film icon's label in the replay's control strip: opens the dialog. Short."
+  },
+  "replay.export.title": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The dialog's title. Short."
+  },
+  "replay.export.close": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The dialog's close button label (screen readers)."
+  },
+  "replay.export.size": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A field label: the video's resolution (720p or 1080p). One word."
+  },
+  "replay.export.rate": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A field label: the video's frames per second (30 or 60)."
+  },
+  "replay.export.range": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A field label: which part of the replay to export."
+  },
+  "replay.export.rangeAll": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. An option: export the whole replay. {length} is its length as m:ss."
+  },
+  "replay.export.rangeHere": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. An option: export from the current point of playback to the end. {from} and {to} are times as m:ss."
+  },
+  "replay.export.hud": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A checkbox: draw the game's on-screen display (HUD: minimap, team lists, score, kill feed) into the video. Keep \"HUD\" as is."
+  },
+  "replay.export.noAudio": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A plain note: the exported video has no sound in this version."
+  },
+  "replay.export.long": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. A hint shown when a long replay is exported at the largest size and rate: the smaller size renders about twice as fast."
+  },
+  "replay.export.unsupported": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. Shown when the player's browser cannot encode MP4 (H.264) video; the export button stays off. Keep \"MP4\", \"Chrome\" and \"Edge\" as is."
+  },
+  "replay.export.start": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The dialog's primary button: start the export. One word."
+  },
+  "replay.export.cancel": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The same button while the export runs: stop it. One word."
+  },
+  "replay.export.progress": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. Progress while rendering: {frame} and {frames} are numbers."
+  },
+  "replay.export.left": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. Estimated time remaining; {time} is m:ss. Shown after the progress line."
+  },
+  "replay.export.done": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. After the export: the file was saved. {name} is the file name, {size} its size such as 18.7 MB."
+  },
+  "replay.export.failed": {
+    "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The export stopped with an error; {reason} is the browser's message (often English)."
   }
 }

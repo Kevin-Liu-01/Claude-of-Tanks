@@ -49,8 +49,8 @@ export interface ReplayViewerRuntimePorts {
   /** Settings or a modal own the keys. */
   isInputHeld(): boolean;
   reportError(message: string, error: unknown): void;
-  /** The kit's segmented control for the bar (ui/replayBar.ts), handed in from the boot chunk that has it. */
-  kit: Parameters<typeof createReplayBar>[1]['kit'];
+  /** Export video (replay-fixes-277): the film dialog over the watched replay (main.ts); absent, the strip offers none. */
+  openFilmExport?(): void;
 }
 
 export interface ReplayViewerRuntime {
@@ -102,9 +102,8 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
       key: (action) => { viewer?.key(action); paint(); },
       scrub: (timeS) => { viewer?.scrub(timeS); paint(); },
       pickMark: (mark) => { viewer?.pickMark(mark); paint(); },
-      setFilter: (filter) => { viewer?.setFilter(filter); paint(); },
       leave: () => { if (timelineOnly) runtime.stop(); else ports.leave(); },
-      kit: ports.kit,
+      ...(ports.openFilmExport ? { exportFilm: () => ports.openFilmExport?.() } : {}),
       nameOf: (specId) => game.tanks.find((hull) => hull.specId === specId)?.spec?.name ?? specId,
     });
     return bar;
@@ -114,11 +113,20 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     if (!active || !viewer?.posing || event.repeat || ports.isInputHeld()) return;
     const target = event.target as HTMLElement | null;
     if (target && (target.isContentEditable || /^(?:INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    // (replay-fixes-277, Kevin approved 11-24) Esc leaves the replay (the strip's ×), never the battle's Settings
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      ports.leave();
+      return;
+    }
     const action = replayKeyAction(event.code);
     if (!action) return;
     event.preventDefault();
     event.stopPropagation();
     viewer.key(action);
+    // a replay key shows the strip a moment (it hides itself again while playing)
+    bar?.wake();
     paint();
   };
 

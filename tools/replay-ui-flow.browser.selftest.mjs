@@ -7,8 +7,9 @@
  *   B  a second battle ended by its clock, the end screen's Watch replay;
  *   C  A's file, saved by the row's Download replay, opened on a fresh profile through Open replay file (a file that is
  *      not a replay and one of another format first: each says why in the tab and enters nothing);
- *   D  (asked for: --paths=...,D) a battle's replay filmed to an MP4 (--film=1280x720@30:30) and read back (ffprobe
- *      where installed): H.264 at the size asked, as long as the range; its size and render time in the receipt.
+ *   D  (asked for: --paths=...,D) a battle's replay filmed to an MP4 through the strip's Export video and its dialog
+ *      (--film=1280x720@30:30, --hud=1 for Include HUD) and read back (ffprobe where installed): H.264 at the size
+ *      asked, as long as the range; its size and export time in the receipt.
  *
  * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
  * notice, whose transport enables, whose clock runs when Play is pressed (at 4x), and which plays to the recording's end
@@ -18,7 +19,7 @@
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
  *   node tools/replay-ui-flow.browser.selftest.mjs [--dist=<built dist> | --url=<origin>] [--out=<dir>] [--port=4238]
- *     [--seconds=20] [--paths=A,B,C[,D]] [--film=1280x720@30:30]
+ *     [--seconds=20] [--paths=A,B,C[,D]] [--film=1280x720@30:30] [--hud=1]
  *
  * --dist serves a build (vite preview), --url opens a running origin, and with neither it starts a dev server. Takes the shared
  * capture lock (render class; nests in a with-capture-lock hold): the manual `browser` suite's
@@ -67,7 +68,7 @@ const WATCH_INDEXER = `(() => {
 })();`;
 
 export function parseFlowArgs(argv) {
-  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, film: null, width: 1600, height: 900 };
+  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, film: null, hud: false, width: 1600, height: 900 };
   for (const arg of argv) {
     const m = /^--([a-z]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -79,6 +80,7 @@ export function parseFlowArgs(argv) {
     else if (m[1] === 'url') out.url = m[2].replace(/\/$/, '');
     // D's film: <width>x<height>@<fps>:<seconds> (default 1280x720@30:30)
     else if (m[1] === 'film') out.film = m[2];
+    else if (m[1] === 'hud') out.hud = m[2] === '1' || m[2] === 'true';
     else throw new Error(`unknown flag --${m[1]}`);
   }
   out.out ??= mkdtempSync(path.join(tmpdir(), 'replay-ui-flow-'));
@@ -234,7 +236,17 @@ export async function openSavedReplay(page, options, shot, log) {
   // leave as the player does: Esc opens Settings, its Leave (and a confirm, if one asks)
   await page.keyboard.press('Escape');
   await sleep(800);
-  if (!(await clickVisible(page, '.cot-set-btn.leave'))) throw new Error('Settings showed no Leave');
+  if (!(await clickVisible(page, '.cot-set-btn.leave'))) {
+    // the player's tank was destroyed: the battle is spectated, and its bar's Garage is the way out
+    await page.keyboard.press('Escape');
+    await sleep(300);
+    const spectating = await page.evaluate(() => {
+      const garage = [...document.querySelectorAll('button')].find((b) => b.offsetParent && /^garage$/i.test(b.textContent.trim()));
+      garage?.click();
+      return !!garage;
+    });
+    if (!spectating) throw new Error('Settings showed no Leave and no spectator Garage');
+  }
   await sleep(600);
   await page.evaluate(() => {
     const confirm = [...document.querySelectorAll('button')].find((b) => b.offsetParent && /^(leave|confirm|yes)/i.test(b.textContent.trim())
@@ -334,49 +346,82 @@ function probeFilm(file) {
   return probe;
 }
 
-/** D: a battle long enough for the film, its replay opened from the Service Record, filmed to an MP4 (the page's own
- *  exportReplayFilm, saved from a Blob through an anchor) and read back: an MP4 of H.264 at the size and rate asked,
- *  as long as the range. */
+/** D: a battle long enough for the film, its replay opened from the Service Record, its playhead put `seconds` before
+ *  the end on the strip's timeline, then Export video pressed on the strip and the dialog filled as a player fills it
+ *  (the size, the rate, "From here", Include HUD with --hud=1) and Export pressed; the MP4 the page saves (a Blob through
+ *  an anchor) is read back: H.264 at the size and rate asked, `seconds` long. */
 async function pathD(page, options, shot, log) {
   const [size, rest] = (options.film ?? '1280x720@30:30').split('@');
   const [width, height] = size.split('x').map(Number);
   const [fps, seconds] = rest.split(':').map(Number);
   await enterBattle(page);
-  await drive(page, Math.max(options.seconds, seconds + 4));
+  await drive(page, Math.max(options.seconds, seconds + 6));
   const opened = await openSavedReplay(page, { ...options, openOnly: true }, shot, log);
   if (!opened.ok) return opened;
   await page.waitForFunction(() => { const b = document.querySelector('.cot-replay .play'); return b && !b.disabled; }, { timeout: 240_000 });
+  // the playhead `seconds` before the end: a press on the strip's timeline (the strip woken by the pointer first)
+  await page.mouse.move(400, 400);
+  await page.mouse.move(420, 410);
+  const length = seconds_(await page.evaluate(() => document.querySelector('.cot-replay .tm')?.textContent ?? ''));
+  if (!length || length.end < seconds + 1) return { ok: false, why: `the replay is ${length?.end ?? '?'} s, shorter than the ${seconds} s film` };
+  const track = await page.evaluate(() => { const r = document.querySelector('.cot-replay .tk').getBoundingClientRect(); return { x: r.left, y: r.top + r.height / 2, w: r.width }; });
+  await page.mouse.click(track.x + track.w * ((length.end - seconds - 0.4) / length.end), track.y);
+  await sleep(300);
+  if (/pause/i.test(await page.evaluate(() => document.querySelector('.cot-replay .play')?.getAttribute('aria-label') ?? ''))) await clickVisible(page, '.cot-replay .play');
+  await shot('before-export');
+  // Export video on the strip: a real press on its button
+  const film = await page.evaluate(() => { const r = document.querySelector('.cot-replay .film')?.getBoundingClientRect(); return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; });
+  if (!film) return { ok: false, why: 'the strip has no Export video button' };
+  await page.mouse.move(film.x, film.y);
+  await page.mouse.click(film.x, film.y);
+  try { await page.waitForSelector('.cot-replay-film .cot-replay-film-size', { visible: true, timeout: 30_000 }); } catch { return { ok: false, why: 'Export video opened no dialog' }; }
+  const sizeId = height >= 1080 ? '1080p' : '720p';
+  await clickVisible(page, `.cot-replay-film-size [data-value="${sizeId}"]`);
+  await clickVisible(page, `.cot-replay-film-fps [data-value="${fps}"]`);
+  await clickVisible(page, '.cot-replay-film-range [data-value="here"]');
+  if (options.hud) await clickVisible(page, '.cot-replay-film input[name="hud"]');
+  await page.waitForFunction(() => { const b = document.querySelector('.cot-replay-film .cot-modal__footer .cot-c-btn--primary'); return b && !b.disabled; }, { timeout: 30_000 })
+    .catch(() => {});
+  const dialog = await page.evaluate(() => ({
+    notes: [...document.querySelectorAll('.cot-replay-film .note')].map((n) => n.textContent).filter(Boolean),
+    disabled: document.querySelector('.cot-replay-film .cot-modal__footer .cot-c-btn--primary')?.disabled ?? null,
+  }));
+  await shot('dialog');
+  if (dialog.disabled) return { ok: false, why: `Export stayed off: ${JSON.stringify(dialog.notes)}` };
   const downloads = path.join(options.out, 'films');
   mkdirSync(downloads, { recursive: true });
   const cdp = await page.browser().target().createCDPSession();
   const contextId = page.browserContext().id;
   await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, ...(contextId ? { browserContextId: contextId } : {}) });
   const started = Date.now();
-  let film;
-  try {
-    film = await page.evaluate((request) => window.__COT_REPLAY.film(request), { width, height, fps, fromS: 0, toS: seconds });
-  } catch (error) {
-    return { ok: false, why: `the film failed: ${String(error.message ?? error).slice(0, 300)}` };
-  }
-  const exportMs = Date.now() - started;
+  await clickVisible(page, '.cot-replay-film .cot-modal__footer .cot-c-btn--primary');
   let file = null;
-  for (const until = Date.now() + 30_000; !file && Date.now() < until;) {
-    await sleep(250);
+  for (const until = Date.now() + 15 * 60_000; !file && Date.now() < until;) {
+    await sleep(500);
     file = readdirSync(downloads).find((name) => name.endsWith('.mp4')) ?? null;
   }
-  await sleep(500);
-  const probe = file ? probeFilm(path.join(downloads, file)) : null;
-  log.push({ at: 'film', request: { width, height, fps, seconds }, film, exportMs, file, probe });
+  const exportMs = Date.now() - started;
+  await sleep(800);
+  await page.waitForFunction(() => /\.mp4/.test(document.querySelector('.cot-replay-film [data-note="status"]')?.textContent ?? ''), { timeout: 15_000 }).catch(() => {});
+  const done = await page.evaluate(() => [...document.querySelectorAll('.cot-replay-film .note')].map((n) => n.textContent).filter(Boolean));
   await shot('after-film');
-  if (!film || !file) return { ok: false, why: `no MP4 was saved (${JSON.stringify(film)})` };
+  const probe = file ? probeFilm(path.join(downloads, file)) : null;
+  log.push({ at: 'film', request: { width, height, fps, seconds, hud: options.hud }, dialog, done, exportMs, file, probe });
+  if (!file) return { ok: false, why: `no MP4 was saved (${JSON.stringify(done)})` };
+  if (!done.some((line) => line.includes(file))) return { ok: false, why: `the dialog did not say the film was saved (${JSON.stringify(done)})` };
   if (probe.ftyp !== 'ftyp') return { ok: false, why: `the file is not an MP4 (box ${probe.ftyp})` };
   const stream = probe.stream;
   if (stream) {
     if (stream.codec_name !== 'h264' || stream.width !== width || stream.height !== height) return { ok: false, why: `the film reads as ${JSON.stringify(stream)}` };
-    if (Math.abs(probe.durationS - seconds) > 0.1) return { ok: false, why: `the film runs ${probe.durationS} s, not ${seconds} s` };
+    // (the playhead is set by a press on the timeline, read back in whole seconds: the range starts within ~1 s of it)
+    if (Math.abs(probe.durationS - seconds) > 1.5) return { ok: false, why: `the film runs ${probe.durationS} s, not ~${seconds} s` };
   }
-  return { ok: true, why: `${seconds} s at ${width}x${height}@${fps}: ${(probe.bytes / 1e6).toFixed(2)} MB, rendered in ${(exportMs / 1000).toFixed(1)} s` };
+  return { ok: true, why: `${probe.durationS ?? '?'} s at ${width}x${height}@${fps}${options.hud ? ' with the HUD' : ''}: ${(probe.bytes / 1e6).toFixed(2)} MB, exported in ${(exportMs / 1000).toFixed(1)} s` };
 }
+const seconds_ = (clock) => {
+  const m = /(\d+):(\d+)\s*\/\s*(\d+):(\d+)/.exec(clock ?? '');
+  return m ? { now: +m[1] * 60 + +m[2], end: +m[3] * 60 + +m[4] } : null;
+};
 
 async function pathB(page, options, shot, log) {
   await enterBattle(page);
