@@ -40,6 +40,7 @@
     "src/ui/hudCustomization.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":11},
     "src/ui/hudEditor.css": {"colour":40,"fontSize":19,"letterSpacing":1,"zIndex":2,"shadow":2,"duration":0,"important":0},
     "src/ui/hudEditorPreview.ts": {"colour":1,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":0},
+    "src/ui/hudKillRibbon.ts": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
     "src/ui/infoGuides.ts": {"colour":30,"fontSize":13,"letterSpacing":1,"zIndex":2,"shadow":2,"duration":1,"important":0},
     "src/ui/medalToast.ts": {"colour":14,"fontSize":5,"letterSpacing":2,"zIndex":2,"shadow":3,"duration":3,"important":0},
     "src/ui/missionBrief.ts": {"colour":13,"fontSize":6,"letterSpacing":4,"zIndex":1,"shadow":1,"duration":2,"important":0},

@@ -22,6 +22,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { hexPlateClip } from './hexPlate.ts';
 import { fitPortraitInBox, measurePortraitFullBounds, type PortraitPixelBounds } from './portraitFraming.ts';
+import { scratchCanvas } from './uiCanvas.ts';
 
 /** How long the card holds after the latest kill, and how soon another kill extends the streak. */
 const RIBBON_HOLD_MS = 2400;
@@ -124,8 +125,7 @@ function renderBounds(img: HTMLImageElement): Promise<PortraitPixelBounds | null
   if (!pending) {
     pending = (typeof img.decode === 'function' ? img.decode() : Promise.reject(new Error('no decode'))).then(() => {
       const w = img.naturalWidth, h = img.naturalHeight;
-      const canvas = (img.ownerDocument ?? document).createElement('canvas');
-      canvas.width = w; canvas.height = h;
+      const canvas = scratchCanvas(w, h);
       const context = canvas.getContext('2d', { willReadFrequently: true });
       if (!context || !w || !h) return null;
       context.drawImage(img, 0, 0);
