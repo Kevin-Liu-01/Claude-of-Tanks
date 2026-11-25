@@ -10,6 +10,8 @@ export const FAR_POSES = Object.freeze({
   'far-side-left': Object.freeze({ back: 40, up: 12, side: -240 }),
   'far-quarter': Object.freeze({ back: 170, up: 30, side: 170 }),
   'far-high': Object.freeze({ back: 250, up: 90, side: 0 }),
+  'far-high-left': Object.freeze({ back: 250, up: 90, side: -120 }),
+  'far-overhead': Object.freeze({ back: 200, up: 140, side: 0 }),
 });
 
 /** Page side (serialized): the camera at a far pose. */
