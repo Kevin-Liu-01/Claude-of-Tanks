@@ -54,6 +54,7 @@ import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 import { createChildGroups, isChainStop, runInCaptureHold, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
+import { waitForTimingHold } from './timing-gate.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -93,6 +94,8 @@ const TOOLCHAIN = toolchainOf(root), RECORDED = TABLE_PRESENT ? readManifest(roo
 const TABLE_CURRENT = TABLE_PRESENT && (!IDS || RECORDED?.toolchain === TOOLCHAIN.toolchain);
 const UNRECORDED = TABLE_CURRENT ? null : TABLE_PRESENT ? `the table is on another toolchain: ${toolchainChange(RECORDED, TOOLCHAIN.parts)}`
   : 'no fingerprints table';
+// 277: a run waits while a timing hold runs (tools/timing-gate.mjs); one inside its own timing hold passes at once
+if (!DRY) await waitForTimingHold({ label: 'tank:regen:changed' });
 const table = await loadTable(value('table') ?? null);
 const { STEPS, CPU_FIXPOINT_STEPS, RIG_BOOTSTRAP, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);

@@ -534,7 +534,9 @@ The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run with
 agent's mutex held for good, 2026-11-02 audit S4). To hold the `/tmp/cot-shots` FIFO across several steps, run them
 under one normal ticket with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`
 (round 2 U38: the one hold wrapper's shell form; every tool under it that takes the lock nests in that hold through its
-token; a wait that runs out exits 77). The tools take neither it nor the `/tmp/cot-shots` FIFO, so
+token; a wait that runs out exits 77). Heavy CPU work started outside the lock waits while a timing hold runs:
+`node tools/timing-gate.mjs -- <command>` (277: a paired timing run cancels only the load both arms see); npm run build's
+prebuild, test:lane's tanks tier and tank:regen:changed call it themselves, and work inside its own timing hold passes. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
 127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:

@@ -1033,6 +1033,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/session-mutex.selftest.mjs',
     // 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit 77 on a wait
     'tools/with-capture-lock.selftest.mjs',
+    // 277: heavy work outside the lock waits while a timing hold runs (prebuild, test:lane's tanks tier, tank:regen:changed)
+    'tools/timing-gate.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     // probe-fresh-browser-276: one guarded browser per staging, the previous one reaped (the tree stays flat under the 10 GB cap)
     'tools/frame-budget-probe-browsers.selftest.mjs',

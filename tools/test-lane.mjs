@@ -29,6 +29,7 @@ import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
 import { classifyLaneReds, laneRedLines } from './lane-reds.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { isStarved } from './selftest-verdict.mjs';
+import { waitForTimingHold } from './timing-gate.mjs';
 import { changedPaths, changedTankIds, createReadIndex, exitWithParent, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming,
   chooseBase, runTracked, TOOLS_ROOT } from './test-diff.mjs';
 
@@ -165,6 +166,8 @@ async function main(argv) {
       if (!files.length) continue;
       const list = join(dir, `${tier}.txt`), reportPath = join(dir, `${tier}-report.json`);
       writeFileSync(list, files.join('\n') + '\n');
+      // 277: the --heavy tier waits while a timing hold runs (tools/timing-gate.mjs); the default tier's short receipts do not
+      if (extra.length) await waitForTimingHold({ label: `test:lane ${tier} tier` });
       const code = await runTracked(process.execPath, ['tools/run-selftests.mjs', 'all', ...extra, `--only-from=${list}`, `--report=${reportPath}`],
         { cwd: root, stdio: 'inherit' });
       if (code !== 0 && !status) status = code;
