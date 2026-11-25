@@ -28,6 +28,7 @@ import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, typ
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
 import { killcamStage } from './killcamStage.ts';
+import { createAircraftStreaks, type AircraftStreaks } from './aircraftStreaks.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
 export interface AircraftFxPort {
@@ -50,6 +51,8 @@ interface AirSupportWorldOptions {
 type PublicStrike = AirSupportView['strikes'][number];
 interface Craft { kind: 'jet' | 'gunship'; root: THREE.Object3D; jet: BuiltStrikeJet | null; fighter: BuiltFighterJet | null;
   seen: boolean;
+  /** (aircraft-streaks-277) its wingtip streaks, in its side's team colour (aircraftStreaks.ts). */
+  streaks: AircraftStreaks;
   /** The bomb once it has left the fighter's pylon: falling in the world on its own arc. */
   dropped: THREE.Object3D | null;
   /** When it last trailed smoke (presentation time), and whether its crash has burst. */
@@ -132,7 +135,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const anchor = new THREE.Group();
       anchor.name = `air-support gunship ${strike.id}`;
       root.add(anchor);
-      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'gunship', anchor.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     } else if (strike.kind === 'bomb' || strike.kind === 'missile') {
       // the fighter: the bomber carries its two GBU-12s (it drops the port one), the Maverick run its four missiles
       const fighter = buildFighterJetAirframe(hooks);
@@ -140,14 +143,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       for (const bomb of fighter.bombs) bomb.visible = strike.kind === 'bomb';
       for (const missile of fighter.missiles) missile.visible = strike.kind === 'missile';
       root.add(fighter.root);
-      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, streaks: createAircraftStreaks(root, 'fighter', fighter.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     } else {
       const jet = buildStrikeJetAirframe(hooks);
       jet.root.name = `air-support jet ${strike.id}`;
       // the recon jet and the strafer carry no bombs
       for (const bomb of jet.bombs) bomb.visible = false;
       root.add(jet.root);
-      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'strike', jet.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
     }
     crafts.set(strike.id, craft);
     return craft;
@@ -155,6 +158,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
 
   function release(id: number, craft: Craft): void {
     craft.dropped?.removeFromParent();
+    craft.streaks.dispose();
     if (craft.jet) craft.jet.dispose();
     else if (craft.fighter) craft.fighter.dispose();
     else { hideGunshipVisual(craft.root); craft.root.removeFromParent(); }
@@ -229,6 +233,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
    *  it (never stood on a wingtip), its props still, the point it ploughed in with (its lowest) over the crash point at the
    *  crater's heart, and that point on the drawn ground (seatWreck). */
   function settleWreck(craft: Craft, t: number): void {
+    craft.streaks.hide();
     craft.wreckAt = t; craft.wreckX = pose.x; craft.wreckY = pose.y; craft.wreckZ = pose.z;
     const pitch = Math.max(-0.7, Math.min(-0.25, pose.pitch));
     // the roll folded to the nearer of upright and inverted, keeping a lean of at most WRECK_LEAN_RAD
@@ -322,20 +327,25 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       aimColour, locked ? 1 : 0.2);
   }
 
-  /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go). */
-  function poseCraft(strike: PublicStrike, craft: Craft, t: number): void {
+  /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go), its streaks in
+   *  `side`: the team colour its side shows everywhere else (sideColor own or enemy, the footprints' own). */
+  function poseCraft(strike: PublicStrike, craft: Craft, t: number, side: THREE.Color): void {
     craft.root.visible = true;
+    const viewer = options.viewerPosition?.();
+    const eye = viewer ? _eye.set(viewer.x, viewer.y, viewer.z) : null;
     if (craft.kind === 'gunship') {
       _p.set(pose.x, pose.y, pose.z);
-      const eye = options.viewerPosition?.();
       // banked into its pylon turn (the run's bank: the left wing down on the mark)
-      syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye ? _eye.set(eye.x, eye.y, eye.z) : null, pose.bank, pose.pitch);
+      syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye, pose.bank, pose.pitch);
+      const model = gunshipModelRoot(craft.root);
+      if (model) craft.streaks.update(model, t, side, eye); else craft.streaks.hide();
       return;
     }
     craft.root.position.set(pose.x, pose.y, pose.z);
     // the jet's attitude from its run: its heading, its climb or dive (nose up positive; three.js pitches nose down
     // for a positive x) and its bank in the turns
     craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
+    craft.streaks.update(craft.root, t, side, eye);
     // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
     const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
     if (strike.kind === 'bomb' && craft.fighter && (strike.downedS == null || strike.downedS > strike.landsS + bombReleaseOffsetS(R))) dropBomb(strike, craft, t);
@@ -349,9 +359,11 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
    */
   function updateReplay(staged: NonNullable<typeof killcamStage.strike>, t: number): void {
     markCount = 0;
-    for (const craft of crafts.values()) {
+    for (const [id, craft] of crafts) {
       // (the gunship's airframe is the anchor's sibling: gunshipVisual.ts hides it)
       if (craft.kind === 'gunship') hideGunshipVisual(craft.root); else craft.root.visible = false;
+      // (the replayed strike's own streaks carry on: it is posed below)
+      if (id !== staged.id) craft.streaks.hide();
       if (craft.dropped) craft.dropped.visible = false;
     }
     const strike = staged as PublicStrike;
@@ -359,8 +371,8 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       enemy.set(sideColor('enemy')), 1);
     if (airStrikeFlies(staged.kind) && t >= staged.calledS && t < runExitS(R, staged)) {
       runPose(R, staged, t, pose);
-      poseCraft(strike, craftFor(strike), t);
-    }
+      poseCraft(strike, craftFor(strike), t, enemy);
+    } else crafts.get(staged.id)?.streaks.hide();
     if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
 
@@ -401,7 +413,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const craft = craftFor(strike);
       craft.seen = true;
       damageFx(strike, craft, t, true);
-      poseCraft(strike, craft, t);
+      poseCraft(strike, craft, t, mine ? own : enemy);
     }
     // a wreck burns where it came down (its record may be gone); an aircraft no record holds any more is gone
     for (const [id, craft] of crafts) {

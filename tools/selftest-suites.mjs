@@ -101,6 +101,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/airCrash.selftest.mjs',
     // 2026-11-24 (air-crash-he-276b): a wreck rests on the drawn ground hulls stand on, its lowest point on the dug bowl
     'src/game/airCrashWreck.selftest.mjs',
+    // 2026-11-25 (aircraft-streaks-277): every aircraft's wingtip streaks take its side's team colour, viewer-relative
+    'src/game/aircraftStreaks.selftest.mjs',
     // 2026-11-24 (air-crash-he-276c): a downed aircraft whose carry would land it off the battlefield comes down inside it
     'src/sim/airCrashInside.selftest.mjs',
     // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
