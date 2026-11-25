@@ -67,8 +67,8 @@ export const VOLUME_ATLAS: VolumeAtlasLayout = Object.freeze({
   }),
   bands: 2,
   flowScale: 0.25,
-  urlA: '/fx/vol-media-a.png',
-  urlB: '/fx/vol-media-b.png',
+  urlA: '/fx/vol-media-a.webp', // texture-diet-277: WebP lossless -exact (tools/fx-volume-bake.mjs)
+  urlB: '/fx/vol-media-b.webp',
 });
 
 // ---------------------------------------------------------------------------------------------------------------

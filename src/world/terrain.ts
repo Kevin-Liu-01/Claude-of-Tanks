@@ -26,7 +26,7 @@ import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 import { horizonRing, type HorizonRing, type HorizonRingSupply } from './horizonRingHook.ts';
 import type { HinterlandSupply } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
+import { onPresetChange, resolvePresetName, terrainTextureTier, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
@@ -8655,6 +8655,21 @@ function* createSplatMaterialSteps(
   liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0;
   mat.addEventListener('dispose', () => { offLandTier(); });
   mat.addEventListener('dispose', () => { offLiteTerrain(); }); // Ultra Low (2026-10-13)
+  // (texture-diet-277) the photo sets follow the preset's texture tier live: a change re-sources the layers in place (the
+  // same swap the build's late sources take), fetching only the new tier; a newer change or the material's end cancels it
+  let sourcedTier = terrainTextureTier();
+  let sourcedRetier: AbortController | null = null;
+  const offSourcedTier = onPresetChange(() => {
+    const tier = terrainTextureTier();
+    if (tier === sourcedTier) return;
+    sourcedTier = tier;
+    sourcedRetier?.abort('superseded');
+    const retier = sourcedRetier = new AbortController();
+    void applySourcedTerrain(mapId, layers, S, { worker: true, signal: retier.signal }).then(() => {
+      if (!retier.signal.aborted) measureLayerMeans();
+    }, () => {});
+  });
+  mat.addEventListener('dispose', () => { offSourcedTier(); sourcedRetier?.abort('disposed'); });
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
   // (horizonAutumnGround.bindAutumnHorizonGround). The program has no unit to spare for the atlas (see the fragment's
   // uRingDraw note): the M normal's uniform object is shared here so the ring bands' draw can point that unit at the

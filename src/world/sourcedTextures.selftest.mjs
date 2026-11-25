@@ -66,6 +66,11 @@ class TestImage {
   }
 
   set src(value) {
+    // (texture-diet-277) a terrain set's packed ORM map: the fixture's occlusion in red and its roughness in green, the
+    // values a separate AO and roughness photo carried in red, so every composite below reads as before
+    if (/_ORM\.webp$/.test(value)) {
+      this.pixels = new Uint8ClampedArray([100, 100, 0, 255, 80, 80, 0, 255, 255, 255, 0, 255, 20, 20, 0, 255]);
+    }
     loadedImageUrls.push(value);
     loadedImages.set(value, this);
     queueMicrotask(() => this.onload());
@@ -110,6 +115,7 @@ assert.equal(contextOptions.filter((options) => options?.willReadFrequently).len
 assert.equal(contextOptions.length, 2,
   'one output context plus one reusable readback context are allocated');
 
+
 const surface = composeSurface(ao, rough, 2, 1.25);
 assert.deepEqual([...surface.pixels], [
   128, 250, 0, 255, 255, 125, 0, 255,
@@ -117,6 +123,18 @@ assert.deepEqual([...surface.pixels], [
 ], 'building surface composer packs AO in red and roughness in green');
 assert.equal(contextOptions.length, 3,
   'packed surface output reuses the one readback context and allocates one write-only canvas');
+
+// (texture-diet-277) a packed ORM map is both photos: occlusion from its red, roughness from its green (roughChannel 1)
+const orm = image([
+  128, 200, 0, 255, 255, 100, 0, 255,
+  64, 50, 0, 255, 0, 255, 0, 255,
+]);
+const packed = composeAlbedo(color, orm, orm, { roughInAlpha: true, roughMul: 1.25, tint: [0.8, 1, 0.5], roughChannel: 1 });
+assert.deepEqual([...packed.pixels], [...canvas.pixels], 'one ORM map composes as the separate AO and roughness photos');
+assert.deepEqual([...composeSurface(orm, orm, 2, 1.25, 1).pixels], [
+  128, 250, 0, 255, 255, 125, 0, 255,
+  64, 62, 0, 255, 0, 255, 0, 255,
+], 'and packs the same building surface');
 
 const texture = () => {
   // Match Three's Source-backed image accessor, including Source replacement.
@@ -297,7 +315,7 @@ assert.equal(volcanicRepeat.albedo.image, volcanicLayers.G.albedo.image,
   'lifted terrain composites retain the existing cache reuse contract');
 const snowLayer = freshLayer();
 await applySourcedTerrain('whiteout', { G: snowLayer }, getMapConfig('whiteout').splat);
-assert.ok(loadedImageUrls.some((url) => url.includes('Snow010A_1K-JPG_Color.jpg')),
+assert.ok(loadedImageUrls.some((url) => url.includes('/1k/Snow010A_Color.webp')),
   'Whiteout physically loads the snow source, not summer grass');
 const winterLayer = freshLayer();
 await applySourcedTerrain('winter', { G: winterLayer });
@@ -333,7 +351,7 @@ for (const mapId of ['oasis', 'titan_gorge', 'skybridge']) {
   assert.equal(layers.R.albedo.disposeCount, 0,
     `${mapId}: the authored sandstone layer is not overwritten by grey sourced rock`);
 }
-assert.ok(loadedImageUrls.some((url) => url.includes('Ground093C_1K-JPG_Color.jpg')),
+assert.ok(loadedImageUrls.some((url) => url.includes('/1k/Ground093C_Color.webp')),
   'the four arid maps physically use the existing sand source');
 // Round 47 (2026-09-23): the two ruined cities route every layer to a set of their own, and Blackglass carries the
 // Caldera-style lift on all three, so no albedo byte of any layer can sit under the 0.05 floor (the fixture's

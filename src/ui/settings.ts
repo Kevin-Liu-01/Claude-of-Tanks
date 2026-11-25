@@ -99,10 +99,22 @@ import { battleKeycap, promptFor } from './keyPrompt.ts';
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
 const CJK_CAP = /[\u3400-\u9fff]/;
 
-/** A desktop preset's preview (public/media/settings-r1: one Verdant frame per preset, a 640x360 cut at 1:1 pixels). */
-const QUALITY_PREVIEWS: ReadonlySet<PresetName> = new Set<PresetName>(['low', 'medium', 'high', 'ultra']);
-const qualityPreview = (name: PresetName): string | null =>
-  (QUALITY_PREVIEWS.has(name) ? `/media/settings-r1/quality-${name}-640.webp` : null);
+/** (texture-diet-277) every level's preview on both ladders (public/media/settings-r2, tools/quality-previews.mjs): the same
+ *  Verdant battle at the chase camera, its world built under that level, 1280 x 720 shown at 640 x 360. */
+const qualityPreview = (name: PresetName): string => `/media/settings-r2/quality-${name}.webp`;
+/** What each level changes, in a line (src/ui/settingsQualityLevels.selftest.mjs holds the numbers to engine/quality.ts). */
+const PRESET_NOTE_KEYS: Readonly<Record<'auto' | PresetName, string>> = Object.freeze({
+  auto: 'settings.preset.note.auto',
+  ultra: 'settings.preset.note.ultra',
+  high: 'settings.preset.note.high',
+  medium: 'settings.preset.note.medium',
+  low: 'settings.preset.note.low',
+  ultralow: 'settings.preset.note.ultraLow',
+  'mobile-high': 'settings.preset.note.mobileHigh',
+  mobile: 'settings.preset.note.mobile',
+  'mobile-low': 'settings.preset.note.mobileLow',
+  'mobile-ultralow': 'settings.preset.note.mobileUltraLow',
+});
 
 /** A colour preset's swatch for its picker (an SVG data URL): its ally chevron and enemy diamond, as the sample draws them. */
 const teamSwatch = (own: string, enemy: string): string => `data:image/svg+xml,${encodeURIComponent(
@@ -445,9 +457,8 @@ const SETTINGS_CSS = `
 .cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--chip-fill-on);box-shadow:var(--ring-accent);color:var(--ink-1);}
 .cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
-/* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
+/* the graphics quality preview (media/settings-r2): the level pointed at, focused or tapped, else the chosen one */
 .cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
-.cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
@@ -1506,20 +1517,20 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onPreview: (item) => showPreview(item?.id ?? chosen),
         onChoose: (item) => { stage(item.id); emit('ui:click', {}); } }));
     }
-    // the desktop presets' preview (phones keep the picker alone): Auto shows the preset it resolves to
-    const preview = mobile ? null : el('figure', 'cot-set-preview', card);
-    const previewImage = preview ? el('img', '', preview) : null;
-    if (previewImage) {
-      previewImage.width = 640;
-      previewImage.height = 360;
-      previewImage.alt = '';
-      previewImage.decoding = 'async';
-    }
+    // (texture-diet-277) every level's preview, on both ladders: the level pointed at or focused (desktop) or tapped (a
+    // phone stages it), else the chosen one; Auto shows the level it resolves to. Under it, what the level changes.
+    const preview = el('figure', 'cot-set-preview', card);
+    const previewImage = el('img', '', preview);
+    previewImage.width = 640;
+    previewImage.height = 360;
+    previewImage.alt = '';
+    previewImage.decoding = 'async';
+    const previewNote = el('div', 'cot-set-note', card);
     function showPreview(choice: string): void {
-      if (!preview || !previewImage) return;
-      const src = qualityPreview(choice === 'auto' ? resolvePresetName('auto') : choice as PresetName);
-      preview.hidden = !src;
-      if (src && previewImage.getAttribute('src') !== src) previewImage.src = src;
+      const level = (choice === 'auto' ? 'auto' : choice) as 'auto' | PresetName;
+      const src = qualityPreview(level === 'auto' ? resolvePresetName('auto') : level);
+      if (previewImage.getAttribute('src') !== src) previewImage.src = src;
+      previewNote.textContent = t(PRESET_NOTE_KEYS[level] ?? PRESET_NOTE_KEYS.auto);
     }
     showPreview(selected);
 

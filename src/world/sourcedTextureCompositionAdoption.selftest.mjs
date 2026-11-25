@@ -14,7 +14,7 @@ const hooks = registerHooks({ load(path, context, next) {
     export const tryComposeSourcedTexture = (...args) => globalThis.__sourcedCompositionTest.compose(...args);
     export const sourceFileBitmap = (image) => globalThis.__sourcedCompositionTest.bitmap(image);` };
   if (path === qualityUrl) return { format: 'module', shortCircuit: true,
-    source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);' };
+    source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);\nexport const terrainTextureTier = () => \'1k\';' };
   const result = next(path, context);
   return path === url ? { ...result, source: `${result.source}\nexport { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache, _imgCache };` } : result;
 } });

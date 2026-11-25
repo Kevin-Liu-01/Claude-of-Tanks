@@ -23,12 +23,15 @@ import { bakeBand, VOLUME_MEDIA, MEDIA_ORDER, ATLAS_COLUMNS, FLOW_SCALE } from '
 const ledger = JSON.parse(await readFile(new URL('./volumeAtlases.ledger.json', import.meta.url), 'utf8'));
 for (const [sheet, url] of [['a', VOLUME_ATLAS.urlA], ['b', VOLUME_ATLAS.urlB]]) {
   // sheet b is baked at half resolution
-  const png = await readFile(new URL(`../../public${url}`, import.meta.url));
+  const webp = await readFile(new URL(`../../public${url}`, import.meta.url));
   const [w, h, sha] = ledger[sheet];
-  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], `sheet ${sheet} is a PNG`);
-  assert.equal(png.readUInt32BE(16), w, `sheet ${sheet}: width`);
-  assert.equal(png.readUInt32BE(20), h, `sheet ${sheet}: height`);
-  assert.equal(createHash('sha256').update(png).digest('hex'), sha,
+  // (texture-diet-277) WebP lossless (a VP8L chunk: its 14-bit width and height minus one follow the 0x2f signature)
+  assert.equal(webp.toString('latin1', 0, 4) + webp.toString('latin1', 8, 16), 'RIFFWEBPVP8L', `sheet ${sheet} is a lossless WebP`);
+  assert.equal(webp[20], 0x2f, `sheet ${sheet}: the VP8L signature`);
+  const bits = webp.readUInt32LE(21);
+  assert.equal((bits & 0x3fff) + 1, w, `sheet ${sheet}: width`);
+  assert.equal(((bits >>> 14) & 0x3fff) + 1, h, `sheet ${sheet}: height`);
+  assert.equal(createHash('sha256').update(webp).digest('hex'), sha,
     `sheet ${sheet}: the committed atlas matches its ledger row (re-bake: node tools/fx-volume-bake.mjs --ledger)`);
 }
 assert.equal(ledger.columns, VOLUME_ATLAS.columns, 'columns');

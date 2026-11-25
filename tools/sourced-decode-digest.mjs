@@ -19,11 +19,15 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 
 const root = process.cwd();
 const jsonPath = process.argv.find((a) => a.startsWith('--json='))?.slice(7) ?? '';
-const files = ['terrain', 'buildings'].flatMap((dir) => readdirSync(join(root, 'public/textures', dir))
+// (texture-diet-277) the battle loads the terrain's tier WebPs (tools/terrain-texture-tiers.mjs); the JPGs beside them are
+// their sources, read here as photos too
+const files = ['terrain', 'terrain/1k', 'terrain/512', 'buildings'].flatMap((dir) => readdirSync(join(root, 'public/textures', dir))
   .filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).map((f) => `/textures/${dir}/${f}`)).sort();
 // the sets: a colour map and its AO and roughness by either naming
 const sets = files.flatMap((color) => {
   const acg = /^(.*)_1K-JPG_Color\.jpg$/.exec(color), ph = /^(.*)_diff_1k\.jpg$/.exec(color);
+  const tier = /^(\/textures\/terrain\/(?:1k|512)\/.*)_Color\.webp$/.exec(color);
+  if (tier) return [{ color, ao: `${tier[1]}_ORM.webp`, rough: `${tier[1]}_ORM.webp`, roughChannel: 1 }];
   if (acg) return [{ color, ao: `${acg[1]}_1K-JPG_AmbientOcclusion.jpg`, rough: `${acg[1]}_1K-JPG_Roughness.jpg` }];
   if (ph) return [{ color, ao: `${ph[1]}_ao_1k.jpg`, rough: `${ph[1]}_rough_1k.jpg` }];
   return [];
@@ -80,8 +84,8 @@ try {
       const digest = async (decoded) => {
         const [color, ao, rough] = await Promise.all([set.color, set.ao, set.rough].map((u) => source(u, decoded)));
         const s = Math.min(color.width, 1024);
-        const out = [await sha(pixels(composeAlbedo(color, ao, rough, { roughInAlpha: true }))),
-          await sha(pixels(composeSurface(ao, rough, s, 0.9)))];
+        const out = [await sha(pixels(composeAlbedo(color, ao, rough, { roughInAlpha: true, roughChannel: set.roughChannel ?? 0 }))),
+          await sha(pixels(composeSurface(ao, rough, s, 0.9, set.roughChannel ?? 0)))];
         for (const b of [color, ao, rough]) if (decoded) b?.close();
         return out;
       };

@@ -98,10 +98,11 @@ function composeRequest(
   const wantsAO = !options.separateSurface || includeSurface;
   const wantsRough = options.roughInAlpha || includeSurface;
   const ao = wantsAO ? read(bitmaps.ao, size) : null;
-  const rough = wantsRough ? read(bitmaps.rough, size) : null;
+  // a packed ORM map is both images (one bitmap): read once, its roughness in the channel the options name
+  const rough = !wantsRough ? null : ao && bitmaps.rough === bitmaps.ao ? ao : read(bitmaps.rough, size);
   composeAlbedoPixels(albedo, options.separateSurface ? null : ao, rough, options);
   const surface = includeSurface ? new Uint8ClampedArray(size * size * 4) : null;
-  if (surface) composeSurfacePixels(surface, ao, rough, options.roughMul);
+  if (surface) composeSurfacePixels(surface, ao, rough, options.roughMul, options.roughChannel ?? 0);
   return { type: 'complete', protocol: SOURCED_TEXTURE_COMPOSITION_PROTOCOL,
     requestId: request.requestId, key: request.key, size, albedo, surface, closedBitmaps: 0 };
 }

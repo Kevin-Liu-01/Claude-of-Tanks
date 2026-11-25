@@ -382,5 +382,47 @@
   },
   "replay.mark.end": {
     "context": "Claude of Tanks, a browser tank game. The replay viewer's control bar, which plays back a recorded solo battle. The last timeline marker: the battle ended."
+  },
+  "settings.preset.note.auto": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.ultra": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.high": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.medium": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.low": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.ultraLow": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.mobileHigh": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.mobile": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.mobileLow": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.note.mobileUltraLow": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the one-line note under a graphics quality level's preview, saying what that level changes. Keep the numbers, the × multipliers and the metre units exactly as written; \"resolution\" is the 3D render scale, \"edge smoothing\" is anti-aliasing, \"light effects\" are contact shadows, sun shafts and lens flare, \"bloom\" is the glow post effect, \"ground textures\" are the terrain's photo textures. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.mobileLow": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the name of a quality level on phones, shown on a four-way segmented control (Ultra low, Performance, Balanced, Quality) and kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.mobile": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the name of a quality level on phones, shown on a four-way segmented control (Ultra low, Performance, Balanced, Quality) and kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.mobileHigh": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the name of a quality level on phones, shown on a four-way segmented control (Ultra low, Performance, Balanced, Quality) and kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
+  },
+  "settings.preset.mobileUltraLow": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Graphics: the name of a quality level on phones, shown on a four-way segmented control (Ultra low, Performance, Balanced, Quality) and kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the texture-diet-277 lane and await General Translation review."
   }
 }
