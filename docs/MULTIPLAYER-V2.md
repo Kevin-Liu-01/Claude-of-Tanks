@@ -2773,6 +2773,51 @@ interpolates and reconciles because the network is real.
   pair. A building the own ram brings down yields to the drawn hull as to the authority's: 0 hard snaps, the largest
   drawn-vs-authority gap 0.95 m, thrown back 0.31 m.
 
+### 13.33 One battlefield drawn, from its owner (mp-fixes-277, 2026-11-25)
+
+Kevin, 2026-11-24, after 276 shipped: "multiplayer is broken, it doesnt work super well p2p and still merges 2 maps".
+
+**Seen in two browsers.** `tools/mp-two-peer-e2e.mjs` (`npm run test:net:v2:two-peer`) runs two separate headless Chromes
+on a built site (vite preview) and the in-process room service with the browser-hosted match (`server/rooms`, the
+roomActor and p2pMatchHost the rooms Durable Object runs) on the LAN port. Before each battle the joiner plans its own
+battlefield as a player does (its Garage's map, the pointer over BATTLE prefetches it), so a hidden world is resident
+before the room's is built. The host creates a LAN room on its Garage's map, the joiner joins by code, and both play
+120 s, leave and leave the room, three battles in a row. On 276's build (main 1c611b1ca6) the joiner drew two
+battlefields in every second of all three battles (359 of 359: Desert's dunes over Verdant, Verdant's trees and pylons
+through the sand, Verdant's minimap), and its Garage still drew Desert after each one; the host, whose planned world was
+the room's, drew one. On the fix every second of every battle on both pages drew one world, the round's (0 of 365).
+
+**The cause.** A network round armed the black-world guard (`engine/blackWorldGuard.ts`) with no world port, and the
+install fell back to the first scene child named `world-*`. Every built battlefield stays in the scene hidden
+(`world/worldActivationRuntime.ts`), so on a page whose Garage had planned another map first, the guard tracked that
+hidden world. It read the presented battlefield as missing every frame (CPU.ROOTS, decisive), opened a `roots-hidden`
+incident and healed it with H1, which set the hidden world visible; nothing hides it again, so it followed the player into
+the Garage and the next battles. A solo battle passed its own world port, which is why only rooms showed it. A second
+path of the same class: the guard kept the world and the roots it noted at the first reveal for as long as the phase
+stayed `battle`, so a round written over a round could have the last round's world re-added and re-shown by H1.
+mp-one-map-274 (`worldActivationOneWorld.selftest.mjs`) fixed a different path, the warm's lift.
+
+**The fix (the class).** `src/world/activeWorld.ts` is the one reference to the battlefield on screen, bound by its owner,
+the activation runtime: the presented world (dormant under the Garage) and whether a root is a battlefield. The guard's
+install reads it for every entry, and no entry passes a world of its own; the ROOTS check and H1 read the live world;
+a battlefield is never a reveal root; every battle scope (`game/battleScope.ts`, battle→battle included) notes its own
+reveal. No module of src finds a battlefield by name (`src/world/activeWorld.selftest.mjs` scans for it). No protocol
+change. Receipts: `blackWorldGuard.selftest.mjs` (a hidden planned world first in the scene, the old fallback as the
+negative control that draws both; a round swap and an H1 incident in round two, red on 276's guard),
+`worldActivationOneWorld.selftest.mjs` section 6, `activeWorld.selftest.mjs`, and the two-browser run above.
+
+**The link, measured (one machine, so every pair is host↔host: no NAT, STUN or TURN is exercised).** Over the six
+2-minute battles on each build, per page: snapshots at 20 Hz every second, 0 stalls, 0 reconnects, 0 seconds without a
+snapshot, 0 hard snaps; the ICE pair's own round trip 1 ms. The wire's ping round trip (PING to PONG through both pages'
+main threads and the host's Worker) p95 44–76 ms, and input acknowledgement lag p95 6–12 ticks (one host spike to 39–50
+ticks in the first battle under machine load); 0–14 visible corrections per page per battle, the largest 1.73 m. The gap
+between 1 ms on the wire and ~50 ms in the game is the two rendering pages' frames: the host relays every peer's frames
+to its Worker on its main thread (§13.24), so its frame time is in every peer's round trip. The joiner of a merged page
+drove on one map's ground and collision under another's terrain and trees, which reads as broken sync: the merge
+accounts for part of "doesn't work super well p2p". What a real home network adds (NAT traversal, relayed links) is not
+measured here; `tools/mp-p2p-e2e.mjs --site=… --mode=private` and `mp-p2p-soak --ice=relay` (with relay secrets) are
+those checks.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
