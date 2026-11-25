@@ -8,11 +8,14 @@ export interface KillContext {
   killerTeam?: string;
   victimTeam?: string;
   playerId?: string | null;
+  /** (aircraft-solid-277) the authority's verdict that the kill was its own side's (an aircraft's team kill): the victim
+   *  is no hull with a team the HUD knows. */
+  friendly?: boolean;
 }
 
 function killRelationship(context: KillContext): 'self' | 'friendly' | 'you' | 'victim' | null {
   if (context.killerId === context.victimId) return 'self';
-  if (context.killerId && context.killerTeam != null && context.killerTeam === context.victimTeam) return 'friendly';
+  if (context.friendly || (context.killerId && context.killerTeam != null && context.killerTeam === context.victimTeam)) return 'friendly';
   if (context.playerId == null) return null;
   if (context.killerId === context.playerId) return 'you';
   return context.victimId === context.playerId ? 'victim' : null;

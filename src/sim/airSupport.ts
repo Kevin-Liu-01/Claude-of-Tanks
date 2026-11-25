@@ -10,20 +10,25 @@
  * is public: its footprint and its countdown), and nothing of a strike lands before its warning has run. The aircraft are
  * not entities: each one flies its run, derived from its strike's record alone (sim/strikeRuns.ts runPose: its path, its
  * release points and its footprint from one description), so the presentation draws it from the public record and the
- * wire carries no flight. A round from the other side passing through an aircraft's hit
- * sphere strikes it (tryHitAircraft); brought down, its strike ends.
+ * wire carries no flight. A round whose path enters an aircraft's airframe strikes it (tryHitAircraft: its boxes, fitted to
+ * the drawn airframe, sim/airframeVolumes.ts), whichever side fired it (aircraft-solid-277: friendly fire is on for the
+ * aircraft as for the hulls); a drone flown into one bursts its warhead on it. Brought down, its strike ends, and where its
+ * crash round bursts its wreck lies AIR_CRASH_RULES.wreck.lifeS as a solid the hulls meet and the rounds stop on.
  *
  * Pure and deterministic: no DOM, no three.js, no wall clock; randomness from the match seed and the strike id only. The
  * mode controller (matchModes.ts) owns one of these; both authorities fire the rounds through sim/airSupportFire.ts. Every
  * number is the ruleset's (matchRuleset.ts AIR_SUPPORT_RULES).
  */
 import * as detMath from './detMath.ts';
-import { AIR_STRIKE_KINDS, airStrikeFlies, type AirStrikeKind, type AirSupportRules } from './matchRuleset.ts';
+import { AIR_CRASH_RULES, AIR_STRIKE_KINDS, airStrikeFlies, type AirStrikeKind, type AirSupportRules } from './matchRuleset.ts';
 import type { ObjectiveTeam } from './gameModeCatalog.ts';
 import { botDriven } from './botDriven.ts';
 import { footprintCovers, runExitS, runFootprint, runPose, type RunPose } from './strikeRuns.ts';
 import { strikeMarkRefusal } from './strikeCall.ts';
 import { isCrashRound } from './airCrash.ts';
+import { AIRFRAME_BOXES, airframeOf, fromAirframeDir, seatWreck, segmentMeetsBoxes, wreckAttitude, wreckBoxes, wreckBreak,
+  wreckCollisionRecord, type AircraftWreck, type AirframeBox, type AirframeHit } from './airframeVolumes.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 
 interface Point3 { x: number; y: number; z: number }
 /** The fixed steps a second the authorities advance the mode clock by (sim/movement.ts SIM_DT = 1 / STRIKE_TICK_HZ;
@@ -85,6 +90,8 @@ export interface AirSupportView {
    *  the authority refuses; the mark's part is strikeMarkRefusal. */
   refusals?: Record<AirStrikeKind, StrikeRefusal | null>;
   strikes: (PublicStrike & { mine: boolean })[];
+  /** (aircraft-solid-277) the wrecks on the ground: the presentation draws each where the sim's solid lies. */
+  wrecks: AircraftWreck[];
 }
 
 
@@ -100,6 +107,8 @@ export interface AirSupportCheckpoint {
   decideAt: number;
   /** When each side's bots last sent a recon pass (absent in a checkpoint from before the gap: none). */
   botReconAt?: Partial<Record<ObjectiveTeam, number>>;
+  /** (aircraft-solid-277) the wrecks on the ground (absent in an older checkpoint: none). */
+  wrecks?: AircraftWreck[];
 }
 
 export interface AirSupportEntity {
@@ -134,11 +143,19 @@ export interface AirSupport {
   recordKill(victimId: string, killerId: string | null, supportKill: boolean): void;
   recordCapture(team: ObjectiveTeam, x: number, z: number, radiusM: number): void;
   recordSpot(spotterId: string | null | undefined, targetId: string, timeS: number): void;
-  tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number; reloadGroup?: unknown } }, timeS: number): boolean;
+  tryHitAircraft(shell: AircraftShell, timeS: number, dtS?: number): boolean;
   damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number): void;
   counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void;
   aircraftPoseOf(strike: AirStrike, timeS: number, out: RunPose): RunPose;
   aircraftWithin(team: ObjectiveTeam, x: number, y: number, z: number, rangeM: number, timeS: number): AirStrike | null;
+  /** (aircraft-solid-277) A downed aircraft's crash round burst at (x, z) on ground at `groundY`: its wreck lies there. */
+  recordWreck(strikeId: number, x: number, groundY: number, z: number, timeS: number): void;
+  /** The wrecks on the ground now. */
+  readonly wrecks: readonly AircraftWreck[];
+  /** The wrecks as the world's collision records (the hulls' obstacles): the same array until the wrecks change. */
+  wreckRecords(): readonly CollisionRecord[];
+  /** The first wreck the path from `a` to `b` meets: its fraction along the path, the face's world normal, its record. */
+  wreckAlong(a: Point3, b: Point3): WreckTrace | null;
   /** A bot's seeded preferred call-in (it calls nothing cheaper, recon aside). */
   botPreference(id: string): BotStrikePreference;
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
@@ -151,6 +168,17 @@ export interface AirSupport {
   capture(): AirSupportCheckpoint;
   restore(saved: AirSupportCheckpoint): void;
 }
+
+/** A round as the aircraft test reads it (both drivers' shells fit it). */
+export interface AircraftShell {
+  dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3;
+  /** A strike's own ordnance (sim/airSupportFire.ts: its rounds and its crash round) never strikes an aircraft. */
+  strikeId?: number;
+  spec: { dmg: number; reloadGroup?: unknown; caliberMm?: number; type?: string; tracer?: unknown };
+}
+
+/** Where a path met a wreck. */
+export interface WreckTrace { t: number; nx: number; ny: number; nz: number; record: CollisionRecord; wreckId: number }
 
 /** How long a downed aircraft's record stands after its fall (its strike's end): the fall and the burst drawn from it. */
 const CRASH_RECORD_S = 9;
@@ -204,6 +232,22 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
   let nowS = 0;
   /** When each side's bots last sent a recon pass (rules.bots.reconGapS). */
   const botReconAt: Partial<Record<ObjectiveTeam, number>> = {};
+  const wrecks: AircraftWreck[] = [];
+  /** Each wreck's boxes and record, built once (the wrecks are few and never move). */
+  const wreckShapes = new Map<number, { boxes: readonly AirframeBox[]; record: CollisionRecord }>();
+  let wreckRecordList: CollisionRecord[] = [];
+  const shapeOf = (wreck: AircraftWreck): { boxes: readonly AirframeBox[]; record: CollisionRecord } => {
+    let shape = wreckShapes.get(wreck.id);
+    if (!shape) {
+      shape = { boxes: wreckBoxes(airframeOf(wreck.kind), wreckBreak(wreck.id)), record: wreckCollisionRecord(wreck) };
+      wreckShapes.set(wreck.id, shape);
+    }
+    return shape;
+  };
+  const wrecksChanged = (): void => {
+    for (const id of [...wreckShapes.keys()]) if (!wrecks.some((w) => w.id === id)) wreckShapes.delete(id);
+    wreckRecordList = wrecks.map((w) => shapeOf(w).record);
+  };
   const byId = new Map<string, Entity>();
   for (const entity of entities) { byId.set(entity.id, entity); points.set(entity.id, rules.points.start); }
 
@@ -302,42 +346,102 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     award(spotter.id, rules.points.spot);
   }
 
-  const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+  const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, _was: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+  const _hit: AirframeHit = { t: 0, box: 0, nx: 0, ny: 0, nz: 0 }, _at = { x: 0, y: 0, z: 0 }, _n = { x: 0, y: 0, z: 0 };
   /**
-   * A round of the other side passing through a flying aircraft's hit sphere strikes it for the round's damage (the strike's
-   * own side never hits its own aircraft: its own rounds leave from inside it). True when the round was spent on it.
+   * A round whose path enters a flying aircraft's airframe (its boxes grown by hitMarginM, swept with the aircraft from
+   * where it stood `dtS` ago) strikes it for the round's damage, whichever side fired it (aircraft-solid-277: friendly fire;
+   * a drone flown into it bursts its warhead there). A strike's own ordnance never does (it leaves from inside or under
+   * its aircraft). True when the round was spent on it; the nearest aircraft along the path takes it.
    */
-  function tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number; reloadGroup?: unknown } }, timeS: number): boolean {
+  function tryHitAircraft(shell: AircraftShell, timeS: number, dtS = 1 / STRIKE_TICK_HZ): boolean {
     // a roof station's round lands its counter-air share instead (counterAirHit), never twice; a crash round is a falling
     // wreck, never a round at another aircraft
-    if (shell.dead || shell.roofStation || isCrashRound(shell.spec) || !strikes.length) return false;
+    if (shell.dead || shell.roofStation || shell.strikeId != null || isCrashRound(shell.spec) || !strikes.length) return false;
     const shooter = shell.shooterId ? byId.get(shell.shooterId) : undefined;
     if (!shooter) return false;
-    const team = teamOf(shooter);
+    let struck: AirStrike | null = null, bestT = Infinity, bx = 0, by = 0, bz = 0, nx = 0, ny = 0, nz = 0;
     for (const strike of strikes) {
-      if (strike.team === team || !airborne(strike, timeS)) continue;
+      if (!airborne(strike, timeS)) continue;
       const pose = runPose(rules, strike, timeS, _pose);
-      const radius = rules[strike.kind].hitRadiusM;
-      if (segmentPointDistanceSq(pose, shell.prevPos, shell.pos) > radius * radius) continue;
-      shell.dead = true;
-      damageAircraft(strike, shooter.id, shell.spec.dmg, timeS);
-      return true;
+      // the broad test: the path within the airframe's reach (its half-length or half-span, and the step's travel)
+      const reach = (strike.kind === 'gunship' ? 22 : 11) + rules[strike.kind].speedMps * dtS;
+      if (segmentPointDistanceSq(pose, shell.prevPos, shell.pos) > reach * reach) continue;
+      const was = runPose(rules, strike, timeS - dtS, _was);
+      const hit = segmentMeetsBoxes(AIRFRAME_BOXES[airframeOf(strike.kind)], was, shell.prevPos, pose, shell.pos,
+        rules[strike.kind].hitMarginM, _hit);
+      if (!hit || hit.t >= bestT) continue;
+      bestT = hit.t; struck = strike;
+      bx = shell.prevPos.x + (shell.pos.x - shell.prevPos.x) * hit.t;
+      by = shell.prevPos.y + (shell.pos.y - shell.prevPos.y) * hit.t;
+      bz = shell.prevPos.z + (shell.pos.z - shell.prevPos.z) * hit.t;
+      _n.x = hit.nx; _n.y = hit.ny; _n.z = hit.nz;
+      fromAirframeDir(pose, _n, _at);
+      nx = _at.x; ny = _at.y; nz = _at.z;
     }
-    return false;
+    if (!struck) return false;
+    shell.dead = true;
+    shell.pos.x = bx; shell.pos.y = by; shell.pos.z = bz;
+    const explosive = shell.spec.tracer === 'DRONE' || shell.spec.type === 'HE' || shell.spec.type === 'HEAT' || shell.spec.type === 'HESH';
+    const drone = shell.spec.tracer === 'DRONE';
+    damageAircraft(struck, shooter.id, drone ? rules.counterAir.droneHit : shell.spec.dmg, timeS, { x: bx, y: by, z: bz, nx, ny, nz, caliberMm: shell.spec.caliberMm ?? 0,
+      explosive, drone: shell.spec.tracer === 'DRONE' });
+    return true;
   }
 
-  /** Damage to an aircraft (a round through it, a roof station's burst); brought down at zero. */
-  function damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number): void {
+  /** Damage to an aircraft (a round through it, a roof station's burst); brought down at zero. `at`: where a round struck
+   *  it (the presentation's sparks or burst on the airframe), absent for a roof station's share. Its own side's fire
+   *  (friendly) earns no points and its downing is a team kill. */
+  function damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number,
+    at?: { x: number; y: number; z: number; nx: number; ny: number; nz: number; caliberMm: number; explosive: boolean; drone: boolean }): void {
     if (strike.downedS != null || !(damage > 0)) return;
     strike.hp = Math.max(0, strike.hp - damage);
-    emit('mode_aircraft_hit', { strikeId: strike.id, kind: strike.kind, hp: strike.hp, by });
+    const shooter = byId.get(by);
+    const friendly = !!shooter && teamOf(shooter) === strike.team;
+    emit('mode_aircraft_hit', { strikeId: strike.id, kind: strike.kind, team: strike.team, hp: strike.hp, maxHp: strike.maxHp, by, friendly, atS: timeS,
+      ...(at ? { x: at.x, y: at.y, z: at.z, nx: at.nx, ny: at.ny, nz: at.nz, caliberMm: at.caliberMm, explosive: at.explosive, drone: at.drone } : {}) });
     if (strike.hp > 0) return;
     // (air-crash-he-276) its record stands CRASH_RECORD_S, past the longest fall (a recon jet from 250 m, ~6 s), so the
     // presentation draws the airframe down onto its crash round's burst even when it fell late in its egress
     strike.downedS = timeS; strike.downedBy = by; strike.endS = timeS + CRASH_RECORD_S;
-    award(by, rules.points.downed);
+    if (!friendly) award(by, rules.points.downed);
     const pose = runPose(rules, strike, timeS, _pose);
-    emit('mode_aircraft_down', { strikeId: strike.id, kind: strike.kind, team: strike.team, by, x: pose.x, y: pose.y, z: pose.z });
+    emit('mode_aircraft_down', { strikeId: strike.id, kind: strike.kind, team: strike.team, by, friendly, x: pose.x, y: pose.y, z: pose.z });
+  }
+
+  /** (aircraft-solid-277) The crash round of a downed aircraft burst at (x, z): its wreck lies there, its lowest point on
+   *  the ground at `groundY`, at the rest pose its fall leaves it in (sim/airframeVolumes.ts), for the wreck's life. */
+  function recordWreck(strikeId: number, x: number, groundY: number, z: number, timeS: number): void {
+    const strike = strikes.find((s) => s.id === strikeId);
+    if (!strike || strike.downedS == null || wrecks.some((w) => w.id === strikeId)) return;
+    const wreck: AircraftWreck = { id: strike.id, kind: strike.kind, team: strike.team, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0,
+      atS: timeS, untilS: timeS + AIR_CRASH_RULES.wreck.lifeS };
+    wreckAttitude(rules, strike, strike.downedS, timeS, wreck);
+    seatWreck(airframeOf(strike.kind), wreckBreak(strike.id), wreck, x, groundY, z, wreck, terrainHeight);
+    wrecks.push(wreck);
+    // the oldest goes first past the cap
+    while (wrecks.length > AIR_CRASH_RULES.wreck.max) wrecks.shift();
+    wrecksChanged();
+  }
+
+  const _trace: WreckTrace = { t: 0, nx: 0, ny: 0, nz: 0, record: { min: [0, 0, 0], max: [0, 0, 0] }, wreckId: 0 };
+  function wreckAlong(a: Point3, b: Point3): WreckTrace | null {
+    let found = false;
+    _trace.t = Infinity;
+    for (const wreck of wrecks) {
+      const shape = shapeOf(wreck), record = shape.record;
+      // the broad test: the path's box against the record's
+      if (Math.max(a.x, b.x) < record.min[0] || Math.min(a.x, b.x) > record.max[0] || Math.max(a.z, b.z) < record.min[2]
+        || Math.min(a.z, b.z) > record.max[2] || Math.max(a.y, b.y) < record.min[1] || Math.min(a.y, b.y) > record.max[1]) continue;
+      const hit = segmentMeetsBoxes(shape.boxes, wreck, a, wreck, b, 0, _hit);
+      if (!hit || hit.t >= _trace.t) continue;
+      found = true;
+      _trace.t = hit.t; _trace.record = record; _trace.wreckId = wreck.id;
+      _n.x = hit.nx; _n.y = hit.ny; _n.z = hit.nz;
+      fromAirframeDir(wreck, _n, _at);
+      _trace.nx = _at.x; _trace.ny = _at.y; _trace.nz = _at.z;
+    }
+    return found ? _trace : null;
   }
 
   /** A roof station's round at an aircraft lands `chance` (its counter-drone share at the range) of a strike. */
@@ -499,6 +603,10 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       emit('mode_recon_pass', { strikeId: strike.id, team: strike.team });
     }
     for (const [key, until] of revealedUntil) if (until < timeS) revealedUntil.delete(key);
+    // a wreck's life ends (aircraft-solid-277)
+    let gone = false;
+    for (let i = wrecks.length - 1; i >= 0; i--) if (wrecks[i]!.untilS <= timeS) { wrecks.splice(i, 1); gone = true; }
+    if (gone) wrecksChanged();
     // the records of aircraft long gone are dropped (their rounds have landed: the end is past every danger window), once
     // the aircraft has flown its run out (a fallen one at its end): the presentation draws it from the record till then
     for (let i = strikes.length - 1; i >= 0; i--) {
@@ -513,6 +621,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       nowS,
       // the round counters are the host's bookkeeping: the view stays the record it always was
       strikes: strikes.map(({ callerId, fired: _fired, firedAux: _firedAux, crashed: _crashed, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
+      wrecks: wrecks.map((w) => ({ ...w })),
     };
     if (viewer) {
       out.points = Math.floor(points.get(viewer.id) ?? 0);
@@ -533,13 +642,14 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     strikes: strikes as readonly AirStrike[],
     seed,
     requestStrike, recordDamage, recordKill, recordCapture, recordSpot, tryHitAircraft, damageAircraft, counterAirHit, aircraftWithin,
+    recordWreck, wrecks: wrecks as readonly AircraftWreck[], wreckRecords: () => wreckRecordList, wreckAlong,
     aircraftPoseOf: (strike: AirStrike, timeS: number, out: RunPose) => runPose(rules, strike, timeS, out),
     evadeTarget, step, view, botPreference,
     revealed: (id: string, side: ObjectiveTeam): boolean => (revealedUntil.get(`${side}:${id}`) ?? -Infinity) >= nowS,
     pointsOf: (id: string): number => points.get(id) ?? 0,
     capture(): AirSupportCheckpoint {
       return { points: [...points], cooldowns: [...cooldowns], spotted: [...spottedAt], revealed: [...revealedUntil], strikes: strikes.map((s) => ({ ...s })),
-        nextId, trickles, decideAt, botReconAt: { ...botReconAt } };
+        nextId, trickles, decideAt, botReconAt: { ...botReconAt }, wrecks: wrecks.map((w) => ({ ...w })) };
     },
     restore(saved: AirSupportCheckpoint): void {
       points.clear(); for (const [key, value] of saved.points) points.set(key, value);
@@ -549,6 +659,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       strikes.length = 0; for (const strike of saved.strikes) strikes.push({ ...strike });
       nextId = saved.nextId; trickles = saved.trickles; decideAt = saved.decideAt;
       delete botReconAt.alpha; delete botReconAt.bravo; Object.assign(botReconAt, saved.botReconAt ?? {});
+      wrecks.length = 0; for (const wreck of saved.wrecks ?? []) wrecks.push({ ...wreck });
+      wreckShapes.clear(); wrecksChanged();
     },
   };
 }

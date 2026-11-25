@@ -31,6 +31,15 @@ const RELEASED_MAX = 16;
  * there (a roof, a wall), not only at the ground.
  */
 const crashRounds = new Map<string, number>();
+
+/**
+ * (aircraft-solid-277) The rounds that struck an aircraft since the world last drew (sim/airSupport.ts mode_aircraft_hit):
+ * where (the sim's point, at the mode time `atS`), the face's normal, and what struck it. The world draws each on the
+ * airframe and empties the list every frame (game/airSupportWorld.ts strikeHits); at most AIRCRAFT_HITS_MAX wait.
+ */
+export const aircraftHits: { strikeId: number; atS: number; x: number; y: number; z: number; nx: number; ny: number; nz: number;
+  caliberMm: number; explosive: boolean }[] = [];
+const AIRCRAFT_HITS_MAX = 32;
 export const crashedStrikes = new Set<number>();
 const CRASH_MAX = 16;
 
@@ -42,8 +51,18 @@ export function installAirSupportBridge(bus: EventBus): () => void {
     const scope = currentBattleScope();
     if (!scope || scope === adopted) return;
     adopted = scope;
-    scope.defer(() => { releasedBombs.clear(); crashRounds.clear(); crashedStrikes.clear(); });
+    scope.defer(() => { releasedBombs.clear(); crashRounds.clear(); crashedStrikes.clear(); aircraftHits.length = 0; });
   };
+  const offHit = bus.on('mode:aircraft_hit', (payload) => {
+    adopt();
+    const hit = payload as { strikeId?: number; atS?: number; x?: number; y?: number; z?: number; nx?: number; ny?: number; nz?: number;
+      caliberMm?: number; explosive?: boolean } | null;
+    // a roof station's share strikes no point on the airframe
+    if (!hit || !Number.isFinite(hit.x) || !Number.isFinite(hit.strikeId) || !Number.isFinite(hit.atS)) return;
+    if (aircraftHits.length >= AIRCRAFT_HITS_MAX) aircraftHits.shift();
+    aircraftHits.push({ strikeId: hit.strikeId!, atS: hit.atS!, x: hit.x!, y: hit.y!, z: hit.z!, nx: hit.nx ?? 0, ny: hit.ny ?? 1,
+      nz: hit.nz ?? 0, caliberMm: hit.caliberMm ?? 20, explosive: hit.explosive === true });
+  });
   const offExpired = bus.on('shell:expired', (payload) => {
     adopt();
     const id = (payload as { shellId?: unknown } | null)?.shellId;
@@ -89,5 +108,5 @@ export function installAirSupportBridge(bus: EventBus): () => void {
       airStrike: round.kind,
     });
   });
-  return () => { offRound(); offExpired(); };
+  return () => { offRound(); offExpired(); offHit(); };
 }

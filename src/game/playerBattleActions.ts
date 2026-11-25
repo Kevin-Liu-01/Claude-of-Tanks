@@ -290,9 +290,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
   // (air-support-275) an aircraft our crew brought down: the event lane's P1 notice (airSupportHud.ts)
   listen('mode:aircraft_down', (payload) => {
-    const down = payload as { by?: RuntimeValue; kind?: RuntimeValue } | null;
+    const down = payload as { by?: RuntimeValue; kind?: RuntimeValue; friendly?: RuntimeValue } | null;
     const player = game.player;
-    if (!player || down?.by !== player.id || !strikes.kinds.includes(down.kind as AirStrikeKind)) return;
+    // (aircraft-solid-277) our own side's aircraft brought down by our fire is no success to announce
+    if (!player || down?.by !== player.id || down.friendly === true || !strikes.kinds.includes(down.kind as AirStrikeKind)) return;
     bus.emit('ui:aircraftDowned', { kind: down.kind });
   });
   onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));

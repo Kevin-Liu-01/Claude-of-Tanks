@@ -413,6 +413,10 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
   /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
   source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'missile' | 'artillery';
+  /** (aircraft-solid-277) an aircraft's downing: its call-in (the victim's name in the feed) and whether its own side's
+   *  fire brought it down (a team kill). */
+  aircraft?: string;
+  friendly?: boolean;
   timeS?: number;
   on?: boolean;
   /** ui:reloadIndicators: other tanks' reload strips by side (Settings › Interface, reload-others-275). */
@@ -8353,14 +8357,15 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       !id ? null : id === viewerId ? t('hud.feed.you') : callsignById.get(id) ?? null;
     const killer = source?.label || callsign(payload.killerId) || (payload.killerId ? nameById.get(payload.killerId) : null)
       || t('hud.enemy');
-    const victim = callsign(payload.id) || (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
+    const victim = payload.aircraft || callsign(payload.id) || (payload.id ? nameById.get(payload.id) : null) || payload.specId
+      || t('hud.tankFallback');
     const killerVehicle = source ? '' : payload.killerId ? nameById.get(payload.killerId) ?? '' : '';
     const victimVehicle = (payload.id ? nameById.get(payload.id) : null) || payload.specId || '';
     const ownTeam = watchSide ?? teamById.get(playerId || '');
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const presentation = killPresentation({ cause: payload.cause, drone: source?.source === 'drone',
-      killerId: payload.killerId, victimId: payload.id || '', playerId: viewerId,
+      killerId: payload.killerId, victimId: payload.id || '', playerId: viewerId, friendly: payload.friendly,
       killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
     // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
     const kSpec = source ? null : payload.killerId ? specIdById.get(payload.killerId) : null;
@@ -8644,6 +8649,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (!playerId || killerId !== playerId || !id || teamById.get(id) === teamById.get(playerId)) return;
     airConditions.condition({ kind: 'droneDown', id: DRONE_DOWN_NOTICE_ID, text: t('hud.alert.droneDowned'), severity: 'success',
       icon: 'modeDrone', art: 'drone', durationMs: EVENT_HOLD_MS, dismissible: false, priority: NOTICE_PRIORITY.answered });
+  });
+  // (aircraft-solid-277) an aircraft brought down takes a row in the feed: who downed it, the call-in it flew, and the
+  // team kill's mark when its own side's fire did (the authority's verdict: sim/airSupport.ts damageAircraft)
+  on('mode:aircraft_down', (p) => {
+    const down = p as unknown as { by?: string; kind?: string; friendly?: boolean };
+    if (!down.by || typeof down.kind !== 'string') return;
+    pushKill({ killerId: down.by, cause: 'shot', aircraft: t(`airSupport.kind.${down.kind}`), friendly: down.friendly === true });
   });
   on('tank:destroyed', (p) => {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;

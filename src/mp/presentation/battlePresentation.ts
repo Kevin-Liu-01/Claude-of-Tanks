@@ -58,6 +58,8 @@ import { FUEL_CHARGE_KG, cookOffChargeKg } from '../../sim/munitionBlast.ts';
 import { shellHitsWater } from '../../sim/shellSurface.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
+import { wreckCollisionRecord, type AircraftWreck } from '../../sim/airframeVolumes.ts';
+import type { CollisionRecord } from '../../world/collision.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
 import { modeEndReport } from '../../sim/modeEndReport.ts';
 import { markFreeFallStore } from '../../fx/freeFallStores.ts';
@@ -1831,8 +1833,32 @@ export function createBattlePresentation({
       // a building the own ram brings down yields to the drawn hull as the authority's yields (destructionMirror.ts)
       structureYields: (record, massTons, closingMps) => game.ruleset?.destruction?.structures === true
         && destruction.yieldsToRam(record, massTons, closingMps),
+      // (aircraft-solid-277) Air Support's aircraft wrecks, as the mode state lists them: the authority's solids
+      modeObstacles: aircraftWreckRecords,
     });
     return predictionWorldCache;
+  }
+
+  /** The aircraft wrecks the mode state lists, as collision records: one per wreck, built once (they never move). */
+  const wreckRecordsById = new Map<string, CollisionRecord>();
+  const wreckRecordList: CollisionRecord[] = [];
+  let wreckRecordsJson: string | null = null;
+  function aircraftWreckRecords(): readonly CollisionRecord[] {
+    const json = lastModeStateJson;
+    if (json === wreckRecordsJson) return wreckRecordList;
+    wreckRecordsJson = json;
+    wreckRecordList.length = 0;
+    const wrecks = (game.matchModeState as { air?: { wrecks?: AircraftWreck[] } } | null)?.air?.wrecks ?? [];
+    const live = new Set<string>();
+    for (const wreck of wrecks) {
+      const key = `${wreck.id}:${wreck.atS}`;
+      live.add(key);
+      let record = wreckRecordsById.get(key);
+      if (!record) { record = wreckCollisionRecord(wreck); wreckRecordsById.set(key, record); }
+      wreckRecordList.push(record);
+    }
+    for (const key of [...wreckRecordsById.keys()]) if (!live.has(key)) wreckRecordsById.delete(key);
+    return wreckRecordList;
   }
 
   function* collidableActors(own: MatchActor): Iterable<{ spec: FleetTankSpec; state: TankState; collidable: boolean }> {

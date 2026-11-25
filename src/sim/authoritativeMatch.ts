@@ -80,6 +80,7 @@ import type {
 import { captureWorldSnapshot } from './worldSnapshot.ts';
 import { createRotaryShotThinning } from './fireCycleFloor.ts';
 import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
+import { appendNavigationWrecks } from './airframeVolumes.ts';
 import { sweepLightCover, type LightCoverQuery } from './shellLightCover.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
 import type {
@@ -1270,15 +1271,22 @@ export function createAuthoritativeMatch({
     centerZ: number,
     broadRadius: number,
   ): AuthoritativeObstacle[] {
-    if (!worldCollision?.queryObstacles) return staticObstacles;
-    return worldCollision.queryObstacles(
+    const near = !worldCollision?.queryObstacles ? staticObstacles : worldCollision.queryObstacles(
       centerX - broadRadius,
       centerZ - broadRadius,
       centerX + broadRadius,
       centerZ + broadRadius,
       nearbyObstacles,
     );
+    // (aircraft-solid-277) a downed aircraft's wreck is a solid the hulls meet (sim/airframeVolumes.ts), after the world's
+    const wrecks = modeController.airSupport?.wreckRecords();
+    if (!wrecks?.length) return near;
+    withWrecks.length = 0;
+    for (const record of near) withWrecks.push(record);
+    for (const record of wrecks) withWrecks.push(record);
+    return withWrecks;
   }
+  const withWrecks: AuthoritativeObstacle[] = [];
 
   function obstacleIsPressedThrough(
     entity: AuthoritativeEntity,
@@ -2045,6 +2053,17 @@ export function createAuthoritativeMatch({
     return null;
   }
 
+  /** (aircraft-solid-277) A downed aircraft's wreck nearer along the round's path than the world's hit and the hull's stops
+   *  it there, as any solid does (sim/airframeVolumes.ts: its boxes at its rest pose). */
+  const _wreckNormal = new Vector3();
+  function wreckOrWorldHit(shell: DamageShell, worldHit: WorldTrace | null, tankHit: TankTrace | null, segmentLength: number): WorldTrace | null {
+    const wreck = modeController.airSupport?.wreckAlong(shell.prevPos, shell.pos);
+    if (!wreck) return worldHit;
+    if (worldHit && worldHit.t <= wreck.t) return worldHit;
+    if (tankHit && tankHit.distance <= wreck.t * segmentLength) return worldHit;
+    return { t: wreck.t, kind: 'prop', record: wreck.record, normal: _wreckNormal.set(wreck.nx, wreck.ny, wreck.nz) };
+  }
+
   function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace, craterId: number | null = null): void {
     // destruction (docs/DESTRUCTION.md §11): the round's class and charge, the structure it struck and the crater it dug,
     // for the peers' explosions and their munition:blast
@@ -2086,6 +2105,14 @@ export function createAuthoritativeMatch({
     const craterId = destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
       shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z, groundBurst, shell.shooterId);
     emitWorldShellImpact(shell, worldHit, craterId);
+    // (aircraft-solid-277) a downed aircraft's crash round: its wreck lies where it burst, on the ground its crater left
+    recordCrashWreck(shell, shell.pos.x, worldHit.kind === 'terrain' ? heightField.getHeightAt(shell.pos.x, shell.pos.z) : shell.pos.y, shell.pos.z);
+  }
+
+  function recordCrashWreck(shell: DamageShell, x: number, groundY: number, z: number): void {
+    const strikeId = (shell as { strikeId?: number }).strikeId;
+    if (typeof strikeId !== 'number' || shell.spec.reloadGroup !== 'air-crash') return;
+    modeController.airSupport?.recordWreck(strikeId, x, groundY, z, timeS + modeTimeOffsetS);
   }
 
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
@@ -2128,7 +2155,10 @@ export function createAuthoritativeMatch({
     }
     try {
       if (isHeClass(shell.spec.type)) {
-        resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
+        const point = tankHit.hits[0]!.point;
+        resolveHeImpact(shell, point, tankHit.target, tankHit.hits);
+        // (aircraft-solid-277) a crash onto a hull: the wreck lies on the ground the hull stands on
+        recordCrashWreck(shell, point.x, tankHit.target.state.pos.y, point.z);
         return;
       }
       const wasDestroyed = tankHit.target.combat.destroyed;
@@ -2160,7 +2190,7 @@ export function createAuthoritativeMatch({
       // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
       // (air-support-275) at the time its shooter saw the aircraft: the aircraft's run is a function of the clock, so this
       // rewind is the tanks' lag compensation for an aircraft, with no history to keep
-      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS - (shellRewind?.rewindS?.(shell) ?? 0))) continue;
+      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS - (shellRewind?.rewindS?.(shell) ?? 0), dt)) continue;
       // mp v2 lag compensation: the sweep and its resolution read the poses the shooter saw
       shellRewind?.begin(shell);
       try {
@@ -2194,7 +2224,7 @@ export function createAuthoritativeMatch({
   function resolveShellSweep(shell: DamageShell): void {
     const tankHit = firstTankTrace(shell, entities);
     const segmentLength = shell.prevPos.distanceTo(shell.pos);
-    const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
+    const worldHit = wreckOrWorldHit(shell, traceBlockingWorldShellHit(shell, tankHit, segmentLength), tankHit, segmentLength);
     breakLightCoverAlong(shell, Math.min(segmentLength, worldHit ? worldHit.t * segmentLength : Infinity,
       tankHit ? tankHit.distance : Infinity));
     if (worldHit) {
@@ -2293,7 +2323,9 @@ export function createAuthoritativeMatch({
     inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
   ): void {
     if (botNavigation && navigationWreckTicks++ % 15 === 0) {
-      syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
+      // (aircraft-solid-277) and the aircraft wrecks' parts a hull meets
+      syncNavigationWrecks(botNavigation, navigationWrecks, appendNavigationWrecks(modeController.airSupport?.wreckRecords() ?? [],
+        navigationWrecks, collectNavigationWrecks(entities, navigationWrecks)));
     }
     handLeftSeatsToBots();
     // anything that reached the bots since the last flush lands before the first of them thinks (audit M7)

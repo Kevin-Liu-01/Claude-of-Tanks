@@ -86,6 +86,9 @@ export interface PredictionWorldOptions {
    * the building at every reconciliation and snapped it back (the 263+264 preview's "slingshot", 2026-10-29: up to 9.9 m).
    */
   structureYields?: ((record: PredictionObstacle, massTons: number, closingMps: number) => boolean) | null;
+  /** (aircraft-solid-277) Solids the mode adds to the world (Air Support's aircraft wrecks: sim/airframeVolumes.ts), met
+   *  after the world's records as the authority meets them (sim/authoritativeMatch.ts obstacleCandidates). */
+  modeObstacles?: (() => readonly PredictionObstacle[]) | null;
 }
 
 interface ContactFrame {
@@ -120,7 +123,7 @@ function contactFrame(spec: Parameters<typeof tankContactRect>[0], x: number, z:
 
 /** Build the prediction world; returns null when the map has no height field yet. */
 export function createPredictionWorld({
-  worldCollision, ownSpec, ownState, others, mode = null, structureYields = null,
+  worldCollision, ownSpec, ownState, others, mode = null, structureYields = null, modeObstacles = null,
 }: PredictionWorldOptions): PredictionWorld | null {
   const heightField = worldCollision.heightField;
   if (!heightField || typeof heightField.getHeightAt !== 'function') return null;
@@ -141,6 +144,7 @@ export function createPredictionWorld({
   const footCenter = { x: 0, y: 0, z: 0 };
   const ownFoot = createHullFootprint();
   const hardObstacles: PredictionObstacle[] = [];
+  const withAdded: PredictionObstacle[] = [];
   const bodyTop = tankBodyTopM(ownSpec);
   const ownRect = tankContactRect(ownSpec);
   // physics lane (2026-10-03): the authority's two vertical rules, which the replay lacked. A hull on a roof stands on
@@ -202,12 +206,20 @@ export function createPredictionWorld({
       frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ,
       frame.halfLength, frame.halfWidth, outPush,
     );
-    const obstacles = typeof worldCollision.queryObstacles === 'function'
+    const near = typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(
         frame.centerX - frame.broadRadius, frame.centerZ - frame.broadRadius,
         frame.centerX + frame.broadRadius, frame.centerZ + frame.broadRadius, nearby,
       )
       : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
+    const added = modeObstacles?.();
+    let obstacles: readonly PredictionObstacle[] = near;
+    if (added?.length) {
+      withAdded.length = 0;
+      for (const record of near) withAdded.push(record);
+      for (const record of added) withAdded.push(record);
+      obstacles = withAdded;
+    }
     // the authority's standing rule and per-part vertical extents (sim/authoritativeMatch.ts collideWithObstacles): the
     // hull's footprint at its attitude and its underside there, the body's top for parts it passes beneath
     const foot = hullFootprint(ownRect, position.x, position.z, yaw, state ? state.visualPitch || 0 : 0,

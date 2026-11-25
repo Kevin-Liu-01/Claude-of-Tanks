@@ -133,6 +133,12 @@ export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
    *  to land inside it (sim/strikeRuns.ts crashFall), so its crater, its blast and its wreck fall where the ground is
    *  drawn and dug, and in sight (air-crash-he-276c). */
   readonly fall: { readonly carry: number; readonly sinkMps: number; readonly gravityMps2: number; readonly maxS: number; readonly landInsideM: number };
+  /** (aircraft-solid-277) A downed aircraft's wreck (sim/airframeVolumes.ts): it lies where its crash round burst for
+   *  `lifeS` of the mode's clock, at most `max` at once (the oldest goes first), a solid the hulls meet and the rounds stop
+   *  on. It came to rest nosed down at a pitch within `pitchRad`, on its belly or its back leaning at most `leanRad`, from
+   *  the fall's attitude: rolling `rollRadS` and nosing over `noseRadS` from the run's pose where it was downed. */
+  readonly wreck: { readonly lifeS: number; readonly max: number; readonly pitchRad: readonly [number, number]; readonly leanRad: number;
+    readonly rollRadS: number; readonly noseRadS: number };
 } = Object.freeze({
   drone: Object.freeze({ blastRadiusM: 11, dmg: 700, caliberMm: 90,
     why: 'an FPV quadcopter: about its warhead (the 90 mm charge) with its battery; 11 m is 2.5 kg, the least load that digs a bowl (1.7 m), a mark no longer' }),
@@ -143,6 +149,9 @@ export const AIR_CRASH_RULES: Readonly<Record<AirCrashClass, AirCrashRow>> & {
   gunship: Object.freeze({ blastRadiusM: 40, dmg: 3200, caliberMm: 300,
     why: 'the AC-130: some 20 t of fuel and its gun magazines; the envelope\'s 40 m cap (119 kg) and the crater\'s 6 m cap, the largest in the game' }),
   fall: Object.freeze({ carry: 0.35, sinkMps: 10, gravityMps2: 9.81, maxS: 30, landInsideM: PLAYABLE_HALF_EXTENT_M }),
+  // air-crash-he-276's drawn wreck (75 s, at most 4, its settle), now the sim's: the solid and the drawing are one record
+  wreck: Object.freeze({ lifeS: 75, max: 4, pitchRad: Object.freeze([-0.7, -0.25]) as readonly [number, number], leanRad: 0.3,
+    rollRadS: 1.4, noseRadS: 0.35 }),
 });
 /** Which crash an Air Support aircraft makes (artillery has none: the battery is off the map). */
 export function airCrashClassOf(kind: AirStrikeKind): AirCrashClass | null {
@@ -170,10 +179,10 @@ export interface AirStrikeRules {
   readonly cost: number;
   readonly cooldownS: number;
   readonly warningS: number;
-  /** The aircraft (none for artillery: hp 0): its hit points, the sphere a round must pass through to strike it, its
-   *  height over the mark and its speed. */
+  /** The aircraft (none for artillery: hp 0): its hit points, how near its airframe's skin (sim/airframeVolumes.ts, its
+   *  boxes fitted to the drawn airframe) a round's path must pass to strike it, its height over the mark and its speed. */
   readonly hp: number;
-  readonly hitRadiusM: number;
+  readonly hitMarginM: number;
   readonly altitudeM: number;
   readonly speedMps: number;
 }
@@ -208,7 +217,9 @@ export interface AirSupportRules {
   /** Counter-air: roof stations engage enemy aircraft within their counter-drone range × `rangeScale`; each round lands
    *  the drone share × `hitScale` (an aircraft is a far larger target) of `damagePerHit`. A roof station's round itself
    *  never strikes an aircraft's sphere (its share is its hit); a main gun's does, for its damage. */
-  readonly counterAir: { readonly rangeScale: number; readonly hitScale: number; readonly damagePerHit: number };
+  readonly counterAir: { readonly rangeScale: number; readonly hitScale: number; readonly damagePerHit: number;
+    /** What an FPV drone flown into an aircraft takes off it (aircraft-solid-277). */
+    readonly droneHit: number };
   /** The recon pass: a jet along the heading through the mark; every enemy within `revealM` of its track as it passes is
    *  spotted for its side for `revealS` (through the spotting system). */
   readonly recon: AirStrikeRules & { readonly trackM: number; readonly revealM: number; readonly revealS: number };
@@ -259,12 +270,19 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   teamGunshipCap: 1,
   callRangeM: 700,
   fallMarginS: 0.4,
-  counterAir: Object.freeze({ rangeScale: 1.5, hitScale: 4, damagePerHit: 150 }),
+  // (aircraft-solid-277) droneHit: an FPV drone flown into an aircraft bursts its warhead on it and is spent; the airframe
+  // takes this much (not the warhead's 1400 against armour: one drone would down the AC-130 outright). 700 downs any jet in
+  // one (the most is 600) and the AC-130 in two
+  counterAir: Object.freeze({ rangeScale: 1.5, hitScale: 4, damagePerHit: 150, droneHit: 700 }),
+  // (aircraft-solid-277) hitMarginM: a round strikes an aircraft where its path enters the airframe's own boxes (sim/
+  // airframeVolumes.ts, fitted to the drawn airframe) grown by this much, no longer an 8-16 m sphere round its centre that
+  // missed the wingtips and struck the empty air between them: half a metre on the jets, three quarters on the AC-130 (the
+  // drawn airframe between two of the host's snapshots leads or lags its record by up to a few decimetres)
   // the photo pass: 3 s of warning, then a jet at 250 m along a 600 m track through the mark; 12 s of spotting within 160 m
-  recon: Object.freeze({ cost: 120, cooldownS: 40, warningS: 3, hp: 400, hitRadiusM: 8, altitudeM: 250, speedMps: 200,
+  recon: Object.freeze({ cost: 120, cooldownS: 40, warningS: 3, hp: 400, hitMarginM: 0.5, altitudeM: 250, speedMps: 200,
     trackM: 600, revealM: 160, revealS: 12 }),
   // the battery: a 6 s warning, then ten 155 mm rounds over 5 s inside a 35 m circle, each seen falling its last 2.5 s
-  artillery: Object.freeze({ cost: 300, cooldownS: 60, warningS: 6, hp: 0, hitRadiusM: 0, altitudeM: 420, speedMps: 0,
+  artillery: Object.freeze({ cost: 300, cooldownS: 60, warningS: 6, hp: 0, hitMarginM: 0, altitudeM: 420, speedMps: 0,
     radiusM: 35, rounds: 10, fireS: 5, flightS: 2.5 }),
   // the A-10's run: 5 s of warning while it comes in from behind the caller and pushes over into a 22-degree dive, then
   // 60 rounds walked down a 120 m lane in 2 s at 150 m/s, opening fire 200 m over the mark (about 530 m slant to the
@@ -274,23 +292,23 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   // each round whose station has an enemy hull within 6 m along the lane is laid on that hull's deck behind its turret
   // (snapAlongM; sim/airSupportFire.ts). Measured (strafeEffect.selftest): a BMP-2 in the lane 0 -> 84 % of its hull lost,
   // an M1A1 0 -> 17 % with its engine struck
-  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 200, speedMps: 150,
+  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitMarginM: 0.5, altitudeM: 200, speedMps: 150,
     lengthM: 120, halfWidthM: 12, rounds: 60, fireS: 2, spreadM: 1.5, diveDeg: 22, snapAlongM: 6 }),
   // the GBU-12 from a fast jet: a 7 s laser warning while it comes in high and pushes over into a 40-degree dive at
   // 180 m/s; released 350 m over the mark (about 375 m short of it: the bomb's forward throw), it falls 2.7 s and arrives
   // at about 46 degrees; it lands within 8 m of the spot along the run and 2 m across it
-  bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitRadiusM: 8, altitudeM: 350, speedMps: 180,
+  bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitMarginM: 0.5, altitudeM: 350, speedMps: 180,
     radiusM: 22, diveDeg: 40, missAlongM: 8, missAcrossM: 2 }),
   // the Maverick run (air-support-275: "i need one where theres a jet firing missiles"): an F-16-class fighter, 6 s of
   // warning while it comes in and pushes over into a 12-degree dive at 220 m/s whose line runs through the mark; four
   // AGM-65s off alternate rails 0.6 s apart, the first from 270 m up (1.3 km slant, a 4 s flight), each onto one of the
   // side's spotted enemies within 45 m of the mark; the last leaves 0.9 km out, then the pull-out and the egress
-  missile: Object.freeze({ cost: 550, cooldownS: 100, warningS: 6, hp: 500, hitRadiusM: 7, altitudeM: 270, speedMps: 220,
+  missile: Object.freeze({ cost: 550, cooldownS: 100, warningS: 6, hp: 500, hitMarginM: 0.5, altitudeM: 270, speedMps: 220,
     radiusM: 45, diveDeg: 12, missiles: 4, everyS: 0.6 }),
   // the AC-130: 8 s inbound along a line tangent to its ring, slowing from 110 to 42 m/s, then 30 s on a 140 m left-hand
   // pylon turn 180 m over the mark (the pivotal altitude of 42 m/s: v^2/g = 180 m, so its 52-degree bank lays the guns'
   // line on the mark), engaging only the enemies its side has spotted inside the ring with the gunship's 30 mm and 152 mm
-  gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
+  gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitMarginM: 0.75, altitudeM: 180, speedMps: 42,
     radiusM: 140, orbitS: 30, inboundMps: 110, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
   // the jets: a 2.5 g push-over, a 5 g pull-out, a 20-degree climb away, 1 s settled in the dive, a 60-degree bank in an
   // 8 s egress turn, then 6 s out accelerating at 8 m/s^2

@@ -13,13 +13,15 @@
  * modes never load it. Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import * as THREE from 'three';
-import { AIR_SUPPORT_RULES, airStrikeFlies } from '../sim/matchRuleset.ts';
+import { AIR_CRASH_RULES, AIR_SUPPORT_RULES, airStrikeFlies } from '../sim/matchRuleset.ts';
+import { AIRFRAME_BOXES, airframeOf, fromAirframe, fromAirframeDir, seatWreck as seatWreckFrame, toAirframe, wreckAttitude, wreckBreak,
+  type AircraftWreck } from '../sim/airframeVolumes.ts';
 import { strikeDangerS } from '../sim/airSupport.ts';
 import { strikeCallBlocker } from '../sim/strikeCall.ts';
 import type { AirSupportView } from '../sim/airSupport.ts';
 import { BOMB_GRAVITY_MPS2, bombReleaseOffsetS, crashFall, missileLaunchOffsetS, runExitS, runFootprint, runMuzzle, runPose, runVelocity,
   type RunPose, type StrikeFootprint } from '../sim/strikeRuns.ts';
-import { crashedStrikes, releasedBombs } from './airSupportBridge.ts';
+import { aircraftHits, crashedStrikes, releasedBombs } from './airSupportBridge.ts';
 import { buildStrikeJetAirframe, type BuiltStrikeJet } from './strikeJetAirframe.ts';
 import { buildFighterJetAirframe, type BuiltFighterJet } from './fighterJetAirframe.ts';
 import { gunshipModelRoot, hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
@@ -29,7 +31,7 @@ import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
 import { killcamStage } from './killcamStage.ts';
 import { createAircraftStreaks, type AircraftStreaks } from './aircraftStreaks.ts';
-import { paintTeamTrim } from './airframeParts.ts';
+import { paintTeamTrim, weatherAirframe, type AirframeTear } from './airframeParts.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
 export interface AircraftFxPort {
@@ -37,6 +39,9 @@ export interface AircraftFxPort {
   smoke(x: number, y: number, z: number, intensity: number): void;
   /** A downed aircraft bursting where it meets the ground. */
   crash(x: number, y: number, z: number): void;
+  /** (aircraft-solid-277) A round striking an airframe at a point on its skin facing (nx, ny, nz): sparks off the metal,
+   *  a burst for an explosive round or a drone's warhead. */
+  hit?(x: number, y: number, z: number, nx: number, ny: number, nz: number, caliberMm: number, explosive: boolean): void;
 }
 
 interface AirSupportWorldOptions {
@@ -60,35 +65,34 @@ interface Craft { kind: 'jet' | 'gunship'; root: THREE.Object3D; jet: BuiltStrik
   smokedAt: number; crashed: boolean;
   /** (air-crash-he-276) its wreck on the ground: when it came down (presentation time; null while it flies or falls), the
    *  crash point, and the drawn ground under it when it was last seated (a crater dug after it re-seats it). */
-  wreckAt: number | null; wreckX: number; wreckY: number; wreckZ: number; wreckGround: number }
+  wreckAt: number | null; wreckX: number; wreckY: number; wreckZ: number; wreckGround: number;
+  /** (aircraft-solid-277) the sim's wreck record this wreck was posed by (null: posed by the same law locally, until the
+   *  record arrives), whether a view has listed it, its tear, and the scorch its damage state shows. */
+  wreckRecord: AircraftWreck | null; wreckListed: boolean; tear: AirframeTear | null; soot: number }
 
 const R = AIR_SUPPORT_RULES;
 /** (air-crash-he-276; the owner: "plane wrecks and so on should leave the biggest craters and actual wrecks") A crashed
- *  airframe stays where it came down, nosed into its crater and burning, this long (s), at most WRECK_MAX at once. */
-const WRECK_S = 75;
-const WRECK_MAX = 4;
+ *  airframe stays where it came down, nosed into its crater and burning, for the sim's wreck life, at most its cap at once
+ *  (aircraft-solid-277: the wreck is the sim's solid, sim/airframeVolumes.ts; drawn where its record lies). */
+const WRECK_S = AIR_CRASH_RULES.wreck.lifeS;
+const WRECK_MAX = AIR_CRASH_RULES.wreck.max;
 /** A wreck's smoke: thick at first, thinning to a smoulder over the wreck's time. */
 const WRECK_SMOKE_EVERY_S = 0.18;
-/** A wreck rests on its belly or its back, leaning at most this far (rad) from either. */
-const WRECK_LEAN_RAD = 0.3;
+/** A struck aircraft's scorch by its damage state: past a third of its hit points lost, and past two thirds. */
+const DAMAGE_SOOT = [0, 0.35, 0.7] as const;
+/** A burned skin's finish: matte, its metal under soot. */
+const WRECK_ROUGHNESS = 0.94, WRECK_METALNESS = 0.06;
+
+/** The wreck's tear in its airframe's frame, from the sim's break (sim/airframeVolumes.ts wreckBoxes: the same cut). */
+function tearOf(kind: PublicStrike['kind'], id: number): AirframeTear {
+  const boxes = AIRFRAME_BOXES[airframeOf(kind)], brk = wreckBreak(id);
+  const wing = boxes.find((b) => b.role === 'wing')!.b, body = boxes.find((b) => b.role === 'fuselage')!.b;
+  const half = Math.max(-wing[0], wing[3]), length = body[5] - body[2];
+  const noseZ = body[5] - length * brk.noseFrac;
+  return { wing: brk.wing, tearX: half * brk.tipFrac, bodyHalfX: Math.max(-body[0], body[3]), tipZ: body[5], noseZ, crumpleFromZ: noseZ - 1 };
+}
 /** The standable tops a wreck may rest on reach this far above where it came down (m): a hull's step-up. */
 const WRECK_CEILING_M = SUPPORT_STEP_UP_M;
-
-/** The lowest drawn vertex of `body` in the world, into `out`; false when it draws nothing. */
-function lowestPoint(body: THREE.Object3D, out: THREE.Vector3): boolean {
-  body.updateMatrixWorld(true);
-  let low = Infinity;
-  body.traverseVisible((o) => {
-    const mesh = o as THREE.Mesh;
-    const position = mesh.isMesh ? mesh.geometry?.attributes?.position : null;
-    if (!position) return;
-    for (let i = 0; i < position.count; i++) {
-      _w.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
-      if (_w.y < low) { low = _w.y; out.copy(_w); }
-    }
-  });
-  return low < Infinity;
-}
 
 /**
  * The lowest drawn point of `body` against the ground under it: min over its drawn vertices of (y - ground(x, z)). Every
@@ -136,7 +140,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const anchor = new THREE.Group();
       anchor.name = `air-support gunship ${strike.id}`;
       root.add(anchor);
-      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'gunship', anchor.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'gunship', anchor.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     } else if (strike.kind === 'bomb' || strike.kind === 'missile') {
       // the fighter: the bomber carries its two GBU-12s (it drops the port one), the Maverick run its four missiles
       const fighter = buildFighterJetAirframe(hooks);
@@ -144,14 +148,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       for (const bomb of fighter.bombs) bomb.visible = strike.kind === 'bomb';
       for (const missile of fighter.missiles) missile.visible = strike.kind === 'missile';
       root.add(fighter.root);
-      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, streaks: createAircraftStreaks(root, 'fighter', fighter.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, streaks: createAircraftStreaks(root, 'fighter', fighter.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     } else {
       const jet = buildStrikeJetAirframe(hooks);
       jet.root.name = `air-support jet ${strike.id}`;
       // the recon jet and the strafer carry no bombs
       for (const bomb of jet.bombs) bomb.visible = false;
       root.add(jet.root);
-      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'strike', jet.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0 };
+      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'strike', jet.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     }
     crafts.set(strike.id, craft);
     return craft;
@@ -230,28 +234,29 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     return dt < 12;
   }
 
-  /** The airframe comes to rest where it crashed: nosed down into its crater, on its belly or its back as its roll left
-   *  it (never stood on a wingtip), its props still, the point it ploughed in with (its lowest) over the crash point at the
-   *  crater's heart, and that point on the drawn ground (seatWreck). */
-  function settleWreck(craft: Craft, t: number): void {
+  /** The airframe comes to rest where it crashed, as the sim lays its wreck (sim/airframeVolumes.ts: one law, so the drawn
+   *  wreck is the solid the hulls meet): nosed down into its crater, on its belly or its back as its roll left it, its
+   *  lowest point over the crash point at the crater's heart; burned and torn (its wing short at its tear, its nose
+   *  crumpled), its markings still its side's; then seated on the drawn ground (seatWreck). Posed by the sim's record once
+   *  the view carries it (placeWreck). */
+  function settleWreck(strike: PublicStrike, craft: Craft, t: number, record: AircraftWreck | null): void {
     craft.streaks.hide();
     craft.wreckAt = t; craft.wreckX = pose.x; craft.wreckY = pose.y; craft.wreckZ = pose.z;
-    const pitch = Math.max(-0.7, Math.min(-0.25, pose.pitch));
-    // the roll folded to the nearer of upright and inverted, keeping a lean of at most WRECK_LEAN_RAD
-    const roll = Math.atan2(Math.sin(pose.bank), Math.cos(pose.bank)), rest = Math.abs(roll) < Math.PI / 2 ? 0 : Math.PI;
-    const lean = Math.atan2(Math.sin(roll - rest), Math.cos(roll - rest));
-    const bank = rest + Math.max(-WRECK_LEAN_RAD, Math.min(WRECK_LEAN_RAD, lean));
-    if (craft.kind === 'gunship') {
-      _p.set(pose.x, pose.y, pose.z);
-      syncGunshipVisual(craft.root, _p, pose.yaw, 0, true, null, bank, pitch);
-    } else {
-      craft.root.position.set(pose.x, pose.y, pose.z);
-      craft.root.rotation.set(-pitch, pose.yaw, bank, 'YXZ');
-      if (craft.dropped) craft.dropped.visible = false;
-    }
+    if (craft.dropped) craft.dropped.visible = false;
+    craft.tear = tearOf(strike.kind, strike.id);
     const body = wreckBody(craft);
-    if (body && lowestPoint(body, _v)) { body.position.x += pose.x - _v.x; body.position.z += pose.z - _v.z; }
-    seatWreck(craft);
+    if (body) { weatherAirframe(body, 1, craft.tear); burnFinish(body); }
+    if (record) placeWreck(craft, record);
+    else {
+      // the sim's law where the record has not arrived yet (a networked client's next snapshot)
+      const local = _local;
+      local.id = strike.id; local.kind = strike.kind;
+      wreckAttitude(R, strike, strike.downedS ?? t, t, local);
+      seatWreckFrame(airframeOf(strike.kind), wreckBreak(strike.id), local, pose.x,
+        options.groundHeight?.(pose.x, pose.z, pose.y + WRECK_CEILING_M) ?? pose.y, pose.z, local,
+        options.groundHeight ? (x, z) => options.groundHeight!(x, z, pose.y + WRECK_CEILING_M) : null);
+      poseWreck(craft, local);
+    }
     // the oldest wrecks go first past WRECK_MAX
     let wrecks = 0, oldestId = -1, oldestAt = Infinity;
     for (const [id, other] of crafts) {
@@ -260,6 +265,35 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       if (other.wreckAt < oldestAt) { oldestAt = other.wreckAt; oldestId = id; }
     }
     if (wrecks > WRECK_MAX && oldestId >= 0) release(oldestId, crafts.get(oldestId)!);
+  }
+  /** A wreck's skin burned matte: its airframe's own material (one per airframe, the same program: two uniforms) loses
+   *  its sheen, so the char reads as soot rather than as the sky it mirrored. */
+  function burnFinish(body: THREE.Object3D): void {
+    body.traverse((o) => {
+      const material = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).material as THREE.MeshStandardMaterial : null;
+      if (material?.isMeshStandardMaterial && material.vertexColors) { material.roughness = WRECK_ROUGHNESS; material.metalness = WRECK_METALNESS; }
+    });
+  }
+  const _local: AircraftWreck = { id: 0, kind: 'strafe', team: 'alpha', x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0, atS: 0, untilS: 0 };
+
+  /** The wreck's frame at a wreck pose, then seated on the drawn ground. */
+  function poseWreck(craft: Craft, wreck: AircraftWreck): void {
+    if (craft.kind === 'gunship') {
+      _p.set(wreck.x, wreck.y, wreck.z);
+      syncGunshipVisual(craft.root, _p, wreck.yaw, 0, true, null, wreck.bank, wreck.pitch);
+    } else {
+      craft.root.position.set(wreck.x, wreck.y, wreck.z);
+      craft.root.rotation.set(-wreck.pitch, wreck.yaw, wreck.bank, 'YXZ');
+    }
+    craft.wreckX = wreck.x; craft.wreckZ = wreck.z;
+    seatWreck(craft);
+  }
+
+  /** The sim's record of the wreck: posed where it lies (once; it never moves). */
+  function placeWreck(craft: Craft, record: AircraftWreck): void {
+    if (craft.wreckRecord && craft.wreckRecord.atS === record.atS && craft.wreckRecord.x === record.x) return;
+    craft.wreckRecord = record;
+    poseWreck(craft, record);
   }
 
   /** The wreck's drawn airframe: the gunship's model (gunshipVisual.ts keeps it beside its anchor), else the jet's root. */
@@ -283,6 +317,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
   function burnWreck(craft: Craft, t: number): boolean {
     const age = t - craft.wreckAt!;
     if (age > WRECK_S || age < 0) return false;
+    // (aircraft-solid-277) the sim's wreck: gone with its record (its life out, or the oldest past the cap)
     const under = options.groundHeight?.(craft.wreckX, craft.wreckZ, craft.wreckY + WRECK_CEILING_M);
     if (under != null && Math.abs(under - craft.wreckGround) > 0.005) seatWreck(craft);
     if (t - craft.smokedAt >= WRECK_SMOKE_EVERY_S) {
@@ -306,6 +341,32 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     if (t - craft.smokedAt < (strike.downedS != null ? 0.05 : 0.085)) return;
     craft.smokedAt = t;
     fxPort.smoke(pose.x, pose.y, pose.z, strike.downedS != null ? 1 : Math.min(1, 0.25 + hurt));
+  }
+
+  /** (aircraft-solid-277) A struck aircraft's damage state: its skin scorched more the less of it is left. */
+  function sootOf(strike: PublicStrike): number {
+    const hurt = strike.maxHp > 0 ? 1 - strike.hp / strike.maxHp : 0;
+    return strike.downedS != null || hurt >= 2 / 3 ? DAMAGE_SOOT[2] : hurt >= 1 / 3 ? DAMAGE_SOOT[1] : DAMAGE_SOOT[0];
+  }
+
+  /** (aircraft-solid-277) The rounds that struck this aircraft since the last frame (airSupportBridge.ts aircraftHits):
+   *  each drawn on the airframe where it struck it, carried from the sim's pose at the hit to the drawn pose now (a
+   *  networked viewer draws the aircraft a little behind its host), as sparks off the metal or a burst. */
+  function strikeHits(strike: PublicStrike, craft: Craft): void {
+    const fxPort = options.aircraftFx;
+    if (!fxPort?.hit || !aircraftHits.length || !craft.root.visible) return;
+    for (const hit of aircraftHits) {
+      if (hit.strikeId !== strike.id) continue;
+      runPose(R, strike, hit.atS, _hitPose);
+      _hp.x = hit.x; _hp.y = hit.y; _hp.z = hit.z;
+      toAirframe(_hitPose, _hp, _hl);
+      fromAirframe(pose, _hl, _hp);
+      // the face's normal, from the frame at the hit to the frame now
+      _hp2.x = hit.nx; _hp2.y = hit.ny; _hp2.z = hit.nz;
+      toAirframe({ x: 0, y: 0, z: 0, yaw: _hitPose.yaw, pitch: _hitPose.pitch, bank: _hitPose.bank }, _hp2, _hl);
+      fromAirframeDir(pose, _hl, _hp2);
+      fxPort.hit(_hp.x, _hp.y, _hp.z, _hp2.x, _hp2.y, _hp2.z, hit.caliberMm, hit.explosive);
+    }
   }
 
   /** The Maverick run's missiles: each gone from its rack once its launch has come (sim/airSupportFire.ts launch order). */
@@ -340,7 +401,8 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       // banked into its pylon turn (the run's bank: the left wing down on the mark)
       syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye, pose.bank, pose.pitch);
       const model = gunshipModelRoot(craft.root);
-      if (model) { paintTeamTrim(model, side); craft.streaks.update(model, t, side, eye); } else craft.streaks.hide();
+      if (model) { paintTeamTrim(model, side); weatherAirframe(model, sootOf(strike)); craft.streaks.update(model, t, side, eye); }
+      else craft.streaks.hide();
       return;
     }
     craft.root.position.set(pose.x, pose.y, pose.z);
@@ -348,6 +410,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     // for a positive x) and its bank in the turns
     craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
     paintTeamTrim(craft.root, side);
+    weatherAirframe(craft.root, sootOf(strike));
     craft.streaks.update(craft.root, t, side, eye);
     // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
     const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
@@ -409,7 +472,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       if (!flying) {
         // its burst where it met the ground, once (fallPose left its pose there), and its wreck stays there
         const fallen = strike.downedS != null ? crafts.get(strike.id) : undefined;
-        if (fallen) { damageFx(strike, fallen, t, false); settleWreck(fallen, t); }
+        if (fallen) { damageFx(strike, fallen, t, false); settleWreck(strike, fallen, t, wreckRecordOf(air, strike.id)); }
         continue;
       }
       if (strike.downedS == null) runPose(R, strike, t, pose);
@@ -417,12 +480,20 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       craft.seen = true;
       damageFx(strike, craft, t, true);
       poseCraft(strike, craft, t, mine ? own : enemy);
+      strikeHits(strike, craft);
     }
     // a wreck burns where it came down (its record may be gone); an aircraft no record holds any more is gone
     for (const [id, craft] of crafts) {
-      if (craft.wreckAt != null) { if (!burnWreck(craft, t)) release(id, craft); continue; }
+      if (craft.wreckAt != null) {
+        const record = wreckRecordOf(air, id);
+        if (record) { craft.wreckListed = true; placeWreck(craft, record); }
+        // a wreck the sim no longer lists (its life out, or past the cap) is gone; one it has not listed yet stands
+        if ((craft.wreckListed && !record) || !burnWreck(craft, t)) release(id, craft);
+        continue;
+      }
       if (!craft.seen) release(id, craft);
     }
+    aircraftHits.length = 0;
     aimMark(air);
     if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
@@ -432,6 +503,15 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     dispose(): void { for (const [id, craft] of crafts) release(id, craft); clearStrikeMarks(); },
   };
 }
+/** The sim's wreck record of strike `id` in the view (null: not listed). */
+function wreckRecordOf(air: AirSupportView, id: number): AircraftWreck | null {
+  const list = air.wrecks;
+  if (!list) return null;
+  for (const wreck of list) if (wreck.id === id) return wreck;
+  return null;
+}
+const _hitPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+const _hp = { x: 0, y: 0, z: 0 }, _hp2 = { x: 0, y: 0, z: 0 }, _hl = { x: 0, y: 0, z: 0 };
 const AIM_SHAPE = Object.freeze({ circle: 'aim-circle', lane: 'aim-lane', orbit: 'aim-orbit', track: 'aim-track' } as const);
-const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _p = new THREE.Vector3(), _eye = new THREE.Vector3(), _b0 = new THREE.Vector3(), _bv = new THREE.Vector3();
+const _v = new THREE.Vector3(), _p = new THREE.Vector3(), _eye = new THREE.Vector3(), _b0 = new THREE.Vector3(), _bv = new THREE.Vector3();
 const _bombPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };

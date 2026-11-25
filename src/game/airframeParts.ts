@@ -172,21 +172,130 @@ export function roundel(parts: Parts, centre: THREE.Vector3, normal: THREE.Vecto
   parts.asTrim(() => rod(parts, centre.clone().addScaledVector(n, -0.02), n, r * 0.68, 0.06, INSIGNIA, 24));
 }
 
-const PAINT_TEAM = 'paintTeam';
-/** Make `geometry`'s team trim (Parts.trim) paintable through `root`: paintTeamTrim(root, colour) writes those vertices'
- *  colour, only when it changes. */
+const PAINT_TEAM = 'paintTeam', WEATHER = 'weatherAirframe';
+/** (aircraft-solid-277) How a wreck broke, in the airframe's frame (the sim's: sim/airframeVolumes.ts wreckBoxes): the
+ *  torn wing's side (+1 the port, -1 the starboard), the span its tear stands at (m from the centre line), and the nose's
+ *  crumpled end (z, m) with the z its crumple begins at. */
+export interface AirframeTear { readonly wing: 1 | -1; readonly tearX: number; readonly noseZ: number; readonly crumpleFromZ: number;
+  /** The drawn nose's tip (z, m): the crumple brings it back to noseZ. */
+  readonly tipZ: number;
+  /** The fuselage's half width: the wing is torn only outboard of it. */
+  readonly bodyHalfX: number }
+
+const SOOT = lin(0x0b0a09), BURNT = lin(0x3a2414), METAL = lin(0x8d9096);
+/** A hash of an integer lattice point into [0, 1). */
+function hash3(x: number, y: number, z: number, seed: number): number {
+  let h = Math.imul(x | 0, 0x8da6b343) ^ Math.imul(y | 0, 0xd8163841) ^ Math.imul(z | 0, 0xcb1ab31f) ^ Math.imul(seed | 0, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+/** Smooth value noise in [0, 1) at (x, y, z) (lattice units). */
+function noise3(x: number, y: number, z: number, seed: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+  const fx = x - ix, fy = y - iy, fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy), sz = fz * fz * (3 - 2 * fz);
+  let out = 0;
+  for (let k = 0; k < 8; k++) {
+    const dx = k & 1, dy = (k >> 1) & 1, dz = (k >> 2) & 1;
+    out += hash3(ix + dx, iy + dy, iz + dz, seed) * (dx ? sx : 1 - sx) * (dy ? sy : 1 - sy) * (dz ? sz : 1 - sz);
+  }
+  return out;
+}
+const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * Make `geometry`'s team trim (Parts.trim) paintable through `root`, and its skin weatherable: paintTeamTrim(root, colour)
+ * writes the trim's colour, weatherAirframe(root, soot, tear) scorches the skin and (a wreck) tears it. Both rewrite the
+ * one colour stream only when what they ask for changes (no second material, no second draw, nothing per frame).
+ */
 export function holdTeamTrim(root: THREE.Object3D, geometry: THREE.BufferGeometry, ranges: readonly number[]): void {
   const attribute = geometry.getAttribute('color') as THREE.BufferAttribute;
-  let painted = -1;
+  const position = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const count = attribute.count;
+  const trim = new Uint8Array(count);
+  for (let i = 0; i < ranges.length; i += 2) trim.fill(1, ranges[i]!, ranges[i]! + ranges[i + 1]!);
+  let clean: Float32Array | null = null, cleanPos: Float32Array | null = null, torn: Uint8Array | null = null;
+  const team = new THREE.Color();
+  let painted = -1, soot = 0, tear: AirframeTear | null = null;
+  const render = (): void => {
+    const a = attribute.array as Float32Array;
+    clean ??= Float32Array.from(a);
+    for (let v = 0; v < count; v++) {
+      const o = v * 3;
+      const isTrim = trim[v] === 1;
+      let r = isTrim && painted >= 0 ? team.r : clean[o]!, g = isTrim && painted >= 0 ? team.g : clean[o + 1]!, b = isTrim && painted >= 0 ? team.b : clean[o + 2]!;
+      if (soot > 0) {
+        const src = cleanPos ?? (position.array as Float32Array);
+        const px = src[o]!, py = src[o + 1]!, pz = src[o + 2]!;
+        const n = noise3(px * 0.45, py * 0.45, pz * 0.45, 7);
+        // a panel's own tone: each triangle a shade apart, the skin's riveted plates
+        const panel = (hash3(Math.floor(v / 3), 0, 0, 3) - 0.5) * (tear ? 0.2 : 0.08);
+        let char: number;
+        if (tear) {
+          // the wreck: burned over, darkest where the fire was (the nose that ploughed in, round the engines)
+          char = Math.min(0.95, 0.62 + 0.36 * n + (pz > tear.crumpleFromZ - 3 ? 0.15 : 0));
+        } else {
+          // in flight: scorch patches that grow with the damage
+          char = Math.max(0, Math.min(1, (n - (1 - soot)) / 0.22)) * 0.85;
+        }
+        // the markings keep the side legible on any wreck (a scorched, never a blackened, roundel)
+        if (isTrim) char = Math.min(char, 0.38);
+        r = mix(r, SOOT[0]!, char); g = mix(g, SOOT[1]!, char); b = mix(b, SOOT[2]!, char);
+        if (tear && !isTrim) {
+          // blistered paint gone brown, and bare metal where the skin scraped or tore
+          const blister = noise3(px * 1.3, py * 1.3, pz * 1.3, 11);
+          if (blister > 0.62) { const k = Math.min(1, (blister - 0.62) * 3); r = mix(r, BURNT[0]!, k); g = mix(g, BURNT[1]!, k); b = mix(b, BURNT[2]!, k); }
+          const scrape = noise3(px * 3.1, py * 3.1, pz * 3.1, 19);
+          const metal = torn![v] ? 0.85 : scrape > 0.8 ? (scrape - 0.8) * 3.5 : 0;
+          if (metal > 0) { r = mix(r, METAL[0]!, metal); g = mix(g, METAL[1]!, metal); b = mix(b, METAL[2]!, metal); }
+        }
+        r = Math.max(0, r * (1 + panel)); g = Math.max(0, g * (1 + panel)); b = Math.max(0, b * (1 + panel));
+      }
+      a[o] = r; a[o + 1] = g; a[o + 2] = b;
+    }
+    attribute.needsUpdate = true;
+  };
+  /** The wreck's torn wing and crumpled nose, moved in the clean positions' copy (kept, so the tear is applied once). */
+  const tearSkin = (cut: AirframeTear): void => {
+    const p = position.array as Float32Array;
+    cleanPos ??= Float32Array.from(p);
+    torn = new Uint8Array(count);
+    const span = cut.crumpleFromZ, squash = Math.max(0.05, (cut.noseZ - span) / Math.max(0.01, cut.tipZ - span));
+    for (let v = 0; v < count; v++) {
+      const o = v * 3;
+      let x = cleanPos[o]!, y = cleanPos[o + 1]!, z = cleanPos[o + 2]!;
+      const outboard = x * cut.wing;
+      // the torn wing ends at a ragged line (each torn vertex short of it by its own jag)
+      if (outboard > cut.tearX && outboard > cut.bodyHalfX) {
+        const jag = hash3(Math.round(z * 4), Math.round(y * 8), 0, 23) * 0.45;
+        x = cut.wing * (cut.tearX - jag);
+        y -= 0.15 + jag * 0.4;
+        torn[v] = 1;
+      }
+      // the nose, crushed back into the fuselage behind it and folded
+      if (z > span) {
+        const into = Math.min(1, (z - span) / Math.max(0.01, cut.tipZ - span));
+        z = span + (z - span) * squash;
+        x *= 1 - 0.18 * into; y = y * (1 - 0.18 * into) - 0.25 * into;
+        if (into > 0.35) torn[v] = 1;
+      }
+      p[o] = x; p[o + 1] = y; p[o + 2] = z;
+    }
+    position.needsUpdate = true;
+    geometry.computeBoundingSphere();
+  };
   root.userData[PAINT_TEAM] = (colour: THREE.Color): void => {
     const key = colour.getHex();
     if (key === painted) return;
     painted = key;
-    const a = attribute.array as Float32Array;
-    for (let i = 0; i < ranges.length; i += 2) {
-      for (let v = ranges[i]!, end = v + ranges[i + 1]!; v < end; v++) { a[v * 3] = colour.r; a[v * 3 + 1] = colour.g; a[v * 3 + 2] = colour.b; }
-    }
-    attribute.needsUpdate = true;
+    team.copy(colour);
+    render();
+  };
+  root.userData[WEATHER] = (level: number, cut: AirframeTear | null): void => {
+    if (level === soot && cut === tear) return;
+    if (cut && !tear) tearSkin(cut);
+    soot = level; tear = cut ?? tear;
+    render();
   };
 }
 /** Paint the airframe under `root` (one holdTeamTrim made paintable) in `colour`; false when it has no team trim. */
@@ -194,5 +303,13 @@ export function paintTeamTrim(root: THREE.Object3D, colour: THREE.Color): boolea
   const paint = root.userData[PAINT_TEAM] as ((colour: THREE.Color) => void) | undefined;
   if (!paint) return false;
   paint(colour);
+  return true;
+}
+/** (aircraft-solid-277) Weather the airframe under `root`: `soot` 0..1 its scorch (a struck aircraft's damage state), and
+ *  with `tear` its wreck (burned, blistered, its torn wing and crumpled nose bare metal). False without a skin. */
+export function weatherAirframe(root: THREE.Object3D, soot: number, tear: AirframeTear | null = null): boolean {
+  const weather = root.userData[WEATHER] as ((level: number, cut: AirframeTear | null) => void) | undefined;
+  if (!weather) return false;
+  weather(soot, tear);
   return true;
 }
