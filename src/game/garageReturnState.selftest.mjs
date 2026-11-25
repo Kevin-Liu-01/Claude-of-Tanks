@@ -998,7 +998,7 @@ function battleStartEffects(page) {
     settingsSource.slice(phaseAt + 1, settingsSource.indexOf('\n    });', phaseAt) + 8),
     line(settingsSource, "    bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });"),
   ], {
-    bus, updateGear() {}, hideResumeVeil() {}, hideHints() {},
+    bus, updateGear() {}, hideHints() {}, applyPendingLocale() {},
     battleUiVisibility: { setBattle: (battle) => { state.battleSettings = battle; } },
   }, 'null');
   return {

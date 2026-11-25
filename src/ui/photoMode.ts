@@ -231,7 +231,8 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
     });
   };
   // busy while the PNG encodes (the frame itself is read at once): Save is disabled and says so; a failure is the
-  // kit's error toast, with a retry
+  // kit's error toast, and Save, enabled again, is the way to try once more (no notice offers a Retry: the kit's rule,
+  // components/loadFailure.selftest.mjs)
   const setBusy = (on: boolean): void => {
     if (!save) return;
     save.disabled = on;
@@ -242,8 +243,7 @@ export function openPhotoMode(host: PhotoModeHost): () => void {
       if (openClose !== close) return;
       // its own region at the top, clear of the bar, which photo mode's sheet leaves showing (.cot-photo-notices)
       noticeRegion('photo', { className: 'cot-photo-notices', placement: 'top' });
-      failure = notify({ id: 'cot-photo-save', region: 'photo', severity: 'error', text: t('photo.saveFailed'),
-        retry: () => saveStill() });
+      failure = notify({ id: 'cot-photo-save', region: 'photo', severity: 'error', text: t('photo.saveFailed') });
     }, () => {});
   };
   save?.addEventListener('click', () => {

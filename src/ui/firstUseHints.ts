@@ -13,6 +13,7 @@
  * keyPrompt.ts's prompts: the bound key or button, or on touch the tile, lit on the HUD while the hint shows.
  * Event-driven: the bus's moments, and a 400 ms step only while a hint shows or waits.
  */
+import { hintSeenKey } from './firstUseHintRecord.ts';
 import type { ActionId } from '../game/input.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
 import { currentBattleScope } from '../game/battleScope.ts';
@@ -81,7 +82,7 @@ const HINTS: Readonly<Record<HintId, HintDef>> = {
     actions: { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' }, picture: () => abilityPicture('modeAc130'), keyboardOnly: true },
 };
 
-const SEEN_KEY = (id: HintId) => `cot.hint.${id}.v1`;
+const SEEN_KEY = (id: HintId): string => hintSeenKey(id);
 const TICK_MS = 400;
 /** A hit's or a kill's toast is combat while it is this fresh. */
 const COMBAT_SELECTORS = '.cot-sixth.on,.cot-alert.show,.cot-si-toasthost>:not([hidden])';

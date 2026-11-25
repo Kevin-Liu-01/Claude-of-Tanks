@@ -106,7 +106,6 @@ export function createMobileBattleInputAccess<
     throw new TypeError('mobile battle input access requires every lifecycle port');
   }
 
-  let soundMuted = false;
   let autoAim: MobileAutoAimRuntime | null = null;
   let pending: Promise<TouchControlsRuntime | null> | null = null;
   const touch = createTouchAccess({
@@ -114,10 +113,13 @@ export function createMobileBattleInputAccess<
     bus,
     isBattleActive,
     onOpenSettings: openSettings,
+    // (settings-unify-278) the quick mute is Settings › Sound › Mute all: one kept value, read and written here
+    soundMuted: () => input.getSettings().muteAll,
     onToggleSound: () => {
-      soundMuted = !soundMuted;
-      setSoundMuted(soundMuted);
-      return soundMuted;
+      const muted = !input.getSettings().muteAll;
+      input.setSetting('muteAll', muted);
+      setSoundMuted(muted);
+      return muted;
     },
     isSniper: () => getPlayer()?.aerial?.kind==='gunship' || isSniper(),
     getFlightKind: () => {const flight=getPlayer()?.aerial;return flight?.active?flight.kind:undefined;},

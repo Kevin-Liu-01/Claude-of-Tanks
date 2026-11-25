@@ -51,7 +51,7 @@
  *                            a frame over --black-frac near-black but under it is a 'suspect'
  *   --real-esc               Esc as a player's: the pointer locked by a real click on the canvas, Esc sent through CDP
  *                            Input.dispatchKeyEvent (the browser's unlock gesture: pointerlockchange, then the game's
- *                            panel or resume veil), RESUME clicked, the pointer locked again; the lock states are recorded
+ *                            paused panel), RESUME clicked, the pointer locked again; the lock states are recorded
  *   --real-focus             no Document.prototype.hasFocus override: the window leaves and returns through a second
  *                            tab brought to the front (CDP Page.bringToFront), as the frame scheduler sees a real blur
  *   --gldiag                 ?gldiag=1: the guard's per-pass GL error watch after every resolution change (P8)
@@ -152,12 +152,11 @@ async function cdpKey(page, key = 'Escape', code = 'Escape', vk = 27) {
     await bounded(cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk }), callTimeoutMs, `${key} up`);
   } finally { await bounded(cdp.detach(), 5000, 'detach').catch(() => {}); }
 }
-/** After a perturbation: a pause panel or resume veil left open is closed the way a player does (RESUME / a click). */
+/** After a perturbation: a pause panel left open is closed the way a player does (RESUME). */
 async function ensureResumed(page) {
   const st = await bounded(page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-close'); return !!b && b.offsetParent !== null; })(),
-    veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on'), locked: !!document.pointerLockElement })), callTimeoutMs, 'resume state').catch(() => null);
+    locked: !!document.pointerLockElement })), callTimeoutMs, 'resume state').catch(() => null);
   if (st?.resume) { try { await bounded(page.click('.cot-set-close'), callTimeoutMs, 'RESUME'); } catch { await bounded(page.evaluate(() => document.querySelector('.cot-set-close')?.click()), callTimeoutMs, 'RESUME').catch(() => {}); } await sleep(400); }
-  else if (st?.veil) { await bounded(page.mouse.click(vw / 2, vh / 2), callTimeoutMs, 'veil click').catch(() => {}); await sleep(400); }
   return st;
 }
 let entryCdp = null;
@@ -639,7 +638,7 @@ async function enterAndWait(page, map, row) {
 /** --real-esc: a real click locks the pointer, CDP sends the browser's Esc (the unlock gesture), RESUME relocks. */
 async function realEscape(page, dwellS = pauseS) {
   const lockState = () => page.evaluate(() => ({ locked: !!document.pointerLockElement, focus: document.hasFocus(), hidden: document.hidden,
-    settings: !!document.querySelector('.cot-settings.open'), veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on') }));
+    settings: !!document.querySelector('.cot-settings.open') }));
   const out = { before: null, afterEsc: null, afterResume: null };
   await page.bringToFront();
   await page.mouse.click(vw / 2, vh / 2);
@@ -653,7 +652,7 @@ async function realEscape(page, dwellS = pauseS) {
   await sleep(400);
   out.afterEsc = await lockState();
   await sleep(Math.max(0, dwellS * 1000 - 400));
-  // RESUME with a trusted click (the panel's own relock), or the click-to-resume veil
+  // RESUME with a trusted click (the panel's own relock), or a canvas click when no panel came up
   const resume = await page.$('.cot-set-close');
   const visible = resume ? await resume.evaluate((b) => b.offsetParent !== null) : false;
   if (visible) await resume.click();

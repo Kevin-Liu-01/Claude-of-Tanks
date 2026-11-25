@@ -11,7 +11,7 @@ try {
   const input = createInput();
   assert.equal(input.getSettings().hideBattleUi, false);
   let blocked = false;
-  const controller = installBattleUiVisibility({hidden:()=>input.getSettings().hideBattleUi,setHidden:v=>input.setSetting('hideBattleUi',v),shortcutsBlocked:()=>blocked});
+  const controller = installBattleUiVisibility({hidden:()=>input.getSettings().hideBattleUi,setHidden:v=>input.setSetting('hideBattleUi',v),shortcutsBlocked:()=>blocked,isShortcut:(code)=>code===input.getBinding('hideBattleUi',0)||code===input.getBinding('hideBattleUi',1)});
   const hidden=()=>classes.has('cot-battle-ui-hidden');
   const key=(extra={})=>window.dispatchEvent(Object.assign(new Event('keydown',{cancelable:true}),{code:'F10',...extra}));
   key(); assert.equal(hidden(),false,'garage shortcut leaves UI available');
@@ -25,6 +25,12 @@ try {
   key();controller.setBattle(false);assert.equal(hidden(),false,'results and garage are visible');
   controller.setBattle(true);assert.equal(hidden(),true,'next battle reapplies preference');
   key();assert.equal(hidden(),false,'keyboard restores UI');
+  // settings-unify-278: the key is the binding: rebound to KeyU, F10 does nothing and U switches
+  input.setBinding('hideBattleUi','KeyU',0);
+  key();assert.equal(hidden(),false,'the old key no longer switches a rebound shortcut');
+  key({code:'KeyU'});assert.equal(hidden(),true,'the rebound key switches it');
+  key({code:'KeyU'});assert.equal(hidden(),false);
+  input.resetBindings();
   key();controller.dispose();assert.equal(hidden(),false);
 } finally { for(const [k,d] of originals) { if(d)Object.defineProperty(globalThis,k,d);else delete globalThis[k]; } }
-console.log('battleUiVisibility: persistence, recovery, menu ownership and phase transitions pass');
+console.log('battleUiVisibility: persistence, recovery, menu ownership, the rebindable key and phase transitions pass');

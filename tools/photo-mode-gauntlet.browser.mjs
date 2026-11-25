@@ -295,7 +295,7 @@ async function shootPage(page, spec, { signal, checkpoint }) {
 
 /** Save a still at 1440x900: a PNG twice the screen. */
 /** Save's states with photo mode open: busy (the PNG's encode held 1.5 s; the frame is still read at the press) and
- *  failed (the canvas reads as nothing: the kit's error toast with a retry, clear of the bar). `tag` names the shots. */
+ *  failed (the canvas reads as nothing: the kit's error toast, clear of the bar, and Save enabled again). `tag` names the shots. */
 const saveState = (page) => page.evaluate(() => {
   const button = document.querySelector('[data-photo-save]');
   return { disabled: button.disabled, ariaBusy: button.getAttribute('aria-busy'),
@@ -342,7 +342,7 @@ function saveStateProblems(where, { busy, after, failed }) {
   const problems = [];
   if (!busy.disabled || busy.ariaBusy !== 'true' || !busy.barShown) problems.push(`${where} save busy ${JSON.stringify(busy)}`);
   if (after && (after.disabled || after.ariaBusy !== 'false')) problems.push(`${where} save still busy ${JSON.stringify(after)}`);
-  if (!failed.shown || !failed.retry || failed.overlapsBar || !failed.inside || !failed.saveEnabled) problems.push(`${where} save failure ${JSON.stringify(failed)}`);
+  if (!failed.shown || failed.retry || failed.overlapsBar || !failed.inside || !failed.saveEnabled) problems.push(`${where} save failure ${JSON.stringify(failed)}`);
   return problems;
 }
 

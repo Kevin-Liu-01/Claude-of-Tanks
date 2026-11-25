@@ -181,7 +181,7 @@ for (const [id, entry] of Object.entries(MOTION)) {
 
 /* 4. the surfaces outside the registry ----------------------------------------------------------------------------- */
 const OUTSIDE = [
-  ['src/ui/settings.ts', 'cot-settings', 'fade'], ['src/ui/settings.ts', 'cot-resume', 'fade'], ['src/ui/settings.ts', 'rz-plate', 'pop'],
+  ['src/ui/settings.ts', 'cot-settings', 'fade'], ['src/ui/settings.ts', 'cot-set-panel', 'rise'],
   ['src/ui/endScreen.ts', 'es-debrief', 'swap'], ['src/ui/playMenu.ts', 'cot-play', 'fade'], ['src/ui/playMenu.ts', 'room', 'swap'],
   ['src/ui/playMenu.ts', 'lobby', 'swap'], ['src/ui/garage.ts', 'cot-deploy-panel', 'swap'], ['src/ui/hud.ts', 'cot-mode-status', 'drop'],
   ['src/ui/hud.ts', 'cot-aim-warning', 'drop'], ['src/ui/hud.ts', 'cot-jump', 'rise'], ['src/ui/multiplayerStatus.ts', 'cot-mp-panel', 'drop'],

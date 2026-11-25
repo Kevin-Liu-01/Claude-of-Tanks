@@ -74,6 +74,8 @@ const KEPT_OFF = {
   scuttle: 'destroying your own tank stays the computer\'s choice, as leaving does (death-flow-275)',
   settingsMenu: 'the top strip\'s pause sends the pause message, Escape\'s toggle',
   perfHud: 'a developer readout',
+  photoMode: 'a picture is framed at the computer (its free camera drags and dollies on the stage); Settings\' Photo mode opens it (photo-mode-271b, settings-unify-278)',
+  hideBattleUi: 'the minimal HUD is the desktop screen\'s own view (settings-unify-278 made its F10 a binding), not a battle action',
   freeCamera: 'its job (hold or toggle aim, free look) is the scope and Look keys',
 };
 const page = readFileSync(new URL('./padPage.ts', import.meta.url), 'utf8');

@@ -36,8 +36,8 @@ for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTIN
 // the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
 // flight action wears the table's glyph, as the HUD's controls row and the Garage do
 // Air Support (air-support-270): the strike view's binoculars (X) join them
-// (death-flow-275) the scuttle (hold Delete) joins them; turbo-spin-275: Turbo (Z) and the air spin; photo mode (P, photo-mode-271) joins them
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 43,
+// (death-flow-275) the scuttle (hold Delete) joins them; turbo-spin-275: Turbo (Z) and the air spin; photo mode (P, photo-mode-271) and Hide battle UI (F10, settings-unify-278) join them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 44,
   'every remappable action has a settings icon');
 for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
@@ -49,10 +49,11 @@ for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entr
 // (mobile-hud-274) the first-use hints' switch joins the interface rows
 // (notices-audit-275) the crew radio's captions join the sound tab's crew card
 // (reload-others-275) the allies' and enemies' reload strips join them
+// (settings-unify-278) Mute all joins the sound tab and the sticks' dead zone the controller card
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes',
   'cameraDistance', 'cameraFov', 'cameraFraming', 'cameraHeight', 'cameraShoulder', 'crewCaptions', 'crewVoice',
-  'foliageSeeThrough', 'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
+  'foliageSeeThrough', 'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'muteAll', 'padDeadzone', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showAllyReload', 'showDebugHud', 'showDirectionalHitValues', 'showEnemyReload', 'showHints', 'showPerfMeter',
   'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
@@ -64,8 +65,12 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
   // (improve-271 plan 028) a preset picked in the same visit as a language switch is applied before the reload
-  assert.match(source, /onChoose: \(item\) => \{\s*if \(!isSupportedLocale\(item\.id\) \|\| item\.id === getLocale\(\)\) return;\s*(?:\/\/[^\n]*\n\s*)*commitGraphics\(\);\s*setLocale\(item\.id\);[\s\S]{0,300}window\.location\.assign\(/,
+  assert.match(source, /if \(item\.id === getLocale\(\)\) return;\s*(?:\/\/[^\n]*\n\s*)*commitGraphics\(\);\s*setLocale\(item\.id\);[\s\S]{0,300}window\.location\.assign\(/,
     'the language switch commits the staged graphics preset before it navigates');
+  // (settings-unify-278) in a battle a language is saved and waits: the Garage's phase switches it, never the battle
+  assert.match(source, /if \(inBattle\) \{\s*(?:\/\/[^\n]*\n\s*)*pendingLocale = item\.id === getLocale\(\) \? null : item\.id;\s*rememberLocale\(item\.id\);/,
+    'a language picked in battle is saved, not switched');
+  assert.match(source, /if \(phase === 'garage'\) applyPendingLocale\(\);/, 'the Garage switches a language the battle saved');
   assert.match(source, /cameraCard\(body\);/, 'the Gameplay tab carries the Camera card');
   for (const key of ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov']) {
     assert.match(source, new RegExp(String.raw`slider\(t\('settings\.camera\.[a-z]+'\), '${key}'`), `${key} is a slider row`);
@@ -102,14 +107,24 @@ const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
 assert.match(armorSvg, /href="#i-armorFlashlight-s"/, 'the armour overlay draws its own glyph (its 16-unit master: item 259)');
 assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries no baked colour');
 
-// (watch-mode-243 follow-up; 247) the pause veil is one plate: its title, Resume, and Settings with the menu's current
-// key, whose cap the touch layout hides (a touch layout taps); no line of instructions, so no em dash
+// (settings-unify-278, Kevin 2026-11-25: "combine the pause modal and settings modal (we take settings modal)") the
+// battle's one pause screen is Settings: no veil, and its footer holds the battle's actions, Resume its one primary
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
-  assert.match(source, /resumeSettingsKey\.textContent = bindLabel\('settingsMenu'\);/,
-    'the veil\'s Settings names the menu\'s bound key when it shows');
-  assert.match(source, /cot-c-btn--primary rz-go">\$\{t\('settings\.pauseResume'\)\}/, 'Resume is the veil\'s one primary');
-  assert.doesNotMatch(source, /settings\.pauseSub/, 'the veil carries no instruction line');
+  assert.doesNotMatch(source, /cot-resume|rz-go|showResumeVeil|hideResumeVeil|inputOwner\.(show|hide)Veil/, 'the click-to-resume veil is gone');
+  assert.match(source, /cot-set-btn resume cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button" hidden>\$\{t\('settings\.pauseResume'\)\}/,
+    'Resume is the footer\'s one primary');
+  assert.match(source, /resumeBtn\.addEventListener\('click', \(\) => api\.close\(\)\);/, 'Resume closes the panel (its relock rides the click)');
+  assert.match(source, /show\(resumeBtn, isGamePaused\(\)\);\n    show\(photoBtn, !!opts\.photo\?\.available\(\)\);\n    show\(leaveBtn, !!\(canLeaveBattle\(\) && onLeaveBattle\)\);/,
+    'Resume shows while the panel pauses a live battle, Photo where a solo battle may open it, Leave while there is a battle to leave');
+  assert.match(source, /if \(document\.hasFocus\(\) && !document\.hidden\) openPanel\(\);\n      else pauseToSettings\('pause'\);/,
+    'a lost page pauses into Settings');
+  assert.match(source, /function relockRefused\(retryInMs: number\): void \{\n    if \(open \|\| !isBattleActive\(\)\) return;\n    pauseToSettings\('relock'\);/,
+    'a refused relock keeps the battle paused in Settings');
+  assert.match(source, /if \(RESETTABLE_TABS\.has\(activeTab\)\) el\('div', 'cot-set-reset-row', body\)\.appendChild\(resetBtn\);/,
+    'each resettable tab ends in its own Reset to defaults');
+  assert.match(source, /const SETTINGS_TABS: readonly SettingsTab\[\] = \['controls', 'gameplay', 'interface', 'sound', 'graphics', 'accessibility'\];/,
+    'six tabs: Interface took Language\'s picker');
   assert.equal(t('settings.pauseResume'), 'Resume');
   // the first battles show the strip at the rollout, and only on a keyboard and mouse; never over the first-game tutorial,
   // which teaches the controls itself (272's tutorial clause, re-pinned at 274.0)
@@ -126,15 +141,11 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   assert.match(source, /hintListeners\.push\(input\.onAction\(action, \(\) => learnHint\(id\)\)\)/, 'a group leaves as its control is pressed');
   assert.match(source, /bus\.on\('ui:playerEngaged', \(\) => fadeHints\(\)\);/, 'the first engagement ends the strip');
   // (2026-11-02 audit F4: the kill-cam latch is the input owner's, battleInputOwner.ts; the panel's handler only clears up)
-  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
-  // the resume veil's hide writes only when the veil is up: updateGear's 150 ms sweep calls it in every state, and a
-  // classList.remove of an absent class still rewrites the attribute (266; the idle census in
-  // tools/hud-self-measure.browser.selftest.mjs fails on any attribute a page at rest keeps rewriting)
-  // (2026-11-02 audit F4: the class is a projection of the input owner's veil, written only when it must change)
-  assert.match(source, /function syncResumeVeil\(\) \{\s*const up = inputOwner\.veil !== null;\s*if \(up !== resume\.classList\.contains\('show'\)\) \{ resume\.classList\.toggle\('show', up\); liftModal\(resume, up\); \}/,
-    'the veil\'s hide is a no-op while the veil is down');
-  assert.match(source, /function hideResumeVeil\(\) \{\s*inputOwner\.hideVeil\(\);\s*syncResumeVeil\(\);/,
-    'the sweep\'s hide goes through the owner and the projection');
+  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*hideHints\(\);/, 'a kill cam ends the strip');
+  // the footer's actions write only on change: updateGear's 150 ms sweep calls the sync while the panel is up, and a
+  // rewritten attribute at rest fails the idle census (266; tools/hud-self-measure.browser.selftest.mjs)
+  assert.match(source, /const show = \(button: HTMLButtonElement, on: boolean\): void => \{ if \(button\.hidden === on\) button\.hidden = !on; \};/,
+    'the footer\'s sync writes only when a button must change');
   assert.match(source, /setInterval\(updateGear, 150\);/, 'the sweep it guards is still the 150 ms one');
   // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
   // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)

@@ -21,7 +21,8 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const settings = read('src/ui/settings.ts');
 const tabs = /type SettingsTab = ([^;]+);/.exec(settings)[1].split('|').map((part) => part.trim().replace(/'/g, ''));
-assert.deepEqual(tabs, ['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'], 'the Settings tabs');
+// (settings-unify-278) Interface took the Language tab's picker and its green
+assert.deepEqual(tabs, ['controls', 'gameplay', 'interface', 'sound', 'graphics', 'accessibility'], 'the Settings tabs');
 
 // 1. one token per category
 const tokens = JSON.parse(read('src/ui/tokens/tokens.json'));

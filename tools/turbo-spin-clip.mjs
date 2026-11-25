@@ -53,7 +53,7 @@ const clearMenus = () => {
   if (!document.getElementById('turbo-spin-clip-veil')) {
     const style = document.createElement('style');
     style.id = 'turbo-spin-clip-veil';
-    style.textContent = '.cot-resume{display:none!important}';
+    style.textContent = '.cot-settings.paused{display:none!important}';
     document.head.append(style);
   }
   return !D.settings?.isOpen?.();

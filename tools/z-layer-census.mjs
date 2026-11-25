@@ -13,7 +13,7 @@
 //     literal, a z token (or an alias of one: --hud-layer-world), a token with a fallback equal to its value, or a step on
 //     one (calc(var(--z-<layer>) + k)) that stays short of the next layer; and a z-index set from script to a computed
 //     value. EXCEPTIONS names the few that are not, each with its reason;
-//   - a modal off the modal layer: every modal row of src/ui/transientSurfaceRegistry.ts, and the pause veil, is in MODALS,
+//   - a modal off the modal layer: every modal row of src/ui/transientSurfaceRegistry.ts is in MODALS,
 //     as `lift` (its root's z-index resolves into [z-modal, z-tip) and its owner puts it in the top layer while open,
 //     src/ui/components/modalLayer.ts liftModal), `dialog` (a native <dialog>.showModal(), the top layer itself) or
 //     `contained` (with the reason it is not);
@@ -41,10 +41,9 @@ export const DYNAMIC = Object.freeze({
   'src/presentation/heroReel.ts': 'the landing\'s reel crossfades its videos inside the hero, which isolates them: each new take one step over the last',
 });
 
-/** Every modal, by its registry id (and the pause veil, which the registry does not name). */
+/** Every modal, by its registry id. */
 export const MODALS = Object.freeze({
-  // the battle's pause: the click-to-resume veil, and Settings, the Esc menu
-  pause: { how: 'lift', file: 'src/ui/settings.ts', selector: '.cot-resume' },
+  // Settings: the Esc menu and the battle's one pause screen (settings-unify-278 retired the click-to-resume veil)
   settings: { how: 'lift', file: 'src/ui/settings.ts', selector: '.cot-settings' },
   // the shared shell (src/ui/modal.ts) and every dialog made with it
   ...Object.fromEntries(['modal', 'garage-technical', 'garage-return-failure', 'battle-entry-failure', 'service-record', 'camo-studio',
@@ -54,13 +53,18 @@ export const MODALS = Object.freeze({
   deploy: { how: 'lift', file: 'src/ui/deploy.css', selector: '.cot-garage .cot-battle-menu.open', owner: 'src/ui/garage.ts' },
   'gallery-drawing': { how: 'contained', reason: 'the Tank Gallery\'s zoomed drawing (its own page, no HUD or warnings): on z-modal at the page\'s root (gallery.css), over the page\'s notices' },
   'garage-dossier': { how: 'contained', reason: 'a folded Garage\'s figures card opened as a sheet over its own stage, inside the Garage screen with its scrim (garage.css garage-panel-scrim): a panel of the screen, not a dialog over it' },
+  // photo mode (photo-mode-271b, shipped in settings-unify-278): its sheet takes the page for the picture
+  ...Object.fromEntries(['photo-battle', 'photo-garage'].map((id) => [id, { how: 'contained', reason: 'photo mode\'s bar stands alone: '
+    + 'its sheet (photoMode.css) hides every top-level element but the stage, the bar and photo mode\'s own notices while it is open, '
+    + 'so no HUD part, warning or menu is drawn for the bar to sit under' }])),
   'studio-commands': { how: 'contained', reason: 'the Studio\'s command palette, inside the Studio authoring tool (studio-pop-z): no battle runs or warns under it' },
   'studio-templates': { how: 'contained', reason: 'the Studio\'s template sheet, inside the Studio authoring tool (studio-pop-z): no battle runs or warns under it' },
   ...Object.fromEntries(['home-trailer', 'docs-archive', 'media-library', 'pad-options', 'media-archive']
     .map((id) => [id, { how: 'dialog', file: { 'home-trailer': 'src/presentation/homePage.ts', 'docs-archive': 'src/docs/docs.ts',
       'media-library': 'src/presentation/mediaLibrary.ts', 'pad-options': 'src/pad/padPage.ts', 'media-archive': 'src/presentation/mediaArchive.ts' }[id] }])),
 });
-const EXTRA_MODALS = new Set(['pause']);
+/** Modals the registry does not name (none since the pause veil went, settings-unify-278). */
+const EXTRA_MODALS = new Set();
 
 /** Every file that puts something in the top layer, and why it may stand over a z-index. */
 export const TOP_LAYER = Object.freeze({

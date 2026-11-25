@@ -49,7 +49,8 @@ const TIERS = { desktop: 'desktop', phone: 'phone', landscape: 'phone' };
 const MODES = { full: 'standard', quick: 'zone_control', card: 'gun_game', strike: 'air_support' };
 
 const shot = async (page, name) => {
-  await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); });
+  // a pause a focus loss raised (Settings paused, settings-unify-278) is resumed before the shot
+  await page.evaluate(() => { const go = document.querySelector('.cot-settings.open .cot-set-btn.resume:not([hidden])'); go?.click(); });
   await page.screenshot({ path: path.join(out, `${name}.png`) });
   receipt.shots.push(name);
 };

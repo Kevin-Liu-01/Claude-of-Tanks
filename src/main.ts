@@ -61,6 +61,8 @@ import {
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { battlePhotoAvailable } from './game/battlePhotoAvailability.ts';
+// (the replay bar's segmented filter and photo mode's bar: the kit is already in the boot chunk with the Garage; the lazy
+// surfaces take it as a port)
 import { keycap, segmented, wireRoving } from './ui/components/components.ts';
 import type { PhotoSubject } from './engine/photoCamera.ts';
 import { closeSurface, openSurface } from './ui/components/surfaceStack.ts';
@@ -276,8 +278,6 @@ import { createReplayRecordingAccess } from './game/replayRecordingAccess.ts';
 import type { RecorderGame, ReplaySetupOptions } from './game/replay/replayRecorder.ts';
 import type { ReplayRecording } from './sim/replayFormat.ts';
 import type { runRecordedSetup } from './game/replay/replaySetup.ts';
-// (the replay bar's segmented filter: the kit is already in the boot chunk with the Garage; the lazy bar takes it as a port)
-import { segmented, wireRoving } from './ui/components/components.ts';
 import type { replayCollisionManifest } from './game/replay/replayWorldManifest.ts';
 type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
@@ -2564,6 +2564,8 @@ garage.attachPhoto({ stage: renderer.domElement, view: showroom, still: photoSti
 // chunk loaded at the first open. Its open flag is the battle frame's second pause source (battleFrame below), beside
 // the pause menu; a room's battle never offers it (battlePhotoAvailability.ts).
 let battlePhotoOpen = false;
+/** Photo mode was opened from the paused Settings (its action row), so its Exit returns there (settings-unify-278). */
+let battlePhotoFromMenu = false;
 const battlePhoto = createLazyRuntimeOwner(
   () => import('./game/battlePhotoMode.ts'),
   (module) => module.createBattlePhotoMode({
@@ -2577,6 +2579,12 @@ const battlePhoto = createLazyRuntimeOwner(
     fileName: () => `claude-of-tanks_${game.mapId || 'battle'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
     click: () => bus.emit('ui:click', {}),
     onChange: (open) => { battlePhotoOpen = open; },
+    backToMenu: () => {
+      const back = battlePhotoFromMenu && canOpenBattlePhoto();
+      battlePhotoFromMenu = false;
+      if (back) settings.open();
+      return back;
+    },
     viewHeightPx: () => renderer.domElement.clientHeight || window.innerHeight,
   }),
 );
@@ -2627,12 +2635,20 @@ function openBattlePhoto(): void {
   if (battlePhotoOpen || !canOpenBattlePhoto()) return;
   // the battle stands still from this frame, while the chunk (on a first open) and its sheet load
   battlePhotoOpen = true;
-  if (settings.isOpen()) settings.close({ noRelock: true });
+  battlePhotoFromMenu = settings.isOpen();
+  if (battlePhotoFromMenu) settings.close({ noRelock: true });
   void battlePhoto.preload().then((runtime) => runtime.open())
     .then((opened) => { if (!opened && !battlePhoto.current?.isOpen) battlePhotoOpen = false; })
     .catch(() => { battlePhotoOpen = false; });
 }
 input.onAction('photoMode', openBattlePhoto);
+// (settings-unify-278) Mute all: one kept value (input settings' muteAll), set by Settings › Sound (its 'ui:volumes') and the
+// touch layout's quick mute; the lazy audio latches it before its first graph
+audio.mute(input.getSettings().muteAll);
+bus.on('ui:volumes', (payload) => {
+  const muteAll = (payload as { muteAll?: unknown } | null)?.muteAll;
+  if (typeof muteAll === 'boolean') audio.mute(muteAll);
+});
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
@@ -4240,7 +4256,8 @@ const replayViewerOwner = createLazyRuntimeOwner(
     watch: () => watchOwner.current?.controller ?? null,
     hud: { root: () => currentHud()?.root ?? null, replayKill: (kill) => currentHud()?.replayKill(kill) },
     leave: () => { void leaveBattleToGarage().catch((error) => console.error('[replay] leave failed', error)); },
-    isInputHeld: () => settings.isOpen(),
+    // the pause menu or photo mode (the replay's fourth camera, docs/REPLAY.md §5) holds the viewer's keys
+    isInputHeld: () => settings.isOpen() || battlePhotoOpen,
     reportError: (message, error) => console.error(message, error),
     kit: { segmented, wireRoving },
   }),

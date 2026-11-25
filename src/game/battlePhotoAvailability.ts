@@ -2,7 +2,8 @@
 // Solo only (owner 10-26 and 10-29: a solo battle is never a multiplayer session; a room's battle runs on its
 // authority, which no client may pause, so photo mode stays out of every room). A battle with a result, a kill-cam
 // replay, a couch battle (its phones own the tanks), the Studio, a staged shot and the entry's loading cover keep it out
-// too. Pure facts in, a verdict out: main.ts gathers them, battlePhotoAvailability.selftest.mjs pins them.
+// too. A watched replay (docs/REPLAY.md §5) is a solo page's battle: photo mode is its fourth camera, framing the ridden
+// tank over the paused replay (settings-unify-278). Pure facts in, a verdict out: main.ts gathers them, battlePhotoAvailability.selftest.mjs pins them.
 
 export interface BattlePhotoFacts {
   readonly phase: string;

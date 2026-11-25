@@ -121,11 +121,17 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   assert.match(main, /settings: \{ isOpen: \(\) => settings\.isOpen\(\) \|\| tutorialHolds\(\) \|\| battlePhotoOpen \}/, 'the battle frame pauses for photo mode');
   assert.match(main, /photoFrame: \(dt\) => battlePhoto\.current\?\.frame\(dt\) \?\? false/, 'the frame hands photo mode the camera');
   assert.match(main, /online: onlineMatchActive\(\)/, 'availability reads the room state');
+  // (settings-unify-278) a watched replay is a solo page's battle: photo mode is its fourth camera, and it holds the
+  // viewer's own keys while it is open (docs/REPLAY.md §5)
+  assert.doesNotMatch(main, /replay: replayViewerOwner/, 'a watched replay may open photo mode');
+  assert.match(main, /isInputHeld: \(\) => settings\.isOpen\(\) \|\| battlePhotoOpen,/, 'photo mode holds the replay viewer\'s keys');
   assert.match(main, /function openBattlePhoto\(\): void \{\n  if \(battlePhotoOpen \|\| !canOpenBattlePhoto\(\)\) return;/,
     'every way in passes the availability check');
-  assert.match(main, /battlePhotoOpen = true;\n  if \(settings\.isOpen\(\)\) settings\.close\(\{ noRelock: true \}\);/,
+  assert.match(main, /battlePhotoOpen = true;\n  battlePhotoFromMenu = settings\.isOpen\(\);\n  if \(battlePhotoFromMenu\) settings\.close\(\{ noRelock: true \}\);/,
     'the battle pauses at the press, before the chunk loads (no running frames between the menu and photo mode)');
   assert.match(main, /input\.onAction\('photoMode', openBattlePhoto\)/, 'the photo key opens it');
+  assert.match(main, /const back = battlePhotoFromMenu && canOpenBattlePhoto\(\);\n      battlePhotoFromMenu = false;\n      if \(back\) settings\.open\(\);/,
+    'Exit returns to the paused Settings photo mode was opened from (settings-unify-278)');
   assert.match(main, /photo: \{ available: \(\) => canOpenBattlePhoto\(\), open: \(\) => openBattlePhoto\(\) \}/,
     'the pause menu (the phone\'s way in) offers it under the same check');
   assert.doesNotMatch(main, /^import[^\n]*(photoMode|battlePhotoMode)\.ts/m, 'main.ts loads photo mode lazily');
@@ -144,9 +150,13 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   const battle = await read('src/game/battlePhotoMode.ts');
   assert.match(shared, /export function openPhotoMode\(/);
   assert.match(shared, /export function captureStill\(/);
-  assert.match(garage, /import\('\.\/photoMode\.ts'\)/, 'the Garage opens the shared module');
+  // (settings-unify-278) one load of the module and its sheet for the document, both hosts' (ui/photoModeChunk.ts)
+  const chunk = await read('src/ui/photoModeChunk.ts');
+  assert.match(chunk, /importAll\(\[import\('\.\/photoMode\.ts'\), import\('\.\/photoMode\.css'\)\]\)/, 'one chunk holds the bar and its sheet');
+  assert.match(garage, /photoModeChunk\.load\(\)\.then\(\(\{ openPhotoMode \}\)/, 'the Garage opens the shared module');
   assert.match(garage, /scope: 'garage'/);
-  assert.match(battle, /from '\.\.\/ui\/photoMode\.ts'/, 'the battle opens the shared module');
+  assert.match(battle, /\(\{ openPhotoMode \} = await photoModeChunk\.load\(\)\);/, 'the battle opens the shared module');
+  assert.doesNotMatch(battle, /^import \{[^\n]*\} from '\.\.\/ui\/photoMode\.ts'/m, 'the battle holds the bar lazily');
   assert.match(battle, /scope: 'battle'/);
   // it stands on the page's surface stack, whose Escape runs ahead of every page key that wants one (the perf panel's)
   assert.match(shared, /const surface: TransientSurface = \{\n\s*id: host\.scope === 'battle' \? 'photo-battle' : 'photo-garage',/);
@@ -167,7 +177,7 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   assert.match(shared, /bar\.contains\(event\.target\) && CONTROL_KEYS\.test\(event\.code\)\) return;/);
   assert.match(shared, /bar\.addEventListener\('keydown', \(event\) => event\.stopPropagation\(\)\)/);
   // Save: busy (disabled, aria-busy) while the PNG encodes; a failure (an unreadable canvas, a frame that threw) is the
-  // kit's error toast with a retry, in a top region the sheet leaves showing (critic r12 line 8)
+  // kit's error toast (Save tries again), in a top region the sheet leaves showing (critic r12 line 8)
   assert.match(shared, /save\.disabled = on;\n\s*save\.setAttribute\('aria-busy', String\(on\)\);/);
   assert.match(shared, /try \{ still = captureStill\(host\.still, 2\); \} catch \(error\) \{ still = Promise\.reject\(error\); \}/,
     'a frame that throws still ends the busy state');
@@ -176,7 +186,8 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   const saveBody = shared.slice(shared.indexOf('const saveStill = '), shared.indexOf('const setBusy = '));
   assert.match(saveBody, /view\.inset\?\.\(barInsetPx\);/);
   assert.doesNotMatch(saveBody, /fit\(\)|getBoundingClientRect/, 'Save measures nothing');
-  assert.match(shared, /severity: 'error', text: t\('photo\.saveFailed'\),\n\s*retry: \(\) => saveStill\(\)/);
+  assert.match(shared, /severity: 'error', text: t\('photo\.saveFailed'\) \}\);/);
+  assert.doesNotMatch(shared, /retry:/, 'no Retry on the toast: Save, enabled again, tries once more (the kit\'s rule, settings-unify-278)');
   assert.match(await read('src/ui/photoMode.css'), /body\.cot-photo-on > :not\(#app,\.cot-photo-bar,\.cot-photo-notices,/);
   for (const locale of ['en-US', 'zh-CN']) {
     assert.ok(JSON.parse(await read(`src/ui/i18nCatalog.${locale}.json`))['photo.saveFailed'], `${locale} names a failed save`);

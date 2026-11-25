@@ -63,7 +63,7 @@ const FILES = {
   'src/ui/b.ts': 'const CSS = `.b{position:fixed;inset:0;z-index:calc(var(--z-notice) + 40)}`; el.style.zIndex = String(n);',
   'src/ui/components/notice.ts': 'region.showPopover();',
   'src/ui/c.ts': 'menu.setAttribute(\'popover\', \'manual\');',
-  'src/ui/settings.ts': 'const CSS = `.cot-resume{position:fixed;z-index:var(--z-modal)}.cot-settings{position:fixed;z-index:80}`; liftModal(root, true);',
+  'src/ui/settings.ts': 'const CSS = `.cot-settings{position:fixed;z-index:80}`; liftModal(root, true);',
 };
 const planted = zLayerCensus({ files: Object.keys(FILES).filter((p) => p !== 'src/ui/tokens/tokens.json'), read: (p) => FILES[p] ?? '',
   registry: { settings: { modal: true }, 'new-dialog': { modal: true } } }).problems.join('\n');
@@ -74,14 +74,14 @@ assert.match(planted, /notice\.ts: a notice entered the top layer/);
 assert.match(planted, /src\/ui\/c\.ts: puts an element in the top layer/);
 assert.match(planted, /modal settings: src\/ui\/settings\.ts \.cot-settings is off the modal layer \(z-index 80/);
 assert.match(planted, /modal new-dialog: no MODALS row/);
-assert.doesNotMatch(planted, /modal pause:/, 'the pause veil on z-modal and lifted passes');
 
 // 6. every modal row: lifted, a native dialog or contained with its reason
 for (const [id, row] of Object.entries(MODALS)) {
   assert.ok(['lift', 'dialog', 'contained'].includes(row.how), `${id}: a known way onto the modal layer`);
   if (row.how === 'contained') assert.ok(row.reason?.length > 40, `${id}: contained with its reason`);
 }
-for (const id of ['pause', 'settings', 'modal', 'hud-editor', 'deploy', 'rooms', 'tech-tree']) assert.equal(MODALS[id]?.how, 'lift', `${id} is lifted onto the modal layer`);
+assert.equal(MODALS.pause, undefined, 'the pause is Settings: no veil row (settings-unify-278)');
+for (const id of ['settings', 'modal', 'hud-editor', 'deploy', 'rooms', 'tech-tree']) assert.equal(MODALS[id]?.how, 'lift', `${id} is lifted onto the modal layer`);
 
 console.log(`z-layer-census selftest: PASS (${tree.seen.length} z-indexes, ${Object.keys(MODALS).length} modals, `
   + `${order.map((n) => `${n} ${z(n)}`).join(' < ')})`);
