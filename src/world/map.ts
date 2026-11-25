@@ -60,7 +60,9 @@ import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { loadMapKits } from './worldKits.ts';
-import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
+import { startPlannedWreckBakes, type WreckBakePrefetch } from './wreckBakePrefetch.ts';
+import { loadWreckBakeFacts } from './wreckBakeFacts.ts';
+import { bakeDeferredWrecks, type DeferredWreckPlan, type DeferredWreckStats } from './deferredWrecks.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
 import { buildVisibleWaterRaster, type VisibleWaterRaster } from './visibleWater.ts';
@@ -203,6 +205,11 @@ export interface WorldRuntime {
   layoutTier: 'mobile' | 'desktop';
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
+  /**
+   * (wreck-bake-after-reveal-278) Bake the hulks placed from their recorded facts and swap them for their stand-ins
+   * (deferredWrecks.ts): called once the battle is shown. Null when this world has none; the same promise again after.
+   */
+  bakeDeferredWrecks(): Promise<DeferredWreckStats | null> | null;
   /** Readiness snapshot only; never performs streaming work. (battle-spikes-253: with the tall grass's near ring.) */
   getGrassWorkState(): ReturnType<VegetationRuntime['getGrassWorkState']> & { swardNearPending: number };
   /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
@@ -464,7 +471,15 @@ export async function createMapAsync(
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
   // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the
   // terrain and the vegetation, instead of one by one inside the props build (wreckBakePrefetch.ts)
-  const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
+  // (wreck-bake-after-reveal-278) unless the map's wreck facts are recorded: its hulks then place from them and bake after
+  // the reveal (wreckBakeFacts.ts, deferredWrecks.ts), so nothing bakes during the load. A worker is the condition: without
+  // one the props build bakes in line (the Node tools, whose collision the facts were recorded from).
+  const wreckFactsReady = typeof Worker === 'undefined' ? Promise.resolve(null) : loadWreckBakeFacts(mapId);
+  let wreckPrefetch: WreckBakePrefetch | null = null;
+  let buildEnded = false;
+  const wreckPrefetchReady: Promise<WreckBakePrefetch | null> = seed === 1337
+    ? wreckFactsReady.then((facts) => (facts || buildEnded ? null : startPlannedWreckBakes(mapId, terrainVariant)))
+    : Promise.resolve(null);
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
   // (battle-spikes-253) and its architecture kit's render prints once the kits have loaded (the style resolves only then)
@@ -535,8 +550,10 @@ export async function createMapAsync(
     const propModelsAwaitStart = performance.now();
     await propModelsReady;
     const propModelsAwaitEnd = performance.now();
+    const wreckFacts = await wreckFactsReady;
+    wreckPrefetch = await wreckPrefetchReady;
     const props = await createPropsAsync(heightField, engineCtx, 2002, config,
-      sub('Placing structures', 0.82, 0.96), fineSlices, vegetation, wreckPrefetch, surfacePrefetch);
+      sub('Placing structures', 0.82, 0.96), fineSlices, vegetation, wreckPrefetch, surfacePrefetch, wreckFacts);
     builtProps = props;
     if (props._buildDetail) {
       const elapsedMs = propModelsAwaitEnd - propModelsAwaitStart;
@@ -573,7 +590,10 @@ export async function createMapAsync(
     return world;
   } finally {
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
+    buildEnded = true;
     wreckPrefetch?.dispose();
+    // (a build that ended before it took its prefetch releases it when it resolves)
+    void wreckPrefetchReady.then((prefetch) => { if (prefetch && prefetch !== wreckPrefetch) prefetch.dispose(); });
     surfacePrefetch?.dispose();
     ringSource?.dispose();
     // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; a build that
@@ -1090,13 +1110,21 @@ function* assembleWorldSteps(
   // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
   // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
   // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
+  let deferredWrecksRun: Promise<DeferredWreckStats | null> | null = null;
   const programVariants = splitProgramVariants(props.group);
   group.userData.programVariants = programVariants;
   if (sliced) group.visible = true;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
+    bakeDeferredWrecks() {
+      const plan = props.group.userData.deferredWrecks as DeferredWreckPlan | undefined;
+      if (!plan) return null;
+      deferredWrecksRun ??= bakeDeferredWrecks(plan);
+      return deferredWrecksRun;
+    },
     dispose() {
+      (props.group.userData.deferredWrecks as DeferredWreckPlan | undefined)?.cancel?.();
       terrain.userData.cancelSourcedTextures?.();
       delete terrain.userData.cancelSourcedTextures;
       unregisterDestructibles();

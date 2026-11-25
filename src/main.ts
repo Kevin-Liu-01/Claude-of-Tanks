@@ -2801,6 +2801,9 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   }),
   onReveal: (receipt) => {
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
+    // (wreck-bake-after-reveal-278) the hulks placed from their recorded facts bake now, on the worker, and replace their
+    // stand-ins (world/deferredWrecks.ts): decorative geometry never holds the reveal
+    void currentWorld()?.bakeDeferredWrecks?.()?.catch((error: unknown) => console.warn('[wrecks] deferred bakes failed', error));
     // The first presented battle frame is the successful end of every entry path.
     entryTelemetry.send({
       kind: 'entry_result', mode: onlineMatch.current?.active ? 'network' : 'solo', outcome: 'ok',

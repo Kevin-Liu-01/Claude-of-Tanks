@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { MAP_IDS } from './maps/mapIds.ts';
 
 const tool = fileURLToPath(new URL('../../tools/wreck-bake-plan.mjs', import.meta.url));
-const VARIANTS = ['desktop', 'mobile', 'assault', 'assault-mobile'];
+// (wreck-bake-after-reveal-278) and each map's wreck facts module (src/world/wreckBakeFacts.ts): one row a map
+const VARIANTS = ['desktop', 'mobile', 'assault', 'assault-mobile', 'facts'];
 
 const { code, out, err } = await new Promise((resolve, reject) => {
   const child = spawn(process.execPath, [tool, '--check', '--maps=all', '--workers=4'], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -38,8 +39,8 @@ for (const line of out.split('\n')) {
   if (match) rows.set(match[1], match[2] + match[3]);
 }
 const expected = MAP_IDS.flatMap((id) => VARIANTS.map((variant) => `${id}@${variant}`)).sort();
-assert.deepEqual([...rows.keys()].sort(), expected, 'every canonical map was recorded on both tiers and both terrains');
+assert.deepEqual([...rows.keys()].sort(), expected, 'every canonical map was recorded on both tiers and both terrains, and its facts checked');
 const drifted = [...rows.entries()].filter(([, status]) => !status.startsWith('current'));
 const maps = [...new Set(drifted.map(([key]) => key.split('@')[0]))];
 assert.deepEqual(drifted, [], `the wreck bake plan matches the tree (regenerate: node tools/wreck-bake-plan.mjs --write --maps=${maps.join(',')})`);
-console.log(`wreckBakePlanDrift.selftest: ${MAP_IDS.length} maps × ${VARIANTS.length} (desktop, phone, assault, assault phone) match the committed plan`);
+console.log(`wreckBakePlanDrift.selftest: ${MAP_IDS.length} maps × ${VARIANTS.length} (desktop, phone, assault, assault phone, facts) match the committed plan and facts`);
