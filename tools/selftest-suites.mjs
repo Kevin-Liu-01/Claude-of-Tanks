@@ -1680,6 +1680,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldActivationOrphans.selftest.mjs',
     // mp-one-map-274 (the owner, 2026-11-19: two battlefields merged in one multiplayer scene): one battlefield drawn per frame
     'src/world/worldActivationOneWorld.selftest.mjs',
+    // mp-fixes-277 (Kevin 2026-11-24, "still merges 2 maps"): the battlefield from its one owner; no module finds it by name
+    'src/world/activeWorld.selftest.mjs',
     'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
     'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
     'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset

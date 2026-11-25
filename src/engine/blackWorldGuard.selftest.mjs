@@ -37,7 +37,7 @@ const { readRenderBlackWorld, renderBlackWorldCode, renderBlackWorldMessage, val
   await import('../../server/telemetryRecord.ts');
 
 function createWorld({ focused = () => true, compileAsync = null, samples = 0, exempt = () => false, modelLoss = false,
-  preset = () => 'high' } = {}) {
+  preset = () => 'high', planned = false, worldPorts = null } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000);
   camera.position.set(0, 10, 0);
@@ -49,6 +49,14 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
   const tank = new THREE.Group(); tank.name = 'tank_t72'; tank.add(new THREE.Object3D());
   const fxRoot = new THREE.Group(); fxRoot.name = 'fx';
   const sun = new THREE.DirectionalLight();
+  // (mp-fixes-277) `planned`: a battlefield the Garage built before this one, resident in the scene, hidden, first
+  const plannedWorld = planned ? new THREE.Group() : null;
+  if (plannedWorld) {
+    plannedWorld.name = 'world-desert';
+    plannedWorld.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+    plannedWorld.visible = false;
+    scene.add(plannedWorld);
+  }
   scene.add(world, sky, tank, fxRoot, sun);
 
   // ---- the GPU stand-in: the scene pass's output is the world model's verdict ----
@@ -178,6 +186,7 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
   const guard = installBlackWorldGuard({
     renderer, scene, camera, post, game,
     getWorld: () => ({ group: world }),
+    ...(worldPorts ? worldPorts({ scene, world, plannedWorld }) : {}),
     isCovered: () => lifecycle.pending || lifecycle.renderingCovered,
     combatWarm: { cancelRare() { rescues.cancelRare = (rescues.cancelRare ?? 0) + 1; } },
     presetName: preset,
@@ -195,7 +204,7 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
       clock += 1000 / 60;
     }
   };
-  return { scene, camera, world, sky, tank, renderer, gl, gpu, post, sceneAA, sceneTarget, game, guard, reports, rescues,
+  return { plannedWorld, scene, camera, world, sky, tank, renderer, gl, gpu, post, sceneAA, sceneTarget, game, guard, reports, rescues,
     history, lifecycle, frames, now: () => clock };
 }
 
@@ -841,6 +850,67 @@ for (const [expected, healedBy, inject] of proofs) {
   assert.equal(receipt?.class, 'camera-layer-mask', 'once released, the reveal owns the state again');
   assert.equal(receipt.healedBy, 'H1');
   assert.equal(h.camera.layers.mask & 1, 1);
+  h.guard.dispose();
+}
+
+// ---- (mp-fixes-277; Kevin 2026-11-24: "still merges 2 maps") the guard draws no battlefield but the presented one ----
+// Every built battlefield stays in the scene hidden. A network round armed the guard with no world port and the install
+// fell back to the first scene child named world-*: on a page whose Garage had built another battlefield first, that was
+// the hidden one. The negative control below runs that fallback: the guard reads the presented world as missing and its
+// H1 heal draws the hidden one beside it. With the world from its owner, nothing but the presented world is drawn.
+{
+  const drawnWorlds = (h) => h.scene.children.filter((child) => child.name.startsWith('world-') && child.visible).map((child) => child.name);
+  // the old fallback (blackWorldGuardInstall.ts before mp-fixes-277), as the negative control
+  const control = createWorld({ planned: true, worldPorts: ({ scene }) => ({
+    getWorld: () => ({ group: scene.children.find((child) => child.name.startsWith('world-')) ?? null }) }) });
+  control.frames(120);
+  assert.deepEqual(drawnWorlds(control).sort(), ['world-badlands', 'world-desert'],
+    'the control: the name fallback tracks the hidden planned world and H1 draws it beside the presented one');
+  assert.equal(control.guard.receipts[0]?.healedBy, 'H1', 'the control: the merge is the H1 heal');
+  control.guard.dispose();
+
+  // the owner's world, and the owner's answer to "is this a battlefield"
+  let battle = 1;
+  const presented = { group: null };
+  const battlefields = new Set();
+  const h = createWorld({ planned: true, worldPorts: ({ world, plannedWorld }) => {
+    presented.group = world;
+    battlefields.add(world).add(plannedWorld);
+    return { getWorld: () => presented, isBattlefieldRoot: (root) => battlefields.has(root), battleId: () => battle };
+  } });
+  h.frames(240);
+  assert.deepEqual(drawnWorlds(h), ['world-badlands'], 'only the presented battlefield is drawn');
+  assert.equal(h.guard.receipts.length, 0, 'a healthy battle beside a hidden planned battlefield opens no incident');
+
+  // a round written over a round (the phase stays 'battle'): the owner presents the next battlefield and the last one
+  // leaves the scene. An incident of another class in the new round (a camera mask) is healed by H1, and the heal never
+  // brings the last round's battlefield back: the new battle noted its own reveal, and no battlefield is a reveal root.
+  const next = new THREE.Group(); next.name = 'world-verdant';
+  next.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+  battlefields.add(next);
+  h.scene.add(next);
+  h.world.visible = false;
+  h.world.removeFromParent();
+  presented.group = next;
+  battle = 2;
+  h.sceneAA.render = ((render) => function (r) {
+    // the stand-in's scene pass draws the presented battlefield (the harness's own world left with its round)
+    const saved = h.world.visible, parent = h.world.parent;
+    h.world.visible = next.visible; if (!parent) h.scene.add(h.world);
+    render.call(this, r);
+    h.world.visible = saved; if (!parent) h.world.removeFromParent();
+  })(h.sceneAA.render);
+  h.frames(120);
+  assert.equal(h.guard.receipts.length, 0, 'the next round presents cleanly: no incident from the swap');
+  h.camera.layers.set(5);
+  h.frames(120);
+  const heal = h.guard.receipts.at(-1);
+  assert.equal(heal?.class, 'camera-layer-mask', 'a mask incident in the second round');
+  assert.equal(heal.healedBy, 'H1');
+  assert.equal(h.world.parent, null, 'H1 in the next round does not add the last round\'s battlefield back');
+  assert.equal(h.world.visible, false, 'nor draw it');
+  assert.equal(h.plannedWorld.visible, false, 'nor the planned one');
+  assert.deepEqual(drawnWorlds(h), ['world-verdant'], 'one battlefield drawn: the presented one');
   h.guard.dispose();
 }
 

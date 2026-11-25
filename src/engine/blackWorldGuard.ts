@@ -244,7 +244,15 @@ export interface BlackWorldGuardPorts {
   camera: THREE.PerspectiveCamera;
   post: GuardPost;
   game: GuardGame;
+  /**
+   * The battlefield presented, from its owner (src/world/activeWorld.ts through the install). (mp-fixes-277) Never a
+   * scene search: every built battlefield stays in the scene hidden, and a guard that tracked a hidden one set it visible.
+   */
   getWorld?(): { group?: THREE.Object3D | null } | null;
+  /** Whether a scene root is a battlefield's (the owner's answer): never a reveal root the H1 heal re-shows. */
+  isBattlefieldRoot?(root: THREE.Object3D): boolean;
+  /** Which battle is on screen (the battle scope's id): a new battle, battle→battle included, is a new reveal. */
+  battleId?(): number | null;
   /** The battle entry's cover (the loader and its reveal barrier); the loader element is read too. */
   isCovered?(): boolean;
   combatWarm?: { cancelRare?(): void } | null;
@@ -491,7 +499,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   let lastNan = false;
   let revealMask = 1;
   const revealRoots: THREE.Object3D[] = [];
-  let revealWorld: THREE.Object3D | null = null;
+  /** The battle the reveal was noted in (ports.battleId): a later battle notes its own. */
+  let revealBattle: number | null = null;
   let coverElement: Element | null = null;
   let coverLookupFrame = -1_000;
   let captureGl = false;
@@ -829,22 +838,26 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   function isActive(): boolean {
     const battle = ports.game.phase === 'battle' && !(ports.isCovered?.() ?? false) && !coverShown() && !exempt()
       && !gl().isContextLost();
-    if (battle && revealAt < 0) noteReveal();
+    // (mp-fixes-277) every battle notes its own reveal, a round written over a round included (the phase stays 'battle')
+    if (battle && (revealAt < 0 || (ports.battleId?.() ?? null) !== revealBattle)) noteReveal();
     if (!battle && revealAt >= 0 && ports.game.phase !== 'battle') revealAt = -1;
     return battle;
   }
 
   function noteReveal(): void {
     revealAt = now();
+    revealBattle = ports.battleId?.() ?? null;
     revealMask = camera.layers.mask | 1;
     revealRoots.length = 0;
     const tanks = tankRoots();
     for (const child of scene.children) {
       if (!child.visible || (child as THREE.Light).isLight || child.name === 'fx' || tanks.has(child)) continue;
       if (!(child as THREE.Mesh).isMesh && child.children.length === 0) continue;
+      // (mp-fixes-277) a battlefield is the world port's alone: the presented one is checked through it, and any other
+      // (a warm's lift, the last round's) is never a root the heal brings back
+      if (ports.isBattlefieldRoot?.(child)) continue;
       revealRoots.push(child);
     }
-    revealWorld = worldGroup();
     failStreak = 0; lastFailClass = null; nextProbeFrame = frame + 2;
   }
 
@@ -874,7 +887,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     const viewport = sceneTarget.viewport;
     if (!(viewport.z >= 1 && viewport.w >= 1) || !(sceneTarget.width >= 1 && sceneTarget.height >= 1)
       || (sceneTarget.scissorTest && !(sceneTarget.scissor.z >= 1 && sceneTarget.scissor.w >= 1))) bits |= CPU.VIEWPORT;
-    const world = revealWorld;
+    // the battlefield presented now, from its owner (never one noted earlier: a new round presents another)
+    const world = worldGroup();
     if (world && (!world.visible || world.parent !== scene)) bits |= CPU.ROOTS;
     if (sceneRan && sceneCalls < MIN_SCENE_CALLS) bits |= CPU.EMPTY;
     cpuBits = bits;
@@ -1223,7 +1237,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       sceneTarget.scissorTest = false;
       changed = true;
     }
-    const world = worldGroup() ?? revealWorld;
+    // (mp-fixes-277) only the battlefield its owner presents is shown again; no other world is ever made visible here
+    const world = worldGroup();
     if (world) {
       if (world.parent !== scene) { scene.add(world); changed = true; }
       if (!world.visible) { world.visible = true; changed = true; }
