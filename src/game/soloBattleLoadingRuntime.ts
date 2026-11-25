@@ -470,29 +470,53 @@ export function createSoloBattleLoadingRuntime(
         return receipt;
       });
 
+      // (mp-fixes-277; a cold 4x-CPU solo entry held 54 % "Finishing the battlefield" 14-21 s) the world drives the bar to
+      // 55 %, and the entry then waits for every sibling: once the world is in, the loader names what is still running,
+      // and the trace records when each sibling finished (trace.acquire, ms from the entry's start)
+      const acquireStartedAt = now();
+      const acquired = new Set<string>();
+      const acquireTimes: Record<string, number> = {};
+      (trace as { acquire?: Record<string, number> }).acquire = acquireTimes;
+      const waitingLabel = (): void => {
+        if (!acquired.has('world')) return;
+        const label = !acquired.has('roster') ? 'Painting vehicles'
+          : !acquired.has('fx') ? 'Priming combat effects'
+            : !acquired.has('builders') ? 'Preparing player vehicle' : 'Loading combat interface';
+        battleLoad.progress(0.55, label);
+      };
+      const named = <T,>(name: string, task: () => T) => (): T => {
+        const result = task();
+        // the task's own result goes on (a failure is the entry's, as before); its finish is noted beside it
+        void Promise.resolve(result).then(() => {
+          acquired.add(name);
+          acquireTimes[name] = Math.round(now() - acquireStartedAt);
+          waitingLabel();
+        }, () => {});
+        return result;
+      };
       try {
         await acquisition.acquireSolo([
-        () => battleInterface,
-        () => preloadMinimap(resolved),
-        () => ensureWorld(
+        named('interface', () => battleInterface),
+        named('minimap', () => preloadMinimap(resolved)),
+        named('world', () => ensureWorld(
           resolved,
           (fraction, label) => battleLoad.progress(0.02 + fraction * 0.53, label),
           { precompile: false, services: false, atmosphere: 'covered-battle' },
-        ),
-        async () => {
+        )),
+        named('builders', async () => {
           const mapConfig = await mapConfigPromise;
           return ensureTankBuilders([...plannedRoster, ...plannedWorldVehicleIds(mapConfig)]);
-        },
-        () => preloadSoloAuthority(),
-        () => preloadBattleClient(),
-        () => preloadBattleWarm(),
-        () => preloadBattleStart(),
-        () => audio.warmBattleEvents(plannedRoster),
-        () => fxTexture,
-        () => ensureKillcam(),
+        }),
+        named('authority', () => preloadSoloAuthority()),
+        named('client', () => preloadBattleClient()),
+        named('warm', () => preloadBattleWarm()),
+        named('start', () => preloadBattleStart()),
+        named('sounds', () => audio.warmBattleEvents(plannedRoster)),
+        named('fx', () => fxTexture),
+        named('killcam', () => ensureKillcam()),
         // a watched battle's drone, controller and bar (an ordinary battle's barrier is unchanged)
-        ...(watch && ensureWatch ? [() => ensureWatch()] : []),
-        () => rosterTexture,
+        ...(watch && ensureWatch ? [named('watch', () => ensureWatch())] : []),
+        named('roster', () => rosterTexture),
         ]);
       } catch (error) {
         // A sibling may fail while FX construction, image decode or an upload
