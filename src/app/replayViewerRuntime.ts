@@ -13,7 +13,7 @@ import { replayRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 import type { WatchSession } from '../game/watchSeat.ts';
 import { replayRefusal } from '../game/replay/replayBuild.ts';
 import type { ReplayIndex } from '../game/replay/replayIndexer.ts';
-import { trackPose } from '../game/replay/replayTrack.ts';
+import { forEachTrackShell, trackPose } from '../game/replay/replayTrack.ts';
 import type { ReplayPose } from '../game/replayPose.ts';
 import { indexReplayInWorker, type ReplayIndexTask } from '../game/replay/replayIndexerClient.ts';
 import { rosterMismatch } from '../game/replay/replaySetup.ts';
@@ -21,8 +21,11 @@ import { replayCollisionManifest, REPLAY_TERRAIN_SEED } from '../game/replay/rep
 import { createReplayViewer, type ReplayViewer } from '../game/replay/replayViewer.ts';
 import type { PosedHull } from '../game/replay/replayPosing.ts';
 import type { TimelineMark } from '../game/replay/replayTimeline.ts';
-import { replayKeyAction } from '../game/replay/replayPlayback.ts';
+import { REPLAY_SPEEDS, replayKeyAction } from '../game/replay/replayPlayback.ts';
+import type { ReplayFilmPorts } from '../game/replay/replayFilm.ts';
 import { createReplayBar, type ReplayBar } from '../ui/replayBar.ts';
+import { Vector3 } from 'three';
+import type { ReplayCue } from '../game/replay/replayCues.ts';
 
 /** A hull as the viewer reads and poses it, with the visual it shows or hides and wrecks. */
 type ViewerHull = PosedHull & {
@@ -32,7 +35,15 @@ type ViewerHull = PosedHull & {
   visual?: { setVisible(visible: boolean): void; setDestroyed?(options: { pop?: boolean; ageS?: number }): void; resetDestroyed?(): void } | null;
 };
 
+/** A shell in flight as the FX draw it (fx/effects.ts LiveShell): posed from the track, its round from its shot's cue. */
+interface ViewerShell {
+  id: number; shooterId: string; isPlayer: boolean; pos: Vector3; prevPos: Vector3; vel: Vector3; dead: boolean; ageS: number;
+  spec: Record<string, unknown> | null;
+}
+
 interface ViewerGame {
+  /** The battle's shells (the FX draw them each frame): a replay's are the track's (replay-fixes-277). */
+  shells?: unknown[];
   tanks: ViewerHull[];
   player: (ViewerHull & { id: string; team: string }) | null;
   ruleset: MatchRuleset;
@@ -51,8 +62,10 @@ export interface ReplayViewerRuntimePorts {
   /** Settings or a modal own the keys. */
   isInputHeld(): boolean;
   reportError(message: string, error: unknown): void;
-  /** The kit's segmented control for the bar (ui/replayBar.ts), handed in from the boot chunk that has it. */
-  kit: Parameters<typeof createReplayBar>[1]['kit'];
+  /** (replay-fixes-277) A cue on the page's bus (main.ts): the battle's effects as it emitted them, tagged `replay`. */
+  emit?(type: string, payload: Record<string, unknown>): void;
+  /** Export video (replay-fixes-277): the film dialog over the watched replay (main.ts); absent, the strip offers none. */
+  openFilmExport?(): void;
 }
 
 export interface ReplayViewerRuntime {
@@ -67,6 +80,9 @@ export interface ReplayViewerRuntime {
   isActive(): boolean;
   advance(realS: number): void;
   stop(): void;
+  /** The viewer's clock for a film (game/replay/replayFilm.ts: seek through the viewer, play at 1x), or null before the
+   *  index is built (replay-fixes-277). */
+  filmClock(): ReplayFilmPorts['clock'] | null;
   /** For the tools (replay-fixes-277): every hull as drawn (its visual's world position) beside the track's pose at the
    *  clock's moment, so a receipt reads what the page draws, never only the posed data. Null without a track. */
   probe(): ReplayViewerProbe | null;
@@ -76,6 +92,11 @@ export interface ReplayViewerProbe {
   timeS: number;
   durationS: number;
   hulls: Array<{ id: string; drawn: [number, number, number] | null; track: [number, number, number] | null; visible: boolean }>;
+  /** (part 2) shells drawn now, the most drawn at once, and the effects' cues played so far of the index's. */
+  shells: number;
+  shellsPeak: number;
+  cuesPlayed: number;
+  cuesTotal: number;
   seek(timeS: number): void;
   ride(id: string): boolean;
 }
@@ -112,9 +133,8 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
       key: (action) => { viewer?.key(action); paint(); },
       scrub: (timeS) => { viewer?.scrub(timeS); paint(); },
       pickMark: (mark) => { viewer?.pickMark(mark); paint(); },
-      setFilter: (filter) => { viewer?.setFilter(filter); paint(); },
       leave: () => { if (timelineOnly) runtime.stop(); else ports.leave(); },
-      kit: ports.kit,
+      ...(ports.openFilmExport ? { exportFilm: () => ports.openFilmExport?.() } : {}),
       nameOf: (specId) => game.tanks.find((hull) => hull.specId === specId)?.spec?.name ?? specId,
     });
     return bar;
@@ -123,15 +143,60 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
   const onKeyDown = (event: KeyboardEvent): void => {
     if (!active || !viewer?.posing || event.repeat || ports.isInputHeld()) return;
     if (isTypingTarget(event)) return;
+    // (replay-fixes-277, Kevin approved 11-24) Esc leaves the replay (the strip's ×), never the battle's Settings
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      ports.leave();
+      return;
+    }
     const action = replayKeyAction(event.code);
     if (!action) return;
     event.preventDefault();
     event.stopPropagation();
     viewer.key(action);
+    // a replay key shows the strip a moment (it hides itself again while playing)
+    bar?.wake();
     paint();
   };
 
   let shownIndex: ReplayIndex | null = null;
+  // (replay-fixes-277) the shells in flight, from the track: one object per shell id, its round from its shot's cue
+  const shots = new Map<number, { shooterId?: string; isPlayer?: boolean; shellType?: string; shellName?: string; caliberMm?: number }>();
+  const shellPool = new Map<number, ViewerShell>();
+  const shellsSeen = new Set<number>();
+  let cuesPlayed = 0, shellsPeak = 0;
+  const roundOf = (shooterId: string, shot: { shellType?: string; shellName?: string; caliberMm?: number } | undefined): Record<string, unknown> | null => {
+    const hull = game.tanks.find((entry) => entry.id === shooterId) as { spec?: { gun?: { shells?: readonly (Record<string, unknown> | null)[] } } } | undefined;
+    const rounds = hull?.spec?.gun?.shells ?? [];
+    return rounds.find((round) => round && (round.type === shot?.shellType || round.name === shot?.shellName))
+      ?? (shot?.shellType ? { type: shot.shellType, caliberMm: shot.caliberMm } : null);
+  };
+  /** game.shells as the track has them at `timeS` (the FX draw them: tracers, rockets, their light). */
+  const poseShells = (timeS: number, dtS: number): void => {
+    const track = shownIndex?.track;
+    const list = game.shells;
+    if (!track || !Array.isArray(list)) return;
+    shellsSeen.clear();
+    list.length = 0;
+    forEachTrackShell(track, timeS, (id, x, y, z) => {
+      let shell = shellPool.get(id);
+      if (!shell) {
+        const shot = shots.get(id);
+        shell = { id, shooterId: shot?.shooterId ?? '', isPlayer: !!shot?.isPlayer, pos: new Vector3(x, y, z), prevPos: new Vector3(x, y, z),
+          vel: new Vector3(), dead: false, ageS: 0, spec: roundOf(shot?.shooterId ?? '', shot) };
+        shellPool.set(id, shell);
+      }
+      shell.prevPos.copy(shell.pos);
+      shell.pos.set(x, y, z);
+      if (dtS > 0) shell.vel.subVectors(shell.pos, shell.prevPos).multiplyScalar(1 / dtS);
+      shell.ageS += Math.max(0, dtS);
+      shellsSeen.add(id);
+      list.push(shell);
+    });
+    for (const id of shellPool.keys()) if (!shellsSeen.has(id)) shellPool.delete(id);
+    if (list.length > shellsPeak) shellsPeak = list.length;
+  };
   const probePose: ReplayPose = { pos: [0, 0, 0], yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
   const begin = (index: ReplayIndex): void => {
     shownIndex = index;
@@ -152,7 +217,17 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
         },
       },
       feed: { kill: (mark) => ports.hud.replayKill({ id: mark.subject, killerId: mark.actor || null, cause: mark.label.cause || null }) },
+      ...(ports.emit ? { cue: (cue: ReplayCue) => { cuesPlayed++; ports.emit?.(cue.type, { ...cue.payload, replay: true }); } } : {}),
     });
+    shots.clear();
+    shellPool.clear();
+    cuesPlayed = 0;
+    shellsPeak = 0;
+    for (const cue of index.cues ?? []) {
+      if (cue.type !== 'shell:fired') continue;
+      const p = cue.payload as { shellId?: number; shooterId?: string; isPlayer?: boolean; shellType?: string; shellName?: string; caliberMm?: number };
+      if (typeof p.shellId === 'number') shots.set(p.shellId, p);
+    }
     indexedTicks = Math.max(1, index.lastTick);
     ensureBar();
     paint();
@@ -200,6 +275,20 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
 
     isActive: () => active,
 
+    filmClock() {
+      const shown = viewer;
+      if (!shown || !active) return null;
+      return {
+        // through the viewer, so a seek back resets the wrecks it crossed (as a scrub does)
+        seek: (timeS) => { shown.scrub(timeS); paint(); },
+        play: () => shown.clock.play(),
+        pause: () => shown.clock.pause(),
+        setSpeed: (speed) => shown.clock.setSpeedIndex(Math.max(0, REPLAY_SPEEDS.indexOf(speed as (typeof REPLAY_SPEEDS)[number]))),
+        get timeS() { return shown.clock.timeS; },
+        get durationS() { return shown.clock.durationS; },
+      };
+    },
+
     probe() {
       const shown = viewer, track = shownIndex?.track ?? null;
       if (!shown || !track || !active) return null;
@@ -218,6 +307,7 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
       });
       return {
         timeS, durationS: shown.clock.durationS, hulls,
+        shells: Array.isArray(game.shells) ? game.shells.length : 0, shellsPeak, cuesPlayed, cuesTotal: shownIndex?.cues?.length ?? 0,
         seek: (t: number) => { shown.scrub(t); paint(); },
         ride: (id: string) => ports.watch()?.rideId(id) ?? false,
       };
@@ -227,13 +317,17 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
     // transport
     advance(realS) {
       if (!viewer) return;
+      const before = viewer.clock.timeS;
       viewer.advance(realS);
+      poseShells(viewer.clock.timeS, viewer.clock.timeS - before);
       paint();
     },
 
     stop() {
       generation++;
       shownIndex = null;
+      shellPool.clear();
+      if (Array.isArray(game.shells)) game.shells.length = 0;
       active = false;
       task?.cancel();
       task = null;

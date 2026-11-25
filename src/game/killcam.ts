@@ -1775,6 +1775,8 @@ export function createKillCam(deps: KillcamDeps) {
       });
       bus.on('shell:fired', (payload) => {
         const p = payload as ShellFiredPayload;
+        // (replay-fixes-277) a replay's shot is not a live round the kill cam may replay
+        if ((payload as { replay?: boolean } | null)?.replay) return;
         if (traj.size >= TRAJ_KEEP) {
           const oldest = traj.keys().next().value;
           if (oldest !== undefined) dropTraj(oldest);
@@ -1843,8 +1845,8 @@ export function createKillCam(deps: KillcamDeps) {
       // battle endings: every destruction is remembered, whatever its cause — a burn-out or a ram that decides
       // the battle has no lethal shell of its own, so the final-kill selection reads this record instead
       bus.on('tank:destroyed', (payload) => {
-        const p = payload as { id?: string; cause?: string; killerId?: string | null } | null;
-        if (!p || typeof p.id !== 'string') return;
+        const p = payload as { id?: string; cause?: string; killerId?: string | null; replay?: boolean } | null;
+        if (!p || typeof p.id !== 'string' || p.replay) return;
         const game = getGame ? getGame() : null;
         lastDestroyed = {
           id: p.id,

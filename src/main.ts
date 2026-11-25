@@ -273,8 +273,6 @@ import { createReplayRecordingAccess } from './game/replayRecordingAccess.ts';
 import type { RecorderGame, ReplaySetupOptions } from './game/replay/replayRecorder.ts';
 import type { ReplayRecording } from './sim/replayFormat.ts';
 import type { runRecordedSetup } from './game/replay/replaySetup.ts';
-// (the replay bar's segmented filter: the kit is already in the boot chunk with the Garage; the lazy bar takes it as a port)
-import { segmented, wireRoving } from './ui/components/components.ts';
 import type { replayCollisionManifest } from './game/replay/replayWorldManifest.ts';
 type ReplayManifestWorld = Parameters<typeof replayCollisionManifest>[0];
 import { isPlayerVisible } from './game/playerVisibility.ts';
@@ -818,6 +816,8 @@ const bus = createBus(devTrace
   list: async () => (await replayRecording.preload()).module.listReplays(),
   load: async (id: number) => (await replayRecording.preload()).module.loadReplayFile(id),
   lastTrace: () => lastReplayTrace,
+  // the watched replay filmed to an MP4 and saved (exportReplayFilm; tools/replay-ui-flow.browser.selftest.mjs films one)
+  film: (request: ReplayFilmRequest) => exportReplayFilm(request),
   // the watched replay as drawn beside its track (replayViewerRuntime probe; the UI-flow receipt's drawn-motion gate)
   viewer: () => replayViewerOwner.current?.probe() ?? null,
 };
@@ -4186,9 +4186,12 @@ const replayViewerOwner = createLazyRuntimeOwner(
     watch: () => watchOwner.current?.controller ?? null,
     hud: { root: () => currentHud()?.root ?? null, replayKill: (kill) => currentHud()?.replayKill(kill) },
     leave: () => { void leaveBattleToGarage().catch((error) => console.error('[replay] leave failed', error)); },
-    isInputHeld: () => settings.isOpen(),
+    // (Settings or the film dialog own the keys: Esc closes the dialog, it does not leave the replay)
+    isInputHeld: () => settings.isOpen() || replayFilmDialogOpen,
     reportError: (message, error) => console.error(message, error),
-    kit: { segmented, wireRoving },
+    // (replay-fixes-277) the battle's effects on the page's bus as it emitted them, tagged `replay` (replayCues.ts)
+    emit: (type, payload) => bus.emit(type, payload as unknown as RuntimeValue),
+    openFilmExport: () => { void openReplayFilmDialog().catch((error) => console.error('[replay] the film dialog failed', error)); },
   }),
 );
 /** The saved replay `id`'s stored bytes (the battle just ended when null, saved first), or null. */
@@ -4209,12 +4212,16 @@ async function watchSavedReplay(id: number | null): Promise<void> {
   if (!stored) return;
   const { module: replay } = await replayRecording.preload();
   const file = await replay.unpackReplay(stored.data);
-  const recording = replay.decodeReplay(file);
+  await watchReplayRecording(replay.decodeReplay(file), file);
+}
+/** Watch a decoded recording (`file`: its raw bytes): a saved one, or a file the player opened (importReplayFile). */
+async function watchReplayRecording(recording: ReplayRecording, file: Uint8Array): Promise<void> {
+  const { module: replay } = await replayRecording.preload();
   const [viewer] = await Promise.all([replayViewerOwner.preload(), watchOwner.preload()]);
   const refusal = viewer.refusal(recording);
   if (refusal) {
     viewer.showTimeline({ header: recording.header, end: recording.end, events: recording.events, track: null, indexedSteps: 0,
-      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` } });
+      lastTick: recording.seatSteps.length, problem: { code: 'refused', tick: 0, message: `replay recorded on ${refusal.recordedOn}` }, cues: [] });
     return;
   }
   if (game.phase === 'battle') await leaveBattleToGarage();
@@ -4227,6 +4234,90 @@ async function watchSavedReplay(id: number | null): Promise<void> {
     // setupBattle took it; a refused or failed entry must not hand it to the next battle
     pendingReplay = null;
   }
+}
+/** A replay film rendering (replayFilm.ts): the live frame loop and the viewport's own resize wait for it. */
+let replayFilmHeld = false;
+/** Film options a press (or a tool) asks for: the size and rate, the range in battle seconds, the HUD drawn over it. */
+interface ReplayFilmRequest {
+  width: number;
+  height: number;
+  fps: number;
+  fromS?: number;
+  toS?: number;
+  /** Draw the HUD over the film (Include HUD, off by default): game/replay/replayFilmHud.ts. */
+  hud?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (progress: { stage: string; frame: number; frames: number; elapsedMs: number; remainingMs: number | null }) => void;
+}
+/**
+ * Film the watched replay to an MP4 (replay-fixes-277; Kevin 11-24 "export it as a mp4"): offline, one main frame per film
+ * frame at exactly 1/fps of battle time, through the viewer's camera, encoded by the Studio's first-party WebCodecs path
+ * (studioFilmExport.ts, H.264 in MP4 only; a browser that cannot is told so, never handed a WebM). The file is saved from
+ * the press as a Blob through an anchor. Null when no replay is being watched.
+ */
+async function exportReplayFilm(request: ReplayFilmRequest): Promise<{ bytes: number; frames: number; elapsedMs: number; codec: string; name: string } | null> {
+  const runtime = replayViewerOwner.current;
+  const clock = runtime?.filmClock() ?? null;
+  if (!runtime || !clock) return null;
+  const [{ createReplayFilmSession, replayFilmBitrate }, { exportFilm, mp4EncodeSupported }] = await Promise.all([
+    import('./game/replay/replayFilm.ts'), import('./game/studioFilmExport.ts'),
+  ]);
+  if (!(await mp4EncodeSupported(request.width, request.height, request.fps))) throw new Error('replay film: this browser cannot encode MP4 video');
+  // Include HUD: the live HUD drawn over each frame (ui/replayFilmHud.ts reads it as laid out; off, a clean film)
+  const hud = request.hud ? (await import('./ui/replayFilmHud.ts')).createReplayFilmHud(() => currentHud()?.root ?? null) : null;
+  const session = createReplayFilmSession({
+    ...(hud ? { overlay: hud.overlay, makeCanvas: hud.makeCanvas } : {}),
+    canvas: renderer.domElement,
+    readSize: () => { const size = renderer.getSize(new THREE.Vector2()); return { width: size.x, height: size.y, pixelRatio: renderer.getPixelRatio() }; },
+    applySize: (width, height, pixelRatio) => {
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / Math.max(1, height);
+      camera.updateProjectionMatrix();
+      post.setSize(width, height);
+      lighting.updateFrustums?.();
+    },
+    hold: (on) => {
+      replayFilmHeld = on;
+      // the live size owners rejoin once the film lets go (the container's size and ratio, as a resize applies them)
+      if (!on) { viewport.apply(); frameLoop.restart(); }
+    },
+    tick: (nowMs) => mainFrame.tick(nowMs),
+    clock,
+    now: () => performance.now(),
+  }, { width: request.width, height: request.height, fps: request.fps, fromS: request.fromS ?? 0, toS: request.toS ?? clock.durationS });
+  const result = await exportFilm({ begin: session.begin, renderNext: session.renderNext, end: session.end, canvas: session.canvas },
+    { width: request.width, height: request.height, fps: request.fps, container: 'mp4', bitrate: replayFilmBitrate(request.width, request.height, request.fps),
+      signal: request.signal, onProgress: request.onProgress });
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const name = `claude-of-tanks-replay-${stamp}.mp4`;
+  const url = URL.createObjectURL(result.blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  return { bytes: result.bytes, frames: result.frames, elapsedMs: Math.round(result.elapsedMs), codec: result.codec, name };
+}
+/** Export video's dialog over the watched replay (ui/replayFilmDialog.ts), built on its first press. */
+let replayFilmDialog: { open(trigger?: HTMLElement | null): void; isOpen(): boolean; close(): void } | null = null;
+let replayFilmDialogOpen = false;
+async function openReplayFilmDialog(): Promise<void> {
+  const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (!replayFilmDialog) {
+    const [{ createReplayFilmDialog }, { mp4EncodeSupported }] = await Promise.all([import('./ui/replayFilmDialog.ts'), import('./game/studioFilmExport.ts')]);
+    replayFilmDialog = createReplayFilmDialog({
+      span: () => {
+        const clock = replayViewerOwner.current?.filmClock();
+        return { durationS: clock?.durationS ?? 0, timeS: clock?.timeS ?? 0 };
+      },
+      supported: (width, height, fps) => mp4EncodeSupported(width, height, fps),
+      film: (choice, signal, onProgress) => exportReplayFilm({ ...choice, signal,
+        onProgress: (progress) => onProgress(progress.frame, progress.frames, progress.remainingMs) }),
+      onOpenChange: (open) => { replayFilmDialogOpen = open; },
+    });
+  }
+  replayFilmDialog.open(trigger);
 }
 /** Save a replay's file (as stored: gzipped where the browser could) under its battle's date. */
 async function downloadSavedReplay(id: number | null): Promise<void> {
@@ -4244,6 +4335,38 @@ const replayIdOf = (payload: unknown): number | null => {
   const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
   return typeof id === 'number' && Number.isFinite(id) ? id : null;
 };
+/**
+ * A replay file the player opened (the Replays tab's Open replay file) or dropped on the Garage (replay-fixes-277):
+ * checked before anything is entered (game/replay/replayImport.ts: its size before it is read, then the magic, the
+ * format version and the whole recording), kept in the Replays list (best effort: a private window keeps none) and
+ * watched as a saved one. A file that is not a replay this build reads opens the Replays tab with the reason.
+ */
+async function importReplayFile(file: Blob): Promise<void> {
+  const { module: replay } = await replayRecording.preload();
+  const tooBig = replay.replayImportSizeProblem(file.size);
+  const checked = tooBig ? { ok: false as const, problem: tooBig } : await replay.checkReplayFile(new Uint8Array(await file.arrayBuffer()));
+  if (!checked.ok) {
+    await garage.openReplays(checked.problem);
+    return;
+  }
+  await replay.saveReplay(checked.raw, checked.recording.header, checked.recording.end);
+  garage.closeRecord();
+  await watchReplayRecording(checked.recording, checked.raw);
+}
+bus.on('ui:replayImport', (payload) => {
+  const file = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'file') : null;
+  if (file instanceof Blob) void importReplayFile(file).catch((error) => console.error('[replay] import failed', error));
+});
+// a file dropped on the Garage opens as a replay (anything else says why in the Replays tab); a battle takes no drop
+window.addEventListener('dragover', (event) => {
+  if (game.phase === 'garage' && event.dataTransfer?.types.includes('Files')) event.preventDefault();
+});
+window.addEventListener('drop', (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (game.phase !== 'garage' || !file) return;
+  event.preventDefault();
+  bus.emit('ui:replayImport', { file: file as unknown as RuntimeValue });
+});
 bus.on('ui:replayWatch', (payload) => { void watchSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] watch failed', error)); });
 bus.on('ui:replayDownload', (payload) => { void downloadSavedReplay(replayIdOf(payload)).catch((error) => console.error('[replay] download failed', error)); });
 // Couch mode (docs/COUCH-MODE.md): the lobby that seats the phones, each seat's controls, the per-tick input stage and
@@ -4443,7 +4566,8 @@ const mainFrame = createMainFrameRuntime({
   game,
   scheduleFrame: () => frameLoop.schedule(),
   isGraphicsContextLost: () => graphicsContextLost,
-  syncViewportPixelRatio: viewport.syncPixelRatio,
+  // a replay film owns the renderer's size while it renders (game/replay/replayFilm.ts): the viewport waits for it
+  syncViewportPixelRatio: () => (replayFilmHeld ? false : viewport.syncPixelRatio()),
   battleEntryLifecycle,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
@@ -4527,7 +4651,8 @@ const mainFrame = createMainFrameRuntime({
 // rAF re-arming is latched (rafQueued) so fallback ticks can never stack
 // extra rAF callbacks for a speed burst when frames come back.
 const frameLoop = createFrameLoopScheduler({
-  tick: mainFrame.tick,
+  // (replay-fixes-277) a replay film ticks the page itself, one fixed step per film frame: the live loop waits
+  tick: (nowMs) => { if (!replayFilmHeld) mainFrame.tick(nowMs); },
   isBootComplete: () => bootComplete,
   hasBackgroundWork: onlineMatchActive,
   backgroundTick: (nowMs) => { onlineMatch.current?.pumpBackground(nowMs); },

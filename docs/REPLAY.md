@@ -379,3 +379,48 @@ the Worker alike. Receipts: `src/game/replay/replayRosterSeat.selftest.mjs` (def
 another roster, the recorded one seats exactly) and `tools/replay-ui-flow.browser.selftest.mjs` (manual `browser`
 suite: a battle played with real keys, left and watched from the Service Record; another ended and watched from its end
 screen; each must play to its end with no notice and a hull moving, and the indexer's reply is in the receipt).
+
+The root hazard, fixed for 277: the battle pool (`game.allTanks`) is built in `rosterState.botPoolOrder` (id order),
+never the catalogs' registration order, so a seeded draw is the same roster on the page, in a Worker and in Node
+(`src/game/battlePoolOrder.selftest.mjs`; the UI-flow receipt holds the built page's pool to Node's, id for id). The
+catalogs keep their registration order for the Garage.
+
+## Replay files: download and open (replay-fixes-277, 2026-11-24)
+
+The file is the recorder's own `.cotreplay` (gzipped where the browser could; the format's magic `COTR` and version byte
+first). Download replay (the end screen, a Replays row) saves it from the press as a Blob through an anchor. A file
+opens from the Replays tab's Open replay file or dropped on the Garage: `game/replay/replayImport.ts` checks it before
+anything is entered (refused over 2 MB before it is read; then gzip, the magic, the format version and the whole
+recording). A good file joins the Replays list and is watched as a saved one; a file from another build opens its
+timeline alone with the refusal (§7). A file that is not a replay, one of another format ("This replay uses format 2;
+this version of the game reads format 1."), a damaged one and a too-large one say why in the Replays tab and enter
+nothing. Size: 5.0-5.6 KB for 20-28 s solo battles, of which ~5 KB is fixed (the header, the hulls' footprints and
+actions); the seat stream adds ~2.5 KB per minute (§1), so a 7-minute battle is ~20-25 KB. Receipts:
+`src/game/replay/replayImport.selftest.mjs`, and the UI-flow receipt's path C (A's downloaded file opened on a fresh
+profile through the browser's own file chooser, after a non-replay and an other-format file are refused).
+
+## The viewer's strip and Export video (replay-fixes-277, 2026-11-25)
+
+Kevin, 11-24: "the viewer in game should be no ui at bottom, we just keep minimap and the bottom left top left top right
+and top middle and notifications", and "be able to export it as a mp4". Approved from stills (Kevin, 11-25).
+
+- **No floor bar.** `ui/replayBar.ts` is a slim strip joined under the top-middle Watch bar (its seat read from the
+  bar's own box, a phone's two rows included): play, speed, the clock, Export video, × (leave), over the timeline. It
+  hides itself 2.5 s after the last pointer move, press or replay key while playing, and stays while paused, dragged or
+  under the pointer; then only the minimap, the corners, the top-middle and the notifications show. On a portrait phone
+  it ends short of the menu's plate and the minimap steps down under it while it shows. The timeline filter and the
+  previous/next mark buttons left the strip; their keys stay (`[` `]`). Esc leaves the replay (never the battle's
+  Settings); every replay key wakes the strip.
+- **Export video** (the strip's film button, `ui/replayFilmDialog.ts`): 720p or 1080p, 30 or 60 fps, the whole replay or
+  from the playhead to the end, Include HUD (off by default), progress with Cancel, "The video has no sound." (v1), a
+  hint to take 720p for a long 1080p60 film, and on a browser that cannot encode MP4 the reason and the button off (never
+  a WebM under an .mp4 name). `game/replay/replayFilm.ts` films offline and fixed-step: the live loop and the viewport's
+  resize are held, each film frame is one main frame ticked exactly 1/fps of battle time on, at 1x, through the viewer's
+  camera and the post chain at the film's size, encoded by the Studio's first-party WebCodecs path (`studioFilmExport.ts`,
+  H.264 into `studioFilmMux.ts`'s MP4; nothing vendored) at 5/7.5/8/12 Mbit/s (720p30/720p60/1080p30/1080p60).
+- **Include HUD** (`ui/replayFilmHud.ts`) composites each frame with the HUD read from the live HUD as it stands (the
+  minimap's own canvas; every shown element's plate and text at its own box, computed font and colour), redrawn at the
+  film's size with each box kept to its edge of the screen. The viewer's controls, SVG and CSS-mask icons are left out,
+  and a plate's clip-path slant is drawn square (v1).
+- Measured (UI-flow path D, through the dialog, this build): 30 s at 1920x1080@60, H.264 High, 41-48 MB clean and
+  46-48 MB with the HUD (the battle's picture sets it), each exported in 29-36 s on this Mac (about real time).

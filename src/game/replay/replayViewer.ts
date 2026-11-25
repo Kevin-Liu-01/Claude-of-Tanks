@@ -15,6 +15,7 @@ import type { ReplayIndex } from './replayIndexer.ts';
 import { createReplayClock, crossedMarks, applyReplayKey, type ReplayClock, type ReplayKeyAction } from './replayPlayback.ts';
 import { createTrackPoser, type PosedHull, type TrackPoser } from './replayPosing.ts';
 import { trackDurationS } from './replayTrack.ts';
+import { firstCueFrom, type ReplayCue } from './replayCues.ts';
 import { filterMarks, markSeek, timelineMarks, REPLAY_STEP_HZ, type TimelineFilter, type TimelineMark } from './replayTimeline.ts';
 
 /** Why the replay plays short or not at all, as the bar words it (the i18n key's parameters beside it). */
@@ -51,6 +52,8 @@ export interface ReplayViewerPorts<THull extends PosedHull> {
   };
   /** The HUD's kill feed: a kill the playback crossed (never the bus's tank:destroyed). */
   feed: { kill(mark: TimelineMark): void };
+  /** (replay-fixes-277) The battle's effects: each cue a forward play crosses, in order (replayCues.ts); never on a seek. */
+  cue?(cue: ReplayCue): void;
 }
 
 export interface ReplayViewer {
@@ -130,6 +133,12 @@ export function createReplayViewer<THull extends PosedHull>(index: ReplayIndex, 
       poser?.apply(clock.timeS);
       // the battle's kills as they happen on screen (every kill, whatever the filter shows)
       for (const mark of crossedMarks(marks, step)) if (mark.category === 'kill') ports.feed.kill(mark);
+      // its shots, hits, kills, fires and the rest as the battle emitted them, at their steps (a play, never a seek)
+      if (ports.cue && step.continuous && step.toS > step.fromS) {
+        const cues = index.cues ?? [];
+        const fromTick = Math.floor(step.fromS * REPLAY_STEP_HZ + 1e-6), toTick = Math.floor(step.toS * REPLAY_STEP_HZ + 1e-6);
+        for (let i = firstCueFrom(cues, fromTick + 1); i < cues.length && cues[i]!.tick <= toTick; i++) ports.cue(cues[i]!);
+      }
       refreshBar();
     },
     key(action) {

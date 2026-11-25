@@ -209,7 +209,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
   host.bus.on('shell:fired', (p: { isPlayer?: boolean }) => { if (p.isPlayer) fired = true; });
   host.bus.on('player:reload', (p: { done?: boolean }) => { if (p.done && fired) offer('reload'); });
   host.bus.on('ui:autoAimState', (p: { on?: boolean }) => { if (p.on) offer('autoAim'); });
-  host.bus.on('tank:destroyed', (p: { id?: string }) => { if (p.id && p.id === player()) { dead = true; wake(); } });
+  host.bus.on('tank:destroyed', (p: { id?: string; replay?: boolean }) => { if (!p.replay && p.id && p.id === player()) { dead = true; wake(); } });
   host.bus.on('ui:flightStarted', (p: { kind?: string }) => { offer(p.kind === 'gunship' ? 'gunshipFlight' : 'droneFlight'); });
   // (notices-audit-275) the game's pause holds the shown hint's time, as it holds the region's (battleNotices.pause)
   let pausedAt: number | null = null;

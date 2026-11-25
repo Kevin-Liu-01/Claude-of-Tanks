@@ -48,8 +48,10 @@ const SURFACES = {
   'src/ui/tutorial/tutorialOverlay.ts#cot-tut-card': { kind: 'battle', why: 'the tutorial\'s card, its own guidance surface placed by the guidance plan' },
   'src/ui/perfHud.ts#null': { kind: 'battle', why: 'the opt-in performance overlay (a developer readout)' },
   'src/ui/transition.ts#cot-trans-say': { kind: 'battle', why: 'the screen transition\'s spoken status' },
+  'src/ui/replayFilmDialog.ts#note': { kind: 'battle', why: 'Export video\'s own lines in its dialog over a watched replay (the film\'s progress, why the browser cannot make it, why an export stopped): part of the dialog, replay-fixes-277' },
   'src/ui/replayBar.ts#note': { kind: 'battle', why: 'the replay bar\'s state line (its index\'s progress, or why the replay is refused or drifted, docs/REPLAY.md §5 Timeline): it stands while the state holds, part of the bar' },
   // ---- outside the battle
+  'src/ui/serviceRecordView.ts#cot-record-replays-note': { kind: 'menu', why: 'the Service Record\'s Replays tab: why an opened replay file was refused (replayImport.ts), until the next file, replay-fixes-277' },
   'src/ui/battleArrangementPanel.ts#cot-mode-features': { kind: 'menu', why: 'Deploy: the mode\'s features' },
   'src/ui/battleLoad.ts#count': { kind: 'menu', why: 'the load screen\'s countdown' },
   'src/ui/battleLoad.ts#st': { kind: 'menu', why: 'the load screen\'s stage line' },

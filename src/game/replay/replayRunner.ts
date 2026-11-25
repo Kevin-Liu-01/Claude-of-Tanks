@@ -108,6 +108,9 @@ export interface ReplayRunHooks {
   beforeSimStep?(game: RunGame, tick: number): void;
   /** The build this replayer stands for (replayBuild.ts; its own define by default): a receipt or tool acting as a release. */
   localDigest?: string;
+  /** Every bus event the replayed battle emits, at the step it emits it (replay-fixes-277: the indexer keeps the ones a
+   *  viewer plays back). The payload may be the emitter's reused object: copy what is kept. */
+  onEvent?(type: string, payload: unknown, tick: number): void;
 }
 
 /** A replay of `recording` on `world` (the recording's map, built by the caller), set up and ready for step 1. */
@@ -142,7 +145,7 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
     // (battle-teardown-276) through the one phase writer, as every phase write is (appLifecycle.ts; its census): a bare
     // session, so the edge is checked and nothing is announced or scoped (no page lifecycle is bound to the run's game)
     transitionAppPhase(game as { phase: AppPhase }, 'battle', { reason: 'replay-run' });
-    const bus = createBus(() => {});
+    const bus = createBus(hooks.onEvent ? (type: string, payload: unknown) => hooks.onEvent!(type, payload, (game as { tick?: number }).tick ?? 0) : () => {});
     const collider = createCollider(game as never, world as never);
     const checksums = new Map(recording.checksums);
     const actionsByTick = new Map<number, ReplayAction[]>();

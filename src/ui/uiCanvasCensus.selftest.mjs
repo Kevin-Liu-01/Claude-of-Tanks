@@ -43,6 +43,8 @@ const CANVAS_TEXT = Object.freeze({});
 const OFFSCREEN_TEXT = Object.freeze({
   // a badge's or lane mark's letter on the battlefield's objective sprites and in the Field Manual's mode diagrams
   'src/ui/objectiveGlyphLetters.ts': ['src/game/matchModeWorldPresentation.ts', 'src/docs/chapters/modes.ts'],
+  // (replay-fixes-277) a replay film's Include HUD: the live HUD's text redrawn into the film's offscreen frames, never shown
+  'src/ui/replayFilmHud.ts': ['src/main.ts'],
 });
 
 function walk(dir, out = []) {

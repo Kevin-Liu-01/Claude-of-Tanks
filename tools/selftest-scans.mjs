@@ -312,6 +312,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
   'tools/asset-provenance.selftest.mjs': outside('the fixture repository its digest-cache cases create under tmpdir'),
+  'tools/replay-ui-flow.browser.selftest.mjs': outside('its own receipt directory (--out, a tmpdir by default): the replay Download replay saved there'),
   'tools/genHeroCards.mjs': outside('its own output directory (--out, .qa-dev/hero-cards by default): the layers it wrote, for tank-layers.json'),
   'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/strip-nc-assets.mjs': outside('the build output it strips (dist/: every 3D model file left there, owner 2026-11-12)'),
