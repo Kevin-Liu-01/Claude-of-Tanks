@@ -393,18 +393,41 @@ async function watchAfterReveal(page, seconds) {
     window.__DEBUG?.world?.group?.traverse((object) => { if (!plan && object.userData?.deferredWrecks) plan = object.userData.deferredWrecks; });
     return plan ? { state: plan.state, hulks: plan.hulks.length, stats: plan.stats ? JSON.parse(JSON.stringify(plan.stats)) : null } : null;
   };
-  const frames = await page.evaluate((ms) => new Promise((done) => {
-    const deltas = [];
+  // the timeline: every frame over 50 ms with when it ended, and when each wreck swap landed, on one clock (ms after the
+  // swap run started, at the reveal); the run's start is read off a swap seen landing live (its frame's time less the
+  // swap's own swapsMs), so a long frame can be matched to a swap. Without a plan (the base) the clock is the watch's start.
+  const watched = await page.evaluate((ms) => new Promise((done) => {
+    const deltas = [], long = [];
+    let plan = null, seen = 0, runStart = null;
+    window.__DEBUG?.world?.group?.traverse((object) => { if (!plan && object.userData?.deferredWrecks) plan = object.userData.deferredWrecks; });
     const start = performance.now();
     let last = start;
     const tick = (now) => {
-      deltas.push(now - last);
+      const delta = now - last;
+      deltas.push(delta);
       last = now;
+      const swaps = plan?.stats?.swapsMs ?? [];
+      // (a frame ends after the swap it shows, so each sighting bounds the start from above; the least is the closest)
+      if (swaps.length > seen) { runStart = Math.min(runStart ?? Infinity, now - swaps[swaps.length - 1]); seen = swaps.length; }
+      if (delta > 50) long.push({ endAt: now, ms: +delta.toFixed(1) });
       if (now - start < ms) requestAnimationFrame(tick);
-      else done(deltas);
+      else {
+        const origin = runStart ?? start;
+        const swapsAt = runStart === null ? [] : (plan?.stats?.swapsMs ?? []);
+        done({ deltas, timeline: {
+          clock: runStart === null ? 'watch start' : 'swap run start (reveal)',
+          watchStartMs: Math.round(start - origin),
+          swapsAt,
+          longFrames: long.map((f) => {
+            const endMs = Math.round(f.endAt - origin), startMs = Math.round(endMs - f.ms);
+            return { startMs, endMs, ms: f.ms, swap: swapsAt.some((s) => s >= startMs - 2 && s <= endMs + 2) };
+          }),
+        } });
+      }
     };
     requestAnimationFrame((now) => { last = now; requestAnimationFrame(tick); });
   }), seconds * 1000);
+  const frames = watched.deltas;
   const sorted = [...frames].sort((a, b) => a - b);
   const result = {
     seconds, frames: frames.length,
@@ -415,6 +438,7 @@ async function watchAfterReveal(page, seconds) {
     deferred: await page.evaluate(deferredPlan).catch(() => null),
   };
   step('solo-post-reveal', result);
+  result.timeline = watched.timeline;
   await still(page, 'solo-post-reveal.png');
   return result;
 }
