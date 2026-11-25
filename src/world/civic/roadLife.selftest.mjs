@@ -9,6 +9,7 @@
 // COT_ROAD_LIFE_MAPS=a,b runs those maps only (a batch's own iteration); the gate runs every map with road life.
 import assert from 'node:assert/strict';
 import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models, fleet, roadLife, compose, collision] = await Promise.all([
   import('../maps/index.ts'), import('../terrain.ts'), import('../vegetation.ts'), import('../props.ts'), import('../propsModelStore.ts'),
@@ -17,6 +18,7 @@ await models.preloadPropModels();
 const engine = { anisotropy: 4, setupShadowMaterial() {} };
 
 async function build(mapId, off) {
+  await betweenBuilds(); // the last build's world is free to go
   globalThis.__cotRoadLifeOff = off;
   try {
     const config = maps.getMapConfig(mapId);

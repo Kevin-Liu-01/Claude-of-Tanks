@@ -18,14 +18,6 @@ if (typeof globalThis.document === 'undefined') {
   };
 }
 
-/** Let Node free the native canvases of builds that are no longer referenced (fills-leak-276, 2026-11-24). A napi-rs
- * canvas keeps its pixels in native memory that GC frees only through the addon's finalizer, and Node runs N-API
- * finalizers in a later macrotask (SetImmediate), never inside the turn that collected them. A loop that builds tank
- * after tank without yielding (gen-interior-fills --all) therefore kept every build's canvases, ~60-80 MB of pixels
- * each, past tank.dispose() and every GC: RSS grew ~120 MB per id while the V8 heap stayed flat. Await this after
- * disposing each build so the queued finalizers drain and peak memory stays flat in the id count. */
-export function drainNativeFinalizers() { return new Promise((done) => setImmediate(done)); }
-
 export function materialClass(material, decal = false) {
   if (!material || material.visible === false || material.colorWrite === false) return null;
   if (decal) return { transparent: true, side: THREE.DoubleSide };
