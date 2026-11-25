@@ -255,8 +255,9 @@ try {
   failed++;
   console.error(error);
 } finally {
-  await browser?.close().catch(() => {});
-  await server?.stop?.().catch?.(() => {});
+  await Promise.race([browser?.close().catch(() => {}), wait(15_000)]);
+  try { browser?.process()?.kill('SIGKILL'); } catch { /* closed */ }
+  await Promise.race([server?.close().catch(() => {}), wait(15_000)]);
 }
 report.finishedAt = new Date().toISOString();
 report.failed = failed;
