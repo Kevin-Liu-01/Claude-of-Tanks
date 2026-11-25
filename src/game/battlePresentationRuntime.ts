@@ -21,6 +21,7 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import { watchRevealsAll, type GameState } from './stateCore.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import type { HullThrusterPlumes, ThrusterPlumeState } from '../fx/hullThrusterPlumes.ts';
 
 // The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
 // (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
@@ -115,6 +116,7 @@ interface SpottingState {
 interface VehicleFx {
   dust(position: Vector3, forward: Vector3, intensity: number): void;
   exhaust(position: Vector3, load: number, diesel: boolean, velocity?: Vector3 | null, forward?: Vector3 | null): void;
+  thrusterJet?(position: Vector3, exhaustDir: Vector3, intensity: number, hullVel: Vector3): void;
   loosePropHit?(position: Vector3, direction: Vector3, height: number): void;
   propCrush(position: Vector3, direction: Vector3, height: number): void;
 }
@@ -166,6 +168,8 @@ interface BattlePresentationRuntimeOptions {
   scene: Scene;
   battleClient: PosePorts;
   getFx(): VehicleFx | null;
+  /** The air spin's thruster plumes (thrust-flips-277), drawn on each hull's root after its pose. */
+  thrusterPlumes?: HullThrusterPlumes | null;
   getWorld(): PresentationWorld | null;
   isNetworkMatchActive(): boolean;
   getPedestalVisual(): object | null;
@@ -190,6 +194,7 @@ export function createBattlePresentationRuntime({
   scene,
   battleClient,
   getFx,
+  thrusterPlumes = null,
   getWorld,
   isNetworkMatchActive,
   getPedestalVisual,
@@ -412,6 +417,11 @@ export function createBattlePresentationRuntime({
     // updated this frame. Battle cleanup must not dispose that live effect.
     if (game.phase !== 'garage' || visual !== pedestalVisual) {
       syncModeVisual(entity, dtFrame, game.phase === 'battle');
+    }
+    // the air spin's burn (thrust-flips-277): its plumes ride the hull's root, its fire and smoke the vehicle FX's
+    if (thrusterPlumes && game.phase === 'battle') {
+      thrusterPlumes.sync(entity.id, visual.root, entity.spec, entity.state as ThrusterPlumeState, dtFrame ?? 0,
+        visual.root.visible && !entity.combat?.destroyed, getFx());
     }
     return viewDistanceM;
   };

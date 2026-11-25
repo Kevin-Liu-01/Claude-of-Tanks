@@ -145,8 +145,8 @@ export interface AirSpinThrusters {
   axis: number;
   /** The move's nozzles, a pair, each pushing `accel` along its direction. */
   nozzles: [HullNozzle, HullNozzle];
-  /** Angular acceleration (spring sense, rad/s^2) the move's own nozzles give at a full burn, from r x F, and the
-   *  attitude jets' share (alphaMain less it). */
+  /** Angular acceleration (rad/s^2, along the move's turn: airSpinSense) the move's own nozzles give at a full burn,
+   *  from r x F, and the attitude jets' share (alphaMain less it). */
   alphaMainNozzles: number;
   alphaCouple: number;
 }
@@ -202,7 +202,7 @@ export function airSpinThrusters(frame: HullThrustFrame, axis: number, shoveMps:
     nozzle.z = pitch ? mz : frame.comZ + s * mz;
     nozzle.dx = dx; nozzle.dy = dy; nozzle.dz = dz;
     nozzle.accel = accel;
-    out.alphaMainNozzles += nozzleAlpha(frame, nozzle, axis);
+    out.alphaMainNozzles += nozzleAlpha(frame, nozzle, axis) * airSpinSense(axis);
   }
   out.alphaCouple = B.alphaMain - out.alphaMainNozzles;
   return out;

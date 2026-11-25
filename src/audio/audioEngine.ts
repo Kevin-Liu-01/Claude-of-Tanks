@@ -3930,6 +3930,16 @@ export function createAudio({
     on<{ id?: string }>('tank:jump', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own' })); });
     // turbo-spin-275: Turbo's leap is the jump's rocket fired along the hull
     on<{ id?: string }>('tank:turbo', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own', gainDb: -3 })); });
+    // thrust-flips-277: each burn of the air spin's thrusters is heard where it fires (fx/hullThrusterPlumes.ts reports its
+    // ignition): the main burn is the jump's rocket cut short and a little higher, the counter-burn and a ground dodge's
+    // lift a brief, higher puff of it; a hull's own on the hull, another's where it is
+    on<{ id?: string; phase?: string; x?: number; y?: number; z?: number }>('tank:thrust', (e) => {
+      if (!e?.id) return;
+      const main = e.phase === 'main';
+      const shape: PlayOptions = { gainDb: main ? -4 : -11, rate: main ? 1.12 : 1.45, maxDurS: main ? 0.5 : 0.22 };
+      if (isOwn(e.id)) play('jump_launch', hullOptions({ bus: 'own', ...shape }));
+      else if (Number.isFinite(e.x) && Number.isFinite(e.y) && Number.isFinite(e.z)) play('jump_launch', { ...at({ x: e.x!, y: e.y!, z: e.z! }), ...shape });
+    });
     const righted = (e: { id?: string } | undefined) => {
       const id = e?.id ?? null;
       const info = id ? tanks.get(id) : null;
