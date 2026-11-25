@@ -68,13 +68,19 @@
 // the gate off), for up to --gpu-quiet-wait-min (15). While the slot runs, it samples every 2 s. A slot in which any
 // 10 s window went over the limit is tainted (record.foreignGpu.tainted), and the report marks each pair that has a
 // tainted slot (tools/foreign-gpu.selftest.mjs).
+//
+// Clock and heat (2026-11-25, tree-breakdown-277): the third A/A ran chase 1080p 4.4 ms slower in both middle slots than
+// in the outer ones, with no foreign GPU to blame. ABBA cancels a linear drift, not a bump in the middle of the run. Every
+// sample now keeps its clock (start, end) and the machine's thermal state at each end (thermalState: macOS
+// ProcessInfo.thermalState and pmset's CPU speed limit, no sudo), and so does the 15 s machine sampler. A bump can then
+// be told apart: one that follows slot position, or one that follows clock time or heat (tools/probe-sample-clock.selftest.mjs).
 
 import { browserGuardOf, launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
 import { heldItemOutcome, heldRunExitCode, heldStopWhy } from './held-items.mjs';
 import path from 'node:path';
 import os from 'node:os';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
@@ -835,6 +841,35 @@ async function profileMainThread(page, seconds) {
 // ---------------------------------------------------------------------------------------------- host side
 
 function loadAverage() { return os.loadavg().map((v) => +v.toFixed(2)); }
+const THERMAL_STATES = Object.freeze(['nominal', 'fair', 'serious', 'critical']);
+/**
+ * The machine's thermal state, read without sudo (2026-11-25, tree-breakdown-277): macOS's own ProcessInfo.thermalState
+ * (0 nominal, 1 fair, 2 serious, 3 critical; osascript, about 60 ms) and pmset's CPU speed limit when it has recorded one
+ * (`pmset -g therm`; often nothing on Apple silicon). powermetrics needs sudo and is not used. A field is null when its
+ * reading is unavailable. `run(file, args)` is for a receipt.
+ */
+export function thermalState({ run = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }) } = {}) {
+  let level = null, speedLimit = null;
+  try {
+    const n = Number(String(run('osascript', ['-l', 'JavaScript', '-e', "ObjC.import('Foundation'); $.NSProcessInfo.processInfo.thermalState"])).trim());
+    if (Number.isInteger(n) && n >= 0 && n < THERMAL_STATES.length) level = n;
+  } catch { /* unavailable */ }
+  try {
+    const m = /CPU_Speed_Limit\s*=\s*(\d+)/.exec(String(run('pmset', ['-g', 'therm'])));
+    if (m) speedLimit = Number(m[1]);
+  } catch { /* unavailable */ }
+  return { level, state: level === null ? null : THERMAL_STATES[level], speedLimit };
+}
+/**
+ * One measured sample with its clock and the machine's thermal state at each end, so a delta can be lined up against
+ * time and heat (the chase 1080p bump in the middle slots of an A/A, 2026-11-25). `now` and `thermal` are for a receipt.
+ */
+export async function timedSample(measure, { now = () => new Date(), thermal = thermalState } = {}) {
+  const start = now(), thermalStart = thermal();
+  const measured = await measure();
+  const end = now();
+  return { ...measured, clock: { start: start.toISOString(), end: end.toISOString(), ms: end - start }, thermal: { start: thermalStart, end: thermal() } };
+}
 /** `ps -axo pid=,ppid=,pcpu=,command=` output as rows. */
 export function parseCpuRows(text) {
   const rows = [];
@@ -1304,7 +1339,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
         if (scale !== null) { await page.evaluate((v) => window.__DEBUG.post.pinDynScale(v), scale); await sleep(1200); }
         await sleep(options.settleMs);
         const graphics = await page.evaluate(graphicsState);
-        const measured = await sampleView(page, options, { moving });
+        const measured = await timedSample(() => sampleView(page, options, { moving }));
         const after = await page.evaluate(graphicsState);
         const suffix = scale === null ? '' : `-s${Math.round(scale * 100)}`;
         if (options.shots) {
@@ -1388,7 +1423,8 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   const machine = { cores: os.cpus().length, loadStart: loadAverage(), samples: [] };
-  const sampler = setInterval(() => machine.samples.push({ at: new Date().toISOString(), load1: +os.loadavg()[0].toFixed(2), foreignGpu: gpuSample() }), 15000);
+  const sampler = setInterval(() => machine.samples.push({ at: new Date().toISOString(), load1: +os.loadavg()[0].toFixed(2), foreignGpu: gpuSample(),
+    thermal: thermalState() }), 15000);
   const started = Date.now();
   let browser = null, server = null, serving = null, ok = true, remaining = 0, voided = 0;
   // the pages' agreement: every staging's scene reading per slot (a resumed slot's from its record), judged per map in

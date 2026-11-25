@@ -526,7 +526,7 @@ assert.equal(stats([]).med, null);
   const tool = readFileSync(new URL('./frame-budget-probe.mjs', import.meta.url), 'utf8');
   const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('export async function runFrameProbe('));
   const settles = [...body.matchAll(/await settleTerrainStream\(page\)/g)].map((m) => m.index);
-  const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await sampleView\(page/g)].map((m) => m.index);
+  const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await timedSample\(\(\) => sampleView\(page/g)].map((m) => m.index);
   assert.equal(settles.length, 2, 'the gate\'s staging pose and every measured pose settle the stream');
   assert.ok(settles[0] < samples[0] && settles[1] < samples[1], 'each settle precedes the sample it guards');
   assert.ok(/streamedDuring: streamedDuring\(graphics, after\)/.test(body), 'every sample records what streamed while it ran');
