@@ -71,12 +71,15 @@ function finiteRange(value: RuntimeValue, maximum: number): boolean {
 
 function validateOptions(value: RuntimeValue): SourcedComposeOptions {
   const options = record(value);
-  fields(options, ['roughInAlpha', 'separateSurface', 'roughMul', 'tint', 'desat', 'lift'], []);
+  fields(options, ['roughInAlpha', 'separateSurface', 'roughMul', 'tint', 'desat', 'lift', 'roughChannel'], []);
   for (const name of ['roughInAlpha', 'separateSurface']) {
     if (options[name] !== undefined && typeof options[name] !== 'boolean') throw new Error(`Invalid ${name}`);
   }
   for (const [name, maximum] of [['roughMul', 4], ['desat', 1], ['lift', 1]] as const) {
     if (options[name] !== undefined && !finiteRange(options[name], maximum)) throw new Error(`Invalid ${name}`);
+  }
+  if (options.roughChannel !== undefined && options.roughChannel !== 0 && options.roughChannel !== 1) {
+    throw new Error('Invalid roughChannel');
   }
   const tint = options.tint;
   if (tint != null && (!Array.isArray(tint) || tint.length !== 3

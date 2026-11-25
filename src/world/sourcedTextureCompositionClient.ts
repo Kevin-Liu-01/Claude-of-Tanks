@@ -72,6 +72,7 @@ function optionsSnapshot(options: SourcedComposeOptions): SourcedComposeOptions 
     tint: options.tint ? [options.tint[0], options.tint[1], options.tint[2]] : null,
     desat: options.desat ?? 0,
     lift: options.lift ?? 0,
+    roughChannel: options.roughChannel ?? 0,
   };
 }
 
@@ -229,6 +230,8 @@ export function createSourcedCompositionClient(
       // opportunity; never batch all inputs inside a worker reply callback.
       await ports.yieldPreparation?.();
       if (!ownsPreparation(job)) return;
+      // a packed ORM map is both the AO and the roughness image: one bitmap serves both roles
+      if (role === 'rough' && images.rough === images.ao && bitmaps.ao) { bitmaps.rough = bitmaps.ao; continue; }
       bitmaps[role] = await makeBitmap(job, images[role]);
     }
     if (job.finished || active !== job) return;

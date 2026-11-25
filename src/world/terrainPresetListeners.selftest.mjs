@@ -1,5 +1,5 @@
 // terrainPresetListeners.selftest.mjs — (2026-11-02 audit R1) a terrain build closed part way leaves no live preset
-// listener behind. The splat material follows the live preset through two onPresetChange subscriptions that end with the
+// listener behind. The splat material follows the live preset through three onPresetChange subscriptions that end with the
 // material's dispose. They were taken before the land-use bake's yields, and nothing disposed a material whose terrain
 // build was closed during the chunk rows, so every cancelled world build left both in the global set (engine/quality.ts)
 // for good, with the material steps' closure context. The real terrain build generators (terrain.ts, sandboxed as
@@ -110,7 +110,8 @@ try {
 const material = ticks.map((tick, index) => [tick, index + 1]).filter(([tick]) => tick.done === 1).map(([, at]) => at);
 const rows = ticks.map((tick, index) => [tick, index + 1]).filter(([tick]) => tick.done > 1).map(([, at]) => at);
 assert.ok(material.length > 3 && rows.length > 3, `the build paces through its material and its rows (${material.length}, ${rows.length})`);
-assert.equal(Math.max(...ticks.map((tick) => tick.live)), 2, 'both preset subscriptions are live while the build runs');
+// (texture-diet-277) three: the land-use tier, Ultra Low's light splat, and the photo sets' texture tier
+assert.equal(Math.max(...ticks.map((tick) => tick.live)), 3, 'the three preset subscriptions are live while the build runs');
 assert.equal(probe.state.live.size, 0, 'and end with the material');
 const stops = [...new Set([material[0], material.at(-3), material.at(-2), material.at(-1), rows[0], rows[rows.length >> 1], rows.at(-1)])];
 const leaks = [];
@@ -126,11 +127,11 @@ for (const stop of stops) {
 }
 assert.deepEqual(leaks, [], 'a terrain build closed at any of these checkpoints leaves no preset listener subscribed');
 
-// ---- 2. a completed build keeps both until its material is disposed
+// ---- 2. a completed build keeps all three until its material is disposed
 {
   const f = fixture();
   const group = await f.api.buildAsync(f.height, f.engine, null, null, false, null, null);
-  assert.equal(f.state.live.size, 2, 'the built terrain follows the live preset');
+  assert.equal(f.state.live.size, 3, 'the built terrain follows the live preset');
   const materials = new Set();
   group.traverse((object) => { if (object.material) materials.add(object.material); });
   for (const material of materials) material.dispose();
