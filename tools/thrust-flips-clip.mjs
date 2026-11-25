@@ -37,11 +37,15 @@ const port = Number(arg('port', '4258'));
 const FRAMES = Number(arg('frames', '8'));
 const STEP_S = Number(arg('step', '0.1'));
 const SLOW = Number(arg('slow', '0.04'));
+/** Each move's key and the air spin's axis it picks (movement.ts AIR_SPIN_AXES). */
 const MOVES = Object.freeze({
-  front: { key: 'KeyW', label: 'front flip (W)' },
-  back: { key: 'KeyS', label: 'back flip (S)' },
-  roll: { key: 'KeyA', label: 'barrel roll left (A)' },
+  front: { key: 'KeyW', label: 'front flip (W)', axis: -1 },
+  back: { key: 'KeyS', label: 'back flip (S)', axis: 1 },
+  roll: { key: 'KeyA', label: 'barrel roll left (A)', axis: 2 },
 });
+/** The clock while both cameras draw one instant: barely moving (a stopped clock stops the page's frames, and a
+ *  screenshot then shows the frame drawn before the stop, from whichever camera drew it). */
+const HOLD = 0.002;
 const moves = (arg('moves', 'front,back,roll')).split(',').filter((m) => MOVES[m]);
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
@@ -83,9 +87,20 @@ const clearMenus = () => {
   return !D.settings?.isOpen?.();
 };
 
-/** The player alone on open ground: the bots parked far off (the battle hold keeps them still and the player unhurt). */
+/** The player alone on open ground: the bots parked far off (the battle hold keeps them still and the player unhurt), the
+ *  page's DOM overlays (the HUD, the world's markers) off the film. */
 const stage = () => {
   const D = window.__DEBUG, game = D.game, me = game.player;
+  // every element but the battle's canvas and its ancestors (the HUD may share the canvas's container)
+  const canvas = D.renderer?.domElement ?? document.querySelector('canvas');
+  const hide = (el) => {
+    for (const child of el.children) {
+      if (child === canvas) continue;
+      if (canvas && child.contains(canvas)) hide(child);
+      else if (child instanceof HTMLElement || child instanceof SVGElement) child.style.setProperty('visibility', 'hidden', 'important');
+    }
+  };
+  hide(document.body);
   try { D.battleHold?.set?.(true); } catch { /* a build without the hold */ }
   for (const tank of game.tanks) {
     if (tank === me) continue;
@@ -105,10 +120,10 @@ const setCameras = (roll) => {
   const ahead = roll ? 0 : 5, aside = roll ? -4 : 0; // a roll travels to the left (+x side)
   const cx = p.x + fx * ahead - rx * aside, cz = p.z + fz * ahead - rz * aside, cy = p.y + 2.5;
   window.__cams = {
-    chase: { eye: new V(p.x - fx * 24, p.y + 5.5, p.z - fz * 24), at: new V(cx, cy, cz), fov: 46 },
+    chase: { eye: new V(p.x - fx * 18, p.y + 4, p.z - fz * 18), at: new V(cx, cy, cz), fov: 46 },
     side: roll
-      ? { eye: new V(p.x - fx * 17 + rx * 17, p.y + 4, p.z - fz * 17 + rz * 17), at: new V(cx, cy, cz), fov: 46 }
-      : { eye: new V(cx + rx * 26, p.y + 3.5, cz + rz * 26), at: new V(cx, cy, cz), fov: 46 },
+      ? { eye: new V(p.x - fx * 13 + rx * 13, p.y + 3, p.z - fz * 13 + rz * 13), at: new V(cx, cy, cz), fov: 46 }
+      : { eye: new V(cx + rx * 20, p.y + 3, cz + rz * 20), at: new V(cx, cy, cz), fov: 46 },
   };
   window.__cam = 'chase';
   if (!window.__camLoop) {
@@ -137,30 +152,35 @@ async function filmMove(page, name) {
   const move = MOVES[name];
   const record = receipt.moves[name] = { label: move.label, stills: [] };
   await page.evaluate(clearMenus);
+  await page.evaluate(stage);
   await page.evaluate(() => { window.__timeScale = 1; });
   await untilGrounded(page);
   await sleep(900);
-  // the jump, then the move's key held and F 0.42 s into the climb, the clock slowed first
+  // the jump; the move's key held 0.2 s into the climb (the drive's input ramps to it: a key held for a slowed instant
+  // picked no axis), then the clock slowed and F 0.42 s into it
   await page.keyboard.down('KeyF'); await sleep(50); await page.keyboard.up('KeyF');
   const jumpT = await page.evaluate(() => window.__DEBUG.game.timeS);
+  await page.waitForFunction((t0) => window.__DEBUG.game.timeS >= t0 + 0.2, { timeout: 5000, polling: 'raf' }, jumpT);
+  await page.keyboard.down(move.key);
   await page.waitForFunction((t0) => window.__DEBUG.game.timeS >= t0 + 0.42, { timeout: 5000, polling: 'raf' }, jumpT);
   await page.evaluate((slow) => { window.__timeScale = slow; }, SLOW);
   await page.evaluate(setCameras, name === 'roll');
-  await page.keyboard.down(move.key);
   await frames(page, 3);
   await page.keyboard.down('KeyF'); await frames(page, 4); await page.keyboard.up('KeyF');
   await page.waitForFunction(() => window.__DEBUG.game.player.state._airSpinAxis !== 0, { timeout: 8000, polling: 'raf' });
   const t0 = await page.evaluate(() => window.__DEBUG.game.timeS);
   record.pressT = t0;
+  record.axis = await page.evaluate(() => window.__DEBUG.game.player.state._airSpinAxis);
+  if (record.axis !== move.axis) receipt.errors.push(`${name}: the take turned axis ${record.axis}, not the move's ${move.axis}`);
   const recorder = webm ? await page.screencast({ path: path.join(out, `${name}.webm`), fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' }) : null;
   try {
     for (let k = 0; k < FRAMES; k++) {
       await page.waitForFunction((t) => window.__DEBUG.game.timeS >= t, { timeout: 30000, polling: 'raf' }, t0 + k * STEP_S);
       // hold the battle while both cameras are drawn at this instant
-      await page.evaluate(() => { window.__timeScale = 0; });
+      await page.evaluate((hold) => { window.__timeScale = hold; }, HOLD);
       for (const cam of ['chase', 'side']) {
         await page.evaluate((c) => { window.__cam = c; }, cam);
-        await frames(page, 3);
+        await frames(page, 4);
         const file = `${name}-${cam}-${k}.png`;
         await page.screenshot({ path: path.join(out, file) });
         if (cam === 'chase') record.stills.push({ k, file: file.replace('-chase-', '-{cam}-'), hull: await page.evaluate(hullNow) });
