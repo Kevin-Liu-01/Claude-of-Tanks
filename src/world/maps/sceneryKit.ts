@@ -24,7 +24,7 @@ import { stream } from './craftMesh.ts';
 import { bevelBox } from './bevelBox.ts';
 import { spentDraws } from './brokenDraws.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
-import { builtValue } from './buildLatch.ts';
+import { latchBuiltValues } from './buildLatch.ts';
 // (props census #11: the wayside shrine, the crosses and the Mekong tomb live in waysideKit.ts)
 import { WAYSIDE_DESTRUCTIBLE_TYPES } from './waysideKit.ts';
 
@@ -93,20 +93,21 @@ function mulberry32(a: number): Rng {
  */
 function onLegacyCollision<T extends DestructiblePropType, P>(kind: string, entry: T, legacy: (rng: Rng, plan?: P) => THREE.BufferGeometry,
   rebuilt: (rng: Rng, plan: P) => THREE.BufferGeometry, salt: number, plan: () => P): T & { contactBand?: StructureCollisionRuntimeBand } {
-  let band: StructureCollisionRuntimeBand | undefined;
   const out = {
     ...entry,
     build: (rng: Rng) => {
       const layout = plan();
       let seed = salt | 0, k = 0;
       const old = legacy(() => { const v = rng(); if (k++ < 2) seed = Math.imul(seed ^ Math.floor(v * 4294967296), 0x9e3779b1); return v; }, layout);
-      band = deriveRuntimeStructureContactBand({ baked: [old] });
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
       old.dispose();
       return rebuilt(stream(seed), layout);
     },
     footprintBuild: () => legacy(mulberry32(0x0f0f7)),
   };
-  return Object.defineProperty(out, 'contactBand', { enumerable: true, get: () => builtValue(band, kind, 'contactBand') });
+  // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+  const latch = latchBuiltValues(out, kind, ['contactBand']);
+  return out;
 }
 
 /**

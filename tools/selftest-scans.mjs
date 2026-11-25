@@ -141,6 +141,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/vehicles/vehicleMaterialRawClone.selftest.mjs': lists('src/{app,engine,fx,game,mp,ui,vehicles,world}/**/*.ts'),
   'src/vehicles/weaponFinish.selftest.mjs': lists('src/vehicles/profiles/*.ts'),
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
+  // webcontent-diet-278: the accessor-closure census reads every page source
+  'tools/accessor-closures.selftest.mjs': lists('src/**/*.ts'),
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
   // 276 (sim-det-trig-c): the merge drops a group file no row names any more (combat-rig-bootstrap runs it as a child)

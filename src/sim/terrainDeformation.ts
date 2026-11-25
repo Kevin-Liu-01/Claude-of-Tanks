@@ -589,6 +589,18 @@ export interface DeformableHeightField {
   maxY?: number;
 }
 
+// (webcontent-diet-278) the deformed field's maxY accessor is this module-level function over a weak table, never a closure
+// made per match: V8 keeps an accessor's getter in the hidden class's shared descriptor array, where a closure outlives the
+// match it was made for (world/maps/buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const deformedMaxY = new WeakMap<object, { base: DeformableHeightField; overlay: TerrainDeformation }>();
+const DEFORMED_MAX_Y: PropertyDescriptor = {
+  configurable: true,
+  get(this: object) {
+    const held = deformedMaxY.get(this);
+    return held ? (held.base.maxY as number) + held.overlay.maxRaiseM : undefined;
+  },
+};
+
 /** The ground a rubble mound reaches past its footprint (§7): 0.3 of the shorter half extent plus its skirt. */
 export function rubbleFalloffM(hw: number, hd: number, heightM: number): number {
   return 0.3 * Math.min(hw, hd) + Math.max(RUBBLE_SKIRT_MIN_M, RUBBLE_SKIRT_PER_HEIGHT * Math.max(0, heightM));
@@ -624,7 +636,8 @@ export function createDeformedHeightField<T extends DeformableHeightField>(base:
     });
   }
   if (typeof base.maxY === 'number') {
-    Object.defineProperty(field, 'maxY', { get: () => (base.maxY as number) + overlay.maxRaiseM, configurable: true });
+    deformedMaxY.set(field, { base, overlay });
+    Object.defineProperty(field, 'maxY', DEFORMED_MAX_Y);
   }
   if (baseContact) {
     Object.defineProperty(field, 'getContactHeightAt', {

@@ -19,8 +19,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { LAVA_WALL_H, lavaWallBroken, lavaWallFor, wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabitKit.ts';
-import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
-import { builtValue } from './buildLatch.ts';
+import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
+import { latchBuiltValues } from './buildLatch.ts';
 
 const WALL_SEG = 3.0, UV = 0.7, Z0 = -WALL_SEG / 2, Z1 = WALL_SEG / 2;
 type CoursedCoping = 'rollschicht' | 'saddleback' | 'tiled' | 'block' | 'slab';
@@ -165,22 +165,21 @@ type CoursedWallType = DestructiblePropType & { fitGeometry?: THREE.BufferGeomet
 export function coursedWallType(architectureId: string | null | undefined, legacy: DestructiblePropType,
   footprintRng: () => () => number): CoursedWallType {
   const coping = coursedCopingFor(architectureId);
-  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined;
   const entry: CoursedWallType = {
     ...legacy,
     build: (rng) => {
       const old = legacy.build(rng);
-      band = deriveRuntimeStructureContactBand({ baked: [old] });
-      fit?.dispose();
-      fit = old;
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
+      latch.peek<THREE.BufferGeometry>('fitGeometry')?.dispose();
+      latch.set('fitGeometry', old);
       return buildCoursedWall(coping, false);
     },
     broken: (rng) => { legacy.broken!(rng).dispose(); return buildCoursedWall(coping, true); },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'wallstone', 'contactBand') });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'wallstone', 'fitGeometry') });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback;
+  // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+  const latch = latchBuiltValues(entry, 'wallstone', ['contactBand', 'fitGeometry']);
   return entry;
 }
 
@@ -192,22 +191,21 @@ export function coursedWallType(architectureId: string | null | undefined, legac
  */
 export function dryStoneWallType(legacy: Omit<DestructiblePropType, 'mat'> & { mat: string }, load: ((wall: THREE.BufferGeometry) => THREE.BufferGeometry) | null,
   footprintRng: () => () => number): Omit<CoursedWallType, 'mat'> & { mat: string } {
-  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined;
   const full = (box: THREE.Box3, crowned: boolean) => { const wall = wallStoneFor(box, crowned); return load ? load(wall) : wall; };
   const entry: Omit<CoursedWallType, 'mat'> & { mat: string } = {
     ...legacy,
     build: (rng) => {
       const box = wallStoneBox(rng), old = full(box, false);
-      band = deriveRuntimeStructureContactBand({ baked: [old] });
-      fit?.dispose();
-      fit = old;
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
+      latch.peek<THREE.BufferGeometry>('fitGeometry')?.dispose();
+      latch.set('fitGeometry', old);
       return full(box, true);
     },
     footprintBuild: () => full(wallStoneBox(footprintRng()), false),
   };
-  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'wallstone', 'contactBand') });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'wallstone', 'fitGeometry') });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback;
+  // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+  const latch = latchBuiltValues(entry, 'wallstone', ['contactBand', 'fitGeometry']);
   return entry;
 }
 
@@ -219,21 +217,20 @@ export function dryStoneWallType(legacy: Omit<DestructiblePropType, 'mat'> & { m
  */
 export function lavaWallType(legacy: Omit<DestructiblePropType, 'mat'> & { mat: string },
   footprintRng: () => () => number): Omit<CoursedWallType, 'mat'> & { mat: string } {
-  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined;
   const entry: Omit<CoursedWallType, 'mat'> & { mat: string } = {
     ...legacy,
     h: LAVA_WALL_H,
     build: (rng) => {
       const wall = lavaWallFor(wallStoneBox(rng));
-      band = deriveRuntimeStructureContactBand({ baked: [wall] });
-      fit?.dispose();
-      fit = wall.clone();
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [wall] }));
+      latch.peek<THREE.BufferGeometry>('fitGeometry')?.dispose();
+      latch.set('fitGeometry', wall.clone());
       return wall;
     },
     broken: (rng) => { legacy.broken!(rng).dispose(); return lavaWallBroken(); },
     footprintBuild: () => lavaWallFor(wallStoneBox(footprintRng())),
   };
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  // (webcontent-diet-278) the shared latch, lenient as before: read before the build, they are undefined
+  const latch = latchBuiltValues(entry, 'wallstone', ['contactBand', 'fitGeometry'], { strict: false });
   return entry;
 }

@@ -1060,6 +1060,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/battle-memory-probe.selftest.mjs', // battle-spikes-253: the memory receipt's growth across battles and its judge
     'tools/phone-entry-gpu.selftest.mjs', // mobile-gpu-reset-277: the phone entry probe's GPU allocation tracker
     'tools/heap-retainers.selftest.mjs', // battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot
+    // webcontent-diet-278: no accessor in src is a closure made at its definition (V8 keeps it in a shared descriptor array:
+    // a wall kit's getter kept the previous battlefield alive), except the listed page singletons
+    'tools/accessor-closures.selftest.mjs',
+    'tools/battle-retention-probe.selftest.mjs', // webcontent-diet-278: the retention probe's verdict (world A released, its control retained)
     'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',

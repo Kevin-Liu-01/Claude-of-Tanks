@@ -22,8 +22,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ADOBE_UV_PER_M, type DestructiblePropType } from './inhabitKit.ts';
-import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
-import { builtValue } from './buildLatch.ts';
+import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
+import { builtValue, latchBuiltValues } from './buildLatch.ts';
 
 export type AdobeCrown = 'pinnacles' | 'kershef' | 'brush' | 'ridge' | 'worn';
 const CROWNS: Readonly<Record<string, AdobeCrown>> = Object.freeze({
@@ -208,7 +208,7 @@ type AdobeWallType = Omit<DestructiblePropType, 'mat'> & { fitGeometry?: THREE.B
 export function adobeWallType(architectureId: string | null | undefined, legacy: Omit<DestructiblePropType, 'mat'> & { mat: string },
   footprintRng: () => () => number): AdobeWallType {
   const kind = adobeCrownFor(architectureId);
-  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined, env: Envelope | undefined;
+  let env: Envelope | undefined;
   const envOf = (g: THREE.BufferGeometry): Envelope => {
     g.computeBoundingBox();
     const b = g.boundingBox!;
@@ -218,10 +218,10 @@ export function adobeWallType(architectureId: string | null | undefined, legacy:
     ...legacy,
     build: (rng) => {
       const old = legacy.build(rng);
-      band = deriveRuntimeStructureContactBand({ baked: [old] });
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
       env = envOf(old);
-      fit?.dispose();
-      fit = old;
+      latch.peek<THREE.BufferGeometry>('fitGeometry')?.dispose();
+      latch.set('fitGeometry', old);
       return buildAdobeWall(kind, env, false);
     },
     broken: (rng) => {
@@ -231,8 +231,8 @@ export function adobeWallType(architectureId: string | null | undefined, legacy:
     },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'walladobe', 'contactBand') });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'walladobe', 'fitGeometry') });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback;
+  // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+  const latch = latchBuiltValues(entry, 'walladobe', ['contactBand', 'fitGeometry']);
   return entry;
 }

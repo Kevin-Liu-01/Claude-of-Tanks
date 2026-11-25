@@ -39,7 +39,7 @@ import { FENCE_SEG, bFenceIronR2, type DestructiblePropType } from './inhabitKit
 import { gateStyleFor, type GateStyle } from './gateKit.ts';
 import { Mesh, WOOD_UV_PER_M, X, Y, Z, hexLin, member, mix, mul, norm, pole, stream, type Rgb, type UvMode, type V3 } from './craftMesh.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
-import { builtValue } from './buildLatch.ts';
+import { latchBuiltValues } from './buildLatch.ts';
 
 export const FENCE_KINDS = ['fenceplank', 'fencepicket', 'fencewattle', 'fencerail'] as const;
 type FenceKind = typeof FENCE_KINDS[number];
@@ -676,7 +676,6 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
   const out = {} as Record<FenceKind, FenceType>;
   for (const kind of FENCE_KINDS) {
     const legacy = base[kind];
-    let band: StructureCollisionRuntimeBand | undefined, sight: StructureCollisionRuntimeBand | undefined;
     const entry: FenceType = {
       ...legacy, mat: 'structureWood',
       // (the looks lane, 227) a collider of its own, its band what's drawn: spotting, sight lines and the shells meet the
@@ -684,10 +683,10 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
       collider: true,
       build: (rng) => {
         const old = legacy.build(rng);
-        band = deriveRuntimeStructureContactBand({ baked: [old] });
+        latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
         old.dispose();
         const drawn = buildFence(kind, gate, forms);
-        sight = drawnRecordBand(drawn);
+        latch.set('colliderBand', drawnRecordBand(drawn));
         return drawn;
       },
       // (r2, 2026-10-16: the module's own wreck, pushed over — the legacy broken builder's draws still spent first)
@@ -695,11 +694,10 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
       ownBroken: true,
       footprintBuild: () => legacy.build(footprintRng()),
     };
-    // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
-    out[kind] = Object.defineProperties(entry, {
-      contactBand: { enumerable: true, get: () => builtValue(band, kind, 'contactBand') },
-      colliderBand: { enumerable: true, get: () => builtValue(sight, kind, 'colliderBand') },
-    });
+    // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback;
+    // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+    const latch = latchBuiltValues(entry, kind, ['contactBand', 'colliderBand']);
+    out[kind] = entry;
   }
   return out;
 }
@@ -710,17 +708,18 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
  * placement footprint; its own broken build unchanged.
  */
 export function ironRailingType(legacy: DestructiblePropType, footprintRng: () => () => number): DestructiblePropType {
-  let band: StructureCollisionRuntimeBand | undefined;
   const entry: DestructiblePropType = {
     ...legacy,
     build: (rng) => {
       const old = legacy.build(rng);
-      band = deriveRuntimeStructureContactBand({ baked: [old] });
+      latch.set('contactBand', deriveRuntimeStructureContactBand({ baked: [old] }));
       old.dispose();
       return bFenceIronR2();
     },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, it throws rather than leave the reader its fallback
-  return Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'fenceiron', 'contactBand') });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, it throws rather than leave the reader its fallback;
+  // (webcontent-diet-278) through the shared latch, never a getter made here (it pinned the world's build scope)
+  const latch = latchBuiltValues(entry, 'fenceiron', ['contactBand']);
+  return entry;
 }

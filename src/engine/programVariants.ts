@@ -106,6 +106,17 @@ function shareUniforms(original: Material): void {
   }
 }
 
+// (webcontent-diet-278) the twin's version accessor is this module-level descriptor over a weak table, never a closure made
+// per twin: V8 keeps an accessor's functions in the hidden class's descriptor array, which every twin of a long-lived
+// shared material shares, so a closure made here outlived the world whose props asked for the twin
+// (world/maps/buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const twinVersions = new WeakMap<object, { original: Material; own: number }>();
+const TWIN_VERSION: PropertyDescriptor = {
+  configurable: true, enumerable: true,
+  get(this: object) { const held = twinVersions.get(this); return held ? held.original.version + held.own : 0; },
+  set(this: object, value: number) { const held = twinVersions.get(this); if (held) held.own = value - held.original.version; },
+};
+
 function twinOf(original: Material, variant: string): Material {
   shareUniforms(original);
   let byVariant = twins.get(original);
@@ -115,12 +126,8 @@ function twinOf(original: Material, variant: string): Material {
   twin = Object.create(original) as Material;
   // its own version on top of the original's: an original.needsUpdate recompiles the twin, a twin's own needsUpdate
   // (three: version++) recompiles only the twin
-  let own = 0;
-  Object.defineProperty(twin, 'version', {
-    configurable: true, enumerable: true,
-    get: () => original.version + own,
-    set: (value: number) => { own = value - original.version; },
-  });
+  twinVersions.set(twin, { original, own: 0 });
+  Object.defineProperty(twin, 'version', TWIN_VERSION);
   // its own listeners (three registers its dispose release per material object), released with the original
   (twin as unknown as { _listeners: object })._listeners = {};
   original.addEventListener('dispose', () => twin!.dispose());
