@@ -1176,6 +1176,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/viewportRuntime.selftest.mjs',
     // 2026-11-02 audit R4: a tiny parent waits in one first-layout recovery instead of rebuilding it every 250 ms
     'src/engine/viewportRecovery.selftest.mjs',
+    // mobile-gpu-reset-277: one field record per graphics reset (stage, preset, tier, mode, whether it came back)
+    'src/engine/gpuResetReport.selftest.mjs',
     // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
     // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
     // before every yield, and the repro harness's summary arithmetic
@@ -3455,6 +3457,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
+    // mobile-gpu-reset-277: a real WebGL context loss sends the graphics-reset record the sink accepts
+    'tools/gpu-reset.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',
     'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',

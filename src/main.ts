@@ -2778,11 +2778,19 @@ const battleRollout = createBattleRolloutRuntime({
 // synchronous) and skip the in-battle countdown (startBattle arms it only on
 // the player path — see opts.preBattleHold). Player/network entry and the
 // default-frame reveal share one typed lifecycle owner.
+// (mobile-gpu-reset-277) when the last battle entry began, and what the page was doing at a graphics reset
+let battleEntryStartedAt: number | null = null;
+renderer.userData.gpuResetContext = () => ({
+  phase: String(game.phase),
+  loaderPercent: battleLoad.covering && battleLoad.percent >= 0 ? battleLoad.percent : null,
+  mode: onlineMatchActive() ? 'network' : game.phase === 'garage' ? 'none' : 'solo',
+  sinceEntryMs: battleEntryStartedAt === null ? null : performance.now() - battleEntryStartedAt,
+});
 const battleEntryLifecycle = createBattleEntryLifecycle({
   nextFrame,
   wakeFrameLoop: () => frameLoop.restart(),
   // (audit F2) every accepted entry supersedes the previous entry's scene watchdog before its start can arm one
-  onEntry: () => { sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
+  onEntry: () => { sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; battleEntryStartedAt = performance.now(); },
   // (audit F2) a reveal waits only for a battle that can still present a frame, and counts only the time the frame
   // owner can present one: a live context and a scheduler that is not backgrounded (its own focus rule: a window that
   // lost focus stays `visible` but runs no tick, frameLoopScheduler.ts isBackgrounded)
