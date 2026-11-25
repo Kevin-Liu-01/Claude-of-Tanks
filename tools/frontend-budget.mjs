@@ -428,11 +428,17 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   the page total unchanged), main.ts +3.8 KB raw (the 276 wiring: replay, teardown, notices, hud-bands), the replay
   //   recorder's lazy port replayRecordingAccess.ts +1.2 KB raw. gallery +964 B, +1 request: chineseTurretOutlines and
   //   pl01HullLine in, donorBustleCut out. The other rows hold their pins.
-  game: { brotliBytes: 1282267, requests: 159, entryBrotliBytes: 260150 },
-  cn: { brotliBytes: 1331122, requests: 160, entryBrotliBytes: 260150 },
-  gallery: { brotliBytes: 803084, requests: 86 },
-  home: { brotliBytes: 30144, requests: 8 },
-  docs: { brotliBytes: 38686, requests: 12 },
+  // 2026-11-25 (integrator 276.1, coordinator ruling, at the release build of hotfix/276.1 b342086093): seven pins re-set
+  //   at their measure, attributed per chunk (the live 276 page's preloads and the hotfix build's). Two new shared chunks:
+  //   activeWorld.ts (the one-world fix e6af5ea4e7, mp-fixes-277, 115 B brotli; the game pages, +1 request) and
+  //   keyboardOwnership.ts (typing-keys-277's isTypingTarget, 318 B brotli; every page that takes keys: game, cn, home,
+  //   docs and gallery, +1 request each). game +782 B brotli and +2 requests, cn +960 and +2, entry +141 (both; the
+  //   importers' wiring), home +390 and +1, docs +481 and +1, gallery +247 and +1. notFound holds its pin.
+  game: { brotliBytes: 1283049, requests: 161, entryBrotliBytes: 260291 },
+  cn: { brotliBytes: 1332082, requests: 162, entryBrotliBytes: 260291 },
+  gallery: { brotliBytes: 803331, requests: 87 },
+  home: { brotliBytes: 30534, requests: 9 },
+  docs: { brotliBytes: 39167, requests: 13 },
   notFound: { brotliBytes: 19929, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. The entry's
