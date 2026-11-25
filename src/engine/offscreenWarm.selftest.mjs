@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createOffscreenSceneWarmer, renderBatchAlone, warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { createOffscreenSceneWarmer, renderBatchAlone, warmSceneOffscreenBatched, warmBatchUploadBytes } from './offscreenWarm.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function fakeRenderer({ throwOnRender = false } = {}) {
@@ -211,6 +211,45 @@ for (const failure of [null, 'render', 'yield']) {
   assert.deepEqual(seen.slice(-2), [[[true, false], [false, true]], [[false, true], [true, false]]], 'each batch drawn uncull\'d');
   assert.equal(far.frustumCulled, true);
   near.geometry.dispose(); near.material.dispose();
+}
+
+// (mobile-gpu-reset-278) the byte budget per frame: batches wait for a frame once those drawn since the last one hold the
+// budget's bytes of first uploads; shared arrays count once; a batch over the budget alone still goes in one frame
+{
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const shared = new THREE.BufferGeometry();
+  shared.setAttribute('position', new THREE.BufferAttribute(new Float32Array(256), 3)); // 1024 bytes
+  const material = new THREE.MeshBasicMaterial();
+  const meshes = [];
+  for (let i = 0; i < 4; i++) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(1024), 3)); // 4096 bytes
+    geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(512), 1)); // 1024 bytes
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh, new THREE.Mesh(shared, material));
+    meshes.push(mesh);
+  }
+  const big = new THREE.InstancedMesh(new THREE.BoxGeometry(), material, 4096); // 256 KiB of instance matrices
+  scene.add(big);
+  const counted = new WeakSet();
+  assert.equal(warmBatchUploadBytes([meshes[0]], counted), 5120);
+  assert.equal(warmBatchUploadBytes([meshes[0]], counted), 0, 'an array is counted once per warm');
+  const events = [];
+  await warmSceneOffscreenBatched({}, scene, camera, {
+    maxObjects: 1,
+    renderBatch: () => events.push('draw'),
+    frameBytes: { budget: 12_000, nextFrame: async () => { events.push('frame'); } },
+  });
+  const draws = events.filter((event) => event === 'draw').length;
+  assert.equal(draws, 9, 'every renderable is still drawn');
+  // per frame: two 5120-byte meshes (plus the shared 1024 once) fit 12 000 bytes, a third does not
+  const perFrame = events.join(' ').split('frame').map((part) => part.trim().split(' ').filter(Boolean).length);
+  assert.ok(events.includes('frame'), `the budget made the batches wait for frames: ${events.join(' ')}`);
+  assert.ok(perFrame.length >= 3, `the uploads spread over frames: ${events.join(' ')}`);
+  const none = [];
+  await warmSceneOffscreenBatched({}, scene, camera, { maxObjects: 1, renderBatch: () => none.push('draw') });
+  assert.equal(none.length, 9, 'with no budget nothing waits');
 }
 
 console.log('offscreenWarm self-test passed');

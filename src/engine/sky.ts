@@ -2103,7 +2103,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   let atmosphereKeySuffix = '';
   /** 2026-10-16: the installed environment is the grounded model's own bake (syncEnvironmentEnclosure). */
   let installedPhysical = false;
-  const environments = new SkyEnvironmentCache(renderer, scene);
+  // (mobile-gpu-reset-278) a phone keeps one baked environment (6 MB each); a Garage/battle switch re-bakes under its cover
+  const environments = new SkyEnvironmentCache(renderer, scene, () => (getDeviceTier() === 'mobile' ? 1 : 2));
   const environmentGenerator = (): THREE.PMREMGenerator => {
     const context = renderer.getContext();
     if (pmrem && (pmremContext !== context || pmremInfo !== renderer.info || context.isContextLost())) {
@@ -2206,11 +2207,17 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
       // sky re-bakes per map and would reinstall the bad texture — and swap
       // to compensated ambient when invalid (deviceDiag.ts).
-      withEnvironmentRenderState(renderer, () => environments.install(
-        environmentKey(renderer, sunDir, preset, atmosphereKeySuffix), bakeProceduralEnvironment,
-        environmentIntensityFor(),
-        () => enforceEnvValidity(renderer, scene, preset.envValidityScale ?? preset.skyIntensity),
-      ));
+      try {
+        withEnvironmentRenderState(renderer, () => environments.install(
+          environmentKey(renderer, sunDir, preset, atmosphereKeySuffix), bakeProceduralEnvironment,
+          environmentIntensityFor(),
+          () => enforceEnvValidity(renderer, scene, preset.envValidityScale ?? preset.skyIntensity),
+        ));
+      } finally {
+        // (mobile-gpu-reset-278) a phone lets the generator's scratch go after each bake: its ping-pong target is a
+        // third 768x1024 half-float cubeUV (6 MB) held between bakes; the next bake builds it (and its blur program) again
+        if (getDeviceTier() === 'mobile' && pmrem) { pmrem.dispose(); pmrem = null; }
+      }
       installedPhysical = physicalEnvBake();
     },
 

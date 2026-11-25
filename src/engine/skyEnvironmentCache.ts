@@ -19,10 +19,16 @@ export class SkyEnvironmentCache {
   private active: THREE.WebGLRenderTarget | null = null;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private readonly retainedLimit: () => number;
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
+  /**
+   * `retained`: how many validated environments stay cached (read at every installation). (mobile-gpu-reset-278) A
+   * phone keeps one: each 768x1024 half-float cubeUV target is 6 MB of its battle entry's GPU peak.
+   */
+  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, retained: () => number = () => RETAINED_ENVIRONMENTS) {
     this.renderer = renderer;
     this.scene = scene;
+    this.retainedLimit = retained;
   }
 
   private readonly disposed = (event: { target: THREE.WebGLRenderTarget }): void => {
@@ -93,9 +99,12 @@ export class SkyEnvironmentCache {
     this.cached.delete(key);
     this.cached.set(key, target);
     this.releaseOthers(target, true);
-    if (this.cached.size <= RETAINED_ENVIRONMENTS) return;
-    const oldest = this.cached.values().next();
-    if (!oldest.done) this.release(oldest.value);
+    const limit = Math.max(1, Math.floor(this.retainedLimit()));
+    while (this.cached.size > limit) {
+      const oldest = this.cached.values().next();
+      if (oldest.done) break;
+      this.release(oldest.value);
+    }
   }
 
   private rollback(

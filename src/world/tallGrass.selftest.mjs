@@ -78,6 +78,13 @@ const cam = new THREE.Vector3(0, 2, 0);
   const mobile = createTallGrass(field, { tier: 'mobile', biome: meadow, qualityScale: () => 1 });
   assert.equal(mobile.group.visible, false); assert.equal(mobile.pressure, null); assert.equal(mobile.pressureFine, null);
   mobile.update(1 / 60, cam); assert.equal(mobile.getState().enabled, false); assert.equal(mobile.near.count, 0);
+  // (mobile-gpu-reset-278) the phone's hidden sward holds one instance per ring, not the full caps (16.5 MB of heap)
+  const heapOf = (grass) => [grass.near, grass.mid, grass.far].reduce((sum, mesh) => sum + mesh.instanceMatrix.array.byteLength
+    + (mesh.instanceColor?.array.byteLength ?? 0) + mesh.geometry.getAttribute('aBlade').array.byteLength, 0);
+  assert.ok(heapOf(mobile) < 1024, `the mobile rings are one instance each (${heapOf(mobile)} bytes)`);
+  const full = createTallGrass(field, { tier: 'desktop', biome: meadow, qualityScale: () => 1 });
+  assert.ok(heapOf(full) > 16 * 1024 * 1024, `a desktop sward keeps its caps (${heapOf(full)} bytes)`);
+  full.dispose();
   mobile.dispose();
   const desert = createTallGrass(field, { tier: 'desktop', mapId: 'desert', qualityScale: () => 1 });
   assert.equal(desert.group.visible, false, 'the desert grows no sward');

@@ -132,7 +132,7 @@ visit(file);
 const ownerStart = source.indexOf('  let pmrem: '), ownerEnd = source.indexOf('  // Round 65: the environment of the physically based dome');
 assert.ok(ownerStart >= 0 && ownerEnd > ownerStart, 'the environment owner block is found in sky.ts');
 const ownerSource = source.slice(ownerStart, ownerEnd);
-function skyFixture() {
+function skyFixture({ tier = 'desktop' } = {}) {
   const state = { creates: 0, bakes: 0, validations: 0, generatorDisposals: 0,
     atmosphereInfo: null, atmosphereRefreshes: 0, geometryDisposals: 0, materialDisposals: 0, targets: [], inputs: [], failure: '' };
   const scene = new THREE.Scene(); const originalTarget = new THREE.WebGLCubeRenderTarget(8);
@@ -185,6 +185,7 @@ function skyFixture() {
     // 2026-10-01 (the grounded light model): the owner's environment intensity reads the model's value, null on the
     // legacy dome this fixture bakes — the authored floor applies exactly as before
     const physicalEnvIntensity = null;
+    const getDeviceTier = () => input.tier;
     const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
     const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21;
     // (item 31, 2026-10-11: the lunar Earth's land mask binds a one-texel placeholder until a preset draws the Earth;
@@ -201,7 +202,7 @@ function skyFixture() {
       // The real validator restores target without its cube face/mip.
       renderer.setRenderTarget(renderer.getRenderTarget());
       return true;
-    }, { renderer, scene, preset, sunDir, refreshAtmosphere() { state.atmosphereInfo = renderer.info; state.atmosphereRefreshes++; } });
+    }, { tier, renderer, scene, preset, sunDir, refreshAtmosphere() { state.atmosphereInfo = renderer.info; state.atmosphereRefreshes++; } });
   return { ...result, state, scene, renderer, preset, sunDir,
     assertRestored() { assert.deepEqual(bound, [originalTarget, 4, 2]); assert.equal(renderer.xr.enabled, true);
       assert.equal(renderer.autoClear, true); assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping); } };
@@ -239,6 +240,21 @@ const resetGenerator = skyFixture(); resetGenerator.rig.bakeEnvironment();
 resetGenerator.renderer.info = {}; resetGenerator.rig.bakeEnvironment();
 assert.equal(resetGenerator.state.creates, 2); assert.equal(resetGenerator.state.generatorDisposals, 1);
 assert.equal(resetGenerator.state.targets[0].disposals, 1);
+// (mobile-gpu-reset-278) a phone keeps one baked environment and lets the generator's scratch go after every bake: a
+// second sky re-bakes (no retained hit), the first is released, and every bake makes and disposes its generator
+{
+  const phone = skyFixture({ tier: 'mobile' });
+  phone.rig.bakeEnvironment(); const first = phone.scene.environment;
+  assert.equal(phone.state.creates, 1); assert.equal(phone.state.generatorDisposals, 1, 'the scratch goes after the bake');
+  phone.preset.skyIntensity = 0.05; phone.rig.bakeEnvironment();
+  assert.equal(phone.state.targets[0].disposals, 1, 'one environment kept: the first released when the second installs');
+  phone.preset.skyIntensity = 1; phone.rig.bakeEnvironment();
+  assert.ok(phone.scene.environment !== first, 'the returning sky re-bakes on a phone (no retained second target)');
+  assert.equal(phone.state.bakes, 3); assert.equal(phone.state.creates, 3); assert.equal(phone.state.generatorDisposals, 3);
+  phone.assertRestored();
+  const desk = skyFixture(); desk.rig.bakeEnvironment();
+  assert.equal(desk.state.generatorDisposals, 0, 'a desktop keeps its generator between bakes');
+}
 // (272) the switched-off sourced-HDRI experiment is gone: the procedural bake is the only environment path
 assert.doesNotMatch(source, /HDRI_ENV_URL|loadHdriEnvironment|fromEquirectangular|RGBELoader/);
 console.log('skyEnvironmentCache.selftest: bounded validated day/night reuse, exact keys, context/disposal/failure ownership, actual sky bake/state contracts passed');

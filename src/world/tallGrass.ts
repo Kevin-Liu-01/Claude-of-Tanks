@@ -700,6 +700,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     materials.push(material);
     return material;
   }
+  // (mobile-gpu-reset-278) the phone tier never shows the sward: its rings hold one instance, not the 188 000 the full
+  // caps allocated (16.5 MB of matrices, colours and blade data in the page's heap, never drawn or uploaded)
+  const enabled = !!biome && tier !== 'mobile';
   const geometries = [buildTallGrassClumpGeometry(), buildTallGrassClumpGeometry(TALL_GRASS.mid.blades, 1), buildTallGrassFarGeometry()];
   type RingSpec = typeof TALL_GRASS.near | typeof TALL_GRASS.mid | typeof TALL_GRASS.far;
   function makeRing(spec: RingSpec, geometry: THREE.BufferGeometry, kind: 'near' | 'mid' | 'far', salt: number): Ring {
@@ -709,7 +712,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       dissolve: spec.dissolve, keepRefM, widthGrow: 'widthGrow' in spec ? spec.widthGrow : 1, headLow: far ? 1 : 0,
     };
     const material = makeMaterial(spec.fade, spec.programKey, far, shape);
-    const mesh = new THREE.InstancedMesh(geometry, material, spec.cap);
+    const cap = enabled ? spec.cap : 1;
+    const mesh = new THREE.InstancedMesh(geometry, material, cap);
     mesh.name = `tall-grass-${kind}`;
     mesh.castShadow = false;
     mesh.receiveShadow = true;
@@ -719,15 +723,15 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     // translation-only matrices: every other cell of the identity is written once
     const matrices = mesh.instanceMatrix.array as Float32Array;
-    for (let i = 0; i < spec.cap; i++) { matrices[i * 16] = 1; matrices[i * 16 + 5] = 1; matrices[i * 16 + 10] = 1; matrices[i * 16 + 15] = 1; }
+    for (let i = 0; i < cap; i++) { matrices[i * 16] = 1; matrices[i * 16 + 5] = 1; matrices[i * 16 + 10] = 1; matrices[i * 16 + 15] = 1; }
     mesh.setColorAt(0, new THREE.Color(1, 1, 1));
     mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-    const blade = new THREE.InstancedBufferAttribute(new Float32Array(spec.cap * 4), 4);
+    const blade = new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4);
     blade.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('aBlade', blade);
     group.add(mesh);
     return {
-      cellM: spec.cellM, ring: spec.ring, perM2: spec.perM2, cap: spec.cap, mesh, blade, cache: new Map(),
+      cellM: spec.cellM, ring: spec.ring, perM2: spec.perM2, cap, mesh, blade, cache: new Map(),
       cellX: 0x7fffffff, cellZ: 0x7fffffff, pending: [], building: null, published: false, completedSincePublish: 0,
       count: 0, builds: 0, publishes: 0, truncated: 0, salt, far, keepRefM,
       // (the far ring shows nothing inside its fade-in; the mid ring nothing inside its dissolve-in)
@@ -739,7 +743,6 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const mid = makeRing(TALL_GRASS.mid, geometries[1], 'mid', 0x5e6f);
   const far = makeRing(TALL_GRASS.far, geometries[2], 'far', 0x3c4d);
   const rings = [near, mid, far] as const;
-  const enabled = !!biome && tier !== 'mobile';
   group.visible = enabled;
 
   const heightAt = (x: number, z: number): number =>
