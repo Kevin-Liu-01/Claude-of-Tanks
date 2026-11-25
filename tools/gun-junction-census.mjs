@@ -56,6 +56,7 @@ import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { uniqueIds } from './id-list.mjs';
 import { partArgs, writePartRows } from './changed-only/parts.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -445,6 +446,9 @@ for (const id of ids) {
   console.log(`${id}: ${verdict} — ${mouthCount} main mouth(s)${kind === 'hull-fixed' ? ' fixed in the hull' : ''}, ${tankPoses.length} poses (build ${((built - started) / 1000).toFixed(1)} s, census ${((censused - built) / 1000).toFixed(1)} s, total ${((performance.now() - started) / 1000).toFixed(1)} s)`);
   for (const l of lines) console.log(l);
   tank.dispose?.();
+  // Free this build before the next id (build-loop-yield.mjs): without the yield the loop never ends its job and every
+  // tank stayed resident (--update --all grew ~5 GB a minute to 24 GB; 30 ids: ~100 MB an id).
+  await betweenBuilds();
 }
 parts.done();
 if (parts.partDir) {
