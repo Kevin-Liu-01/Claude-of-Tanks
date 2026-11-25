@@ -2705,6 +2705,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
+    'src/world/wreckBakeFacts.selftest.mjs', // 278: a world placed from the wreck facts is the world that baked its hulks, and its swap draws them
     'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
     'tools/worldColliderAudit.selftest.mjs', // 2026-10-07 the hitbox lane: the world collider audit's measures
@@ -3189,6 +3190,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckBakeWire.selftest.mjs',
     'src/world/wreckBakeClient.selftest.mjs',
     'src/world/wreckBakePrefetch.selftest.mjs',
+    'src/world/deferredWrecks.selftest.mjs', // 278: the hulks placed from their facts swap in after the reveal, nearest first
     'src/world/surfacePaintPrefetch.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
     'src/world/wreckWorkerFallback.selftest.mjs', // 2026-10-09: a failed or silent wreck worker never fails the props build

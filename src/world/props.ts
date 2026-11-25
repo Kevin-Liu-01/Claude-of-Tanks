@@ -9224,9 +9224,17 @@ ${snowCap ? `
   const wreckDrawnFootprints: CollisionRecord[] = [];
   /** (sealed lane) A placed wreck piece's drawn footprint: the convex hull in plan of its vertices over `over` m above the
    *  hulk's seat, with its height, for the parked vehicles' seat passes (crushableFootprints). */
-  function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): void {
+  function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): CollisionRecord | null {
     const record = drawnPlanRecord([geo], y, over);
     if (record) wreckDrawnFootprints.push(record);
+    return record;
+  }
+  /** (wreck-bake-after-reveal-278) A hulk's drawn footprint as its facts recorded it for its seat (a copy: the facts are
+   *  the module's, shared by every build). */
+  function pushRecordedWreckFootprint(record: CollisionRecord | null): CollisionRecord | null {
+    const copy = record ? structuredClone(record) : null;
+    if (copy) wreckDrawnFootprints.push(copy);
+    return copy;
   }
   function* placeTankWrecks(): Generator<PropsBuildSlice, void, void> {
     const wCfg = P.tankWrecks || null;
@@ -9452,8 +9460,7 @@ ${snowCap ? `
           g.translate(x, y, z); // settled on dead suspension across its whole footprint
         }
         // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
-        const drawn = baked.geo ? drawnPlanRecord([g!], y, 0.3) : (recordedDrawn ? structuredClone(recordedDrawn) : null);
-        if (drawn) wreckDrawnFootprints.push(drawn);
+        const drawn = baked.geo ? pushWreckDrawnFootprint(g!, y, 0.3) : pushRecordedWreckFootprint(recordedDrawn ?? null);
         if (!baked.geo) {
           deferredHulks.push({ specId, options, yaw, quaternion: [quat.x, quat.y, quat.z, quat.w], position: [x, y, z], standIn: g });
           if (g) standInShadowGeos.push(g.clone());
@@ -9826,9 +9833,41 @@ ${snowCap ? `
           group.add(ds);
           disposePlacedWreckGeometries(standInShadowGeos);
         }
+        const shadowMaterial = ds?.material ?? null;
         const plan: DeferredWreckPlan = {
           hulks: deferredHulks.splice(0), mesh: dm, shadow: ds, state: 'pending',
+          focus: [L.spawns.player.x, L.spawns.player.z],
           setShadowProfile: (mesh, geos) => setShadowCasterProfile(mesh, partsShadowProfile(geos)),
+          // a baked hulk as finalizeWreckMeshes draws the hulks it baked: the props' baked material (the stand-ins' mesh's,
+          // as the assembly left it), no shadow of its own, and the factory's shadow proxy beside it, shadow-only
+          makeHulk: (geo, shadowGeo, matrix, specId) => {
+            const hulk = new THREE.Mesh(geo, dm.material);
+            hulk.name = 'tank-wrecks';
+            hulk.userData.wreckHulk = specId;
+            hulk.castShadow = false;
+            hulk.receiveShadow = true;
+            hulk.matrixAutoUpdate = false;
+            hulk.matrix.copy(matrix);
+            hulk.matrixWorldNeedsUpdate = true;
+            if (!shadowGeo) return [hulk];
+            const caster = new THREE.Mesh(shadowGeo, shadowMaterial ?? new THREE.MeshBasicMaterial({
+              name: 'TankWreckShadowProxy', colorWrite: false, depthWrite: false,
+            }));
+            caster.name = 'tank-wrecks-shadow';
+            caster.castShadow = true;
+            caster.receiveShadow = false;
+            caster.matrixAutoUpdate = false;
+            caster.matrix.copy(matrix);
+            caster.matrixWorldNeedsUpdate = true;
+            // (its profile's sphere in world space: the proxy's own, carried by its pose)
+            if (!shadowGeo.boundingSphere) shadowGeo.computeBoundingSphere();
+            if (!shadowGeo.boundingBox) shadowGeo.computeBoundingBox();
+            const sphere = shadowGeo.boundingSphere!.clone().applyMatrix4(matrix);
+            setShadowCasterProfile(caster, { heightM: shadowGeo.boundingBox!.max.y - shadowGeo.boundingBox!.min.y,
+              spheres: new Float32Array([sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius]) });
+            markShadowOnly(caster);
+            return [hulk, caster];
+          },
         };
         group.userData.deferredWrecks = plan;
         standInGeos.length = 0; // (the plan's now)

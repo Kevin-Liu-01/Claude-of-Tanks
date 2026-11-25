@@ -103,6 +103,10 @@ const roomRandom = seedArg === 'random' ? undefined : (() => {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 })();
 const soloSpec = argValue('spec', 'm1a2_abrams_sepv3');
+// --post-reveal-s=<s> (wreck-bake-after-reveal-278): the solo page stays in its battle this long after the reveal, timing
+// every presented frame (rAF deltas: the longest, how many passed 50 ms) and reading the wrecks' swap after the reveal
+// (world/deferredWrecks.ts: when each bake's hulks swapped in, and the swap's own longest main-thread step)
+const postRevealS = Number(argValue('post-reveal-s', 0));
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -378,7 +382,41 @@ async function runSolo(origin) {
   if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
   if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
   await still(page, 'solo-reveal.png');
+  if (postRevealS > 0) out.postReveal = await watchAfterReveal(page, postRevealS);
   return out;
+}
+
+/** (wreck-bake-after-reveal-278) The battle's frames over `seconds` after the reveal, and the wrecks' deferred swap. */
+async function watchAfterReveal(page, seconds) {
+  const deferredPlan = () => {
+    let plan = null;
+    window.__DEBUG?.world?.group?.traverse((object) => { if (!plan && object.userData?.deferredWrecks) plan = object.userData.deferredWrecks; });
+    return plan ? { state: plan.state, hulks: plan.hulks.length, stats: plan.stats ? JSON.parse(JSON.stringify(plan.stats)) : null } : null;
+  };
+  const frames = await page.evaluate((ms) => new Promise((done) => {
+    const deltas = [];
+    const start = performance.now();
+    let last = start;
+    const tick = (now) => {
+      deltas.push(now - last);
+      last = now;
+      if (now - start < ms) requestAnimationFrame(tick);
+      else done(deltas);
+    };
+    requestAnimationFrame((now) => { last = now; requestAnimationFrame(tick); });
+  }), seconds * 1000);
+  const sorted = [...frames].sort((a, b) => a - b);
+  const result = {
+    seconds, frames: frames.length,
+    longestMs: +(sorted.at(-1) ?? 0).toFixed(1),
+    p99Ms: +(sorted[Math.floor(sorted.length * 0.99)] ?? 0).toFixed(1),
+    over50: frames.filter((ms) => ms > 50).length,
+    over100: frames.filter((ms) => ms > 100).length,
+    deferred: await page.evaluate(deferredPlan).catch(() => null),
+  };
+  step('solo-post-reveal', result);
+  await still(page, 'solo-post-reveal.png');
+  return result;
 }
 
 let rooms = null;

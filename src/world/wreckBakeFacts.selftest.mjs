@@ -35,19 +35,47 @@ const laidOut = (props) => ({
   destructibles: props.destructibles.map((d) => ({ kind: d.kind, x: d.x, y: d.y, z: d.z, r: d.r, h: d.h, yaw: d.yaw, ob: d.ob })),
   crushables: props.crushables, grounding: props.decorationGroundingReceipts,
 });
-const named = (props, name) => props.group.getObjectByName(name) ?? null;
-/** The drawn wrecks' unique corner positions (float words) and triangle count over the named meshes. */
+const named = (props, name) => props.group.getObjectByName(name) ?? null; // (null: none)
+const allNamed = (props, name) => props.group.children.filter((o) => o.name === name);
+/** The drawn wrecks: their world-space corners (each mesh's matrix applied) and triangle count. */
 function drawnWrecks(meshes) {
-  const corners = new Set();
+  const corners = [];
   let tris = 0;
+  const v = new THREE.Vector3();
   for (const mesh of meshes) {
-    if (!mesh) continue;
-    const g = mesh.geometry, p = g.attributes.position;
+    const g = mesh?.geometry, p = g?.attributes.position;
     if (!p) continue;
+    const m = mesh.matrixAutoUpdate ? null : mesh.matrix;
     tris += (g.index ? g.index.count : p.count) / 3;
-    for (let i = 0; i < p.count; i++) corners.add(`${p.getX(i)},${p.getY(i)},${p.getZ(i)}`);
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i);
+      if (m) v.applyMatrix4(m);
+      corners.push(v.x, v.y, v.z);
+    }
   }
   return { corners, tris };
+}
+/** Every corner of `a` has one of `b` within `tol` metres (a 5 cm grid over `b`). */
+function coveredWithin(a, b, tol) {
+  const cell = (x) => Math.floor(x / 0.05);
+  const grid = new Map();
+  for (let i = 0; i < b.length; i += 3) {
+    const k = `${cell(b[i])},${cell(b[i + 1])},${cell(b[i + 2])}`;
+    (grid.get(k) ?? grid.set(k, []).get(k)).push(i);
+  }
+  let worst = 0;
+  for (let i = 0; i < a.length; i += 3) {
+    let best = Infinity;
+    const [cx, cy, cz] = [cell(a[i]), cell(a[i + 1]), cell(a[i + 2])];
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+        best = Math.min(best, Math.hypot(a[i] - b[j], a[i + 1] - b[j + 1], a[i + 2] - b[j + 2]));
+      }
+    }
+    worst = Math.max(worst, best);
+    if (best > tol) return { ok: false, worst: best, at: [a[i], a[i + 1], a[i + 2]] };
+  }
+  return { ok: true, worst };
 }
 
 async function build(mapId, facts) {
@@ -73,7 +101,7 @@ for (const order of [MAPS, [...MAPS].reverse()]) {
     assert.equal(plan?.hulks.length, baked.tankWreckSpots.length, `${mapId}: every hulk waits for its bake`);
     assert.equal(plan.state, 'pending');
     assert.equal(named(baked, 'tank-wrecks-deferred'), null, `${mapId}: the baking build defers nothing`);
-    const standIn = drawnWrecks([named(placed, 'tank-wrecks-deferred')]);
+    const standIn = drawnWrecks(allNamed(placed, 'tank-wrecks-deferred'));
     assert.ok(standIn.tris > 0 && standIn.tris < 600 * plan.hulks.length, `${mapId}: the stand-ins are drawn, a few hundred triangles a hulk (${standIn.tris})`);
     // the swap: the hulks baked as the worker bakes them, then the drawn wrecks equal the baking build's
     const stats = await bakeDeferredWrecks(plan, {
@@ -86,14 +114,19 @@ for (const order of [MAPS, [...MAPS].reverse()]) {
     assert.equal(plan.state, 'done');
     assert.equal(stats.failed, 0);
     assert.equal(stats.baked, stats.bakes);
-    const after = drawnWrecks([named(placed, 'tank-wrecks'), named(placed, 'tank-wrecks-deferred')]);
-    const before = drawnWrecks([named(baked, 'tank-wrecks')]);
+    assert.equal(placed.group.getObjectByName('tank-wrecks-deferred'), undefined, `${mapId}: no stand-in is left drawn`);
+    const after = drawnWrecks(allNamed(placed, 'tank-wrecks'));
+    const before = drawnWrecks(allNamed(baked, 'tank-wrecks'));
     assert.equal(after.tris, before.tris, `${mapId}: after the swap the wrecks draw the baking build's triangles`);
-    assert.equal(after.corners.size, before.corners.size, `${mapId}: and its corners`);
-    for (const corner of before.corners) assert.ok(after.corners.has(corner), `${mapId}: corner ${corner} drawn after the swap`);
+    // the hulks are posed by their matrix instead of three transforms each rounded to float32: within a tenth of a millimetre
+    for (const [a, b, what] of [[after.corners, before.corners, 'drawn after the swap'], [before.corners, after.corners, 'the baking build draws']]) {
+      const cover = coveredWithin(a, b, 1e-4);
+      assert.ok(cover.ok, `${mapId}: every corner ${what} is the other's (worst ${cover.worst} m at ${cover.at})`);
+    }
     // and its shadow proxies
-    const shadow = (props, names) => names.reduce((n, name) => n + (named(props, name)?.geometry.attributes.position.count ?? 0), 0);
-    assert.equal(shadow(placed, ['tank-wrecks-shadow', 'tank-wrecks-deferred-shadow']), shadow(baked, ['tank-wrecks-shadow']),
+    const shadowCount = (props, names) => names.flatMap((name) => allNamed(props, name))
+      .reduce((n, mesh) => n + mesh.geometry.attributes.position.count, 0);
+    assert.equal(shadowCount(placed, ['tank-wrecks-shadow', 'tank-wrecks-deferred-shadow']), shadowCount(baked, ['tank-wrecks-shadow']),
       `${mapId}: the swapped shadow proxies are the baking build's`);
     console.log(`  ${mapId}: ${plan.hulks.length} hulks, ${stats.bakes} bakes; world identical; ${standIn.tris} stand-in triangles -> ${after.tris} after the swap`);
   }

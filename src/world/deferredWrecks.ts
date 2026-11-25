@@ -1,15 +1,17 @@
 /**
  * The hulks baked after the reveal (wreck-bake-after-reveal-278; see wreckBakeFacts.ts). A browser props build with a
  * wreck worker and the map's recorded facts places each hulk from its facts (seat, collision, footprints, budget) and
- * draws its stand-in (its movement solids, charred) in a mesh of its own, 'tank-wrecks-deferred'. Once the battle is
- * shown (main.ts onReveal through world.bakeDeferredWrecks), this bakes the hulks on the worker, one at a time, poses
- * each as the props build would have (props.ts commitWreck: turned, leant to its ground, moved to its seat) and swaps the
- * mesh's geometry and its shadow proxy's for the real ones in one step. Nothing a battle reads moves: the obstacles,
- * colliders and records were laid from the facts. A bake that fails keeps its hulk's stand-in.
+ * draws its stand-in (its movement solids, charred) in a mesh of their own, 'tank-wrecks-deferred'. Once the battle is
+ * shown (main.ts onReveal through world.bakeDeferredWrecks), this bakes them on the worker one bake at a time, the bakes
+ * whose hulks stand nearest the player's spawn first, and swaps each bake's hulks in as it lands: each hulk a mesh of its
+ * own posed by its matrix (props.ts commitWreck's pose: turned, leant to its ground, moved to its seat) over the bake's
+ * one geometry, its shadow proxy beside it, and the stand-ins left rebuilt without it (a few hundred triangles a hulk).
+ * No hulk's vertices are moved on the main thread and no map-wide merge runs in the battle; the GPU upload of a bake's
+ * geometry is the cost of each swap. Nothing a battle reads moves: the obstacles, colliders and records were laid from
+ * the facts. A bake that fails keeps its hulks' stand-ins.
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBake } from './wrecks.ts';
 import type { WreckState } from './wreckStates.ts';
@@ -29,18 +31,26 @@ export interface DeferredWreckStats {
   bakes: number;
   baked: number;
   failed: number;
-  /** ms from the start to the last bake settled, and to the swap; the swap's own main-thread time */
-  bakedMs: number;
-  swappedMs: number;
-  swapMs: number;
+  /** ms from the start to each bake's swap, in swap order (nearest the spawn first) */
+  swapsMs: number[];
+  /** ms from the start to the last swap (or the last bake settled) */
+  doneMs: number;
+  /** the longest swap's own main-thread time (ms) */
+  swapMaxMs: number;
 }
 
 /** What the props build leaves on its group (userData.deferredWrecks) for the swap. */
 export interface DeferredWreckPlan {
   hulks: DeferredWreckHulk[];
+  /** the stand-ins' mesh and their shadow proxy */
   mesh: THREE.Mesh;
   shadow: THREE.Mesh | null;
+  /** where the bakes start: the player's spawn (x, z) */
+  focus: [number, number] | null;
   state: 'pending' | 'baking' | 'done' | 'cancelled';
+  /** A baked hulk's drawn mesh and shadow proxy over the bake's geometries, posed by `matrix` (props.ts). */
+  makeHulk(geo: THREE.BufferGeometry, shadowGeo: THREE.BufferGeometry | null, matrix: THREE.Matrix4, specId: string): THREE.Object3D[];
+  /** The stand-ins' shadow proxy's caster profile, from its remaining parts (props.ts partsShadowProfile). */
   setShadowProfile(mesh: THREE.Mesh, geos: THREE.BufferGeometry[]): void;
   stats?: DeferredWreckStats;
   /** Stop a bake under way (the world's dispose). */
@@ -62,23 +72,46 @@ function nextTurn(): Promise<void> {
 }
 
 const bakeKey = (hulk: DeferredWreckHulk): string => `${hulk.specId}|${hulk.options.seed}|${hulk.options.state}`;
+const _turn = new THREE.Quaternion(), _yaw = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _one = new THREE.Vector3(1, 1, 1);
 
-/** A bake's geometry posed as props.ts commitWreck poses it: turned, leant to its ground, moved to its seat. */
-function posed(source: THREE.BufferGeometry, hulk: DeferredWreckHulk, quat: THREE.Quaternion): THREE.BufferGeometry {
-  const g = source.clone();
-  const box = g.boundingBox !== null, sphere = g.boundingSphere !== null;
-  g.boundingBox = null; g.boundingSphere = null;
-  g.rotateY(hulk.yaw);
-  g.applyQuaternion(quat);
-  if (box) g.boundingBox = new THREE.Box3();
-  if (sphere) g.boundingSphere = new THREE.Sphere();
-  g.translate(hulk.position[0], hulk.position[1], hulk.position[2]);
-  return g;
+/** A hulk's pose as one matrix: props.ts commitWreck's rotateY(yaw), then its ground's lean, then its seat. */
+export function deferredHulkMatrix(hulk: DeferredWreckHulk, target = new THREE.Matrix4()): THREE.Matrix4 {
+  _turn.set(...hulk.quaternion).multiply(_yaw.setFromAxisAngle(_up, hulk.yaw));
+  return target.compose(new THREE.Vector3(...hulk.position), _turn, _one);
+}
+
+/** The bakes in the order they are asked for: the one with a hulk nearest `focus` first (seat order without one). */
+export function deferredBakeOrder(hulks: readonly DeferredWreckHulk[], focus: [number, number] | null): string[] {
+  const nearest = new Map<string, number>();
+  hulks.forEach((hulk, index) => {
+    const d = focus ? Math.hypot(hulk.position[0] - focus[0], hulk.position[2] - focus[1]) : index;
+    const key = bakeKey(hulk);
+    nearest.set(key, Math.min(nearest.get(key) ?? Infinity, d));
+  });
+  return [...nearest.keys()].sort((a, b) => nearest.get(a)! - nearest.get(b)!);
+}
+
+/** The stand-ins' mesh and shadow redrawn from the hulks still waiting; both leave the scene when none is. */
+function redrawStandIns(plan: DeferredWreckPlan): void {
+  const parts = plan.hulks.map((hulk) => hulk.standIn).filter((g): g is THREE.BufferGeometry => g !== null);
+  for (const mesh of [plan.mesh, plan.shadow]) {
+    if (!mesh) continue;
+    const previous = mesh.geometry;
+    if (parts.length) {
+      mesh.geometry = mergeGeometries(parts, false) ?? new THREE.BufferGeometry();
+    } else {
+      mesh.geometry = new THREE.BufferGeometry();
+      mesh.removeFromParent();
+    }
+    previous.dispose();
+  }
+  if (plan.shadow && parts.length) plan.setShadowProfile(plan.shadow, parts);
 }
 
 /**
- * Bake a plan's hulks and swap them in. Resolves with its stats once swapped (or with what it reached when cancelled);
- * a plan already started resolves at once. `makeClient`, `pace` and `now` are the receipts' seams.
+ * Bake a plan's hulks and swap them in as they land. Resolves with its stats once every bake has settled (or with what
+ * it reached when cancelled); a plan already started resolves at once. `makeClient`, `pace` and `now` are the receipts'
+ * seams.
  */
 export async function bakeDeferredWrecks(plan: DeferredWreckPlan, {
   makeClient = () => createWreckBakeClient(),
@@ -88,81 +121,48 @@ export async function bakeDeferredWrecks(plan: DeferredWreckPlan, {
   if (plan.state !== 'pending') return plan.stats ?? null;
   plan.state = 'baking';
   const startedAt = now();
-  const keys = [...new Set(plan.hulks.map(bakeKey))];
-  const stats: DeferredWreckStats = { hulks: plan.hulks.length, bakes: keys.length, baked: 0, failed: 0, bakedMs: 0, swappedMs: 0, swapMs: 0 };
+  const keys = deferredBakeOrder(plan.hulks, plan.focus);
+  const stats: DeferredWreckStats = { hulks: plan.hulks.length, bakes: keys.length, baked: 0, failed: 0, swapsMs: [], doneMs: 0, swapMaxMs: 0 };
   plan.stats = stats;
   const client = makeClient();
-  const bakes = new Map<string, WreckBake | null>();
-  const made: THREE.BufferGeometry[] = [];
   let cancelled = false;
   plan.cancel = () => { cancelled = true; plan.state = 'cancelled'; client.dispose(); };
-  const release = (): void => {
-    for (const baked of bakes.values()) { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); }
-    bakes.clear();
-    while (made.length) made.pop()!.dispose();
-  };
+  const release = (baked: WreckBake | null): void => { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); };
+  const matrix = new THREE.Matrix4();
+  // (the hulks join the stand-ins' parent: the props group, even once the last stand-in has left it)
+  const parent = plan.mesh.parent;
   try {
+    if (!parent) { plan.state = 'cancelled'; return stats; }
     for (const key of keys) {
-      const hulk = plan.hulks.find((h) => bakeKey(h) === key)!;
+      const hulks = plan.hulks.filter((hulk) => bakeKey(hulk) === key);
       let baked: WreckBake | null = null;
       try {
-        baked = await client.bake(hulk.specId, hulk.options, () => (cancelled ? Promise.reject(new Error('cancelled')) : undefined));
+        baked = await client.bake(hulks[0].specId, hulks[0].options, () => (cancelled ? Promise.reject(new Error('cancelled')) : undefined));
       } catch (error) {
         if (cancelled) return stats;
-        console.warn(`[wrecks] the ${hulk.specId} wreck did not bake after the reveal; its stand-in stays`, error);
+        console.warn(`[wrecks] the ${hulks[0].specId} wreck did not bake after the reveal; its stand-in stays`, error);
       }
-      if (cancelled) { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); return stats; }
-      bakes.set(key, baked);
-      if (baked) stats.baked++; else stats.failed++;
-    }
-    stats.bakedMs = Math.round(now() - startedAt);
-    // each hulk posed in a turn of its own (a hulk is ~50k vertices: three transforms ~6.5 ms on a desktop)
-    const drawn: THREE.BufferGeometry[] = [], shadows: THREE.BufferGeometry[] = [];
-    const quat = new THREE.Quaternion();
-    for (const hulk of plan.hulks) {
+      if (cancelled) { release(baked); return stats; }
+      if (!baked) { stats.failed++; continue; }
+      stats.baked++;
+      // the swap lands in a turn of its own
       await pace();
-      if (cancelled) return stats;
-      quat.set(...hulk.quaternion);
-      const baked = bakes.get(bakeKey(hulk));
-      if (baked) {
-        drawn.push(posed(baked.geo, hulk, quat));
-        made.push(drawn[drawn.length - 1]);
-        if (baked.shadowGeo) { shadows.push(posed(baked.shadowGeo, hulk, quat)); made.push(shadows[shadows.length - 1]); }
-      } else if (hulk.standIn) {
-        drawn.push(hulk.standIn);
-        shadows.push(hulk.standIn);
+      if (cancelled) { release(baked); return stats; }
+      const swapStart = now();
+      for (const hulk of hulks) {
+        for (const object of plan.makeHulk(baked.geo, baked.shadowGeo, deferredHulkMatrix(hulk, matrix), hulk.specId)) parent.add(object);
+        hulk.standIn?.dispose();
+        hulk.standIn = null;
       }
+      redrawStandIns(plan);
+      const end = now();
+      stats.swapMaxMs = Math.max(stats.swapMaxMs, Math.round((end - swapStart) * 10) / 10);
+      stats.swapsMs.push(Math.round(end - startedAt));
     }
-    await pace();
-    if (cancelled) return stats;
-    // the swap: one merge and one upload, in one task
-    const swapStart = now();
-    const nextDrawn = drawn.length ? mergeWreckGeometries(drawn) : new THREE.BufferGeometry();
-    // (a stand-in is non-indexed; a mix merges as non-indexed)
-    const mixed = shadows.some((g) => g.index) && shadows.some((g) => !g.index);
-    const shadowParts = mixed ? shadows.map((g) => {
-      if (!g.index) return g;
-      const flat = g.toNonIndexed();
-      made.push(flat);
-      return flat;
-    }) : shadows;
-    const nextShadow = plan.shadow && shadowParts.length ? mergeGeometries(shadowParts, false) : null;
-    const previous = plan.mesh.geometry;
-    plan.mesh.geometry = nextDrawn;
-    previous.dispose();
-    if (plan.shadow && nextShadow) {
-      const old = plan.shadow.geometry;
-      plan.shadow.geometry = nextShadow;
-      plan.setShadowProfile(plan.shadow, shadowParts);
-      old.dispose();
-    }
-    stats.swapMs = Math.round((now() - swapStart) * 10) / 10;
-    stats.swappedMs = Math.round(now() - startedAt);
-    for (const hulk of plan.hulks) { hulk.standIn?.dispose(); hulk.standIn = null; }
+    stats.doneMs = Math.round(now() - startedAt);
     plan.state = 'done';
     return stats;
   } finally {
-    release();
     if (!cancelled) client.dispose();
     plan.cancel = undefined;
   }

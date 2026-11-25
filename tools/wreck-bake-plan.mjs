@@ -22,6 +22,7 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 import { isMainModule } from './map-probe-runtime.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 import { exactJson } from '../src/world/wreckBakeFacts.ts';
 
 const PLAN_FILE = new URL('../src/world/maps/wreckBakePlan.ts', import.meta.url);
@@ -154,7 +155,7 @@ async function recordTier(tier, ids) {
       // a turn of the loop the dead worlds' buffers were not released: a child's RSS grew by about 130 MB a world (4.3 GB
       // after 33 worlds; four children past the gate pool's 12 GB cap twice in 226). With the turn a child recording
       // all 66 of a tier's worlds stays under 1.6 GB. The recorded rows are the same.
-      await new Promise((resolve) => { setImmediate(resolve); });
+      await betweenBuilds();
     }
   }
 }

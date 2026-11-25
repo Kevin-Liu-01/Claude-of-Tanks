@@ -209,7 +209,7 @@ export interface WorldRuntime {
    * (wreck-bake-after-reveal-278) Bake the hulks placed from their recorded facts and swap them for their stand-ins
    * (deferredWrecks.ts): called once the battle is shown. Null when this world has none; the same promise again after.
    */
-  bakeDeferredWrecks(): Promise<DeferredWreckStats | null> | null;
+  bakeDeferredWrecks(focus?: [number, number] | null): Promise<DeferredWreckStats | null> | null;
   /** Readiness snapshot only; never performs streaming work. (battle-spikes-253: with the tall grass's near ring.) */
   getGrassWorkState(): ReturnType<VegetationRuntime['getGrassWorkState']> & { swardNearPending: number };
   /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
@@ -1117,9 +1117,11 @@ function* assembleWorldSteps(
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
-    bakeDeferredWrecks() {
+    bakeDeferredWrecks(focus) {
       const plan = props.group.userData.deferredWrecks as DeferredWreckPlan | undefined;
       if (!plan) return null;
+      // (the bakes start nearest `focus`, the player's view; else the player's spawn)
+      if (focus && plan.state === 'pending') plan.focus = focus;
       deferredWrecksRun ??= bakeDeferredWrecks(plan);
       return deferredWrecksRun;
     },
