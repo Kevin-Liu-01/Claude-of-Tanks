@@ -64,6 +64,7 @@ const maintainedStandaloneTools = new Set([
   'tools/armor-zone-plates-report.mjs', // 263 (armor-highlight-262-zones): the zone plates' fleet report before a flip of the flag (CPU, run by hand)
   'tools/roof-pocket-census.mjs', // 263 (vehicles-leclerc-false-roofs-262): the turret roof-pocket census (--ids | --all, --gate; CPU, run by hand)
   'tools/gun-face-split-table.mjs', // 266 (gunface-span-265): the gun-face split's fleet table, frontal turret hits moved per id (CPU, run by hand)
+  'tools/landmark-shots.mjs', // 271 (landmarks-271): the set pieces' cloud-pinned A/B stills per build arm, resumable per pair (browser, under the capture lock, run by hand)
   'tools/wreck-census.mjs', // wrecks-270: every map's placed hulks, their states, clearances and in-view repeats (Node, run by hand)
   'tools/armour-default.browser.mjs', // 273 (armour-default-273): armour colours on once for saved-off profiles, the first-battle tip, H sticks (headless Chrome, run by hand)
   'tools/settings-quality-stills.mjs', // 277 (texture-diet-277): Settings' graphics levels with their previews at 1920x1080 and 390x844 (headless Chrome, run by hand)

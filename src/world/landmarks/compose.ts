@@ -33,6 +33,7 @@ import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.t
 import { LANDMARK_BUILDERS } from './index.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import { landmarkModulesOf, landmarkPiecesOf, markLandmarkParts, samplePieceGround } from './pieces.ts';
+import { placeSurroundings } from './surround.ts';
 // the set pieces' damage kit registers itself (props lane A, E12)
 import './damage.ts';
 
@@ -41,6 +42,8 @@ const SQUARE = 480;
 const SPAWN_CLEAR = 22;
 /** A road core a body may not stand in (the layout brief's carriageway). */
 const ROAD_CORE_M = 3.5;
+/** The footprint probes' spacing (m): a road's centre line across a footprint passes within a road core of a probe. */
+const PROBE_STEP_M = 3;
 /** The parts one compound record holds (server/collisionManifestCodec.ts: a compound of at most 64). */
 const MOVEMENT_PART_LIMIT = 64;
 /** The steepest fall under a footprint a piece is seated on (its plinths reach down this far). */
@@ -48,7 +51,48 @@ const MAX_FALL_M = 3.2;
 
 const SOFT_KINDS = new Set(['rock', 'small-rock', 'rubble', 'hedgehog']);
 
-type LandmarkHeightField = Pick<HeightField, 'getHeightAt' | 'getWaterMaskAt' | '_roadDist'>;
+type LandmarkHeightField = Pick<HeightField, 'getHeightAt' | 'getWaterMaskAt' | '_roadDist' | '_noVeg' | 'getNormalAt'>;
+
+/**
+ * A ground keep-out a piece may not stand on: an oriented rectangle (centre; heading as cos, sin; half extents across and
+ * along), in the frame mapKits.ts bridgeSupportFootprints gives a bridge's pier (props.ts inBridgePier reads the same).
+ */
+export interface LandmarkKeepOut { x: number; z: number; c: number; s: number; hw: number; hd: number }
+/** A piece's clearance to a keep-out (m): its parts may stand this far past its footprint (landmarks.selftest's law). */
+const KEEP_OUT_CLEAR_M = 0.6;
+
+/** The four corners of an oriented rectangle, in order round it. */
+function rectCorners(x: number, z: number, c: number, s: number, hw: number, hd: number): Array<[number, number]> {
+  return ([[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]] as const).map(([u, v]) => [x + u * c + v * s, z - u * s + v * c]);
+}
+
+/** A point's distance to a segment. */
+function pointSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const ex = bx - ax, ez = bz - az, len2 = ex * ex + ez * ez;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (pz - az) * ez) / len2)) : 0;
+  return Math.hypot(px - ax - ex * t, pz - az - ez * t);
+}
+
+/**
+ * The ground between a piece's footprint (centre x, z; half extents hw across, hl along; heading yaw) and a keep-out (m):
+ * 0 where they meet, else the shortest gap between the two rectangles.
+ */
+export function keepOutGap(k: LandmarkKeepOut, x: number, z: number, hw: number, hl: number, yaw: number): number {
+  const a = rectCorners(x, z, Math.cos(yaw), Math.sin(yaw), hw, hl), b = rectCorners(k.x, k.z, k.c, k.s, k.hw, k.hd);
+  // separating axes: each rectangle's two edge directions
+  const axes: Array<[number, number]> = [[Math.cos(yaw), -Math.sin(yaw)], [Math.sin(yaw), Math.cos(yaw)], [k.c, -k.s], [k.s, k.c]];
+  const separated = axes.some(([ax, az]) => {
+    const pa = a.map(([px, pz]) => px * ax + pz * az), pb = b.map(([px, pz]) => px * ax + pz * az);
+    return Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa);
+  });
+  if (!separated) return 0;
+  let gap = Infinity;
+  for (const [p, q] of [[a, b], [b, a]] as const) for (const [px, pz] of p) for (let i = 0; i < 4; i++) {
+    const [ax, az] = q[i], [bx, bz] = q[(i + 1) % 4];
+    gap = Math.min(gap, pointSegment(px, pz, ax, az, bx, bz));
+  }
+  return gap;
+}
 
 interface LandmarkComposeContext {
   mapId: string;
@@ -58,6 +102,11 @@ interface LandmarkComposeContext {
   spawns: ReadonlyArray<{ x: number; z: number }>;
   /** The solids already standing; the pass appends each piece's movement record. */
   obstacles: CollisionRecord[];
+  /**
+   * The ground no piece stands on: the bridges' piers (mapKits.ts bridgeSupportFootprints), which the map's kits build
+   * after the pass, so they are not yet among the obstacles. A piece within KEEP_OUT_CLEAR_M of one is refused.
+   */
+  keepOuts?: readonly LandmarkKeepOut[];
   /**
    * The crushable kinds that still refuse a piece: the light buildings and the strongpoints' structures (huts, tents, a
    * motor pool), which stand before the pass and must not end up inside a piece (props.ts gives its building types).
@@ -110,6 +159,10 @@ interface LandmarkReceiptEntry {
   overlaps?: string[];
   /** Its ground vetoed rather than reserved (types.ts `ground`). */
   ground?: 'veto';
+  /** The props set round it (surround.ts). */
+  surround?: number;
+  /** Its footprint's ground to the nearest keep-out (a bridge's pier; m), where the map has any. */
+  keepOut?: number;
 }
 
 interface LandmarkReceipt {
@@ -146,8 +199,13 @@ export function landmarkObjectiveDiscs(mapId: string, spawns: ReadonlyArray<{ x:
 function footprintProbes(x: number, z: number, hw: number, hl: number, yaw: number): Array<[number, number]> {
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const out: Array<[number, number]> = [];
-  for (const ix of [-1, -0.5, 0, 0.5, 1]) for (const iz of [-1, -0.5, 0, 0.5, 1]) {
-    const lx = ix * hw, lz = iz * hl;
+  // (landmarks-world-276; skybridge's head tower stood its backstay's deadmen in a road: a 5 x 5 grid put 10.75 m
+  // between probes along its 43 m footprint, and the 7 m road core crossing it slant fell between them) every edge cut
+  // at PROBE_STEP_M or finer: no road's centre line crosses the footprint between probes (each lies within 2.1 m of one,
+  // inside the 3.5 m core)
+  const nx = Math.max(4, Math.ceil((2 * hw) / PROBE_STEP_M)), nz = Math.max(4, Math.ceil((2 * hl) / PROBE_STEP_M));
+  for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) {
+    const lx = (2 * i / nx - 1) * hw, lz = (2 * j / nz - 1) * hl;
     out.push([x + lx * c + lz * s, z - lx * s + lz * c]);
   }
   return out;
@@ -225,6 +283,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
     // a bridge stands over its water and a valve tower in it (plan.ts inWater); every other piece keeps dry
     if (LANDMARK_KINDS[placement.kind].family !== 'bridge' && !LANDMARK_KINDS[placement.kind].inWater) return 'water';
   }
+  // (a bridge's pier: built after the pass, so not yet an obstacle; bridge-footings-275's keep-out, as the props')
+  if (ctx.keepOuts?.some((k) => keepOutGap(k, x, z, hw, hl, yaw) < KEEP_OUT_CLEAR_M)) return 'bridge pier';
   const spec = LANDMARK_KINDS[placement.kind], margin = placement.roadMargin ?? spec.roadMargin ?? ROAD_CORE_M;
   if (!spec.spansRoad && margin > 0 && probes.some(([px, pz]) => ctx.heightField._roadDist(px, pz) < margin)) return 'road';
   return null;
@@ -562,6 +622,12 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const [x, z] = toWorld(module.x, module.z);
       ctx.addDestructible(module.kind, x, ctx.heightField.getHeightAt(x, z) + (module.lift ?? 0), z, yaw + module.yawDeg * Math.PI / 180, module.scale ?? 1);
     }
+    // (landmarks-realism-273) its surroundings: its region's and its trade's props round its footprint (surround.ts)
+    const surround = placeSurroundings({ mapId: ctx.mapId, heightField: ctx.heightField, obstacles: ctx.obstacles, spawns: ctx.spawns,
+      square: SQUARE, spawnClear: SPAWN_CLEAR, roadClear: ROAD_CORE_M, keepOuts: ctx.keepOuts, reserve: (rx, rz, rr) => ctx.reserve(rx, rz, rr),
+      addDestructible: (k, dx, dy, dz, dyaw, sc) => ctx.addDestructible(k, dx, dy, dz, dyaw, sc) }, placement.kind, placement.x, placement.z, hw, hl, yaw, discs, identity);
+    if (surround) entry.surround = surround;
+    if (ctx.keepOuts?.length) entry.keepOut = +Math.min(...ctx.keepOuts.map((k) => keepOutGap(k, placement.x, placement.z, hw, hl, yaw))).toFixed(2);
     queue.unshift(...(built.children ?? []).map((child, k): LandmarkPlacement => {
       const [x, z] = toWorld(child.x, child.z);
       return { ...child, x, z, yawDeg: (placement.yawDeg ?? 0) + (child.yawDeg ?? 0), seed: (placement.seed ?? 0) * 31 + k + 1,

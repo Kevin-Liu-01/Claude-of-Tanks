@@ -883,7 +883,7 @@
   },
   "landmark/steppe:grainElevator#1": {
    "floating": 0,
-   "sliver": 128,
+   "sliver": 0,
    "strandedFar": 0,
    "strandedPhone": 0,
    "floatingM2": 0,
@@ -5918,7 +5918,249 @@
    "insideM2": 0.389,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/foundry:gasholder#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.947,
+   "gapM2": 235.384,
+   "invertedM2": 0
+  },
+  "landmark/skybridge:cablewayTower#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 3.049,
+   "gapM2": 128.22,
+   "invertedM2": 0
+  },
+  "landmark/mars:landingPad#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 116.075,
+   "invertedM2": 0
+  },
+  "landmark/oasis:springPool#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 57.515,
+   "invertedM2": 0
+  },
+  "landmark/mangrove:canalMarket#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.522,
+   "gapM2": 40.053,
+   "invertedM2": 0
+  },
+  "landmark/cliffbridge:bullring#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 102.956,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/caldera:shrine#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 9.896,
+   "insideM2": 0,
+   "gapM2": 14.295,
+   "invertedM2": 0
+  },
+  "landmark/railyard:roundhouse#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 27.602,
+   "insideM2": 3.194,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/mangrove:charcoalKilns#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 6.297,
+   "invertedM2": 0
+  },
+  "landmark/badlands:desertFort#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 8.585,
+   "insideM2": 2.976,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/titan_gorge:tradingPost#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 1.629,
+   "insideM2": 1.194,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/desert:ghorfaKsar#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.674,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/alpine:casemateFort#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.269,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/cliffbridge:alcazaba#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.083,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/winter:woodenChurch#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.419,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/autumn:lavoir#2": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.389,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/railyard:signalBox#2": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.349,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/desert:marabout#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/autumn:casemateFort#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/titan_gorge:hogan#1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/skybridge:cablewayTower#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/oasis:shaliMosque#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-11-23T21:47:21.736Z"
+ "updatedAt": "2026-11-24T22:57:35.295Z"
 }

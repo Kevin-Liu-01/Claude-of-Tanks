@@ -3,6 +3,10 @@
 // (the trees grow before the props exist, so the clearance is read from the map config alone, as sceneryPlan.ts does).
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
+import { roundhouseLayout } from './railWorks.ts';
+import { blastFurnaceLayout } from './ironWorks.ts';
+import { shrineLayout } from './shrine.ts';
+import { ksarLayout } from './ksar.ts';
 
 type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
@@ -384,6 +388,76 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the deployments' relay repeaters on the scarps' crests: the pad and the legs, the guys' anchors 6.5 m out
   relayRepeater: { family: 'works', drapes: true, defaults: { height: 16 },
     footprint: (): [number, number] => [7.0, 7.0] },
+  // ------------------------------------------------------------------------------- a junction's railway works (railWorks.ts)
+  // (landmarks-271) the engine shed: its stalls fanned round the turntable, centred on the plan (table, lead and stalls);
+  // the signal box: its brick storey, the stair 1.55 m off its -x end running back along it, the rods 3.4 m out of its front
+  roundhouse: { family: 'works', defaults: { stalls: 8, stallDeg: 9, table: 23, front: 28, depth: 22, lead: 8, open: 3, engines: 2 },
+    footprint: (p) => { const l = roundhouseLayout(p); return [l.across, l.along]; } },
+  signalBox: { family: 'works', defaults: { length: 9, depth: 4.6, base: 4.4 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.7, num(p, 'depth') / 2 + Math.max(3.5, num(p, 'base') * 1.15) + 0.3] },
+  // (ironWorks.ts, landmarks-271) the furnace with its stoves behind, the dust catcher at -x and the skip bridge to +x,
+  // the cast house in front: centred on the whole plan (ironWorks.ts blastFurnaceLayout)
+  // the gasholder: its guide columns 2.6 m round the tank, their lattices and the walkway ring 0.6 m past them
+  gasholder: { family: 'works', defaults: { radius: 18, height: 36, lifts: 3, columns: 14 },
+    footprint: (p) => { const r = num(p, 'radius') + 4.0; return [r, r]; } },
+  blastFurnace: { family: 'works', defaults: { height: 30, stoves: 3, skip: 34 },
+    footprint: (p) => { const l = blastFurnaceLayout(p); return [l.across, l.along]; } },
+  // (shrine.ts, landmarks-271) the precinct along its approach: the torii (a child) at the mouth, the rōmon at `gate` of
+  // the way in, the haiden's karahafu and steps reaching toward the gate from the back fence
+  shrine: { family: 'civic', defaults: { length: 70, width: 30, gate: 0.3 },
+    footprint: (p) => { const l = shrineLayout(p); return [l.width / 2 + 0.4, l.length / 2 + 0.2]; } },
+  // (ksar.ts, landmarks-271) the ghorfa ksar: its court and the ranges round it; the marabout: its enclosure (`yard`)
+  // (it drapes: each column stands on its own ground, its foot to the lowest under it, so it steps up a slope)
+  ghorfaKsar: { family: 'civic', drapes: true, defaults: { court: 26, courtDepth: 18, cell: 8, bay: 2.8, tiers: 4, tierHeight: 2.9 },
+    footprint: (p) => { const l = ksarLayout(p); return [l.across, l.along]; } },
+  marabout: { family: 'monument', defaults: { size: 6, height: 4.2, yard: 14 },
+    footprint: (p) => { const y = Math.max(num(p, 'size') + 4, num(p, 'yard')) / 2 + 0.2; return [y, y + 0.1]; } },
+  // (forts.ts, landmarks-271) the desert fort: its square, the tower 1 m proud at the front-left corner, the plinth's
+  // batter, the water tank 3.3 m out of the front
+  desertFort: { family: 'civic', defaults: { size: 30, height: 5, rooms: 4.2, tower: 9.5 },
+    footprint: (p) => [num(p, 'size') / 2 + 1.2, num(p, 'size') / 2 + 3.5] },
+  // the casemate fort: its front, the cover's ends 4 m past it, the counterscarp and the wire to 7.2 m out of the front
+  // (it drapes: forts.ts seats its front on its ground and runs the cover down to the ground behind)
+  casemateFort: { family: 'civic', drapes: true, defaults: { style: 'lorraine', length: 54, depth: 22, height: 5, cupolas: 3 },
+    footprint: (p) => [num(p, 'length') / 2 + 4.2, num(p, 'depth') / 2 + 1.6] },
+  // (siwa.ts, landmarks-271) the mosque: its hall's slumped walls and the ablution court 5.8 m out of the front; the
+  // spring: its ring, the channels up to 13.2 m out to -x, the café's shade to +x
+  shaliMosque: { family: 'civic', defaults: { width: 13, depth: 12, height: 4.2, minaret: 13 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.9, num(p, 'depth') / 2 + 6.0] },
+  // (andalusia.ts, landmarks-271) the bullring: its ring to the roof's eaves 0.7 m out, the portal's columns 1.4 m proud
+  // the alcazaba: its ward, the corner towers 3.35 m out at their plinths, the gate towers 1.6 m out of the front wall
+  alcazaba: { family: 'monument', defaults: { keep: 11, height: 18, wall: 7.5, ward: 46, depth: 34, ruin: 0.3 },
+    footprint: (p) => [num(p, 'ward') / 2 + 3.6, num(p, 'depth') / 2 + 3.6] },
+  bullring: { family: 'civic', defaults: { radius: 30, height: 11, arena: 21, sides: 32 },
+    footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 1.8] },
+  // (canalWorks.ts, landmarks-271) at the canal's edge (inWater: the bank and the water under them): the market's hall
+  // behind its quay, the pontoons and sampans up to 16.5 m out on the water; the kilns' shed, billets and landing stage
+  canalMarket: { family: 'harbour', inWater: true, defaults: { length: 30, depth: 13, pontoons: 3, boats: 5 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.6, Math.max(num(p, 'depth') + 2.2, 16.6)] },
+  charcoalKilns: { family: 'works', inWater: true, defaults: { kilns: 4, radius: 2.7 },
+    footprint: (p) => [num(p, 'kilns') * (2 * num(p, 'radius') + 1.4) / 2 + 1.9, num(p, 'radius') + 2.5 + 7.4] },
+  // (podhale.ts, landmarks-271) the wooden church inside its churchyard fence (`yard` wide), the gate 10.5 m past the
+  // nave's front, the back fence 4 m behind the chancel's end
+  woodenChurch: { family: 'civic', defaults: { width: 8, length: 11, tower: 16, yard: 22 },
+    footprint: (p) => [Math.max(num(p, 'width') + 8, num(p, 'yard')) / 2 + 0.3, Math.max(num(p, 'length') / 2 + 10.5, 1.05 * num(p, 'length') + 2) + 0.3] },
+  // (navajo.ts, landmarks-271) the trading post: its stair 4.8 m off the block's -x end, the wareroom to +x, the porch and
+  // pumps 7.3 m out of the front; the hogan: its corral 12.5 m out at +x
+  tradingPost: { family: 'civic', defaults: { width: 16, depth: 11 },
+    // (seated on its block and wareroom alone: the porch, pumps and stair stand on the ground they meet)
+    seat: (p) => [num(p, 'width') / 2 + 3, num(p, 'depth') / 2],
+    footprint: (p) => [num(p, 'width') / 2 + 4.9, num(p, 'depth') / 2 + 7.4] },
+  hogan: { family: 'civic', defaults: { radius: 4, corral: true },
+    seat: (p) => [num(p, 'radius') + 1.4, num(p, 'radius') + 1.4],
+    footprint: (p) => [num(p, 'radius') + (p.corral === false ? 0.6 : 13), Math.max(num(p, 'radius') + 1.4, p.corral === false ? 0 : 5.4)] },
+  // (damWorks.ts, landmarks-271) the cableway's head tower: its footings, the boom 9.9 m out over the span, the backstay
+  // anchors `backstay` behind (the cable across the span is dressing past the footprint); the landing pad: the service
+  // module to -x, the crane to +x, the berm round -z
+  cablewayTower: { family: 'works', defaults: { height: 40, backstay: 20, cable: false, span: 130, farRise: 0 },
+    footprint: (p) => [5.8, Math.max(num(p, 'backstay') + 1.5, 10)] },
+  landingPad: { family: 'works', defaults: { radius: 24, lander: true },
+    footprint: (p) => [num(p, 'radius') + 15, num(p, 'radius') + 6.7] },
+  springPool: { family: 'park', defaults: { radius: 7.5, channels: 2 },
+    footprint: (p) => [num(p, 'radius') + (num(p, 'channels') > 0 ? 13.4 : 7.6), num(p, 'radius') + 1.6] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */
