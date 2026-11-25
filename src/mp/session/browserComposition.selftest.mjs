@@ -139,6 +139,17 @@ function createScriptedSession(options, record) {
       session.phase = phase;
       for (const listener of listeners.phase) listener({ phase, detail });
     },
+    /** (mp-fixes-277) A link that never opened: its transport carried no frame, then gave up; the session reads lost. */
+    linkNeverOpened(detail = 'no connection for 30000 ms') {
+      session.match = {
+        lastCloseReason: null, lastCloseDetail: detail, phase: 'closed', welcome: null, lastAuthorityReceivedAtMs: null, predictorStats: null,
+        bytesInPerSecond: 0, bytesOutPerSecond: 0,
+        transport: { state: 'closed', stats: { reconnects: 8, framesReceived: 0 }, onState: () => () => {} },
+        serverClock: { rttMs: null, rttJitterMs: 0 }, interpolator: { delay: 0, bufferedFrames: 0 }, snapshots: { acceptedCount: 0, estimatedMissingCount: 0 },
+        onPhase: () => () => {},
+      };
+      session.setPhase('lost', detail);
+    },
     /** The server closed the seat: the client (still attached) names the wire reason, then the session reads lost. */
     dropSeat(reason, detail = '') {
       session.match = {
@@ -1688,6 +1699,22 @@ for (const [code, words] of [
   assert.deepEqual(plain.menu.shownCodes, ['entry_failed']);
   assert.deepEqual(plain.menu.shown, ['transport exhausted']);
   plain.composition.dispose();
+}
+{
+  // (mp-fixes-277; Kevin 2026-11-25, a friend "stuck at 56%") a link that never carried a frame could not reach the host:
+  // the lobby is given the code it words in the player's language (host_unreachable), with Rejoin battle
+  const unreached = createHarness();
+  const unreachedRoom = makeRoomSession(unreached.calls);
+  const entering = unreached.composition.beginRoom({ role: 'client', session: unreachedRoom, lobbyState: unreachedRoom.lobby });
+  await unreached.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  unreached.sessions[0].linkNeverOpened();
+  assert.equal(await entering, false);
+  await settle();
+  assert.equal(unreached.ports.failure.reason, 'host_unreachable');
+  assert.deepEqual(unreached.menu.shownCodes, ['host_unreachable']);
+  assert.match(unreached.menu.shown[0], /could not be reached/);
+  assert.equal(unreached.battleLoad.visible, false, 'the loader clears');
+  unreached.composition.dispose();
 }
 
 // ------------------------------------------------------------ the match ends while the round is still entering: refused at once
