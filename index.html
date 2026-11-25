@@ -240,7 +240,7 @@
     :root { --font-display: var(--font-ui); }
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
-      height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
+      height: var(--cot-viewport-height, 100dvh); z-index: calc(var(--z-cover) + 9); overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: var(--font-ui);
       color: var(--ink-1); -webkit-user-select: none; user-select: none; cursor: default;
@@ -891,11 +891,14 @@
           retry.title = verdict.text;
           // the kit's primary button (components.css is the running game's), held at the foot of the screen
           retry.className = 'cot-c-btn cot-c-btn--primary cot-c-btn--48';
-          retry.style.cssText = 'position:fixed;z-index:var(--z-toast);left:50%;bottom:24px;transform:translateX(-50%)';
+          // (modal-layer-277) over an open modal too: a manual popover in the top layer, raised after it (its UA box reset here)
+          retry.style.cssText = 'position:fixed;z-index:var(--z-critical,900);inset:auto auto 24px 50%;margin:0;transform:translateX(-50%)';
+          if (typeof retry.showPopover === 'function') retry.setAttribute('popover', 'manual');
           document.body.appendChild(retry);
         }
         if (retry) {
           retry.classList.add('on');
+          try { if (retry.hasAttribute('popover') && !retry.matches(':popover-open')) retry.showPopover(); } catch (error) { /* the z scale holds it */ }
           retry.onclick = () => reload(`manual:${reason}`);
           // the one way forward takes the focus, unless the player is already somewhere; never in the running game, where
           // a key meant for the Garage or a battle would press it

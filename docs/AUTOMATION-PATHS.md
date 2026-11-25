@@ -120,6 +120,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/map-probe-runtime.mjs`
 - `tools/marketing-shots/mode-battle-shots.mjs`
 - `tools/mobilelap.mjs`
+- `tools/modal-layer.browser.mjs`
 - `tools/phase-resource-probe.mjs`
 - `tools/phone-smoke-reach.browser.mjs`
 - `tools/render-stability-audit.mjs`

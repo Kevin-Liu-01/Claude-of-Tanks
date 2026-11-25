@@ -67,7 +67,7 @@ interface MultiplayerStatusSurface {
 
 // ------------------------------------------------------------ style
 
-export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;right:var(--hud-network-corner-right,10px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:calc(var(--z-report) + 9);top:8px;right:var(--hud-network-corner-right,10px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;
   font-family:${FONT_COND};text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);pointer-events:none}
 .cot-mp-status.lobby{position:static;align-items:flex-start;text-shadow:none}
 .cot-mp-strip{display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:3px 9px;border:1px solid rgba(174,193,207,.22);border-radius:0;

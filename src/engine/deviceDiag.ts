@@ -1536,7 +1536,7 @@ export function mountDiagOverlay({
   el.id = 'cot-diag';
   el.setAttribute('aria-label', t('deviceDiag.shadowSaver.aria'));
   el.style.cssText = [
-    'position:fixed', 'left:14px', 'bottom:14px', 'z-index:400',
+    'position:fixed', 'left:14px', 'bottom:14px', 'z-index:var(--z-notice)',
     'width:min(430px,calc(100vw - 28px))', 'box-sizing:border-box',
     'color:#edf3f1', 'font:11px/1.45 var(--font-mono)',
     'background:linear-gradient(145deg,rgba(10,15,19,.97),rgba(24,20,14,.94))',

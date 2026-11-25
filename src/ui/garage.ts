@@ -40,6 +40,7 @@ import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipme
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, closeSurfacesWithin, openSurface, surfaceHolds, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { liftModal } from './components/modalLayer.ts';
 import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
@@ -4178,6 +4179,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeDeployField();
     arrangementPanel?.close();
     battleMenu.classList.remove('open');
+    liftModal(battleMenu, false);
     battleModeBtn.setAttribute('aria-expanded', 'false');
     if (restoreFocus) battleModeBtn.focus();
   }
@@ -4259,6 +4261,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployCampaignCount.textContent = `${campaign.cleared} / ${campaign.total}`;
     markTabbar('deploy');
     battleMenu.classList.add('open');
+    // (modal-layer-277) the sheet lives inside the Garage's stacking context: the top layer lifts it over the notices
+    liftModal(battleMenu, true);
     deployScreen?.drawObjectives();
     // the plate's picture loads on an open screen only (renderBattleOptions set the mode before the screen opened)
     deployScreen?.showMode(battleGameMode);

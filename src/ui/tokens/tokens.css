@@ -71,8 +71,9 @@
   --e1-flush:0 1px 0 rgba(255,255,255,.04) inset,inset 0 0 0 1px var(--line-1);--e2-flush:0 1px 0 rgba(255,255,255,.05) inset,inset 0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
   --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);--e3-span:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 0 0 1px var(--surface-menu),0 18px 48px rgba(0,0,0,.5);
   --e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);--e5:0 1px 0 rgba(255,255,255,.07) inset,inset 2px 0 0 var(--accent),0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
-  --z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;--z-shell:100;
-  --z-drawer:200;--z-menu:300;--z-modal:400;--z-toast:500;--z-boot:900;
+  --z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;--z-hud:40;--z-screen:60;
+  --z-report:70;--z-shell:100;--z-cover:150;--z-notice:180;--z-drawer:200;--z-menu:300;--z-modal:400;--z-tip:450;
+  --z-critical:900;
   --inset-edge:max(24px,3vmin);--inset-top:calc(var(--inset-edge) + env(safe-area-inset-top,0px));--inset-bottom:calc(var(--inset-edge) + env(safe-area-inset-bottom,0px));
   --plate-fill:var(--surface-plate);--plate-edge:var(--line-1);--plate-highlight:linear-gradient(180deg,rgba(255,255,255,.10),transparent 40%);
   --plate-shadow:var(--e1);
@@ -105,7 +106,7 @@
   --focus-bracket-color:var(--focus-ink);--focus-bracket-width:2px;--focus-bracket-dur:var(--dur-fast);
   --media-toggle-z:4;
   --team-squad-ring:0px;
-  --studio-z:58;--studio-pop-z:40;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 0 0 0 1px var(--accent);
+  --studio-z:var(--z-screen);--studio-pop-z:39;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 0 0 0 1px var(--accent);
   --studio-knob-ring:0 0 0 2px var(--surface-page);--studio-frame-mask:0 0 0 1px oklch(from var(--ink-1) l c h / .18),0 0 0 2000px var(--scrim);
   --studio-clip-fx:rgba(255,90,78,.16);
   --battle-plate-shadow:0 0 0 1px var(--line-1),0 6px 18px rgba(0,0,0,.35);--battle-edge-own:0 0 0 1px oklch(from var(--accent) l c h / .5),0 6px 18px rgba(0,0,0,.35);

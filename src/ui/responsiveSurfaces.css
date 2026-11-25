@@ -223,10 +223,14 @@ body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 /* a short screen keeps the rows: the title steps aside (the dialog keeps its name) and the close sits at the tab row's end */
 body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0;right:0;height:var(--cot-control-floor);padding:0 var(--cot-edge);align-items:center}
 body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close) */
-body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+/* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close)
+   the row's end keeps the floating header clear: its measured width (settings.ts --set-hdr-w: the close, and the PAUSED chip
+   while a battle waits, modal-layer-277), else the close alone; a row that no longer fits scrolls, as a phone's does (and,
+   a scroll box in the panel's column, keeps its own height: flex 0 0 auto) */
+body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:var(--set-hdr-w,calc(var(--cot-control-floor) + var(--cot-edge) * 2));
+  flex:0 0 auto;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
 /* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - var(--s2) - 1px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - var(--s2) - 1px) var(--set-hdr-w,calc(var(--cot-control-floor) + var(--cot-edge) * 2))}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
 /* a phone on its side keeps the upright phone's 16 px edge, so the first tab sits on the plates' edge */
@@ -834,7 +838,7 @@ body[data-cot-width='phone'] #cot-perfhud{
   right:max(8px,env(safe-area-inset-right))!important;
   left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
   max-height:64dvh!important;font-size:11px!important;
-  z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
+  z-index:var(--z-report)!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
 body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:52px!important;overflow:hidden!important}

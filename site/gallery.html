@@ -42,7 +42,7 @@
         button.id = 'gallery-runtime-retry';
         button.type = 'button';
         button.textContent = /^zh/i.test((document.documentElement && document.documentElement.lang) || '') ? '图库文件未能加载，重新加载' : 'A gallery file did not load — reload';
-        button.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px var(--font-ui);cursor:pointer';
+        button.style.cssText = 'position:fixed;z-index:var(--z-critical,900);left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px var(--font-ui);cursor:pointer';
         button.onclick = () => navigate('manual');
         document.body.appendChild(button);
       }

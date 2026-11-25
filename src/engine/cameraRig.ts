@@ -817,7 +817,7 @@ export function createCameraRig(
       letterboxEl = document.createElement('div');
       letterboxEl.className = 'cot-cine-letterbox';
       letterboxEl.style.cssText =
-        'position:fixed;inset:0;z-index:59;pointer-events:none;display:none;'
+        'position:fixed;inset:0;z-index:calc(var(--z-screen) - 1);pointer-events:none;display:none;'
         + 'background:linear-gradient(oklch(from var(--surface-scene) l c h / .55),transparent 18vh,'
         + 'transparent calc(100% - 18vh),oklch(from var(--surface-scene) l c h / .55));';
       document.body.appendChild(letterboxEl);
