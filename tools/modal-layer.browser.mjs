@@ -125,6 +125,32 @@ async function shot(page, path) {
   if (hidden) await page.evaluate(() => { for (const n of document.querySelectorAll('[data-modal-layer-hidden]')) { n.style.visibility = n.dataset.modalLayerHidden; delete n.dataset.modalLayerHidden; } });
 }
 
+/** In the page: Settings' header against its tab row (modal-layer-277; 844x390: the PAUSED chip sat on the Language tab).
+ *  Every tab's box, cut to the row's visible box, must keep clear of the chip and the close. */
+function headerClear() {
+  const box = (el) => el?.getBoundingClientRect();
+  const row = box(document.querySelector('.cot-settings .cot-set-tabs'));
+  const chip = document.querySelector('.cot-settings .cot-set-paused');
+  const blockers = [['paused', chip?.checkVisibility?.() ? box(chip) : null], ['close', box(document.querySelector('.cot-settings .cot-set-close'))]];
+  const clashes = [];
+  // (a tab the layout hides, as a touch layout hides Controls, is no tab to cover)
+  const tabs = [...document.querySelectorAll('.cot-settings .cot-set-tab')].filter((tab) => tab.checkVisibility({ checkVisibilityCSS: true }));
+  // (a row that collapsed shows no tab at all, and so no clash: it fails as one)
+  if (!row || row.height < 30) clashes.push(`the tab row is not shown (${Math.round(row?.height ?? 0)} px tall)`);
+  for (const tab of tabs) if (tab.getBoundingClientRect().height < 30) clashes.push(`${tab.dataset.tab} is not shown`);
+  for (const tab of tabs) {
+    const r = box(tab);
+    const x0 = Math.max(r.left, row.left), x1 = Math.min(r.right, row.right);
+    if (x1 <= x0) continue; // scrolled out of the row
+    for (const [name, b] of blockers) {
+      if (!b) continue;
+      const w = Math.min(x1, b.right) - Math.max(x0, b.left), h = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+      if (w > 0.5 && h > 0.5) clashes.push(`${tab.dataset.tab} under ${name} (${Math.round(w)} x ${Math.round(h)} px)`);
+    }
+  }
+  return { clashes, paused: !!blockers[0][1], scrolls: (document.querySelector('.cot-settings .cot-set-tabs')?.scrollWidth ?? 0) > Math.ceil(row.width) };
+}
+
 const report = { label, root, dist, mode, battle: BATTLE, startedAt: new Date().toISOString(), sizes: {}, errors: [] };
 let server = null, browser = null, failed = 0;
 try {
@@ -199,6 +225,10 @@ try {
       await shot(page, resolve(out, `${label}-${size.name}-${name === 'pause' ? 2 : 3}-${name}.png`));
       const missing = ['incoming', 'binoculars'].filter((what) => !up[what]);
       const problems = [];
+      if (name === 'settings') {
+        const header = entry.modals[name].header = await page.evaluate(headerClear);
+        if (header.clashes.length) problems.push(`the header covers a tab: ${header.clashes.join('; ')}`);
+      }
       if (!result.open) problems.push(`${name} did not open`);
       if (result.misses.length) problems.push(`${result.misses.length} points hit outside the ${name}: ${[...new Set(result.misses.map((m) => `${m.why}→${m.hit}`))].slice(0, 6).join('; ')}`);
       if (missing.length) problems.push(`not up under the ${name}: ${missing.join(', ')}`);

@@ -675,6 +675,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
+  // (modal-layer-277; 844x390: the PAUSED chip sat on the Language tab) a short screen floats the header over the tab row's
+  // end (responsiveSurfaces.css): the row keeps the header's measured width clear, so the chip (its width the locale's word)
+  // and the close never cover a tab
+  const header = requiredElement<HTMLElement>(root, '.cot-set-hdr');
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => { root.style.setProperty('--set-hdr-w', `${Math.ceil(header.getBoundingClientRect().width)}px`); }).observe(header);
+  }
 
   const body = requiredElement<HTMLDivElement>(root, '.cot-set-body');
   const conflictBar = markDatum(requiredElement<HTMLDivElement>(root, '.cot-set-conflict'), 'notices');
