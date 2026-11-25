@@ -6,6 +6,10 @@ export const FAR_POSES = Object.freeze({
   'far-allies': Object.freeze({ back: 230, up: 45, side: 0 }),
   'far-low': Object.freeze({ back: 250, up: 8, side: 0 }),
   'far-side': Object.freeze({ back: 40, up: 12, side: 240 }),
+  // (far-hull-278) more candidates for a pose that shows far hulls (far-hull-truth's visibility gate skips one that shows none)
+  'far-side-left': Object.freeze({ back: 40, up: 12, side: -240 }),
+  'far-quarter': Object.freeze({ back: 170, up: 30, side: 170 }),
+  'far-high': Object.freeze({ back: 250, up: 90, side: 0 }),
 });
 
 /** Page side (serialized): the camera at a far pose. */
