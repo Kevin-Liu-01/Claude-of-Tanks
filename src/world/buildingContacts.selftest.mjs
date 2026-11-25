@@ -3,7 +3,6 @@
 // Every door stands on its plinth's outline and faces out of it, every plinth is counter-clockwise from above, the read
 // is the same twice (deterministic), and the counts are pinned: a kit or plan change that moves them says so here.
 import assert from 'node:assert/strict';
-import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const { buildWorldCollisionData } = await import('../../tools/headlessWorldCollision.mjs');
 
@@ -12,7 +11,6 @@ const PINS = { autumn: [40, 41, 113], caldera: [35, 40, 34] };
 
 const read = (features) => features.filter((f) => f.contacts).map((f) => f.contacts());
 for (const [mapId, [buildings, houses, doors]] of Object.entries(PINS)) {
-  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let features = [];
   await buildWorldCollisionData(mapId, { inspect: ({ dressing }) => { features = dressing.features?.buildings ?? []; } });
   const first = read(features), again = read(features);

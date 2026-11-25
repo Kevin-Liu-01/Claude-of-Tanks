@@ -15,7 +15,8 @@
 // A loop is a for, for-of, for-in, while or do statement, or the callback of an array method that runs per element
 // (forEach, map, flatMap, reduce, filter, some, every, find, findIndex). A build loop has a build in its body (nested
 // functions included). It yields when its body calls betweenBuilds(), or when the build it calls is a function whose
-// own body awaits betweenBuilds() (headlessWorldCollision.mjs buildWorldCollisionData, roadLife.selftest's build()).
+// own body awaits betweenBuilds(), in its file or exported from another (headlessWorldCollision.mjs
+// buildWorldCollisionData, roadLife.selftest's build()).
 // tools/build-loop-census.selftest.mjs fails on every build loop that does not yield, with file:line, outside its short
 // exception list.
 import { execFileSync } from 'node:child_process';
@@ -104,12 +105,13 @@ export function parseScript(file, text) {
 }
 
 /**
- * The build loops of parsed scripts. `outside` holds builder names exported by other scripts (fixpoint below).
- * Returns { loops: [{ file, pos, line, kind, builds: [names], yields }], exported: Set of builder names it exports }.
+ * The build loops of parsed scripts. `outside` holds builder names exported by other scripts and `outsideYielding` those
+ * of them that await the yield themselves (fixpoint below). Returns { loops: [{ file, pos, line, kind, builds: [names],
+ * yields }], exported, exportedYielding: the builder names it exports, and those that await the yield }.
  */
-export function buildLoopsOf(parsed, outside = new Set()) {
+export function buildLoopsOf(parsed, outside = new Set(), outsideYielding = new Set()) {
   const builders = new Set([...BUILD_ENTRIES, ...outside]);
-  const yielding = new Set(); // builders whose own body awaits the yield
+  const yielding = new Set(outsideYielding); // builders whose own body awaits the yield
   for (let changed = true; changed;) {
     changed = false;
     for (const [name, fn] of parsed.functions) {
@@ -117,7 +119,11 @@ export function buildLoopsOf(parsed, outside = new Set()) {
       if ([...fn.calls].some((c) => builders.has(c) && c !== name)) { builders.add(name); changed = true; }
     }
   }
-  for (const [name, fn] of parsed.functions) if (builders.has(name) && fn.calls.has(YIELD)) yielding.add(name);
+  for (const [name, fn] of parsed.functions) {
+    if (!builders.has(name)) continue;
+    if (fn.calls.has(YIELD)) yielding.add(name);
+    else yielding.delete(name); // a same-file function of that name is this file's own
+  }
   const loops = [];
   for (const loop of parsed.loops) {
     const builds = [...loop.calls].filter((c) => builders.has(c));
@@ -125,7 +131,7 @@ export function buildLoopsOf(parsed, outside = new Set()) {
     loops.push({ file: parsed.file, pos: loop.pos, line: loop.line, kind: loop.kind, builds, yields: loop.calls.has(YIELD) || builds.some((b) => yielding.has(b)) });
   }
   const exported = new Set([...parsed.functions].filter(([name, fn]) => fn.exported && builders.has(name) && !BUILD_ENTRIES.includes(name)).map(([name]) => name));
-  return { loops, exported };
+  return { loops, exported, exportedYielding: new Set([...exported].filter((name) => parsed.functions.get(name).calls.has(YIELD))) };
 }
 
 /** The Node scripts the census reads (tracked and new, under tools/ and src/). */
@@ -143,16 +149,20 @@ export function census(root = ROOT) {
   // Only a script that names a builder can hold a build loop: parse those, and widen the set with the builders they
   // export (a test-support module's builder called by a receipt), to a fixpoint.
   const parsed = new Map();
-  let outside = new Set();
+  let outside = new Set(), outsideYielding = new Set();
   for (;;) {
     const named = new RegExp(`\\b(?:${[...BUILD_ENTRIES, ...outside].join('|')})\\b`);
     for (const [file, text] of texts) if (!parsed.has(file) && named.test(text)) parsed.set(file, parseScript(file, text));
-    const next = new Set(outside);
-    for (const p of parsed.values()) for (const name of buildLoopsOf(p, outside).exported) next.add(name);
+    const rows = [...parsed.values()].map((p) => buildLoopsOf(p, outside));
+    const next = new Set([...outside, ...rows.flatMap((r) => [...r.exported])]);
+    // a name yields only when every script that exports it awaits the yield in it
+    outsideYielding = new Set(rows.flatMap((r) => [...r.exportedYielding])
+      .filter((name) => rows.every((r) => !r.exported.has(name) || r.exportedYielding.has(name))));
     if (next.size === outside.size) break;
     outside = next;
   }
-  return { files: texts.size, parsed: parsed.size, outside, loops: [...parsed.values()].flatMap((p) => buildLoopsOf(p, outside).loops) };
+  return { files: texts.size, parsed: parsed.size, outside, outsideYielding,
+    loops: [...parsed.values()].flatMap((p) => buildLoopsOf(p, outside, outsideYielding).loops) };
 }
 
 /**

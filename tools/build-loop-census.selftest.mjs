@@ -32,6 +32,12 @@ assert.deepEqual(loopsIn('for (const id of ids) for (const q of qs) { await betw
 assert.deepEqual(loopsIn('for (const id of ids) gunHullProbe(id);', new Set(['gunHullProbe'])).map((l) => l.yields), [false]);
 assert.deepEqual(buildLoopsOf(parseScript('support.mjs', 'export function probe(id) { return createTank(id); }\nexport const plain = () => 1;')).exported,
   new Set(['probe']), 'an exported builder is named for the other scripts');
+// one exported by another script that awaits the yield itself (headlessWorldCollision.mjs buildWorldCollisionData)
+assert.deepEqual(buildLoopsOf(parseScript('world.mjs', 'export async function buildWorld(m) { await betweenBuilds(); return createProps(m); }')).exportedYielding,
+  new Set(['buildWorld']));
+assert.deepEqual(loopsIn('for (const m of maps) await buildWorld(m);', new Set(['buildWorld'])).map((l) => l.yields), [false]);
+assert.deepEqual(buildLoopsOf(parseScript('fixture.mjs', 'for (const m of maps) await buildWorld(m);'), new Set(['buildWorld']), new Set(['buildWorld']))
+  .loops.map((l) => l.yields), [true], 'a self-yielding builder of another script covers its loop');
 
 // 2. the tree --------------------------------------------------------------------------------------------------------
 const { files, parsed, loops } = census();

@@ -14,7 +14,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildWorldCollisionData } from '../../tools/headlessWorldCollision.mjs';
 import { packCollisionRecord, quantizeWorldCollision, unpackCollisionRecord } from './collisionRecordPacking.ts';
-import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const MAPS = ['verdant', 'urban'];
 const sameNumber = (a, b) => Object.is(a, b);
@@ -35,7 +34,6 @@ function sameShape(a, b, where) {
 
 let records = 0, concealers = 0;
 for (const mapId of MAPS) {
-  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const unrounded = await buildWorldCollisionData(mapId);
   let built = null;
   const rounded = await buildWorldCollisionData(mapId, { inspect: ({ flora, dressing }) => {

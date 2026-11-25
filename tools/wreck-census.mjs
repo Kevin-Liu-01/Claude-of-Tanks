@@ -10,7 +10,6 @@ import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isMainModule } from './map-probe-runtime.mjs';
-import { betweenBuilds } from './build-loop-yield.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 /** Two hulks a player sees in one view: within this many metres of each other (the battle camera's working range). */
@@ -43,7 +42,6 @@ async function censusMaps(ids) {
   const { getMapConfig } = await import('../src/world/maps/index.ts');
   const { MATCH_OBJECTIVE_LAYOUTS } = await import('../src/sim/matchObjectiveLayouts.ts');
   for (const mapId of ids) {
-    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const t0 = Date.now();
     const config = getMapConfig(mapId);
     let row = null;
