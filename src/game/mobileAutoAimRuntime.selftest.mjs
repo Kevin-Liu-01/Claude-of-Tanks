@@ -7,11 +7,11 @@ const bus = createBus();
 const camera = new PerspectiveCamera();
 const player = {
   id: 'player', team: 'a', state: { pos: new Vector3() },
-  spec: { name: 'Player', dims: { heightM: 2 } }, combat: { destroyed: false },
+  spec: { id: 'player_spec', name: 'Player', dims: { heightM: 2 } }, combat: { destroyed: false },
 };
 const enemy = {
   id: 'enemy', team: 'b', state: { pos: new Vector3(2, 0, 20) },
-  spec: { name: 'Enemy Tank', dims: { heightM: 3 } }, combat: { destroyed: false },
+  spec: { id: 'enemy_spec', name: 'Enemy Tank', dims: { heightM: 3 } }, combat: { destroyed: false },
 };
 const tanks = [player, enemy];
 const byId = new Map(tanks.map((tank) => [tank.id, tank]));
@@ -40,8 +40,10 @@ const runtime = createMobileAutoAimRuntime({
 bus.emit('ui:autoAimToggle', {});
 assert.equal(picks, 1);
 assert.equal(runtime.targetId, enemy.id);
+// (reds-sweep2-276) notices-276 (20d2f41710) put the target's spec id on the lock's state, for the render on the lock's
+// notice (components/noticeArt.ts); the fixture specs carry ids so the state names the locked tank's, not ''
 assert.deepEqual(states.at(-1), {
-  on: true, targetId: enemy.id, targetName: enemy.spec.name, reason: '',
+  on: true, targetId: enemy.id, targetName: enemy.spec.name, targetSpecId: enemy.spec.id, reason: '',
 });
 const point = runtime.sample(true);
 assert.deepEqual(point?.toArray(), [2, 1.5, 20], 'sample follows target center mass');
