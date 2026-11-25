@@ -15,7 +15,9 @@
 import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
 import { raiseCritical } from '../ui/components/modalLayer.ts';
-import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss } from './quality.ts';
+import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss, resolvePresetName } from './quality.ts';
+import { getEntryTelemetry } from '../entry/telemetry.ts';
+import { createGpuResetReport, type GpuResetContext } from './gpuResetReport.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
 import { installOpaqueProgramOrder } from './opaqueProgramOrder.ts';
@@ -29,6 +31,8 @@ import { shapeLampPointLights } from './lampLightShape.ts';
 type GameRenderer = THREE.WebGLRenderer & {
   userData: {
     outputResolution?: OutputResolution;
+    /** (mobile-gpu-reset-277) What the page was doing, read at a context loss for its field record (main.ts sets it). */
+    gpuResetContext?: () => GpuResetContext;
     contextRecovery?: ContextRecoveryOwner;
     /** (2026-11-02 audit R3) the recovery machine's state, read by other owners (the black-world guard). */
     contextRecoveryState?: () => RecoveryState;
@@ -95,13 +99,22 @@ export function createRenderer(container: HTMLElement): GameRenderer {
       : gl.getParameter(gl.RENDERER);
     noteGpuRenderer(typeof reportedRenderer === 'string' ? reportedRenderer : '');
   } catch (_) { noteGpuRenderer(''); }
+  // (mobile-gpu-reset-277) one field record per reset: what the page was doing, and whether the context came back
+  const gpuReset = createGpuResetReport({
+    read: () => renderer.userData.gpuResetContext?.() ?? null,
+    preset: resolvePresetName,
+    tier: getDeviceTier,
+    report: (stage, message, code) => { getEntryTelemetry().error(stage, { message }, code); },
+    now: () => performance.now(),
+  });
   const recovery = createContextRecovery({
     owner: () => renderer.userData.contextRecovery,
     // Three replaces shadowMap before dispatching our restoration listener.
     beforeRestore: () => routeShadowOnlyLayer(renderer),
     beforeLost: (event) => contextResources.noteLost(event),
-    recordLoss: noteGraphicsContextLoss,
-    notice: showContextLossOverlay,
+    // the snapshot first: the loss's own relief lowers the preset it reads
+    recordLoss: () => { gpuReset.lost(); noteGraphicsContextLoss(); },
+    notice: (state) => { gpuReset.notice(state); showContextLossOverlay(state); },
   });
   renderer.userData.contextRecoveryState = () => recovery.state;
   renderer.userData.requestContextRestore = () => {

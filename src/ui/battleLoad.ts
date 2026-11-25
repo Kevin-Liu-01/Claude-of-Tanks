@@ -559,6 +559,8 @@ export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
   readonly covering: boolean;
+  /** The progress shown, 0..100 (-1 before the first progress): the graphics-reset record reads it (gpuResetReport.ts). */
+  readonly percent: number;
   showPending(map?: string | PendingBattlefield | null, seats?: BattleLoadSeats | null): void;
   show(info: BattleLoadInfo): void;
   rosters(
@@ -964,6 +966,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     root,
     get visible() { return visible; },
     get covering() { return covering; },
+    get percent() { return shownPercent; },
 
     /** Own the existing opaque surface before a cold loading-owner import; a chosen battlefield's name, tones,
      * placeholder and art are up from this first frame (2026-10-13: a slow first entry read "BATTLEFIELD" for ~1.8 s
