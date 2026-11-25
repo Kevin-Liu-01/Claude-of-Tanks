@@ -966,7 +966,20 @@ export function* createGarageStageSteps(
     };
     if (typeof document !== 'undefined') {
       later(wearHall, 3000);
-      later(buildVerdantExterior, 3500);
+      // (garage-env-276, Kevin 2026-11-24: "Phones keep painted view") the mobile tier keeps the hand-coloured country
+      // through the hall's openings: the map's world there arrived as one ~360 ms task on the phone tier once a session
+      // (the bake, its uploads, its first draw's compile; timing8b, notes ab19). The truck at the shutter stays, in the
+      // stage's own frame (the exterior's root carries no transform)
+      if (getDeviceTier() === 'mobile') {
+        later(() => {
+          if (stageDisposed) return;
+          verdantShutterYard = new THREE.Group();
+          verdantShutterYard.name = 'garage_verdant_shutter_yard';
+          verdantShutterYard.visible = verdantIndoorSetRoot.visible && (indoorStageObjects[0]?.visible ?? true);
+          group.add(verdantShutterYard);
+          standTruckAtShutter(verdantShutterYard);
+        }, 3500);
+      } else later(buildVerdantExterior, 3500);
       later(() => {
         void loadPlatformKit().then((kit) => {
           if (stageDisposed) return;
@@ -1043,6 +1056,8 @@ export function* createGarageStageSteps(
   };
   let hallCountry: THREE.Mesh | null = null;
   let verdantExterior: { readonly root: THREE.Object3D; dispose(): void } | null = null;
+  /** (the mobile tier, which keeps the painted country) the truck at the shutter's own root, shown with the motor pool */
+  let verdantShutterYard: THREE.Group | null = null;
   function addHangarShell(): void {
     // The walls stop the garage sun (2026-10-10): without them it lit the floor straight through the shell. The roof
     // casts nothing, so the sun's key on the hero is unchanged; its lights let the sky show.
@@ -1777,6 +1792,7 @@ export function* createGarageStageSteps(
       verdantExterior.root.visible = isVerdant;
       if (hallCountry) hallCountry.visible = false;
     }
+    if (verdantShutterYard) verdantShutterYard.visible = isVerdant;
     showPlatformCollar(getGarageVariant(variantId).architecture);
     // Keep the light objects present in both modes so Three's light-count
     // defines stay invariant. Removing the Verdant fixtures forced every hero
