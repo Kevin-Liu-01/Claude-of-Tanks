@@ -343,10 +343,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.8136,0.126,3.3845],
-          [1.8136,0.126,-3.3845],
-          [1.8136,0.9978,-3.3845],
-          [1.8136,0.9978,3.3845]
+          [1.5225,0.126,3.035],
+          [1.5225,0.126,-2.851],
+          [1.5225,0.9978,-2.851],
+          [1.5225,0.9978,3.035]
         ]
       },
       {
@@ -358,10 +358,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.8136,0.126,-3.3845],
-          [-1.8136,0.126,3.3845],
-          [-1.8136,0.9978,3.3845],
-          [-1.8136,0.9978,-3.3845]
+          [-1.5225,0.126,-2.851],
+          [-1.5225,0.126,3.035],
+          [-1.5225,0.9978,3.035],
+          [-1.5225,0.9978,-2.851]
         ]
       },
       {
@@ -625,7 +625,7 @@
     ]
   },
   "geometryHash": "7320e2b2",
-  "metadataHash": "4f362208",
+  "metadataHash": "8af1cecc",
   "presentationAnchor": {
     "xM": -0.0088,
     "zM": 0.1471
@@ -681,8 +681,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36016,
-      "sha256": "1c246192fefdb5e748dc7eef3a8af0d06c4371beba24efe7bc58e7f779a5cdd1"
+      "bytes": 36528,
+      "sha256": "7b27fb167d1677b7fd1a942567c831761dcb2a397af862d4b11db5739eae402c"
     },
     "modulesSide": {
       "file": "warrior_tes_h_modules_side.webp",
@@ -761,7 +761,7 @@
       "file": "warrior_tes_h_technical.json",
       "mime": "application/json",
       "bytes": 5508,
-      "sha256": "e903a48ca6d0c1dd16488dfc42f4fbc2c3836d09fb2b6dfc5ae952ead3ba72f6"
+      "sha256": "13fadb257c2339914fc5d9746e48c62bd5ed0c25891ff4c6880af37749fcc13a"
     }
   }
 }

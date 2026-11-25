@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.4803,0.12,3.76],
-          [1.4803,0.12,-3.76],
-          [1.4803,1.07,-3.76],
-          [1.4803,1.07,3.76]
+          [1.5995,0.12,3.451],
+          [1.5995,0.12,-3.525],
+          [1.5995,1.07,-3.525],
+          [1.5995,1.07,3.451]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.4803,0.12,-3.76],
-          [-1.4803,0.12,3.76],
-          [-1.4803,1.07,3.76],
-          [-1.4803,1.07,-3.76]
+          [-1.5995,0.12,-3.525],
+          [-1.5995,0.12,3.451],
+          [-1.5995,1.07,3.451],
+          [-1.5995,1.07,-3.525]
         ]
       },
       {
@@ -502,7 +502,7 @@
     ]
   },
   "geometryHash": "745ba059",
-  "metadataHash": "9bebcf9e",
+  "metadataHash": "fdce9fba",
   "presentationAnchor": {
     "xM": 0.0166,
     "zM": -0.1453
@@ -609,8 +609,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24188,
-      "sha256": "1a58df4aae2e3409d855a2cab3e6a454357befdd920f81818e9618c4343bac92"
+      "bytes": 23172,
+      "sha256": "ebfc5b6b2c0d87a39547a9a6fc01f2ee6e224f55b558f6bdf0405441d0c7bc32"
     },
     "modulesSide": {
       "file": "chieftain3_modules_side.webp",
@@ -640,7 +640,7 @@
       "file": "chieftain3_technical.json",
       "mime": "application/json",
       "bytes": 4845,
-      "sha256": "f508db49a0a738e7bd1b2126cbf7b77c3021aa57019806b9d379c1783d5fa6e8"
+      "sha256": "478804399a17e19e7a0721dd9ddaea882150bc2a2550ccb594868c9f999a8141"
     }
   }
 }

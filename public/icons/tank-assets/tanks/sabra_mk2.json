@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.7016,0.1421,3.5989],
-          [1.7016,0.1421,-3.5989],
-          [1.7016,1.0897,-3.5989],
-          [1.7016,1.0897,3.5989]
+          [1.7314,0.1421,3.301],
+          [1.7314,0.1421,-3.157],
+          [1.7314,1.0897,-3.157],
+          [1.7314,1.0897,3.301]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.7016,0.1421,-3.5989],
-          [-1.7016,0.1421,3.5989],
-          [-1.7016,1.0897,3.5989],
-          [-1.7016,1.0897,-3.5989]
+          [-1.7314,0.1421,-3.157],
+          [-1.7314,0.1421,3.301],
+          [-1.7314,1.0897,3.301],
+          [-1.7314,1.0897,-3.157]
         ]
       },
       {
@@ -565,7 +565,7 @@
     ]
   },
   "geometryHash": "37c6c1ab",
-  "metadataHash": "829fa725",
+  "metadataHash": "983f255b",
   "presentationAnchor": {
     "xM": 0.0009,
     "zM": -0.0714
@@ -622,8 +622,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29356,
-      "sha256": "fa61da2a7006dde710d1d5b321aa303a8df153a35629a648cb7ce6e0f517f0f7"
+      "bytes": 29240,
+      "sha256": "3dd763e6b6dba1e4060451c34622df9bf39aa1399f6c852125f4c50ab6c8beeb"
     },
     "modulesSide": {
       "file": "sabra_mk2_modules_side.webp",
@@ -702,7 +702,7 @@
       "file": "sabra_mk2_technical.json",
       "mime": "application/json",
       "bytes": 5480,
-      "sha256": "3029cb53eb9dac8fd23e53a9c5b39f28bc7e7a5c1f81486bd09098ec149dfdcb"
+      "sha256": "a21dc42623173bea706bd07eda948fdba137683879a1a3af29d6e4d87294fbf1"
     }
   }
 }

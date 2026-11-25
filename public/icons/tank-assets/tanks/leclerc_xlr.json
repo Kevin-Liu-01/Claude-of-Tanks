@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.65,0.1122,3.6688],
-          [1.65,0.1122,-3.6688],
-          [1.65,0.9348,-3.6688],
-          [1.65,0.9348,3.6688]
+          [1.6123,0.1122,3.258],
+          [1.6123,0.1122,-2.985],
+          [1.6123,0.9348,-2.985],
+          [1.6123,0.9348,3.258]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.65,0.1122,-3.6688],
-          [-1.65,0.1122,3.6688],
-          [-1.65,0.9348,3.6688],
-          [-1.65,0.9348,-3.6688]
+          [-1.6123,0.1122,-2.985],
+          [-1.6123,0.1122,3.258],
+          [-1.6123,0.9348,3.258],
+          [-1.6123,0.9348,-2.985]
         ]
       },
       {
@@ -4541,7 +4541,7 @@
     ]
   },
   "geometryHash": "c84bd62a",
-  "metadataHash": "e8923415",
+  "metadataHash": "64dcd921",
   "presentationAnchor": {
     "xM": -0.0025,
     "zM": 0.0027
@@ -4600,8 +4600,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27060,
-      "sha256": "753ca14e7fd11b254a94ff4808e0eea27a5f1155ee0b29316fa44e6db28aa40e"
+      "bytes": 27234,
+      "sha256": "20269f50c42579a683f5b6ae6e1ed77a6f5756d56598183151f15d611c4c78aa"
     },
     "modulesSide": {
       "file": "leclerc_xlr_modules_side.webp",
@@ -4678,8 +4678,8 @@
     "technicalLabels": {
       "file": "leclerc_xlr_technical.json",
       "mime": "application/json",
-      "bytes": 5422,
-      "sha256": "7d117b1d520169073d0e74983d93e4a8517670b9d4c2912964803c46bd49aece"
+      "bytes": 5793,
+      "sha256": "4c20debb639537ce88c2d990d04488e8cfcf6cdadd62d382031188082db414e8"
     }
   }
 }

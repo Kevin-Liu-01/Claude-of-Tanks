@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.55,0.14,3.8],
-          [1.55,0.14,-3.8],
-          [1.55,1.02,-3.8],
-          [1.55,1.02,3.8]
+          [1.8505,0.14,3.487],
+          [1.8505,0.14,-3.829],
+          [1.8505,1.02,-3.829],
+          [1.8505,1.02,3.487]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.55,0.14,-3.8],
-          [-1.55,0.14,3.8],
-          [-1.55,1.02,3.8],
-          [-1.55,1.02,-3.8]
+          [-1.8505,0.14,-3.829],
+          [-1.8505,0.14,3.487],
+          [-1.8505,1.02,3.487],
+          [-1.8505,1.02,-3.829]
         ]
       },
       {
@@ -1670,7 +1670,7 @@
     ]
   },
   "geometryHash": "e62bc84f",
-  "metadataHash": "2e4f3da4",
+  "metadataHash": "7e5c610c",
   "presentationAnchor": {
     "xM": -0.0017,
     "zM": -0.3133
@@ -1778,8 +1778,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47098,
-      "sha256": "76a8c0eeaf787ce74a5ad32cc47caa68b887a96a813de0b3f46e251064297159"
+      "bytes": 45052,
+      "sha256": "0a2b7e68bb7548d8e3d94288192c7acf9284e7d21690e2a5a574caf25d99673a"
     },
     "modulesSide": {
       "file": "merkava3_baz_modules_side.webp",
@@ -1809,7 +1809,7 @@
       "file": "merkava3_baz_technical.json",
       "mime": "application/json",
       "bytes": 4584,
-      "sha256": "95ae5a45f69a893055b2b0c6a2d6e6030723a1bc4b088dd494b83d87d48481d1"
+      "sha256": "2edbb60749382fa0396f0207c6d2a80a758d54b5bfb1e0fa27d901cbdff9d6fd"
     }
   }
 }
