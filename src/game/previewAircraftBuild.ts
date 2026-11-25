@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { buildGunshipAirframe } from './gunshipAirframe.ts';
 import { buildStrikeJetAirframe } from './strikeJetAirframe.ts';
 import { buildFighterJetAirframe } from './fighterJetAirframe.ts';
+import { buildArtillerySalvo } from './artillerySalvoModel.ts';
 import { createDroneModelKit, droneRotorDirection, mirroredRotorGeometry, poseDroneRotor } from '../fx/droneModel.ts';
 import { RENDERED_AIRCRAFT, type PreviewAircraft } from '../vehicles/previewVehicles.ts';
 
@@ -51,6 +52,7 @@ const BUILDERS: Readonly<Record<PreviewAircraft['airframe'], (hooks: MaterialHoo
   strikeJet: buildStrikeJetAirframe,
   fighterJet: buildFighterJetAirframe,
   drone: buildDroneAirframe,
+  artillery: buildArtillerySalvo,
 });
 
 /** Build the aircraft a rendered id names (previewVehicles.ts RENDERED_AIRCRAFT; throws for a tank id: build tanks from their

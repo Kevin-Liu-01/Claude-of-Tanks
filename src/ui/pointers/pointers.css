@@ -3,7 +3,8 @@
  * The follow pointer is paint on the ground in the accent (a trail of broad chevrons, a turn arrow ahead of the tank), with a
  * dark keyline so it reads on sand, snow and grass alike; its flow runs a few beats as it appears (finite, so reduced
  * motion's 1 ms never strobes), none under reduced motion. A warning is a bubble on the screen's rim in the enemy's colour:
- * its arrow at the threat, its glyph, its distance or an air run's seconds and countdown ring; a new one pulses twice. A
+ * its arrow at the threat, its glyph, its distance or an air run's seconds and countdown ring; a new one pulses twice.
+ * (notices-polish-277) The bubble is the HUD's one hexagon (src/ui/hexPlate.ts), the notice plates' shape. A
  * moving objective's indicator (the ball, a carried flag, the juggernaut) is the same bubble in its side's colour.
  * Loaded beside the HUD by its bundle (battleHudAccess.ts). */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
@@ -24,13 +25,14 @@ body:is(.cot-kc-live,.cot-si-report) .cot-ptr{display:none;}
 @keyframes cot-ptr-flow{0%,100%{opacity:1;}45%{opacity:.4;}}
 .cot-ptr-turn{fill:var(--accent);fill-opacity:.85;stroke:var(--surface-scene);stroke-opacity:.55;stroke-width:1.5;stroke-linejoin:round;}
 .cot-ptr-turn-head{fill-opacity:1;}
-.cot-ptr-disc,.cot-ptr-arrow{fill:var(--ptr-tone);stroke:var(--surface-scene);stroke-opacity:.6;stroke-width:1.5;}
+.cot-ptr-disc,.cot-ptr-arrow{fill:var(--ptr-tone);stroke:var(--surface-scene);stroke-opacity:.6;stroke-width:1.5;stroke-linejoin:round;}
 .cot-ptr-glyph{fill:var(--ink-1);}
-.cot-ptr-pulse{fill:none;stroke:var(--ptr-tone);stroke-width:2;opacity:0;}
+.cot-ptr-pulse{fill:none;stroke:var(--ptr-tone);stroke-width:2;stroke-linejoin:round;opacity:0;}
 .cot-ptr-bubble.is-new .cot-ptr-pulse{animation:cot-ptr-pulse var(--dur-stage) var(--ease-move) 2;}
 @keyframes cot-ptr-pulse{0%{opacity:.7;scale:.8;}100%{opacity:0;scale:1.35;}}
-.cot-ptr-ring{fill:none;stroke:var(--ink-1);stroke-width:3;stroke-linecap:round;rotate:-90deg;}
-.cot-ptr-badge circle{fill:var(--ink-1);stroke:var(--ptr-tone);stroke-width:1.5;}
+/* (notices-polish-277) the countdown runs the hexagon's outline from the middle of its top edge (hexPlate.ts), no turn */
+.cot-ptr-ring{fill:none;stroke:var(--ink-1);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+.cot-ptr-badge path{fill:var(--ink-1);stroke:var(--ptr-tone);stroke-width:1.5;}
 .cot-ptr-badge text{font-family:var(--font-mono);font-size:var(--fs-11);font-weight:var(--fw-bold);fill:var(--surface-scene);
   text-anchor:middle;}
 .cot-ptr-label{font-family:var(--font-mono);font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:var(--fw-bold);fill:var(--ink-1);

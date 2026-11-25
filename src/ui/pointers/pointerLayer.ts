@@ -11,6 +11,8 @@
  *   not drawn; masked off the player's own hull on the screen, so the paint runs under the tank and never over it;
  * - the rim (over the HUD, --z-hud-score): one bubble per warning the camera does not show, its arrow at the warning, its
  *   glyph (a tank, a missile, an aircraft, a drone, the ball, a flag, the juggernaut), its distance, an air run's countdown ring, and the count of a merged bubble.
+ *   (notices-polish-277; Kevin 2026-11-24: "the tank/missile/airfraft warnings are circles rn. change them to hexagons") the
+ *   bubble, its pulse, its countdown and its count are the HUD's one hexagon (hexPlate.ts), the notice plates' shape.
  * Everything is drawn in screen space from points the caller projects, so the layer adds nothing to the 3D scene. The
  * caller (hud.ts) draws it once a frame with the frame's pointers, or with null to clear it; it keeps its nodes (no per
  * frame allocation past the path strings) and goes with the HUD (destroy).
@@ -19,6 +21,7 @@ import {
   bubbleRadius, planBubbles, planFollow, type Bubble, type FollowPointer, type GroundPoint, type ScreenBox, type ScreenPoint,
   type WarnKind, type WarnPointer, type WorldPoint,
 } from './pointerPlan.ts';
+import { hexBubbleOutline, hexBubblePath, hexBubblePerimeter, hexBubbleRadius } from '../hexPlate.ts';
 
 /** What the layer reads for one frame. */
 interface PointerFrame {
@@ -104,10 +107,10 @@ const show = (node: Element, on: boolean): void => {
 
 interface BubbleNodes {
   readonly group: SVGGElement;
-  readonly pulse: SVGCircleElement;
+  readonly pulse: SVGPathElement;
   readonly arrow: SVGPathElement;
-  readonly disc: SVGCircleElement;
-  readonly ring: SVGCircleElement;
+  readonly disc: SVGPathElement;
+  readonly ring: SVGPathElement;
   readonly glyph: SVGPathElement;
   readonly badge: SVGGElement;
   readonly badgeText: SVGTextElement;
@@ -136,14 +139,14 @@ export function createPointerLayer(): PointerLayer {
 
   const bubbles: BubbleNodes[] = Array.from({ length: MAX_BUBBLES }, () => {
     const group = svgEl('g', 'cot-ptr-bubble', rimLayer.svg);
-    const pulse = svgEl('circle', 'cot-ptr-pulse', group);
+    const pulse = svgEl('path', 'cot-ptr-pulse', group);
     const arrow = svgEl('path', 'cot-ptr-arrow', group);
     arrow.setAttribute('d', ARROW_PATH);
-    const disc = svgEl('circle', 'cot-ptr-disc', group);
-    const ring = svgEl('circle', 'cot-ptr-ring', group);
+    const disc = svgEl('path', 'cot-ptr-disc', group);
+    const ring = svgEl('path', 'cot-ptr-ring', group);
     const glyph = svgEl('path', 'cot-ptr-glyph', group);
     const badge = svgEl('g', 'cot-ptr-badge', group);
-    svgEl('circle', '', badge).setAttribute('r', '7');
+    svgEl('path', '', badge).setAttribute('d', hexBubblePath(0, 0, 8));
     const badgeText = svgEl('text', '', badge);
     badgeText.setAttribute('y', '3.5');
     const label = svgEl('text', 'cot-ptr-label', group);
@@ -209,14 +212,18 @@ export function createPointerLayer(): PointerLayer {
       nodes.group.setAttribute('transform', `translate(${bubble.x.toFixed(1)} ${bubble.y.toFixed(1)})`);
       const deg = (bubble.angle * 180) / Math.PI;
       const scale = radius / 18;
-      nodes.arrow.setAttribute('transform', `rotate(${deg.toFixed(1)}) scale(${scale})`);
-      nodes.disc.setAttribute('r', String(radius));
-      nodes.pulse.setAttribute('r', String(radius + 6));
+      const hex = hexBubbleRadius(radius);
+      // (notices-polish-277) the arrow's base on the hexagon's inscribed edge, its head out past it toward the threat (at
+      // the circle's radius the whole arrow lay under the disc)
+      const arrowAt = (Math.sqrt(3) / 2) * hex - 1 - 10 * scale;
+      nodes.arrow.setAttribute('transform', `rotate(${deg.toFixed(1)}) translate(${arrowAt.toFixed(2)} 0) scale(${scale})`);
+      nodes.disc.setAttribute('d', hexBubblePath(0, 0, hex));
+      nodes.pulse.setAttribute('d', hexBubblePath(0, 0, hex + 6));
       nodes.glyph.setAttribute('d', GLYPHS[bubble.kind]);
       nodes.glyph.setAttribute('transform', `scale(${scale})`);
-      const ringR = radius + 3.5;
-      const length = 2 * Math.PI * ringR;
-      nodes.ring.setAttribute('r', ringR.toFixed(1));
+      const ringR = hex + 4;
+      const length = hexBubblePerimeter(ringR);
+      nodes.ring.setAttribute('d', hexBubbleOutline(ringR));
       show(nodes.ring, bubble.countdownLeft != null);
       if (bubble.countdownLeft != null) {
         nodes.ring.setAttribute('stroke-dasharray', `${(length * bubble.countdownLeft).toFixed(1)} ${length.toFixed(1)}`);

@@ -4752,6 +4752,7 @@
   "hudEditor.unavailable": "Este elemento solo aparece en determinadas situaciones de batalla. Aun así, puedes cambiar su visibilidad aquí.",
   "hudEditor.hidden": "Oculto",
   "hud.kill.shot": "Destruido",
+  "hud.killCard.distance": "{m} m",
   "hud.kill.ammorack": "Compartimento de munición",
   "hud.kill.drone": "Ataque con dron",
   "hud.kill.ram": "Embestida",

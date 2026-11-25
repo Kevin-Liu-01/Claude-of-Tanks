@@ -4752,6 +4752,7 @@
   "hudEditor.unavailable": "この要素は特定の戦闘状況でのみ表示されます。表示・非表示の設定はここで変更できます。",
   "hudEditor.hidden": "非表示",
   "hud.kill.shot": "撃破",
+  "hud.killCard.distance": "{m} m",
   "hud.kill.ammorack": "弾薬庫",
   "hud.kill.drone": "ドローン攻撃",
   "hud.kill.ram": "体当たり",

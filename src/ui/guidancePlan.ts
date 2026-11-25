@@ -30,6 +30,11 @@
  * The toasts take their place after the card's; where none keeps them off the controls, the card and the centre notices
  * they wait (null) and show when one frees, as the medal card waits for its place.
  *
+ * (notices-polish-277; Kevin 2026-11-24: "it should be in one place, that bottom spot is saved for kills") The toasts, the
+ * condition lane, no longer seek: they stand in conditionLane, one place under the score and the objective reserved in every
+ * state, and the centre notices, the card and the caption line plan under or round it (battleHudLayout.ts; the overlap
+ * probe holds each lane to one place).
+ *
  * DOM-free and deterministic; guidancePlan.selftest.mjs lays out every recorded HUD size (tools/fixtures/
  * hud-sight-furniture.json) at desktop, phone portrait and phone landscape and holds every place clear.
  */
@@ -79,6 +84,10 @@ export interface GuidanceInput {
   readonly captions?: GuidanceSize | null;
   /** The sight's keep-out (also among `soft`): the caption line never lies on it (Kevin, 2026-11-21). */
   readonly sight?: readonly GuidanceBox[];
+  /** The condition lane's fixed place (conditionLane): the toasts stand there and nowhere else, and the card and the caption
+   *  line keep off it whether a toast shows or not (notices-polish-277). None: the toasts seek their place (the receipts'
+   *  older layouts). */
+  readonly lane?: GuidanceBox | null;
 }
 
 interface GuidancePlace extends GuidanceBox {
@@ -232,14 +241,61 @@ function place(size: GuidanceSize, minW: number, minH: number | null, input: Gui
   return null;
 }
 
+/** The input with its condition lane among the boxes never covered: the card and the caption line keep off it whether a
+ *  toast shows or not. */
+function laneKept(input: GuidanceInput): GuidanceInput {
+  return input.lane ? { ...input, never: [...input.never, input.lane] } : input;
+}
+
 /** The card's place: the first phase on a touch layout, where the centre notices are then planned round it. */
 function placeGuidanceCard(input: GuidanceInput): GuidancePlace | null {
   return input.card ? place(input.card, GUIDANCE_CARD_MIN_W, GUIDANCE_CARD_MIN_H, input, [], input.top) : null;
 }
 
-/** The toasts' place once the card (and the centre notices, in `never`) have theirs; null while they wait for the card. */
+/** The toasts' place once the card (and the centre notices, in `never`) have theirs; null while they wait for the card. On a
+ *  fixed lane (input.lane) the lane itself, as tall as the toasts: never another place, never waiting. */
 function placeGuidanceToasts(input: GuidanceInput, card: GuidanceBox | null): GuidancePlace | null {
-  return input.toasts ? place(input.toasts, GUIDANCE_TOAST_MIN_W, null, input, card ? [card] : [], input.top) : null;
+  if (!input.toasts) return null;
+  if (input.lane) {
+    const lane = input.lane;
+    const box = { ...lane, y1: Math.max(lane.y1, lane.y0 + input.toasts.h) };
+    return { ...box, tier: input.hard.some((hard) => crosses(box, hard, 0)) ? 2 : 0, fit: 'full', offCentre: false };
+  }
+  return place(input.toasts, GUIDANCE_TOAST_MIN_W, null, input, card ? [card] : [], input.top);
+}
+
+/** The height a condition lane reserves (px): one plate of the condition lane, a phone's (touch) or a mouse layout's. */
+export const CONDITION_LANE_H = Object.freeze({ mouse: 64, touch: 60 });
+/** The lane's widest (px): the kit's toast column (battleNotices.ts's region); and its least, where a warning's words and
+ *  its picture stand on one row (narrower, INCOMING wrapped to 102 px at 390x844 and met the map). */
+const CONDITION_LANE_W = 420, CONDITION_LANE_LEAST = 300;
+
+/**
+ * The condition lane's one place (notices-polish-277; Kevin 2026-11-24: "this notification type ... needs to not bounce from
+ * top or bottom of screen, it should be in one place, that bottom spot is saved for kills"): on the window's centre line
+ * under the score and the objective (`top`), `h` tall, as wide as the kit's column and the boxes beside it at that height
+ * allow (a phone's map and its right column), never narrower than a toast's least. The same place in every state of a
+ * layout: every other seat (the detection, the event lane, the tutorial's card, the caption line) plans under or round it.
+ */
+export function conditionLane(width: number, height: number, top: number, h: number, beside: readonly GuidanceBox[]): GuidanceBox {
+  const cx = width / 2, first = Math.ceil(top + GUIDANCE_GAP);
+  const least = Math.min(CONDITION_LANE_LEAST, width - GUIDANCE_GAP * 4);
+  const at = (y0: number) => {
+    const w = Math.min(CONDITION_LANE_W, width - GUIDANCE_GAP * 4, Math.floor(2 * freeHalf(beside, cx, y0, y0 + h, width)));
+    return { x0: cx - w / 2, y0, x1: cx + w / 2, y1: y0 + h };
+  };
+  // the first band from the score's foot as wide as a warning's row, beside the fixed instruments alone (a portrait phone's
+  // map and touch chrome stand beside the score: there it is the band under them), never under the window's middle; where
+  // none is, the first as wide as a toast's least (a portrait phone with its systems column down the right edge), which the
+  // lane's narrow form fits (battleHudLayout.css data-lane-narrow)
+  for (const wide of [least, Math.min(GUIDANCE_TOAST_MIN_W, least)]) {
+    for (let y0 = first; y0 + h <= height / 2; y0 += STEP) {
+      const lane = at(y0);
+      if (lane.x1 - lane.x0 >= wide) return lane;
+    }
+  }
+  const w = least;
+  return { x0: cx - w / 2, y0: first, x1: cx + w / 2, y1: first + h };
 }
 
 /** The caption line's place once the card and the toasts have theirs: from the window's middle down, never on an
@@ -253,9 +309,9 @@ function placeGuidanceCaptions(input: GuidanceInput, placed: readonly GuidanceBo
 
 /** Where the tutorial's card, the battle's toasts and the caption line stand, the centre notices already placed (see the
  *  module comment). */
-export function planGuidance(input: GuidanceInput, card: GuidancePlace | null = placeGuidanceCard(input)): GuidancePlan {
+export function planGuidance(input: GuidanceInput, card: GuidancePlace | null = placeGuidanceCard(laneKept(input))): GuidancePlan {
   const toasts = placeGuidanceToasts(input, card);
-  const captions = placeGuidanceCaptions(input, [card, toasts].filter((box): box is GuidancePlace => !!box));
+  const captions = placeGuidanceCaptions(laneKept(input), [card, toasts].filter((box): box is GuidancePlace => !!box));
   return {
     card, toasts, toastsWait: !!input.toasts && !toasts, captions, captionsWait: !!input.captions && !captions,
     cleared: (!input.card || (!!card && card.tier < 2)) && (!toasts || toasts.tier < 2),
@@ -269,7 +325,7 @@ export function planGuidance(input: GuidanceInput, card: GuidancePlace | null = 
  */
 export function planTouchGuidance(input: GuidanceInput, planNotices: (card: GuidanceBox | null) => GuidanceBox[]):
   { readonly plan: GuidancePlan; readonly notices: GuidanceBox[]; readonly cardFirst: boolean; readonly cardYields: boolean } {
-  const card = placeGuidanceCard(input);
+  const card = placeGuidanceCard(laneKept(input));
   const notices = planNotices(card);
   const onCard = (place: GuidanceBox | null, boxes: readonly GuidanceBox[]) => !!place && boxes.some((notice) => crosses(place, notice, 0));
   if (!onCard(card, notices)) {
@@ -277,7 +333,7 @@ export function planTouchGuidance(input: GuidanceInput, planNotices: (card: Guid
   }
   const plain = planNotices(null);
   const withNotices = { ...input, never: [...input.never, ...plain] };
-  const around = placeGuidanceCard(withNotices);
+  const around = placeGuidanceCard(laneKept(withNotices));
   if (around) return { plan: planGuidance(withNotices, around), notices: plain, cardFirst: false, cardYields: false };
   // neither order keeps the card off the centre notices (the smallest landscapes): the card keeps its place and gives way
   // while a detection or an alert shows (battleHudLayout hides it under them), the toasts kept off both

@@ -21,13 +21,19 @@ try {
   const rack = { cause: 'ammorack', icon: 'ammoRack', label: t('hud.kill.ammorack') };
 
   ribbon.damage('e1', 300);
-  ribbon.damage('e1', 340);
+  // (notices-polish-277) the last hit carries the round and its range: the kill card names them
+  ribbon.damage('e1', 340, { weapon: '120 mm DM53 APFSDS', distanceM: 1418.4 });
   ribbon.damage('e2', 120);
   ribbon.kill({ id: 'e1', callsign: 'Orlov', vehicle: 'T-72B3', flag: '', specId: 'm1a3' }, rack);
   assert.equal(ribbon.root.classes.has('on'), true, 'the player\'s kill takes the ribbon');
   assert.equal(part('cs').textContent, 'Orlov', 'callsign first');
   assert.equal(part('vn').textContent, 'T-72B3', 'the vehicle beside it');
   assert.equal(part('w').textContent, t('hud.kill.shot'));
+  assert.equal(part('side').textContent, t('hud.enemy'), 'the victim\'s side');
+  assert.equal(part('by').textContent, t('hud.feed.you'), 'the killer: the player');
+  assert.equal(part('wp').textContent, 'DM53 APFSDS', 'the round by its designation and type');
+  assert.equal(part('wp').title, '120 mm DM53 APFSDS', 'its whole name its title');
+  assert.equal(part('rg').textContent, t('hud.killCard.distance', { m: formatNumber(1418) }), 'and the range it flew');
   const cause = part('cause').children[0];
   assert.equal(cause?.dataset.cause, 'ammorack', 'an ammo-rack kill carries its cause chip');
   assert.equal(part('x').hidden, true, 'one kill carries no multiplier');

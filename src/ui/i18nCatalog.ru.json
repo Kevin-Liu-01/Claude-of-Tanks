@@ -4752,6 +4752,7 @@
   "hudEditor.unavailable": "Этот элемент появляется только в определённых боевых ситуациях. Его видимость можно настроить здесь.",
   "hudEditor.hidden": "Скрыто",
   "hud.kill.shot": "Уничтожено",
+  "hud.killCard.distance": "{m} м",
   "hud.kill.ammorack": "Боеукладка",
   "hud.kill.drone": "Удар дрона",
   "hud.kill.ram": "Таран",

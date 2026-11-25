@@ -13,7 +13,7 @@ import { tankThumbUrl } from '../icons.ts';
 import { RENDERED_AIRCRAFT } from '../../vehicles/previewVehicles.ts';
 
 /** The aircraft the notices picture, each with renders (tools/genAircraftAssets.mjs; previewVehicles.ts RENDERED_AIRCRAFT). */
-export const NOTICE_AIRCRAFT = Object.freeze(['ac130', 'a10', 'f16', 'drone'] as const);
+export const NOTICE_AIRCRAFT = Object.freeze(['ac130', 'a10', 'f16', 'drone', 'artillery'] as const);
 type NoticeAircraft = (typeof NOTICE_AIRCRAFT)[number];
 
 /** A notice's art: an aircraft's render, or a tank's (`tank:<spec id>`). */

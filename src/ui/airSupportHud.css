@@ -88,7 +88,8 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
    rule that pads is set a class heavier) */
 /* the readout: the call-in's glyph and name, the range and bearing, on the HUD's hexagon plate (hud.ts); the order's state
    is the air lane's plate and the warning the slot's tip (notices-276b), the price the slot's alone (gauntlet bar 13) */
-.cot-binoculars .binocular-readout{position:absolute;left:50%;width:max-content;top:116px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;height:40px;box-sizing:border-box;padding:0 20px;white-space:nowrap}
+/* (notices-polish-277) under the condition lane's reserved place, as every seat (battleHudLayout.ts --hud-condition-lane-bottom) */
+.cot-binoculars .binocular-readout{position:absolute;left:50%;width:max-content;top:max(116px,calc(var(--hud-condition-lane-bottom,0px) + 8px));transform:translateX(-50%);display:flex;align-items:center;gap:12px;height:40px;box-sizing:border-box;padding:0 20px;white-space:nowrap}
 /* (gauntlet g8, g9: the strike's glyph as its selected slot shows it, in the accent, dimmed while it cannot be called) */
 .binocular-readout .glyph{display:block;flex:none;width:20px;height:20px;color:var(--accent)}
 .cot-binoculars:is([data-state=points],[data-state=air],[data-state=gunship],[data-state=cooldown]) .binocular-readout>.glyph{opacity:.4}

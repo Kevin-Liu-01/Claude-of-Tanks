@@ -77,8 +77,11 @@ export function planStrikeSeats(input: StrikeSeatInput): StrikeSeats | null {
   const { rack: rackSize } = input;
   const rowX = systemsLeft - 47;
   const under = { x: rowX, y: systemsTop + 54 }, over = { x: rowX, y: systemsTop - 54 };
+  // (notices-polish-277) then one rack lower, still beside the section: under the condition lane's reserved place, which a
+  // view's controls yield to (at 390x844 the lane stands level with the section's top)
   const rackPrefs = edge
-    ? [{ x: systemsLeft - SEAT_GAP - rackSize.w, y: systemsTop }, { x: systemsLeft - SEAT_GAP - rackSize.w, y: support.y }]
+    ? [{ x: systemsLeft - SEAT_GAP - rackSize.w, y: systemsTop }, { x: systemsLeft - SEAT_GAP - rackSize.w, y: support.y },
+      { x: systemsLeft - SEAT_GAP - rackSize.w, y: systemsTop + rackSize.h + SEAT_GAP }]
     : portrait ? [under, over] : [over, under];
   const rack = seatIn(rackPrefs, rackSize, taken, width, height);
   if (!rack) return null;

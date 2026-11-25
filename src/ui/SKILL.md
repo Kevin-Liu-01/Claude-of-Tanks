@@ -25,9 +25,12 @@ threat, turned, answered, ambient, teaching) and the condition lane (`condition`
 `dismiss`: a state held until it ends), `battleNoticeEvents.ts` the HUD's event lane in
 the planners' `.cot-alert` seat (what just happened; `ui:battleEvent` raises one from
 outside the HUD), their keys on `keyPrompt.ts`'s "[KEY] text" line; every raise names its
-kind in `noticeKinds.ts` (its subject and shape: the hexagon plate or a one-line pill; the
+kind in `noticeKinds.ts` (its subject; a warning carries art for every variant; the
 tank's own held off the binoculars, the drone and the gunship; Air Support's air lane all
-condition-lane plates; `noticeKinds.selftest.mjs`);
+condition-lane plates; `noticeKinds.selftest.mjs`); every notice, the kill card and the rim
+warnings take the one hexagon in `hexPlate.ts` (no pill, no circle: `hexPlate.selftest.mjs`);
+each lane has one place (`guidancePlan.ts conditionLane` under the score, reserved; the event
+lane by the sight; the kill card alone at the foot: the overlap probe's lane check);
 `battleNoticeCensus.selftest.mjs` fails a new announcing surface until it is theirs
 or named there with its reason; `captionLine.ts` draws the crew radio's captions where
 the guidance plan seats them;

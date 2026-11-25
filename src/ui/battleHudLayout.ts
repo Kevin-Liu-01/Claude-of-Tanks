@@ -9,7 +9,7 @@ import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurni
 import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn, publishBattleBands as publishBandsIn,
   type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
-import { cardNaturalSize, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
+import { cardNaturalSize, conditionLane, CONDITION_LANE_H, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
 import { VIEW_CONTROL_PARTS, VIEW_CONTROL_SELECTOR } from './hudViewControls.ts';
 import { planStrikeSeats, type SeatBox, type StrikeSeats } from './strikeSeats.ts';
 
@@ -249,9 +249,12 @@ const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
 export const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-drive,.cot-dp,.cot-vehicle-status,.cot-net,'
   + '.cot-mp-status.battle,.cot-spec.show,.cot-si-cardhost:not(:empty),.cot-si-log.open,.cot-medal-toasts:not(:empty),'
   + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat]),.cot-respawn:not([hidden])';
-export const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
+/** The controls that stand where they stand whatever the view (the condition lane's neighbours, guidancePlan.ts
+ *  conditionLane); a view's own controls (VIEW_CONTROL_SELECTOR) yield to the lane. */
+const GUIDANCE_FIXED_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
   + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
-  + `.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden]),${VIEW_CONTROL_SELECTOR}`;
+  + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
+export const GUIDANCE_CONTROLS = `${GUIDANCE_FIXED_CONTROLS},${VIEW_CONTROL_SELECTOR}`;
 const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-toasthost';
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
 export const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
@@ -342,8 +345,8 @@ const COUCH_MAP_SOLO_PX = 220;
 const MAP_LARGE_STEP = '2';
 /** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 8px))), the hints plate's 8 px in the
  *  same seat (at 12 its foot stood 4 px over the hull plate's and the speedometer's at 900x700, gauntlet r13), and its
- *  height with the streak's row (44 + 28). */
-const RIBBON_LIFT = 8, RIBBON_H = 72;
+ *  height: (notices-polish-277) the kill card's, its render's box and its insets (92 + 16) with its streak's row. */
+const RIBBON_LIFT = 8, RIBBON_H = 112;
 /** A portrait phone's personal feed under the global one: at most this wide. */
 const KILL_LANE_MAX_W = 400;
 /** The narrowest map whose width the report over it takes. */
@@ -1034,8 +1037,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const captions = captionNode && !captionNode.hidden && captionNode.childElementCount
       ? { w: Math.min(GUIDANCE_CAPTION_W, width - 32), h: captionNode.offsetHeight || 32 } : null;
     return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
-      never: measure(GUIDANCE_CONTROLS), card, toasts, captions, sight };
+      never: measure(GUIDANCE_CONTROLS), card, toasts, captions, sight, lane: conditionLaneBox };
   }
+  /** The condition lane's place this pass (guidancePlan.ts conditionLane: the toasts' one place). */
+  let conditionLaneBox: GuidanceBox | null = null;
   /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
   let guidanceCardSize: GuidanceSize | null = null;
   /** The card's natural size held for its step (guidancePlan.ts cardNaturalSize). */
@@ -1281,6 +1286,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
       watchBand = watchTop + watchBar.height;
     }
     const top = Math.max(headTop, watchBand);
+    // (notices-polish-277; Kevin 2026-11-24: "it should be in one place, that bottom spot is saved for kills") the condition
+    // lane's one place, under the score and the objective on the centre line, reserved whether a condition shows or not:
+    // the detection, the event lane, the tutorial's card and the caption line all plan under or round it
+    // (its neighbours are the fixed instruments and controls: a view's controls, the binoculars' readout among them, yield to
+    // it as the other seats do, airSupportHud.css --hud-condition-lane-bottom)
+    const lane = conditionLane(width, height, top, touch ? CONDITION_LANE_H.touch : CONDITION_LANE_H.mouse,
+      `${GUIDANCE_HARD},${GUIDANCE_FIXED_CONTROLS},.cot-minimap,.cot-strike-dock:not([hidden])`.split(',').flatMap((selector) => {
+        const all = hudQueryAll(selector);
+        return all.length ? all : [hudQuery(selector)].filter((node): node is Element => !!node);
+      }).map((node) => shownBox(node))
+        .filter((box): box is DOMRect => !!box).map((box) => ({ x0: box.left, y0: box.top, x1: box.right, y1: box.bottom })));
+    conditionLaneBox = lane;
+    setBodyVar('--hud-condition-lane-top', `${Math.round(lane.y0)}px`);
+    setBodyVar('--hud-condition-lane-bottom', `${Math.round(lane.y1)}px`);
+    // (a lane under a warning's one-row width: its notices' narrow form, battleHudLayout.css)
+    const narrowLane = lane.x1 - lane.x0 < 320;
+    if (document.body.hasAttribute('data-lane-narrow') !== narrowLane) document.body.toggleAttribute('data-lane-narrow', narrowLane);
+    const noticeFloor = lane.y1;
     // the rosters start under a riding bar that crosses their columns (gauntlet r1: 900x700 hung the bar over both)
     const earsBox = read('.cot-ear.l') ?? read('.cot-ear.r');
     setBodyVar('--hud-ears-top', watchBand && watchBar && earsBox && (watchBar.left < earsBox.right || watchBar.right > width - earsBox.width)
@@ -1603,6 +1626,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (r.width >= 1 && r.height >= 1) obstacles.push(box(r));
       }
       if (ammo) obstacles.push({ x: ammoReachLeft, y: ammo.top, w: ammo.right - ammoReachLeft, h: ammo.height });
+      // (notices-polish-277) and the condition lane's reserved place: a view's controls yield to it (the call-ins lay on
+      // "Incoming artillery" at 390x844, the overlap probe)
+      obstacles.push({ x: lane.x0, y: lane.y0, w: lane.x1 - lane.x0, h: lane.y1 - lane.y0 });
       const readout = read('.cot-binoculars:not([hidden]) .binocular-readout');
       const call = read('.cot-binoculars:not([hidden]) .binocular-call');
       strikeSeats = planStrikeSeats({ width, height, slot: systemsSlot, systemsLeft, systemsTop, support: box(strikeSupport),
@@ -1878,7 +1904,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const stripLane: PlanBox | null = phone ? { left: width - NETWORK_CORNER_RIGHT - PHONE_STRIP_WIDTH, top: top + 8, width: PHONE_STRIP_WIDTH, height: PHONE_STRIP_HEIGHT } : null;
       const planNetworkBottom = phone ? Math.max(networkBottom, top + 8 + PHONE_STRIP_HEIGHT) : networkBottom;
       const planRightAnchor = Math.max(top, planRight ? (rosterTopRight ?? planRight.top) + planRight.height : 0, planNetworkBottom) + 8;
-      plan = mouseNoticePlan(width, height, top, [score, objective, map, ammo, phone ? stripLane : strip], telemetry, map,
+      plan = mouseNoticePlan(width, height, noticeFloor, [score, objective, map, ammo, phone ? stripLane : strip], telemetry, map,
         [planLeft, planLeft ? battleRosterHeight(height, planLeftBottom - planLeft.top, iconLeft ? 124 : 48, rosterCountLeft, true) : 0,
           planRight, planRight ? Math.min(battleRosterHeight(height, rightBottom - rosterStart, iconRight ? 124 : 48, rosterCount, true),
             Math.max(0, report.top - rosterStart - feedRoom)) : 0],
@@ -1932,6 +1958,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (noticesBox.left < sideWidth + 20) leftAnchor = Math.max(leftAnchor, under);
       if (noticesBox.right > width - sideWidth - 20) rightAnchor = Math.max(rightAnchor, under);
     }
+    // (notices-polish-277) the side lanes give way to the condition lane's place while a condition shows there, as they give
+    // way to any notice that meets them (a phone's personal lane would hold no row under a place reserved for good): a lane
+    // whose band would start inside it starts under it, one that starts above it ends over it (laneFloor below)
+    const laneShows = !!hudQuery('.cot-battle-notices .cot-c-notice:not([data-state="exit"])');
+    const laneCrosses = (x0: number, x1: number) => laneShows && lane.x0 < x1 && lane.x1 > x0;
+    if (laneCrosses(0, sideWidth + 20) && leftAnchor > lane.y0 - 8 && leftAnchor < lane.y1 + 8) leftAnchor = Math.ceil(lane.y1 + 8);
+    if (laneCrosses(width - sideWidth - 20, width) && rightAnchor > lane.y0 - 8 && rightAnchor < lane.y1 + 8) rightAnchor = Math.ceil(lane.y1 + 8);
     // A portrait phone's global feed (the right lane, level with the map) takes the width right of the map where the rows
     // that end above the personal lane are two or more, and holds those rows (one wide row would cost the lane the rows it
     // holds beside the personal lane down to the systems row): in half the window its two callsigns read
@@ -2011,10 +2044,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
       return floor;
     };
+    /** Where a side lane's rows from `anchor` end over the condition lane's place across its column (x0..x1). */
+    const laneFloor = (anchor: number, x0: number, x1: number) => laneCrosses(x0, x1) && lane.y0 >= anchor ? lane.y0 - 8 : Infinity;
     // (on mouse the plan's countdown band above already keeps the lanes off it)
     const leftKillBottom = Math.min(!plan && countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd,
-    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach), controlFloor(leftAnchor, 0, leftReach));
+    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach), controlFloor(leftAnchor, 0, leftReach), laneFloor(leftAnchor, 0, leftReach));
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -2039,7 +2074,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const rightReach = wideFeed ? width - wideFeedWidth : width - sideWidth;
     const rightKillEnd = Math.min(rightKillBottom, rightKillFloor, rightEnd,
-      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach), controlFloor(rightAnchor, rightReach, width));
+      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach), controlFloor(rightAnchor, rightReach, width), laneFloor(rightAnchor, rightReach, width));
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
       battleNotificationRows(rightKillEnd - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);
@@ -2157,7 +2192,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (the map apart: through the scope a notice that finds no clear place covers it before the sight's readouts)
       // (274) the guidance in the same pass, in one order (guidancePlan.ts planTouchGuidance): the tutorial's card first and
       // the detection and the alert round it (the card an obstacle to them), then the battle's toasts off all three
-      const touchInput = { width, height, top, soft, labels: boxes(TOUCH_NOTICE_LABELS),
+      const touchInput = { width, height, top: noticeFloor, soft, labels: boxes(TOUCH_NOTICE_LABELS),
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },

@@ -131,6 +131,67 @@
         }
       }
     },
+    "artillery": {
+      "kind": "aircraft",
+      "airframe": "artillery",
+      "nation": "USA",
+      "geometryHash": "a6201124",
+      "dims": {
+        "lengthM": 1.3,
+        "spanM": 1.12,
+        "heightM": 0.52
+      },
+      "assets": {
+        "angle": {
+          "file": "artillery_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17788,
+          "sha256": "4398625ed6d4b7d6f0d3735aa2d1a7383cd400c3537a3381696a57a4bc08737d",
+          "thumbnail": {
+            "file": "thumbs/artillery_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 9338,
+            "sha256": "cac33fbd89b6f21109b928f1a103ace751272cc97ae07d0619f7a49be0c63e23"
+          }
+        },
+        "top": {
+          "file": "artillery_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 9654,
+          "sha256": "4003e2a9b1c7be40f0089bfcc7f2908be78451f474d5a5d249ea86122884bd86"
+        },
+        "side": {
+          "file": "artillery_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 8270,
+          "sha256": "9fb6fb62d9ba980e123dbe6a272f591c4f6f0c310bcc35ebf66ae2555fa17e88"
+        },
+        "topSilhouette": {
+          "file": "artillery_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 1817,
+          "sha256": "6c21c3444bbed18018f6be109f10b601e15bb3152f275513ed056ff91cbdfb43"
+        },
+        "sideSilhouette": {
+          "file": "artillery_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 3809,
+          "sha256": "782f85376d0ef7fca0d836293b49729f4f24a0226a7bcbc8dac36f864a84a68b"
+        }
+      }
+    },
     "drone": {
       "kind": "aircraft",
       "airframe": "drone",

@@ -21,7 +21,7 @@ export interface PreviewAircraft {
   readonly id: string;
   readonly kind: 'aircraft';
   /** The airframe builder (src/game/<airframe>Airframe.ts; the drone's fx/droneModel.ts). */
-  readonly airframe: 'gunship' | 'strikeJet' | 'fighterJet' | 'drone';
+  readonly airframe: 'gunship' | 'strikeJet' | 'fighterJet' | 'drone' | 'artillery';
   /** Its display name's catalog key, and the English name the offline tools print. */
   readonly labelKey: string;
   readonly label: string;
@@ -46,7 +46,8 @@ export const PREVIEW_AIRCRAFT_IDS: readonly string[] = Object.freeze(Object.keys
 /** The aircraft the battle's notices picture (notices-276, Kevin and Main 2026-11-23: ui/components/noticeArt.ts), rendered
  *  by the same studio, framing and files as the preview aircraft (tools/genAircraftAssets.mjs) but never previewed in a
  *  tank's place: no mode puts a player in one and no hero card is made (hero-cards-plan.mjs reads PREVIEW_AIRCRAFT). Air
- *  Support's A-10 (the recon pass and the strafing run) and F-16 (the bomb and the Maverick run), and the drone. */
+ *  Support's A-10 (the recon pass and the strafing run) and F-16 (the bomb and the Maverick run), the drone, and the
+ *  barrage's shell salvo (no aircraft flies it). */
 const NOTICE_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Object.freeze({
   a10: Object.freeze({
     id: 'a10', kind: 'aircraft', airframe: 'strikeJet', labelKey: 'airSupport.kind.strafe', label: 'A-10', nation: 'USA',
@@ -59,6 +60,13 @@ const NOTICE_AIRCRAFT: Readonly<Record<string, PreviewAircraft>> = Object.freeze
   drone: Object.freeze({
     id: 'drone', kind: 'aircraft', airframe: 'drone', labelKey: 'flight.drone', label: 'Drone', nation: 'USA',
     lengthM: 0.9, spanM: 0.9, heightM: 0.3,
+  }),
+  // (notices-polish-277; Kevin 2026-11-24: "make all warnings have mictures. i see artillery doesnt") the barrage flies no
+  // aircraft: its picture is its rounds, a salvo of three 155 mm shells diving (game/artillerySalvoModel.ts), rendered by
+  // the same studio and framing as the aircraft
+  artillery: Object.freeze({
+    id: 'artillery', kind: 'aircraft', airframe: 'artillery', labelKey: 'airSupport.kind.artillery', label: '155 mm salvo', nation: 'USA',
+    lengthM: 1.6, spanM: 0.8, heightM: 1.0,
   }),
 });
 

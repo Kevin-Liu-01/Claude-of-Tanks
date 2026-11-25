@@ -52,10 +52,12 @@ const STRIKE_ICON: Readonly<Record<AirStrikeKind, IconId>> = {
   recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', missile: 'rocket', gunship: 'modeAc130',
 };
 
-/** Each call-in's aircraft as the notices picture it (components/noticeArt.ts; Kevin and Main 2026-11-23): the A-10 flies the
- *  recon pass and the strafing run, the F-16 the bomb and the Maverick run, the AC-130 itself; the barrage has no aircraft. */
-const STRIKE_ART: Readonly<Record<AirStrikeKind, NoticeArtId | undefined>> = {
-  recon: 'a10', artillery: undefined, strafe: 'a10', bomb: 'f16', missile: 'f16', gunship: 'ac130',
+/** Each call-in's picture as the notices draw it (components/noticeArt.ts; Kevin and Main 2026-11-23): the A-10 flies the
+ *  recon pass and the strafing run, the F-16 the bomb and the Maverick run, the AC-130 itself; the barrage, which flies no
+ *  aircraft, its 155 mm salvo (notices-polish-277; Kevin 2026-11-24: "make all warnings have mictures"). Every call-in has
+ *  one (noticeKinds.selftest.mjs: a warning kind without art fails). */
+export const STRIKE_ART: Readonly<Record<AirStrikeKind, NoticeArtId>> = {
+  recon: 'a10', artillery: 'artillery', strafe: 'a10', bomb: 'f16', missile: 'f16', gunship: 'ac130',
 };
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement): HTMLElementTagNameMap[K] {

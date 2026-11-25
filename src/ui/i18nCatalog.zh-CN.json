@@ -4837,6 +4837,7 @@
   "hudEditor.unavailable": "此元素仅在特定战斗状态下显示。您仍可在此更改其可见性。",
   "hudEditor.hidden": "已隐藏",
   "hud.kill.shot": "击毁",
+  "hud.killCard.distance": "{m} 米",
   "hud.kill.ammorack": "弹药殉爆",
   "hud.kill.drone": "无人机打击",
   "hud.kill.ram": "撞击",

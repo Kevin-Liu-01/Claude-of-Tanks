@@ -11,24 +11,25 @@
 //   they look (a fire, the scuttle's hold), shown in every view. `air`: Air Support's air lane, one plate per live air event
 //   (airSupportHud.ts), all in the condition lane, never the event lane, so one air subject shows at a time. `battle`: the
 //   battle turning. `link`: the network and the pointer lock. `teaching`: the first-use hints.
-// - Shape. `plate`: the HUD's long hexagon (the score plate's slant at both ends), for every large or subject notice,
-//   anything with art, a detail line or keys. `pill`: a one-line status, rounded at both ends, never with art or a detail.
-//   The lanes write the kind's shape as data-shape on the notice; one rule each in the HUD's sheet draws it (hud.ts,
-//   battleHudLayout.css: --notice-cut).
+// - Shape: one, the HUD's hexagon (hexPlate.ts), for every kind (notices-polish-277; Kevin 2026-11-24: "why does auto aim
+//   off have rounded borders?? hexagons pls": the one-line kinds' rounded pill of 276b is gone, no kind declares a shape).
+// - Warning: a kind that warns of something coming at the crew (the air runs over it) carries a picture for every variant.
 // Pure: no DOM (the receipts run it in Node).
 
 export type NoticeSubject = 'tank' | 'crew' | 'air' | 'battle' | 'link' | 'teaching';
-export type NoticeShape = 'plate' | 'pill';
 
 interface NoticeKindDeclaration {
   readonly subject: NoticeSubject;
-  readonly shape: NoticeShape;
-  /** Whether it carries a picture (components/noticeArt.ts): a plate only. */
+  /** Whether it carries a picture (components/noticeArt.ts). */
   readonly art?: true;
+  /** A warning: something coming at the crew (notices-polish-277; Kevin 2026-11-24: "make all warnings have mictures. i see
+   *  artillery doesnt"). A warning carries art, and every variant it raises names a render (noticeKinds.selftest.mjs
+   *  fails one without). */
+  readonly warning?: true;
 }
 
-const plate = (subject: NoticeSubject, art?: true): NoticeKindDeclaration => (art ? { subject, shape: 'plate', art } : { subject, shape: 'plate' });
-const pill = (subject: NoticeSubject): NoticeKindDeclaration => ({ subject, shape: 'pill' });
+const plate = (subject: NoticeSubject, art?: true): NoticeKindDeclaration => (art ? { subject, art } : { subject });
+const warning = (subject: NoticeSubject): NoticeKindDeclaration => ({ subject, art: true, warning: true });
 
 export const NOTICE_KINDS = Object.freeze({
   // ---- the tank (held off a view)
@@ -37,23 +38,23 @@ export const NOTICE_KINDS = Object.freeze({
   missilesDepleted: plate('tank'),
   atgmSelected: plate('tank'),
   autoAimOn: plate('tank', true),
-  autoAimRefused: pill('tank'),
-  magazineRefused: pill('tank'),
-  consumable: pill('tank'),
-  apsIntercepted: pill('tank'),
-  armorOverlay: pill('tank'),
-  pickup: pill('tank'),
-  moduleRepaired: pill('tank'),
-  aimLimit: pill('tank'),
+  autoAimRefused: plate('tank'),
+  magazineRefused: plate('tank'),
+  consumable: plate('tank'),
+  apsIntercepted: plate('tank'),
+  armorOverlay: plate('tank'),
+  pickup: plate('tank'),
+  moduleRepaired: plate('tank'),
+  aimLimit: plate('tank'),
   overturned: plate('tank'),
   // ---- the crew (every view)
   fire: plate('crew'),
   scuttle: plate('crew'),
   // (combined-arms-276) one control seat: the binoculars refused while the crew flies its drone, answered in the drone's
   // view (aerialHud.ts)
-  seatBusy: pill('crew'),
+  seatBusy: plate('crew'),
   // ---- the air lane (airSupportHud.ts, the condition lane)
-  airIncoming: plate('air', true),
+  airIncoming: warning('air'),
   airOrder: plate('air', true),
   airDown: plate('air', true),
   droneDown: plate('air', true),
@@ -62,10 +63,10 @@ export const NOTICE_KINDS = Object.freeze({
   wave: plate('battle'),
   caption: plate('battle'),
   infected: plate('battle'),
-  cacheDropped: pill('battle'),
+  cacheDropped: plate('battle'),
   // ---- the link, the teaching
   link: plate('link'),
-  pointerLock: pill('link'),
+  pointerLock: plate('link'),
   hint: plate('teaching'),
 } satisfies Record<string, NoticeKindDeclaration>);
 

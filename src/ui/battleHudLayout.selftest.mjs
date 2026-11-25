@@ -547,6 +547,9 @@ try {
     // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
     // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
     // gauntlet r5)
+    // (notices-polish-277) the condition lane's place is the first band under the score as wide as a warning's row: under
+    // the map and the touch chrome here; with no condition showing the side lanes keep their rows round it
+    assert.deepEqual([phone.px('condition-lane-top'), phone.px('condition-lane-bottom')], [209, 269], '390x844: the condition lane under the map and the chrome');
     assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
@@ -754,8 +757,8 @@ try {
     // for the compact plate), and waits hidden (r10 critic: no receipt read either rule)
     const layoutCss = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
     const aerialCss = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
-    assert.ok(layoutCss.includes(".cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
-      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule');
+    assert.ok(layoutCss.includes(".cot-hud .cot-aim-warning[data-seat='sight']{left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
+      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule (held through its exit, notices-polish-277)');
     assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}")
       && aerialCss.includes("@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}")
       && aerialCss.includes("body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}")

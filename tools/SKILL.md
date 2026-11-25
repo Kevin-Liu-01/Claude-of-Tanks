@@ -35,6 +35,9 @@ cases:
 - the datum census finds a duplicate.
 A new plate row needs no list entry: every element holding words is measured.
 `battle-hud-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the battle HUD's cheap overlap pass.
+After each window it also holds every notice lane to one place (`laneProblems`: the condition lane under the score, the
+kill card's seat for kills alone); `notice-row-gap.browser.mjs` (the same fixture and server) raises every notice kind on
+its lane and the gun-limit chip, and fails a row whose glyph-to-label gap moves between its entry, hold and exit.
 It stages every state the layout fixture knows (the corners, hints, notices, reports, the scope, spectate, Watch
 ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI gauntlet's eight sizes (2560x1440,
 1920x1080, 1440x900, 1280x720, 1024x600, 900x700, 390x844 and 844x390 touch). It fails on any two visible instruments that intersect, unless the pair is in its ALLOWED list with a

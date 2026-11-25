@@ -3279,6 +3279,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // notices-276b (Kevin 2026-11-24: "should we combine stuff ... hexagons look better for the bigger notis"): every battle
     // notice's kind declares its subject and shape; the tank's own held off the binoculars, the drone and the gunship
     'src/ui/noticeKinds.selftest.mjs',
+    // notices-polish-277 (Kevin 2026-11-24: "as it disappears it looks like that space disappears", "change them to
+    // hexagons", "make it a hexagon!!"): a notice row's gap holds through its exit (no layout behind a shown-state gate);
+    // one hexagon for every notice, the kill card and the rim warnings, no rounded notice; the kill card's hull whole
+    'tools/notice-row-gap-judge.selftest.mjs',
+    'src/ui/hexPlate.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

@@ -292,3 +292,21 @@ export function auditPortraitPixels(
     full,
   };
 }
+
+/** Where a render sits in a box so its whole silhouette (`bounds`, its pixels in the source) fills the box's inside less
+ *  `padRatio` of the box at each edge, whole and centred: never cropped, whatever the hull's proportions (notices-polish-277,
+ *  the kill card: Kevin 2026-11-24, "make the tank actually viewable. rn it gets cut off"). Each figure is a share of the
+ *  box (CSS percentages): the image's width and its left and top edges. */
+export function fitPortraitInBox(
+  bounds: PortraitPixelBounds,
+  naturalWidth: number,
+  boxWidth: number,
+  boxHeight: number,
+  padRatio = 0.06,
+): { width: number; left: number; top: number } {
+  const innerW = boxWidth * (1 - 2 * padRatio), innerH = boxHeight * (1 - 2 * padRatio);
+  const scale = Math.min(innerW / bounds.width, innerH / bounds.height);
+  const left = (boxWidth - bounds.width * scale) / 2 - bounds.x0 * scale;
+  const top = (boxHeight - bounds.height * scale) / 2 - bounds.y0 * scale;
+  return { width: (naturalWidth * scale) / boxWidth, left: left / boxWidth, top: top / boxHeight };
+}

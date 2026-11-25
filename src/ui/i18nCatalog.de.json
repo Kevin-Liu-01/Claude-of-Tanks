@@ -4752,6 +4752,7 @@
   "hudEditor.unavailable": "Dieses Element erscheint nur in bestimmten Gefechtssituationen. Du kannst es hier trotzdem ein- oder ausblenden.",
   "hudEditor.hidden": "Ausgeblendet",
   "hud.kill.shot": "Zerstört",
+  "hud.killCard.distance": "{m} m",
   "hud.kill.ammorack": "Munitionslager",
   "hud.kill.drone": "Drohnenangriff",
   "hud.kill.ram": "Rammen",

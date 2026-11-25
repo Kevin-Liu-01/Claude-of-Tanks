@@ -49,8 +49,6 @@ export interface NoticeContent {
   /** The kind's picture in the notice's empty side (noticeArt.ts: an aircraft's or a tank's render), faded in from nothing
    *  under the kit's one mask (notices.css .cot-c-notice__art); decorative: the words say what it is. */
   readonly art?: NoticeArtId;
-  /** Its kind's shape (noticeKinds.ts: the HUD's hexagon plate, or a one-line pill), as data-shape for the host's sheet. */
-  readonly shape?: 'plate' | 'pill';
   readonly className?: string;
 }
 
@@ -336,7 +334,6 @@ function render(region: Region, toast: QueuedToast, el: HTMLElement): void {
   const severity = o.severity ?? 'info';
   el.className = `cot-c-notice cot-c-notice--toast${o.className ? ` ${o.className}` : ''}`;
   el.dataset.severity = severity;
-  if (o.shape) el.dataset.shape = o.shape; else delete el.dataset.shape;
   if (severity === 'error') el.setAttribute('role', 'alert'); else el.removeAttribute('role');
   const count = toast.count > 1 ? `<span class="cot-c-notice__count num">×${toast.count}</span>` : '';
   const progress = o.progress !== undefined && severity === 'progress'

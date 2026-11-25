@@ -117,4 +117,43 @@ import { FEED, INSTRUMENTS, NOTICES, PLANTS, PLANT_SELECTOR, noticeCoverage, ove
   assert.deepEqual(overlapProblems([box('.cot-net', 'div.cot-net', 1700, 8, 120, 24), box('.cot-mp-status.battle', 'div.cot-mp-status', 1810, 8, 100, 24)], 1920, 1080), []);
 }
 
+// ---- the lanes (notices-polish-277; Kevin 2026-11-24: "it should be in one place, that bottom spot is saved for kills")
+{
+  const { kindLanes, laneProblems, LANE_SEATS } = await import('./battle-hud-overlap-judge.mjs');
+  const { NOTICE_KINDS } = await import('../src/ui/noticeKinds.ts');
+  const { readFileSync } = await import('node:fs');
+  // every kind's lane is its raise's, and no kind is raised in two lanes
+  const RAISERS = ['src/ui/hud.ts', 'src/ui/airSupportHud.ts', 'src/ui/firstUseHints.ts', 'src/ui/multiplayerStatus.ts',
+    'src/game/pointerLockFeedbackRuntime.ts', 'src/ui/aerialHud.ts'];
+  const kinds = Object.keys(NOTICE_KINDS);
+  const found = kindLanes(Object.fromEntries(RAISERS.map((f) => [f, readFileSync(f, 'utf8')])), kinds);
+  assert.deepEqual(kinds.filter((k) => !found.lanes[k]), [], 'every declared kind is raised in a lane');
+  assert.deepEqual(found.both, [], 'no kind is raised in two lanes');
+  assert.deepEqual(found.lanes.airIncoming, ['condition'], 'INCOMING is the condition lane\'s');
+  assert.deepEqual(kindLanes({ a: "events.raise({ kind: 'fire', text: 'x' }); battleNotices.condition({ kind: 'fire', id: 'f' });" }, ['fire']).both,
+    ['fire'], 'a kind raised in both lanes is found');
+  // one window's seats over its states
+  const seat = (lane, x, y, w, h) => ({ selector: LANE_SEATS[lane], name: lane, x, y, right: x + w, bottom: y + h });
+  const head = (bottom) => ({ selector: '.cot-top', name: 'top', x: 700, y: 0, right: 1200, bottom });
+  const still = [{ state: 'idle+notices', rects: [head(90), seat('condition', 750, 96, 420, 64), seat('event', 800, 200, 320, 40)] },
+    { state: 'sniper+notices', rects: [head(90), seat('condition', 750, 96, 420, 64), seat('event', 800, 201, 320, 40)] }];
+  assert.deepEqual(laneProblems(still, 1080).problems, [], 'the seats hold their places');
+  // (a sector mode's taller head: that battle's lane starts under it, the same distance under as every other's)
+  const sector = { state: 'mode-zone_control+notices', rects: [head(90), { ...head(138), selector: '.cot-pips.show' }, seat('condition', 750, 144, 420, 64),
+    seat('event', 800, 290, 320, 40)] };
+  const verdict0 = laneProblems([...still, sector], 1080);
+  assert.deepEqual(verdict0.problems, [], 'one place under the head');
+  assert.deepEqual(verdict0.notes, ['lane event: the planners move its seat (idle+notices y200, sniper+notices y201, mode-zone_control+notices y290)'],
+    'the event lane\'s movement is reported');
+  // (the 276 report: INCOMING at the kill card's seat in one state, under the score in another)
+  const bouncing = [still[0], { state: 'binoculars+notices', rects: [head(90), seat('condition', 750, 792, 420, 64), seat('event', 800, 200, 320, 40),
+    seat('kill', 699, 867, 522, 73)] }];
+  const verdict = laneProblems(bouncing, 1080).problems;
+  assert.ok(verdict.some((p) => p.startsWith('lane condition: its seat moves')), 'a lane that moves fails');
+  assert.ok(verdict.some((p) => p.startsWith('lane condition: in both bands')), 'a lane in both bands fails');
+  assert.ok(verdict.includes('lane condition: under the middle, where the kill card stands'), 'the condition lane under the middle fails');
+  assert.ok(verdict.some((p) => p.startsWith('lane kill:')), 'a notice in the kill card\'s seat fails');
+  assert.deepEqual(laneProblems(bouncing, 1080).record.condition, { 'idle+notices': [750, 96, 1170, 160], 'binoculars+notices': [750, 792, 1170, 856] });
+}
+
 console.log('battle-hud-overlap-judge: PASS');
