@@ -160,6 +160,8 @@ let installed = false;
 function install(): void {
   if (installed || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
   installed = true;
+  // typing-keys: Escape only, and never an IME composition's (isComposing), which is all keyboardOwnership.ts's
+  // isTypingTarget would add here; the stack is boot runtime and imports nothing outside the boot chunk
   window.addEventListener('keydown', (event) => {
     const top = stack.at(-1);
     if (!top || event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;

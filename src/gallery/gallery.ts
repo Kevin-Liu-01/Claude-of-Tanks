@@ -1,3 +1,4 @@
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import type { DamageLab, DamageLabVisual } from './damageLab.ts';
 import type { InActionBlock } from './inAction.ts';
 import type { AnatomyHost, AnatomyMode, AnatomyToggle, AnatomyView, AnatomyVehicle } from './anatomyView.ts';
@@ -767,6 +768,7 @@ function closeMoreFacetsOver(event: Event): void {
   const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
   if (!disclosure?.open || !matchMedia(MORE_FACETS_OVER).matches) return;
   if (event instanceof KeyboardEvent) {
+    if (isTypingTarget(event)) return;
     if (event.key !== 'Escape' || !disclosure.contains(document.activeElement)) return;
     disclosure.open = false;
     disclosure.querySelector('summary')?.focus();
@@ -1809,7 +1811,7 @@ renderer.domElement.addEventListener('pointermove', (event) => {
 renderer.domElement.addEventListener('pointerleave', () => { surfaceMarkup.clearHover(); anatomyView?.clearHover(); });
 
 document.addEventListener('keydown', (event) => {
-  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '');
+  const editing = isTypingTarget(event);
   if (event.key === '/' && !editing) {
     event.preventDefault();
     $('#gallerySearch').focus();

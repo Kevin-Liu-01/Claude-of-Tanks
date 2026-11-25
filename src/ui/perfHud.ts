@@ -2,6 +2,7 @@
 // explicitly enabled surface; input settings own persistence while this
 // module owns only presentation and bounded 4 Hz telemetry paint.
 
+import { isTypingTarget } from './keyboardOwnership.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { esc } from './components/escape.ts';
 import { openSurfaceIds } from './components/surfaceStack.ts';
@@ -493,7 +494,7 @@ export function createPerfHud({
   // its top one first): a battle's Escape takes the panel down before it opens Settings, and never opens the panel
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || event.isComposing) return;
+      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || isTypingTarget(event)) return;
       if (!visible || captureHidden || openSurfaceIds().length) return;
       event.preventDefault();
       event.stopImmediatePropagation();

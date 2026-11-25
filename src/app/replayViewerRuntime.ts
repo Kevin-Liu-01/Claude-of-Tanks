@@ -7,6 +7,7 @@
  * `advance` instead of stepping it. The bar (ui/replayBar.ts) loads with it. A recording this build cannot replay
  * never enters a battle: `refusal` says so first and the bar shows its timeline alone (Kevin's decision 4).
  */
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import type { ReplayRecording } from '../sim/replayFormat.ts';
 import { replayRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 import type { WatchSession } from '../game/watchSeat.ts';
@@ -108,8 +109,7 @@ export function createReplayViewerRuntime(ports: ReplayViewerRuntimePorts): Repl
 
   const onKeyDown = (event: KeyboardEvent): void => {
     if (!active || !viewer?.posing || event.repeat || ports.isInputHeld()) return;
-    const target = event.target as HTMLElement | null;
-    if (target && (target.isContentEditable || /^(?:INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    if (isTypingTarget(event)) return;
     const action = replayKeyAction(event.code);
     if (!action) return;
     event.preventDefault();

@@ -1,3 +1,4 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
 /** A presentation veil: never changes HUD mode, simulation, or shot history. */
 export function installBattleUiVisibility(options: {
   hidden(): boolean;
@@ -12,8 +13,7 @@ export function installBattleUiVisibility(options: {
   const key = (event: KeyboardEvent): void => {
     if (!battle || options.shortcutsBlocked() || event.code !== 'F10' || event.repeat
       || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
-    const target = event.target;
-    if (target instanceof Element && target.closest('input,textarea,select,[contenteditable="true"]')) return;
+    if (isTypingTarget(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     options.setHidden(!options.hidden());

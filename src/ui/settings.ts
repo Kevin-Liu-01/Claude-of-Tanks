@@ -55,7 +55,7 @@ import {
   type SettingsIconSpec,
 } from './settingsIcons.ts';
 import { containModalTab, isAnyModalOpen } from './modal.ts';
-import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
+import { isTypingTarget, shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import {
   battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner, type VeilTrigger,
 } from './battleInputOwner.ts';
@@ -1962,11 +1962,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       return;
     }
     // A kit control keeps its own keys: a picker menu's popover (in the body) every key, a segmented control's and a
-    // menu trigger's arrows, Home and End, the crew voice's field all but Escape. The panel's bubble listener (and the
+    // menu trigger's arrows, Home and End, the crew voice's field and any other text field (isTypingTarget) all but Escape
+    // (and Tab, which stays in the panel). The panel's bubble listener (and the
     // crew field's) keeps them from the game behind us.
     if (e.target instanceof Element && (e.target.closest('.cot-c-menu__pop')
         || (/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key) && e.target.closest('.cot-c-seg, .cot-c-menu__trigger'))
-        || (e.target.closest('.cot-set-crew-field') && e.code !== 'Escape'))) return;
+        || (e.target.closest('.cot-set-crew-field') && e.code !== 'Escape')) || (isTypingTarget(e) && e.code !== 'Tab')) return;
     if (isAnyModalOpen()) return; // The HUD editor owns focus and Escape above Settings.
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
     // shell hotkeys or the garage's Enter-to-battle handler behind it.
@@ -2073,6 +2074,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
+    // typing-keys: acts only while a key is being bound, when no field holds the focus
     window.addEventListener('keyup', onPanelKeyUp, true);
     panelPadSnapshot();
     if (!panelRaf) panelRaf = requestAnimationFrame(panelPadTick);

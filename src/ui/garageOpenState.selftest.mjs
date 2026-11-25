@@ -15,6 +15,7 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
 import { runMainStatements } from '../app/mainComposition.test-support.mjs';
 import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
+import { isTypingTarget } from './keyboardOwnership.ts';
 
 // (dynamic: a base without it fails by assertion, case 1b, not at link time)
 const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({}));
@@ -751,6 +752,7 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
       recordTrigger: { click: () => calls.push('record') }, openDocs: () => calls.push('docs'), deployModes: null,
       step: (dir) => calls.push(`step:${dir}`), stepToEnd: () => calls.push('end'), battle: () => calls.push('battle'),
       foreignModalOpen: () => false, // (improve-271 plan 026) no other screen's modal is open here
+      isTypingTarget, // (typing-keys-277) the shared typing test: these keys target no field
     };
     const garage = runMainStatements([treeCode, launchCode, keyCode], scope, '{ openTechTree, launchBattle, onKey }');
     const key = (code, { repeat = false } = {}) => {

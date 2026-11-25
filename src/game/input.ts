@@ -1,3 +1,4 @@
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { strikeView } from './strikeViewState.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
@@ -1109,6 +1110,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
   // --- DOM listeners ----------------------------------------------------------------
   const onKeyDown = (event: KeyboardEvent) => {
+    // a key typed into a field is the field's (Kevin, 276: the Garage search's space was the handbrake, its default
+    // prevented, so no space was ever typed)
+    if (isTypingTarget(event)) return;
     if (!event.repeat) press(event.code, event);
     else if (enabled) down.add(event.code);
   };
@@ -1168,6 +1172,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
   window.addEventListener('keydown', onKeyDown);
+  // typing-keys: a release only lets go of a held key, so a key held as the focus moved into a field never sticks
+  // typing-keys: a release only lets go of a held key, so a key held as the focus moved into a field never sticks
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);

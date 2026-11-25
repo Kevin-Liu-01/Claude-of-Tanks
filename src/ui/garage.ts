@@ -1,3 +1,4 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { vehicleActionsFor } from './vehicleActionList.ts';
 import type { CouchBattle } from '../game/couchSeats.ts';
@@ -2570,6 +2571,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderEqPicker();
     // the focus lands on the slot's own item (or Empty), where the arrows start
     eqPicker.focus();
+    // typing-keys: Tab containment only: a field inside the picker tabs within it too
     document.addEventListener('keydown', eqKeydown);
   }
   /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
@@ -5164,7 +5166,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       containModalTab(e, drawer, drawer);
       return;
     }
-    const typing = target?.closest('input,select,textarea,[contenteditable="true"]');
+    // a field takes its own keys (the search's space, Kevin 276); any other input (a slider, a box) keeps its arrows too
+    const typing = isTypingTarget(e) || !!target?.closest('input,select,textarea,[contenteditable="true"]');
     // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
     const deployOpen = battleMenu.classList.contains('open');
     if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {

@@ -1,3 +1,4 @@
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { t } from '../ui/i18n.ts';
 import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
@@ -95,6 +96,8 @@ if (document.querySelector('[data-hero-reel]')) {
 const heroPlay = document.querySelector<HTMLAnchorElement>('[data-hero-play]');
 if (heroPlay) {
   document.addEventListener('keydown', (event) => {
+    if (isTypingTarget(event)) return;
+    if (isTypingTarget(event)) return;
     if (event.key !== 'Enter' || event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const target = event.target instanceof Element ? event.target : null;
     if (target && target !== document.body && target.closest('a,button,input,select,textarea,summary,video,[contenteditable],[tabindex]')) return;
