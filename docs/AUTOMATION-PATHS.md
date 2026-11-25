@@ -250,6 +250,7 @@ Waits and polls built by hand:
 - `tools/media-r5/studio-ui.mjs`: another lane's file (tools-chains); migrate after it lands
 - `tools/mobile-dynamic-aim-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase confirms the battle, with the tool's own tank and touch conditions
 - `tools/mp-room-census.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/mp-two-peer-e2e.mjs`: the joiner's loader is its subject: a blocked joiner waits for the loader to clear with its entry failure recorded, and the loader's stage is sampled every 250 ms for its stall gate (mp-fixes-277)
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
