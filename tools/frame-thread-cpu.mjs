@@ -9,7 +9,7 @@
 // events carrying the most thread time are listed with it. One browser at a time; the capture FIFO for the whole run.
 //
 //   node tools/frame-thread-cpu.mjs --roots=<a>,<b>[,...] --labels=a,b[,...] [--queries=,propBatch=0] --maps=verdant
-//     [--pattern=ABCCBA] [--view=chase] [--tier=desktop|mobile] [--viewport=1920x1080] [--frames=300] [--port=5377]
+//     [--pattern=ABCCBA] [--view=chase] [--tier=desktop|mobile] [--viewport=1920x1080] [--frames=300] [--port=<n>]
 //     [--out=<dir>] [--tag=<tag>] [--lean]
 import path from 'node:path';
 import os from 'node:os';
@@ -33,7 +33,8 @@ const tier = arg('tier', 'desktop');
 const preset = arg('preset', tier === 'desktop' ? 'high' : 'mobile');
 const [width, height] = arg('viewport', tier === 'desktop' ? '1920x1080' : '1280x720').split('x').map(Number);
 const frames = Number(arg('frames', 300));
-const port = Number(arg('port', 5377));
+/** 0 (the default): the capture slot's port block, else an OS-assigned port (tools/capture-ports.mjs; never a fixed one). */
+const port = Number(arg('port', 0));
 const out = path.resolve(arg('out', '.qa-dev/frame-thread-cpu'));
 const tag = arg('tag', 'cpu');
 /** --lean: the toplevel category alone (every top-level task with its thread time; no per-event breakdown), a smaller
@@ -104,6 +105,7 @@ try {
       if (Date.now() - startedAt > 18 * 60 * 1000) { report.stopped = 'past 18 minutes of hold'; break; }
       const k = pattern.charCodeAt(s) - 65, label = labels[k];
       const server = await openPreview(roots[k], port);
+      const origin = `http://127.0.0.1:${server.port}`;
       const browser = await launchGuardedBrowser(puppeteer, { headless: true, timeout: 120000, protocolTimeout: 600000,
         args: [...MAP_PROBE_BROWSER_ARGS, '--use-angle=metal', '--enable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] }, { label: 'frame-thread-cpu' });
       const slot = { mapId, slot: s, label, query: queries[k], loadBefore: +os.loadavg()[0].toFixed(1) };
@@ -113,7 +115,7 @@ try {
         page.on('pageerror', (e) => errors.push(String(e?.message ?? e).slice(0, 200)));
         await page.setViewport({ width, height, deviceScaleFactor: 1 });
         await page.evaluateOnNewDocument(installObservers, { preset, allies: 13, enemies: 14 });
-        await page.goto(`http://127.0.0.1:${port}/?${['nosplash=1', `tier=${tier}`, queries[k]].filter(Boolean).join('&')}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+        await page.goto(`${origin}/?${['nosplash=1', `tier=${tier}`, queries[k]].filter(Boolean).join('&')}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
         await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
         const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
         await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, pinnedOpponents(catalog, 't90m', 27));
