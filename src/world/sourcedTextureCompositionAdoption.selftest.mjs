@@ -14,7 +14,7 @@ const hooks = registerHooks({ load(path, context, next) {
     export const tryComposeSourcedTexture = (...args) => globalThis.__sourcedCompositionTest.compose(...args);
     export const sourceFileBitmap = (image) => globalThis.__sourcedCompositionTest.bitmap(image);` };
   if (path === qualityUrl) return { format: 'module', shortCircuit: true,
-    source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);' };
+    source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);\nexport const terrainTextureTier = () => \'1k\';' };
   const result = next(path, context);
   return path === url ? { ...result, source: `${result.source}\nexport { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache, _imgCache };` } : result;
 } });
@@ -83,7 +83,8 @@ function complete(job, overrides = {}) {
   const rough = input.images.rough ? scale(input.images.rough, input.size) : null;
   composeAlbedoPixels(color, input.options.separateSurface ? null : ao, rough, input.options);
   const surface = input.includeSurface ? new Uint8ClampedArray(color.length) : null;
-  if (surface) composeSurfacePixels(surface, ao, rough, input.options.roughMul);
+  // as the worker does (sourcedTextureCompositionWorker.ts): the building sets' roughness is their packed ORM's green
+  if (surface) composeSurfacePixels(surface, ao, rough, input.options.roughMul, input.options.roughChannel ?? 0);
   job.result = { albedo: color, surface, ...overrides }; job.resolve(job.result);
   return job.result;
 }

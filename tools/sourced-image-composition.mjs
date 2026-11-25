@@ -12,12 +12,14 @@ export async function urbanCompositionCases(source) {
     sourceJob = async (target, set, layer, options) => {
       cases.push({ id: target.replaceAll(' ', '-').replaceAll('/', '-'),
         kind: target.startsWith('terrain ') ? 'terrain' : 'building',
-        set, images: SETS[set], options });
+        // (texture-diet-277; building-tex-diet-277) a set's files at the corpus's 1K tier ({ color, normal, orm }) and the
+        // options with the roughness channel the composer reads (green of the packed ORM)
+        set, images: setFiles(SETS[set]), options: composeOptions(options) });
       return { target, applied: true, failures: [] };
     };
     const layer = { albedo: {}, normal: {}, surface: {} };
     await applySourcedTerrain('urban', { G: layer, D: layer, R: layer, M: layer });
-    await applySourcedBuildings({ plaster: layer, roof: layer, wood: layer, stone: layer }, 'urban');
+    await applySourcedBuildings({ plaster: layer, wood: layer }, 'urban');
     return cases;
   `;
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
@@ -25,13 +27,14 @@ export async function urbanCompositionCases(source) {
   // newly imported data-image receiver resolvable when sourceJob receives it,
   // but fail if planning accidentally starts mutating textures.
   const noImageReplacement = () => { throw new Error('Plan collection must not replace images'); };
-  const rows = await new AsyncFunction('THREE', 'texSize', 'replaceSourcedBuildingDataImage', script)(
-    {}, size => size, noImageReplacement);
-  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood', 'brick'],
+  const rows = await new AsyncFunction('THREE', 'texSize', 'terrainTextureTier', 'replaceSourcedBuildingDataImage', script)(
+    {}, size => size, () => '1k', noImageReplacement);
+  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood'],
     'Unsupported urban source plan; review the experiment corpus explicitly');
   for (const row of rows) {
-    assert.deepEqual(Object.keys(row.images).sort(), ['ao', 'color', 'normal', 'rough']);
-    assert.ok(Object.values(row.images).every(url => /^\/textures\/(terrain|buildings)\/[\w.-]+\.jpg$/.test(url)));
+    assert.deepEqual(Object.keys(row.images).sort(), ['color', 'normal', 'orm']);
+    assert.ok(Object.values(row.images).every(url => /^\/textures\/(terrain|buildings)\/1k\/[\w.-]+\.webp$/.test(url)));
+    assert.equal(row.options.roughChannel, 1, 'the packed ORM map carries roughness in green');
   }
   return rows;
 }
@@ -61,8 +64,9 @@ export function validateCompositionTrial(row) {
   assert.ok(['terrain', 'building'].includes(row.kind));
   assert.deepEqual(row.quality, { tier: 'desktop', preset: 'high', textureSize: 1024 });
   assert.equal(row.size, 1024, 'The approved urban corpus composes at the authored 1K desktop size');
-  assert.equal(row.images.length, 4);
-  assert.equal(new Set(row.images.map(image => image.url)).size, 4);
+  // a tier's three WebPs (colour, normal, packed ORM)
+  assert.equal(row.images.length, 3);
+  assert.equal(new Set(row.images.map(image => image.url)).size, 3);
   for (const image of row.images) {
     assert.ok(image.width > 0 && image.height > 0);
     assert.ok(Number.isFinite(image.requestedAt) && Number.isFinite(image.onloadAt) && image.onloadAt >= image.requestedAt);
@@ -75,7 +79,7 @@ export function validateCompositionTrial(row) {
   }
   assert.deepEqual(row.measurements.map(value => value.stage), ['first', 'delayed-reuse']);
   for (const measure of row.measurements) {
-    assert.ok(measure.readbacks.length === 3, 'Exact runtime composition reads color, AO and roughness once each');
+    assert.ok(measure.readbacks.length === 2, 'Exact runtime composition reads the colour and the packed ORM once each');
     assert.ok(measure.readbacks.every(value => value.width === row.size && value.height === row.size));
     assert.ok(measure.startedAt >= row.readyAt && measure.endedAt >= measure.startedAt);
     assert.ok(measure.readbacks.every(value => Number.isFinite(value.durationMs) && value.durationMs >= 0
@@ -162,7 +166,8 @@ export async function measureSourceComposition({ input, policy, reuseDelayMs, im
         loaded.rough, input.options);
       ownedCanvases.push(albedo);
       if (input.kind === 'building') {
-        surface = owner.composeSurface(loaded.ao, loaded.rough, report.size, input.options.roughMul ?? 1);
+        surface = owner.composeSurface(loaded.ao, loaded.rough, report.size, input.options.roughMul ?? 1,
+          input.options.roughChannel ?? 0);
         ownedCanvases.push(surface);
       }
     } finally {
@@ -192,6 +197,8 @@ export async function measureSourceComposition({ input, policy, reuseDelayMs, im
     report.requestedAt = now();
     const entries = await Promise.all(Object.entries(input.images).map(async ([role, url]) => [role, await load(url)]));
     const loaded = Object.fromEntries(entries);
+    // (texture-diet-277) one packed map is both the occlusion (R) and the roughness (G), as sourcedTextures.ts loads it
+    if (loaded.orm) { loaded.ao = loaded.orm; loaded.rough = loaded.orm; }
     report.readyAt = now(); report.size = Math.min(loaded.color.width, quality.texSize(1024));
     const first = measure(owner, loaded, 'first');
     await new Promise(resolve => setTimeout(resolve, reuseDelayMs));

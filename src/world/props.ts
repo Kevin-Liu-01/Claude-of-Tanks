@@ -4268,9 +4268,9 @@ function* propsBuildSteps(
     : plaster;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
-  // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
-  // urban) in place when they load; procedural stays the fallback of record.
-  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
+  // docs/ATTRIBUTION.md) swap into plaster/wood in place when they load; procedural stays the fallback of record.
+  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets (the roof
+  // tiles and brick sets were retired, building-tex-diet-278).
   // The scenery lane (gauntlet wave 66): the boulders wear the map's own terrain rock layer, photographed, in place of
   // their procedural tile (the fallback of record); the stone's mean, when it lands, is what their material divides the
   // stone's structure out about. The map's texture readiness waits for it with the buildings'.
@@ -4282,7 +4282,7 @@ function* propsBuildSteps(
           ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
           ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
         }
-        : { plaster, roof: roofT, wood, stone },
+        : { plaster, wood },
       mapId, P, sourceApplication,
     ),
     applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
@@ -10323,7 +10323,7 @@ ${snowCap ? `
       return;
     }
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
-    // stone bucket is Bricks097 and its elongated courses on thin slabs read
+    // stone bucket was then the sourced brick print, and its elongated courses on thin slabs read
     // as wooden boardwalk; route them to the plaster bucket on urban only
     // lighting_post r4: urban plaster (~0.88 albedo) on sun-facing horizontal
     // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as

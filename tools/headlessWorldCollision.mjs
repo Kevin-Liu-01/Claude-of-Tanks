@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 // the shards' packer: one source for the capture page, this Node build and the page's own rounding (276)
 import { packCollisionRecord } from '../src/world/collisionRecordPacking.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** The canvas/image/fetch fixture the world receipts build props and vegetation behind (no pixels are read back). */
 export function installWorldBuildFixture(target = globalThis) {
@@ -72,6 +73,7 @@ async function worldBuilders() {
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
   const { maps, terrain, vegetation, props, fleet, mapCraters, kits } = await worldBuilders();
+  await betweenBuilds(); // the previous map's world is free to go (build-loop-yield.mjs)
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
   const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first

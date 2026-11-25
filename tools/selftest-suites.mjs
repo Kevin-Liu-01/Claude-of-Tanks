@@ -447,6 +447,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/interior-fill-selection.selftest.mjs',
     // fills-leak-276: the generator frees each build's native canvases before the next id (RSS flat in the id count)
     'tools/gen-interior-fills-memory.selftest.mjs',
+    // roadlife-retention-277: a WeakRef target built in an await-only loop stays alive until betweenBuilds() ends the job
+    'tools/build-loop-yield.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
     'tools/interior-fill-exposure.selftest.mjs',
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
@@ -1541,13 +1543,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
+    // texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs);
+    // building-tex-diet-277: and the village buildings' (src/world/buildingTextureTiers.ledger.json)
+    'tools/terrain-texture-tiers.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
     'src/world/sourcedBuildingDataSource.selftest.mjs',
     'src/world/sourcedTextureComposer.selftest.mjs',
     'src/world/sourcedTextureCompositionWorker.selftest.mjs',
     'src/world/sourcedTextureCompositionClient.selftest.mjs',
     'src/world/sourcedTextureCompositionAdoption.selftest.mjs',
-    'src/world/foundryMasonry.selftest.mjs',
     'src/world/foundryRoof.selftest.mjs',
     'src/world/sourcedTerrainPreparation.selftest.mjs',
     'src/world/spawnClearance.selftest.mjs',
@@ -1737,6 +1741,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
+    // texture-diet-277: every graphics level's preview and note match engine/quality.ts
+    'src/ui/settingsQualityLevels.selftest.mjs',
     'src/ui/battleUiVisibility.selftest.mjs',
     'src/ui/hudPreferences.selftest.mjs',
     'src/ui/vehicleStatusPolicy.selftest.mjs',

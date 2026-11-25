@@ -1,7 +1,7 @@
 // tool-only-public-files.mjs — files under public/ that only repository tools read (FE-P15).
 //
 // The anatomy procedure and the asset tools write these beside the icons they describe, so the
-// sources stay in public/icons/. No page, worker or function requests them
+// sources stay in public/icons/; the terrain and building photo sets' JPG sources stay beside the tier WebPs made from them. No page, worker or function requests them
 // (tools/tool-only-public-files.selftest.mjs proves it), so the build drops them from dist/
 // (tools/strip-nc-assets.mjs) instead of publishing the 27 MB tank asset manifest and 7.3 MB of
 // marking sheets on every deploy.
@@ -12,6 +12,12 @@ import { join } from 'node:path';
 const TOOL_ONLY_PUBLIC_FILES = Object.freeze([
   Object.freeze({ dir: 'icons/tank-assets', tree: true, why: 'tank asset manifest, a row file per tank (tools/tank-assets-store.mjs)' }),
   Object.freeze({ dir: 'icons', test: (name) => /_markings\.png$/.test(name), why: 'marking sheets (tools/genIcons.mjs --views markings)' }),
+  // (texture-diet-277) the battle terrain's CC0 1K JPGs: the sources tools/terrain-texture-tiers.mjs encodes each tier's
+  // WebPs from (textures/terrain/1k/, textures/terrain/512/); the battle fetches only its tier's WebPs
+  Object.freeze({ dir: 'textures/terrain', test: (name) => /\.jpg$/.test(name), why: 'terrain photo-set sources (tools/terrain-texture-tiers.mjs)' }),
+  // (building-tex-diet-277) the village buildings' CC0 1K JPGs (Plaster 007's first-party derivatives among them): the
+  // sources of textures/buildings/1k/ and textures/buildings/512/
+  Object.freeze({ dir: 'textures/buildings', test: (name) => /\.jpg$/.test(name), why: 'building photo-set sources (tools/terrain-texture-tiers.mjs --group=buildings)' }),
 ]);
 
 /** The dist-relative files under a directory, recursively. */

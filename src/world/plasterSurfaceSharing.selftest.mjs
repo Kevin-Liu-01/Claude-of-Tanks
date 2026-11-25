@@ -257,7 +257,7 @@ try {
     'actual sourced image-swap function cannot alter procedural relief');
   // a regional architecture kit (maps/regional) passes its own subset of the same primary sets
   const sourcedCall = /applySourcedBuildings\(([^]*?)mapId, P, sourceApplication/.exec(source)?.[1] ?? '';
-  assert.match(sourcedCall, /: \{ plaster, roof: roofT, wood, stone \}/,
+  assert.match(sourcedCall, /: \{ plaster, wood \}/,
     'only the primary plaster enters the sourced replacement owner');
   assert.doesNotMatch(sourcedCall, /plaster[23]/, 'no plaster variant enters the sourced replacement owner, kit or not');
 

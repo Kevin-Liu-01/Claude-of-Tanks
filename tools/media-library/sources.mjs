@@ -508,7 +508,7 @@ export const FOLDERS = {
   'share-r1': { read: share },
   'web-video-r1': { read: webVideo },
   'docs-r1': { exclude: 'the Field Manual\'s screens, captured on release 243 before the 246 interface overhaul: the library shows the current screens (ui-246)' },
-  'settings-r1': { exclude: 'the Settings screen\'s 640 x 360 quality previews (captured on 243): parts of a screen, not pictures to view' },
+  'settings-r2': { exclude: 'the Settings screen\'s quality previews, one per level (tools/quality-previews.mjs, 277): parts of a screen, not pictures to view' },
   'feature-evidence-r2': { exclude: `the August feature evidence, retired for the versus renders, ${RETIRED}` },
   'garage-environments-r2': { exclude: `the old garages, ${RETIRED}` },
   home: { exclude: `pre-overhaul interface pictures and an August Garage still, ${RETIRED}` },

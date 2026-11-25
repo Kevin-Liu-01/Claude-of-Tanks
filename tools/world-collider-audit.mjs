@@ -11,6 +11,7 @@
 import { writeFileSync } from 'node:fs';
 import { MAP_IDS } from '../src/world/maps/catalog.ts';
 import { installWorldBuildFixture, packWorldCollision } from './headlessWorldCollision.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 import { writeCollisionManifestShard } from './worldCollisionManifestFiles.mjs';
 import { auditMapWorld, summariseAudit } from './worldColliderAudit.mjs';
 import { createObstacleGrid } from '../src/world/collision.ts';
@@ -42,6 +43,7 @@ await models.preloadPropModels();
 
 const results = {};
 for (const mapId of mapIds) {
+  await betweenBuilds(); // the last map's world is free to go
   const started = performance.now();
   const config = maps.getMapConfig(mapId);
   const wreckIds = config.props?.tankWrecks?.ids ?? [];

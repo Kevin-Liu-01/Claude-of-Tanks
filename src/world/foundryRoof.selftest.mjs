@@ -3,10 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials.js';
-import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { MAP_IDS } from './maps/index.ts';
-import { composeSurface } from './sourcedTextures.ts';
-import { resolveDeviceTier, texSize } from '../engine/quality.ts';
 
 // Execute the actual private constructor without building a battlefield or
 // exposing a production test API. The real props bucket must call it too.
@@ -102,42 +99,8 @@ THREE.ShaderChunk.lights_physical_fragment), /early scalar clamp/);
 assert.throws(() => assertShaderOrder(THREE.ShaderChunk.roughnessmap_fragment.replace('texelRoughness.g', 'texelRoughness.r'),
   THREE.ShaderChunk.lights_physical_fragment), /map G/);
 
-// Native JPEG decode and the real linear AO/G compositor, at both supported
-// texture sizes. Histogram measures the map response with geometryRoughness=0;
-// it is not an observed GPU highlight or a guarantee against distant AA loss.
-const tier = process.argv.includes('--tier=mobile') ? 'mobile' : 'desktop';
-const saved = new Map(['window', 'document'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-try {
-  globalThis.window = { location: { search: `?tier=${tier}` }, localStorage: { getItem: () => null } };
-  globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return createCanvas(1, 1); } };
-  assert.equal(resolveDeviceTier(), tier);
-  const roughImage = await loadImage(readFileSync(new URL('../../public/textures/buildings/RoofingTiles012A_1K-JPG_Roughness.jpg', import.meta.url)));
-  const size = Math.min(roughImage.width, texSize(1024));
-  const surface = composeSurface(null, roughImage, size);
-  const data = surface.getContext('2d').getImageData(0, 0, size, size).data;
-  const histogram = new Uint32Array(256);
-  for (let at = 0; at < data.length; at += 4) histogram[data[at + 1]]++;
-  const count = size * size;
-  let accumulated = 0, clipped = 0;
-  const percentiles = {};
-  for (let value = 0; value < 256; value++) {
-    accumulated += histogram[value];
-    if (value / 255 * 1.3 >= 1) clipped += histogram[value];
-    for (const percentile of [0.05, 0.5, 0.95]) {
-      if (percentiles[percentile] === undefined && accumulated >= count * percentile) percentiles[percentile] = value / 255;
-    }
-  }
-  assert.ok(clipped / count < .25, 'at least three quarters of actual roof pixels retain unsaturated roughness variation');
-  assert.ok(percentiles[0.5] * 1.3 < 1, 'the median roof response is not flattened to full roughness');
-  assert.equal(data.byteLength, size * size * 4, 'unchanged existing surface dimensions');
-  console.log(JSON.stringify({ test: 'foundryRoof', tier, maps: MAP_IDS.length, size,
-    histogram: [...histogram], originalPercentiles: percentiles,
-    effectivePercentiles: Object.fromEntries(Object.entries(percentiles).map(([p, value]) => [p, Math.min(1, Math.max(.0525, value * 1.3))])),
-    gain: 1.3, clippedPixels: clipped, clippedFraction: clipped / count,
-    scope: 'actual constructor/uniform/clone/serialization and native JPEG histogram; no GPU visual or frame-cost acceptance' }));
-} finally {
-  for (const [key, descriptor] of saved) {
-    if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-    else delete globalThis[key];
-  }
-}
+// (building-tex-diet-278) the native-decode histogram of the sourced roof photograph's roughness under the gain went with
+// the retired roof tiles set (Kevin 2026-11-25): no battlefield draws it. The gain itself, its material and upload, and
+// the shader order it relies on are held above.
+console.log(JSON.stringify({ test: 'foundryRoof', maps: MAP_IDS.length, gain: 1.3,
+  scope: 'actual constructor/uniform/clone/serialization and the roughness shader order; no GPU visual or frame-cost acceptance' }));

@@ -198,7 +198,6 @@ export default {
     // the landing field's paint (LANDING_FIELD_PAINT, above)
     groundMarkings: { ...LANDING_FIELD_PAINT, lines: [...LANDING_FIELD_PAINT.lines, ...ROVER_TRACKS] },
     plan: [],
-    sourcedPalette: 'winter',
     yardClutter: false,
     // the four light station kinds the plan keeps: the solar arrays beside the tank farms, each the other's rotation,
     // turned to the sun (earthriseStation.ts SUN_SKY)

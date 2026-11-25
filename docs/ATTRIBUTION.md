@@ -276,21 +276,45 @@ losing candidates were deleted.
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| Grass 004 (1K JPG PBR set) | ambientCG (Lennart Demes) | https://ambientcg.com/view?id=Grass004 | CC0 1.0 | public/textures/terrain/Grass004_1K-JPG_*.jpg |
-| Withered Grass (1K JPG maps) | Charlotte Baglioni / Poly Haven | https://polyhaven.com/a/withered_grass | CC0 1.0 | public/textures/terrain/withered_grass_*_1k.jpg |
-| Ground 071 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Ground071 | CC0 1.0 | public/textures/terrain/Ground071_1K-JPG_*.jpg |
-| Ground 093C (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Ground093C | CC0 1.0 | public/textures/terrain/Ground093C_1K-JPG_*.jpg |
-| Snow 010A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Snow010A | CC0 1.0 | public/textures/terrain/Snow010A_1K-JPG_*.jpg |
-| Paving Stones 046 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=PavingStones046 | CC0 1.0 | public/textures/terrain/PavingStones046_1K-JPG_*.jpg |
-| Rock 058 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Rock058 | CC0 1.0 | public/textures/terrain/Rock058_1K-JPG_*.jpg |
-| Rock 063 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Rock063 | CC0 1.0 | public/textures/terrain/Rock063_1K-JPG_*.jpg |
-| Bricks 097 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Bricks097 | CC0 1.0 | public/textures/buildings/Bricks097_1K-JPG_*.jpg |
-| Plaster 007 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Plaster007 | CC0 1.0 | public/textures/buildings/Plaster007_1K-JPG_*.jpg (the `NormalGL-smooth` map is a first-party derivative of its normal map, 2026-10-06: the rows of blocky losses removed by periodic FFT filtering, the tile's own quiet relief in their place; the game loads it instead of `NormalGL`. The `Color-even` map is a first-party derivative of its colour map, 2026-10-07: 70 % of the broad luminance blotching taken out by a periodic FFT high-pass and the chroma pulled 80 % toward the tile's mean, its fine grain kept; the game loads it instead of `Color`) |
-| Roofing Tiles 012A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=RoofingTiles012A | CC0 1.0 | public/textures/buildings/RoofingTiles012A_1K-JPG_*.jpg |
-| Planks 023A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Planks023A | CC0 1.0 | public/textures/buildings/Planks023A_1K-JPG_*.jpg |
+| Grass 004 (1K JPG PBR set) | ambientCG (Lennart Demes) | https://ambientcg.com/view?id=Grass004 | CC0 1.0 | public/textures/terrain/Grass004_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/Grass004_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Withered Grass (1K JPG maps) | Charlotte Baglioni / Poly Haven | https://polyhaven.com/a/withered_grass | CC0 1.0 | public/textures/terrain/withered_grass_*_1k.jpg (sources, not deployed); public/textures/terrain/{1k,512}/withered_grass_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Ground 071 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Ground071 | CC0 1.0 | public/textures/terrain/Ground071_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/Ground071_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Ground 093C (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Ground093C | CC0 1.0 | public/textures/terrain/Ground093C_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/Ground093C_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Snow 010A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Snow010A | CC0 1.0 | public/textures/terrain/Snow010A_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/Snow010A_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Paving Stones 046 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=PavingStones046 | CC0 1.0 | public/textures/terrain/PavingStones046_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/PavingStones046_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Rock 058 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Rock058 | CC0 1.0 | public/textures/terrain/Rock058_1K-JPG_*.jpg (sources, not deployed); public/textures/terrain/{1k,512}/Rock058_{Color,NormalGL,ORM}.webp (derivatives, see below) |
+| Rock 063 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Rock063 | CC0 1.0 | public/textures/garage/Rock063_1K-JPG_*.webp (the garage's; the battle terrain never routed it, and its terrain JPGs were removed 2026-11-25) |
+| Bricks 097 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Bricks097 | CC0 1.0 | public/textures/garage/Bricks097_1K-JPG_{Color,NormalGL}.webp (the garage's; the battle's set and its tiers were retired 2026-11-25, no battlefield routed them) |
+| Plaster 007 (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Plaster007 | CC0 1.0 | public/textures/buildings/Plaster007_1K-JPG_*.jpg (sources, not deployed; the `NormalGL-smooth` map is a first-party derivative of its normal map, 2026-10-06: the rows of blocky losses removed by periodic FFT filtering, the tile's own quiet relief in their place; the game loads it instead of `NormalGL`. The `Color-even` map is a first-party derivative of its colour map, 2026-10-07: 70 % of the broad luminance blotching taken out by a periodic FFT high-pass and the chroma pulled 80 % toward the tile's mean, its fine grain kept; the game loads it instead of `Color`); public/textures/buildings/{1k,512}/Plaster007_{Color,NormalGL,ORM}.webp (derivatives, see below: the Color and NormalGL tiers are encoded from `Color-even` and `NormalGL-smooth`) |
+| Roofing Tiles 012A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=RoofingTiles012A | CC0 1.0 | public/textures/garage/RoofingTiles012A_1K-JPG_{Color,NormalGL}.webp (the garage's; the battle's set and its tiers were retired 2026-11-25, no battlefield routed them) |
+| Planks 023A (1K JPG PBR set) | ambientCG | https://ambientcg.com/view?id=Planks023A | CC0 1.0 | public/textures/buildings/Planks023A_1K-JPG_*.jpg (sources, not deployed); public/textures/buildings/{1k,512}/Planks023A_{Color,NormalGL,ORM}.webp (derivatives, see below) |
 | Kloofendal 43D Clear (Pure Sky) 2K HDR | Greg Zaal / Poly Haven | https://polyhaven.com/a/kloofendal_43d_clear_puresky | CC0 1.0 | REJECTED after in-engine A/B — deleted |
 | Kloofendal Overcast (Pure Sky) 2K HDR | Greg Zaal / Poly Haven | https://polyhaven.com/a/kloofendal_overcast_puresky | CC0 1.0 | REJECTED (untested runner-up) — deleted |
 | Snow Field (Pure Sky) 2K HDR | Jarod Guest, Sergej Majboroda / Poly Haven | https://polyhaven.com/a/snow_field_puresky | CC0 1.0 | REJECTED (untested runner-up) — deleted |
+
+### Terrain texture tiers — first-party derivatives (2026-11-25, texture-diet-277)
+
+The battle loads the seven terrain sets above as WebP derivatives, generated by `node tools/terrain-texture-tiers.mjs`
+from the committed 1K JPGs (CC0, so derivatives need no permission; the JPGs stay in the repository as the generator's
+sources and are dropped from `dist/` by `tools/tool-only-public-files.mjs`). Per set and tier (`1k`, and `512`: a 2x2 box
+filter of the 1K maps, colour averaged in linear light, normals renormalised): `_Color.webp` (lossy q92), `_NormalGL.webp`
+(near-lossless 40) and `_ORM.webp` (the AO in red and the roughness in green, packed; near-lossless 40). No pixel is
+painted by hand. `src/world/terrainTextureTiers.ledger.json` records every source's and output's SHA-256, the encode
+settings, the libwebp version and each output's measured error; `tools/terrain-texture-tiers.selftest.mjs` holds the
+files to it. The graphics preset picks the tier (`src/engine/quality.ts` `terrainTextureTier`: Ultra Low, Low and every
+phone level take `512`).
+
+### Building texture tiers — first-party derivatives (2026-11-25, building-tex-diet-277)
+
+The village building sets the battle draws (Plaster 007, Planks 023A) ship the same way, generated by
+`node tools/terrain-texture-tiers.mjs --group=buildings` into `public/textures/buildings/{1k,512}/` with the same three
+maps and encode settings. Plaster 007's colour and normal tiers are encoded from its first-party `Color-even` and
+`NormalGL-smooth` derivatives (the maps the game drew); its untouched `Color` and `NormalGL` JPGs stay as the record of
+the download. The roof tiles and brick sets were retired the same day (Kevin): every battlefield's regional kit paints
+its own roofs and masonry, so none routed them; the garage keeps its own WebPs of both. The JPGs are the generator's sources,
+dropped from `dist/` by `tools/tool-only-public-files.mjs`; `src/world/buildingTextureTiers.ledger.json` pins every source
+and output digest and each output's measured error, held by `tools/terrain-texture-tiers.selftest.mjs`. The buildings take
+the tier the preset picks for the terrain; a tier change mid-battle reaches them on the next battlefield.
 
 ### Judging record — texture/HDRI scouting (2026-07-27)
 
@@ -321,6 +345,8 @@ Judged with before/after harness renders (`battlefield`, `player_view`,
   Tiles 012A (roofs), Planks 023A (wood barns) on all maps, Bricks 097
   replacing the fieldstone bucket on urban only. Fieldstone stays procedural
   elsewhere (the coursing painter reads better on the low village walls).
+  (2026-11-25: the battle's roof tiles and brick sets retired; the regional
+  kits had taken over every battlefield's roofs and masonry.)
 - **HDRI environment — REJECTED, procedural PMREM bake stays.** Kloofendal
   43D Clear tested live as `scene.environment` (flag machinery kept in
   `src/engine/sky.ts`): its baked-in sun cannot track the per-map sun

@@ -15,7 +15,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = mkdtempSync(join(tmpdir(), 'cot-tool-only-'));
 try {
   for (const file of ['icons/tank-assets/index.json', 'icons/tank-assets/tanks/m1a1.json', 'icons/m1a1_markings.png', 'icons/m1a1_angle.webp',
-    'icons/m1a1_armor_side.webp', 'icons/m1a1_technical.json', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json']) {
+    'icons/m1a1_armor_side.webp', 'icons/m1a1_technical.json', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json',
+    'textures/terrain/Grass004_1K-JPG_Color.jpg', 'textures/terrain/withered_grass_ao_1k.jpg', 'textures/terrain/1k/Grass004_Color.webp',
+    'textures/terrain/512/Grass004_ORM.webp', 'textures/buildings/Planks023A_1K-JPG_Color.jpg',
+    'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg', 'textures/buildings/1k/Planks023A_ORM.webp',
+    'textures/buildings/512/Plaster007_Color.webp']) {
     mkdirSync(dirname(join(dist, file)), { recursive: true });
     writeFileSync(join(dist, file), 'x'.repeat(file.length));
   }
@@ -23,7 +27,12 @@ try {
     { path: 'icons/m1a1_markings.png', bytes: 'icons/m1a1_markings.png'.length },
     { path: 'icons/tank-assets/index.json', bytes: 'icons/tank-assets/index.json'.length },
     { path: 'icons/tank-assets/tanks/m1a1.json', bytes: 'icons/tank-assets/tanks/m1a1.json'.length },
-  ], 'only the manifest (every file under icons/tank-assets/) and the marking sheets are tool-only; every runtime icon ships');
+    { path: 'textures/buildings/Planks023A_1K-JPG_Color.jpg', bytes: 'textures/buildings/Planks023A_1K-JPG_Color.jpg'.length },
+    { path: 'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg', bytes: 'textures/buildings/Plaster007_1K-JPG_NormalGL-smooth.jpg'.length },
+    { path: 'textures/terrain/Grass004_1K-JPG_Color.jpg', bytes: 'textures/terrain/Grass004_1K-JPG_Color.jpg'.length },
+    { path: 'textures/terrain/withered_grass_ao_1k.jpg', bytes: 'textures/terrain/withered_grass_ao_1k.jpg'.length },
+  ], 'only the manifest (every file under icons/tank-assets/), the marking sheets and the terrain and building sets\' JPG sources '
+    + 'are tool-only; every runtime icon and the tiers\' WebPs ship');
   assert.deepEqual(toolOnlyPublicDirs(dist), ['icons/tank-assets'], 'the manifest directory goes whole, no empty folder ships');
   assert.deepEqual(toolOnlyPublicFiles(join(dist, 'missing')), [], 'a build without icons/ has nothing to drop');
   assert.deepEqual(toolOnlyPublicDirs(join(dist, 'missing')), [], 'nor a directory to remove');
@@ -37,12 +46,19 @@ const runtimeFiles = execFileSync('git', ['ls-files', 'src', 'site', 'api', 'clo
   'middleware.ts', 'index.html', '404.html', 'vercel.json', 'public/site.webmanifest'], { cwd: ROOT, encoding: 'utf8' })
   .trim().split('\n')
   .filter((file) => /\.(?:ts|js|mjs|html|json|webmanifest|css)$/.test(file))
-  .filter((file) => !/\.(?:selftest|test-support|browser\.selftest)\.mjs$|\.test\.ts$/.test(file));
+  .filter((file) => !/\.(?:selftest|test-support|browser\.selftest)\.mjs$|\.test\.ts$/.test(file))
+  // (texture-diet-277) the texture-tier generators' ledgers pin their JPG sources by name: tools/terrain-texture-tiers.mjs
+  // and its selftest read them, no runtime module imports them (checked below)
+  .filter((file) => !/TextureTiers\.ledger\.json$/.test(file));
+const tierLedgerImporters = runtimeFiles.filter((file) => /TextureTiers\.ledger\.json/.test(readFileSync(resolve(ROOT, file), 'utf8')));
+assert.deepEqual(tierLedgerImporters, [], 'no runtime module reads a texture-tier ledger, so the census may skip them');
 assert.ok(runtimeFiles.length > 500, `runtime source census found only ${runtimeFiles.length} files`);
 const naming = [];
 for (const file of runtimeFiles) {
   const text = readFileSync(resolve(ROOT, file), 'utf8');
-  if (/tank-assets(?:\.json)?\b|_markings\.png|markings\.png/.test(text)) naming.push(file);
+  if (/tank-assets(?:\.json)?\b|_markings\.png|markings\.png/.test(text)
+    || /(?:Grass004|Ground071|Ground093C|Snow010A|Rock058|Rock063|PavingStones046)_1K-JPG_\w+\.jpg|withered_grass_\w+_1k\.jpg/.test(text)
+    || /(?:Plaster007|Planks023A)_1K-JPG_[\w-]+\.jpg/.test(text)) naming.push(file);
 }
 assert.deepEqual(naming, [], 'runtime code must not name tool-only public files');
 assert.match(iconUrl('m1a1', 'markings'), /_markings\.webp$/, 'iconUrl never builds a .png marking sheet URL');
