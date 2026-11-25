@@ -20,6 +20,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { uniqueIds } from './id-list.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -39,7 +40,7 @@ async function main(argv) {
   const check = argv.includes('--check');
   const jobs = Math.max(1, Number(argv.find((arg) => arg.startsWith('--jobs='))?.slice(7)) || 4);
   const { COMBAT_ANATOMY_CALIBRATIONS } = await import(pathToFileURL(join(ROOT, 'src/vehicles/combatAnatomyCalibrations.ts')).href);
-  const only = argv.find((arg) => arg.startsWith('--ids='))?.slice(6).split(',').filter(Boolean) ?? null;
+  const only = uniqueIds(argv.find((arg) => arg.startsWith('--ids='))?.slice(6).split(',').filter(Boolean) ?? null, 'combat-rig-bootstrap --ids');
   const missing = idsWithoutRig(COMBAT_ANATOMY_CALIBRATIONS).filter((id) => !only || only.includes(id));
   if (!missing.length) {
     console.log(`[rig-bootstrap] every one of ${only ? `the ${only.length} named` : Object.keys(COMBAT_ANATOMY_CALIBRATIONS).length} calibration rows has its measured rig`);

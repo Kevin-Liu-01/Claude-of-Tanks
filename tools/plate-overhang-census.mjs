@@ -18,6 +18,7 @@ import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { plateOverhangTolM } from '../src/vehicles/combatAnatomy.ts';
 import { betweenBuilds } from './build-loop-yield.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const FACES = ['-x', '+x', '-y', '+y', '-z', '+z'];
 const pointsOf = (o) => o.verts ?? o.vertices ?? (o.surfaces ? o.surfaces.flat() : o.min && o.max ? [o.min, o.max] : []);
@@ -108,7 +109,7 @@ export async function plateOverhangCensus(ids) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-  const ids = (arg('ids') ?? '').split(',').filter(Boolean);
+  const ids = uniqueIds((arg('ids') ?? '').split(',').filter(Boolean), 'plate-overhang-census --ids');
   const census = await plateOverhangCensus(ids);
   const json = arg('json');
   if (json) writeFileSync(json, `${JSON.stringify({ ids: census.ids.length, off: census.off }, null, 2)}\n`);

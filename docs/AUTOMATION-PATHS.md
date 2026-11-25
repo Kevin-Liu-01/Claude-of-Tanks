@@ -121,6 +121,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/marketing-shots/mode-battle-shots.mjs`
 - `tools/mobilelap.mjs`
 - `tools/modal-layer.browser.mjs`
+- `tools/mp-two-peer-e2e.mjs`
 - `tools/phase-resource-probe.mjs`
 - `tools/phone-entry-gpu.mjs`
 - `tools/phone-smoke-reach.browser.mjs`
