@@ -17,6 +17,7 @@ import './tank-surface-collect.mjs'; // node canvas shim: builders paint their c
 import { fleetRoster } from './fleet-geometry-digest.mjs';
 import { uniqueIds } from './id-list.mjs';
 import { notWhip, whipRods } from './whip-rods.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -36,6 +37,7 @@ async function measure(list) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
   const rows = [];
   for (const id of list) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     let tank;
     try {
       tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });

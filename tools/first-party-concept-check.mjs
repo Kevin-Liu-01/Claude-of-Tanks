@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import * as THREE from 'three';
 import {createConceptFixtureRunner,createConceptInputGuard} from './concept-fixture-runner.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const ids=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')??[];
 const output=path.resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6)??'.qa-dev/reports/first-party-concepts');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -39,7 +40,9 @@ async function dimensions(id) {
   const {ensureInteriorFills,hasInteriorFills}=await import('../src/vehicles/interiorFills.ts');
   await ensureInteriorFills([id]);assert.ok(hasInteriorFills(id),'Final generated fills must be loaded');
   const design=firstPartyConcept(id);assertConceptDatums(TANK_SPECS[id],design);
-  return ['high','low'].map(quality=>{
+  const rows=[];
+  for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
     try {
       tank.root.updateMatrixWorld(true);
@@ -51,15 +54,17 @@ async function dimensions(id) {
       const lengthError=Math.abs(size.z-design.overallLengthM)/design.overallLengthM;
       const heightError=Math.abs(bounds.max.y-design.tallestM)/design.tallestM;
       assert.ok(widthError<=.03&&lengthError<=.03&&heightError<=.03,'actual complete design dimensions within3%');
-      return {quality,passed:true,fillLoaded:true,bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},widthError,lengthError,heightError};
+      rows.push({quality,passed:true,fillLoaded:true,bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},widthError,lengthError,heightError});
     } finally {tank.dispose();}
-  });
+  }
+  return rows;
 }
 fs.mkdirSync(output,{recursive:true});
 const runFixture=createConceptFixtureRunner(
   test=>spawnSync(process.execPath,[test],{encoding:'utf8'}),runtimeDigest);
 let failed=false;
 for(const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const design=firstPartyConcept(id),startedAt=new Date().toISOString(),inputSha256Before=inputs.assertCurrent();
   const child=runFixture(design.test,inputSha256Before);
   const log=`${child.stdout??''}${child.stderr??''}`;

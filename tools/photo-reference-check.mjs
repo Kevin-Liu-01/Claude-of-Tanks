@@ -12,6 +12,7 @@ import {ensureInteriorFills,hasInteriorFills} from '../src/vehicles/interiorFill
 import {validateSelectedIds} from './first-party-concept-policy.mjs';
 import {photoDimensionsPassed} from './photo-reference-policy.mjs';
 import {readPhotoReference} from './photo-reference-record.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const ids=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')??[];
 validateSelectedIds(ids,ALL_TANK_IDS);
 const documents=new Map(ids.map(id=>[id,readPhotoReference(id)]));
@@ -43,6 +44,7 @@ for(const id of ids){
     assert.equal(spec.armor.crew.some(c=>c.turretLocal),!target.unmannedTurret);
     await ensureInteriorFills([id]);assert(hasInteriorFills(id),'Generated interior closure required');
     for(const quality of ['high','low']){
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
       try{
         tank.root.updateMatrixWorld(true);const box=new Box3().setFromObject(tank.root);

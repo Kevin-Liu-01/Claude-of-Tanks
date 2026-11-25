@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 for (const [id, target] of Object.entries(OWNER_KIT_TARGETS)) {
   assert.match(target.ownerDecision, /^Owner: ".+"\. Main/, `${id}: the decision quotes the owner and names the ruling`);
@@ -18,6 +19,7 @@ for (const [id, target] of Object.entries(OWNER_KIT_TARGETS)) {
     assert.ok(target.ownerDecision.includes(part.ownerWords), `${id}/${part.group}: "${part.ownerWords}" is the owner's own words`);
   }
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true });
     for (const part of target.parts) {
       const groups = [];

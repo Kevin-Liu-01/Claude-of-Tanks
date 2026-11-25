@@ -10,6 +10,7 @@ import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { measureSeatedMarkingVisibility } from '../src/vehicles/vehicleMarkingSeating.ts';
 import { preBakeLocalMatrix } from '../src/vehicles/turretRigScale.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'src/vehicles/vehicleMarkingSeats.generated.ts');
@@ -31,6 +32,7 @@ const records = {};
 const unmatched = [];
 
 for (const id of ALL_TANK_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (onlyIds && !onlyIds.has(id) && previous[id]) { records[id] = previous[id]; continue; }
   // the one caller of the live surface solver: every other build applies the seats this file writes
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, solveMarkingSeats: true });

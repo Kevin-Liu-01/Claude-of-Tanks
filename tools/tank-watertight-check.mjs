@@ -37,6 +37,7 @@ import { DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 import { physicalBoreAir } from './physical-bore-air.mjs';
 import { measureWatertight, movingClearanceAir, retainedSourceAir, watertightBody } from './tank-watertight-measure.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -103,6 +104,7 @@ if (flag('self-test')) {
 
 const report = []; let failures = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const started = performance.now();
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }

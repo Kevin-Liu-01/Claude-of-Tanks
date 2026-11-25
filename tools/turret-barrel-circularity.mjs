@@ -4,6 +4,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 import { uniqueIds } from './id-list.mjs';
 import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { measureTurretBarrelCircularity } from '../src/vehicles/turretBarrelCircularity.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const ids = idsArg
@@ -14,6 +15,7 @@ let measuredCount = 0;
 let skippedCount = 0;
 
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (getSpec(id)?.gun?.fixedLaunchCanisters === true) {
     skippedCount += 1;
     console.log(`[barrel-circularity] N/A ${id}: sealed launch canisters have no cannon barrel`);

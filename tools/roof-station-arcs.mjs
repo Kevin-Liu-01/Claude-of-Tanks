@@ -15,6 +15,7 @@ import './tank-surface-collect.mjs'; // node canvas shim for the builders' canva
 // 275: the probe itself lives in roof-station-probe.mjs, without this canvas shim, so the controls inventory
 // (tools/vehicle-controls-inventory.mjs) measures the decor on the build it already makes
 import { stationsOf, stationSweep, stationDepression } from './roof-station-probe.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 export { stationProbe, stationSweep, stationDepression } from './roof-station-probe.mjs';
 
 /**
@@ -65,6 +66,7 @@ if (isMain && process.argv.includes('--dock')) {
   const { auxiliaryWeaponProfile } = await import('../src/vehicles/auxiliaryWeapons.ts');
   const rows = [];
   for (const id of uniqueIds(arg('ids', 'm551a1_tts').split(',').filter(Boolean), 'roof-station-arcs --ids')) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
     tank.root.updateMatrixWorld(true);
     for (const station of stationsOf(tank.root).stations) {

@@ -13,6 +13,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
+import { betweenBuilds } from './build-loop-yield.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
@@ -49,6 +50,7 @@ function build(id, quality) {
 
 const rows = []; let failed = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = TANK_SPECS[id];
   let high, low;
   try { high = build(id, 'high'); low = build(id, 'low'); }

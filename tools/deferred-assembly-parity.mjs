@@ -13,6 +13,7 @@ import './tank-surface-collect.mjs';
 import { writeFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { DEFERRED_ASSEMBLY_BUILDS, deferredAssemblyDifference, deferredAssemblyReceipt, drainTimedSteps } from './deferred-assembly-receipt.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const suited = new Set();
 globalThis.__deferredAssemblySuited = suited;
@@ -46,6 +47,7 @@ for (const id of ids) {
   if (!suited.has(id)) continue;
   const row = { id, builds: {} };
   for (const name of builds) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const options = DEFERRED_ASSEMBLY_BUILDS[name];
     const inCore = drainTimedSteps(createTankSteps(id, null, { ...options, assemblyInCore: true }));
     const deferred = drainTimedSteps(createTankSteps(id, null, options));

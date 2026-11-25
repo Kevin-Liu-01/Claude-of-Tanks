@@ -40,6 +40,7 @@ import {
   TREE_IMPOSTOR_ALPHA_TEST, TREE_IMPOSTOR_BAKE_ALPHA_TEST, TREE_IMPOSTOR_BAKE_MIP_BOOST, TREE_IMPOSTOR_BAKE_MIP_MAX,
   TREE_IMPOSTOR_MIP_BOOST, TREE_IMPOSTOR_MIP_MAX,
 } from '../src/world/treeImpostors.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 /** The maps the default run measures: the four thin-needle atlases (pine, Aleppo pine, pinyon, red pine), the
  * longleaf, and the far-view gate's maps (Verdant, Autumn, Longleaf, Frontier). */
@@ -362,6 +363,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   console.log(`bake law: give-back ${bakeLaw.boost}/mip to ${bakeLaw.max}, cut ${TREE_IMPOSTOR_BAKE_ALPHA_TEST}; near law ${nearLaw.boost}/mip to ${nearLaw.max}; impostor ${impostorLaw.boost}/mip to ${impostorLaw.max}, cut ${TREE_IMPOSTOR_ALPHA_TEST}`);
   console.log(['map', 'form/v', 'tile', 'bake', 'near', 'ratio', 'frag b/n', ...distances.map(d => `${d}m imp/near`)].join('\t'));
   for (const id of maps) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     if (!getMapConfig(id).vegetation.species.length) continue;
     let report;
     try { report = measureImpostorBakeCoverage(id, { distances, bakeLaw, nearLaw, impostorLaw }); } catch (error) { console.log(`${id}\t(skipped: ${error.message})`); continue; }

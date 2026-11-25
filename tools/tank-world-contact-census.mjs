@@ -41,6 +41,7 @@ import { getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 import { HULL_STANDABLE_HEIGHT_M, pointInsideCollisionRecord } from '../src/world/collision.ts';
 import { tankContactRect } from '../src/sim/tankContactShape.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 export const CLASSES = Object.freeze(['terrain', 'walls', 'roofs', 'objects', 'tanks']);
 /** Studies run on request (--classes=stones): not in the census's default classes. */
@@ -1073,6 +1074,7 @@ async function main() {
     if (args.out) mkdirSync(args.out, { recursive: true });
     for (const mapId of maps) {
       for (const variant of list(args.variants, ['base'])) {
+        await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
         const started = performance.now();
         const result = await fidelityMap(mapId, { variant });
         result.seconds = +((performance.now() - started) / 1000).toFixed(1);

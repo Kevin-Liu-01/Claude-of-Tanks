@@ -6,6 +6,7 @@
 import { registerHooks } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { betweenBuilds } from '../build-loop-yield.mjs';
 
 const loaded = new Set();
 registerHooks({
@@ -24,6 +25,7 @@ const digests = {};
 for (const id of ids) {
   digests[id] = {};
   for (const quality of LEDGER_QUALITIES) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = fleet.createTank(id, null, ledgerBuildOptions(quality));
     try { digests[id][quality] = digestTankRoot(tank.root); } finally { tank.dispose(); }
   }

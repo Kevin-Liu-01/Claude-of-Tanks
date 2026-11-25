@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url';
 import './tank-surface-collect.mjs'; // node canvas shim for the builders' canvas textures
 import { uniqueIds } from './id-list.mjs';
 import { SurfaceGrid, densePoints } from '../src/vehicles/cnTurretGeometry.test-support.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const COARSE_M = .03, FINE_M = .015;
@@ -290,6 +291,7 @@ if (isMain) {
   const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
   const keep = Number(arg('keep', '.028')), block = Number(arg('block', '.025')), out = [];
   for (const id of uniqueIds(arg('ids', 'ztz99a2').split(',').filter(Boolean), 'roof-station-sweep --ids')) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor: true });
     tank.root.updateMatrixWorld(true);
     const stations = [];

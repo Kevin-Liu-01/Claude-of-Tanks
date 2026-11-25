@@ -22,6 +22,7 @@
 //   (null when the gun keeps its full depression all round), published: the spec's current curve }.
 import { readFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const ids = uniqueIds(arg('ids', '').split(',').filter(Boolean)), envelope = arg('envelope', '').split(',').filter(Boolean);
@@ -108,6 +109,7 @@ if (envelope.length) {
 // the probe builds tanks: loaded only when there are tanks to measure (an --envelope fit needs no fleet)
 const { gunHullProbe } = ids.length ? await import('../src/vehicles/gunHullClearance.test-support.mjs') : {};
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t0 = Date.now(), probe = gunHullProbe(id, { suit: !process.argv.includes('--no-suit') });
   try {
     const floors = [], curveFloors = [], parts = {}, blockedAtElevation = [], mountConflicts = [];

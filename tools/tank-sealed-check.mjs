@@ -114,6 +114,7 @@ if (!ledgerUnits && updateMode) { console.error(`--update-ledger at --res=${RES}
 if (!ledgerUnits && flag('gate')) { console.error(`--gate --ledger at --res=${RES} --min-area=${MIN_AREA}: the ledger's rows are in ${ledger.res ?? 256} px / min-area ${ledger.minArea ?? 6} units; gate at those, or look without --gate`); process.exit(2); }
 const acceptedBy = process.env.COT_LANE || userInfo().username;
 import { collectTriangles } from './tank-surface-collect.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 function viewDirections() {
   const dirs = [];
@@ -427,6 +428,7 @@ function frameCensus(tris, meshes, frame, bores) {
   return { sealed: !holeViewNames.length, holeViews: holeViewNames.length, holeViewNames, holePx, throughPx, throughViews, netPx, views };
 }
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureInteriorFills([id]);
   const started = performance.now();
   let tank;

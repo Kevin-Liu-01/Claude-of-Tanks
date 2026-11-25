@@ -13,6 +13,7 @@ import { verifyCarvedMuzzleBore } from '../src/vehicles/carvedMuzzleBore.ts';
 import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 
 import { pathToFileURL } from 'node:url';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 const args = isMain ? process.argv.slice(2) : [];
@@ -278,6 +279,7 @@ const rows = [];
 let failures = 0;
 for (const id of ids) {
   for (const quality of qualities) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     try { rows.push(inventoryOne(id, quality)); }
     catch (error) { rows.push({ id, quality, error: error.message }); failures++; }
   }

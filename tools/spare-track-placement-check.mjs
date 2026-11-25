@@ -38,6 +38,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { SPARE_TRACK_BUILD, spareTrackGeometryDigest, ledgerSiteKeys } from './spare-track-digest.mjs';
 import { partArgs, writePartRows } from './changed-only/parts.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -1894,6 +1895,7 @@ const results = {};
 const planAudits = {};
 const failures = [];
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const taken = PARTS.take(id);
   if (taken) {
     if (taken.planAudit) planAudits[id] = taken.planAudit;

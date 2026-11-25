@@ -18,6 +18,7 @@ import {
   LEDGER_PATH, LEDGER_QUALITIES, ledgerBuildOptions, digestTankRoot, fleetRoster, readFleetGeometryLedger,
   compareFleetGeometry, serializeFleetGeometryLedger,
 } from './fleet-geometry-digest.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 async function measureFleetGeometry(ids, qualities) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
@@ -25,6 +26,7 @@ async function measureFleetGeometry(ids, qualities) {
   for (const id of ids) {
     rows[id] = {};
     for (const quality of qualities) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const tank = createTank(id, null, ledgerBuildOptions(quality));
       try { rows[id][quality] = digestTankRoot(tank.root); }
       finally { tank.dispose(); }

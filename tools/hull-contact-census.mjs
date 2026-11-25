@@ -8,6 +8,7 @@ import { writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { hullContactCensus, VISIBLE_FLOAT_GAP_M } from './hull-contact-census-lib.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const ids = process.argv.includes('--all') ? Object.keys(FLEET_GROUP_BY_ID) : uniqueIds((arg('ids') ?? '').split(',').filter(Boolean), 'hull-contact-census --ids');
@@ -15,6 +16,7 @@ if (!ids.length) { console.error('usage: node tools/hull-contact-census.mjs --id
 const allIslands = process.argv.includes('--all-islands');
 const out = [], f = (v) => v.map((n) => n.toFixed(3)).join(',');
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const started = performance.now();
   let row;
   try { row = hullContactCensus(id, { where: process.argv.includes('--where') }); }

@@ -28,6 +28,7 @@
 // --clear=2.5 (sites mode): each house slid along its street, by the least that clears it, to stand this far from every
 // building standing before it as the kit builds them (the map built with the sites); see the pass below
 import { writeFileSync } from 'node:fs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 const T = process.cwd();
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const opt = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => a.slice(2).split('=')));
@@ -244,6 +245,7 @@ if (SITES_MODE && opt.clear) {
   await models.preloadPropModels();
   const LIGHT = new Set((P.townLightPlan ?? []).map((e) => e.kind));
   for (let round = 0; round < 3; round++) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const sites = rows.map((h) => ({ structure: h.structure, x: +h.x.toFixed(2), z: +h.z.toFixed(2), yawDeg: +(h.rot * 180 / Math.PI).toFixed(1), terrace: true }));
     const withSites = { ...config, props: { ...config.props, plannedSites: sites, plannedSitesAfterPlan: true } };
     const ids = withSites.props?.tankWrecks?.ids ?? []; if (ids.length) await fleet.ensureTankBuilders(ids);

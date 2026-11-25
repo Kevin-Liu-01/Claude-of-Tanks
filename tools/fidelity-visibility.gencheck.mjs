@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createTank} from '../src/vehicles/tankFactory.ts';
 import {verifyCarvedMuzzleBore} from '../src/vehicles/carvedMuzzleBore.ts';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const html=readFileSync(new URL('./procedural-fidelity.html',import.meta.url),'utf8');
 const start=html.indexOf('function isShadowHelper('),end=html.indexOf('\n}',start)+2;
@@ -21,6 +22,7 @@ assert.match(html,/baseVisible\.set\(o, effectivelyVisible\(o\) && !isShadowHelp
 const ids=['leo2a7v','leo2a6m','leo2a5m','leo2a5','merkava4','merkava3d',
   'k2_black_panther','kf51_panther','t90a','t90a_vladimir','t90m','t90sm','t14_armata'];
 for(const id of ids)for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const v=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     let rims=0,parts=0;

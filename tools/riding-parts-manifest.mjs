@@ -11,6 +11,7 @@
 //   node tools/riding-parts-manifest.mjs --check    exit 1 when the manifest differs from the fleet as it builds now
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const OUT = fileURLToPath(new URL('../src/vehicles/ridingPartsManifest.generated.ts', import.meta.url));
 await import('../src/vehicles/tankFactory.ts');
@@ -26,7 +27,7 @@ for (const store of [RIDING_CRADLE_PARTS, RIDING_STATION_PARTS]) {
 const keys = [], index = new Map(), bySpec = {};
 for (const id of fleetRoster()) {
   reads = new Set();
-  for (const quality of ['high', 'low']) createTank(id, null, ledgerBuildOptions(quality)).dispose();
+  for (const quality of ['high', 'low']) { await betweenBuilds(); createTank(id, null, ledgerBuildOptions(quality)).dispose(); }
   const own = [...reads].filter((key) => RIDING_CRADLE_PARTS.has(key) || RIDING_STATION_PARTS.has(key)).sort();
   if (!own.length) continue;
   bySpec[id] = own.map((key) => {

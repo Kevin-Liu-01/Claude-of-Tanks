@@ -43,6 +43,7 @@ import {
 } from './worldCollisionManifestFiles.mjs';
 import { packCollisionRecord } from '../src/world/collisionRecordPacking.ts';
 import { AUTOMATION_PATH_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
+import { betweenBuilds } from './build-loop-yield.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
 /** (229) COT_FIELD_WORKS_RECEIPTS: an inspect hook per variant that writes each map's field-work seats, or null. */
@@ -142,6 +143,7 @@ if (options.node && options.variant) {
   let drifted = 0;
   const fieldWorks = await fieldWorksReceipts();
   for (const mapId of options.mapIds) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const data = await buildWorldCollisionData(mapId, { variant: options.variant, inspect: fieldWorks?.(options.variant) });
     const label = `${mapId}@${options.variant}`;
     if (!options.check) {
@@ -213,6 +215,7 @@ if (options.node && options.variant) {
     console.log(`landmarks ${args.mapId}: ${placed} placed, ${failures.length} failures` + (failures.length ? ` (${failures.join('; ')})` : ''));
   } : undefined;
   for (const mapId of options.mapIds) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const data = await buildWorldCollisionData(mapId, { inspect: inspectAll });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
