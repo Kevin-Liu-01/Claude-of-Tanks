@@ -28,25 +28,20 @@ import {
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
 import * as detMath from '../sim/detMath.ts';
 
-interface SourceTextureSet {
-  color: string;
-  normal: string;
-  rough: string;
-  ao: string;
-}
-
-/** (texture-diet-277) a terrain photo set: three WebPs per quality tier, AO and roughness packed in one ORM map. */
+/**
+ * (texture-diet-277; building-tex-diet-277) a photo set: three WebPs per quality tier under its directory, AO and roughness
+ * packed in one ORM map.
+ */
 interface TieredTextureSet {
   tiered: string;
+  dir: string;
 }
 
-/** The files a set's photos load from: a building set's four JPGs, or a terrain set's tier (orm stands for ao + rough). */
+/** The files a set's photos load from: its tier's colour, normal and packed ORM (occlusion R, roughness G). */
 interface SetFiles {
   color: string;
   normal: string;
-  rough: string | null;
-  ao: string | null;
-  orm: string | null;
+  orm: string;
 }
 
 type LayerKey = 'G' | 'D' | 'R' | 'M';
@@ -90,25 +85,18 @@ function isTint(value: BuildingTint): value is Tint {
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';
 
-// (texture-diet-277) the terrain sets: tools/terrain-texture-tiers.mjs writes <tier>/<base>_{Color,NormalGL,ORM}.webp from
-// the CC0 1K JPGs beside them (the generator's sources, dropped from dist/); the running preset picks the tier
-// (engine/quality.ts terrainTextureTier), and only that tier is fetched
-const tiered = (base: string): TieredTextureSet => ({ tiered: base });
+// (texture-diet-277; building-tex-diet-277) every set: tools/terrain-texture-tiers.mjs writes
+// <dir>/<tier>/<base>_{Color,NormalGL,ORM}.webp from the CC0 1K JPGs beside them (the generator's sources, dropped from
+// dist/); the running preset picks the tier (engine/quality.ts terrainTextureTier), and only that tier is fetched. A
+// running battle's terrain re-sources on a tier change (terrain.ts); the buildings and boulders take it on the next battlefield
+const tiered = (base: string): TieredTextureSet => ({ tiered: base, dir: TT });
+const tieredBuilding = (base: string): TieredTextureSet => ({ tiered: base, dir: TB });
 
 /** A set's files under the running texture tier. */
-function setFiles(set: SourceTextureSet | TieredTextureSet): SetFiles {
-  if (!('tiered' in set)) return { ...set, orm: null };
-  const at = `${TT}/${terrainTextureTier()}/${set.tiered}`;
-  return { color: `${at}_Color.webp`, normal: `${at}_NormalGL.webp`, rough: null, ao: null, orm: `${at}_ORM.webp` };
+function setFiles(set: TieredTextureSet): SetFiles {
+  const at = `${set.dir}/${terrainTextureTier()}/${set.tiered}`;
+  return { color: `${at}_Color.webp`, normal: `${at}_NormalGL.webp`, orm: `${at}_ORM.webp` };
 }
-
-// ambientCG 1K JPG naming
-const acg = (dir: string, base: string): SourceTextureSet => ({
-  color: `${dir}/${base}_1K-JPG_Color.jpg`,
-  normal: `${dir}/${base}_1K-JPG_NormalGL.jpg`,
-  rough: `${dir}/${base}_1K-JPG_Roughness.jpg`,
-  ao: `${dir}/${base}_1K-JPG_AmbientOcclusion.jpg`,
-});
 
 const SETS = {
   grass: tiered('Grass004'),
@@ -124,12 +112,12 @@ const SETS = {
   // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
   // (facades lane: the normal map without the rows of blocky losses, 2026-10-06; the colour map with its broad blotching
   // mostly out and its chroma pulled to the tile's mean, 2026-10-07, wave 199's "uniformly blotchy render": first-party
-  // derivatives, docs/ATTRIBUTION.md)
-  plaster: { ...acg(TB, 'Plaster007'), color: `${TB}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
-  roof: acg(TB, 'RoofingTiles012A'),
-  wood: acg(TB, 'Planks023A'),
-  brick: acg(TB, 'Bricks097'),
-} satisfies Record<string, SourceTextureSet | TieredTextureSet>;
+  // derivatives, docs/ATTRIBUTION.md). The tiers' Plaster007 Color and NormalGL are encoded from those two derivatives.
+  plaster: tieredBuilding('Plaster007'),
+  roof: tieredBuilding('RoofingTiles012A'),
+  wood: tieredBuilding('Planks023A'),
+  brick: tieredBuilding('Bricks097'),
+} satisfies Record<string, TieredTextureSet>;
 
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
@@ -470,8 +458,9 @@ export function sourcedTerrainLayerSet(
 
 // ARCH-P8: decoded source photos only feed the bounded composite caches below
 // (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
-// battlefield's working set — three terrain sets plus the four building sets,
-// four photos each, and the boulders' stone (the terrain's rock set: the scenery
+// battlefield's working set — its terrain sets plus the four building sets,
+// three photos each (a tier's colour, normal and packed ORM: texture-diet-277,
+// building-tex-diet-277), and the boulders' stone (the terrain's rock set: the scenery
 // lane, wave 66) where the terrain does not already wear it — so a map's own
 // loads never evict each other, while earlier battlefields' photos are released
 // (the cache used to keep all 48 forever).
@@ -623,7 +612,7 @@ function cachedSurface(
   roughMul: number,
 ): HTMLCanvasElement {
   return findCachedSurface(setKey, size, roughMul)
-    ?? composeSurface(ao, rough, size, roughMul, composeOptions(setKey, {}).roughChannel ?? 0);
+    ?? composeSurface(ao, rough, size, roughMul, ORM_ROUGH_CHANNEL);
 }
 
 function normalCanvas(img: SourcePhoto): HTMLCanvasElement {
@@ -670,22 +659,17 @@ async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSe
     failures.push(error instanceof Error ? error.message : String(error));
     return null;
   });
-  if (set.orm) {
-    // one packed map is both the occlusion (R) and the roughness (G): composeOptions reads roughness from its green
-    const [color, normal, orm] = await Promise.all([source(set.color), source(set.normal), source(set.orm)]);
-    return { color, normal, rough: orm, ao: orm, failures };
-  }
-  const [color, normal, rough, ao] = await Promise.all([
-    source(set.color), source(set.normal),
-    set.rough ? source(set.rough) : null,
-    set.ao ? source(set.ao) : null,
-  ]);
-  return { color, normal, rough, ao, failures };
+  // one packed map is both the occlusion (R) and the roughness (G): composeOptions reads roughness from its green
+  const [color, normal, orm] = await Promise.all([source(set.color), source(set.normal), source(set.orm)]);
+  return { color, normal, rough: orm, ao: orm, failures };
 }
 
-/** A set's compose options with its roughness channel: green for a terrain set's packed ORM map, red otherwise. */
-function composeOptions(setKey: keyof typeof SETS, opts: ComposeOptions): ComposeOptions {
-  return 'tiered' in SETS[setKey] ? { ...opts, roughChannel: 1 } : opts;
+/** Every set's roughness is the packed ORM map's green (building-tex-diet-277: the buildings joined the terrain's tiers). */
+const ORM_ROUGH_CHANNEL = 1;
+
+/** A set's compose options with its roughness channel. */
+function composeOptions(opts: ComposeOptions): ComposeOptions {
+  return { ...opts, roughChannel: ORM_ROUGH_CHANNEL };
 }
 
 function composeSet(
@@ -693,7 +677,7 @@ function composeSet(
   images: SetPhotos,
   setOpts: ComposeOptions,
 ): { albedo: HTMLCanvasElement; normal: HTMLCanvasElement; surface: HTMLCanvasElement | null } | null {
-  const opts = composeOptions(setKey, setOpts);
+  const opts = composeOptions(setOpts);
   const { color, normal, rough, ao } = images;
   if (!color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
@@ -788,7 +772,7 @@ async function composeSetAsync(
   if (signal?.aborted || !color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
   const tint: Tint | null = opts.tint ? [opts.tint[0], opts.tint[1], opts.tint[2]] : null;
-  const snapshot = composeOptions(setKey, { ...opts, tint });
+  const snapshot = composeOptions({ ...opts, tint });
   const key = compositeKey(setKey, snapshot);
   if (_compositeCache.get(key)?.size === size || !canComposeSourcedTextureInWorker()) {
     return composeDecoded(setKey, images, snapshot, signal);

@@ -6,7 +6,7 @@ import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials.js';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { MAP_IDS } from './maps/index.ts';
 import { composeSurface } from './sourcedTextures.ts';
-import { resolveDeviceTier, texSize } from '../engine/quality.ts';
+import { resolveDeviceTier, terrainTextureTier, texSize } from '../engine/quality.ts';
 
 // Execute the actual private constructor without building a battlefield or
 // exposing a production test API. The real props bucket must call it too.
@@ -102,7 +102,7 @@ THREE.ShaderChunk.lights_physical_fragment), /early scalar clamp/);
 assert.throws(() => assertShaderOrder(THREE.ShaderChunk.roughnessmap_fragment.replace('texelRoughness.g', 'texelRoughness.r'),
   THREE.ShaderChunk.lights_physical_fragment), /map G/);
 
-// Native JPEG decode and the real linear AO/G compositor, at both supported
+// Native WebP decode and the real linear AO/G compositor, at both supported
 // texture sizes. Histogram measures the map response with geometryRoughness=0;
 // it is not an observed GPU highlight or a guarantee against distant AA loss.
 const tier = process.argv.includes('--tier=mobile') ? 'mobile' : 'desktop';
@@ -111,9 +111,10 @@ try {
   globalThis.window = { location: { search: `?tier=${tier}` }, localStorage: { getItem: () => null } };
   globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return createCanvas(1, 1); } };
   assert.equal(resolveDeviceTier(), tier);
-  const roughImage = await loadImage(readFileSync(new URL('../../public/textures/buildings/RoofingTiles012A_1K-JPG_Roughness.jpg', import.meta.url)));
+  // (building-tex-diet-277) the running tier's packed ORM, read as the battle reads it: occlusion red, roughness green
+  const roughImage = await loadImage(readFileSync(new URL(`../../public/textures/buildings/${terrainTextureTier()}/RoofingTiles012A_ORM.webp`, import.meta.url)));
   const size = Math.min(roughImage.width, texSize(1024));
-  const surface = composeSurface(null, roughImage, size);
+  const surface = composeSurface(roughImage, roughImage, size, 1, 1);
   const data = surface.getContext('2d').getImageData(0, 0, size, size).data;
   const histogram = new Uint32Array(256);
   for (let at = 0; at < data.length; at += 4) histogram[data[at + 1]]++;
@@ -134,7 +135,7 @@ try {
     histogram: [...histogram], originalPercentiles: percentiles,
     effectivePercentiles: Object.fromEntries(Object.entries(percentiles).map(([p, value]) => [p, Math.min(1, Math.max(.0525, value * 1.3))])),
     gain: 1.3, clippedPixels: clipped, clippedFraction: clipped / count,
-    scope: 'actual constructor/uniform/clone/serialization and native JPEG histogram; no GPU visual or frame-cost acceptance' }));
+    scope: 'actual constructor/uniform/clone/serialization and native WebP ORM histogram; no GPU visual or frame-cost acceptance' }));
 } finally {
   for (const [key, descriptor] of saved) {
     if (descriptor) Object.defineProperty(globalThis, key, descriptor);

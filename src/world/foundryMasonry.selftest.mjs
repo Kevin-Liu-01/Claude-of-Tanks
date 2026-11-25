@@ -4,9 +4,9 @@ import { registerHooks } from 'node:module';
 import { createCanvas, ImageData, loadImage } from '@napi-rs/canvas';
 import { CanvasTexture, NoColorSpace, RepeatWrapping, SRGBColorSpace } from 'three';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { resolveDeviceTier, texSize } from '../engine/quality.ts';
+import { resolveDeviceTier, terrainTextureTier, texSize } from '../engine/quality.ts';
 
-// Genuine Canvas2D, including JPEG decode/resampling below. No GPU or visual
+// Genuine Canvas2D, including WebP decode/resampling below. No GPU or visual
 // acceptance is inferred from these pigment, routing and ownership checks.
 const tier = process.argv.includes('--tier=mobile') ? 'mobile' : 'desktop';
 const saved = new Map(['document', 'Image', 'window'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -19,6 +19,8 @@ const control = new Uint8ClampedArray([
 const gray = values => Uint8ClampedArray.from(values.flatMap(value => [value, value, value, 255]));
 const inputs = { color: control, ao: gray([255, 192, 64, 0]), rough: gray([192, 128, 64, 240]),
   normal: new Uint8ClampedArray([128, 128, 255, 255, 140, 110, 245, 255, 118, 137, 248, 255, 127, 127, 255, 255]) };
+// (building-tex-diet-277) the building sets load their tier's packed ORM: occlusion in red, roughness in green
+inputs.orm = Uint8ClampedArray.from([0, 1, 2, 3].flatMap(i => [inputs.ao[i * 4], inputs.rough[i * 4], 0, 255]));
 
 function raster(data, size = 2) {
   const canvas = createCanvas(size, size);
@@ -97,7 +99,7 @@ try {
     Object.defineProperty(canvas, 'src', { set(value) {
       requests.push(value);
       const role = value.includes('_Color') ? 'color' : value.includes('_NormalGL') ? 'normal'
-        : value.includes('_Roughness') ? 'rough' : 'ao';
+        : value.includes('_ORM') ? 'orm' : assert.fail(`unexpected building photo ${value}`);
       canvas.getContext('2d').putImageData(new ImageData(inputs[role], 2, 2), 0, 0);
       queueMicrotask(() => canvas.onload());
     } });
@@ -157,22 +159,23 @@ try {
   assert.equal(new Set(ownerImages(before)).size, 12);
   assert.equal(new Set(ownerImages(after)).size, 12);
   assert.equal(backingBytes(ownerImages(after)), backingBytes(ownerImages(before)), 'one world keeps the same12 raster owners/bytes');
-  assert.ok(requests.every(path => path.startsWith('/textures/buildings/')), 'unchanged local building asset route');
-  assert.equal(requests.filter(path => path.includes('Bricks097')).length, 4, 'one existing brick PBR set, no additional asset request');
+  assert.ok(requests.every(path => path.startsWith(`/textures/buildings/${terrainTextureTier()}/`)), 'the building sets\' running tier');
+  assert.deepEqual(requests.filter(path => path.includes('Bricks097')).map(path => path.split('/').pop()).sort(),
+    ['Bricks097_Color.webp', 'Bricks097_NormalGL.webp', 'Bricks097_ORM.webp'], 'one brick PBR set, no additional asset request');
   const repeat = layer();
   await api.applySourcedBuildings({ stone: repeat }, 'foundry', getMapConfig('foundry').props);
   assert.equal(repeat.albedo.image, after.stone.albedo.image, 'the new pigment retains exact rematch cache reuse');
 
-  // Decode the shipped brick photograph using the native rasterizer. Keep this
-  // separate from the controlled loader, so a source-image swap cannot silently
+  // Decode the shipped brick photograph (the running tier's WebP, building-tex-diet-277) using the native rasterizer.
+  // Keep this separate from the controlled loader, so a source-image swap cannot silently
   // update the arithmetic oracle or turn the test into a synthetic-only proof.
-  const photo = await loadImage(readFileSync(new URL('../../public/textures/buildings/Bricks097_1K-JPG_Color.jpg', import.meta.url)));
+  const photo = await loadImage(readFileSync(new URL(`../../public/textures/buildings/${terrainTextureTier()}/Bricks097_Color.webp`, import.meta.url)));
   const size = Math.min(photo.width, texSize(1024));
   const raw = createCanvas(size, size);
   raw.getContext('2d').drawImage(photo, 0, 0, size, size);
   const composed = api.composeAlbedo(photo, null, null, experiment);
   const actualPixels = pixels(composed);
-  assert.deepEqual(actualPixels, oracle(pixels(raw), experiment), 'native JPEG→Canvas composition follows exact existing encoded-RGB arithmetic');
+  assert.deepEqual(actualPixels, oracle(pixels(raw), experiment), 'native WebP→Canvas composition follows exact existing encoded-RGB arithmetic');
   assert.equal(actualPixels.byteLength, size * size * 4, `${tier}: existing texture-size budget`);
   assert.ok(actualPixels.every((value, index) => index % 4 !== 3 || value === 255), 'opaque alpha coverage unchanged');
   const nextControl = oracle(control, experiment);
@@ -189,7 +192,7 @@ try {
   assert.equal(api._compositeCache.size, 8);
   assert.equal(new Set([...api._compositeCache.values()].map(entry => entry.surface)).size, 1, 'pigments still share one immutable surface');
   assert.deepEqual(pixels(after.stone.surface.image), pixels(before.stone.surface.image), 'later pigments never mutate a live surface');
-  console.log(`foundryMasonry: ${tier}, ${MAP_IDS.length}/${MAP_IDS.length * buckets.length} policies, real Canvas/JPEG pixels, exact other buckets, texture ownership/cache PASS`);
+  console.log(`foundryMasonry: ${tier}, ${MAP_IDS.length}/${MAP_IDS.length * buckets.length} policies, real Canvas/WebP pixels, exact other buckets, texture ownership/cache PASS`);
 } finally {
   if (hooksActive) hooks.deregister();
   for (const texture of ownedTextures) texture.dispose();

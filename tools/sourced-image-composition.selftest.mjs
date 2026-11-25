@@ -13,10 +13,10 @@ assert.deepEqual(cases.map(row => [row.id, row.set]), [
   ['terrain-urban-G', 'grass'], ['terrain-urban-D', 'dirt'], ['terrain-urban-R', 'cobble'],
   ['building-urban-plaster', 'plaster'], ['building-urban-wood', 'wood'], ['building-urban-stone', 'brick'],
 ]);
-// (texture-diet-277) the terrain sets load their 1K tier's three WebPs (colour, normal, packed ORM), the buildings four JPGs
-assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 3 * 3 + 3 * 4);
-assert.ok(cases.filter(row => row.kind === 'terrain').every(row => Object.keys(row.images).sort().join() === 'color,normal,orm'
-  && row.images.orm.startsWith('/textures/terrain/1k/') && row.options.roughChannel === 1));
+// (texture-diet-277; building-tex-diet-277) every set loads its 1K tier's three WebPs (colour, normal, packed ORM)
+assert.equal(new Set(cases.flatMap(row => Object.values(row.images))).size, 6 * 3);
+assert.ok(cases.every(row => Object.keys(row.images).sort().join() === 'color,normal,orm' && row.options.roughChannel === 1
+  && row.images.orm.startsWith(row.kind === 'terrain' ? '/textures/terrain/1k/' : '/textures/buildings/1k/')));
 assert.ok(cases.filter(row => row.kind === 'terrain').every(row => row.options.roughInAlpha === true));
 assert.ok(cases.filter(row => row.kind === 'building').every(row => row.options.roughInAlpha === false));
 assert.equal(cases.some(row => row.id.includes('roof')), false, 'Do not reintroduce removed sourced roofs');
@@ -53,29 +53,24 @@ assert.throws(() => compareRgba(new Uint8Array(4), new Uint8Array(8)));
 
 function fixture(kind = 'terrain', policy = 'decode') {
   const roles = kind === 'terrain' ? ['albedo'] : ['albedo', 'surface'];
+  // the colour and the packed ORM are read once each; the normal never
   return { kind, policy, status: 'complete', size: 1024, readyAt: 10, reuseDelayMs: 1000,
     quality: { tier: 'desktop', preset: 'high', textureSize: 1024 },
     graphics: { nativeObserved: true, contextLost: false },
-    images: ['color', 'normal', 'ao', 'rough'].map(url => ({ url, width: 1024, height: 1024,
+    images: ['color', 'normal', 'orm'].map(url => ({ url, width: 1024, height: 1024,
       requestedAt: 1, onloadAt: 5, readyAt: 9, decodeStartedAt: 6, decodeEndedAt: 8,
       decodeStatus: policy === 'decode' ? 'fulfilled' : 'not-requested' })),
     measurements: ['first', 'delayed-reuse'].map((stage, index) => {
       const startedAt = index === 0 ? 10 : 1020;
       return { stage, startedAt, endedAt: startedAt + 10, compositionMs: 10, readbackMs: 3,
         readyToCompositionMs: startedAt - 10, requestToCompositionEndMs: startedAt + 9,
-        readbacks: [1, 2, 3].map(offset => ({ startMs: startedAt + offset, durationMs: 1, width: 1024, height: 1024 })),
+        readbacks: [1, 2].map(offset => ({ startMs: startedAt + offset, durationMs: 1, width: 1024, height: 1024 })),
         outputs: roles.map(role => ({ role, width: 1024, height: 1024, byteLength: 1024 * 1024 * 4 })) };
     }) };
 }
 for (const kind of ['terrain', 'building']) for (const policy of ['onload', 'decode']) validateCompositionTrial(fixture(kind, policy));
-// a tiered set: three images (colour, normal, ORM), two readbacks (colour, and the ORM once for AO and roughness)
-const tieredFixture = fixture('terrain', 'decode');
-tieredFixture.images.pop();
-for (const measure of tieredFixture.measurements) measure.readbacks.pop();
-validateCompositionTrial(tieredFixture);
-assert.throws(() => validateCompositionTrial({ ...tieredFixture, measurements: fixture('terrain', 'decode').measurements }),
-  'a tiered set never reads its packed map twice');
 const bad = mutate => { const row = fixture(); mutate(row); assert.throws(() => validateCompositionTrial(row)); };
+bad(row => { row.measurements[0].readbacks.push({ ...row.measurements[0].readbacks[0] }); }); // the packed map read twice
 bad(row => { row.status = 'failed'; });
 bad(row => { row.images[0].decodeStatus = 'fallback'; });
 bad(row => { row.images[0].decodeStartedAt = 0; });

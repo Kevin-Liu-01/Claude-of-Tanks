@@ -66,7 +66,7 @@ class TestImage {
   }
 
   set src(value) {
-    // (texture-diet-277) a terrain set's packed ORM map: the fixture's occlusion in red and its roughness in green, the
+    // (texture-diet-277, building-tex-diet-277) a set's packed ORM map: the fixture's occlusion in red and its roughness in green, the
     // values a separate AO and roughness photo carried in red, so every composite below reads as before
     if (/_ORM\.webp$/.test(value)) {
       this.pixels = new Uint8ClampedArray([100, 100, 0, 255, 80, 80, 0, 255, 255, 255, 0, 255, 20, 20, 0, 255]);
