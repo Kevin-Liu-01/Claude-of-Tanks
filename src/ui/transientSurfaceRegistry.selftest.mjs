@@ -66,6 +66,7 @@ const OFF_STACK_EXEMPT = {
   'src/audio/interfaceSounds.ts': "names the dialogs' roles to choose a sound; shows none",
   'src/ui/tutorial/tutorialOverlay.ts': "the first-game tutorial's spotlight and card: it lights a control on a surface and must never close or replace that surface, and a press on the lit control must reach it",
   'src/pad/padTourScreen.ts': "the phone's controls guide mirrored: raised by the phone, never a press here; it takes no focus or key, and must not replace the surface the phone pairs from (Settings, the couch lobby)",
+  'src/ui/components/modalLayer.ts': "the top-layer lift (modal-layer-277): it puts the root of a modal its owner already opened on the stack into the browser's top layer as a manual popover (no light dismiss, no focus move, no key), and places the renderer's critical notice; it opens no surface of its own",
 };
 const SHOWS = /\.showModal\(|\.showPopover\(|aria-modal|role',\s*'dialog'|role="dialog"/;
 const ON_STACK = /\b(?:openSurface|dialogSurface|createPickerMenu|createModal|createSelectPickerMenu)\(/;
