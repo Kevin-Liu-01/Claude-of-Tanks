@@ -585,6 +585,7 @@ export function createGarageArchitectureController(
     trim();
     publish();
     requestRender();
+    if (record.architecture === 'field_shed') resumeExteriorLate?.();
     if (record.architecture !== 'field_shed') {
       const wanted = (): boolean => current(record) && record.build === build;
       // its map's buildings first (a page's pack presents without them), then its far ring; the buildings only while it is
@@ -601,6 +602,8 @@ export function createGarageArchitectureController(
    * uploads them, then faded in (garageEnvironmentKit.ts GarageEnvironmentBuild.standLateStructures). Never on a
    * switch's path.
    */
+  /** (the motor pool's exterior) its late layer, stopped when another Garage was selected: run again on its next show. */
+  let resumeExteriorLate: (() => void) | null = null;
   const standLateStructures = (build: GarageEnvironmentBuild, wanted: () => boolean): Promise<void> => {
     if (typeof document === 'undefined' || !build.standLateStructures) return Promise.resolve();
     return new Promise<void>((resolve) => {
@@ -901,13 +904,14 @@ export function createGarageArchitectureController(
       const release = kit.pinGarageEnvironmentCaches(variant);
       try {
         const wanted = (): boolean => !disposed;
-        // (built whole, off the switch's path: no late layer)
-        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted, undefined, { lateStructures: false })) === false) {
-          if (disposed) return null;
-        }
+        // (garage-env-276: a page's exterior presents on its structures' footprints, as a switch's pack does, its bake no
+        // long task on the Garage the player just booted into; its buildings land after, in slices, and are clipped too)
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, wanted)) === false) if (disposed) return null;
         const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender, { kitPlacement: null });
         // (half a metre past the walls: the upstand's thickness)
-        const clip = kit.clipGarageEnvironmentToExterior(build.root, footprint.halfXM + 0.5, footprint.halfZM + 0.5);
+        const halfX = footprint.halfXM + 0.5, halfZ = footprint.halfZM + 0.5;
+        const clip = kit.clipGarageEnvironmentToExterior(build.root, halfX, halfZ);
+        const clones = [...clip.clones];
         build.root.name = `garage_enclosure_exterior_${variant.architecture}`;
         // (no far ring: through a hall's openings the sky and its clouds carry the distance; Kevin 2026-11-24)
         let drawCalls = 0, triangles = 0;
@@ -919,11 +923,28 @@ export function createGarageArchitectureController(
           const count = geometry.index ? geometry.index.count / 3 : (geometry.getAttribute('position')?.count ?? 0) / 3;
           triangles += count * ((object as THREE.InstancedMesh).isInstancedMesh ? (object as THREE.InstancedMesh).count : 1);
         });
+        // its buildings, once the exterior stands (the stage adds it on this resolving), clipped as they land: the clip
+        // runs before the next frame draws them
+        // only while the motor pool is the selection (another Garage's switch has the thread); resumed on its next show
+        if (build.standLateStructures) {
+          const landLate = build.standLateStructures.bind(build);
+          const shown = (): boolean => !disposed && selected?.id === variant.id;
+          const attempt = (): void => {
+            resumeExteriorLate = null;
+            void landLate(shown, (group) => uploadTextures(group, shown)).then((landed) => {
+              if (disposed) return;
+              if (!landed) { resumeExteriorLate = attempt; return; }
+              clones.push(...kit.clipGarageEnvironmentToExterior(build.root, halfX, halfZ).clones);
+              requestRender();
+            }).catch(() => {});
+          };
+          void Promise.resolve().then(attempt);
+        }
         return {
           root: build.root,
           texturesReady: build.texturesReady,
           stats: Object.freeze({ removedTriangles: clip.removedTriangles, removedInstances: clip.removedInstances, drawCalls, triangles: Math.round(triangles) }),
-          dispose: () => { for (const geometry of clip.clones) geometry.dispose(); build.dispose(); },
+          dispose: () => { for (const geometry of clones) geometry.dispose(); build.dispose(); },
         };
       } finally {
         release();
