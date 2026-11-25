@@ -650,6 +650,14 @@ export function extrude(sink: PartSink, bucket: RegionalBucket, points: readonly
  */
 export const LIMEWASH_UV = 0.006;
 
+/**
+ * How far a dressing laid on a face stands off it (a stain, a patch, a band): within kitConnectivity's reach of its host
+ * (2 cm a solid, 4.5 cm a flat decal) and clear of the face's depth fighting. 275's set pieces held their dressing 5 to 14
+ * cm "proud" of its face and left it hovering there (650 members); a dressing that should read proud is a solid reaching
+ * back to its host (extrude from the face), not a face held off it.
+ */
+export const DRESS_PROUD = 0.01;
+
 export function smoothRender(parts: RegionalParts, k: number, buckets: readonly RegionalBucket[] = ['plaster', 'plaster2', 'plaster3']): RegionalParts {
   for (const name of buckets) {
     for (const geometry of parts[name] ?? []) {

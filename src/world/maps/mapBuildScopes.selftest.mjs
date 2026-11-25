@@ -99,7 +99,7 @@ withFacade({ tier: 'desktop', rng: stream(2) }, () => {
 
 // ---- 5. a set piece skipped after its collision went in takes its records back out
 {
-  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200), _noVeg: () => false, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) };
   const obstacles = [], colliders = [];
   let index = 0;
   const ctx = {
