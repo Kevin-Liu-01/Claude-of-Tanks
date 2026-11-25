@@ -494,7 +494,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const c = Math.cos(yaw), s = Math.sin(yaw);
       return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
     };
-    const { built, parts, finishParts } = buildLandmarkPiece({
+    const { identity, built, parts, finishParts } = buildLandmarkPiece({
       mapId: ctx.mapId, seed: ctx.seed, tier: ctx.tier, snowCap: ctx.snowCap, architecture: ctx.architecture,
       groundFall: ground.spread, groundAt,
       waterAt: (lx: number, lz: number) => {
