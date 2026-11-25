@@ -30,9 +30,10 @@ hooks.deregister();
 
 // The bound covers the largest single battlefield: its distinct terrain sets plus every building set, and the
 // boulders' photographed stone (the terrain's rock set, on every map: the scenery lane, wave 66).
-const imagesOf = (setKey) => ['color', 'normal', 'rough', 'ao'].filter((slot) => SETS[setKey][slot]).length;
+// (texture-diet-277) a terrain set is three files a tier (Color, NormalGL and the packed ORM); a building set its four JPGs
+const imagesOf = (setKey) => ('tiered' in SETS[setKey] ? 3 : ['color', 'normal', 'rough', 'ao'].filter((slot) => SETS[setKey][slot]).length);
 const setKeyOf = (entry) => (typeof entry === 'string' ? entry : entry?.set ?? null);
-const buildingSets = Object.keys(SETS).filter((key) => SETS[key].color.startsWith('/textures/buildings/'));
+const buildingSets = Object.keys(SETS).filter((key) => SETS[key].color?.startsWith('/textures/buildings/'));
 let largest = 0;
 for (const [mapId, plan] of Object.entries(TERRAIN_PLAN)) {
   const terrainSets = new Set([...Object.values(plan).map(setKeyOf).filter(Boolean), 'rock']);

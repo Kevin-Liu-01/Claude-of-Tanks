@@ -1739,6 +1739,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
+    // texture-diet-277: every graphics level's preview and note match engine/quality.ts
+    'src/ui/settingsQualityLevels.selftest.mjs',
     'src/ui/battleUiVisibility.selftest.mjs',
     'src/ui/hudPreferences.selftest.mjs',
     'src/ui/vehicleStatusPolicy.selftest.mjs',

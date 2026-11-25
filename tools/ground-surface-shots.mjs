@@ -5,7 +5,7 @@
 //   node tools/ground-surface-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v1] [--wait-hours=16]
 //        [--pair-minutes=10] (a pair past it is abandoned; under heavy load a seven-pose pair with two variants needs ~25)
 //
-// jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
+// jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone", ["preset": "<quality preset>",]
 //               "variants": ["base", "u:uName.x=0"], "maps": ["urban", ...], "poses": ["chase", ...] }, ...]
 //
 // The harness is tools/ground-banding-shots.mjs's (item 264): one render-class ticket, the first (job, map) pair staged
@@ -49,6 +49,10 @@ const TOOL = 'ground-surface-shots';
 const DEVICES = Object.freeze({
   desktop: { width: 1920, height: 1080, deviceScaleFactor: 1, isMobile: false, hasTouch: false, query: 'tier=desktop', preset: 'high' },
   phone: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true, query: 'tier=mobile', preset: null },
+  // (texture-diet-277) the Settings quality previews' displays (tools/quality-previews.mjs): a retina desktop, where the
+  // presets' raster caps bite, and a phone held for battle
+  'preview-desktop': { width: 1280, height: 720, deviceScaleFactor: 2, isMobile: false, hasTouch: false, query: 'tier=desktop', preset: 'high' },
+  'preview-phone': { width: 844, height: 390, deviceScaleFactor: 3, isMobile: true, hasTouch: true, query: 'tier=mobile', preset: null },
 });
 const POSES = Object.freeze(['chase', 'near', 'long', 'town', 'townnear', 'spot200', 'spot600']);
 
@@ -402,25 +406,36 @@ function pageSetUniforms(sets) {
   return n;
 }
 
-async function bootPage(browser, baseUrl, device) {
+async function bootPage(browser, baseUrl, device, jobPreset = null) {
   const page = await browser.newPage();
   const errors = [];
   const d = DEVICES[device];
+  // (texture-diet-277) a job's own preset, stored where the Settings picker stores it (the phone ladder has its own key):
+  // the world builds under it, as a player's next battle does
+  const preset = jobPreset ?? d.preset;
+  const presetKey = d.query === 'tier=mobile' ? 'cot.gfxMobilePreset' : 'cot.gfxPreset';
   await page.setViewport({ width: d.width, height: d.height, deviceScaleFactor: d.deviceScaleFactor, isMobile: d.isMobile, hasTouch: d.hasTouch });
-  await page.evaluateOnNewDocument((spec, preset) => {
+  await page.evaluateOnNewDocument((spec, preset, presetKey) => {
     try {
       localStorage.setItem(spec.storageKey, spec.playerSpecId);
-      if (preset) localStorage.setItem('cot.gfxPreset', preset);
+      if (preset) localStorage.setItem(presetKey, preset);
       localStorage.setItem('cot.battle.times.v2', JSON.stringify(['day']));
     } catch { /* the boot checks below fail loudly */ }
-  }, PINNED_SCENE, d.preset);
+  }, PINNED_SCENE, preset, presetKey);
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 300)));
+  // (texture-diet-277) the texture and effects files the page requested from its boot to its shots: the receipt that a
+  // level fetched only its terrain tier
+  const assetFetches = [];
+  page.on('request', (request) => {
+    const { pathname } = new URL(request.url());
+    if (/^\/(?:textures|fx)\//.test(pathname)) assetFetches.push(pathname);
+  });
   page.on('console', (message) => {
     const text = message.text();
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
   await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&${d.query}`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-  return { page, errors, stage: null };
+  return { page, errors, stage: null, assetFetches };
 }
 
 async function stageMap(entry, mapId) {
@@ -618,6 +633,7 @@ async function shootMap(entry, options, frames) {
     receipt.poses[pose.name] = { resolved, town: pose.town ?? null, hull: pose.hull ?? null, offDeg: pose.offDeg ?? null, tried: pose.tried ?? null, shots };
   }
   receipt.errors = entry.errors.splice(0);
+  receipt.assetFetches = [...new Set(entry.assetFetches ?? [])].sort();
   return receipt;
 }
 
@@ -628,7 +644,7 @@ async function main(argv) {
     mkdirSync(job.frames, { recursive: true });
     job.manifestFile = path.join(options.out, job.name, `manifest-${options.tag}.json`);
     job.manifest = existsSync(job.manifestFile) ? JSON.parse(readFileSync(job.manifestFile, 'utf8'))
-      : { tool: TOOL, device: job.device, dist: job.dist, maps: {} };
+      : { tool: TOOL, device: job.device, preset: job.preset ?? null, dist: job.dist, maps: {} };
   }
   const order = [...new Set(options.jobs.flatMap((job) => job.maps))];
   const pairs = order.flatMap((mapId) => options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
@@ -644,7 +660,7 @@ async function main(argv) {
   const openPair = async ({ job, mapId }) => {
     browser ??= await launch();
     pagesSinceLaunch++;
-    entry = await bootPage(browser, servers.get(job.dist).url, job.device);
+    entry = await bootPage(browser, servers.get(job.dist).url, job.device, job.preset ?? null);
     await stageMap(entry, mapId);
   };
   const closeBrowser = async () => { if (browser) await browser.close().catch(() => {}); browser = null; };
