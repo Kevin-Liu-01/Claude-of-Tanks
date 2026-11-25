@@ -25,6 +25,8 @@ if (searchHost && searchInput) {
     field.addEventListener('pointerdown', () => pressFailed(field));
   });
   searchInput.addEventListener('focus', mountSearch, { once: true });
+  // typing-keys: Cmd/Ctrl+K only, a chord no field types; it focuses the search from anywhere
+  // typing-keys: Cmd/Ctrl+K only, a chord no field types; it focuses the search from anywhere
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
     event.preventDefault();

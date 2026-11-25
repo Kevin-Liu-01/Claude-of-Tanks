@@ -20,6 +20,7 @@
  * frame and solves the rig only when it answers false. The sim never reads this owner: seats change through
  * watchSeat.ts between fixed steps, so a replay of the battle is the replay of its inputs.
  */
+import { isTypingTarget } from '../ui/keyboardOwnership.ts';
 import { Vector3, type PerspectiveCamera } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { CameraEntity } from '../engine/cameraRig.ts';
@@ -337,13 +338,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
 
   // ------------------------------------------------------------------ input
 
-  const typing = (target: EventTarget | null): boolean => {
-    const el = target as HTMLElement | null;
-    return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName ?? ''));
-  };
-
   function onKeyDown(event: KeyboardEvent): void {
-    if (!live || game.phase !== 'battle' || game.result !== null || typing(event.target) || options.isInputHeld()
+    if (!live || game.phase !== 'battle' || game.result !== null || isTypingTarget(event) || options.isInputHeld()
       || event.repeat) return;
     const code = event.code;
     if (driving) {

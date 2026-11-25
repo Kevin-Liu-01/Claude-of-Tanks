@@ -12,6 +12,7 @@
  * a title: the Garage's guides read their info from it).
  * Where: the rich tooltip's placement (responsiveLayout.ts placeFloat), clear of every edge, in the top layer. Copyright © 2026 Kevin B. Liu.
  */
+import { isTypingTarget } from '../keyboardOwnership.ts';
 import { placeFloat } from '../responsiveLayout.ts';
 
 const TIP_DWELL_MS = 600;
@@ -144,6 +145,7 @@ export function installHoverTips(doc: Document = document): void {
   });
   // focus moved by the keyboard shows the tip; a panel focusing its own control as it opens does not
   let navigatedAt = -Infinity;
+  // typing-keys: notes when the keyboard last moved the focus; acts on no key
   doc.addEventListener('keydown', (event) => {
     if (event.key === 'Tab' || event.key.startsWith('Arrow')) navigatedAt = win.performance.now();
   }, true);
@@ -187,7 +189,7 @@ export function installHoverTips(doc: Document = document): void {
   }, true);
   doc.addEventListener('contextmenu', (event) => { if (anchor && swallowClickUntil) event.preventDefault(); }, true);
 
-  doc.addEventListener('keydown', (event) => { if (event.key === 'Escape' && anchor && !event.defaultPrevented) hide(); }, true);
+  doc.addEventListener('keydown', (event) => { if (event.key === 'Escape' && anchor && !event.defaultPrevented && !isTypingTarget(event)) hide(); }, true);
   doc.addEventListener('scroll', () => { if (anchor || timer) hide(); }, { capture: true, passive: true });
   win.addEventListener('resize', () => hide());
   win.addEventListener('blur', () => hide());

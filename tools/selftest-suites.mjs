@@ -1738,6 +1738,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/shotSchematic.selftest.mjs',
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
+    // typing-keys-277 (Kevin, 276: a space typed into the Garage search was the handbrake): a field gets every key typed into it,
+    // and every global key listener asks keyboardOwnership.ts isTypingTarget first
+    'src/game/typingKeys.selftest.mjs',
+    'tools/typing-keys-census.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
     'src/ui/battleUiVisibility.selftest.mjs',
     'src/ui/hudPreferences.selftest.mjs',

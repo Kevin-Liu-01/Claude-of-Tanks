@@ -26,6 +26,7 @@
  * close) leaves with the larger beat. A press the step owns (`own`: the Garage chapter's Deploy) is the tutorial's: the
  * lit control's own action never runs, and the chapter ends done (app/tutorialAccess.ts launches the training battle).
  */
+import { isTypingTarget } from '../keyboardOwnership.ts';
 import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
 import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
@@ -520,6 +521,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     if (ended || covered || hiddenByPause) return; // a surface over the screen owns the keyboard while it is up
     if (event.altKey || event.ctrlKey || event.metaKey) return; // the browser's own shortcuts
     if (!battle && event.code === 'Tab') { trapTab(event); return; }
+    if (isTypingTarget(event)) return; // a field the card lets the player use (the Garage's search) takes its own keys
     if (event.repeat) { if (!battle) swallow(event); return; }
     let handled = true;
     if (event.code === 'Enter' || event.code === 'NumpadEnter') {
@@ -566,6 +568,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     buttons[next]!.focus({ preventScroll: true });
   }
   window.addEventListener('keydown', onKey, true);
+  // typing-keys: a release only ends a press this runner swallowed itself
   window.addEventListener('keyup', onKeyUp, true);
   runOff.push(() => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKeyUp, true); });
 

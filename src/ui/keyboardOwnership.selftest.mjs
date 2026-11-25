@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   isEditingControl,
+  isTypingTarget,
   shouldOpenSettingsFromPointerUnlock,
 } from './keyboardOwnership.ts';
 
@@ -29,4 +30,21 @@ assert.equal(shouldOpenSettingsFromPointerUnlock({
   activeElement: canvas,
 }), false, 'killcam keeps ownership of its pointer unlock');
 
-console.log('keyboardOwnership.selftest: Enter/chat and Esc/settings ownership passed');
+// isTypingTarget: the one test every global key listener runs (typing-keys-277)
+const key = (k, target, extra = {}) => ({ key: k, target, ...extra });
+const search = { tagName: 'INPUT', type: 'search', isContentEditable: false };
+assert.equal(isTypingTarget(key(' ', search)), true, 'a space typed into the Garage search is the field\'s (Kevin, 276)');
+assert.equal(isTypingTarget(key('ArrowLeft', search)), true, 'so are its arrows');
+assert.equal(isTypingTarget(key('Escape', search)), false, 'Escape is never typed text: it still blurs, clears or closes');
+assert.equal(isTypingTarget(key('Escape', canvas, { isComposing: true })), true, 'but an IME composition keeps its Escape');
+assert.equal(isTypingTarget(key('a', canvas, { keyCode: 229 })), true, 'a composing key by its legacy code');
+assert.equal(isTypingTarget(key('a', { tagName: 'SELECT', isContentEditable: false })), true, 'a select\'s type-ahead');
+assert.equal(isTypingTarget(key('a', { tagName: 'SPAN', isContentEditable: true })), true, 'editable content');
+assert.equal(isTypingTarget(key(' ', { tagName: 'INPUT', type: 'range', isContentEditable: false })), false, 'not a slider');
+assert.equal(isTypingTarget(key(' ', canvas)), false, 'the page\'s keys are the game\'s');
+assert.equal(isTypingTarget({ ...key(' ', { tagName: 'COT-PANEL', isContentEditable: false }), composedPath: () => [search] }), true,
+  'a field inside a shadow root, by the composed path');
+assert.equal(isTypingTarget({ target: search, type: 'pointerdown' }), false, 'a pointer a shared listener takes is no key');
+assert.equal(isTypingTarget(null), false);
+
+console.log('keyboardOwnership.selftest: Enter/chat and Esc/settings ownership, and the typing predicate, passed');

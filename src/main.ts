@@ -1456,6 +1456,7 @@ const noteGarageActivity = () => {
 // Resize can arrive without pointer input (split view, orientation, browser
 // chrome collapse). Treat it as presentation activity so the new viewport is
 // painted immediately instead of waiting for the five-second safety frame.
+// typing-keys: activity only: any input repaints the Garage now; acts on no key
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {
   window.addEventListener(type, type === 'wheel' || type === 'resize' ? noteGarageViewActivity : noteGarageActivity,
     { capture: true, passive: true });

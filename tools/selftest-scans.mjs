@@ -245,6 +245,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  'tools/typing-keys-census.selftest.mjs': tracked('src/**'),
   // 2026-11-02 audit S4: the capture-hold census reads every source (tracked and new) for its hold rules
   'tools/capture-hold-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   // round 2 U39: no source exits a named status (STARVED, lease over, lock wait timeout, browser guard) as a bare number

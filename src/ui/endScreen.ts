@@ -1,3 +1,4 @@
+import { isTypingTarget } from './keyboardOwnership.ts';
 import { battleEndArt } from './battleReportMedia.ts';
 import { battleLoadModeLabel } from './battleLoad.ts';
 import { GAME_MODE_DEFINITIONS } from '../sim/gameModeCatalog.ts';
@@ -1698,13 +1699,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   };
   const takeFocus = (): void => {
     host.classList.add('es-quiet-focus');
+    // typing-keys: shows the focus ring once a key moves the keyboard; acts on nothing
     window.addEventListener('keydown', ringOnKey, true);
     focusPrimary();
     setTimeout(focusPrimary, 0);
     if (host.classList.contains('es-sheet-wait')) setTimeout(focusPrimary, 1600);
   };
   const onReportKey = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape' || !visible || !garageBtn?.isConnected) return;
+    if (event.key !== 'Escape' || !visible || !garageBtn?.isConnected || isTypingTarget(event)) return;
     // (a dialog over the report, Settings among them, takes its own Esc)
     if (event.target instanceof Element && event.target.closest('[role="dialog"],[aria-modal="true"]:not(.cot-es)')) return;
     event.preventDefault();
