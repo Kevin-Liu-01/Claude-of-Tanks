@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ABRAMS_FAMILY_IDS = [
   'm1a1_abrams_hc',
@@ -60,6 +61,7 @@ function uniqueInstanceYs(mesh) {
 }
 
 for (const id of ABRAMS_FAMILY_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -113,6 +115,7 @@ for (const id of ABRAMS_FAMILY_IDS) {
 }
 
 for (const [id, stationsPerSide] of ABRAMS_RETURN_ROLLER_CASES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

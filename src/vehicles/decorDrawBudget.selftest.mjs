@@ -14,6 +14,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const BEFORE = Object.freeze({ challenger1_mk2: 9, leclerc_s2: 9, t64bv1: 10, type90a: 8, m1a1: 9, merkava3c: 9 });
 
@@ -23,6 +24,7 @@ const restoreCanvas = installCanvasFixture();
 const rows = [];
 try {
   for (const [id, before] of Object.entries(BEFORE)) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, decor: true, quality: 'high', geometryQuality: 'high', camoSeed: 4242 });
     try {
       let near = 0, resident = 0;

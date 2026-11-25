@@ -5,6 +5,7 @@ import {recessKF51BTurret,recessClosedTurret} from './kf51bGunRecess.ts';
 import {properSurfaceCrossings} from '../../../tools/base-shell-integrity.mjs';
 import {orientedSlab} from './kit.ts';
 import {shellPart,mirroredSurfaceError} from '../../../tools/base-shell-audit-math.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function assertClosedRecess(geometry,label) {
   const part=shellPart(geometry),edges=new Map();
@@ -77,6 +78,7 @@ for(const points of [lowerCorners,rearCorners]) {
 }
 // (264: the 2A4 OTCO left the A6M build and its thermal skin for the 2A4 turret, profiles/leopard2A4Family.ts)
 for(const quality of ['high','low'])for(const id of ['leo1a5']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const repaired=[];
   const visual=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,partCensus(bucket,g,source){
     if(source==='add'&&['leo1a5-lower-bow','leo1a5-rear-applique','leo2a6m-thermal-skin'].includes(g.userData.primaryStockRole))repaired.push(g);
@@ -112,6 +114,7 @@ for(const quality of ['high','low'])for(const id of ['leo1a5']) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const parts=[];
   const panther=createTank('kf51_u',null,{proceduralOnly:true,quality,batchStatic:false,geometryReceipt:true,
     partCensus(_bucket,g,source){if(source==='add'&&g.userData.primaryStockRole==='kf51u-recessed-shell'){assertClosedRecess(g,`${quality} KF51-U shell`);parts.push(shellPart(g));}}});

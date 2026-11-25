@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {K1A1_X_PROFILES} from './k1a1X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 registerProfiledBuilders({k1a1:K1A1_X_PROFILES.k1a1.build});
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
@@ -201,6 +202,7 @@ function sourceWhipChecks(tank,label) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('k1a1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);

@@ -10,6 +10,7 @@ import {
   EquipmentDamage, EQUIPMENT_DAMAGE_LIMITS as LIMITS, markEquipmentLid,
   equipmentDamageStats, resetEquipmentDamage,
 } from './equipmentDamage.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const hit = (position = [1, 2, 3], overrides = {}) => ({
   kind: 'pen', caliberMm: 120, impactFrame: 'turret',
@@ -281,6 +282,7 @@ function restHash(visual) {
 // 264 (the 2A4-family rebuild): the 2A4's ammunition can rides its bustle rack (leopard2A4Kit.ts), its lid's top at
 // (0.92, 0.554, -2.83) in the turret's frame; the other two keep the old contact, where they carry no lid.
 for (const id of ['leo2a4', 't90am', 'm1a1_abrams_hc']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const rest = restHash(visual);
   const contact = hit(id === 'leo2a4' ? [0.92, 0.554, -2.83] : [0.26, 0.405, -2.485]);

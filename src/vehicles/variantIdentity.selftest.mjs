@@ -14,6 +14,7 @@
 // variant's suit meshes are its own row's (named from its own id), its spec keeps its id, and its hull names it host.
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const { ghillieSuitTestHooks, GHILLIE_SUIT_CONFIGS } = await import('./ghillieSuit.ts');
@@ -31,6 +32,7 @@ const CASES = [
 ];
 
 for (const [id, donor, own] of CASES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.ok(own && own.id === id, `${id} has a suit row of its own`);
   hooks.setRow(donor, { ...own, id: donor });
   try {

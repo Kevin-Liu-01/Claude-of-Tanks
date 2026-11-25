@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { Box3, Mesh, MeshBasicMaterial, Raycaster, Vector3, DoubleSide } from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['object148_proto']);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('object148_proto',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
   const root=tank.root,hull=root.getObjectByName('rig_hull'),turret=root.getObjectByName('rig_turret');
   assert.equal(hull.userData.object148Design?.revision,2,'complete new hull builder');

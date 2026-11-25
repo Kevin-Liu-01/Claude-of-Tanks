@@ -15,6 +15,7 @@ import {
   LOARA_BORE, LOARA_BRAKE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_LEFT_DOOR, LOARA_MUZZLE_Z, LOARA_RING,
   LOARA_SCREEN_FOOT_Y, LOARA_SEARCH_RADAR, LOARA_SMOKE, LOARA_TRACKING_RADAR, LOARA_TRUNNION, LOARA_TURRET,
 } from './loaraFrame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'pza_loara';
 const DEG = Math.PI / 180;
@@ -139,6 +140,7 @@ function firstHit(root, frame, start, direction, far = 1) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

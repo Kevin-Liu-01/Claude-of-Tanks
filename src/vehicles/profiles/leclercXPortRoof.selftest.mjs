@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source witnesses read the first source surface: main's field kit (5f8eefaa4) puts a remote 30 mm station over
 // the port roof and screens and pads on the flanks; the census filter skips them.
@@ -56,6 +57,7 @@ function wellAirAndContact(all, turret, detail) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const census = fieldKitCensus();
   const tank = createTank('leclerc_xlr', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false,
     partCensus: census.partCensus});

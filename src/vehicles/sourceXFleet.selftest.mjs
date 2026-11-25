@@ -11,6 +11,7 @@ import { k2SourceMetadata } from './xk2Specs.ts';
 import { donorSpec } from './donorSpecs.ts';
 import { VEHICLE_ROLE_PROFILES } from './roleProfiles.ts';
 import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Donor records retired with the hidden fleet (2026-09-23): no buildable original remains to differ from.
 const RETIRED_DONORS = new Set(['merkava4']);
@@ -21,6 +22,7 @@ const RETIRED_DONORS = new Set(['merkava4']);
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 const donorFingerprints = new Map();
 for (const donor of new Set(Object.values(SOURCE_X_DONORS))) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (RETIRED_DONORS.has(donor)) continue;
   assert.ok(ALL_TANK_IDS.includes(donor), `${donor}: registered donor`);
   const tank = createTank(donor, null, options);
@@ -42,6 +44,7 @@ const studyGun = (id, gun) => L55_DM63[id]
   ? { ...gun, shells: gun.shells.map((s) => (s.type === 'APFSDS' ? { ...s, ...L55_DM63[id] } : s)) } : gun;
 assert.equal(SOURCE_X_IDS.length, 13);
 for (const id of SOURCE_X_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const donor = SOURCE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(value => value === id).length, 1, `${id}: exactly one selectable row`);
   // 2026-09-15 owner roster pass: the X suffix is retired — the study carries the canonical public name

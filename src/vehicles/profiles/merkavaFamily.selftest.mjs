@@ -23,6 +23,7 @@ import { createTankState } from '../../sim/movement.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import { MERKAVA_MARKS } from './merkavaFamilyMarks.ts';
 import { MERKAVA_SOURCE } from './merkavaFamilySource.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const GUN = Object.freeze({
   merkava1b: 'M64', merkava2b: 'M64', merkava2d: 'M64', merkava3c: 'MG25x', merkava3_baz: 'MG25x', merkava4b: 'MG25x',
@@ -33,6 +34,7 @@ const world = (object, local) => object.localToWorld(local.clone());
 const sorted = (values) => [...values].sort((a, b) => a - b);
 for (const id of Object.keys(GUN)) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
     const at = `${id} (${quality})`;
     try {

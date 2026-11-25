@@ -6,8 +6,10 @@ import {matrix,finiteClearance,rollerSuspensionFixtures} from '../returnRollerPh
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original=KIT.buildRunningGear;let c;
   KIT.buildRunningGear=(port,cfg)=>{const gear=original(port,cfg);c={port,cfg,gear};return gear;};
   let tank;

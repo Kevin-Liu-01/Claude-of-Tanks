@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { gunHullProbe, gunHullSweep } from '../gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = 0.020, BARREL_KEEP = 0.025, DEG = Math.PI / 180;
 const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'centurion5_2dk'];
@@ -117,6 +118,7 @@ function barrelOverTurret(id, extra = null) {
 
 const report = {};
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   assert.equal(spec.gunElevationDeg, 20, `${id}: +20 degrees (W)`);
   assert.equal(spec.gunDepressionDeg, 10, `${id}: -10 degrees (W)`);

@@ -6,6 +6,7 @@ import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {SUPPLIED_SOURCE_IDS} from './suppliedSourceFleetSpecs.ts';
 import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.ts';
 import {renderedMarkingFootprints} from './markingFootprints.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned count and sha256 of the 141 original c26b319 anchor
 // records (and the later-addition bookkeeping that isolated them) are gone. The live contract is that
@@ -166,6 +167,7 @@ assert.ok(selected.length>0&&selected.every(id=>checkedIds.has(id)),
   'only explicit second-wave IDs and the separately registered C2 upgrade may be selected');
 const failures=[];
 for(const id of selected)for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   try {verify(id,quality);} catch(error) {failures.push({id,quality,error:error.message});console.error(error);}
 }
 assert.deepEqual(failures,[],'every requested actual-model marking footprint must pass');

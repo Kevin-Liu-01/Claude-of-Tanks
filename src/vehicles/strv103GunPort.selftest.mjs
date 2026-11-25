@@ -9,8 +9,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { FIXED_GUN_KEEP_M, fixedGunHullProbe } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 for (const id of ['strv103a', 'strv103b', 'strv103e', 'strv152', 'udes03']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = fixedGunHullProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] < -10 && probe.pitchesDeg[2] > 10, `${id}: the sweep spans the hull's published pitch range`);

@@ -5,6 +5,7 @@ import { createTank } from './tankFactory.ts';
 import { KIT } from './tankFactoryCore.ts';
 import { resolveSuspensionDimensions, endpointAxialScale, endpointAxleOutset, sourceToothTip } from './suspensionDimensions.ts';
 import { measuredTireBands,validateMeasuredWheelCore } from './measuredWheelGeometry.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function hashArray(hash, values) {
   hash.update(Buffer.from(values.buffer, values.byteOffset, values.byteLength));
@@ -65,6 +66,7 @@ function gearFingerprint(root) {
 // real hulls, including M1A2 gear that shares a masked lamp material, still prove gear never emits light.
 for (const id of ['t90sm_2013', 't90am', 'm1a1_abrams_hc', 'leo2a4_v']) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality,
       geometryReceipt: true, batchStatic: false });
     try {
@@ -359,6 +361,7 @@ function assertSourceArm(root){
 }
 
 for(const high of [true,false]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const settings={...SOURCE_SUSPENSION},model=fixture({suspensionDimensions:settings},high);
   try {
     assertMeasuredBosses(model.root);

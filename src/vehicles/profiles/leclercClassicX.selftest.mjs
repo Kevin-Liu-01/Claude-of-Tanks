@@ -7,6 +7,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { getSpec } from '../specs.ts';
 import { traceTank, tankPoseFromState } from '../../sim/armor.ts';
 import { AMX56_KIT_SURFACE_GROUP } from '../leclercClassicXKitArmor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (objects, p, d, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...p), new THREE.Vector3(...d), 0, far).intersectObjects(objects, false)[0];
@@ -325,6 +326,7 @@ function fieldKitArmor(all) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original = KIT.buildRunningGear;
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };

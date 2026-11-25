@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMRightLauncherBracket } from './t90SMXRightLauncherBracket.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const FRONT = [
   [1.12, 2.21, -.377327106, [.373737651, .281486001, .883790586]],
@@ -63,6 +64,7 @@ for (const mesh of group.children) mesh.geometry.dispose();
 material.dispose();
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('t90sm', null, { quality, geometryReceipt: true, proceduralOnly: true });
   try {
     tank.root.updateMatrixWorld(true);

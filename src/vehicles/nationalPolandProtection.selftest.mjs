@@ -6,6 +6,7 @@ import {NATIONAL_POLAND_GHILLIE_CONFIGS} from './nationalPolandProtectionConfig.
 import {sampleArmorRay} from './profiles/armorFaceSampling.ts';
 import {DEFAULT_EXCLUDE} from '../../tools/tank-voxel-body.mjs';
 import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // The smallest Y over an entire continuous pitch interval. Turret-local yaw
 // does not alter Y, so a horizontal separating plane proves every yaw clear.
@@ -76,6 +77,7 @@ function census(t){
 const costs={};
 let supportShoes=0;
 for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const added=[],permanent={hull:[],turret:[]},turretEra=[];
  let eraBodies=0;
  const t=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242,

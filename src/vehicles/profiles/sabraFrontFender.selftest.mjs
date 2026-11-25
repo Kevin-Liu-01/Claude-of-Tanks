@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { KIT } from './kit.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source Object_4 FrontSide calipers, canonical source SHA 5ea261fb70f7….
 // These are independent visible stations, not the builder's section table.
@@ -10,6 +11,7 @@ import { KIT } from './kit.ts';
 await ensureInteriorFills(['sabra_mk2']);
 let checks=0;
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let gear;
   const buildGear=KIT.buildRunningGear;
   KIT.buildRunningGear=(...args)=>{gear=buildGear(...args);return gear;};

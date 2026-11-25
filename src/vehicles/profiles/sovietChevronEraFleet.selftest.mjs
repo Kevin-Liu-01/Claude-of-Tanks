@@ -3,6 +3,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-10-01: three former carrier builds are owner-directed rebuilds since 4c34b3e8b (fleet-renewal-publication-
 // 20260930.md): t72bu_1989 on t72bu (its Kontakt chevrons, "lower ERA chevron halves restored on both BUs"), t80uk (now
@@ -16,6 +17,7 @@ const eraSectors = (id) => {
   try { return [...(tank.root.userData.eraFinishReceipt?.sectors ?? [])].sort(); } finally { tank.dispose(); }
 };
 for (const [id, donorId] of Object.entries(REBUILT)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(FLEET_RENEWAL_DONORS[id], donorId, `${id}: the renewal rebuilds it on ${donorId}`);
   const sectors = eraSectors(id);
   assert.ok(sectors.length > 0, `${id}: keeps live reactive sectors`);
@@ -29,6 +31,7 @@ for (const [id, donorId] of Object.entries(REBUILT)) {
 const T90_TWINS = Object.freeze({ t90_1992: 't90', t90a_2004: 't90a', t90a_2006: 't90a_vladimir', t90a_burlak_proto: 't90a',
   t90m_proryv: 't90m' });
 for (const [id, twinId] of Object.entries(T90_TWINS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const sectors = eraSectors(id);
   assert.ok(sectors.includes('turret_era_L') && sectors.includes('turret_era_R'), `${id}: keeps live turret reactive sectors`);
   assert.deepEqual(sectors, eraSectors(twinId), `${id}: carries exactly its source-X twin ${twinId}'s reactive sectors`);

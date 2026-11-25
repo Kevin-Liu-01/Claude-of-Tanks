@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ruShtora } from './russia.ts';
 import { vehicleNightLightEmittersFor } from '../vehicleNightLighting.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The 12 frozen pre-extraction recipe digests are retired (whole-tank change detection is the fleet geometry
 // ledger's). Every scale/round/kit recipe still runs live: finite stock, a mirrored round-lens pair on the turret
@@ -32,6 +33,7 @@ for (const scale of [1, 1.32, 1.5]) for (const round of [false, true]) for (cons
 }
 
 for (const id of ['t90', 't90a', 't90a_vladimir', 't90a_2004', 't90a_2006']) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

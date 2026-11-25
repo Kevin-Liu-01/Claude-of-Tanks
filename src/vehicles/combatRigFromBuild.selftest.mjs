@@ -18,6 +18,7 @@ import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { MEASURED_EQUAL_M, measureCombatRig } from '../../tools/combat-rig-measure.mjs';
 import { authoringRigSpec } from './combatGunRigSeat.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
@@ -70,6 +71,7 @@ function differences(a, b, at = '', out = [], limit = 6) {
 {
   let checked = null;
   for (const id of ids) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const spec = getSpec(id);
     if (spec.armor?.turretless === true) continue;
     const input = authoringRigSpec(spec).armor.turretPivot;
@@ -99,6 +101,7 @@ function differences(a, b, at = '', out = [], limit = 6) {
 const failures = [];
 let measured = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const authority = combatOf(spec);
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });

@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Existing source-measured receiving stock, before its ownership correction.
 // Bounds distinguish a real cradle from an invented stub or renamed barrel.
@@ -68,6 +69,7 @@ function assertTmlBootContact(mount, gun, label) {
   }
 }
 for(const quality of ['high','low']) for(const [id,min,max] of cases) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.ok(hasInteriorFills(id), `${id}: actual generated fill loaded`);
   const spec=getSpec(id),tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,batchStatic:false});
   const disposed=[];

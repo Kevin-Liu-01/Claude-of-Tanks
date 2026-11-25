@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
 import { TANK_PRESENTATION_ANCHORS } from './presentationAnchors.generated.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const SURFACE_Y_M = 0.36;
 const EPSILON_M = 0.001;
@@ -44,6 +45,7 @@ let minimumMarginM = Infinity;
 let maximumMarginM = -Infinity;
 
 for (const id of ALL_TANK_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

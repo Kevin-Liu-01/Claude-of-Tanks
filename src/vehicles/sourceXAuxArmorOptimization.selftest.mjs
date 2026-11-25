@@ -5,6 +5,7 @@ import {getSpec} from './specs.ts';
 import {applySourceXOtherAuxArmor} from './sourceXOtherAuxArmor.ts';
 import {traceTank,tankPoseFromState} from '../sim/armor.ts';
 import {assertArmorTraceBounds} from '../sim/armorOutline.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const ids=['k1a1','amx30b','leclerc_xlr','amx56','type10','type90','amx40'];
 const serialize=v=>JSON.stringify(v,(key,value)=>key==='traceBounds'?undefined:value);
 // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of all seven pre-optimization armor objects,
@@ -29,6 +30,7 @@ for(const[id,donor]of[['type10','type10_tk_x'],['leclerc_xlr','leclerc_s2']]){
 
 let total=0,bounds=0,fallback=0;
 for(const id of ids){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{quality:'high',proceduralOnly:true,geometryReceipt:true,camoSeed:4242});tank.dispose();
   const armor=getSpec(id).armor,exact=JSON.parse(serialize(armor));
   const points=[];

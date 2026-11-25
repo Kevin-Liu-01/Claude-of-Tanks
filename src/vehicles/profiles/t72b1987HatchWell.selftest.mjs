@@ -6,9 +6,11 @@
 import assert from 'node:assert/strict';
 import '../../../tools/tank-surface-collect.mjs';
 import { openLids } from '../../../tools/hatch-well.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const { createTank } = await import('../tankFactory.ts');
 for (const id of ['t72b_1987']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const lids = openLids(tank, 'turret').filter((l) => l.ring.mesh === 'turretCupola');

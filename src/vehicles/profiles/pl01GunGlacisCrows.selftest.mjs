@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { Box3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (actual, expected, epsilon = 1e-6) => Math.abs(actual - expected) <= epsilon;
 // The frozen hull-rig geometry digests of the approved driver-roof revision are retired: whole-tank change
 // detection of pl01 / pl01_105 is the fleet geometry ledger's. The envelope, seat receipts and datums stay.
 
 for (const id of ['pl01', 'pl01_105']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   assert.equal(spec.dims.heightM, 2.80,
     `${id} dossier must retain the published vehicle height`);

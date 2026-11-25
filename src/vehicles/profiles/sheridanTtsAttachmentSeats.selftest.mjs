@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
 import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
 import {turretSeatPlane} from '../turretSeatPlane.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills('m551a1_tts');
 
@@ -45,6 +46,7 @@ function seatedPoint(root,mesh,point){
 }
 
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let casting;const feet=[],layers=[],lugs=[];
   const tank=createTank('m551a1_tts',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242,
     partCensus(bucket,g){

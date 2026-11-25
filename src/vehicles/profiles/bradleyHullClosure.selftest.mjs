@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 268 (the owner: "the m1a1s and bradleys look odd. here are the actual models, runn our tank generation procedures on
 // them"): the four Bradleys share one measured hull core (modern3.ts BRADLEY_HULL,
@@ -24,6 +25,7 @@ const A2_TURRET_IDS = new Set(['m3a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'
 const near = (a, b, tolerance = 1e-4) => Math.abs(a - b) <= tolerance;
 
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

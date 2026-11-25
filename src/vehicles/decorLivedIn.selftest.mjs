@@ -18,6 +18,7 @@ import { DECOR_KITS, decorManifestFor } from './decorations.ts';
 import './fleetRegistration.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -121,6 +122,7 @@ const MINE = /^(crewkit|cargonet)/;
 const rows = [];
 try {
   for (const [id, want] of [['m1a1', { crewkit: 12, cargonet: 1, turret: 13 }], ['m2a2_bradley', { crewkit: 6, turret: 1 }]]) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
       const summary = tank.root.userData.__decorSummary;

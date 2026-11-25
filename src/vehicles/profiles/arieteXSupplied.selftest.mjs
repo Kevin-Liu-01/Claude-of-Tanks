@@ -5,6 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { arietePlaneStock } from './arieteXSuppliedArmor.ts';
 import { ARIETE_X_FAMILY_SCALE as S } from './arieteXFamilyFrame.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independently frozen SOURCE ray/frame witnesses, not candidate calibrations.
 const yawDatum = [0, 1.306227824, .328028885], gunDatum = [0, 1.651499209, 1.3415539];
@@ -109,6 +110,7 @@ function poseAndEnvelope(t,all) {
 }
 closedPlanePrimitive();
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('c1_ariete',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     t.root.updateMatrixWorld(true);const all=[];

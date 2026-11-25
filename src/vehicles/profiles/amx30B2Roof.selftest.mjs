@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import {Box3,Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['amx30b2']);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('amx30b2',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try {
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');

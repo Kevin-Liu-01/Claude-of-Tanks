@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Use the normal eager fleet entry point; a missing registration or fallback
 // cannot be papered over by installing the tested builders within this test.
@@ -160,6 +161,7 @@ function assertSourceEquipmentSections(tank,id) {
 }
 
 for(const [id,source] of Object.entries(SOURCE)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high'});
   try {
     tank.root.updateMatrixWorld(true);
@@ -214,6 +216,7 @@ function boxGap(a,b) {
 }
 
 for(const id of Object.keys(SOURCE)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'low',camoSeed:4242,batchStatic:false});
   try {
     const spec=getSpec(id),gun=tank.root.getObjectByName('rig_gun');

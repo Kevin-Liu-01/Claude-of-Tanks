@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['kf51_u']);
 
@@ -282,6 +283,6 @@ try {
   tank.dispose();
 }
 
-for (const quality of ['high', 'low']) verifyGunSeat(quality);
+for (const quality of ['high', 'low']) { await betweenBuilds(); verifyGunSeat(quality); }
 
 console.log('kf51bTurretCenter.selftest: scale, turret, tracks, skirt armor, RWS, gun seat and articulation pass');

@@ -5,10 +5,12 @@ import {topIndex} from '../roofSweep.test-support.mjs';
 import {auxiliaryCapabilities} from '../auxiliaryInventory.ts';
 import {auxiliaryWeaponProfile} from '../auxiliaryWeapons.ts';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 // 2026-10-09 (owner order: "give the griffin 50 mm its old machine gun back"): the Griffin's working roof weapon is its
 // restored 10-07 M2 on the elevated cradle; the field roof 30 mm is gone.
 const targets=[['griffin50mm','griffin50RoofM2',12.7],['leo2a7v','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5','Leopard 2A5 remote 30 mm cannon',30],['leclerc_xlr','Leclerc XLR remote 30 mm cannon',30],['t84bm_oplot_m','oplotUNsvt',12.7]];
 for(const quality of ['high','low'])for(const [id,name,caliber] of targets){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const registered=auxiliaryCapabilities({id})?.guns.find(g=>g.name===name);
  assert.equal(registered?.caliberMm,caliber,`${id}: combat registry enables the authored cannon`);
  assert(registered.collisionParts.length>0,`${id}: damageable gun stock registered`);
@@ -54,6 +56,7 @@ for(const quality of ['high','low'])for(const [id,name,caliber] of targets){
 }
 const rearIds=['type96b','type96_80_feng','t80u_yun','t72b3m_kunlun','t72b3_qilin','c2_ariete','leclerc_xlr','m1a1_abrams_hc','t72b3m_bulat_m'];
 for(const quality of ['high','low'])for(const id of rearIds){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  const mat=new MeshBasicMaterial({side:DoubleSide});
  try{
@@ -76,6 +79,7 @@ for(const quality of ['high','low'])for(const id of rearIds){
 }
 // Owner-requested attachment revisions: retain real contact and articulation.
 for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_challenger2','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}),mat=new MeshBasicMaterial({side:DoubleSide});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),body=new Mesh(turret.getObjectByName('turret').geometry,mat);body.updateMatrixWorld();

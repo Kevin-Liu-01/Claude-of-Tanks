@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { boundsWithoutCamouflage } from '../camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'ztz99_longwei';
 await ensureInteriorFills([ID]);
@@ -16,6 +17,7 @@ const box = (object) => new THREE.Box3().setFromObject(object);
 
 let highEnvelope = null;
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

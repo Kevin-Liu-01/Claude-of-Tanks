@@ -4,6 +4,7 @@ import {createTank,ensureTankBuilder,isTankBuilderReady} from './fleetFactory.ts
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {combatAnatomyCalibration} from './combatAnatomyCalibrationRegistry.ts';
 import {vehicleMarkingSeats} from './vehicleMarkingSeatRegistry.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // This process intentionally never imports the eager tankFactory/profile
 // registry. A CPU geometry test on that route cannot verify browser loading.
@@ -14,6 +15,7 @@ for(const id of SECOND_WAVE_X_IDS){
   assert.equal(vehicleMarkingSeats(id),null,`${id}: no eager marking pack`);
 }
 for(const id of SECOND_WAVE_X_IDS){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await ensureTankBuilder(id);
   assert.equal(isTankBuilderReady(id),true,`${id}: complete playable loading path`);
   assert.ok(combatAnatomyCalibration(id),`${id}: real generated anatomy group`);

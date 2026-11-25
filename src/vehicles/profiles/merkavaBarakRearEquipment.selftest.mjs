@@ -4,6 +4,7 @@ import {createTank} from'../tankFactory.ts';
 import {ensureInteriorFills,hasInteriorFills} from'../interiorFills.ts';
 import {sourceOpeningRayProbe} from'../../../tools/source-opening-rays.mjs';
 import {verifyBarakBayNativeStock} from'../../../tools/barak-rear-bay-fill-policy.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source-only rays: Object24 panels, Object29 lamps, Object22
 // rails, roof sections and closed hatch. All are complete-scene first hits.
@@ -22,6 +23,7 @@ function read(root){const p=sourceOpeningRayProbe(root);try{return stock.map(w=>
 await ensureInteriorFills(['merkava4_barak']);assert.ok(hasInteriorFills('merkava4_barak'));
 const rows=[];
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank('merkava4_barak',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  try{
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((l,i)=>l.object.visible=i===0)}});

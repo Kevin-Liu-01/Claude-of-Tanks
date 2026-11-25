@@ -8,6 +8,7 @@ import { performance } from 'node:perf_hooks';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { createRoundedBoxGeometryCache, cachedRoundedBoxGeometry } from './roundedBoxGeometryCache.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const nativeIds=['m1a1_abrams_hc','challenger2','leclerc_s2','leo2_revolution'];
 // (267, main's load class: both native children hit spawnSync's 180 s wall timeout at load 300-534, where a child takes
@@ -103,6 +104,7 @@ async function nativeChild(reference){
   // Second pass revisits every model after other builds/disposal. No source
   // mesh path, selected-node subset or skipped decoration/instance buffer.
   for(let pass=0;pass<2;pass++)for(const id of nativeIds)for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
     try{results.push({pass,id,quality,...nativeDigest(tank.root)});}finally{tank.dispose();}
   }

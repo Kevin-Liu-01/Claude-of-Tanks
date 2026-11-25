@@ -6,6 +6,7 @@ import { TANK_SPECS } from './specs.ts';
 import { donorSpec } from './donorSpecs.ts'; // 2026-09-24: retired donor records resolve through the unregistered templates (owner: no hidden tanks)
 import { SECOND_WAVE_X_DONORS, synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned donor-spec, hull-plate, collision-cell,
 // module/crew and whole-model geometry digests are gone; the fleet geometry ledger owns
@@ -70,6 +71,7 @@ assert.ok(trace(mutant, [0, 7, 0], [0, 3.8, 0]).some(hit => hit.kind === 'plate'
   'counterfactual old-height roof remains detectable by the real trace path');
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const options = { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 };
   const tank = createTank('jpz_e100', null, options);
   try {

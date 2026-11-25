@@ -7,6 +7,7 @@ import { tankTier } from '../tier.ts';
 import { vehicleEraForId } from '../taxonomy.ts';
 import { FLEET_GROUP_BY_ID } from '../fleetManifest.ts';
 import { ARES_APC_X_DATUMS } from '../aresApcXFrame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ID = 'ares_apc';
 const OWNER_SIZE = .90;
@@ -30,6 +31,7 @@ assert.deepEqual([...ARES_APC_X_DATUMS.wheelStations], [-1.3674, -0.7256, -0.075
 
 const receipts = [];
 for (const geometryQuality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(ID, null, {
     proceduralOnly: true, geometryReceipt: true, geometryQuality, batchStatic: false,
   });

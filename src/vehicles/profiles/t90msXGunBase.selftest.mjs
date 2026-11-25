@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function visibleMeshes(root){const list=[];root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)list.push(m);});return list;}
 function sourceTops(meshes){
   for(const[x,z,y]of [[-.35,1.05,2.1257962708],[-.35,1.2,2.0773627771],[-.35,1.4,2.0130354594],[-.35,1.6,1.9432642610],
@@ -45,6 +46,7 @@ function ownership(tank){
   assert.ok(mount.geometry === geometry,'pose updates preserve cold-created mesh buffers');
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const meshes=visibleMeshes(t.root);sourceTops(meshes);frontSurfaces(meshes);openings(meshes);ownership(t);}
   finally{t.dispose();}

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { addT90AWSideMounts } from './t90AwXSideMounts.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (meshes, o, d, far = 12) => new THREE.Raycaster(new THREE.Vector3(...o),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
@@ -91,6 +92,7 @@ addT90AWSideMounts({ addEquipment(bucket, geometry) {
 } });
 try {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const before = build(quality, true), after = build(quality);
     try {
       assert.equal(after.hash, before.hash, 'all non-target primitive submissions are byte-identical');

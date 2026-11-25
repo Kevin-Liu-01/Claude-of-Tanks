@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const EXPECTED_ROAD_WHEEL_ZS = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
 const EXPECTED_RETURN_ROLLER_ZS = [1.61, 0.20, -1.21];
@@ -26,6 +27,7 @@ function uniqueInstanceZs(mesh) {
 }
 
 for (const quality of ['high', 'low', 'ai']) for (const id of ['xk2_black_panther', 'k2b']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality,

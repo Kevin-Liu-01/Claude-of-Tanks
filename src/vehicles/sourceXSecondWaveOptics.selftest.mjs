@@ -4,6 +4,7 @@ import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {COMBAT_ANATOMY_CALIBRATIONS} from './combatAnatomyCalibrations.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Exact equipment scopes, not guesses from a generic dark/glass material.
 // These scalar bounds pin seven metadata-only repairs against the build's
@@ -212,6 +213,7 @@ function assertRebuiltT62Optics(raw,quality) {
 
 const failures=[];
 for(const id of IDS)for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let tank;
   try {
     tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});

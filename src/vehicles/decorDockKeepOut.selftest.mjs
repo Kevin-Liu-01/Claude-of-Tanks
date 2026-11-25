@@ -9,6 +9,7 @@ import { ensureInteriorFills } from './interiorFills.ts';
 import { dockKeepOut, DOCK_KEEP_OUT_CLEAR } from './decorations.ts';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installCanvasFixture();
 // Every seat yields keep-out boxes in its own frame and none in the other.
@@ -23,6 +24,7 @@ await ensureInteriorFills(ids);
 const tri = new Triangle(), a = new Vector3(), b = new Vector3(), c = new Vector3();
 let checked = 0, rejected = 0;
 for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const seat = MISSION_ATTACHMENT_SEATS[id];
   const tank = createTank(id, null, { quality: 'high', camoSeed: 4242, decor: true });
   tank.root.updateMatrixWorld(true);

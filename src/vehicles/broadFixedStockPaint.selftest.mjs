@@ -6,6 +6,7 @@ import {TANK_SPECS} from './specs.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildLeopard2A5X} from './profiles/leopardX.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const directNames=new Set(['leo2a5_xSourceFixture_ServiceCoverRight','leo2a5_xSourceFixture_ServiceCoverLeft']);
 const methods=new Set(['add','addEquipment','addMudguard','addHatch','addCupola','addExternalArmor','addModuleVisual']);
@@ -71,6 +72,7 @@ function painted(tank,id){const names=[...directNames];
   assert.ok(uv&&Array.from(uv.array).every(Number.isFinite)&&new Set(uv.array).size>8);return o;});}
 const restore=installCanvasFixture(),rows=[];let rays=0;
 try{for(const id of['leo2a5'])for(const quality of['high','low'])for(const camo of['factory','winter']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const old=build(id,quality,camo,true),now=build(id,quality,camo);
  try{
   assert.equal(now.selected.length,2);assert.deepEqual(now.selected,old.selected);

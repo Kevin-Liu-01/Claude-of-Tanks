@@ -10,6 +10,7 @@ import {buildLeclercX} from './profiles/leclercX.ts';
 import {buildType10X} from './profiles/type10X.ts';
 import {AMX40_X_PROFILES} from './profiles/amx40X.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned pre-paint profile source digests (and their
 // undeclared-edit negative control) are gone. The live differential stays: each build is compared with
@@ -84,6 +85,7 @@ function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail'
  assert.ok(us.size>1&&vs.size>1,'both texture axes vary over the actual stock; a box need not have >8 unique scalar values');return o;}
 const restore=installCanvasFixture(),rows=[];let rays=0,emissions=0;
 try{for(const row of cases)for(const quality of['high','low'])for(const camo of['factory','winter']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const before=build(row,quality,camo,true),after=build(row,quality,camo);
  try{
   assert.equal(after.selected.length,row.count);assert.deepEqual(after.selected,before.selected);

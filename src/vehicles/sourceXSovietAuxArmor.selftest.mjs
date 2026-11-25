@@ -8,6 +8,7 @@ import {applySourceXSovietAuxArmor,sourceXSovietSkirtOutline,SOVIET_AUX_IDS} fro
 import {traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the eighteen pinned whole-model digests and the historical
 // tire-opening, skirt-finish, T-90 fittings and Burlak side-finish inverses that reached them are gone;
@@ -181,6 +182,7 @@ for(const id of ids){
     assert.equal(JSON.stringify(noOp),noOpBefore,'original donor API is exact no-op');
   }
   for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const spec=structuredClone(getSpec(id));metadataInvariant(spec);
     assert.deepEqual(fields(getSpec(id)),fields(spec),'actual registered API matches exact auxiliary recipes');
     const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});

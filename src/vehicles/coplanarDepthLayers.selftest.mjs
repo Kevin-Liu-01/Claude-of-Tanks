@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import {
   assignCoplanarDepth, COPLANAR_TIE_NEAR_M, COPLANAR_TIE_UNITS, coplanarDepthUnits, MARKING_DEPTH_MARGIN,
 } from './coplanarDepth.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-23 (lane 243; the owner: "insignias and marks on tanks are still glitching ... fix any glitching of that or
 // tank props"): every colour-pass mesh keeps a unique place in the semantic order (`coplanarDepthLayer`), and draws
@@ -64,6 +65,7 @@ for (const options of [
   { proceduralOnly: true, geometryReceipt: true, quality: 'high' },
   { proceduralOnly: true, geometryReceipt: true, quality: 'low', batchStatic: true },
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('type10b', null, options);
   const layered = [];
   const layerIds = new Set();

@@ -8,6 +8,7 @@ import { createTank, ensureTankBuilder, isTankBuilderReady } from './fleetFactor
 import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Compare the existing default-on factory to its existing receipt-only opt-out.
 // These are real browser-facade builds, not replacement builders or a reduced
@@ -240,6 +241,7 @@ try {
     await ensureTankBuilder(id);
     assert.equal(isTankBuilderReady(id), true, `${id}: typed demand facade loaded the exact family and receipts`);
     for (const role of ['desktop-bot', 'desktop-hero', 'garage']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const options = { camoSeed: 4242, camoPattern: 'factory', batchStatic: true,
         quality: role !== 'garage' && (role === 'desktop-hero' || id === 't90am') ? 'preview' : 'ai',
         geometryQuality: role === 'desktop-bot' ? 'low' : 'high',

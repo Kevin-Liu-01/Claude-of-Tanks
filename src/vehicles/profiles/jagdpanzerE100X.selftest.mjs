@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TANK_SPECS,ALL_TANK_IDS} from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const close=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<e,`${label}: ${a} vs ${b}`);
 assert.ok(ALL_TANK_IDS.includes('jpz_e100'));
 assert.equal(TANK_SPECS.jpz_e100.gunArcDeg,12);
 for(const quality of['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('jpz_e100',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMTowCable } from './t90SMXTowCable.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function meshes(root) {
   const found=[];root.traverse(o=>{if(o.isMesh)found.push(o);});return found;
@@ -35,6 +36,7 @@ function inside(mesh,point,label) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=new THREE.Group(),material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
   addT90SMTowCable({snapGroup:(_label,build)=>build(),addEquipment(bucket,geometry,x=0,y=0,z=0){

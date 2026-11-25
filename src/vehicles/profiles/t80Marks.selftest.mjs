@@ -16,10 +16,12 @@ import { eraPlateNames } from './eraAgreement.test-support.mjs';
 import { rubberSkirtRun } from './rubberSkirt.ts';
 import { skirtSections } from './rubberSkirtSheets.ts';
 import { t80uXApronAt, t80uXApronX } from './t80uXApron.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const MARKS = ['t80', 't80b', 't80bv', 'ua_t80bv'];
 const receipts = {};
 for (const id of MARKS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {
     const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');

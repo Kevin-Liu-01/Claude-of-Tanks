@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { GRIFFIN_HULL_LENGTH_SCALE as H, GRIFFIN_TURRET_SCALE as S, GRIFFIN_TURRET_PIVOT } from './griffinProportions.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function firstHit(root, origin, direction, far=20) {
   const ray=new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,far);
@@ -54,6 +55,7 @@ let checks=0;
 for(const filled of [false,true]){
   if(filled)await ensureInteriorFills(['griffin50mm']);
   for(const quality of ['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank('griffin50mm',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
     try{
       const root=tank.root;root.scale.setScalar(1 / .90);root.updateMatrixWorld(true);

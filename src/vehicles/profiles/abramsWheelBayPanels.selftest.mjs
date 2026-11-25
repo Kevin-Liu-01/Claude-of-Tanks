@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const OPEN_WHEEL_BAY_IDS = [
   'm1a1_abrams_hc',
@@ -12,6 +13,7 @@ const OPEN_WHEEL_BAY_IDS = [
 ];
 
 for (const id of OPEN_WHEEL_BAY_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

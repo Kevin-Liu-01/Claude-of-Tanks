@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { authoringRigSpec } from '../combatGunRigSeat.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function make(id) {
   return createTank(id, null, {
@@ -18,6 +19,7 @@ function close(actual, expected, label) {
 }
 
 for (const id of ['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const spec = getSpec(id);
   await Promise.resolve();
@@ -50,6 +52,7 @@ for (const id of ['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2']) {
 }
 
 for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   await Promise.resolve();
   const hull = tank.root.getObjectByName('rig_hull');

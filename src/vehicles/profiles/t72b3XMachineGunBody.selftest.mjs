@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function visible(root){const meshes=[];root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)meshes.push(m);});return meshes;}
 function stockAndReceiver(meshes){
   for(const[z,y]of [[-2.185,2.6085741621],[-2.15,2.6037455071],[-2.05,2.5990075655],
@@ -54,6 +55,7 @@ function ownerAndContact(tank){
 // carries the library NSVT; the traced body stays on the T-64BV mod. 2017 / T-64BV1 (t64bvK1.ts builds the whole B3,
 // kept as it was), which this receipt now measures.
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t64bv1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{tank.root.updateMatrixWorld(true);const meshes=visible(tank.root);stockAndReceiver(meshes);boreAndAir(meshes);ownerAndContact(tank);}
   finally{tank.dispose();}

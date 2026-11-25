@@ -6,6 +6,7 @@ import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createCombatState, selectShell, startReload, tickReload } from '../sim/damage.ts';
 import { SIM_DT, shotRecoilScale } from '../sim/movement.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const definitions = {
   ztz100_prototype: { cells: 8, ammo: [16, 8, 180], reload: [12, 12, .30], counterpart: 'ztz100', caliber: 35 },
@@ -14,6 +15,7 @@ const definitions = {
 const input = (slot, fire = false) => ({ throttle: 0, steer: 0, brake: true, fire,
   aimYaw: .4, aimPitch: .1, aimDistance: 400, shellSlot: slot, actionBits: 0 });
 for (const [id, expected] of Object.entries(definitions)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = TANK_SPECS[id], counterpart = TANK_SPECS[expected.counterpart];
   assert.equal(spec.gun.primaryGuided, true);
   assert.equal(shotRecoilScale(spec, spec.gun.shells[0]), 0, 'external missile leaves the hull seated');

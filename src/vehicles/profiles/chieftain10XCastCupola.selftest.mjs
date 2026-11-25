@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function hit(meshes, frame, xyz, direction, far = 8) {
   return new THREE.Raycaster(new THREE.Vector3(...xyz).applyMatrix4(frame),
@@ -71,6 +72,7 @@ function checkCupola(all, frame) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {

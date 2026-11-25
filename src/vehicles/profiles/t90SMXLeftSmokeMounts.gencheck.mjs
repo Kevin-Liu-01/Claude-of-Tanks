@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMLeftSmokeMounts} from './t90SMXLeftSmokeMounts.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const source=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90sm_x.smoke-source.json',import.meta.url),'utf8'));
 function helperGeometry() {
@@ -70,6 +71,7 @@ function carrierCaseContact(actual,carrier,label) {
   }
 }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=helperGeometry();
   try {

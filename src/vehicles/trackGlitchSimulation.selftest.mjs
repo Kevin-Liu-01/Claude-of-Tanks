@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { ensureInteriorFills } from './interiorFills.ts';
 import { getSpec } from './specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // Track system (owner 2026-09-17: "thinner tracks and reseated wheels for all … then actually double check in
 // simulations to make sure our suspension and tracks dont glitch wheels"). A representative slice of the fleet drives
@@ -26,6 +27,7 @@ const _p = new THREE.Vector3(), _m = new THREE.Matrix4(), _sc = new THREE.Vector
 const results = [];
 for (const id of IDS) {
  for (const quality of HIGH_LOW_IDS.includes(id) ? ['high', 'low'] : ['high']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true });
   try {

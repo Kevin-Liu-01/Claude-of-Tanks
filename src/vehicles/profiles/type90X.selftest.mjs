@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE90_X_DATUMS} from './type90X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const hit=(root,o,d,far=20)=>new THREE.Raycaster(o,d,0,far).intersectObject(root,true)[0];
 
@@ -122,6 +123,7 @@ function sourceWrapAndFolds(tank,quality) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('type90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {tank.root.updateMatrixWorld(true);basicChecks(tank,quality);physicalOpenings(tank,quality);gunOwnership(tank,quality);sourceWrapAndFolds(tank,quality);sourceFrameSurfaces(tank,quality);}
   finally {tank.dispose();}

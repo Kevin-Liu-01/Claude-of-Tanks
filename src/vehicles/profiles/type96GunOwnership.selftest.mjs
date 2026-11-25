@@ -23,6 +23,7 @@ return shadows;}
 
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 // The frozen gun / non-gun payload digests and gun-triangle counts (pinned per quality and camo pattern) are
 // retired: whole-tank change detection of type96b, including the 2026-10-01 forward smoke correction, is the
 // fleet geometry ledger's. Kept: the boot is gun-owned and the tube recoil-owned at every legal pitch/yaw, the
@@ -35,6 +36,7 @@ const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=ep
 const restore=installCanvasFixture(),rows=[];
 await ensureInteriorFills(['type96b']);
 try {for(const {quality,camoPattern} of CASES){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank('type96b',null,{quality,proceduralOnly:true,materialMode:'rendered',geometryReceipt:false,batchStatic:false,decor:true,camoPattern,camoSeed:4242});
  try {
   proxies(tank.root);

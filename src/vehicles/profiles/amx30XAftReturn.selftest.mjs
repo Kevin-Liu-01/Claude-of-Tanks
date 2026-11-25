@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildAmx30X } from './amx30X.ts';
 import { addAmx30XAftReturn } from './amx30XAftReturn.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const close = (a, b, label, eps = 5e-6) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= eps, `${label}: ${a}, expected ${b}`);
 const cast = (objects, origin, direction, far = 4) => new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far).intersectObjects(objects, false)[0];
@@ -53,6 +54,7 @@ function air(objects) {
 // The frozen pre-edit digest of every other primitive is retired: whole-tank change detection of amx30b is the
 // fleet geometry ledger's.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const helper = [], guards = []; let targets = 0;
   for (const side of [-1, 1]) addAmx30XAftReturn({ addMudguard: (label, bucket, g) => {
     assert.equal(label, 'amx30-x-aft-return'); assert.equal(bucket, 'hull');

@@ -2,10 +2,12 @@ import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mj
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const close=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,
   `${label}: ${a}, expected ${b}`);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('amx40',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);

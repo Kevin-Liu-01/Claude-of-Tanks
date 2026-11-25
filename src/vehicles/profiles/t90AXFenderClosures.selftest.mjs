@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {installCanvasFixture} from '../canvasFixture.test-support.mjs';
 import {extrusionStock,stockWinding} from '../../../tools/stock-extrusion-audit.mjs';
 import {trackCourseIntervals} from '../../../tools/track-course-intervals.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const restore=installCanvasFixture();
 const localBox=(side,x0,x1,y0,y1)=>new T.Box3(
@@ -12,6 +13,7 @@ const ray=(objects,x,y,z,side)=>new T.Raycaster(new T.Vector3(side*x,y,z),
   new T.Vector3(-side,0,0),0,4).intersectObjects(objects,false)[0];
 
 try{for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90a',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{
     const root=tank.root;root.updateMatrixWorld(true);

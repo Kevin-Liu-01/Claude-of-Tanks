@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { createRequire, registerHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as THREE from 'three';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const { createCanvas, ImageData, Path2D } = require('@napi-rs/canvas');
@@ -193,6 +194,7 @@ for (const [id, options] of [
   ['merkava1b', { ...baseOpts, geometryQuality: 'low', batchStatic: true, battleDetailLod: true }],
   ['m1a1', { ...baseOpts, decor: false }],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const synchronous = candidate.createTank(id, null, options);
   let staged;
   try {
@@ -231,6 +233,7 @@ THREE.Texture.prototype.dispose = observeDispose(originalTextureDispose);
 try {
   for (const target of ['core-ready', 'surface-index', 'manifest-row', 'material-bucket', 'publish']) {
     for (const operation of ['return', 'throw']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       disposed.clear(); capture = undefined; decorStage = undefined;
       const registry = shadowRegistry();
       const steps = candidate.createTankSteps('m1a1', registry.context, baseOpts);
@@ -255,6 +258,7 @@ try {
   // click-perf-244: a core abandoned or failed at its first stage checkpoint, before any visual exists, releases its
   // material set and the factory's own clones from the cascade setup.
   for (const operation of ['return', 'throw']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     disposed.clear(); capture = undefined;
     const registry = shadowRegistry();
     const steps = candidate.createTankSteps('m1a1', registry.context, baseOpts);
@@ -328,6 +332,7 @@ facadeVisual.dispose();
 // Garage uses rendered paint, decorated HIGH geometry, a static rest pose and
 // articulation-local batches. Slicing must preserve this exact caller policy.
 for (const id of ['m1a1', 'challenger3', 'c2_ariete']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   await facade.ensureTankBuilder(id);
   const options = { camoSeed: 4200, quality: 'ai', staticPreview: true,
     batchStatic: true, eraVisualBindingReceipt: false };

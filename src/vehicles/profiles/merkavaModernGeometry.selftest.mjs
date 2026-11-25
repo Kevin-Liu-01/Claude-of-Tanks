@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { verifyBarakBayNativeStock } from '../../../tools/barak-rear-bay-fill-policy.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const expected = {
   merkava4_trophy: { trophy: 'mk4', barak: false, namer: false },
@@ -17,6 +18,7 @@ const rayUp = (object, x, z) => new THREE.Raycaster(
 ).intersectObject(object, false)[0]?.point.y;
 
 for (const quality of ['high', 'low']) for (const [id, contract] of Object.entries(expected)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
   try {
     tank.root.updateMatrixWorld(true);

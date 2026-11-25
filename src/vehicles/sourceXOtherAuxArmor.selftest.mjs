@@ -11,6 +11,7 @@ import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import { near } from '../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from './fieldKitSurface.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const DONORS={k1a1:'k1e1',amx30b:'amx30',leclerc_xlr:'leclerc_s2',amx56:'leclerc_s2',type10:'type10_tk_x',type90:TKX_PROTOTYPE_FRAME,amx40:'amx40_proto'};
 // 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
 // finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
@@ -229,6 +230,7 @@ const selected=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')
 for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.includes(id))){
   preservation(id,donor);
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const census=fieldKitCensus();
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242,partCensus:census.partCensus});
     kit=fieldKitFilter(tank.root,census);

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { battleStaticDrawMerge, createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
@@ -99,6 +100,7 @@ for (const id of IDS) {
   await ensureTankBuilder(id);
   const spec = getSpec(id);
   for (const config of CONFIGS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const label = `${id} (${config.label})`;
     const options = { camoSeed: SEED, camoPattern: null, eraVisualBindingReceipt: false, ...config.options(id) };
     const source = createTank(id, null, options);

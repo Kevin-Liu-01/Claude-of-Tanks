@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const FIXTURE = 'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs';
 const IDS = ['c1_ariete_proto_serie1', 'c2_ariete_proto', 'k1e1', 'k2b', 'bmp3_rok', 'bwp1', 'chieftain_mk9'];
@@ -26,6 +27,7 @@ for (const file of ['ariete-prototypes-20261101.json', 'korea-k1e1-k2b-20261101.
     assert.equal(spec.armor.crew.length, target.crew, `${id}: its crew`);
     assert.equal(spec.armor.crew.some((c) => c.turretLocal), !target.unmannedTurret, `${id}: turret crew`);
     for (const quality of ['high', 'low']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
       tank.root.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(tank.root);

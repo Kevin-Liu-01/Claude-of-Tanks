@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createTank } = await import('./tankFactory.ts');
@@ -217,12 +218,13 @@ function equivalent(id, options, label) {
 
 const results = [];
 for (const [id, pin] of Object.entries(PINNED)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const bot = equivalent(id, BOT, 'bot');
   assert.equal(bot.saved, pin.saved, `${id}: pinned draws saved`);
   assert.deepEqual(bot.owners, pin.owners, `${id}: pinned merges per articulation owner`);
   results.push(bot);
 }
-for (const id of ['ua_m1a2_abrams', 'challenger3']) results.push(equivalent(id, PLAYER, 'player'), equivalent(id, GARAGE, 'garage'));
+for (const id of ['ua_m1a2_abrams', 'challenger3']) { await betweenBuilds(); results.push(equivalent(id, PLAYER, 'player'), equivalent(id, GARAGE, 'garage')); }
 
 // Side table: a folded source answers by name and by raycast face; a live mesh answers as itself.
 const tank = createTank('ua_m1a2_abrams', null, BOT);

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Explicit policy list: every production-visible vehicle with authored ERA,
 // reactive composite cassettes, or a first-party visual ERA package must opt
@@ -58,6 +59,7 @@ const uvSpan = (mesh) => {
 };
 
 for (const id of ERA_VEHICLE_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'low',
@@ -105,6 +107,7 @@ for (const id of ERA_VEHICLE_IDS) {
 // armor only. They guard against family inheritance turning ordinary boxes,
 // sensors, or the early T-80 brow into false ERA.
 for (const id of ['m1a1', 'm1a1ha', 't80', 't80b']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'low',

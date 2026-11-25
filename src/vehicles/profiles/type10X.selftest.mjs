@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE10_X_DATUMS} from './type10X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const hit=(root,origin,direction,far=20)=>new THREE.Raycaster(origin,direction,0,far).intersectObject(root,true)[0];
@@ -205,6 +206,7 @@ function spareLinksAndBacking(tank,quality) {
 }
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('type10',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);

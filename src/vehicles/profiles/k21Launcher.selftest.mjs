@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 await ensureInteriorFills(['k21']);
 assert.ok(hasInteriorFills('k21'), 'test requires the real generated K21 fills loaded');
@@ -15,6 +16,7 @@ const canonical=(x,v,n)=>new THREE.Vector3(x-.000015,v*cos+n*sin-.0138,-v*sin+n*
 const rawN=p=>(p.y+.0138)*sin+p.z*cos;
 const rows=[];
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('k21',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');

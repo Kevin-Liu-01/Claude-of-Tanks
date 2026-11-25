@@ -3,6 +3,7 @@ import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { auditTankWheelQuality } from '../wheelQuality.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Actual native stock, not receipt-only placement. This fixture deliberately
 // permits the newly authored end roles while protecting the six load stations.
@@ -100,6 +101,7 @@ function countTriangles(root) {
 await ensureInteriorFills(['type100']);
 const results = [];
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('type100', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
 // Restore only the owner's uniform 0.90 for the original world-space contact witnesses.

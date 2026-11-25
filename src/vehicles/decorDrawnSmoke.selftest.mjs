@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
 import { smokeSocketsFor } from './vehicleAuxiliaryGeometry.ts';
 import { AUXILIARY_INVENTORY } from './auxiliaryInventory.generated.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const sockets = (id, decor) => {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor });
@@ -19,6 +20,7 @@ const sockets = (id, decor) => {
 // PT-84's two Tellur banks
 const DRAWN = { m1a1: 12, m2a2_bradley: 8, t84bm_oplot_m: 8, t84: 12, bm_oplot_m: 8, leo1a5: 8, pt84_orzel: 24 };
 for (const [id, drawn] of Object.entries(DRAWN)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(sockets(id, false), drawn, `${id}: the build draws ${drawn} launcher mouths`);
   assert.equal(sockets(id, true), drawn, `${id}: no decor pair on top of the drawn launchers`);
   assert.equal(AUXILIARY_INVENTORY[id].smoke.length, drawn, `${id}: the inventory's salvo is the drawn mouths`);

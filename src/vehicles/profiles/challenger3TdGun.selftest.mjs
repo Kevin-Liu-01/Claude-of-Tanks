@@ -8,8 +8,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GUN_SLOT_KEEP_M, gunSlotProbe } from '../gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 for (const id of ['challenger3_td', 'challenger3_td_rws']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunSlotProbe(id);
   try {
     const { slot, pitchesDeg } = probe;

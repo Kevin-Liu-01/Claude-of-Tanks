@@ -13,11 +13,13 @@
 //     (t72b3m_2016, the stock chin) brings its mount within 20 mm of its hull at yaw 0-25.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = .020, BARREL_KEEP = .025;
 const IDS = process.env.GUN_MANTLET_IDS?.split(',') ?? ['t72b3m_hetman', 't72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
 const report = {};
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id, { suit: false });
   try {
     const { spec } = probe;

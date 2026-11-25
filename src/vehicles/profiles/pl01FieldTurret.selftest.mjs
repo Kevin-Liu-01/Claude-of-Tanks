@@ -3,9 +3,11 @@ import {Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
 import {createTank} from '../tankFactory.ts';
 import {vehicleNightLightEmittersFor} from '../vehicleNightLighting.ts';
 import {smokeSocketsFor} from '../vehicleAuxiliaryGeometry.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const material=new MeshBasicMaterial({side:DoubleSide});
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('pl01_105',null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});
   try {
     const turret=tank.root.getObjectByName('rig_turret');

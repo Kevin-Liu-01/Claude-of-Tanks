@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function meshes(t){const out=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)out.push(m);});return out;}
 function hit(m,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(m,false)[0];}
 const top=(m,x,z)=>hit(m,[x,1.8,z],[0,-1,0]);
@@ -63,6 +64,7 @@ function cageBounds(){
 }
 cageBounds();
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const m=meshes(t);rearCase(m);cradleSurfaces(m);cageSurfaces(m);actualAttachment(t);}
   finally{t.dispose();}

@@ -24,6 +24,7 @@ import {
   MARKSMAN_BODY, MARKSMAN_BODY_FACES, MARKSMAN_BORE, MARKSMAN_DRUM, MARKSMAN_MUZZLE_Z, MARKSMAN_RADAR, MARKSMAN_RINGS,
   MARKSMAN_TRUNNION, marksmanBodyPoint,
 } from './marksmanFrame.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const near = (a, b, tol, message) => assert.ok(Math.abs(a - b) <= tol, `${message}: ${a} vs ${b}`);
@@ -112,6 +113,7 @@ for (const { id, ring } of ROWS) {
   assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, `${id}: the gunner on the left (+x)`);
 
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242 });
     try {
       const root = tank.root;

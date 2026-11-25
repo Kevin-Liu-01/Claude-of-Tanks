@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XEngineDeck } from './chieftain10XEngineDeck.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const close = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected}`);
@@ -77,6 +78,7 @@ try {
 } finally { isolated.dispose(); }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {

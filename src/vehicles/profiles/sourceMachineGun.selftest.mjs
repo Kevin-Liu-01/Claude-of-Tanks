@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-09-30 (884384729 controls integration, 4c34b3e8b owner's remote roof weapons): all four source weapons are
 // remote stations on the turret. T-90M/SM wrap the exact fitting in their station's pitch group; the T-90A and
@@ -18,6 +19,7 @@ const SOURCE_AXES = [
   ['t90sm', 'modernSmRws', .584, 3.035, -.533, 0],
 ];
 for (const quality of ['high', 'low']) for (const [id, stationName, x, y, muzzleZ, bore] of SOURCE_AXES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
   const disposals = [];
   try {

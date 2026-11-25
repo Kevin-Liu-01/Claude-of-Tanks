@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-11-04 (release 268, the measured M1A1 shell, 41cf7c51ec): the FEP's and SA's commander towers stand
 // on the measured commander's station, 0.275 m inboard and 0.8815 m aft of the earlier shell's (profiles/abrams.ts cdx,
@@ -100,6 +101,7 @@ function structuralRoofTopAt(turretRig, x, z) {
 }
 
 for (const [id, expected] of Object.entries(TARGETS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

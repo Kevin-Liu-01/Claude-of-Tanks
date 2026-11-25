@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90AWTowCables} from './t90AwXTowCables.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 function hit(ms,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function interior(mesh,p,axis){const a=hit([mesh],p,axis,.15),b=hit([mesh],p,axis.map(n=>-n),.15);return Boolean(a&&b&&a.distance>0&&b.distance>0);}
 function sourceRays(ms){
@@ -35,6 +36,7 @@ function helperContacts(){
 }
 helperContacts();
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});sourceRays(ms);
     const hull=t.root.getObjectByName('hull'),detail=t.root.getObjectByName('hullDetail');

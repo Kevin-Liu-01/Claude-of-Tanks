@@ -7,6 +7,7 @@ import {tankPoseFromState,traceTank} from '../../sim/armor.ts';
 import {createCombatState,resolveShellHit} from '../../sim/damage.ts';
 import {createShell} from '../../sim/ballistics.ts';
 import {stripActivatedEra} from '../../game/eraActivation.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.cheek-heldouts.json',import.meta.url),'utf8'));
 function ray(ms,p,d,far=2){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function fittedSpec(t){
@@ -45,6 +46,7 @@ function stripAndAir(t,ms){
 }
 assert.equal(packet.rays.length,87);
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);
     const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});

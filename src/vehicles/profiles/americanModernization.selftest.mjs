@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { installNightEmissionMask, NIGHT_EMISSION_ATTRIBUTE } from '../../engine/nightEmissionMaterial.ts';
 import { vehicleNightLightEmittersFor } from '../vehicleNightLighting.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const make = (id) => createTank(id, null, {
   proceduralOnly: true,
@@ -90,6 +91,7 @@ function assertGunmetalFinish(part, material, label) {
 }
 
 for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const guns = fittings(tank.root,
     (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
@@ -135,6 +137,7 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
 }
 
 for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const gun = tank.root.getObjectByName('rig_gun');
   const receipt = gun?.userData.americanGunFinishReceipt;
@@ -181,6 +184,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
   ['m1a1_abrams_aim', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
   ['m1a1_abrams_fep', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
   assert.equal(turret.userData.americanArmorFinishReceipt?.eraSeparation,
@@ -317,6 +321,7 @@ for (const [id, expectedLoader, expectedShield] of [
   ['m1a1', 'm1a1-open-loader', 'open'],
   ['m1a1ha', 'm1a1ha-armored-loader', 'armored'],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const loader = fittings(tank.root,
     (object) => object.userData.americanWeaponStandard === 'american-m240-v1');
@@ -330,6 +335,7 @@ for (const [id, expectedLoader, expectedShield] of [
 for (const id of [
   'm1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
   assert.equal(turret?.userData.americanArmorFinishReceipt?.mechanicalGunmetalTone,

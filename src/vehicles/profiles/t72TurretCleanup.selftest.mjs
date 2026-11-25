@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const EPSILON = 1e-6;
 const triangleCount = (object) => {
@@ -36,6 +37,7 @@ const REBUILDS = Object.freeze({
   bmpt_terminator2: { donor: 't72b3m_2016', turretEra: false },
 });
 for (const [id, expected] of Object.entries(REBUILDS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = build(id);
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');

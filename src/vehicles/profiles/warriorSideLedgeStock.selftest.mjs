@@ -8,6 +8,7 @@ import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { buildFv510MilanX } from './fv510MilanX.ts';
 import { KIT } from './kit.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent complete-source FrontSide calipers, never source topology.
 // Canonical source SHA e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04.
@@ -211,6 +212,7 @@ try {
         'a retained but retracted panel has no stock at the J return seat');
     } finally {unseated.dispose();}
     for(const mutation of ['delete-right-ledge','fill-open-corridor']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const negative=buildCaptured(quality,mutation);
       try {assert.throws(()=>checkWitnesses(negative.tank.root),assert.AssertionError,`${mutation} is rejected`);}
       finally {negative.dispose();}

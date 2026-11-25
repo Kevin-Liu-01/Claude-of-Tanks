@@ -8,9 +8,11 @@
 // stop over the glacis (-14 degrees at yaw 0, the sleeve into the tiles) must fail the same measure.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180, T0 = Date.now();
 for (const id of ['ztz20', 'ztz20_prototype', 'ztz100']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id);
   try {
     const spec = probe.spec;

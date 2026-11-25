@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const EPS = 1e-4;
 const PIVOT = new THREE.Vector3(0, 0.27, 0.50);
@@ -96,6 +97,7 @@ const restoredMarkedTriangles = [
 ];
 
 for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

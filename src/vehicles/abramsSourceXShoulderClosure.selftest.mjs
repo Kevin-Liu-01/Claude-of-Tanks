@@ -4,12 +4,14 @@ import { createTank } from './tankFactory.ts';
 import { registerProfiledBuilders, KIT } from './tankFactoryCore.ts';
 import { buildAbramsX } from './profiles/abramsSourceX.ts';
 import { ABRAMS_SOURCE_X_IDS } from './abramsSourceXSpecs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const material = new T.MeshBasicMaterial({ side: T.FrontSide });
 const vec = values => new T.Vector3(...values);
 const ray = (meshes, p, d, far) => new T.Raycaster(vec(p), vec(d), 0, far).intersectObjects(meshes, false);
 let builds = 0, counterexamples = 0, contacts = 0, preservedAir = 0;
 for (const quality of ['high', 'low']) for (const id of ABRAMS_SOURCE_X_IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const existing = [], added = [];
   registerProfiledBuilders({ [id]: P => buildAbramsX(new Proxy(P, { get(target, key) {
     if (key !== 'add' && key !== 'addEquipment') return Reflect.get(target, key);

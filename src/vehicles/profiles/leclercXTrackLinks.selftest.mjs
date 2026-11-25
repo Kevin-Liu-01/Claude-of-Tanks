@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {KIT} from '../tankFactoryCore.ts';
 import {trackPatternFor} from '../trackPatterns.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The frozen legacy shoe-primitive digests, shoe instance-matrix digest and wheel/carrier position digests are
 // retired: whole-tank change detection of leclerc_xlr is the fleet geometry ledger's.
@@ -34,6 +35,7 @@ function checkLink(g){
 }
 try{
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank('leclerc_xlr',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       const root=tank.root;root.updateMatrixWorld(true);
@@ -71,6 +73,7 @@ try{
   // primitive. Keep this second scope explicit instead of testing only one
   // caller and claiming the whole optimization was verified.
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank=createTank('amx56',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       for(const [name,budget]of[['gearTrackPads',276],['gearTrackPadsSimplified',174]]){

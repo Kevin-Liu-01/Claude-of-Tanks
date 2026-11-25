@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source scalars, not imported candidate dimensions or a donor
 // fallback. The source's 15.6mm-proud marker and conical hole are not targets.
@@ -106,6 +107,7 @@ function checkGearAndMachineGun(tank){
   near(axis.distanceTo(new THREE.Vector3(0,0,-1)),0,.000002,'the gun lies aft along its declared +Z, as the source stock did');
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);checkFrames(tank);checkBore(tank);checkCassettePlanes(tank);checkGearAndMachineGun(tank);}
   finally{tank.dispose();}

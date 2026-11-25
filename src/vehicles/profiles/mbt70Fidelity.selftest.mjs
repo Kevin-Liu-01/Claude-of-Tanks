@@ -10,6 +10,7 @@ import { createTankState, SIM_DT } from '../../sim/movement.ts';
 import { createShell, stepShell } from '../../sim/ballistics.ts';
 import { createCombatState, selectShell } from '../../sim/damage.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const spec = getSpec('mbt70');
 assert(spec, 'MBT-70 is registered');
@@ -143,6 +144,7 @@ const gunMount = gunRig.getObjectByName('gunMount');
 // receipt label; and (2026-10-22) its wide end grows out of the mantlet face with no air between them: just behind the
 // face the casting stands over the collar's base radius, just in front of it the cast fillet ring does.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank('mbt70', null, { proceduralOnly:true, geometryReceipt:true, quality });
   try {
     const pitch=visual.root.getObjectByName('rig_gun'),mount=pitch.getObjectByName('gunMount');

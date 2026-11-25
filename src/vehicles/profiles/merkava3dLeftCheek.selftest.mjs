@@ -4,6 +4,7 @@ import '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
 import '../sourceXFleetSpecs.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Owner-selected faces94/95/114 are the forward negative-X shoulder, not the
 // positive-X armor module corrected previously. These independent stations
@@ -31,6 +32,7 @@ function assertContinuous(mesh) {
 }
 await ensureInteriorFills(['merkava3d']);
 for (const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('merkava3d',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     const turret=tank.root.getObjectByName('turret'),rig=tank.root.getObjectByName('rig_turret');

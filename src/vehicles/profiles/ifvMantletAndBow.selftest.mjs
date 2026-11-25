@@ -3,6 +3,7 @@ import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // These rays query native factory geometry. In particular the bow samples
 // fall below the old upper wedge and expose the unwanted tall box directly.
@@ -27,6 +28,7 @@ function assertHullClearance(tank, mount, label) {
   }
 }
 for(const quality of ['high','low']) for(const row of rows) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(row.id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
@@ -75,6 +77,7 @@ for(const quality of ['high','low']) for(const row of rows) {
 // The new armor masks have finite returns, a central circular gland, and
 // actual pitch-axis bearings. Barrel recoil must leave the mask seated.
 for(const quality of ['high','low']) for(const id of ['cv9040c','bmp3m_dragun125']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,batchStatic:false});
   try {
     const frame=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount');

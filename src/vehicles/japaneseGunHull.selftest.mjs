@@ -8,9 +8,11 @@
 //   - negative control: at its bare -6 (no curve) each barrel comes within 25 mm of its hull somewhere.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep } from './gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = .020, BARREL_KEEP = .025, report = {};
 for (const id of ['stb1', 'type74']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id, { suit: false });
   try {
     const { spec } = probe;

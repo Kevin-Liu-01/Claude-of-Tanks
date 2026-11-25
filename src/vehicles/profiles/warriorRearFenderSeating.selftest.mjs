@@ -9,6 +9,7 @@ import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { buildFv510MilanX } from './fv510MilanX.ts';
 import { KIT } from './kit.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source-only Object_21 calipers, canonical SHA e568badc436980b9f2b718db9786120f
 // cc7527b7fe6465c3efa66889fa208c04. The supplied model is never loaded by this
@@ -76,6 +77,7 @@ function buildCaptured(quality, shiftFlapZ=0) {
 }
 try {
   for(const quality of ['high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const captured=buildCaptured(quality),{tank,guards,hull}=captured;
     try {
       const root=tank.root;root.updateMatrixWorld(true);

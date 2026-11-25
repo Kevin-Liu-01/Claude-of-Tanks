@@ -13,6 +13,7 @@ import {leopardReturnRollers} from './leopardReturnRollers.ts';
 import {matrix,finiteClearance,continuousShoeClearance,moving,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const cases=[['leo2a7v',buildLeopard2A7VX],['leo2a5m',buildLeopard2A4MX],
  ['leo2a5',buildLeopard2A5X],['leo2_revolution',buildLeopardRevolution],['kf51_panther',buildKF51X]];
@@ -161,6 +162,7 @@ function a5Lining(current,quality,bounds){
  }finally{current.cfg.trackCarrierFromOuterFace=true;current.gear.resetPose();current.gear.update(0,0);plain.dispose();}
 }
 for(const [id,build]of selected)for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const current=capture(id,build,quality);
  const omitted=id==='leo2a5'?null:capture(id,build,quality,false,true);
  try{
@@ -247,6 +249,7 @@ for(const [id,build]of selected)for(const quality of['high','low']){
  assert.equal(disposedRotors,1);assert.equal(disposedRotorInstances,1);
 }
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const control=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
  try{
   assert.equal(control.root.getObjectByName('gearReturnRollerTires').count,8,'Existing A6M rollers retained');

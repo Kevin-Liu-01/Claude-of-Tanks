@@ -6,6 +6,7 @@ import { addChieftain10XBowLights } from './chieftain10XBowLights.ts';
 import { addChieftain10XRearSupport } from './chieftain10XRearSupport.ts';
 import { addChieftain10XRearEquipment } from './chieftain10XRearEquipment.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const ray = (objects, origin, direction, far = 8) => new THREE.Raycaster(new THREE.Vector3(...origin),
   new THREE.Vector3(...direction), 0, far).intersectObjects(objects, false)[0];
 const coordinate = (objects, origin, direction, axis, expected, tolerance, label) => {
@@ -88,6 +89,7 @@ function capture(helper, ...args) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   const upper = capture(addChieftain10XUpperFittings, [0, 0, 0]);

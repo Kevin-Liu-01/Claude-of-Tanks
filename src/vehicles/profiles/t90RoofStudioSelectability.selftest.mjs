@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { collectSurfacePickTargets } from '../../gallery/surfaceMarkup.ts';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const EPSILON = 1e-6;
 
@@ -11,6 +12,7 @@ const ROOF_WEAPONS = Object.freeze({
 });
 
 for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

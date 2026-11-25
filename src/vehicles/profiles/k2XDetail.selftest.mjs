@@ -5,12 +5,14 @@ import '../sourceXFleetSpecs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { K2_X_PROFILES } from './k2X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 registerProfiledBuilders({ k2_black_panther: K2_X_PROFILES.k2_black_panther.build });
 const top=(root,x,z)=>new THREE.Raycaster(new THREE.Vector3(x,5,z),
   new THREE.Vector3(0,-1,0),0,6).intersectObject(root,true)[0]?.point.y;
 
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('k2_black_panther',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);

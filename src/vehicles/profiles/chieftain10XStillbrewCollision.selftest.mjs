@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftainMk10X } from './chieftain10X.ts';
 import { traceTank } from '../../sim/armor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const point = p => new THREE.Vector3(...p);
 const zeroPose = { pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
@@ -122,6 +123,7 @@ function negativeAir(armor, yaw, root) {
 
 const failures = [];
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { tank, solids } = build(quality);
   const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   try {

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // the build's smoke sockets (vehicleAuxiliaryGeometry.ts: one per marked discharger aperture, on the merged meshes)
 const smokeApertures = (root) => { let n = 0; root.traverse((o) => { n += o.userData.smokeSockets?.length ?? 0; }); return n; };
@@ -30,6 +31,7 @@ for (const [list, seed, perSide] of [['hullPlates', 'skirt', 8], ['turretPlates'
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const build = (id) => createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   const tanks = Object.fromEntries(['type10', 'type10_tk_x', 'type10b', 'type10_dozer'].map((id) => [id, build(id)]));
   try {

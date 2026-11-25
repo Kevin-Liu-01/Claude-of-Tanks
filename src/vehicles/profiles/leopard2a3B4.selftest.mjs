@@ -28,6 +28,7 @@ import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
 import { LEO2A3B4_TURRET as T, LEO2A3B4_PROTECTION } from '../leopard2a3B4Armor.ts';
 import { tankPoseFromState, traceTank } from '../../sim/armor.ts';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const options = { proceduralOnly: true, geometryReceipt: true, batchStatic: false, decor: false, camoSeed: 4242 };
@@ -71,7 +72,12 @@ const stock = (id) => {
   tank.dispose();
   return out;
 };
-const built = Object.fromEntries(EARLY.map((id) => [id, stock(id)])), base = stock('christian2');
+const built = {};
+for (const id of EARLY) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
+  built[id] = stock(id);
+}
+const base = stock('christian2');
 const pick = (meshes, test) => new Map([...meshes].filter(([key]) => test(key.split('/').pop())));
 const running = (name) => /^(gear|track)/.test(name);
 for (const id of EARLY) {
@@ -101,6 +107,7 @@ assert.deepEqual(pick(built.leo2a3, (n) => n === 'hullDetail'), pick(built.leo2a
 
 // 3. the turret datums are the vehicle drawn
 for (const id of EARLY) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { ...options, quality: 'high' });
   try {
     tank.root.updateMatrixWorld(true);
@@ -115,6 +122,7 @@ for (const id of EARLY) {
 
 // 4. the guns over their hulls
 for (const id of EARLY) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const probe = gunHullProbe(id);
   try {
     const worst = gunHullSweep(probe, probe.spec);

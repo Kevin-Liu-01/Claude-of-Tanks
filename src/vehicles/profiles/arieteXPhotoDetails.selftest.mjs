@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { KIT, registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildArieteX } from './arieteXPhotoDraft.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Isolated historical photo construction, not current supplied-file acceptance.
 // 2026-09-22: the photo-draft wheel primitives (bowl + hub nuts) left with the nation wheel standard; this
@@ -72,6 +73,7 @@ function roofChecks(root) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original = KIT.buildRunningGear; let gear;
   KIT.buildRunningGear = (port, cfg) => { gear = original(port, cfg); return gear; };
   let tank;

@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {addT90AWCastUnderside} from './t90AwXCastUnderside.ts';
 import {T90_AW_X_SOURCE_DATUMS as D} from '../t90AwXArmor.ts';
 import {seatTurretOverDeck} from '../turretSeatRace.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.cast-underside-heldouts.json',import.meta.url),'utf8'));
 const pivot=new THREE.Vector3(...D.turretPivot),mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const key=p=>p.toArray().map(n=>Math.round(n*1e6)).join(',');
@@ -96,6 +97,7 @@ try{
   unchangedUpper(own[0].geometry);sourceRays(own,'helper');
   const ringVolume=closed(own[1].geometry);assert.ok(ringVolume>.097&&ringVolume<.100,'annular volume excludes its actual central aperture');
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       t.root.updateMatrixWorld(true);const original=t.root.getObjectByName('turret');assert.ok(original?.isMesh);

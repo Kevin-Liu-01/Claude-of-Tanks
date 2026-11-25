@@ -14,6 +14,7 @@ import { KIT } from './tankFactoryCore.ts';
 import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const out = new Float32Array(64);
@@ -26,6 +27,7 @@ const ascending = (pairs) => pairs.every((p, i) => i === 0 || pairs[i - 1][0] <=
 // ---- 1. real hulls on the battle's frame path: the pairs are the drawn wheels, read live
 const rows = [];
 for (const id of ['t90am', 'm1a1_abrams_hc', 'bmp2']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
   try {

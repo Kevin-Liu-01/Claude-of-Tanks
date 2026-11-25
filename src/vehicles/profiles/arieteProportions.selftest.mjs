@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 269: the new turret's walls (profiles/arieteProtoTurret.ts) on their recorded plane, both sides
 function countWallFaces(mesh, wallXM) {
@@ -57,6 +58,7 @@ function countPreserieGlacisRearFaces(mesh, rearStationZM) {
 }
 
 for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   assert.deepEqual(spec.dims, {

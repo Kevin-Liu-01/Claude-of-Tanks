@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMGunSaddles} from './t90SMXGunSaddles.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source misc_b mid-span rays, not builder-derived targets.
 const SOURCE=[
@@ -80,6 +81,7 @@ function testPoseOwnership(tank,gun,label) {
   assert.ok(gun.geometry === geometry,`${label}: pitch and recoil preserve creation-time buffers`);
 }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),helper=helperParts(material);
   try {

@@ -18,6 +18,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { shellPart } from '../../../tools/base-shell-audit-math.mjs';
 import { properSurfaceCrossings, shellEdgeTopology } from '../../../tools/base-shell-integrity.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 /** Published figures (m) and the gear the sources give each mark. */
 const SOURCES = {
@@ -45,6 +46,7 @@ assert.equal(within(2.962, SOURCES.m48a5_patton.turretWidth), false, 'the 2.96 m
 
 const shells = {};
 for (const [id, src] of Object.entries(SOURCES)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const emissions = [];
   const tank = createTank(id, null, {
     proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true,
@@ -114,6 +116,7 @@ console.log('pattonCastProportions: the M46, M47, M48A5 and the M48 marks\' cast
 // packet and the photo-critic PASS): each mark's as-built envelope, the whole tank's bounds as the packet check reads
 // them, within the packet's 3%
 for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const packet = JSON.parse(readFileSync(new URL(`../../../docs/references/photos/${id}-20261029.json`, import.meta.url), 'utf8'));
   const target = packet.targets[id];
   assert.equal(target.test, 'src/vehicles/profiles/pattonCastProportions.selftest.mjs', `${id}: the packet names this fixture`);
@@ -133,6 +136,7 @@ console.log('pattonCastProportions: the four M48 marks hold their photo packets\
 // stations, each under its own name (the commander's and the loader's, roofWeaponPolicy's census)
 const latrun = JSON.parse(readFileSync(new URL('../../../docs/references/photos/magach-latrun-20261031.json', import.meta.url), 'utf8'));
 for (const id of ['magach6b', 'magach7c']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const target = latrun.targets[id];
   assert.equal(target.test, 'src/vehicles/profiles/pattonCastProportions.selftest.mjs', `${id}: the packet names this fixture`);
   const spec = getSpec(id);

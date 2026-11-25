@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMFrontEra } from './t90SMXFrontEra.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function ray(root, origin, direction, far = 12) {
   return new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far)
@@ -78,6 +79,7 @@ for (const [tab, leaf, leg, mapX] of [[24, 26, 27, x => x], [25, 28, 29, x => -x
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('t90sm', null, { quality, proceduralOnly: true, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);

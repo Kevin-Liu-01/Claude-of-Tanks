@@ -20,6 +20,7 @@ import {
   turretRingRadius,
 } from './turretRingWell.ts';
 import { getSpec } from './specs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 /** The burn hook's field at a hull-frame point, at full depth (materials.ts CRUMPLE_NORMAL_GLSL). */
 function field(dents, x, y, z) {
@@ -246,6 +247,7 @@ for (const [build, options] of [
   ['bot', { camoSeed: 77, quality: 'low', geometryQuality: 'low', batchStatic: true, battleDetailLod: true, eraVisualBindingReceipt: false }],
   ['player', { camoSeed: 77, quality: 'low', geometryQuality: 'high', batchStatic: true, battleDetailLod: false, eraVisualBindingReceipt: false }],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank('vt4a1', null, options);
   const root = visual.root, hull = root.getObjectByName('rig_hull');
   const held = new Map();

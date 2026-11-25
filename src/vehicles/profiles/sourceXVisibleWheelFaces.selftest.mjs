@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 // Source axle/radius witnesses are independent of the runtime receipt.
 // 2026-09-22 (owner: "russia uses the t-90, t-90m, object148_proto armata, and bmp 3m dragun wheels"): every Soviet-pattern
 // MBT hull below draws the T-90 nation construction (the T-90M X source-pressed face over the fleet pressed disc,
@@ -124,8 +125,9 @@ function check(id,fixture,quality) {
     console.log(`${id}/${quality}: ${witnesses} first-visible painted-face rays, closed tires and fixed source axles`);
   } finally {tank.dispose();}
 }
-for(const [id,fixture] of Object.entries(CASES)) for(const quality of ['high','low']) check(id,fixture,quality);
+for(const [id,fixture] of Object.entries(CASES)) for(const quality of ['high','low']) { await betweenBuilds(); check(id,fixture,quality); }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tires=id=>{const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{const mesh=tank.root.getObjectByName('gearRoadWheelTires');
       return{matrices:Array.from(mesh.instanceMatrix.array.subarray(0,mesh.count*16)),

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {KIT} from './kit.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source Object_10 sheet component and receiving plane, canonical source
 // SHA506a31e984730c4ab6a398a4f1305a2fe6220960699842d8ed62ec0b4a2658f0.
@@ -14,6 +15,7 @@ for(const filled of[false,true]) {
   if(filled)await ensureInteriorFills(['ajax']);
   assert.equal(hasInteriorFills('ajax'),filled,'cold/filled state is explicit');checks++;
   for(const quality of[undefined,'high','low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     assert.equal(hasInteriorFills('ajax'),filled,'a preceding build cannot secretly load fills');checks++;
     let gear;
     const build=KIT.buildRunningGear;

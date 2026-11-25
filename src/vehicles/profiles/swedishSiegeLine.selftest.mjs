@@ -6,6 +6,7 @@ import { tankTier } from '../tier.ts';
 import { NATIVE_FAMILY_ORDER } from '../fleetOrder.ts';
 import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const LINE = ['udes03', 'strv103a', 'strv103b'];
 const TIERS = [1, 2, 2]; // 258: matchmaking reads the shown tier (the 257 capability re-tier)
@@ -54,6 +55,7 @@ for (let i = 0; i < LINE.length; i++) {
 
 const flatTerrain = { getHeightAt: () => 0, getGroundType: () => 'hard' };
 for (const spec of specs) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const state = createTankState(spec, new THREE.Vector3(), 0);
   const reachableAim = new THREE.Vector3(0, 28, 180);
   const entity = {
@@ -158,6 +160,7 @@ assert.ok(udes.root.getObjectByName('gearTrackBandL'), 'UDES 03 has one deformab
 assert.ok(udes.root.getObjectByName('gearTrackBandR'), 'UDES 03 has one deformable right track band');
 
 for (const spec of specs) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const visual = createTank(spec.id, null, { proceduralOnly: true, geometryReceipt: true });
   const state = createTankState(spec, new THREE.Vector3(), 0);
   const wheels = visual.root.getObjectByName('gearRoadWheelTires');

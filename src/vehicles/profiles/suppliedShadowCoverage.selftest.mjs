@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Fixed source-stock calipers, authenticated against the current source-derived stock.
 // These are actual shadow extrema after the existing 50 mm body inset, not
@@ -51,6 +52,7 @@ function support(meshes, owner, direction) {
 }
 const receipts = [];
 for (const quality of ['high', 'low']) for (const id of ids) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (Object.hasOwn(cases, id)) assert.ok(hasInteriorFills(id), `${id}: real generated fills loaded`);
   const tank = createTank(id, null, { proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true, batchStatic: false });
   try {

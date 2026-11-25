@@ -9,6 +9,7 @@ import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { internalLayoutFor } from '../internalLayoutRegistry.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const spec = TANK_SPECS.type100;
 // Preserve native physical witnesses under the owner's explicit 0.90 resize.
@@ -154,6 +155,7 @@ function count(root) {
 const result=[];
 await ensureInteriorFills(['type100']);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   pieces=[];const tank=createTank('type100',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((l,i)=>l.object.visible=i===0);}});
   tank.root.traverse(o=>{if(o.isMesh)o.geometry.computeBoundingBox();});

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const BRADLEY_DONOR_IDS = [
   'm2a2_bradley',
@@ -12,6 +13,7 @@ const BRADLEY_DONOR_IDS = [
 
 for (const id of BRADLEY_DONOR_IDS) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, {
       proceduralOnly: true,
       quality,

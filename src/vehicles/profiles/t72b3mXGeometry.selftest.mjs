@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source-only circle/axis measurements, not candidate bounds.
 const SOURCE={yaw:[.0000072471277,1.52948397398,.1143146502203],
@@ -96,6 +97,7 @@ function gearAndFitting(tank){
 }
 const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);frames(tank);bore(tank);covers(tank);gearAndFitting(tank);}
   finally{tank.dispose();}

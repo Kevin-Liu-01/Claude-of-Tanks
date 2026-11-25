@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ROOF_GUN_BEARING_DEG } from './t90.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-10-30 (lane t90-family-266): the earlier T-90 marks build from their source-X twins, whose own receipts hold
 // their roof weapons (t90XTwins.selftest.mjs holds the wiring); the Burlak prototype keeps its own turret and station.
@@ -14,6 +15,7 @@ const CASES = Object.freeze({
   }),
 });
 for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -71,6 +73,7 @@ const bearing = (id) => {
 };
 const twinBearings = new Map();
 for (const [id, twin] of Object.entries(TWINS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (!twinBearings.has(twin)) twinBearings.set(twin, bearing(twin));
   const mine = bearing(id), theirs = twinBearings.get(twin);
   assert.ok(mine.length > 0, `${id}: has a roof station`);

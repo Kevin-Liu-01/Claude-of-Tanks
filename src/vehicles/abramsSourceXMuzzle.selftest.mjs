@@ -7,6 +7,7 @@ import {createTank} from './tankFactory.ts';
 import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {buildAbramsSourceXEquipment} from './profiles/abramsSourceXEquipment.ts';
 import { nearStrict as near } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const pieces=sourceMuzzleAssembly(),material=new T.MeshBasicMaterial({side:T.FrontSide});
 assert.equal(new Set(pieces.map(p=>p.name)).size,pieces.length);
@@ -97,6 +98,7 @@ for(const p of pieces)p.geometry.dispose();material.dispose();
 
 let poses=0;
 for(const id of ABRAMS_SOURCE_X_IDS)for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,materialMode:'geometry-only',batchStatic:false,camoSeed:4242});
  tank.root.updateMatrixWorld(true);
  const gun=tank.root.getObjectByName('rig_gun'),turret=tank.root.getObjectByName('rig_turret');

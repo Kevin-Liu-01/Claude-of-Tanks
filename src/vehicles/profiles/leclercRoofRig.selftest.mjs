@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const near = (a, b, epsilon = 1e-4) => Math.abs(a - b) <= epsilon;
 const hasVertexAtX = (mesh, x, epsilon = 1e-4) => {
@@ -32,6 +33,7 @@ const localRayHits = (mesh, origin, direction, far = 4) => {
     .map((hit) => mesh.worldToLocal(hit.point.clone()));
 };
 for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

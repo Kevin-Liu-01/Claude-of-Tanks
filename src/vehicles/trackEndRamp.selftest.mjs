@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // End-wheel re-lay (owner 2026-09-18: "the tracks appear sticky to the wheels … morphing to stick onto the wheels").
 // At rest the loaded run leaves each outer road wheel on the common external tangent to the idler / sprocket wrap.
@@ -35,6 +36,7 @@ const cellsOf = (band) => {
 };
 const results = [];
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {

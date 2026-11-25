@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { M60_TRACK_FINISH } from './patton.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Release 266 (the M60 batch): the M60A1 and M60A3 are rebuilt at true size on new measured castings
 // (pattonCast.ts buildM60CastSteps; Main's rulings 2026-10-28: the 0.9 compact envelope retired, the M60A3's ERA off).
@@ -16,6 +17,7 @@ const worldGeometryCenter = (mesh) => {
 };
 
 for (const id of ['m60a1', 'm60a3']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   const turret = tank.root.getObjectByName('rig_turret');
   const hull = tank.root.getObjectByName('rig_hull');

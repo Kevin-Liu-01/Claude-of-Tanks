@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import {addT90VFrontGuard} from './t90VXFrontGuards.ts';
 import {addT90AXFenderClosures} from './t90AXFenderClosures.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The frozen pre-wrapper world-vertex multisets (and their historical Shtora / SM tire-face replays) are retired:
 // whole-tank change detection of the four T-90 X hulls is the fleet geometry ledger's. Kept: the independently
@@ -152,6 +153,7 @@ function assertZone(tank,row,snapshots,label) {
 
 const anchorFailures=[];
 for(const id of IDS)for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true});
   try {
     const label=`${id}/${quality}`,spec=getSpec(id);

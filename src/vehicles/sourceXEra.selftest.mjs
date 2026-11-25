@@ -8,6 +8,7 @@ import { stripActivatedEra } from '../game/eraActivation.ts';
 import { createShell } from '../sim/ballistics.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { createCombatState, resolveShellHit } from '../sim/damage.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEFAULT_IDS=['leo2a7v','leo2a6m','merkava3d','kf51_panther',
   't90a','t90a_vladimir','t90m','t90sm','t14_armata'];
@@ -76,6 +77,7 @@ function actualFaceWitnesses(visual,spec,owner,plate,label){
 
 let zones=0,faces=0;
 for(const id of ids)for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const original=getSpec(id),donor=getSpec(SOURCE_X_DONORS[id]);
   const donorStats=new Map(eraRows(donor).map(({plate})=>[plate.name,stats(plate)]));
   const own=ID_ONLY_ERA[id]??{},ownNames=new Set(eraRows(original).map(({plate})=>plate.name));

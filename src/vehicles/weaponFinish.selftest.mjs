@@ -26,6 +26,7 @@ import {
 } from './weaponFinish.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // ---- textures: deterministic and in range -----------------------------------------------------------------------
 {
@@ -194,6 +195,7 @@ const visuals = [];
 const tally = { steel: 0, worn: 0, ammo: 0, paint: 0, other: 0 };
 try {
   for (const id of IDS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     visuals.push(visual);
     let weaponMeshes = 0;

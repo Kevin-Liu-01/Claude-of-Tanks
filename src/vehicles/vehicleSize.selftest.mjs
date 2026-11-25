@@ -7,6 +7,7 @@ import {getSpec,TANK_SPECS} from './specs.ts';
 import {applyVehicleSizePolicy,VEHICLE_SIZE_FACTORS} from './vehicleSizePolicy.ts';
 import {synchronizeSuppliedSourceCombatMetadata} from './suppliedSourceFleetSpecs.ts';
 import {synchronizeSecondWaveXCombatMetadata} from './sourceXSecondWaveSpecs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 for(const [id,name] of Object.entries({k21:'K21',cv90105_tml:'CV90105 TML',cv9040c:'CV9040C',cv90_mk4:'CV90 Mk 4',sabra_mk2:'Sabra Mk 2',kf41_lynx:'KF41 Lynx',puma_s1:'Puma S1',ajax:'Ajax',griffin50mm:'Griffin 50 mm',spz_wotan:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
 const before=JSON.parse(readFileSync(new URL('./vehicleSizeBaseline.fixture.json',import.meta.url)));
 const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${label}: ${a} != ${b}`);
@@ -44,6 +45,7 @@ for(const [id,b] of Object.entries(before)){
  const spec=getSpec(id);
  for(const key of Object.keys(b.dims))near(spec.dims[key],b.dims[key]*factor,`${id}/${key}`);
  for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality});
   try{
    t.root.updateMatrixWorld(true);

@@ -13,6 +13,7 @@ import { WHEEL_PAINT_FLOOR_LUMINANCE, linearLuminance } from './wheelPaintFloor.
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { auditTankWheelQuality } from './wheelQuality.ts';
 import { createTank } from './tankFactory.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // ---- the table: disjoint roles, every fixed palette hex inside its own window, the paint floor inside the paint window
 {
@@ -97,6 +98,7 @@ const SAMPLE = [
 let audited = 0;
 for (const id of SAMPLE) {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, batchStatic: false });
     try {
       const issues = auditTankWheelQuality(tank.root).issues.filter((issue) => String(issue.code).startsWith('running-gear-'));

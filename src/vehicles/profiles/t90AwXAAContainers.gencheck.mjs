@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90AWAAContainers} from './t90AwXAAContainers.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.aa-containers-heldouts.json',import.meta.url),'utf8'));
 function hit(ms,p,d,far=2){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function inside(m,p){return hit([m],p,[0,1,0],.5)&&hit([m],p,[0,-1,0],.5);}
@@ -20,6 +21,7 @@ function helper(){
 }
 helper();assert.equal(packet.rays.length,24);
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
     for(const r of packet.rays){const h=hit(ms,r.origin,r.direction);assert.ok(h&&h.point.distanceTo(new THREE.Vector3(...r.point))<.006,`${quality} whole-source ${r.label}: ${h?.point.toArray()} vs ${r.point}`);

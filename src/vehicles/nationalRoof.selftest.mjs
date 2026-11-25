@@ -7,10 +7,12 @@ import {NATIONAL_DONOR_TURRETS} from './nationalDonorTurrets.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 
 import {topIndex} from './roofSweep.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 for(const quality of ['high','low']){
  const shapes=new Set(),shapeOf={};
  for(const [id,l] of Object.entries(NATIONAL_ROOF_LOADOUTS)){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   const turret=tank.root.getObjectByName('rig_turret'),station=turret.getObjectByName(l.name),pitch=station?.getObjectByName('auxiliaryWeaponPitch');
   assert(station&&pitch,`${id}: full yaw and pitch ownership`);

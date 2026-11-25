@@ -3,6 +3,7 @@ import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { sourceOpeningRayProbe } from '../../../tools/source-opening-rays.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source wheel18 first-hit calipers, canonical SHA
 // 72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870.
@@ -76,6 +77,7 @@ function negativeControls(root, centers) {
 }
 await ensureInteriorFills(['namer_ifv']);
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('namer_ifv', null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   try {
     const centers = wheelCenters(tank.root);

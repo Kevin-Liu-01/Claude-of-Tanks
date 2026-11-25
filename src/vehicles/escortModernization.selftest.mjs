@@ -5,9 +5,11 @@ import {getSpec} from './specs.ts';
 import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
 import {VEHICLE_SIZE_FACTORS} from './vehicleSizePolicy.ts';
 import {traceTank,tankPoseFromState} from '../sim/armor.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const mat=new MeshBasicMaterial({side:DoubleSide}),ray=new Raycaster();
 const pose=tankPoseFromState({pos:new Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 for(const quality of ['high','low'])for(const [id,c] of Object.entries(ESCORT_FIELD_KITS)){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const spec=getSpec(id),f=VEHICLE_SIZE_FACTORS[id]??1,t=createTank(id,null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
  const proxies=[];
  try{

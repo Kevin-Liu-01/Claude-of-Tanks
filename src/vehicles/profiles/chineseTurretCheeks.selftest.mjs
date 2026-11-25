@@ -17,6 +17,7 @@ import { createTank } from '../tankFactory.ts';
 import { addChineseThroatStock } from './chineseGunOpening.ts';
 import { CHINESE_TURRET_OUTLINES, cheekFaceQuad } from './chineseTurretOutlines.ts';
 import { outlineSolid } from './chineseTurretSolid.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const GUN_Z = { ztz99a2: 0.78, ztz99a: 0.75, vt4a1: 0.75 };
 const TILES = { ztz99a2: 36, ztz99a: 8, vt4a1: 8 };
@@ -124,6 +125,7 @@ function assertDisjoint(label, records) {
 const report = [];
 for (const [id, o] of Object.entries(CHINESE_TURRET_OUTLINES)) {
   // rings stacked upward with one correspondence
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   for (let k = 1; k < o.rings.length; k++) {
     assert.equal(o.rings[k].length, o.rings[0].length, `${id}: ring ${k} keeps the vertex correspondence`);
     o.rings[k].forEach((p, i) => assert(p[1] >= o.rings[k - 1][i][1], `${id}: ring ${k} vertex ${i} stands on the ring under it`));

@@ -26,6 +26,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec, TANK_SPECS } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { near } from '../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 function rig(id, options = {}) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, ...options });
@@ -125,6 +126,7 @@ function rig(id, options = {}) {
 const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
   'type87_aw', 'marksman_t55', 'itpsv_leopard2', 'k30_biho', 'pza_loara'];
 for (const id of TWIN_PLANT) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);
   const { visual, state, recoilG, turretG, barrelGs } = rig(id);
@@ -210,6 +212,7 @@ for (const id of TWIN_PLANT) {
 // coasts to rest. 276: the M6 Linebacker's GAU-12/U rides the same path, five barrels on its own rotor, and a Stinger
 // launch leaves it still. Every other id carries no rotor.
 for (const [id, barrels] of [['m163_vads', 6], ['m6_linebacker', 5]]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { visual, state, recoilG } = rig(id);
   const rotor = recoilG.children.find((child) => child.userData.gunRotor);
   assert.ok(rotor, `${id}: the rotor rides rig_recoil`);
@@ -234,6 +237,7 @@ for (const [id, barrels] of [['m163_vads', 6], ['m6_linebacker', 5]]) {
     `${id}: the turned rotor leaves the fire axis on the bore`);
 }
 for (const id of ['bmp3', 'gepard_1a2', 'm3a3_bradley']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const other = rig(id);
   let rotors = 0;
   other.visual.root.traverse((object) => { if (object.userData.gunRotor) rotors++; });
@@ -244,6 +248,7 @@ for (const id of ['bmp3', 'gepard_1a2', 'm3a3_bradley']) {
 // barrel stroke of a cannon. The measured cradle remains the pitch pivot.
 const FIXED_LAUNCHERS = ['aft10'];
 for (const id of FIXED_LAUNCHERS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { visual, state, recoilG } = rig(id);
   const gunG = visual.root.getObjectByName('rig_gun');
   const generatedBores = [];
@@ -319,6 +324,7 @@ for (const id of FIXED_LAUNCHERS) {
 // stationary shroud is correctly assigned to the pitching cradle. Its native
 // physical bore supplies stronger evidence than the hidden ISU stub above.
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { visual, state, recoilG } = rig('kf41_lynx', { quality });
   const tube = recoilG.getObjectByName('gun');
   tube.geometry.computeBoundingBox();

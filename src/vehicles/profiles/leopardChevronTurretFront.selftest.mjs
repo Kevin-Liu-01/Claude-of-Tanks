@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // (264: the 2A4, 2A4 V, 2A4M, 2A4 OTCO, Improved and Strv 121 left the A5/A6 arrowhead for the 2A4 turret's square block
 // or 2A6-look wedge, profiles/leopard2A4Family.ts; their front is checked at the end: only that it is no arrowhead)
@@ -97,6 +98,7 @@ const rootVertexOccurrences = (root, expected, epsilon = 1e-5) => {
 };
 
 for (const [id, expectedProfile] of modernProfiles) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -342,6 +344,7 @@ for (const [id, expectedProfile] of modernProfiles) {
 // (264: the 2A4 family's turret, profiles/leopard2A4Family.ts, fronts the 2A4's square block or the 2A6-look wedge; here
 // only that none of them takes the A5 family's arrowhead)
 for (const id of ['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4_otco', 'leo2_improved', 'strv121']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const rebuilt = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const DEG = Math.PI / 180;
 const RAY = new THREE.Vector3(0.013, 1, 0.007).normalize();
@@ -124,6 +125,7 @@ function probe(id, c) {
 }
 
 for (const c of CASES) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const { tank, spec, pitches, measure } = probe(c.id, c);
   try {
     assert.ok(pitches[0] <= -5 && pitches.at(-1) >= 14, `${c.id}: the sweep spans the gun's range`);

@@ -6,6 +6,7 @@ import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {buildNamerIfv} from './merkavaX.ts';
 import {KIT} from './kit.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const id='namer_ifv', solid=new T.MeshBasicMaterial({side:T.DoubleSide});
 function effective(object){
@@ -117,6 +118,7 @@ const report=[];
 for(const filled of[false,true]){
   if(filled){await ensureInteriorFills([id]);assert.ok(hasInteriorFills(id));}
   for(const quality of['high','low']){
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const b=build(quality);
     try{
       sourceStock(b);console.log("source stock checked",quality,filled);realAir(b);const joints=seats(b);

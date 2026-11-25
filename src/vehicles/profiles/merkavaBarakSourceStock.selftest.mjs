@@ -7,6 +7,7 @@ import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {sourceOpeningRayProbe} from '../../../tools/source-opening-rays.mjs';
 import {proveBarakMovingRearStock} from './merkavaBarakMovingStock.test-support.mjs';
 import {BARAK_OPENING_WITNESSES} from '../../../tools/barak-source-openings.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const id='merkava4_barak';await ensureInteriorFills([id]);assert.ok(hasInteriorFills(id));
 const result=[];
@@ -89,6 +90,7 @@ function circularShoePins(root,quality){
   else assert.equal(vertices,0,'approved LOW shoe omits unresolved cap detail instead of flattening it');
 }
 for(const quality of['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const {tank,receivers,rearSheets,material}=buildWithReceivers(quality);
   try{
     tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((l,i)=>l.object.visible=i===0)}});

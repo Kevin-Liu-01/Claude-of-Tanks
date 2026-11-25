@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (meshes, origin, direction, far = 8) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far).intersectObjects(meshes, false)[0];
@@ -51,6 +52,7 @@ function sourceBox(all, detail, turret) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('leclerc_xlr', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false});
   try {
     tank.root.updateMatrixWorld(true);

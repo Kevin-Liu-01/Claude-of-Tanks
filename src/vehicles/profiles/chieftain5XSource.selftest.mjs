@@ -5,6 +5,7 @@ import { auditTankWheelQuality } from '../wheelQuality.ts';
 import { CHIEFTAIN5_X_DATUMS } from './chieftain5X.ts';
 import { chieftain5SourceSmokeMouths } from './chieftain5XSourceApplique.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // This tests the CURRENT actual-ID supplied-file construction, not the
 // historical photo fixture. Canonical source SHA2a781a79…268e79 retained all
@@ -102,6 +103,7 @@ function upperAir(tank, all) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let gear;
   const original = KIT.buildRunningGear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };

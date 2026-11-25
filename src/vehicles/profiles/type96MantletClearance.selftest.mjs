@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const CELL = .06;
 
@@ -95,6 +96,7 @@ function crossings(M, G) {
 
 const D = Math.PI / 180;
 for (const id of ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei']) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const spec = getSpec(id);
   assert.ok(spec.gunPitchByYawDeg, `${id}: the spec declares its deck gun clearance`);
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242 });

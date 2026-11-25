@@ -10,6 +10,7 @@ import {
   measureSeat, refineSeat, SeatSoup, seatAngularLow, seatRadialProfile, solveSpareTrackSeat, seatRoleForBucket,
   rackSeat, RACK_POST_MAX_M, outlineExcess, OUTLINE_TOL_M,
 } from './spareTrackSeat.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const UNIT = new THREE.Vector3(1, 1, 1);
 const src = (geometry, role, owner = 0, foreign = false) => ({ geometry, matrix: null, role, owner, foreign });
@@ -281,6 +282,7 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
     return boxes;
   };
   for (const id of ['strv103a', 'udes03', 'strv103b']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = build(id);
     try {
       const root = tank.root;

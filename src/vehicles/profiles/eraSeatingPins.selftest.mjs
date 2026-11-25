@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const a = new THREE.Vector3();
 const b = new THREE.Vector3();
@@ -30,6 +31,7 @@ function triangles(mesh, accept) {
 // triangles exceeded 0.10 m² inside this front-cheek envelope. Real T-80/B
 // applique returns and the BV's individual Kontakt cassettes remain smaller.
 for (const id of ['t80', 't80b', 't80bv']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const track = tank.root.getObjectByName('turretTrack');
   const continuousBars = track?.geometry ? triangles(track, ({ centroid, area }) =>

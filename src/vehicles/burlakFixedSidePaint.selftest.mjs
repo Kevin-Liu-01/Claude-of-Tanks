@@ -5,6 +5,7 @@ import {createTank} from './tankFactory.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildT90BurlakX} from './profiles/t90BurlakX.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const LABEL='burlak-x-fixed-skirt';
 const SOURCE_STATIONS=[[-2.06345,1.959],[-.45925,1.2476],[.8833,1.4287],[2.29245,1.3838]];
@@ -57,6 +58,7 @@ function guards(tank){const rig=tank.root.getObjectByName('rig_hull'),hull=tank.
   assert.ok(new Set(uv.array).size>8,'spatial camouflage coordinates, not one constant texel');return mesh;});}
 const restore=installCanvasFixture(),rows=[];let emissions=0,rays=0;
 try{for(const quality of['high','low'])for(const camo of['factory','winter']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const before=build(quality,camo,true),after=build(quality,camo);
  try{
   assert.equal(after.selected.length,8,'four source sheets per side, no blanket material migration');

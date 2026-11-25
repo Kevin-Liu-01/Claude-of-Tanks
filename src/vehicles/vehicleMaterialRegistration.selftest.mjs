@@ -28,6 +28,7 @@ import {
 import {
   auditVehicleMaterialRegistration, createCascadeRecorder, leakedRegistrations,
 } from './vehicleMaterialRegistrationAudit.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const restoreCanvas = installCanvasFixture();
 const { createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
@@ -109,6 +110,7 @@ try {
     assert.ok(!Object.prototype.hasOwnProperty.call(proxyLike, 'onBeforeCompile'), 'a material that writes no colour is not tagged');
     const batched = [];
     for (const id of ['m1a2_abrams_sepv3', 'leclerc_xlr']) {
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       await ensureTankBuilder(id);
       const visual = createTank(id, recorder.engineCtx, { quality: 'low', batchStatic: true, battleDetailLod: true, eraVisualBindingReceipt: false });
       batched.push(visual.root.children.some((child) => child.name === 'articulatedShadowBatch'));
@@ -150,6 +152,7 @@ try {
   const chainedKeys = new Set();
   let checked = 0, unlit = 0;
   for (const id of IDS) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     await ensureTankBuilder(id);
     const before = new Set(recorder.registered);
     const visual = createTank(id, recorder.engineCtx, { quality: 'low', decor: true });

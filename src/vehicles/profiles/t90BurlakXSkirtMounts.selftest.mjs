@@ -3,6 +3,7 @@ import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { notCamouflage } from '../camouflageBounds.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const hit=(meshes,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
 function inside(mesh,p){
@@ -20,6 +21,7 @@ function inside(mesh,p){
   }finally{material.dispose();}
 }
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const t=createTank('t90a_burlak',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];

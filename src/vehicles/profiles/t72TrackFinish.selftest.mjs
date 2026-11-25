@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md; cdbfe54dc) rebuilt
 // all four T-72-derived running gears on detailed source studies: t72b3m_2022 on t72b3m_2016, t72bu_1989 on t72bu,
@@ -33,6 +34,7 @@ const finishOf = (id) => {
 };
 
 for (const [id, donorId] of Object.entries(T72_DERIVED)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.deepEqual(finishOf(id), finishOf(donorId), `${id}: track band wears its donor study's steel finish`);
 }
 

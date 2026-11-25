@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const close = (actual, expected, tolerance = 1e-9) =>
   Math.abs(actual - expected) <= tolerance;
@@ -9,6 +10,7 @@ for (const [id, expectedScale, expectedFamily] of [
   ['fv510', 1.10, 'cot-warrior-enlarged-r1'],
   ['fv510_milan', 1.10, 'cot-warrior-milan-enlarged-r1'],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -46,6 +48,7 @@ for (const [id, objectName, receiptName] of [
   ['vickers_mk1', 'vickers_mk1_loader_roof_machine_gun', 'vickersRoofMachineGunReceipt'],
   ['centurion5_2', 'centurion5_cupola_machine_gun', 'centurionRoofMachineGunReceipt'],
 ]) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

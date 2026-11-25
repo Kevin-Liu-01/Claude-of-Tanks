@@ -3,8 +3,10 @@ import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {auditTankWheelQuality} from './wheelQuality.ts';
 import {measureSpatialArmClearance} from './suspensionClearance.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('leo2a6', null, {proceduralOnly:true, geometryReceipt:true, quality});
   try {
     const arm=tank.root.getObjectByName('gearSuspensionLinks');

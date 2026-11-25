@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {chineseArrowCassette} from './chineseChevron.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 // Owner 2026-10-15 (VEH-19, VEH-20): the Kunlun's chevron cassettes now lie on the Type 96B wedge (chinaDonorTurretKit.ts,
 // twelve again). Release 227: the Yun's twelve lie on its wrap housing's front facets round its Type 96B (two a facet).
 // 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin's eight lie on its sleeves'
@@ -11,6 +12,7 @@ const COUNT={t80u_yun:12,t72b3m_kunlun:12,t72b3_qilin:8};
 const v=p=>new T.Vector3(...p),mat=new T.MeshBasicMaterial({side:T.DoubleSide});
 const reports=[];
 try{for(const id of IDS)for(const quality of ['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),records=turret.userData.chineseChevronEra;

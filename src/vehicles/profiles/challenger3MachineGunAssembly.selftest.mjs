@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const stationName = 'fitting_browningDerived_m2';
 // Nominal authored corners, in the tank turret's frame (the kit bevels box
@@ -23,6 +24,7 @@ const corners = [
 ];
 
 for (const id of ['challenger3_proto', 'challenger3']) for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {proceduralOnly:true, geometryReceipt:true, quality, batchStatic:true});
   try {
     const turret = tank.root.getObjectByName('rig_turret');

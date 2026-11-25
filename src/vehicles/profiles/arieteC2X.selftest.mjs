@@ -15,6 +15,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
 import {turretSeatPlane} from '../turretSeatPlane.ts';
 import {footBandBuiltYs,footBandSeatY} from '../turretSeatRace.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 function stock(root){
@@ -319,6 +320,7 @@ footprintAdapter();
 if(process.argv.includes('--filled'))await ensureInteriorFills(['c1_ariete','c2_ariete']);
 const costs=[],lodCosts=[];let clearancePoses=0;
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const opts={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
   const first=capturePrimaryHull(createTank,'c1_ariete',opts),second=capturePrimaryHull(createTank,'c2_ariete',opts),c1=first.tank,c2=second.tank;
   commanderDonor(c2,opts);

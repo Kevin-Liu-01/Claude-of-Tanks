@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // The published-foundation source-byte contract and the frozen successor / non-track vertex multisets
 // (docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json) are retired: whole-tank
@@ -117,6 +118,7 @@ function wiringNegativeControl(tank, fixture) {
 }
 
 for (const quality of ['high', 'low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false }), fixture = fixtures();
   try {

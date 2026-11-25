@@ -21,6 +21,7 @@ import { TANK_SPECS } from './specs.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { ensureInteriorFills } from './interiorFills.ts';
 import { launcherSweepBands, planTankDecorationsSteps } from './decorations.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const warn = console.warn;
 console.warn = () => {};
@@ -106,6 +107,7 @@ assert.ok(drop > 0.3, `griffin_viper: the pods' bands are swept over the gun's p
 
 let turnedAway = 0;
 for (const id of gunLauncherIds) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const r = survey(id);
   assert.ok(r.bands.length > 0, `${id}: its gun-riding launcher stock yields sweep bands`);
   assert.equal(r.under, 0, `${id}: no hull decor under a launcher's swept band (${r.kits.join(', ')})`);

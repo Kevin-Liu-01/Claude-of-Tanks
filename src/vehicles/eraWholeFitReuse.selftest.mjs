@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {createInvocationEraWholeReuse} from './eraWholeFitReuse.ts';
 import {assertWholeReuseContract, digest} from './eraWholeFitReuse.test-support.mjs';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 assertWholeReuseContract(createInvocationEraWholeReuse);
 const sha = s => createHash('sha256').update(s).digest('hex');
@@ -53,6 +54,7 @@ async function child(reference) {
     const {createTank}=await import('./tankFactory.ts');
     const rows=[];
     for(const cycle of [0,1])for(const id of ['m1a1_abrams_hc','challenger3','challenger2','leo2_revolution','t90m'])for(const quality of ['high','low']){
+      await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       active={calls:0,calculations:0,outputs:[],closed:false};
       const tank=createTank(id,null,{quality,proceduralOnly:true,materialMode:'geometry-only',camoSeed:4242,decor:true,batchStatic:true});
       try {

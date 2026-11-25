@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const cast=(root,origin,direction)=>new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction).normalize(),0,4)
   .intersectObject(root,true).filter(h=>{for(let o=h.object;o;o=o.parent)if(!o.visible)return false;return !/shadow/i.test(h.object.name);});
@@ -12,6 +13,7 @@ const mouths=[
 ];
 
 for(const quality of['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('k2_black_panther',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try{
     tank.root.updateMatrixWorld(true);

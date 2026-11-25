@@ -5,6 +5,7 @@ import { ALL_TANK_IDS, TANK_SPECS } from './specs.ts';
 import { ensureInteriorFills } from './interiorFills.ts';
 import { SURFACE_MARKING_STYLE as STYLE, vehicleMarkingIncludesPermanentHullArmor } from './vehicleMarkings.ts';
 import { createTankState } from '../sim/movement.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids = ['ztz100_prototype', 'object695'];
 const results = [];
@@ -79,6 +80,7 @@ try {
     // 2026-10-05: geometry receipts apply the generated seats like the game (the solver runs in
     // gen-vehicle-marking-seats); the posed paint checks below hold them to the built armor. Defer
     // batching so each marking retains its semantic mesh and owner for rays.
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { quality, proceduralOnly: true,
       geometryReceipt: true, deferStaticBatch: true });
     const materials = new Map();

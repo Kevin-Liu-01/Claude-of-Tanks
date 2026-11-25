@@ -12,6 +12,7 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { nodeForVehicle } from '../../techTree/trees.ts';
 import { displayTier } from '../../techTree/tiers.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const MARKS = {
   'm41a3': { nation: 'USA', tree: 'usa', tier: 1, packet: null },
@@ -33,6 +34,7 @@ for (const [id, mark] of Object.entries(MARKS)) {
   const packetPath = mark.packet ? new URL(`../../../docs/references/photos/${mark.packet}`, import.meta.url) : null;
   const target = packetPath && existsSync(packetPath) ? JSON.parse(readFileSync(packetPath, 'utf8')).targets[id] : null;
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);
@@ -72,6 +74,7 @@ for (const [id, mark] of Object.entries(MARKS)) {
   assert.equal(nodeForVehicle(id)?.tree.id, 'usa', `${id}: drawn in the US tree`);
   assert.equal(displayTier(id), 2, `${id}: a tier over the M41A3`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);

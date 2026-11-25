@@ -3,6 +3,7 @@ import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildAbramsX } from './abramsSourceX.ts';
 import { TURRET, turretSideX } from './abramsSourceXKitBase.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // M1A2 Abrams SEPv3 field configuration (owner 2026-09-15): Trophy HV launchers, radars and
 // counterweights, the left-rear auxiliary power unit, roof electronics and fender stowage laid on the
@@ -94,6 +95,7 @@ for (const row of binding.plates) assert.ok(row.registered && row.partCount > 0,
 const meshes = []; tank.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
 assert.ok(meshes.length > 0, 'the SEPv3 builds');
 for (const other of ['m1a2_abrams_sepv2', 'm1a2_abrams']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   assert.equal(capture(other).parts.length, 0, `${other} carries no SEPv3 kit`);
 }
 console.log(`abramsSourceXSepv3Kit: ${parts.length} kit parts on the M1A2 Abrams SEPv3 (Trophy launchers, radars and counterweights, UAAPU, sponson box, roof electronics, fender stowage) over the rectangular ARAT set with ${urban.length} urban parts; the SEP v2 and M1A2 studies stay clean PASS`);

@@ -14,6 +14,7 @@ import { displayTier } from '../../techTree/tiers.ts';
 import { OSORIO_DATUMS } from './osorio.ts';
 import { TAMOYO_DATUMS } from './tamoyo.ts';
 import { BERNARDINI_X1_DATUMS } from './bernardiniX1.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const IDS = {
   'x1_pioneiro': { tier: 1, role: 'light', caliber: 90, crew: 4, packet: 'ccl-x1-pioneiro-20261029.json', receipt: 'x1TurretReceipt', muzzle: BERNARDINI_X1_DATUMS.x1.muzzleHullZ },
@@ -57,6 +58,7 @@ for (const [id, row] of Object.entries(IDS)) {
   assert.equal(target.caliberMm, row.caliber, `${id}: the packet's calibre`);
   assert.equal(target.crew, spec.armor.crew.length, `${id}: the packet's crew is the spec's`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);

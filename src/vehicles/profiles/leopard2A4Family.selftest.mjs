@@ -11,6 +11,7 @@ import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
 import { LEOPARD2A4_FAMILY_FRONT, LEOPARD2A4_FAMILY_GUN } from '../leopard2A4FamilyArmor.ts';
 import { KONTAKT1_ERA, LEO2A4V_KONTAKT1 } from '../leopard2A4Kontakt1.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 /** Each id's front and gun, written out so a change to the shared tables fails here (the packets read these). */
 const EXPECTED = [
@@ -42,6 +43,7 @@ for (const [id, expected] of EXPECTED) {
   assert.equal(LEOPARD2A4_FAMILY_FRONT[id], expected.front, `${id}: front`);
   assert.equal(LEOPARD2A4_FAMILY_GUN[id], expected.gun, `${id}: gun`);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     try {
       tank.root.updateMatrixWorld(true);

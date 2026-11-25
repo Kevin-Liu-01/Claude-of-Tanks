@@ -5,6 +5,7 @@ import {registerProfiledBuilders,KIT} from '../tankFactoryCore.ts';
 import {buildMerkava3DX,buildMerkava4X} from './merkavaX.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {getSpec} from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const vec=a=>new T.Vector3(...a);
@@ -92,6 +93,7 @@ function gearClearance(tank,added) {
   assert.equal(intersections,0,'Actual emitted moving gear vertices must not penetrate new shoulder stock');
 }
 for(const record of records)for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const old=[],added=[];
   registerProfiledBuilders({[record.id]:P=>record.build(new Proxy(P,{get(target,key){
     if(key!=='add')return Reflect.get(target,key);

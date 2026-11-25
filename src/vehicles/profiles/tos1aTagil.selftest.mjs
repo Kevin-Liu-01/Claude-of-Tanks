@@ -12,6 +12,7 @@ import {TOS1A_TAGIL_LAYOUT as D,TOS1A_TAGIL_LAUNCHER_MUZZLES as M} from '../tos1
 import {buildTos1aTagil} from './tos1aTagil.ts';
 import {KIT} from './kit.ts';
 import {findStaticMergePart,staticMergePartForFace} from '../staticMergeParts.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
@@ -260,6 +261,7 @@ const options=quality=>({quality,geometryReceipt:true,proceduralOnly:true,batchS
 const results=[];
 if(process.argv.includes('--filled'))await ensureInteriorFills(['tos1a_tagil']);
 for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const donor=createTank('t90ms_tagil',null,options(quality));const hull=payload(donor.root,true);donor.dispose();
   cleanParts();const tank=createTank('tos1a_tagil',null,options(quality));
   try{
@@ -288,6 +290,7 @@ for(const quality of ['high','low']){
 }
 assert(results[1].turretTriangles<=results[0].turretTriangles*.70,'meaningful LOW reduction in the new battery');
 for(const quality of ['high','low'])for(const corruption of ['missing-cell','missing-tower','shifted-tower','thin-tower','missing-pin','floating-access','painted-liner']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   cleanParts();fault=corruption;altered=0;const tank=createTank('tos1a_tagil',null,options(quality));
   try{assert(altered>0,'negative changes real emitted geometry or its actual material');assert.throws(()=>['missing-cell','painted-liner'].includes(corruption)?cells(tank):corruption==='floating-access'?accessSeats():verifyGunCradleSeats(tank.root),assert.AssertionError,`${quality} ${corruption} fails physical proof`);}finally{tank.dispose();fault=null;}
 }

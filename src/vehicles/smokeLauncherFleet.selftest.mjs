@@ -8,11 +8,13 @@ import {requestAuxiliary} from '../sim/auxiliarySystems.ts';
 import {createTankState} from '../sim/movement.ts';
 import {smokeCanisterPosition} from '../sim/smokeBallistics.ts';
 import {packSmokeScreen,restoreSmokeScreen} from '../sim/smokeReceipt.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 const ids=process.argv.includes('--all')?ALL_TANK_IDS.filter(id=>auxiliaryCapabilities({id})?.smoke.length):['kf41_lynx','lrmv_lynx','kf51_panther','t14_armata','c1_ariete','c2_ariete','griffin_viper','m1a1_abrams_hc','leo2a2','ajax','borsuk','t90a_burlak_proto','t90am','stb1','leo1a5','challenger2','merkava3_baz','fv510','m60a3','object148_proto'];
 let builds=0, launches=0;
 const failures=[];
 for(const id of ids)for(const quality of ['high','low']) {
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  let visual;
  try {
  const spec=getSpec(id), kit=auxiliaryCapabilities(spec);

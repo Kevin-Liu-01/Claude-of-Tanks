@@ -11,6 +11,7 @@ import { createTank } from './tankFactory.ts';
 import { buildSearchlight } from './accessoryKits.ts';
 import { markVehicleNightLens, vehicleNightLensFrames, vehicleNightLightEmittersFor, SEARCHLIGHT_CONE_RAD } from './vehicleNightLighting.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 /** Each pinned id's searchlight count: the lane's own lamps and one of each kind it marked. */
 const SEARCHLIGHTS = {
@@ -27,6 +28,7 @@ const MIN_SEEN = .4;
 
 const ray = new THREE.Raycaster();
 for (const [id, expected] of Object.entries(SEARCHLIGHTS)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high', camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);

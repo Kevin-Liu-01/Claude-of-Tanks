@@ -9,6 +9,7 @@ import {addChallenger1SuppliedTurret} from './challenger1XSuppliedTurret.ts';
 import {addChallenger1SuppliedGun} from './challenger1XSuppliedGun.ts';
 import {auditTankWheelQuality} from '../wheelQuality.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent source-registration scalars. Do not derive these assertions
 // from the current builder or a generated candidate calibration.
@@ -195,6 +196,7 @@ function surfacesAndAir(t,ms){
 }
 primitiveChecks();
 for(const quality of['high','low']){
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const t=createTank('challenger1_mk3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   t.root.scale.setScalar(1 / 1.10); t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(n=>{if(n.isMesh&&!n.userData.shadowOnly)ms.push(n);});

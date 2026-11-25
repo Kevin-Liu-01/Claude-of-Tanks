@@ -7,11 +7,13 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {continuousShoeClearance,moving} from '../returnRollerPhysicsTest.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent scalar measurements from the original owner's Object_30.
 // Original GLB SHA256 3e514bedb40be0fde6787dad6513f625ba077cd0c1da04d29defe94e9c156140.
 const close=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b}`);
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   let gear,port,cfg,tank;
   const buildGear=KIT.buildRunningGear;
   KIT.buildRunningGear=(p,input)=>{cfg=input;return buildGear(p,input);};

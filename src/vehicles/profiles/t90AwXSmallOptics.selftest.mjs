@@ -7,6 +7,7 @@ import { buildT90AWX } from './t90AwX.ts';
 import { addT90AWSmallOptics } from './t90AwXSmallOptics.ts';
 import { T90_AW_X_SOURCE_DATUMS } from '../t90AwXArmor.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
@@ -95,6 +96,7 @@ function unchangedMeshes(root) {
 const own = fixture();
 try {
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const before = build(quality, true), after = build(quality, false);
     try {
       assert.equal(after.count, 18, 'helper is wired exactly once into the actual vehicle');

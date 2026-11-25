@@ -20,6 +20,7 @@ import { ZTZ20_DATUMS, ZTZ20_STAGES } from './ztz20Family.ts';
 import { ZTZ20_PROFILES } from './ztz20.ts';
 import { ZTZ100_PROTOTYPE_PROFILES } from './ztz100Prototype.ts';
 import { firstPartyConcept } from '../../../tools/first-party-concept-policy.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // ------------------------------------------------------------------------------------------------ independence
 const source = readFileSync(new URL('./ztz20Family.ts', import.meta.url), 'utf8');
@@ -148,6 +149,7 @@ const counts = {};
 for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
   const stage = ZTZ20_STAGES[id], design = firstPartyConcept(id);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     parts.length = 0;
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
     try {

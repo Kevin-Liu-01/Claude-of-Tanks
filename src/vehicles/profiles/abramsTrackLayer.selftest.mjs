@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const M1_VARIANTS = [
   'm1a1',
@@ -17,6 +18,7 @@ const REMOVED_DUPLICATE_NAMES = new Set([
 ]);
 
 for (const id of M1_VARIANTS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

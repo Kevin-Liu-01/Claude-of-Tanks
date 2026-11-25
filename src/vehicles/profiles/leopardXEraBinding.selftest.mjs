@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 function hit(meshes,x,z){return new THREE.Raycaster(new THREE.Vector3(x,6,z),new THREE.Vector3(0,-1,0),0,10)
   .intersectObjects(meshes,false)[0]?.point.y;}
@@ -13,6 +14,7 @@ for(const quality of ['high','low'])for(const [id,name,rows] of [
   ['leo2a7v','a7v_upper_glacis_era',[[1.64,1.785],[2.43,1.628],[3.21,1.48155]]],
   ['leo2a6m','a6m_upper_glacis_era',[[1.52,1.72],[2.63,1.58],[3.15,1.52003]]],
 ]){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);

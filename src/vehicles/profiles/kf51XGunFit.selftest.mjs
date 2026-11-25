@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Independent canonical Gun_Msh measurements, not builder metadata: source
 // collar Z [5.452418073,5.655017121], radius [.107723912,.107725538].
@@ -21,6 +22,7 @@ function collarVertices(gun) {
   return new THREE.Box3().setFromPoints(points);
 }
 for(const quality of ['high','low']) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('kf51_panther',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);

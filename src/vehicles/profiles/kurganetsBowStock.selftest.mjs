@@ -10,6 +10,7 @@ import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 const id = 'kurganets25', front = new T.MeshBasicMaterial({ side: T.FrontSide }), double = new T.MeshBasicMaterial({ side: T.DoubleSide });
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame at this factor. Source calipers below stay in the source frame; probes of the installed scene map
@@ -226,6 +227,7 @@ for (const quality of ['high', 'low']) {
         built.dispose();
     }
     for (const mutation of ['delete-skin', 'unseat-arm', 'unseat-flap', 'fill-gap', 'wrong-armor-owner']) {
+        await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
         const changed = build(candidate, quality, mutation);
         try {
             assert.throws(() => mutation === 'wrong-armor-owner' ? structuralArmor(changed) : mutation === 'delete-skin' ? sourceProof(changed) : mutation.startsWith('unseat-') ? seats(changed) : air(changed), assert.AssertionError, mutation + ' must fail');

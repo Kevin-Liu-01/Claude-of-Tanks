@@ -4,6 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import {addLeclercXRearTerrace} from './leclercXRearShoulders.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Source witnesses read the first source surface: main's field kit (5f8eefaa4) hangs a ghillie net and screens
 // outside these shoulders and pads a screen bracket onto the wall; the census filter skips them.
@@ -92,6 +93,7 @@ function closedSupportedTerrace() {
 
 closedSupportedTerrace();
 for(const quality of['high','low']) {
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const census=fieldKitCensus();
  const tank=createTank('leclerc_xlr',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,partCensus:census.partCensus});
  kit=fieldKitFilter(tank.root,census);

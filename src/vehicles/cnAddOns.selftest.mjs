@@ -34,6 +34,7 @@ import { censusPart, seatingCensus, sightField, sightFieldApproach, densePoints,
 import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 import { HEADLIGHT_CONE_RAD, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { getSpec } from './specs.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // role -> [minimum parts, exact reactive cassettes (parts with ERA hit faces) or null]
 const INVENTORY = {
@@ -281,6 +282,7 @@ function asymmetricLamps(parts) {
 for (const quality of ['high', 'low']) {
   // CN_ADDONS_IDS=<ids> limits a local run (the suite runs all three)
   for (const id of (process.env.CN_ADDONS_IDS ?? Object.keys(INVENTORY).join(',')).split(',')) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const { tank, parts } = build(id, quality);
     try {
       // ---- inventory

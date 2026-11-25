@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Held-out canonical owner-source weapon.001 rays (source hash is pinned
 // independently by the QA source-world certificate, not loaded at runtime).
@@ -37,6 +38,7 @@ function seamsAndAir(gun,label){
   assert.equal(new T.Raycaster(new T.Vector3(-.2,1.945,6.10),new T.Vector3(1,0,0),0,.4).intersectObject(gun,true).length,0,`${label} removed false near-muzzle MRS box is genuine source air`);
 }
 for(const quality of['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank=createTank('t90a',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);

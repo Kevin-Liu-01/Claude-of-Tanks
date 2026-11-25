@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { KIT } from '../tankFactoryCore.ts';
 import { rollerSuspensionFixtures } from '../returnRollerPhysicsTest.mjs';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const IDS = ['challenger3_proto', 'challenger3'];
 const EXPECTED_WHEEL_ZS = [2.65, 1.74, 0.83, -0.08, -0.99, -1.90];
@@ -126,6 +127,7 @@ function minimumLoadedCarrierClearance(band, wheels, receipt) {
 }
 
 for (const id of IDS) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const originalBuildRunningGear = KIT.buildRunningGear;
   let runningGear;
   KIT.buildRunningGear = (port, cfg) => {

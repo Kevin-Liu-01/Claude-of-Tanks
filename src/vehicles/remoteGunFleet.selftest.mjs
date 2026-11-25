@@ -6,6 +6,7 @@ import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {requestAuxiliary,stepRoofGun,auxiliaryShot,auxiliaryState} from '../sim/auxiliarySystems.ts';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_armata:7.62,t90a_vladimir:12.7,t90a:12.7,t90ms_2011:12.7,
  t90m_proryv:12.7,t90_1992:12.7,object148_proto:30,challenger3:12.7,challenger3_proto:12.7,challenger3_td_rws:12.7,
  challenger2e:7.62,ztz100:12.7,ztz20:12.7,type10:12.7,k2_black_panther:12.7,k1a1:12.7,
@@ -14,6 +15,7 @@ const vector=a=>new THREE.Vector3(...a);
 for(const [id,caliber] of Object.entries(requested)){
  // VH.14 (2026-10-15): every drawn roof gun works, so a Challenger 2 whose loader also carries a GPMG has two
  // stations; the first (heaviest, the one stepRoofGun drives) is of the requested calibre
+ await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
  const kit=AUXILIARY_INVENTORY[id];assert.ok(kit.guns.length>=1,id+' has a controlled station');
  const g=kit.guns[0];assert.equal(g.caliberMm,caliber,id);
  const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true});

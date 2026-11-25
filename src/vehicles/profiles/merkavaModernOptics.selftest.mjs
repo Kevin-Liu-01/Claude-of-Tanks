@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { getSpec } from '../specs.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // These existing dark Barak apertures retain their visible material. Their
 // damage receipts must follow the same turret frame as the real sight stock.
@@ -33,6 +34,7 @@ function verify(id, parts) {
 }
 await ensureInteriorFills(Object.keys(expected));
 for (const quality of ['high','low']) for (const id of Object.keys(expected)) {
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try {
     const parts = tank.root.userData.combatGeometryParts;

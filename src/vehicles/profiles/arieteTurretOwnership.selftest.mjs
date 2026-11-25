@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 // Actual rendered face bounds in rig_hull's neutral frame, not metadata assertions or unstable face indices.
 // 269 (the owner, 2026-11-03: "make the c1 arietee proto annd c2 ariete hhave completeely new turrets"): the old turret's
@@ -42,6 +43,7 @@ function faceMatches(root, frame, min, max) {
 for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
   await ensureInteriorFills(id);
   for (const quality of ['high', 'low']) {
+    await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
     const hull = tank.root.getObjectByName('rig_hull');
     const turret = tank.root.getObjectByName('rig_turret');

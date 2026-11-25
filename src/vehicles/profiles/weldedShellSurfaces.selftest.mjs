@@ -8,6 +8,7 @@ import { shellEdgeTopology, properSurfaceCrossings, weldedPanelConcavity } from 
 import '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
 import { TYPE10_X_DATUMS } from './type10X.ts';
+import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
 const close = (a,b,message,tolerance=0.000003) => assert.ok(Math.abs(a-b)<tolerance,`${message}: ${a} vs ${b}`);
 function panelFaces(part, count) {
@@ -117,6 +118,7 @@ const targets={
 };
 let checked=0;
 for(const [id,config]of Object.entries(targets))for(const quality of ['high','low']){
+  await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const emissions=[];
   const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,
     partCensus(bucket,g,source){if(source==='add'&&(['hull','turret','turretExternalArmor','turretDark',...config.buckets??[]].includes(bucket)||g.userData.nativeShellFixtureRole))emissions.push({bucket,g,site:new Error().stack??''});}});
