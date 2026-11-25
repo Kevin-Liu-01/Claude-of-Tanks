@@ -1521,9 +1521,13 @@ export function createBrowserComposition({
       activation.setWaitingForPeers(false);
       mountStatus(active);
       markStage(active, 'activation');
+      // (mp-fixes-277) each stage after the effects names itself: a slow machine held one label, 88 % "Preparing effects",
+      // for 21 s across all of them
+      load.battleLoad.progress(0.9, 'Priming deployment view');
       await warm.presentation?.(signal);
       check('openingGroundCover');
       if (!active.spectator) {
+        load.battleLoad.progress(0.93, 'Priming deployment shadows');
         await warm.finalShadows?.(signal);
         check('finalShadows');
       }

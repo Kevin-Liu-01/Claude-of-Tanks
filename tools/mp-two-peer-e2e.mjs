@@ -214,6 +214,8 @@ function installPcRecorder(relayOnly = false, blocked = false) {
 /** Init script: the battle loader's percent and stage every 250 ms while it is on (the joiner's loading timeline). */
 function installLoadRecorder() {
   if (window.__MP2_LOAD) return;
+  // (every resource the page fetches counted: the default buffer of 250 fills during the boot)
+  try { performance.setResourceTimingBufferSize(20_000); } catch { /* no resource timing */ }
   const rows = window.__MP2_LOAD = [];
   let last = '';
   setInterval(() => {
@@ -404,7 +406,8 @@ try {
       record.joinerBootMs = elapsedMs() - openedAt;
       joinerBooted = true;
       await waitFor(B, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), 'B joined (invite)', 120_000);
-      step(`battle-${battle}-b-cold-joined`, { bootMs: record.joinerBootMs });
+      record.joinerBytesAtJoin = await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null);
+      step(`battle-${battle}-b-cold-joined`, { bootMs: record.joinerBootMs, bytes: record.joinerBytesAtJoin });
     } else {
     // ---- the joiner joins by code from the same page (an invite link would reload it and drop its planned world)
     await openRoomsPanel(B);
@@ -465,6 +468,13 @@ try {
       if (heldS > longest.s) longest = { s: +heldS.toFixed(1), pct: row.pct, stage: row.stage };
     }
     record.joinerLongestHold = longest;
+    // what the joiner downloaded: at its join (boot + lobby prefetch) and by its reveal (the entry), from resource timing
+    record.joinerBytes = { atJoin: record.joinerBytesAtJoin ?? null, atReveal: await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null) };
+    // the entry's own stage timings on the joiner (browserComposition markStage: where the time under one label went)
+    record.joinerTrace = await B.evaluate(() => {
+      const trace = window.__NETWORK_LOAD ?? null;
+      return trace ? JSON.parse(JSON.stringify({ status: trace.status, totalMs: trace.totalMs, stages: trace.stages, compile: trace.compile ?? null })) : null;
+    }).catch(() => null);
     step(`battle-${battle}-joiner-load`, { revealS: revealed.B ? +(revealed.B / 1000).toFixed(1) : null, longestHold: longest, rows: record.joinerLoad.length });
     if (longest.s > stallBoundS) fail(`battle ${battle}: the joiner's loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
     if (joinBoundS && !(revealed.B <= joinBoundS * 1000)) fail(`battle ${battle}: the joiner's battle was not on screen within ${joinBoundS} s of the start (${revealed.B ? (revealed.B / 1000).toFixed(1) + ' s' : 'never'})`);
