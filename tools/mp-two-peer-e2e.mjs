@@ -327,6 +327,47 @@ const propsBuildDetail = () => {
     awaitTimings: props.awaitTimings ? { ...props.awaitTimings, wreckRows: undefined } : null })) : null;
 };
 
+/**
+ * (entry-bytes-278) Every response the page and its workers took, from the browser's network log (CDP: dedicated workers'
+ * fetches included, which the page's resource timing misses): path, type, bytes over the wire, and when it started and
+ * finished in seconds after the solo entry began. Rows still open at the reveal are listed with endS null.
+ */
+async function recordFetches(page) {
+  const rows = new Map();
+  let wallOffset = null; // Date.now() ms = CDP timestamp s * 1000 + wallOffset
+  const attach = async (session) => {
+    session.on('Network.requestWillBeSent', (event) => {
+      if (wallOffset === null && event.wallTime) wallOffset = event.wallTime * 1000 - event.timestamp * 1000;
+      const url = event.request.url;
+      if (url.startsWith('data:') || url.startsWith('blob:')) return;
+      rows.set(event.requestId, { url, type: event.type ?? '', priority: event.request.initialPriority ?? '', startTs: event.timestamp, endTs: null, bytes: 0, status: 0, cached: false });
+    });
+    session.on('Network.responseReceived', (event) => { const row = rows.get(event.requestId); if (row) { row.status = event.response.status; row.type ||= event.type; row.cached = !!event.response.fromDiskCache; } });
+    session.on('Network.loadingFinished', (event) => { const row = rows.get(event.requestId); if (row) { row.endTs = event.timestamp; row.bytes = event.encodedDataLength; } });
+    session.on('Network.loadingFailed', (event) => { const row = rows.get(event.requestId); if (row) { row.endTs = event.timestamp; row.failed = event.errorText; } });
+    await session.send('Network.enable').catch(() => {});
+  };
+  const pageSession = await page.createCDPSession();
+  await attach(pageSession);
+  // dedicated workers (the world and material workers) fetch on their own targets
+  page.on('workercreated', (worker) => { const session = worker.client; if (session?.on) void attach(session); });
+  const out = {
+    session: pageSession, entryAt: null, revealAt: null,
+    table() {
+      const toS = (ts) => (ts === null || wallOffset === null || out.entryAt === null ? null : +((ts * 1000 + wallOffset - out.entryAt) / 1000).toFixed(2));
+      const revealS = out.revealAt === null ? null : +((out.revealAt - out.entryAt) / 1000).toFixed(2);
+      const list = [...rows.values()].map((row) => {
+        let path = row.url;
+        try { const parsed = new URL(row.url); path = parsed.origin.startsWith('http://127.0.0.1') ? parsed.pathname + parsed.search : row.url; } catch { /* as is */ }
+        return { path, type: row.type, priority: row.priority, bytes: row.bytes, status: row.status, startS: toS(row.startTs), endS: toS(row.endTs), ...(row.failed ? { failed: row.failed } : {}) };
+      }).sort((a, b) => (a.startS ?? 0) - (b.startS ?? 0));
+      const before = list.filter((row) => row.endS !== null && revealS !== null && row.endS <= revealS);
+      return { revealS, beforeRevealBytes: before.reduce((sum, row) => sum + row.bytes, 0), rows: list };
+    },
+  };
+  return out;
+}
+
 /** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
 async function runSolo(origin) {
   const browser = await launchGuardedBrowser(puppeteer, {
@@ -339,11 +380,11 @@ async function runSolo(origin) {
   await page.setViewport(VIEWPORT);
   await page.evaluateOnNewDocument(installLoadRecorder);
   observe(page, 'S');
+  const net = await recordFetches(page);
   if (joinerNet.length || joinerCpu > 1) {
-    const cdp = await page.createCDPSession();
+    const cdp = net.session;
     if (joinerNet.length) {
       const [downKbps, rttMs = 50, upKbps = Math.max(256, Math.round(joinerNet[0] / 4))] = joinerNet;
-      await cdp.send('Network.enable');
       await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: rttMs,
         downloadThroughput: Math.round(downKbps * 1000 / 8), uploadThroughput: Math.round(upKbps * 1000 / 8) });
     }
@@ -355,6 +396,7 @@ async function runSolo(origin) {
   const out = { map: hostMaps[0], spec: soloSpec, bootMs: elapsedMs() - openedAt, bytesAtBoot: await bytes() };
   const mark = await page.evaluate(() => (window.__MP2_LOAD ?? []).length);
   const startedAt = elapsedMs();
+  net.entryAt = Date.now();
   await page.evaluate((specId, mapId) => {
     window.__SOLO = { done: false, error: null };
     Promise.resolve(window.__DEBUG.beginSoloBattle({ specId, mapId, randomRoster: false }))
@@ -362,6 +404,7 @@ async function runSolo(origin) {
   }, soloSpec, hostMaps[0]);
   await waitFor(page, readinessExpression('battleRevealed'), 'S solo battle revealed', 300_000);
   out.revealMs = elapsedMs() - startedAt;
+  net.revealAt = Date.now();
   out.bytesAtReveal = await bytes();
   const rows = (await page.evaluate((from) => (window.__MP2_LOAD ?? []).slice(from), mark)) ?? [];
   const t0 = rows[0]?.atMs ?? 0;
@@ -378,11 +421,16 @@ async function runSolo(origin) {
   // the terrain photographs against the reveal: one that lands after it swaps in on screen (the pop)
   out.terrainPhotos = await page.evaluate(terrainPhotoTimes).catch(() => null);
   out.propsBuild = await page.evaluate(propsBuildDetail).catch(() => null);
+  out.fetches = net.table();
   step('solo-entry', { revealS: +(out.revealMs / 1000).toFixed(1), longestHold: longest, bytes: { boot: out.bytesAtBoot, reveal: out.bytesAtReveal } });
   if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
   if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
   await still(page, 'solo-reveal.png');
-  if (postRevealS > 0) out.postReveal = await watchAfterReveal(page, postRevealS);
+  if (postRevealS > 0) {
+    out.postReveal = await watchAfterReveal(page, postRevealS);
+    // (entry-bytes-278) the fetch table again, now holding what streamed in during the watch (endS past revealS)
+    out.fetches = net.table();
+  }
   return out;
 }
 
