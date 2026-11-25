@@ -57,7 +57,7 @@ const MAX_SMOOTH_TAU_S = 0.056;
 
 /** The sticks' dead zone (raw axis units): the default, and the range Settings › Gameplay › Controller offers
  *  (settings-unify-278). Its top stays under PAD_MOVE_THRESHOLD, so a held move still needs a push past it. */
-export const PAD_DEADZONE_DEFAULT = 0.18;
+const PAD_DEADZONE_DEFAULT = 0.18;
 export const PAD_DEADZONE_RANGE = Object.freeze({ min: 0.05, max: 0.3 });
 const PAD_MOVE_THRESHOLD = 0.35; // stick deflection that counts as a held move action
 const PAD_AIM_RATE = 760; // mouse-pixel-equivalents per second at full stick deflection

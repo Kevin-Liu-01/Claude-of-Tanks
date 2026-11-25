@@ -103,7 +103,10 @@ async function pauseAsPlayer(touch) {
     await new Promise((done) => { document.addEventListener('pointerlockchange', done, { once: true }); document.exitPointerLock(); setTimeout(done, 1000); });
     await new Promise((done) => setTimeout(done, 80));
     Document.prototype.hasFocus = hasFocus;
-    return { ...before, how: 'lock lost without focus (alt-tab)' };
+    // and the player comes back: the window's focus event a return from an alt-tab fires (the frame loop, which stands
+    // down while the page has no focus, wakes on it: engine/frameLoopScheduler.ts)
+    window.dispatchEvent(new Event('focus'));
+    return { ...before, how: 'lock lost without focus (alt-tab), then back' };
   }
   return { ...before, how: 'esc' };
 }

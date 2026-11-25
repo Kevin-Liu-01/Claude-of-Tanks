@@ -2497,7 +2497,8 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  photo: { available: () => canOpenBattlePhoto(), open: () => openBattlePhoto() },
+  // (settings-unify-278) the paused Settings' Photo mode: its Exit returns there (Settings closes itself before this runs)
+  photo: { available: () => canOpenBattlePhoto(), open: () => openBattlePhoto(true) },
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -2631,17 +2632,19 @@ function canOpenBattlePhoto(): boolean {
     hasSubject: battlePhotoEntity() !== null,
   });
 }
-function openBattlePhoto(): void {
+/** `fromMenu`: opened from the paused Settings (its footer's Photo mode), so Exit returns there; the P key's way in is
+ *  from the battle, so Exit resumes it. */
+function openBattlePhoto(fromMenu = false): void {
   if (battlePhotoOpen || !canOpenBattlePhoto()) return;
   // the battle stands still from this frame, while the chunk (on a first open) and its sheet load
   battlePhotoOpen = true;
-  battlePhotoFromMenu = settings.isOpen();
-  if (battlePhotoFromMenu) settings.close({ noRelock: true });
+  battlePhotoFromMenu = fromMenu || settings.isOpen();
+  if (settings.isOpen()) settings.close({ noRelock: true });
   void battlePhoto.preload().then((runtime) => runtime.open())
     .then((opened) => { if (!opened && !battlePhoto.current?.isOpen) battlePhotoOpen = false; })
     .catch(() => { battlePhotoOpen = false; });
 }
-input.onAction('photoMode', openBattlePhoto);
+input.onAction('photoMode', () => openBattlePhoto());
 // (settings-unify-278) Mute all: one kept value (input settings' muteAll), set by Settings › Sound (its 'ui:volumes') and the
 // touch layout's quick mute; the lazy audio latches it before its first graph
 audio.mute(input.getSettings().muteAll);

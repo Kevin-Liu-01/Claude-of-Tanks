@@ -125,14 +125,14 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   // viewer's own keys while it is open (docs/REPLAY.md §5)
   assert.doesNotMatch(main, /replay: replayViewerOwner/, 'a watched replay may open photo mode');
   assert.match(main, /isInputHeld: \(\) => settings\.isOpen\(\) \|\| battlePhotoOpen,/, 'photo mode holds the replay viewer\'s keys');
-  assert.match(main, /function openBattlePhoto\(\): void \{\n  if \(battlePhotoOpen \|\| !canOpenBattlePhoto\(\)\) return;/,
+  assert.match(main, /function openBattlePhoto\(fromMenu = false\): void \{\n  if \(battlePhotoOpen \|\| !canOpenBattlePhoto\(\)\) return;/,
     'every way in passes the availability check');
-  assert.match(main, /battlePhotoOpen = true;\n  battlePhotoFromMenu = settings\.isOpen\(\);\n  if \(battlePhotoFromMenu\) settings\.close\(\{ noRelock: true \}\);/,
+  assert.match(main, /battlePhotoOpen = true;\n  battlePhotoFromMenu = fromMenu \|\| settings\.isOpen\(\);\n  if \(settings\.isOpen\(\)\) settings\.close\(\{ noRelock: true \}\);/,
     'the battle pauses at the press, before the chunk loads (no running frames between the menu and photo mode)');
-  assert.match(main, /input\.onAction\('photoMode', openBattlePhoto\)/, 'the photo key opens it');
+  assert.match(main, /input\.onAction\('photoMode', \(\) => openBattlePhoto\(\)\)/, 'the photo key opens it');
   assert.match(main, /const back = battlePhotoFromMenu && canOpenBattlePhoto\(\);\n      battlePhotoFromMenu = false;\n      if \(back\) settings\.open\(\);/,
     'Exit returns to the paused Settings photo mode was opened from (settings-unify-278)');
-  assert.match(main, /photo: \{ available: \(\) => canOpenBattlePhoto\(\), open: \(\) => openBattlePhoto\(\) \}/,
+  assert.match(main, /photo: \{ available: \(\) => canOpenBattlePhoto\(\), open: \(\) => openBattlePhoto\(true\) \}/,
     'the pause menu (the phone\'s way in) offers it under the same check');
   assert.doesNotMatch(main, /^import[^\n]*(photoMode|battlePhotoMode)\.ts/m, 'main.ts loads photo mode lazily');
   assert.match(main, /import\('\.\/game\/battlePhotoMode\.ts'\)/);
