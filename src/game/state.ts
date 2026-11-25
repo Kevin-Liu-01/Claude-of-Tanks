@@ -2484,7 +2484,9 @@ function resolveWorldShellImpact(
     ...(typeof hit.record?.structureIdx === 'number' ? { structureId: hit.record.structureIdx } : {}),
   });
   // (aircraft-solid-277) a downed aircraft's crash round: its wreck lies where it burst, on the ground its crater left
-  recordCrashWreck(game, shell, hit.point.x, hit.kind === 'terrain' ? world.heightField.getHeightAt(hit.point.x, hit.point.z) : hit.point.y,
+  // (the match's ground, its crater dug: the authority reads its deformed field; the raw field left the wreck 2.4 m over the
+  // drawn one, and a hull drove under it)
+  recordCrashWreck(game, shell, hit.point.x, hit.kind === 'terrain' ? groundFor(world).field.getHeightAt(hit.point.x, hit.point.z) : hit.point.y,
     hit.point.z);
 }
 

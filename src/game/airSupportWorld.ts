@@ -80,6 +80,8 @@ const WRECK_MAX = AIR_CRASH_RULES.wreck.max;
 const WRECK_SMOKE_EVERY_S = 0.18;
 /** A struck aircraft's scorch by its damage state: past a third of its hit points lost, and past two thirds. */
 const DAMAGE_SOOT = [0, 0.35, 0.7] as const;
+/** A burned skin's finish: matte, its metal under soot. */
+const WRECK_ROUGHNESS = 0.94, WRECK_METALNESS = 0.06;
 
 /** The wreck's tear in its airframe's frame, from the sim's break (sim/airframeVolumes.ts wreckBoxes: the same cut). */
 function tearOf(kind: PublicStrike['kind'], id: number): AirframeTear {
@@ -243,7 +245,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     if (craft.dropped) craft.dropped.visible = false;
     craft.tear = tearOf(strike.kind, strike.id);
     const body = wreckBody(craft);
-    if (body) weatherAirframe(body, 1, craft.tear);
+    if (body) { weatherAirframe(body, 1, craft.tear); burnFinish(body); }
     if (record) placeWreck(craft, record);
     else {
       // the sim's law where the record has not arrived yet (a networked client's next snapshot)
@@ -262,6 +264,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       if (other.wreckAt < oldestAt) { oldestAt = other.wreckAt; oldestId = id; }
     }
     if (wrecks > WRECK_MAX && oldestId >= 0) release(oldestId, crafts.get(oldestId)!);
+  }
+  /** A wreck's skin burned matte: its airframe's own material (one per airframe, the same program: two uniforms) loses
+   *  its sheen, so the char reads as soot rather than as the sky it mirrored. */
+  function burnFinish(body: THREE.Object3D): void {
+    body.traverse((o) => {
+      const material = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).material as THREE.MeshStandardMaterial : null;
+      if (material?.isMeshStandardMaterial && material.vertexColors) { material.roughness = WRECK_ROUGHNESS; material.metalness = WRECK_METALNESS; }
+    });
   }
   const _local: AircraftWreck = { id: 0, kind: 'strafe', team: 'alpha', x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0, atS: 0, untilS: 0 };
 

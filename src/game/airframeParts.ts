@@ -233,7 +233,7 @@ export function holdTeamTrim(root: THREE.Object3D, geometry: THREE.BufferGeometr
         let char: number;
         if (tear) {
           // the wreck: burned over, darkest where the fire was (the nose that ploughed in, round the engines)
-          char = Math.min(0.92, 0.5 + 0.42 * n + (pz > tear.crumpleFromZ - 3 ? 0.15 : 0));
+          char = Math.min(0.95, 0.62 + 0.36 * n + (pz > tear.crumpleFromZ - 3 ? 0.15 : 0));
         } else {
           // in flight: scorch patches that grow with the damage
           char = Math.max(0, Math.min(1, (n - (1 - soot)) / 0.22)) * 0.85;

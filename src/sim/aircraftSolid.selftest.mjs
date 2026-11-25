@@ -23,7 +23,7 @@ import { createCombatState } from './damage.ts';
 import { createTankState } from './movement.ts';
 import { createMatchModeController } from './matchModes.ts';
 import { getSpec } from '../vehicles/specs.ts';
-import { createBus, createGameState, simStep } from '../game/state.ts';
+import { createBus, createCollider, createGameState, simStep } from '../game/state.ts';
 import { createMatchActor } from '../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { AIR_SUPPORT_RULES, matchRulesetFor } from './matchRuleset.ts';
@@ -297,10 +297,14 @@ function soloBattle() {
     const t = -o.y / d.y;
     return t >= 0 && t <= maxDist ? { dist: t, point: new Vector3(o.x + d.x * t, 0, o.z + d.z * t), normal: new Vector3(0, 1, 0), kind: 'terrain', record: null } : null;
   };
-  const world = { heightField: field, raycast: ground };
-  const collider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
+  // the page's own collider (game/state.ts createCollider: the hulls' obstacles, the wrecks among them)
+  const world = { heightField: field, raycast: ground, getObstacles: () => [], queryObstacles: (_a, _b, _c, _d, out) => { out.length = 0; return out; } };
+  const collider = createCollider(game, world);
   const pins = game.tanks.map((t) => [t, t.state.pos.clone()]);
-  const step = (n = 1) => { for (let i = 0; i < n; i++) { simStep(game, bus, world, null, collider); for (const [t, p] of pins) t.state.pos.copy(p); } };
+  const free = new Set();
+  const step = (n = 1) => {
+    for (let i = 0; i < n; i++) { simStep(game, bus, world, null, collider); for (const [t, p] of pins) if (!free.has(t.id)) t.state.pos.copy(p); }
+  };
   /** A round of `id`'s gun from `from` toward `to`, into the solo shells. */
   const fire = (id, from, to) => {
     const t = game.tankById.get(id);
@@ -310,7 +314,7 @@ function soloBattle() {
     game.shells.push(shell);
     return shell;
   };
-  return { game, air, log, step, fire };
+  return { game, air, log, step, fire, free };
 }
 const solo = soloBattle();
 solo.step(10);
@@ -344,8 +348,19 @@ const soloImpact = solo.log.slice(fromShot).find(([name, e]) => name === 'shell:
 assert.ok(soloImpact && soloImpact.hitKind === 'prop' && Math.abs(soloImpact.pos[0] - soloCentre.x) < 12,
   `7: solo: a round at the wreck stops on it (${JSON.stringify(soloImpact ?? null)})`);
 
+// the page's collider: the gunner driven at the wreck's lowest part from 26 m off its flank stops against it
+solo.free.add('gunner');
+const gunner = solo.game.tankById.get('gunner');
+const across = solo.air.wrecks[0].yaw + Math.PI / 2;
+const sx = lowPart.cx - Math.sin(across) * 26, sz = lowPart.cz - Math.cos(across) * 26;
+gunner.state.pos.set(sx, 0, sz); gunner.state.yaw = across; gunner.state.speed = 0;
+for (let i = 0; i < 60 * 6; i++) { Object.assign(gunner.input, { throttle: 1, brake: false, steer: 0 }); solo.step(1); }
+const soloAlong = (gunner.state.pos.x - sx) * Math.sin(across) + (gunner.state.pos.z - sz) * Math.cos(across);
+assert.ok(soloAlong < 24 && Math.abs(gunner.state.speed) < 1.5, `7: solo: a hull driven at the wreck stops against it (${soloAlong.toFixed(1)} m of 26, ${gunner.state.speed.toFixed(2)} m/s)`);
+
 console.log(`aircraftSolid: an enemy round strikes the recon jet (${enemy.hpBefore} -> ${enemy.hp} hp), its own side's too `
   + `(friendly, ${friendly.hpBefore} -> ${friendly.hp}, no points); 3.5 m over its spine misses, 8.2 m out on the wing strikes; a `
   + `friendly drone in its path is struck and spent and downs it (a team kill); its wreck stops a tank ${blocked.along.toFixed(1)} m `
   + `into a 30 m run (lifted: ${clear.along.toFixed(1)} m) and a round on it at ${onWreck.impact.x.toFixed(1)}; the solo step `
-  + `the same (a friendly round on the jet, its wreck laid, a round stopped on it at ${soloImpact.pos[0].toFixed(1)}) PASS`);
+  + `the same (a friendly round on the jet, its wreck laid, a round stopped on it at ${soloImpact.pos[0].toFixed(1)}, a hull stopped `
+  + `${soloAlong.toFixed(1)} m into a 26 m run) PASS`);
