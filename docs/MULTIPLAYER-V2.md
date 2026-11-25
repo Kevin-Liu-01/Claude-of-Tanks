@@ -2818,6 +2818,77 @@ accounts for part of "doesn't work super well p2p". What a real home network add
 measured here; `tools/mp-p2p-e2e.mjs --site=… --mode=private` and `mp-p2p-soak --ice=relay` (with relay secrets) are
 those checks.
 
+**The real network, how to check it.** One machine selects host candidates whatever the ICE servers, so two checks remain.
+(1) Relay-only through real TURN on one machine: `node tools/with-capture-lock.mjs --lock-class=render -- node
+tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay` in a terminal whose environment holds the rooms Worker's
+relay variables (`COT_CLOUDFLARE_TURN_KEY_ID` and `COT_CLOUDFLARE_TURN_API_TOKEN`, or a coturn's `COT_TURN_URLS` and
+`COT_TURN_SHARED_SECRET`), set by hand there and never written to a file. `--mode=private` makes each room an internet
+room, whose connections ask the room for a grant (a LAN room uses no ICE servers, `src/mp/transport/iceConfig.ts`);
+`--ice=relay` builds every peer connection relay-only and gates every selected pair relay/relay and the status model's
+`viaTurn`. Without a relay configured the run refuses (exit 2) naming the variables; the tool never reads their values,
+the issuer (`server/relayCredentials.ts`) says whether they configure one. (2) Two devices on two networks against the
+live site: the host on a laptop on home Wi-Fi (Play, Private, Create), the joiner on a phone on cellular data with Wi-Fi off
+(the invite link), two minutes of play; the F3 panel's **Path** row on the phone names the link (`direct`, `direct (NAT)`,
+`relayed`, `via TURN`; the host's reads `this browser`, with `via TURN` when any peer is relayed).
+
+**The opening: a clock seeded from a boot (fixed, f2c8e1ef5d).** On 276 a seat's first battle on a page could start
+with its controls answered late: in the slot runs under the capture lock, one cold run's joiner was 51 ticks behind at
+the reveal (51, 48, 44, 41, 37, 33 … over 16 s, 20 visible corrections), another's host 24 (24, 20, 17, 14, 11, 7).
+The client clock's offset was 784 ms and 343 ms ahead of the authority and drained at exactly its 50 ms/s slew, the
+input lag with it. The clock's first sample is the HELLO → WELCOME exchange; a seat that links while the host's Worker
+boots the match (the host itself, or an early joiner) waits through that boot, and the round trip's midpoint seeds the
+offset half the boot ahead. The WELCOME's 8-ping burst puts the filtered target right within ~1.6 s, but the active offset
+could only slew to it, so every input sampled meanwhile was stamped that far in the future. Now `ServerClock` calibrates
+(`calibrationSamples`, 9: the HELLO sample and the burst): until then the active offset is the filtered target, after it
+the slew hides a converged estimate's corrections as before. Two cold runs on the fix: both seats 5–8 ticks from the
+first second, 0 offset error at the reveal, PASS. `tools/mp-two-peer-e2e.mjs` gates it (`--ack-by`, 3: from that second
+each page's acknowledgement lag is within `--ack-p95`), and `clock.selftest.mjs` holds the boot-delayed HELLO with the old
+clock as its control.
+
+**Parked: the host's data channel off the main thread (measured proposal, 2026-11-25).** The host relays every peer's
+frames to its Worker on its main thread (§13.24), so its frames sit in every peer's path twice. Measured over the six
+two-minute battles above, second by second: the host's own seat (loopback, no data channel) has wire rtt p50 38–46 ms,
+p95 44–64; the peer (through the host's main thread twice, ICE pair 1 ms) p50 40–50, p95 49–76; the peer less the host,
+median −4 to +5 ms, p95 +5 to +22 ms: the most moving the channel into the Worker could save at p95. The shared ~40 ms
+is the receiving pages' own frame time, which it does not touch, and the link's intrinsic input cost is 2–3 ticks of
+6–8 (the rest is the prediction's lead), so at most one tick. Its value is the tail: in 276's first battle a host-side
+stall took the peer's acknowledgement to 50 ticks (the host's own seat to 39), and with the channel in the Worker a host
+main-thread stall no longer holds the peers' input. Feasibility is unchecked (a transferable `RTCDataChannel`, or a peer
+connection in a Worker, in every supported browser). Built only if the real-network runs show host stalls reaching
+peers: step 0, a browser probe of data-channel transfer to a Worker; step 1, the host's relay hop (data channel
+`onmessage` to the Worker's receipt) instrumented p50/p95/max on a real-network run.
+
+**The joiner stuck at 56 % (Kevin, 2026-11-25: a friend on the live site "got stuck at 56%").** The network entry maps
+its world build to 8–56 %, and at exactly 56 % the stage is "Opening match channel": the joiner's own work is done and it
+waits for its data channel to the host and the host's WELCOME; only then do the tanks move the bar to 83–85 %. A cold
+joiner whose ICE can never connect (`tools/mp-two-peer-e2e.mjs --joiner-cold --joiner-ice=blocked`: relay-only with no
+relay server, two NATs with no usable TURN) held a still 56 % for 66 s while the transport re-offered every 3.5 s, then
+failed with "no connection for 62156 ms". With a working link a slow joiner does not stall there (4 Mbps down, 100 ms,
+4× CPU: 62 s from the start press to the battle, 28.6 s of it the world build and 21 s at 88 % "Preparing effects";
+10 Mbps: 34 s). Fixed for 276.1: a link that never opened gives up 30 s after open (`RTC_FIRST_OPEN_WINDOW_MS`; one that
+opened keeps the reconnect window), the loader says each second what the link is doing ("Connecting to the host ·
+attempt 3 · 12 s", "Waiting for the host to load", "Joining the battle"), and a link that never carried a frame fails as
+`host_unreachable`, worded in the lobby with Rejoin battle.
+
+**Production TURN.** The rooms Worker mints relays only from its secrets `COT_CLOUDFLARE_TURN_KEY_ID` and
+`COT_CLOUDFLARE_TURN_API_TOKEN` (§13.14); unset, every grant is `COT_STUN_URLS` alone. The cot-rooms deploys of 2026-10-09
+and 2026-10-13 record them unset ("relay probe: 1 STUN server, relay false"), and nothing since records them set, so a
+seat behind a symmetric or carrier-grade NAT has no path to its host: the likely cause of the friend's 56 %. Setting them
+(`npx wrangler secret put` in `cloudflare/rooms`, no redeploy) gives every seat Cloudflare's TURN, TCP/TLS on 443
+included. The client counts each STUN-only grant as the `ice_degraded` telemetry note `no_relay`.
+
+**Parked: a relay through the Room Durable Object (measured proposal, 2026-11-25).** If TURN-relayed links still fail,
+the guaranteed fallback is to carry the match over the room's WebSocket: a `RoomRelayTransport` on the peer (binary
+envelopes `{ to, frame }`) and the host's acceptor bridging them to its core like a data channel, a room protocol
+addition (a `ROOM_PROTOCOL_VERSION` bump, the Worker first). §13.1's rule is why it is parked: on Workers Free every
+WebSocket message to the Durable Object is billed against 100,000 requests a day shared with telemetry (§13.29). A
+relayed peer brings ~40–50 incoming messages a second (20 Hz snapshots from the host, 20–30 input frames); billed 1:1
+that is ~160k requests an hour, one relayed player spending the day's allowance in ~40 minutes and taking multiplayer
+down for everyone until 00:00 UTC; billed at the 20:1 ratio Cloudflare documents for Durable Object WebSockets (to be
+confirmed against the current pricing and the Free cap), ~8k an hour, about 12 relayed player-hours a day. The relayed
+peer gains two hops through the Durable Object's location (+20–80 ms). Built only if relayed failures persist, and then
+capped (two relayed seats a room, a daily relay budget in the room's limiter) so it can never take multiplayer down.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

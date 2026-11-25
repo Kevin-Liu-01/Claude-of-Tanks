@@ -87,6 +87,8 @@ export interface BrowserLoadScreen {
     teams?: { allied: string | null; enemy: string | null; alliedFills: readonly string[]; enemyFills: readonly string[] } | null,
     seats?: { allies: number; enemies: number } | null): void;
   progress(fraction: number, label?: string): void;
+  /** (mp-fixes-277) The match link's wait at 56 %, shown as a live stage: connecting (attempt n), the host loading, joining. */
+  linkWait?(state: { kind: 'connecting' | 'hostLoading' | 'joining'; attempt: number; seconds: number }): void;
   hide(): Promise<void>;
 }
 
@@ -608,6 +610,20 @@ class MatchEndedDuringEntryError extends Error {
  * The host refused this seat's HELLO for its build (2026-10-13, the same-wire check, or the other-wire gate): the entry
  * fails with the refusal's code so the lobby words it in the player's locale.
  */
+/**
+ * (mp-fixes-277; Kevin 2026-11-25, a friend on the live site "got stuck at 56%") A round whose match link never carried a
+ * frame (no WELCOME, not even the host's HOLD) could not reach the host at all: two networks with no path between them.
+ * The lobby words it (playMenu.ts ENTRY_REFUSAL_KEYS host_unreachable) and offers Rejoin battle; the raw transport detail
+ * ("no connection for 62156 ms") stays in the report.
+ */
+class HostUnreachableError extends Error {
+  readonly code = 'host_unreachable';
+  constructor(detail: string) {
+    super(`The host could not be reached (${detail || 'no connection'}).`);
+    this.name = 'HostUnreachableError';
+  }
+}
+
 class MatchRefusedError extends Error {
   readonly code: MatchRefusalCode;
   constructor(code: MatchRefusalCode) {
@@ -1117,7 +1133,8 @@ export function createBrowserComposition({
     if (!superseded) {
       lastFailure = { message: messageOf(error), matchId: active.matchId, stage, reason: reasonOf(error) };
       load.recordEntryFailure?.(lastFailure);
-      if (error instanceof MatchEndedDuringEntryError) reportWarning('multiplayer v2 entry', messageOf(error));
+      // (a match that ended, a host no path reaches: the network's facts, worded in the lobby; never a code error)
+      if (error instanceof MatchEndedDuringEntryError || error instanceof HostUnreachableError) reportWarning('multiplayer v2 entry', messageOf(error));
       else reportError('multiplayer v2 entry', error);
     }
     if (round !== active) { settleEntry(false); return; }
@@ -1299,6 +1316,18 @@ export function createBrowserComposition({
         });
       }
       load.battleLoad.progress(0.56, 'Opening match channel');
+      // (mp-fixes-277; a friend "stuck at 56%") until the WELCOME the loader says what the link is doing, once a second:
+      // connecting (and which attempt), the host still loading (its HOLD came over an open channel), or joining. Never
+      // counted as the round's progress, so the entry's stall rules still judge it.
+      const linkWaitStartedAt = now();
+      const linkWait = setInterval(() => {
+        if (round !== active || active.welcomes > 0 || active.failed || disposed) { clearInterval(linkWait); return; }
+        const transport = session?.match?.transport ?? null;
+        // (an open channel that carried a frame before the WELCOME carried the host's HOLD: it is still loading)
+        const kind = transport?.state === 'open' ? ((transport.stats.framesReceived ?? 0) > 0 ? 'hostLoading' : 'joining') : 'connecting';
+        load.battleLoad.linkWait?.({ kind, attempt: 1 + (transport?.stats.reconnects ?? 0), seconds: Math.round((now() - linkWaitStartedAt) / 1000) });
+      }, 1000);
+      active.abort.signal.addEventListener('abort', () => clearInterval(linkWait), { once: true });
       const sessionPresentation: SessionPresentation = {
         adapter: battlePresentation,
         controls: active.spectator ? null : active.controls.sample,
@@ -1492,9 +1521,13 @@ export function createBrowserComposition({
       activation.setWaitingForPeers(false);
       mountStatus(active);
       markStage(active, 'activation');
+      // (mp-fixes-277) each stage after the effects names itself: a slow machine held one label, 88 % "Preparing effects",
+      // for 21 s across all of them
+      load.battleLoad.progress(0.9, 'Priming deployment view');
       await warm.presentation?.(signal);
       check('openingGroundCover');
       if (!active.spectator) {
+        load.battleLoad.progress(0.93, 'Priming deployment shadows');
         await warm.finalShadows?.(signal);
         check('finalShadows');
       }
@@ -1604,7 +1637,11 @@ export function createBrowserComposition({
       return;
     }
     const refusal = matchRefusalCodeOf(detail);
-    void failRound(active, refusal ? new MatchRefusedError(refusal) : new Error(detail || 'The match link was lost while loading.'), 'connect');
+    // (a real match link that reports no frame at all: one that never reached its host, not a link nobody measured)
+    const framesReceived = session?.match?.transport?.stats.framesReceived;
+    const unreached = !refusal && active.welcomes === 0 && typeof framesReceived === 'number' && framesReceived === 0;
+    void failRound(active, refusal ? new MatchRefusedError(refusal)
+      : unreached ? new HostUnreachableError(detail) : new Error(detail || 'The match link was lost while loading.'), 'connect');
   };
 
   const handleVerdict = (): void => {

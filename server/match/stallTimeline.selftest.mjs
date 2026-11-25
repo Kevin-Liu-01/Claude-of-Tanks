@@ -36,7 +36,9 @@ const seats = [
 /** One seat's client: the real clock and input stream; `held` keeps its frames while the server is stalled. */
 function attachClient(actor, { plantAheadMs = 0 } = {}) {
   const link = createLoopbackLink('p1');
-  const serverClock = new ServerClock();
+  // (mp-fixes-277) a planted error lasts only on a clock that never calibrates: since then the WELCOME's burst replaces any
+  // seed with the measured offset (src/mp/match/clock.ts calibrationSamples), so the control keeps the clock of before
+  const serverClock = new ServerClock(plantAheadMs ? { calibrationSamples: 0 } : {});
   const tickClock = new TickClock(TICK_HZ);
   const unwrap = new TimeUnwrapper();
   const stream = new InputStream();

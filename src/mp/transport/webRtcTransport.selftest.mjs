@@ -9,7 +9,7 @@
 // autoReconnect: false → one attempt.
 import assert from 'node:assert/strict';
 import { DEFAULT_RECONNECT, TRANSPORT_CLOSE, WebRtcTransport, selectedCandidateTypes } from './index.ts';
-import { ICE_GATHER_CAP_MS, RTC_OFFER_CONNECT_TIMEOUT_MS } from './webRtcTransport.ts';
+import { ICE_GATHER_CAP_MS, RTC_FIRST_OPEN_WINDOW_MS, RTC_OFFER_CONNECT_TIMEOUT_MS } from './webRtcTransport.ts';
 import { FakeSignalRelay, RtcWorld } from './rtcDouble.test-support.ts';
 
 // ------------------------------------------------------------ virtual time
@@ -294,6 +294,26 @@ function createTransport(time, relay, world, options = {}) {
   assert.equal(transport.state, 'closed');
   assert.equal(changes.at(-1).reason, TRANSPORT_CLOSE.EXHAUSTED);
   assert.ok(transport.stats.reconnects >= 5, `an attempt every 3.5 s inside the 20 s window (${transport.stats.reconnects})`);
+  assert.equal(time.pending, 0);
+}
+
+// ---- (mp-fixes-277; Kevin 2026-11-25, a friend "stuck at 56%") a link that never opened gives up after the first-open
+// window (30 s from open), not the reconnect window's minute: the joiner hears it cannot reach the host while it still waits
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const { transport, changes } = createTransport(time, relay, world); // the default 60 s reconnect window
+  const openedAt = time.clock();
+  transport.open();
+  await settle(world, relay);
+  for (let n = 0; n < 40 && transport.state !== 'closed'; n++) { time.advance(RTC_OFFER_CONNECT_TIMEOUT_MS); await settle(world, relay); }
+  assert.equal(transport.state, 'closed');
+  assert.equal(changes.at(-1).reason, TRANSPORT_CLOSE.EXHAUSTED);
+  const gaveUpAfter = time.clock() - openedAt;
+  assert.ok(gaveUpAfter >= RTC_FIRST_OPEN_WINDOW_MS && gaveUpAfter < RTC_FIRST_OPEN_WINDOW_MS + 2 * RTC_OFFER_CONNECT_TIMEOUT_MS,
+    `a never-opened link gives up ${gaveUpAfter} ms after open (the first-open window, ${RTC_FIRST_OPEN_WINDOW_MS} ms), not 60 s`);
+  assert.equal(transport.hasOpened, false);
   assert.equal(time.pending, 0);
 }
 {
