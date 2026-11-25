@@ -166,7 +166,7 @@ function pageMemoryCensus() {
  * detailed dump): per process its top-level allocators past 5 MB (v8 with each isolate — the page's and its workers' —
  * partition_alloc, malloc, blink_gc, gpu, skia, cc, web_cache ...). What the resident set the census cannot see is made of.
  */
-async function memoryInfraDump(browser) {
+export async function memoryInfraDump(browser) {
   const cdp = await browser.target().createCDPSession();
   const events = [];
   cdp.on('Tracing.dataCollected', ({ value }) => { for (const e of value) events.push(e); });

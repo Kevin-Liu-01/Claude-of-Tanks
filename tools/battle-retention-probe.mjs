@@ -20,7 +20,8 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { execFileSync } from 'node:child_process';
+import { launchGuardedBrowser, parseFootprint } from './browser-launch.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
@@ -43,6 +44,7 @@ export function parseRetentionArgs(argv = process.argv.slice(2)) {
     retainers: argv.includes('--retainers'),
     saveSnapshot: argv.includes('--save-snapshot'),
     settleMs: Number(arg('settle-ms', 4000)),
+    memoryDump: argv.includes('--memory-dump'),
   };
 }
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -106,12 +108,37 @@ export function retentionVerdict(probes, { expect = 'released', expectDressing =
 }
 
 /**
+ * (--memory-dump) The renderer's own memory beside the V8 heap: its phys_footprint (footprint(1)) and Chrome's memory-infra
+ * dump by allocator (battle-memory-probe memoryInfraDump), renderer rows only. Decoded images, canvases, malloc and the
+ * WebGL client's copies live outside V8; Safari's WebContent footprint counts them all.
+ */
+async function rendererMemory(browser) {
+  const root = browser.process()?.pid;
+  const rows = execFileSync('ps', ['-A', '-ww', '-o', 'pid=,ppid=,command='], { encoding: 'utf8', maxBuffer: 1 << 26 }).trim().split('\n')
+    .map((line) => line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/)).filter(Boolean).map((m) => ({ pid: +m[1], ppid: +m[2], command: m[3] }));
+  const tree = new Set([root]);
+  for (let grew = true; grew;) { grew = false; for (const row of rows) if (!tree.has(row.pid) && tree.has(row.ppid)) { tree.add(row.pid); grew = true; } }
+  const renderers = rows.filter((row) => tree.has(row.pid) && row.command.includes('--type=renderer')).map((row) => row.pid);
+  let footprintMb = null;
+  try {
+    const text = execFileSync('footprint', ['-f', 'bytes', '--noCategories', ...renderers.flatMap((pid) => ['-p', String(pid)])],
+      { encoding: 'utf8', timeout: 30_000, maxBuffer: 1 << 24 });
+    const parsed = parseFootprint(text);
+    footprintMb = Object.fromEntries(renderers.map((pid) => [pid, +(parsed.get(pid) ?? 0).toFixed(0)]));
+  } catch { /* footprint(1) unavailable: the dump still names the allocators */ }
+  const { memoryInfraDump } = await import('./battle-memory-probe.mjs');
+  const dump = await memoryInfraDump(browser);
+  const renderer = Object.fromEntries(Object.entries(dump).filter(([name]) => /renderer/i.test(name)));
+  return { footprintMb, renderer };
+}
+
+/**
  * One route (Garage -> A -> Garage -> B) and its reading: the report, with `verdict` (retentionVerdict; `error` on a run
  * that did not finish). Writes `<out>/<label>.json` when `out` is set.
  */
 export async function runRetentionRoute({ dev = false, distDir = resolve('dist'), label = 'run', out = null, port = 4271,
   mapA = 'verdant', mapB = 'winter', cpuRate = 4, expect = 'released', expectDressing = 'any', retainers = false,
-  saveSnapshot = false, settleMs = 4000 } = {}) {
+  saveSnapshot = false, settleMs = 4000, memoryDump = false } = {}) {
   const log = (line) => process.stderr.write(`[battle-retention ${label}] ${line}\n`);
   const [{ default: puppeteer }, vite] = await Promise.all([import('puppeteer'), import('vite')]);
   let server, browser;
@@ -177,6 +204,7 @@ export async function runRetentionRoute({ dev = false, distDir = resolve('dist')
     });
     report.dressingBuild = dressingBuild;
     await step(`garage after ${mapA}`, { probe: await page.evaluate(probeRoot, 'dressing', 'garage_dressing'), dressingBuild });
+    if (memoryDump) { await collect(); report.garageMemory = await rendererMemory(browser); await step('garage memory', report.garageMemory); }
     await enter(mapB);
     // the world release is paced (6 ms slices between tasks): give it its turns before reading
     await page.waitForFunction((a) => {
@@ -192,7 +220,8 @@ export async function runRetentionRoute({ dev = false, distDir = resolve('dist')
       totalMb: +((usage.usedSize + (usage.backingStorageSize ?? 0)) / 1048576).toFixed(1),
       performanceMemoryMb: await page.evaluate(() => performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(1) : null),
     };
-    report.settle = { probes, heap, release: await page.evaluate(() => window.__DEBUG?.getLastWorldRelease?.() ?? null) };
+    report.settle = { probes, heap, release: await page.evaluate(() => window.__DEBUG?.getLastWorldRelease?.() ?? null),
+      ...(memoryDump ? { memory: await rendererMemory(browser) } : {}) };
     await step(`${mapB} settled`, report.settle);
     const alive = Object.entries(probes).filter(([, probe]) => probe.rootAlive).map(([key]) => key);
     if (retainers && alive.length) {
