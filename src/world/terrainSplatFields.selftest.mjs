@@ -112,6 +112,8 @@ function fixture({ closeThrows = false } = {}) {
     const MASK_STACK_GUTTER = 64, MAP_SIZE = 1024;
     // (2026-10-04, the tier gate: the material reads the live preset — High here, its change listener a no-op)
     const resolvePresetName = () => 'high', onPresetChange = () => () => true;
+    // (texture-diet-277) the photo sets' tier follows the preset: High's is 1K, and the listener above never fires a change
+    const terrainTextureTier = () => '1k';
     ${functions}
     const rawSteps = splatFieldSteps;
     splatFieldSteps = function* () {

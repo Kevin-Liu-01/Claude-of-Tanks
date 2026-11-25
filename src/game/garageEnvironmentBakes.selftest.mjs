@@ -26,13 +26,13 @@ import { createGarageEnvironmentPresentationRuntime } from './garageEnvironmentP
   cache.install('shown', create, 0.5, () => true);
   const shown = scene.environment;
   assert.equal(cache.prebake('desert', create), true, 'a pre-bake bakes');
-  assert.equal(scene.environment, shown, 'and installs nothing');
+  assert.ok(scene.environment === shown, 'and installs nothing');
   assert.equal(cache.prebake('desert', create), false, 'a resident key never bakes twice');
   assert.ok(cache.has('desert'));
   const bakes = made.length;
   cache.install('desert', () => assert.fail('an install of a pre-baked key is an exact hit'), 0.5, () => true);
   assert.equal(made.length, bakes);
-  assert.equal(scene.environment, made[1].texture, 'the pre-baked map is the one installed');
+  assert.ok(scene.environment === made[1].texture, 'the pre-baked map is the one installed');
   cache.prebake('winter', create); cache.prebake('urban', create); cache.prebake('coastal', create);
   assert.ok(!cache.has('shown') && cache.has('desert'), 'past the cap the least recently used goes, never the installed map');
   cache.setCapacity(0);

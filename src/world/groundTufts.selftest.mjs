@@ -84,8 +84,10 @@ try {
     const again = build(mapId);
     for (let v = 0; v < 2; v++) {
       const a = tufts.group.children[v], b = again.tufts.group.children[v];
-      assert.deepEqual(new Uint8Array(b.instanceMatrix.array.buffer), new Uint8Array(a.instanceMatrix.array.buffer), `${mapId}: byte-equal matrices`);
-      assert.deepEqual(new Uint8Array(b.instanceColor.array.buffer), new Uint8Array(a.instanceColor.array.buffer), `${mapId}: byte-equal colours`);
+      // the bytes of each attribute's array, compared as a boolean (object3d-assert-lint: no graph objects inside an assert)
+      const bytes = (attribute) => Buffer.from(attribute.array.buffer, attribute.array.byteOffset, attribute.array.byteLength);
+      assert.ok(bytes(b.instanceMatrix).equals(bytes(a.instanceMatrix)), `${mapId}: byte-equal matrices`);
+      assert.ok(bytes(b.instanceColor).equals(bytes(a.instanceColor)), `${mapId}: byte-equal colours`);
     }
     again.tufts.dispose();
     assert.equal(again.ctx.registered.size, 0);

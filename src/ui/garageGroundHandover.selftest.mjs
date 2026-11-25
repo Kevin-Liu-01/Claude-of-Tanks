@@ -29,7 +29,7 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
   assert.ok(!Array.isArray(horizon.material), 'the horizon presents in its own colours');
   // 2.
   for (let tries = 0; tries < 600 && terrain.material === garageGround; tries += 1) await new Promise((resolve) => setTimeout(resolve, 10));
-  assert.notEqual(terrain.material, garageGround, 'the battle ground swaps in where it lands');
+  assert.ok(terrain.material !== garageGround, 'the battle ground swaps in where it lands');
   if (horizon.geometry.groups.length === 2) {
     assert.ok(Array.isArray(horizon.material) && horizon.material[0] === terrain.material, 'the horizon\'s landforms wear it too');
   }
@@ -66,7 +66,7 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
   const phoneTerrain = phoneBuild.root.getObjectByName('map_derived_terrain_patch');
   const phoneGround = phoneTerrain.material;
   await new Promise((resolve) => setTimeout(resolve, 300));
-  assert.equal(phoneTerrain.material, phoneGround, 'a library pack keeps the Garage\'s ground');
+  assert.ok(phoneTerrain.material === phoneGround, 'a library pack keeps the Garage\'s ground');
   assert.ok(!garageTerrainSurfaceCache().some((entry) => entry.mapId === 'desert'), 'its map\'s battle ground is never prepared');
   phoneBuild.dispose();
   assets.dispose();

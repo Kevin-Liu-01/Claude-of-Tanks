@@ -79,7 +79,7 @@ const painted = garageStructureSurfaceCache().find((entry) => entry.mapId === va
 assert.ok(painted?.painted && painted.holds > 0, 'the map\'s battle prints are painted and held by the pack');
 late.root.traverse((object) => {
   if (!object.isMesh || !object.name.startsWith('authored_structures_') || object.name === 'authored_structures_route') return;
-  assert.equal(object.parent, lateGroup, `${object.name}: the stand-in went once the battle prints landed`);
+  assert.ok(object.parent === lateGroup, `${object.name}: the stand-in went once the battle prints landed`);
 });
 assert.equal(await late.standLateStructures(() => true), false, 'once landed, nothing to do');
 late.dispose();

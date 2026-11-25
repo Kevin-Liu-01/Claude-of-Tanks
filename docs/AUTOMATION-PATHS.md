@@ -122,6 +122,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/mobilelap.mjs`
 - `tools/modal-layer.browser.mjs`
 - `tools/phase-resource-probe.mjs`
+- `tools/phone-entry-gpu.mjs`
 - `tools/phone-smoke-reach.browser.mjs`
 - `tools/render-stability-audit.mjs`
 - `tools/second-solo-battle.browser.selftest.mjs`
@@ -252,6 +253,7 @@ Waits and polls built by hand:
 - `tools/mobile-dynamic-aim-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase confirms the battle, with the tool's own tank and touch conditions
 - `tools/mp-room-census.mjs`: another lane's file (tools-chains); migrate after it lands
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
+- `tools/phone-entry-gpu.mjs`: the phone page's GPU through the entry is its subject: it waits for the debug surface and each phase edge while it samples the GPU tracker's stage, the resident worlds and every context loss (mobile-gpu-reset-277)
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
 - `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
