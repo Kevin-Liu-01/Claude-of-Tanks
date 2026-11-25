@@ -6,16 +6,17 @@
  *   A  leave from Settings, open the Service Record (R), its Replays tab, the newest row's Watch;
  *   B  a second battle ended by its clock, the end screen's Watch replay.
  *
- * Each path must reach a viewer that shows no notice, whose transport enables, whose clock runs when Play is pressed (at
- * 4x), and which plays to the recording's end with a hull moving. Every replay indexer Worker's reply is kept (the problem
- * it named), and each recording is saved beside the receipt for tools/replay-verify.mjs. Live 276: Kevin, "the replays
+ * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
+ * notice, whose transport enables, whose clock runs when Play is pressed (at 4x), and which plays to the recording's end
+ * with a hull moving. Every replay indexer Worker's reply is kept (the problem it named), and each recording is saved
+ * beside the receipt for tools/replay-verify.mjs. Live 276: Kevin, "the replays
  * dont actually work": the indexer's Worker drew another roster than the page had recorded and refused the replay
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
  *   node tools/replay-ui-flow.browser.selftest.mjs [--dist=<built dist> | --url=<origin>] [--out=<dir>] [--port=4238]
  *     [--seconds=20] [--paths=A,B]
  *
- * --dist serves a build (vite preview), --url opens a running origin, neither starts a dev server. Takes the shared
+ * --dist serves a build (vite preview), --url opens a running origin, and with neither it starts a dev server. Takes the shared
  * capture lock (render class; nests in a with-capture-lock hold): the manual `browser` suite's
  * (npm run test:heavy -- browser). One browser and one vite child, both stopped by their own handles. Exit 0 on PASS, 1 on
  * FAIL. First-party tooling: Kevin B. Liu.
@@ -28,6 +29,8 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold, startViteChild } from './capture-hold.mjs';
 import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
+import { createGameState } from '../src/game/stateCore.ts';
+import { spawnTanks } from '../src/game/rosterState.ts';
 
 const TOOL = 'replay-ui-flow';
 const QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
@@ -79,7 +82,7 @@ const stamp = () => new Date().toISOString().slice(11, 19);
 const say = (line) => console.log(`[${TOOL}] ${stamp()} ${line}`);
 
 /** In-page: a visible element's click (no coordinates: the HUD may cover it). */
-const clickVisible = (page, selector) => page.evaluate((sel) => {
+export const clickVisible = (page, selector) => page.evaluate((sel) => {
   const node = [...document.querySelectorAll(sel)].find((el) => el instanceof HTMLElement && el.offsetParent !== null);
   if (!node) return false;
   node.click();
@@ -87,7 +90,7 @@ const clickVisible = (page, selector) => page.evaluate((sel) => {
 }, selector);
 
 /** Enter a solo battle as the player does: the Garage's Deploy key (Enter), then any entry gate, until controls release. */
-async function enterBattle(page) {
+export async function enterBattle(page) {
   await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   await sleep(500);
   await page.keyboard.press('Enter');
@@ -103,7 +106,7 @@ async function enterBattle(page) {
 }
 
 /** Drive with real keys for `seconds`: forward and turns, the gun fired now and then. */
-async function drive(page, seconds) {
+export async function drive(page, seconds) {
   const end = Date.now() + seconds * 1000;
   let turn = 0;
   await page.keyboard.down('KeyW');
@@ -128,7 +131,7 @@ const recorderState = (page) => page.evaluate(() => ({
 const listReplays = (page) => page.evaluate(async () => (await window.__COT_REPLAY.list()).map((r) => ({ id: r.id, ticks: r.ticks, bytes: r.bytes, result: r.result })));
 
 /** The viewer's state as the page shows it: the bar, its clock and note, the play button, a hull's position. */
-const viewerState = (page) => page.evaluate(() => {
+export const viewerState = (page) => page.evaluate(() => {
   const bar = document.querySelector('.cot-replay');
   const tank = window.__DEBUG?.game?.tanks?.find((hull) => hull && !hull.combat?.destroyed) ?? null;
   return {
@@ -215,6 +218,11 @@ async function pathA(page, options, shot, log) {
   await drive(page, options.seconds);
   log.push({ at: 'driven', recorder: await recorderState(page) });
   await shot('battle');
+  return openSavedReplay(page, options, shot, log);
+}
+
+/** From a live battle: leave it as the player does, then watch its recording from the Service Record's Replays tab. */
+export async function openSavedReplay(page, options, shot, log) {
   // leave as the player does: Esc opens Settings, its Leave (and a confirm, if one asks)
   await page.keyboard.press('Escape');
   await sleep(800);
@@ -240,6 +248,7 @@ async function pathA(page, options, shot, log) {
   }
   await shot('record-replays');
   await clickVisible(page, '[data-replay-watch]');
+  if (options.openOnly) return { ok: true, why: 'opened' };
   const result = await watchToEnd(page, shot, log);
   if (result.ok) await leaveViewer(page);
   return result;
@@ -272,9 +281,18 @@ async function pathB(page, options, shot, log) {
   return watchToEnd(page, shot, log);
 }
 
+/** The battle pool as Node builds it (rosterState.spawnTanks): the page's must be the same, id for id (a seeded draw over
+ *  another order is another roster, the indexer's refusal of live 276). */
+function nodeBattlePool() {
+  const game = createGameState({});
+  spawnTanks(game, { scene: { remove() {} } });
+  return game.allTanks.map((entity) => entity.id);
+}
+
 export async function runFlow(options) {
   mkdirSync(options.out, { recursive: true });
-  const receipt = { tool: TOOL, at: new Date().toISOString(), options: { ...options }, paths: {}, errors: [], replayLog: [] };
+  const receipt = { tool: TOOL, at: new Date().toISOString(), options: { ...options }, paths: {}, errors: [], replayLog: [], pool: null };
+  const nodePool = nodeBattlePool();
   let server = null, browser = null;
   try {
     let origin = options.url;
@@ -305,6 +323,14 @@ export async function runFlow(options) {
       say(`path ${name}: boot`);
       await page.goto(`${origin}/?${QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
       await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300_000 });
+      if (!receipt.pool) {
+        const pagePool = await page.evaluate(() => window.__DEBUG?.game?.allTanks?.map((entity) => entity.id) ?? null);
+        let at = 0;
+        while (pagePool && at < Math.max(pagePool.length, nodePool.length) && pagePool[at] === nodePool[at]) at++;
+        receipt.pool = { hulls: nodePool.length, same: !!pagePool && at === nodePool.length && pagePool.length === nodePool.length,
+          partsAt: pagePool && at < Math.max(pagePool.length, nodePool.length) ? at : null };
+        say(`battle pool: ${receipt.pool.same ? 'the page\'s is Node\'s' : `the page's parts from Node's at ${receipt.pool.partsAt}`}`);
+      }
       let result;
       try { result = await (name === 'A' ? pathA : pathB)(page, options, shot, log); } catch (error) {
         await shot('error');
@@ -318,7 +344,7 @@ export async function runFlow(options) {
     if (browser) await browser.close().catch(() => {});
     if (server) await server.close();
   }
-  receipt.pass = options.paths.every((name) => receipt.paths[name]?.ok);
+  receipt.pass = !!receipt.pool?.same && options.paths.every((name) => receipt.paths[name]?.ok);
   writeFileSync(path.join(options.out, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   say(`${receipt.pass ? 'PASS' : 'FAIL'} → ${path.join(options.out, 'receipt.json')}`);
   return receipt;

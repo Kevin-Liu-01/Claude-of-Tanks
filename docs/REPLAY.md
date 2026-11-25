@@ -379,3 +379,8 @@ the Worker alike. Receipts: `src/game/replay/replayRosterSeat.selftest.mjs` (def
 another roster, the recorded one seats exactly) and `tools/replay-ui-flow.browser.selftest.mjs` (manual `browser`
 suite: a battle played with real keys, left and watched from the Service Record; another ended and watched from its end
 screen; each must play to its end with no notice and a hull moving, and the indexer's reply is in the receipt).
+
+The root hazard, fixed for 277: the battle pool (`game.allTanks`) is built in `rosterState.botPoolOrder` (id order),
+never the catalogs' registration order, so a seeded draw is the same roster on the page, in a Worker and in Node
+(`src/game/battlePoolOrder.selftest.mjs`; the UI-flow receipt holds the built page's pool to Node's, id for id). The
+catalogs keep their registration order for the Garage.

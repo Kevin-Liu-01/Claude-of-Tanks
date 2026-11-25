@@ -161,6 +161,11 @@ function createRosterEntity(specId: string, id: string, seed: number, matchReinf
  * @returns {void}
  */
 
+/** The battle pool's order: the production ids sorted by code unit (no locale), whatever order they registered in. */
+export function botPoolOrder(ids: readonly string[]): string[] {
+  return ids.slice().sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
 export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // FULL POOL: build entities for every pool entry (core roster + the rest
   // of the fleet). A battle fields 8 of them (setupBattle picks the
@@ -177,7 +182,11 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // materials.js is refcounted, so eviction frees the canvases/GPU maps).
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
   game._groundSampler = null;    // set by main.ts; applied to lazy visuals too
-  PRODUCTION_TANK_IDS.forEach((specId: string, i: number) => {
+  // (replay-fixes-277) the pool every seeded draw shuffles is in id order, never registration order: the bundle evaluates
+  // the spec packs in another order than Node and the Workers (on 276's build the page's and Node's catalogs parted at the
+  // 80th hull), so one seed drew another roster in each (the replay indexer's refusals). The catalogs keep their order
+  // for the Garage; only the battle pool is canonical (botPoolOrder).
+  botPoolOrder(PRODUCTION_TANK_IDS).forEach((specId: string, i: number) => {
     const ent = createRosterEntity(specId, specId, 4000 + i);
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);

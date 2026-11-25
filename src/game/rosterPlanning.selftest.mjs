@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createGameState } from './stateCore.ts';
 import {
-  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, soloBotCamo, soloMatchSeed, SOLO_MATCH_SEED, spawnTanks,
+  botPoolOrder, pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, soloBotCamo, soloMatchSeed, SOLO_MATCH_SEED, spawnTanks,
 } from './rosterState.ts';
 import { botCamoRoll } from '../sim/camoPaint.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
@@ -11,7 +11,8 @@ import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 
 const game = createGameState();
 spawnTanks(game, {});
-assert.deepEqual(game.allTanks.map((tank) => tank.specId), PRODUCTION_TANK_IDS,
+// (replay-fixes-277) in the battle pool's own order (id order), never the catalog's registration order
+assert.deepEqual(game.allTanks.map((tank) => tank.specId), botPoolOrder(PRODUCTION_TANK_IDS),
   'solo battles lazily instantiate every production-visible vehicle');
 assert.equal(game.tankById.size, PRODUCTION_TANK_IDS.length,
   'only production vehicles are instantiated (no hidden records remain, 2026-09-23)');
