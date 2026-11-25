@@ -170,6 +170,8 @@ assert.throws(() => generate({ ...source, component: { ...source.component, 'sur
 
 /* 2. the SPEC 4.14 sheet -------------------------------------------------------------------------------------- */
 // Starting values for tokens.json, verbatim from SPEC 4.14 (the font families follow the owner's 2026-10-17 ruling).
+// (SPEC's --z-toast:500 over --z-modal and its unused --z-boot are retired by the owner's stacking order, 2026-11-24
+// modal-layer-277: notices stand on --z-notice under every modal, the blockers on --z-critical; tools/z-layer-census.mjs.)
 const SPEC_SHEET = `
 --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;
 --graphite-750:#161b21;--graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
@@ -204,7 +206,7 @@ const SPEC_SHEET = `
 --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);
 --e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
 --z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;
---z-shell:100;--z-drawer:200;--z-menu:300;--z-modal:400;--z-toast:500;--z-boot:900;
+--z-shell:100;--z-drawer:200;--z-menu:300;--z-modal:400;
 --dur-instant:80ms;--dur-fast:140ms;--dur-base:220ms;--dur-screen:360ms;--dur-stage:700ms;
 --ease-enter:cubic-bezier(.2,.8,.2,1);--ease-exit:cubic-bezier(.4,0,1,1);--ease-camera:cubic-bezier(.16,1,.3,1);`;
 const spec = new Map([...SPEC_SHEET.matchAll(/--([a-z0-9-]+):([^;]+);/g)].map(([, n, v]) => [n, v.trim()]));

@@ -17,6 +17,7 @@ import { TECH_TREES, rootOf, vehiclesOf } from '../techTree/trees.ts';
 import { esc, scaleCells, statRow } from './components/components.ts';
 import { flag, silhouette } from './components/identity.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { liftModal } from './components/modalLayer.ts';
 import { decorateHeroTile } from './heroCard.ts';
 import { datumAttr } from './dom.ts';
 import { iconUrl } from './icons.ts';
@@ -976,6 +977,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     open = false;
     closeSurface(surface);
     root.hidden = true;
+    liftModal(root, false);
     options.onClose();
     if (restoreFocus) trigger?.focus({ preventScroll: true });
   }
@@ -989,6 +991,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       if (!root.isConnected) document.body.append(root);
       openSurface(surface, from);
       root.hidden = false;
+      liftModal(root, true);
       open = true;
       paint();
       reveal(selectedId, true);

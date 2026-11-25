@@ -548,7 +548,7 @@ body.cot-touch-layout .cot-si-toast .l1 .si{margin-left:-4px;}
   white-space:nowrap;}
 .cot-si-toast .l1 b .hit-count{font-size:var(--battle-fs-11);color:var(--ink-1);flex-shrink:0;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
-.cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
+.cot-si-stats{position:fixed;inset:0;z-index:calc(var(--z-report) + 1);display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
   padding:2vh 0 4vh;overflow:hidden;
   font-family:${FONT_STACK};color:${COL.text};
@@ -567,7 +567,7 @@ body.cot-si-report .cot-end>div:nth-child(2){display:none;}
 body.cot-si-report .cot-end{align-items:center !important;
   justify-content:flex-end !important;
   padding-bottom:var(--cot-si-endpad,3.2vh) !important;
-  z-index:72 !important;background:transparent !important;}
+  z-index:calc(var(--z-report) + 2) !important;background:transparent !important;}
 /* Clean cinematic results screen: no battle-HUD chrome may bleed through the
    report backdrop (r6: kill-feed rows and dimmed team panels overlapped the
    VICTORY banner). Hidden only while body.cot-si-report is set — hideStats()

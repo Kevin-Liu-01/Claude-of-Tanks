@@ -77,7 +77,9 @@ export function declarationLiterals(property, rawValue, important = false) {
   if (prop === 'font-size') { if (LENGTH.test(value) || SIZE_KEYWORD.test(value) || /^\d/.test(value)) add('fontSize'); }
   else if (prop === 'font') { if (LENGTH.test(value) || SIZE_KEYWORD.test(value)) add('fontSize'); }
   if (prop === 'letter-spacing' && /(?:^|[^\w.-])-?(?:\d*\.)?\d*[1-9]/.test(value)) add('letterSpacing');
-  if (prop === 'z-index' && /\d/.test(value) && !/^auto$/i.test(value)) add('zIndex');
+  // (modal-layer-277) a step on a z token (calc(var(--z-modal) + 1)) is the scale's own form, held by tools/z-layer-census.mjs
+  if (prop === 'z-index' && /\d/.test(value) && !/^auto$/i.test(value)
+    && !/^calc\(var\(--[\w-]+\) ?[+-] ?(?:\d+|var\(--[\w-]+\))\)$/.test(value.replace(/\s+/g, ' '))) add('zIndex');
   if (/^(?:-webkit-)?(?:box-shadow|text-shadow)$/.test(prop) && !/^none$/i.test(value)) add('shadow');
   if (/^(?:-webkit-)?(?:backdrop-)?filter$/.test(prop)) add('shadow', (value.match(/drop-shadow\(/gi) ?? []).length);
   // times are unambiguous, so a custom property holding one (--fade: 180ms) counts as well

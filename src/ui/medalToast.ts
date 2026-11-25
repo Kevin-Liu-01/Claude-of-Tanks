@@ -18,7 +18,7 @@ const LEAVE_MS = 300;
 const QUEUE_MAX = 4;
 
 const CSS = `
-.cot-medal-toasts{position:fixed;left:50%;top:var(--hud-banner-top,calc(var(--hud-objective-bottom,104px) + 16px));z-index:41;
+.cot-medal-toasts{position:fixed;left:50%;top:var(--hud-banner-top,calc(var(--hud-objective-bottom,104px) + 16px));z-index:calc(var(--z-hud) + 1);
   transform:translateX(-50%);max-width:calc(100vw - 32px);pointer-events:none;font-family:${FONT_STACK};}
 .cot-medal-toasts:not([data-placement='ready']){visibility:hidden;}
 body.cot-battle-ui-hidden .cot-medal-toasts,body.cot-si-report .cot-medal-toasts{display:none;}

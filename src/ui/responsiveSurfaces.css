@@ -834,7 +834,7 @@ body[data-cot-width='phone'] #cot-perfhud{
   right:max(8px,env(safe-area-inset-right))!important;
   left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
   max-height:64dvh!important;font-size:11px!important;
-  z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
+  z-index:var(--z-report)!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
 body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:52px!important;overflow:hidden!important}

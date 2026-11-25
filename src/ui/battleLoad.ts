@@ -137,7 +137,7 @@ const rowKey = (r: BattleLoadRosterRow, cards: boolean): string =>
 const PROGRESS_STEPS = 5;
 
 const CSS = `
-.cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
+.cot-bl{position:fixed;inset:0;z-index:var(--z-cover);display:none;place-items:center;
   --bl-edge:clamp(18px,4vw,64px);
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   background:var(--surface-scene);opacity:1;overflow:hidden;isolation:isolate;}

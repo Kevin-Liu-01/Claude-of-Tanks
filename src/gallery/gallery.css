@@ -245,7 +245,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .take{position:relative;aspect-ratio:16/9;flex:none;overflow:hidden;background:var(--surface-raised)}
 /* the page's notices (gallery.ts) never cover a control: beside the panes at the foot of the dossier's film, on a stacked
    page at the window's foot above the dossier's actions; each on an opaque plate */
-.cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:64px;z-index:var(--z-toast);width:min(420px,calc(100% - 24px));
+.cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:64px;z-index:var(--z-notice);width:min(420px,calc(100% - 24px));
   transform:translateX(-50%)}
 /* the stage's notice keeps clear of the scale inset and the turntable bar; the stacked page's rides the actions bar */
 .cot-c-notices.gallery-notices:not(.gallery-notices--stack){width:min(420px,calc(100% - 2 * (16px + var(--inset-w,160px) + 24px)))}
@@ -562,7 +562,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 @media ((pointer: coarse) or (hover: none)) and (height >= 520px){.views .cot-c-menu__trigger,.layers button{height:44px;min-width:44px}}
 /* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
 #dossier-anatomy figure img{cursor:zoom-in}
-#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;align-content:center;row-gap:var(--s4);margin:0;padding:var(--s5);
+#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-modal);display:grid;place-items:center;align-content:center;row-gap:var(--s4);margin:0;padding:var(--s5);
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
 /* the drawing (2:1) takes the window's room: its height from the viewport, as a grid row's percentage did not bound it
    (the g14 critic: at 844 x 390 its key ran under the window's foot, at 2560 it stood at its natural 40 % width) */

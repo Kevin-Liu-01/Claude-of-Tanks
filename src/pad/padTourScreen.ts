@@ -22,7 +22,7 @@ const NAMES: Readonly<Record<PadTourStop, string>> = {
 };
 
 const CSS = `
-.cot-pad-tour{position:fixed;inset:auto 0 max(var(--s7),6vh) 0;z-index:var(--z-toast);margin:0 auto;padding:0;border:0;background:none;
+.cot-pad-tour{position:fixed;inset:auto 0 max(var(--s7),6vh) 0;z-index:var(--z-notice);margin:0 auto;padding:0;border:0;background:none;
   overflow:visible;display:none;flex-direction:column;align-items:flex-end;gap:var(--s3);width:max-content;max-width:none;
   pointer-events:none;color:var(--ink-1);}
 .cot-pad-tour.is-open{display:flex;}

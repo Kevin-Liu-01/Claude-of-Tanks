@@ -1,7 +1,7 @@
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 .cot-garage{--cot-garage-sidebar-width:280px;--cot-garage-sidebar-top:86px;--cot-garage-sidebar-bottom:210px;
-  position:fixed;inset:0;z-index:60;display:none;font-family:var(--font-ui);
+  position:fixed;inset:0;z-index:var(--z-screen);display:none;font-family:var(--font-ui);
   color:var(--ink-1);-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
 .cot-garage.awaiting-boot{visibility:hidden;}
 .cot-garage *{box-sizing:border-box;margin:0;padding:0;}
@@ -235,8 +235,8 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 
 .cot-compact-equipment-trigger{display:none}
 
-/* just under an open sheet (45): the bar, the battle card and the tab bar stay behind it, never bright at its sides */
-.cot-garage-panel-scrim{position:absolute;z-index:44;inset:0;border:0;background:var(--btn-media-fill);
+/* just under an open sheet (35): the bar, the battle card and the tab bar stay behind it, never bright at its sides */
+.cot-garage-panel-scrim{position:absolute;z-index:34;inset:0;border:0;background:var(--btn-media-fill);
   pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
 .cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
 .cot-garage.vehicle-locked .cot-camo-picker .cot-c-picker__opt,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
@@ -774,7 +774,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 /* EQUIPMENT PICKER: side panel opened by a slot click — icon+name+effect
    tiles, category filter chips, era-locked tiles stay visible but inert. */
 .cot-eqpick{position:absolute;right:calc(var(--cot-garage-sidebar-width) + 38px);top:86px;width:372px;display:none;
-  pointer-events:auto;z-index:70;font-family:var(--font-ui);
+  pointer-events:auto;z-index:37;font-family:var(--font-ui);
   background:var(--surface-menu);
   border:1px solid var(--line-3);box-shadow:var(--e3);
   padding:13px 14px var(--s3);}
@@ -1539,7 +1539,7 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 }
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='appearance'] .cot-leftcol,
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats{
-  position:absolute;z-index:45;left:var(--cot-drawer-edge);right:var(--cot-drawer-edge);
+  position:absolute;z-index:35;left:var(--cot-drawer-edge);right:var(--cot-drawer-edge);
   top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));
   width:auto;max-width:760px;margin-inline:auto;max-height:none;
 }
@@ -1597,7 +1597,7 @@ body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-widt
 
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-c-picker__grid{max-height:none;overflow:visible;flex:none}
-body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:80}
+body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:39}
 
 body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){min-width:44px;min-height:44px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}

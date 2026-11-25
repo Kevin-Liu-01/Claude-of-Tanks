@@ -1640,7 +1640,7 @@ function drawShellIcon(c: CanvasRenderingContext2D, type: string): void {
 // not visible").
 
 const HUD_CSS = `
-.cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
+.cot-hud{position:fixed;inset:0;pointer-events:none;z-index:var(--z-hud);font-family:${FONT_STACK};isolation:isolate;
   --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
   --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:var(--danger);
   --hud-own:var(--team-own);--hud-enemy:var(--team-enemy);

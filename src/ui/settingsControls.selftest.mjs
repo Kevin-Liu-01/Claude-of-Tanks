@@ -131,7 +131,7 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   // classList.remove of an absent class still rewrites the attribute (266; the idle census in
   // tools/hud-self-measure.browser.selftest.mjs fails on any attribute a page at rest keeps rewriting)
   // (2026-11-02 audit F4: the class is a projection of the input owner's veil, written only when it must change)
-  assert.match(source, /function syncResumeVeil\(\) \{\s*const up = inputOwner\.veil !== null;\s*if \(up !== resume\.classList\.contains\('show'\)\) resume\.classList\.toggle\('show', up\);/,
+  assert.match(source, /function syncResumeVeil\(\) \{\s*const up = inputOwner\.veil !== null;\s*if \(up !== resume\.classList\.contains\('show'\)\) \{ resume\.classList\.toggle\('show', up\); liftModal\(resume, up\); \}/,
     'the veil\'s hide is a no-op while the veil is down');
   assert.match(source, /function hideResumeVeil\(\) \{\s*inputOwner\.hideVeil\(\);\s*syncResumeVeil\(\);/,
     'the sweep\'s hide goes through the owner and the projection');

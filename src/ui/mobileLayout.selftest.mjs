@@ -129,7 +129,7 @@ assert.match(garage, /id: 'deploy',[\s\S]*?close: \(reason\) => closeBattleMenu\
 assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,
   'touch controls must consume the canonical semantic viewport contract');
 assert.match(touch,
-  /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
+  /\.cot-touch\{[^}]*z-index:var\(--z-screen\)[\s\S]*\.cot-touch-aim\{[^}]*z-index:calc\(var\(--z-hud\) - 1\)[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
   'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
 assert.match(touch,
   /body\.cot-touch-layout \.cot-shells\{[^}]*width:52px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
@@ -429,7 +429,7 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-perfhud \[data-grid\]\{grid-template-columns:1fr!important\}/,
   'the opt-in performance dashboard must remain readable on narrow devices');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] #cot-perfhud\{[\s\S]*top:auto!important;bottom:max\(8px,[\s\S]*z-index:70!important[\s\S]*#cot-perfhud:not\(\.mobile-expanded\) \[data-grid\][\s\S]*display:none!important/,
+  /body\[data-cot-width='phone'\] #cot-perfhud\{[\s\S]*top:auto!important;bottom:max\(8px,[\s\S]*z-index:var\(--z-report\)!important[\s\S]*#cot-perfhud:not\(\.mobile-expanded\) \[data-grid\][\s\S]*display:none!important/,
   'phone diagnostics must start collapsed at the bottom instead of covering navigation');
 assert.match(perfHud,
   /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,

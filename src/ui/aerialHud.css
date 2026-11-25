@@ -374,7 +374,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:3px solid Highlight}
 }
 
-.cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:var(--surface-menu);color:var(--ink-1);font-size:var(--battle-fs-12);letter-spacing:.18em;text-shadow:0 2px 4px var(--surface-scene);isolation:isolate}
+.cot-drone-signal-loss{position:absolute;inset:0;z-index:39;display:flex;align-items:center;justify-content:center;pointer-events:none;background:var(--surface-menu);color:var(--ink-1);font-size:var(--battle-fs-12);letter-spacing:.18em;text-shadow:0 2px 4px var(--surface-scene);isolation:isolate}
 /* the grain moves as a layer (a transform the compositor runs), not by repainting its background's position (249) */
 .cot-drone-signal-loss{overflow:hidden}
 .cot-drone-signal-loss::before{content:'';position:absolute;inset:-48px;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;will-change:transform;animation:drone-signal-grain var(--dur-fast) steps(2) infinite}
