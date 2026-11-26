@@ -38,6 +38,8 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/camo-sheet-layout.browser.selftest.mjs',
   // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard serves the checkout and takes the lock itself
   'tools/hud-self-measure.browser.selftest.mjs',
+  // overhead-labels-278: the overhead plates' stillness guard serves the checkout and takes the lock itself
+  'tools/overhead-plates.browser.selftest.mjs',
   // 268: the multiplayer end-to-end's rooms entry at 1024x640 and 1440x900 serves the checkout and takes the lock itself
   'tools/mp-rooms-entry.browser.selftest.mjs',
   // 272: a real press on Couch keeps the lobby open; serves the checkout and takes the lock itself
