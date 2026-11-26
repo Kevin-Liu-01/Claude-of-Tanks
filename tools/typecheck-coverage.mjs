@@ -37,9 +37,10 @@ export const TYPECHECK_EXCLUDED = Object.freeze([
 ]);
 
 // A file-wide opt-out: tsc skips a file that says so, and a block disable with no rule list (or one naming no-undef)
-// turns the lint's scope check off for the whole file.
+// turns the lint's scope check off for the whole file. Both are comments that open a line: the same text inside a
+// string (a receipt's fixture source) opts nothing out.
 const TS_NOCHECK = /^\s*\/\/\s*@ts-nocheck\b/m;
-const LINT_FILE_DISABLE = /\/\*\s*(?:eslint|oxlint)-disable(?:\s+[^*]*\bno-undef\b[^*]*)?\s*\*\//;
+const LINT_FILE_DISABLE = /^\s*\/\*\s*(?:eslint|oxlint)-disable(?:\s+[^*]*\bno-undef\b[^*]*)?\s*\*\//m;
 
 /** .oxlintrc.json's ignorePatterns (the file is JSON with line comments). */
 export function lintIgnorePatterns(root) {

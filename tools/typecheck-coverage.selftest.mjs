@@ -43,6 +43,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   assert.match(coverageReport(census).join('\n'), /^src\/b\.ts: not typechecked: outside the compile/m);
   const ruled = typecheckCoverage({ tracked: ['src/g.mjs'], tscListed: new Set(), lintIgnore: [], source: () => '/* oxlint-disable no-console */' });
   assert.deepEqual(ruled.owner.oxlint, ['src/g.mjs'], 'a file-wide disable of other rules keeps no-undef on');
+  const quoted = typecheckCoverage({ tracked: ['src/h.mjs'], tscListed: new Set(), lintIgnore: [],
+    source: () => "const fixture = { 'f.mjs': '/* eslint-disable */\\nexport {};' };\n" });
+  assert.deepEqual(quoted.owner.oxlint, ['src/h.mjs'], 'a disable inside a string (a fixture) is no opt-out');
 }
 
 // --- The last line is the whole verdict (dome-detail-275 read "oxlint clean" under `| tail -1` over two TS2304s).
