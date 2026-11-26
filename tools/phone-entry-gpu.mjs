@@ -33,6 +33,7 @@ import puppeteer from 'puppeteer';
 import { preview } from 'vite';
 import { readinessExpression } from './game-readiness.mjs';
 import { isMainModule } from './map-probe-runtime.mjs';
+import { farLodCensus } from './far-poses.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 function argValue(name, fallback) {
@@ -59,7 +60,12 @@ const PHONE = {
   viewport: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true, isLandscape: false },
   userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1',
 };
-const PHONE_QUERY = `nosplash=1&tier=${tier}&gfxreset=1`;
+// --query=<a=b&c=d> (far-hull-279): appended to the phone page's query, e.g. farHullDraw=0 for a far-hull control arm
+const extraQuery = argValue('query', '');
+const PHONE_QUERY = `nosplash=1&tier=${tier}&gfxreset=1${extraQuery ? `&${extraQuery}` : ''}`;
+// --far-census (far-hull-279): after the settle, each entry records tools/far-poses.mjs farLodCensus on the phone page
+// (the vehicles in the full far LOD, and how many have their one draw built), so a far-hull A/B can show it exercised the change
+const farCensus = process.argv.includes('--far-census');
 const HOST_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 const BROWSER_ARGS = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
   '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,900'];
@@ -593,6 +599,11 @@ async function main() {
       await sleep(settleS * 1000);
       entry.window = await endWindow(phone);
       entry.revealed = await resident(phone);
+      if (farCensus) {
+        const census = await phone.evaluate(farLodCensus).catch((error) => ({ error: String(error).slice(0, 200) }));
+        entry.farCensus = census.error ? census : { vehicles: census.vehicles, far: census.far, gear: census.gear, built: census.built, refused: census.refused, missing: census.missing.length };
+        log(`far census: ${JSON.stringify(entry.farCensus)}`);
+      }
       entry.geometry = await phone.evaluate(geometryByOwner).catch(() => null);
     entry.renderTargets = await phone.evaluate(renderTargetOwners).catch((error) => String(error));
       if (entry.geometry) log(`geometry by owner: ${entry.geometry.slice(0, 12).map((row) => `${row.owner} ${row.mb}`).join(' | ')}`);
