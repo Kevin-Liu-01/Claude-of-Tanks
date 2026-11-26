@@ -1820,7 +1820,10 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
   // and out over the hull's rear ledge (x 1.15), closing the notch the stern corner leaves open between the deck and
   // that ledge (x 1.04-1.11, z -3.24 to -3.40, open to the ground in plan).
   for(const side of [-1,1])P.addEquipment('hullDetail',stowagePart(box(.98,.025,.355)),side*.68,1.278,-3.3975); // stowage (267)
-  bowGear(P,1.174,3.27,false,[.80,1.1337,3.254,1.04,.075,-.004],1.460);vGlacis(P);
+  // 279: the bracket's foot runs to 10 mm ahead of the housing's axis (z 3.264), still on the nose ledge (flat at
+  // y 1.04 to z 3.265, then the chamfer), so the housing's rear half stands on it (it stopped 4 mm behind the axis and
+  // light passed under the housing 65 mm behind the aperture, here and on the 2006, which builds on this X)
+  bowGear(P,1.174,3.27,false,[.80,1.1337,3.254,1.04,.075,.010],1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],
     [-.37,1.04,2.2595,1.528],[.12,1.254,2.227,1.528],[.53,1.450,2.176,1.528],
