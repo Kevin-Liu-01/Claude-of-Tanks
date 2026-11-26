@@ -125,24 +125,21 @@ it is laid out in five fixed zones, the same in every mode, so a thumb learns wh
 
 | LEFT special column | Left thumb | Deck (centre) | Right thumb | RIGHT special column |
 |---|---|---|---|---|
-| survival, or the mode's holds | the stick (it floats to where the thumb lands) and its hold key | the rounds, or the call-ins | the aim stick on the gunner's sight, FIRE in its collar, the scope, look and zoom keys | systems, or the mode's picks |
+| survival, or the mode's holds | the stick (it floats to where the thumb lands) and its hold key | the rounds, or the call-ins | the gunner's sight to drag in, FIRE in its collar, the scope, look and zoom keys | systems, or the mode's picks |
 
 The phone's own battle HUD (mobile-hud-274) keeps the same sides: survival on the left edge, systems on the right.
 
 - The stick (`padInput.ts` `stickValue`): a 64 px ring, a 12 % dead zone for a resting thumb, a 1.3 power curve; the push
   keeps its direction (a diagonal stays a diagonal), forward is up. Its well comes to the thumb anywhere in the zone, and
   springs back on the lift.
-- The aim stick (owner 2026-11-21: "it should be a joystick too. its just more intuitive"; `padInput.ts`
-  `aimStickStep`): a floating stick on the gunner's sight, like the drive's (its well comes to the thumb anywhere in the
-  square but on FIRE and its keys), whose push is how fast the gun turns for as
-  long as the thumb holds it, a gamepad's right stick. A 56 px ring, a 10 % dead zone and a 1.8 power curve (finer near
-  the centre than the drive's, so a small push lays the gun); full push is the gamepad's rate (`AIM_STICK_RATE` 608 phone
-  px a second, 760 mouse px after `PAD_AIM_GAIN`, about 96° a second), scaled by Options' aim speed. Held at the rim
-  (90 % or more) for a quarter second, the turn ramps to 1.8 times over 0.4 s, so a turn to the rear takes under two
-  seconds; never in the scope, where the game's own scope scale slows it. The phone integrates the rate each frame into
-  the axes frame's aim totals, so the wire and the desktop are unchanged. A thumb on FIRE is an aim stick from where it
-  pressed, past a 20 % dead zone (a press's wobble), so one thumb aims and shoots; held, the gun fires again the moment
-  it loads. It replaced the 274 drag-to-aim sight.
+- The sight: a drag aims, the gain following the finger's speed (`aimGain`): a slow drag keeps the mouse's precision
+  (1×), a swipe at 0.5 px/ms turns 2.6 times as far, a flick up to 5 times (2 in the scope, so a flick never throws the
+  sight off a target). A finger held still turns nothing. A thumb on FIRE drags to aim once it has moved 10 px, so one
+  thumb aims and shoots; held, the gun fires again the moment it loads. A rate ring (hold past it to keep turning) was
+  weighed and left out: a slow drag that stops on a target would keep the gun turning. In 274 the sight became an aim
+  stick (its push a turn rate, FIRE's thumb a stick too); the owner took it back on 2026-11-25 ("for controller mode the
+  aiming shouldnt be be a joystick. it should just be touchscreen like before that was better"), so 278 restores this
+  drag and keeps the drive stick as it is.
 - FIRE sits in its turned collar; the ring around it fills as the gun loads, and the button lights red when it is ready.
 - The rounds are illuminated keys, the loaded one's lamp lit, its count on a drum that rolls one on when a round is
   spent. The consumables are guarded switches: the red cover lifts while the thumb is on the key.
@@ -230,8 +227,8 @@ hands the moment they happen:
 
 Owner 2026-11-03: "a tutorial should show up on first phone pairing mode that u can skip and also disappears after like
 10 seconds". The first status with thumbs after a phone's first pairing (`cot.pad.tour.v2` in its storage; the 274 layout
-shows it again once; an idle panel, as in Settings, has nothing to name, so it waits for the first battle) shows a ring on each zone and its name beside it over the live panel: the stick, push to aim (held at the edge to
-swing round), tap to fire and push to aim, the deck, and the two special columns. A ghost thumb strokes the stick and the
+shows it again once; an idle panel, as in Settings, has nothing to name, so it waits for the first battle) shows a ring on each zone and its name beside it over the live panel: the stick, drag to aim and flick to
+turn, tap to fire and drag to aim, the deck, and the two special columns. A ghost thumb strokes the stick and the
 sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
 running out under Skip, ends it; Options shows it again. Skip stands on the top strip, where the status line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
 with it, and each name takes the first side with room, clear of the other controls and names.
@@ -283,7 +280,7 @@ Measured on the Simulator with two fingers against the build before this round (
 Now every control acts on its own finger's `pointerdown`, with the pointer captured: a hold lasts until its last finger
 lifts (two fingers on one control count once), sliding off keeps a hold and presses nothing else, and a lost capture or a
 cancelled pointer lets go. After the fix, on the Simulator: throttle plus scope, throttle plus an ammunition key, throttle
-plus a guarded switch, aim stick plus fire held, a slide from fire across the sight onto a key (fire held to the lift, the
+plus a guarded switch, aim drag plus fire held, a slide from fire across the sight onto a key (fire held to the lift, the
 key untouched), fast double taps (two press-release pairs), and a long press on the dial (no callout). Every target is
 48 px or more.
 
@@ -325,13 +322,13 @@ a battle, while paused and while its tab is hidden (the pause button still works
 | Android Chrome | the same page; full screen and `screen.orientation.lock` at Start | pad e2e runs Chromium with touch emulation (CDP touch points) |
 | Several fingers on one control | the control holds until its last finger lifts | pad e2e: two fingers on fire, one lifts (held), the last lifts (released) |
 | A disconnect while firing | the phone vanishes with the throttle and the trigger held: the desktop lets both go | pad e2e: throttle and fire held, the phone closed, both released within 700 ms |
-| Several thumbs at once | every control on its own pointer | pad e2e: throttle held, a scope tap, fire held and the aim stick pushed together; Simulator: two-finger pairs |
+| Several thumbs at once | every control on its own pointer | pad e2e: throttle held, a scope tap, fire held and an aim drag together; Simulator: two-finger pairs |
 
 ## Proof
 
 - Receipts: `src/pad/padProtocol.selftest.mjs` (codes, routes, frame codec), `src/pad/padActor.selftest.mjs` (a code
   expires, is single use, a wrong code is refused, resume, limits, relay budget), `src/pad/padInput.selftest.mjs` (the
-  sticks, the aim stick's rate and rim, the portrait turn and the action mapping), `src/pad/padLayout.selftest.mjs` (every mode's keys real, every
+  stick, the portrait turn and the action mapping), `src/pad/padLayout.selftest.mjs` (every mode's keys real, every
   keyboard action reachable, the grants by kit, mode, couch seat, Watch and death), `src/pad/padPhoneHalf.selftest.mjs` (no desktop-only export rides to the
   phone), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
   sockets), `cloudflare/rooms/test/pad.test.ts` (the Worker route and the DO).
@@ -339,9 +336,10 @@ a battle, while paused and while its tab is hidden (the pause button still works
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
   pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
   waits out the idle panel in Settings, then shows in the first battle on the phone and on the game screen together, a thumb works through it, it leaves both by
-  itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), the aim
-  stick turning the turret while held and stopping on the lift, a thumb near either square's far corner bringing that
-  stick's well under it (owner 2026-11-21: "anywhere you click in the squares, the joystick will be there"), a thumb on fire pushing to aim while the gun loads, and the loaded buzz.
+  itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a drag
+  on the sight turning the drawn view by the drag's distance (a 120 px drag twice a 60 px one, the phone's aim total the
+  drag at 1x) and a finger held still after it turning nothing (an aim stick fails both), a thumb near the drive square's
+  far corner bringing the stick's well under it, a thumb on fire dragging to aim while the gun loads, and the loaded buzz.
 - `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
 - iOS Simulator for the pad page (266, the tilt build): two-finger presses against a Node desktop that logs every input
   (`desk.mjs` in that lane's evidence folder), zoom, backgrounding and the desktop vanishing; a real phone on the preview

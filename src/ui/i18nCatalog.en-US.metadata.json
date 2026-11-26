@@ -493,5 +493,14 @@
   },
   "replay.export.failed": {
     "context": "Claude of Tanks, a browser tank game. The Export video dialog over a watched replay (a recorded battle): it renders the replay to an MP4 video file. The export stopped with an error; {reason} is the browser's message (often English)."
+  },
+  "pad.aimPad": {
+    "context": "Claude of Tanks, a browser tank game, played with a phone as the controller. The label on the phone controller's aiming area, where a finger drags to turn the gun (a drag, not a joystick). Kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the pad-drag-aim-278 lane and await General Translation review."
+  },
+  "pad.tour.aim": {
+    "context": "Claude of Tanks, a browser tank game, played with a phone as the controller. The controls guide's name for the phone controller's aiming area: drag a finger to aim; a quick flick turns the gun further. Kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the pad-drag-aim-278 lane and await General Translation review."
+  },
+  "pad.tour.fire": {
+    "context": "Claude of Tanks, a browser tank game, played with a phone as the controller. The controls guide's name for the phone controller's fire button: tap it to fire; the same finger dragging off it aims. Kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the pad-drag-aim-278 lane and await General Translation review."
   }
 }
