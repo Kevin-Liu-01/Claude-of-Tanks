@@ -666,6 +666,9 @@ export interface FxRuntime {
   /** (EF.10) compile the local light loop in or out (the preset decides; a cost A/B flips it). True when it changed. */
   setLocalLights(on: boolean): boolean;
   clearVehicleDecals(visual: FxDecalVisual): void;
+  /** (aircraft-hit-fire-278) A heavy charge bursting on an airframe in flight (a drone's warhead, an HE or HEAT round):
+   *  a hull's plate burst with no ground under it, one-shot. Nothing of it stays where the aircraft flies on from. */
+  airframeBurst(pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   destruction(
     pos: THREE.Vector3,
     visual: FxVisual | null,
@@ -8188,6 +8191,21 @@ function* createFxSteps(
       // (fire-center-277) a tank's kill over its hull's measured centre (a shell burst on open ground has no hull)
       const at = opts.shellBurst ? pos : centreKillPoint(pos, wreckOf, opts.hull);
       spawnDestruction(at, visual, 0, cause, wreckOf, !!opts.shellBurst);
+    },
+
+    /**
+     * (aircraft-hit-fire-278; Kevin: "it leaves this fire that keeps burning in the sky just in the same place") A heavy
+     * charge on an airframe in flight bursts as an HE round on a hull does (plateBurst: its flash, fire, residue smoke
+     * and fragments), with no ground under it. A hull's destruction is a wreck's: a 40 s burning column, scorch, ground
+     * dust and a shock ring at a fixed point, which the aircraft leaves hanging in the sky. The damage the aircraft
+     * carries on is drawn on it (its soot and its smoke trail, game/airSupportWorld.ts). The phone tier has no media
+     * layer: the hit's own he_pen fireball (impact) is its burst there.
+     */
+    airframeBurst(pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void {
+      if (!blast) return;
+      const info = heByCaliber(caliberMm);
+      plateBurst(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, munition: info.munition,
+        chargeKg: Math.max(0.3, info.chargeKg), ground: null });
     },
 
     /**
