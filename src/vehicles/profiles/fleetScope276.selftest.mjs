@@ -35,15 +35,14 @@ const MOVED_ON_PURPOSE = Object.freeze({
   ...Object.fromEntries(['t95', 'm46_patton', 'm47_patton', 'ajax', 'amx56', 'merkava3d', 'leclerc_xlr', 'c1_ariete', 'c2_ariete',
     'chieftain3', 'sabra_mk2', 'pl01', 'pl01_105', 'warrior_tes_h', 'griffin50mm', 'griffin_viper', 'namer_ifv', 'merkava3c',
     'merkava3_baz', 'k21'].map((id) => [id, 'hull-plates-fit-277: its track pair seated on the drawn track (armour only)'])),
-  // fleet-debt-278 batch 3 (Main's rulings, 278: fidelity, the gameplay armour matches what is drawn and authored, not
-  // stat tuning; Kevin chose to wait for this batch). Kinds moved per id in brackets.
+  // fleet-debt-278 batch 3 (Main's rulings, 278): fidelity, the gameplay armour matches what is drawn and authored, not
+  // stat tuning; Kevin chose to wait for this batch. Kinds moved per id in brackets. The batch's raised-end-wheel band for
+  // the three T-90s was reverted in integ (b231cf1468, to 279), so they hold again; the T-90AM's gun stop (80e05efd9e)
+  // moves none of armour, build or anatomy.
   bmpt_t90: 'fleet-debt-278 1d7476826a: the drawn turret ERA bricks bind their plates and protect [armor, anatomy]',
   magach3: 'fleet-debt-278 b6d5840df3: the turret ERA clusters carry their own side\'s name and protect that side [armor, anatomy]',
   magach6b: 'fleet-debt-278 b6d5840df3: the turret ERA clusters carry their own side\'s name and protect that side [armor, anatomy]',
   marder1a3: 'fleet-debt-278 c1b8637aea: the MILAN launcher is damageable weapon stock [armor, anatomy]',
-  t90am: 'fleet-debt-278 f786842bca + eed88f8ec2: the raised end road wheel wraps its track; 80e05efd9e: the dead-astern gun stop clears the stowage deck [armor, build, anatomy]',
-  t90sm: 'fleet-debt-278 f786842bca + eed88f8ec2: the raised end road wheel wraps its track [armor, build, anatomy]',
-  t90sm_2013: 'fleet-debt-278 f786842bca + eed88f8ec2: the raised end road wheel wraps its track [armor, build, anatomy]',
   cv90_mk4_concept: 'fleet-debt-278 2c4e36606e + c96b7db78b: anatomy measures the authored launcher exits (twin pod) [anatomy]',
   raiju_ifv: 'fleet-debt-278 cdcd7700c9: the launch exits on its Jyu-MAT pods [anatomy]',
 });
