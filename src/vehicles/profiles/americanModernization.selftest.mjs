@@ -188,30 +188,9 @@ for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
   tank.dispose();
 }
 
-{
-  const tank = make('m60a2');
-  const turret = tank.root.getObjectByName('rig_turret');
-  const station = fittings(tank.root,
-    (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
-  assert.equal(station.length, 1, 'M60A2 replaces the stowed MG with one visible TTS-derived RWS');
-  assert.equal(station[0].userData.stationVariant, 'hunter');
-  assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint');
-  assert.equal(station[0].userData.hasVisibleFeedBelt, true);
-  assert.equal(station[0].userData.hasWorkLights, true);
-  assert.equal(station[0].userData.hasSteelReceiverGuard, true);
-  assert.equal(station[0].userData.machineGunFinish, 'gunmetal');
-  assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
-    'M60A2 RWS keeps the weapon mechanism gunmetal while its armor stays painted');
-  assert.equal(turret.userData.americanModernizationReceipt?.stationVariant, 'hunter');
-  assert.equal(turret.userData.americanModernizationReceipt?.guardedAuxiliaryLights, 2);
-  assert.equal(turret.userData.americanModernizationReceipt?.properMantletSearchlight, true,
-    'M60A2 replaces the old dark block with a complete mantlet searchlight');
-  assert.equal(turret.userData.americanModernizationReceipt?.rearBustle, true,
-    'M60A2 carries a turret-owned rear bustle');
-  assert.equal(turret.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
-    'M60A2 applique has no decorative black outline geometry');
-  tank.dispose();
-}
+// The M60A2's station block (TTS-derived RWS, bustle, mantlet searchlight, modernization and armor-finish receipts)
+// left with the retired builder 9a73d33fa8 deleted: the owner-model M60A2 (10-27/28) is held by the drawn gun-finish
+// check above, like the M60A1 and A3 (Main's ruling, 278). Its current kit is not pinned here.
 
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [
