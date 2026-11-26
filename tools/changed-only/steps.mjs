@@ -97,9 +97,9 @@ export const AGGREGATES = Object.freeze([
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
-    pin: 'f1b771183dc3b318',
+    pin: 'be5322b0ec07460b',
     reads: [],
-    note: 'reads its own five generated files (the --ids merge and --check; 275: whether the decor table exists before a scoped run)',
+    note: 'reads its own five generated files (the --ids merge and --check; 275: whether the decor table exists before a scoped run; host-fleet-bytes-278: a scoped run imports the compact inventory back through its decoder)',
   },
   'tools/barak-rear-bay-fill-policy.mjs': {
     pin: '4fd2707a1d932bbd',
