@@ -63,7 +63,7 @@ function assertPublicOwner(owner, result, args) {
   assert.deepEqual(owner.events, ['published', 'closed'], 'complete and close exactly once');
 }
 async function checkWrapperOwnership(wrapperSource) {
-  const height = {}, engine = {}, config = {}, vegetation = {}, textures = {};
+  const height = {}, engine = {}, config = {}, vegetation = {}, textures = {}, wreckFacts = {};
   for (const async of [false, true]) for (const defaults of [false, true]) {
     await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const owner = publicOwner((function* () {
@@ -72,27 +72,34 @@ async function checkWrapperOwnership(wrapperSource) {
       return textures;
     })(), wrapperSource);
     const explicit = [height, engine, 7719, config];
+    // (integ 278) wreck-bake-after-reveal-278 gave the producer three more arguments: worker wrecks, the source
+    // application, and the map's recorded wreck facts. Both wrappers forward all eight; explicit builds pass facts.
     const result = async
       ? await owner.api.createPropsAsync(...(defaults ? [height, engine]
-        : [...explicit, null, true, vegetation]))
-      : owner.api.createProps(...(defaults ? [height, engine] : [...explicit, vegetation]));
+        : [...explicit, null, true, vegetation, null, null, wreckFacts]))
+      : owner.api.createProps(...(defaults ? [height, engine] : [...explicit, vegetation, wreckFacts]));
     const forwarded = defaults ? [height, engine, 2002, null, null] : [...explicit, vegetation];
+    const facts = defaults ? null : wreckFacts;
     // Node keeps the synchronous bake path; only the async wrapper forwards
     // its explicit worker-mode flag to the same texture-owning producer.
-    const sourceApplication = async ? owner.calls[0][6] : null;
+    const sourceApplication = owner.calls[0][6];
     if (async) {
       assert.equal(sourceApplication.worker, true, 'only the async wrapper requests source composition');
       assert.ok(sourceApplication.signal instanceof AbortSignal);
       assert.equal(sourceApplication.signal.aborted, false, 'completed build keeps its source settlement owner');
-    }
-    assertPublicOwner(owner, result, async ? [...forwarded, false, sourceApplication] : forwarded);
+    } else assert.deepEqual(sourceApplication, {}, 'the synchronous wrapper requests no source composition');
+    // a synchronous build with facts places its hulks from them, as a browser build with a worker does
+    const workerWrecks = async ? false : facts !== null;
+    assertPublicOwner(owner, result, [...forwarded, workerWrecks, sourceApplication, facts]);
     assert.equal(result.textures, textures, 'the published texture owner is not replaced');
   }
 }
 await checkWrapperOwnership(wrappers);
 for (const [before, after] of [
-  ['seed, cfg, vegetation);', 'seed + 1, cfg, vegetation);'],
+  ['seed, cfg, vegetation, wreckFacts !== null,', 'seed + 1, cfg, vegetation, wreckFacts !== null,'],
   ['wreckWorker !== null,', 'true,'],
+  ['wreckFacts !== null, {}, wreckFacts);', 'wreckFacts !== null, {}, null);'],
+  ['{ worker: true, signal: sourceAbort.signal }, wreckFacts);', '{ worker: true, signal: sourceAbort.signal }, null);'],
   ['while (!r.done) r = g.next();', 'if (!r.done) r = g.next();'],
   ['return r.value;', 'return { ...r.value };'],
   ['return runtime;', 'return { ...runtime };'],
@@ -259,7 +266,9 @@ try {
     const pending = job(candidate, kind, sample);
     const owner = publicOwner(checkedPainter(pending));
     const args = [height, engine, sample.seed, sample, vegetation];
-    assertPublicOwner(owner, owner.api.createProps(...args), args);
+    // (integ 278) no facts: the synchronous wrapper bakes on this thread and requests no source composition
+    assertPublicOwner(owner, owner.api.createProps(...args), [...args, false, owner.calls[0][6], null]);
+    assert.deepEqual(owner.calls[0][6], {});
     assert.deepEqual(pending.result, controls[index],
       kind + ': the checkpointed public owner must match the plain synchronous drain byte for byte');
   }
@@ -276,7 +285,7 @@ try {
       assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));
     }, true, vegetation);
-    assertPublicOwner(owner, result, [...args, false, owner.calls[0][6]]);
+    assertPublicOwner(owner, result, [...args, false, owner.calls[0][6], null]);
     assert.equal(owner.calls[0][6].signal.aborted, false);
     assert.equal(ticks, pending.steps, 'every real row/tone checkpoint reaches the async scheduler');
     assert.equal(result._buildDetail.sliceCount, pending.steps + 1);
