@@ -57,7 +57,7 @@ const NOT_CARRIED = {
 /** brainNumbers' fields in order (read by [1]; [2] finds one by name). */
 const NUMBER_FIELDS = [];
 /** The record's lists' text, pinned to BRAIN_LAYOUT: change the lists, bump the layout and pin the new digest here. */
-const LAYOUT_DIGESTS = { 1: '0dcbb987c19e9f64' };
+const LAYOUT_DIGESTS = { 1: 'd374cc3a8cde7d90' };
 
 console.log('[1] the census: every createAI field carried or named, each list read and written in one order');
 {

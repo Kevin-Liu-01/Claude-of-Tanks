@@ -7666,7 +7666,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z, openExposedAtS, aimLateralX, aimLateralZ, squadThinkAtS,
       squadFlankAtS, jockeyDir, jockeyStandS, jockeyStallS, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange,
       colliderLostMps, colliderContactAtS, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
-      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
+      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS, targetHiddenSinceS,
     ];
   }
 
@@ -7711,7 +7711,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z, openExposedAtS, aimLateralX, aimLateralZ, squadThinkAtS,
       squadFlankAtS, jockeyDir, jockeyStandS, jockeyStallS, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange,
       colliderLostMps, colliderContactAtS, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
-      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
+      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS, targetHiddenSinceS,
     ] = values;
   }
 
