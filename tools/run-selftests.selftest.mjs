@@ -429,6 +429,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
   'tools/camo-sheet-layout.browser.selftest.mjs', // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
+  'tools/overhead-plates.browser.selftest.mjs', // overhead-labels-278: the overhead plates' stillness guard
   'tools/mp-rooms-entry.browser.selftest.mjs', // 268: the multiplayer end-to-end's rooms entry per layout
   'tools/couch-open.browser.selftest.mjs', // 272: a real press on Couch keeps the lobby open
   'tools/pane-stack-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt

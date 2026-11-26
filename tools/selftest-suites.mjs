@@ -3563,6 +3563,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
+    // overhead-labels-278 (owner 2026-11-25: the readouts over the tanks "can glitch out and have layout shifts"): the hull
+    // bars and the target plate hold still with the camera still, through a range figure's new digit, falling points and
+    // two hulls crossing in range
+    'tools/overhead-plates.browser.selftest.mjs',
     // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
     // it, at the tool's 1024x640 and a desktop's 1440x900
     'tools/mp-rooms-entry.browser.selftest.mjs',

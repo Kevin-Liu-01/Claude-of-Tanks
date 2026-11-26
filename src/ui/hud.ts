@@ -570,6 +570,9 @@ interface HpBar {
    *  whether its words draw faint under one above it (.under). */
   z: number;
   under: boolean;
+  /** Its place in last frame's order (Infinity where it was out of view): a bar within HP_BAR_ORDER_HOLD_M of another's
+   *  range keeps the place it had beside it (hpBarAhead). */
+  orderAt: number;
   /** How far its words reach either side of its axis, unscaled (measureHpBar: the silhouette hangs left of the name). */
   inkL: number;
   inkR: number;
@@ -2334,7 +2337,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-tgt .veh{flex:none;font:500 1em/1 var(--font-ui);color:var(--ink-2);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
 .cot-tgt .veh::before,.cot-tgt .rng::before{content:'·';margin-right:var(--s1);font-family:var(--font-ui);}
-.cot-tgt .rng{flex:none;font:500 1em/1 var(--font-data);color:var(--ink-2);}
+/* (each figure in the box its widest copy fills, measureTargetPlate: the range from its start, the points to their end) */
+.cot-tgt .rng{flex:none;font:500 1em/1 var(--font-data);color:var(--ink-2);text-align:start;}
 .cot-tgt .rng:empty{display:none;}
 /* (in the scope the range is the sight's own tag: the plate leaves it, UI-LOCKDOWN B8) */
 html[data-cot-scoped] .cot-tgt .rng{display:none;}
@@ -2343,7 +2347,7 @@ html[data-cot-scoped] .cot-tgt .rng{display:none;}
 .cot-tgt .tr{align-self:center;width:100%;height:6px;margin-top:5px;}
 .cot-tgt .fl{height:100%;background:var(--hud-enemy);}
 .cot-tgt .hp{height:1.35em;margin-top:2px;font:500 var(--battle-fs-11)/1.35 var(--font-data);color:var(--ink-1);
-  white-space:nowrap;}
+  white-space:nowrap;text-align:end;}
 /* (its rotated tip and ring inside the plate's painted box, the plate paints contained; clear of the points' slash) */
 .cot-tgt .anch{flex:none;width:10px;height:10px;margin:6px 0 4px;transform:translateX(var(--tgt-anch-dx,0px)) rotate(45deg);background:var(--hud-enemy);
   box-shadow:var(--battle-mark-ring);}
@@ -2589,8 +2593,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const dmgLayer = markDatum(el('div', 'cot-dmglayer', root), 'damage-dealt');
 
   // --- over-target marker plate (WoT aiming loop feedback) ---
-  /** The room the plate keeps past the range it shows, for its figures to grow by two, in its line's type size. */
-  const TARGET_RANGE_EM = 1.2;
+  /** The range figure's box holds this many digits (measureTargetPlate): a range's next digit grows nothing beside it. */
+  const TARGET_RANGE_RESERVE = '8888';
   /** How far a plate sunk under a panel stands below it (positionTargetPlate). */
   const PLATE_SINK_GAP = 6;
   /** The target plate's band search (targetPlateBand): its step down the column, what a level of lines costs, and what a
@@ -2649,7 +2653,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   let tgtPlateWidth = TARGET_PLATE_MIN_W; // measured from its copy whenever the copy changes (updateTargetPlateCopy)
   let tgtPlateHeight = TARGET_PLATE_H; // the block as composed: the bar and its points leave it in the realistic mode
   let tgtMeasure = false; // its size step changed (resize): measured again with the next frame's copy
-  let tgtRangeChars = 0; // the range copy's length when measured (updateTargetPlateRange)
   // the vehicle line's and the points' shares of the height, which a plate sunk under a panel leaves (.tight, .tighter)
   let tgtMetaHeight = 0, tgtPointsHeight = 0, tgtBarHeight = 0;
   const tgtLevelHeight = [0, 0, 0, 0]; // its height at each tight level as laid out (measureTargetPlate)
@@ -4999,7 +5002,17 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   };
   // A reticle at rest reuses its paint; a face that finishes loading after that paint (measured and drawn in the
   // fallback) repaints it (r10 critic: a scope readout painted before the webfont kept the condensed fallback face).
-  document.fonts?.addEventListener?.('loadingdone', () => { reticlePaint.valid = false; });
+  // The plates over the tanks are measured with their copy alone, so one measured in the fallback (a callsign whose
+  // glyphs pull in a face's subset on first use) is measured again in the face that came: a shown bar with its next frame,
+  // a hidden one now, the target plate with its next copy pass (overhead-labels-278).
+  document.fonts?.addEventListener?.('loadingdone', () => {
+    reticlePaint.valid = false;
+    tgtMeasure = true;
+    for (const bar of hpPool.values()) {
+      bar.measure = true;
+      if (!bar.shown) measureHiddenHpBar(bar);
+    }
+  });
   /** The reticle's weapon is the selected card (renderShells runs before the canvas paints). */
   function selectedWeaponDry(view: HudAimView): boolean {
     return reticleWeaponDry((lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0], view.ammoSelectionPending);
@@ -6395,6 +6408,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       lastPointerDx: 0,
       z: 0,
       under: false,
+      orderAt: Infinity,
       inkL: 0,
       inkR: 0,
       layoutH: HP_BAR_H,
@@ -6527,11 +6541,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       order.push(bar);
       while (at > 0) {
         const ahead = order[at - 1];
-        if (ahead.ally === bar.ally ? ahead.dist <= bar.dist : !ahead.ally) break;
+        if (ahead.ally === bar.ally ? !hpBarAhead(bar, ahead) : !ahead.ally) break;
         order[at] = ahead; at--;
       }
       order[at] = bar;
     }
+    for (const bar of hpPool.values()) bar.orderAt = Infinity;
+    for (let i = 0; i < order.length; i++) order[i].orderAt = i;
     // Each bar on its own tank (owner 2026-11-04: "make tank indicators be able to overlap with each other, rn they push
     // each other up and prevent overlap, which actually makes it so that tank names and stuff get pushed away from where
     // thae tanks actualy are"): the bars of tanks close in view overlap, and none moves off its tank for another. Where
@@ -6577,6 +6593,17 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     for (const bar of hpPool.values()) {
       if (!seen.has(bar) && bar.shown) { bar.root.style.display = 'none'; bar.shown = false; }
     }
+  }
+
+  /** Two hulls this near in range keep last frame's order (a hull's bob and its presented position's noise, never a
+   *  crowd's rows 6 m deep): sorted by the frame's range alone, two side by side at one range swapped on top every frame
+   *  and each one's words flashed faint and full (overhead-labels-278, 57 swaps in 58 frames). */
+  const HP_BAR_ORDER_HOLD_M = 1;
+  /** Whether a bar draws over another of its side: the nearer by more than the hold, else the one on top last frame
+   *  (the nearer where neither had a place). */
+  function hpBarAhead(bar: HpBar, other: HpBar): boolean {
+    if (Math.abs(bar.dist - other.dist) > HP_BAR_ORDER_HOLD_M || bar.orderAt === other.orderAt) return bar.dist < other.dist;
+    return bar.orderAt < other.orderAt;
   }
 
   /** Whether two boxes cross by more than HP_BAR_UNDER_PX on both axes (updateHpBars: one bar's ink over another's words). */
@@ -6772,11 +6799,24 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (the vehicle line's type size and its margin, read once here; a stub window has no computed style)
     const computed = typeof getComputedStyle === 'function';
     const meta = computed ? getComputedStyle(tgtRefs.mt) : null, points = computed ? getComputedStyle(tgtRefs.hp) : null;
-    const metaFont = parseFloat(meta?.fontSize ?? '') || 12, metaMargin = parseFloat(meta?.marginTop ?? '') || 0;
+    const metaMargin = parseFloat(meta?.marginTop ?? '') || 0;
+    // Each figure in a box its widest copy fills, so a figure's next digit, or one it loses, moves nothing beside it: the
+    // range at four digits, its line's tier and vehicle centred with it (99 to 100 m had walked them half a digit left,
+    // overhead-labels-278), and the points at full over full, set to the box's end. Measured here with the copy, never
+    // per frame; the range's box read shown even where the scope's sight leaves it hidden.
+    const rangeCopy = tgtRefs.rng.textContent ?? '', pointsCopy = tgtRefs.hp.textContent ?? '';
+    const most = pointsCopy.split(' / ')[1];
+    tgtRefs.rng.style.minWidth = '';
+    tgtRefs.hp.style.minWidth = '';
+    tgtRefs.rng.textContent = t('hud.target.range', { m: TARGET_RANGE_RESERVE });
+    if (most) tgtRefs.hp.textContent = `${most} / ${most}`;
+    tgtRefs.rng.style.display = 'block';
+    tgtRefs.rng.style.minWidth = `${laidWidth(tgtRefs.rng)}px`;
+    tgtRefs.rng.style.display = '';
+    tgtRefs.hp.style.minWidth = `${laidWidth(tgtRefs.hp)}px`;
     // (the name with the silhouette's room on both sides, the name on the axis)
     const nameWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 2 * (Math.ceil(tgtRefs.cg.offsetWidth || 0) + 2);
-    const metaWidth = Math.ceil(tgtRefs.mt.scrollWidth) + Math.ceil(metaFont * TARGET_RANGE_EM);
-    tgtRangeChars = tgtRefs.rng.textContent?.length ?? 0;
+    const metaWidth = Math.ceil(tgtRefs.mt.scrollWidth);
     const textWidth = Math.max(Math.ceil(tgtRefs.nick.scrollWidth), metaWidth, Math.ceil(tgtRefs.hp.scrollWidth));
     tgtPlateWidth = Math.max(TARGET_PLATE_MIN_W, Math.min(440, Math.max(nameWidth, textWidth) + 8));
     tgtEl.style.width = `${tgtPlateWidth}px`;
@@ -6797,6 +6837,13 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       tgtLevelHeight[level] = Math.ceil(tgtRefs.bk.offsetHeight) || 0;
     }
     tgtEl.classList.remove(...TARGET_TIGHT_CLASSES);
+    tgtRefs.rng.textContent = rangeCopy;
+    tgtRefs.hp.textContent = pointsCopy;
+  }
+
+  /** A box's laid-out width to the next whole pixel (its fraction kept: offsetWidth rounds a 37.4 px figure down). */
+  function laidWidth(node: HTMLElement): number {
+    return Math.ceil(node.getBoundingClientRect?.().width || node.offsetWidth || 0);
   }
 
   /** The plate's height at a tight level: whole, without its vehicle line, without its points, the name alone (as laid
@@ -6995,7 +7042,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const copy = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
     tgtRefs.rng.textContent = copy;
     tgtLastRangeM = rangeM;
-    if (copy.length > tgtRangeChars + 2) tgtMeasure = true;
   }
 
   function updateTargetPlateContent(target: HudTargetTank): void {
