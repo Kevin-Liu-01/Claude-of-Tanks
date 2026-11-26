@@ -445,6 +445,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/publicBuildEnv.selftest.mjs',
     'tools/vercel-output-immutable.selftest.mjs',
     'tools/typescriptToolchain.selftest.mjs',
+    // typecheck-coverage-279: every tracked script file is typechecked or excluded with a reason; a name out of scope
+    // planted in each tsconfig include group and each linted JavaScript group fails (one compile on an APFS mirror)
+    'tools/typecheck-coverage.selftest.mjs',
     // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
     'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',

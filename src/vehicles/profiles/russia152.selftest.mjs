@@ -29,7 +29,7 @@ for (const id of IDS) {
   assert.ok(spec.gun.shells[0].dmg > t14.gun.shells[0].dmg, `${id}: a heavier hit than the 125 mm's`);
   assert.ok(spec.gun.reloadS > t14.gun.reloadS && spec.gun.reloadS > t80u.gun.reloadS, `${id}: a slower reload than the 125 mm's`);
   const rounds = spec.gun.shells.reduce((n, s) => n + s.count, 0);
-  assert.ok(rounds <= 40 && rounds < 45, `${id}: fewer rounds than the T-14's 45 (${rounds})`);
+  assert.ok(rounds <= 40, `${id}: fewer rounds than the T-14's 45 (${rounds})`);
   assert.ok(PACKET.targets[id], `${id}: a target in the photo packet`);
   assert.equal(PACKET.targets[id].caliberMm, 152);
 }

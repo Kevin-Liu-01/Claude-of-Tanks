@@ -80,6 +80,8 @@
   ],
   // Build output, shipped assets, generated tables and the hash-pinned sources (AGENTS.md: vehicle
   // profiles, terrain, sky, impact decals, the authority, match placement), whose bytes receipts compare.
+  // Only the profiles' TypeScript: their receipts and helpers (.mjs) have no compiler, so no-undef is their only
+  // scope check (tools/typecheck-coverage.mjs; until 279 `profiles/**` hid 358 of them from it).
   "ignorePatterns": [
     "dist/**",
     "dist-*/**",
@@ -88,7 +90,7 @@
     "src/vehicles/combatAnatomyGroups/**",
     "src/vehicles/interiorFillGroups/**",
     "src/vehicles/vehicleMarkingSeatGroups/**",
-    "src/vehicles/profiles/**",
+    "src/vehicles/profiles/**/*.ts",
     "src/world/terrain.ts",
     "src/engine/sky.ts",
     "src/fx/impactDecals.ts",
