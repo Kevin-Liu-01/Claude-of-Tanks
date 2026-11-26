@@ -224,6 +224,12 @@ export interface MovementContactGeometry {
     frontM: number;
     rearM: number;
   } | null;
+  /** The ground run where the solve's run differs from it (sim/trackContact.ts publishedTrackContact): for reference. */
+  ground?: {
+    halfLenM: number;
+    zCenterM: number;
+    endRise: { dzM: number; frontM: number; rearM: number };
+  } | null;
 }
 
 interface SupportCache {

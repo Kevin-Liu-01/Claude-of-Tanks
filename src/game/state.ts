@@ -68,7 +68,7 @@ import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
-import { validatedContactGeometry } from '../sim/trackContact.ts';
+import { solveContactGeometry } from '../sim/trackContact.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
@@ -1662,7 +1662,8 @@ function refreshContactGeometry(entity: SoloEntity): void {
   if (!entity.visual) return;
   entity.rigidGear = false;
   if (!entity.contactGeom && entity.visual.contactGeom) {
-    entity.contactGeom = validatedContactGeometry(
+    // the run the solve carries the hull on (a raised outer road wheel's support run, else the ground run)
+    entity.contactGeom = solveContactGeometry(
       entity.visual.contactGeom,
       entity.spec.dims,
     );

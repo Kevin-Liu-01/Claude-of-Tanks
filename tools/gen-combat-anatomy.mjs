@@ -133,6 +133,12 @@ function trackContactReceipt(contact, id) {
     endRise: contact.endRise
       ? { dzM: r(contact.endRise.dzM), frontM: r(contact.endRise.frontM), rearM: r(contact.endRise.rearM) }
       : null,
+    // (279) only where a raised outer road wheel carries the hull past the ground contact (sim/trackContact.ts)
+    ...(contact.support ? { support: {
+      halfLenM: r(contact.support.halfLenM),
+      zCenterM: r(contact.support.zCenterM),
+      endRise: { dzM: r(contact.support.endRise.dzM), frontM: r(contact.support.endRise.frontM), rearM: r(contact.support.endRise.rearM) },
+    } } : {}),
   };
 }
 

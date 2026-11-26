@@ -295,6 +295,12 @@ interface GearEndpoint {
   rimR?: number;
   /** 'datum': the band's inner face sits exactly on trackR (an authored sink such as the Type 10's 0.975 r tread bore). */
   trackFace?: 'datum';
+  /** An outer road wheel authored above the common seat (per-station wheelYs): how far (m). Its band wraps it at the seated
+   * wheels' radius, the foot under its tire, not at the reach down to the ground run (roadWheelWrap). */
+  liftM?: number;
+  /** A raised outer road wheel's inward neighbour when that one sits at the common seat (axle z, y): the band leaves the
+   * raised wheel's foot on the tangent to the neighbour's tire and wraps it down to the ground run (raisedEndLayIn). */
+  neighbour?: { readonly z: number; readonly y: number };
   /** Independent axial casting envelopes; rolling radius and track lanes stay fixed. */
   axialScaleLeft?: number;
   axialScaleRight?: number;
@@ -725,6 +731,15 @@ interface TankContactGeometry {
   panYM: number | null;
   endRise: GearContactGeometry['endRise'] | null;
   gearBottomYM: number | null;
+  /** The support span where it differs from the ground contact (drawnBandContact: a raised outer road wheel). */
+  support?: TrackSupportSpan;
+}
+
+/** What the movement solve carries the hull on (sim/trackContact.ts TrackContactReceipt.support). */
+interface TrackSupportSpan {
+  halfLenM: number;
+  zCenterM: number;
+  endRise: { dzM: number; frontM: number; rearM: number };
 }
 
 interface TrackHitboxReceipt {
@@ -2807,10 +2822,25 @@ export function endRoadWheels(
   if (!wheelZs.length) return null;
   const frontIndex = wheelZs.indexOf(Math.max(...wheelZs));
   const rearIndex = wheelZs.indexOf(Math.min(...wheelZs));
-  return {
-    front: { z: wheelZs[frontIndex], y: wheelYs?.[frontIndex] ?? wheelY, r: wheelR },
-    rear: { z: wheelZs[rearIndex], y: wheelYs?.[rearIndex] ?? wheelY, r: wheelR },
+  // 278 (trackGlitchSimulation t90am): an outer wheel raised over the common seat (the T-90SM X build's front +59 mm,
+  // rear +17 mm) keeps the seated radius; its lift is published so the wrap does not reach under it to the ground run
+  // 279 (trackEndRamp t90am): the run from a raised wheel's foot to the ground run is a tangent to the next tire in, not a
+  // chord to that tire's foot (which cut it 1 mm, and the loaded-run fit's chord pass pulled the parked band off its
+  // authored course on every garage reset)
+  const end = (index: number, inward: 1 | -1): GearEndpoint => {
+    const y = wheelYs?.[index] ?? wheelY;
+    if (!(y - wheelY > 1e-4)) return { z: wheelZs[index], y, r: wheelR };
+    const z = wheelZs[index];
+    let next = -1;
+    wheelZs.forEach((candidate, k) => {
+      if (inward * (z - candidate) > 1e-6 && (next < 0 || Math.abs(candidate - z) < Math.abs(wheelZs[next] - z))) next = k;
+    });
+    const nextY = next >= 0 ? (wheelYs?.[next] ?? wheelY) : NaN;
+    return Math.abs(nextY - wheelY) <= 1e-4
+      ? { z, y, r: wheelR, liftM: y - wheelY, neighbour: { z: wheelZs[next], y: nextY } }
+      : { z, y, r: wheelR, liftM: y - wheelY };
   };
+  return { front: end(frontIndex, 1), rear: end(rearIndex, -1) };
 }
 
 interface RoadWheelWrap {
@@ -2866,6 +2896,24 @@ function appendRoadWheelArc(
 }
 
 /**
+ * RAISED-END LAY-IN (279): an outer road wheel authored above the common seat (endRoadWheels liftM) stands its foot
+ * above the ground run, and the band climbs to it from the seated wheel next in. A taut band leaves that neighbour's tire
+ * on the tangent through the raised wheel's foot and wraps the tire down to its own foot on the run: the tangent's angle
+ * on the neighbour (arc() convention), from (F − C)·(sin a, cos a) = R. Null (the straight run to the neighbour's
+ * station) when the foot does not stand clear of that tire or the tangent leaves its lower quadrant toward the end.
+ */
+function raisedEndLayIn(end: GearEndpoint, radius: number, side: 'front' | 'rear'): { z: number; y: number; deg: number } | null {
+  const next = end.neighbour;
+  if (!next || !(end.liftM! > 0)) return null;
+  const dz = end.z - next.z, dy = end.y - radius - next.y, d = Math.hypot(dz, dy);
+  if (!(d > radius + 1e-6)) return null;
+  const phi = Math.atan2(dz, dy) / D2R, spread = Math.acos(radius / d) / D2R;
+  const deg = [phi - spread, phi + spread, phi - spread + 360, phi + spread - 360]
+    .find((a) => side === 'front' ? a > 90 && a < 180 - 1e-6 : a > 180 + 1e-6 && a < 270);
+  return deg == null ? null : { z: next.z, y: next.y, deg };
+}
+
+/**
  * ROAD-WHEEL WRAP (owner 2026-09-14: "reseat tracks — cornered track in the bottom right, wheels
  * glitch into tracks"). The loaded run used to end at an authored contact pin and rise from there
  * in a straight line to the end-wheel wrap; that straight chord cut through the outer road wheel
@@ -2885,7 +2933,9 @@ function roadWheelWrap(
   wrap: number = TRACK_WRAP_CLEARANCE_M,
 ): RoadWheelWrap | null {
   const endRadius = end.r + endpointWrap(end, wrap);
-  const wheelRadius = wheel.y - botY;
+  // the band's centreline radius about the road wheel is its seat over the ground run; a raised outer wheel keeps the
+  // seated wheels' radius, so its foot stands under its own tire and the loaded run climbs to it from the next station
+  const wheelRadius = wheel.y - botY - (wheel.liftM ?? 0);
   if (!(wheelRadius > 0.05)) return null;
   if (end.y - endRadius <= botY + 0.005) return null;
   const dz = wheel.z - end.z;
@@ -3148,16 +3198,26 @@ function trackLoopPoints({
     ? idler.z + Math.sin(aF * D2R) * (idler.r + endpointWrap(idler, wrap)) : cF;
   const zEnterR = aR === aGR
     ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + endpointWrap(sprocket, wrap)) : cR;
+  // a raised outer road wheel's foot stands above the run: the band reaches it on the tangent off the next tire in, which
+  // it wraps down to the run (raisedEndLayIn); the flat run then spans the seated wheels between
+  const frontLayIn = frontWrap && endWheels ? raisedEndLayIn(endWheels.front, frontWrap.wheelRadius, 'front') : null;
+  const rearLayIn = rearWrap && endWheels ? raisedEndLayIn(endWheels.rear, rearWrap.wheelRadius, 'rear') : null;
+  if (frontLayIn && frontWrap) {
+    appendRoadWheelArc(pts, { z: frontLayIn.z, y: frontLayIn.y, r: endWheels!.front.r }, frontWrap.wheelRadius, frontLayIn.deg, 180, 'end');
+  }
   if ((frontWrap || rearWrap) && endWheels) {
     // A wrapped end already stands on the ground under its axle (the wheel arc's last / first
     // point), so the flat run only fills the interior stations toward the other end.
-    const startZ = frontWrap ? endWheels.front.z : Math.min(cF, zEnterF);
-    const endZ = rearWrap ? endWheels.rear.z : Math.max(cR, zEnterR);
+    const startZ = frontLayIn ? frontLayIn.z : frontWrap ? endWheels.front.z : Math.min(cF, zEnterF);
+    const endZ = rearLayIn ? rearLayIn.z : rearWrap ? endWheels.rear.z : Math.max(cR, zEnterR);
     for (let step = frontWrap ? 1 : 0; step <= (rearWrap ? 4 : 5); step++) {
       pts.push([startZ + (endZ - startZ) * (step / 5), botY]);
     }
   } else {
     appendTrackGroundRun(pts, contact, cF, cR, zEnterF, zEnterR, zi, zs, botY);
+  }
+  if (rearLayIn && rearWrap) {
+    appendRoadWheelArc(pts, { z: rearLayIn.z, y: rearLayIn.y, r: endWheels!.rear.r }, rearWrap.wheelRadius, 180, rearLayIn.deg, 'start');
   }
   if (rearWrap && endWheels) {
     appendRoadWheelArc(pts, endWheels.rear, rearWrap.wheelRadius, 180, rearWrap.deg, 'start');
@@ -3759,26 +3819,27 @@ function bandGroundContact(pts: readonly TrackPoint[]): TrackContactSpan & { gro
     if (z < runR) runR = z;
   }
   const leaveHeight = groundY + BAND_GROUND_CONTACT_TOL_M;
-  // from the ground run's end out toward the loop's end: the first height past the tolerance, bisected
-  const leave = (from: number, to: number): number => {
-    const dir = to > from ? 1 : -1;
-    let inside = from;
-    while ((to - inside) * dir > 0) {
-      const next = (to - inside) * dir > BAND_GROUND_CONTACT_SCAN_M ? inside + dir * BAND_GROUND_CONTACT_SCAN_M : to;
-      if (trackBandLowestY(pts, next) >= leaveHeight) {
-        let outside = next;
-        for (let step = 0; step < 24; step++) {
-          const mid = 0.5 * (inside + outside);
-          if (trackBandLowestY(pts, mid) >= leaveHeight) outside = mid;
-          else inside = mid;
-        }
-        return 0.5 * (inside + outside);
+  return { zF: bandLeaveZ(pts, runF, highZ, leaveHeight), zR: bandLeaveZ(pts, runR, lowZ, leaveHeight), groundY };
+}
+
+/** From `from` out toward the loop's end at `to`: where the band's lower run first rises to `height`, bisected. */
+function bandLeaveZ(pts: readonly TrackPoint[], from: number, to: number, height: number): number {
+  const dir = to > from ? 1 : -1;
+  let inside = from;
+  while ((to - inside) * dir > 0) {
+    const next = (to - inside) * dir > BAND_GROUND_CONTACT_SCAN_M ? inside + dir * BAND_GROUND_CONTACT_SCAN_M : to;
+    if (trackBandLowestY(pts, next) >= height) {
+      let outside = next;
+      for (let step = 0; step < 24; step++) {
+        const mid = 0.5 * (inside + outside);
+        if (trackBandLowestY(pts, mid) >= height) outside = mid;
+        else inside = mid;
       }
-      inside = next;
+      return 0.5 * (inside + outside);
     }
-    return to;
-  };
-  return { zF: leave(runF, highZ), zR: leave(runR, lowZ), groundY };
+    inside = next;
+  }
+  return to;
 }
 
 /** The highest end rise the contact publishes, over the end-rise run it is read at (dzM): 0.35 m at the fleet's 0.4. */
@@ -3797,7 +3858,7 @@ const BAND_END_RISE_MIN_M = 0.02;
  */
 function drawnBandContact(
   root: THREE.Object3D, endRiseRunM: number,
-): { halfLenM: number; zCenterM: number; endRise: { dzM: number; frontM: number; rearM: number } } | null {
+): { halfLenM: number; zCenterM: number; endRise: { dzM: number; frontM: number; rearM: number }; support?: TrackSupportSpan } | null {
   root.updateMatrixWorld(true);
   const toRoot = new THREE.Matrix4();
   const rootInverse = new THREE.Matrix4().copy(root.matrixWorld).invert();
@@ -3805,6 +3866,11 @@ function drawnBandContact(
   const scale = new THREE.Vector3();
   let front = -Infinity, rear = Infinity, groundY = Infinity;
   let riseFront = Infinity, riseRear = Infinity, bands = 0;
+  // 279: the support span (TrackContactReceipt.support). A raised outer road wheel (endRoadWheels liftM) stands its foot
+  // above the ground run, so the contact ends short of it; its springs still carry the hull the moment the ground reaches
+  // it, so the support run reaches past it as far as past any seated end wheel: where the band rises the contact
+  // tolerance over that wheel's own foot.
+  let supportFront = -Infinity, supportRear = Infinity, supportRiseFront = Infinity, supportRiseRear = Infinity, raised = false;
   root.traverse((object) => {
     const pts = object.userData?.trackLoopPoints as readonly TrackPoint[] | undefined;
     if (!Array.isArray(pts) || pts.length < 4) return;
@@ -3821,16 +3887,42 @@ function drawnBandContact(
     groundY = Math.min(groundY, point.y);
     point.set(0, contact.groundY, contact.zR + (offsets?.rear ?? 0)).applyMatrix4(toRoot);
     rear = Math.min(rear, point.z);
+    const raisedEnds = object.userData.trackLoopRaisedEndZs as { front: number | null; rear: number | null } | undefined;
+    let zF = contact.zF, zR = contact.zR;
+    if (raisedEnds) {
+      raised = true;
+      let lowZ = Infinity, highZ = -Infinity;
+      for (const [z] of pts) { if (z < lowZ) lowZ = z; if (z > highZ) highZ = z; }
+      const past = (z: number, to: number): number => bandLeaveZ(pts, z, to, trackBandLowestY(pts, z) + BAND_GROUND_CONTACT_TOL_M);
+      if (raisedEnds.front != null) zF = Math.max(zF, past(raisedEnds.front, highZ));
+      if (raisedEnds.rear != null) zR = Math.min(zR, past(raisedEnds.rear, lowZ));
+    }
+    supportRiseFront = Math.min(supportRiseFront, riseAt(zF + runLocal));
+    supportRiseRear = Math.min(supportRiseRear, riseAt(zR - runLocal));
+    point.set(0, contact.groundY, zF + (offsets?.front ?? 0)).applyMatrix4(toRoot);
+    supportFront = Math.max(supportFront, point.z);
+    point.set(0, contact.groundY, zR + (offsets?.rear ?? 0)).applyMatrix4(toRoot);
+    supportRear = Math.min(supportRear, point.z);
     bands++;
   });
   if (!bands) return null;
   const clampRise = (rise: number): number => (Number.isFinite(rise)
     ? Math.min(BAND_END_RISE_MAX_PER_M * endRiseRunM, Math.max(BAND_END_RISE_MIN_M, rise))
     : BAND_END_RISE_MAX_PER_M * endRiseRunM);
-  return {
+  const drawn = {
     halfLenM: (front - rear) / 2,
     zCenterM: (front + rear) / 2,
     endRise: { dzM: endRiseRunM, frontM: clampRise(riseFront), rearM: clampRise(riseRear) },
+  };
+  // published only where it differs: every tank whose outer road wheels sit at the common seat keeps one span
+  if (!raised || (Math.abs(supportFront - front) < 1e-4 && Math.abs(supportRear - rear) < 1e-4)) return drawn;
+  return {
+    ...drawn,
+    support: {
+      halfLenM: (supportFront - supportRear) / 2,
+      zCenterM: (supportFront + supportRear) / 2,
+      endRise: { dzM: endRiseRunM, frontM: clampRise(supportRiseFront), rearM: clampRise(supportRiseRear) },
+    },
   };
 }
 
@@ -5489,6 +5581,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     return material;
   };
   const bandLoopPoints: readonly TrackPoint[] = Object.freeze(pts.map((point): TrackPoint => [point[0], point[1]]));
+  // the outer road wheels authored above the common seat (endRoadWheels liftM): the support span reaches past them
+  // (drawnBandContact); absent on every band whose end wheels sit at the seat
+  const liftedEnds = cfg.wrapEndRoadWheels === false ? null : endRoadWheels(wheelZs, wheelY, wheelR, wheelYs);
+  const raisedEndZs = liftedEnds && (liftedEnds.front.liftM || liftedEnds.rear.liftM)
+    ? Object.freeze({ front: liftedEnds.front.liftM ? liftedEnds.front.z : null, rear: liftedEnds.rear.liftM ? liftedEnds.rear.z : null })
+    : null;
   const tl = new THREE.Mesh(tgL, trackBandMaterial(mats.trackL));
   const buildRunningGearReceiptStage8 = (): void => {
     tl.name = 'gearTrackBandL';
@@ -5499,6 +5597,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     tl.userData.appearanceRole = 'trackBand';
     // the band's own course: the published track contact is read off it where the finished build draws it
     tl.userData.trackLoopPoints = bandLoopPoints;
+    if (raisedEndZs) tl.userData.trackLoopRaisedEndZs = raisedEndZs;
     tl.position.x = -xcLeft;
   };
   const buildRunningGearRunningGearStage25 = (): void => {
@@ -5514,6 +5613,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     tr.userData.trackTextureRepeatM = trackTextureRepeatM;
     tr.userData.appearanceRole = 'trackBand';
     tr.userData.trackLoopPoints = bandLoopPoints;
+    if (raisedEndZs) tr.userData.trackLoopRaisedEndZs = raisedEndZs;
     tr.position.x = xcRight;
     tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
     hullG.add(tl, tr);
@@ -10775,6 +10875,7 @@ export function* createTankRuntimeSteps(
       panYM: scan ? scan.panYM : null,
       // wrap approach-rise for the line-end guard samples, off the drawn bands (see drawnBandContact)
       endRise: drawnCG?.endRise ?? (gearCG ? gearCG.endRise : null),
+      ...(drawnCG?.support ? { support: drawnCG.support } : {}),
       // gear-only floor, for diagnostics: bottomYM < gearBottomYM means a
       // non-gear surface (hull keel/pan) renders below the tracks — a
       // rest-geometry fidelity defect the runtime can only split, not fix.
