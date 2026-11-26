@@ -3429,6 +3429,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',
+    // 2026-11-26 (map-icon-heading-278, Kevin: "make sure they actually face the right way, esp plane icons"): every
+    // directional minimap icon's drawn nose against its heading, with its controls
+    'src/ui/minimapIconHeading.selftest.mjs',
     // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
     // again"): one row a datum, placed only by its owner, its glyph through the registry
     'src/ui/surfaceRegistry.selftest.mjs',

@@ -87,6 +87,7 @@ import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
 import {
   minimapAngleForDirection,
+  minimapRimPoint,
   minimapYawForHeading,
   projectWorldToMinimap,
 } from './minimapOrientation.ts';
@@ -7088,6 +7089,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // every 20 Hz repaint; every call site destructures immediately (verified),
   // so a shared 2-element array is safe and allocation-free.
   const _wm: [number, number] = [0, 0];
+  /** An aircraft's point on the minimap's rim (minimapRimPoint), reused. */
+  const _rim: number[] = [0, 0];
   function worldToMap(x: number, z: number): [number, number] {
     projectWorldToMinimap(x, z, mapWorldSize, MM, _wm);
     return _wm;
@@ -8008,10 +8011,12 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   ): void {
     const breath = 0.5 + 0.5 * Math.sin(timeS * 5.2);
     for (const marker of markers) {
-      const point = worldToMap(marker.x, marker.z);
+      // (map-icon-heading-278) copied out of worldToMap's shared tuple at once: a second call overwrites it (the aircraft's
+      // and the footprint's heading once came from two calls on the one tuple: every plane drew nose-south)
+      const [px, py] = worldToMap(marker.x, marker.z);
       const inset = marker.kind === 'spawn' ? 11 : 7;
-      const x = Math.max(inset, Math.min(MM - inset, point[0]));
-      const y = Math.max(inset, Math.min(MM - inset, point[1]));
+      let x = Math.max(inset, Math.min(MM - inset, px));
+      let y = Math.max(inset, Math.min(MM - inset, py));
       const color = sideColor(marker.side);
       const fill = sideFill(marker.side);
       const nearPlayer = Math.hypot(x - playerMapX, y - playerMapY) < 14;
@@ -8096,16 +8101,15 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
           placeMapLetter(marker.label, laneLetter(x, y, 6.5, mapLetter), LANE_GLYPH_LETTER_PX);
           break;
         case 'strike': {
-          // Air Support (air-support-270): the call-in's footprint at the map's scale and turn (two map points along its
-          // heading give both), its badge on the mark, the dashes marching while its warning runs
-          const heading = marker.heading ?? 0;
-          const along = worldToMap(marker.x + Math.sin(heading), marker.z + Math.cos(heading));
-          const ux = along[0] - point[0], uy = along[1] - point[1], pxPerM = Math.hypot(ux, uy) || 1;
+          // Air Support (air-support-270): the call-in's footprint at the map's scale, its long axis turned to its heading
+          // (the footprint's art runs up the canvas, as every directional glyph's nose does), its badge on the mark, the
+          // dashes marching while its warning runs
+          const pxPerM = MM / mapWorldSize, angle = minimapYawForHeading(marker.heading ?? 0);
           const march = (timeS * (marker.pulse ? 1.6 : 0.4)) % 1;
           const urgency = marker.countdownS != null && marker.countdownS > 0 ? Math.max(0, 1 - marker.countdownS / 8) : 1;
-          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null
-            ? { radiusPx: marker.radiusM * pxPerM, ...(marker.acrossM != null ? { acrossPx: marker.acrossM * pxPerM, angle: Math.atan2(-ux, uy) } : {}) }
-            : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle: Math.atan2(-ux, uy) },
+          drawStrikeFootprint(mmCtx, px, py, marker.radiusM != null
+            ? { radiusPx: marker.radiusM * pxPerM, ...(marker.acrossM != null ? { acrossPx: marker.acrossM * pxPerM, angle } : {}) }
+            : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle },
             // a recon pass's swath is outlined, never filled (filled, it tinted the whole minimap)
             marker.side, march, urgency, marker.status !== 'recon');
           if (marker.pulse) halo(7, 0.6);
@@ -8113,19 +8117,22 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
           break;
         }
         case 'aircraft': {
-          // Air Support's aircraft (air-support-275): its silhouette where its run has it, its nose along its heading (two
-          // map points give the map's own turn); off the plate it rides the rim (the clamp above), so an inbound one's icon
-          // there is the bearing it comes from, and its approach is drawn to the mark it is coming for
-          const heading = marker.heading ?? 0;
-          const ahead = worldToMap(marker.x + Math.sin(heading), marker.z + Math.cos(heading));
-          const angle = Math.atan2(ahead[0] - point[0], -(ahead[1] - point[1]));
+          // Air Support's aircraft (air-support-275): its silhouette where its run has it, its nose along its heading (the
+          // tank arrows' turn, map-icon-heading-278); off the plate it rides the rim on the line from the mark it is coming
+          // for (else the plate's centre), so an inbound one's icon there is the bearing it comes from and its nose runs
+          // down its drawn approach
           let inbound: { toX: number; toY: number; march: number } | null = null;
+          let anchorX = MM / 2, anchorY = MM / 2;
           if (marker.toX != null && marker.toZ != null) {
-            const to = worldToMap(marker.toX, marker.toZ);
-            inbound = { toX: Math.max(7, Math.min(MM - 7, to[0])), toY: Math.max(7, Math.min(MM - 7, to[1])), march: (timeS * 1.6) % 1 };
+            const [tx, ty] = worldToMap(marker.toX, marker.toZ);
+            inbound = { toX: Math.max(7, Math.min(MM - 7, tx)), toY: Math.max(7, Math.min(MM - 7, ty)), march: (timeS * 1.6) % 1 };
+            anchorX = inbound.toX; anchorY = inbound.toY;
           }
+          minimapRimPoint(px, py, anchorX, anchorY, inset, MM, _rim);
+          x = _rim[0]!; y = _rim[1]!;
           if (marker.pulse) halo(6.5, 0.7);
-          drawAircraftGlyph(mmCtx, x, y, marker.status === 'gunship' ? 6.5 : 5.5, angle, marker.status === 'gunship', marker.side, inbound);
+          drawAircraftGlyph(mmCtx, x, y, marker.status === 'gunship' ? 6.5 : 5.5, minimapYawForHeading(marker.heading ?? 0),
+            marker.status === 'gunship', marker.side, inbound);
           break;
         }
         default:
