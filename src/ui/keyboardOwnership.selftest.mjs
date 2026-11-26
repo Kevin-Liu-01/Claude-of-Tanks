@@ -15,18 +15,16 @@ assert.equal(isEditingControl({ tagName: 'INPUT', type: 'checkbox', isContentEdi
 assert.equal(isEditingControl({ tagName: 'SELECT', isContentEditable: false }), false, 'nor a closed select');
 assert.equal(isEditingControl({ tagName: 'TEXTAREA', isContentEditable: false }), true, 'a text area takes text');
 assert.equal(isEditingControl(canvas), false, 'game canvas does not own typed keys');
-assert.equal(shouldOpenSettingsFromPointerUnlock({
-  battleActive: true,
-  activeElement: canvas,
-}), true, 'an unclaimed in-battle unlock retains the Esc-to-settings behavior');
-assert.equal(shouldOpenSettingsFromPointerUnlock({
-  battleActive: true,
-  activeElement: input,
-}), false, 'opening chat with Enter must not open settings');
-assert.equal(shouldOpenSettingsFromPointerUnlock({
-  battleActive: true,
-  replayActive: true,
-  activeElement: canvas,
-}), false, 'killcam keeps ownership of its pointer unlock');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true }), true,
+  'an unclaimed in-battle unlock (the browser\'s swallowed Esc) opens Settings');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true, unlockOwner: 'editor' }), false,
+  'opening chat with Enter must not open settings (a focused editor claims the unlock)');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true, unlockOwner: 'presentation' }), false,
+  'killcam keeps ownership of its pointer unlock');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true, unlockOwner: 'photo-mode' }), false,
+  'photo mode keeps ownership of its pointer release (settings-unify-278 fix-back)');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true, pointerLocked: true }), false, 'a held lock');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: true, settingsOpen: true }), false, 'an open panel');
+assert.equal(shouldOpenSettingsFromPointerUnlock({ battleActive: false }), false, 'outside a controllable battle');
 
-console.log('keyboardOwnership.selftest: Enter/chat and Esc/settings ownership passed');
+console.log('keyboardOwnership.selftest: Enter/chat and Esc/settings ownership, by the unlock\'s owner, passed');

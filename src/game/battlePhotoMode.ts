@@ -15,7 +15,7 @@ import { photoModeChunk } from '../ui/photoModeChunk.ts';
 interface BattlePhotoInput {
   /** Gate the battle's controls (held state clears), as the pause menu does. */
   setEnabled(enabled: boolean): void;
-  releaseLock(): void;
+  releaseLock(owner: 'photo-mode'): void;
   requestLock(request?: { fromUi?: boolean }): void;
 }
 
@@ -167,7 +167,7 @@ export function createBattlePhotoMode(deps: BattlePhotoDeps): BattlePhotoMode {
       // the battle stands still from this frame: the pause port reads open before the sheet arrives
       deps.onChange(true);
       deps.input.setEnabled(false);
-      deps.input.releaseLock();
+      deps.input.releaseLock('photo-mode');
       // the bar and its sheet: one load for the document, the Garage's too (ui/photoModeChunk.ts)
       let openPhotoMode: typeof import('../ui/photoMode.ts').openPhotoMode;
       try {

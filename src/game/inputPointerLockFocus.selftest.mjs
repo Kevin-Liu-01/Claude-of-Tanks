@@ -21,7 +21,7 @@ function createPage(options = {}) {
 /** What Settings does: Esc opens the panel (input off), RESUME/X closes it and relocks inside the click. */
 function openSettings(page) {
   page.input.setEnabled(false);
-  page.input.releaseLock();
+  page.input.releaseLock('settings');
 }
 function clickToClose(page, button, x, y, refusals) {
   page.mouse('mousemove', button, x, y);
@@ -205,14 +205,14 @@ for (const lock of ['none', 'refuse-all']) {
   const page = createPage();
   try {
     page.input.requestLock();
-    page.input.releaseLock(); // before the browser's answer
+    page.input.releaseLock('battle-start'); // before the browser's answer
     await flush();
     await flush();
     assert.equal(page.document.pointerLockElement, null, 'a lock released while in flight does not stand when it lands');
     assert.equal(page.input.isLocked(), false);
     assert.equal(page.input.isCursorAim(), false, 'and the withdrawal is no refusal');
     page.input.requestLock();
-    page.input.releaseLock();
+    page.input.releaseLock('battle-start');
     page.input.requestLock(); // asked again before the first answer
     await flush();
     await flush();
@@ -234,10 +234,59 @@ for (const answered of ['engaged', 'refused']) {
       assert.equal(page.stats.refused, 1, '(refused)');
     }
     clock += CHROME_ESCAPE_REFUSAL_MS + 100;
-    page.input.releaseLock(); // nothing in flight: the last attempt was answered
+    page.input.releaseLock('battle-start'); // nothing in flight: the last attempt was answered
     page.landWithoutRequest();
     await flush();
     assert.equal(page.input.isLocked(), true, `a release after an attempt ${answered} withdraws nothing`);
+  } finally {
+    page.restore();
+  }
+}
+
+// 6. (settings-unify-278 fix-back) Who owns a free pointer. The battle's Settings opens only on an unclaimed unlock (the
+//    player's Esc, a lost page); photo mode's own release, unnamed, read as that Esc and opened Settings under its bar.
+//    A release names its owner, which owns the free pointer until the next lock; a mode that holds the pointer free while
+//    it runs (a kill-cam replay, a focused editor) claims every unlock while it holds.
+{
+  const page = createPage();
+  try {
+    page.input.requestLock();
+    await flush();
+    assert.equal(page.input.pointerUnlockOwner(), null, 'a held lock has no unlock owner');
+    page.userEscape();
+    assert.equal(page.input.pointerUnlockOwner(), null, "the player's Esc is an unclaimed unlock (Settings opens)");
+    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
+    page.input.requestLock();
+    await flush();
+    page.input.releaseLock('photo-mode');
+    await flush();
+    assert.equal(page.input.isLocked(), false);
+    assert.equal(page.input.pointerUnlockOwner(), 'photo-mode', "photo mode's release is photo mode's unlock");
+    page.input.requestLock();
+    await flush();
+    assert.equal(page.input.pointerUnlockOwner(), null, 'the next lock ends the claim');
+    page.userEscape();
+    assert.equal(page.input.pointerUnlockOwner(), null, 'and the next Esc after it is unclaimed again');
+    // a release that withdraws a request in flight owns the unlock that follows its landing
+    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
+    page.input.requestLock();
+    page.input.releaseLock('battle-start');
+    await flush();
+    await flush();
+    assert.equal(page.input.isLocked(), false);
+    assert.equal(page.input.pointerUnlockOwner(), 'battle-start', 'a withdrawn lock keeps its owner through its landing');
+    // a holding claim owns every unlock while it holds, the player's Esc included
+    let live = true;
+    const drop = page.input.claimPointerUnlock('presentation', () => live);
+    page.input.requestLock();
+    await flush();
+    page.userEscape();
+    assert.equal(page.input.pointerUnlockOwner(), 'presentation', "a kill-cam replay's Esc is the replay's skip");
+    live = false;
+    assert.equal(page.input.pointerUnlockOwner(), null, 'a claim that no longer holds owns nothing');
+    live = true;
+    drop();
+    assert.equal(page.input.pointerUnlockOwner(), null, 'a dropped claim owns nothing');
   } finally {
     page.restore();
   }

@@ -201,6 +201,41 @@ try {
       await still('4-resumed');
     } else problem('resume: no Resume to press');
 
+    // 3b. (settings-unify-278 fix-back) P from a locked battle: photo mode alone, Settings closed, and one Esc back to the
+    //     running battle with the pointer relocked. Before, photo mode's own pointer release read as the player's
+    //     swallowed Esc and opened the paused Settings under its bar; the first Esc closed Settings and relocked under the
+    //     bar, and a second left photo mode. Desktop only: a touch layout has no P and never locks.
+    if (!size.touch) {
+      if (!(await page.evaluate(() => !!document.pointerLockElement))) { await page.mouse.click(size.w / 2, size.h / 2); await wait(400); }
+      const lockedBefore = await page.evaluate(() => !!document.pointerLockElement);
+      await page.keyboard.press('KeyP');
+      await page.waitForFunction(() => !!document.querySelector('.cot-photo-bar')?.checkVisibility(), { timeout: 20_000, polling: 100 }).catch(() => {});
+      await wait(1500);
+      const shot = await page.evaluate(drawn, [['#app canvas', '.cot-photo-bar', '.cot-photo-notices'], CONTROLS]);
+      const state = await page.evaluate(clock);
+      entry.steps.photoKey = { lockedBefore, bar: shot.controls.photoBar, resume: shot.controls.resume, settingsOpen: state.settingsOpen,
+        outside: shot.outside.slice(0, 6) };
+      await still('4b-photo-key');
+      if (!lockedBefore) problem('photo key: the battle did not hold the pointer before P (no lock to release)');
+      if (!shot.controls.photoBar?.hit) problem('photo key: P from a locked battle does not draw the photo bar');
+      if (shot.controls.resume || state.settingsOpen) problem('photo key: P from a locked battle opens the paused Settings with photo mode');
+      if (shot.outside.length) problem(`photo key: ${shot.outside.length} grid points drawn over the picture: ${[...new Set(shot.outside.map((o) => o.split(' ')[1]))].slice(0, 4).join(', ')}`);
+      await page.keyboard.press('Escape');
+      await wait(900);
+      const e0 = await page.evaluate(clock);
+      await wait(1000);
+      const e1 = await page.evaluate(clock);
+      const back = await page.evaluate(drawn, [SETTINGS, CONTROLS]);
+      const relocked = await page.evaluate(() => !!document.pointerLockElement);
+      entry.steps.photoKeyEsc = { clock: [e0.timeS, e1.timeS], relocked, settingsOpen: e1.settingsOpen, bar: back.controls.photoBar,
+        inside: back.inside };
+      await still('4c-photo-key-esc');
+      if (back.controls.photoBar) problem('photo key: one Esc does not leave photo mode');
+      if (e1.settingsOpen || back.inside > 0) problem('photo key: one Esc leaves Settings drawn (not the running battle)');
+      if (!(e1.timeS > e0.timeS)) problem(`photo key: the battle clock does not run after one Esc (${e0.timeS} -> ${e1.timeS})`);
+      if (!relocked) problem('photo key: the pointer is not relocked after one Esc');
+    }
+
     // 4. Photo mode and back
     const again = await page.evaluate(pauseAsPlayer, size.touch);
     if (again.how === 'esc') await page.keyboard.press('Escape');

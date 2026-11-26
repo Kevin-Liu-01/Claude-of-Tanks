@@ -58,7 +58,7 @@ import {
   type SettingsIconSpec,
 } from './settingsIcons.ts';
 import { containModalTab, isAnyModalOpen } from './modal.ts';
-import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
+import { isEditingControl, shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import {
   battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner,
 } from './battleInputOwner.ts';
@@ -2086,7 +2086,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     openSurface(surface);
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
-    input.releaseLock();
+    input.releaseLock('settings');
     refreshPausedTag(); // PAUSE: battle Esc reads as a pause, garage Esc not
     hideHints();
     // Reopen on the tab the player was last tuning (session-sticky): closing
@@ -2214,34 +2214,34 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // phase), and the done-grace absorbs the skip keypress itself (battleInputOwner.ts).
   if (opts.registerMenuAction !== false) {
     input.onAction('settingsMenu', (code) => {
-      if (code === 'Escape' && opts.isSpectating?.()) { input.releaseLock(); return; }
+      if (code === 'Escape' && opts.isSpectating?.()) { input.releaseLock('spectator'); return; }
       if (!open && !replayOwnsScreen() && !isAnyModalOpen()) openPanel();
     });
   }
 
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat
-  // it as "open the menu". Intentional releases flip phase/result first.
+  // it as "open the menu".
   // An unlock caused by alt-tab / focus loss pauses into the same panel
   // (settings-unify-278: the one pause screen; the click-to-resume veil
   // controls_gunnery r2 raised there is gone). The focus check runs a tick
   // later: on some platforms pointerlockchange fires before the blur that
   // caused it lands.
-  // Replays and destroyed-player spectator views do not turn cursor release
-  // into a Settings request. Only a controllable player owns that shortcut.
+  // Only an unclaimed unlock opens it (settings-unify-278 fix-back): every unlock something meant is claimed by its
+  // owner through the input layer, photo mode's release among them, so no mode is listed here. The two owners of a free
+  // pointer this panel can see claim it here: a kill-cam replay or ending beat (its any-key skip takes the Esc that
+  // unlocked) and a focused text editor (Enter opens room chat by focusing its field and releasing the pointer).
+  // Destroyed-player spectator views are not battleActive: only a controllable player owns the shortcut.
+  input.claimPointerUnlock('presentation', () => replayOwnsScreen());
+  input.claimPointerUnlock('editor', () => isEditingControl(document.activeElement));
   const settingsOwnsPointerUnlock = () => shouldOpenSettingsFromPointerUnlock({
     pointerLocked: !!document.pointerLockElement,
     settingsOpen: open,
     battleActive: isBattleActive(),
-    replayActive: replayOwnsScreen(),
-    activeElement: document.activeElement,
+    unlockOwner: input.pointerUnlockOwner(),
   });
   document.addEventListener('pointerlockchange', () => {
     if (input.isLocked()) return;
-    // Enter opens room chat by focusing its field and intentionally releasing
-    // pointer lock. A focused editor owns that unlock; only an otherwise
-    // unclaimed in-battle unlock (the browser's swallowed Esc gesture) opens
-    // Settings.
     if (!settingsOwnsPointerUnlock()) return;
     setTimeout(() => {
       if (!settingsOwnsPointerUnlock()) return;
@@ -2255,11 +2255,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // the veil's old focus-regained path also stopped a battle that never held the pointer, and Settings pauses the
   // battle where the veil did not, settings-unify-278.)
   const offerPause = () => {
-    if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen() &&
-        shouldOpenSettingsFromPointerUnlock({
-          battleActive: true,
-          activeElement: document.activeElement,
-        })) pauseToSettings('pause');
+    if (!open && !input.isLocked() && shouldOpenSettingsFromPointerUnlock({
+      battleActive: isBattleActive(),
+      unlockOwner: input.pointerUnlockOwner(),
+    })) pauseToSettings('pause');
   };
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && input.isTouchLayout && input.isTouchLayout()) offerPause();

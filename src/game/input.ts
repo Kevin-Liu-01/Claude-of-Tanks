@@ -282,8 +282,23 @@ export interface InputLayer {
   getCursorNdc(out: InputVector): InputVector;
   /** The cursor is on the page (cursor-aim-pan-274: leaving it stops the edge pan until it next moves over the battle). */
   isCursorOnPage(): boolean;
-  releaseLock(): void;
+  /** Free the pointer on purpose (releasing a held lock, or withdrawing a request still in flight). `owner` claims the
+   *  unlock this causes until the pointer next locks, so Settings never takes it for the browser's swallowed Esc
+   *  (settings-unify-278 fix-back: photo mode's release opened the paused Settings under its bar). */
+  releaseLock(owner: PointerUnlockOwner): void;
+  /** A mode that owns a free pointer while it runs claims every unlock while `holds()` is true (a kill-cam replay or
+   *  ending beat, whose any-key skip takes the Esc that unlocked; a focused text editor). Returns the release. */
+  claimPointerUnlock(owner: PointerUnlockOwner, holds: () => boolean): () => void;
+  /** Who owns the free pointer now: a holding claim, else the owner whose releaseLock freed it. Null is an unclaimed
+   *  unlock (the browser's swallowed Esc, a lost page): the only one the battle's Settings opens on. */
+  pointerUnlockOwner(): PointerUnlockOwner | null;
 }
+
+/** Every owner that frees the pointer on purpose or holds it free (settings-unify-278 fix-back). A new mode that unlocks
+ *  names itself here: releaseLock takes no unnamed release. */
+export type PointerUnlockOwner =
+  | 'photo-mode' | 'presentation' | 'editor' | 'settings' | 'spectator' | 'battle-result' | 'battle-start'
+  | 'garage-return-failure';
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps gun hold, RMB aim,
  *  1/2/3 shells, the vehicle-action table's keys (E suspension, Q ATGM, C reload, F self-right: vehicleActions.ts),
@@ -883,6 +898,11 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   let lockEngagedAttempt = 0; // attempt id whose lock last engaged
   let lockWithdrawnAttempt = -1;
   let lockExitMs = -Infinity; // when the canvas last lost the lock
+  // (settings-unify-278 fix-back) who freed the pointer that is free now (null: the browser, an Esc or a lost page), and
+  // the owner of a release asked for, until its unlock lands; the next lock clears both. Holding claims beside them.
+  let releaseOwner: PointerUnlockOwner | null = null;
+  let pendingReleaseOwner: PointerUnlockOwner | null = null;
+  const unlockClaims = new Set<{ readonly owner: PointerUnlockOwner; readonly holds: () => boolean }>();
   // Cursor-aim point: the last cursor position over the game canvas. Menus
   // (setEnabled(false)), a press on anything else and focus loss forget it, so
   // the fallback aims through the screen centre until the cursor moves over
@@ -1205,11 +1225,19 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   document.addEventListener('pointerlockchange', () => {
     const held = !!lockElement && document.pointerLockElement === lockElement;
     if (held) noteLockEngaged();
-    else if (lockHeld) lockExitMs = nowMillis();
+    else if (lockHeld) {
+      lockExitMs = nowMillis();
+      // the unlock lands: its release's owner owns the free pointer (none asked: the browser's Esc or a lost page)
+      releaseOwner = pendingReleaseOwner;
+      pendingReleaseOwner = null;
+    }
     lockHeld = held;
     if (held && lockWithdrawnAttempt === lockAttemptSeq) {
       lockWithdrawnAttempt = -1;
-      document.exitPointerLock?.(); // (round 5 Q2) its caller gave the cursor back before it landed
+      document.exitPointerLock?.(); // (round 5 Q2) its caller gave the cursor back before it landed (its owner kept)
+    } else if (held) {
+      releaseOwner = null;
+      pendingReleaseOwner = null;
     }
   });
 
@@ -1703,12 +1731,25 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     /** Release pointer lock if held. (round 5 Q2) An attempt still in flight (requested, not yet locked or refused)
      *  is withdrawn: its lock is released as it lands, so a caller that gives the cursor back right after asking (a
      *  battle start refused after a Garage return's wait, a Settings panel opening) never finds the lock over it. */
-    releaseLock() {
+    releaseLock(owner) {
       if (api.isLocked()) {
+        pendingReleaseOwner = owner;
         if (document.exitPointerLock) document.exitPointerLock();
       } else if (lockAttemptSeq !== lockEngagedAttempt && lockAttemptSeq !== lockDeniedAttempt) {
+        pendingReleaseOwner = owner;
         lockWithdrawnAttempt = lockAttemptSeq;
       }
+    },
+
+    claimPointerUnlock(owner, holds) {
+      const claim = { owner, holds };
+      unlockClaims.add(claim);
+      return () => { unlockClaims.delete(claim); };
+    },
+
+    pointerUnlockOwner() {
+      for (const claim of unlockClaims) if (claim.holds()) return claim.owner;
+      return api.isLocked() ? null : releaseOwner;
     },
   };
 
