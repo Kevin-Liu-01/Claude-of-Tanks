@@ -1041,8 +1041,13 @@ vehicle pixels within 2.5 % of the far LOD's mean colour. A blind A/B (registrat
 after won 58 of 108, one-sided p = 0.81 for "after loses"; pass (the rule: no loss at p < 0.10). The sim is untouched:
 `tools/sim-determinism-audit.mjs` (Verdant, seed 7, 3,600 ticks) IDENTICAL on both trees, final 33703c13935a04a6. Boot
 requests unchanged (game 146 → 146, `npm run check:bundle`), the game page +6.9 KB brotli. Render-path CPU time (thread
-time, ABCCBA, `tools/frame-thread-cpu.mjs --bots --view=far-allies`, its rule written before the run): pending, held while
-the machine was lent to another project on 2026-11-14.
+time, `tools/frame-thread-cpu.mjs --bots --view=far-allies --warm --load-gate=10`, its rule written before the run, four
+pairs each A/A and A/B, PASS only past 2S): inconclusive, so no speedup is claimed. Every A/B pair ran faster on the one
+draw (−1.15 to −1.61 ms a frame, median −1.39) against an A/A spread 2S of 1.92 ms (2026-11-26, Verdant, 11 far
+hulls, draws 744/755 → 427/442); no regression by any pair. Phone GPU (`tools/phone-entry-gpu.mjs --scenario=solo
+--maps=monsoon --settle=30 --far-census`, the control `?farHullDraw=0` on the same build, A B B A, its rule written before
+the run: growth at most 2 % of the entry peak): the entry peak 308.3 MB on both arms (+0.0 MB) and +2.1 MB live after a
+30 s settle with 3 far hulls built (about 0.7 MB a hull, as on desktop); PASS.
 
 ## World reuse
 
