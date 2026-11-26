@@ -442,8 +442,16 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   garageStage +2,679 garage-env-276; i18n catalog +525. Entry +4,419: hullThrusterPlumes.ts +1,787 (thrust-flips-277;
   //   battle-only, owed lazy to 278), main.ts +1,446 (six merges' wiring), garage-env-276 sky/env bakes about +800,
   //   gpuResetReport.ts +281 (mobile-gpu-reset-277), modal-layer-277 about +80. Gallery, home, docs and notFound hold.
-  game: { brotliBytes: 1293379, requests: 162, entryBrotliBytes: 265003 },
-  cn: { brotliBytes: 1342879, requests: 163, entryBrotliBytes: 265003 },
+  // 2026-11-26 (integrator 278, ruled by Main 2026-11-26): game and cn re-set at the release build of integ/278 8600e1f3ab,
+  //   attributed per chunk against a 277-live release build (main 1e7afa12dc, which reads its pin within 116 B): game
+  //   +700 B brotli (cn +1,085), +3 requests (new auxiliaryRoofGuns.generated +12,192 host-fleet-bytes-278, with
+  //   fleetFactory -11,899 as the roof-gun table left it; fetchClasses +536 entry-bytes-278; photoModeChunk +338
+  //   settings-unify-278; movementDispersion +82 Rollup's grouping; gone hullThrusters -1,418, lazy in entry-bytes-278,
+  //   closing 277's hullThrusterPlumes debt). phonePause +6,606 carries settings-unify-278's input-settings model; i18n
+  //   catalog +161; battleLoad +159. Entry -5,886 (entry-bytes-278, entry-cpu-278): the pin tightens. Owed to 279 (Main):
+  //   phonePause's settings model lazy, and photoModeChunk off the up-front set. Gallery, home, docs and notFound hold.
+  game: { brotliBytes: 1294195, requests: 165, entryBrotliBytes: 259117 },
+  cn: { brotliBytes: 1343964, requests: 166, entryBrotliBytes: 259117 },
   gallery: { brotliBytes: 803331, requests: 87 },
   home: { brotliBytes: 30534, requests: 9 },
   docs: { brotliBytes: 39167, requests: 13 },
