@@ -2624,6 +2624,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/impactDecalSkin.selftest.mjs', // hitbox-fit-274: a hit mark lies on drawn skin or nowhere, never in the air
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
+    'tools/vehicle-roster-names.selftest.mjs', // scope-and-names-278: the roster file is current and names what the gallery shows
+    'tools/gallery-link-stamps.selftest.mjs', // scope-and-names-278: every gallery link the tree writes carries its id schema
     'src/gallery/cameraFit.selftest.mjs',
     'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',

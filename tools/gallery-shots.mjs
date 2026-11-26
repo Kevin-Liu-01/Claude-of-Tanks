@@ -8,6 +8,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
+import { galleryHref } from '../src/game/tankIdBoundaries.ts';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const spec = process.argv.slice(2).find((a) => !a.startsWith('--'));
@@ -25,7 +26,7 @@ try {
     const [id, position, target] = shot.split('@');
     const p = position.split(',').map(Number), t = target.split(',').map(Number);
     if (!current) {
-      await page.goto(`http://127.0.0.1:${port}/gallery?id=${id}`, { waitUntil: 'domcontentloaded', timeout: 300000 });
+      await page.goto(`http://127.0.0.1:${port}${galleryHref(id)}`, { waitUntil: 'domcontentloaded', timeout: 300000 });
       await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 300000, polling: 500 });
     } else if (current !== id) {
       await page.evaluate((next) => window.__TANK_GALLERY.loadTank(next), id);

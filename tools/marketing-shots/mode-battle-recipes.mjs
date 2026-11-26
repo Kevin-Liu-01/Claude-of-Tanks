@@ -13,6 +13,7 @@
 
 // (2026-11-02 audit S3) the boot latch and the lifecycle readiness the harnesses share
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from '../game-readiness.mjs';
+import { galleryHref } from '../../src/game/tankIdBoundaries.ts';
 
 // ------------------------------------------------------------------------------------------------ trigger sets
 const T = {
@@ -1770,7 +1771,7 @@ async function openGarage(ctx, { variantId, vehicleId }) {
 /** The Tank Gallery on a vehicle and layer, framed from its hero (elevated front-left) view. */
 async function openGallery(ctx, { vehicleId, layer, view = 'hero' }) {
   const page = ctx.page;
-  await page.goto(`${ctx.baseUrl}/gallery?id=${vehicleId}&layer=${layer}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.goto(`${ctx.baseUrl}${galleryHref(vehicleId)}&layer=${layer}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true, { timeout: 240000, polling: 250 });
   await page.evaluate(async (args) => {
     await window.__TANK_GALLERY.loadTank(args.vehicleId, { mode: args.layer, view: args.view });

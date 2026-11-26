@@ -26,6 +26,7 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { openCaptureHold } from './capture-hold.mjs';
+import { galleryHref } from '../src/game/tankIdBoundaries.ts';
 let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -511,7 +512,7 @@ async function openGallery(index, id) {
   page.setDefaultTimeout(300_000);
   page.on('pageerror', (error) => console.error(`[page ${labels[index]}]`, String(error).slice(0, 300)));
   await page.evaluateOnNewDocument(installSeenHook);
-  await page.goto(`http://127.0.0.1:${servers[index].httpServer.address().port}/gallery?id=${id}`,
+  await page.goto(`http://127.0.0.1:${servers[index].httpServer.address().port}${galleryHref(id)}`,
     { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.waitForFunction((next) => window.__TANK_GALLERY?.ready && window.__TANK_GALLERY.getState().selectedId === next,
     { timeout: 300_000, polling: 300 }, id);
