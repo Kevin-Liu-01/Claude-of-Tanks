@@ -99,7 +99,7 @@ try {
 
     // cot_retry: stops after N failures in a row, backs off between them, survives a caller's set -e
     const stopped = run('cot_retry 3 chain false');
-    assert.deepEqual([stopped.status, stopped.sleeps.length], [75, 2], label('three failures in a row stop the chain'));
+    assert.deepEqual([stopped.status, stopped.sleeps.length], [79, 2], label('three failures in a row stop the chain'));
     assert.ok(stopped.sleeps.every((s) => s >= 60), label('at least 60 s between retries'));
     assert.match(stopped.err, /STOPPED after 3 failures in a row/, label('it says it stopped'));
     const recovered = run('set -e\ncot_retry 3 chain flaky\necho recovered', { FAKE_AFTER: '2' });

@@ -126,7 +126,9 @@ export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/browser-launch.mjs', 'tools/icons-page-public.mjs', 'tools/served-public.mjs', 'tools/gate-page-public.mjs',
   'tools/page-catalog-keys.mjs', 'tools/game-readiness.mjs',
   // 274: game-readiness writes the finished tutorial record its skip script seeds (TUTORIAL_FINISHED_RECORD)
-  'src/ui/tutorial/tutorialRecord.ts'])])));
+  'src/ui/tutorial/tutorialRecord.ts',
+  // practice audit 2026-11-26: the graph cache and the hold log live under the user's home (cotCacheDir, cotLogPath)
+  'tools/durable-paths.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
