@@ -725,6 +725,10 @@ const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
 const COVER_INTERVAL_S  = 6.0;    // hull-down re-search cadence
 const OBSTACLE_REFRESH_S = 5.0;   // static AABB cache refresh
 const TARGET_MEMORY_S   = 5.0;    // chase last-seen position this long after LOS loss
+// (landmark-lanes-278) a target this hull has had no line to this long, while its team still spots it, gives the slot to
+// any spotted enemy the hull can shoot (refreshCurrentTarget): the gun was held on a crest or a prop while another hull
+// stood in the open (Horde wave 1 lost kills to it once landmarks-277's set pieces moved where the fights meet)
+const HIDDEN_RETARGET_S = 1.5;
 const FLANK_TIMEOUT_S   = 20.0;
 const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
@@ -1448,6 +1452,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let mode: AiMode = 'patrol';               // 'patrol'|'engage'|'seekCover'|'flank'
   let target: AiEntity | null = null;         // TankEntity or null
   let losClear = false;
+  /** When the current target last went out of this hull's own line (Infinity while the line holds). */
+  let targetHiddenSinceS = Infinity;
   let gunLaneClear = true;
   let gunLaneNextCheckS = -Infinity;
   let gunLaneTargetId: string | null = null;
@@ -1934,6 +1940,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const changed = target !== candidate;
     target = candidate;
     losClear = clearLine;
+    if (changed || clearLine) targetHiddenSinceS = clearLine ? Infinity : timeS;
     if (changed) {
       acquiredAtS = timeS;
       nonPenCount = 0;
@@ -2078,6 +2085,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     losClear = visible
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(target), position.z);
     if (visible) rememberPosition(target, timeS);
+    if (losClear) targetHiddenSinceS = Infinity;
+    else if (targetHiddenSinceS === Infinity) targetHiddenSinceS = timeS;
+    // (landmark-lanes-278, Horde wave 1 after landmarks-277) the team still spots it, but this hull has had
+    // no line to it for HIDDEN_RETARGET_S: a spotted enemy in this hull's own line takes the slot (the scan's ranking); with
+    // none, the hidden one stays the chase point and the vantage search moves the hull as before
+    if (!losClear && timeS - targetHiddenSinceS >= HIDDEN_RETARGET_S
+      && scanVisibleTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     // the rack is spent on this one: any other spotted enemy in sight takes the slot (the ranking puts it first)
     if (target.id === rackSpentId && scanVisibleTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeLocalThreat(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;

@@ -2478,6 +2478,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/botGunLane.selftest.mjs',
     'src/game/ai.selftest.mjs',
     'src/game/ai.targeting.selftest.mjs',
+    // (landmark-lanes-278) a target behind cover gives way to a spotted one in the gun's line after HIDDEN_RETARGET_S
+    'src/game/ai.hiddenRetarget.selftest.mjs',
     'src/game/ai.stalls.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
     'src/game/ai.passiveTarget.selftest.mjs',
