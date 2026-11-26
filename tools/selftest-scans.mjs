@@ -246,6 +246,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
   'src/game/studioSceneShare.selftest.mjs': tracked('**/*.scene.json', 'src/game/studio*.ts', 'src/ui/studio*.ts'),
   'src/presentation/analytics.selftest.mjs': tracked('src/**', '**/*.html'),
+  'tools/blob-media.selftest.mjs': tracked('public/**'),
   'src/ui/garageFleetTake.selftest.mjs': tracked('src/**/*.ts'),
   'src/ui/i18nChunkImport.selftest.mjs': tracked('**/*.{ts,mts,mjs,js,cjs,html}'),
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),
