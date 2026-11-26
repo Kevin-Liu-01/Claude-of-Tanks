@@ -176,7 +176,10 @@ const plantRun = (standS) => new Promise((resolve, reject) => {
 // resolve less than about 2 SE: a 1 SE band false-fails about one neutral head in six, and a band that moves down with
 // each landing lets small drops pile up. The controls: the stored run itself passes at 0, a planted vector 3 SE down
 // fails, one 3 SE up rises.
-const OUTCOME_RATCHET = Object.freeze({ setBy: '02cac3264a', kills: Object.freeze([3, 4, 6, 4, 4, 4, 6, 6, 6, 6, 6, 3, 4, 6, 5, 6, 3, 5, 6, 6, 4, 4, 6, 6]) });
+// Re-pinned by ruling (Kevin 2026-11-25, relayed by Main; 277): landmarks-277's solid set pieces in the server collision
+// took the sweep from 4.50 (-1.7 SE against 02cac3264a's 4.958) to 4.33 (-2.2 SE). The vector is the run measured at
+// 688803fe2a (cliffbridge's landmarks backed out). 278 owes bot pathing round the landmarks.
+const OUTCOME_RATCHET = Object.freeze({ setBy: '688803fe2a', kills: Object.freeze([4, 4, 3, 5, 2, 3, 5, 6, 6, 5, 6, 2, 4, 5, 5, 5, 6, 5, 5, 4, 4, 1, 6, 3]) });
 const OUTCOME_BAND_SE = 2;
 /** A head's per-deal wave-1 kills against the stored vector: the mean change, its standard error, and the verdict. */
 function pairedOutcome(headKills) {
