@@ -21,6 +21,7 @@
 import { LocalFrame, PartSink, facePoint, faceBox, rgb, shade, type EmitOptions, type Face, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar, extrude, revolve } from './kit.ts';
 import { letterText } from './lettering.ts';
+import { fenceRun, type GroundsDestructible } from './grounds.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const POST = rgb(0x8a7458), VIGA = rgb(0x6a5440), EARTH = rgb(0xa05e3c), PUMP = rgb(0xb2302a), SIGN = rgb(0xe2d6b8);
@@ -306,15 +307,20 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
   // ---- the sand the wind off the cliff has banked against the back of the block and the wareroom, the water barrels
   bank(sink, (t, o) => [lerp(x1 - 0.5, x0 + 1.0, t), -D / 2 - 0.1 - o], bench1, 0.9 + v() * 0.4, 2.6, g, v, SAND);
   bank(sink, (t, o) => [lerp(wx1 + 0.4, wx0, t), wz0 - 0.1 - o], bench1, 0.55 + v() * 0.25, 2.0, g, v, SAND, 5);
-  for (let k = 0; k < 2; k++) sink.cylinder('structureMetal', [x0 + 1.4 + k * 0.85, bench0, -D / 2 - 0.9], 'y', 0.9, 0.36, 8, { colour: shade(rgb(0x3a5a3a), 0.8 + v() * 0.3), decor: true });
+  // (landmark-primitives-278: the map's barrels, on the ledge)
+  const destructibles: GroundsDestructible[] = [];
+  for (let k = 0; k < 2; k++) {
+    const bx = x0 + 1.4 + k * 0.85, bz = -D / 2 - 0.9;
+    destructibles.push({ kind: 'barrel', x: bx, z: bz, yawDeg: k * 50, lift: Math.max(0, bench0 - g(bx, bz)) });
+  }
 
   // ---- the yard: the beaten ground off the steps to the pumps and the road, the hitching rail of juniper posts, the pumps
   const pumpX = cx + W * 0.36, pumpZ = pz + 3.0;
   path(sink, [[xd, pz + 0.9], [xd + 0.3, pz + 2.6], [pumpX - 1.2, pumpZ], [pumpX + 1.6, pumpZ - 0.2]], 2.6, g, TRODDEN);
   path(sink, [[xd, pz + 1.0], [xd - 0.6, pz + 3.4], [xd - 1.6, D / 2 + 7.2]], 2.4, g, TRODDEN);
+  // (landmark-primitives-278) the hitching rail: the map's rail fence modules (props fencerail)
   const hx0 = cx - W * 0.44, hx1 = cx - W * 0.2, hz = pz + 2.1;
-  for (const x of [hx0, (hx0 + hx1) / 2 + (v() - 0.5) * 0.6, hx1]) bar(sink, 'structureWood', [x, g(x, hz) - 0.3, hz], [x + (v() - 0.5) * 0.1, g(x, hz) + 1.12, hz], 0.16, { colour: shade(JUNIPER, 0.85 + v() * 0.3), decor: true });
-  bar(sink, 'structureWood', [hx0 - 0.3, g(hx0, hz) + 1.02, hz], [hx1 + 0.3, g(hx1, hz) + 1.0 + (v() - 0.5) * 0.08, hz], 0.12, { colour: shade(JUNIPER, 1.05), decor: true });
+  fenceRun(destructibles, 'fencerail', [hx0, hz], [hx1, hz]);
   // the gas pumps (two, the round-globed visible pumps of the 1930s) on their island
   const gp = g(pumpX, pumpZ);
   sink.span('stone', pumpX - 2.0, gp - 0.25, pumpZ - 0.55, pumpX + 2.0, gp + 0.18, pumpZ + 0.55, { shade: 0.8 });
@@ -324,7 +330,7 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
     sink.cylinder('glass', [px, gp + 2.2, pumpZ], 'y', 0.9, 0.22, 6, { decor: true });
     revolve(sink, 'structureMetal', px, pumpZ, [[0.001, gp + 3.1], [0.25, gp + 3.25], [0.001, gp + 3.45]], 8, { colour: SIGN, decor: true });
   }
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), destructibles };
 };
 
 /**
@@ -430,28 +436,16 @@ export const hogan: LandmarkBuilder = (ctx) => {
   path(sink, [[0, zf + 0.05], [0, zf + 0.55], [0, R + 1.65]], 2.2, g, TRODDEN);
   if (camp) path(sink, [[-0.9, zf + 0.55], [-2.2, zf + 0.2], [-R - 1.2, 3.0], [rx + rw - 0.2, 0.4]], 1.0, g, TRODDEN);
   if (camp) path(sink, [[0.9, zf + 0.55], [2.2, zf + 0.2], [R + 0.8, 3.6], [cx + Math.cos(gateA) * cr, Math.sin(gateA) * cr]], 1.0, g, TRODDEN);
-  // ---- the sheep corral beside it: juniper posts leaning every way, rails and brush between, its gate toward the door
+  // ---- the sheep corral beside it, its gate toward the door: the map's rail fence modules round the ring (props
+  // fencerail; landmark-primitives-278), a gap at the gate
+  const destructibles: GroundsDestructible[] = [];
   if (camp) {
-    const posts = 24, gate = Math.floor(gateA / (Math.PI * 2) * posts);
-    for (let k = 0; k < posts; k++) {
-      const a = (k / posts) * Math.PI * 2;
-      // (each post on its own ground: the hogan is seated on its body alone)
-      const x = cx + Math.cos(a) * cr, z = Math.sin(a) * cr, lean = (v() - 0.5) * 0.3, gy = g(x, z);
-      bar(sink, 'structureWood', [x, gy - 0.3, z], [x + lean, gy + 1.4 + v() * 0.4, z + lean], 0.13, { colour: shade(JUNIPER, 0.8 + v() * 0.4), decor: true });
-      if (k === gate) {
-        // the gate's poles slid back and leant against the post
-        bar(sink, 'structureWood', [x + 0.1, gy + 1.3, z + 0.1], [x - 0.6, gy - 0.05, z + 1.4], 0.08, { colour: JUNIPER, decor: true });
-        continue;
-      }
-      const b = ((k + 1) / posts) * Math.PI * 2, bx = cx + Math.cos(b) * cr, bz = Math.sin(b) * cr;
-      const by = g(bx, bz);
-      for (const h of [0.55, 1.1]) bar(sink, 'structureWood', [x, gy + h, z], [bx, by + h + v() * 0.25, bz], 0.09, { colour: JUNIPER, decor: true });
-      // the brush woven between the rails, sticks leaning every way
-      for (let i = 0; i < 3; i++) {
-        const f = (i + 0.5) / 3, mx = x + (bx - x) * f, mz = z + (bz - z) * f, my = gy + (by - gy) * f;
-        bar(sink, 'structureWood', [mx - 0.2 + v() * 0.4, my - 0.1, mz - 0.2 + v() * 0.4], [mx - 0.25 + v() * 0.5, my + 1.2 + v() * 0.4, mz - 0.25 + v() * 0.5], 0.05, { colour: shade(JUNIPER, 1.1 + v() * 0.3), decor: true, fine: true });
-      }
+    const sides = 12, gate = Math.floor(gateA / (Math.PI * 2) * sides);
+    for (let k = 0; k < sides; k++) {
+      if (k === gate) continue;
+      const a = (k / sides) * Math.PI * 2, b = ((k + 1) / sides) * Math.PI * 2;
+      fenceRun(destructibles, 'fencerail', [cx + Math.cos(a) * cr, Math.sin(a) * cr], [cx + Math.cos(b) * cr, Math.sin(b) * cr]);
     }
   }
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), destructibles };
 };

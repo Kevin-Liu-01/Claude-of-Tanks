@@ -198,6 +198,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/vehicles/workingPintleCradle.selftest.mjs': lists('src/**/*.ts'),
   // one row per exported kit style; no module but the registries loads a kit lazily
   'src/world/kitRegistry.selftest.mjs': lists('src/world/maps/regional/*.ts', 'src/**/*.ts'),
+  'src/world/landmarks/landmarkFlora.selftest.mjs': lists('src/world/landmarks/*.ts'),
   // documentSources: the HTML entries the build emits
   'tools/contentSecurityPolicy.mjs': lists('site/*.html'),
   // repositoryShapeFailures: the root and site documents and every source

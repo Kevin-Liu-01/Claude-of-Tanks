@@ -295,10 +295,24 @@ export class PartSink {
     try { return body(); } finally { this.pieceName = prior; }
   }
 
+  /**
+   * (landmark-primitives-278) Inside `primitive`: a set piece draws one of the kits' registered primitives (a shrub, a
+   * bed, a jerid shade) into geometries of their own named for it (userData.primitive), so its receipt
+   * (landmarks/landmarkFlora.selftest.mjs) tells the kits' flora from flora drawn by hand. The merge draws them as before;
+   * a kit that never opens one keeps its geometries as they were.
+   */
+  private primitiveName: string | null = null;
+  primitive<T>(name: string, body: () => T): T {
+    const prior = this.primitiveName;
+    this.primitiveName = name;
+    try { return body(); } finally { this.primitiveName = prior; }
+  }
+
   private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false, tag?: EmitOptions['tag'],
     phone = false): Accumulator {
     const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`
-      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '') + (phone ? '|m' : '');
+      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '') + (phone ? '|m' : '')
+      + (this.primitiveName ? `|q=${this.primitiveName}` : '');
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -695,6 +709,8 @@ export class PartSink {
       if (layer) geometry.userData.paneStackLayer = Number(layer.slice(1));
       if (piece) geometry.userData.damagePiece = piece;
       if (tag) geometry.userData.partTag = tag;
+      const primitive = rest.find((r) => r.startsWith('q='))?.slice(2);
+      if (primitive) geometry.userData.primitive = primitive;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);

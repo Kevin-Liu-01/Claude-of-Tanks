@@ -9,7 +9,7 @@ import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation, placedStructureClearances } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, landmarkFloraSites, placedStructureClearances } from './vegetationClearance.ts';
 import { redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -51,6 +51,8 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   deploymentClearings,
   // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
   civicTreeStations, civicLawnTest, civicPavedRooms,
+  // (landmark-primitives-278) the set pieces' trees (vegetation.ts plantLandmarkFlora)
+  landmarkFloraSites,
   // the trees lane (2026-10-06): a place's grove and blend (Saltwind's olive groves, its holm oak woods' Aleppo pine)
   treeBiomeGrove, treeBiomeBlend,
   // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)

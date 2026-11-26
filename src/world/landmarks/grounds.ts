@@ -18,7 +18,7 @@ import { GATE_WIDTH, gateKindForFence } from '../maps/gateKit.ts';
 type GroundAt = ((lx: number, lz: number) => number) | undefined;
 
 /** A set-piece destructible (types.ts LandmarkBuild.destructibles). */
-export interface GroundsDestructible { kind: string; x: number; z: number; yawDeg: number; scale?: number }
+export interface GroundsDestructible { kind: string; x: number; z: number; yawDeg: number; scale?: number; lift?: number }
 
 /** A module's nominal length along its run (the props' destructible kinds: inhabitKit.ts DESTRUCTIBLE_TYPES' hl × 2). */
 const MODULE_LENGTH: Readonly<Record<string, number>> = Object.freeze({

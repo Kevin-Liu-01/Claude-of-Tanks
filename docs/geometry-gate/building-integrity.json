@@ -5959,8 +5959,8 @@
    "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 57.515,
+   "insideM2": 1.261,
+   "gapM2": 3.116,
    "invertedM2": 0
   },
   "landmark/mangrove:canalMarket#0": {
@@ -5991,9 +5991,9 @@
    "strandedFar": 0,
    "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 9.896,
-   "insideM2": 0,
-   "gapM2": 14.295,
+   "holeM2": 6.757,
+   "insideM2": 2.599,
+   "gapM2": 16.115,
    "invertedM2": 0
   },
   "landmark/railyard:roundhouse#0": {
@@ -6162,5 +6162,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-11-24T22:57:35.295Z"
+ "updatedAt": "2026-11-26T04:13:12.838Z"
 }

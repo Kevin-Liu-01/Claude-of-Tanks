@@ -14,18 +14,26 @@
 // - springPool: a builder cannot cut into the terrain, so the sunken pool is built up in its bank: the earth bank, a low
 //   dressed-stone parapet, the walk inside it and three stone tiers stepping down to the water about 1.5 m under the
 //   coping, the wet riser at the waterline, the spring's eye; the stair up over the bank; the outflow under the bank
-//   through the headwall into the channels (saqiya) of the walled palm gardens, their crops, date palms and olives; the
-//   café's palm-frond shade.
+//   through the headwall into the channels (saqiya) of the walled palm gardens and their beds; the café's jerid shade.
 //
 // Drawn in their own frames (x across, y up, z out of the front) into the regional part sink, in the map kit's render
-// (no draw call of their own). Walls, the minaret and the pool's bank are structure; the beams, fronds and the water are
-// dressing.
-import { PartSink, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+// (no draw call of their own). Walls, the minaret and the pool's bank are structure; the beams and the water are
+// dressing. (landmark-primitives-278; the owner: "for those new landmarks make sure any flora or stuff just reuses any
+// better looking primitives we already have") Nothing here draws flora or free-standing dressing by hand: the date palms
+// and the café's trees are the map's own (plan.ts springPoolFlora, grown by the vegetation), the garden and court walls
+// the map's kershef wall modules (props walladobe), the beds the kit's kitchen gardens (yards.ts gardenParts), the café's
+// shade the souq's jerid frame (souqs.ts jeridFrame) and its benches the houses' (dressing.ts bench).
+import * as THREE from 'three';
+import { PartSink, REGIONAL_BUCKETS, rgb, shade, streamFrom, type EmitOptions, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { bench } from '../maps/regional/dressing.ts';
+import { jeridFrame } from '../maps/regional/souqs.ts';
+import { gardenParts } from '../maps/regional/yards.ts';
 import { bar, revolve } from './kit.ts';
+import { fenceRun, type GroundsDestructible } from './grounds.ts';
+import { springPoolFlora } from './plan.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
-const PALM = rgb(0x5b4a37), FROND = rgb(0x7c7146), DOOR = rgb(0x4d3b2a), WATER = rgb(0x2f5d5a);
-const FROND_GREEN = rgb(0x4e6a2c), DEAD_FROND = rgb(0x8a7550), OLIVE = rgb(0x6b7550), CROP = rgb(0x5f7a32);
+const PALM = rgb(0x5b4a37), DOOR = rgb(0x4d3b2a), WATER = rgb(0x2f5d5a);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
 
@@ -73,28 +81,6 @@ function ringWall(sink: PartSink, bucket: RegionalBucket, r: number, y0: number,
     if (inward) sink.quad(bucket, P(i + 1, y0), P(i, y0), P(i, y1), P(i + 1, y1), opts);
     else sink.quad(bucket, P(i, y0), P(i + 1, y0), P(i + 1, y1), P(i, y1), opts);
   }
-}
-
-/**
- * A slumped mud wall from a to b (plan points), `t` thick and `h` high: its faces leaning in as kershef walls weather,
- * its top rounded and sagging. In the wall's own frame: u along, the outer face on the right.
- */
-function mudWall(sink: PartSink, bucket: RegionalBucket, a: P2, b: P2, foot: number, h: number, t: number, v: () => number): void {
-  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L, nx = uz, nz = -ux;
-  const lean = Math.min(0.18, t * 0.3), segs = Math.max(2, Math.round(L / 2.4));
-  const P = (s: number, y: number, o: number): Vec3 => [a[0] + ux * s + nx * o, y, a[1] + uz * s + nz * o];
-  // the top's height along the wall: it sags and swells as the mud has slumped
-  const tops = Array.from({ length: segs + 1 }, () => h - 0.35 + v() * 0.7);
-  for (let k = 0; k < segs; k++) {
-    const s0 = L * k / segs, s1 = L * (k + 1) / segs, y0 = tops[k], y1 = tops[k + 1];
-    sink.quad(bucket, P(s1, foot, t / 2 + 0.12), P(s0, foot, t / 2 + 0.12), P(s0, y0, t / 2 - lean), P(s1, y1, t / 2 - lean), {});
-    sink.quad(bucket, P(s0, foot, -t / 2 - 0.12), P(s1, foot, -t / 2 - 0.12), P(s1, y1, -t / 2 + lean), P(s0, y0, -t / 2 + lean), {});
-    sink.quad(bucket, P(s1, y1, t / 2 - lean), P(s0, y0, t / 2 - lean), P(s0, y0 + 0.12, 0), P(s1, y1 + 0.12, 0), { shade: 0.96 });
-    sink.quad(bucket, P(s0, y0, -t / 2 + lean), P(s1, y1, -t / 2 + lean), P(s1, y1 + 0.12, 0), P(s0, y0 + 0.12, 0), { shade: 0.96 });
-  }
-  // the wall's ends, rounded off
-  sink.quad(bucket, P(-0.1, foot, -t / 2), P(0, tops[0], -t / 2 + lean), P(0, tops[0], t / 2 - lean), P(-0.1, foot, t / 2), {});
-  sink.quad(bucket, P(L + 0.1, foot, t / 2), P(L, tops[segs], t / 2 - lean), P(L, tops[segs], -t / 2 + lean), P(L + 0.1, foot, -t / 2), {});
 }
 
 /** What a mud block draws on a side facing (nx, nz): everything, all but windows, or nothing (a side buried in another). */
@@ -258,50 +244,23 @@ export const shaliMosque: LandmarkBuilder = (ctx) => {
     const y = yl + 0.32, s = 0.85 + v() * 0.3;
     revolve(sink, mud, mx + sx * 1.18, mz + sz * 1.18, [[0.22 * s, y - 0.06], [0.17 * s, y + 0.35 * s], [0.001, y + 0.62 * s]], 5, { shade: 0.97, decor: true });
   }
-  // the ablution court's slumped wall before the doors, its gate on the approach between two rounded posts
-  const cz = D / 2 + 5.4;
-  mudWall(sink, mud, [-W / 2 + 0.3, D / 2 + 0.2], [-W / 2 + 0.3, cz], foot, 1.6, 0.6, v);
-  mudWall(sink, mud, [-W / 2 + 0.3, cz], [-1.6, cz], foot, 1.6, 0.6, v);
-  mudWall(sink, mud, [1.6, cz], [W / 2 - 0.5, cz], foot, 1.6, 0.6, v);
-  mudWall(sink, mud, [W / 2 - 0.5, cz], [W / 2 - 0.5, D / 2 + 1.4], foot, 1.5, 0.6, v);
-  for (const sx of [-1, 1]) revolve(sink, mud, sx * 1.75, cz, [[0.5, foot], [0.45, 1.9], [0.3, 2.3], [0.001, 2.5 + v() * 0.15]], 6, { shade: 0.97 });
+  // the ablution court's wall before the doors: the map's kershef wall modules (props walladobe), its gate on the approach
+  // an open gap
+  const cz = D / 2 + 5.4, destructibles: GroundsDestructible[] = [];
+  fenceRun(destructibles, 'walladobe', [-W / 2 + 0.3, D / 2 + 0.2], [-W / 2 + 0.3, cz]);
+  fenceRun(destructibles, 'walladobe', [-W / 2 + 0.3, cz], [W / 2 - 0.5, cz], { gateAt: W / 2 - 0.3, gate: null, gap: 3.2 });
+  fenceRun(destructibles, 'walladobe', [W / 2 - 0.5, cz], [W / 2 - 0.5, D / 2 + 1.4]);
   sink.quad('stone', [-W / 2 + 0.7, 0.03, cz - 0.4], [W / 2 - 0.9, 0.03, cz - 0.4], [W / 2 - 0.9, 0.03, D / 2 + 0.5], [-W / 2 + 0.7, 0.03, D / 2 + 0.5],
     { decor: true, shade: 0.9, uv: { kind: 'world' } });
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), destructibles };
 };
-
-/** A date palm from (x, z), its crown at height h moved (lx, lz) by the trunk's lean, the old fronds hanging under it. */
-function datePalm(sink: PartSink, v: () => number, x: number, z: number, h: number, lx: number, lz: number, foot: number): void {
-  const top: Vec3 = [x + lx, h, z + lz];
-  bar(sink, 'structureWood', [x, foot, z], top, 0.34 + v() * 0.08, { colour: shade(PALM, 0.85 + v() * 0.2), decor: true });
-  const frond = (b: number, len: number, rise: number, droop: number, w: number, col: Rgb, under: Rgb): void => {
-    const mid: Vec3 = [top[0] + Math.cos(b) * len * 0.5, h + rise, top[2] + Math.sin(b) * len * 0.5];
-    const tip: Vec3 = [top[0] + Math.cos(b) * len, h - droop, top[2] + Math.sin(b) * len];
-    const sx = -Math.sin(b) * w, sz = Math.cos(b) * w;
-    for (const [p, q] of [[top, mid], [mid, tip]] as const) {
-      sink.quad('structureWood', [p[0] - sx, p[1], p[2] - sz], [p[0] + sx, p[1], p[2] + sz], [q[0] + sx * 0.7, q[1], q[2] + sz * 0.7], [q[0] - sx * 0.7, q[1], q[2] - sz * 0.7], { colour: col, decor: true });
-      sink.quad('structureWood', [p[0] + sx, p[1], p[2] + sz], [p[0] - sx, p[1], p[2] - sz], [q[0] - sx * 0.7, q[1], q[2] - sz * 0.7], [q[0] + sx * 0.7, q[1], q[2] + sz * 0.7], { colour: under, decor: true });
-    }
-  };
-  for (let f = 0; f < 7; f++) {
-    frond((f / 7) * Math.PI * 2 + v() * 0.4, 2.7 + v() * 0.6, 0.5, 1.2 + v() * 0.9, 0.5, shade(FROND_GREEN, 0.85 + v() * 0.3), shade(FROND_GREEN, 0.7));
-  }
-  // the dead fronds' skirt under the crown
-  for (let f = 0; f < 2; f++) frond(f * Math.PI + v(), 1.2, -0.4, 2.1, 0.3, shade(DEAD_FROND, 0.85 + v() * 0.3), shade(DEAD_FROND, 0.7));
-}
-
-/** An olive: a short gnarled trunk and its round grey-green crown. */
-function olive(sink: PartSink, v: () => number, x: number, z: number, r: number, foot: number): void {
-  const lx = (v() - 0.5) * 0.5, lz = (v() - 0.5) * 0.5;
-  bar(sink, 'structureWood', [x, foot, z], [x + lx, 1.5, z + lz], 0.28, { colour: shade(PALM, 0.8), decor: true });
-  revolve(sink, 'structureWood', x + lx, z + lz, [[r * 0.5, 1.2], [r, 1.9], [r * 0.8, 2.7], [0.001, 3.0 + v() * 0.4]], 7, { colour: shade(OLIVE, 0.9 + v() * 0.2), decor: true });
-}
 
 /**
  * The spring (Ain Juba, Cleopatra's Spring): a round pool `radius` to its parapet's inner face, built up in its bank (a
  * builder cannot cut into the ground): the earth bank, the dressed-stone parapet with the stair's opening on the front,
  * the walk inside it and three stone tiers down to the water about 1.5 m under the coping; the outflow under the bank
- * through its headwall into the `channels` of the walled palm gardens to -x; palms, olives and the café's shade to +x.
+ * through its headwall into the `channels` of the walled palm gardens to -x; the café's shade to +x. Its trees are the
+ * map's (plan.ts springPoolFlora); the beds stand between their seats.
  */
 export const springPool: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
@@ -342,42 +301,43 @@ export const springPool: LandmarkBuilder = (ctx) => {
       sink.span('structureMetal', xEnd, 0.02, off - 0.3, -bankR - 0.12, 0.11, off + 0.3, { colour: WATER, decor: true });
     }
   }
-  // the gardens' low mud walls: along both sides of the -x garden and across its end (the channels' gap), the +x garden's L
+  // the gardens' walls: the map's kershef wall modules (props walladobe) along both sides of the -x garden and across its
+  // end (the channels' gap), the +x garden's L
   const x0 = Math.sqrt(Math.max(0, bankR * bankR - zW * zW)) + 0.05, xb = -(R + 13.0), gapZ = ch > 0 ? (ch - 1) * spread / 2 + 1.2 : 1.2;
-  for (const s of [-1, 1]) mudWall(sink, 'plaster', [-x0, s * zW], [xb, s * zW], -0.5 - gf, 1.2, 0.5, v);
-  mudWall(sink, 'plaster', [xb, -zW], [xb, -gapZ], -0.5 - gf, 1.2, 0.5, v);
-  mudWall(sink, 'plaster', [xb, gapZ], [xb, zW], -0.5 - gf, 1.2, 0.5, v);
-  mudWall(sink, 'plaster', [x0, zW], [R + 12.6, zW], -0.5 - gf, 1.2, 0.5, v);
-  mudWall(sink, 'plaster', [R + 12.6, zW], [R + 12.6, 1.6], -0.5 - gf, 1.1, 0.5, v);
-  // the crops in their rows between the channels and the walls
-  for (const s of [-1, 1]) {
-    for (let z = gapZ + 0.6; z < zW - 0.8; z += 1.3) {
-      sink.span('structureWood', xb + 0.6, -0.05 - gf, s * z - 0.25, -(R + 2.8), 0.22 + v() * 0.12, s * z + 0.25, { colour: shade(CROP, 0.8 + v() * 0.35), decor: true });
+  const destructibles: GroundsDestructible[] = [];
+  for (const s of [-1, 1]) fenceRun(destructibles, 'walladobe', [-x0, s * zW], [xb, s * zW]);
+  fenceRun(destructibles, 'walladobe', [xb, -zW], [xb, -gapZ]);
+  fenceRun(destructibles, 'walladobe', [xb, gapZ], [xb, zW]);
+  fenceRun(destructibles, 'walladobe', [x0, zW], [R + 12.6, zW]);
+  fenceRun(destructibles, 'walladobe', [R + 12.6, zW], [R + 12.6, 1.6]);
+  // the café's shade: the souq's jerid frame standing free on its trunks (souqs.ts jeridFrame), the houses' palm-wood
+  // benches facing each other under it (dressing.ts bench)
+  const sx = R + 5.6, sz = -(zW - 4.3), yc = ctx.ground?.(sx, sz) ?? 0;
+  sink.placed(0, sx, yc, sz, () => {
+    sink.primitive('jeridFrame', () => jeridFrame(sink, v, 5.8, 2.6, 0, -2.0, 2.0, PALM, true));
+    for (const side of [-1, 1]) {
+      const face: Face = { origin: [0, 0, side * 1.45], u: [-side, 0, 0], out: [0, 0, -side], width: 3.6 };
+      sink.primitive('bench', () => bench(sink, face, 0, 3.4, shade(PALM, 0.9 + v() * 0.15)));
+    }
+  });
+  const parts = sink.finish();
+  // the beds between the -x garden's palms, its crops in rows: the kit's kitchen gardens (yards.ts gardenParts, the
+  // map's own make); a phone keeps their coarse parts as for any piece
+  const seats = springPoolFlora(R).filter((t) => t.x < -R);
+  const look = streamFrom(Math.floor(v() * 0x7fffffff));
+  for (const s of [-1, 1]) for (const bx of [-(R + 4.75), -(R + 8.6)]) {
+    const bz = s * (gapZ + zW) / 2, w = 2.5, d = zW - gapZ - 1.2;
+    if (seats.some((t) => Math.abs(t.x - bx) < w / 2 + 0.35 && Math.abs(t.z - bz) < d / 2 + 0.35)) continue;
+    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, c]) => ctx.ground?.(bx + a * w / 2, bz + c * d / 2) ?? 0);
+    const top = Math.max(...corners), drop = top - Math.min(...corners);
+    const bed = gardenParts(w, d, look, drop, ctx.mapId);
+    const at = new THREE.Matrix4().makeTranslation(bx, top, bz);
+    for (const bucket of REGIONAL_BUCKETS) for (const g of bed[bucket] ?? []) {
+      if (ctx.tier === 'mobile' && g.userData.fine) { g.dispose(); continue; }
+      g.applyMatrix4(at);
+      g.userData.primitive = 'gardenParts';
+      parts[bucket].push(g);
     }
   }
-  // the date palms round the pool and in the gardens, each trunk leaning a little toward the light over the water
-  const palms: Array<[number, number]> = [
-    [-(R + 2.7), zW - 3.5], [-(R + 2.9), -(zW - 3.6)], [-(R + 6.6), zW - 4.6], [-(R + 7.0), -(zW - 4.2)], [-(R + 10.3), zW - 3.9], [-(R + 10.4), -(zW - 5.0)],
-    [R + 2.7, zW - 3.5], [R + 6.6, zW - 4.0], [R + 9.9, zW - 4.8],
-  ];
-  for (const [px0, pz0] of palms) {
-    const px = px0 + (v() - 0.5) * 0.6, pz = pz0 + (v() - 0.5) * 0.6, h = 7 + v() * 4;
-    datePalm(sink, v, px, pz, h, -Math.sign(px) * v() * 0.6, -Math.sign(pz) * v() * 0.7, -0.4 - gf);
-  }
-  olive(sink, v, R + 10.9, -(zW - 2.2), 1.5, -0.3 - gf);
-  olive(sink, v, R + 11.4, -1.4, 1.3, -0.3 - gf);
-  // the café's shade: six posts and a roof of laid palm fronds on its rafters, its benches of palm logs on mud blocks
-  const sx = R + 5.6, sz = -(zW - 4.3);
-  for (const [dx, dz] of [[-2.4, -1.8], [0, -1.8], [2.4, -1.8], [-2.4, 1.8], [0, 1.8], [2.4, 1.8]] as const) {
-    bar(sink, 'structureWood', [sx + dx, -0.3 - gf, sz + dz], [sx + dx + (v() - 0.5) * 0.12, 2.6, sz + dz], 0.16, { colour: PALM });
-  }
-  for (const dz of [-1.8, 1.8]) bar(sink, 'structureWood', [sx - 2.7, 2.6, sz + dz], [sx + 2.7, 2.6, sz + dz], 0.14, { colour: PALM, decor: true });
-  sink.span('straw', sx - 2.9, 2.68, sz - 2.2, sx + 2.9, 2.85, sz + 2.2, { colour: FROND, decor: true });
-  for (let x = -2.6; x <= 2.6; x += 0.65) bar(sink, 'straw', [sx + x, 2.88, sz - 2.3], [sx + x + (v() - 0.5) * 0.3, 2.88, sz + 2.3], 0.12, { colour: shade(FROND, 0.9 + v() * 0.2), decor: true, fine: true });
-  for (const dz of [-1.2, 1.2]) {
-    sink.span('plaster', sx - 1.8, -0.2 - gf, sz + dz - 0.25, sx - 1.4, 0.45, sz + dz + 0.25, {});
-    sink.span('plaster', sx + 1.4, -0.2 - gf, sz + dz - 0.25, sx + 1.8, 0.45, sz + dz + 0.25, {});
-    bar(sink, 'structureWood', [sx - 1.9, 0.55, sz + dz], [sx + 1.9, 0.55, sz + dz], 0.24, { colour: PALM, decor: true });
-  }
-  return { parts: sink.finish() };
+  return { parts, destructibles };
 };

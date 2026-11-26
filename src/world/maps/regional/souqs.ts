@@ -400,29 +400,7 @@ export function souqStall(sink: PartSink, look: () => number, W: number, D: numb
     sink.span(MUD, x + 0.01, floor - 0.2, D / 2 + 0.2, x + len - 0.01, floor - drop, D / 2 + 0.32, { decor: true, tint: [0.94, 0.92, 0.88] });
   }
   sink.span(MUD, -0.6, -0.3, D / 2 + 0.2, 0.6, floor * 0.5, D / 2 + 0.55, { decor: true, tint: [0.92, 0.9, 0.86] });
-  // the palm trunks on their stone footings, the trunk beam across them, the joists back to the wall
-  const legs: Array<{ foot: Vec3; head: Vec3 }> = [];
-  for (const sx of [-1, 1]) {
-    const x = sx * (W / 2 - 0.2);
-    sink.cylinder('stone', [x, -0.15, postZ], 'y', floor + 0.25, 0.22, 7, { tint: [0.86, 0.82, 0.76] }, 0.2);
-    sink.cylinder('structureWood', [x, floor + 0.1, postZ], 'y', top - floor - 0.1, 0.14, 7, { colour: palm }, 0.12);
-    legs.push({ foot: [x, floor + 0.1, postZ], head: [x, top, postZ] });
-  }
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, postZ], [W / 2 + 0.1, top + 0.08, postZ], 0.18, 0.18, [0, 1, 0], { colour: palm, exposed: true });
-  for (const t of [-0.36, 0, 0.36]) sink.member('structureWood', [t * W, top + 0.24, wallZ - 0.1], [t * W, top + 0.24, postZ + 0.15], 0.13, 0.13, [0, 1, 0], { colour: shade(palm, 0.92), exposed: true });
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.24, postZ + 0.2], [W / 2 + 0.1, top + 0.24, postZ + 0.2], 0.2, 0.07, [0, 1, 0], { colour: shade(palm, 0.85), decor: true, exposed: true }, 0);
-  const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
-  for (let k = 0; k < ribs; k++) {
-    const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
-    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
-    sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
-  }
-  for (let x = -W / 2 - 0.1; x < W / 2 + 0.1; x += 0.16 + look() * 0.16) {
-    if (look() < 0.2) continue;
-    const len = 0.2 + look() * 0.4, tone = look();
-    sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
-      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
-  }
+  const legs = jeridFrame(sink, look, W, top, floor, wallZ, postZ, palm);
   // the back wall: mud brick through its depth, the store's door cut through it with its reveal
   const wall: Face = { origin: [0, 0, wallZ], u: [1, 0, 0], out: [0, 0, 1], width: W };
   const du = W * 0.28, door = { u0: du - 0.42, u1: du + 0.42, y0: floor, y1: floor + 1.85 };
@@ -495,6 +473,52 @@ export function souqStall(sink: PartSink, look: () => number, W: number, D: numb
     sink.cylinder('structureWood', [x, floor + r * 1.8, z], 'y', r * 0.9, r * 1.25, 8, { colour: shade(clay, 0.95), decor: true }, r * 0.45);
   }
   recordLattice(sink, legs, [top], 0.28, 'structureWood', palm, { x0: -1.0, x1: 1.0, y0: top, y1: top + 1.2, z0: -0.8, z1: 0.8, bucket: 'structureWood', tint: [0.42, 0.34, 0.24] });
+}
+
+/**
+ * The jerid shade's frame and mat (souqStall's; the landmarks' café shade at Siwa's spring, landmark-primitives-278):
+ * palm trunks on their stone footings at x = ±(W/2 - 0.2) on the line `postZ`, the trunk beam across them, three joists
+ * back to `wallZ`, the fascia, the jerid laid rib by rib from `wallZ` to past the beam, the frond tips ragged over the
+ * front. `back`: a free-standing shade (no wall at `wallZ`) stands a second pair of trunks and their beam there, after
+ * everything a stall draws (a stall's draws and parts stay as they were). Returns the trunks (an open frame's legs).
+ */
+export function jeridFrame(sink: PartSink, look: () => number, W: number, top: number, floor: number, wallZ: number, postZ: number,
+  palm: Rgb, back = false): Array<{ foot: Vec3; head: Vec3 }> {
+  // the palm trunks on their stone footings, the trunk beam across them, the joists back to the wall
+  const legs: Array<{ foot: Vec3; head: Vec3 }> = [];
+  for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 - 0.2);
+    sink.cylinder('stone', [x, -0.15, postZ], 'y', floor + 0.25, 0.22, 7, { tint: [0.86, 0.82, 0.76] }, 0.2);
+    // (a free-standing shade's trunks run up into the beam: a stall's beam lies on its wall's joists)
+    sink.cylinder('structureWood', [x, floor + 0.1, postZ], 'y', top - floor - 0.1 + (back ? 0.1 : 0), 0.14, 7, { colour: palm }, 0.12);
+    legs.push({ foot: [x, floor + 0.1, postZ], head: [x, top, postZ] });
+  }
+  sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, postZ], [W / 2 + 0.1, top + 0.08, postZ], 0.18, 0.18, [0, 1, 0], { colour: palm, exposed: true });
+  for (const t of [-0.36, 0, 0.36]) sink.member('structureWood', [t * W, top + 0.24, wallZ - 0.1], [t * W, top + 0.24, postZ + 0.15], 0.13, 0.13, [0, 1, 0], { colour: shade(palm, 0.92), exposed: true });
+  sink.member('structureWood', [-W / 2 - 0.1, top + 0.24, postZ + 0.2], [W / 2 + 0.1, top + 0.24, postZ + 0.2], 0.2, 0.07, [0, 1, 0], { colour: shade(palm, 0.85), decor: true, exposed: true }, 0);
+  const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
+  for (let k = 0; k < ribs; k++) {
+    const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
+    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
+    sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
+  }
+  for (let x = -W / 2 - 0.1; x < W / 2 + 0.1; x += 0.16 + look() * 0.16) {
+    if (look() < 0.2) continue;
+    const len = 0.2 + look() * 0.4, tone = look();
+    sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
+      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
+  }
+  if (back) {
+    // the free-standing shade's back trunks and their beam under the joists' far ends
+    for (const sx of [-1, 1]) {
+      const x = sx * (W / 2 - 0.2), z = wallZ + 0.1;
+      sink.cylinder('stone', [x, -0.15, z], 'y', floor + 0.25, 0.22, 7, { tint: [0.86, 0.82, 0.76] }, 0.2);
+      sink.cylinder('structureWood', [x, floor + 0.1, z], 'y', top - floor, 0.14, 7, { colour: palm }, 0.12);
+      legs.push({ foot: [x, floor + 0.1, z], head: [x, top, z] });
+    }
+    sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, wallZ + 0.1], [W / 2 + 0.1, top + 0.08, wallZ + 0.1], 0.18, 0.18, [0, 1, 0], { colour: palm, exposed: true });
+  }
+  return legs;
 }
 
 // ------------------------------------------------------------------------------------------------ the Navajo stands

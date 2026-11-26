@@ -22,7 +22,7 @@ import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 /** weathered larch: dark brown, silvering grey on the weather side; the sawn ends paler; the shingles near black */
 const LOG = rgb(0x4a3a2c), LOG_SILVER = rgb(0x665d53), LOG_DARK = rgb(0x2a2019), BOARD = rgb(0x4c3f34), END_GRAIN = rgb(0x7a6852);
-const SHINGLE = rgb(0x39312b), IRON = rgb(0x2c2c2c), SPRUCE = rgb(0x1e2d21), BARK = rgb(0x3a2f27);
+const SHINGLE = rgb(0x39312b), IRON = rgb(0x2c2c2c);
 /** a log course (m) */
 const COURSE = 0.32;
 const UP: Vec3 = [0, 1, 0], DOWN: Vec3 = [0, -1, 0];
@@ -157,32 +157,6 @@ function snowBank(sink: PartSink, ctx: LandmarkBuildContext, ax: number, az: num
     prev = row;
   }
   if (prev) face([...prev].reverse(), [bx - ax, 0, bz - az]);
-}
-
-/** A spruce: its trunk and five tiers of drooping boughs, January's snow lying in patches on each tier. Dressing. */
-function spruce(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number, h: number, r: number): void {
-  const v = ctx.variant, g = ctx.ground?.(x, z) ?? 0, ph = v() * Math.PI, tone = shade(SPRUCE, 0.85 + 0.3 * v());
-  revolve(sink, 'structureWood', x, z, [[0.2, g - 0.3], [0.17, g + 0.9]], 7, { colour: BARK, decor: true }, ph);
-  const prof: Array<[number, number]> = [[0.22, g + 0.8]], tiers: Array<[number, number, number, number]> = [], n = 5, span = h - 1.0;
-  for (let k = 0; k < n; k++) {
-    const t = k / n, yb = g + 0.8 + span * t * 0.92, Rk = r * (1 - t * 0.8) * (0.9 + 0.2 * v());
-    const yt = k === n - 1 ? g + h : yb + span * 0.3, rt = k === n - 1 ? 0.001 : Rk * 0.3;
-    prof.push([Rk, yb], [rt, yt]);
-    tiers.push([Rk, yb, rt, yt]);
-  }
-  revolve(sink, 'structureWood', x, z, prof, 7, { colour: tone, decor: true }, ph);
-  if (!ctx.snowCap) return;
-  for (const [Rk, yb, rt, yt] of tiers) {
-    const P = (a: number, s: number): Vec3 => {
-      const rr = Rk + (rt - Rk) * s + 0.05;
-      return [x + Math.cos(a) * rr, yb + (yt - yb) * s + 0.06, z + Math.sin(a) * rr];
-    };
-    for (let j = 0; j < 3; j++) {
-      const a0 = ph + (j + 0.6 * v()) * Math.PI * 2 / 3, da = 0.45 + 0.4 * v(), am = a0 + da / 2, a1 = a0 + da, s0 = 0.04, s1 = 0.2 + 0.18 * v();
-      facing(sink, 'plaster', [P(a0, s0), P(am, s0), P(am, s1 + 0.06), P(a0, s1)], UP, { decor: true });
-      facing(sink, 'plaster', [P(am, s0), P(a1, s0), P(a1, s1), P(am, s1 + 0.06)], UP, { decor: true });
-    }
-  }
 }
 
 /**
@@ -422,10 +396,7 @@ export const woodenChurch: LandmarkBuilder = (ctx) => {
   }
   cross(sink, 'structureWood', 0, gR - 0.05, yz1, 0.7, 'latin', LOG_DARK);
 
-  // ---- the churchyard's spruces and its wooden crosses
-  spruce(sink, ctx, -8.2, yz0 + 3.4, 10 + 2 * v(), 2.0);
-  spruce(sink, ctx, 8.3, yz0 + 4.2, 8.5 + 2 * v(), 1.8);
-  spruce(sink, ctx, -yw / 2 + 2.6, yz1 - 3.6, 9 + 2 * v(), 1.9);
+  // ---- the churchyard's wooden crosses (its spruces are the map's own: plan.ts woodenChurchFlora)
   for (const [x, z] of [[yw / 2 - 2.6, nz0 + 2.0], [yw / 2 - 2.4, nz0 + 4.6], [-yw / 2 + 2.6, nz0 + 1.0]] as const) {
     const g = gl(x, z);
     cross(sink, 'structureWood', x, g - 0.3, z, 1.5 + 0.3 * v(), 'latin', shade(LOG_DARK, 0.9 + 0.4 * v()), (v() - 0.5) * 0.3);
