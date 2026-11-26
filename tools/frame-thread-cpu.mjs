@@ -32,6 +32,10 @@ const labels = arg('labels', '').split(',').filter(Boolean);
 const queries = arg('queries', roots.map(() => '').join(',')).split(',');
 const maps = arg('maps', 'verdant').split(',');
 const pattern = arg('pattern', 'ABBA');
+/** --warm (far-hull-278 PASS-RULE addendum 3): one slot of the pattern's first root before the pattern, a fresh browser and
+ * the same settings as every slot; recorded in report.warm with judged: false, never in report.slots (the first slot of a
+ * hold ran cold, slower than the same build later in the hold, in 5 of 5 holds). */
+const warm = process.argv.includes('--warm');
 const view = arg('view', 'chase');
 const tier = arg('tier', 'desktop');
 const preset = arg('preset', tier === 'desktop' ? 'high' : 'mobile');
@@ -100,15 +104,16 @@ async function traceFrames(browser, page, n) {
   };
 }
 
-const report = { roots, labels, queries, maps, pattern, view, tier, preset, viewport: `${width}x${height}`, frames, slots: [] };
+const report = { roots, labels, queries, maps, pattern, view, tier, preset, viewport: `${width}x${height}`, frames, slots: [], warm: [] };
 let hold = null;
 try {
   hold = await openCaptureHold({ label: 'frame-thread-cpu', place: arg('place', undefined), timeoutMs: 6 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/frame-thread-cpu.mjs' });
   const startedAt = Date.now();
   for (const mapId of maps) {
-    for (let s = 0; s < pattern.length; s++) {
+    const plan = [...(warm ? [{ s: 'warm', k: pattern.charCodeAt(0) - 65 }] : []), ...[...pattern].map((c, s) => ({ s, k: c.charCodeAt(0) - 65 }))];
+    for (const { s, k } of plan) {
       if (Date.now() - startedAt > 18 * 60 * 1000) { report.stopped = 'past 18 minutes of hold'; break; }
-      const k = pattern.charCodeAt(s) - 65, label = labels[k];
+      const label = labels[k];
       const server = await openPreview(roots[k], port);
       const origin = `http://127.0.0.1:${server.port}`;
       const browser = await launchGuardedBrowser(puppeteer, { headless: true, timeout: 120000, protocolTimeout: 600000,
@@ -157,7 +162,7 @@ try {
         await browser.close().catch(() => {});
         await server.close().catch(() => {});
       }
-      report.slots.push(slot);
+      if (s === 'warm') { slot.judged = false; report.warm.push(slot); } else report.slots.push(slot);
       console.log(`${mapId} s${s} ${label}: far ${slot.farShowing ?? '-'} (built ${slot.farDrawsBuilt ?? '-'}, gear stage ${slot.gearStage ?? '-'}), thread ${slot.threadMsPerFrame} ms/frame (${slot.threadTimed}/${slot.traced} tasks timed, ${slot.frames} frames in ${slot.spanMs} ms), wall-in-task ${slot.wallMsPerFrame} ms/frame, draws ${slot.drawsMedian}, batches ${slot.batches}, load ${slot.loadBefore}→${slot.loadAfter}${slot.error ? ` ERROR ${slot.error}` : ''}`);
     }
   }
