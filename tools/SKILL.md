@@ -535,10 +535,11 @@ bad flag return before a server exists; every run writes
 | `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |
 
 A Node tool or receipt that may grow large runs under a resident-memory cap:
-`node tools/memory-capped.mjs --cap-gib=<N> -- <command>` polls the child by its own PID every 200 ms, stops it past
-the cap (SIGTERM, then SIGKILL), prints its peak and exits 137 when it stopped it. It reads the child's resident memory
-only, not its children's, so cap the process that does the work (`node <file>`, not `npm run`). (replay-system-275: an
-unbounded receipt reached 14 GiB.)
+`node tools/memory-capped.mjs --cap-gib=<N> -- <command>` starts the command in its own process group and every 500 ms
+sums the resident memory of that group and every descendant of a member; past the cap it stops the whole tree (SIGTERM,
+then SIGKILL), prints the peak and exits 137. `npm run ...` and tools that fork workers are capped as a whole.
+(replay-system-275: an unbounded receipt reached 14 GiB; integ/278: the 275 tool read only its direct child, so every
+regen hold wrapped around npm was uncapped. Receipt: tools/memory-capped.selftest.mjs.)
 
 The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run with
 `node tools/with-session-mutex.mjs "$SP/probe.lock" -- nice -n 19 node tools/<probe>.mjs ...`
