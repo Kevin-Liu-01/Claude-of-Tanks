@@ -124,7 +124,8 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8
   // (settings-unify-278) a watched replay is a solo page's battle: photo mode is its fourth camera, and it holds the
   // viewer's own keys while it is open (docs/REPLAY.md §5)
   assert.doesNotMatch(main, /replay: replayViewerOwner/, 'a watched replay may open photo mode');
-  assert.match(main, /isInputHeld: \(\) => settings\.isOpen\(\) \|\| battlePhotoOpen,/, 'photo mode holds the replay viewer\'s keys');
+  // (integ/278) beside replay-fixes-277's Export video dialog, which holds them too
+  assert.match(main, /isInputHeld: \(\) => settings\.isOpen\(\) \|\| battlePhotoOpen \|\| replayFilmDialogOpen,/, 'photo mode holds the replay viewer\'s keys');
   assert.match(main, /function openBattlePhoto\(fromMenu = false\): void \{\n  if \(battlePhotoOpen \|\| !canOpenBattlePhoto\(\)\) return;/,
     'every way in passes the availability check');
   assert.match(main, /battlePhotoOpen = true;\n  battlePhotoFromMenu = fromMenu \|\| settings\.isOpen\(\);\n  if \(settings\.isOpen\(\)\) settings\.close\(\{ noRelock: true \}\);/,
