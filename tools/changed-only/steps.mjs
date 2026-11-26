@@ -252,9 +252,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
     // 2026-11-04 re-pin (sm-fix tools-chains, audit S4): the owned lock directory and its tomb, the session mutex and its
     // pid file, a holder's ppid walk and start time, the place stamps: lock state and process state (scheduling)
-    pin: '7ef9007a34037252',
+    // 2026-11-26 re-pin (practice audit 10): --status reads the hold log at ~/Library/Logs and the pre-audit /tmp one (the meter)
+    pin: '2096e831c1f16754',
     reads: [],
-    note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
+    note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets) and the hold log (~/Library/Logs/cot-shots.log), and runs ps on their holders: scheduling only, never what a step writes',
   },
   // World steps (WORLD_STEPS).
   'tools/capture-world-collision-manifests.mjs': {

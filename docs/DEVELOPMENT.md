@@ -695,7 +695,9 @@ release gate (`tools/selftest-tiers.selftest.mjs` holds the workflows to that).
   (the system file table filled) wiped the capture lock's log and the receipt result cache. Logs go to
   `cotLogPath`, caches to `cotCacheDir` and evidence defaults to `cotEvidencePath` (`tools/durable-paths.mjs`);
   locks, queues and per-run scratch stay in /tmp. `--lanes` also reports (never fails) the /tmp paths in
-  `~/cot-lanes` scripts.
+  `~/cot-lanes` scripts. One log stays for now: the browser guard's `/tmp/cot-browser-guard.log`, because any edit
+  to `tools/browser-launch.mjs` re-keys the centering and icons steps for every tank; it moves with the next edit
+  that re-keys them anyway.
 - The receipt result cache lives in `${XDG_CACHE_HOME:-~/.cache}/cot-selftests/v2/<root commit>`. The first run moves
   the `$TMPDIR` store there and leaves a link, so runners on an older base keep sharing it, and puts the link back
   after a reboot (`tools/selftest-cache-dir.mjs`).

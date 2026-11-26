@@ -8,19 +8,21 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const home = (env) => env.HOME || homedir();
+// the three variables these paths read, named (a whole-environment read is opaque to tools/changed-only)
+const namedEnv = () => ({ HOME: process.env.HOME, XDG_CACHE_HOME: process.env.XDG_CACHE_HOME, XDG_STATE_HOME: process.env.XDG_STATE_HOME });
 
 /** A persistent log file: ~/Library/Logs on macOS, $XDG_STATE_HOME/cot/logs (default ~/.local/state) elsewhere. */
-export function cotLogPath(name, { env = process.env, platform = process.platform } = {}) {
+export function cotLogPath(name, { env = namedEnv(), platform = process.platform } = {}) {
   if (platform === 'darwin') return join(home(env), 'Library', 'Logs', name);
   return join(env.XDG_STATE_HOME || join(home(env), '.local', 'state'), 'cot', 'logs', name);
 }
 
 /** A regenerable cache that should survive a reboot: $XDG_CACHE_HOME (default ~/.cache)/<name>. */
-export function cotCacheDir(name, { env = process.env } = {}) {
+export function cotCacheDir(name, { env = namedEnv() } = {}) {
   return join(env.XDG_CACHE_HOME || join(home(env), '.cache'), name);
 }
 
 /** The default output of a probe's evidence (an --out default): $XDG_STATE_HOME/cot/evidence/<name>. */
-export function cotEvidencePath(name, { env = process.env } = {}) {
+export function cotEvidencePath(name, { env = namedEnv() } = {}) {
   return join(env.XDG_STATE_HOME || join(home(env), '.local', 'state'), 'cot', 'evidence', name);
 }

@@ -16,7 +16,7 @@
 #   cot_port_busy P / cot_port_free P   0 when a listener holds P or the probe fails / 0 only when lsof says no listener
 #   cot_file_has TEXT FILE            0 when FILE holds TEXT (fixed string); a missing file is "not yet"
 #   cot_wait DESC DEADLINE_S CMD...   run CMD until it succeeds; 124 at the deadline, 2 on a bad call
-#   cot_retry MAX_FAILS DESC CMD...   rerun CMD until it succeeds; 75 after MAX_FAILS failures in a row
+#   cot_retry MAX_FAILS DESC CMD...   rerun CMD until it succeeds; 79 after MAX_FAILS failures in a row (75-77 and 86 are the repo's STARVED, lease and guard statuses)
 #
 # Knobs: COT_PROBE_MAX_S (the backoff cap, default 600). The 60 s floor is fixed. Tests replace the clock and sleep
 # with COT_PROBE_CLOCK and COT_PROBE_SLEEP (commands) and Linux's load file with COT_PROBE_LOADAVG; scripts leave them unset.
@@ -106,7 +106,7 @@ cot_retry() {
     _cot_fails=$((_cot_fails + 1))
     if [ "$_cot_fails" -ge "$_cot_max" ]; then
       _cot_log "$_cot_desc: STOPPED after $_cot_fails failures in a row (last rc $_cot_rc)"
-      return 75
+      return 79
     fi
     _cot_d=$(_cot_delay "$_cot_fails")
     _cot_log "$_cot_desc: failed (rc $_cot_rc, $_cot_fails of $_cot_max); retry in ${_cot_d}s"

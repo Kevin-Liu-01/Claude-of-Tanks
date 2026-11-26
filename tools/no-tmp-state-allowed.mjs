@@ -7,6 +7,9 @@ export const ALLOWED = Object.freeze([
   { file: 'tools/capture-lock.mjs', includes: "'/tmp/cot-shots.queue'", why: 'the queue: a reboot ends every waiter, so it should clear' },
   { file: 'tools/capture-lock.mjs', includes: "PRE_AUDIT_LOG_FILE = '/tmp/cot-shots.log'",
     why: 'read only, by --status, while lanes on an older base still write there' },
+  { file: 'tools/browser-launch.mjs', includes: "BROWSER_GUARD_LOG = '/tmp/cot-browser-guard.log'",
+    why: 'any byte of browser-launch.mjs keys the centering and icons steps for every tank (a fleet-wide browser regen); '
+      + 'move this log with the next edit that re-keys them anyway. Each trip also prints a [browser-guard] line in its job log' },
   { file: 'tools/visual-census-lock.mjs', includes: "'/tmp/cot-shots.queue'", why: 'the capture lock queue (see capture-lock.mjs)' },
   { file: 'tools/visual-census-lock.mjs', includes: "'/tmp/cot-shots.lock'", why: 'the capture lock (see capture-lock.mjs)' },
   { file: 'tools/selftest-cache.mjs', includes: 'return join(tmpdir(), `cot-selftests-v',
