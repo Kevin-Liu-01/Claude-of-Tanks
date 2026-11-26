@@ -271,18 +271,27 @@ export function washingLine(sink: PartSink, face: Face, u0: number, u1: number, 
 
 /**
  * A flowering shrub against a wall (a Breton hydrangea): a leafy mound and its round flower heads (its draws from `rng`
- * are the boxes' it replaces).
+ * are the boxes' it replaces), each head seated in the leaves — its foot drawn in to inside the mound's section at its
+ * height (the mound tapers from its shoulder at 0.42 h to its crown). The Breton r2 sweep (2026-10-16, "floating 1
+ * island, gap 0.03 m") found a head set out past the shoulder hanging off it and seated breton.ts' own copy; the copy is
+ * gone and every shrub is seated here (landmark-primitives-278: the garden's beds, kitConnectivity 16 floating).
+ * Its y is the face's floor (0): a caller on uneven ground draws it in a placed frame.
  */
 export function floweringShrub(sink: PartSink, face: Face, u: number, size: number, bloom: Rgb, rng: () => number): void {
   const leaf: Rgb = [0.1 + rng() * 0.04, 0.22 + rng() * 0.06, 0.08];
   const out = (uu: number, yy: number, o: number): Vec3 => [face.origin[0] + face.u[0] * uu + face.out[0] * o, yy, face.origin[2] + face.u[2] * uu + face.out[2] * o];
-  mound(sink, out(u, 0, size * 0.4), face.u, face.out, size * 0.68, size * 0.44, size * 0.95, leaf, DECOR, hash01(u, size, 5));
+  const ru = size * 0.68, ro = size * 0.44, h = size * 0.95, oc = size * 0.4;
+  mound(sink, out(u, 0, oc), face.u, face.out, ru, ro, h, leaf, DECOR, hash01(u, size, 5));
   for (let k = 0; k < 7; k++) {
     const s = size * (0.22 + rng() * 0.12);
     const uu = u + (rng() - 0.5) * size, yy = size * (0.55 + rng() * 0.32), oo = size * (0.3 + rng() * 0.5);
     const c: Rgb = [bloom[0] * (0.85 + rng() * 0.3), bloom[1] * (0.85 + rng() * 0.3), bloom[2] * (0.85 + rng() * 0.3)];
-    // a mophead: a small dome of florets (its foot sunk into the leaves)
-    mound(sink, out(uu, yy - s * 0.3, oo), face.u, face.out, s * 0.55, s * 0.55, s * 0.75, c, DECOR, k, 4);
+    // a mophead: a small dome of florets, its foot inside the leaves' section at its height
+    const foot = yy - s * 0.3, f = 0.85 * Math.max(0.05, Math.min(1, (h - foot) / (h * 0.58)));
+    let du = uu - u, dO = oo - oc;
+    const e = Math.hypot(du / ru, dO / ro);
+    if (e > f) { du *= f / e; dO *= f / e; }
+    mound(sink, out(u + du, foot, oc + dO), face.u, face.out, s * 0.55, s * 0.55, s * 0.75, c, DECOR, k, 4);
   }
 }
 
