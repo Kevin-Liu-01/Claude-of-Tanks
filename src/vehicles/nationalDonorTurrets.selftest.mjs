@@ -14,6 +14,9 @@ import { getSpec } from './specs.ts';
 import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { combatAnatomyCalibration, registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
+import { registerProfiledBuilders } from './tankFactoryCore.ts';
+import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
+import { buildT72B3MX } from './profiles/t72b3mX.ts';
 
 const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
 function vertexSet(mesh) {
@@ -34,13 +37,32 @@ function authored(ids, build) {
   try { return build(); } finally { registerCombatAnatomyCalibrations(Object.fromEntries(ids.map((id, i) => [id, committed[i]]))); }
 }
 
+// 1126bb0274 (Main, 2026-10-31, nationalGunMantlet): the T-72B3M family's own build (familyFinish: the 2016 and the
+// 2022) draws the fatter 2A46M-5 sleeve (fume extractor r .1475, clamp bands, seams); the national concepts on its turret
+// keep the measured sleeve their gun curves were swept for. Their main gun is that donor gun as its turret builder draws
+// it without the family finish; the turret casting is still the donor's own.
+const NATIONAL_GUN_BUILDS = Object.freeze({ t72b3m_2016: (port) => buildT72B3MX(port, { familyFinish: false }) });
 const donors = new Map();
 for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
   await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   if (!donors.has(d.donor)) {
-    const donor = authored([d.donor], () => createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
-    donors.set(d.donor, { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) });
+    const build = () => authored([d.donor], () => createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
+    const donor = build();
+    const entry = { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) };
     donor.dispose();
+    if (NATIONAL_GUN_BUILDS[d.donor]) {
+      registerProfiledBuilders({ [d.donor]: NATIONAL_GUN_BUILDS[d.donor] });
+      try {
+        const national = build();
+        const gun = vertexSet(owned(national, 'rig_gun', 'gun'));
+        national.dispose();
+        assert.ok([...entry.gun].some((v) => !gun.has(v)), `${d.donor}: the family finish still draws its own sleeve (else drop its NATIONAL_GUN_BUILDS row)`);
+        entry.gun = gun;
+      } finally {
+        registerProfiledBuilders({ [d.donor]: PROFILED_BUILDERS[d.donor] });
+      }
+    }
+    donors.set(d.donor, entry);
   }
   const { turret, gun } = donors.get(d.donor);
   const tank = authored([id], () => createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
