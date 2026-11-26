@@ -70,7 +70,8 @@ One binary file, `.cotreplay`, gzip-framed:
   plus a new **replay digest** (a hash of the local driver's step closure, computed at build time like
   `tools/matchBuild.ts`'s digests); which driver recorded it (`local` or `authority`); map, mode, ruleset, campaign
   operation, arrangement, brain setting; the battle seed; the resolved roster in order (ids, spec ids, teams, bot
-  flag, difficulty, loadout, consumables, camo, camo bonus); each hull's contact footprint (8 numbers, see item 4).
+  flag, difficulty, loadout, consumables, camo, camo bonus) and its TEAM NATIONS record (the sides' countries and the
+  planner's fill notes); each hull's contact footprint (8 numbers, see item 4).
 - **Seat streams**: per fixed step, per seat, a 16-bit change mask and the changed fields as zigzag varints of the
   wire's integer units (`src/mp/wire/quantize.ts`: throttle, steer, aim yaw, pitch, distance) or small ints (flags,
   shell slot, action bits, auxiliary bits, fire sequence). A tick with no change costs 2 bytes per seat.
@@ -376,7 +377,7 @@ Node round trip and `replay-verify` draw in Node on both sides, and the recorder
 
 The fix: a replay never draws its roster again. `runRecordedSetup` hands `setupBattle` the header's roster
 (`recordedRoster`) and `rosterState.seatRecordedRoster` seats those hulls in the recorded order on the recorded sides
-(same-nation repeats rebuilt as the picker builds them; the TEAM NATIONS record read off the sides), on the page and in
+(same-nation repeats rebuilt as the picker builds them; the TEAM NATIONS record as recorded, below), on the page and in
 the Worker alike. Receipts: `src/game/replay/replayRosterSeat.selftest.mjs` (default tier: a reordered pool draws
 another roster, the recorded one seats exactly) and `tools/replay-ui-flow.browser.selftest.mjs` (manual `browser`
 suite: a battle played with real keys, left and watched from the Service Record; another ended and watched from its end
@@ -386,6 +387,14 @@ The root hazard, fixed for 277: the battle pool (`game.allTanks`) is built in `r
 never the catalogs' registration order, so a seeded draw is the same roster on the page, in a Worker and in Node
 (`src/game/battlePoolOrder.selftest.mjs`; the UI-flow receipt holds the built page's pool to Node's, id for id). The
 catalogs keep their registration order for the Garage.
+
+The TEAM NATIONS record (replay-notes-278, 2026-11-25): the hotfix first rebuilt it from the seated sides (each side's
+majority country, no notes), but the planner's fill notes (`sim/teamNations.ts` NationNote: an ally fill, a repeat) come
+only from the draw a replay no longer makes, so a battle whose draw filled a side from an ally carried the note on the
+page and none in the replay, and `replayRoundTrip`'s dump after step 0 parted on `.game.teamNations.notes` from 276.1
+on. The recorder now keeps the battle's record in the header (`teamNations`, beside `roster`), `runRecordedSetup` hands
+it to `setupBattle` (`recordedTeamNations`) and `seatRecordedRoster` seats it as recorded. Receipts: `replayRoundTrip`
+(manual `sims`) and `replayRosterSeat` (the record through JSON, notes and all, on either pool).
 
 ## Replay files: download and open (replay-fixes-277, 2026-11-24)
 

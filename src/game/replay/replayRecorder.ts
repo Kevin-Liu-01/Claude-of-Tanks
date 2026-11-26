@@ -18,7 +18,7 @@
  * Couch and Watch seats (phones, a taken bot) are P1 limits: such a battle is not recorded. Node-runnable.
  */
 import { REPLAY_CHECKSUM_EVERY, REPLAY_FORMAT_VERSION, SeatStreamWriter, encodeReplay, type ReplayAction, type ReplayEnd,
-  type ReplayEventMark, type ReplayHeader, type ReplayRosterEntry } from '../../sim/replayFormat.ts';
+  type ReplayEventMark, type ReplayHeader, type ReplayRosterEntry, type ReplayTeamNations } from '../../sim/replayFormat.ts';
 import { applySeatControl, captureSeatControl, createSeatControl, type SeatControl, type SeatControlEntity } from '../../sim/seatControl.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { replayStateDigest } from './replayChecksum.ts';
@@ -69,6 +69,8 @@ export interface RecorderGame {
   battleCount: number;
   previousBotSpecIds?: readonly string[] | null;
   recentBotSpecIds?: readonly string[] | null;
+  /** TEAM NATIONS: the record setup made (rosterState.ts BattleTeamNations), kept with the roster. */
+  teamNations?: Readonly<ReplayTeamNations> | null;
   matchSeed?: number | null;
   mapId?: string | null;
   gameMode?: string | null;
@@ -270,6 +272,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
           storage: null,
         },
         roster,
+        teamNations: recordedTeamNations(battle.teamNations),
         seats: seats.map((hull) => hull.id),
       };
       footprints = new Map(battle.tanks.map((hull) => [hull, null]));
@@ -372,6 +375,12 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
     cancel() { reset(); },
   };
   return recorder;
+}
+
+/** The battle's TEAM NATIONS record as a recording keeps it (a copy: the planner's notes, the sides' countries). */
+function recordedTeamNations(record: Readonly<ReplayTeamNations> | null | undefined): ReplayTeamNations | null {
+  if (!record) return null;
+  return { teamNations: record.teamNations, allied: record.allied, enemy: record.enemy, notes: record.notes.map((note) => ({ ...note })) };
 }
 
 /** The debug roster flags setup honours (rosterState soloDebugFlags), as a recording keeps them. */

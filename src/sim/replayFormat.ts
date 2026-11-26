@@ -12,6 +12,7 @@
  */
 import { SEAT_CONTROL_FIELDS, createSeatControl, type SeatControl } from './seatControl.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { CountryId, NationNote } from './teamNations.ts';
 
 export const REPLAY_MAGIC = 'COTR';
 export const REPLAY_FORMAT_VERSION = 1;
@@ -28,6 +29,15 @@ export interface ReplayRosterEntry {
   bot: boolean;
 }
 
+/** The battle's TEAM NATIONS record as its setup made it (game/rosterState.ts BattleTeamNations): the sides' countries
+ *  and the planner's fill notes. Kept, not rebuilt: a replay seats its recorded roster and never runs the planner again. */
+export interface ReplayTeamNations {
+  teamNations: 'mono' | 'random';
+  allied: CountryId | null;
+  enemy: CountryId | null;
+  notes: NationNote[];
+}
+
 export interface ReplayHeader {
   format: number;
   /** The build line (wire/matchBuild.ts MATCH_BUILD) and the replay digest of the sim that recorded it. */
@@ -38,6 +48,8 @@ export interface ReplayHeader {
   /** Everything the driver's battle setup reads; for the local driver, game/replay/replaySetup.ts. */
   setup: Record<string, RuntimeValue>;
   roster: ReplayRosterEntry[];
+  /** The roster's TEAM NATIONS record, null when the battle has none (seated with the roster: rosterState.seatRecordedRoster). */
+  teamNations: ReplayTeamNations | null;
   /** The hull ids whose controls the SEATS section carries, in its order. */
   seats: string[];
 }

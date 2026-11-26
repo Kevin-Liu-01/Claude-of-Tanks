@@ -560,6 +560,8 @@ interface SetupBattleOptions {
   /** A replay's recorded roster (game/replay/replaySetup.ts): these hulls in this order on these sides, never drawn again
    *  (rosterState.seatRecordedRoster). */
   recordedRoster?: readonly RecordedRosterSeat[];
+  /** With it, the recording's TEAM NATIONS record (the planner's notes and the sides' countries), seated as recorded. */
+  recordedTeamNations?: BattleTeamNations | null;
 }
 
 interface CameraRig {
@@ -1373,7 +1375,7 @@ export function setupBattle(
   // a replay seats its recording's roster as recorded (replay-fixes-277: a draw in the replay indexer's Worker shuffles the
   // pool in another registration order than the page's, so it drew another roster and refused the replay)
   const recorded = opts.recordedRoster?.length
-    ? seatRecordedRoster(game, playerSpecId, opts.recordedRoster, rosterPlan.national === 'random' ? 'random' : rosterPlan.national ? 'mono' : null)
+    ? seatRecordedRoster(game, playerSpecId, opts.recordedRoster, opts.recordedTeamNations ?? null)
     : null;
   if (opts.recordedRoster?.length && !recorded) throw new Error('replay: the recorded roster names a hull this build does not field');
   const national = !recorded && rosterPlan.national && rosterPlan.national !== 'random' && !soloDebugFlags()?.forceRoster?.length

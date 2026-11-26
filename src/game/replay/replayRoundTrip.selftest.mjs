@@ -186,6 +186,9 @@ assert.ok(recording.actions.some((a) => a.kind === 'selectShell') && recording.a
 assert.ok(recording.actions.some((a) => a.kind === 'footprint' && a.tick > 100), 'the streamed footprint is kept at its step');
 assert.equal(recording.seatSteps.length, TICKS, 'one seat row per step');
 assert.equal(recording.checksums.length, TICKS / 600, 'a checksum every 600 steps');
+// (replay-notes-278) the TEAM NATIONS record is kept with the roster, the planner's fill notes and all: this battle's draw
+// fills a side from an ally, the note a replay once lost (the dump after step 0 parted on it from 276.1)
+assert.ok(recording.header.teamNations?.notes.length >= 1, `the header keeps the TEAM NATIONS record with its notes (${JSON.stringify(recording.header.teamNations)})`);
 
 const again = replay(recording);
 mark('replayed');
@@ -249,6 +252,23 @@ refusedWorld.release?.();
 assert.ok(refused.track === null, `another build's recording has no track (it indexed ${refused.indexedSteps} steps)`);
 assert.equal(refused.problem?.code, 'refused');
 assert.equal(refused.events.length, recording.events.length, 'and keeps its marks for the timeline');
+// (replay-notes-278) a 277 file: its header has no TEAM NATIONS record (277 rebuilt it from the sides; files from it are
+// out in the world since replay export shipped). A release refuses it on its replay digest before setup, as any other
+// build's recording (the page shows its timeline and "Recorded on <version>"); a dev build, which admits every file,
+// plays it to the end, every checksum matching, with no record (the load card and HUD show no nations, as RANDOM's).
+const old = decodeReplay(live.finished.bytes);
+delete old.header.teamNations;
+const oldRelease = { ...old, header: { ...old.header, replayDigest: 'f00dfeedbeef', build: 'v1.0.0+g1e7afa12d' } };
+assert.throws(() => createReplayRun(oldRelease, null, { localDigest: '0123456789ab' }),
+  (error) => error instanceof ReplayMismatch && error.code === 'refused' && error.message === 'replay recorded on v1.0.0+g1e7afa12d',
+  'a release refuses a 277 file by its digest, before setup (no world is touched)');
+const oldDev = replay(old);
+mark('277 file');
+assert.ok(oldDev.mismatch === null, `a dev build plays a 277 file: ${oldDev.mismatch?.message}`);
+assert.equal(oldDev.tick, live.tick, 'every step of it');
+assert.equal(oldDev.digest, live.digest, 'to the battle\'s own end');
+assert.ok(pageTrace.snapshots['0']?.game?.teamNations?.notes?.length >= 1, 'the dump after step 0 holds the battle\'s record (the path read below)');
+assert.ok(oldDev.trace.snapshots['0']?.game && oldDev.trace.snapshots['0'].game.teamNations == null, 'with no TEAM NATIONS record');
 
 // negative control: the throttle one unit (1/127) off at step 500 (an aim unit off while the turret slews at its rate
 // limit changes nothing, rightly)
@@ -369,6 +389,6 @@ assert.deepEqual(uncuedRun.fired, [], 'control: and Sentry 3 never fires');
 const bytes = live.finished.bytes.length;
 parentPort.postMessage({ summary: `replayRoundTrip.selftest: ${TICKS} steps on ${MAP} (${live.roster.length} hulls, ${live.kills} kills, ${recording.actions.length} actions, `
   + `${recording.events.length} marks) recorded in ${bytes} bytes (seats ${live.finished.seatBytes}); the replay matches every checksum and `
-  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}; every live round matches step for step (${pageRounds.length / ROUND_WIDTH} records) and a round one ulp off or missing is named at its step; `
+  + `ends on ${live.digest}; the indexer's Worker job tracks it identically (${live.track.samples} samples); another build's recording is refused with its marks kept; a 277 file (no TEAM NATIONS record) is refused by a release and plays to the end with no record on a dev build; the throttle one unit off at step 500 is caught at step ${caught.mismatch.tick}; every live round matches step for step (${pageRounds.length / ROUND_WIDTH} records) and a round one ulp off or missing is named at its step; `
   + `a training battle (Sentry 3 cued, seen from step ${training.seenFrom}, ${training.fired.length} round(s), a checkpoint, the chapter's end) replays round for round, and without its cue parts (${uncuedRun.mismatch?.message ?? 'a different end'})` });
 }
