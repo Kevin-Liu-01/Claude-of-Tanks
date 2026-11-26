@@ -79,7 +79,7 @@ const SURFACES = {
     keys: ['nav.public-nav', 'main.gallery-shell', 'aside.archive-panel', 'section.viewer', 'aside.dossier', '#vehicleList'],
   },
   dossier: {
-    route: '/gallery?id=m1a2', kind: 'public', title: 'a gallery dossier', ready: 'window.__TANK_GALLERY_READY === true',
+    route: '/gallery?id=m1a1_abrams_hc&ids=4', kind: 'public', title: 'a gallery dossier', ready: 'window.__TANK_GALLERY_READY === true',
     pinchOver: 'aside.dossier',
     keys: ['nav.public-nav', 'main.gallery-shell', 'aside.dossier', '.dossier-scroll', '.dossier-head', 'section.viewer'],
     scrollInner: { selector: '.dossier-scroll', top: 700 },

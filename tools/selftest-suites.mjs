@@ -1251,6 +1251,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/photoCamera.selftest.mjs',
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
     'src/engine/showroomSpringArm.selftest.mjs', // garage-env-276 (b): the showroom spring arm stands the eye in front of a yard part
+    'src/engine/sniperZoomLadder.selftest.mjs', // scope-and-names-278: Controls › Increased zoom takes the drawn sight to ×16/×25
     // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
     'src/engine/cameraViewRoundTrip.selftest.mjs',
     // cursor-aim-pan-274: cursor aim (no pointer lock) pans the chase view and the sight at the screen edge; lock and touch never
@@ -2652,6 +2653,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/impactDecalSkin.selftest.mjs', // hitbox-fit-274: a hit mark lies on drawn skin or nowhere, never in the air
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
+    'tools/vehicle-roster-names.selftest.mjs', // scope-and-names-278: the roster file is current and names what the gallery shows
+    'tools/gallery-link-stamps.selftest.mjs', // scope-and-names-278: every gallery link the tree writes carries its id schema
     'src/gallery/cameraFit.selftest.mjs',
     'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',

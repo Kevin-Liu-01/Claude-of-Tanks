@@ -1293,6 +1293,7 @@
   "settings.tips.reset": "Mostrar de novo",
   "settings.tips.none": "Todas serão mostradas",
   "settings.camera.isometric": "Visão isométrica",
+  "settings.zoom.increased": "Zoom ampliado (×16, ×25)",
   "settings.camera.isometricNote": "Visão aérea inclinada que mantém seu tanque centralizado, amplia o campo de visão conforme a velocidade aumenta e se eleva para passar por cima de obstáculos. Mova o mouse, deslize o dedo ou use o analógico direito para mirar; o zoom altera a distância da câmera aérea. Use o comando de mira/luneta para entrar no modo de precisão. A alteração é aplicada imediatamente a todas as batalhas.",
   "settings.camera.title": "Câmera",
   "settings.camera.height": "Altura da câmera",

@@ -77,7 +77,7 @@ try {
   const presentationTargets = [
     {
       id: 'gallery', width: 1920, height: 1080, dpr: 1,
-      path: '/gallery.html?id=m1a2', settleMs: 2500,
+      path: '/gallery.html?id=m1a1_abrams_hc&ids=4', settleMs: 2500,
       ready: () => document.querySelector('#viewport canvas'),
     },
     {
@@ -98,7 +98,7 @@ try {
     },
     {
       id: 'gallery_modules_carro45t_4k', width: 1920, height: 1080, dpr: 2,
-      path: '/gallery.html?id=carro45t&layer=modules', settleMs: 2200,
+      path: '/gallery.html?id=carro45t&ids=4&layer=modules', settleMs: 2200,
       ready: () => window.__TANK_GALLERY?.ready === true
         && window.__TANK_GALLERY.getState().overlayCount > 0,
       setup: { kind: 'gallery-modules' },

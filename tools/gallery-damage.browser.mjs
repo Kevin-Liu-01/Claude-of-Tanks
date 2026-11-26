@@ -14,7 +14,7 @@ try {
  browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true});
  const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/gallery?id=t90m&layer=armor`,{waitUntil:'domcontentloaded'});
+ await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/gallery?id=t90am&ids=4&layer=armor`,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__TANK_GALLERY?.ready&&window.__TANK_GALLERY.getState().selectedId==='t90am',null,{timeout:180000});
  await page.locator('.damage-workbench').scrollIntoViewIfNeeded();
  const before=await page.evaluate(()=>window.__TANK_GALLERY.getState());

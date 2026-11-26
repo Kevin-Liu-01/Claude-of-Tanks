@@ -13,6 +13,7 @@
 
 // (2026-11-02 audit S3) the boot latch and the lifecycle readiness the harnesses share
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from '../game-readiness.mjs';
+import { galleryHref } from '../../src/game/tankIdBoundaries.ts';
 
 // ------------------------------------------------------------------------------------------------ trigger sets
 const T = {
@@ -1235,6 +1236,7 @@ export const RECIPES = {
       await settle(ctx, 1.5);
       await ctx.capture({
         // x16 (the increased-zoom step) fills half the sight with the painted hull at 240-280 m; x8 for the ground
+        // (a player reaches x16 only with Settings › Controls › Increased zoom on; the default wheel ladder stops at x8)
         cameras: [
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 16, hud: 'full' },
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },
@@ -1770,7 +1772,7 @@ async function openGarage(ctx, { variantId, vehicleId }) {
 /** The Tank Gallery on a vehicle and layer, framed from its hero (elevated front-left) view. */
 async function openGallery(ctx, { vehicleId, layer, view = 'hero' }) {
   const page = ctx.page;
-  await page.goto(`${ctx.baseUrl}/gallery?id=${vehicleId}&layer=${layer}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.goto(`${ctx.baseUrl}${galleryHref(vehicleId)}&layer=${layer}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true, { timeout: 240000, polling: 250 });
   await page.evaluate(async (args) => {
     await window.__TANK_GALLERY.loadTank(args.vehicleId, { mode: args.layer, view: args.view });

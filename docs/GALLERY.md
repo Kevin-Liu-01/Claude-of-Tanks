@@ -234,10 +234,15 @@ runtime vehicle geometry.
 The Gallery uses query parameters so a record can be shared or restored:
 
 ```text
-/gallery?id=m1a2
-/gallery?id=t90m&layer=armor
-/gallery?id=t90m&layer=markup
+/gallery?id=m1a1_abrams_hc&ids=4
+/gallery?id=t90am&ids=4&layer=armor
+/gallery?id=t90am&ids=4&layer=markup
 ```
+
+`ids` is the tank id schema the link was written under (src/vehicles/tankIdAliases.ts): a link without it is read
+as schema 1, the ids before the 2026-10-13 rename: an unstamped link to `t90m` opens the T-90AM, and the T-90M
+Proryv is `/gallery?id=t90m&ids=4`. The page writes the stamp itself; a link built anywhere else comes from `galleryHref`
+(src/game/tankIdBoundaries.ts) or carries `&ids=` by hand (tools/gallery-link-stamps.selftest.mjs).
 
 Supported `layer` values are `appearance`, `armor`, `modules`, `crew`, and
 `markup`. `appearance` is omitted from the canonical URL. In the Armor layer,

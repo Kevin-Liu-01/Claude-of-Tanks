@@ -260,6 +260,9 @@
   "settings.interface.reloadNote": {
     "context": "A short explanatory note under two switches in the Interface settings of Claude of Tanks, a browser tank game. Amber and gray are the colors the bar is drawn in: amber while the tank reloads, gray once its gun is loaded. Hard limit: at most 150 characters (Russian: 140; Japanese: 70; Chinese: 50). Never use an em dash."
   },
+  "settings.zoom.increased": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Controls: an on/off row that lets the sniper sight's mouse-wheel zoom go past ×8 to ×16 and ×25. Keep the × multipliers exactly as written. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the scope-and-names-278 lane and await General Translation review."
+  },
   "hud.hint.moduleRepair.line": {
     "context": "A battle key line in Claude of Tanks, a browser tank game: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; one line on a phone, as short as the English. Never use an em dash. Budget: the words after the key caps run at most 56 characters (Russian: 56; Japanese: 24; Chinese: 20), key caps not counted."
   },

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { openCaptureHold } from '../capture-hold.mjs';
 let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
+import { galleryHref } from '../../src/game/tankIdBoundaries.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -134,7 +135,7 @@ try {
   errors = [];
   await page.setViewport(desktopViewport);
   const galleryShots = productShots.filter((entry) => entry.sourceType === 'gallery');
-  await page.goto(`${baseUrl}/gallery.html?id=${galleryShots[0]?.vehicleId || 'k2'}`, {
+  await page.goto(`${baseUrl}${galleryHref(galleryShots[0]?.vehicleId || 'xk2_black_panther').replace('/gallery?', '/gallery.html?')}`, {
     waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true,

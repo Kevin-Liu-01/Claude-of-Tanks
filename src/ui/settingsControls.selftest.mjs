@@ -57,6 +57,7 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'showAllyReload', 'showDebugHud', 'showDirectionalHitValues', 'showEnemyReload', 'showHints', 'showPerfMeter',
   'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
+  'increasedZoom', // (scope-and-names-278) Controls › Increased zoom, the sniper wheel's ×16/×25 steps
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
 
 // battle-camera-264 (owner 2026-10-28: "be able to change and alter this camera angle as u like in settins"): the

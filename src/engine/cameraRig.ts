@@ -35,7 +35,7 @@ import {
 
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
-const SNIPER_ZOOMS_FULL = [2, 4, 8, 16, 25]; // ×16/×25 behind rig._increasedZoom
+const SNIPER_ZOOMS_FULL = [2, 4, 8, 16, 25]; // ×16/×25 behind Controls › Increased zoom (settings.increasedZoom)
 /** Air Support's binoculars (air-support-275; owner: "the binoculars are a special zoom that is contained to like minimum
  *  scope mode"): the scope's widest step, held while they are up: no wheel, Shift or aim-hold leaves it. */
 const BINOCULAR_ZOOM = SNIPER_ZOOMS_BASE[0];
@@ -189,7 +189,7 @@ export interface CameraRigDeps {
    *  the base pose). */
   getChaseBands?(): ChaseBands | null;
   /** The player's camera settings (input.ts: height, distance, shoulder, framing, field of view). */
-  getCameraSettings?(): Partial<ChaseCameraSettings> | null;
+  getCameraSettings?(): (Partial<ChaseCameraSettings> & { increasedZoom?: boolean }) | null;
   /** The framed arcade sight's rise over the screen centre, CSS px (ui/battleSight.ts setBattleSightShift). */
   publishSightShift?(px: number): void;
 }
@@ -262,7 +262,6 @@ export interface CameraRig {
   readonly cameraOwner: CameraOwner;
   /** True while an external pose pins the camera (cameraOwner === 'external'). */
   readonly externalActive: boolean;
-  _increasedZoom: boolean;
   readonly cinematicActive: boolean;
   readonly spectateActive: boolean;
   readonly spectateTargetEnt: CameraEntity | null;
@@ -1025,7 +1024,7 @@ export function createCameraRig(
       if (dir > 0 && step === ORBIT_STEPS.length - 1) rig.enterSniper();
       else step = THREE.MathUtils.clamp(step + dir, 0, ORBIT_STEPS.length - 1);
     } else {
-      const zooms = rig._increasedZoom ? SNIPER_ZOOMS_FULL : SNIPER_ZOOMS_BASE;
+      const zooms = deps.getCameraSettings?.()?.increasedZoom ? SNIPER_ZOOMS_FULL : SNIPER_ZOOMS_BASE;
       const i = nearestZoomIndex(rig.zoom, zooms) + dir;
       if (i < 0) rig.exitSniper();
       else rig.zoom = zooms[Math.min(i, zooms.length - 1)];
@@ -1239,7 +1238,6 @@ export function createCameraRig(
     get cameraOwner() { return owner; },
     get externalActive() { return owner === 'external'; },
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
-    _increasedZoom: false,
     /**
      * True while the battle-open flyby drives the camera. The rig owns the
      * cinematic LETTERBOX bars itself (setLetterbox); main.ts reads this flag

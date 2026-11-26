@@ -25,6 +25,7 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { uniqueIds } from './id-list.mjs';
 import { waitForBootLoaded } from './game-readiness.mjs';
+import { galleryHref } from '../src/game/tankIdBoundaries.ts';
 
 const arg = (name, fallback = '') => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const plan = (arg('plan') || `${arg('side', 'before')}:${arg('part', 'desk')}`).split(',').filter(Boolean)
@@ -139,7 +140,7 @@ async function captureItem({ side, part }, ids) {
     await page.close();
     return;
   }
-  await page.goto(`${base}/gallery?id=${ids[0]}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.goto(`${base}${galleryHref(ids[0])}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 240000, polling: 250 });
   const api = (fn, ...a) => page.evaluate(fn, ...a);
   const anatomy = await api(() => typeof window.__TANK_GALLERY.waitAnatomyReady === 'function');

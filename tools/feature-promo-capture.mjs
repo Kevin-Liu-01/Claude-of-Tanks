@@ -710,8 +710,9 @@ try {
   await delay(1_200);
   await recordStudioCanvas(page, 'studio');
 
-  // Gallery: keep the recurring public-facing hero on M1A2 Abrams SEPv2.
-  await goto(page, '/gallery?id=m1a2_sepv2');
+  // Gallery: keep the recurring public-facing hero on the model it has always shown (schema-1 m1a2_sepv2, named the
+  // M1A1 Abrams AIM since the 2026-10-13 rename).
+  await goto(page, '/gallery?id=m1a1_abrams_aim&ids=4');
   await page.waitForFunction(
     "document.querySelector('#autoRotate') && document.querySelector('canvas')",
     { timeout: 180_000 },
