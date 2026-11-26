@@ -241,6 +241,10 @@ interface FactoryGunSpec extends FleetGunSpec {
 }
 
 /** Missile mouths follow elevation but never cannon recuperation. */
+/** A visual ERA cluster named in the gameplay plates' own form (turret_era_L, side_era_R): it must name one of its owner's
+ *  plates (278, the bmpt_t90 station). Builders' descriptive cluster names (hyphenated) never take this form. */
+const PLATE_NAMED_ERA_CLUSTER = /^[a-z0-9]+(?:_[a-z0-9]+)*_era_[LR]$/;
+
 function createLauncherTips(gun: THREE.Group, turret: THREE.Group, muzzles: FactoryGunSpec['launcherMuzzles']): THREE.Object3D[] {
   return (muzzles ?? []).map((position, index) => {
     const tip = new THREE.Object3D();
@@ -9338,6 +9342,11 @@ function* buildTankCoreSteps(
     if (!liveExternalParts[owner].has(part)) return null;
     if (/cage|slat|screen|net/i.test(sector)) return null;
     if (destructiblePartCluster.has(part)) return null;
+    // 278: a cluster named in the gameplay plates' own form (<zone>_era_L/R) binds that plate or fails: no fallback to the
+    // family rules below, which would hand its parts to whatever plate sits nearest
+    if (PLATE_NAMED_ERA_CLUSTER.test(sector) && !gameplayEraByOwner[owner].some((plate) => plate.name === sector)) {
+      throw new Error(`${specId}: visual ERA cluster ${sector} names no ${owner} ERA plate`);
+    }
     const candidates = gameplayEraByOwner[owner];
     if (!candidates.length) return null;
     if (!part.boundingBox) part.computeBoundingBox();
@@ -9357,6 +9366,13 @@ function* buildTankCoreSteps(
   ): GameplayEraPlate[] => {
     const { sector, owner, center } = record;
     let { candidates } = record;
+    // 278: a visual cluster named for one of its owner's gameplay plates binds that plate. The BMPT T-90 station's
+    // glacis bricks (bmptT90Station.ts turret_era_L/R, x +-0.585, z .40/.56) sat where the cheek rule below reads a flank,
+    // so they bound side_era and the turret_era plates fitted nothing (274's plate fits dropped them). Only that station
+    // names its clusters after plates; every other builder's cluster names are descriptive and never equal a plate's
+    // (prepareVisualEraPart has already refused a plate-named cluster with no plate).
+    const named = candidates.find((plate) => plate.name === sector);
+    if (named) return [named];
     const narrow = (pattern: RegExp): void => {
       candidates = narrowEraCandidates(candidates, pattern);
     };
