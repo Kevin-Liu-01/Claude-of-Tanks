@@ -44,6 +44,7 @@ import { prefersReducedMotion } from './accessibilityPreferences.ts';
 import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
 import { EVENT_HOLD_MS } from './battleNoticeEvents.ts';
 import type { NoticeArtId } from './components/noticeArt.ts';
+import { minimapBearingDegrees } from './minimapOrientation.ts';
 
 interface Point { x: number; y: number; z: number }
 
@@ -305,7 +306,9 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
       setText(kindName, t(`airSupport.kind.${kind}`));
       setText(range, `${Math.round(rangeM)} m`);
-      setText(bearing, `${String(Math.round(((strikeView.heading * 180 / Math.PI) + 360) % 360)).padStart(3, '0')}°`);
+      // the run's bearing as the north-up map reads it, clockwise from map-up (world +X is map-left: the raw yaw counted
+      // the other way, a run drawn map-right read 270°; map-icon-heading-278)
+      setText(bearing, `${String(minimapBearingDegrees(strikeView.heading)).padStart(3, '0')}°`);
       // (whether a press would be taken, for the glyph's dim: the order's own state is the air lane's plate)
       setData(binoculars, 'state', why ? PLATE_STATE[why] : 'ready');
       setText(lowerKey, keyX);
