@@ -12,6 +12,7 @@ import { createGameState } from '../stateCore.ts';
 import { pickNationalBattle, seatRecordedRoster, spawnTanks } from '../rosterState.ts';
 import { battleRosterPlan } from '../soloRosterPlan.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { teamNationsFlags } from '../../sim/teamNations.ts';
 import { runRecordedSetup } from './replaySetup.ts';
 
 const PLAYER = 'm1a3';
@@ -90,6 +91,13 @@ assert.ok(noted > 0, 'a recorded draw carries a planner note');
   const options = runRecordedSetup(game, header, (playerSpecId, recorded) => { assert.equal(playerSpecId, PLAYER); return recorded; });
   assert.equal(key(options.recordedRoster), key(roster));
   assert.equal(options.recordedTeamNations, cases[0].teamNations, 'and its TEAM NATIONS record');
+  // a 277 file's header has no record: setup seats none (a release refuses such a file on its digest first;
+  // replayRoundTrip plays one on a dev build), and the load card and HUD read no nations from it, as a RANDOM battle's
+  const { teamNations: _none, ...header277 } = header;
+  const old = runRecordedSetup({}, header277, (_playerSpecId, recorded) => recorded);
+  assert.equal(old.recordedTeamNations, null, 'a 277 header hands setup no record');
+  assert.equal(seatRecordedRoster(pool(655843608), PLAYER, roster, old.recordedTeamNations)?.record, null, 'and the roster seats with none');
+  assert.equal(teamNationsFlags(null), null, 'which shows no nations');
   assert.equal(game.rosterSeed, 655843608);
 }
 
