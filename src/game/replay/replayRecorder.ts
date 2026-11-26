@@ -8,8 +8,8 @@
  *    localStorage value read while setting up or stepping (the loadout, difficulty, arrangement, brains, paint,
  *    consumables). The replayer serves those back, so setup itself does not change;
  *  - each fixed step: `beforeStep` stages the seat (sim/seatControl.ts: the controls the frame wrote, as integers, written
- *    back as the step reads them) and appends them to the SEATS stream; `afterStep` notes a hull's contact footprint
- *    the step published (a visual streamed in) and seals a checksum every REPLAY_CHECKSUM_EVERY steps;
+ *    back as the step reads them) and appends them to the SEATS stream; `afterStep` seals a checksum every
+ *    REPLAY_CHECKSUM_EVERY steps (no drawn footprint: since 275 every driver's movement reads the spec's receipt);
  *  - the seat's discrete actions: `wrapRules` around game/playerBattleActions.ts's rules port and its `recordSeatWrite`;
  *  - the battle's own actions: `wrapBattleRules` around the solo runtime's calls that change it between steps (a training
  *    cue, its checkpoint and end, the proving ground's reset and moving targets: battleActions.ts);
@@ -27,24 +27,6 @@ import { PREVIOUS_SHELL_SLOT, wrapRecordedRules } from './seatActions.ts';
 import { wrapBattleRules } from './battleActions.ts';
 import { createReplayTrace, type ReplayTrace, type ReplayTraceExport } from './replayTrace.ts';
 
-/** A footprint as state.ts validatedContactGeometry leaves it. */
-export interface ReplayFootprint {
-  halfLenM: number;
-  halfWidM: number;
-  zCenterM: number;
-  bottomYM: number;
-  panYM: number | null;
-  endRise: { dzM: number; frontM: number; rearM: number } | null;
-}
-
-export const FOOTPRINT_ACTION = 'footprint';
-
-/** The footprint's numbers in a recorded action's order, after the hull's roster index. */
-export function footprintArgs(index: number, geom: ReplayFootprint): Array<number | null> {
-  return [index, geom.halfLenM, geom.halfWidM, geom.zCenterM, geom.bottomYM, geom.panYM ?? null,
-    geom.endRise ? geom.endRise.dzM : null, geom.endRise ? geom.endRise.frontM : null, geom.endRise ? geom.endRise.rearM : null];
-}
-
 interface RecorderHull extends Omit<SeatControlEntity, 'state'> {
   id: string;
   specId: string;
@@ -53,7 +35,6 @@ interface RecorderHull extends Omit<SeatControlEntity, 'state'> {
   bot?: boolean;
   combat: { hp: number; destroyed?: boolean } | null;
   state: { pos: { x: number; y: number; z: number }; yaw: number; speed: number; turretYaw: number; gunPitch: number } | null;
-  contactGeom?: ReplayFootprint | null;
   specialAction?: object | null;
 }
 
@@ -103,8 +84,8 @@ export interface ReplayRecorder {
   /** A diagnostic: the next battle set up also keeps a divergence trace (replayTrace.ts). Off by default. */
   trace: boolean;
   /**
-   * A diagnostic: the recorder's own per-step work (each seat staged, a step written, the footprint scan, a 600th of a
-   * checksum) run `iterations` times on the live battle into scratch, the battle and the recording untouched; the
+   * A diagnostic: the recorder's own per-step work (each seat staged, a step written, a 600th of a checksum)
+   * run `iterations` times on the live battle into scratch, the battle and the recording untouched; the
    * milliseconds one step costs. tools/replay-browser-check.mjs times it in blocks, as Chrome's coarse clock cannot time
    * one step.
    */
@@ -133,7 +114,6 @@ const MARKED_EVENTS = new Set(['tank:destroyed', 'shell:hit', 'tank:fire', 'tank
 const record = (value: unknown): Record<string, RuntimeValue> => (value && typeof value === 'object' ? value as Record<string, RuntimeValue> : {});
 const str = (value: RuntimeValue | undefined): string => (typeof value === 'string' ? value : '');
 const round2 = (value: number): number => Math.round(value * 100) / 100;
-let probeChanges = 0;
 
 interface StorageLike { getItem(key: string): string | null }
 
@@ -155,7 +135,6 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
   let actions: ReplayAction[] = [];
   let events: ReplayEventMark[] = [];
   let checksums: Array<[number, string]> = [];
-  let footprints = new Map<RecorderHull, ReplayFootprint | null>();
   let rosterIndex = new Map<RecorderHull, number>();
   let stagedAtTick: number | null = null;
   let trace: ReplayTrace | null = null;
@@ -179,7 +158,7 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
 
   function reset(): void {
     game = null; header = null; seats = []; controls = []; stream = null; actions = []; events = []; checksums = [];
-    footprints = new Map(); rosterIndex = new Map(); stagedAtTick = null; pendingSetup = null; unsupported = false;
+    rosterIndex = new Map(); stagedAtTick = null; pendingSetup = null; unsupported = false;
     trace = null; traceBegun = false;
     reads.clear(); tapping = false;
   }
@@ -192,16 +171,6 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
     }
     return -1;
   };
-
-  function noteFootprints(): void {
-    if (!game) return;
-    for (const hull of game.tanks) {
-      const geom = hull.contactGeom ?? null;
-      if (footprints.get(hull) === geom) continue;
-      footprints.set(hull, geom);
-      if (geom) actions.push({ tick: game.tick, seat: -1, kind: FOOTPRINT_ACTION, args: footprintArgs(rosterIndex.get(hull) ?? -1, geom) as number[] });
-    }
-  }
 
   const recorder: ReplayRecorder = {
     get active() { return !!stream; },
@@ -220,8 +189,6 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
           }
         }
         scratchStream.writeStep(scratchControls);
-        // the footprint scan as afterStep makes it (the count only keeps the comparison from being optimised away)
-        for (const hull of game.tanks) if (footprints.get(hull) !== (hull.contactGeom ?? null)) probeChanges++;
         if (n % REPLAY_CHECKSUM_EVERY === 0) replayStateDigest(game);
       }
       return (clock() - started) / iterations;
@@ -275,8 +242,6 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
         teamNations: recordedTeamNations(battle.teamNations),
         seats: seats.map((hull) => hull.id),
       };
-      footprints = new Map(battle.tanks.map((hull) => [hull, null]));
-      noteFootprints();
       pendingSetup = null;
       trace = recorder.trace ? createReplayTrace() : null;
     },
@@ -301,7 +266,6 @@ export function createReplayRecorder({ storageProto = typeof Storage === 'undefi
     afterStep() {
       if (!stream || !game) return;
       tapping = false;
-      noteFootprints();
       if (game.tick % REPLAY_CHECKSUM_EVERY === 0) checksums.push([game.tick, replayStateDigest(game)]);
       trace?.afterStep(game as never);
     },

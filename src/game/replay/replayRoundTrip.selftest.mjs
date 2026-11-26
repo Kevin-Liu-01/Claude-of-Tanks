@@ -1,8 +1,8 @@
 // A solo battle recorded and replayed (replay-system-275, docs/REPLAY.md §1-§4): the page's own setup and step, the
 // recorder's taps as main.ts wires them (the seat stage before each step, the rules port, the bus), and the replayer
 // stepping the recording alone on a fresh world. Must match: every checksum, the final digest, the step count and the
-// kills. Exercises what the page does besides the controls: a footprint streamed in mid-battle (a bot's visual
-// arriving), a shell selection, a consumable, a stored difficulty and loadout read through localStorage.
+// kills. Exercises what the page does besides the controls: a drawn footprint streamed in mid-battle (a bot's visual
+// arriving; since 275 no driver reads it, so nothing is recorded), a shell selection, a consumable, a stored difficulty and loadout read through localStorage.
 // Negative control: one seat control's throttle one unit off at step 500 is caught at the next checksum.
 // Then a training battle the tutorial changes between steps (battleActions.ts): whenSeen Sentry 3 cued, a checkpoint, the
 // chapter's end, replayed round for round; the recording without its cue parts from the battle (its control).
@@ -143,7 +143,7 @@ async function recordBattle() {
       if (tick === 300) rules.selectShell(player.combat, 1, player.spec);
       if (tick === 640) rules.selectShell(player.combat, 0, player.spec);
       if (tick === 900) rules.useSoloConsumable(player, bus, 0, game.timeS);
-      // a bot's visual streams in: its measured footprint published on its next step
+      // a bot's visual streams in with its measured footprint: the step reads the spec's receipt, never the drawn one (275)
       if (tick === 120 && bot.visual) bot.visual.contactGeom = FOOTPRINT;
       recorder.beforeStep();
       simStep(game, bus, world, null, collider);
@@ -183,7 +183,7 @@ const recording = decodeReplay(live.finished.bytes);
 assert.equal(recording.header.setup.storage['cot.settings.v1'], JSON.stringify({ aiDifficulty: 'hard' }), 'the stored difficulty setup read is kept');
 assert.ok(recording.actions.some((a) => a.kind === 'selectShell') && recording.actions.some((a) => a.kind === 'useSoloConsumable'),
   'the shell selections and the consumable are kept as seat actions');
-assert.ok(recording.actions.some((a) => a.kind === 'footprint' && a.tick > 100), 'the streamed footprint is kept at its step');
+assert.ok(!recording.actions.some((a) => a.kind === 'footprint'), 'a drawn footprint streamed in is no action: no driver reads it (275)');
 assert.equal(recording.seatSteps.length, TICKS, 'one seat row per step');
 assert.equal(recording.checksums.length, TICKS / 600, 'a checksum every 600 steps');
 // (replay-notes-278) the TEAM NATIONS record is kept with the roster, the planner's fill notes and all: this battle's draw
@@ -362,7 +362,7 @@ function replayTraining(recording, sentryId) {
 const training = await recordTraining();
 mark('training recorded');
 const trainingRecording = decodeReplay(training.finished.bytes);
-const battleActions = trainingRecording.actions.filter((action) => action.seat === -1 && action.kind !== 'footprint');
+const battleActions = trainingRecording.actions.filter((action) => action.seat === -1);
 assert.deepEqual(battleActions.map((action) => action.kind), ['cueTrainingActor', 'setTrainingCheckpoint', 'finishTrainingBattle'],
   'the cue, the checkpoint and the end are kept as the battle\'s own actions');
 assert.deepEqual([battleActions[0].key, battleActions[0].args, battleActions[0].tick], ['sentry3', [1], 61], 'the cue keeps its actor and its step');
