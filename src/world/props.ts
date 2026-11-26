@@ -247,6 +247,8 @@ import {
 } from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
+import { wreckFactsBakeKey, wreckPlacementKey, wreckStandInGeometry, type WreckBakeFacts, type WreckFactsTable } from './wreckBakeFacts.ts';
+import type { DeferredWreckHulk, DeferredWreckPlan } from './deferredWrecks.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { WRECK_SPAWN_CLEAR_M, WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, wreckLook, type WreckSite, type WreckState } from './wreckStates.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -309,6 +311,8 @@ import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
 import { AppearanceLedger } from './maps/regional/appearance.ts';
 
+/** (wreck-bake-after-reveal-278) A bake as placement reads it: the bake itself, or its recorded facts (no geometry). */
+type PlacedWreckBake = WreckBakeFacts & { geo?: THREE.BufferGeometry; shadowGeo?: THREE.BufferGeometry | null };
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -1054,6 +1058,9 @@ export interface PropsBuildSlice {
   progress?: boolean;
   tankBuilder?: string;
   wreckBake?: { specId: string; options: { seed: number; state: WreckState; remnant?: number }; result: WreckBake | null };
+  /** (wreck-bake-after-reveal-278) a hulk placed from its bake: its seat's key and drawn footprint (tools/wreck-bake-plan.mjs
+   *  records them, wreckBakeFacts.ts) */
+  wreckPlaced?: { key: string; drawn: CollisionRecord | null };
   /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
   /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
@@ -4329,8 +4336,11 @@ export function createProps(
   seed = 2002,
   cfg: PropsMapConfig | null = null,
   vegetation: FisheryVegetation | null = null,
+  /** (wreck-bake-after-reveal-278, its receipts) place the hulks from these facts, as a browser build with a worker does;
+   *  a request they do not hold places no hulk here (nothing answers it) */
+  wreckFacts: WreckFactsTable | null = null,
 ): PropsRuntime {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckFacts !== null, {}, wreckFacts);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -4353,6 +4363,8 @@ export async function recordWreckBakeRequests(
   cfg: PropsMapConfig | null,
   vegetation: FisheryVegetation | null,
   bake: (specId: string, options: { seed: number; state: WreckState }) => Promise<WreckBake | null>,
+  /** (wreck-bake-after-reveal-278) each placed hulk's seat key and drawn footprint, for the wreck facts */
+  onPlaced: ((key: string, drawn: CollisionRecord | null) => void) | null = null,
 ): Promise<WreckBakeRequestRecord[]> {
   const requests: WreckBakeRequestRecord[] = [];
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
@@ -4364,6 +4376,7 @@ export async function recordWreckBakeRequests(
         requests.push({ specId: request.specId, seed: request.options.seed, state: request.options.state });
         request.result = await bake(request.specId, request.options);
       }
+      if (r.value?.wreckPlaced) onPlaced?.(r.value.wreckPlaced.key, r.value.wreckPlaced.drawn);
       if (r.value?.stage === 'wrecks-finalized') break;
       r = g.next();
     }
@@ -4392,6 +4405,8 @@ export async function createPropsAsync(
   vegetation: FisheryVegetation | null = null,
   wreckPrefetch: WreckBakePrefetch | null = null,
   surfacePrefetch: SurfacePaintPrefetch | null = null,
+  /** (wreck-bake-after-reveal-278) the map's recorded wreck facts (map.ts loads them beside the terrain) */
+  wreckFacts: WreckFactsTable | null = null,
 ): Promise<PropsRuntime> {
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
@@ -4400,7 +4415,7 @@ export async function createPropsAsync(
   const sourceAbort = new AbortController();
   const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
     propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null,
-      { worker: true, signal: sourceAbort.signal });
+      { worker: true, signal: sourceAbort.signal }, wreckFacts);
   const slices: Array<{ stage: string; ms: number }> = [];
   const awaitTimings: PropsBuildDetail['awaitTimings'] = {
     clock: 'performance.now',
@@ -4476,7 +4491,8 @@ export async function createPropsAsync(
     // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
     // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
     // builders up front
-    if (!wreckPrefetch) wreckWorker?.prepare();
+    // (wreck-bake-after-reveal-278) nor with the map's facts: its hulks bake after the reveal (deferredWrecks.ts)
+    if (!wreckPrefetch && !wreckFacts) wreckWorker?.prepare();
     while (!r.done) {
       // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
       assertNoBuildScopeOpen('props build');
@@ -4676,6 +4692,9 @@ function* propsBuildSteps(
   vegetation: FisheryVegetation | null,
   workerWrecks = false,
   sourceApplication: SourcedTextureApplicationOptions = {},
+  /** (wreck-bake-after-reveal-278) the map's recorded wreck facts: with a worker, its hulks place from them and bake after
+   *  the reveal (wreckBakeFacts.ts); null bakes them here as before */
+  wreckFacts: WreckFactsTable | null = null,
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
   const P = resolvePropsSettings(cfg);
   const mapId = cfg ? cfg.id : 'verdant';
@@ -9287,9 +9306,17 @@ function* propsBuildSteps(
   const wreckDrawnFootprints: CollisionRecord[] = [];
   /** (sealed lane) A placed wreck piece's drawn footprint: the convex hull in plan of its vertices over `over` m above the
    *  hulk's seat, with its height, for the parked vehicles' seat passes (crushableFootprints). */
-  function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): void {
+  function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): CollisionRecord | null {
     const record = drawnPlanRecord([geo], y, over);
     if (record) wreckDrawnFootprints.push(record);
+    return record;
+  }
+  /** (wreck-bake-after-reveal-278) A hulk's drawn footprint as its facts recorded it for its seat (a copy: the facts are
+   *  the module's, shared by every build). */
+  function pushRecordedWreckFootprint(record: CollisionRecord | null): CollisionRecord | null {
+    const copy = record ? structuredClone(record) : null;
+    if (copy) wreckDrawnFootprints.push(copy);
+    return copy;
   }
   function* placeTankWrecks(): Generator<PropsBuildSlice, void, void> {
     const wCfg = P.tankWrecks || null;
@@ -9313,7 +9340,14 @@ function* propsBuildSteps(
       // on main's draw, on its beats and roads, under main's budget, without the lane's spawn floor and view rules
       const baseWrecks = wCfg?.base === true;
       const placedBakes: Array<{ key: string; specId: string; state: WreckState; x: number; z: number }> = [];
-      const bakeCache = new Map<string, WreckBake | null>(); // specId|state -> bake result
+      const bakeCache = new Map<string, PlacedWreckBake | null>(); // specId|state -> bake result (or its recorded facts)
+      const bakeOptions = new Map<string, { seed: number; state: WreckState; remnant: number }>(); // specId|state -> options
+      // (wreck-bake-after-reveal-278) with a worker and the map's recorded facts, a hulk places from its facts and draws a
+      // stand-in; these are the hulks to bake after the reveal (deferredWrecks.ts), and their stand-ins
+      const useFacts = workerWrecks && wreckFacts !== null;
+      const deferredHulks: DeferredWreckHulk[] = [];
+      const standInGeos: THREE.BufferGeometry[] = [];
+      const standInShadowGeos: THREE.BufferGeometry[] = [];
       // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
       // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
       // met a BMP-3 4.8 m past its 73-degree corner on the causeway; no other map had a hulk within 10 m of one.
@@ -9329,30 +9363,35 @@ function* propsBuildSteps(
       const WRECK_TRIS_BUDGET = baseWrecks ? 300000 : 640000;
       let wreckSerial = 0;
       let wreckPickSerial = 0;
-      function* bakeFor(specId: string, state: WreckState): Generator<PropsBuildSlice, WreckBake | null, void> {
+      function* bakeFor(specId: string, state: WreckState): Generator<PropsBuildSlice, PlacedWreckBake | null, void> {
         const key = `${specId}|${state}`;
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
         // the map-vehicles lane (P4): the paint this map's tanks wore survives in patches on the burnt hull
         const options = { seed: seed + bakeCache.size * 131, state, remnant: wreckRemnantPaint(mapId) };
-        let baked: WreckBake | null;
-        if (workerWrecks) {
-          const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };
-          try {
-            yield { fine: true, progress: false, stage: `wreck-${specId}:worker`, wreckBake: request };
-            baked = request.result;
-            request.result = null; // cache below becomes the sole owner
-          } finally {
-            // A cancelled tick may close us after transfer but before next().
-            if (request.result) {
-              disposeWreckGeometry(request.result.geo);
-              if (request.result.shadowGeo) disposeWreckGeometry(request.result.shadowGeo);
-            }
-          }
-        } else {
-          baked = yield* bakeTankWreckSteps(engineCtx, specId, options);
-        }
+        bakeOptions.set(key, options);
+        // (wreck-bake-after-reveal-278) the bake's recorded facts, when the map holds them: no bake before the reveal
+        const facts = useFacts ? wreckFacts!.bakes[wreckFactsBakeKey(specId, options.seed, state)] : undefined;
+        const baked: PlacedWreckBake | null = facts ?? (yield* bakeWreckNow(specId, options));
         bakeCache.set(key, baked);
         return baked;
+      }
+      /** A bake now: the worker's (through the async build) or, without one, here. */
+      function* bakeWreckNow(specId: string, options: { seed: number; state: WreckState; remnant: number }):
+        Generator<PropsBuildSlice, WreckBake | null, void> {
+        if (!workerWrecks) return yield* bakeTankWreckSteps(engineCtx, specId, options);
+        const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };
+        try {
+          yield { fine: true, progress: false, stage: `wreck-${specId}:worker`, wreckBake: request };
+          const baked = request.result;
+          request.result = null; // the caller's cache becomes the sole owner
+          return baked;
+        } finally {
+          // A cancelled tick may close us after transfer but before next().
+          if (request.result) {
+            disposeWreckGeometry(request.result.geo);
+            if (request.result.shadowGeo) disposeWreckGeometry(request.result.shadowGeo);
+          }
+        }
       }
       /**
        * (wrecks-270) The donor and state for a hulk at (x, z) on `site`: the cast's donors in turn from the pick serial,
@@ -9414,7 +9453,7 @@ function* propsBuildSteps(
         return true;
       }
       /** The seat a hulk takes near (x, z) at `yaw`, or null where it may not stand; `exact`: at (x, z) or nowhere. */
-      function seatWreck(baked: WreckBake, x: number, z: number, yaw: number, exact: boolean):
+      function seatWreck(baked: PlacedWreckBake, x: number, z: number, yaw: number, exact: boolean):
         { x: number; z: number; yaw: number; support: WreckSupport } | null {
         // The hulk's placement footprint (wrecks.ts placeHx/placeHz: its burnt-away camouflage suit keeps the seat it
         // always had, so every map seats its hulks where it did; hx/hz are the visible geometry's own envelope).
@@ -9466,27 +9505,50 @@ function* propsBuildSteps(
        * applyMatrix4 recomputes them from the moved positions, so the same bytes). Its own quaternion: a step lets another
        * world build (the Garage's background build beside a deploy's) use the module's.
        */
-      function* commitWreck(specId: string, state: WreckState, baked: WreckBake,
+      function* commitWreck(specId: string, state: WreckState, placed: PlacedWreckBake,
         { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): Generator<PropsBuildSlice, void, void> {
+        let baked = placed;
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         placedBakes.push({ key: `${specId}|${state}`, specId, state, x, z });
         const y = support.y;
         const quat = new THREE.Quaternion().setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
-        const g = baked.geo.clone();
-        wreckGeos.push(g); // (a cancelled build's dispose reaches it between the steps)
-        const box = g.boundingBox !== null, sphere = g.boundingSphere !== null;
-        g.boundingBox = null; g.boundingSphere = null;
-        g.rotateY(yaw);
-        yield { fine: true };
-        g.applyQuaternion(quat);
-        yield { fine: true };
-        if (box) g.boundingBox = new THREE.Box3();
-        if (sphere) g.boundingSphere = new THREE.Sphere();
-        g.translate(x, y, z); // settled on dead suspension across its whole footprint
+        // (wreck-bake-after-reveal-278) the hulk's drawn footprint as recorded for this exact seat, when it places from
+        // its facts; a seat the facts do not hold bakes the hulk now and reads its geometry, as before
+        const options = bakeOptions.get(`${specId}|${state}`)!;
+        const placementKey = wreckPlacementKey(wreckFactsBakeKey(specId, options.seed, state), x, y, z, yaw,
+          support.normalX, support.normalY, support.normalZ);
+        let recordedDrawn: CollisionRecord | null | undefined;
+        if (!baked.geo) {
+          recordedDrawn = Object.hasOwn(wreckFacts!.drawn, placementKey) ? wreckFacts!.drawn[placementKey] : undefined;
+          if (recordedDrawn === undefined) {
+            const now = yield* bakeWreckNow(specId, options);
+            if (now) { baked = now; bakeCache.set(`${specId}|${state}`, now); }
+          }
+        }
+        const standIn = baked.geo ? null : wreckStandInGeometry(baked.solids);
+        const g = baked.geo ? baked.geo.clone() : standIn;
+        if (g) {
+          if (baked.geo) wreckGeos.push(g); // (a cancelled build's dispose reaches it between the steps)
+          else standInGeos.push(g);
+          const box = g.boundingBox !== null, sphere = g.boundingSphere !== null;
+          g.boundingBox = null; g.boundingSphere = null;
+          g.rotateY(yaw);
+          yield { fine: true };
+          g.applyQuaternion(quat);
+          yield { fine: true };
+          if (box) g.boundingBox = new THREE.Box3();
+          if (sphere) g.boundingSphere = new THREE.Sphere();
+          g.translate(x, y, z); // settled on dead suspension across its whole footprint
+        }
         // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
-        pushWreckDrawnFootprint(g, y, 0.3);
-        yield { fine: true };
+        const drawn = baked.geo ? pushWreckDrawnFootprint(g!, y, 0.3) : pushRecordedWreckFootprint(recordedDrawn ?? null);
+        if (!baked.geo) {
+          deferredHulks.push({ specId, options, yaw, quaternion: [quat.x, quat.y, quat.z, quat.w], position: [x, y, z], standIn: g });
+          if (g) standInShadowGeos.push(g.clone());
+        }
+        // (tools/wreck-bake-plan.mjs records each seat's drawn footprint from the bake: wreckBakeFacts.ts)
+        yield { fine: true, ...(baked.geo ? { wreckPlaced: { key: placementKey, drawn } } : {}) };
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
         // read without adding draw calls, animation, or live vehicle state.
@@ -9798,6 +9860,7 @@ function* propsBuildSteps(
         return best;
       }
       function finalizeWreckMeshes(): void {
+        finalizeDeferredWrecks();
         if (wreckGeos.length === 0) return;
         const wm = new THREE.Mesh(mergeWreckGeometries(wreckGeos), mats.baked);
         wm.name = 'tank-wrecks';
@@ -9824,10 +9887,77 @@ function* propsBuildSteps(
           disposePlacedWreckGeometries(wreckShadowGeos);
         }
       }
+      /**
+       * (wreck-bake-after-reveal-278) The hulks placed from their facts: their stand-ins in one mesh of their own (and their
+       * shadow), and the plan deferredWrecks.ts bakes after the reveal and swaps into that mesh. The plan owns the stand-ins
+       * (a bake that fails keeps its hulk's).
+       */
+      function finalizeDeferredWrecks(): void {
+        if (!deferredHulks.length) return;
+        const live = standInGeos.filter((geo) => geo.attributes.position.count > 0);
+        const dm = new THREE.Mesh(live.length ? mergeWreckGeometries(live) : new THREE.BufferGeometry(), mats.baked);
+        dm.name = 'tank-wrecks-deferred';
+        dm.castShadow = false;
+        dm.receiveShadow = true;
+        dm.matrixAutoUpdate = false;
+        group.add(dm);
+        let ds: THREE.Mesh | null = null;
+        if (standInShadowGeos.length > 0) {
+          ds = new THREE.Mesh(mergeGeometries(standInShadowGeos, false), new THREE.MeshBasicMaterial({
+            name: 'TankWreckShadowProxy', colorWrite: false, depthWrite: false,
+          }));
+          ds.name = 'tank-wrecks-deferred-shadow';
+          setShadowCasterProfile(ds, partsShadowProfile(standInShadowGeos));
+          ds.castShadow = true;
+          ds.receiveShadow = false;
+          ds.matrixAutoUpdate = false;
+          markShadowOnly(ds);
+          group.add(ds);
+          disposePlacedWreckGeometries(standInShadowGeos);
+        }
+        const shadowMaterial = ds?.material ?? null;
+        const plan: DeferredWreckPlan = {
+          hulks: deferredHulks.splice(0), mesh: dm, shadow: ds, state: 'pending',
+          focus: [L.spawns.player.x, L.spawns.player.z],
+          setShadowProfile: (mesh, geos) => setShadowCasterProfile(mesh, partsShadowProfile(geos)),
+          // a baked hulk as finalizeWreckMeshes draws the hulks it baked: the props' baked material (the stand-ins' mesh's,
+          // as the assembly left it), no shadow of its own, and the factory's shadow proxy beside it, shadow-only
+          makeHulk: (geo, shadowGeo, matrix, specId) => {
+            const hulk = new THREE.Mesh(geo, dm.material);
+            hulk.name = 'tank-wrecks';
+            hulk.userData.wreckHulk = specId;
+            hulk.castShadow = false;
+            hulk.receiveShadow = true;
+            hulk.matrixAutoUpdate = false;
+            hulk.matrix.copy(matrix);
+            hulk.matrixWorldNeedsUpdate = true;
+            if (!shadowGeo) return [hulk];
+            const caster = new THREE.Mesh(shadowGeo, shadowMaterial ?? new THREE.MeshBasicMaterial({
+              name: 'TankWreckShadowProxy', colorWrite: false, depthWrite: false,
+            }));
+            caster.name = 'tank-wrecks-shadow';
+            caster.castShadow = true;
+            caster.receiveShadow = false;
+            caster.matrixAutoUpdate = false;
+            caster.matrix.copy(matrix);
+            caster.matrixWorldNeedsUpdate = true;
+            // (its profile's sphere in world space: the proxy's own, carried by its pose)
+            if (!shadowGeo.boundingSphere) shadowGeo.computeBoundingSphere();
+            if (!shadowGeo.boundingBox) shadowGeo.computeBoundingBox();
+            const sphere = shadowGeo.boundingSphere!.clone().applyMatrix4(matrix);
+            setShadowCasterProfile(caster, { heightM: shadowGeo.boundingBox!.max.y - shadowGeo.boundingBox!.min.y,
+              spheres: new Float32Array([sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius]) });
+            markShadowOnly(caster);
+            return [hulk, caster];
+          },
+        };
+        group.userData.deferredWrecks = plan;
+        standInGeos.length = 0; // (the plan's now)
+      }
       function disposeWreckBakeCache(): void {
         for (const [key, baked] of bakeCache) {
           bakeCache.delete(key);
-          if (!baked) continue;
+          if (!baked?.geo) continue;
           disposeWreckGeometry(baked.geo);
           if (baked.shadowGeo) disposeWreckGeometry(baked.shadowGeo);
         }
@@ -9858,6 +9988,8 @@ function* propsBuildSteps(
         disposeWreckBakeCache();
         disposePlacedWreckGeometries(wreckGeos);
         disposePlacedWreckGeometries(wreckShadowGeos);
+        disposePlacedWreckGeometries(standInGeos);
+        disposePlacedWreckGeometries(standInShadowGeos);
       }
     }
   }

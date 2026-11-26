@@ -819,6 +819,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/world/waterMobility.selftest.mjs',
     'src/world/workedGroundMask.selftest.mjs',
     'src/world/worldBuildLazyKits.selftest.mjs',
+    'src/world/wreckBakeFacts.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
     'src/world/wreckCollision.selftest.mjs',

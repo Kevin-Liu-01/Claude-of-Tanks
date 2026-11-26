@@ -18,13 +18,18 @@
 //   node tools/wreck-bake-plan.mjs --record --tier=desktop|mobile --maps=<ids>   one child: a PLAN line per map and terrain
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 import { isMainModule } from './map-probe-runtime.mjs';
 import { betweenBuilds } from './build-loop-yield.mjs';
+import { exactJson } from '../src/world/wreckBakeFacts.ts';
 
 const PLAN_FILE = new URL('../src/world/maps/wreckBakePlan.ts', import.meta.url);
+/** (wreck-bake-after-reveal-278) the wreck facts: one module a map and their index */
+const FACTS_DIR = new URL('../src/world/maps/wreckBakeFacts/', import.meta.url);
+const FACTS_INDEX = new URL('index.ts', FACTS_DIR);
+const factsFile = (mapId) => new URL(`${mapId}.ts`, FACTS_DIR);
 const SELF = fileURLToPath(import.meta.url);
 /** The plan's keys per map: the desktop rows and the three variants. */
 export const WRECK_PLAN_VARIANTS = Object.freeze(['desktop', 'mobile', 'assault', 'assault-mobile']);
@@ -103,10 +108,11 @@ async function recordTier(tier, ids) {
       if (saved === undefined) delete globalThis.window; else globalThis.window = saved;
     }
   }
-  const [mapsMod, terrain, vegetation, props, fleet, models, wrecks, wire, quality] = await Promise.all([
+  const [mapsMod, terrain, vegetation, props, fleet, models, wrecks, wire, quality, factsMod] = await Promise.all([
     import('../src/world/maps/index.ts'), import('../src/world/terrain.ts'), import('../src/world/vegetation.ts'),
     import('../src/world/props.ts'), import('../src/vehicles/fleetFactory.ts'), import('../src/world/propsModelStore.ts'),
     import('../src/world/wrecks.ts'), import('../src/world/wreckBakeWire.ts'), import('../src/engine/quality.ts'),
+    import('../src/world/wreckBakeFacts.ts'),
   ]);
   if (quality.getDeviceTier() !== tier) throw new Error(`the ${tier} child resolved the ${quality.getDeviceTier()} tier`);
   await models.preloadPropModels();
@@ -132,15 +138,25 @@ async function recordTier(tier, ids) {
       const config = assault ? { ...base, assaultTrenches: true } : base;
       const field = terrain.createHeightField(1337, config);
       const flora = await vegetation.createVegetationAsync(field, engine, 2001, config, null, false);
-      const requests = await props.recordWreckBakeRequests(field, engine, 2002, config, flora, bake);
+      // (wreck-bake-after-reveal-278) and what placement read of each bake, and each placed hulk's drawn footprint: the
+      // map's wreck facts (src/world/wreckBakeFacts.ts), from the same bakes through the same wire
+      const facts = { bakes: {}, drawn: {} };
+      const factBake = async (specId, options) => {
+        const result = await bake(specId, options);
+        if (result) facts.bakes[factsMod.wreckFactsBakeKey(specId, options.seed, options.state)] = factsMod.wreckFactsOf(result);
+        return result;
+      };
+      const requests = await props.recordWreckBakeRequests(field, engine, 2002, config, flora, factBake,
+        (key, drawn) => { facts.drawn[key] = drawn; });
       const rows = requests.map((r) => [r.specId, r.seed, r.state]);
       const variant = assault ? (tier === 'mobile' ? 'assault-mobile' : 'assault') : tier;
       console.log(`PLAN ${JSON.stringify({ mapId, variant, rows, ms: Date.now() - t0 })}`);
+      console.log(`FACTS ${factsMod.exactJson({ mapId, variant, facts })}`);
       // Yield to the event loop between worlds (test-speed R9a, 2026-10-16). The whole build chains promises, so without
       // a turn of the loop the dead worlds' buffers were not released: a child's RSS grew by about 130 MB a world (4.3 GB
       // after 33 worlds; four children past the gate pool's 12 GB cap twice in 226). With the turn a child recording
       // all 66 of a tier's worlds stays under 1.6 GB. The recorded rows are the same.
-      await new Promise((resolve) => { setImmediate(resolve); });
+      await betweenBuilds();
     }
   }
 }
@@ -160,7 +176,11 @@ function runChild(tier, ids) {
     child.on('error', reject);
     child.on('close', (code) => {
       if (code !== 0) { reject(new Error(`the ${tier} child for ${ids.join(',')} exited ${code}: ${err.split('\n').filter((l) => !/warning/i.test(l)).slice(-6).join(' | ')}`)); return; }
-      resolve(out.split('\n').filter((l) => l.startsWith('PLAN ')).map((l) => JSON.parse(l.slice(5))));
+      const lines = out.split('\n');
+      resolve({
+        plans: lines.filter((l) => l.startsWith('PLAN ')).map((l) => JSON.parse(l.slice(5))),
+        facts: lines.filter((l) => l.startsWith('FACTS ')).map((l) => JSON.parse(l.slice(6))),
+      });
     });
   });
 }
@@ -175,12 +195,66 @@ async function recordPlan(ids, workers = Math.max(2, Math.min(4, Math.floor(avai
       if (share.length) jobs.push(runChild(tier, share));
     }
   }
-  const recorded = {};
-  for (const lines of await Promise.all(jobs)) for (const p of lines) (recorded[p.mapId] ||= {})[p.variant] = p.rows;
+  const recorded = {}, factParts = {};
+  for (const { plans, facts } of await Promise.all(jobs)) {
+    for (const p of plans) (recorded[p.mapId] ||= {})[p.variant] = p.rows;
+    for (const f of facts) (factParts[f.mapId] ||= []).push(f);
+  }
   for (const mapId of ids) {
     for (const variant of WRECK_PLAN_VARIANTS) if (!recorded[mapId]?.[variant]) throw new Error(`${mapId}@${variant} was not recorded`);
   }
-  return recorded;
+  return { recorded, facts: Object.fromEntries(ids.map((mapId) => [mapId, mergeFacts(mapId, factParts[mapId] ?? [])])) };
+}
+
+/**
+ * (wreck-bake-after-reveal-278) A map's facts: every variant's bakes and placed hulks in one table, sorted by key. A bake
+ * or a seat two variants (or the two tiers) recorded otherwise fails the run: the browser reads one table for all four.
+ */
+export function mergeFacts(mapId, parts) {
+  const bakes = {}, drawn = {};
+  const put = (table, key, value, what) => {
+    const text = exactJson(value);
+    if (key in table && exactJson(table[key]) !== text) throw new Error(`${mapId}: the ${what} ${key} differs between its variants or tiers`);
+    table[key] = value;
+  };
+  for (const { variant, facts } of parts) {
+    for (const [key, value] of Object.entries(facts.bakes)) put(bakes, key, value, `bake (${variant})`);
+    for (const [key, value] of Object.entries(facts.drawn)) put(drawn, key, value, `seat (${variant})`);
+  }
+  const sorted = (table) => Object.fromEntries(Object.keys(table).sort().map((key) => [key, table[key]]));
+  return { bakes: sorted(bakes), drawn: sorted(drawn) };
+}
+
+/** A map's facts module (src/world/maps/wreckBakeFacts/<map>.ts), or null for a map with no hulk. */
+export function renderWreckFacts(mapId, table) {
+  if (!Object.keys(table.bakes).length) return null;
+  return [
+    `// Generated by tools/wreck-bake-plan.mjs — do not edit. ${mapId}'s wreck facts (src/world/wreckBakeFacts.ts): what`,
+    '// placement and collision read of each bake, and each placed hulk\'s drawn footprint by its exact seat.',
+    "import type { WreckFactsTable } from '../../wreckBakeFacts.ts';",
+    `export const WRECK_BAKE_FACTS: WreckFactsTable = JSON.parse(${JSON.stringify(exactJson(table))});`,
+    '',
+  ].join('\n');
+}
+
+function renderFactsIndex(mapIds) {
+  return [
+    '// Generated by tools/wreck-bake-plan.mjs — do not edit. Each map\'s wreck facts (src/world/wreckBakeFacts.ts), one chunk a',
+    '// map, loaded beside its terrain.',
+    "import type { WreckFactsTable } from '../../wreckBakeFacts.ts';",
+    'type WreckFactsModule = { WRECK_BAKE_FACTS: WreckFactsTable };',
+    'export const WRECK_BAKE_FACT_LOADERS: Readonly<Record<string, () => Promise<WreckFactsModule>>> = {',
+    ...[...mapIds].sort().map((id) => `  ${keyText(id)}: () => import('./${id}.ts'),`),
+    '};',
+    '',
+  ].join('\n');
+}
+
+/** The maps the committed facts index names. */
+function committedFactMaps() {
+  try {
+    return [...readFileSync(FACTS_INDEX, 'utf8').matchAll(/^ {2}'?([a-z0-9_]+)'?: \(\) => import/gm)].map((m) => m[1]);
+  } catch { return []; }
 }
 
 if (isMainModule(import.meta.url)) {
@@ -190,9 +264,11 @@ if (isMainModule(import.meta.url)) {
   if (opt.record) {
     if (!['desktop', 'mobile'].includes(opt.tier)) { console.error('--record needs --tier=desktop|mobile'); process.exit(2); }
     await recordTier(opt.tier, ids);
+    // (wreck-bake-after-reveal-278) a pipe is written asynchronously: the FACTS lines are long, so drain before exiting
+    await new Promise((resolve) => { process.stdout.write('', resolve); });
     process.exit(0);
   }
-  const recorded = await recordPlan(ids, opt.workers ? Math.max(2, Number(opt.workers)) : undefined);
+  const { recorded, facts } = await recordPlan(ids, opt.workers ? Math.max(2, Number(opt.workers)) : undefined);
   const fresh = planTables(recorded);
   if (opt.check) {
     const committed = committedTables();
@@ -203,6 +279,14 @@ if (isMainModule(import.meta.url)) {
         if (sameRows(want, have)) console.log(`${mapId}@${variant}: current`);
         else { drifted++; console.log(`${mapId}@${variant}: DRIFTED (committed ${rowsText(have ?? [])}, the tree ${rowsText(want ?? [])})`); }
       }
+    }
+    // (wreck-bake-after-reveal-278) and each map's facts module, byte for byte
+    for (const mapId of ids) {
+      const want = renderWreckFacts(mapId, facts[mapId]);
+      const have = existsSync(factsFile(mapId)) ? readFileSync(factsFile(mapId), 'utf8') : null;
+      const listed = committedFactMaps().includes(mapId);
+      if (want === have && listed === (want !== null)) console.log(`${mapId}@facts: current`);
+      else { drifted++; console.log(`${mapId}@facts: DRIFTED (${have === null ? 'no committed module' : 'the committed module differs from the tree'})`); }
     }
     if (drifted) { console.error(`[wreck-bake-plan] ${drifted} stale: node tools/wreck-bake-plan.mjs --write --maps=<ids>`); process.exit(1); }
     console.error(`[wreck-bake-plan] the committed plan holds (${ids.length} maps, ${WRECK_PLAN_VARIANTS.length} keys each)`);
@@ -218,6 +302,15 @@ if (isMainModule(import.meta.url)) {
       };
     }
     writeFileSync(PLAN_FILE, renderWreckBakePlan(tables));
+    const factMaps = new Set(committedFactMaps());
+    for (const mapId of ids) {
+      const text = renderWreckFacts(mapId, facts[mapId]);
+      if (text) { writeFileSync(factsFile(mapId), text); factMaps.add(mapId); } else {
+        factMaps.delete(mapId);
+        if (existsSync(factsFile(mapId))) unlinkSync(factsFile(mapId));
+      }
+    }
+    writeFileSync(FACTS_INDEX, renderFactsIndex(factMaps));
     console.error(`[wreck-bake-plan] wrote ${Object.keys(tables.plan).length} map(s), ${Object.keys(tables.variants).length} variant row(s)`);
   } else {
     console.log(JSON.stringify(fresh, null, 1));

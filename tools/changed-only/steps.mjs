@@ -364,9 +364,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'browser only: fetches an <img> the page has already loaded (force-cache) to decode its bitmap; the Node world steps load no source image, and texture pixels never reach a wreck plan row or a collision shard',
   },
   'tools/wreck-bake-plan.mjs': {
-    pin: '8fbacf8b8059103e',
+    pin: 'e50c081c9bc3c728',
     reads: [],
-    note: 'spawns itself (--record) per tier: the children run this same closure; reads its own output (the plan) to keep the other maps\' rows and for --check',
+    note: 'spawns itself (--record) per tier: the children run this same closure; reads its own outputs (the plan, and the wreck facts modules and their index: wreck-bake-after-reveal-278) to keep the other maps\' rows and for --check',
   },
 });
 
@@ -741,7 +741,8 @@ export const WORLD_TABLES = Object.freeze({
 
 /** Everything the world steps write. None of it is an input of a world step's key: the tools read their own outputs
  *  only to merge a partial run (the other maps' rows), to keep the index's variants and to --check. */
-export const WORLD_OUTPUTS = Object.freeze(['server/world-collision-manifests', 'src/world/maps/wreckBakePlan.ts']);
+export const WORLD_OUTPUTS = Object.freeze(['server/world-collision-manifests', 'src/world/maps/wreckBakePlan.ts',
+  'src/world/maps/wreckBakeFacts']);
 
 /**
  * World files that reach the fleet through its entry modules, pinned like dynamic reads (sha256/16 of their sorted
@@ -784,7 +785,10 @@ export const WORLD_STEPS = Object.freeze([
     name: 'wreckPlan', universe: 'maps', device: 'cpu', tool: 'tools/wreck-bake-plan.mjs',
     flags: ['--write', '--workers=4'], full: ['--maps=all'], scoped: (list) => [maps(list)],
     check: ['--check', '--maps=all'], checkScoped: (list) => ['--check', maps(list)], checkFlags: ['--workers=4'],
-    outputs: ['wreckPlan'], files: ['src/world/maps/wreckBakePlan.ts'], donors: 'plan', gb: 10, timeoutS: 1800, perIdS: 240,
+    // (wreck-bake-after-reveal-278) and the wreck facts beside the plan, one module a map (src/world/wreckBakeFacts.ts):
+    // written from the same bakes, so they move only when the plan's in-key does
+    outputs: ['wreckPlan'], files: ['src/world/maps/wreckBakePlan.ts', 'src/world/maps/wreckBakeFacts/index.ts'],
+    writes: ['src/world/maps/wreckBakeFacts/*.ts'], donors: 'plan', gb: 10, timeoutS: 1800, perIdS: 240,
   },
   {
     name: 'collision', universe: 'maps', device: 'cpu', tool: 'tools/capture-world-collision-manifests.mjs',

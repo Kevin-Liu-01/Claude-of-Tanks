@@ -347,8 +347,11 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.ok(begin > 0 && end > begin);
   const code = stripTypeScriptTypes(source.slice(begin, end));
   // P4 (the map-vehicles lane): a bake request carries the paint the map's tanks wore (wrecks.ts wreckRemnantPaint)
+  // (wreck-bake-after-reveal-278) without the map's wreck facts: every request goes to the worker as before
   const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry', 'wreckRemnantPaint', 'mapId',
-    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
+    'bakeOptions', 'useFacts', 'wreckFacts', 'wreckFactsBakeKey', 'bakeTankWreckSteps', 'engineCtx',
+    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant',
+    new Map(), false, null, () => assert.fail('no facts key without facts'), () => assert.fail('a worker build bakes on the worker'), {});
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
   const abandoned = bake('xk2_black_panther', 'turret_blown_off');
@@ -373,7 +376,7 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   const result = await f.run(height, engine, 82, config,
     (done, total) => ticks.push([done, total]), true, vegetation);
   assert.equal(result, f.runtime);
-  assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false, f.args[0][6]]]);
+  assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false, f.args[0][6], null]]);
   assert.equal(f.args[0][6].worker, true);
   assert.equal(f.args[0][6].signal.aborted, false);
   // (mp-fixes-277) a fine build reports props.ts propsProgress out of 1000, not its step count out of a fixed 180
@@ -566,7 +569,11 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     L: { spawns: { player: { x: 1e9, z: 1e9 }, enemies: [] } }, WRECK_SPAWN_CLEAR_M: 36,
     // (sealed lane 2026-10-10) a placed hulk's drawn footprint for the parked vehicles' seat passes (props.ts
     // wreckDrawnFootprints): the fixture runs no seat pass
-    pushWreckDrawnFootprint() {},
+    pushWreckDrawnFootprint() { return null; },
+    // (wreck-bake-after-reveal-278) the fixture's bakes are real (geometry in hand): no recorded facts, nothing deferred
+    pushRecordedWreckFootprint() { return null; }, wreckFacts: null, bakeCache: new Map(), workerWrecks: false, engineCtx: {},
+    bakeOptions: { get: () => ({ seed: 2002, state: 'burnt_out', remnant: 0 }) },
+    standInGeos: [], standInShadowGeos: [], deferredHulks: [],
     // nor is it built as a 180-degree pair (2026-10-11, PropsMapConfig.rotationalCentre: no twin hulks)
     P: {},
     // (wrecks-270, Main 11-07) the fixture's map is the lane's own cast, not one reverted whole to base
@@ -1069,7 +1076,7 @@ for (const [operation, stage, next] of [
   const op = source.indexOf(operation), checkpoint = source.indexOf("stage: '" + stage + "'", op);
   assert.ok(op > 0 && checkpoint > op && checkpoint < source.indexOf(next, op), stage);
 }
-assert.match(source, /baked = yield\* bakeTankWreckSteps/, 'headless path still uses the cooperative bake');
+assert.match(source, /if \(!workerWrecks\) return yield\* bakeTankWreckSteps/, 'headless path still uses the cooperative bake');
 assert.match(source, /const baked = yield\* bakeFor\(specId, state\)/);
 assert.match(source, /finally \{[\s\S]*disposeWreckBakeCache\(\);/);
 console.log('propsScheduling.selftest: real wrapper cadence, cleanup, completed-work boundaries and placement-committed wreck selection pass');
