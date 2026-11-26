@@ -740,6 +740,7 @@
     "src/vehicles/authoredPaintCatalog.selftest.mjs": 17000,
     "src/vehicles/auxiliaryRoofGuns.selftest.mjs": 1000,
     "src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs": 1000,
+    "src/vehicles/auxiliaryInventoryCodec.selftest.mjs": 1000,
     "src/vehicles/balanceMatchups.selftest.mjs": 39000,
     "src/vehicles/balancePeerWeighting.selftest.mjs": 1000,
     "src/vehicles/battleDetailLod.selftest.mjs": 15000,

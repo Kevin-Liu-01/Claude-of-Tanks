@@ -103,6 +103,12 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // audit's rounds one to eight over 269, the couch session owner, the hunt and raid checkpoint records and the sealed
 // boot configuration, beside 270's Air Support, ground and buildings tables above; no builder, kit or calibration
 // literal entered: the assertion above holds): the same rule, plus 2 % (8.92 MB).
+// 9.27 MB (9,269,240 B, 523 files) at origin/main 1e7afa12dc (277: the fleet at 313 and 277's thrusters, airframe volumes
+// and landmarks) read red on this bound, which stays. host-fleet-bytes-278 cut the fleet's largest table at its source:
+// the auxiliary inventory went from 488 kB of keyed JSON (each smoke tube and roof gun an object, a variant's launcher set
+// and weapon body repeated) to 103 kB in its compact form (auxiliaryInventoryCodec.ts: each smoke set and weapon body
+// once, mirrored sets halved, exact integers of 1/10000 m, the roof-gun table's bodies shared; every record back exactly):
+// 8.89 MB (8,893,880 B, 524 files); in the built Worker the table goes from 424 kB minified to about 101 kB.
 assert.ok(sourceBytes < 8.92e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.

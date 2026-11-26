@@ -3423,6 +3423,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
     // 2026-10-16 (the perf lane): the roof-gun table's compact form
     'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
+    // host-fleet-bytes-278: the auxiliary inventory's compact form (the host Worker's largest table)
+    'src/vehicles/auxiliaryInventoryCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/touchClimbRelease.selftest.mjs', // 2026-11-02 audit F8: leaving the battle releases a held climb
