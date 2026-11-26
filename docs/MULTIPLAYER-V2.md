@@ -2889,9 +2889,12 @@ every move they list as the old host made it):
   unstamped build, could be elected and read a keyframe written to another shape. `PROTOCOL_VERSION` 18 keeps a 278 tab
   and a 279 tab apart at the HELLO; the layout stamp covers a later release that changes only the authority.
 `authorityStateMigration` censuses `createAuthoritativeMatch`: every `let` and every Map, Set or `create*()` it keeps is
-carried (with the receipt that proves it) or named with its reason. It found two parts still lost to a migration, both on
-the authority's own clock: a crush press under way (up to `CRUSH_PRESS_S`) and the ram pairs' cooldown. They are named
-open.
+carried (with the receipt that proves it) or named with its reason. It found two more parts lost to a migration, both on
+the authority's own clock, and both ride now on the battle clock (`pressAndRamMigration`): a crush press under way
+(`host.crushPresses`, by the record's index in the world's static obstacles, the destroyed list's index; a press began
+on the old host fells the record on its tick on the new) and the ram pairs still cooling (`host.ramPairs`). Only the
+live entries ride: a press past `CRUSH_PRESS_GAP_S` starts over and a pair past `RAM_PAIR_COOLDOWN_S` rams, as with no
+entry, and neither ledger is pruned.
 
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
