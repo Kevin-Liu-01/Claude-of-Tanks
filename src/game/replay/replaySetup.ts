@@ -2,13 +2,13 @@
  * A recording's battle set up again (replay-system, docs/REPLAY.md "Setup is captured"): the one place that turns a
  * header back into the battle its recorder saw. The headless replayer (replayRunner.ts) and the page's viewer
  * (app/replayViewerRuntime.ts) both call it, so the two seat the same roster: the recorded roster itself (seated as
- * recorded, never drawn again: replay-fixes-277), the roster seed, the battle count, the previous battles' bots (Sets on
+ * recorded, never drawn again: replay-fixes-277; with its TEAM NATIONS record as recorded: replay-notes-278), the roster seed, the battle count, the previous battles' bots (Sets on
  * the page, arrays in the file), the debug roster flags and every localStorage value setup read (served by a stand-in for
  * the length of the setup call only) go round the caller's own setupBattle. The caller adds what only it knows (its
  * world, deferred visuals). Node-runnable.
  */
 import type { RuntimeValue } from '../../runtimeTypes.ts';
-import type { ReplayHeader } from '../../sim/replayFormat.ts';
+import type { ReplayHeader, ReplayTeamNations } from '../../sim/replayFormat.ts';
 
 /** The options a recorded setup passes to state.ts setupBattle (the caller adds its own beside them). */
 export interface RecordedSetupOptions {
@@ -19,6 +19,8 @@ export interface RecordedSetupOptions {
   seed?: number;
   /** The recorded roster, seated as recorded (state.ts setupBattle, rosterState.seatRecordedRoster), never drawn again. */
   recordedRoster: readonly { id: string; specId: string; team: string }[];
+  /** The recorded TEAM NATIONS record, seated with the roster (the planner that made it never runs in a replay). */
+  recordedTeamNations: ReplayTeamNations | null;
 }
 
 /** What the page needs to enter the recording's battle before setup runs: its map, the player's tank and the mode. */
@@ -99,6 +101,7 @@ export function runRecordedSetup<TResult>(game: SetupGame, header: ReplayHeader,
     deferOpeningRoutes: options.deferOpeningRoutes === true,
     ...(typeof record.seed === 'number' ? { seed: record.seed } : {}),
     recordedRoster: header.roster.map((entry) => ({ id: entry.id, specId: entry.specId, team: entry.team })),
+    recordedTeamNations: header.teamNations ?? null,
   };
   const releaseStorage = storage === 'call' ? installRecordedStorage(header) : null;
   const root = globalThis as { __DEBUG?: unknown };

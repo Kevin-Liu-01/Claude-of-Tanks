@@ -20,7 +20,7 @@ import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import { battleEnemyNations, battleRosterPlan } from './soloRosterPlan.ts';
 import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
-import { majorityCountry, pickNationalSides, teamNationsSeed, type NationNote, type NationRow } from '../sim/teamNations.ts';
+import { pickNationalSides, teamNationsSeed, type NationNote, type NationRow } from '../sim/teamNations.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import type { SoloNationalMode, SoloNationalPlan } from './soloRosterPlan.ts';
 import { getDeviceTier } from '../engine/quality.ts';
@@ -619,14 +619,15 @@ export interface RecordedRosterSeat {
  * each same-nation repeat rebuilt as the picker built it (`allied:k:spec` / `enemy:k:spec`, pickNationalBattle), with the
  * recorded sides as the ally set. A replay never draws its roster again: the draw shuffles the pool in the order the
  * fleet registered, which a Worker or Node (the replay indexer) does not share with the page that recorded it, so the
- * indexer drew another roster and refused every such replay. The TEAM NATIONS record is read off the sides (each side's
- * majority country) for the load card and the report. Null when an id is unknown or the player's hull is not first.
+ * indexer drew another roster and refused every such replay. The TEAM NATIONS record is the recording's own (the load
+ * card, the HUD and the report read it): rebuilt from the seated sides it lost the planner's fill notes, which only the
+ * draw makes (replay-notes-278). Null when an id is unknown or the player's hull is not first.
  */
 export function seatRecordedRoster(
   game: RosterGameState,
   playerSpecId: string,
   roster: readonly RecordedRosterSeat[],
-  teamNations: 'mono' | 'random' | null,
+  teamNations: BattleTeamNations | null,
 ): { participants: RosterEntity[]; allyIds: Set<string>; record: BattleTeamNations | null } | null {
   const player = game.tankById.get(playerSpecId);
   if (!player || roster[0]?.specId !== playerSpecId) return null;
@@ -641,12 +642,10 @@ export function seatRecordedRoster(
     participants.push(createRosterEntity(seat.specId, seat.id, (repeat[1] === 'allied' ? 8000 : 8500) + k, true));
   }
   const allyIds = new Set(roster.slice(1).filter((seat) => seat.team === 'player').map((seat) => seat.id));
-  const side = (team: string) => participants.filter((_entity, index) => index === 0 ? team === 'player' : roster[index]!.team === team).map(nationRowOf);
-  const record: BattleTeamNations | null = teamNations === 'random'
-    ? { teamNations: 'random', allied: null, enemy: null, notes: [] }
-    : teamNations === 'mono'
-      ? Object.freeze({ teamNations: 'mono', allied: majorityCountry(side('player')), enemy: majorityCountry(side('enemy')), notes: [] })
-      : null;
+  const record: BattleTeamNations | null = teamNations && Object.freeze({
+    teamNations: teamNations.teamNations, allied: teamNations.allied, enemy: teamNations.enemy,
+    notes: Object.freeze(teamNations.notes.map((note) => Object.freeze({ ...note }))),
+  });
   return { participants, allyIds, record };
 }
 
