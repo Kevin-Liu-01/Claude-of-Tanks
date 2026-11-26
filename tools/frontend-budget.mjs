@@ -434,8 +434,16 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   keyboardOwnership.ts (typing-keys-277's isTypingTarget, 318 B brotli; every page that takes keys: game, cn, home,
   //   docs and gallery, +1 request each). game +782 B brotli and +2 requests, cn +960 and +2, entry +141 (both; the
   //   importers' wiring), home +390 and +1, docs +481 and +1, gallery +247 and +1. notFound holds its pin.
-  game: { brotliBytes: 1283049, requests: 161, entryBrotliBytes: 260291 },
-  cn: { brotliBytes: 1332082, requests: 162, entryBrotliBytes: 260291 },
+  // 2026-11-25 (integrator 277, ruled by Main 2026-11-25; hullThrusterPlumes owed to 278): game and cn re-set at the
+  //   release build of integ/277 eed4e02567, attributed per chunk against a 276.1 release build (main 8716c0b1d7):
+  //   game +10,037 B brotli (cn +10,504), +1 request (new cloudLayers +3,057 garage-env-276, hullThrusters +1,418
+  //   thrust-flips-277, portraitFraming +725 notices-polish-277; gone treeSprayAtlas -9,898 and movementDispersion -82);
+  //   decorations +8,980 is Rollup's re-chunking as treeSprayAtlas left the static graph (that set nets about -670 B);
+  //   garageStage +2,679 garage-env-276; i18n catalog +525. Entry +4,419: hullThrusterPlumes.ts +1,787 (thrust-flips-277;
+  //   battle-only, owed lazy to 278), main.ts +1,446 (six merges' wiring), garage-env-276 sky/env bakes about +800,
+  //   gpuResetReport.ts +281 (mobile-gpu-reset-277), modal-layer-277 about +80. Gallery, home, docs and notFound hold.
+  game: { brotliBytes: 1293379, requests: 162, entryBrotliBytes: 265003 },
+  cn: { brotliBytes: 1342879, requests: 163, entryBrotliBytes: 265003 },
   gallery: { brotliBytes: 803331, requests: 87 },
   home: { brotliBytes: 30534, requests: 9 },
   docs: { brotliBytes: 39167, requests: 13 },
