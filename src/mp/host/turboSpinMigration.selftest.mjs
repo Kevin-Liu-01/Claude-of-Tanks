@@ -8,10 +8,13 @@
 //   - the leap's speed and lift ride the row (the dasher's flight matches).
 //   - the air spin's cooldown and the flight's spent dodge run on (flip-boost-276): a second F in the same flight, past
 //     the cooldown, is refused on both hosts.
-// Since thrust-flips-277 the extras carry the spin's rate as well (the turn rides the hull's angular momentum under its
-// thrusters' burn), and a third negative control drops it.
-// Negative controls: the same handoff with the extras' spin dropped leaves the new host's hull hanging mid-flip (the
-// receipt fails without MigrationEntityExtras.airSpin); with the spent dodge dropped the new host takes the second F.
+// Since thrust-flips-277 the spin's rate rides as well (the turn rides the hull's angular momentum under its thrusters'
+// burn), and a third negative control drops it. Since 276 the spin, its rate and the spent dodge ride the hull exact's
+// checkpoint (MigrationEntityExtras.hull); the cooldowns ride the extras' own fields.
+// Negative controls: the same handoff from a keyframe sealed without the spin leaves the new host's hull hanging mid-flip;
+// sealed without the spent dodge, the new host takes the second F. Each is sealed from the old hull with that part
+// cleared for the capture alone (the rows are sealed first, the old host steps on untouched), so it holds whichever
+// field carries the part.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
@@ -70,16 +73,20 @@ function handoff({ dropSpin = false, dropFlipUsed = false, dropRate = false } = 
   const frame = { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
     meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [],
     entities: sim.entities.map((entity) => captureEntityRow(entity, old.wireIdOf(entity.id), era, tick)), shells: [], viewer: null, modeStateJson: null };
+  const turning = flipper.state;
+  assert.ok(Math.abs(turning._spring.pitchV) > 5 && turning._flipUsed === true, 'setup: the flip turns fast (thrust-flips-277: the turn rides its momentum), its dodge spent');
+  // a negative control's keyframe: one part of the spin cleared for the capture alone
+  const held = { axis: turning._airSpinAxis, left: turning._airSpinLeft, pitchV: turning._spring.pitchV, flipUsed: turning._flipUsed };
+  if (dropSpin) { turning._airSpinAxis = 0; turning._airSpinLeft = 0; }
+  if (dropRate) turning._spring.pitchV = 0;
+  if (dropFlipUsed) turning._flipUsed = false;
   const extras = captureEntityExtras(old);
+  turning._airSpinAxis = held.axis; turning._airSpinLeft = held.left; turning._spring.pitchV = held.pitchV; turning._flipUsed = held.flipUsed;
   const flipperExtras = extras.find((entry) => entry.entityId === old.wireIdOf('flipper'));
   const dasherExtras = extras.find((entry) => entry.entityId === old.wireIdOf('dasher'));
-  assert.ok(typeof flipperExtras.airSpin === 'number', 'the extras carry the flip');
-  assert.ok(Math.abs(flipperExtras.airSpinRate) > 5, 'and the rate it turns at (thrust-flips-277: the turn rides its momentum)');
-  assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'and the cooldown left');
-  assert.ok(flipperExtras.airSpinReadyIn > 0.5 && flipperExtras.flipUsed === true, 'and the air spin\'s cooldown and spent dodge (flip-boost-276)');
-  if (dropSpin) delete flipperExtras.airSpin;
-  if (dropFlipUsed) delete flipperExtras.flipUsed;
-  if (dropRate) delete flipperExtras.airSpinRate;
+  assert.ok(typeof flipperExtras.hull === 'string', 'the hull exact carries the flip, its rate and the spent dodge (276)');
+  assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'the extras carry the cooldown left');
+  assert.ok(flipperExtras.airSpinReadyIn > 0.5, 'and the air spin\'s cooldown (flip-boost-276)');
   const sealed = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs, timeS: sim.timeS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: extras, frame }));
   const fresh = make({ tick, battleTimeMs });
@@ -139,7 +146,7 @@ inputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO; freshInputs.get('das
 step(sim, inputs); step(next, freshInputs);
 assert.ok(oldDash.state.speed > speeds[0] + 5 && newDash.state.speed > speeds[1] + 5, 'Turbo is taken again on both hosts');
 
-// ---- negative control: the extras without the flip
+// ---- negative control: a keyframe without the flip
 const dropped = handoff({ dropSpin: true });
 const hung = dropped.next.entityById.get('flipper').state, ref = dropped.sim.entityById.get('flipper').state;
 let apart = 0;
@@ -149,7 +156,7 @@ for (let n = 0; n < 40; n++) {
 }
 assert.ok(apart > 0.5, `negative control: without the carried spin the new host's hull falls out of the flip (${apart.toFixed(2)} rad apart)`);
 
-// ---- negative control: the extras without the spin's rate (thrust-flips-277): the new host's burn spins it up again from rest
+// ---- negative control: a keyframe without the spin's rate (thrust-flips-277): the new host's burn spins it up again from rest
 let lagged = 0;
 {
   const slow = handoff({ dropRate: true });
@@ -161,7 +168,7 @@ let lagged = 0;
   assert.ok(lagged > 0.3, `negative control: without the carried rate the new host's flip falls behind (${lagged.toFixed(2)} rad apart)`);
 }
 
-// ---- negative control: the extras without the spent dodge
+// ---- negative control: a keyframe without the spent dodge
 {
   const lost = handoff({ dropFlipUsed: true });
   for (let n = 0; n < 90; n++) { step(lost.sim, lost.inputs); step(lost.next, lost.freshInputs); }

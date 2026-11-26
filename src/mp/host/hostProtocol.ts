@@ -73,25 +73,19 @@ export interface MigrationEntityExtras {
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
   /** Turbo's cooldown left (s; turbo-spin-275); absent when ready or the mode has none. */
   turboReadyIn?: number;
-  /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. A hull exact
-   *  (`hull`) carries it in its checkpoint too; this one ages it to a row newer than the keyframe (restoreAirSpin). */
-  airSpin?: number;
-  /** The rate that spin turns at on its axis (rad/s, the attitude spring's; thrust-flips-277: the turn rides the hull's
-   *  angular momentum under its thrusters' burn); absent with no spin or at rest. */
-  airSpinRate?: number;
   /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
   airSpinReadyIn?: number;
-  /** The flight's dodge spent (flip-boost-276; movement.ts `_flipUsed`); absent when unspent. */
-  flipUsed?: true;
   /**
    * A live hull exact (276; migrationState.ts packHull): what its row rounds (the pose, the hp) or does not carry (the
    * movement prediction checkpoint: movementPredictionState.ts, the one owner of the integrator state a pose cannot
-   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the rock; what
+   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the rock, a flip
+   * or roll still turning and the flight's spent dodge (turbo-spin-275, flip-boost-276); what
    * the last step left beside it: the rollover's countdown, the contact and slope block a bot's brain reads, the fall
    * ledger and a landing's bounces; the roof guns' slew, the special action's toggle and the held input). base64url: the
    * layout, the checkpoint's version and flags, the flags, the further roof stations' count, a mask of the non-zero
    * numbers and those numbers as Float64s, exact (migrationHull.selftest's census). It replaces gaps 274's spool and turn rate
-   * (`motion`) and 275's hand-picked integrator parts (`integrator`): a fight from a keyframe alone still parted by tens
+   * (`motion`), 275's hand-picked integrator parts (`integrator`) and the spin's own extras (`airSpin`, `airSpinRate`,
+   * `flipUsed`; turbo-spin-275 to thrust-flips-277): a fight from a keyframe alone still parted by tens
    * of metres on the rows' rounding and the gun's limit flag (the CTF probe: 23 m in 10 s; none now).
    */
   hull?: string;
