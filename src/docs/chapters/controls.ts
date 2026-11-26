@@ -113,13 +113,14 @@ function touchFigure(): string {
  *  click mode on Controls (item 259: one datum, one place). */
 const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook'];
 
-/** The key that switches the minimal battle HUD (src/ui/battleUiVisibility.ts; controls.selftest holds it to that file). */
-export const MINIMAL_HUD_KEY = 'F10';
+/** The key that switches the minimal battle HUD: the input layer's hideBattleUi default (settings-unify-278 made it a
+ *  rebindable action; src/ui/battleUiVisibility.ts reads the binding). */
+export const MINIMAL_HUD_KEY = DEFAULT_BINDINGS.hideBattleUi ?? 'F10';
 
 /** Your HUD: the layout editor and the minimal HUD, by the settings panel's own names. */
 function hudSection(): string {
   const layout = esc(t('docs.controls.hud.layout', {
-    settings: t('settings.title'), tab: t('settings.tab.gameplay'), edit: t('hudEditor.open'),
+    settings: t('settings.title'), tab: t('settings.tab.interface'), edit: t('hudEditor.open'),
     desktop: t('hudEditor.desktop'), portrait: t('hudEditor.portrait'), landscape: t('hudEditor.landscape'),
   }));
   // the key cap goes in after escaping: the copy names it as {key}

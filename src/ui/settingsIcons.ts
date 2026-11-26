@@ -48,6 +48,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   hitboxOverlay: { id: 'armorFlashlight' },
   shotLog: { id: 'battleRecord', tone: 'cyan' },
   perfHud: { id: 'performance', tone: 'green' },
+  hideBattleUi: { id: 'fullscreen', tone: 'cyan' }, // settings-unify-278: the minimal HUD's key (F10)
+  photoMode: { id: 'toolPhoto' },
   networkPanel: { id: 'signal', tone: 'cyan' },
   leaveBattle: { id: 'garage', tone: 'red' },
   scuttle: { id: 'skull', tone: 'red' }, // death-flow-275 R7: hold to scuttle the tank
@@ -64,6 +66,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   sniperSensScale: { id: 'scope', tone: 'cyan' },
   aimSmoothing: { id: 'aimSmoothing', tone: 'cyan' },
   padSensitivity: { id: 'controller' },
+  padDeadzone: { id: 'controller', tone: 'cyan' }, // settings-unify-278: Gameplay › Controller › Stick dead zone
   rmbMode: { id: 'mouse', tone: 'cyan' },
   aiDifficulty: { id: 'battleBots', tone: 'red' },
   showPerfMeter: { id: 'performance', tone: 'green' },
@@ -85,6 +88,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   crewVoice: { id: 'radio', tone: 'amber' },
   crewCaptions: { id: 'radio', tone: 'cyan' }, // notices-audit-275: Sound › Crew radio › Captions
   audioConcussion: { id: 'soundOff', tone: 'red' },
+  muteAll: { id: 'soundOff' }, // settings-unify-278: Sound › Mute all (the touch layout's quick mute sets it too)
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
   battleTimes: { id: 'timeDay', tone: 'amber' },
   foliageSeeThrough: { id: 'regionWoodland', tone: 'green' }, // item 259: Graphics › See-through foliage

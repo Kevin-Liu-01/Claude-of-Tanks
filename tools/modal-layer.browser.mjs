@@ -6,8 +6,9 @@
 // A real Air Support battle on a built preview (`?debug=1` for window.__DEBUG), at 1920x1080, 390x844 and 844x390 (touch):
 // the binoculars up (ui:strikeViewToggle), an enemy artillery strike planted on the crew's hull (the INCOMING warning, as
 // the reported screenshot), and a kill of the player's (tank:destroyed: the kill ribbon, where the layout shows one). Then
-// the pause veil (the pointer lock let go while the page has no focus, as an alt-tab raises it) and Settings (the Esc menu), each in
-// turn: at a grid over the whole window and at the centre of every overlay that is up, document.elementFromPoint must hit
+// the pause (the pointer lock let go while the page has no focus, as an alt-tab raises it; a phone's page shown again) and
+// Settings (the Esc menu), each in turn: since settings-unify-278 both are the one Settings panel, the pause with its PAUSED
+// chip and Resume; at a grid over the whole window and at the centre of every overlay that is up, document.elementFromPoint must hit
 // the modal and nothing else. While it samples, every element takes pointer events (a style the probe adds and removes),
 // so a HUD part or a notice that ignores the pointer is still hit where it paints over the modal. A hit outside the modal
 // that is not visible (opacity 0, visibility hidden) is no paint and passes. Stills of each state go to --out.
@@ -191,8 +192,9 @@ try {
     await wait(700);
     entry.states.overlays = await page.evaluate(overlays);
     await shot(page, resolve(out, `${label}-${size.name}-1-battle.png`));
-    // the pause veil, as an alt-tab raises it: the pointer lock let go while the page has no focus (settings.ts: an unlock
-    // with focus opens Settings, one without raises the veil; a touch layout, which never locks, takes a focus return)
+    // the pause, as an alt-tab raises it: the pointer lock let go while the page has no focus (settings.ts pauseToSettings:
+    // since settings-unify-278 it is Settings, paused); a touch layout, which never locks, pauses as its page shows again;
+    // a desktop page that never held the lock has no lock to lose, so it pauses the way the Esc key does
     const pauseVeil = async () => {
       const input = window.__DEBUG.input;
       const before = { locked: input?.isLocked?.() ?? null, cursorAim: input?.isCursorAim?.() ?? null, phase: window.__DEBUG.game?.phase ?? null };
@@ -202,12 +204,15 @@ try {
         await new Promise((done) => { document.addEventListener('pointerlockchange', done, { once: true }); document.exitPointerLock(); setTimeout(done, 1000); });
         await new Promise((done) => setTimeout(done, 60));
         Document.prototype.hasFocus = hasFocus;
+      } else if (input?.isTouchLayout?.()) {
+        document.dispatchEvent(new Event('visibilitychange'));
       } else {
-        window.dispatchEvent(new Event('focus'));
+        window.__DEBUG.settings.open();
       }
-      return { before, shown: !!document.querySelector('.cot-resume.show') };
+      return { before, shown: !!document.querySelector('.cot-settings.open.paused'),
+        resume: !!document.querySelector('.cot-settings.open .cot-set-btn.resume:not([hidden])'), veil: !!document.querySelector('.cot-resume') };
     };
-    for (const [name, selector, open] of [['pause', '.cot-resume', pauseVeil],
+    for (const [name, selector, open] of [['pause', '.cot-settings', pauseVeil],
       ['settings', '.cot-settings', () => window.__DEBUG.settings.open()]]) {
       // a fresh kill first (the ribbon holds 2.4 s after it): the kill's own beat is a presentation, under which the input
       // owner refuses the veil and the menu (battleInputOwner.ts), so the modal opens once it has passed
@@ -215,7 +220,7 @@ try {
       await wait(900);
       entry.modals[name] = { opener: await page.evaluate(open) };
       await page.waitForFunction((sel) => !!document.querySelector(sel)?.checkVisibility({ checkVisibilityCSS: true }), { timeout: 4_000, polling: 50 }, selector).catch(() => {});
-      await wait(350); // the veil's fade and the panel's rise
+      await wait(350); // the backdrop's fade and the panel's rise
       const up = await page.evaluate(overlays);
       const points = [];
       for (let i = 0; i < 12; i++) for (let j = 0; j < 9; j++) points.push([(i + 0.5) * size.w / 12, (j + 0.5) * size.h / 9, 'grid']);
@@ -230,6 +235,12 @@ try {
         if (header.clashes.length) problems.push(`the header covers a tab: ${header.clashes.join('; ')}`);
       }
       if (!result.open) problems.push(`${name} did not open`);
+      if (name === 'pause') {
+        const opened = entry.modals[name].opener;
+        if (!opened?.shown) problems.push('the pause is not Settings with its PAUSED chip');
+        if (!opened?.resume) problems.push('the paused Settings shows no Resume');
+        if (opened?.veil) problems.push('a second veil is in the page');
+      }
       if (result.misses.length) problems.push(`${result.misses.length} points hit outside the ${name}: ${[...new Set(result.misses.map((m) => `${m.why}→${m.hit}`))].slice(0, 6).join('; ')}`);
       if (missing.length) problems.push(`not up under the ${name}: ${missing.join(', ')}`);
       entry.modals[name].problems = problems;
@@ -237,8 +248,8 @@ try {
       console.log(`${size.name} ${name}: ${result.open ? `${result.hits} hits, ${result.misses.length} outside` : 'not open'}; up: ${Object.keys(up).join(', ') || 'none'}`
         + `; layer ${JSON.stringify(result.layer ?? {})}${problems.length ? `\n    ${problems.join('\n    ')}` : ''}`);
       if (name === 'pause') {
-        // Settings supersedes the veil (settings.ts openPanel); a touch layout's veil is resumed by a tap, so close it first
-        await page.evaluate(() => { const go = document.querySelector('.cot-resume .rz-go'); if (go instanceof HTMLElement) go.click(); });
+        // Resume closes the pause, as a player's press does, before the Esc menu's own opening
+        await page.evaluate(() => { const go = document.querySelector('.cot-settings.open .cot-set-btn.resume'); if (go instanceof HTMLElement) go.click(); });
         await wait(250);
         await page.evaluate(stage);
         await wait(400);

@@ -1,6 +1,6 @@
 // 2026-11-02 audit F4 / IR15 (round 2): "a kill-cam replay owns the screen" has one owner, the replay controller's own
 // `active` flag (killcam.ts), published on its bus (killcamScreen.ts). The battle input owner reads it, so a lost
-// 'killcam:done' cannot hold the Esc menu and the veil off for the rest of the battle, a stray 'killcam:begin' cannot
+// 'killcam:done' cannot hold the Esc menu off for the rest of the battle, a stray 'killcam:begin' cannot
 // take the screen with no replay on it, and an edge never outvotes the fact. The audio overlay's half is pinned in
 // src/audio/battleMode.selftest.mjs section 5; the phase policy's binding is pinned here from main.ts's source.
 import assert from 'node:assert/strict';
@@ -45,10 +45,8 @@ const fakeBus = () => {
   const later = () => { now += 10 * PRESENTATION_DONE_GRACE_MS; };
 
   // a replay that ends normally: the screen is the replay's, then the skip press's grace, then the player's
-  assert.equal(owner.showVeil('pause'), true);
   begin();
   assert.equal(owner.state, 'presentation');
-  assert.equal(owner.veil, null, 'the replay drops the veil');
   assert.equal(owner.canOpenMenu(), false);
   done();
   assert.equal(owner.state, 'play');
@@ -61,8 +59,6 @@ const fakeBus = () => {
   active = false;
   assert.equal(owner.state, 'play', 'a replay no longer on screen does not own it, done or no done');
   assert.equal(owner.canOpenMenu(), true, 'the Esc menu is not held off for the rest of the battle');
-  assert.equal(owner.showVeil('pause'), true, 'and the veil may rise');
-  owner.hideVeil();
 
   // a stray begin: an edge with no replay on screen takes nothing
   bus.emit('killcam:begin', { kind: 'death' });

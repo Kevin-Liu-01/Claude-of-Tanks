@@ -18,16 +18,18 @@ import { liftModal } from './components/modalLayer.ts';
 // sliders, the crew voices (national crews / one nation's pack) and the
 // concussion toggle (persisted with the gameplay settings; broadcast live over
 // the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
-// layer's localStorage stores. Also owns the pause veil, the fading controls-hint strip
+// layer's localStorage stores. It is also the battle's one pause screen (settings-unify-278, Kevin 2026-11-25: "combine
+// the pause modal and settings modal (we take settings modal)"): Esc, a lost page and a refused relock all open it paused,
+// its footer holds Resume, Photo mode and Leave battle. Also owns the fading controls-hint strip
 // a player's first battles show at the rollout (its caps named again on a rebind), and the garage gear button. The
 // battle's key caps follow the bindings by themselves (game/battleKeyCaps.ts).
 // KILL-CAM aware: while a replay owns the screen ('killcam:begin'/'done' on
-// the bus) the panel never auto-opens, never veils, and closes itself — the
+// the bus) the panel never auto-opens, never pauses, and closes itself — the
 // replay's ANY-KEY skip always wins (player death hands off to the death cam
 // with a free cursor, like WoT).
 // Design language mirrors src/ui/hud.ts / garage.ts (palette, chamfers, type).
 // settings_ui r2 (owner: "make our settings screen look much better too"):
-// premium reskin in the garage r9 kit — blurred pause veil + panel enter
+// premium reskin in the garage r9 kit — blurred backdrop + panel enter
 // transition (reduced-motion aware), amber-underline segmented tabs, amber
 // tick-and-rule section headers, zebra'd rows, keycap binding chips with
 // bound/unbound/listening/conflict states, custom amber-fill sliders, ON/OFF
@@ -58,7 +60,7 @@ import {
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { isTypingTarget, shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import {
-  battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner, type VeilTrigger,
+  battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner,
 } from './battleInputOwner.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice, notify } from './components/notice.ts';
@@ -67,8 +69,10 @@ import { crewLanguageLabel, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import {
   getLocale,
+  rememberLocale,
   setLocale,
   t,
+  type SupportedLocale,
 } from './i18n.ts';
 import { currentLocationHrefForLocale } from './localeRouting.ts';
 import { isSupportedLocale, LOCALE_RECORDS } from './localePrefix.ts';
@@ -79,6 +83,7 @@ import type {
   InputLayer,
   RmbMode,
 } from '../game/input.ts';
+import { PAD_DEADZONE_RANGE } from '../game/input.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER,
@@ -94,6 +99,7 @@ import {
 import { tokenValue } from './tokens/tokens.ts';
 import { TUTORIAL_ON, readTutorialRecord } from './tutorial/tutorialRecord.ts';
 import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
+import { forgetSeenHints, seenHintCount } from './firstUseHintRecord.ts';
 import { battleKeycap, promptFor } from './keyPrompt.ts';
 
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
@@ -133,10 +139,14 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   'mobile-high': 'settings.preset.mobileHigh',
 });
 
-type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'accessibility' | 'language';
+/** (settings-unify-278) the Interface tab took the Language tab's picker (first) and Gameplay's Interface card. */
+type SettingsTab = 'controls' | 'gameplay' | 'interface' | 'sound' | 'graphics' | 'accessibility';
+const SETTINGS_TABS: readonly SettingsTab[] = ['controls', 'gameplay', 'interface', 'sound', 'graphics', 'accessibility'];
+/** The tabs whose page ends in Reset to defaults (each resets its own page). */
+const RESETTABLE_TABS: ReadonlySet<SettingsTab> = new Set(['controls', 'sound', 'graphics', 'accessibility']);
 /** (item 259, the owner: "color code settings so its easier") each tab's glyph, in its category's colour (--settings-<tab>) */
 const TAB_GLYPHS: Readonly<Record<SettingsTab, UiIconId>> = Object.freeze({
-  controls: 'controller', gameplay: 'vehicle', sound: 'sound', graphics: 'gpu', accessibility: 'accessibility', language: 'globe',
+  controls: 'controller', gameplay: 'vehicle', interface: 'fullscreen', sound: 'sound', graphics: 'gpu', accessibility: 'accessibility',
 });
 const tabMarkup = (tab: SettingsTab, selected: boolean): string =>
   `<button class="cot-set-tab${selected ? ' sel' : ''}" data-tab="${tab}" data-settings-tone="${tab}" type="button" role="tab" id="cot-set-tab-${tab}"`
@@ -166,6 +176,7 @@ type NumericSettingKey =
   | 'sniperSensScale'
   | 'aimSmoothing'
   | 'padSensitivity'
+  | 'padDeadzone'
   | 'volMaster'
   | 'volEngine'
   | 'volCombat'
@@ -186,7 +197,8 @@ type BooleanSettingKey =
   | 'showHints'
   | 'crewCaptions'
   | 'alarmHeartbeat'
-  | 'audioConcussion';
+  | 'audioConcussion'
+  | 'muteAll';
 type ActionDefinition = InputLayer['actionDefs'][number];
 type TimerHandle = ReturnType<typeof setTimeout>;
 
@@ -207,6 +219,8 @@ export interface SettingsOptions {
   readonly isSpectating?: () => boolean;
   readonly canLeaveBattle?: () => boolean;
   readonly onLeaveBattle?: () => void;
+  /** A solo battle's photo mode (photo-mode-271): the footer's Photo, shown while it may open; the phone's way in. */
+  readonly photo?: { available(): boolean; open(): void };
   readonly gearVisible?: () => boolean;
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
@@ -335,7 +349,7 @@ const SETTINGS_CSS = `
 .cot-settings [data-settings-tone='sound']{--settings-ink:var(--settings-sound);}
 .cot-settings [data-settings-tone='graphics']{--settings-ink:var(--settings-graphics);}
 .cot-settings [data-settings-tone='accessibility']{--settings-ink:var(--settings-accessibility);}
-.cot-settings [data-settings-tone='language']{--settings-ink:var(--settings-language);}
+.cot-settings [data-settings-tone='interface']{--settings-ink:var(--settings-interface);}
 /* scrolling rows: a thin scrollbar and overflow-gated fade masks (.fade-top/.fade-bot set from the scroll position) */
 .cot-set-body{flex:1;overflow-y:auto;padding:var(--s1) var(--s5) var(--s4);min-height:280px;
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;}
@@ -407,13 +421,16 @@ const SETTINGS_CSS = `
 .cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;}
 .cot-set-conflict.show{display:flex;}
 .cot-set-conflict b{color:var(--text-warn);font-weight:600;}
-/* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
+/* the footer: a battle's actions on every tab (settings-unify-278): Leave battle on the left, Photo mode and the one
+   primary, Resume, on the right (the kit's buttons) */
 .cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5);border-top:1px solid var(--line-1);}
-/* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
-.cot-set-btn.reset{margin-right:auto;}
+/* Leave anchors left and pushes the pair right (Resume stays flush right with Photo hidden) */
+.cot-set-btn.leave{margin-right:auto;}
 .cot-set-btn[hidden]{display:none;}
-/* a footer with nothing to offer (no Reset on this tab, no battle to leave) takes no room */
+/* a footer with nothing to offer (the Garage: no battle to resume or leave) takes no room */
 .cot-set-ftr:not(:has(.cot-set-btn:not([hidden]))){display:none;}
+/* each resettable tab's last row: its Reset to defaults, at the row's end */
+.cot-set-reset-row{display:flex;justify-content:flex-end;padding:var(--s4) var(--s2) var(--s2);}
 /* sliders: a line track with an ink fill (--f set from JS) and a square knob */
 .cot-set-slider{display:flex;align-items:center;gap:var(--s3);}
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
@@ -521,24 +538,6 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 /* never over the scope, the strike view's binoculars (airSupportHud.ts), a flight (a drone, the gunship flies on other
    keys: the class is hud.ts's), Watch or a spectated battle (owner 2026-10-25) */
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-cot-strike-view] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
-/* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
-   Settings, the Esc menu, is its one other way out. */
-.cot-resume{position:fixed;inset:0;z-index:var(--z-modal);display:none;place-items:center;cursor:pointer;
-  background:oklch(from var(--scrim) l c h / .5);color:var(--ink-1);-webkit-user-select:none;user-select:none;}
-.cot-resume.show{display:grid;}
-.cot-resume .rz-plate{display:grid;justify-items:center;gap:var(--s5);padding:var(--s6) var(--s7);
-  background:var(--hud-plate);box-shadow:var(--e2);}
-.cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
-  text-transform:uppercase;}
-.cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
-/* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
-   the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
-.cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
-/* (the battle's primary, the end report's AGAIN and the bars' GARAGE and DRIVE: 48 px, its bevel for the kit's lifted shadow;
-   56 px and flat here, the same action read as two buttons, gauntlet r13) */
-.cot-resume .rz-go{box-shadow:var(--btn-primary-bevel);}
-.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
-
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
 .cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s3) var(--s2) var(--s2);padding:var(--s2) var(--s3);
@@ -600,7 +599,7 @@ export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[strin
     [t('settings.group.fire'), ['fire']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
     [t('settings.group.sniper'), ['sniperToggle']],
-    // (ESC opens the settings: the pause veil's cap names the same word, gauntlet r1)
+    // (ESC opens the settings, the battle's pause, gauntlet r1)
     [t('settings.title'), ['settingsMenu']],
   ];
 }
@@ -643,7 +642,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   else setTimeout(behaviours, 1000);
   ensureFonts();
   const { input, bus } = opts;
-  // who owns battle input (2026-11-02 audit F4): presentation (a replay or an ending beat), the menu, the veil, play
+  // who owns battle input (2026-11-02 audit F4): presentation (a replay or an ending beat), the menu, play
   const inputOwner = opts.inputOwner ?? (bus ? battleInputOwnerFor(bus) : createBattleInputOwner());
   const isBattleActive = opts.isBattleActive || (() => false);
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
@@ -672,7 +671,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its category's glyph and its name (item 259; the 10-24 sweep took the controls tab's action count)
-    (['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'] as const).map((tab) => tabMarkup(tab, tab === 'controls')).join('') +
+    SETTINGS_TABS.map((tab) => tabMarkup(tab, tab === 'controls')).join('') +
     `</div>` +
     // a binding conflict: the kit's warning notice with its two actions (its text is set when it shows)
     notice({ severity: 'warning', text: '', className: 'cot-set-conflict', actions: [
@@ -680,10 +679,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       { label: t('settings.conflict.cancel'), attrs: { 'data-conflict': 'cancel' } },
     ] }) +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
+    // a battle's actions, on every tab (settings-unify-278): one close control stays the header's (the lead's 250 ruling);
+    // Esc and the backdrop close the panel too, and resume as Resume does
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button">${t('settings.reset')}</button>` +
-    // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
-    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
+    `<button class="cot-set-btn leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button>` +
+    `<button class="cot-set-btn photo cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button" hidden>${uiIconSVG('toolPhoto', 16)}<span>${t('photo.open')}</span></button>` +
+    `<button class="cot-set-btn resume cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button" hidden>${t('settings.pauseResume')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
   // (modal-layer-277; 844x390: the PAUSED chip sat on the Language tab) a short screen floats the header over the tab row's
@@ -697,8 +698,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const body = requiredElement<HTMLDivElement>(root, '.cot-set-body');
   const conflictBar = markDatum(requiredElement<HTMLDivElement>(root, '.cot-set-conflict'), 'notices');
   const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.cot-c-notice__text');
-  const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
+  // Reset to defaults ends each resettable tab's page (renderTab places it); one button, its tab read at the press
+  const resetBtn = el('button', 'cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary');
+  resetBtn.type = 'button';
+  resetBtn.textContent = t('settings.reset');
+  const resumeBtn = requiredElement<HTMLButtonElement>(root, '.resume');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
+  const photoBtn = requiredElement<HTMLButtonElement>(root, '.photo');
 
   // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
   // .can-scroll pattern, split per edge so the top fade only appears once the
@@ -752,104 +758,45 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     hidden: () => input.getSettings().hideBattleUi,
     setHidden: (hidden) => input.setSetting('hideBattleUi', hidden),
     shortcutsBlocked: () => open || isAnyModalOpen(),
+    isShortcut: (code) => code === input.getBinding('hideBattleUi', 0) || code === input.getBinding('hideBattleUi', 1),
   });
   battleUiVisibility.setBattle(isBattleActive());
 
   const hints = markDatum(el('div', 'cot-hints'), 'hints');
   document.body.appendChild(hints);
 
-  // Click-to-resume veil (controls_gunnery r2): pointer-lock loss from ALT-TAB
-  // / focus loss must NOT throw the options menu at the player (WoT returns
-  // you to the battle). The veil relocks inside its own click gesture.
-  // (ui-motion-275) the pause veil fades and its plate pops in; a resume takes the pointer at once while it fades out
-  const resume = el('div', 'cot-resume cot-m-fade cot-m-by-show');
-  resume.setAttribute('role', 'dialog');
-  resume.setAttribute('aria-labelledby', 'cot-rz-title');
-  resume.innerHTML =
-    `<div class="rz-plate cot-m-pop"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
-    '<div class="rz-actions">' +
-    `<button type="button" class="cot-c-btn cot-c-btn--48 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--48 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
-    '</div></div>';
-  const resumeSettings = requiredElement<HTMLButtonElement>(resume, '.rz-set');
-  const resumeSettingsKey = requiredElement<HTMLElement>(resume, '.rz-set kbd');
-  document.body.appendChild(resume);
+  // The pause (settings-unify-278, Kevin 2026-11-25: "combine the pause modal and settings modal (we take settings
+  // modal)"): what raised the click-to-resume veil (pointer-lock loss from an alt-tab, a focus loss, a background tab or
+  // an app switch, and a relock the browser refused) opens this panel paused, the battle's one pause screen. Its Resume
+  // is a click, so the relock it asks for rides that gesture.
   let relockRetry: TimerHandle | null = null; // see relockRefused
 
-  /** `relock`: the browser refused a pointer relock (aim-focus 243); `pause`: the battle lost the page (a focus loss, a
-   *  background tab, an app switch) and waits for the player. Touch never locks, so it never shows the first; it does show
-   *  the second, with the touch line (Watch 243: a touch layout taps). */
-  function showResumeVeil(trigger: VeilTrigger = 'pause') {
-    // KILL-CAM / ENDING BEAT: the presentation owns the screen — a veil on top would sit over the cinematic and its
-    // mousedown would eat the click players aim at the 'ANY KEY — SKIP' prompt (the owner refuses it, as it does over the
-    // open panel or a veil already up)
-    if (open || inputOwner.veil !== null || inputOwner.state === 'presentation') return;
-    // CURSOR-AIM FALLBACK: the veil exists to re-grab pointer lock inside a
-    // fresh click gesture after focus loss. With the lock unavailable the aim
-    // never depended on it — showing the veil would only swallow the next
-    // battle click (input.isCursorAim() means every lock attempt is denied).
-    // A touch layout never holds the lock either.
+  /** `relock`: the browser refused a pointer relock (aim-focus 243); `pause`: the battle lost the page and waits for the
+   *  player. Touch never locks, so it never sees the first; it does see the second (a phone back from another app). */
+  function pauseToSettings(trigger: 'relock' | 'pause'): void {
+    // KILL-CAM / ENDING BEAT: the presentation owns the screen (the owner refuses the menu there, as openPanel asks)
+    if (!isBattleActive() || replayOwnsScreen()) return;
+    // CURSOR-AIM FALLBACK: the aim never depended on the lock, so a lost one pauses nothing
     if (input.isCursorAim && input.isCursorAim()) return;
     if (trigger === 'relock' && input.isTouchLayout && input.isTouchLayout()) return;
-    if (!inputOwner.showVeil(trigger)) return;
-    // Settings carries the menu's current key (the cap hides on a touch layout: Watch 243, a touch layout taps)
-    resumeSettingsKey.textContent = bindLabel('settingsMenu');
-    hideHints();
-    syncResumeVeil();
-    emit('ui:click', {});
+    if (!open) openPanel();
+    if (open) resumeBtn.focus({ preventScroll: true });
   }
 
-  // The veil's class is a projection of the input owner's veil (2026-11-02 audit F4): every raise and drop goes through
-  // the owner, and an owner that drops it itself (a presentation begins, the menu opens) drops the class and the retry.
-  // (it writes only when the class must change: updateGear's 150 ms sweep calls hideResumeVeil in every state, and a
-  // classList.remove of an absent class still rewrites the attribute, 7 writes a second for as long as the page lived, 266)
-  function syncResumeVeil() {
-    const up = inputOwner.veil !== null;
-    if (up !== resume.classList.contains('show')) { resume.classList.toggle('show', up); liftModal(resume, up); }
-    if (!up && relockRetry !== null) { clearTimeout(relockRetry); relockRetry = null; }
-  }
-  function hideResumeVeil() {
-    inputOwner.hideVeil();
-    syncResumeVeil();
-  }
-  inputOwner.onChange(syncResumeVeil);
-
-  // aim-focus 243: a relock the browser refused leaves this veil up instead of
-  // a dead mouse (the refusal never latches cursor aim: input.ts). Chrome
-  // refuses every relock for 1250 ms after the player's Esc; a RESUME click in
-  // that window still carries user activation (5 s), so ask once more as the
-  // window closes. Outside it (an Esc-closed panel asks with no activation)
-  // the veil waits for a click.
+  // aim-focus 243: a relock the browser refused keeps the pause up instead of a dead mouse (the refusal never latches
+  // cursor aim: input.ts). Chrome refuses every relock for 1250 ms after the player's Esc; a close in that window still
+  // carries user activation (5 s), so the panel closes (and asks once more) as the window closes. Outside it the panel
+  // waits for Resume.
   function relockRefused(retryInMs: number): void {
     if (open || !isBattleActive()) return;
-    showResumeVeil('relock');
-    if (retryInMs <= 0 || relockRetry !== null || inputOwner.veil === null) return;
+    pauseToSettings('relock');
+    if (!open || retryInMs <= 0 || relockRetry !== null) return;
     if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.isActive) return;
     relockRetry = setTimeout(() => {
       relockRetry = null;
-      if (open || !isBattleActive() || inputOwner.veil === null) return;
-      input.requestLock({ fromUi: true });
+      if (open && isBattleActive() && !replayOwnsScreen()) closePanel();
     }, retryInMs);
   }
-
-  function resumeBattle() {
-    hideResumeVeil();
-    if (isBattleActive()) input.requestLock({ onRefused: relockRefused }); // inside the click gesture
-    emit('ui:click', {});
-  }
-  resume.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-    if (e.target instanceof Element && e.target.closest('.rz-set')) return; // Settings opens on its click
-    resumeBattle();
-  });
-  // a keyboard press on Resume (a pointer press resumed on mousedown, so the veil is gone by its click)
-  requiredElement<HTMLButtonElement>(resume, '.rz-go').addEventListener('click', () => {
-    if (inputOwner.veil !== null) resumeBattle();
-  });
-  resumeSettings.addEventListener('click', () => {
-    emit('ui:click', {});
-    openPanel();
-  });
 
   // --- state ---------------------------------------------------------------------
   let open = false;
@@ -1304,75 +1251,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
-    const iface = groupCard(body, t('settings.interface.title'));
-    const hudLayoutRow = el('div', 'cot-set-row', iface);
-    settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
-    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
-    editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
-    editHud.addEventListener('click', async () => {
-      // (a chunk that did not arrive is not asked for again in this document: the press reloads the page once online)
-      if (pressFailed(editHud)) return;
-      editHud.disabled = true;
-      try {
-        const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
-        if (open) openHudEditor(editHud);
-      } catch {
-        // (notices-audit-275) the Garage openers' failure (garage.ts reportLoadFailure): the trigger keeps its label and
-        // the kit's error state, and the kit's toast says so with Reload page (offline, the press waits and it stands)
-        markLoadFailed([editHud], t('hudEditor.loadError'));
-        notify({ id: 'cot-hud-editor-load', severity: 'error', text: t('hudEditor.loadError'),
-          actions: [{ label: t('loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
-      } finally { editHud.disabled = false; }
-    });
-    // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle
-    // steps in the next Standard battle and the tips after it (app/tutorialAccess.ts hears ui:replayTutorial)
-    if (TUTORIAL_ON) { // (272.0.1) off until the Deploy-step fix (ui/tutorial/tutorialRecord.ts)
-      const tutorialRow = el('div', 'cot-set-row', iface);
-      settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
-      const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
-      replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
-      replayTutorial.addEventListener('click', () => {
-        emit('ui:click', {});
-        closePanel();
-        emit('ui:replayTutorial', {});
-      });
-      const tutorialNote = el('div', 'cot-set-note', iface);
-      tutorialNote.textContent = t('settings.tutorial.replayNote');
-    }
-    onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
-    // (mobile-hud-274) the first-use hints: once each, the first time a battle meets their moment
-    onOffRow(iface, t('settings.interface.showHints'), 'showHints');
-    const cleanViewNote = el('div', 'cot-set-note', iface);
-    cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
-    onOffRow(
-      iface,
-      t('settings.interface.armorOverlay'),
-      'armorAimOverlay',
-    );
-    onOffRow(iface, t('settings.gameplay.showPerfMeter'), 'showPerfMeter',
-      emitPerfMeter);
-    onOffRow(
-      iface,
-      t('settings.interface.hitValues'),
-      'showDirectionalHitValues',
-      emitDirectionalHitValues,
-    );
-    // (reload-others-275) other tanks' reload on their plates, allies' and enemies' apart, each off by default
-    onOffRow(iface, t('settings.interface.allyReload'), 'showAllyReload', emitReloadIndicators);
-    onOffRow(iface, t('settings.interface.enemyReload'), 'showEnemyReload', emitReloadIndicators);
-    onOffRow(iface, t('settings.interface.debugHud'), 'showDebugHud',
-      emitDebugHud);
-    const armorNote = el('div', 'cot-set-note', iface);
-    armorNote.textContent = t('settings.interface.armorNote');
-    const hitValueNote = el('div', 'cot-set-note', iface);
-    hitValueNote.textContent = t('settings.interface.hitValueNote');
-    const reloadNote = el('div', 'cot-set-note', iface);
-    reloadNote.textContent = t('settings.interface.reloadNote');
-    const debugNote = el('div', 'cot-set-note', iface);
-    debugNote.textContent = t('settings.interface.debugNote');
-
     const pad = groupCard(body, t('settings.pad.title'));
     sliderRow(pad, t('settings.gameplay.aimPad'), 'padSensitivity', 0.2, 3);
+    // (settings-unify-278) the sticks' dead zone, shown as the share of a stick's travel that does nothing
+    sliderRow(pad, t('settings.pad.deadzone'), 'padDeadzone', PAD_DEADZONE_RANGE.min, PAD_DEADZONE_RANGE.max, {
+      step: '0.01', dispStep: '1', unit: '%', digits: 0, toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+    });
     const padNote = el('div', 'cot-set-note keep', pad);
     padNote.textContent = input.isPadConnected()
       ? t('settings.pad.detected')
@@ -1430,12 +1314,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       alarmHeartbeat: !!s.alarmHeartbeat,
       crewVoice: s.crewVoice,
       concussion: !!s.audioConcussion,
+      muteAll: !!s.muteAll,
     });
   }
 
   function renderSound() {
     body.textContent = '';
     const vol = groupCard(body, t('settings.sound.title'));
+    // (settings-unify-278) every sound off, kept: the touch layout's quick mute sets the same value
+    onOffRow(vol, t('settings.sound.muteAll'), 'muteAll', emitVolumes);
     for (const [key, label] of VOLUME_DEFS) {
       sliderRow(vol, label, key, 0, 1, {
         step: '0.01', dispStep: '1', unit: '%', digits: 0,
@@ -1752,16 +1639,45 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   // --- LANGUAGE tab -----------------------------------------------------------
-  function renderLanguage() {
+  // --- INTERFACE tab (settings-unify-278): the UI language first, then the battle HUD's choices ------------------------
+  /** A language picked in battle (settings-unify-278): saved now, switched by the reload on the way back to the Garage, so
+   *  the battle is never lost to it. Every screen builds its translated DOM once, so a switch is a reload (the Garage's
+   *  is at once). */
+  let pendingLocale: SupportedLocale | null = null;
+  function applyPendingLocale(): void {
+    const locale = pendingLocale;
+    pendingLocale = null;
+    if (!locale || locale === getLocale()) return;
+    setLocale(locale);
+    window.location.assign(currentLocationHrefForLocale(window.location, locale));
+  }
+
+  function renderInterface() {
     body.textContent = '';
     const langCard = groupCard(body, t('settings.language.card'));
     const langRow = el('div', 'cot-set-row', langCard);
     settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
+    const inBattle = isBattleActive() || canLeaveBattle();
+    const langNote = el('div', 'cot-set-note keep', langCard);
+    const syncLangNote = (): void => {
+      const waiting = pendingLocale !== null && pendingLocale !== getLocale();
+      langNote.hidden = !waiting;
+      langNote.textContent = waiting ? t('settings.language.battleNote') : '';
+    };
     // every locale named in its own language, on the kit's picker menu (seven are more than the segmented control holds)
     tabMenus.push(createPickerMenu(el('div', 'cot-set-menu', langRow), { id: 'settings-language', label: t('settings.language.label'),
-      items: LOCALE_RECORDS.map(({ locale, name }) => ({ id: locale, name })), value: getLocale(), layout: 'list', text: pickerText(),
+      items: LOCALE_RECORDS.map(({ locale, name }) => ({ id: locale, name })), value: pendingLocale ?? getLocale(), layout: 'list', text: pickerText(),
       onChoose: (item) => {
-        if (!isSupportedLocale(item.id) || item.id === getLocale()) return;
+        if (!isSupportedLocale(item.id)) return;
+        if (inBattle) {
+          // saved for the next document, switched at the Garage (applyPendingLocale on its phase)
+          pendingLocale = item.id === getLocale() ? null : item.id;
+          rememberLocale(item.id);
+          syncLangNote();
+          emit('ui:click', {});
+          return;
+        }
+        if (item.id === getLocale()) return;
         // (improve-271 plan 028) a preset picked in this visit is applied before the reload (the panel never closes)
         commitGraphics();
         setLocale(item.id);
@@ -1769,8 +1685,90 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         // is the only atomic way to avoid a mixed-language Garage or battle.
         window.location.assign(currentLocationHrefForLocale(window.location, item.id));
       } }));
-    const langNote = el('div', 'cot-set-note', langCard);
-    langNote.textContent = t('settings.language.note');
+    syncLangNote();
+    el('div', 'cot-set-note', langCard).textContent = t('settings.language.note');
+
+    const iface = groupCard(body, t('settings.interface.title'));
+    const hudLayoutRow = el('div', 'cot-set-row', iface);
+    settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
+    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
+    editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
+    editHud.addEventListener('click', async () => {
+      // (a chunk that did not arrive is not asked for again in this document: the press reloads the page once online)
+      if (pressFailed(editHud)) return;
+      editHud.disabled = true;
+      try {
+        const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
+        if (open) openHudEditor(editHud);
+      } catch {
+        // (notices-audit-275) the Garage openers' failure (garage.ts reportLoadFailure): the trigger keeps its label and
+        // the kit's error state, and the kit's toast says so with Reload page (offline, the press waits and it stands)
+        markLoadFailed([editHud], t('hudEditor.loadError'));
+        notify({ id: 'cot-hud-editor-load', severity: 'error', text: t('hudEditor.loadError'),
+          actions: [{ label: t('loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
+      } finally { editHud.disabled = false; }
+    });
+    // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle
+    // steps in the next Standard battle and the tips after it (app/tutorialAccess.ts hears ui:replayTutorial)
+    if (TUTORIAL_ON) { // (272.0.1) off until the Deploy-step fix (ui/tutorial/tutorialRecord.ts)
+      const tutorialRow = el('div', 'cot-set-row', iface);
+      settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
+      const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
+      replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
+      replayTutorial.addEventListener('click', () => {
+        emit('ui:click', {});
+        closePanel();
+        emit('ui:replayTutorial', {});
+      });
+      const tutorialNote = el('div', 'cot-set-note', iface);
+      tutorialNote.textContent = t('settings.tutorial.replayNote');
+    }
+    onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
+    // (mobile-hud-274) the first-use hints: once each, the first time a battle meets their moment
+    onOffRow(iface, t('settings.interface.showHints'), 'showHints');
+    // (settings-unify-278) every first-use hint the player has seen shows again at its moment
+    const tipsRow = el('div', 'cot-set-row', iface);
+    settingLabel(tipsRow, t('settings.tips.title'), SETTINGS_OPTION_ICONS.showHints);
+    const resetTips = el('button', 'cot-set-reset-tips cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tipsRow);
+    resetTips.type = 'button';
+    const tipsSeen = seenHintCount();
+    resetTips.textContent = tipsSeen > 0 ? t('settings.tips.reset') : t('settings.tips.none');
+    resetTips.disabled = tipsSeen === 0;
+    resetTips.addEventListener('click', () => {
+      forgetSeenHints();
+      resetTips.textContent = t('settings.tips.none');
+      resetTips.disabled = true;
+      emit('ui:click', {});
+    });
+    const cleanViewNote = el('div', 'cot-set-note', iface);
+    cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
+    onOffRow(
+      iface,
+      t('settings.interface.armorOverlay'),
+      'armorAimOverlay',
+    );
+    onOffRow(iface, t('settings.gameplay.showPerfMeter'), 'showPerfMeter',
+      emitPerfMeter);
+    onOffRow(
+      iface,
+      t('settings.interface.hitValues'),
+      'showDirectionalHitValues',
+      emitDirectionalHitValues,
+    );
+    // (reload-others-275) other tanks' reload on their plates, allies' and enemies' apart, each off by default
+    onOffRow(iface, t('settings.interface.allyReload'), 'showAllyReload', emitReloadIndicators);
+    onOffRow(iface, t('settings.interface.enemyReload'), 'showEnemyReload', emitReloadIndicators);
+    onOffRow(iface, t('settings.interface.debugHud'), 'showDebugHud',
+      emitDebugHud);
+    const armorNote = el('div', 'cot-set-note', iface);
+    armorNote.textContent = t('settings.interface.armorNote');
+    const hitValueNote = el('div', 'cot-set-note', iface);
+    hitValueNote.textContent = t('settings.interface.hitValueNote');
+    const reloadNote = el('div', 'cot-set-note', iface);
+    reloadNote.textContent = t('settings.interface.reloadNote');
+    const debugNote = el('div', 'cot-set-note', iface);
+    debugNote.textContent = t('settings.interface.debugNote');
+
   }
 
   // (ui-motion-275) a tab change swaps its page in (cot-m-swap, components/surfaceMotion.css); a redraw of the same tab (a
@@ -1790,13 +1788,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (on) root.querySelector('.cot-set-body')?.setAttribute('aria-labelledby', t.id);
     }
     body.dataset.settingsTone = activeTab; // item 259: the tab's colour on its rows' glyphs and headings' rules
-    resetBtn.hidden = !(activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility');
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
     else if (activeTab === 'accessibility') renderAccessibility();
     else if (activeTab === 'sound') renderSound();
-    else if (activeTab === 'language') renderLanguage();
+    else if (activeTab === 'interface') renderInterface();
     else renderGameplay();
+    // a resettable page ends in its Reset to defaults (the button moves from page to page; renders clear the body)
+    if (RESETTABLE_TABS.has(activeTab)) el('div', 'cot-set-reset-row', body).appendChild(resetBtn);
     applyZebra();
     foldNotes();
     if (swapped) for (const page of body.children) page.classList.add('cot-m-swap');
@@ -2060,6 +2059,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function refreshPausedTag() {
     root.classList.toggle('paused', open && isGamePaused());
   }
+  /** The footer's battle actions (settings-unify-278): Resume while the panel pauses a live battle (the PAUSED chip's
+   *  rule), Photo mode where a solo battle may open it, Leave battle while there is one to leave. Written only on change:
+   *  updateGear's 150 ms sweep calls it while the panel is up. */
+  function syncBattleActions(): void {
+    const show = (button: HTMLButtonElement, on: boolean): void => { if (button.hidden === on) button.hidden = !on; };
+    show(resumeBtn, isGamePaused());
+    show(photoBtn, !!opts.photo?.available());
+    show(leaveBtn, !!(canLeaveBattle() && onLeaveBattle));
+  }
 
   // a transient surface (components/surfaceStack.ts), modal: opening it closes whatever the page has open (a picker, a menu),
   // its own menus stand on it, and Escape is the stack's, which closes the top one; a key being bound or a conflict to
@@ -2072,12 +2080,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     keepsEscape: () => !!capture || !!conflict,
   };
   function openPanel() {
-    // every opening (the access's menu action and gear, the veil's Settings, the pointer-unlock path) asks the input
-    // owner: never over a kill-cam replay or an ending beat, nor on the press that skipped one
+    // every opening (the access's menu action and gear, a pause, the pointer-unlock path) asks the input owner: never
+    // over a kill-cam replay or an ending beat, nor on the press that skipped one
     if (open || !inputOwner.openMenu()) return;
     open = true;
     openSurface(surface);
-    hideResumeVeil(); // the panel supersedes the click-to-resume veil
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
     input.releaseLock();
@@ -2087,10 +2094,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // the panel mid-iteration on sensitivity or volume no longer bounces the
     // player back to CONTROLS every time.
     renderTab();
-    const canLeave = !!(canLeaveBattle() && onLeaveBattle);
-    leaveBtn.hidden = !canLeave;
+    syncBattleActions();
     root.classList.add('open');
-    liftModal(root, true); // (modal-layer-277) over every other layer, the pause veil and the HUD's notices among them
+    liftModal(root, true); // (modal-layer-277) over every other layer, the HUD's notices among them
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
@@ -2104,7 +2110,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   /**
    * Close the panel. Resuming into a live battle re-requests pointer lock
-   * (relockOnClose); a refused request leaves the click-to-resume veil
+   * (relockOnClose); a refused request opens the panel paused again
    * (relockRefused).
    * @param {{noRelock?: boolean}} [o] noRelock: battle entry/exit paths close
    *   the panel programmatically — they must never fire a gesture-less lock
@@ -2112,6 +2118,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    */
   function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
+    if (relockRetry !== null) { clearTimeout(relockRetry); relockRetry = null; }
     commitGraphics();
     for (const menu of tabMenus) menu.close();
     if (o && o.noRelock) relockOnClose = false;
@@ -2134,13 +2141,22 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
   requiredElement<HTMLButtonElement>(root, '.cot-set-close').addEventListener('click', () => api.close());
+  // Resume: the close, a click, so its relock rides the gesture (settings-unify-278)
+  resumeBtn.addEventListener('click', () => api.close());
   leaveBtn.addEventListener('click', () => {
     if (!onLeaveBattle || !canLeaveBattle()) return;
     relockOnClose = false;
     closePanel();
     onLeaveBattle();
   });
+  photoBtn.addEventListener('click', () => {
+    if (!opts.photo?.available()) return;
+    // photo mode takes the stage and holds the battle paused; it gives the pointer back to the battle when it closes
+    closePanel({ noRelock: true });
+    opts.photo.open();
+  });
   resetBtn.addEventListener('click', () => {
+    if (!RESETTABLE_TABS.has(activeTab)) return;
     cancelCapture();
     clearConflict();
     if (activeTab === 'graphics') {
@@ -2169,6 +2185,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       }
       input.setSetting('alarmHeartbeat', true);
       input.setSetting('audioConcussion', true);
+      input.setSetting('muteAll', false);
       input.setSetting('crewVoice', 'national');
       emitVolumes();
       renderTab();
@@ -2178,7 +2195,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     input.resetBindings();
     bindingsMutated();
   });
-  const SETTINGS_TABS: readonly SettingsTab[] = ['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'];
   // the strip is a tab list: arrows, Home and End move between the tabs (the kit's roving keys press each, so the click
   // below switches)
   const tabStrip = root.querySelector<HTMLElement>('.cot-set-tabs');
@@ -2208,11 +2224,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat
   // it as "open the menu". Intentional releases flip phase/result first.
-  // controls_gunnery r2: ONLY when the page still owns the keyboard — an
-  // unlock caused by alt-tab / focus loss shows the click-to-resume veil
-  // instead (WoT does not open the options menu after an alt-tab). The
-  // focus check runs a tick later: on some platforms pointerlockchange
-  // fires before the blur that caused it lands.
+  // An unlock caused by alt-tab / focus loss pauses into the same panel
+  // (settings-unify-278: the one pause screen; the click-to-resume veil
+  // controls_gunnery r2 raised there is gone). The focus check runs a tick
+  // later: on some platforms pointerlockchange fires before the blur that
+  // caused it lands.
   // Replays and destroyed-player spectator views do not turn cursor release
   // into a Settings request. Only a controllable player owns that shortcut.
   const settingsOwnsPointerUnlock = () => shouldOpenSettingsFromPointerUnlock({
@@ -2223,7 +2239,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     activeElement: document.activeElement,
   });
   document.addEventListener('pointerlockchange', () => {
-    if (input.isLocked()) { hideResumeVeil(); return; } // a relock (relockRefused's retry) resumes the battle
+    if (input.isLocked()) return;
     // Enter opens room chat by focusing its field and intentionally releasing
     // pointer lock. A focused editor owns that unlock; only an otherwise
     // unclaimed in-battle unlock (the browser's swallowed Esc gesture) opens
@@ -2231,24 +2247,24 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     if (!settingsOwnsPointerUnlock()) return;
     setTimeout(() => {
       if (!settingsOwnsPointerUnlock()) return;
+      // the swallowed Esc opens Settings; a lost page (an alt-tab, a background tab) pauses into the same panel
       if (document.hasFocus() && !document.hidden) openPanel();
-      else showResumeVeil();
+      else pauseToSettings('pause');
     }, 0);
   });
-  // Focus regained with the pointer still unlocked (alt-tab round trip that
-  // never fired another pointerlockchange): offer the resume veil.
-  const offerPauseVeil = () => {
+  // A phone back from another app or a background tab (244): the page shows again, and a touch layout, which never
+  // locks, finds the battle paused in Settings; Resume returns. (A desktop battle pauses on the lock it loses, above:
+  // the veil's old focus-regained path also stopped a battle that never held the pointer, and Settings pauses the
+  // battle where the veil did not, settings-unify-278.)
+  const offerPause = () => {
     if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen() &&
         shouldOpenSettingsFromPointerUnlock({
           battleActive: true,
           activeElement: document.activeElement,
-        })) showResumeVeil('pause');
+        })) pauseToSettings('pause');
   };
-  window.addEventListener('focus', offerPauseVeil);
-  // A phone back from another app or a background tab (244): the page shows again, and a touch layout, which never
-  // locks, gets the pause veil with the touch line; a tap resumes.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && input.isTouchLayout && input.isTouchLayout()) offerPauseVeil();
+    if (!document.hidden && input.isTouchLayout && input.isTouchLayout()) offerPause();
   });
 
   // --- gear button (garage) --------------------------------------------------------
@@ -2256,10 +2272,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // interval as a safety net for un-evented flows.
   function updateGear() {
     gear.style.display = !open && gearVisible() ? 'flex' : 'none';
-    // Safety net (r2): the resume veil must never outlive the battle — a
-    // result can land without a phase:change (the end overlay on --z-report would sit under the veil on --z-modal).
-    if (!isBattleActive()) hideResumeVeil();
     refreshPausedTag(); // PAUSE: tag follows phase/result while the panel is up
+    if (open) syncBattleActions(); // and the footer's battle actions with it
   }
   // the access owner (settingsAccess.ts) wires its own gear click through its gates (the loading cover, a modal, a
   // presentation); a second click handler here opened past them (2026-11-02 audit F4)
@@ -2267,18 +2281,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   if (bus) {
     bus.on('phase:change', (ev) => {
       updateGear();
-      // leaving battle (garage / result) always clears the resume veil
       const phase = typeof ev === 'object' && ev !== null && 'phase' in ev
         ? Reflect.get(ev, 'phase')
         : undefined;
       battleUiVisibility.setBattle(phase === 'battle');
-      if (phase !== 'battle') { hideResumeVeil(); hideHints(); }
+      if (phase !== 'battle') hideHints();
+      if (phase === 'garage') applyPendingLocale();
       // (a phase flip is the input owner's reset of last resort for a presentation whose done never came)
     });
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
     bus.on('ui:consumableLoadout', adoptConsumableLoadout); // item 259: the slots show the chosen tank's items
-    // the verdict ends the battle the veil belongs to (the 150 ms sweep stays the belt for an un-evented result)
-    bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); hideResumeVeil(); });
+    bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
     // (272) the first-game tutorial teaches the controls in its own battle chapter: the strip stands down while it runs
     // (app/tutorialAccess.ts raises body.cot-tutorial at the rollout, before this listener hears it)
     bus.on('battle:rollout', () => { if (!open && !document.body.classList.contains('cot-tutorial') && takeFirstBattleHint()) showHints(); });
@@ -2287,11 +2300,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — the input owner holds it).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react
-    // to. While live: no auto-open, no resume veil, no Esc-menu — and a panel
+    // to. While live: no auto-open, no pause, no Esc-menu — and a panel
     // the player left open must not sit over the replay swallowing its
     // ANY-KEY skip (onPanelKey is a capture-phase stopPropagation handler).
     bus.on('killcam:begin', () => {
-      hideResumeVeil();
       hideHints();
       // never relock out of this close — the cursor must stay free for the
       // replay (and a gesture-less requestLock denial would falsely latch
@@ -2299,17 +2311,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (open) { relockOnClose = false; closePanel(); }
     });
     // battle endings (2026-09-25): the director's camera beats own the screen the same way — their
-    // any-key skip must win over the Esc menu and the resume veil
+    // any-key skip must win over the Esc menu and the pause
     bus.on('ending:begin', () => {
-      hideResumeVeil();
       if (open) { relockOnClose = false; closePanel(); }
     });
   }
-  // fallback only — events above hide/show instantly. It holds no state: it re-projects the gear and the PAUSED tag and
-  // asks the input owner to drop a veil once the battle is no longer the player's (U22 round 2, kept by design). Two of
-  // isBattleActive's inputs have no edge here: the player's death without a replay (a death replay's killcam:begin drops
-  // the veil itself) and a Watch seat ending; the network client marks a hull destroyed from its snapshot, not in the
-  // order of its tank:destroyed, so an edge read there could see the hull alive.
+  // fallback only — events above hide/show instantly. It holds no state: it re-projects the gear, the PAUSED tag and the
+  // footer's battle actions once the battle is no longer the player's (U22 round 2, kept by design). Two of
+  // isBattleActive's inputs have no edge here: the player's death without a replay and a Watch seat ending; the network
+  // client marks a hull destroyed from its snapshot, not in the order of its tank:destroyed, so an edge read there could
+  // see the hull alive.
   setInterval(updateGear, 150);
   updateGear();
 

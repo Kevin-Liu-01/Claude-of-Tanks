@@ -310,7 +310,7 @@ async function shootRuns(page, signal, tag, checkpoint) {
     }).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`).slice(0, 12);
     return { timeS: +g.timeS.toFixed(2), phase: g.phase, result: g.result ?? null, rig: D.rig.mode ?? null,
       camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)),
-      shotMode: D.shotMode, veil: !!document.querySelector('.cot-resume.show'), visibility: document.visibilityState,
+      shotMode: D.shotMode, paused: !!document.querySelector('.cot-settings.open.paused'), visibility: document.visibilityState,
       focus: document.hasFocus(), layers };
   });
   receipt.runStart = await battleState();
@@ -793,8 +793,8 @@ async function shootGauntlet(page, tag) {
     const file = `${tag}-${locale}-${name}`;
     // (g4: the battle went on around the frames and once destroyed the crew; the hull is topped up at every frame)
     const crew = await page.evaluate(() => { const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; return c.destroyed ? ['destroyed'] : []; });
-    // (g3: a focus loss on a loaded machine raised the pause veil over one frame; the veil is not this surface)
-    if (await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); return !!go; })) await sleep(600);
+    // (g3: a focus loss on a loaded machine paused the battle over one frame; the pause is not this surface)
+    if (await page.evaluate(() => { const go = document.querySelector('.cot-settings.open .cot-set-btn.resume:not([hidden])'); go?.click(); return !!go; })) await sleep(600);
     await shot(page, file);
     receipt.gauntlet[file] = { ...(await page.evaluate(surfaceCheck)), datum: await datumProblems(page), crew };
   };

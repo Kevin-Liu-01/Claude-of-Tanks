@@ -131,6 +131,9 @@ const MOTION = {
   'hud-editor': own('modal'),
   // the replay's Export video (replay-fixes-277) opens through the shared modal (replayFilmDialog.ts createModal)
   'replay-film': own('modal'),
+  // photo mode's one bar, in the Garage and in a solo battle (photo-mode-271): it rises in and leaves before its removal
+  'photo-battle': vocab('src/ui/photoMode.ts', 'cot-photo-bar', 'rise'),
+  'photo-garage': vocab('src/ui/photoMode.ts', 'cot-photo-bar', 'rise'),
   'gallery-rival': own('pickers'), 'gallery-sort': own('pickers'), 'gallery-camera-view': own('pickers'), 'markup-primitive': own('pickers'),
   'gallery-drawing': SITE, 'public-nav-menu': SITE, 'home-trailer': SITE, 'docs-archive': SITE, 'docs-fleet-filter': own('pickers'),
   'media-library': SITE, 'pad-options': SITE, 'media-archive': SITE,
@@ -180,7 +183,7 @@ for (const [id, entry] of Object.entries(MOTION)) {
 
 /* 4. the surfaces outside the registry ----------------------------------------------------------------------------- */
 const OUTSIDE = [
-  ['src/ui/settings.ts', 'cot-settings', 'fade'], ['src/ui/settings.ts', 'cot-resume', 'fade'], ['src/ui/settings.ts', 'rz-plate', 'pop'],
+  ['src/ui/settings.ts', 'cot-settings', 'fade'], ['src/ui/settings.ts', 'cot-set-panel', 'rise'],
   ['src/ui/endScreen.ts', 'es-debrief', 'swap'], ['src/ui/playMenu.ts', 'cot-play', 'fade'], ['src/ui/playMenu.ts', 'room', 'swap'],
   ['src/ui/playMenu.ts', 'lobby', 'swap'], ['src/ui/garage.ts', 'cot-deploy-panel', 'swap'], ['src/ui/hud.ts', 'cot-mode-status', 'drop'],
   ['src/ui/hud.ts', 'cot-aim-warning', 'drop'], ['src/ui/hud.ts', 'cot-jump', 'rise'], ['src/ui/multiplayerStatus.ts', 'cot-mp-panel', 'drop'],

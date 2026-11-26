@@ -24,6 +24,8 @@ export interface TouchControlsOptions {
   isBattleActive(): boolean;
   onOpenSettings(): void;
   onToggleSound(): boolean;
+  /** Mute all is on (settings-unify-278): the quick mute shows it from the first frame. */
+  soundMuted?(): boolean;
   isSniper(): boolean;
   getFlightKind?(): string | undefined;
 }

@@ -243,8 +243,9 @@ assert.doesNotMatch(hud, /FULL_OR_RELOADING/,
   'the HUD must not collapse distinct magazine reload denials into a generic state');
 assert.match(input, /showDebugHud: false[\s\S]*storedSettings\.showDebugHud[\s\S]*key === 'showDebugHud'/,
   'debug HUD visibility must have one persisted input-setting owner');
-assert.match(settings, /t\('settings\.interface\.debugHud'\)[\s\S]*ui:debugHud/,
+assert.match(settings, /onOffRow\(iface, t\('settings\.interface\.debugHud'\), 'showDebugHud',\s*emitDebugHud\)/,
   'Interface settings must expose the lazy debug dashboard');
+assert.match(settings, /function emitDebugHud\(\) \{\s*emit\('ui:debugHud'/, 'its row announces the dashboard live');
 assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input\.setSetting\('showDebugHud'/,
   'settings and F8 must converge on the same diagnostics visibility path');
 assert.doesNotMatch(perfHud, /cot\.perfhud\.v1|PROD_BUILD/,
@@ -419,9 +420,7 @@ assert.doesNotMatch(responsiveSurfaces, /\.cot-network-(?:status|diagnostics)\b|
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
   'state transitions must cap their core and recompose long titles on phones');
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width\] \.cot-resume \.rz-title\{max-width:100%;overflow-wrap:anywhere[\s\S]*body\[data-cot-width='phone'\] \.cot-resume \.rz-actions\{display:grid;grid-template-columns:1fr/,
-  'the pause veil keeps its title within phone width and stacks its buttons');
+assert.doesNotMatch(responsiveSurfaces, /\.cot-resume/, 'the pause veil is gone: the pause is Settings (settings-unify-278)');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-hints\{[\s\S]*flex-wrap:wrap;white-space:normal/,
   'keyboard hints must wrap as groups instead of clipping on intermediate widths');

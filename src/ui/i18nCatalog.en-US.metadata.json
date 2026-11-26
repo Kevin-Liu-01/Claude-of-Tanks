@@ -502,5 +502,44 @@
   },
   "pad.tour.fire": {
     "context": "Claude of Tanks, a browser tank game, played with a phone as the controller. The controls guide's name for the phone controller's fire button: tap it to fire; the same finger dragging off it aims. Kept short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the pad-drag-aim-278 lane and await General Translation review."
+  },
+  "settings.tab.interface": {
+    "context": "Claude of Tanks, a browser tank game. Settings: the name of a tab that holds the interface language picker and the battle HUD's display options (HUD layout, hints, overlays). One short word if the language allows; it sits in a row of six tabs. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.language.battleNote": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Interface: a short status line under the language picker, shown after the player picks a language during a battle; the new language is applied when they go back to the Garage (the game's home screen), so the battle is not interrupted. \"Garage\" is the game's home screen, use the term used elsewhere. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.sound.muteAll": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Sound: an on/off row that turns every game sound off and keeps it off between visits. Short. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.tips.title": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Interface: the label of a row whose button makes the first-use hints the player has already seen appear again. \"Hints\" are the one-time tips shown the first time a player meets a feature in battle. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.tips.reset": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Interface: the button on the Seen hints row; pressing it makes every first-use hint already seen show again in later battles. A short button label. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.tips.none": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Interface: the Seen hints row's button once there is nothing to reset (no hint seen yet, or just reset): it is disabled and says every hint will show. A short button label. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "settings.pad.deadzone": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Gameplay, Controller card: the label of a slider for the gamepad thumbsticks' dead zone, the share of a stick's travel (shown in %) that does nothing, so a worn stick does not drift. Use the gaming term for dead zone. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "action.hideBattleUi": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Controls: the name of a rebindable key action (F10 by default) that hides every battle HUD panel except the sight, for a clean view. Short, as in a key-binding list. The zh-CN, es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane and await General Translation review."
+  },
+  "action.photoMode": {
+    "context": "Claude of Tanks, a browser tank game. Settings, Controls: the name of a rebindable key action (P by default) that opens photo mode, which pauses a solo battle and frees the camera to take a picture. Short, as in a key-binding list. The es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane (photo-mode-271b wrote en-US and zh-CN) and await General Translation review."
+  },
+  "photo.lens": {
+    "context": "Claude of Tanks, a browser tank game. Photo mode's toolbar: the label of a segmented control choosing the camera lens focal length (18, 24, 35, 50, 85 mm). One word. The es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane (photo-mode-271b wrote en-US and zh-CN) and await General Translation review."
+  },
+  "photo.lensMm": {
+    "context": "Claude of Tanks, a browser tank game. Photo mode's toolbar: one lens choice, a focal length in millimetres; {mm} is the number. Keep {mm} and the unit's usual short form. The es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane (photo-mode-271b wrote en-US and zh-CN) and await General Translation review."
+  },
+  "photo.tilt": {
+    "context": "Claude of Tanks, a browser tank game. Photo mode's toolbar: the label of a segmented control rolling the camera left or right by a few degrees (Dutch angle). One word. The es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane (photo-mode-271b wrote en-US and zh-CN) and await General Translation review."
+  },
+  "photo.saveFailed": {
+    "context": "Claude of Tanks, a browser tank game. Photo mode: an error toast shown when the picture could not be saved as a PNG file; it has a Retry button. The es, ja, de, pt-BR and ru strings were written by hand in the settings-unify-278 lane (photo-mode-271b wrote en-US and zh-CN) and await General Translation review."
   }
 }

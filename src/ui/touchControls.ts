@@ -438,7 +438,7 @@ export function createMobileFireGesture({
 
 export function createTouchControls({
   input, bus, isBattleActive, isSniper = () => false, getFlightKind = () => undefined,
-  onOpenSettings = () => {}, onToggleSound = () => false,
+  onOpenSettings = () => {}, onToggleSound = () => false, soundMuted = () => false,
 }: TouchControlsOptions): TouchControlsRuntime {
   ensureStyle('cot-touch-style', CSS, 'surfaces');
   const root = document.createElement('div');
@@ -840,13 +840,16 @@ export function createTouchControls({
     });
   };
   const soundButton = root.querySelector<HTMLButtonElement>('.quick.sound')!;
-  tapButton(soundButton, () => {
-    const muted = !!onToggleSound();
+  const drawSound = (muted: boolean): void => {
     soundButton.classList.toggle('muted', muted);
     soundButton.innerHTML = `${muted ? SOUND_OFF : SOUND}<span class="ql">${muted ? t('touch.muted') : t('touch.sound')}</span>`;
     soundButton.setAttribute('aria-label', muted ? t('touch.unmute') : t('touch.mute'));
     soundButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
-  });
+  };
+  // the kept Mute all from the first frame (settings-unify-278), and again as Settings closes (it may have changed there)
+  if (soundMuted()) drawSound(true);
+  bus.on('ui:volumes', () => drawSound(!!soundMuted()));
+  tapButton(soundButton, () => drawSound(!!onToggleSound()));
   const graphicsButton = root.querySelector<HTMLButtonElement>('.quick.graphics')!;
   function graphicsChoice(): PresetName {
     if (getDeviceTier() === 'mobile') return getMobilePresetChoice();
