@@ -68,6 +68,20 @@ export function battleGeometryQuality(playerActor: boolean, deviceTier: string):
   return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
 }
 
+/** (roster-errors-279) The geometry policy of every BATTLE build, the battle roster's and the multiplayer seats' in one
+ * place, which src/vehicles/fleetBattleBuilds.selftest.mjs builds the whole fleet with: the geometry tier above,
+ * articulation-local static batches, the battle detail hand-offs on every tank but the player's own and a phone's, and
+ * no fitted-surface authoring audit (the battle reads the checked anatomy and the live ERA clusters). The caller adds
+ * the texture tier, the camouflage and the static merge (battleStaticDrawMerge). */
+export function battleBuildOptions(playerActor: boolean, deviceTier: string) {
+  return {
+    geometryQuality: battleGeometryQuality(playerActor, deviceTier),
+    batchStatic: true,
+    battleDetailLod: !playerActor && deviceTier !== 'mobile',
+    eraVisualBindingReceipt: false,
+  } as const;
+}
+
 /**
  * The P21 static merge a BATTLE build takes (the battle roster's builds and the multiplayer seats'; never the Garage,
  * Gallery or hero builds): 'dual' for every vehicle (coordinator rulings 2026-10-24, perf-250/254): the identity build

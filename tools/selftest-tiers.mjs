@@ -207,6 +207,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/externalWeapons.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/fixedSourceSkirtPaint.selftest.mjs',
+    // roster-errors-279: every roster id built as a battle builds it, at each role, with no throw and no console line (~6 CPU-min)
+    'src/vehicles/fleetBattleBuilds.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
     'src/vehicles/fleetLazy.selftest.mjs',
     'src/vehicles/fleetOrder.selftest.mjs',

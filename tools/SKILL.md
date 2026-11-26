@@ -561,7 +561,7 @@ mid-session, and the probe page (hmr off) never reloads, so it holds two copies 
 "world/vegetation: expected three directional shadow sites, found 1"). The scan also drops a dynamic import in code it
 proves dead (sky.ts's retired HDRI loader, 2026-10-21), so every dynamic `import('three/...')` sits in its `optimizeDeps.include`. The receipt
 checks that list and every `virtual:` import;
-`[map-probe] vite re-bundled its dependencies mid-session` on stderr names the event. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
+`[map-probe] vite re-bundled its dependencies mid-session` on stderr names the event. Every server on vite.config.ts with hmr off reports the same event as `[vite] ...` (tools/viteOptimizerReload.ts; roster-errors-279: a second three is how griffin50mm, t14_armata, tos1a_tagil and five more logged battle-roster build errors while building clean in Node, src/vehicles/fleetBattleBuilds.selftest.mjs), and each checkout keeps its own optimizer cache in `<root>/.vite` (vite hashes the root, so worktrees sharing one linked node_modules re-bundled one another's). `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
 preview instead (`withDistProbeSession`): a before/after pair from two builds shares no module graph or optimizer
 cache, and nothing reads the live tree. Receipts:
 `map-probe-runtime.selftest.mjs` (arguments, the pinned view table, pose math,

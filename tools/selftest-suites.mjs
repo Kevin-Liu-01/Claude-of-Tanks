@@ -961,6 +961,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/nationalGunMantlet.selftest.mjs',
     // the fleet pass harness itself, on a scripted factory (no fleet build)
     'src/vehicles/fleetPass.selftest.mjs',
+    // roster-errors-279: the battle fleet pass's harness on a scripted fleet (planted throw/error/warn findings), and the
+    // pass itself (every roster id at each battle role, no throw and no console line; manual `fleet` suite)
+    'src/vehicles/fleetBattleBuildsHarness.selftest.mjs',
+    'src/vehicles/fleetBattleBuilds.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
     // 2026-10-17 (227 guards, after the 226 T-90M blade): every tank's belly pan, track bottom and combat hull box within
@@ -1012,6 +1016,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frontend-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
+    // roster-errors-279: a dependency re-bundle mid-session (a second three) is reported; each checkout's own optimizer cache
+    'tools/viteOptimizerReload.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
     'tools/viteCssInTsMinify.selftest.mjs',
     'tools/viteSpeculationRules.selftest.mjs',

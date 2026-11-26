@@ -4,7 +4,7 @@ import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGunshipBattleVisual, loadGunshipAirframe, syncGunshipVisual } from './gunshipVisual.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
-import { battleGeometryQuality, battleStaticDrawMerge, offThreadDecorPlanner } from '../vehicles/fleetFactory.ts';
+import { battleBuildOptions, battleStaticDrawMerge, offThreadDecorPlanner } from '../vehicles/fleetFactory.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
 const names = ['ensureStagedVisuals', 'ensureStagedVisualsSteps', 'nextStagedBake',
@@ -16,10 +16,10 @@ function load(source, ports) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS', 'createGunshipBattleVisual',
-    'rosterVisualAttempts', 'battleStaticDrawMerge', 'battleGeometryQuality', 'offThreadDecorPlanner', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
+    'rosterVisualAttempts', 'battleStaticDrawMerge', 'battleBuildOptions', 'offThreadDecorPlanner', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
     ports.sync, ports.steps, ports.tier, new Set(['m1a1_abrams_hc', 't90am']), createGunshipBattleVisual, rosterVisualAttempts,
     // (integ 254: decor-worker's stepped battle builds plan off the thread; null in Node, as the planner reads no Worker)
-    battleStaticDrawMerge, battleGeometryQuality, offThreadDecorPlanner);
+    battleStaticDrawMerge, battleBuildOptions, offThreadDecorPlanner);
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;

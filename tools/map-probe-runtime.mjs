@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { i18nStudioCatalog } from './viteI18nStudioCatalog.ts';
+import { reportOptimizerReloads } from './viteOptimizerReload.ts';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 // 266: the launcher (and the capture lock it imports) loads only when a session opens its browser. The world steps import
@@ -184,25 +185,6 @@ export function mapProbeLaunchOptions({ width, height, executablePath = null, pr
 }
 
 /**
- * A dependency re-bundle mid-session is a full reload the probe page never takes (hmr off): the modules it loads after
- * it import the new ?v= copy of three beside the old one. Say so when it happens, not later as a stock ShaderChunk or a
- * battle that never starts.
- */
-export function reportOptimizerReloads(server) {
-  const hot = server.environments?.client?.hot;
-  if (typeof hot?.send !== 'function') return false;
-  const send = hot.send.bind(hot);
-  hot.send = (payload, ...rest) => {
-    if (payload?.type === 'full-reload') {
-      console.error('[map-probe] vite re-bundled its dependencies mid-session: a page opened before now holds a second copy '
-        + 'of three (add the late dependency to mapProbeServerOptions optimizeDeps.include)');
-    }
-    return send(payload, ...rest);
-  };
-  return true;
-}
-
-/**
  * Own one vite server and one browser for the run. Cleanup runs browser → server → temporary cache, and a cleanup
  * failure never replaces the run's own error (the same discipline as tools/isolated-capture-browser.mjs).
  */
@@ -212,7 +194,7 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
   let server = null, browser = null, primaryFailed = false;
   try {
     server = await createServer(mapProbeServerOptions(root, cache.dir));
-    reportOptimizerReloads(server);
+    reportOptimizerReloads(server, 'map-probe', 'add the late dependency to mapProbeServerOptions optimizeDeps.include');
     await server.listen();
     const port = server.httpServer.address().port;
     browser = await guardedLaunch(mapProbeLaunchOptions(launch));

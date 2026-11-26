@@ -12,7 +12,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import {
   HULL_RELATIVE_POSES, MAP_PROBE_BROWSER_ARGS, MAP_PROBE_HEIGHT_CLAMP, MAP_PROBE_PORT_BASE, MAP_PROBE_PORT_SPAN,
   MAP_PROBE_SETTLE_MS, mapProbeLaunchOptions, mapProbeServerOptions, parseProbeArgs, probeHelp, receiptPath,
-  reportOptimizerReloads, resolveGroundPose, resolveHullRelativePose, screenRightOf, writeProbeReceipt,
+  resolveGroundPose, resolveHullRelativePose, screenRightOf, writeProbeReceipt,
 } from './map-probe-runtime.mjs';
 import { MAP_VIEW_PROBE_FOV, MAP_VIEW_PROBE_HALF, MAP_VIEW_PROBE_VIEWPORT, MAP_VIEW_PROBE_VIEWS, selectMapViews } from './map-view-probe-views.mjs';
 import { parseMapViewProbeArgs } from './map-view-probe.mjs';
@@ -190,22 +190,7 @@ const pluginContext = { error(message) { throw new Error(message); } };
 for (const id of virtualImports) {
   assert.ok(serverOptions.plugins.some((plugin) => plugin.resolveId?.call(pluginContext, id)), `the probe server resolves ${id}`);
 }
-{
-  const sent = [];
-  const logged = [];
-  const fake = { environments: { client: { hot: { send: (payload) => sent.push(payload.type) } } } };
-  const consoleError = console.error;
-  console.error = (line) => logged.push(line);
-  try {
-    assert.equal(reportOptimizerReloads(fake), true);
-    fake.environments.client.hot.send({ type: 'update' });
-    fake.environments.client.hot.send({ type: 'full-reload', path: '*' });
-  } finally { console.error = consoleError; }
-  assert.deepEqual(sent, ['update', 'full-reload'], 'every payload still goes out');
-  assert.equal(logged.length, 1, 'a mid-session re-bundle is reported once');
-  assert.match(logged[0], /second copy of three/);
-  assert.equal(reportOptimizerReloads({}), false, 'a server without a client hot channel is left alone');
-}
+// the probe server's mid-session re-bundle report is tools/viteOptimizerReload.ts's (its receipt)
 const launch = mapProbeLaunchOptions({ width: 1600, height: 900 });
 assert.equal(launch.headless, 'new'); assert.deepEqual(launch.args, [...MAP_PROBE_BROWSER_ARGS, '--window-size=1600,900']); assert.equal(launch.executablePath, undefined);
 assert.equal(mapProbeLaunchOptions({ executablePath: '/x' }).executablePath, '/x');

@@ -30,7 +30,7 @@ import { AERIAL_RULES, matchRulesetFor, modeLaunchesDrones, rulesetVerdictSide }
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import {
-  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner,
+  battleBuildOptions, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner,
 } from '../../vehicles/fleetFactory.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
@@ -325,12 +325,9 @@ function seatVisualOptions(playerId: string, camoPattern: string, isViewer: bool
     camoSeed: 4000 + (hashString(playerId) % 100000),
     camoPattern,
     quality: textureQuality(isViewer),
-    geometryQuality: battleGeometryQuality(isViewer, deviceTier),
-    batchStatic: true,
-    battleDetailLod: !isViewer && deviceTier !== 'mobile',
+    // the battle roster's geometry policy, one definition (fleetFactory battleBuildOptions; roster-errors-279)
+    ...battleBuildOptions(isViewer, deviceTier),
     staticDrawMerge: battleStaticDrawMerge(specId),
-    // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
-    eraVisualBindingReceipt: false,
   };
 }
 
