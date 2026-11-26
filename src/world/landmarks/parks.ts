@@ -1010,8 +1010,9 @@ export const garden: LandmarkBuilder = (ctx) => {
       const t = -len / 2 + len * (k + 0.5) / n + (look() - 0.5) * 0.3, off = (look() - 0.5) * 0.25;
       const x = cx + (along ? t : off), z = cz + (along ? off : t), y = ctx.ground?.(x, z) ?? 0;
       const size = 0.5 + look() * 0.45, bloom = BLOOM[Math.floor(look() * BLOOM.length) % BLOOM.length];
-      const face: Face = { origin: [x, y + 0.05, z - size * 0.4], u: [1, 0, 0], out: [0, 0, 1], width: size };
-      sink.primitive('floweringShrub', () => floweringShrub(sink, face, 0, size, bloom, look));
+      // (drawn in a frame on the bed's ground: the shrub's floor is its frame's y = 0)
+      const face: Face = { origin: [0, 0, -size * 0.4], u: [1, 0, 0], out: [0, 0, 1], width: size };
+      sink.placed(0, x, y, z, () => sink.primitive('floweringShrub', () => floweringShrub(sink, face, 0, size, bloom, look)));
     }
   };
   // (`beds: false`: a working compound's fence alone — a lookout's, a yard's — no borders and no box)
