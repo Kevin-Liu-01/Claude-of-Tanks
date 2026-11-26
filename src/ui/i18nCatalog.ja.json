@@ -1285,6 +1285,7 @@
   "settings.interface.hideBattleUi": "戦闘HUDの簡易表示",
   "settings.interface.showHints": "初回操作のヒント",
   "settings.camera.isometric": "アイソメトリック視点",
+  "settings.zoom.increased": "拡張ズーム (×16, ×25)",
   "settings.camera.isometricNote": "自車を中心に捉える斜め上からの視点です。速度が上がると視野が広がり、障害物があるとカメラが上昇します。マウス移動、スワイプ、右スティックで照準を操作し、ズームで自車とカメラの距離を調整できます。照準／スコープ操作で狙撃モードに切り替わります。すべての戦闘に即座に適用されます。",
   "settings.camera.title": "カメラ",
   "settings.camera.height": "カメラの高さ",

@@ -1285,6 +1285,7 @@
   "settings.interface.hideBattleUi": "Minimales Gefechts-HUD",
   "settings.interface.showHints": "Einstiegstipps",
   "settings.camera.isometric": "Isometrische Ansicht",
+  "settings.zoom.increased": "Erweiterter Zoom (×16, ×25)",
   "settings.camera.isometricNote": "Schräge Draufsicht, bei der dein Panzer im Mittelpunkt bleibt. Bei höherer Geschwindigkeit zoomt die Kamera heraus, bei Hindernissen hebt sie sich an. Ziele mit der Maus, per Wischgeste oder mit dem rechten Stick; der Zoom verändert den Kameraabstand. Über die Ziel-/Visiersteuerung wechselst du in den Scharfschützenmodus. Gilt sofort in allen Gefechten.",
   "settings.camera.title": "Kamera",
   "settings.camera.height": "Kamerahöhe",

@@ -178,6 +178,7 @@ type BooleanSettingKey =
   | 'showPerfMeter'
   | 'hideBattleUi'
   | 'isometricView'
+  | 'increasedZoom'
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'showAllyReload'
@@ -1062,6 +1063,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       };
       rowByAction.set(def.id, { row, chips });
       if (def.id === 'freeCamera') rmbModeRow(card);
+      if (def.id === 'zoomOut') onOffRow(card, t('settings.zoom.increased'), 'increasedZoom');
     }
     const note = el('div', 'cot-set-note', body);
     note.innerHTML =

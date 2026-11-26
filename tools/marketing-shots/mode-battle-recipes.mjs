@@ -1236,6 +1236,7 @@ export const RECIPES = {
       await settle(ctx, 1.5);
       await ctx.capture({
         // x16 (the increased-zoom step) fills half the sight with the painted hull at 240-280 m; x8 for the ground
+        // (a player reaches x16 only with Settings › Controls › Increased zoom on; the default wheel ladder stops at x8)
         cameras: [
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 16, hud: 'full' },
           { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },

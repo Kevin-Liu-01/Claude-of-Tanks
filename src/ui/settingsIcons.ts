@@ -69,6 +69,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   showPerfMeter: { id: 'performance', tone: 'green' },
   hideBattleUi: { id: 'graphics', tone: 'cyan' },
   isometricView: { id: 'map', tone: 'cyan' },
+  increasedZoom: { id: 'scope', tone: 'cyan' }, // scope-and-names-278: Controls › Increased zoom (×16, ×25)
   showDebugHud: { id: 'telemetry', tone: 'violet' },
   showDirectionalHitValues: { id: 'blocked', tone: 'red' },
   showAllyReload: { id: 'reload', tone: 'green' }, // reload-others-275: Interface › Ally reload indicators

@@ -158,6 +158,9 @@ export interface InputSettings {
   showDebugHud: boolean;
   hideBattleUi: boolean;
   isometricView: boolean;
+  /** Controls › Increased zoom: the sniper wheel ladder runs on to ×16 and ×25 (cameraRig.ts SNIPER_ZOOMS_FULL; the
+   *  design's "increased zoom" toggle, docs/history/research/movement-physics.md). Off by default. */
+  increasedZoom: boolean;
   showDirectionalHitValues: boolean;
   /** Other tanks' reload on their plates (hud.ts reloadIndicatorProgress, reload-others-275): allies' and enemies', each
    *  off by default. */
@@ -384,6 +387,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   showDebugHud: false,
   hideBattleUi: false,
   isometricView: false,
+  increasedZoom: false,
   // Keep blocked pre-mitigation roll details optional for new profiles;
   // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
@@ -728,6 +732,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.hideBattleUi === 'boolean') settings.hideBattleUi = storedSettings.hideBattleUi;
     if (typeof storedSettings.isometricView === 'boolean') settings.isometricView = storedSettings.isometricView;
+    if (typeof storedSettings.increasedZoom === 'boolean') settings.increasedZoom = storedSettings.increasedZoom;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
     if (typeof storedSettings.showDirectionalHitValues === 'boolean') {
       settings.showDirectionalHitValues = storedSettings.showDirectionalHitValues;
@@ -1479,6 +1484,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
       else if (key === 'hideBattleUi') settings.hideBattleUi = !!value;
       else if (key === 'isometricView') settings.isometricView = !!value;
+      else if (key === 'increasedZoom') settings.increasedZoom = !!value;
       else if (key === 'showDebugHud') settings.showDebugHud = !!value;
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'showAllyReload') settings.showAllyReload = !!value;

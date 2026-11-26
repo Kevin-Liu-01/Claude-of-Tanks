@@ -1285,6 +1285,7 @@
   "settings.interface.hideBattleUi": "Minimal battle HUD",
   "settings.interface.showHints": "First-use hints",
   "settings.camera.isometric": "Isometric view",
+  "settings.zoom.increased": "Increased zoom (×16, ×25)",
   "settings.camera.isometricNote": "Angled overhead view that keeps your tank centered, widens at speed and lifts over obstacles. Move the mouse, swipe or use the right stick to aim; zoom changes the overhead distance. Use your aim/scope control for sniper view. Applies immediately in all battles.",
   "settings.camera.title": "Camera",
   "settings.camera.height": "Camera height",

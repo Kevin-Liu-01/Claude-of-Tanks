@@ -1285,6 +1285,7 @@
   "settings.interface.hideBattleUi": "HUD de batalla mínimo",
   "settings.interface.showHints": "Consejos iniciales",
   "settings.camera.isometric": "Vista isométrica",
+  "settings.zoom.increased": "Zoom ampliado (×16, ×25)",
   "settings.camera.isometricNote": "Vista aérea inclinada que mantiene tu tanque centrado, amplía el campo de visión al ganar velocidad y se eleva sobre los obstáculos. Mueve el ratón, desliza el dedo o usa el stick derecho para apuntar; el zoom ajusta la distancia de la cámara. Usa el control de apuntado/mira para activar el modo francotirador. Se aplica de inmediato en todas las batallas.",
   "settings.camera.title": "Cámara",
   "settings.camera.height": "Altura de la cámara",

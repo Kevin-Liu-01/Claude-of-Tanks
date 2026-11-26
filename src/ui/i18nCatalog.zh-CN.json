@@ -1300,6 +1300,7 @@
   "settings.interface.hideBattleUi": "极简战斗界面",
   "settings.interface.showHints": "首次使用提示",
   "settings.camera.isometric": "等距俯视视角",
+  "settings.zoom.increased": "增强变焦 (×16, ×25)",
   "settings.camera.isometricNote": "倾斜俯视视角使坦克保持居中，高速行驶时扩大视野，并抬高镜头避开障碍。移动鼠标、滑动屏幕或使用右摇杆瞄准；缩放可调整俯视距离。使用瞄准／开镜操作进入狙击视角。立即应用于所有战斗。",
   "settings.camera.title": "镜头",
   "settings.camera.height": "镜头高度",
