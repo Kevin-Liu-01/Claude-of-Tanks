@@ -1461,6 +1461,7 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
 import { setBodyFlag } from './bodyFlags.ts';
+import { lifeScope } from '../game/lifeScope.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
 // The battle clock is the ruleset's: the frame carries timeLimitS (solo), otherwise the mode's own
 // ruleset answers; null means no clock (Endless Horde counts up).
@@ -8824,6 +8825,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       target.classList.remove('deny');
     }, DENY_PULSE_MS));
   }
+  /** Every pulse still running ends now (a new life: lifeScope.ts). */
+  function clearDenied(): void {
+    for (const [target, timer] of denyTimers) {
+      clearTimeout(timer);
+      target.classList.remove('deny');
+    }
+    denyTimers.clear();
+  }
   function pulseAmmoDenied(slot: number | null | undefined, includeSpecial = false): void {
     const target = slot != null ? slotEls[slot] : null;
     if (target) pulseDenied(target);
@@ -8973,10 +8982,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (id) killLedger.respawn(id);
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
-    if (playerId != null && id !== playerId) return;
-    // a revive makes a fresh consumable state at spawn (2026-11-02 audit M4): a frame that carries the state re-reads it
-    // (no event: the revive count ending and the camera's return say it, notices-audit-275)
-    resetConsumableTray();
+    // (the own revive's fresh tray, 2026-11-02 audit M4, is the new life's: resetLife, life-reset-279)
   });
   // (round 3 merge review r1) a network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
   // every hull stands at its spawn again, a revive of each with no alert (the edge above, for the whole field), and this
@@ -9331,6 +9337,48 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     sixthEl.classList.remove('on');
   }
 
+  /**
+   * A new life of this HUD's seat (life-reset-279; game/lifeScope.ts; Kevin 2026-11-24: "if youve expended an ammo it
+   * doesnt clear the state once you die and respawn"): everything the HUD drew for the last life goes, so the revived hull
+   * is drawn as a fresh spawn is. The battle's record stays (the kill feed and counts, the score, the clock, the contact
+   * memory, the report, the support points). Read from the seat's live life each frame (prepareHudFrame), so a couch pane's
+   * HUD, which has no teardown, registers nothing that outlives it.
+   */
+  function resetLife(): void {
+    // the tray: a refusal's pulse, the charges and cooldowns (the network seat's kits come only from events), the rack
+    clearDenied();
+    resetConsumableTray();
+    setTouchAmmoOpen(false);
+    // the hits taken and dealt: the wedges, the hit mark, the floating figures, the kill card and its streak
+    hitDirs.length = 0;
+    hitMark = null;
+    hideAerialHitMark();
+    for (const number of liveNums) clearTimeout(number.timer);
+    liveNums.length = 0;
+    dmgLayer.replaceChildren();
+    killRibbon.clear();
+    shotInfo.endLife();
+    // the tank's and crew's notices, the fire and aim conditions, the status chips, the revive count
+    events.endLife();
+    syncFireNotice(false);
+    syncAimNotice(null);
+    vehicleStatus.clear();
+    respawnDial.hide();
+    // the sight: its text, the aimed-at plate, the reload's ready pulse
+    sightText.clear();
+    aimTargetId = null;
+    if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+    wasReloading = false;
+    readyPulseT = -1;
+    // the sixth sense: a lamp lit (or a fuse armed) in the last life is not this hull's
+    sixthPendingS = -1;
+    sixthUntilS = -1;
+    sixthOn = false;
+    sixthEl.classList.remove('on');
+  }
+  /** The life the HUD last drew (lifeScope.ts LifeScope.id): a new one runs resetLife before its first frame draws. */
+  let drawnLifeId: number | null = null;
+
   /** A fresh battle: the last battle's memory goes (its sim clock restarted at 0). */
   function beginBattle(): void {
     shotInfo.reset();
@@ -9434,6 +9482,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     playerRef = frame.player || playerRef;
     // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
     if (frame.player) playerId = watchDrone ? null : frame.player.id;
+    const life = lifeScope(playerId);
+    if (life && life.id !== drawnLifeId) {
+      drawnLifeId = life.id;
+      resetLife();
+    }
     // the HUD's frame moved (a watcher started spectating, took a seat on the other side, or left it): the rosters,
     // their titles and the plates re-seat
     const side = watchSide === null ? ownSide() : `watch:${ownSide()}`;

@@ -5,6 +5,7 @@
  * authority state, counts down as the host does. DOM-free, Node-runnable.
  */
 import type { EventBus } from './stateCore.ts';
+import { battleScoped } from './battleScope.ts';
 import { canTankAirSpin, type HullFlightState } from '../sim/hullFlight.ts';
 
 interface TurboCooldown {
@@ -22,20 +23,28 @@ interface TurboCooldown {
 export function createTurboCooldown(
   bus: EventBus, ownId: () => string | null | undefined, clock: () => number, event: 'tank:turbo' | 'tank:airSpin' = 'tank:turbo',
 ): TurboCooldown {
-  let readyAtS = -Infinity;
-  let totalS = 1;
+  // (life-reset-279) the battle's own (game/battleScope.ts battleScoped): its time is the battle's clock, which restarts at 0,
+  // so a Turbo used at 500 s greyed the next battle's tile and the phone's key for its first 500 s. Across a life it
+  // stays: the hull's own cooldown (sim/modeMoves.ts turboReadyS) spans a revive on both drivers, and the tile shows it.
+  const cooldown = battleScoped(() => ({ readyAtS: -Infinity, totalS: 1 }));
   const off = bus.on(event, (payload) => {
     const { id, readyS } = (payload ?? {}) as { id?: string; readyS?: number };
     const own = ownId();
     if (!id || !own || id !== own || !(Number(readyS) > 0)) return;
-    totalS = Number(readyS);
-    readyAtS = clock() + totalS;
+    const now = cooldown();
+    now.totalS = Number(readyS);
+    now.readyAtS = clock() + now.totalS;
   });
+  // a room's restart is a new battle on the same scope, its clock back at 0 (battlePresentation.ts 'battle:restarted')
+  const offRestart = bus.on('battle:restarted', () => { cooldown().readyAtS = -Infinity; });
   return {
-    readyIn: (nowS) => Math.max(0, readyAtS - nowS),
-    refill: (nowS) => Math.min(1, Math.max(0, 1 - Math.max(0, readyAtS - nowS) / totalS)),
-    reset: () => { readyAtS = -Infinity; },
-    dispose: off,
+    readyIn: (nowS) => Math.max(0, cooldown().readyAtS - nowS),
+    refill: (nowS) => {
+      const { readyAtS, totalS } = cooldown();
+      return Math.min(1, Math.max(0, 1 - Math.max(0, readyAtS - nowS) / totalS));
+    },
+    reset: () => { cooldown().readyAtS = -Infinity; },
+    dispose: () => { off(); offRestart(); },
   };
 }
 

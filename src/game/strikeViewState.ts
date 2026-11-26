@@ -26,19 +26,25 @@ export interface StrikeViewState {
   readonly order: StrikeOrder;
 }
 
+/** The call-in the binoculars open on (the strip's first, sim/matchRuleset.ts AIR_STRIKE_KINDS). */
+const FIRST_KIND: AirStrikeKind = 'recon';
+
 export const strikeView: StrikeViewState = {
-  open: false, blend: 0, kind: 'recon', x: 0, y: 0, z: 0, heading: 0, rangeM: 0, order: createStrikeOrder(),
+  open: false, blend: 0, kind: FIRST_KIND, x: 0, y: 0, z: 0, heading: 0, rangeM: 0, order: createStrikeOrder(),
 };
 
 /** The transition's length (s): the camera rises into the binoculars and settles. */
 export const STRIKE_VIEW_TRANSITION_S = 0.6;
 
 /** (battle-teardown-276) The battle's end lowers the binoculars and forgets the order (game/battleScope.ts, through the air
- *  HUD's disposer): a battle left with them up raised them at the next one's start. True when they were up. */
+ *  HUD's disposer): a battle left with them up raised them at the next one's start. True when they were up. (life-reset-279)
+ *  A new life does the same (game/playerBattleActions.ts), and both forget the call-in picked: the next raise starts on the
+ *  first, as a revived gun starts on its first round. */
 export function endStrikeView(): boolean {
   const wasOpen = strikeView.open;
   strikeView.open = false;
   strikeView.blend = 0;
+  strikeView.kind = FIRST_KIND;
   strikeView.order.reset();
   return wasOpen;
 }
