@@ -212,8 +212,16 @@ for (const page of publicPages()) {
   }
 }
 
+// (docs-refresh-279; Main 2026-11-26) the films on Vercel Blob (src/presentation/blobMedia.json): each at most 14 MB, played
+// on a click (the index's feature videos are preload="none": tools/blob-media.selftest.mjs), so none counts before a scroll
+const blob = JSON.parse(readFileSync(join(ROOT, 'src/presentation/blobMedia.json'), 'utf8'));
+const blobFilms = Object.entries(blob.items).filter(([, item]) => item.type.startsWith('video/'));
+for (const [id, item] of blobFilms) {
+  assert.ok(item.bytes > 0 && item.bytes <= 14 * MB, `${id}: ${(item.bytes / MB).toFixed(2)} MB on Blob, 14 MB at most for a click-to-play film`);
+}
+
 console.log(`site-video-budget.selftest: ${seen.loop} loops, ${seen['960 px loop']} 960 px loops, the reel, its fallback and `
   + `${seen.trailer} trailer${trioLanded ? ' (the r6 trio)' : ' (the old 80 s cut until the r6 trio lands)'}, ${(bytes / MB).toFixed(1)} MB in all; `
   + `the home page's first video ${(firstBytes / MB).toFixed(1)} MB; ${phoneRungs} phone rungs ≤ 1.0 MB per 6 s; `
   + `${heroVideos.length ? 'the hero motion take in budget' : 'no hero motion take yet'}; ${topic960} topic headers on the 960 rung `
-  + `(${topicGaps} ledgered until theirs lands); pre-scroll media MB desktop/phone: ${report.join(', ')}`);
+  + `(${topicGaps} ledgered until theirs lands); ${blobFilms.length} Blob films ≤ 14 MB; pre-scroll media MB desktop/phone: ${report.join(', ')}`);
