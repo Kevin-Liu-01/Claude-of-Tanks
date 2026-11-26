@@ -298,7 +298,7 @@ async function upload(dirs, moduleDir, dryRun) {
   }
   if (!moduleDir) throw new Error('blob-media: --blob-module=<dir with @vercel/blob installed>');
   const require = createRequire(join(resolve(moduleDir), 'package.json'));
-  const { head, put } = await import(pathToFileURL(require.resolve('@vercel/blob')).href);
+  const { BlobNotFoundError, head, put } = await import(pathToFileURL(require.resolve('@vercel/blob')).href);
   mkdirSync(dirname(PROGRESS_LOG), { recursive: true });
   const jobs = Math.max(1, Number(arg('jobs') ?? 6));
   const started = Date.now();
@@ -310,7 +310,8 @@ async function upload(dirs, moduleDir, dryRun) {
       if (found.size !== item.bytes) throw new Error(`blob-media: ${item.pathname} is in the store at ${found.size} B, not ${item.bytes} B`);
       url = found.url;
     } catch (error) {
-      if (error?.name !== 'BlobNotFoundError' && !/not.?found/i.test(String(error?.message))) throw error;
+      // @vercel/blob answers a missing pathname with its BlobNotFoundError ("The requested blob does not exist")
+      if (!(error instanceof BlobNotFoundError) && error?.constructor?.name !== 'BlobNotFoundError') throw error;
       url = (await put(item.pathname, readFileSync(sourceOf(item, dirs)), { access: 'public', addRandomSuffix: false, allowOverwrite: false,
         contentType: item.type, cacheControlMaxAge: CACHE_MAX_AGE_S, token })).url;
     }
