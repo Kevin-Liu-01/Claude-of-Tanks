@@ -109,6 +109,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/audio-mix-balance.mjs`
 - `tools/battle-entry-sweep.mjs`
 - `tools/battle-memory-probe.mjs`
+- `tools/battle-retention-probe.mjs`
 - `tools/battle-spike-census.mjs`
 - `tools/black-world.browser.selftest.mjs`
 - `tools/couch-panes.browser.mjs`
