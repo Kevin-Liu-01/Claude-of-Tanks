@@ -2861,12 +2861,37 @@ every move they list as the old host made it):
   revived ally's down clock is dropped with its dead life (checkpointAfterRevives, as a replay's adoption drops it,
   `waveStartMigration` [4a]); no receipt stages an ally killed again in a window read as 275.
 - A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
+- A seat's kill in the window inside a Zone Control zone moves the zone's trickle (279, measured on `windowReplay` [7]'s
+  staging once the 277 bots drove the victim into zone-3): the play holds the victim alive until the frame's row, so
+  the zone stays contested (or uncontested) as the old host's did not, and the running score the play keeps exact parts
+  by the trickle that contest moved, up to the window's length at `ZONE_POINTS_PER_SECOND` per zone (0.8 points over 25
+  ticks there; about 1 point for a 30-tick window). The whole points the frame shows the play missed are added
+  (playScoreAtFrame); the fraction is the play's. `windowReplay` [7] now stages the kill off every zone, so it judges the
+  score rule alone; this floor has no receipt (TESTS-OWED).
 - A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
   client's shell rows not checked.
 - The 13 modes are to the bit on one staging each (the CTF probe's, 30 s in); the receipts hold CTF, Horde, Frontline,
   Turbo Ball, standard, Zone Control and realistic, and the other six rest on the lane's sweep (logs/modes-sweep.2.txt).
   A seat's own hull, driving through the window, stands 0.26 m off the old host's 10 s on (its held command against its
   real one, its row correcting it at the frame).
+
+**The authority's own state, and the keyframe's layout (279, 2026-11-26).** The 275 and 276 work shipped in 279
+(mp-migration-drift-279). Two more parts ride:
+- The kill credits (death-flow-275 R7, R8; `sim/fireCredit.ts`): who set each burning hull alight and each hull's last
+  damaging enemy with when, in `NewModeCheckpoint.host` (`fireStarters`, `recentDamage`). Before them a hull that burned
+  out after a migration was its own kill, and a crew that scuttled credited nobody. The last-damage ledger moved onto the
+  battle clock (a fresh match's equals the authority's own, bit for bit; a migrated host's goes on from the old host's).
+  A revive forgets both on each driver, as the ledger's doc said and neither driver did. `killCreditMigration` holds it,
+  with the keyframe sealed without them as its control.
+- The keyframe names its layout (`migrationState.ts` `MIGRATION_KEYFRAME_LAYOUT`, 1), and a keyframe of another layout or
+  none is refused at decode: the elected seat takes the fallback (a battle in progress declined, never restarted). The
+  HELLO's build check refuses a seat only for its prediction code, so a peer whose authority code alone differs, or an
+  unstamped build, could be elected and read a keyframe written to another shape. `PROTOCOL_VERSION` 18 keeps a 278 tab
+  and a 279 tab apart at the HELLO; the layout stamp covers a later release that changes only the authority.
+`authorityStateMigration` censuses `createAuthoritativeMatch`: every `let` and every Map, Set or `create*()` it keeps is
+carried (with the receipt that proves it) or named with its reason. It found two parts still lost to a migration, both on
+the authority's own clock: a crush press under way (up to `CRUSH_PRESS_S`) and the ram pairs' cooldown. They are named
+open.
 
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
