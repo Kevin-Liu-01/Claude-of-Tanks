@@ -13,8 +13,12 @@ import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 // 2026-10-01 (owner: retire frozen pins): the nineteen pinned pre-work donor fingerprints are gone; the
 // fleet geometry ledger owns whole-tank change detection. Each draft is compared with its donor built
 // live at the same quality in this run, so original geometry still cannot masquerade as new.
-// 2026-09-23 (owner: "no hidden tanks"): these donor records retired; no buildable original remains.
-const RETIRED_DONORS = new Set(['t72b_1987', 't72b3', 'jpz_e100']);
+// 2026-09-23 (owner: "no hidden tanks"): these donor records retired; no buildable original remains. 278: a retired donor
+// is a donor template (donorSpecs.ts DONOR_SPECS, which wins over a registered id of the same name): the three of 09-23
+// and, since 274 retired the STC-1, the Type 90's tkx_prototype_frame. One source, not a second hand list.
+const isRetiredDonor = (donor) => Object.hasOwn(DONOR_SPECS, donor);
+assert.deepEqual(['t72b_1987', 't72b3', 'jpz_e100'].filter(isRetiredDonor), ['t72b_1987', 't72b3', 'jpz_e100'],
+  'the 09-23 retired donors are templates');
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 const donorFingerprints = new Map();
 function donorFingerprint(donor, quality) {
@@ -64,6 +68,15 @@ const comparedPayload = (gun, donor) => armament(Object.hasOwn(DONOR_SPECS, dono
   const gun = TANK_SPECS[registered].gun, donor = SECOND_WAVE_X_DONORS[registered];
   assert.throws(() => assert.deepEqual(comparedPayload({ ...gun, reloadS: gun.reloadS + 1 }, donor),
     comparedPayload(weaponReference(registered, donorSpec(TANK_SPECS, donor)), donor)), 'control: a planted reload is caught');
+  assert.notEqual(TANK_SPECS[registered].hp + 100, donorSpec(TANK_SPECS, donor).hp, 'control: a planted hp on a registered donor row is caught');
+  // the cycle: a registered donor row with an autoloader keeps its cycle compared
+  const loaded = SECOND_WAVE_X_IDS.find((id) => !Object.hasOwn(DONOR_SPECS, SECOND_WAVE_X_DONORS[id])
+    && !['t62mv1', 't72b3m_2016'].includes(id) && TANK_SPECS[id].gun.autoloader);
+  assert.ok(loaded, 'control: a registered second-wave row with an autoloader exists');
+  const loadedGun = TANK_SPECS[loaded].gun, loadedDonor = SECOND_WAVE_X_DONORS[loaded];
+  assert.throws(() => assert.deepEqual(
+    comparedPayload({ ...loadedGun, autoloader: { ...loadedGun.autoloader, fullReloadS: loadedGun.autoloader.fullReloadS + 1 } }, loadedDonor),
+    comparedPayload(weaponReference(loaded, donorSpec(TANK_SPECS, loadedDonor)), loadedDonor)), `control: a planted cycle on ${loaded} is caught`);
   const type90 = TANK_SPECS.type90.gun;
   assert.throws(() => assert.deepEqual(comparedPayload({ ...type90, caliberMm: type90.caliberMm + 5 }, SECOND_WAVE_X_DONORS.type90),
     comparedPayload(donorSpec(TANK_SPECS, SECOND_WAVE_X_DONORS.type90).gun, SECOND_WAVE_X_DONORS.type90)),
@@ -87,14 +100,16 @@ for (const id of SECOND_WAVE_X_IDS) {
   else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
   assert.deepEqual(comparedPayload(spec.gun, donor), comparedPayload(weaponReference(id, donorRow), donor),
     `${id}: donor weapon payload retained`);
-  assert.equal(spec.hp, donorRow.hp);
+  // the hit points are the balance pass's too (fleetBalancePass.ts writes 37 hp rows; the Type 90's 2,450 at :668 beside
+  // its cycle): against a template they are not the donor's (278, the class of Main's reload ruling)
+  if (!Object.hasOwn(DONOR_SPECS, donor)) assert.equal(spec.hp, donorRow.hp, `${id}: donor hit points retained`);
   assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {
     await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
     const tank = createTank(id, null, {...options,quality});
     try {
       assert.ok(tank.root.getObjectByName('hull')?.geometry);
-      if (!RETIRED_DONORS.has(donor)) assert.notEqual(geometryFingerprint(tank.root), donorFingerprint(donor, quality),
+      if (!isRetiredDonor(donor)) assert.notEqual(geometryFingerprint(tank.root), donorFingerprint(donor, quality),
         `${id}/${quality}: original geometry cannot masquerade as new`);
       const gear = tank.root.getObjectByName('rig_hull').userData.runningGearReceipts;
       assert.equal(gear.length, 1, `${id}/${quality}: one native closed track course`);
@@ -121,7 +136,9 @@ assert.equal(TANK_SPECS.t62_1975.armor.hullPlates.some(p=>p.era), false,
     assert.equal(p.kind,'era');assert.equal(p.physicalMm,15);
     assert.deepEqual(p.era,{keReduction:.05,ceFlatMm:280},'explicit X-only first-generation gameplay convention');
   }
-  const signature = rows => rows.map(p=>[p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]);
+  // 278: per zone, not per row: since the 274 plate fits a fitted plate is one row per drawn face (t62mv1 738 rows, the
+  // T-72B 1987 346, the same two zones), so the rows follow each build's own tessellation
+  const signature = rows => [...new Set(rows.map(p=>JSON.stringify([p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era])))].sort();
   assert.deepEqual(signature(era('turretPlates')),signature(TANK_SPECS.t72b_1987.armor.turretPlates.filter(p=>p.era)),
     't62mv1: the transplanted T-72B 1987 upper assembly brings exactly its own reactive modules');
 }
