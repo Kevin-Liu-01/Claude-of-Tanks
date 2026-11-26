@@ -126,7 +126,8 @@ if (LEDGER_PATH) {
         problems++;
         continue;
       }
-      book.tanks[r.id] = row;
+      // 279: a row the owner ruled real (true stowage recesses, bustle clearance) keeps its ruling across re-measures
+      book.tanks[r.id] = held?.real ? { ...row, real: held.real } : row;
       continue;
     }
     if (!held) { console.log(`${r.id}: no roof-pocket ledger row`); problems++; continue; }
