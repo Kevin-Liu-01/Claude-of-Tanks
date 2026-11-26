@@ -12,15 +12,14 @@ export async function urbanCompositionCases(source) {
     sourceJob = async (target, set, layer, options) => {
       cases.push({ id: target.replaceAll(' ', '-').replaceAll('/', '-'),
         kind: target.startsWith('terrain ') ? 'terrain' : 'building',
-        // (texture-diet-277) a tiered set's files at the corpus's 1K tier ({ color, normal, orm }), a JPG set's four, and
-        // the options with the roughness channel the composer reads (green of a packed ORM)
-        set, images: Object.fromEntries(Object.entries(setFiles(SETS[set])).filter(([, url]) => url)),
-        options: composeOptions(set, options) });
+        // (texture-diet-277; building-tex-diet-277) a set's files at the corpus's 1K tier ({ color, normal, orm }) and the
+        // options with the roughness channel the composer reads (green of the packed ORM)
+        set, images: setFiles(SETS[set]), options: composeOptions(options) });
       return { target, applied: true, failures: [] };
     };
     const layer = { albedo: {}, normal: {}, surface: {} };
     await applySourcedTerrain('urban', { G: layer, D: layer, R: layer, M: layer });
-    await applySourcedBuildings({ plaster: layer, roof: layer, wood: layer, stone: layer }, 'urban');
+    await applySourcedBuildings({ plaster: layer, wood: layer }, 'urban');
     return cases;
   `;
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
@@ -30,17 +29,12 @@ export async function urbanCompositionCases(source) {
   const noImageReplacement = () => { throw new Error('Plan collection must not replace images'); };
   const rows = await new AsyncFunction('THREE', 'texSize', 'terrainTextureTier', 'replaceSourcedBuildingDataImage', script)(
     {}, size => size, () => '1k', noImageReplacement);
-  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood', 'brick'],
+  assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood'],
     'Unsupported urban source plan; review the experiment corpus explicitly');
   for (const row of rows) {
-    if (row.images.orm) {
-      assert.deepEqual(Object.keys(row.images).sort(), ['color', 'normal', 'orm']);
-      assert.ok(Object.values(row.images).every(url => /^\/textures\/(terrain|buildings)\/1k\/[\w.-]+\.webp$/.test(url)));
-      assert.equal(row.options.roughChannel, 1, 'a packed ORM map carries roughness in green');
-    } else {
-      assert.deepEqual(Object.keys(row.images).sort(), ['ao', 'color', 'normal', 'rough']);
-      assert.ok(Object.values(row.images).every(url => /^\/textures\/(terrain|buildings)\/[\w.-]+\.jpg$/.test(url)));
-    }
+    assert.deepEqual(Object.keys(row.images).sort(), ['color', 'normal', 'orm']);
+    assert.ok(Object.values(row.images).every(url => /^\/textures\/(terrain|buildings)\/1k\/[\w.-]+\.webp$/.test(url)));
+    assert.equal(row.options.roughChannel, 1, 'the packed ORM map carries roughness in green');
   }
   return rows;
 }
@@ -70,9 +64,9 @@ export function validateCompositionTrial(row) {
   assert.ok(['terrain', 'building'].includes(row.kind));
   assert.deepEqual(row.quality, { tier: 'desktop', preset: 'high', textureSize: 1024 });
   assert.equal(row.size, 1024, 'The approved urban corpus composes at the authored 1K desktop size');
-  // four JPGs (colour, normal, AO, roughness) or a tier's three WebPs (colour, normal, packed ORM)
-  assert.ok(row.images.length === 4 || row.images.length === 3);
-  assert.equal(new Set(row.images.map(image => image.url)).size, row.images.length);
+  // a tier's three WebPs (colour, normal, packed ORM)
+  assert.equal(row.images.length, 3);
+  assert.equal(new Set(row.images.map(image => image.url)).size, 3);
   for (const image of row.images) {
     assert.ok(image.width > 0 && image.height > 0);
     assert.ok(Number.isFinite(image.requestedAt) && Number.isFinite(image.onloadAt) && image.onloadAt >= image.requestedAt);
@@ -85,8 +79,7 @@ export function validateCompositionTrial(row) {
   }
   assert.deepEqual(row.measurements.map(value => value.stage), ['first', 'delayed-reuse']);
   for (const measure of row.measurements) {
-    assert.ok(measure.readbacks.length === row.images.length - 1,
-      'Exact runtime composition reads color, AO and roughness once each (a packed ORM once for both); never the normal');
+    assert.ok(measure.readbacks.length === 2, 'Exact runtime composition reads the colour and the packed ORM once each');
     assert.ok(measure.readbacks.every(value => value.width === row.size && value.height === row.size));
     assert.ok(measure.startedAt >= row.readyAt && measure.endedAt >= measure.startedAt);
     assert.ok(measure.readbacks.every(value => Number.isFinite(value.durationMs) && value.durationMs >= 0

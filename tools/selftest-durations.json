@@ -1265,7 +1265,6 @@
     "src/world/flyoverAircraft.selftest.mjs": 1000,
     "src/world/foliageAtlasPadding.selftest.mjs": 36000,
     "src/world/foliageOcclusionSweep.selftest.mjs": 1000,
-    "src/world/foundryMasonry.selftest.mjs": 3000,
     "src/world/foundryRoof.selftest.mjs": 2000,
     "src/world/foundryServiceCourt.selftest.mjs": 54000,
     "src/world/fractureAnatomy.selftest.mjs": 1000,

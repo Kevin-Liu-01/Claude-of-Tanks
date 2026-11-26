@@ -28,7 +28,7 @@ export function validateWorkerTrial(row, input) {
       && image.onloadAt >= image.requestedAt && image.onloadAt <= row.readyAt, 'Invalid loaded image chronology');
   }
   const color = row.images.find(value => value.role === 'color');
-  require(color.width === 1024 && color.height === (input.set === 'brick' ? 512 : 1024), 'Native input dimensions changed');
+  require(color.width === 1024 && color.height === 1024, 'Native input dimensions changed');
   require(row.graphics?.nativeObserved && !row.graphics.contextLost, 'Native renderer unavailable');
   require(row.measurements?.length === 2 && row.measurements[0].stage === 'first'
     && row.measurements[1].stage === 'delayed-reuse', 'Missing measured phase');

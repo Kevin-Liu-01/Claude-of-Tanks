@@ -23,7 +23,6 @@
   "src/world/exactWreckGeometry.selftest.mjs": 2,
   "src/world/fieldStoneSurface.selftest.mjs": 1,
   "src/world/fieldWallCollision.selftest.mjs": 3,
-  "src/world/foundryMasonry.selftest.mjs": 3,
   "src/world/grassChunkWork.selftest.mjs": 1,
   "src/world/groundCoverClearance.selftest.mjs": 4,
   "src/world/hardstandSurface.selftest.mjs": 3,

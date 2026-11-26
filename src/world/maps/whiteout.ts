@@ -97,7 +97,6 @@ export default {
     // tropo billboards, the radar on its lattice tower, the steel garages, the Jamesway huts, the plywood sheds, a
     // stripped module — on the plan's seats; the kit paints its own panels (the map's tones only tone the old halls)
     architecture: BUILDING_STYLES.whiteout.kit,
-    sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
     // Lane B's Whiteout pass (2026-10-17, MAP-01: a town plan with plots and yards): the plan above strings the station
     // along the service street, and north of the module train the village rect lay empty. A main station's camp stood

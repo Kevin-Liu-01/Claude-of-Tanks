@@ -28,29 +28,24 @@ import {
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
 import * as detMath from '../sim/detMath.ts';
 
-interface SourceTextureSet {
-  color: string;
-  normal: string;
-  rough: string;
-  ao: string;
-}
-
-/** (texture-diet-277) a terrain photo set: three WebPs per quality tier, AO and roughness packed in one ORM map. */
+/**
+ * (texture-diet-277; building-tex-diet-277) a photo set: three WebPs per quality tier under its directory, AO and roughness
+ * packed in one ORM map.
+ */
 interface TieredTextureSet {
   tiered: string;
+  dir: string;
 }
 
-/** The files a set's photos load from: a building set's four JPGs, or a terrain set's tier (orm stands for ao + rough). */
+/** The files a set's photos load from: its tier's colour, normal and packed ORM (occlusion R, roughness G). */
 interface SetFiles {
   color: string;
   normal: string;
-  rough: string | null;
-  ao: string | null;
-  orm: string | null;
+  orm: string;
 }
 
 type LayerKey = 'G' | 'D' | 'R' | 'M';
-type BuildingBucket = 'plaster' | 'roof' | 'wood' | 'stone';
+type BuildingBucket = 'plaster' | 'wood';
 type Tint = readonly [number, number, number];
 
 type ComposeOptions = SourcedComposeOptions;
@@ -90,25 +85,18 @@ function isTint(value: BuildingTint): value is Tint {
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';
 
-// (texture-diet-277) the terrain sets: tools/terrain-texture-tiers.mjs writes <tier>/<base>_{Color,NormalGL,ORM}.webp from
-// the CC0 1K JPGs beside them (the generator's sources, dropped from dist/); the running preset picks the tier
-// (engine/quality.ts terrainTextureTier), and only that tier is fetched
-const tiered = (base: string): TieredTextureSet => ({ tiered: base });
+// (texture-diet-277; building-tex-diet-277) every set: tools/terrain-texture-tiers.mjs writes
+// <dir>/<tier>/<base>_{Color,NormalGL,ORM}.webp from the CC0 1K JPGs beside them (the generator's sources, dropped from
+// dist/); the running preset picks the tier (engine/quality.ts terrainTextureTier), and only that tier is fetched. A
+// running battle's terrain re-sources on a tier change (terrain.ts); the buildings and boulders take it on the next battlefield
+const tiered = (base: string): TieredTextureSet => ({ tiered: base, dir: TT });
+const tieredBuilding = (base: string): TieredTextureSet => ({ tiered: base, dir: TB });
 
 /** A set's files under the running texture tier. */
-function setFiles(set: SourceTextureSet | TieredTextureSet): SetFiles {
-  if (!('tiered' in set)) return { ...set, orm: null };
-  const at = `${TT}/${terrainTextureTier()}/${set.tiered}`;
-  return { color: `${at}_Color.webp`, normal: `${at}_NormalGL.webp`, rough: null, ao: null, orm: `${at}_ORM.webp` };
+function setFiles(set: TieredTextureSet): SetFiles {
+  const at = `${set.dir}/${terrainTextureTier()}/${set.tiered}`;
+  return { color: `${at}_Color.webp`, normal: `${at}_NormalGL.webp`, orm: `${at}_ORM.webp` };
 }
-
-// ambientCG 1K JPG naming
-const acg = (dir: string, base: string): SourceTextureSet => ({
-  color: `${dir}/${base}_1K-JPG_Color.jpg`,
-  normal: `${dir}/${base}_1K-JPG_NormalGL.jpg`,
-  rough: `${dir}/${base}_1K-JPG_Roughness.jpg`,
-  ao: `${dir}/${base}_1K-JPG_AmbientOcclusion.jpg`,
-});
 
 const SETS = {
   grass: tiered('Grass004'),
@@ -124,12 +112,12 @@ const SETS = {
   // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
   // (facades lane: the normal map without the rows of blocky losses, 2026-10-06; the colour map with its broad blotching
   // mostly out and its chroma pulled to the tile's mean, 2026-10-07, wave 199's "uniformly blotchy render": first-party
-  // derivatives, docs/ATTRIBUTION.md)
-  plaster: { ...acg(TB, 'Plaster007'), color: `${TB}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
-  roof: acg(TB, 'RoofingTiles012A'),
-  wood: acg(TB, 'Planks023A'),
-  brick: acg(TB, 'Bricks097'),
-} satisfies Record<string, SourceTextureSet | TieredTextureSet>;
+  // derivatives, docs/ATTRIBUTION.md). The tiers' Plaster007 Color and NormalGL are encoded from those two derivatives.
+  plaster: tieredBuilding('Plaster007'),
+  wood: tieredBuilding('Planks023A'),
+  // (building-tex-diet-278; Kevin 2026-11-25) the roof tiles and brick sets are retired: every battlefield's regional kit
+  // paints its own roofs and masonry and opts into the sourced plaster and timber only (props.ts)
+} satisfies Record<string, TieredTextureSet>;
 
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
@@ -470,13 +458,15 @@ export function sourcedTerrainLayerSet(
 
 // ARCH-P8: decoded source photos only feed the bounded composite caches below
 // (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
-// battlefield's working set — three terrain sets plus the four building sets,
-// four photos each, and the boulders' stone (the terrain's rock set: the scenery
+// battlefield's working set — its terrain sets plus the two building sets,
+// three photos each (a tier's colour, normal and packed ORM: texture-diet-277,
+// building-tex-diet-277), and the boulders' stone (the terrain's rock set: the scenery
 // lane, wave 66) where the terrain does not already wear it — so a map's own
 // loads never evict each other, while earlier battlefields' photos are released
 // (the cache used to keep all 48 forever).
-// src/world/sourcedImageCache.selftest.mjs proves the bound covers every map.
-const IMAGE_CACHE_MAX = 32;
+// src/world/sourcedImageCache.selftest.mjs proves the bound covers every map
+// (building-tex-diet-278: 24, the largest battlefield's 18 photos and room for a tier change's next set; 27 in all).
+const IMAGE_CACHE_MAX = 24;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = _imgCache.get(url);
@@ -623,7 +613,7 @@ function cachedSurface(
   roughMul: number,
 ): HTMLCanvasElement {
   return findCachedSurface(setKey, size, roughMul)
-    ?? composeSurface(ao, rough, size, roughMul, composeOptions(setKey, {}).roughChannel ?? 0);
+    ?? composeSurface(ao, rough, size, roughMul, ORM_ROUGH_CHANNEL);
 }
 
 function normalCanvas(img: SourcePhoto): HTMLCanvasElement {
@@ -670,22 +660,17 @@ async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSe
     failures.push(error instanceof Error ? error.message : String(error));
     return null;
   });
-  if (set.orm) {
-    // one packed map is both the occlusion (R) and the roughness (G): composeOptions reads roughness from its green
-    const [color, normal, orm] = await Promise.all([source(set.color), source(set.normal), source(set.orm)]);
-    return { color, normal, rough: orm, ao: orm, failures };
-  }
-  const [color, normal, rough, ao] = await Promise.all([
-    source(set.color), source(set.normal),
-    set.rough ? source(set.rough) : null,
-    set.ao ? source(set.ao) : null,
-  ]);
-  return { color, normal, rough, ao, failures };
+  // one packed map is both the occlusion (R) and the roughness (G): composeOptions reads roughness from its green
+  const [color, normal, orm] = await Promise.all([source(set.color), source(set.normal), source(set.orm)]);
+  return { color, normal, rough: orm, ao: orm, failures };
 }
 
-/** A set's compose options with its roughness channel: green for a terrain set's packed ORM map, red otherwise. */
-function composeOptions(setKey: keyof typeof SETS, opts: ComposeOptions): ComposeOptions {
-  return 'tiered' in SETS[setKey] ? { ...opts, roughChannel: 1 } : opts;
+/** Every set's roughness is the packed ORM map's green (building-tex-diet-277: the buildings joined the terrain's tiers). */
+const ORM_ROUGH_CHANNEL = 1;
+
+/** A set's compose options with its roughness channel. */
+function composeOptions(opts: ComposeOptions): ComposeOptions {
+  return { ...opts, roughChannel: ORM_ROUGH_CHANNEL };
 }
 
 function composeSet(
@@ -693,7 +678,7 @@ function composeSet(
   images: SetPhotos,
   setOpts: ComposeOptions,
 ): { albedo: HTMLCanvasElement; normal: HTMLCanvasElement; surface: HTMLCanvasElement | null } | null {
-  const opts = composeOptions(setKey, setOpts);
+  const opts = composeOptions(setOpts);
   const { color, normal, rough, ao } = images;
   if (!color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
@@ -788,7 +773,7 @@ async function composeSetAsync(
   if (signal?.aborted || !color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
   const tint: Tint | null = opts.tint ? [opts.tint[0], opts.tint[1], opts.tint[2]] : null;
-  const snapshot = composeOptions(setKey, { ...opts, tint });
+  const snapshot = composeOptions({ ...opts, tint });
   const key = compositeKey(setKey, snapshot);
   if (_compositeCache.get(key)?.size === size || !canComposeSourcedTextureInWorker()) {
     return composeDecoded(setKey, images, snapshot, signal);
@@ -1065,21 +1050,10 @@ export function applySourcedRock(
   });
 }
 
-/**
- * Village building hookup — called by props.ts after the procedural building
- * textures exist. Same in-place swap contract as the terrain path.
- * @param {object} sets { plaster?, roof?, wood?, stone? } of { albedo, normal }
- * @param {string} mapId map id (urban swaps the stone bucket to brick)
- */
 // Per-map albedo tints for the sourced building sets (multiplies RGB after
-// AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
-// roofs and desert adobe stayed white without these.
-const FOUNDRY_BUILDING_TINTS = {
-  plaster: { tint: [0.82, 0.71, 0.59], desat: 0.20 },
-  roof: { tint: [0.62, 0.55, 0.52], desat: 0.44, lift: 0.018 },
-  wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
-  stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
-} satisfies Partial<Record<BuildingBucket, BuildingTint>>;
+// AO) — the raw CC0 sets ignore cfg.props.tones, so desert adobe stayed white
+// without these. (building-tex-diet-278: the roof and stone rows went with the
+// retired roof tiles and brick sets.)
 const BUILDING_TINTS = {
   urban:  { plaster: { tint: [0.94, 0.86, 0.74], desat: 0.16 } }, // Steinburg lime render
   ruinspires: {
@@ -1088,60 +1062,37 @@ const BUILDING_TINTS = {
   },
   blackglass: {
     plaster: { tint: [0.67, 0.59, 0.50], desat: 0.24 },
-    roof: { tint: [0.56, 0.50, 0.47], desat: 0.36 },
     wood: { tint: [0.57, 0.50, 0.42], desat: 0.24 },
-    stone: { tint: [0.72, 0.58, 0.47], desat: 0.16 },
   },
   skybridge: {
     plaster: { tint: [0.91, 0.75, 0.59], desat: 0.12 },
-    roof: { tint: [0.72, 0.58, 0.50], desat: 0.22 },
-    wood: [0.73, 0.61, 0.46], stone: [0.94, 0.73, 0.54],
+    wood: [0.73, 0.61, 0.46],
   },
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
-  // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
-  // deep-snow sky (critique) — the multiply tint cannot desaturate terracotta.
-  // Cooled + 62% desaturated + lifted frost; the props.ts up-face snow-cap
-  // shader lays the actual white load on the slopes.
-  winter: { roof: { tint: [0.96, 1.02, 1.14], desat: 0.62, lift: 0.10 } },
   // maps r1 (ADDITIVE):
   coastal: { plaster: [1.04, 1.02, 0.96], wood: { tint: [0.82, 0.83, 0.84], desat: 0.30 } }, // whitewash + salt-silvered timber
   autumn:  { plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74] },   // warm farm render + aged oak
-  orchard: {
-    plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74],
-    // Existing tile photograph, not an added sampler: restrained charcoal
-    // roofing separates the cultivated valley from the red-roof farm maps.
-    roof: { tint: [0.48, 0.53, 0.57], desat: 0.90, lift: 0.015 },
-  },
+  orchard: { plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74] },
   steppe:  { plaster: [1.06, 1.0, 0.86], wood: [1.0, 0.92, 0.78] },     // sun-baked khutor lime wash
   railyard: {
     plaster: { tint: [0.84, 0.83, 0.80], desat: 0.25 },                 // soot-dulled render
-    // r3: both lifted — under the overcast fill the first-cut tints rendered
-    // the halls as near-black chocolate slabs
-    roof: { tint: [0.88, 0.90, 0.94], desat: 0.60, lift: 0.05 },        // weathered sheet grey
     wood: { tint: [0.78, 0.76, 0.72], desat: 0.20 },
-    stone: { tint: [1.10, 0.98, 0.88], desat: 0.10 },                   // smoke-stained brick
   },
   frontier: { plaster: [1.0, 0.96, 0.86], wood: [0.92, 0.84, 0.70] },
   fjord: {
     plaster: [1.03, 1.04, 1.02],
-    roof: { tint: [0.77, 0.84, 0.91], desat: 0.48, lift: 0.02 },
     wood: { tint: [0.72, 0.76, 0.78], desat: 0.38 },
   },
   delta: { plaster: [1.04, 0.96, 0.78], wood: [0.80, 0.70, 0.53] },
   badlands: { plaster: [1.08, 0.79, 0.58], wood: [0.83, 0.69, 0.52] },
   monsoon: { plaster: [0.78, 0.81, 0.72], wood: [0.67, 0.66, 0.54] },
-  alpine: { roof: { tint: [0.94, 1.01, 1.14], desat: 0.68, lift: 0.11 } },
   caldera: {
     plaster: { tint: [0.65, 0.53, 0.42], desat: 0.26 },
-    roof: { tint: [0.52, 0.43, 0.40], desat: 0.42 },
-    wood: [0.57, 0.47, 0.36], stone: [0.71, 0.55, 0.42],
+    wood: [0.57, 0.47, 0.36],
   },
-  foundry: FOUNDRY_BUILDING_TINTS,
-  // Ironworks opts into one masonry experiment; Copper Mesa still inherits
-  // the exact foundry family above. Only the existing brick pigment changes.
-  ironworks: {
-    ...FOUNDRY_BUILDING_TINTS,
-    stone: { tint: [0.80, 0.75, 0.70], desat: 0.34 },
+  foundry: {
+    plaster: { tint: [0.82, 0.71, 0.59], desat: 0.20 },
+    wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
   },
 } satisfies Record<string, Partial<Record<BuildingBucket, BuildingTint>>>;
 
@@ -1167,13 +1118,20 @@ export function sourcedBuildingTintPolicy(
   return palette[bucket] ?? null;
 }
 
-/** The maps whose stone bucket is the sourced brick print (their field walls keep the coursed module, props.ts). */
+/**
+ * The maps whose stone is brick (their field walls keep the coursed module and breach as brick, props.ts). Named for the
+ * sourced brick print they once wore (retired, building-tex-diet-278); the list is the maps' masonry, not a texture.
+ */
 export function sourcedStoneIsBrick(mapId: string): boolean {
   // maps r1: the rail yard's industrial halls are brick like the town's
   return mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
     || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge';
 }
 
+/**
+ * Village building hookup — called by props.ts after the procedural building textures exist: the plaster and timber
+ * buckets a map's regional kit opts into take the sourced photo sets in place. Same in-place swap contract as the terrain.
+ */
 export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
   mapId: string,
@@ -1181,17 +1139,9 @@ export function applySourcedBuildings(
   application: SourcedTextureApplicationOptions = {},
 ): Promise<SourcedTextureResult[]> {
   // Inherit color policy only. The actual map keeps its existing sourced
-  // buckets, texture dimensions, and procedural-roof exceptions.
+  // buckets and texture dimensions.
   const paletteId = resolveSourcedBuildingPalette(mapId, settings);
-  const plan: Partial<Record<BuildingBucket, keyof typeof SETS>> = {
-    plaster: 'plaster', roof: 'roof', wood: 'wood',
-  };
-  if (sourcedStoneIsBrick(mapId) && sets.stone) plan.stone = 'brick';
-  // Steinburg and Ruinspires keep the PROCEDURAL roof sheet: their tone hooks
-  // bake deliberately restrained roof families that a single sourced tint
-  // cannot reproduce. This also prevents the raw orange tile set from
-  // overriding Ruinspires' smoke-darkened roof policy.
-  if (mapId === 'urban' || mapId === 'ruinspires') delete plan.roof;
+  const plan: Record<BuildingBucket, keyof typeof SETS> = { plaster: 'plaster', wood: 'wood' };
   const jobs: Array<Promise<SourcedTextureResult>> = [];
   for (const [bucket, setKey] of Object.entries(plan)) {
     const bucketKey = bucket as BuildingBucket;

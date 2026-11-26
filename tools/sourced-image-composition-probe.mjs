@@ -239,7 +239,7 @@ async function runCompositionProbe(args) {
       'Fresh context and disabled HTTP cache per arm; browser process, driver and OS caches remain shared.',
       'AB then BA; every result retained, no warmups or discarded first compositions.',
       'Source module delivery/import is outside timing. Exact assets are served from the recorded immutable byte buffers.',
-      'All four PBR images join readiness; earlier images receive natural group-barrier slack, recorded per image.',
+      'All three tier images (colour, normal, packed ORM) join readiness; earlier images receive natural group-barrier slack, recorded per image.',
       'The normal image is loaded/decoded but normal-canvas copying is outside these albedo/surface composer measurements.',
       'Delayed reuse recomposes the same images with existing shared readback scratch; it bypasses composeSet output caches.',
       'Reuse combines image/scratch/JIT warmth. Browser decoded data may be reclaimed; decode does not remove Canvas readback.',

@@ -13,15 +13,15 @@ const workerSource = extractWorkerComposer(source);
 assert.equal(SOURCE_WORKER_PROTOCOL, 'urban-sourced-image-worker-composition-v1');
 const originalCases = await urbanCompositionCases(policySource), originalCaseSnapshot = JSON.stringify(originalCases);
 const workerCases = workerCompositionCases(originalCases);
-assert.equal(originalCases.length, 6); assert.equal(workerCases.length, 9);
+assert.equal(originalCases.length, 5); assert.equal(workerCases.length, 8);
 assert.equal(JSON.stringify(originalCases), originalCaseSnapshot, 'Fixture generation never mutates the approved corpus');
-assert.deepEqual(workerCases.slice(0, 6), originalCases, 'The six production cases stay unchanged');
-assert.deepEqual(workerCases.slice(6).map(row => [row.id, row.set, row.missingOptional]), [
+assert.deepEqual(workerCases.slice(0, 5), originalCases, 'The five production cases stay unchanged (urban brick retired, building-tex-diet-278)');
+assert.deepEqual(workerCases.slice(5).map(row => [row.id, row.set, row.missingOptional]), [
   ['terrain-urban-G-without-ao', 'grass', ['ao']],
   ['terrain-urban-G-without-rough', 'grass', ['rough']],
   ['building-urban-plaster-without-ao-rough', 'plaster', ['ao', 'rough']],
 ]);
-assert.ok(workerCases.slice(6).every(row => row.fixture === true
+assert.ok(workerCases.slice(5).every(row => row.fixture === true
   && row.missingOptional.every(role => row.images[role] === null)));
 const urls = rows => [...new Set(rows.flatMap(row => Object.values(row.images).filter(Boolean)))].sort();
 assert.deepEqual(urls(workerCases), urls(originalCases), 'Optional fixtures introduce no new source assets');
@@ -167,7 +167,7 @@ for (const [kind, options] of cases) {
     assert.deepEqual([...new Uint8ClampedArray(reply.outputs[1].buffer).slice(0, 4)], [255, 230, 0, 255]);
   }
   if (options.height === 512) assert.ok(env.draws.every(draw => draw.sourceHeight === 512 && draw.width === 1024 && draw.height === 1024),
-    'Brick source keeps the production square resize');
+    'A non-square source keeps the production square resize');
   handler({ data: message });
   assert.equal(env.messages.length, 1, 'A worker accepts only one job');
 }
@@ -364,7 +364,7 @@ function trialFixture(input = originalCases[0], policy = 'worker') {
     quality: { tier: 'desktop', preset: 'high', textureSize: 1024 },
     graphics: { nativeObserved: true, contextLost: false },
     images: Object.entries(input.images).filter(([, url]) => url).map(([role, url]) => ({
-      role, url, width: 1024, height: input.set === 'brick' ? 512 : 1024, requestedAt: 1, onloadAt: 5,
+      role, url, width: 1024, height: 1024, requestedAt: 1, onloadAt: 5,
     })),
     responsiveness: { overflow: false,
       callbacks: [0, 30, 1010, 1040].map(callbackAt => ({ callbackAt, frameTimestamp: callbackAt })), longTasks: [] },
@@ -422,9 +422,10 @@ for (const mutate of [
 ]) {
   const row = trialFixture(); mutate(row); assert.throws(() => validateWorkerTrial(row, originalCases[0]));
 }
-const brickInput = originalCases.find(row => row.set === 'brick'), badBrick = trialFixture(brickInput);
-badBrick.images.find(image => image.role === 'color').height = 1024;
-assert.throws(() => validateWorkerTrial(badBrick, brickInput), /Native input dimensions/);
+// (building-tex-diet-278) every corpus set is square now (the 1024 x 512 brick set retired): a 512-high colour is refused
+const badSize = trialFixture();
+badSize.images.find(image => image.role === 'color').height = 512;
+assert.throws(() => validateWorkerTrial(badSize, originalCases[0]), /Native input dimensions/);
 const badMain = trialFixture(originalCases[0], 'main'); badMain.measurements[0].mainReadbacks.pop();
 assert.throws(() => validateWorkerTrial(badMain, originalCases[0]), /composer readbacks/);
-console.log('sourced-image-worker: exact formulas, nine-case corpus, optional maps, brick resize, transfers, ownership, cancellation and admission passed');
+console.log('sourced-image-worker: exact formulas, eight-case corpus, optional maps, square inputs, transfers, ownership, cancellation and admission passed');

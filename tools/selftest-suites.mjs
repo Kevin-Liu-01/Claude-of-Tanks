@@ -1604,7 +1604,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/fleetScope276.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
-    // texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs)
+    // texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs);
+    // building-tex-diet-277: and the village buildings' (src/world/buildingTextureTiers.ledger.json)
     'tools/terrain-texture-tiers.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
     'src/world/sourcedBuildingDataSource.selftest.mjs',
@@ -1612,7 +1613,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/sourcedTextureCompositionWorker.selftest.mjs',
     'src/world/sourcedTextureCompositionClient.selftest.mjs',
     'src/world/sourcedTextureCompositionAdoption.selftest.mjs',
-    'src/world/foundryMasonry.selftest.mjs',
     'src/world/foundryRoof.selftest.mjs',
     'src/world/sourcedTerrainPreparation.selftest.mjs',
     'src/world/spawnClearance.selftest.mjs',

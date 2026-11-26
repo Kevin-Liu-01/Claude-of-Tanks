@@ -45,7 +45,7 @@ function policy(start, end, expression) {
   return runInNewContext(`${stripTypeScriptTypes(source.slice(begin, finish))}\n(${expression})`);
 }
 const terrain = policy('const TERRAIN_PLAN =', 'export type TerrainPaletteId', 'TERRAIN_PLAN');
-const buildings = policy('const FOUNDRY_BUILDING_TINTS =', 'export type BuildingPaletteId', 'BUILDING_TINTS');
+const buildings = policy('const BUILDING_TINTS =', 'export type BuildingPaletteId', 'BUILDING_TINTS');
 const options = [{}, { roughInAlpha: true }, { separateSurface: true },
   { separateSurface: true, roughInAlpha: true, roughMul: 1.3 },
   { roughInAlpha: true, roughMul: 0, tint: [0.5, 0.5, 0.5] },

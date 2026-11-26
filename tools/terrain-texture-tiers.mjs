@@ -1,22 +1,30 @@
 #!/usr/bin/env node
-// tools/terrain-texture-tiers.mjs — the battle terrain's photo sets per texture tier, generated from the committed sources
-// (texture-diet-277; Kevin 2026-11-25: phones fetched the desktop's 1K JPGs, and "the shrink battle textures is smart").
+// tools/terrain-texture-tiers.mjs — the battle's photo sets per texture tier, generated from the committed sources
+// (texture-diet-277: the terrain; building-tex-diet-277: the village buildings. Kevin 2026-11-25: phones fetched the
+// desktop's 1K JPGs, and "the shrink battle textures is smart").
 //
-// The sources are the ambientCG / Poly Haven 1K JPG sets in public/textures/terrain/ (CC0, docs/ATTRIBUTION.md), kept as
-// they were downloaded and dropped from dist/ (tools/tool-only-public-files.mjs): no page fetches them. Every tier holds
-// three files a set, the ones the splat composer reads (src/world/sourcedTextures.ts):
+// Two groups, each with its own sources, output directory and ledger:
+//   terrain    the ambientCG / Poly Haven 1K JPG sets in public/textures/terrain/ the splat plan routes
+//   buildings  the ambientCG 1K JPG sets in public/textures/buildings/ (plaster, wood), Plaster 007 from its first-party
+//              Color-even and NormalGL-smooth derivatives (docs/ATTRIBUTION.md)
+// The sources are CC0 (docs/ATTRIBUTION.md), kept as they were downloaded (or derived) and dropped from dist/
+// (tools/tool-only-public-files.mjs): no page fetches them. Every tier holds three files a set, the ones the composer reads
+// (src/world/sourcedTextures.ts):
 //   <tier>/<Base>_Color.webp     the albedo, lossy (-q 92 -sharp_yuv): the JPGs were near-lossless (15 bits a pixel)
 //   <tier>/<Base>_NormalGL.webp  the OpenGL normal, near-lossless 40: lossy WebP's 4:2:0 chroma smeared grass normals 10°
-//   <tier>/<Base>_ORM.webp       occlusion (R) and roughness (G) packed, B = 0 (the terrain has no metal), near-lossless 40
+//   <tier>/<Base>_ORM.webp       occlusion (R) and roughness (G) packed, B = 0 (neither terrain nor buildings have metal),
+//                                near-lossless 40
 // Tiers: `1k` at the sources' 1024 px, `512` a 2x2 box filter of them (the colour averaged in linear light, the normals
 // as unit vectors renormalised, the ORM as data). The quality preset picks the tier (engine/quality.ts terrainTextureTier).
 //
-//   node tools/terrain-texture-tiers.mjs            regenerate every tier and the ledger
-//   node tools/terrain-texture-tiers.mjs --check    the sources and outputs match the ledger's digests (no encoder needed)
+//   node tools/terrain-texture-tiers.mjs [--group=terrain|buildings]          regenerate the tiers and ledger (default both)
+//   node tools/terrain-texture-tiers.mjs --check                               every group's sources and outputs match its
+//                                                                              ledger's digests (no encoder needed)
 //
-// The ledger (src/world/terrainTextureTiers.ledger.json) records each source's and output's SHA-256 and bytes, the encode
-// settings, the libwebp version, and the measured error of every output against its reference at that size (mean
-// normal angle, per-channel PSNR), so a later run with another libwebp is visible as a byte change, not a silent one.
+// A ledger (src/world/terrainTextureTiers.ledger.json, src/world/buildingTextureTiers.ledger.json) records each source's and
+// output's SHA-256 and bytes, the encode settings, the libwebp version, and the measured error of every output against its
+// reference at that size (mean normal angle, per-channel PSNR), so a later run with another libwebp is visible as a byte
+// change, not a silent one.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -24,14 +32,31 @@ import { fileURLToPath } from 'node:url';
 import { decodeRgba, encodeWebp, webpVersion } from './webp-codec.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC_DIR = 'public/textures/terrain';
-export const LEDGER = 'src/world/terrainTextureTiers.ledger.json';
+const TERRAIN_DIR = 'public/textures/terrain';
+const BUILDINGS_DIR = 'public/textures/buildings';
 
 /** Every terrain photo set the splat plan routes (sourcedTextures.ts SETS), by its source naming. */
 export const TERRAIN_SOURCES = Object.freeze([
   ['Grass004', 'acg'], ['withered_grass', 'ph'], ['Ground071', 'acg'], ['Ground093C', 'acg'],
   ['Snow010A', 'acg'], ['Rock058', 'acg'], ['PavingStones046', 'acg'],
-].map(([base, naming]) => Object.freeze({ base, naming })));
+].map(([base, naming]) => Object.freeze({ base, naming, dir: TERRAIN_DIR })));
+
+/**
+ * (building-tex-diet-277) every village building set (sourcedTextures.ts SETS plaster, wood; the roof tiles and brick
+ * sets were retired, building-tex-diet-278). Plaster 007's colour and normal sources are its first-party derivatives (the
+ * facades lane, 2026-10-06/07), the maps the battle drew.
+ */
+export const BUILDING_SOURCES = Object.freeze([
+  { base: 'Plaster007', naming: 'acg', dir: BUILDINGS_DIR,
+    override: { color: `${BUILDINGS_DIR}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${BUILDINGS_DIR}/Plaster007_1K-JPG_NormalGL-smooth.jpg` } },
+  { base: 'Planks023A', naming: 'acg', dir: BUILDINGS_DIR },
+].map((set) => Object.freeze(set)));
+
+/** The generator's groups: each writes its sets' tiers beside their sources and pins them in its own ledger. */
+export const GROUPS = Object.freeze({
+  terrain: Object.freeze({ dir: TERRAIN_DIR, ledger: 'src/world/terrainTextureTiers.ledger.json', sets: TERRAIN_SOURCES }),
+  buildings: Object.freeze({ dir: BUILDINGS_DIR, ledger: 'src/world/buildingTextureTiers.ledger.json', sets: BUILDING_SOURCES }),
+});
 
 export const TIERS = Object.freeze({ '1k': 1024, 512: 512 });
 
@@ -42,16 +67,17 @@ const ENCODE = Object.freeze({
 });
 
 /** A set's four source files (repo-relative). */
-export function sourceFiles({ base, naming }) {
-  return naming === 'acg'
-    ? { color: `${SRC_DIR}/${base}_1K-JPG_Color.jpg`, normal: `${SRC_DIR}/${base}_1K-JPG_NormalGL.jpg`,
-      rough: `${SRC_DIR}/${base}_1K-JPG_Roughness.jpg`, ao: `${SRC_DIR}/${base}_1K-JPG_AmbientOcclusion.jpg` }
-    : { color: `${SRC_DIR}/${base}_diff_1k.jpg`, normal: `${SRC_DIR}/${base}_nor_gl_1k.jpg`,
-      rough: `${SRC_DIR}/${base}_rough_1k.jpg`, ao: `${SRC_DIR}/${base}_ao_1k.jpg` };
+export function sourceFiles({ base, naming, dir = TERRAIN_DIR, override = {} }) {
+  const files = naming === 'acg'
+    ? { color: `${dir}/${base}_1K-JPG_Color.jpg`, normal: `${dir}/${base}_1K-JPG_NormalGL.jpg`,
+      rough: `${dir}/${base}_1K-JPG_Roughness.jpg`, ao: `${dir}/${base}_1K-JPG_AmbientOcclusion.jpg` }
+    : { color: `${dir}/${base}_diff_1k.jpg`, normal: `${dir}/${base}_nor_gl_1k.jpg`,
+      rough: `${dir}/${base}_rough_1k.jpg`, ao: `${dir}/${base}_ao_1k.jpg` };
+  return { ...files, ...override };
 }
 
-/** A set's output file for a tier and role (repo-relative). */
-export const outputFile = (tier, base, role) => `${SRC_DIR}/${tier}/${base}_${role}.webp`;
+/** A set's output file for a tier and role (repo-relative); `dir` is its group's directory (default the terrain's). */
+export const outputFile = (tier, base, role, dir = TERRAIN_DIR) => `${dir}/${tier}/${base}_${role}.webp`;
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 const abs = (rel) => path.join(ROOT, rel);
@@ -115,14 +141,15 @@ function meanNormalAngle(a, b) {
 }
 
 // --- generate ---------------------------------------------------------------------------------------------------------
-function generate() {
+function generate(groupName) {
+  const group = GROUPS[groupName];
   const ledger = {
-    note: 'Generated by `node tools/terrain-texture-tiers.mjs` from the CC0 sources in public/textures/terrain/ '
+    note: `Generated by \`node tools/terrain-texture-tiers.mjs --group=${groupName}\` from the CC0 sources in ${group.dir}/ `
       + '(docs/ATTRIBUTION.md); checked by `--check` (tools/terrain-texture-tiers.selftest.mjs). Error is each output against '
       + 'its reference at the same size (the decoded source, or its box-filtered half for 512).',
     encoder: webpVersion(), encode: ENCODE, tiers: TIERS, sets: {},
   };
-  for (const set of TERRAIN_SOURCES) {
+  for (const set of group.sets) {
     const files = sourceFiles(set);
     const entry = { sources: {}, outputs: {} };
     for (const [role, rel] of Object.entries(files)) {
@@ -142,42 +169,52 @@ function generate() {
         at >>= 1;
       }
       if (at !== px) throw new Error(`${set.base}: ${size} px sources cannot make the ${tier} tier`);
-      mkdirSync(abs(`${SRC_DIR}/${tier}`), { recursive: true });
+      mkdirSync(abs(`${group.dir}/${tier}`), { recursive: true });
       entry.outputs[tier] = {};
       for (const role of ['Color', 'NormalGL', 'ORM']) {
         const bytes = encodeWebp(ref[role], at, at, ENCODE[role]);
-        const rel = outputFile(tier, set.base, role);
+        const rel = outputFile(tier, set.base, role, group.dir);
         writeFileSync(abs(rel), bytes);
         const back = decodeRgba(abs(rel)).rgba;
         const error = role === 'NormalGL' ? { meanAngleDeg: meanNormalAngle(ref[role], back) }
           : role === 'ORM' ? { psnrAo: psnr(ref[role], back, [0]), psnrRough: psnr(ref[role], back, [1]) }
             : { psnrRgb: psnr(ref[role], back, [0, 1, 2]) };
         entry.outputs[tier][role] = { file: rel, size: at, bytes: bytes.length, sha256: sha256(bytes), error };
-        console.log(`${rel.padEnd(58)} ${String(bytes.length).padStart(8)} B  ${JSON.stringify(error)}`);
+        console.log(`${rel.padEnd(64)} ${String(bytes.length).padStart(8)} B  ${JSON.stringify(error)}`);
       }
     }
     ledger.sets[set.base] = entry;
   }
-  writeFileSync(abs(LEDGER), `${JSON.stringify(ledger, null, 1)}\n`);
-  console.log(`wrote ${LEDGER}`);
+  writeFileSync(abs(group.ledger), `${JSON.stringify(ledger, null, 1)}\n`);
+  console.log(`wrote ${group.ledger}`);
 }
 
-/** Every source and output the ledger names exists with its recorded digest; returns the problems (empty when clean). */
+/** Every source and output each group's ledger names exists with its recorded digest; returns the problems (empty when clean). */
 export function checkLedger(root = ROOT) {
-  const ledger = JSON.parse(readFileSync(path.join(root, LEDGER), 'utf8'));
   const problems = [];
-  const expectSets = TERRAIN_SOURCES.map((s) => s.base).sort();
-  if (JSON.stringify(Object.keys(ledger.sets).sort()) !== JSON.stringify(expectSets)) problems.push('the ledger\'s sets are not TERRAIN_SOURCES');
-  for (const [base, entry] of Object.entries(ledger.sets)) {
-    const files = [...Object.values(entry.sources), ...Object.values(entry.outputs).flatMap((t) => Object.values(t))];
-    for (const { file, sha256: want, bytes } of files) {
-      let buf;
-      try { buf = readFileSync(path.join(root, file)); } catch { problems.push(`${base}: ${file} is missing`); continue; }
-      if (buf.length !== bytes || sha256(buf) !== want) problems.push(`${base}: ${file} differs from the ledger`);
+  for (const [groupName, group] of Object.entries(GROUPS)) {
+    let ledger;
+    try { ledger = JSON.parse(readFileSync(path.join(root, group.ledger), 'utf8')); } catch {
+      problems.push(`${groupName}: no ledger at ${group.ledger}`); continue;
     }
-    for (const tier of Object.keys(TIERS)) {
-      for (const role of ['Color', 'NormalGL', 'ORM']) {
-        if (entry.outputs[tier]?.[role]?.file !== outputFile(tier, base, role)) problems.push(`${base}: no ${tier} ${role}`);
+    const expectSets = group.sets.map((s) => s.base).sort();
+    if (JSON.stringify(Object.keys(ledger.sets).sort()) !== JSON.stringify(expectSets)) problems.push(`${groupName}: the ledger's sets are not the group's`);
+    for (const set of group.sets) {
+      const entry = ledger.sets[set.base];
+      if (!entry) continue;
+      for (const [role, file] of Object.entries(sourceFiles(set))) {
+        if (entry.sources[role]?.file !== file) problems.push(`${set.base}: the ${role} source is not ${file}`);
+      }
+      const files = [...Object.values(entry.sources), ...Object.values(entry.outputs).flatMap((t) => Object.values(t))];
+      for (const { file, sha256: want, bytes } of files) {
+        let buf;
+        try { buf = readFileSync(path.join(root, file)); } catch { problems.push(`${set.base}: ${file} is missing`); continue; }
+        if (buf.length !== bytes || sha256(buf) !== want) problems.push(`${set.base}: ${file} differs from the ledger`);
+      }
+      for (const tier of Object.keys(TIERS)) {
+        for (const role of ['Color', 'NormalGL', 'ORM']) {
+          if (entry.outputs[tier]?.[role]?.file !== outputFile(tier, set.base, role, group.dir)) problems.push(`${set.base}: no ${tier} ${role}`);
+        }
       }
     }
   }
@@ -188,8 +225,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   if (process.argv.includes('--check')) {
     const problems = checkLedger();
     for (const p of problems) console.error(p);
-    console.log(problems.length ? `FAIL ${problems.length}` : 'terrain texture tiers match the ledger');
+    console.log(problems.length ? `FAIL ${problems.length}` : 'every group\'s texture tiers match its ledger');
     process.exit(problems.length ? 1 : 0);
   }
-  generate();
+  const only = process.argv.find((a) => a.startsWith('--group='))?.slice(8);
+  if (only && !GROUPS[only]) throw new Error(`--group must be one of ${Object.keys(GROUPS).join(', ')}`);
+  for (const groupName of only ? [only] : Object.keys(GROUPS)) generate(groupName);
 }
