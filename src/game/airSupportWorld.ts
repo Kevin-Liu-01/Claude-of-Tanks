@@ -30,7 +30,7 @@ import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, typ
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
 import { killcamStage } from './killcamStage.ts';
-import { createAircraftStreaks, type AircraftStreaks } from './aircraftStreaks.ts';
+import { createAircraftStreaks, type StreakEmitter } from './aircraftStreaks.ts';
 import { paintTeamTrim, weatherAirframe, type AirframeTear } from './airframeParts.ts';
 
 /** The battle's effects for an aircraft (main.ts hands the FX runtime's: absent, nothing is drawn but the airframe). */
@@ -57,8 +57,9 @@ interface AirSupportWorldOptions {
 type PublicStrike = AirSupportView['strikes'][number];
 interface Craft { kind: 'jet' | 'gunship'; root: THREE.Object3D; jet: BuiltStrikeJet | null; fighter: BuiltFighterJet | null;
   seen: boolean;
-  /** (aircraft-streaks-277) its wingtip streaks, in its side's team colour (aircraftStreaks.ts). */
-  streaks: AircraftStreaks;
+  /** (aircraft-streaks-277) its wingtip trails, in its side's team colour (aircraftStreaks.ts; aircraft-trails-278: laid
+   *  in the world's one trail field, they outlive it and fade by their own age). */
+  streaks: StreakEmitter;
   /** The bomb once it has left the fighter's pylon: falling in the world on its own arc. */
   dropped: THREE.Object3D | null;
   /** When it last trailed smoke (presentation time), and whether its crash has burst. */
@@ -116,6 +117,8 @@ export function lowestGap(body: THREE.Object3D, ground: (x: number, z: number, c
 
 export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportWorldOptions) {
   const crafts = new Map<number, Craft>();
+  const trails = createAircraftStreaks(root);
+  const replayTrails: StreakEmitter[] = [];
   const hooks = { setup: (m: THREE.Material) => options.setupMaterial?.(m), release: (m: THREE.Material) => options.releaseMaterial?.(m) };
   // the frame's marks, from a fixed pool (no allocation a frame): `markCount` of them are live
   const marks: StrikeMark[] = Array.from({ length: STRIKE_MARK_MAX }, () => ({ x: 0, y: 0, z: 0, shape: 'circle' as StrikeMarkShape,
@@ -140,7 +143,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       const anchor = new THREE.Group();
       anchor.name = `air-support gunship ${strike.id}`;
       root.add(anchor);
-      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'gunship', anchor.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
+      craft = { kind: 'gunship', root: anchor, jet: null, fighter: null, seen: true, streaks: trails.emitter('gunship'), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     } else if (strike.kind === 'bomb' || strike.kind === 'missile') {
       // the fighter: the bomber carries its two GBU-12s (it drops the port one), the Maverick run its four missiles
       const fighter = buildFighterJetAirframe(hooks);
@@ -148,14 +151,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       for (const bomb of fighter.bombs) bomb.visible = strike.kind === 'bomb';
       for (const missile of fighter.missiles) missile.visible = strike.kind === 'missile';
       root.add(fighter.root);
-      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, streaks: createAircraftStreaks(root, 'fighter', fighter.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
+      craft = { kind: 'jet', root: fighter.root, jet: null, fighter, seen: true, streaks: trails.emitter('fighter'), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     } else {
       const jet = buildStrikeJetAirframe(hooks);
       jet.root.name = `air-support jet ${strike.id}`;
       // the recon jet and the strafer carry no bombs
       for (const bomb of jet.bombs) bomb.visible = false;
       root.add(jet.root);
-      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, streaks: createAircraftStreaks(root, 'strike', jet.root.name), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
+      craft = { kind: 'jet', root: jet.root, jet, fighter: null, seen: true, streaks: trails.emitter('strike'), dropped: null, smokedAt: -Infinity, crashed: false, wreckAt: null, wreckX: 0, wreckY: 0, wreckZ: 0, wreckGround: 0, wreckRecord: null, wreckListed: false, tear: null, soot: 0 };
     }
     crafts.set(strike.id, craft);
     return craft;
@@ -163,7 +166,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
 
   function release(id: number, craft: Craft): void {
     craft.dropped?.removeFromParent();
-    craft.streaks.dispose();
+    craft.streaks.end();
     if (craft.jet) craft.jet.dispose();
     else if (craft.fighter) craft.fighter.dispose();
     else { hideGunshipVisual(craft.root); craft.root.removeFromParent(); }
@@ -240,7 +243,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
    *  crumpled), its markings still its side's; then seated on the drawn ground (seatWreck). Posed by the sim's record once
    *  the view carries it (placeWreck). */
   function settleWreck(strike: PublicStrike, craft: Craft, t: number, record: AircraftWreck | null): void {
-    craft.streaks.hide();
+    craft.streaks.end();
     craft.wreckAt = t; craft.wreckX = pose.x; craft.wreckY = pose.y; craft.wreckZ = pose.z;
     if (craft.dropped) craft.dropped.visible = false;
     craft.tear = tearOf(strike.kind, strike.id);
@@ -389,20 +392,23 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       aimColour, locked ? 1 : 0.2);
   }
 
+  /** The camera (null: none). */
+  function viewerEye(): THREE.Vector3 | null {
+    const viewer = options.viewerPosition?.();
+    return viewer ? _eye.set(viewer.x, viewer.y, viewer.z) : null;
+  }
   /** A drawn aircraft at `pose` on its run at time `t` (the stores it still carries or has let go), its streaks and its
    *  markings (the airframe's team trim, airframeParts.ts) in `side`: the team colour its side shows everywhere else
    *  (sideColor own or enemy, the footprints' own). */
   function poseCraft(strike: PublicStrike, craft: Craft, t: number, side: THREE.Color): void {
     craft.root.visible = true;
-    const viewer = options.viewerPosition?.();
-    const eye = viewer ? _eye.set(viewer.x, viewer.y, viewer.z) : null;
+    const eye = viewerEye();
     if (craft.kind === 'gunship') {
       _p.set(pose.x, pose.y, pose.z);
       // banked into its pylon turn (the run's bank: the left wing down on the mark)
       syncGunshipVisual(craft.root, _p, pose.yaw, 1 / 60, true, eye, pose.bank, pose.pitch);
       const model = gunshipModelRoot(craft.root);
-      if (model) { paintTeamTrim(model, side); weatherAirframe(model, sootOf(strike)); craft.streaks.update(model, t, side, eye); }
-      else craft.streaks.hide();
+      if (model) { paintTeamTrim(model, side); weatherAirframe(model, sootOf(strike)); craft.streaks.lay(model, t, side); }
       return;
     }
     craft.root.position.set(pose.x, pose.y, pose.z);
@@ -411,7 +417,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
     paintTeamTrim(craft.root, side);
     weatherAirframe(craft.root, sootOf(strike));
-    craft.streaks.update(craft.root, t, side, eye);
+    craft.streaks.lay(craft.root, t, side);
     // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
     const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
     if (strike.kind === 'bomb' && craft.fighter && (strike.downedS == null || strike.downedS > strike.landsS + bombReleaseOffsetS(R))) dropBomb(strike, craft, t);
@@ -425,11 +431,9 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
    */
   function updateReplay(staged: NonNullable<typeof killcamStage.strike>, t: number): void {
     markCount = 0;
-    for (const [id, craft] of crafts) {
+    for (const craft of crafts.values()) {
       // (the gunship's airframe is the anchor's sibling: gunshipVisual.ts hides it)
       if (craft.kind === 'gunship') hideGunshipVisual(craft.root); else craft.root.visible = false;
-      // (the replayed strike's own streaks carry on: it is posed below)
-      if (id !== staged.id) craft.streaks.hide();
       if (craft.dropped) craft.dropped.visible = false;
     }
     const strike = staged as PublicStrike;
@@ -438,13 +442,19 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     if (airStrikeFlies(staged.kind) && t >= staged.calledS && t < runExitS(R, staged)) {
       runPose(R, staged, t, pose);
       poseCraft(strike, craftFor(strike), t, enemy);
-    } else crafts.get(staged.id)?.streaks.hide();
+    }
+    // only the replayed strike's trails, on the replay's clock (the live ones keep theirs for the battle's frame)
+    const shown = crafts.get(staged.id);
+    replayTrails.length = 0;
+    if (shown) replayTrails.push(shown.streaks);
+    trails.draw(t, viewerEye(), replayTrails);
     if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
 
   function update(air: AirSupportView | null | undefined, perspective: 'alpha' | 'bravo', timeS: number): void {
     if (!air) {
       for (const [id, craft] of crafts) release(id, craft);
+      trails.clear();
       clearStrikeMarks();
       return;
     }
@@ -494,13 +504,14 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       if (!craft.seen) release(id, craft);
     }
     aircraftHits.length = 0;
+    trails.draw(t, viewerEye());
     aimMark(air);
     if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
 
   return {
     update,
-    dispose(): void { for (const [id, craft] of crafts) release(id, craft); clearStrikeMarks(); },
+    dispose(): void { for (const [id, craft] of crafts) release(id, craft); trails.dispose(); clearStrikeMarks(); },
   };
 }
 /** The sim's wreck record of strike `id` in the view (null: not listed). */
