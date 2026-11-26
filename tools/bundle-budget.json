@@ -3,7 +3,7 @@
   "headroom": 0.03,
   "pages": {
     "game": {
-      "requests": 164,
+      "requests": 165,
       "raw": 5083385,
       "gzip": 1569703,
       "brotli": 1320736,
@@ -40,7 +40,7 @@
       "inlineCss": 803
     },
     "cn": {
-      "requests": 165,
+      "requests": 166,
       "raw": 5265520,
       "gzip": 1632590,
       "brotli": 1371056,
