@@ -12,8 +12,13 @@ import { ICONS_PAGE_PUBLIC } from '../icons-page-public.mjs';
 import { GATE_PAGE_PUBLIC } from '../gate-page-public.mjs';
 import { ICONS_PAGE_CATALOG_KEYS } from '../page-catalog-keys.mjs';
 
-/** The i18n string catalogs (267): a step that declares `catalogKeys` keys those keys' values instead of these files. */
-export const CATALOG_FILES = Object.freeze(['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json']);
+/**
+ * The i18n string catalogs (267): a step that declares `catalogKeys` keys those keys' values in each catalog it reaches,
+ * instead of the catalogs' bytes. (279) Every `src/ui/i18nCatalog.<locale>.json`, by its name: 267 listed the two
+ * catalogs it had, and the five locales 274 added (de, es, ja, pt-BR, ru) were keyed whole, so any string edit marked
+ * centering and icons on every id. A new locale's catalog is one by its name, with no list to keep.
+ */
+export const isCatalogFile = (path) => /^src\/ui\/i18nCatalog\.[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,4})?\.json$/.test(path);
 
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([

@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { balanceTokens, computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, CATALOG_FILES, gpuChunks } from './steps.mjs';
+  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, isCatalogFile, gpuChunks } from './steps.mjs';
 import { browserIdCap } from '../browser-id-chunks.mjs';
 import { declaredNotInput, tableFileList } from './globs.mjs';
 import { tokenPin } from './world.mjs';
@@ -225,14 +225,14 @@ for (const name of ['icons', 'centering']) {
 // 267: no world bake reaches the i18n catalogs (the localized map name is UI code), and the GPU steps that do reach them
 // key only the strings their page draws (catalogKeys); a HUD string edit re-ran both and every map.
 for (const [name, entry] of Object.entries(state.world?.steps ?? {})) {
-  assert.ok(!entry.toolFiles.some((file) => file === 'src/ui/i18n.ts' || CATALOG_FILES.includes(file)), `world ${name}: reaches no string catalog`);
+  assert.ok(!entry.toolFiles.some((file) => file === 'src/ui/i18n.ts' || isCatalogFile(file)), `world ${name}: reaches no string catalog`);
 }
 for (const [name, entry] of Object.entries(state.steps)) {
-  if (entry.toolFiles.some((file) => CATALOG_FILES.includes(file))) {
+  if (entry.toolFiles.some(isCatalogFile)) {
     assert.ok(entry.step.catalogKeys?.length, `${name}: reaches the string catalogs, so declares the keys its tool draws (catalogKeys)`);
   }
 }
-assert.ok(['centering', 'icons'].every((name) => state.steps[name].toolFiles.includes(CATALOG_FILES[0])), 'control: the icons page reaches them');
+assert.ok(['centering', 'icons'].every((name) => state.steps[name].toolFiles.includes('src/ui/i18nCatalog.en-US.json')), 'control: the icons page reaches them');
 assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
 assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),
   'control: only the scheduleOnly declaration takes the table out of the key');
