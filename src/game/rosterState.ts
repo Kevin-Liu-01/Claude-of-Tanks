@@ -8,7 +8,7 @@ import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import {
-  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, offThreadDecorPlanner, type CreateTankOptions,
+  battleBuildOptions, battleStaticDrawMerge, createTank, createTankSteps, offThreadDecorPlanner, type CreateTankOptions,
 } from '../vehicles/fleetFactory.ts';
 import type { TankBuildStep } from '../vehicles/tankFactoryCore.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
@@ -333,7 +333,6 @@ function* buildRosterVisual(
   assertCurrent();
   const playerActor = ent.isPlayer || ent === roster[0];
   const deviceTier = getDeviceTier();
-  const mobileBot = !playerActor && deviceTier === 'mobile';
   const battleBot = !playerActor;
   let visual: BattleVisual | null = battleBot
     ? game._battleVisualPool?.take(specId) || null : null;
@@ -344,15 +343,12 @@ function* buildRosterVisual(
   const construct = function* (): Generator<TankBuildStep, void, void> {
     // Exact existing battle policy: preview player paint, authored bot detail,
     // articulation-local static batches. No quality tier is reduced here.
+    // (roster-errors-279) the geometry policy is the multiplayer seats' and the battle fleet pass's too (fleetFactory
+    // battleBuildOptions): the checked anatomy and live ERA clusters, not a fresh fitted-surface audit
     const options: CreateTankOptions = {
       camoSeed,
       quality: textureQualityFor(game, ent),
-      geometryQuality: battleGeometryQuality(playerActor, deviceTier),
-      batchStatic: true,
-      battleDetailLod: battleBot && !mobileBot,
-      // Battles use the checked anatomy and live ERA clusters, not a fresh
-      // geometric audit. Keep the detailed fitted-surface report in authoring.
-      eraVisualBindingReceipt: false,
+      ...battleBuildOptions(playerActor, deviceTier),
       // stage 2b: a stepped build plans its decoration in the decor worker (the streamer awaits the wait)
       ...(cooperative ? { decorPlanner: offThreadDecorPlanner() ?? undefined } : {}),
     };
