@@ -31,7 +31,7 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { budgetedSync, watchChild } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
+  isCatalogFile, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
   WORLD_STEPS, stepDefinition } from './steps.mjs';
 import { maskShaderText, switchSites } from './shader-text.mjs';
 import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
@@ -216,6 +216,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS, balance: BALANCE,
   // (274) shader text the CPU and world keys mask (steps.mjs SHADER_TEXT)
   shaderText: SHADER_TEXT,
+  // (279) which files are string catalogs (steps.mjs isCatalogFile): a step that declares `catalogKeys` keys those keys'
+  // values in them, not their bytes
+  catalogs: isCatalogFile,
   // (274) stopAtFleetCore: the world closures stop at the whole fleet core, which `fleetKey` holds, not only at its entry
   // modules (world.mjs)
   world: Object.freeze({ registryFile: MAP_REGISTRY_FILE, outputs: WORLD_OUTPUTS, fleetApiUsers: FLEET_API_USERS,
@@ -228,20 +231,24 @@ export const DEFAULT_CONFIG = Object.freeze({
  * carry a table recorded under 273's keys over to these without a regen; delete it with that tool once main's table is
  * re-keyed.
  */
-export const KEYS_273 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({}),
+/** (279) The string catalogs as 267 to 274 listed them: the other five locales' catalogs were keyed whole. */
+const CATALOGS_274 = Object.freeze(['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json']);
+const listedCatalog = (path) => CATALOGS_274.includes(path);
+
+export const KEYS_273 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({}), catalogs: listedCatalog,
   declared: Object.freeze(Object.fromEntries(Object.entries(DECLARED_DYNAMIC).filter(([file]) => file !== 'tools/media-r5/paths.mjs'))),
   world: Object.freeze({ ...DEFAULT_CONFIG.world, stopAtFleetCore: false }) });
 
 /**
- * (279) The keys as 274 took them: the declared constants masked, none of the marked regions (shader-text.mjs), and
- * FIELD_DUST_GLSL keyed. tools/changed-only/rekey.mjs --from=274 carries a table recorded under them over to these
+ * (279) The keys as 274 took them: the declared constants masked, none of the marked regions (shader-text.mjs),
+ * FIELD_DUST_GLSL keyed, and only the en-US and zh-CN string catalogs taken out of the GPU steps' keys. tools/changed-only/rekey.mjs --from=274 carries a table recorded under them over to these
  * without a regen (these key a part of what they keyed); delete it with that option once main's table is re-keyed.
  */
 export const KEYS_274 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({
   'src/vehicles/materials.ts': Object.freeze({
     consts: Object.freeze(SHADER_TEXT['src/vehicles/materials.ts'].consts.filter((name) => name !== 'FIELD_DUST_GLSL')),
   }),
-}) });
+}), catalogs: listedCatalog });
 
 
 /** The tokens that pin the balance pass's importers (steps.mjs BALANCE): its own `tokens` and every name its entries
@@ -262,7 +269,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
     groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS, balance: BALANCE_PASS,
-    shaderText: SHADER_DECLARED = {} } = { ...DEFAULT_CONFIG, ...config };
+    shaderText: SHADER_DECLARED = {}, catalogs: isCatalog } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
@@ -285,10 +292,15 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   const roster = H(JSON.stringify(data.roster));
 
   // The values of the catalog keys a step declares (267, steps.mjs `catalogKeys`): one row per key, its value in each
-  // catalog ("absent" where it has none). A pattern ending in `*` takes every key with that prefix.
-  let catalogs = null;
-  const catalogValues = (patterns) => {
-    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(graph.readText(abs(file))); } catch { return {}; } });
+  // catalog the step reaches, in path order ("absent" where it has none). A pattern ending in `*` takes every key with
+  // that prefix.
+  const catalogCache = new Map();
+  const catalogOf = (file) => {
+    if (!catalogCache.has(file)) catalogCache.set(file, (() => { try { return JSON.parse(graph.readText(abs(file))); } catch { return {}; } })());
+    return catalogCache.get(file);
+  };
+  const catalogValues = (patterns, files) => {
+    const catalogs = [...files].sort().map(catalogOf);
     const keys = [...new Set(catalogs.flatMap((catalog) => Object.keys(catalog)))].filter((key) => patterns.some((pattern) =>
       (pattern.endsWith('*') ? key.startsWith(pattern.slice(0, -1)) : key === pattern)));
     const named = new Set([...patterns.filter((pattern) => !pattern.endsWith('*')), ...keys]);
@@ -526,8 +538,9 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       // the per-id files its own output rows name (266, `inputField`)
       ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort();
     // (267) a step that declares the catalog keys its page draws keys their values, not the whole string catalogs
-    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys) : [];
-    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !CATALOG_FILES.includes(rel(file)))) : toolFiles;
+    const catalogFiles = step.catalogKeys ? [...toolFiles].map(rel).filter(isCatalog) : [];
+    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys, catalogFiles) : [];
+    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !isCatalog(rel(file)))) : toolFiles;
     const gpu = step.device === 'gpu';
     const tool = H(`step:${stepDefinition(step)}`,
       ...(gpu ? graph.rowsOf : nodeRows)(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),

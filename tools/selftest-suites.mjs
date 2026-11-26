@@ -1113,6 +1113,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 279: the shader-text mask's marked regions: a splice inside one marks only the GPU steps, an edit just outside one
     // every step; the checker's refusals on fixtures; the re-key from a marker-free table
     'tools/changed-only/shader-text.selftest.mjs',
+    // 279: every locale's string catalog is one by its name: an edit of the strings no generator draws moves no key (the
+    // fix reverted, 274's two listed catalogs: centering and icons on every id); a drawn string still marks them
+    'tools/changed-only/catalog-keys.selftest.mjs',
     // The world steps' per-map keys on a fixture world (map configs, world core, wreck donors, fail-closed reads).
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.

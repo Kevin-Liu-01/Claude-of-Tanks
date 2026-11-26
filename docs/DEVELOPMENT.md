@@ -771,7 +771,7 @@ Result reuse is based on source syntax and file contents:
 - Source text read for an assertion is a data input; its imports are not
   executed. JSON-listed files and static paths are tracked, and a templated data
   path keys the files its pattern matches (`src/ui/i18nCatalog.${locale}.json` is
-  the two catalogs, not all of src/ui). Opaque process/listing operations retain
+  every locale's catalog, not all of src/ui). Opaque process/listing operations retain
   conservative directory inputs. A path literal can start at any tracked top-level
   directory (`SELFTEST_ROOT_DIRS`, held to `git ls-files` by selftest-cache.selftest).
 - What the run observed keys the PASS too: see "Observed reads" below.
@@ -1396,6 +1396,12 @@ narrowed either: the icons page loads `localeRouting.ts` and every geometry tool
   `node tools/changed-only/shader-text.selftest.mjs` replays a splice inside the region (the GPU steps only) and the same
   edits just outside it (every step). Adding or moving markers moves the file's bytes, so the GPU steps re-run once;
   `rekey.mjs --from=274 --base=<rev>` carries a table over such a comment-only edit without re-running the CPU steps.
+- String catalogs (267, 279). Centering and icons reach every `src/ui/i18nCatalog.<locale>.json` through the icons page
+  and key only the values of the keys it draws (`catalogKeys`; the page fails a run on any other key it asks for). Every
+  locale's catalog is one by its name (`isCatalogFile` in steps.mjs); 267 listed the two it had, so after 274 added five
+  locales any string edit (docs-refresh-279's Field Manual) marked both steps on every id with identical output.
+  `node tools/changed-only/catalog-keys.selftest.mjs` edits every undeclared string (nothing moves) against 274's list
+  (centering and icons on every id).
 - The world closures stop at the whole fleet core, which every map's key holds already, so a world tool no longer
   re-walks the core into files a core module only names (`docs/ATTRIBUTION.md` through `src/authorship.ts`). A world
   file that imports a fleet loader file directly must be a declared `FLEET_API_USERS` entry, like one that imports an
