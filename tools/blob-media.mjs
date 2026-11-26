@@ -59,10 +59,12 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { idForPath, PATHNAME_PREFIX, pathnameFor } from '../src/presentation/blobMediaPath.ts';
+import { idForPath, PATHNAME_PREFIX, pathnameFor, pathnameForPath } from '../src/presentation/blobMediaPath.ts';
 import { mediaPaths, rewriteText } from './blobMediaRewrite.ts';
 
-export { idForPath, mediaPaths, PATHNAME_PREFIX, pathnameFor, rewriteText };
+export { idForPath, mediaPaths, PATHNAME_PREFIX, pathnameFor, pathnameForPath, rewriteText };
+/** An item's content-addressed pathname: an id item's by its id, a path item's by its old path. */
+export const itemPathname = (id, item, sha256 = item.sha256) => (item.path ? pathnameForPath(item.path, sha256) : pathnameFor(id, sha256, item.file));
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const MANIFEST_PATH = join(ROOT, 'src/presentation/blobMedia.json');
 /** The types the store serves, by extension; a file of another extension cannot be added. */
@@ -94,6 +96,8 @@ export const RUNTIME_FAMILIES = Object.freeze({
   'library-r3': '/media/library-r3/',
   'filming-r1': '/media/filming-r1/',
   'site50-reels': '/media/site50-r14/reels/',
+  'web-video-r1': '/media/web-video-r1/',
+  'docs-hero-r2': '/media/docs-hero-r2/',
 });
 export const FAMILIES_DIR = join(ROOT, 'src/presentation/blobMediaFamilies');
 
@@ -140,7 +144,7 @@ export function manifestProblems(manifest) {
     const type = typeOf(item.file ?? '');
     if (!type) { problems.push(`${id}: ${item.file} has no type in TYPES`); continue; }
     if (!item.sha256 || !/^[0-9a-f]{64}$/.test(item.sha256)) { problems.push(`${id}: not staged (node tools/blob-media.mjs stage)`); continue; }
-    if (item.pathname !== pathnameFor(id, item.sha256, item.file)) problems.push(`${id}: pathname ${item.pathname} is not its content address`);
+    if (item.pathname !== itemPathname(id, item)) problems.push(`${id}: pathname ${item.pathname} is not its content address`);
     if (item.type !== type) problems.push(`${id}: type ${item.type}, ${type} by its extension`);
     if (!(item.bytes > 0)) problems.push(`${id}: bytes`);
     const film = type.startsWith('video/');
@@ -182,9 +186,9 @@ function stageItems(manifest, entries, dirs) {
     const type = typeOf(item.file);
     if (!type) throw new Error(`blob-media: ${item.file} has no type in TYPES`);
     const moved = item.sha256 !== sha256;
-    if (!moved && item.pathname === pathnameFor(id, sha256, item.file) && item.bytes === bytes.length) continue;
+    if (!moved && item.pathname === itemPathname(id, item, sha256) && item.bytes === bytes.length) continue;
     const { width: _w, height: _h, durationS: _d, ...rest } = item;
-    manifest.items[id] = { ...rest, pathname: pathnameFor(id, sha256, item.file), url: moved ? null : item.url, bytes: bytes.length, sha256, type,
+    manifest.items[id] = { ...rest, pathname: itemPathname(id, item, sha256), url: moved ? null : item.url, bytes: bytes.length, sha256, type,
       ...probe(path, type) };
     console.log(`${id}: ${item.file} ${(bytes.length / 1048576).toFixed(2)} MB ${manifest.items[id].pathname}${moved && item.url ? ' (new bytes: url cleared)' : ''}`);
   }
@@ -405,8 +409,8 @@ export function rewriteDist(dist, manifest, { familiesDir = FAMILIES_DIR } = {})
     for (const found of mediaPaths(text)) {
       if (found.full) {
         if (!index.has(found.path) && !existsSync(join(dist, found.path))) problems.push(`dist/${rel}: ${found.path} names no file and no Blob item`);
-      } else if (movedFolders.has(found.path.endsWith('/') ? found.path : `${found.path.slice(0, found.path.lastIndexOf('/') + 1)}`)
-        && !families.some((prefix) => found.path.startsWith(prefix))) {
+      } else if ((movedFolders.has(`${found.path.replace(/\/$/, '')}/`) || movedFolders.has(found.path.slice(0, found.path.lastIndexOf('/') + 1)))
+        && !families.some((prefix) => found.path.startsWith(prefix) || `${found.path}/` === prefix)) {
         problems.push(`dist/${rel}: builds a path from ${found.path}, a folder with moved files outside a run-time family (blobMediaFamily.ts)`);
       }
     }

@@ -7,6 +7,11 @@ import type { RichSection } from './chapters/types.ts';
 import { keepDesignations, keepPhrases } from './designations.ts';
 import { revealStills } from '../presentation/revealStills.ts';
 import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
+import loopsMap from '../presentation/blobMediaFamilies/site50-loops.json' with { type: 'json' };
+import phoneMap from '../presentation/blobMediaFamilies/web-video-r1.json' with { type: 'json' };
+import heroMap from '../presentation/blobMediaFamilies/docs-hero-r2.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../presentation/blobMediaFamily.ts';
+import { sitePathOf } from '../presentation/blobMediaPath.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -374,18 +379,23 @@ export interface TopicHeroLadder {
 const CRUMB = icon('chevronRight', { size: 16 });
 
 export function topicHeroLadder(hero: string): TopicHeroLadder | null {
-  const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  // (media-blob-279) in the built page a moved hero is its Vercel Blob URL: its take is read from the path it stands for
+  const path = sitePathOf(hero);
+  const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(path)?.[1];
   if (site50) {
     const loops = '/media/site50-r14/loops', rungs = TOPIC_HERO_RUNGS[site50] ?? {};
     return { take: site50, captionKey: `media.site50.title.${camelTake(site50)}`, poster: `${loops}/${site50}.jpg`,
-      still: `/media/site50-r14/stills/${site50}-thumb.webp`, wide: hero, r960: rungs.r960 ? `${loops}/${site50}-960.webm` : null,
-      phone: rungs.phone ? `/media/web-video-r1/${site50}-mobile.mp4` : null };
+      // (media-blob-279) the rungs are built per take, so they resolve through their Vercel Blob family maps
+      still: `/media/site50-r14/stills/${site50}-thumb.webp`, wide: hero,
+      r960: rungs.r960 ? familyMediaUrl(loopsMap as BlobMediaFamily, `${loops}/${site50}-960.webm`) : null,
+      phone: rungs.phone ? familyMediaUrl(phoneMap as BlobMediaFamily, `/media/web-video-r1/${site50}-mobile.mp4`) : null };
   }
-  const r2 = /^\/media\/docs-hero-r2\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  const r2 = /^\/media\/docs-hero-r2\/([\w-]+)\.webm$/.exec(path)?.[1];
   if (r2) {
     const dir = '/media/docs-hero-r2';
     return { take: r2, captionKey: `media.docsHero.title.${camelTake(r2)}`, poster: `${dir}/${r2}.jpg`, still: `${dir}/${r2}-thumb.webp`,
-      wide: hero, r960: `${dir}/${r2}-960.webm`, phone: `${dir}/${r2}-mobile.mp4` };
+      wide: hero, r960: familyMediaUrl(heroMap as BlobMediaFamily, `${dir}/${r2}-960.webm`),
+      phone: familyMediaUrl(heroMap as BlobMediaFamily, `${dir}/${r2}-mobile.mp4`) };
   }
   return null;
 }

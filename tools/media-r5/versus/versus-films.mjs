@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The versus films, public/media/versus-films-r1 (2026-10-22, the owner: "we need all on the site!"): each scene's
 // moving take, filmed in the Scene Studio by the game engine, as the landing's versus section plays it (a muted loop
 // that plays in view). Each film in picks.json's films ships as three files made from its filtered master, found in

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // site-media-wire.mjs — wires the public site and the game to the site fifty's media (public/media/site50-r14, built
 // by site-media.mjs from tools/media-r5/site-media/picks.json): the manual's hero, trailer, chapter cards, battle
 // takes, contact sheets and archive; each topic's hero loop and figures; the game's featured stills (boot splash, Garage
