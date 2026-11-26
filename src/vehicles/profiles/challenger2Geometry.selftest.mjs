@@ -49,8 +49,26 @@ assert.equal(fenderReceipt?.maximumRailGapM, 0,
 assert.ok(fenderReceipt?.carrierPitchRad > 0,
   'fender rails must follow the falling front deck rather than pitch away from it');
 
+// e5132509b1 (owner 2026-11-04: wheel dressing rides its wheels): a running-gear bucket's parts that sit on a wheel leave
+// the merged bucket mesh for the wheel (gearWheelDressing_<bucket>, its arms gearWheelArm_<bucket>), so the lane is read
+// over every mesh the bucket became, in the hull rig's frame
+function bucketVertices(bucket) {
+  const meshes = [];
+  tank.root.traverse((o) => {
+    if (o.isMesh && [bucket, `gearWheelDressing_${bucket}`, `gearWheelArm_${bucket}`].includes(o.name)) meshes.push(o);
+  });
+  assert.ok(meshes.length, `missing ${bucket} geometry (merged or seated on a wheel)`);
+  tank.root.updateMatrixWorld(true);
+  const fromHull = new THREE.Matrix4().copy(tank.root.getObjectByName('rig_hull').matrixWorld).invert();
+  const v = new THREE.Vector3(), result = [];
+  for (const mesh of meshes) {
+    const toRig = fromHull.clone().multiply(mesh.matrixWorld), position = mesh.geometry.attributes.position;
+    for (let index = 0; index < position.count; index++) result.push(v.fromBufferAttribute(position, index).applyMatrix4(toRig).toArray());
+  }
+  return result;
+}
 for (const bucket of ['hullRunningGearDark', 'hullRunningGearDetail']) {
-  for (const [x, y, z] of vertices(bucket)) {
+  for (const [x, y, z] of bucketVertices(bucket)) {
     const inLegacyLane = Math.abs(x) > 1.585 && Math.abs(x) < 1.67
       && y > 0.38 && y < 0.80
       && [2.05, 1.15, 0.25, -0.65, -1.55].some(station => Math.abs(z - station) < 0.20);
