@@ -3148,6 +3148,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    // world-flags-278 (Kevin, 2026-11-26: the fort's flag "looks too much like a real flag"): every world flag is invented
+    'src/world/worldFlags.selftest.mjs',
     // the maps-restyle lane (2026-10-22, from the destructible-kits lane 2026-10-11): the roadside light buildings and
     // random hulks in 180-degree twins on a map that declares its rotation centre (the fairness ask)
     'src/world/roadsideTwins.selftest.mjs',
@@ -3189,8 +3191,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/towerDamage.selftest.mjs', // 2026-10-15 props census #9 (E13): every placed tower kind records its bodies, read in storey bands through the multi-body route
     // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
     'src/world/landmarks/landmarks.selftest.mjs',
-    // world-flags-278 (Kevin, 2026-11-26: the fort's flag "looks too much like a real flag"): every world flag is invented
-    'src/world/worldFlags.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
