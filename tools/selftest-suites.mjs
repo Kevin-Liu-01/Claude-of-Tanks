@@ -2502,6 +2502,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/botGunLane.selftest.mjs',
     'src/game/ai.selftest.mjs',
     'src/game/ai.targeting.selftest.mjs',
+    // (landmark-lanes-278) a target behind cover gives way to a spotted one in the gun's line after HIDDEN_RETARGET_S
+    'src/game/ai.hiddenRetarget.selftest.mjs',
     'src/game/ai.stalls.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
     'src/game/ai.passiveTarget.selftest.mjs',
@@ -3221,6 +3223,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // landmark-primitives-278 (the owner, 2026-11-25: "make sure any flora or stuff just reuses any better looking
     // primitives we already have"): no hand-built flora in a set piece, drawn or declared; its trees on the map's slots
     'src/world/landmarks/landmarkFlora.selftest.mjs',
+    // (landmark-lanes-278) no set piece on a Turbo Ball lane, read off each map's real placement; the reverted controls refused
+    'src/world/landmarks/landmarkLanes.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit

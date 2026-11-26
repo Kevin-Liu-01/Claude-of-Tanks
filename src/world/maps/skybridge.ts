@@ -219,13 +219,15 @@ export default {
     // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
     // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Glen Canyon's
     // building years (src/world/landmarks/damWorks.ts): the dam's high-line cableway, a head tower on each shore of the
-    // drowned gorge (a rotation pair about the layout's centre), the track cable sagging across the lake between them with
-    // the carriage and its concrete bucket hung on it.
+    // drowned gorge (a rotation pair about the layout's centre until 278 moved the head tower in), the track cable sagging
+    // across the lake between them with the carriage and its concrete bucket hung on it.
     landmarks: [
       // (landmarks-world-276: the head tower's backstay deadmen stood in the west shore's road; the pair moved 5 m in
       // along the cable line, each, on 14 m backstays, so it stays a rotation pair, every anchor 4.5 m off the road core
       // and the tail tower clear of the east shore's works)
-      { kind: 'cablewayTower', x: -99.3, z: 137.2, yawDeg: 126.5, params: { backstay: 14, cable: true, span: 259.5, farRise: -1.07 }, name: 'the cableway head tower (west shore)' },
+      // (landmark-lanes-278) the head tower 21 m in along the cable's line, off the Turbo Ball lane into bravo's goal (the
+      // ball stalled beside it); the tail tower's rotation seat holds a building, so the tail stays and the span shortens
+      { kind: 'cablewayTower', x: -82.4, z: 124.7, yawDeg: 126.5, params: { backstay: 14, cable: true, span: 238.5, farRise: -0.83 }, name: 'the cableway head tower (west shore)' },
       { kind: 'cablewayTower', x: 109.3, z: -17.2, yawDeg: -53.5, params: { backstay: 14 }, name: 'the cableway tail tower (east shore)' },
     ],
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)

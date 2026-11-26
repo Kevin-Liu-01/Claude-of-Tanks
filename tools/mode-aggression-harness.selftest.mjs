@@ -179,7 +179,11 @@ const plantRun = (standS) => new Promise((resolve, reject) => {
 // Re-pinned by ruling (Kevin 2026-11-25, relayed by Main; 277): landmarks-277's solid set pieces in the server collision
 // took the sweep from 4.50 (-1.7 SE against 02cac3264a's 4.958) to 4.33 (-2.2 SE). The vector is the run measured at
 // 688803fe2a (cliffbridge's landmarks backed out). 278 owes bot pathing round the landmarks.
-const OUTCOME_RATCHET = Object.freeze({ setBy: '688803fe2a', kills: Object.freeze([4, 4, 3, 5, 2, 3, 5, 6, 6, 5, 6, 2, 4, 5, 5, 5, 6, 5, 5, 4, 4, 1, 6, 3]) });
+// Re-pinned (landmark-lanes-278; Main pre-approved at >= 4.50, Kevin's bar): the bots' hidden-target retarget (4107f6e5dc)
+// on 278's regenerated worlds, measured at 04d59c62b8 in one timing hold: 4.33 -> 4.71 (+0.375 kills, +2.2 SE), deals
+// meeting the asks 18 -> 21; the same tip with ai.ts at 1e7afa12dc reproduces 688803fe2a's vector exactly. Was setBy
+// 688803fe2a, kills [4, 4, 3, 5, 2, 3, 5, 6, 6, 5, 6, 2, 4, 5, 5, 5, 6, 5, 5, 4, 4, 1, 6, 3].
+const OUTCOME_RATCHET = Object.freeze({ setBy: '04d59c62b8', kills: Object.freeze([4, 4, 5, 5, 3, 4, 6, 6, 6, 5, 5, 3, 5, 6, 5, 4, 5, 5, 5, 5, 4, 3, 6, 4]) });
 const OUTCOME_BAND_SE = 2;
 /** A head's per-deal wave-1 kills against the stored vector: the mean change, its standard error, and the verdict. */
 function pairedOutcome(headKills) {
