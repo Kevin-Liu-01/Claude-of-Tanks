@@ -80,7 +80,14 @@ The following content intentionally remains source-language content:
 - `src/ui/i18nCatalog.en-US.json` is the source catalog.
 - `src/ui/i18nCatalog.<locale>.json` are the translated catalogs (zh-CN
   reviewed; es, ja, de, pt-BR and ru machine-translated through gt on
-  2026-11-21, pending review).
+  2026-11-21, pending review). The Field Manual keys added on 2026-11-26
+  (docs-refresh-279: `docs.air.*`, `docs.controls.phone.*`, `docs.controls.replays.*`,
+  `docs.controls.photo.*`, `docs.mp.couch.*`, `docs.videos.*`, `docs.combat.fact.turret`,
+  and new wording for `docs.chapter.{modes,controls,multiplayer}Lede`,
+  `docs.topic.{modes,controls,multiplayer}.lede` and
+  `metadata.docs{Modes,Controls,Multiplayer}.description`) are machine quality
+  in all six, zh-CN included, written by an agent and pending General
+  Translation review: `npm run i18n:translate` may replace them.
 - `src/ui/i18nCatalog.en-US.metadata.json` supplies General Translation with
   per-key terminology and placeholder context for discovery and invitation copy.
 - `src/ui/i18nCatalog.ts` registers every full catalog for server and build-time

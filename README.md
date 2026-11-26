@@ -45,13 +45,15 @@ Every picture here is captured in the game engine. The four above come from the
 </p>
 
 - **Fight:** Standard Battle, Drone, Zone Control, Capture the Flag, Frontline Assault, armed Turbo Ball, low-gravity
-  Gravity Mode, cooperative Endless Horde, Gun Game, Juggernaut, Infected, Realistic, AC-130, or Air Support, solo against
-  bots or in a room. The six-operation campaign runs on Frontline Assault, and the Proving Ground is a practice range with
+  Gravity Mode, cooperative Endless Horde, Gun Game, Juggernaut, Infected, Realistic, AC-130, Air Support, or Combined
+  Arms, solo against bots or in a room. The six-operation campaign runs on Frontline Assault, and the Proving Ground is a practice range with
   no enemies and no clock. Shells travel, armor has geometry, components break, structures fall, and wrecks stay.
 - **Watch:** start a watched battle in any mode but AC-130 on any map. Fly a spectator drone, ride along in
   any tank, or take a living bot's seat and fight from there.
 - **Couch:** put a QR code on the big screen and up to eight phones join one local battle, each driving its own tank. The
-  lobby opens on one Shared view; Split gives each player a pane and is marked Experimental.
+  lobby opens on Split (still marked Experimental), one pane per player; Shared frames every tank in one view.
+- **Replay:** every solo battle is recorded. Watch it again from the end screen or the Garage's Record tab, scrub its
+  timeline with Watch mode's cameras, download the file, or export it as an MP4.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.
 - **Direct:** stage any roster vehicle on any battlefield in Scene Studio, animate actors and cameras, schedule game FX,
@@ -67,13 +69,27 @@ Every picture here is captured in the game engine. The four above come from the
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
 | Play | **15 battle modes** and the Proving Ground, solo bots, Watch, couch play on phones, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse and keyboard, standard controllers, and full touch controls with safe-area layout and device-adaptive rendering |
-| Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; crew radio in 38 voice packs |
+| Languages | Seven: English, Simplified Chinese, Spanish, Japanese, German, Brazilian Portuguese and Russian across the game, Garage, Studio, Gallery, and public docs; crew radio in 38 voice packs |
 | Security | An enforced Content Security Policy that names every inline script on the production pages by hash |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
 Language selection lives under **Settings → Language → Language**. The [localization guide](docs/LOCALIZATION.md) covers
 coverage, exclusions, the General Translation workflow, and release gates. Every deploy has a row in
 [`docs/DEPLOYS.md`](docs/DEPLOYS.md).
+
+### Since 274
+
+- **Combined Arms** joins the modes: hold three sectors with an FPV drone and air support, one at a time.
+- **Air Support** adds a sixth strike, the Maverick missile run, and every aircraft can now be shot down: by shells, by
+  roof guns, or by an FPV drone flown into it. A downed aircraft crashes with a large blast, leaves a crater, and its
+  wreck stays as cover for 75 s.
+- **Replays:** solo battles are recorded as inputs, kept in the browser (the last 20), and play back with Watch mode's
+  cameras, a scrubbable timeline, and MP4 export at 720p or 1080p.
+- **Photo mode** (P) now works inside a replay too, framing the tank you ride.
+- **Kill cam:** a kill from the air gets its own shot, following the aircraft before it fires.
+- **Phone controller:** fixed control zones on the phone, and Split is the couch default.
+- **Rooms:** the owner can remove players, and a joiner's loading screen says what it is waiting for, with Rejoin when
+  the host can't be reached.
 
 ### Since 270
 

@@ -7,7 +7,8 @@
 //   - English goes into site/docs-<topic>.html, as <main id="topicRoot" data-prerendered=… data-prerendered-locale=…>;
 //   - every other locale goes into src/docs/topicPrerender.<locale>.json, which src/presentation/localizedHtml.ts puts in
 //     that locale's page (the build's generate-localized-pages step and the dev server's /cn, /es, ... routes);
-//   - the search index per locale goes into src/docs/searchIndex.<locale>.json (src/docs/searchIndex.ts builds it).
+//   - the search index per locale goes into src/docs/searchIndex.<locale>.json (src/docs/searchIndex.ts builds it);
+//   - the index's feature videos go into site/docs.html's <!--docs:videos--> region (src/docs/featureVideos.ts).
 // The data-built chapters (src/docs/chapters) run here only: no page imports their builders.
 // topics.ts keeps the markup it finds and only wires the behaviour. Run `node tools/public-shell.mjs --write` after a
 // write: the shell inlines the symbols the chapter's icons reference.
@@ -44,7 +45,11 @@ if (emit) {
   // exit only once the pipe has taken the whole payload (an early exit cuts a piped stdout at 64 KB)
   const pages = Object.fromEntries(TOPIC_ORDER.map((slug) => [slug, fillDocsIcons(topicPageMarkup(slug, false, richSections(slug)))]));
   const groups = TOPIC_GROUPS.map(({ key, icon, topics }) => ({ key, icon, topics, label: t(`docs.group.${key}`) }));
-  process.stdout.write(JSON.stringify({ pages, index: manualRecords(), groups }), () => process.exit(0));
+  // the index's feature videos, from the Blob media manifest (COT_BLOB_MEDIA_MANIFEST: a local test fixture's, never committed)
+  const { featureVideosMarkup } = await import('../src/docs/featureVideos.ts');
+  const manifestPath = process.env.COT_BLOB_MEDIA_MANIFEST;
+  const videos = featureVideosMarkup(manifestPath ? JSON.parse(readFileSync(manifestPath, 'utf8')) : undefined);
+  process.stdout.write(JSON.stringify({ pages, index: manualRecords(), groups, videos }), () => process.exit(0));
   await new Promise(() => {});
 }
 
@@ -83,9 +88,17 @@ function chapterMap(html, groups) {
   return html.replace(MAP, () => `<!--docs:map-->\n${shelves.join('\n')}\n    <!--/docs:map-->`);
 }
 
+// The index's feature videos (src/docs/featureVideos.ts): site/docs.html's <!--docs:videos--> region, empty until a clip
+// is uploaded to the Blob store (src/presentation/blobMedia.json).
+const VIDEOS = /<!--docs:videos-->[\s\S]*?<!--\/docs:videos-->/;
+function featureVideos(html, markup) {
+  if (!VIDEOS.test(html)) throw new Error('docs-prerender: site/docs.html has no <!--docs:videos--> region');
+  return html.replace(VIDEOS, () => `<!--docs:videos-->${markup ? `\n${markup}\n    ` : ''}<!--/docs:videos-->`);
+}
+
 /** Bring every chapter page and the zh fragments to the current markup (`write`), or list the stale ones. */
 function prerender(write) {
-  const { pages: en, index: enIndex, groups } = render('en-US');
+  const { pages: en, index: enIndex, groups, videos } = render('en-US');
   const others = Object.fromEntries(PREFIXED_LOCALES.map((locale) => [locale, render(locale)]));
   const stale = [];
   // a generated file: written when it changed, or listed as stale
@@ -103,7 +116,7 @@ function prerender(write) {
     if (next === html) continue;
     if (write) writeFileSync(path, next); else stale.push(`site/docs-${slug}.html`);
   }
-  keep('site/docs.html', indexPreviews(chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups)));
+  keep('site/docs.html', featureVideos(indexPreviews(chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups)), videos));
   for (const [locale, { pages }] of Object.entries(others)) keep(localeFragments(locale), `${JSON.stringify(pages, null, 1)}\n`);
   // the search index per locale (src/docs/docsSearch.ts loads the reader's with the field's first use)
   keep('src/docs/searchIndex.en-US.json', `${JSON.stringify(enIndex, null, 1)}\n`);
