@@ -114,3 +114,30 @@ await Promise.resolve();
 assert.equal(calls.filter(c=>c.startsWith('builders:')).length,beforeAircraft,'aircraft seats never preload their selected tank');
 preloader.preload({...waiting,gameMode:'standard',players:[{id:'pilot',team:'alpha',specId:'gunship-only-spec'}]});
 await Promise.resolve();assert.ok(calls.includes('builders:gunship-only-spec'),'switching back to tanks restores builder preparation');
+
+// ---- (mp-fixes-277; Kevin 2026-11-25, a friend's join "didnt load fast enough") room protocol 3: the waiting room names
+// its next match's bots, and the lobby builds their vehicles (their builders) and paints them (the round's own prewarm)
+{
+  const botCalls = [];
+  const prewarms = [];
+  const bots = createLobbyPreloader({
+    getGamePhase: () => 'garage',
+    preloadPresentation: async () => {}, preloadVisuals: async () => {}, preloadBattleModules: async () => {},
+    ensureTankBuilders: async (ids) => { botCalls.push(`builders:${[...ids].sort().join(',')}`); },
+    loadWorldModule: async () => {}, cancelBackgroundWorldBuildsExcept: () => {}, prefetchWorld: () => null,
+    prewarmBots: async (seats) => { prewarms.push(seats.map((seat) => `${seat.specId}/${seat.camo}`).sort().join(',')); },
+  });
+  const room = { phase: 'waiting', mapId: 'verdant', gameMode: 'standard', players: [{ id: 'a', team: 'alpha', specId: 'm1a1_abrams_hc' }],
+    nextBots: [{ specId: 't90am', team: 'bravo', camo: 'woodland' }, { specId: 'leo2a6', team: 'alpha', camo: 'auto' }] };
+  bots.preload(room);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(botCalls.some((call) => call === 'builders:leo2a6,m1a1_abrams_hc,t90am'), `the bots' builders warm with the players' (${botCalls})`);
+  assert.deepEqual(prewarms, ['leo2a6/auto,t90am/woodland'], 'the painted bots warm once, by vehicle and paint');
+  bots.preload({ ...room, players: [...room.players] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(prewarms.length, 1, 'a later packet naming the same bots warms nothing again');
+  bots.preload({ ...room, nextBots: [{ specId: 'leclerc_s2', team: 'bravo', camo: null }] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(botCalls.some((call) => call === 'builders:leclerc_s2'), 'a random battlefield\'s bots (no paint) still warm their builders');
+  assert.equal(prewarms.length, 1, 'but nothing is painted without a paint');
+}

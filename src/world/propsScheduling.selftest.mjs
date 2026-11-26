@@ -12,6 +12,7 @@ import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.
 import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 import { WRECK_STATES, WRECK_VIEW_M, statesForSite, wreckLook } from './wreckStates.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from './propsProgress.ts';
 import { sourceSlice } from '../../tools/source-slice.test-support.mjs';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
@@ -34,7 +35,8 @@ assert.ok(start >= 0 && end > start);
 const wrapper = stripTypeScriptTypes(source.slice(start, end)).replace('export ', '');
 function fixture(steps, acquire = async () => {}, close = () => {}, workerClient = null,
   now = () => performance.now(),
-  mainBake = function* () { throw new Error('unexpected main-thread wreck bake'); }) {
+  mainBake = function* () { throw new Error('unexpected main-thread wreck bake'); },
+  bar = { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel }) {
   const events = [], runtime = {}, args = [];
   const nested = (function* () {
     try {
@@ -49,8 +51,11 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
   }
   // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    'bakeTankWreckSteps', 'assertNoBuildScopeOpen', wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake, assertNoBuildScopeOpen);
+    'bakeTankWreckSteps', 'assertNoBuildScopeOpen', 'PROPS_PHASE_LABELS', 'PROPS_PROGRESS_SCALE', 'propsPhaseOf', 'propsProgress',
+    'propsWreckLabel',
+    wrapper + '\nreturn createPropsAsync;')(build, acquire,
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake, assertNoBuildScopeOpen,
+    bar.PROPS_PHASE_LABELS, bar.PROPS_PROGRESS_SCALE, bar.propsPhaseOf, bar.propsProgress, bar.propsWreckLabel ?? propsWreckLabel);
   return { run, events, runtime, args };
 }
 
@@ -115,7 +120,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
     elapsedMs: 40, includedCheckpointMs: 7 }]);
   assert.equal(timing.wreckRowsDropped, 0);
   assert.equal(clock - 100, 7 + timing.sliceTicks.totalMs + timing.wreckBakes.totalMs);
-  assert.deepEqual(ticks, [1, 1, 1]);
+  assert.deepEqual(ticks, [3, 3, 3], 'one progress step: propsProgress(1) of 1000');
   assert.equal(request.result, baked);
   assert.equal(disposed, 1);
 }
@@ -251,13 +256,18 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const f = fixture([{ fine: true, tankBuilder: 't90am' },
     { fine: true, progress: false, wreckBake: request }],
   () => { throw new Error('worker path must not load a main-thread donor'); }, () => {}, client);
-  const ticks = [];
-  await f.run({}, {}, 2002, null, value => ticks.push(value), true);
+  const ticks = [], labels = [];
+  await f.run({}, {}, 2002, null, (value, total, label) => { ticks.push(value); labels.push(label); }, true);
+  // (mp-fixes-277, slot12) the bake's checkpoints name the wreck and its place (no prefetch plan here: its place alone);
+  // the slice after it returns to the build's part
+  assert.deepEqual(labels, ['Placing structures', 'Placing wrecks · 1', 'Placing wrecks · 1', 'Placing structures']);
+  assert.equal(propsWreckLabel(3, 13), 'Placing wrecks · 3/13', 'a planned bake names its place in the plan');
+  assert.equal(propsWreckLabel(14, 13), 'Placing wrecks · 14', 'a bake past the plan names its place alone');
   assert.equal(f.args[0][5], true, 'browser wrapper selects remote generator seam');
   assert.equal(f.args[0][6].worker, true);
   assert.equal(f.args[0][6].signal.aborted, false, 'successful build retains pending source settlement');
   assert.equal(request.result, baked);
-  assert.deepEqual(ticks, [1, 1, 1, 1], 'worker waits check ownership without fake progress');
+  assert.deepEqual(ticks, [3, 3, 3, 3], 'worker waits check ownership without fake progress');
   assert.deepEqual(calls, [['t90am', request.options], 'disposed']);
 }
 {
@@ -291,7 +301,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
     dispose() { calls.push('disposed'); } };
   const planned = { specId: 'm60a2', options: { seed: 2002, state: 'overturned' }, result: null };
   const unplanned = { specId: 'xk2_black_panther', options: { seed: 2133, state: 'burnt_out' }, result: null };
-  const prefetch = { take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
+  const prefetch = { stats: { planned: 1 }, take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
   const f = fixture([{ fine: true, progress: false, wreckBake: planned }, { fine: true, progress: false, wreckBake: unplanned }],
     undefined, undefined, client);
   await f.run({}, {}, 2002, null, null, true, null, prefetch);
@@ -366,7 +376,8 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false, f.args[0][6]]]);
   assert.equal(f.args[0][6].worker, true);
   assert.equal(f.args[0][6].signal.aborted, false);
-  assert.deepEqual(ticks, [[1, 180], [2, 180], [3, 180]]);
+  // (mp-fixes-277) a fine build reports props.ts propsProgress out of 1000, not its step count out of a fixed 180
+  assert.deepEqual(ticks, [[3, 1000], [6, 1000], [9, 1000]]);
   assert.equal(result._buildDetail.sliceCount, 4);
   assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
   assert.equal(f.events.at(-2)[0], 'complete');
@@ -378,14 +389,76 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.deepEqual(ticks, [[1, 9], [2, 9]], 'legacy coarse callers keep their paint cadence');
 }
 {
+  // (mp-fixes-277, slot11) the loader names the part of the build under way, from the stages the build already yields, and
+  // never steps back to an earlier part; a progress:false slice still names its part
+  const f = fixture([{ fine: true, stage: 'yard-clutter' }, { fine: true, progress: false, stage: 'landmarks' },
+    { fine: true, stage: 'rock-forms' }, { fine: true, stage: 'structure-shells-join' }, { fine: true, stage: 'wreck-t90am:worker' },
+    { fine: true }]);
+  const labels = [];
+  await f.run({}, {}, 2002, null, (done, total, label) => labels.push(label), true);
+  assert.deepEqual(labels, ['Placing structures', 'Raising landmarks', 'Setting rocks', 'Setting rocks',
+    'Dressing the battlefield', 'Dressing the battlefield']);
+  const coarse = [];
+  await fixture([{ stage: 'landmarks' }]).run({}, {}, 2002, null, (done, total, label) => coarse.push(label), false);
+  assert.deepEqual(coarse, [undefined], 'a coarse build keeps its one label');
+}
+{
+  // (mp-fixes-277, slot11: verdant took 283 progress steps warm and 363 cold; a fixed 180 filled the bar after a third of a
+  // cold build and held it 15.5 s) the bar never steps back and never fills before the build returns
+  let previous = -1;
+  for (let steps = 0; steps <= 3000; steps++) {
+    const done = propsProgress(steps);
+    assert.ok(done >= previous, `step ${steps} never moves the bar back (${previous} -> ${done})`);
+    assert.ok(done < PROPS_PROGRESS_SCALE, `step ${steps} leaves the bar short of its end`);
+    previous = done;
+  }
+  assert.ok(propsProgress(180) < 600, 'the old fixed count no longer fills the bar');
+  for (const steps of [283, 363, 500]) assert.ok(propsProgress(steps + 40) > propsProgress(steps), `${steps}+ steps keep moving`);
+  assert.equal(propsPhaseOf('material-convert:stone'), 0, 'a stage that begins no part names none');
+}
+{
+  // (mp-fixes-277, Main: "the bar's drawn value still moves after step 180 on a cold profile") slot11's cold solo entry on
+  // verdant (4 Mbps / 100 ms / 4x CPU): the page-clock ms between its 363 progress steps (a diagnostic build's record, 22.4 s),
+  // its parts begun no later than the steps that closed that run's longest stretches naming them (landmarks 225, rock
+  // colliders 237, the pillbox footprint 241, the kv2 wreck 243). The real wrapper's ticks go through map.ts's props range (0.82-0.96)
+  // and the solo entry's world range (0.02 + 0.53 f) into battleLoad's drawn percent and label.
+  const COLD_STEP_MS = [112,64,13,16,1,3,1,1,2,1,1,2,1,0,2,1,6,1,0,2,10,7,55,11,17,4,3,4,5,44,4,7,3,9,3,4,1,7,9,3,5,3,5,6,4,4,3,4,8,3,4,3,4,53,1,22,4,28,60,4533,4,7,4,9,15,5,7,7,5,6,13,21,22,8,55,13,13,7,8,10,12,19,13,11,7,8,9,3,4,3,2,71,51,16,57,13,13,4,3,3,3,3,45,3,5,3,3,3,8,3,2,25,2,2,5,18,14,19,13,19,14,17,15,59,15,18,14,21,14,18,15,39,28,32,29,31,27,31,28,29,30,27,29,30,27,27,70,154,12,15,10,12,10,14,14,14,12,15,11,12,11,13,9,13,9,14,9,12,11,14,10,58,9,14,11,10,6,4,4,0,31,355,20,142,43,1,9,69,24,19,54,23,11,35,23,6,60,11,0,4,3,40,3,18,8,15,46,13,6,2,38,9,1,1,9,0,15,11,10,13,2,1,1,1,2763,204,2,6,31,1,45,201,8,26,9,13,763,54,43,34,550,2,4458,2,45,20,0,9,0,0,2,4,3,34,12,0,8,1,2,0,0,37,1,29,13,0,9,0,4,2,28,11,0,3,1,7,2,30,11,0,5,21,44,321,186,47,508,4,7,7,0,0,1,1,0,0,0,15,2,2,2,5,2,2,0,0,6,2,0,4,8,2,215,200,83,128,42,13,121,102,16,18,9,9,8,36,18,53,7,9,153,21,5,15,218,145,101,112,10,11,11,8,6,9,9,100,109,16,4,8,9,4,20,23,80,77,14,222,13,24,14,18,549];
+  const at = []; COLD_STEP_MS.reduce((sum, ms) => { at.push(sum + ms); return sum + ms; }, 0);
+  const begins = new Map([[225, 'landmarks'], [237, 'rock-colliders'], [241, 'pillbox-footprint'], [243, 'wreck-kv2:worker']]);
+  const steps = COLD_STEP_MS.map((ms, index) => ({ fine: true, stage: begins.get(index + 1) ?? 'placed' }));
+  const drawn = async (bar) => {
+    const states = [];
+    await fixture(steps, undefined, undefined, null, undefined, undefined, bar).run({}, {}, 2002, null, (done, total, label) => {
+      const world = 0.82 + 0.14 * Math.min(1, done / Math.max(1, total));
+      states.push({ percent: Math.round((0.02 + world * 0.53) * 100), label: label ?? 'Placing structures' });
+    }, true);
+    assert.equal(states.length, at.length, 'one drawn state per progress step');
+    let longest = 0, since = 0, last = null, movedAfter180 = false;
+    states.forEach((state, index) => {
+      const key = `${state.percent}|${state.label}`;
+      if (key !== last) { longest = Math.max(longest, at[index] - since); since = at[index]; if (index >= 180 && last !== null) movedAfter180 = true; last = key; }
+    });
+    return { longest: Math.max(longest, at.at(-1) - since), movedAfter180 };
+  };
+  const fixed = await drawn({ PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress });
+  assert.ok(fixed.movedAfter180, 'the drawn bar still moves after step 180');
+  assert.ok(fixed.longest < 10_000, `the cold profile's longest still drawn state is ${fixed.longest} ms (< 10 s)`);
+  // the reverted control: the fixed total of 180 and one label (before mp-fixes-277) must fail both
+  const reverted = await drawn({ PROPS_PHASE_LABELS: Array(4).fill('Placing structures'), PROPS_PROGRESS_SCALE: 180,
+    propsPhaseOf: () => 0, propsProgress: (stepsDone) => Math.min(stepsDone, 180) });
+  assert.equal(reverted.movedAfter180, false, 'control: the old fixed total holds the drawn bar after step 180');
+  assert.ok(reverted.longest > 15_000, `control: the old fixed total held one drawn state ${reverted.longest} ms on the cold profile`);
+  console.log(`propsScheduling: cold profile longest still drawn state ${fixed.longest} ms (the old fixed 180: ${reverted.longest} ms)`);
+}
+{
   const f = fixture([{ fine: true, tankBuilder: 't90am' },
     ...Array.from({ length: 300 }, () => ({ fine: true, progress: false, stage: 'vertex-batch' })),
     { fine: true, stage: 'placed' }]);
   const ticks = [];
   const runtime = await f.run({}, {}, 2002, null, done => ticks.push(done), true);
   assert.equal(ticks.length, 302, 'every internal batch still reaches the task/paint scheduler');
-  assert.deepEqual(ticks.slice(0, -1), Array(301).fill(1));
-  assert.equal(ticks.at(-1), 2, 'micro-batches cannot prematurely fill the structure loading bar');
+  assert.deepEqual(ticks.slice(0, -1), Array(301).fill(3));
+  assert.equal(ticks.at(-1), 6, 'micro-batches cannot prematurely fill the structure loading bar');
   assert.equal(runtime._buildDetail.sliceCount, 303, 'timing records every actual batch');
 }
 for (const failureStage of ['tick', 'builder']) {
@@ -835,8 +908,8 @@ for (const cancelAt of ['ground-foundation-layers', 'ground-foundations', 'groun
       // (battle-spikes-253) and a slice a scar before the scars' boundary
       const scarSlices = f.events.filter(([, value]) => value?.stage === 'ground-scars').length - 1;
       assert.ok(scarSlices > 0, 'the scars yield a slice each');
-      assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 180]),
-        [0, 180], [0, 180], [0, 180], ...Array.from({ length: scarSlices }, () => [0, 180]), [0, 180], [1, 180]]);
+      assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 1000]),
+        [0, 1000], [0, 1000], [0, 1000], ...Array.from({ length: scarSlices }, () => [0, 1000]), [0, 1000], [3, 1000]]);
       assert.ok(h.kinds().includes('churn'));
     } else {
       await assert.rejects(pending, error => error === failure);
@@ -872,7 +945,7 @@ for (const cancelAt of [0, 2, 4, 6, 7, 90]) {
     assert.deepEqual(h.commands, []);
     assert.deepEqual(h.kinds(), []);
     assert.deepEqual(h.randoms, []);
-    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 1000]));
     assert.equal(iterator.next().done, true);
     assert.equal(f.runtime._buildDetail, undefined);
     assert.equal(f.args[0][6].signal.aborted, true);
@@ -954,7 +1027,7 @@ for (const cancelAt of [0, 1, null]) {
   }, true);
   if (cancelAt === null) {
     await pending;
-    assert.deepEqual(ticks, [[0, 180], [0, 180], [1, 180]]);
+    assert.deepEqual(ticks, [[0, 1000], [0, 1000], [3, 1000]]);
     assert.deepEqual(h.completed, streetControl.completed);
     assert.deepEqual(h.randoms, streetControl.randoms, 'new waits preserve deterministic operation order');
     assert.deepEqual(f.events.filter(([event]) => event === 'work').map(([, step]) => step), [
@@ -964,7 +1037,7 @@ for (const cancelAt of [0, 1, null]) {
     ]);
   } else {
     await assert.rejects(pending, error => error === failure);
-    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 1000]));
     assert.deepEqual(h.completed, streetControl.completed.slice(0, cancelAt + 1));
     assert.deepEqual(h.randoms, streetControl.randoms.slice(0, cancelAt + 1));
     assert.equal(h.iterator.next().done, true, 'IteratorClose prevents every later family');

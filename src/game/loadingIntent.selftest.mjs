@@ -123,7 +123,8 @@ assert.ok(activationPreload >= 0 && activationHandoff > activationPreload,
 // nothing under src/mp.
 assert.match(lobbyIntent, /createLobbyPreloader\(preloader\)/,
   'joined rooms need one typed lobby-intent owner over the room preloader');
-assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
+// (mp-fixes-277, room protocol 3) the roster is the room's players and the next match's published bots
+assert.match(networkLobbyPreloader, /for \(const seat of \[\.\.\.\(state\.players \|\| \[\]\), \.\.\.bots\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,900}ensureTankBuilders\(missingBuilders\)/,
   'joined rooms should transfer only missing roster builders');
 assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId, \{ intent: true \}\);/,
   'joined-room fixed maps should use explicit-intent background preparation, not passive Garage construction');

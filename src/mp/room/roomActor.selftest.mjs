@@ -1327,4 +1327,41 @@ const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, reque
   assert.equal(h.last('g', 'host_changed') ?? null, null);
 }
 
+// ---- (mp-fixes-277; Kevin 2026-11-25, a friend's join "didnt load fast enough") a waiting room names its next match's bots
+// so every lobby builds their vehicles before the start; the seed they come from stays the room's
+{
+  const { planBotPaints } = await import('../../sim/camoPaint.ts');
+  for (const mapId of ['verdant', 'random']) {
+    const h = createHarness();
+    h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2, mapId } }, 'c');
+    h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+    await h.send('a', 'room_command', { command: { type: 'set_ready', ready: true } });
+    await h.send('g', 'room_command', { command: { type: 'set_ready', ready: true } });
+    const waiting = h.last('g', 'room_state').payload.room;
+    assert.equal(waiting.phase, 'waiting');
+    assert.ok(Array.isArray(waiting.nextBots) && waiting.nextBots.length === 2, `${mapId}: the waiting room names its next bots (${JSON.stringify(waiting.nextBots)})`);
+    assert.ok(!('nextSeed' in waiting) && !('seed' in waiting), `${mapId}: and never the seed`);
+    assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(waiting))), 'a protocol 3 snapshot with nextBots reads');
+    if (mapId === 'random') assert.ok(waiting.nextBots.every((bot) => bot.camo === null), 'a random battlefield publishes no paint (its paints hint at the map)');
+    else assert.ok(waiting.nextBots.every((bot) => typeof bot.camo === 'string'), 'a named battlefield publishes each bot\'s paint');
+    h.drain('a'); h.drain('g');
+    await h.send('a', 'room_command', { command: { type: 'start' } }, 'start');
+    const config = h.matchHost.calls[0];
+    assert.deepEqual(config.bots.map((bot) => [bot.specId, bot.team]), waiting.nextBots.map((bot) => [bot.specId, bot.team]),
+      `${mapId}: the start seats exactly the bots the lobby was told`);
+    if (mapId !== 'random') {
+      assert.deepEqual(planBotPaints(config.seats, config.bots.map(() => ({ camo: null })), config.seed, config.mapId), waiting.nextBots.map((bot) => bot.camo),
+        'and paints them as the lobby was told');
+    }
+    const running = h.last('g', 'room_state')?.payload.room;
+    assert.ok(running && running.phase !== 'waiting' && running.nextBots === undefined, 'a room past waiting names no next bots');
+  }
+  // a malformed list is refused like any malformed snapshot field
+  const h = createHarness();
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2, mapId: 'verdant' } }, 'c');
+  const room = JSON.parse(JSON.stringify(h.last('a', 'room_created').payload.room));
+  assert.throws(() => readRoomSnapshot({ ...room, nextBots: [{ specId: '', team: 'alpha', camo: null }] }), /room snapshot fields/);
+  assert.throws(() => readRoomSnapshot({ ...room, nextBots: [{ specId: 'm1a1_abrams_hc', team: 'spectator', camo: null }] }), /room snapshot fields/);
+}
+
 console.log('roomActor: PASS');

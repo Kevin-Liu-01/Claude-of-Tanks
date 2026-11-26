@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import { MatchSession } from './matchSession.ts';
 import { RoomClient } from '../room/roomClient.ts';
-import { ROOM_CLIENT_MESSAGE, ROOM_SERVER_MESSAGE } from '../room/protocol.ts';
+import { ROOM_CLIENT_MESSAGE, ROOM_PROTOCOL_VERSION, ROOM_SERVER_MESSAGE } from '../room/protocol.ts';
 import { RecordingPresentation } from '../presentation/adapter.ts';
 import { CLOSE_REASON, MESSAGE_TYPE, PROTOCOL_VERSION, SNAPSHOT_HZ, TEAM, TICK_HZ, decodeMessage, encodeMessage } from '../wire/index.ts';
 import { SEAT_DROP_REASONS } from './networkStatus.ts';
@@ -87,7 +87,7 @@ function createHarness() {
   const lastEnvelope = (socket) => JSON.parse(decoder.decode(socket.sent.at(-1)));
   const reply = (socket, envelope) => socket.receive(encoder.encode(JSON.stringify(envelope)));
   const roomSnapshot = (phase = 'playing', match = { id: 'm1-abc', round: 1, status: 'playing', mapId: 'verdant', seed: 7, startedAt: 0, endedAt: null, verdict: null }) => ({
-    v: 2, roomCode: 'ROOM01', mode: 'lan', phase, adminId: 'me', revision: 3, round: 1,
+    v: ROOM_PROTOCOL_VERSION, roomCode: 'ROOM01', mode: 'lan', phase, adminId: 'me', revision: 3, round: 1,
     settings: { gameMode: 'standard', mapId: 'verdant', teamSize: 2, maxSpectators: 2, botsFill: true, allowTeamSwitch: true, locked: false, arrangement: null, campaignOperationId: null },
     players: [
       { id: 'me', name: 'Me', team: 'alpha', seat: 0, specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: true, joinedAt: 1 },

@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from '../propsProgress.ts';
 
 installWorldBuildFixture();
 const { assertNoBuildScopeOpen, buildScopeNames, openBuildScopes, registerBuildScope } = await import('./buildScopes.ts');
@@ -54,13 +55,14 @@ assert.deepEqual(openBuildScopes(), [], 'and closed again after it');
   let open = false;
   registerBuildScope('selftest.slot', () => open);
   const createPropsAsync = new Function('propsBuildSteps', 'Worker', 'createWreckBakeClient', 'assertNoBuildScopeOpen',
+    'PROPS_PHASE_LABELS', 'PROPS_PROGRESS_SCALE', 'propsPhaseOf', 'propsProgress', 'propsWreckLabel',
     wrapper + '\nreturn createPropsAsync;')(function* () {
     yield { fine: true, stage: 'first' };
     open = true; // a builder that opened its slot and then yielded
     yield { fine: true, stage: 'inside' };
     open = false;
     return {};
-  }, undefined, () => null, assertNoBuildScopeOpen);
+  }, undefined, () => null, assertNoBuildScopeOpen, PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel);
   await assert.rejects(createPropsAsync({}, {}, 2002, null, () => {}, true), /selftest\.slot build scope is open at a pacing yield/,
     'the real props pacer refuses a slice with a slot open');
   open = false;

@@ -1,4 +1,5 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from './propsProgress.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 import { pillboxShellBand, placeLocalShellBand } from './bandShells.ts'; // (physics: the pillbox's embrasures)
 import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
@@ -4386,7 +4387,7 @@ export async function createPropsAsync(
   engineCtx: EngineContext,
   seed = 2002,
   cfg: PropsMapConfig | null = null,
-  tick: ((done: number, total: number) => Promise<void> | void) | null = null,
+  tick: ((done: number, total: number, label?: string) => Promise<void> | void) | null = null,
   fineSlices = false,
   vegetation: FisheryVegetation | null = null,
   wreckPrefetch: WreckBakePrefetch | null = null,
@@ -4418,7 +4419,16 @@ export async function createPropsAsync(
   let nextStartedAt = performance.now();
   let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
-  const total = fineSlices ? 180 : 9;
+  // (mp-fixes-277) a fine build's progress steps are not known before it runs (verdant: 283 warm, 363 cold, where prints the
+  // paint worker had not finished are painted in line). A fixed 180 filled the bar's props range after a third of the
+  // work, and a cold 4x-CPU entry then held "Placing structures" 15 s. The bar now follows propsProgress (linear to 85 %
+  // at the usual count, then a tail that never fills), and the label names the part of the build under way.
+  const total = fineSlices ? PROPS_PROGRESS_SCALE : 9;
+  let phase = 0;
+  // (mp-fixes-277, slot12: winter's cold entry baked 13 wrecks in 27 s, six of them back to back for 22.7 s at one drawn
+  // state) a wreck in bake names itself and its place in the plan, so each bake is a new state on the loader
+  let wrecksBaked = 0;
+  let wreckLabel: string | null = null;
   // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
   // that rejects after one is never taken for a worker failure and baked again
   let tickFailed = false;
@@ -4427,7 +4437,7 @@ export async function createPropsAsync(
     const startedAt = performance.now();
     const settled = (): void => { recordPropsAwait(timing, startedAt); };
     try {
-      const pending = tick?.(i, total);
+      const pending = fineSlices ? tick?.(propsProgress(i), total, wreckLabel ?? PROPS_PHASE_LABELS[phase]) : tick?.(i, total);
       // Observe settlement without wrapping the returned promise or inserting
       // another awaited hop into the caller's original pacing continuation.
       if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
@@ -4495,6 +4505,7 @@ export async function createPropsAsync(
         recordPropsAwait(awaitTimings.builderImports, startedAt);
       }
       if (step?.wreckBake && wreckWorker) {
+        wreckLabel = propsWreckLabel(++wrecksBaked, wreckPrefetch?.stats.planned ?? 0);
         const request = step.wreckBake;
         const startedAt = performance.now();
         const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
@@ -4532,6 +4543,7 @@ export async function createPropsAsync(
           request.result = await bakeWreckOnMainThread(request, wreckCheckpoint);
           if (!request.result) wreckFallbacks.missing++;
         }
+        wreckLabel = null;
         const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
         // Inclusive elapsed time includes nested checkpoints, worker transfer
         // and main-thread hydration. It is not worker CPU time or network time.
@@ -4543,6 +4555,7 @@ export async function createPropsAsync(
       }
       if (tick && (fineSlices || !step || !step.fine)) {
         if (step?.progress !== false) i++;
+        if (step?.stage) phase = Math.max(phase, propsPhaseOf(step.stage));
         await observeTick(awaitTimings.sliceTicks);
       }
       nextStartedAt = performance.now();

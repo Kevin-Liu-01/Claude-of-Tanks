@@ -1345,6 +1345,9 @@ export function createBrowserComposition({
           }
           try {
             active.welcome = welcome;
+            // (mp-fixes-277) the link is up: the loader names the roster's stage at once, never the link's last line (a
+            // 4x-CPU joiner showed "Connecting to the host · attempt 1 · 1 s" for the roster's 12 s)
+            if (first) load.battleLoad.progress(0.56, 'Assembling rosters');
             // 2026-10-15 (the MP stream, after the perf lane's census: 187 programs on main against 149 on Sept 30, each
             // reaching the driver in the strict compile after the roster, the first covered draw waiting in getUniforms for
             // the whole queue): the light signature is final once the authority's weather and the night pool stand, so they

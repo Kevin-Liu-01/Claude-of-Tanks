@@ -22,7 +22,11 @@
  *   link        the data channel's selected candidate pair is reported (host / srflx / relay).
  *   Any page error, or a console error, on either page fails the run.
  *
- *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --port=4248
+ *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist
+ *     (inside a hold the preview and the rooms service bind the slot's block, $COT_CAPTURE_PREVIEW_PORT and
+ *     $COT_CAPTURE_ROOMS_PORT (tools/capture-ports.mjs), and the pages dial that rooms port with ?roomsPort=, so two render
+ *     slots never share the LAN helper's 8792; --port and --rooms-port name others, and outside a hold they default to
+ *     4248 and 8792)
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=3 --play=120 --maps=verdant,winter --joiner-map=desert --json
  *   node tools/mp-two-peer-e2e.mjs --dist=dist --battles=1 --play=20 --host-throttle=4   # a slow laptop hosting
  *   node tools/with-capture-lock.mjs --lock-class=render -- node tools/mp-two-peer-e2e.mjs --dist=dist --mode=private --ice=relay
@@ -54,8 +58,9 @@ const json = process.argv.includes('--json');
 const headful = process.argv.includes('--headful');
 const distDir = resolve(root, argValue('dist', 'dist'));
 const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-two-peer-e2e')));
-const previewPort = Number(argValue('port', 4248));
-const roomsPort = Number(argValue('rooms-port', 8792));
+// unnamed ports inside a capture hold: its slot block's first preview port and rooms port (tools/capture-ports.mjs, 277)
+const previewPort = Number(argValue('port', process.env.COT_CAPTURE_PREVIEW_PORT || 4248));
+const roomsPort = Number(argValue('rooms-port', process.env.COT_CAPTURE_ROOMS_PORT || 8792));
 const battles = Math.max(1, Number(argValue('battles', 2)));
 const playS = Number(argValue('play', 120));
 // the room's battlefield for each battle in turn (the host's Garage pick); the joiner plans --joiner-map before each
@@ -90,19 +95,32 @@ const stallBoundS = Number(argValue('stall-bound', 10));
 // player's covered path (__DEBUG.beginSoloBattle), measured as the joiner is: the loader's timeline, its longest still
 // state (--stall-bound), the time to the battle (--join-bound), the entry trace and the bytes it fetched.
 const solo = process.argv.includes('--solo');
+// --seed=<n> (277 by default; --seed=random for the room's own Math.random): the in-process room service draws its match
+// seeds (and room codes) from a generator on this seed, so a run's matches draw the same bots, vehicles and 'random' map
+// as another run's and their timings compare (the roster stage swung 6.8-12.4 s with the bots a run drew).
+const seedArg = argValue('seed', '277');
+// --lobby-wait=<s>: the seconds both seats sit in the lobby before readying (a real lobby's wait, in which the lobby
+// preloader builds the room's world and, from room protocol 3, its next bots' vehicles); 0 by default (the worst case)
+const lobbyWaitS = Number(argValue('lobby-wait', 0));
+const roomRandom = seedArg === 'random' ? undefined : (() => {
+  let state = (Number(seedArg) >>> 0) || 277;
+  return () => { state = (state + 0x6D2B79F5) | 0; let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+})();
 const soloSpec = argValue('spec', 'm1a2_abrams_sepv3');
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
 // debug HUD over the Garage's rooms entry)
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+// a rooms service off the LAN helper's 8792 is dialled with ?roomsPort= (endpoint.ts, loopback pages only)
+const BOOT_QUERY = `nosplash=1&tier=desktop&gfxreset=1${roomsPort !== 8792 ? `&roomsPort=${roomsPort}` : ''}`;
 const VIEWPORT = { width: 1024, height: 640, deviceScaleFactor: 1 };
 
 const log = (line) => { if (!json) process.stderr.write(`[mp-two-peer-e2e] ${line}\n`); };
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
-const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
+const report = { pass: false, failures: [], findings: [], errors: [], warnings: [], steps: [], battles: [], dist: distDir, solo, seed: seedArg, lobbyWaitS, roomKind, forceRelay, hostThrottle, ackBy, joinerCold, joinerNet, joinerCpu, joinerBlocked, joinBoundS, stallBoundS, hostMaps, joinerMap, playS, bounds: { rttP95: rttP95Bound, ackP95: ackP95Bound } };
 const fail = (line) => { report.failures.push(line); log(`FAIL ${line}`); };
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
@@ -304,6 +322,13 @@ function terrainPhotoTimes() {
     .map((entry) => ({ file: entry.name.split('/').pop().slice(0, 48), endS: +((entry.responseEnd - now) / 1000).toFixed(1), bytes: entry.transferSize || 0 }));
 }
 
+/** (mp-fixes-277) the props build's own record of its slices and waits (props.ts _buildDetail: wreck bakes, pool joins). */
+const propsBuildDetail = () => {
+  const props = window.__DEBUG?.world?._buildDetail?.props;
+  return props ? JSON.parse(JSON.stringify({ synchronousMs: props.synchronousMs, sliceCount: props.sliceCount, slowest: props.slowest,
+    awaitTimings: props.awaitTimings ? { ...props.awaitTimings, wreckRows: undefined } : null })) : null;
+};
+
 /** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
 async function runSolo(origin) {
   const browser = await launchGuardedBrowser(puppeteer, {
@@ -354,6 +379,7 @@ async function runSolo(origin) {
   out.trace = await page.evaluate(() => (window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null)).catch(() => null);
   // the terrain photographs against the reveal: one that lands after it swaps in on screen (the pop)
   out.terrainPhotos = await page.evaluate(terrainPhotoTimes).catch(() => null);
+  out.propsBuild = await page.evaluate(propsBuildDetail).catch(() => null);
   step('solo-entry', { revealS: +(out.revealMs / 1000).toFixed(1), longestHold: longest, bytes: { boot: out.bytesAtBoot, reveal: out.bytesAtReveal } });
   if (longest.s > stallBoundS) fail(`solo: the loader held ${longest.pct} "${longest.stage}" for ${longest.s} s (> ${stallBoundS} s with no new state)`);
   if (joinBoundS && out.revealMs > joinBoundS * 1000) fail(`solo: the battle was not on screen within ${joinBoundS} s (${(out.revealMs / 1000).toFixed(1)} s)`);
@@ -383,6 +409,7 @@ try {
     throw new Error(report.refused);
   }
   rooms = await createRoomsServer({ host: '127.0.0.1', port: roomsPort, seatSecret: randomBytes(24).toString('hex'), matchTransport: 'p2p',
+    ...(roomRandom ? { random: roomRandom } : {}),
     ...(roomKind === 'private' ? { relayCredentials: () => relay.issue() } : {}) });
   step('rooms', { url: rooms.url, transport: 'p2p', roomKind, relaySource: relay.source, forceRelay });
   server = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port: previewPort, strictPort: true, open: false } });
@@ -509,6 +536,10 @@ try {
     record.joinerLobby = await B.evaluate(sceneProbe);
     step(`battle-${battle}-b-joined`, { resident: record.joinerLobby.residentIds, worlds: record.joinerLobby.worlds });
 
+    if (lobbyWaitS > 0) {
+      step(`battle-${battle}-lobby-wait`, { s: lobbyWaitS });
+      await sleep(lobbyWaitS * 1000);
+    }
     // ---- ready and start (the lobby's controls; after a battle, the Garage's lobby again)
     for (const page of [B, A]) {
       await waitFor(page, () => document.querySelector('.cot-play [data-action="ready"]')?.disabled === false, 'ready control', 60_000);
@@ -564,6 +595,7 @@ try {
       return { count: rows.length, byKind, top };
     }, record.joinerJoinedAtPageMs ?? 0).catch(() => null);
     record.joinerTerrainPhotos = await B.evaluate(terrainPhotoTimes).catch(() => null);
+    record.joinerPropsBuild = await B.evaluate(propsBuildDetail).catch(() => null);
     record.joinerBytes = { atJoin: record.joinerBytesAtJoin ?? null, atReveal: await B.evaluate(() => performance.getEntriesByType('resource').reduce((sum, entry) => sum + (entry.transferSize || 0), 0)).catch(() => null) };
     // the entry's own stage timings on the joiner (browserComposition markStage: where the time under one label went)
     record.joinerTrace = await B.evaluate(() => {

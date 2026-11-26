@@ -63,6 +63,10 @@ const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Surveying terrain': 'battleLoad.stage.surveyingTerrain',
   'Building terrain meshes': 'battleLoad.stage.buildingTerrain',
   'Placing structures': 'battleLoad.stage.placingStructures',
+  'Raising landmarks': 'battleLoad.stage.raisingLandmarks',
+  'Setting rocks': 'battleLoad.stage.settingRocks',
+  'Dressing the battlefield': 'battleLoad.stage.dressingBattlefield',
+  'Placing wrecks': 'battleLoad.stage.placingWrecks',
   'Sealing the battlefield': 'battleLoad.stage.sealingBattlefield',
   'Planting vegetation': 'battleLoad.stage.plantingVegetation',
   'Surveying battlefield': 'battleLoad.stage.surveyingBattlefield',
@@ -75,7 +79,11 @@ const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
 
 function translateStageLabel(label: string): string {
   const key = STAGE_LABEL_KEYS[label];
-  return key ? t(key) : label;
+  if (key) return t(key);
+  // (mp-fixes-277) a stage may carry a count after " · " (props.ts: "Placing wrecks · 3/13"): its name is translated
+  const cut = label.indexOf(' · ');
+  const named = cut > 0 ? STAGE_LABEL_KEYS[label.slice(0, cut)] : undefined;
+  return named ? t(named) + label.slice(cut) : label;
 }
 
 /** A battlefield's gradient from its art's own band colours (tools/map-lqip.mjs), the mean of all maps without one. */

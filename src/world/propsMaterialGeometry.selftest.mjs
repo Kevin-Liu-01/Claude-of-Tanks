@@ -12,6 +12,7 @@ import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.
 import { DESKTOP_FINE_CELLED_BUCKETS, FINE_CELLED_BUCKETS } from './maps/regional/geometry.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from './propsProgress.ts';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -175,8 +176,9 @@ function composeAsync(materials) {
   function* build() { yield* materials.prepare(); return { group: materials.group }; }
   // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   return new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'assertNoBuildScopeOpen',
+    'PROPS_PHASE_LABELS', 'PROPS_PROGRESS_SCALE', 'propsPhaseOf', 'propsProgress', 'propsWreckLabel',
     `${wrapperCode}\nreturn createPropsAsync;`)(build, () => assert.fail('no tank builder'), undefined,
-    () => assert.fail('no worker in the Node fixture'), assertNoBuildScopeOpen);
+    () => assert.fail('no worker in the Node fixture'), assertNoBuildScopeOpen, PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel);
 }
 
 // Round 79: every merged bucket registers a profile — one sphere per 96 m cell of piece centres bounding those
@@ -339,7 +341,7 @@ try {
     const f = trackedSources(65), m = materialFixture({ brick: f.sources }), ticks = [];
     try {
       await composeAsync(m)({}, {}, 2002, null, done => ticks.push(done), fineSlices);
-      assert.deepEqual(ticks, fineSlices ? [0, 0, 1] : [], 'internal conversion batches do not advance placement progress');
+      assert.deepEqual(ticks, fineSlices ? [0, 0, propsProgress(1)] : [], 'internal conversion batches do not advance placement progress');
       assert.equal(m.group.children.length, 1); own(m.group.children[0].geometry);
       assertReleased(f.converted);
     } finally { m.material.dispose(); }

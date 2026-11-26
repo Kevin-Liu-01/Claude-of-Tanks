@@ -19,6 +19,7 @@ import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 // drained in one synchronous loop; every scheduled path (the public owner, interleaved async ticks) must reproduce it
 // byte for byte, so row checkpoints and interleaving never change pixels, maps, settings or the RNG stream.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from './propsProgress.ts';
 const terrain = terrainSourceText();
 function section(text, start, end) {
   const from = text.indexOf(start), to = text.indexOf(end, from);
@@ -46,10 +47,11 @@ function publicOwner(iterator, wrapperSource = wrappers) {
   }
   // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const api = new Function('propsBuildSteps', 'ensureTankBuilder', 'createWreckBakeClient', 'assertNoBuildScopeOpen',
+    'PROPS_PHASE_LABELS', 'PROPS_PROGRESS_SCALE', 'propsPhaseOf', 'propsProgress', 'propsWreckLabel',
     stripTypeScriptTypes(wrapperSource).replace(/^export /gm, '')
       + '\nreturn { createProps, createPropsAsync };')(build, () => {
     assert.fail('texture row checkpoints must not acquire a vehicle builder');
-  }, createWreckBakeClient, assertNoBuildScopeOpen);
+  }, createWreckBakeClient, assertNoBuildScopeOpen, PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel);
   return { api, runtime, calls, events };
 }
 function assertPublicOwner(owner, result, args) {
@@ -267,8 +269,9 @@ try {
     const args = [height, engine, pending.sample.seed, pending.sample, vegetation];
     let ticks = 0;
     const result = await owner.api.createPropsAsync(...args.slice(0, 4), async (done, total) => {
-      assert.equal(done, ++ticks);
-      assert.equal(total, 180);
+      // (mp-fixes-277) a fine build reports propsProgress(steps) out of 1000 (props.ts, propsProgress.ts)
+      assert.equal(done, propsProgress(++ticks));
+      assert.equal(total, PROPS_PROGRESS_SCALE);
       assert.equal(owner.runtime.textures, undefined, 'no partial texture owner at an awaited checkpoint');
       assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));

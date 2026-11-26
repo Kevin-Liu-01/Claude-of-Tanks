@@ -102,6 +102,12 @@ try {
   assert.equal(stage.textContent, t('battleLoad.stage.buildingTerrain'));
   screen.progress(0.251, 'Custom loading stage');
   assert.equal(stage.textContent, 'Custom loading stage');
+  // (mp-fixes-277) a stage's count after " · " keeps its name translated (props.ts: a wreck in bake and its place)
+  screen.progress(0.251, 'Placing wrecks · 3/13');
+  assert.equal(stage.textContent, t('battleLoad.stage.placingWrecks') + ' · 3/13');
+  screen.progress(0.251, 'Custom loading stage · 2');
+  assert.equal(stage.textContent, 'Custom loading stage · 2', 'an unknown name with a count stays as it came');
+  screen.progress(0.251, 'Custom loading stage');
   screen.rosters([], []);
   assert.equal(fills(), scales(1, 0.255, 0, 0, 0), 'roster refresh does not reset progress');
   for (const [fraction, share, percent] of [[-5, 0, '0'], [2, 1, '100'],
