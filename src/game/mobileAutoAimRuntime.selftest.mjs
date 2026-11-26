@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { createBus } from './stateCore.ts';
 import { createMobileAutoAimRuntime } from './mobileAutoAimRuntime.ts';
+import { endLifeScope, lifeScopeFrame, lifeScopeSnapshot } from './lifeScope.ts';
 
 const bus = createBus();
 const camera = new PerspectiveCamera();
@@ -81,9 +82,24 @@ bus.emit('ui:autoAimToggle', {});
 assert.equal(runtime.targetId, null, 'a second press releases it');
 assert.equal(states.at(-1).reason, 'AUTO-AIM OFF');
 
+// (life-reset-279) a lock is the life's (game/lifeScope.ts): the player's own death ends it, so the revived hull comes back
+// unlocked, its touch button dark; the kill cam's sample(false) alone kept it through the death into the next life
+lifeScopeFrame(player);
+bus.emit('ui:autoAimToggle', {});
+assert.equal(runtime.targetId, enemy.id, 'locked in this life');
+lifeScopeFrame({ ...player, combat: { destroyed: true } }, player.id);
+assert.equal(runtime.targetId, null, "the player's death releases the lock");
+assert.deepEqual(states.at(-1), { on: false, targetId: null, targetName: '', targetSpecId: '', reason: '' }, 'released quietly');
+lifeScopeFrame(player, player.id);
+assert.equal(runtime.targetId, null, 'the revived hull starts unlocked');
+bus.emit('ui:autoAimToggle', {});
+bus.emit('ui:autoAimToggle', {}); // a lock released by hand leaves nothing on the life
+assert.equal(lifeScopeSnapshot().live[0].counts.deferred, 0, 'a released lock unhooks from the life');
+endLifeScope(player.id, 'test');
+
 runtime.dispose();
 touch = true;
 bus.emit('ui:autoAimToggle', {});
 assert.equal(runtime.targetId, null, 'dispose detaches all auto-aim listeners');
 
-console.log('mobileAutoAimRuntime.selftest: acquisition, loss, phase and disposal passed');
+console.log('mobileAutoAimRuntime.selftest: acquisition, loss, phase, the life\'s end and disposal passed');

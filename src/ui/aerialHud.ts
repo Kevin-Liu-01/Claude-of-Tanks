@@ -213,7 +213,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       const elapsed=now-priorTime;
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
       // (a flight's controls are the first-use hints' droneFlight / gunshipFlight, battleNotices' condition lane: notices-audit-275)
-      if(!wasActive)bus.emit('ui:flightStarted',{kind:view.kind});
+      // (life-reset-279) a new flight's speed starts from its own first reading, never the last flight's average
+      if(!wasActive){speed=0;bus.emit('ui:flightStarted',{kind:view.kind});}
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;
       const carrier=player?.state?.pos,range=carrier?Math.hypot(view.x-carrier.x,view.z-carrier.z):0;
       setHidden(timer.host,!drone);setHidden(link.host,!drone);setHidden(speedometer.host,!drone);

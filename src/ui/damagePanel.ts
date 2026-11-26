@@ -1064,7 +1064,12 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
         hpLit = lit;
       }
       const tone = frac <= 0.25 ? 'danger' : frac <= 0.5 ? 'warn' : '';
-      if ((hpTrack.dataset.tone ?? '') !== tone) hpTrack.dataset.tone = tone;
+      // (life-reset-279) a whole hull carries no tone at all, as a fresh panel does: a revived hull read tone="" (no ink, but
+      // not the fresh panel's state either)
+      if ((hpTrack.dataset.tone ?? '') !== tone) {
+        if (tone) hpTrack.dataset.tone = tone;
+        else delete hpTrack.dataset.tone;
+      }
       lastHpText = txt;
     }
   }

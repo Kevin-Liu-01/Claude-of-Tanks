@@ -7,6 +7,7 @@ import {
   type MobileAutoAimCandidate,
   type MobileAutoAimEntity,
 } from './mobileAutoAim.ts';
+import { lifeScope } from './lifeScope.ts';
 
 interface AutoAimTank extends MobileAutoAimCandidate {
   id: string;
@@ -75,8 +76,14 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
   let disposed = false;
   let targetId: string | null = null;
   const point = new Vector3();
+  /** (life-reset-279) A lock is the life's (game/lifeScope.ts): taken, it is released when the seat's life ends (its
+   *  death, the seat leaving the hull, the battle's end), so a revived hull never comes back locked on the last life's
+   *  target with the touch button lit. */
+  let unhookLife: (() => void) | null = null;
 
   const publish = (target: TTank | null, reason = ''): void => {
+    unhookLife?.();
+    unhookLife = target ? lifeScope(getPlayer()?.id)?.defer(() => { unhookLife = null; clear(); }) ?? null : null;
     targetId = target?.id ?? null;
     bus.emit('ui:autoAimState', {
       on: target !== null,
@@ -140,6 +147,8 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
       stopToggle();
       stopDestroyed();
       stopPhase();
+      unhookLife?.();
+      unhookLife = null;
       targetId = null;
     },
   };

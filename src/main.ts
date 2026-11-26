@@ -1,6 +1,7 @@
 import './ui/richTooltip.css';
 import { onField } from './sim/hullField.ts';
 import { armourTipDue, readArmourDefaultMarker, writeArmourDefaultMarker } from './game/armourOverlayDefault.ts';
+import { attachLifeScopeEdges, onLifeStart } from './game/lifeScope.ts';
 import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
@@ -824,6 +825,8 @@ const bus = createBus(devTrace
 // Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
 installAirSupportBridge(bus);
 installBattleRecords(bus);
+// a seat's life (life-reset-279): a respawn the frame never saw down, or a room's restart, starts the seat's next life
+attachLifeScopeEdges(bus);
 installCampaignProgress(bus); // campaign slice 4 (2026-09-12): Frontline Assault sorties persist locally
 const game: MainGameState = createGameState<
   MainEntity,
@@ -3070,6 +3073,14 @@ function openBattleRound(preBattleSeconds?: number) {
   if (game.ruleset?.watch) watchOwner.current?.open();
 }
 
+// (life-reset-279) a revived hull's chase view starts behind it at its spawn, as the battle's reveal does: the rig kept the
+// last life's yaw, and its pivot slid from the wreck to the spawn (game/lifeScope.ts; a couch pane's rig snaps its own, a
+// replay's camera is the viewer's)
+onLifeStart((life) => {
+  if (life.reason !== 'life:revive' && life.reason !== 'life:respawn') return;
+  if (life.entityId !== game.player?.id || couchSeatsActive(game) || replayViewerOwner.current?.isActive()) return;
+  prepareBattleRevealCamera();
+});
 function prepareBattleRevealCamera() {
   // a watched battle opens on the drone's frame over the field, never on the human seat's chase
   if (game.ruleset?.watch && watchOwner.current?.prepareReveal()) return;
