@@ -76,6 +76,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // (round 4 F7) the fx-clock census: every src/fx module with a clock read must be one its scenario loads (round 5 U12:
   // its harness lists, for the default receipt and the manual fx suite's whole one)
   'src/fx/fxClockStampCensus.test-support.mjs': lists('src/fx/*.ts'),
+  'src/fx/hullThrusterPlumesLazy.selftest.mjs': tracked('src/**'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent

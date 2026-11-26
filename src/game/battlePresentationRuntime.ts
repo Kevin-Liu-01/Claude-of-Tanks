@@ -169,7 +169,8 @@ interface BattlePresentationRuntimeOptions {
   battleClient: PosePorts;
   getFx(): VehicleFx | null;
   /** The air spin's thruster plumes (thrust-flips-277), drawn on each hull's root after its pose. */
-  thrusterPlumes?: HullThrusterPlumes | null;
+  /** The thruster plumes once their chunk is in (main.ts loads it as a battle begins), else null. */
+  thrusterPlumes?: () => HullThrusterPlumes | null;
   getWorld(): PresentationWorld | null;
   isNetworkMatchActive(): boolean;
   getPedestalVisual(): object | null;
@@ -194,7 +195,7 @@ export function createBattlePresentationRuntime({
   scene,
   battleClient,
   getFx,
-  thrusterPlumes = null,
+  thrusterPlumes = () => null,
   getWorld,
   isNetworkMatchActive,
   getPedestalVisual,
@@ -419,8 +420,9 @@ export function createBattlePresentationRuntime({
       syncModeVisual(entity, dtFrame, game.phase === 'battle');
     }
     // the air spin's burn (thrust-flips-277): its plumes ride the hull's root, its fire and smoke the vehicle FX's
-    if (thrusterPlumes && game.phase === 'battle') {
-      thrusterPlumes.sync(entity.id, visual.root, entity.spec, entity.state as ThrusterPlumeState, dtFrame ?? 0,
+    const plumes = game.phase === 'battle' ? thrusterPlumes() : null;
+    if (plumes) {
+      plumes.sync(entity.id, visual.root, entity.spec, entity.state as ThrusterPlumeState, dtFrame ?? 0,
         visual.root.visible && !entity.combat?.destroyed, getFx());
     }
     return viewDistanceM;

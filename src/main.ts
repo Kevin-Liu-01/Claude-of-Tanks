@@ -210,7 +210,6 @@ import { createTurboCooldown, modeMovesUnavailable } from './game/turboCooldown.
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
-import { createHullThrusterPlumes } from './fx/hullThrusterPlumes.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createLazyMatchModeWorldPresentation } from './game/matchModeWorldLazy.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
@@ -2768,17 +2767,25 @@ const playerFrameInput = createPlayerFrameInput({
 // The air spin's thruster plumes (thrust-flips-277; fx/hullThrusterPlumes.ts): each burn's ignition is heard
 // (tank:thrust, audioEngine.ts), and a hull whose state has no live burn (a network peer's, a replay's) draws a ghost of it
 // from its tank:airSpin event. `thrustArrows=1` draws each nozzle's force and the centre of mass (the proof captures).
-const thrusterPlumes = createHullThrusterPlumes({
-  onBurn: (id, phase, pos) => bus.emit('tank:thrust', { id, phase, x: pos.x, y: pos.y, z: pos.z }),
+// (integ/278, owed from 277) battle-only FX, so its own chunk: loaded when a battle begins (the plumes draw only in the
+// battle phase), never in the entry chunk.
+const thrusterPlumes = createLazyRuntimeOwner(() => import('./fx/hullThrusterPlumes.ts'), ({ createHullThrusterPlumes }) => {
+  const plumes = createHullThrusterPlumes({
+    onBurn: (id, phase, pos) => bus.emit('tank:thrust', { id, phase, x: pos.x, y: pos.y, z: pos.z }),
+  });
+  if (new URLSearchParams(location.search).get('thrustArrows') === '1') plumes.setDebugArrows(true);
+  return plumes;
+});
+bus.on('phase:change', (payload) => {
+  if (Reflect.get(Object(payload), 'phase') === 'battle') void thrusterPlumes.preload().catch(() => {});
 });
 bus.on('tank:airSpin', (payload) => {
   const event = payload as { id?: string; axis?: number } | undefined;
-  if (event?.id && typeof event.axis === 'number') thrusterPlumes.noteAirSpin(event.id, event.axis);
+  if (event?.id && typeof event.axis === 'number') thrusterPlumes.current?.noteAirSpin(event.id, event.axis);
 });
-if (new URLSearchParams(location.search).get('thrustArrows') === '1') thrusterPlumes.setDebugArrows(true);
 const battlePresentation = createBattlePresentationRuntime({
   game,
-  thrusterPlumes,
+  thrusterPlumes: () => thrusterPlumes.current,
   camera,
   scene,
   // a couch battle's split screen: every pane's camera (src/app/couchPaneViews.ts), so no pane's hulls lose their detail

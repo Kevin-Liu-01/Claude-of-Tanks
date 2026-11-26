@@ -29,6 +29,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/sceneLightTint.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
+    // integ/278 (owed from 277): the thruster plumes are a battle-phase chunk, never statically imported (out of the entry)
+    'src/fx/hullThrusterPlumesLazy.selftest.mjs',
     'src/fx/droneRotorWinding.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
