@@ -54,7 +54,7 @@ function strikesTable(): string {
       + `<td>${row.hp > 0 ? esc(String(row.hp)) : '–'}</td><td>${effect(kind)}</td></tr>`;
   }).join('');
   const head = ['strike', 'cost', 'reload', 'warning', 'aircraft', 'effect'].map((col) => `<th scope="col">${esc(t(`docs.air.col.${col}`))}</th>`).join('');
-  return `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t('docs.air.strikes'))}"><table>`
+  return `<div class="dm-table dm-table--wrap" tabindex="0" role="region" aria-label="${esc(t('docs.air.strikes'))}"><table>`
     + `<thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
