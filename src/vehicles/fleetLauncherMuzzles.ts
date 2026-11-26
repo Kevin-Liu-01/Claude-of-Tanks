@@ -38,7 +38,10 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // 2026-10-21: the Jyu-MAT canister collars stand 4 cm proud of the duct front (profiles/type89SourceX.ts).
   type89: [-1,1].map(side => turret(side*1.25,.63,.40)),
   spz_wotan: [.36, .59].map(y => turret(-1.02 * .9, y * .9, .839 * .9)),
-  raiju_ifv: [-1, 1].flatMap(s => [.32, .56].map(y => turret(s * 1.39 * .9, y * .9, .7175 * .9))),
+  // 267 (acfadff18e): the twin-cell Jyu-MAT Kai pods rebuilt on their trunnion arms (profiles/type89LightTiger.ts
+  // addLauncherPods: pod at x 1.30, cells at y .46 -/+ .128, the cell rims' mouths at z .415 = face .365 + proud .05), in
+  // the 0.9 turret scale (the exits stayed on the old pods, 27 cm ahead of the new cells' mouths, until 278)
+  raiju_ifv: [-1, 1].flatMap(s => [.46 - .128, .46 + .128].map(y => turret(s * 1.30 * .9, y * .9, .415 * .9))),
   // 267 (fb694e0dd6): the twin pod raised on its arm at the turret's left (profiles/cv90.ts, x 1.24), its two tubes at
   // y 1.12 and 1.29 and their collar rings' plane at z .393, in the 0.9 turret scale (the exits stayed on the old low
   // right-side pod until 278)
