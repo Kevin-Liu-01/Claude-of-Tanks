@@ -20,6 +20,8 @@ import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { getLocale, t } from '../../ui/i18n.ts';
 import { hrefForLocale } from '../../ui/localeRouting.ts';
 import { modeAnchor } from './modes.ts';
+import { COUCH_RULES } from '../../sim/matchRuleset.ts';
+import { PAD_LOBBY_SEATS } from '../../pad/padProtocol.ts';
 import type { RichSection } from './types.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -96,6 +98,28 @@ function leavingSection(): string {
   return `<ul class="dm-roles dm-roles--rows">${rows.map(([glyph, key, values]) => `<li>${icon(glyph, { size: 20 })}<div><p>${esc(t(key, values))}</p></div></li>`).join('')}</ul>`;
 }
 
+/** Couch play: one screen, a phone per seat (the Garage's Couch button, src/ui/couchLobby.ts; the seats, modes and sides
+ *  from COUCH_RULES and padProtocol.ts PAD_LOBBY_SEATS; the panes from src/game/couchPanes.ts). */
+function couchSection(): string {
+  const modeName = (mode: string): string => t(`playMenu.matchMode.${mode}.label`);
+  const list = (items: string[]): string => new Intl.ListFormat(getLocale(), { type: 'conjunction' }).format(items);
+  const steps = [
+    t('docs.mp.couch.step.open', { couch: t('couch.entry') }),
+    t('docs.mp.couch.step.join'),
+    t('docs.mp.couch.step.start', { together: t('couch.sides.together'), teams: t('couch.sides.teams'), split: t('couch.view.split'),
+      shared: t('couch.view.shared'), start: t('couch.start') }),
+  ];
+  const facts = [
+    t('docs.mp.couch.modes', { modes: list(COUCH_RULES.modes.map(modeName)),
+      together: list(COUCH_RULES.togetherOnly.map(modeName)) }),
+    t('docs.mp.couch.screens', { shared: t('couch.view.shared') }),
+    t('docs.mp.couch.inputs'),
+  ];
+  return p('docs.mp.couch.lede', { seats: String(Math.min(COUCH_RULES.maxSeats, PAD_LOBBY_SEATS)) })
+    + `<ol class="dm-steps">${steps.map((body, i) => `<li><span class="dm-steps__n">${i + 1}</span><p>${esc(body)}</p></li>`).join('')}</ol>`
+    + `<ul class="dm-facts">${facts.map((fact) => `<li>${esc(fact)}</li>`).join('')}</ul>`;
+}
+
 export function multiplayerSections(): RichSection[] {
   const sections: Array<[string, string, string]> = [
     ['rooms', t('docs.mp.rooms'), waysSection()],
@@ -104,6 +128,7 @@ export function multiplayerSections(): RichSection[] {
     ['start', t('docs.mp.start'), startSection()],
     ['leaving', t('docs.mp.leaving'), leavingSection()],
     ['fair', t('docs.mp.fair'), p('docs.mp.fairHost') + p('docs.mp.fairSpotting')],
+    ['couch', t('docs.mp.couch'), couchSection()],
   ];
   return sections.map(([id, title, html]) => ({ id, title, html, text: plain(html) }));
 }

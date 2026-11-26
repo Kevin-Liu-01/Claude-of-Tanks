@@ -39,13 +39,13 @@
   "href": "/docs/start#next",
   "title": "Weiter",
   "chapter": "Dein erstes Gefecht",
-  "text": "Tutorial im Spiel wiederholen Die Garagenführung und die Einführung ins erste Gefecht – noch einmal von Anfang an. Steuerung und Zuschauen Alle Tasten, die Touch-Steuerung und die drei Ansichten des Zuschauermodus. Spielmodi Ziel, Zeitlimit und Regeln jedes Modus – auf der Karte veranschaulicht."
+  "text": "Tutorial im Spiel wiederholen Die Garagenführung und die Einführung ins erste Gefecht – noch einmal von Anfang an. Steuerung und Zuschauen Alle Tasten, die Touch-Steuerung, dein Handy als Steuerung, der Zuschauermodus, Wiederholungen und der Fotomodus. Spielmodi Ziel, Zeitlimit und Regeln jedes Modus – auf der Karte veranschaulicht – und wie du Luftunterstützung anforderst."
  },
  {
   "href": "/docs/controls",
   "title": "Jede Taste, jede Ansicht",
   "chapter": "Steuerung und Zuschauen",
-  "text": "Tastatur, Maus, Gamepad und Touch-Steuerung – dazu Drohne, Mitfahren und Steuerungsübernahme im Zuschauermodus."
+  "text": "Tastatur, Maus, Gamepad, Touch-Steuerung und dein Handy – dazu Zuschauermodus, Wiederholungen und Fotomodus."
  },
  {
   "href": "/docs/controls#keys",
@@ -66,10 +66,28 @@
   "text": "Auf Smartphones und Tablets werden im Gefecht eigene Bedienelemente angezeigt. Mit dem linken Daumen steuerst du den Joystick zum Fahren. Wische an einer beliebigen anderen Stelle, um zu zielen. Tippe auf „Feuern“, um zu schießen. Halte die Taste gedrückt und ziehe zum Zielen, lass zum Feuern los. Halte sie länger gedrückt, um weiterzufeuern. Ziehe in den Abbruchbereich, um den Schuss nicht abzugeben. „Visier“ öffnet das Richtschützenvisier. Ziehe zwei Finger zusammen oder auseinander, um die Zoomstufe des Visiers zu ändern. „Automatisches Zielen“ erfasst den Gegner, der dem Fadenkreuz am nächsten ist. „Rakete“ lässt den Panzer springen oder richtet ihn wieder auf, sofern der Modus Sprünge unterstützt."
  },
  {
+  "href": "/docs/controls#phone",
+  "title": "Dein Handy als Steuerung",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Ein Handy kann deinen Panzer wie ein Gamepad steuern. Das Gefecht läuft weiterhin auf dem Computer; das Handy sendet nur deine Eingaben. 1 Öffne auf dem Computer Einstellungen › Steuerung, suche Handy-Steuerung und drücke Handy verbinden. 2 Scanne den QR-Code mit der Kamera des Handys oder gib den 6-stelligen Code auf dem Handy ein. Ein Code gilt 2 Minuten. 3 Halte das Handy quer. Unter deinem linken Daumen erscheint dort, wo du berührst, ein Stick, mit dem du den Panzer fährst. Rechts zielst und feuerst du, daneben liegen „Zielfernrohr“ und Zoom. Die Munition liegt in der Mitte, die übrigen Tasten des Panzers säumen die Ränder. Handy und Computer verbinden sich direkt. Klappt das nicht, überträgt ein langsameres Relay deine Eingaben für begrenzte Zeit. Verbinde beide Geräte mit demselben WLAN, um das zu vermeiden. Verstummt das Handy kurz, lässt der Panzer alle Eingaben los, damit er nie von selbst davonfährt. Eine Kopplung hält bis zu 6 Stunden."
+ },
+ {
   "href": "/docs/controls#watch",
   "title": "Zuschauermodus",
   "chapter": "Steuerung und Zuschauen",
   "text": "Schau dir von der Garage aus ein Bot-Gefecht an: „Zuschauen“ steht neben „Ausrücken“. Alle Plätze sind mit Bots besetzt, alle Panzer sind sichtbar und nichts wird aufgezeichnet. Das funktioniert in 14 Modi. Drohne Fliege frei über das Gefecht. Du startest in 70 m Höhe mit 14 m/s; das Mausrad ändert die Geschwindigkeitsstufe (4 / 8 / 14 / 24 / 40 / 64 m/s), und mit der Umschalttaste erhöhst du die Geschwindigkeit auf das ×2.5-Fache. W A S D Fliegen LEERTASTE C Steigen und sinken L-SHIFT Beschleunigen WHEEL ↑ WHEEL ↓ Geschwindigkeitsstufe ändern Mitfahren Folge einem beliebigen Panzer von hinten oder blicke durch sein Richtschützenvisier mit ×2 / ×4 / ×8. F Auf dem Panzer in der Bildmitte mitfahren Q E Nächster und vorheriger Panzer L-SHIFT Richtschützenvisier V Zurück zur Drohne Steuerung übernehmen Übernimm den Panzer, auf dem du mitfährst, und kämpfe selbst. Wird er zerstört, kehrst du nach 3.5 s zur Drohne zurück. ENTER Steuerung übernehmen oder abgeben"
+ },
+ {
+  "href": "/docs/controls#replays",
+  "title": "Wiederholungen",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Jedes Solo-Gefecht wird beim Spielen aufgezeichnet. Wenn es endet, drücke auf dem Endbildschirm Wiederholung ansehen oder Wiederholung herunterladen. Später findest du es in der Garage im Tab Aufnehmen › Wiederholungen. Dieser Browser behält deine letzten 20 Gefechte; lade eines herunter, um es länger zu behalten. Eine Wiederholung speichert deine Eingaben, und das Spiel spielt das Gefecht daraus erneut ab. Dadurch bleibt die Datei klein, aber eine Wiederholung lässt sich nur in der Spielversion öffnen, die sie aufgezeichnet hat. Online-Gefechte, Gefechte im Zuschauermodus und Gefechte im Couch-Modus werden nicht aufgezeichnet. Um eine Wiederholungsdatei zu öffnen, nutze Wiederholungsdatei öffnen im Tab „Wiederholungen“ oder ziehe die Datei auf die Garage. LEERTASTE Abspielen oder pausieren 5 s zurück oder vor , . Ein Bild zurück oder vor [ ] Vorheriges oder nächstes Ereignis 1 – 5 Geschwindigkeit: ×0.25 / ×0.5 / ×1 / ×2 / ×4 ESC Wiederholung verlassen Die Kameras stammen aus dem Zuschauermodus: Fliege die Drohne oder fahre auf einem beliebigen Panzer mit und blicke durch sein Visier. Ziehe an der Zeitleiste, um zu spulen. Klicke auf eine Markierung darauf, um 3 s vor diesen Moment zu springen, auf dem Panzer, der ihn ausgelöst hat. Auf einem Touchscreen ziehst du an der Zeitleiste und tippst auf einen Panzer, um mitzufahren. Video exportieren wandelt eine Wiederholung in eine MP4-Datei mit 720p oder 1080p und 30 oder 60 Bildern pro Sekunde um. Exportiere das ganze Gefecht oder beginne bei einem Moment deiner Wahl, mit oder ohne HUD. Das Video hat keinen Ton, und die Schaltfläche funktioniert nur in Browsern, die MP4-Dateien erstellen können, etwa Chrome und Edge."
+ },
+ {
+  "href": "/docs/controls#photo",
+  "title": "Fotomodus",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Drücke in einem Solo-Gefecht P oder tippe in den Gefechtseinstellungen auf Foto, um zu pausieren und deinen Panzer in Szene zu setzen. Wähle einen Bildausschnitt (Heldenansicht, Vorne, Seite, Hinten, Oben), ein Objektiv (18 / 24 / 35 / 50 / 85 mm) und eine Neigung, dann drücke PNG speichern. Das Bild wird in doppelter Bildschirmgröße gespeichert. W A S D Um den Panzer kreisen R F Näher heran oder weiter weg Q E Kamera rollen ESC Fotomodus verlassen (P geht auch) Mit der Maus ziehst du zum Kreisen, mit gedrückter Umschalttaste oder rechter Maustaste zum Schwenken, und mit dem Mausrad zoomst du. Auf einem Touchscreen zoomst du, indem du zwei Finger zusammen- oder auseinanderziehst, und schwenkst, indem du mit zwei Fingern ziehst. Der Fotomodus funktioniert in Solo-Gefechten und Wiederholungen, nicht in Online-Gefechten oder im Couch-Modus."
  },
  {
   "href": "/docs/controls#hud",
@@ -81,7 +99,7 @@
   "href": "/docs/modes",
   "title": "Alle Arten zu kämpfen",
   "chapter": "Spielmodi",
-  "text": "Alle Modi und ihre Regeln, direkt aus dem Spiel übernommen. Wähle einen unter „Ausrücken“."
+  "text": "Alle Modi und ihre Regeln, direkt aus dem Spiel übernommen, dazu wie Luftunterstützung funktioniert. Wähle einen Modus unter „Ausrücken“."
  },
  {
   "href": "/docs/modes#glance",
@@ -112,6 +130,36 @@
   "title": "Übung",
   "chapter": "Spielmodi",
   "text": "Proving Ground Teste einen beliebigen Panzer auf einem vermessenen Schießstand: Panzerwannen als Ziele in festgelegten Entfernungen und Winkeln machen alle Durchschlagsergebnisse sichtbar. Keine Gegner, kein Zeitlimit, keine Aufzeichnung. Zeitlimit – Teamgrößen 5 Routen Wiedereinstieg 3 s Alle Panzer sichtbar unbegrenzte Munition keine Aufzeichnung"
+ },
+ {
+  "href": "/docs/modes#air",
+  "title": "Luftunterstützung anfordern",
+  "chapter": "Spielmodi",
+  "text": "In Air Support und Combined Arms verdient jede Besatzung im Gefecht Unterstützungspunkte und setzt sie für Luftschläge ein. Auch Bots verdienen Punkte und fordern Angriffe an. 1 Drücke X , um das Fernglas zu heben, oder tippe auf einem Touchscreen oder in der Handy-Steuerung auf Markieren. Auf dem Boden erscheint ein Fadenkreuz. 2 Wähle mit 1 – 6 einen Angriff oder tippe auf sein Feld. Jedes Feld zeigt seinen Preis und wird abgedunkelt, solange es nachgeladen wird. 3 Setze das Fadenkreuz dorthin, wo der Angriff einschlagen soll, bis zu 700 m von deinem Panzer entfernt. Die Anzeige nennt Entfernung und Richtung. 4 Drücke LMT oder tippe auf ANFORDERN. Sobald das Spiel den Angriff annimmt, senkt sich das Fernglas von selbst. Um es ohne Anforderung zu senken, drücke RMT oder ESC . Ein Gamepad hat keine Taste für Angriffsansicht, bis du in den Einstellungen eine zuweist. Das Spiel lehnt eine Anforderung ab und nennt den Grund, wenn du nicht genug Punkte hast, der Angriff noch nachgeladen wird, die Markierung außer Reichweite liegt, deine Seite bereits 2 Angriffe am Laufen hat oder ihre AC-130 schon im Einsatz ist."
+ },
+ {
+  "href": "/docs/modes#air-points",
+  "title": "Unterstützungspunkte verdienen",
+  "chapter": "Spielmodi",
+  "text": "20 Punkte für je 100 Strukturpunkte Schaden, die deine Waffen dem Gegner zufügen. 100 Punkte für einen Abschuss oder 50, wenn dein Luftschlag den Abschuss erzielt. 80 Punkte für jede Besatzung in einem Sektor, wenn deine Seite ihn einnimmt. 15 Punkte, wenn du einen Gegner als Erster aufklärst, höchstens einmal pro Gegner alle 30 s. 120 Punkte für den Abschuss eines feindlichen Flugzeugs. 1 Punkt alle 2 s, solange du am Leben bist. Du startest mit 120 Punkten und kannst bis zu 1000 ansammeln."
+ },
+ {
+  "href": "/docs/modes#air-strikes",
+  "title": "Die sechs Angriffe",
+  "chapter": "Spielmodi",
+  "text": "Jede Seite kann 2 Angriffe gleichzeitig am Laufen haben und 1 AC-130.\nAngriff · Kosten · Nachladen · Warnung · Strukturpunkte des Flugzeugs · Wirkung · 1 Aufklärungsflug · 120 Pkt. · 40 s · 3 s · 400 · Ein Jet überfliegt die Markierung auf einer 600 m langen Linie. Jeder Gegner im Umkreis von 160 m um seine Flugbahn ist 12 s lang aufgeklärt. · 2 Artillerie · 300 Pkt. · 60 s · 6 s · – · 10 Granaten im Kaliber 155 mm schlagen innerhalb von 5 s im Umkreis von 35 m um die Markierung ein. Die Geschütze stehen außerhalb der Karte, daher kann nichts den Beschuss aufhalten. · 3 Bordwaffenangriff · 400 Pkt. · 75 s · 5 s · 600 · Eine A-10 fliegt von hinten an und feuert 60 Schuss 30 mm entlang einer 120 m langen Schneise auf die Markierung zu, auf die Oberseite der feindlichen Panzer darin. · 4 Präzisionsbombe · 450 Pkt. · 90 s · 7 s · 600 · Ein Jet wirft eine lasergelenkte Bombe ab. Sie schlägt höchstens 8 m von der Markierung entfernt ein, mit einem Explosionsradius von 22 m. · 5 Raketenangriff · 550 Pkt. · 100 s · 6 s · 500 · Ein Jet feuert 4 Maverick-Raketen ab, jede auf einen aufgeklärten Gegner im Umkreis von 45 m um die Markierung oder, wenn keiner da ist, auf die Markierung selbst. · 6 AC-130-Kreisflug · 800 Pkt. · 150 s · 8 s · 1400 · Eine AC-130 kreist 30 s lang über der Markierung und feuert mit Bordkanone und Haubitze auf jeden aufgeklärten Gegner im Umkreis von 140 m."
+ },
+ {
+  "href": "/docs/modes#air-warning",
+  "title": "Wenn ein Angriff auf dich zukommt",
+  "chapter": "Spielmodi",
+  "text": "Die angegriffene Seite wird gewarnt, sobald ein Angriff angefordert wird. Eine Warnung mit Countdown erscheint, und der Wirkungsbereich des Angriffs wird am Boden und auf der Minikarte angezeigt. Vor Ablauf des Countdowns schlägt nichts ein; er dauert je nach Angriff 3 bis 8 s. Nutze die Zeit, um aus dem Wirkungsbereich zu fahren."
+ },
+ {
+  "href": "/docs/modes#air-down",
+  "title": "Flugzeuge abschießen",
+  "chapter": "Spielmodi",
+  "text": "Jeder Angriff außer der Artillerie wird von einem Flugzeug geflogen, und jedes Flugzeug kann abgeschossen werden. Eine Granate, die den Rumpf erreicht, trifft ihn, egal wer sie abgefeuert hat. Dach-MGs, die auf Drohnen feuern, feuern auch auf feindliche Flugzeuge, und zwar bis zum 1.5-Fachen ihrer Reichweite gegen Drohnen. Eine FPV-Drohne, die in ein Flugzeug fliegt, verursacht 700 Schaden. Das holt jeden Jet herunter; für die AC-130 braucht es 2. Ein abgeschossenes Flugzeug bricht seinen Angriff ab und stürzt. Am Aufschlagort explodiert es mit einem Radius von 34 bis 40 m und hinterlässt einen Krater. Das Wrack bleibt 75 s liegen und dient als Deckung, die Panzer und Granaten aufhält."
  },
  {
   "href": "/docs/tanks",
@@ -189,7 +237,7 @@
   "href": "/docs/combat#modules",
   "title": "Module und Besatzung",
   "chapter": "Panzerung, Anwinkeln und Aufklärung",
-  "text": "Ein durchschlagender Treffer kann zerstören, was hinter der Panzerplatte liegt. Zerstörte Module werden nach 10 s automatisch repariert. Ein beschädigtes Munitionslager verlängert die Nachladezeit um den Faktor ×1.5; ein zerstörtes lässt den Panzer explodieren. Ein beschädigter Motor gerät mit einer Wahrscheinlichkeit von 15 % in Brand; ein Brand verursacht über 10 Ticks jeweils 0.5 % Schaden an der Wanne und kann von selbst erlöschen (12 % pro Tick). Ein durchschlagendes Geschoss trifft mit einer Wahrscheinlichkeit von 33 % ein Besatzungsmitglied (10 % bei HE-Explosionsschaden); fällt die gesamte Besatzung aus, ist der Panzer verloren. Beschädigte Optiken verringern die Sichtweite um 50 %. Ein intaktes Funkgerät übermittelt deine Sichtungen im Umkreis von 600 m; ein beschädigtes im Umkreis von 300 m. Die Abschusskamera Wenn du ausgeschaltet wirst, zeigt die Abschusskamera eine Wiederholung des letzten Schusses durch deinen durchsichtig dargestellten Panzer: die Flugbahn des Geschosses, alle getroffenen Module und Besatzungsmitglieder, den Schaden und den Schützen.\nLeclerc XLR: Module und Besatzung\nModul · Strukturpunkte · Trefferwahrscheinlichkeit · Geschütz · 150 · 33 % · Turmdrehkranz · 120 · 45 % · Geschützlafette · 120 · 45 % · Ladeautomat · 125 · 36 % · Munitionszuführung · 110 · 38 % · Dach-MG · 80 · 65 % · Flugkörpergestell · 120 · 30 % · Motor · 160 · 45 % · Getriebe · 140 · 45 % · Kraftstofftank · 120 · 45 % · Munitionslager · 150 · 27 % · Funkgerät · 90 · 45 % · Optik · 80 · 45 % · Kette L · 100 · 100 % · Kette R · 100 · 100 %"
+  "text": "Ein durchschlagender Treffer kann zerstören, was hinter der Panzerplatte liegt. Zerstörte Module werden nach 10 s automatisch repariert. Ein beschädigtes Munitionslager verlängert die Nachladezeit um den Faktor ×1.5; ein zerstörtes lässt den Panzer explodieren. Eine Munitionsdetonation sprengt den Turm von der Wanne. Er überschlägt sich und landet, wo die Physik ihn hinträgt, und Geschosse treffen weiterhin seine Platten. Ein beschädigter Motor gerät mit einer Wahrscheinlichkeit von 15 % in Brand; ein Brand verursacht über 10 Ticks jeweils 0.5 % Schaden an der Wanne und kann von selbst erlöschen (12 % pro Tick). Ein durchschlagendes Geschoss trifft mit einer Wahrscheinlichkeit von 33 % ein Besatzungsmitglied (10 % bei HE-Explosionsschaden); fällt die gesamte Besatzung aus, ist der Panzer verloren. Beschädigte Optiken verringern die Sichtweite um 50 %. Ein intaktes Funkgerät übermittelt deine Sichtungen im Umkreis von 600 m; ein beschädigtes im Umkreis von 300 m. Die Abschusskamera Wenn du ausgeschaltet wirst, zeigt die Abschusskamera eine Wiederholung des letzten Schusses durch deinen durchsichtig dargestellten Panzer: die Flugbahn des Geschosses, alle getroffenen Module und Besatzungsmitglieder, den Schaden und den Schützen.\nLeclerc XLR: Module und Besatzung\nModul · Strukturpunkte · Trefferwahrscheinlichkeit · Geschütz · 150 · 33 % · Turmdrehkranz · 120 · 45 % · Geschützlafette · 120 · 45 % · Ladeautomat · 125 · 36 % · Munitionszuführung · 110 · 38 % · Dach-MG · 80 · 65 % · Flugkörpergestell · 120 · 30 % · Motor · 160 · 45 % · Getriebe · 140 · 45 % · Kraftstofftank · 120 · 45 % · Munitionslager · 150 · 27 % · Funkgerät · 90 · 45 % · Optik · 80 · 45 % · Kette L · 100 · 100 % · Kette R · 100 · 100 %"
  },
  {
   "href": "/docs/combat#spotting",
@@ -237,7 +285,7 @@
   "href": "/docs/multiplayer",
   "title": "Zusammen spielen",
   "chapter": "Mehrspieler",
-  "text": "Erstelle einen Raum, verschicke den Code und kämpfe an der Seite deiner Freunde oder gegen sie."
+  "text": "Erstelle einen Raum, verschicke den Code und kämpfe an der Seite deiner Freunde oder gegen sie – oder spiele an einem gemeinsamen Bildschirm mit Handys als Steuerung."
  },
  {
   "href": "/docs/multiplayer#rooms",
@@ -274,6 +322,12 @@
   "title": "Faires Spiel",
   "chapter": "Mehrspieler",
   "text": "Der Host bestimmt jeden Treffer, Nachladevorgang und Gefechtsausgang; die anderen senden nur ihre Steuereingaben. Du erhältst nur Daten zu Gegnern, die dein Team aufgeklärt hat: Die Position eines verborgenen Panzers wird nie an deinen Browser übertragen."
+ },
+ {
+  "href": "/docs/multiplayer#couch",
+  "title": "Couch-Modus",
+  "chapter": "Mehrspieler",
+  "text": "Bis zu 8 Personen können an einem Bildschirm spielen, und jede steuert einen Panzer mit dem eigenen Handy. Der Computer führt das Gefecht aus, daher braucht es weder Raum noch Einladungslink. 1 Drücke in der Garage Couch-Modus neben „Ausrücken“. Die Lobby zeigt einen QR-Code und einen Code. 2 Jeder Spieler scannt den QR-Code mit seinem Handy oder gibt den Code ein und nimmt einen nummerierten Platz ein. 3 Wähle Zusammen (alle auf einer Seite) oder Teams (die Plätze verteilen sich abwechselnd auf die Seiten) und für den Bildschirm Geteilt (experimentell) oder Gemeinsam. Drücke dann Starten. Im Couch-Modus laufen Standardgefecht, Capture the Flag, Zone Control und Endless Horde. In Endless Horde spielen alle immer auf derselben Seite. Ein geteilter Bildschirm gibt jedem Platz eine eigene Ansicht und ein eigenes HUD. Ein gemeinsamer Bildschirm hält alle noch lebenden Panzer in einer Kamera. Lässt sich der Bildschirm nicht für alle Plätze mit voller HUD-Größe teilen, wählt die Lobby Gemeinsam und zeigt an, wie viele Plätze passen. In einem Couch-Gefecht steuern nur die Handys Panzer, nicht die Tastatur oder ein Gamepad. Couch-Gefechte fließen nicht in deinen Service Record ein und werden nicht als Wiederholungen gespeichert."
  },
  {
   "href": "/docs/audio",

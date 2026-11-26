@@ -121,3 +121,29 @@ archiveDialog?.addEventListener('click', (event) => {
 });
 
 mountBattleReels();
+
+/** The feature videos (featureVideos.ts): a film loads nothing until it is played (preload="none"); its poster is set as
+ *  its card comes within a viewport of the screen, and starting one film pauses any other. */
+function mountFeatureVideos(): void {
+  const videos = [...document.querySelectorAll<HTMLVideoElement>('video[data-feature-video]')];
+  if (!videos.length) return;
+  const showPoster = (video: HTMLVideoElement): void => {
+    if (!video.poster && video.dataset.poster) video.poster = video.dataset.poster;
+  };
+  if (typeof IntersectionObserver === 'function') {
+    const near = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        showPoster(entry.target as HTMLVideoElement);
+        near.unobserve(entry.target);
+      }
+    }, { rootMargin: '100% 0px' });
+    for (const video of videos) near.observe(video);
+  } else {
+    videos.forEach(showPoster);
+  }
+  for (const video of videos) {
+    video.addEventListener('play', () => { for (const other of videos) if (other !== video && !other.paused) other.pause(); });
+  }
+}
+mountFeatureVideos();

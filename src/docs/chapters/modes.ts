@@ -21,6 +21,7 @@ import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import { t } from '../../ui/i18n.ts';
 import { SvgCanvas } from '../svgCanvas.ts';
 import type { RichSection } from './types.ts';
+import { airSupportSections } from './airSupport.ts';
 import baked from '../../../public/minimaps/objectives.json' with { type: 'json' };
 
 /** A zone's letter in the diagrams' SVG (the glyphs draw none: objectiveGlyphs.ts badgeLetter). */
@@ -194,7 +195,7 @@ function glanceTable(): string {
     + `<thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-/** The chapter's sections: the table to pick from, then each group's mode cards. */
+/** The chapter's sections: the table to pick from, each group's mode cards, then how air support is called. */
 export function modesSections(): RichSection[] {
   const sections: RichSection[] = [];
   const glance = `${glanceTable()}${legend()}`;
@@ -203,5 +204,7 @@ export function modesSections(): RichSection[] {
     const html = `<div class="dm-modes">${group.modes.map(modeCard).join('')}</div>`;
     sections.push({ id: group.id, title: t(`docs.modes.group.${group.id}`), html, text: plain(html) });
   }
+  // Air Support and Combined Arms: calling a strike, the points, the six call-ins, the warning and the aircraft
+  sections.push(...airSupportSections());
   return sections;
 }

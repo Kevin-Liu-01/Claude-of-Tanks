@@ -1,5 +1,5 @@
 // The Field Manual's controls chapter. Copyright © 2026 Kevin B. Liu.
-// The keys are the game's own: every action, its group and its default key from src/game/input.ts (ACTION_DEFS,
+// The keys are the game's own (the phone controller's, the replay viewer's and photo mode's from their owners, below): every action, its group and its default key from src/game/input.ts (ACTION_DEFS,
 // DEFAULT_BINDINGS, the gamepad map), named as the settings panel names them (labelForCode, the action.* copy). Watch
 // mode's keys follow src/game/watchController.ts (docs/chapters/controls.selftest.mjs holds the two in step) and its
 // numbers come from src/engine/watchCamera.ts and WATCH_RULES. Node only: tools/docs-prerender.mjs runs it (it reads
@@ -9,8 +9,14 @@ import {
 } from '../../game/input.ts';
 import { WATCH_DRONE, WATCH_RIDE } from '../../engine/watchCamera.ts';
 import { WATCH_RULES } from '../../sim/matchRuleset.ts';
+import { REPLAY_SPEEDS, JUMP_S } from '../../game/replay/replayPlayback.ts';
+import { REPLAY_KEEP } from '../../game/replay/replayStore.ts';
+import { MARK_LEAD_S } from '../../game/replay/replayTimeline.ts';
+import { REPLAY_FILM_RATES, REPLAY_FILM_SIZES } from '../../game/replay/replayFilm.ts';
+import { PHOTO_LENSES_MM } from '../../engine/photoCamera.ts';
+import { PAD_CODE_LENGTH, PAD_CODE_TTL_MS, PAD_PAIR_MAX_MS } from '../../pad/padProtocol.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
-import { t } from '../../ui/i18n.ts';
+import { getLocale, t } from '../../ui/i18n.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import type { RichSection } from './types.ts';
 
@@ -109,6 +115,80 @@ function touchFigure(): string {
     rungs: [{ src: '/media/docs-r1/controls-touch-640.webp', width: 296 }, { src, width: 887 }] }, false)}</figure>`;
 }
 
+/** A catalog line whose {placeholders} take markup (key caps) or text: the line itself is escaped. */
+function line(key: string, values: Readonly<Record<string, string>>, markup: Readonly<Record<string, string>> = {}): string {
+  const tokens = Object.fromEntries(Object.keys(markup).map((name, i) => [name, `\u0000${i}\u0000`]));
+  let text = esc(t(key, { ...values, ...tokens }));
+  Object.values(markup).forEach((html, i) => { text = text.split(`\u0000${i}\u0000`).join(html); });
+  return text;
+}
+
+/** The phone controller: pairing from Settings, and what the phone's screen holds (src/pad/: padProtocol.ts's code and
+ *  pairing limits, padLayout.ts's zones; the settings card is src/ui/settings.ts settings.phone.*). */
+function phoneSection(): string {
+  const steps = [
+    esc(t('docs.controls.phone.step.open', { settings: t('settings.title'), tab: t('settings.tab.controls'), card: t('settings.phone.title'),
+      connect: t('settings.phone.connect') })),
+    esc(t('docs.controls.phone.step.scan', { length: String(PAD_CODE_LENGTH), minutes: String(Math.round(PAD_CODE_TTL_MS / 60000)) })),
+    esc(t('docs.controls.phone.step.hold')),
+  ];
+  const facts = ['docs.controls.phone.link', 'docs.controls.phone.safe'].map((key) => `<li>${esc(t(key))}</li>`).join('')
+    + `<li>${esc(t('docs.controls.phone.life', { hours: String(Math.round(PAD_PAIR_MAX_MS / 3600000)) }))}</li>`;
+  return `<p>${esc(t('docs.controls.phone.lede'))}</p>`
+    + `<ol class="dm-steps">${steps.map((body, i) => `<li><span class="dm-steps__n">${i + 1}</span><p>${body}</p></li>`).join('')}</ol>`
+    + `<ul class="dm-facts">${facts}</ul>`;
+}
+
+/** The replay viewer's keys, as src/game/replay/replayPlayback.ts replayKeyAction reads them (controls.selftest.mjs holds
+ *  the two in step); Escape leaves (src/app/replayViewerRuntime.ts). */
+export const REPLAY_KEYS: ReadonlyArray<{ readonly codes: readonly string[]; readonly label: string }> = [
+  { codes: ['Space'], label: 'docs.controls.replays.key.play' },
+  { codes: ['ArrowLeft', 'ArrowRight'], label: 'docs.controls.replays.key.jump' },
+  { codes: ['Comma', 'Period'], label: 'docs.controls.replays.key.frame' },
+  { codes: ['BracketLeft', 'BracketRight'], label: 'docs.controls.replays.key.mark' },
+  { codes: REPLAY_SPEEDS.map((_, i) => `Digit${i + 1}`), label: 'docs.controls.replays.key.speed' },
+  { codes: ['Escape'], label: 'docs.controls.replays.key.leave' },
+];
+
+/** Replays: where they are, what is kept, the viewer's keys and the video export (src/game/replay/, src/ui/replayBar.ts,
+ *  src/ui/replayFilmDialog.ts; the end screen's and the Garage Record's own button names). */
+function replaysSection(): string {
+  const speeds = REPLAY_SPEEDS.map((speed) => `×${speed}`).join(' / ');
+  const or = (items: string[]): string => new Intl.ListFormat(getLocale(), { type: 'disjunction' }).format(items);
+  const keys = REPLAY_KEYS.map((key) => {
+    const caps = key.label.endsWith('.speed') ? `${kbd(labelForCode(key.codes[0]))}–${kbd(labelForCode(key.codes[key.codes.length - 1]))}`
+      : key.codes.map((code) => kbd(labelForCode(code))).join(' ');
+    return `<li>${caps}<span>${esc(t(key.label, { seconds: String(JUMP_S), speeds }))}</span></li>`;
+  }).join('');
+  const where = esc(t('docs.controls.replays.where', { watch: t('endScreen.watchReplay'), download: t('endScreen.downloadReplay'),
+    record: t('garage.nav.record'), replays: t('garage.record.tab.replays'), keep: String(REPLAY_KEEP) }));
+  const facts = [
+    t('docs.controls.replays.what'),
+    t('docs.controls.replays.which'),
+    t('docs.controls.replays.open', { open: t('garage.record.replayOpen') }),
+  ].map((fact) => `<li>${esc(fact)}</li>`).join('');
+  const view = esc(t('docs.controls.replays.view', { seconds: String(MARK_LEAD_S) }));
+  const film = esc(t('docs.controls.replays.export', { export: t('replay.export.open'),
+    sizes: or(REPLAY_FILM_SIZES.map((size) => size.id)), rates: or(REPLAY_FILM_RATES.map(String)) }));
+  return `<p>${where}</p><ul class="dm-facts">${facts}</ul><ul class="dm-keylist">${keys}</ul><p>${view}</p><p>${film}</p>`;
+}
+
+/** Photo mode in a solo battle (src/game/battlePhotoMode.ts, src/ui/photoMode.ts, src/engine/photoCamera.ts). */
+function photoSection(): string {
+  const views = ['hero', 'front', 'side', 'rear', 'top'].map((view) => t(`photo.view.${view}`)).join(', ');
+  const open = line('docs.controls.photo.open', { photo: t('photo.open') }, { key: kbd(labelForCode(DEFAULT_BINDINGS.photoMode ?? 'KeyP')) });
+  const frame = esc(t('docs.controls.photo.frame', { views, lenses: PHOTO_LENSES_MM.join(' / '), save: t('photo.save') }));
+  const keys: Array<[string[], string]> = [
+    [['KeyW', 'KeyA', 'KeyS', 'KeyD'], 'docs.controls.photo.key.orbit'],
+    [['KeyR', 'KeyF'], 'docs.controls.photo.key.zoom'],
+    [['KeyQ', 'KeyE'], 'docs.controls.photo.key.roll'],
+    [['Escape'], 'docs.controls.photo.key.exit'],
+  ];
+  const list = keys.map(([codes, key]) => `<li>${codes.map((code) => kbd(labelForCode(code))).join(' ')}<span>${esc(t(key))}</span></li>`).join('');
+  return `<p>${open}</p><p>${frame}</p><ul class="dm-keylist">${list}</ul>`
+    + `<p>${esc(t('docs.controls.photo.pointer'))}</p><p>${esc(t('docs.controls.photo.where'))}</p>`;
+}
+
 /** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). Aim / free look's is its Right
  *  click mode on Controls (item 259: one datum, one place). */
 const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook'];
@@ -140,7 +220,10 @@ export function controlsSections(): RichSection[] {
     ['touch', t('docs.controls.touch'), `<p>${esc(t('docs.controls.touchLede'))}</p><div class="dm-touch">${touchFigure()}<ul class="dm-keylist">`
       + ['move', 'aim', 'fire', 'scope', 'zoom', 'autoAim', 'jump'].map((gesture) => `<li><span>${esc(t(`docs.controls.touch.${gesture}`))}</span></li>`).join('')
       + '</ul></div>'],
+    ['phone', t('docs.controls.phone'), phoneSection()],
     ['watch', t('docs.controls.watch'), watchSection()],
+    ['replays', t('docs.controls.replays'), replaysSection()],
+    ['photo', t('docs.controls.photo'), photoSection()],
     ['hud', t('docs.controls.hud'), hudSection()],
   ];
   return sections.map(([id, title, html]) => ({ id, title, html, text: plain(html) }));

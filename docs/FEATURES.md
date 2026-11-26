@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone, AC-130 and Air Support; one ruleset per mode; solo, private and LAN deployment |
+| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone, AC-130, Air Support and Combined Arms; one ruleset per mode; solo, private and LAN deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -420,8 +420,29 @@ A phone can be the controller: the Settings panel shows a QR code, the phone ope
 buttons reach the game over WebRTC, with a capped relay as the fallback (docs/PHONE-CONTROLLER.md, `src/pad/`).
 
 Couch play seats up to eight phones on one big screen: the host opens a lobby, each phone scans in to a numbered seat
-and drives its own tank, and one shared camera frames every living seat (docs/COUCH-MODE.md, step 1;
-`src/app/couchRuntime.ts`, `src/game/couchSeats.ts`, `src/ui/couchLobby.ts`).
+and drives its own tank. Split (the default, marked Experimental) gives each seat its own pane and HUD
+(`src/game/couchPanes.ts`); Shared frames every living seat in one camera. Only the phones drive in a couch battle
+(docs/COUCH-MODE.md; `src/app/couchRuntime.ts`, `src/game/couchSeats.ts`, `src/ui/couchLobby.ts`).
+
+## Air support
+
+In Air Support and Combined Arms every crew earns support points (damage, kills, captures, first spots, aircraft
+downed and a trickle) and spends them from the strike view (X, then 1-6, then fire) on a recon pass, an artillery
+barrage, a strafing run, a precision bomb, a Maverick missile run or an AC-130 orbit, marked up to 700 m away. The
+targeted side sees the footprint and a countdown before anything lands. Every aircraft flies its run from the strike's
+public record, and any round whose path meets its airframe hits it, as do roof guns and FPV drones flown into it; a
+downed aircraft crashes as a large HE burst and leaves a crater and a solid wreck. Every number is
+`AIR_SUPPORT_RULES` and `AIR_CRASH_RULES` (`src/sim/matchRuleset.ts`); the ledger and strikes are `src/sim/airSupport.ts`,
+the call is `src/game/strikeOrder.ts`, the HUD is `src/ui/airSupportHud.ts`.
+
+## Replays
+
+Every solo battle records its setup and the player's inputs on each step (`src/game/replay/replayRecorder.ts`), not
+video; the viewer re-simulates it. The last 20 stay in IndexedDB (`replayStore.ts`), opened from the end screen or the
+Garage's Record › Replays tab, or as a downloaded `.cotreplay` file. The viewer uses Watch mode's cameras with a
+timeline of marks, five speeds, frame steps and 5 s jumps (`replayPlayback.ts`), and Export video renders an MP4 at
+720p or 1080p, 30 or 60 fps, without sound (`replayFilm.ts`). Online, Watch and couch battles are not recorded
+(docs/REPLAY.md).
 
 ## Results and combat presentation
 

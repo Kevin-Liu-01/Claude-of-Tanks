@@ -1492,6 +1492,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
+    // docs-refresh-279: the index's feature videos, from the Blob manifest, loading nothing before play
+    'src/docs/featureVideos.selftest.mjs',
     'src/docs/topics.selftest.mjs',
     // 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page breaks
     'src/docs/docsPrint.selftest.mjs',

@@ -156,6 +156,8 @@ export function combatSections(): RichSection[] {
     ['modules', t('docs.combat.modules'),
       p('docs.combat.modulesLede', { repair: String(REPAIR_S) }) + `<div class="dm-pair">${diagram('modules', t('docs.combat.modulesAlt', { tank }))}${moduleTable()}</div>`
       + list([['docs.combat.fact.ammoRack', { reload: String(AMMORACK_RELOAD_MULT) }],
+        // (docs-refresh-279) the cook-off's turret is a body the simulation steps and shells meet (src/sim/wreckTurrets.ts)
+        ['docs.combat.fact.turret', {}],
         ['docs.combat.fact.fire', { chance: pct(ENGINE_FIRE_CHANCE), ticks: String(FIRE_BASE_TICKS), tick: pct1(FIRE_TICK_HP_FRAC), out: pct(FIRE_EXTINGUISH_CHANCE) }],
         ['docs.combat.fact.crew', { hit: pct(CREW_HIT_CHANCE), he: pct(CREW_HIT_CHANCE_HE) }],
         ['docs.combat.fact.optics', { view: pct(1 - OPTICS_VIEW_FACTOR) }],
