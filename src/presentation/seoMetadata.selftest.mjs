@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaBytes, mediaExists, mediaFile, mediaSource } from '../../tools/media-files.mjs';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 // The server-side catalog (as middleware.ts loads it): both locales resident for the metadata helpers.
 import '../ui/i18nCatalog.ts';
@@ -326,11 +327,25 @@ function mp4Facts(file) {
 // video track and no audio, at most 10 s and 3 MB (Apple Messages caps a preview's video and image at 10 MB together,
 // TN3156). Every manual chapter but those that share a take plays its own clip.
 const shareClips = new Map();
+const unread = [];
 for (const route of PUBLIC_ROUTE_RECORDS) {
   const { path, width, height } = shareVideoForRoute(route.id);
   if (shareClips.has(path)) continue;
-  const file = join(ROOT, 'public', path);
-  assert.ok(existsSync(file), `the ${route.id} share clip public${path} is published`);
+  // (media-blob-279) a share clip is big media on Vercel Blob: it ships when its Blob row does. Its MP4 boxes are read where
+  // its bytes are on this machine (public/, or the staging folder the media tools write: tools/media-files.mjs); without
+  // them its Blob row still holds it to its length, weight and size
+  assert.ok(mediaExists(path), `the ${route.id} share clip public${path} is published`);
+  assert.ok(mediaBytes(path) <= 3e6, `${path} is at most 3 MB (${mediaBytes(path)} bytes)`);
+  let file = null;
+  try { file = mediaSource(path); } catch { file = null; }
+  if (!file) {
+    const row = mediaFile(path);
+    assert.ok(row.durationS > 0 && row.durationS <= 10, `${path} runs at most 10 s (${row.durationS} s, its Blob row)`);
+    assert.deepEqual([row.width, row.height], [width, height], `${path} is ${width}x${height} as siteMetadata.ts names it (its Blob row)`);
+    unread.push(path);
+    shareClips.set(path, { url: `${SITE}${path}`, width: String(width), height: String(height) });
+    continue;
+  }
   const facts = mp4Facts(file);
   const video = facts.tracks.filter((track) => track.handler === 'vide');
   assert.equal(video.length, 1, `${path} has one video track`);
@@ -340,7 +355,6 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
   assert.ok(facts.topLevel.indexOf('moov') >= 0 && facts.topLevel.indexOf('moov') < facts.topLevel.indexOf('mdat'),
     `${path} is faststart (${facts.topLevel.join(' ')})`);
   assert.ok(facts.seconds > 0 && facts.seconds <= 10, `${path} runs at most 10 s (${facts.seconds} s)`);
-  assert.ok(statSync(file).size <= 3e6, `${path} is at most 3 MB (${statSync(file).size} bytes)`);
   assert.deepEqual([video[0].width, video[0].height], [width, height], `${path} is ${width}x${height} as siteMetadata.ts names it`);
   shareClips.set(path, { url: `${SITE}${path}`, width: String(width), height: String(height) });
 }
@@ -442,4 +456,4 @@ try {
   rmSync(built, { recursive: true, force: true });
 }
 
-console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages; og:url and og:video as served on ${pageUrls.length} pages, en and zh, and a room invite; ${shareClips.size} share clips within their limits)`);
+console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages; og:url and og:video as served on ${pageUrls.length} pages, en and zh, and a room invite; ${shareClips.size} share clips within their limits${unread.length ? `, ${unread.length} by their Blob rows (no bytes on this machine)` : ""})`);

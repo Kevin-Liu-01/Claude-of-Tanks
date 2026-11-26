@@ -1,3 +1,4 @@
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // Compress the deterministic presentation-r1 PNG captures and publish the
 // metadata consumed by the public media-archive component.
 //

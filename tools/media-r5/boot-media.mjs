@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The boot splash's own stills, public/media/boot-r1 (owner 2026-11-20, of a one-second Scene Studio clip of Verdant
 // Fields: "use a frame from this as the first loading screen"). tools/media-r5/site-media/picks.json `boot` names each
 // still: the clip it is cut from (a file in the clips folder given on the command line), the frame (ffmpeg's frame

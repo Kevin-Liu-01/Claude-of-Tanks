@@ -18,8 +18,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { familyBlobUrl } from '../src/presentation/blobMediaFamily.ts';
+import { sitePathOf } from '../src/presentation/blobMediaPath.ts';
+import { stillPathOf, stillRungs } from '../src/presentation/responsivePicture.ts';
 import {
-  BIG_BYTES, RUNTIME_FAMILIES, familyMaps, familyProblems, idForPath, isBigMedia, manifestProblems, mediaPaths, pathIndex, pathnameFor,
+  BIG_BYTES, RUNTIME_FAMILIES, familyMaps, familyProblems, idForPath, isBigMedia, manifestProblems, mediaPaths, pathIndex, pathnameForPath,
   readManifest, rewriteDist,
 } from './blob-media.mjs';
 
@@ -61,20 +64,9 @@ const referencesIn = (files, read) => {
 const references = referencesIn(sourceFiles, (file) => readFileSync(join(ROOT, file), 'utf8'));
 const publicMedia = new Set(tracked.map((file) => `/${file.path.slice('public/'.length)}`));
 const families = Object.values(RUNTIME_FAMILIES);
-// Moved files a media tool published but no page shows (media-blob-279's inventory; retired folders and unused takes in
-// tools/media-library/sources.mjs and the media tools' picks): each needs Main's ruling to retire, and leaves this list
-// when it is dropped (node tools/blob-media.mjs drop) or a page shows it again.
-const UNSERVED = new Map([
-  ['/media/garage-environments-r2/ten-garage-environments.png', 'the old garages\' contact sheet (a retired folder)'],
-  ['/media/home/garage-m1a3-fleet.webp', 'a home shot the landing no longer shows (tools/marketing-shots/home-garage.json)'],
-  ['/media/home/ui_battle.webp', 'a pre-overhaul interface shot'],
-  ['/media/home/ui_sniper.webp', 'a pre-overhaul interface shot'],
-  ['/media/home/ui_spectate.webp', 'a pre-overhaul interface shot'],
-  ['/media/landing-r1/studio-leclerc-knockout.jpg', 'the poster of a landing take the page no longer plays'],
-  ['/media/landing-r1/studio-leclerc-knockout.mp4', 'a landing take the page no longer plays'],
-  ['/media/presentation-r1/ui_studio.webp', 'a pre-overhaul interface picture (a retired folder)'],
-  ['/media/web-video-r1/home-studio-mobile.mp4', 'the phone rung of that landing take'],
-]);
+// Moved files no page shows are retired, not kept (Main 2026-11-26: the nine the cutover found were dropped and deleted;
+// git history keeps them): the ledger stays empty, so a future unserved row fails here
+const UNSERVED = new Map();
 /** Rows no page, code or runtime JSON names, no run-time family builds and the ledger does not name. */
 const unreferenced = (items, refs) => [...items.keys()].filter((path) => !refs.has(path) && !families.some((prefix) => path.startsWith(prefix))
   && !UNSERVED.has(path));
@@ -101,11 +93,27 @@ assert.deepEqual(familyProblems(manifest), [], 'the family maps agree with the m
 const familyBytes = Object.keys(RUNTIME_FAMILIES).reduce((sum, name) => sum + statSync(join(ROOT, `src/presentation/blobMediaFamilies/${name}.json`)).size, 0);
 assert.ok(familyBytes <= 24 * 1024, `the family maps are ${familyBytes} B, at most 24 KB (Main 2026-11-26: about 20 KB raw)`);
 
+// every path item's URL reads back as its path (sitePathOf), and a family builds that URL (familyBlobUrl)
+const origin = 'https://s.public.blob.vercel-storage.com';
+assert.deepEqual([...index.values()].filter((row) => sitePathOf(`${origin}/${row.pathname}`) !== row.path).map((row) => row.path), [],
+  'a Blob URL gives its old path back, so a page reads a path\'s shape from it');
+for (const url of [`${origin}/media/site50-r14/stills/a-0123456789abcdef.webp`, '/media/x/a.webp', 'https://x.example/media/a.webp']) {
+  assert.equal(stillPathOf(url), sitePathOf(url), `responsivePicture's copy reads ${url} as blobMediaPath does`);
+}
+assert.deepEqual(stillRungs(`${origin}/media/site50-r14/stills/a-0123456789abcdef.webp`).map((rung) => rung.src),
+  ['/media/site50-r14/stills/a-thumb.webp', `${origin}/media/site50-r14/stills/a-0123456789abcdef.webp`], 'a moved still keeps its 640 rung');
+for (const [name, prefix] of Object.entries(RUNTIME_FAMILIES)) {
+  const map = { ...JSON.parse(readFileSync(join(ROOT, `src/presentation/blobMediaFamilies/${name}.json`), 'utf8')), origin };
+  for (const member of Object.keys(map.items)) {
+    assert.equal(familyBlobUrl(map, `${prefix}${member}`), `${origin}/${index.get(`${prefix}${member}`).pathname}`, `${name}: ${member}'s URL`);
+  }
+}
+
 // (d) the build's rewrite, on a fixture dist
 const sha = (n) => n.toString(16).padStart(64, '0');
 const item = (path, n, url = 'https://s.public.blob.vercel-storage.com') => {
   const id = idForPath(path);
-  const pathname = pathnameFor(id, sha(n), path);
+  const pathname = pathnameForPath(path, sha(n));
   return [id, { file: path.slice('/media/'.length), path, pathname, url: url && `${url}/${pathname}`, bytes: BIG_BYTES, sha256: sha(n), type: 'image/webp', width: 2, height: 2 }];
 };
 const fixtureManifest = (url) => ({ host: 'public.blob.vercel-storage.com', items: Object.fromEntries([
@@ -148,6 +156,8 @@ try {
   refused({ 'index.html': '<img src="/media/x-r1/gone.webp">' }, good, /names no file and no Blob item/, 'a deleted file a page still names fails');
   refused({ 'assets/b.js': 'const u="/media/x-r1/"+id+".webp";' }, good, /outside a run-time family/, 'a path built from a moved folder outside a family fails');
   refused({ 'assets/c.js': `const m=${JSON.stringify(good)};` }, good, /carries the Blob manifest/, 'a chunk with the manifest fails');
+  refused({ 'assets/d.js': 'const d="/media/x-r1";const u=`${d}/${id}.webp`;' }, good, /outside a run-time family/,
+    'a folder constant without its slash, outside a family, fails');
   const offMap = run({ 'index.html': '' }, good);
   assert.deepEqual(offMap.problems, [], 'the fixture maps agree');
   const drifted = { ...good, items: { ...good.items, ...Object.fromEntries([item('/media/maps-r1/n-640.webp', 3)]) } };
@@ -163,4 +173,4 @@ const movedBytes = [...index.values()].reduce((sum, row) => sum + row.bytes, 0);
 const keptBytes = tracked.reduce((sum, file) => sum + file.bytes, 0);
 console.log(`blob-media-cutover.selftest: ${index.size} path items (${(movedBytes / 1048576).toFixed(1)} MB) on Blob, `
   + `${tracked.length} small files (${(keptBytes / 1048576).toFixed(1)} MB) in public/media, none big; ${references.size} references all ship; `
-  + `${Object.keys(RUNTIME_FAMILIES).length} family maps (${familyBytes} B) agree; the rewrite and its five refusals hold`);
+  + `${Object.keys(RUNTIME_FAMILIES).length} family maps (${familyBytes} B) agree; the rewrite and its six refusals hold, and every Blob URL reads back as its path`);

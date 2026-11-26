@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The versus collection, public/media/versus-r1 (owner 2026-10-15: "these will be our opengraph foundations and for
 // marketing"). Each still in picks.json ships as one 1920x1080 webp made from its delivered 1440p master, found in the
 // masters folder given on the command line: <id>-1920.webp as it stands, else <id>.png encoded at q90. manifest.json

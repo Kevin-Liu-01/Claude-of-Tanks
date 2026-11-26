@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The media's tank-id-keyed files across a schema step (the coordinator, 2026-10-13; src/vehicles/tankIdAliases.ts).
 // Every file here keyed by tank id outside a loader takes the rename table's maps in ONE pass, from the schema the
 // files were written in:
