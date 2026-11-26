@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { mediaBytes, mediaDigest, mediaFile, mediaFolder } from '../media-files.mjs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readTankAssets } from '../tank-assets-store.mjs';
@@ -20,7 +20,6 @@ const PICKS = JSON.parse(readFileSync(join(VERSUS, 'picks.json'), 'utf8'));
 const DIR = join(ROOT, 'public/media', PICKS.collection);
 const TANKS = readTankAssets(join(ROOT, 'public/icons')).tanks;
 const MAX_BYTES = 600 * 1024;
-const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 function webpSize(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF');
   assert.equal(buffer.subarray(8, 12).toString(), 'WEBP');
@@ -53,6 +52,7 @@ if (!existsSync(join(DIR, 'manifest.json'))) {
 
 // 2. The collection.
 const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8'));
+const dims = (path) => { const found = mediaFile(path); return found.where === 'blob' ? [found.width, found.height] : webpSize(readFileSync(found.file)); };
 assert.equal(manifest.libraryId, PICKS.libraryId);
 assert.equal(manifest.author, PROJECT_CREATOR, 'the collection names its author');
 assert.equal(manifest.copyright, PROJECT_COPYRIGHT);
@@ -63,11 +63,12 @@ const named = new Set(['manifest.json']);
 let total = 0;
 for (const item of manifest.items) {
   assert.equal(item.path, `/media/${PICKS.collection}/${item.id}.webp`, `${item.id}: its path`);
-  const bytes = readFileSync(join(ROOT, 'public', item.path));
-  assert.equal(bytes.length, item.bytes, `${item.id}: bytes as pinned`);
-  assert.equal(sha256(bytes), item.sha256, `${item.id}: sha256 as pinned`);
-  assert.ok(bytes.length <= MAX_BYTES, `${item.id}: ${bytes.length} B, at most ${MAX_BYTES}`);
-  assert.deepEqual(webpSize(bytes), [1920, 1080], `${item.id}: 1920x1080`);
+  // (media-blob-279) a still ships from public/ or Vercel Blob: tools/media-files.mjs gives either's bytes, hash and size
+  const digest = mediaDigest(item.path);
+  assert.equal(digest.bytes, item.bytes, `${item.id}: bytes as pinned`);
+  assert.equal(digest.sha256, item.sha256, `${item.id}: sha256 as pinned`);
+  assert.ok(digest.bytes <= MAX_BYTES, `${item.id}: ${digest.bytes} B, at most ${MAX_BYTES}`);
+  assert.deepEqual(dims(item.path), [1920, 1080], `${item.id}: 1920x1080`);
   assert.deepEqual([item.width, item.height], [1920, 1080], `${item.id}: its dimensions as recorded`);
   // its scene is the kept one, on the map and hour it names, with the same tanks
   assert.equal(item.scene, `tools/media-r5/versus/scenes/${item.id}.json`, `${item.id}: its scene`);
@@ -87,7 +88,7 @@ for (const item of manifest.items) {
     for (const id of ids) assert.doesNotMatch(title, new RegExp(`(?<![A-Za-z0-9_])${id}(?![A-Za-z0-9_])`), `${item.id}: the ${lang} title names ${id} by its id`);
   }
   named.add(basename(item.path));
-  total += bytes.length;
+  total += digest.bytes;
   // (2026-10-25, the /home Versus section) its rungs: the 1920 and any of 640, 1280 and 3840, each 16:9 at its width,
   // its bytes as pinned; and its view
   assert.ok(['side', 'top'].includes(item.view), `${item.id}: a side or top view`);
@@ -98,9 +99,8 @@ for (const item of manifest.items) {
   for (const rung of item.rungs) {
     const want = rung.width === 1920 ? item.path : `/media/${PICKS.collection}/${item.id}-${rung.width}.webp`;
     assert.equal(rung.path, want, `${item.id}: the ${rung.width} rung's path`);
-    const rb = readFileSync(join(ROOT, 'public', rung.path));
-    assert.equal(rb.length, rung.bytes, `${item.id}: the ${rung.width} rung's bytes as pinned`);
-    assert.deepEqual(webpSize(rb), [rung.width, rung.width * 9 / 16], `${item.id}: the ${rung.width} rung is 16:9`);
+    assert.equal(mediaBytes(rung.path), rung.bytes, `${item.id}: the ${rung.width} rung's bytes as pinned`);
+    assert.deepEqual(dims(rung.path), [rung.width, rung.width * 9 / 16], `${item.id}: the ${rung.width} rung is 16:9`);
     named.add(basename(rung.path));
   }
 }
@@ -110,7 +110,7 @@ if (PICKS.featured) {
   assert.equal(new Set(PICKS.featured).size, PICKS.featured.length, 'no still is featured twice');
   for (const id of PICKS.featured) assert.ok(PICKS.ship.includes(id), `featured ${id} ships`);
 }
-const files = readdirSync(DIR);
+const files = mediaFolder(`/media/${PICKS.collection}/`);
 assert.deepEqual(files.filter((f) => /\.(?:png|gif)$/i.test(f)), [], 'no PNG or GIF in the versus collection');
 assert.deepEqual(files.filter((f) => !named.has(f)), [], 'every file in the versus collection belongs to an item');
 console.log(`versus-media.selftest: ${manifest.items.length} stills, ${(total / 1048576).toFixed(2)} MB (1920x1080 webp, each at most 600 KB)`);

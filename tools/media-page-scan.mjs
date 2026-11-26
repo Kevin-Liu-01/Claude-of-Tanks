@@ -5,6 +5,7 @@
 // sums). Not a selftest itself. Markup is scanned with the same attribute grammar as tools/bundle-budget.mjs; the topic
 // pages' headers and figures, which src/docs/topics.ts writes at load, come from its exported data.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { mediaExists, mediaFile } from './media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -156,15 +157,20 @@ export async function topicPageMedia(slug) {
 }
 
 /** Bytes of a public path on disk (0 when it is missing). */
+// (media-blob-279) in this tree a /media/ file ships from public/ or from Vercel Blob (tools/media-files.mjs): a page's
+// big media keeps its /media/ path in the markup, and the build rewrites it to the Blob URL
 export function bytesOf(path, root = ROOT) {
+  if (root === ROOT) return mediaFile(path)?.bytes ?? (mediaExists(path) ? statSync(join(root, 'public', path.replace(/^\//, ''))).size : 0);
   const file = join(root, 'public', path.replace(/^\//, ''));
   return existsSync(file) ? statSync(file).size : 0;
 }
 
-export const existsPublic = (path, root = ROOT) => existsSync(join(root, 'public', path.replace(/^\//, '')));
+export const existsPublic = (path, root = ROOT) => (root === ROOT ? mediaExists(path) : existsSync(join(root, 'public', path.replace(/^\//, ''))));
 
 /** The intrinsic size of a webp, jpeg or png on disk, from its header; null if unknown. */
 export function imageSize(path, root = ROOT) {
+  const blob = root === ROOT ? mediaFile(path) : null;
+  if (blob?.where === 'blob') return blob.width > 0 ? [blob.width, blob.height] : null;
   const file = join(root, 'public', path.replace(/^\//, ''));
   if (!existsSync(file)) return null;
   const buffer = readFileSync(file);

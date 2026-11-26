@@ -3,7 +3,6 @@
 // by day; an unknown id reads as Verdant Fields. Its still list is the maps-r1
 // manifest's, rung for rung, its hover loops the manifest's, and a map without stills reads the generated art table's own paths.
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { battlefieldFacts, battlefieldList } from './battlefieldFacts.ts';
@@ -12,6 +11,7 @@ import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { BATTLE_TIMES } from '../engine/battleWeatherPolicy.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { readFileSync } from 'node:fs';
+import { mediaExists, mediaPathOf } from '../../tools/media-files.mjs';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'public/media/maps-r1/manifest.json'), 'utf8'));
@@ -25,27 +25,29 @@ for (const facts of list) {
   assert.ok(facts.hours.length > 0 && facts.hours.every((hour) => BATTLE_TIMES.includes(hour)), `${facts.id} plays at real hours`);
   assert.deepEqual([...facts.modes], [...BATTLE_MODE_IDS], `${facts.id} hosts every battle mode`);
   const { src, srcset, hero, thumb } = facts.poster;
-  const rungs = srcset.split(', ').map((rung) => rung.split(' ')[0]);
+  // (media-blob-279) a moved still is a Blob family URL (blobMediaFamily.ts): it stands for its old /media/ path
+  const site = (url) => mediaPathOf(url) ?? url;
+  const rungs = srcset.split(', ').map((rung) => site(rung.split(' ')[0]));
   for (const path of new Set([src, hero, thumb, ...rungs])) {
-    assert.ok(path && existsSync(join(ROOT, 'public', path)), `${facts.id} picture exists (${path})`);
+    assert.ok(path && mediaExists(path), `${facts.id} picture exists (${path})`);
   }
   assert.equal(thumb, MAP_THUMBS[facts.id], `${facts.id} thumb is the generated table's`);
   const still = stills.get(facts.id);
   if (still) {
     assert.deepEqual(rungs, still, `${facts.id} srcset is the manifest's rungs`);
-    assert.equal(src, still[0], `${facts.id} card picture is its smallest still`);
-    assert.equal(hero, still.at(-1), `${facts.id} preview takes its largest still`);
+    assert.equal(site(src), still[0], `${facts.id} card picture is its smallest still`);
+    assert.equal(site(hero), still.at(-1), `${facts.id} preview takes its largest still`);
   } else {
     assert.equal(hero, MAP_HEROES[facts.id], `${facts.id} hero is the generated table's`);
     assert.equal(src, MAP_THUMBS[facts.id], `${facts.id} card picture falls back to the thumb`);
   }
-  assert.equal(facts.poster.loop, loops.get(facts.id), `${facts.id} hover loop is the manifest's`);
-  if (facts.poster.loop) assert.ok(existsSync(join(ROOT, 'public', facts.poster.loop)), `${facts.id} loop exists`);
+  assert.equal(facts.poster.loop && site(facts.poster.loop), loops.get(facts.id), `${facts.id} hover loop is the manifest's`);
+  if (facts.poster.loop) assert.ok(mediaExists(facts.poster.loop), `${facts.id} loop exists`);
   assert.equal(facts.random, facts.id !== 'mars' && facts.id !== 'moon', `${facts.id} Random eligibility`);
   if (facts.id === 'mars' || facts.id === 'moon') assert.deepEqual([...facts.hours], ['day'], `${facts.id} lights by day only`);
   else assert.deepEqual([...facts.hours], [...BATTLE_TIMES], `${facts.id} plays every hour`);
 }
 assert.equal(battlefieldFacts('nowhere').id, 'verdant', 'an unknown id reads as Verdant Fields');
-assert.deepEqual(list.filter((facts) => facts.poster.srcset.includes('/media/maps-r1/')).map((facts) => facts.id).sort(), [...stills.keys()].sort(),
+assert.deepEqual(list.filter((facts) => facts.poster.srcset.split(', ').some((rung) => (mediaPathOf(rung.split(' ')[0]) ?? '').startsWith('/media/maps-r1/'))).map((facts) => facts.id).sort(), [...stills.keys()].sort(),
   'the still list is the maps-r1 manifest\'s');
 console.log(`battlefieldFacts.selftest: ${list.length} battlefields (${stills.size} on maps-r1 stills, ${loops.size} with hover loops), each with its landscape, hours, modes and pictures`);

@@ -3,6 +3,8 @@ import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
 import { designationHtml, holdNameText } from './designations.ts';
+import filmingMap from '../presentation/blobMediaFamilies/filming-r1.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../presentation/blobMediaFamily.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
@@ -12,6 +14,9 @@ import type { PickerItem } from '../ui/components/picker.ts';
 // a link (/studio?scene=, src/game/studioSceneLink.ts) or to save for Load JSON (owner 2026-10-07: the Studio's scene
 // export and import are "a big feature i love").
 const MEDIA_ROOT = '/media/filming-r1';
+/** The takes' films, posters and strips on Vercel Blob (media-blob-279): their paths are built per take here. */
+const FILMING_MEDIA = filmingMap as BlobMediaFamily;
+const media = (path: string): string => familyMediaUrl(FILMING_MEDIA, path);
 
 export type FilmingStage = 'r4' | 'review1' | 'previz' | 'review2' | 'review3' | 'final';
 /** Every stage a take can show, in the order the rounds made them. */
@@ -53,10 +58,10 @@ export const FILMING_TAKES: readonly FilmingTake[] = Object.freeze([
   { id: 's11-container-rows', n: 11, title: t('docs.filming.take.s11.title'), place: t('map.railyard'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s11.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
 ] satisfies readonly FilmingTake[]);
 
-export const filmingVideo = (take: FilmingTake, stage: FilmingStage): string => `${MEDIA_ROOT}/${take.id}-${stage}.mp4`;
-export const filmingPoster = (take: FilmingTake, stage: FilmingStage): string => `${MEDIA_ROOT}/${take.id}-${stage}.webp`;
-export const filmingFrames = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}-frames.webp`;
-export const filmingThumb = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}-thumb.webp`;
+export const filmingVideo = (take: FilmingTake, stage: FilmingStage): string => media(`${MEDIA_ROOT}/${take.id}-${stage}.mp4`);
+export const filmingPoster = (take: FilmingTake, stage: FilmingStage): string => media(`${MEDIA_ROOT}/${take.id}-${stage}.webp`);
+export const filmingFrames = (take: FilmingTake): string => media(`${MEDIA_ROOT}/${take.id}-frames.webp`);
+export const filmingThumb = (take: FilmingTake): string => media(`${MEDIA_ROOT}/${take.id}-thumb.webp`);
 export const filmingScene = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}.scene.json`;
 /** The take's scene opened in the Studio, in the page's language. */
 export const filmingStudioLink = (take: FilmingTake): string => hrefForLocale(`/studio?scene=${filmingScene(take)}`, getLocale());

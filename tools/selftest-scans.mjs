@@ -71,7 +71,6 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/audio/audioEngine.selftest.mjs': lists('src/mp/**/*.{ts,mjs}', 'src/sim/**/*.{ts,mjs}', 'server/**/*.{ts,mjs}'),
   'src/audio/soundAssets.selftest.mjs': lists('src/audio/*.ts'),
   'src/audio/voiceTriggers.selftest.mjs': lists('src/audio/*.ts'),
-  'src/docs/filming.selftest.mjs': lists('public/media/filming-r1/*'),
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
   // (round 4 F7) the fx-clock census: every src/fx module with a clock read must be one its scenario loads (round 5 U12:
   // its harness lists, for the default receipt and the manual fx suite's whole one)
@@ -112,7 +111,6 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
-  'src/ui/loadingScreens.selftest.mjs': lists('public/media/gallery-r*/*', 'public/media/loading-r*/*'),
   'src/ui/galleryShots.selftest.mjs': lists('public/media/gallery-r*/*'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
@@ -173,10 +171,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/map-probe-runtime.selftest.mjs': lists('src/**/*'),
   'tools/marketing-shots/battle-campaign.selftest.mjs': lists('tools/marketing-shots/scenes-action-r3/*.json',
     'tools/marketing-shots/scenes-foreground-r3/*.json'),
-  'tools/marketing-shots/versus-media.selftest.mjs': lists('public/media/versus-r*/*'),
   'tools/media-r5/films/restore.mjs': lists('tools/media-r5/films/**'),
   'tools/media-r5/films/restore.selftest.mjs': lists('tools/media-r5/films/**'),
-  'tools/media-r5/fleet-media.selftest.mjs': lists('public/media/site50-r14/fleet/*'),
   'tools/media-r5/motion-type.selftest.mjs': lists('tools/media-r5/**/*.{mjs,json,md}'),
   // round 8 Y9 s6-08: every card on disk has its provenance record (and a fixture card folder under tmpdir)
   'tools/media-r5/tank-share.selftest.mjs': lists('public/brand/og-r2/tanks/*'),
@@ -211,6 +207,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-freshness.selftest.mjs': lists('src/**', 'site/*.html', 'public/media/*'),
   // the media library's census: every picture under public/media against the library and the folders' rules
   'tools/media-library/library.mjs': lists('public/media/**'),
+  // media-blob-279: public/media and the Blob manifest together (the staging folder and a build's dist are outside the tree)
+  'tools/media-files.mjs': lists('public/media/**'),
+  'tools/blob-media.mjs': lists('public/media/**', 'src/presentation/blobMediaFamilies/*.json'),
   // publicPages: the game, the 404 and every page under site/
   'tools/media-page-scan.mjs': lists('site/*.html'),
   // lintFiles: the sources, the public sheets and the site documents
@@ -247,6 +246,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/game/studioSceneShare.selftest.mjs': tracked('**/*.scene.json', 'src/game/studio*.ts', 'src/ui/studio*.ts'),
   'src/presentation/analytics.selftest.mjs': tracked('src/**', '**/*.html'),
   'tools/blob-media.selftest.mjs': tracked('public/**'),
+  'tools/blob-media-cutover.selftest.mjs': tracked('public/media/**', 'site/**', 'src/**', 'index.html', '404.html', 'public/*.css'),
   'src/ui/garageFleetTake.selftest.mjs': tracked('src/**/*.ts'),
   'src/ui/i18nChunkImport.selftest.mjs': tracked('**/*.{ts,mts,mjs,js,cjs,html}'),
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),

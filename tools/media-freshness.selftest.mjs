@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ROOT } from './media-page-scan.mjs';
+import { mediaExists, mediaTopFolders } from './media-files.mjs';
 
 /** Current collections: what they are. */
 const CURRENT = Object.freeze({
@@ -103,7 +104,8 @@ function verdict(path, tree) {
 // The references.
 const MEDIA_URL = /(?<=["'`(\s=,])\/(?:media|maps|field-guide|brand\/og)[\w./-]*?\.(?:webp|jpe?g|png|avif|gif|webm|mp4|json)(?=["'`)\s?#,]|$)/g;
 const ORIGIN_URL = /https:\/\/cot\.kevinliu\.studio(\/(?:media|maps|field-guide|brand\/og)[\w./-]*?\.(?:webp|jpe?g|png|avif|webm|mp4|json))/g;
-const SKIP = /\.(?:selftest|test-support)\.mjs$|\.generated\.json$/;
+// (media-blob-279) the Blob manifest and its family maps list every moved file by its old path: a register, not a reference
+const SKIP = /\.(?:selftest|test-support)\.mjs$|\.generated\.json$|^blobMedia\.json$/;
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -133,8 +135,8 @@ for (const file of sources) {
 }
 assert.ok(references.size > 300, `the scan found only ${references.size} media references`);
 
-const mediaDirs = readdirSync(join(ROOT, 'public/media')).filter((name) => statSync(join(ROOT, 'public/media', name)).isDirectory());
-const tree = { dirs: mediaDirs, has: (path) => existsSync(join(ROOT, 'public', path.replace(/^\//, ''))) };
+// (media-blob-279) the media tree is public/media and the Vercel Blob items together (tools/media-files.mjs)
+const tree = { dirs: mediaTopFolders(), has: (path) => mediaExists(path) };
 const failures = [];
 const retiring = new Map();
 for (const [path, files] of [...references].sort()) {

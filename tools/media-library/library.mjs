@@ -13,6 +13,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readTankAssets } from '../tank-assets-store.mjs';
 import { FOLDERS } from './sources.mjs';
+import { mediaDigest, mediaExists, mediaFile, mediaTopFolders, mediaWalk } from '../media-files.mjs';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const LIBRARY_ROOT = 'library-r3';
@@ -71,6 +72,14 @@ export function imageSize(file) {
 
 export const publicFile = (url) => join(ROOT, 'public', url);
 export const sha16 = (bytes) => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+/** A published picture's sha16, from public/ or from its Blob manifest row (the same bytes, hashed when staged). */
+export const mediaSha16 = (url) => (url.startsWith('/media/') ? mediaDigest(url).sha256.slice(0, 16) : sha16(readFileSync(publicFile(url))));
+/** A published picture's pixel size: its header in public/, or its Blob manifest row. */
+const pictureSize = (url) => {
+  const found = url.startsWith('/media/') ? mediaFile(url) : null;
+  if (found?.where === 'blob') return [found.width, found.height];
+  return imageSize(publicFile(url));
+};
 
 /** The committed library: its collections, sets and pictures (a picture's thumbnail cell, and a pack range or a link). */
 export function readLibrary(dir = LIB) {
@@ -100,16 +109,6 @@ export function readLibrary(dir = LIB) {
 export function entriesOf(library) {
   const out = [];
   for (const c of library.collections) for (const s of c.sets) for (const item of s.items) out.push({ collection: c.key, set: s.key, item });
-  return out;
-}
-
-function walkFiles(dir, base, kind = IMAGE) {
-  const out = [];
-  for (const name of readdirSync(dir).sort()) {
-    const file = join(dir, name);
-    if (statSync(file).isDirectory()) out.push(...walkFiles(file, `${base}/${name}`, kind));
-    else if (kind.test(name)) out.push(`${base}/${name}`);
-  }
   return out;
 }
 
@@ -175,11 +174,12 @@ export function createContext(library) {
     },
     manifest: (folder) => readJson(`public/media/${folder}/manifest.json`),
     source: (rel) => readFileSync(join(ROOT, rel), 'utf8'),
-    files: (folder) => walkFiles(join(MEDIA, folder), `/media/${folder}`),
-    videos: (folder) => walkFiles(join(MEDIA, folder), `/media/${folder}`, VIDEO),
-    exists: (url) => existsSync(publicFile(url)),
+    // (media-blob-279) published media is public/ and Vercel Blob together (tools/media-files.mjs)
+    files: (folder) => mediaWalk(`/media/${folder}`, IMAGE),
+    videos: (folder) => mediaWalk(`/media/${folder}`, VIDEO),
+    exists: (url) => mediaExists(url),
     size: (url) => {
-      if (!sizes.has(url)) sizes.set(url, imageSize(publicFile(url)));
+      if (!sizes.has(url)) sizes.set(url, pictureSize(url));
       return sizes.get(url);
     },
     library: {
@@ -354,16 +354,12 @@ export function census(plan, results) {
   for (const [folder, r] of results) for (const [url, why] of r.notes) notes.set(url, `${folder}: ${why}`);
   const problems = [...(plan.strayClips ?? [])];
   const counts = { files: 0, linked: 0, noted: 0, excluded: 0, videos: 0, played: 0 };
-  for (const folder of readdirSync(MEDIA).sort()) {
+  for (const name of readdirSync(MEDIA).sort()) if (IMAGE.test(name) && statSync(join(MEDIA, name)).isFile()) problems.push(`/media/${name}: a picture outside any folder`);
+  for (const folder of mediaTopFolders()) {
     if (folder === LIBRARY_ROOT) continue;
-    const dir = join(MEDIA, folder);
-    if (!statSync(dir).isDirectory()) {
-      if (IMAGE.test(folder)) problems.push(`/media/${folder}: a picture outside any folder`);
-      continue;
-    }
     const rule = FOLDERS[folder];
     // a film is a picture's clip, given a reason by its folder's rule, or in an excluded folder
-    for (const url of walkFiles(dir, `/media/${folder}`, VIDEO)) {
+    for (const url of mediaWalk(`/media/${folder}`, VIDEO)) {
       counts.videos++;
       if (played.has(url)) counts.played++;
       else if (!notes.has(url) && !rule?.exclude) {
@@ -371,7 +367,7 @@ export function census(plan, results) {
           + (rule ? '' : ` (public/media/${folder} has no rule in tools/media-library/sources.mjs)`));
       }
     }
-    for (const url of walkFiles(dir, `/media/${folder}`)) {
+    for (const url of mediaWalk(`/media/${folder}`, IMAGE)) {
       counts.files++;
       if (linked.has(url)) {
         counts.linked++;
@@ -384,8 +380,8 @@ export function census(plan, results) {
       }
     }
   }
-  for (const url of linked.keys()) if (!existsSync(publicFile(url))) problems.push(`${url}: the library links a file that is not published`);
-  for (const src of played) if (!existsSync(publicFile(src))) problems.push(`${src}: a clip names a film that is not published`);
+  for (const url of linked.keys()) if (!mediaExists(url)) problems.push(`${url}: the library links a file that is not published`);
+  for (const src of played) if (!mediaExists(src)) problems.push(`${src}: a clip names a film that is not published`);
   return { problems, counts };
 }
 
@@ -393,7 +389,7 @@ export function census(plan, results) {
 export function lockOf(plan) {
   const lock = {};
   for (const url of [...new Set(entriesOf(plan).filter((e) => e.item.ref.url).map((e) => e.item.ref.url))].sort()) {
-    lock[url] = sha16(readFileSync(publicFile(url)));
+    lock[url] = mediaSha16(url);
   }
   return lock;
 }

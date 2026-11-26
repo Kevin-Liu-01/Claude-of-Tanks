@@ -14,6 +14,8 @@
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
 import type { IconId } from '../icons/spriteIndex.ts';
+import tutorialMap from '../../presentation/blobMediaFamilies/tutorial-r1.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../../presentation/blobMediaFamily.ts';
 import { TRAINING_POINTS, TRAINING_RULES, TRAINING_SKIRMISH_CUE, trainingActor } from '../../sim/trainingGround.ts';
 
 /** Who the step is written for: a keyboard-and-mouse player, a touch layout, a connected gamepad. Absent: everyone. */
@@ -140,7 +142,9 @@ export interface TutorialStep {
 }
 
 /** An in-engine loop the Studio filmed for the tutorial (tools/tutorial-media.mjs; public/media/tutorial-r1). */
-const loop = (id: string): TutorialMedia => ({ src: `/media/tutorial-r1/${id}.webm`, kind: 'video', poster: `/media/tutorial-r1/${id}.webp` });
+const TUTORIAL_MEDIA = tutorialMap as BlobMediaFamily;
+const loop = (id: string): TutorialMedia => ({ src: familyMediaUrl(TUTORIAL_MEDIA, `/media/tutorial-r1/${id}.webm`), kind: 'video',
+  poster: familyMediaUrl(TUTORIAL_MEDIA, `/media/tutorial-r1/${id}.webp`) });
 const NEXT = { on: 'next' } as const;
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [

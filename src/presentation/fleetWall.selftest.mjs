@@ -2,14 +2,16 @@
 // tools/home-premiere.mjs): every vehicle with a fleet take, with its Garage facets, its take and its Gallery dossier.
 // The landing's fleet wall it once fed left the page with the 2026-10-25 redesign. Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaExists } from '../../tools/media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const wall = JSON.parse(readFileSync(join(ROOT, 'src/presentation/fleetWall.json'), 'utf8'));
 const takes = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/fleet/index.json'), 'utf8')).vehicles;
-const onDisk = (path) => existsSync(join(ROOT, 'public', path.replace(/^\//, '')));
+// (media-blob-279) a take's loop ships from Vercel Blob and its poster from public/: tools/media-files.mjs answers for both
+const onDisk = (path) => mediaExists(path);
 
 // the index: one record per fleet take, each with its take, its facets and its plate
 assert.equal(wall.length, Object.keys(takes).length, 'every vehicle with a fleet take is on the wall');

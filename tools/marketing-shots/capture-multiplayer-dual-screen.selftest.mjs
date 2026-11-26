@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaFile } from '../media-files.mjs';
 
 const dirArg = process.argv.slice(2).find((entry) => entry.startsWith('--dir='));
 const dir = dirArg ? resolve(dirArg.slice('--dir='.length)) : fileURLToPath(new URL('../../public/media/multiplayer-r1/', import.meta.url));
@@ -24,11 +25,14 @@ assert.equal(manifest.tool, 'tools/marketing-shots/capture-multiplayer-dual-scre
 assert.ok(existsSync(fileURLToPath(new URL('./capture-multiplayer-dual-screen.mjs', import.meta.url))), 'the generator named by the manifest exists');
 assert.equal(manifest.file, 'dual-perspective.webp');
 
+// (media-blob-279) the published view is big media on Vercel Blob: its bytes, hash and size are the Blob manifest's row; a
+// fresh capture (--dir) is read from disk
 const file = join(dir, manifest.file);
-assert.ok(existsSync(file), `${file} exists`);
-const bytes = readFileSync(file);
-assert.equal(bytes.length, manifest.bytes, 'the WebP matches its manifest byte count');
-assert.equal(createHash('sha256').update(bytes).digest('hex'), manifest.sha256, 'the WebP matches its manifest SHA-256');
+const published = !existsSync(file) ? mediaFile(file) : null;
+assert.ok(existsSync(file) || published, `${file} exists (in ${dir} or on Blob)`);
+const bytes = published ? null : readFileSync(file);
+assert.equal(published ? published.bytes : bytes.length, manifest.bytes, 'the WebP matches its manifest byte count');
+assert.equal(published ? published.sha256 : createHash('sha256').update(bytes).digest('hex'), manifest.sha256, 'the WebP matches its manifest SHA-256');
 
 /** The canvas size from the RIFF header: extended (VP8X), lossy (VP8) or lossless (VP8L). */
 function webpSize(data) {
@@ -48,7 +52,7 @@ function webpSize(data) {
   }
   throw new Error(`unknown WebP chunk ${chunk}`);
 }
-assert.deepEqual(webpSize(bytes), { width: 2400, height: 700 }, 'the dual view is 2400×700');
+assert.deepEqual(published ? { width: published.width, height: published.height } : webpSize(bytes), { width: 2400, height: 700 }, 'the dual view is 2400×700');
 assert.equal(manifest.width, 2400);
 assert.equal(manifest.height, 700);
 

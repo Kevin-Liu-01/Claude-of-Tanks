@@ -13,8 +13,7 @@
 // - the archive wall counts them (docs.ts limit, the manual's card) and the loading screens' gallery stills aim where
 //   the gallery's do.
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +22,7 @@ import { LOADING_SHOTS } from './featuredShots.ts';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
+import { mediaFolder, mediaPicture } from '../../tools/media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const json = async (path) => JSON.parse(await readFile(join(ROOT, path), 'utf8'));
@@ -39,7 +39,6 @@ assert.deepEqual(Object.keys(G.focal), ids, 'a focal for every still, in the gal
 assert.deepEqual(G.rungs, [{ width: 640, quality: 80 }]);
 
 // --- the collection --------------------------------------------------------------------------------------------------
-const dir = join(ROOT, 'public/media', G.collection);
 const manifest = await json(`public/media/${G.collection}/manifest.json`);
 function webpSize(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF');
@@ -50,12 +49,11 @@ function webpSize(buffer) {
   if (kind === 'VP8X') return [buffer.readUIntLE(24, 3) + 1, buffer.readUIntLE(27, 3) + 1];
   throw new Error(`a webp without a size chunk (${kind})`);
 }
-const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 assert.equal(manifest.libraryId, 'claude-of-tanks-gallery-r1');
 assert.equal(manifest.count, 78);
 assert.deepEqual(manifest.dimensions, { width: 1920, height: 1080 });
 assert.deepEqual(manifest.items.map((item) => item.id), ids, 'the collection is the picks, in the gallery\'s order');
-assert.deepEqual((await readdir(dir)).sort(),
+assert.deepEqual(mediaFolder(`/media/${G.collection}/`),
   ['manifest.json', ...ids.flatMap((id) => [`${id}.webp`, `${id}-640.webp`])].sort(),
   'the collection holds each still at 1920 and 640 and its manifest, nothing else');
 const catalogs = {
@@ -69,22 +67,23 @@ for (const [n, item] of manifest.items.entries()) {
   const { id } = item;
   assert.equal(item.group, n < 26 ? 'close' : 'elevated', `${id}: its section of the gallery`);
   assert.equal(item.path, `/media/${G.collection}/${id}.webp`);
-  const file = await readFile(join(dir, `${id}.webp`));
-  assert.deepEqual(webpSize(file), [1920, 1080], `${id}: a 1920x1080 webp`);
-  assert.ok(file.length > 50_000 && file.length <= 600 * 1024, `${id}: ${file.length} B, between 50 KB and 600 KB`);
-  assert.equal(file.length, item.bytes, `${id}: the manifest's bytes`);
-  assert.equal(sha256(file), item.sha256, `${id}: the manifest's sha256`);
+  // (media-blob-279) a still ships from public/ or Vercel Blob: tools/media-files.mjs gives either's bytes, hash and size
+  const file = mediaPicture(item.path, webpSize);
+  assert.deepEqual(file.size, [1920, 1080], `${id}: a 1920x1080 webp`);
+  assert.ok(file.bytes > 50_000 && file.bytes <= 600 * 1024, `${id}: ${file.bytes} B, between 50 KB and 600 KB`);
+  assert.equal(file.bytes, item.bytes, `${id}: the manifest's bytes`);
+  assert.equal(file.sha256, item.sha256, `${id}: the manifest's sha256`);
   assert.ok([90, 86, 82].includes(item.quality), `${id}: q${item.quality}, a step of the encode ladder`);
-  fullBytes += file.length;
+  fullBytes += file.bytes;
   assert.equal(item.rungs.length, 1, `${id}: one smaller rung`);
   const [rung] = item.rungs;
   assert.deepEqual([rung.width, rung.height, rung.quality, rung.path], [640, 360, 80, `/media/${G.collection}/${id}-640.webp`]);
-  const thumb = await readFile(join(dir, `${id}-640.webp`));
-  assert.deepEqual(webpSize(thumb), [640, 360], `${id}: a 640x360 rung`);
-  assert.ok(thumb.length < file.length / 4 && thumb.length <= 80 * 1024, `${id}: its rung is ${thumb.length} B`);
-  assert.equal(thumb.length, rung.bytes, `${id}: the rung's bytes`);
-  assert.equal(sha256(thumb), rung.sha256, `${id}: the rung's sha256`);
-  rungBytes += thumb.length;
+  const thumb = mediaPicture(rung.path, webpSize);
+  assert.deepEqual(thumb.size, [640, 360], `${id}: a 640x360 rung`);
+  assert.ok(thumb.bytes < file.bytes / 4 && thumb.bytes <= 80 * 1024, `${id}: its rung is ${thumb.bytes} B`);
+  assert.equal(thumb.bytes, rung.bytes, `${id}: the rung's bytes`);
+  assert.equal(thumb.sha256, rung.sha256, `${id}: the rung's sha256`);
+  rungBytes += thumb.bytes;
   assert.match(item.revision, /^[0-9a-f]{40}$/, `${id}: the commit it was rendered on`);
   assert.match(item.source, new RegExp(`^${id}/stills/[\\w.-]+\\.png$`), `${id}: its 4K render`);
   assert.ok(MAP_IDS.includes(item.map), `${id}: ${item.map} is a battlefield`);

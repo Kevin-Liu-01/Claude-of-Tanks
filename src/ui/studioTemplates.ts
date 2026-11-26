@@ -9,6 +9,13 @@
 
 import type { PickerItem } from './components/picker.ts';
 import type { ProductionCategory } from '../game/studioProduction.ts';
+import stillsMap from '../presentation/blobMediaFamilies/site50-stills.json' with { type: 'json' };
+import loopsMap from '../presentation/blobMediaFamilies/site50-loops.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../presentation/blobMediaFamily.ts';
+
+/** The takes' stills and 960 px loops on Vercel Blob (media-blob-279): their paths are built per take here. */
+const STILLS_MEDIA = stillsMap as BlobMediaFamily;
+const LOOPS_MEDIA = loopsMap as BlobMediaFamily;
 
 export type TemplateKind = 'sequence' | 'scene' | 'tank';
 
@@ -111,8 +118,8 @@ export function takeTemplates(takes: readonly SiteTake[], words: TemplateWords):
     scenes.push({
       id: `take:${take.id}`, kind: 'scene', map: take.map, take, name: words.zh ? take.short.zh : take.short.en, facts: [map, length],
       media: { poster: thumb }, tags: ['scene', COMBAT_WORDS.test(take.title.en) ? 'combat' : 'environment'],
-      hero: take.thumb ? `/media/site50-r14/stills/${take.id}.webp` : thumb,
-      ...(LIGHT_SCENE_LOOPS.has(take.id) ? { loop: `/media/site50-r14/loops/${take.id}-960.webm` } : {}),
+      hero: take.thumb ? familyMediaUrl(STILLS_MEDIA, `/media/site50-r14/stills/${take.id}.webp`) : thumb,
+      ...(LIGHT_SCENE_LOOPS.has(take.id) ? { loop: familyMediaUrl(LOOPS_MEDIA, `/media/site50-r14/loops/${take.id}-960.webm`) } : {}),
       summary: title, meta: [words.kind('scene'), map, length],
     });
   }
