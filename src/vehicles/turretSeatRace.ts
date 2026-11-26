@@ -128,6 +128,15 @@ export interface SeatTurretOverDeckOptions {
   /** Each geometry the seat replaced with its seated copy: whatever holds the built one's attributes (the ERA clusters'
    * vertex spans) follows the copy. */
   onSeated?: (built: THREE.BufferGeometry, seated: THREE.BufferGeometry) => void;
+  /** 279: how this build fits a foot-band face that spans the swept step (see TURRET_FOOT_FIT): 'whole' (274, the default),
+   *  'tilt' or 'split'. The factory passes the id's own fit, 'split' only at high quality (a low build keeps 'whole'). */
+  footFit?: TurretFootFit;
+  /** 279: the vertex spans (start, count) over a geometry that something outside the seat holds (ERA clusters and drapes,
+   *  equipment lids, weapon stock): the split never cuts a triangle touching one, so every span keeps its vertices. */
+  protectedSpans?: (geometry: THREE.BufferGeometry) => readonly (readonly [number, number])[];
+  /** 279: each geometry the split replaced with its split copy (its vertices kept in place, new ones after them): the
+   *  spans over the built one follow the copy, as for onSeated. */
+  onSplit?: (built: THREE.BufferGeometry, split: THREE.BufferGeometry) => void;
 }
 
 /**
@@ -181,6 +190,41 @@ const FOOT_BURIED_M = 0.005;
  *  still leaves the foot a centimetre over the swept deck (the seat's 3 cm gap less 2 cm), so goes unrecorded (m). */
 const SEAT_LIFT_MAX_M = 0.06;
 const SEAT_SHORT_TOL_M = 0.02;
+/** 279 split: a face is cut where its whole-face plane stands this far over a corner's own need, at the radius the plane
+ *  begins, found in steps of SPLIT_EDGE_STEP_M (the cut stands two steps inside it) (m). */
+const SPLIT_OVER_M = 0.01;
+const SPLIT_EDGE_STEP_M = 0.002;
+
+/** 279: how a foot-band face spanning the swept step is fitted. 'whole' (274 fix3, the default): it comes up whole to the
+ *  highest plane along its edges, so a corner whose own radius needs 3 cm can stand 10 cm up when its face reaches over a
+ *  raised engine deck's sweep, and the turret's lip hovers over a slot (the M46's cheeks; fleet-debt-278's roof-pocket
+ *  census). 'tilt': each corner comes up only as far as the edge samples need, never past the whole-face plane. 'split': the
+ *  face is cut at the step (splitFootFaces), the inner piece ramping up to the cut. */
+export type TurretFootFit = 'whole' | 'tilt' | 'split';
+
+/** 279 (Main 2026-11-26): the ids whose lip hovers over a slot the whole-face lift left (the roof-pocket census on the hull,
+ *  less the turret's swept clearance), each with the fit that closes more within the rule: a split adds at most 2 % of
+ *  the tank's high triangles (docs/references/fleet-geometry-ledger.json), else, or when the two close about the same, the
+ *  tilt. A split runs at high quality only; the low build keeps 'whole' (turretFootFitFor). Measured per id in
+ *  turret-foot-seat-279 (tools/turret-foot-fit.selftest.mjs holds the split ids to the 2 % rule). */
+export const TURRET_FOOT_FIT: Readonly<Record<string, Exclude<TurretFootFit, 'whole'>>> = Object.freeze({});
+
+/** With a geometry receipt, the built geometries a turret's split replaced (receipts audit the spans against them). */
+export const turretSeatSplitBuilt = new WeakMap<THREE.Object3D, readonly THREE.BufferGeometry[]>();
+
+/** How many spans still read a geometry the split replaced: a position attribute of one (`positions`: the ERA clusters'
+ *  spans), or one itself (`holds`: an equipment lid or a weapon stock range). The factory fails a build with any. */
+export function staleSeatSpans(replaced: readonly THREE.BufferGeometry[], positions: readonly unknown[],
+  holds: (geometry: THREE.BufferGeometry) => boolean): number {
+  const built = new Set<unknown>(replaced.map((geometry) => geometry.getAttribute('position')));
+  return positions.filter((position) => built.has(position)).length + replaced.filter(holds).length;
+}
+
+/** The fit a build of `specId` uses (TURRET_FOOT_FIT; `override` for probes that measure another). */
+export function turretFootFitFor(specId: string, quality: 'high' | 'low', override?: TurretFootFit): TurretFootFit {
+  const fit = override ?? TURRET_FOOT_FIT[specId] ?? 'whole';
+  return fit === 'split' && quality !== 'high' ? 'whole' : fit;
+}
 
 /** The turret's foot per FOOT_BINS bearing (rig_hull frame, the turret at its rest yaw): its outer radius (0 where none)
  *  and, when asked, its visible height (the lowest of its surfaces within FOOT_EDGE_M of that edge, not buried). */
@@ -306,7 +350,7 @@ export function footBandBuiltYs(turretG: THREE.Object3D, seatedInHull: THREE.Vec
  * shortfall, or null.
  */
 function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceReceipt, seat: TurretSeatPlane,
-  hullG: THREE.Object3D, turretG: THREE.Object3D, targets: Map<string, number>): TurretSeatShortfall | null {
+  hullG: THREE.Object3D, turretG: THREE.Object3D, targets: Map<string, number>, tilt: boolean): TurretSeatShortfall | null {
   const footline = measureTurretFootline(meshes, hullG, receipt, false, turretG);
   // a builder's own keep radius (turretSeatKeepR) still holds: the Abrams keep their relieved floor tucked under the
   // bearing's face inside it (abramsTurretLift.selftest; 274 fix2); the default rim band does not exempt the foot
@@ -352,6 +396,49 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
         }
       }
       if (plane === -Infinity) continue;
+      if (tilt) {
+        // 279 tilt (see TURRET_FOOT_FIT): from where the rise-limited seat leaves the face, each violated edge sample is
+        // met by the least change to its two corners (minimal-norm projection), every corner held between its base and the
+        // whole-face plane: no corner rises past where the whole-face lift would put it
+        const h = [base[0], base[1], base[2]];
+        const held = [0, 1, 2].map((c) => Math.hypot(_corners[c].x - cx, _corners[c].z - cz) <= holdR);
+        const samples: number[] = [];
+        for (let e = 0; e < 3; e++) {
+          const e1 = (e + 1) % 3;
+          _fa.copy(_corners[e]); _fb.copy(_corners[e1]);
+          const steps = Math.min(400, Math.max(1, Math.ceil(Math.hypot(_fb.x - _fa.x, _fb.z - _fa.z) / FOOT_STEP_M)));
+          for (let i = 0; i <= steps; i++) {
+            const u = i / steps, x = _fa.x + (_fb.x - _fa.x) * u, z = _fa.z + (_fb.z - _fa.z) * u;
+            if (inFoot(x, z)) samples.push(e, u, seat.liveAt(Math.hypot(x - cx, z - cz)));
+          }
+        }
+        for (let pass = 0; pass < 40; pass++) {
+          let moved = false;
+          for (let s = 0; s < samples.length; s += 3) {
+            const e = samples[s], e1 = (e + 1) % 3, u = samples[s + 1], live = samples[s + 2];
+            const at = h[e] + (h[e1] - h[e]) * u;
+            if (at >= live - 1e-4) continue;
+            const a = held[e] ? 0 : 1 - u, b = held[e1] ? 0 : u, n2 = a * a + b * b;
+            if (!(n2 > 1e-9)) continue;
+            const d = live - at;
+            h[e] = Math.min(plane, h[e] + d * a / n2); h[e1] = Math.min(plane, h[e1] + d * b / n2);
+            moved = true;
+          }
+          if (!moved) break;
+        }
+        for (let c = 0; c < 3; c++) {
+          if (h[c] <= base[c] + 1e-5 || held[c]) continue;
+          const cap = base[c] + SEAT_LIFT_MAX_M, to = Math.min(h[c], cap);
+          if (h[c] - cap > SEAT_SHORT_TOL_M && (!worst || h[c] - cap > worst.shortM)) {
+            const p = _corners[c];
+            worst = { r: round3(Math.hypot(p.x - cx, p.z - cz)), bearingDeg: Math.round(THREE.MathUtils.radToDeg(Math.atan2(p.x - cx, p.z - cz)) + 360) % 360,
+              needM: round3(h[c] - base[c]), shortM: round3(h[c] - cap) };
+          }
+          const was = lifts.get(keys[c]);
+          if (was === undefined || to > was) lifts.set(keys[c], to);
+        }
+        continue;
+      }
       for (let c = 0; c < 3; c++) {
         if (base[c] >= plane || Math.hypot(_corners[c].x - cx, _corners[c].z - cz) <= holdR) continue;
         const cap = base[c] + SEAT_LIFT_MAX_M, to = Math.min(plane, cap);
@@ -438,8 +525,180 @@ function rideFootPartsWhole(meshes: readonly THREE.Mesh[], targets: ReadonlyMap<
   return rigid;
 }
 
+/**
+ * 279 split (see TURRET_FOOT_FIT): a foot-band face whose whole-face plane stands more than SPLIT_OVER_M over a corner's own
+ * need is cut on the circle just inside where that plane begins (to SPLIT_EDGE_STEP_M), so the inner piece keeps its own
+ * seat and ramps up to the cut while the outer piece comes up whole, as before. The split conforms: every face in any
+ * turret mesh holding a cut edge (by its hull-frame corners) takes the same cut vertex, so no T-junction opens when the
+ * cut comes up (a first version's opened a gap beside the MBT-70's gun). An edge of a face that something outside the seat
+ * holds (protectedSpans) or of a mesh with draw groups is never cut. A split copy keeps every built vertex at its index and
+ * appends the new ones (a cut triangle's first piece in its slot, the rest after every built triangle), so the spans over
+ * it keep their vertices; onSplit hands each copy over. Returns the triangles added.
+ */
+function splitFootFaces(meshes: THREE.Mesh[], receipt: TurretSeatRaceReceipt, seat: TurretSeatPlane, hullG: THREE.Object3D,
+  turretG: THREE.Object3D, disposables: GeometryDisposables,
+  protectedSpans: SeatTurretOverDeckOptions['protectedSpans'], onSplit: SeatTurretOverDeckOptions['onSplit']): number {
+  const footline = measureTurretFootline(meshes, hullG, receipt, false, turretG);
+  const ownKeepR = (turretG.userData as TurretSeatLimits).turretSeatKeepR;
+  const inFoot = footBandTest(footline, receipt, typeof ownKeepR === 'number' ? ownKeepR : 0);
+  const { cx, cz } = seat;
+  const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
+  const c3 = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const hullKeys = (mesh: THREE.Mesh): { keys: string[]; pos: THREE.Vector3[] } => {
+    const position = mesh.geometry.getAttribute('position');
+    _toHull.multiplyMatrices(_hullInverse, mesh.matrixWorld);
+    const keys: string[] = new Array(position.count), pos: THREE.Vector3[] = new Array(position.count);
+    for (let i = 0; i < position.count; i++) { pos[i] = new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(_toHull); keys[i] = positionKey(pos[i]); }
+    return { keys, pos };
+  };
+  const edgeKey = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const frames = meshes.map(hullKeys);
+  const vi = (geometry: THREE.BufferGeometry, t: number, c: number): number => (geometry.index ? geometry.index.getX(t * 3 + c) : t * 3 + c);
+  const triCount = (geometry: THREE.BufferGeometry): number => Math.floor((geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3);
+  // edges the split leaves whole: a mesh with draw groups, and a face touching a span held outside the seat
+  const frozen = new Set<string>();
+  meshes.forEach((mesh, m) => {
+    const geometry = mesh.geometry, { keys } = frames[m], whole = geometry.groups.length > 0;
+    const held = new Uint8Array(geometry.getAttribute('position').count);
+    if (!whole) for (const [start, count] of protectedSpans?.(geometry) ?? []) held.fill(1, Math.max(0, start), Math.max(0, start + count));
+    for (let t = 0; t < triCount(geometry); t++) {
+      const ids = [vi(geometry, t, 0), vi(geometry, t, 1), vi(geometry, t, 2)];
+      if (!whole && !held[ids[0]] && !held[ids[1]] && !held[ids[2]]) continue;
+      for (let e = 0; e < 3; e++) frozen.add(edgeKey(keys[ids[e]], keys[ids[(e + 1) % 3]]));
+    }
+  });
+  // 1. the cuts: per edge (by its hull-frame corners), the cut point's hull-frame position
+  const cuts = new Map<string, THREE.Vector3>();
+  meshes.forEach((mesh, m) => {
+    if (mesh.geometry.groups.length) return;
+    const { keys, pos } = frames[m], geometry = mesh.geometry;
+    for (let t = 0; t < triCount(geometry); t++) {
+      const ids = [vi(geometry, t, 0), vi(geometry, t, 1), vi(geometry, t, 2)];
+      for (let c = 0; c < 3; c++) c3[c].copy(pos[ids[c]]);
+      const { near, far } = planReach(c3, cx, cz);
+      if (far <= rimPad || near > baseR) continue;
+      let plane = -Infinity;
+      const hi: number[] = [];
+      for (let e = 0; e < 3; e++) {
+        const p = c3[e], q = c3[(e + 1) % 3];
+        const steps = Math.min(400, Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / FOOT_STEP_M)));
+        for (let i = 0; i <= steps; i++) {
+          const u = i / steps, x = p.x + (q.x - p.x) * u, z = p.z + (q.z - p.z) * u;
+          if (!inFoot(x, z)) continue;
+          const r = Math.hypot(x - cx, z - cz), live = seat.liveAt(r);
+          hi.push(r);
+          if (live > plane) plane = live;
+        }
+      }
+      if (plane === -Infinity) continue;
+      const rs = c3.map((p) => Math.hypot(p.x - cx, p.z - cz));
+      if (!rs.some((r) => seat.liveAt(r) < plane - SPLIT_OVER_M)) continue;
+      let rHigh = Infinity;
+      for (const r of hi) if (seat.liveAt(r) >= plane - 0.005) rHigh = Math.min(rHigh, r);
+      // the radius where the plane begins (liveAt reads its bins 3 cm either side), to 2 mm, and the cut just inside it
+      let rEdge = rHigh;
+      while (rEdge > rimPad && seat.liveAt(rEdge - SPLIT_EDGE_STEP_M) >= plane - 0.005) rEdge -= SPLIT_EDGE_STEP_M;
+      const rCut = rEdge - 2 * SPLIT_EDGE_STEP_M;
+      const inside = rs.map((r) => r < rCut);
+      for (let e = 0; e < 3; e++) {
+        const e1 = (e + 1) % 3;
+        if (inside[e] === inside[e1]) continue;
+        const key = edgeKey(keys[ids[e]], keys[ids[e1]]);
+        if (frozen.has(key) || cuts.has(key)) continue;
+        const a = c3[e], b = c3[e1], px = a.x - cx, pz = a.z - cz, dx = b.x - a.x, dz = b.z - a.z;
+        const A = dx * dx + dz * dz, B = 2 * (px * dx + pz * dz), C = px * px + pz * pz - rCut * rCut;
+        const disc = Math.sqrt(Math.max(0, B * B - 4 * A * C));
+        const s = [(-B - disc) / (2 * A), (-B + disc) / (2 * A)].find((v) => v > 0.02 && v < 0.98);
+        if (s !== undefined) cuts.set(key, a.clone().lerp(b, s));
+      }
+    }
+  });
+  if (!cuts.size) return 0;
+  // 2. every face holding a cut edge, in every mesh, splits on it
+  let added = 0;
+  meshes.forEach((mesh, m) => {
+    const geometry = mesh.geometry;
+    if (geometry.groups.length) return;
+    const { keys, pos } = frames[m], n = triCount(geometry);
+    const newVerts: number[] = [];   // [i, j, u] per new vertex: lerp of vertices i and j
+    const replace = new Map<number, number[][]>();
+    let next = geometry.getAttribute('position').count;
+    for (let t = 0; t < n; t++) {
+      const ids = [vi(geometry, t, 0), vi(geometry, t, 1), vi(geometry, t, 2)];
+      const cut: (number | null)[] = [null, null, null];
+      let count = 0;
+      for (let e = 0; e < 3; e++) {
+        const i = ids[e], j = ids[(e + 1) % 3], at = cuts.get(edgeKey(keys[i], keys[j]));
+        if (!at) continue;
+        const len = pos[i].distanceTo(pos[j]);
+        if (!(len > 1e-9)) continue;
+        newVerts.push(i, j, pos[i].distanceTo(at) / len);
+        cut[e] = next++;
+        count++;
+      }
+      if (!count) continue;
+      const [a, b, c] = ids, [x, y, z] = cut;   // x on a-b, y on b-c, z on c-a
+      let parts: number[][];
+      if (count === 3) parts = [[a, x!, z!], [x!, b, y!], [z!, y!, c], [x!, y!, z!]];
+      else if (count === 1) {
+        const e = cut.findIndex((v) => v !== null), p = ids[e], q = ids[(e + 1) % 3], o = ids[(e + 2) % 3], v = cut[e]!;
+        parts = [[p, v, o], [v, q, o]];
+      } else {
+        const free = cut.findIndex((v) => v === null);   // the uncut edge's opposite corner is the lone one
+        const lone = (free + 2) % 3, A = ids[(lone + 1) % 3], B = ids[(lone + 2) % 3], L = ids[lone];
+        const X = cut[lone]!, Y = cut[(lone + 2) % 3]!;   // X on L-A, Y on B-L
+        parts = [[L, X, Y], [X, A, B], [X, B, Y]];
+      }
+      replace.set(t, parts);
+      added += parts.length - 1;
+    }
+    if (!replace.size) return;
+    const src = geometry, split = src.clone(), base = src.getAttribute('position').count, extra = newVerts.length / 3;
+    const value = (attr: THREE.BufferAttribute, v: number, s: number): number => {
+      if (v < base) return attr.getComponent(v, s);
+      const k = v - base, i = newVerts[k * 3], j = newVerts[k * 3 + 1], u = newVerts[k * 3 + 2];
+      return attr.getComponent(i, s) * (1 - u) + attr.getComponent(j, s) * u;
+    };
+    for (const name of Object.keys(src.attributes)) {
+      const attr = src.getAttribute(name) as THREE.BufferAttribute, size = attr.itemSize;
+      const Ctor = attr.array.constructor as Float32ArrayConstructor;
+      if (src.index) {
+        const out = new Ctor((base + extra) * size);
+        out.set(attr.array as Float32Array);
+        for (let v = base; v < base + extra; v++) for (let s = 0; s < size; s++) out[v * size + s] = value(attr, v, s);
+        split.setAttribute(name, new THREE.BufferAttribute(out, size, attr.normalized));
+      } else {
+        let tris = n;
+        for (const parts of replace.values()) tris += parts.length - 1;
+        const out = new Ctor(tris * 3 * size);
+        let tail = n;
+        for (let t = 0; t < n; t++) {
+          const parts = replace.get(t) ?? [[t * 3, t * 3 + 1, t * 3 + 2]];
+          parts.forEach((tri, k) => {
+            const slot = k === 0 ? t : tail++;
+            for (let c = 0; c < 3; c++) for (let s = 0; s < size; s++) out[(slot * 3 + c) * size + s] = value(attr, tri[c], s);
+          });
+        }
+        split.setAttribute(name, new THREE.BufferAttribute(out, size, attr.normalized));
+      }
+    }
+    if (src.index) {
+      const ids: number[] = Array.from(src.index.array as ArrayLike<number>);
+      for (const [t, parts] of replace) ids.splice(t * 3, 3, ...parts[0]);
+      for (const parts of replace.values()) for (const tri of parts.slice(1)) ids.push(...tri);
+      split.setIndex(ids);
+    }
+    split.computeBoundingBox(); split.computeBoundingSphere();
+    disposables.push(split);
+    mesh.geometry = split;
+    onSplit?.(src, split);
+  });
+  return added;
+}
+
 /** Seat the turret's surfaces over the deck round its ring (see the header); the count of meshes moved. */
-export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, disposables, onSeated }: SeatTurretOverDeckOptions): number {
+export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, disposables, onSeated, footFit = 'whole',
+  protectedSpans, onSplit }: SeatTurretOverDeckOptions): number {
   const receipt = combatAnatomyCalibration(specId)?.turretRing;
   const seat = turretSeatPlane(receipt, turretG.userData as TurretSeatLimits);
   if (!receipt || !seat) return 0;
@@ -454,6 +713,10 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
       || mesh.userData.interiorFill || mesh.userData.vehicleMarking || !mesh.geometry?.getAttribute('position')) return;
     meshes.push(mesh);
   });
+  // 279: a split build first cuts its foot-band faces at the swept step (splitFootFaces); a tilt build tilts them (below)
+  if (footFit === 'split') {
+    turretG.userData.turretSeatSplitAdded = splitFootFaces(meshes, receipt, seat, hullG, turretG, disposables, protectedSpans, onSplit);
+  }
   // 1. every corner of a triangle reaching past the rim takes the plane at its own radius, by position: a corner several
   // triangles (or meshes) share comes up alike in each, so no seam opens between them; a corner inside the rim that such
   // a triangle shares (a cap fanned from the ring's middle) comes up too, so the cap lies on the plane instead of sloping
@@ -482,7 +745,7 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
   // 2. the foot band (274), from where step 1 leaves each corner; a turret whose own build the band would break opts out
   // (turretG.userData.turretSeatFootBand === false: the M2A2 Bradley's classic turret, whose lower edge and TOW pod
   // opened to the inside and beside the gun when lifted, release 274 check)
-  const shortfall = turretG.userData.turretSeatFootBand === false ? null : seatFootBand(meshes, receipt, seat, hullG, turretG, targets);
+  const shortfall = turretG.userData.turretSeatFootBand === false ? null : seatFootBand(meshes, receipt, seat, hullG, turretG, targets, footFit === 'tilt');
   if (shortfall) turretG.userData.turretSeatShortfall = shortfall;
   else delete turretG.userData.turretSeatShortfall;
   if (!targets.size) {

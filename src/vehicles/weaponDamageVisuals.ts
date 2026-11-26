@@ -36,6 +36,12 @@ export class WeaponDamageVisuals {
     return clone;
   }
   /** The turret seat drew a mesh on its own copy of its geometry (turretSeatRace.ts onSeated): its scorch ranges follow. */
+  /** 279: the stock spans (first vertex, vertex count) over `geometry` (turretSeatRace.ts protectedSpans), and whether any
+   * range still reads it. */
+  spansOf(geometry: BufferGeometry): [number, number][] {
+    return this.ranges.filter((range) => range.geometry === geometry).map((range) => [range.start, range.count]);
+  }
+  holds(geometry: BufferGeometry): boolean { return this.ranges.some((range) => range.geometry === geometry); }
   follow(built: BufferGeometry, seated: BufferGeometry): void {
     for (const range of this.ranges) if (range.geometry === built) range.geometry = seated;
   }
