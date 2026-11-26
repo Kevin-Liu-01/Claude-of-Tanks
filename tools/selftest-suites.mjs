@@ -3361,6 +3361,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudConsumableTray.selftest.mjs', // 2026-11-02 audit M4: a revive refills the tray (the state, or the own respawn)
     'src/ui/roofGunTile.selftest.mjs', // 2026-11-05 round 2 U9: the roof-gun tile marks a switched-on red gun silenced, takes the switch off, refuses only on
     'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
+    'src/ui/hudDenyPulse.selftest.mjs', // life-reset-279 (Kevin 2026-11-24): a refusal's red pulse comes off; a respawn's tray reads its live counts
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
     // couch-split-274: a couch split pane's HUD owns its seat's tank (its own row, side and enemy count), not seat 1's

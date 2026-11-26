@@ -8797,18 +8797,30 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull') : t(unavailableKey),
     priority: NOTICE_PRIORITY.answered, severity: 'info', icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock' });
   };
+  /**
+   * A refusal's pulse is feedback, not state (life-reset-279; Kevin 2026-11-24, a HEAT slot with 16 rounds still drawn
+   * red after a respawn: "if youve expended an ammo it doesnt clear the state once you die and respawn or even join
+   * another game"). .deny paints the plate in the danger ink, and it was added with nothing to take it off: one refused
+   * pick on an empty rack kept the slot red for the life, the next lives and every battle after. It now comes off when
+   * its shake ends (two --dur-screen runs; also under reduced motion, which has no animation to end), so the plate's own
+   * colours always come from the live count (the retained slot's .empty).
+   */
+  const DENY_PULSE_MS = 720;
+  const denyTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
+  function pulseDenied(target: HTMLElement): void {
+    clearTimeout(denyTimers.get(target));
+    target.classList.remove('deny');
+    void target.offsetWidth;
+    target.classList.add('deny');
+    denyTimers.set(target, setTimeout(() => {
+      denyTimers.delete(target);
+      target.classList.remove('deny');
+    }, DENY_PULSE_MS));
+  }
   function pulseAmmoDenied(slot: number | null | undefined, includeSpecial = false): void {
     const target = slot != null ? slotEls[slot] : null;
-    if (target) {
-      target.classList.remove('deny');
-      void target.offsetWidth;
-      target.classList.add('deny');
-    }
-    if (includeSpecial) {
-      missileButton.classList.remove('deny');
-      void missileButton.offsetWidth;
-      missileButton.classList.add('deny');
-    }
+    if (target) pulseDenied(target);
+    if (includeSpecial) pulseDenied(missileButton);
   }
   on('ui:ammoSelectionDenied', ({ slot, guided }) => {
     pulseAmmoDenied(slot, !!guided);
@@ -8854,7 +8866,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       events.raise({ kind: 'consumable', text: t('hud.alert.consumablesDisabled'), priority: NOTICE_PRIORITY.answered, severity: 'info', icon: 'info' });
     }
     const s = conEls[slot];
-    if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
+    if (s) pulseDenied(s);
   });
   on('ui:consumableReset', () => resetConsumableTray());
   // an APS charge met a round (sim/consumableRules.ts): the crew it saved, or the shooter whose round it stopped
