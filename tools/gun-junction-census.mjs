@@ -5,6 +5,7 @@
 //   node tools/gun-junction-census.mjs --ids=c2_ariete,cv90 [--poses=rest,elev,dep,e0.5,d0.5] [--res-mm=2] [--images] [--json=path]
 //   node tools/gun-junction-census.mjs --all [--gate]
 //   node tools/gun-junction-census.mjs --ledger=docs/geometry-gate/gun-junction.json --update|--check [--gate] --ids=<a,b>|--all
+//   node tools/gun-junction-census.mjs --ids=<a,b> --turret-foot-fit=tilt|split   another turret seat foot fit (279, compare only)
 //
 // Every main-gun mouth the factory publishes (userData.physicalMouth under rig_gun: origin on the mouth plane, -Z into
 // the bore) defines the gun axis. The tank is built first-party (createTank, proceduralOnly, interior fills applied, LOD
@@ -60,6 +61,11 @@ import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
+// 279: --turret-foot-fit=whole|tilt|split builds each tank with that turret seat foot fit instead of its own
+// (turretSeatRace.ts TURRET_FOOT_FIT), to compare fits; never with --ledger
+const FOOT_FIT = opt('turret-foot-fit', '');
+if (FOOT_FIT && !['whole', 'tilt', 'split'].includes(FOOT_FIT)) { console.error(`gun-junction-census: --turret-foot-fit=${FOOT_FIT}`); process.exit(2); }
+if (FOOT_FIT && args.some((a) => a.startsWith('--ledger'))) { console.error('gun-junction-census: --turret-foot-fit compares fits; the ledger measures each tank as built'); process.exit(2); }
 const flag = (name) => args.includes(`--${name}`);
 // Per-id ledger (r4, 2026-10-18): --ledger=docs/geometry-gate/gun-junction.json measures every row at the ledger's own
 // settings (the CLI resolution, directions and poses are ignored there, so rows stay comparable) and binds each row to
@@ -416,7 +422,7 @@ for (const id of ids) {
   const started = performance.now();
   await ensureInteriorFills([id]);
   let tank;
-  try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; report.push({ id, status: 'build-failed', error: error.message }); continue; }
+  try { tank = createTank(id, null, { proceduralOnly: true, ...(FOOT_FIT ? { turretFootFit: FOOT_FIT } : {}) }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; report.push({ id, status: 'build-failed', error: error.message }); continue; }
   const spec = getSpec(id);
   if (SEED_RECOIL_M) { const recoil = tank.root.getObjectByName('rig_recoil'); if (recoil) recoil.position.z += SEED_RECOIL_M; }
   const built = performance.now();
