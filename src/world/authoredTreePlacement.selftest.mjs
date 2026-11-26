@@ -10,7 +10,7 @@ import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, landmarkFloraSites, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
@@ -52,6 +52,8 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   deploymentClearings,
   // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
   civicTreeStations, civicLawnTest, civicPavedRooms,
+  // (landmark-primitives-278) the set pieces' trees (vegetation.ts plantLandmarkFlora)
+  landmarkFloraSites,
   // the trees lane (2026-10-06): a place's grove and blend (Saltwind's olive groves, its holm oak woods' Aleppo pine)
   treeBiomeGrove, treeBiomeBlend };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {

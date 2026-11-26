@@ -206,11 +206,6 @@ export const headframe: LandmarkBuilder = (ctx) => {
       s.span('structureWood', tx - 1.6, gt + 0.12 + row * 0.36, z - 0.17, tx + 1.6, gt + 0.46 + row * 0.36, z + 0.17, { colour: shade(TIMBER, 0.9 + 0.1 * ((k + row) % 2)), decor: true });
     }
     for (const dx of [-1.2, 1.2]) s.span('structureWood', tx + dx - 0.1, gt - 0.05, tz - 1.3, tx + dx + 0.1, gt + 0.12, tz + 1.0, { colour: shade(TIMBER, 0.6), decor: true });
-    // the winder's oil drums
-    for (const [dx, dz] of [[0, 0], [0.62, 0.1], [0.3, 0.6]]) {
-      const x = -5.2 + dx, z = zs - 3.6 + dz;
-      s.cylinder('structureMetal', [x, gl(x, z) - 0.02, z], 'y', 0.88, 0.29, 10, { colour: dz > 0.5 ? rgb(0x7a2a1e) : IRON, decor: true });
-    }
   });
   // the ropes down from the sheaves to the cage: they come down slack with the frame
   piece(sink, { name: 'ropes', kind: 'lattice', at: 'collapse', fall: 'drop' }, (s) => {
@@ -262,7 +257,9 @@ export const headframe: LandmarkBuilder = (ctx) => {
     s.span('structureMetal', -1.8, g0 + 5.5, zs + half, 1.8, g0 + 9.0, zs + half + 2.6, { colourAt: rusting(STEEL, g0 + 5.5, g0 + 9.0, 0.45) });
     s.polygon('structureMetal', [[-1.8, g0 + 5.5, zs + half + 2.6], [1.8, g0 + 5.5, zs + half + 2.6], [0.8, g0 + 4.2, zs + half + 3.4], [-0.8, g0 + 4.2, zs + half + 3.4]], { colour: shade(STEEL, 0.8), decor: true });
   });
-  return { parts: finishLandmark(sink) };
+  // the winder's oil drums: the map's (props drum, drumred; landmark-primitives-278)
+  const destructibles = ([[0, 0], [0.62, 0.1], [0.3, 0.6]] as const).map(([dx, dz], k) => ({ kind: dz > 0.5 ? 'drumred' : 'drum', x: -5.2 + dx, z: zs - 3.6 + dz, yawDeg: k * 41 }));
+  return { parts: finishLandmark(sink), destructibles };
 };
 
 // ------------------------------------------------------------------------------------------------------------- ore bin

@@ -13,6 +13,8 @@
 // meets them); the doors, flag, drifts and fittings are dressing.
 import { PartSink, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { mound } from '../maps/regional/dressing.ts';
+import { jeridFrame } from '../maps/regional/souqs.ts';
+import type { GroundsDestructible } from './grounds.ts';
 import { archSurround, archedFace, bar, extrude, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
@@ -300,7 +302,8 @@ export const desertFort: LandmarkBuilder = (ctx) => {
     sink.polygon('structureMetal', s > 0 ? [cc, p0, p1] : [cc, p1, p0], { colour: FLAG_WHITE, decor: true });
   }
   // the stair up to the wall walk along the left range's court face, its flights' parapet; the shade over the court's
-  // front corner (timber posts and a palm-frond mat) with the patrol's stores under it
+  // front corner with the patrol's stores under it (landmark-primitives-278: the souq's jerid shade standing free,
+  // souqs.ts jeridFrame, its fronds hanging over the court; the stores the map's drums and a crate)
   const stx = -ri + 0.6, stRun = rh * 1.3;
   for (let k = 0; k < 9; k++) {
     const y = rh * (k + 1) / 9, z = ri - 1.2 - stRun * k / 9;
@@ -308,10 +311,10 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   }
   sink.span(wall, stx + 1.1, foot, ri - 1.2 - stRun, stx + 1.3, rh * 0.5, ri - 1.2, { decor: true });
   const cx0 = ri - 7.5, cz0 = ri - 6.0;
-  for (const [x, z] of [[cx0, cz0], [ri - 0.3, cz0], [cx0, ri - 0.3], [ri - 0.3, ri - 0.3]] as const) bar(sink, 'structureWood', [x, 0, z], [x, 2.7, z], 0.14, { colour: DOOR, decor: true });
-  sink.span('straw', cx0 - 0.3, 2.7, cz0 - 0.3, ri, 2.82, ri, { colour: rgb(0x9a8058), decor: true });
-  for (let k = 0; k < 5; k++) sink.cylinder('structureMetal', [cx0 + 1 + k * 1.1, 0, cz0 + 1.0 + (k % 2) * 0.4], 'y', 0.9, 0.3, 8, { colour: [rgb(0x4a5a3a), rgb(0x6a5a3a)][k % 2], decor: true });
-  sink.span('structureWood', cx0 + 1.0, 0, ri - 2.4, cx0 + 3.2, 0.8, ri - 1.2, { colour: rgb(0x7a6a4a), decor: true });
+  sink.placed(Math.PI, (cx0 + ri - 0.3) / 2, 0, (cz0 + ri - 0.3) / 2, () => sink.primitive('jeridFrame', () => jeridFrame(sink, ctx.variant, 7.6, 2.7, 0, -2.95, 2.85, DOOR, true)));
+  const destructibles: GroundsDestructible[] = [];
+  for (let k = 0; k < 5; k++) destructibles.push({ kind: 'drum', x: cx0 + 1 + k * 1.1, z: cz0 + 1.0 + (k % 2) * 0.4, yawDeg: k * 37 });
+  destructibles.push({ kind: 'crate', x: cx0 + 2.1, z: ri - 1.8, yawDeg: 0 });
   // the water tank on its braced steel stand beside the gate, outside the front wall: the legs on their concrete
   // footings, the cross bracing, the tank weathered to rust below its seams, its lid, the ladder and the down pipe
   const wx = gx + 2.6, wz = h2 + 2.2, wy = 3.4, TANK = rgb(0x8a8578);
@@ -331,7 +334,7 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   for (const s of [-0.22, 0.22]) bar(sink, 'structureMetal', [wx - 1.16, 0.0, wz + s], [wx - 1.16, wy + 1.6, wz + s], 0.04, { colour: IRON, decor: true, fine: 'near' });
   for (let y = 0.4; y < wy + 1.5; y += 0.5) bar(sink, 'structureMetal', [wx - 1.16, y, wz - 0.22], [wx - 1.16, y, wz + 0.22], 0.03, { colour: IRON, decor: true, fine: 'near' });
   bar(sink, 'structureMetal', [wx + 0.3, wy, wz - 0.4], [wx + 0.3, 0.4, wz - 0.4], 0.07, { colour: shade(TANK, 0.75), decor: true });
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), destructibles };
 };
 
 const TURF = rgb(0x6f7d45), TURF_DRY = rgb(0x8a8456), SNOW = rgb(0xe4e9ee), SNOW_DRY = rgb(0xd3dbe2), ARMOUR = rgb(0x3e423f), WIRE = rgb(0x3a3430);

@@ -91,11 +91,13 @@ assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'ever
 
 /** Desktop triangle budgets by kind (the phones build the coarse share of the same). */
 // (the looks lane, 2026-10-15, WORKLIST #11 r2: a piazza's slabs and liste laid as units, their sides fine joinery)
+// (landmark-primitives-278: the garden's beds, Siwa's spring and the desert fort's shade draw the kits' shrubs, beds
+// and jerid frame where they drew boxes: their budgets take the kits' detail)
 const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
-  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000, outfall: 900,
+  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 4400, stairway: 9000, outfall: 900,
   townGate: 5500, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
@@ -107,7 +109,7 @@ const BUDGET = {
   apolloSite: 9000, isruWorks: 12000, solarTower: 5000, stationDome: 9000, relayRepeater: 4000,
   // (landmarks-271) the signature set pieces of the maps that had none (11-08: their realism pass)
   roundhouse: 16000, signalBox: 3000, blastFurnace: 22000, gasholder: 34500, shrine: 26000, ghorfaKsar: 27000, marabout: 1500,
-  desertFort: 4500, casemateFort: 5400, shaliMosque: 5100, springPool: 3000, canalMarket: 4600, charcoalKilns: 5100,
+  desertFort: 5400, casemateFort: 5400, shaliMosque: 5100, springPool: 5800, canalMarket: 4600, charcoalKilns: 5100,
   alcazaba: 10000, bullring: 23000, woodenChurch: 4800, tradingPost: 3400, hogan: 3400, cablewayTower: 4900, landingPad: 7800,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');

@@ -181,9 +181,10 @@ interface LandmarkBuild {
   tints?: Partial<WeatherTints>;
   /**
    * Street furniture that belongs to the props' destructible kinds (a platform's benches, a square's benches and lamps),
-   * in the piece's frame: they join the props pools, so a hull crushes them as it crushes any other.
+   * in the piece's frame: they join the props pools, so a hull crushes them as it crushes any other. `lift`: its seat over
+   * the ground (a square's paving, a porch's deck; landmark-primitives-278).
    */
-  destructibles?: ReadonlyArray<{ kind: string; x: number; z: number; yawDeg: number; scale?: number }>;
+  destructibles?: ReadonlyArray<{ kind: string; x: number; z: number; yawDeg: number; scale?: number; lift?: number }>;
   /** Pieces it carries (a square's centre piece), in its frame: placed after it, from streams of their own. */
   children?: readonly LandmarkPlacement[];
   /**

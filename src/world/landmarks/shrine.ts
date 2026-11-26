@@ -9,7 +9,7 @@
 //   approach on its stone kidan, the tamagaki fence of boards on its stone sill round the inner court of raked gravel,
 //   the temizuya's basin under its copper roof, the haiden raised on posts with its veranda and the karahafu porch over
 //   its steps, the honden behind it in its own fence (nagare-zukuri: the front slope sweeping on over its stair), two
-//   massha along the court's side and the sacred cedar with its rope.
+//   massha along the court's side and the sacred tree's kerb (the tree is the map's own sugi: plan.ts shrineFlora).
 //
 // (realism 273; the identity critic: "the rōmon's top roof is a tall boxy gable with flat planes ... reads as a castle
 // yagura or a pagoda") every roof is drawn in the Japanese way: the slopes concave (shallow at the eave, steep at the
@@ -29,7 +29,6 @@ const TIMBER = rgb(0x6a5040), TIMBER_DARK = rgb(0x46352a), BOARD = rgb(0x8a735c)
 /** cypress bark (hiwada): a dark red-brown that greys under the weather, its cut edge the paler layered bark */
 const BARK = rgb(0x6a4636), BARK_CUT = rgb(0x9a7458);
 const COPPER = rgb(0x5f8a76), GILT = rgb(0xb59a4e), WHITE = rgb(0xe8e2d4), BAMBOO = rgb(0x9c9459), ROPE = rgb(0xa8382c);
-const CEDAR_BARK = rgb(0x6b4a38), NEEDLES = rgb(0x33472d);
 /** the caldera's andesite (kerbs, steps, footings, platforms, lanterns): a dark volcanic grey over the kit's stone */
 const ANDESITE: Rgb = [0.76, 0.76, 0.79];
 /** the court's raked gravel, pale (the precinct's #c8c2b6) */
@@ -746,32 +745,8 @@ function komainu(sink: PartSink, v: Stream, x: number, z: number, s: number): vo
   sink.span('stone', x - 0.14, 1.6, z - 0.66, x + 0.14, 2.14, z - 0.44, b);
 }
 
-/** The sacred cedar (goshinboku) at (x, z): its flared trunk, the tiers of its crown, the rope round it, its kerb. */
-function cedar(sink: PartSink, v: Stream, x: number, z: number, h: number): void {
-  const barkOpts: EmitOptions = { colour: shade(CEDAR_BARK, 0.9 + 0.15 * v()) };
-  sink.pipe('structureWood', [x, -0.4, z], [x, 1.4, z], 1.12, 10, { ...barkOpts, caps: true }, 0.8);
-  sink.pipe('structureWood', [x, 1.4, z], [x, h * 0.55, z], 0.8, 10, { ...barkOpts, caps: true }, 0.44);
-  sink.pipe('structureWood', [x, h * 0.55, z], [x, h * 0.94, z], 0.44, 8, { ...barkOpts, decor: true, caps: true }, 0.06);
-  // (the crown: clumps of foliage overlapping up the trunk, each pushed a little off its line, so the narrow cone of a
-  // Japanese cedar reads ragged and dense, not as a stack of tiers)
-  for (let k = 0; k < 8; k++) {
-    const f = k / 8, yc = h * (0.4 + 0.52 * f), R = (3.2 - 2.4 * f) * (0.88 + 0.2 * v()), a = k * 2.4, off = 0.35 + 0.3 * v();
-    revolve(sink, 'structureWood', x + Math.cos(a) * off, z + Math.sin(a) * off, [[0.3, yc - R * 0.85], [R * 0.92, yc - R * 0.2], [R * 0.72, yc + R * 0.45], [0.12, yc + R * 0.95]], 7,
-      { colour: shade(NEEDLES, 0.82 + 0.3 * v()), decor: true }, v() * 6.28);
-  }
-  const ry = 2.5, rr = 0.86;
-  for (let i = 0; i < 6; i++) {
-    const a0 = i / 6 * Math.PI * 2, a1 = (i + 1) / 6 * Math.PI * 2;
-    sink.pipe('straw', [x + Math.cos(a0) * rr, ry, z + Math.sin(a0) * rr], [x + Math.cos(a1) * rr, ry, z + Math.sin(a1) * rr], 0.12, 6, { decor: true });
-  }
-  // (landmarks-world-276, the integrity census: the shide hung on a circle 0.95 m out, the rope a hexagon whose sides
-  // come in to 0.75 m: one stood 6 cm off it) each hung from the rope's side where it falls
-  const side = (a: number): number => rr * Math.cos(Math.PI / 6) / Math.cos((((a % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3)) - Math.PI / 6);
-  for (const a of [0.4, 1.9, 3.5, 5.0]) {
-    const sr = side(a) + 0.1;
-    sink.span('structureWood', x + Math.cos(a) * sr - 0.07, ry - 0.62, z + Math.sin(a) * sr - 0.02, x + Math.cos(a) * sr + 0.07, ry - 0.08, z + Math.sin(a) * sr + 0.02,
-      { colour: WHITE, decor: true, fine: 'near' });
-  }
+/** The sacred tree's stone kerb at (x, z) (the tree is the map's own: plan.ts shrineFlora). */
+function sacredKerb(sink: PartSink, x: number, z: number): void {
   const kb = stoneOf(0.66, true), e = 1.7;
   for (const s of [-1, 1]) {
     bar(sink, 'stone', [x - e, 0.06, z + s * e], [x + e, 0.06, z + s * e], 0.22, kb);
@@ -844,7 +819,7 @@ export const shrine: LandmarkBuilder = (ctx) => {
   temizuya(sink, v, sw + 5.0, gateBack - 3.0);
   // the massha along the court's side, turned to the approach; the sacred cedar in the back corner behind the haiden
   for (const dz of [8.2, 11.8]) massha(sink, v, -fx + 2.3, hallZ + dz, Math.PI / 2);
-  cedar(sink, v, fx - 3.2, Math.min(back + 9, hallZ - hallD / 2 - 4.0), 28);
+  sacredKerb(sink, fx - 3.2, Math.min(back + 9, hallZ - hallD / 2 - 4.0));
   // the torii at the mouth of the approach (gates.ts torii, placed after this piece in its frame)
   const children: LandmarkPlacement[] = [{ kind: 'torii', x: 0, z: front - 1.4, yawDeg: 0, params: { span: 6.2, height: 7.6, material: 'stone' }, ground: 'veto' }];
   return { parts: sink.finish(), children };

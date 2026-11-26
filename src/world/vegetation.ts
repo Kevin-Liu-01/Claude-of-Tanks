@@ -23,7 +23,7 @@ import {
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
-  placedStructureClearances } from './vegetationClearance.ts';
+  placedStructureClearances, landmarkFloraSites } from './vegetationClearance.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { attachTreeCards, attachTreeLobes } from './treeAttachments.ts';
@@ -410,6 +410,8 @@ interface TreeRecord {
   hedgeRow?: boolean;
   /** (the maps lane, 228) one of a civic area's trees (plantCivicTrees): never a battle snag. */
   civic?: boolean;
+  /** (landmark-primitives-278) one of a set piece's trees (plantLandmarkFlora): its piece's ground keeps it, never a snag. */
+  landmark?: boolean;
   /** Ground lane (crater-render-spec §C): the placement before a crater re-seated the trunk (base + offsetAt). */
   craterBase?: THREE.Matrix4;
   /**
@@ -7639,6 +7641,31 @@ function* vegetationBuildSteps(
   }
   plantCivicTrees();
 
+  /**
+   * (landmark-primitives-278; the owner, 2026-11-25: "for those new landmarks make sure any flora or stuff just reuses any
+   * better looking primitives we already have") a map's set pieces' trees (landmarks/plan.ts flora: Siwa's date palms
+   * round its spring): each the map's own species, grown by pushTree into the same pools, with its trunk record and its
+   * cover, on a stream of its own after every other placement (no other tree moves) and never a battle snag. Its own
+   * piece's ground keeps it (the structure pass exempts it); another piece's ground, a slot the map does not grow or a
+   * seat off the square refuses it. Census in group.userData.landmarkFlora.
+   */
+  function plantLandmarkFlora(): void {
+    const sites = landmarkFloraSites(cfg?.props?.landmarks);
+    if (!sites.length) return;
+    const floraRng = mulberry32((seed ^ 0x1a7df) >>> 0);
+    const census = { stations: sites.length, planted: 0, refused: { species: 0, ground: 0, site: 0 } };
+    for (const st of sites) {
+      if (!speciesList.includes(st.species as Species)) { census.refused.species++; continue; }
+      if (st.blocked) { census.refused.ground++; continue; }
+      if (Math.max(Math.abs(st.x), Math.abs(st.z)) > 455 || noVeg(st.x, st.z)) { census.refused.site++; continue; }
+      pushTree(st.x, st.z, st.species as Species, st.scale[0], st.scale[1], true, floraRng, 1);
+      trees[trees.length - 1].landmark = true;
+      census.planted++;
+    }
+    group.userData.landmarkFlora = census;
+  }
+  plantLandmarkFlora();
+
   // Round 77 (2026-09-26): the stand shade. A tree inside a dense stand stands under its neighbours' crowns: the
   // sky over it is mostly leaves, so it reads darker than the trees at the edge — the crown-scale contrast a far
   // forest needs to read as trees and not as a band, and the same tone the near stand's interior carries. Counted
@@ -7692,6 +7719,8 @@ function* vegetationBuildSteps(
     rejectedTrees: excludeStructureVegetation(
       trees, treeObstacles, concealers, structureClearances,
       (tree) => tree.cr + Math.sin(TREE_ARCHETYPES[tree.species].leanMaxRad) * (tree.fallH ?? 0),
+      // (landmark-primitives-278) a set piece's own trees stand on its ground (plantLandmarkFlora refused another's)
+      (tree) => tree.landmark === true,
     ),
   };
   if (authoredTreeDonors && veg.authoredTrees) {
@@ -7780,7 +7809,7 @@ function* vegetationBuildSteps(
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
       if (t.species === 'palm' || (t.species === 'willow' && veg.willowForm === 'tidalMangrove')) continue;
-      if (t.civic) continue; // (228: a civic area's trees stand alive)
+      if (t.civic || t.landmark) continue; // (228: a civic area's trees stand alive; 278: a set piece's too)
       if (!isClearOfSpawns(t.x, t.z, spawnClearings, 45)) continue;
       const middle = 1 - smoothstepJs(180, 470, Math.hypot(t.x, t.z));
       if (treePositionNoise(t.x, t.z, 9) >= snagShare * (0.35 + 1.3 * middle)) continue;

@@ -227,10 +227,10 @@ export const ghorfaKsar: LandmarkBuilder = (ctx) => {
     sink.quad('stone', [xa, g(xa, za), za], [xb, g(xb, za), za], [xb, g(xb, zb), zb], [xa, g(xa, zb), zb], { decor: true, shade: 0.9, uv: { kind: 'world' } });
   }
   sink.placed(0, 0, g(0, -cd / 6), -cd / 6, () => revolve(sink, 'stone', 0, 0, [[3.2, 0.02], [3.2, 0.1], [2.9, 0.1], [0.001, 0.05]], 20, { decor: true, shade: 0.8 }));
-  const ty = g(cw / 2 - 2.5, cd / 2 - 1.6);
-  sink.span('stone', cw / 2 - 3.5, ty - 0.6, cd / 2 - 2.0, cw / 2 - 1.5, ty + 0.6, cd / 2 - 1.2, { shade: 0.85 });
+  // the stone trough by the threshing floor: the map's own (props trough; landmark-primitives-278)
+  const destructibles = [{ kind: 'trough', x: cw / 2 - 2.5, z: cd / 2 - 1.6, yawDeg: 90 }];
   // (the Dahar's ochre render, warmer than the kit's plaster)
-  return { parts: sink.finish(), tints: { plaster: [1.1, 0.96, 0.8] } };
+  return { parts: sink.finish(), tints: { plaster: [1.1, 0.96, 0.8] }, destructibles };
 };
 
 /**

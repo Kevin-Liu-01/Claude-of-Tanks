@@ -7,6 +7,7 @@ import { roundhouseLayout } from './railWorks.ts';
 import { blastFurnaceLayout } from './ironWorks.ts';
 import { shrineLayout } from './shrine.ts';
 import { ksarLayout } from './ksar.ts';
+import type { TreeSpecies } from '../treeSpecies.ts';
 
 type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
@@ -42,6 +43,84 @@ interface LandmarkKindSpec {
   /** The ground it is seated on, [hw, hl], where its footprint reaches past it (a tower mill's sails sweep over ground
    *  its base never touches): the composer seats it, and measures its fall, on this rectangle alone. */
   seat?: (p: LandmarkParams) => readonly [number, number] | null;
+  /**
+   * (landmark-primitives-278; the owner: "for those new landmarks make sure any flora or stuff just reuses any better
+   * looking primitives we already have") the trees it plants, in its frame: the map's own vegetation grows them
+   * (vegetation.ts plantLandmarkFlora) from its species pools, instanced, with their trunk records and cover, as it
+   * grows the map's trees. A builder never draws a tree (landmarkFlora.selftest.mjs).
+   */
+  flora?: (p: LandmarkParams) => readonly LandmarkFloraStation[];
+}
+
+/** One tree a set piece plants (plan.ts LandmarkKindSpec.flora): a species slot of the map's and its seat in the piece's frame. */
+export interface LandmarkFloraStation {
+  species: TreeSpecies;
+  x: number;
+  z: number;
+  /** The tree's size range over its archetype (vegetation.ts pushTree's), default [0.95, 1.4]. */
+  scale?: readonly [number, number];
+}
+
+/** A piece's tree in the world frame: its piece's index in the map's list (its own ground is no keep-out to it). */
+export interface LandmarkTreeStation { owner: number; kind: LandmarkKind; species: TreeSpecies; x: number; z: number; scale: readonly [number, number] }
+
+/**
+ * Siwa's spring (siwa.ts springPool, `radius` R): the date palms round the pool and in its walled gardens, each trunk a
+ * little off its row as planted palms stand, and the café's two shade trees beyond its shade (the map's acacia slot:
+ * Sunscar Oasis grows no olive). The builder lays its garden beds between these seats.
+ */
+export function springPoolFlora(R: number): LandmarkFloraStation[] {
+  const zW = R + 1.45;
+  // a fixed hash per seat (no stream: the vegetation plants them before any build runs)
+  const j = (k: number, s: number): number => ((Math.sin(k * 12.9898 + s * 78.233) * 43758.5453) % 1 + 1) % 1 - 0.5;
+  const palms: Array<[number, number]> = [
+    [-(R + 2.7), zW - 3.5], [-(R + 2.9), -(zW - 3.6)], [-(R + 6.6), zW - 4.6], [-(R + 7.0), -(zW - 4.2)], [-(R + 10.3), zW - 3.9],
+    [-(R + 10.4), -(zW - 5.0)], [R + 2.7, zW - 3.5], [R + 6.6, zW - 4.0], [R + 9.9, zW - 4.8],
+  ];
+  return [
+    ...palms.map(([x, z], k): LandmarkFloraStation => ({ species: 'palm', x: x + j(k, 1) * 0.6, z: z + j(k, 2) * 0.6, scale: [1.0, 1.45] })),
+    { species: 'acacia', x: R + 10.9, z: -(zW - 2.2), scale: [0.85, 1.15] },
+    { species: 'acacia', x: R + 11.4, z: -1.4, scale: [0.85, 1.15] },
+  ];
+}
+
+/**
+ * Podhale's wooden church (podhale.ts woodenChurch): the churchyard's three spruces, two behind the chancel and one in the
+ * front corner on the left (its layout at level ground: the tower's batter moves the front fence a few centimetres).
+ */
+export function woodenChurchFlora(p: LandmarkParams): LandmarkFloraStation[] {
+  const W = Math.min(12, Math.max(6, num(p, 'width'))), L = Math.min(18, Math.max(8, num(p, 'length'))), T = Math.min(22, Math.max(10, num(p, 'tower')));
+  const foot = -0.6, nz1 = L / 2 + 2, tb = Math.max(5.2, W * 0.78), tt = tb * 0.74, ty = T * 0.7, tz = nz1 + tb / 2 - 1.1;
+  const yw = Math.max(W + 8, Math.min(40, Math.max(14, num(p, 'yard')))), yz0 = -1.05 * L - 2;
+  const yz1 = tz + (tb / 2 - (tb - tt) / 2 * (0 - foot) / (ty - foot)) + 0.04 + 2.85;
+  return [
+    { species: 'spruce', x: -8.2, z: yz0 + 3.4, scale: [1.05, 1.25] },
+    { species: 'spruce', x: 8.3, z: yz0 + 4.2, scale: [0.9, 1.1] },
+    { species: 'spruce', x: -yw / 2 + 2.6, z: yz1 - 3.6, scale: [0.95, 1.15] },
+  ];
+}
+
+/**
+ * The Aso shrine's sacred tree (shrine.ts shrine): the goshinboku in the court's back corner behind the haiden, inside its
+ * stone kerb: the map's pine slot, which Caldera grows as sugi (treeBiomes.ts), the largest of the precinct's.
+ */
+export function shrineFlora(p: LandmarkParams): LandmarkFloraStation[] {
+  const { width, front, back } = shrineLayout(p);
+  const hallD = 9;
+  let hallZ = back + 22.2;
+  if (hallZ > front - 30.6) hallZ = Math.max(back + hallD / 2 + 2.8, front - 30.6);
+  return [{ species: 'pine', x: width / 2 - 0.6 - 3.2, z: Math.min(back + 9, hallZ - hallD / 2 - 4.0), scale: [1.6, 1.75] }];
+}
+
+/** Every tree a map's set pieces plant, in the world frame, from the config alone (the trees grow before the props). */
+export function landmarkFloraStations(landmarks: readonly LandmarkPlacement[] | null | undefined): LandmarkTreeStation[] {
+  if (!landmarks?.length) return [];
+  return landmarks.flatMap((placement, owner) => {
+    const flora = LANDMARK_KINDS[placement.kind].flora?.(resolveLandmarkParams(placement)) ?? [];
+    const yaw = (placement.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+    return flora.map((t) => ({ owner, kind: placement.kind, species: t.species, scale: t.scale ?? [0.95, 1.4],
+      x: placement.x + t.x * c + t.z * s, z: placement.z - t.x * s + t.z * c }));
+  });
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -405,7 +484,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (shrine.ts, landmarks-271) the precinct along its approach: the torii (a child) at the mouth, the rōmon at `gate` of
   // the way in, the haiden's karahafu and steps reaching toward the gate from the back fence
   shrine: { family: 'civic', defaults: { length: 70, width: 30, gate: 0.3 },
-    footprint: (p) => { const l = shrineLayout(p); return [l.width / 2 + 0.4, l.length / 2 + 0.2]; } },
+    footprint: (p) => { const l = shrineLayout(p); return [l.width / 2 + 0.4, l.length / 2 + 0.2]; },
+    // (landmark-primitives-278) its sacred tree: the map's own
+    flora: shrineFlora },
   // (ksar.ts, landmarks-271) the ghorfa ksar: its court and the ranges round it; the marabout: its enclosure (`yard`)
   // (it drapes: each column stands on its own ground, its foot to the lowest under it, so it steps up a slope)
   ghorfaKsar: { family: 'civic', drapes: true, defaults: { court: 26, courtDepth: 18, cell: 8, bay: 2.8, tiers: 4, tierHeight: 2.9 },
@@ -439,7 +520,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (podhale.ts, landmarks-271) the wooden church inside its churchyard fence (`yard` wide), the gate 10.5 m past the
   // nave's front, the back fence 4 m behind the chancel's end
   woodenChurch: { family: 'civic', defaults: { width: 8, length: 11, tower: 16, yard: 22 },
-    footprint: (p) => [Math.max(num(p, 'width') + 8, num(p, 'yard')) / 2 + 0.3, Math.max(num(p, 'length') / 2 + 10.5, 1.05 * num(p, 'length') + 2) + 0.3] },
+    footprint: (p) => [Math.max(num(p, 'width') + 8, num(p, 'yard')) / 2 + 0.3, Math.max(num(p, 'length') / 2 + 10.5, 1.05 * num(p, 'length') + 2) + 0.3],
+    // (landmark-primitives-278) the churchyard's spruces: the map's own
+    flora: woodenChurchFlora },
   // (navajo.ts, landmarks-271) the trading post: its stair 4.8 m off the block's -x end, the wareroom to +x, the porch and
   // pumps 7.3 m out of the front; the hogan: its corral 12.5 m out at +x
   tradingPost: { family: 'civic', defaults: { width: 16, depth: 11 },
@@ -457,7 +540,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   landingPad: { family: 'works', defaults: { radius: 24, lander: true },
     footprint: (p) => [num(p, 'radius') + 15, num(p, 'radius') + 6.7] },
   springPool: { family: 'park', defaults: { radius: 7.5, channels: 2 },
-    footprint: (p) => [num(p, 'radius') + (num(p, 'channels') > 0 ? 13.4 : 7.6), num(p, 'radius') + 1.6] },
+    footprint: (p) => [num(p, 'radius') + (num(p, 'channels') > 0 ? 13.4 : 7.6), num(p, 'radius') + 1.6],
+    // (landmark-primitives-278) its date palms and the café's shade trees: the map's palm and acacia slots
+    flora: (p) => springPoolFlora(num(p, 'radius')) },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

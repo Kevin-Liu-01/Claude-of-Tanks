@@ -1,7 +1,7 @@
 import { fisheryWharfClearance } from './fisheryWharfSite.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 import { sceneryClearances, type SceneryConfig } from './sceneryPlan.ts';
-import { landmarkClearances } from './landmarks/plan.ts';
+import { landmarkClearances, landmarkFloraStations, type LandmarkTreeStation } from './landmarks/plan.ts';
 import type { LandmarkPlacement } from './landmarks/types.ts';
 import { railSpurBerthClearances, type RailSpurConfig } from './railSpurs.ts';
 
@@ -58,6 +58,19 @@ export function placedStructureClearances(mapId: string | undefined,
     ...railSpurBerthClearances(field._layout?.railSpurs)];
 }
 
+/**
+ * (landmark-primitives-278) The trees a map's set pieces plant (landmarks/plan.ts flora), each with whether another
+ * piece's ground (its vegetation clearance) takes its seat. A piece's own ground is no keep-out to its own trees: the
+ * structure pass exempts them (vegetation.ts plantLandmarkFlora).
+ */
+export function landmarkFloraSites(landmarks: readonly LandmarkPlacement[] | null | undefined): Array<LandmarkTreeStation & { blocked: boolean }> {
+  const stations = landmarkFloraStations(landmarks);
+  if (!stations.length) return [];
+  const own = landmarks!.map((placement) => landmarkClearances([placement]));
+  return stations.map((station) => ({ ...station,
+    blocked: own.some((sites, k) => k !== station.owner && overlapsStructureClearance(sites, station.x, station.z, 0.5)) }));
+}
+
 export function overlapsStructureClearance(
   sites: readonly StructureClearance[], x: number, z: number, radius: number,
 ): boolean {
@@ -81,10 +94,12 @@ export function excludeStructureVegetation<T extends { x: number; z: number },
   O extends { treeIdx: number }, C>(
   trees: T[], obstacles: O[], concealers: C[],
   sites: readonly StructureClearance[], radiusOf: (tree: T) => number,
+  /** (landmark-primitives-278) trees the sites never take (a set piece's own trees on its ground) */
+  exempt?: (tree: T) => boolean,
 ): number {
   if (!sites.length) return 0;
   return excludeVegetation(trees,obstacles,concealers,
-    tree=>overlapsStructureClearance(sites,tree.x,tree.z,radiusOf(tree)));
+    tree=>!exempt?.(tree) && overlapsStructureClearance(sites,tree.x,tree.z,radiusOf(tree)));
 }
 
 interface TreeIndexReceipt {

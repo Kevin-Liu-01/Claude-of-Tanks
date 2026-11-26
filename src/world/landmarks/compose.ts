@@ -615,7 +615,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
     for (const piece of built.destructibles ?? []) {
       const [x, z] = toWorld(piece.x, piece.z);
-      ctx.addDestructible(piece.kind, x, ctx.heightField.getHeightAt(x, z), z, yaw + piece.yawDeg * Math.PI / 180, piece.scale ?? 1);
+      // (landmark-primitives-278) on its paving or deck where it names the step (`lift`), as a railing module stands on its wall
+      ctx.addDestructible(piece.kind, x, ctx.heightField.getHeightAt(x, z) + (piece.lift ?? 0), z, yaw + piece.yawDeg * Math.PI / 180, piece.scale ?? 1);
     }
     // its ground railings as the props' fence modules (kit.ts railing; pieces.ts), each on its dwarf wall's top
     for (const module of landmarkModulesOf(built.parts)) {
