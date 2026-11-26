@@ -19,7 +19,7 @@ const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), '
 {
   let out = '';
   try {
-    out = execFileSync('git', ['grep', '-n', '-I', '-F', 'hullThrusterPlumes.ts', '--', 'src'], { cwd: root, encoding: 'utf8' });
+    out = execFileSync('git', ['grep', '-n', '-I', '-F', 'hullThrusterPlumes.ts', '--', 'src/*.ts'], { cwd: root, encoding: 'utf8' });
   } catch (error) { if (error.status !== 1) throw error; }
   const statics = out.split('\n').filter(Boolean)
     .filter((line) => /\bfrom\s+['"][^'"]*hullThrusterPlumes\.ts['"]/.test(line) && !/\bimport\s+type\b/.test(line));
