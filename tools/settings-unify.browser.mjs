@@ -21,7 +21,10 @@
 //   node tools/with-capture-lock.mjs --lock-class=render -- node tools/settings-unify.browser.mjs --dist=dist --port=4299 \
 //     --out=<dir> [--label=after] [--root=<checkout>] [--sizes=1920x1080,390x844t,844x390t] [--mode=serve] [--record-only]
 // --record-only writes the report and stills and exits 0 whatever the checks (a "before" capture). --mode=serve runs a dev
-// server instead of a preview (a harness dry run).
+// server instead of a preview (a harness dry run). --url=<origin> uses a build already served (a read-only static server
+// over another checkout's dist, never written: the fix-back's pre-fix control).
+// Desktop also runs the fix-back's steps (3b: P from a locked battle; 6: a plain Esc and a kill-cam's Esc, in a second
+// battle).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -38,6 +41,7 @@ const label = arg('label', 'after');
 const mode = arg('mode', 'preview');
 const port = Number(arg('port', '4299'));
 const recordOnly = process.argv.includes('--record-only');
+const servedUrl = arg('url');
 const SIZES = (arg('sizes', '1920x1080,390x844t,844x390t')).split(',').map((s) => {
   const [w, h] = s.replace(/t$/, '').split('x').map(Number);
   return { name: s, w, h, touch: s.endsWith('t') };
@@ -119,10 +123,11 @@ const CONTROLS = {
   photoBar: '.cot-photo-bar', photoExit: '.cot-photo-bar [data-photo-exit]',
 };
 
-const report = { label, root, dist, mode, battle: BATTLE, startedAt: new Date().toISOString(), sizes: {}, errors: [] };
+const report = { label, root, dist: servedUrl ?? dist, mode, battle: BATTLE, startedAt: new Date().toISOString(), sizes: {}, errors: [] };
 let server = null, browser = null, failed = 0;
 try {
-  server = await startViteChild({ root, mode, outDir: dist, port, timeoutMs: 300_000 });
+  server = servedUrl ? { url: servedUrl, child: { pid: 'external' }, close: async () => {} }
+    : await startViteChild({ root, mode, outDir: dist, port, timeoutMs: 300_000 });
   console.log(`settings-unify: ${mode} ${server.url} (pid ${server.child.pid})`);
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 180_000, protocolTimeout: 600_000,
     defaultViewport: null, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] }),
@@ -283,6 +288,78 @@ try {
       if (!reached || !garage.shown) problem('leave: the Garage is not drawn after Leave battle');
       if (garage.settings) problem('leave: Settings is still open in the Garage');
     } else problem('leave: no Leave battle is drawn on the pause');
+
+    // 6. (settings-unify-278 fix-back) a second battle, desktop only: a plain Esc is an unclaimed unlock and opens Settings,
+    //    and a kill-cam replay keeps its unlock (its Esc is the replay's skip; Settings never opens over it), as before
+    if (!size.touch) {
+      await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, BATTLE);
+      await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 900_000, polling: 250 });
+      await wait(1500);
+      await page.mouse.click(size.w / 2, size.h / 2);
+      await wait(400);
+      const lockedBefore = await page.evaluate(() => !!document.pointerLockElement);
+      await page.keyboard.press('Escape');
+      await wait(300);
+      // the browser's own unlock on Esc, if headless Chrome kept the lock through the key: the page's exitPointerLock
+      // outside the input layer is no claimed release, exactly what the swallowed Esc is to the game
+      const how = await page.evaluate(() => {
+        if (!document.pointerLockElement) return 'esc unlocked';
+        document.exitPointerLock();
+        return 'esc kept the lock: unlocked as the browser does';
+      });
+      await wait(900);
+      const esc = await page.evaluate(drawn, [SETTINGS, CONTROLS]);
+      const escState = await page.evaluate(clock);
+      entry.steps.plainEsc = { lockedBefore, how, settingsOpen: escState.settingsOpen, resume: esc.controls.resume };
+      await still('8-plain-esc');
+      if (!lockedBefore) problem('plain esc: the battle did not hold the pointer');
+      if (!escState.settingsOpen || !esc.controls.resume?.hit) problem('plain esc: an unclaimed unlock does not open the paused Settings');
+      if (esc.controls.resume) { await page.mouse.click(esc.controls.resume.x, esc.controls.resume.y); await wait(1500); }
+      if (!(await page.evaluate(() => !!document.pointerLockElement))) { await page.mouse.click(size.w / 2, size.h / 2); await wait(400); }
+      // the kill-cam: the nearest enemy parked 120 m ahead fires at the player held on its last hit points (death-flow-shots)
+      const staged = await page.evaluate(() => {
+        const D = window.__DEBUG, g = D.game, p = g.player, hf = D.world.heightField;
+        const foe = g.tanks.find((t) => t.team !== p.team && !t.combat.destroyed && t.visual);
+        if (!foe) return null;
+        for (const t of g.tanks) { if (t === p) continue; t.aiCtl = null; t.input.fire = false; t.input.throttle = 0; t.state.speed = 0; }
+        const x = p.state.pos.x + Math.sin(p.state.yaw) * 120, z = p.state.pos.z + Math.cos(p.state.yaw) * 120;
+        foe.state.pos.set(x, hf.getHeightAt(x, z), z);
+        foe.state.yaw = Math.atan2(p.state.pos.x - x, p.state.pos.z - z);
+        foe.state.turretYaw = 0; foe.input.aimLocked = false;
+        const he = foe.spec.gun.shells.findIndex((shell) => /HE/.test(shell.type) && !shell.guided);
+        foe.input.shellSlot = he >= 0 ? he : 0;
+        for (const other of g.tanks) if (other !== foe && other.team !== p.team && !other.combat.destroyed) other.state.pos.x += 900;
+        p.input.throttle = 0; p.state.speed = 0;
+        return foe.id;
+      });
+      let dead = false;
+      for (let i = 0; staged && i < 80 && !dead; i++) {
+        dead = await page.evaluate((foeId) => {
+          const g = window.__DEBUG.game, p = g.player, foe = g.tankById.get(foeId);
+          if (p.combat.destroyed) return true;
+          p.combat.hp = Math.min(p.combat.hp, Math.max(1, p.combat.maxHp * 0.12));
+          if (!foe.combat.destroyed) foe.combat.hp = foe.combat.maxHp;
+          foe.input.aimPoint.set(p.state.pos.x, p.state.pos.y + 1.3, p.state.pos.z);
+          foe.input.fire = true;
+          return false;
+        }, staged);
+        if (!dead) await wait(250);
+      }
+      const live = await page.waitForFunction(() => !!window.__DEBUG.killcam?.isActive?.() || !!window.__DEBUG.killcam?.phase,
+        { timeout: 15_000, polling: 100 }).then(() => true, () => false);
+      await wait(1200);
+      const during = await page.evaluate(() => ({ phase: window.__DEBUG.killcam?.phase ?? null, locked: !!document.pointerLockElement }));
+      await page.keyboard.press('Escape');
+      await wait(200);
+      const unlockedByPage = await page.evaluate(() => { if (!document.pointerLockElement) return false; document.exitPointerLock(); return true; });
+      await wait(900);
+      const after = await page.evaluate(() => ({ phase: window.__DEBUG.killcam?.phase ?? null,
+        settingsOpen: !!window.__DEBUG?.settings?.isOpen?.(), settingsDrawn: !!document.querySelector('.cot-settings.open') }));
+      entry.steps.killcam = { staged: !!staged, dead, live, during, unlockedByPage, after };
+      await still('9-killcam-esc');
+      if (!dead || !live) problem(`killcam: no kill-cam replay to test (dead ${dead}, live ${live})`);
+      if (after.settingsOpen || after.settingsDrawn) problem('killcam: an Esc in the kill-cam replay opened Settings');
+    }
 
     if (entry.problems.length) failed++;
     console.log(`${size.name}: ${entry.problems.length ? `FAIL\n    ${entry.problems.join('\n    ')}` : 'pass'} (pause by ${how.how})`);
