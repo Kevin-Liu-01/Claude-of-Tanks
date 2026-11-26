@@ -19,6 +19,10 @@
 // - Only pockets a camera sees count: the outside air reaches them (a flood fill from the frame's border through air) and a
 //   straight sight line leaves through air in a typical camera direction; each connected pocket reports its plan area,
 //   volume, its mouth cells on the outside air and its depth from that mouth.
+// - The turret is measured seated on its own hull (279, turret-foot-seat; Main 2026-11-26): the hull's triangles near the
+//   turret, at the turret's rest yaw, join the turret's soup as walls and floors only (they never roof a pocket), so a
+//   turret-alone slot the hull closes (the MBT-70's) is not counted and a slot between the turret's lip and the deck under
+//   it (the M46's, after the 274 foot band) is.
 import * as THREE from 'three';
 import { meshTriangles, meshesUnder } from '../src/vehicles/gunHullClearance.test-support.mjs';
 
@@ -34,7 +38,7 @@ export const OWNER_RULES = Object.freeze({ turret: { floored: false, minY: 0.12 
 /** A raised turret roof stands this far over the turret's frame (its ring plane); the Leclerc's lowest false roof was 0.44. */
 export const RAISED_ROOF_Y = 0.25;
 /** The shrink-only ledger's classes (tools/roof-pocket-census.mjs --ledger): turret raised roofs (the Leclerc class), turret
- * base overhangs (bustle and ring undersides, measured without the hull) and the hull. */
+ * base overhangs (bustle and ring undersides, measured on the hull since 279) and the hull. */
 export const POCKET_CLASSES = Object.freeze(['turretRaisedCm2', 'turretBaseCm2', 'hullCm2']);
 
 /** One tank's pocket plan area per class (cm2) from its census pockets ({ owner, areaM2, roof }). */
@@ -47,9 +51,32 @@ export function pocketClasses(found) {
   };
 }
 
+/** How far past the turret's own box the hull it sits on is read into the turret's soup (m): a slot's wall (SLOT_M) and
+ *  the voxel frame's margin, so the hull reaches the frame's border round the turret and the outside air still comes in
+ *  over it. */
+const HULL_REACH_M = SLOT_M + 0.10;
+
+/** The triangles of `tri` (9 per triangle) whose box meets [lo, hi] (each [x, y, z]). */
+function trianglesIn(tri, lo, hi) {
+  const keep = [];
+  for (let t = 0; t < tri.length; t += 9) {
+    let inside = true;
+    for (let k = 0; k < 3 && inside; k++) {
+      const a = tri[t + k], b = tri[t + 3 + k], c = tri[t + 6 + k];
+      inside = Math.max(a, b, c) >= lo[k] && Math.min(a, b, c) <= hi[k];
+    }
+    if (inside) keep.push(t);
+  }
+  const out = new Float64Array(keep.length * 9);
+  keep.forEach((t, i) => out.set(tri.subarray(t, t + 9), i * 9));
+  return out;
+}
+
 /** The two rigid owners' triangle soups in their own frames, { tri, body }: the turret (gun at rest) and the hull without
- * its running gear, the armour body's own mesh (named for its owner: the armour-paint bucket) first, `body` triangles. */
-export function ownerSoups(tank) {
+ * its running gear, the armour body's own mesh (named for its owner: the armour-paint bucket) first, `body` triangles.
+ * The turret's soup ends with its hull's triangles round it (running gear too, at the turret's rest yaw; see the header),
+ * `seatedOn` of them; `{ turretWithHull: false }` leaves them out (the turret alone, as measured before 279). */
+export function ownerSoups(tank, { turretWithHull = true } = {}) {
   tank.root.updateMatrixWorld(true);
   const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
   const soup = (owner, meshes, frame) => {
@@ -58,10 +85,21 @@ export function ownerSoups(tank) {
     const tri = new Float64Array(a.length + b.length); tri.set(a); tri.set(b, a.length);
     // the owner's glass (sight and vision panes, `*Glass` meshes): a recess with glass in it is a window, not a false roof
     const glass = meshTriangles(meshes.filter((m) => GLASS.test(m.name)), inv).tri;
-    return { tri, body: a.length / 9, glass };
+    return { tri, body: a.length / 9, glass, seatedOn: 0 };
   };
   const out = {};
-  if (turret) out.turret = soup('turret', meshesUnder(turret), turret);
+  if (turret) {
+    out.turret = soup('turret', meshesUnder(turret), turret);
+    if (hull && turretWithHull) {
+      const own = out.turret.tri, lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < own.length; i += 3) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], own[i + k]); hi[k] = Math.max(hi[k], own[i + k]); }
+      for (let k = 0; k < 3; k++) { lo[k] -= HULL_REACH_M; hi[k] += HULL_REACH_M; }
+      const inv = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+      const seat = own.length ? trianglesIn(meshTriangles(meshesUnder(hull, [turret]), inv).tri, lo, hi) : new Float64Array(0);
+      const tri = new Float64Array(own.length + seat.length); tri.set(own); tri.set(seat, own.length);
+      out.turret = { ...out.turret, tri, seatedOn: seat.length / 9 };
+    }
+  }
   if (hull) {
     out.hull = soup('hull', meshesUnder(hull, turret ? [turret] : []).filter((m) => {
       for (let p = m; p && p !== hull; p = p.parent) if (RUNNING_GEAR.test(p.name || '')) return false;

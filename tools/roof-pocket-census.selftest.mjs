@@ -22,6 +22,8 @@ const S = ledger.settings;
 assert.ok(S.voxelM <= VOXEL_M && S.minAreaCm2 <= POCKET_MIN_AREA_M2 * 1e4 && S.minDepthCm <= POCKET_MIN_DEPTH_M * 100,
   `ledger standard ${JSON.stringify(S)}`);
 assert.ok(S.raisedRoofY === RAISED_ROOF_Y && S.toleranceCm2 <= 40 && S.toleranceFrac <= 0.02, `ledger classes and tolerance ${JSON.stringify(S)}`);
+// 279 (turret-foot-seat, Main 2026-11-26): the turret is measured seated on its own hull, never alone again
+assert.equal(S.turretWithHull, true, `ledger turret rows measured on the hull (${JSON.stringify(S)})`);
 
 const rows = ledger.tanks;
 const missing = ALL_TANK_IDS.filter((id) => !rows[id]);
@@ -57,9 +59,17 @@ for (const out of [slot, solid]) {
 }
 boxTris(solid, 0, 0, 0, 0.6, 0.40, 0.13);
 const caught = roofPockets(Float64Array.from(slot), OWNER_RULES.turret), closed = roofPockets(Float64Array.from(solid), OWNER_RULES.turret);
+// 279: the filler appended after the owner's body (as the hull joins the turret's soup, ownerSoups) still closes the slot,
+// and never roofs a pocket of its own
+const bodyTris = slot.length / 9, seated = [...slot];
+boxTris(seated, 0, 0, 0, 0.6, 0.40, 0.13);
+const onHull = roofPockets(Float64Array.from(seated), { ...OWNER_RULES.turret, body: bodyTris });
+assert.equal(onHull.length, 0, `the slot filled by the hull reads no pocket (${JSON.stringify(onHull.map((p) => p.box))})`);
+assert.equal(roofPockets(Float64Array.from(slot), { ...OWNER_RULES.turret, body: bodyTris - 12 }).length, 0,
+  'the same plate as the hull\'s (after the body: the last box) is no turret roof');
 assert.ok(caught.some((p) => p.box[2] >= -0.02 && p.box[5] <= 0.15 && p.areaM2 > 0.004), `a plate over a slot reads as a pocket (${JSON.stringify(caught.map((p) => p.box))})`);
 assert.equal(closed.length, 0, `the slot filled reads no pocket (${JSON.stringify(closed.map((p) => p.box))})`);
 
 console.log(`roof-pocket-census.selftest: ${ALL_TANK_IDS.length} rows current (turret raised ${total('turretRaisedCm2')} cm2, `
   + `turret base ${total('turretBaseCm2')} cm2, hull ${total('hullCm2')} cm2 fleet-wide, shrink-only); leclerc_s2 and ${clean} `
-  + 're-measured; the plate over a slot caught, the filled slot clear PASS');
+  + 're-measured on their hulls; the plate over a slot caught, the filled slot (turret or hull) clear, a hull plate no turret roof PASS');
