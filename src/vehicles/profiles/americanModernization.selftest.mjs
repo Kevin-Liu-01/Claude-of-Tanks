@@ -139,17 +139,52 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   tank.dispose();
 }
 
+// The gun finish read off what the gun draws (278): the M60s' owner-model builds (10-27/28) publish no finish marker
+// (9a73d33fa8 deleted the retired builders that set it), so every id is held to its drawn gun. A near-black surface on
+// rig_gun is only the bore's own stock (muzzleBore*), the mount's dark bucket, a sight's glass or a mantlet cover's
+// cloth; the old decorative bands were near-black sleeve rings in their own bucket (gunDark, 4ccbb29bfa), so a band
+// drawn again lands outside that set. The drawn check is the one mechanism for all five ids (Main's ruling, 278): the
+// Sheridans' markers are no longer read.
+const DARK_GUN_STOCK = /^(muzzleBore\w*|gunMountDark|gunMountGlass|gunMountCloth)$/;
+const darkSurfaces = (gun) => {
+  const out = [];
+  gun.traverse((object) => {
+    if (!object.isMesh) return;
+    for (const material of [].concat(object.material)) {
+      const hsl = {};
+      material?.color?.getHSL(hsl);
+      if (hsl.l < 0.06) out.push(object.name);
+    }
+  });
+  return out;
+};
+function gunFinishFaults(gun) {
+  const dark = darkSurfaces(gun);
+  const faults = dark.filter((name) => !DARK_GUN_STOCK.test(name)).map((name) => `near-black ${name} on the gun`);
+  if (!dark.includes('muzzleBoreShadowDisc')) faults.push('no dark muzzle bore');
+  return faults;
+}
+{
+  // control: a near-black sleeve ring planted on a gun is caught
+  const tank = make('m60a1');
+  const gun = tank.root.getObjectByName('rig_gun');
+  assert.deepEqual(gunFinishFaults(gun), [], 'm60a1: the control starts clean');
+  const ring = gun.getObjectByName('muzzleBoreShadowDisc').clone();
+  ring.name = 'gunDark';
+  gun.add(ring);
+  assert.deepEqual(gunFinishFaults(gun), ['near-black gunDark on the gun'], 'a planted black band is caught');
+  tank.dispose();
+}
 for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
   await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const gun = tank.root.getObjectByName('rig_gun');
-  const receipt = gun?.userData.americanGunFinishReceipt;
-  assert.equal(receipt?.decorativeBlackBands, 0,
-    `${id}: gun sleeves use painted relief instead of decorative black bands`);
-  assert.equal(receipt?.muzzleBoresDark, true,
-    `${id}: true muzzle openings remain dark after the band cleanup`);
-  assert.equal(receipt?.exposedWeaponsGunmetal, true,
-    `${id}: exposed secondary weapons retain their gunmetal finish`);
+  assert.deepEqual(gunFinishFaults(gun), [],
+    `${id}: gun sleeves use painted relief instead of decorative black bands, and the true muzzle opening stays dark`);
+  const finishes = fittings(tank.root, (object) => object.userData.machineGunFinish !== undefined)
+    .map((object) => object.userData.machineGunFinish);
+  assert.ok(finishes.every((finish) => finish === 'gunmetal'),
+    `${id}: exposed secondary weapons retain their gunmetal finish (${finishes.join(', ')})`);
   tank.dispose();
 }
 
