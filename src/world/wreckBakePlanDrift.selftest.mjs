@@ -24,20 +24,45 @@ const tool = fileURLToPath(new URL('../../tools/wreck-bake-plan.mjs', import.met
 // (wreck-bake-after-reveal-278) and each map's wreck facts module (src/world/wreckBakeFacts.ts): one row a map
 const VARIANTS = ['desktop', 'mobile', 'assault', 'assault-mobile', 'facts'];
 
-const { code, out, err } = await new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, [tool, '--check', '--maps=all', '--workers=4'], { stdio: ['ignore', 'pipe', 'pipe'] });
+// (integ 278) The check exits 1 on drift, but node also exits 1 when the tool throws: a child that fails rejects the
+// tool's top-level await before any row is printed. Read as drift, that crash came out as "nothing was recorded"
+// (actual [] against every map, 2026-11-26) with the tool's stderr thrown away. A drift exit prints its rows and a
+// DRIFTED among them; an exit 1 without one is the tool failing, and it fails here by name with the tool's stderr.
+function readCheck({ code, out, err }) {
+  const tail = err.split('\n').filter((l) => l && !/warning|\[wreck-bake-plan\] [a-z_]+@|^\s+at |^Node\.js v/i.test(l)).slice(-6).join(' | ');
+  assert.ok(code === 0 || code === 1, `the plan check exited ${code}: ${tail}`);
+  const rows = new Map();
+  for (const line of out.split('\n')) {
+    const match = /^([a-z_]+@[a-z-]+): (current|DRIFTED)(.*)$/.exec(line.trim());
+    if (match) rows.set(match[1], match[2] + match[3]);
+  }
+  assert.ok(rows.size > 0, `the plan check printed no rows (exit ${code}), so it failed before checking: ${tail}`);
+  const anyDrift = [...rows.values()].some((status) => status.startsWith('DRIFTED'));
+  assert.ok(code === 0 || anyDrift, `the plan check exited 1 after ${rows.size} row(s) with none DRIFTED, so it failed, not drifted: ${tail}`);
+  return rows;
+}
+// Controls on the read itself, before the run: a crash before any row and a crash after some rows each fail by name;
+// a drift exit and a clean exit read as rows.
+const crash = 'node:internal/modules/run_main:107\nError: the desktop child for airfield exited 1: boom\n    at ChildProcess.<anonymous>\nNode.js v24';
+assert.throws(() => readCheck({ code: 1, out: '', err: crash }), /printed no rows \(exit 1\).*the desktop child for airfield exited 1: boom/);
+assert.throws(() => readCheck({ code: 1, out: 'airfield@desktop: current\n', err: crash }), /with none DRIFTED.*exited 1: boom/);
+assert.equal(readCheck({ code: 1, out: 'airfield@desktop: DRIFTED (committed 1, the tree 2)\n', err: '' }).get('airfield@desktop'), 'DRIFTED (committed 1, the tree 2)');
+assert.equal(readCheck({ code: 0, out: 'airfield@facts: current\n', err: '' }).get('airfield@facts'), 'current');
+
+// (integ 278) --workers=N picks the recording children (default 4, as above). Main's ruling 2026-11-26: the four
+// children passed a 10 GiB tree cap (the header's measure was about 3.8 GB), so the receipt also runs at two; the
+// memory against this header is owed (TESTS-OWED).
+const workersArg = process.argv.find((arg) => arg.startsWith('--workers='));
+const workers = workersArg ? Number(workersArg.slice('--workers='.length)) : 4;
+assert.ok(Number.isInteger(workers) && workers >= 2, `--workers must be an integer of at least 2 (got ${workersArg})`);
+const rows = readCheck(await new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [tool, '--check', '--maps=all', `--workers=${workers}`], { stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '', stderr = '';
   child.stdout.on('data', (chunk) => { stdout += chunk; });
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   child.on('error', reject);
   child.on('close', (exit) => resolve({ code: exit, out: stdout, err: stderr }));
-});
-assert.ok(code === 0 || code === 1, `the plan check exited ${code}: ${err.split('\n').filter((l) => l && !/warning|\[wreck-bake-plan\] [a-z_]+@/i.test(l)).slice(-6).join(' | ')}`);
-const rows = new Map();
-for (const line of out.split('\n')) {
-  const match = /^([a-z_]+@[a-z-]+): (current|DRIFTED)(.*)$/.exec(line.trim());
-  if (match) rows.set(match[1], match[2] + match[3]);
-}
+}));
 const expected = MAP_IDS.flatMap((id) => VARIANTS.map((variant) => `${id}@${variant}`)).sort();
 assert.deepEqual([...rows.keys()].sort(), expected, 'every canonical map was recorded on both tiers and both terrains, and its facts checked');
 const drifted = [...rows.entries()].filter(([, status]) => !status.startsWith('current'));
