@@ -14,6 +14,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const PHONE_PAGE = 'src/pad/padPage.ts';
 /** The rooms Worker's pairing actor (cloudflare/rooms, server/rooms): no page imports it, so what it uses rides nowhere. */
 const SERVER_ONLY = new Set(['src/pad/padActor.ts']);
+/** The Field Manual's data-built chapters run in Node only (tools/docs-prerender.mjs; src/docs/SKILL.md: no page imports
+ *  them), so what they read off a pad module rides no page either (docs-refresh-279: the pairing limits the manual quotes). */
+const NODE_ONLY = (file) => file.startsWith('src/docs/chapters/');
 /** A module that may import a pad module: its source names one (`./padX.ts`, `../pad/padX.ts`). */
 const NAMES_PAD = /\/pad[A-Z]\w*\.ts['"]/;
 /** Type positions: erased, so a name there is no runtime use. */
@@ -78,7 +81,7 @@ function phoneRiders({ read = checkout, modules = SRC_MODULES } = {}) {
     }
     return by;
   };
-  const desktop = modules.filter((file) => !phone.has(file) && !SERVER_ONLY.has(file) && NAMES_PAD.test(read(file)));
+  const desktop = modules.filter((file) => !phone.has(file) && !SERVER_ONLY.has(file) && !NODE_ONLY(file) && NAMES_PAD.test(read(file)));
   const phoneUses = usesBy(phone);
   const deskUses = usesBy(desktop);
   const riders = [];

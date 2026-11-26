@@ -499,7 +499,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-videos-head p{margin:0;max-width:64ch;color:var(--ink-3)}
 .docs-video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:var(--s4)}
 .docs-video{display:grid;grid-template-rows:auto 1fr;margin:0;background:var(--surface-raised);box-shadow:var(--e2-flush)}
-.docs-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover}
+.docs-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover;object-position:50% 50%}
 .docs-video figcaption{display:grid;align-content:start;gap:6px;padding:var(--s3);border-top:1px solid var(--line)}
 .docs-video figcaption strong{color:var(--ink-1);font-size:max(var(--fs-floor-12),var(--fs-15))}
 .docs-video figcaption>span{color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.45}
