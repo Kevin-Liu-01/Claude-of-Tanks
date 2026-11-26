@@ -8,9 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { FINAL as DEFAULT_FINAL, KIT as DEFAULT_KIT, MOTION, TOOL, REPO } from './paths.mjs';
 import { CAST_NAMES } from './cast.mjs';
 import { getMapName } from '../../src/world/maps/mapIds.ts';
+import { renderProductStats } from '../../src/productStats.ts';
 const FINAL = resolve(process.argv[2] ?? DEFAULT_FINAL);
 const KIT = resolve(process.argv[3] ?? DEFAULT_KIT);
-const copy = JSON.parse(readFileSync(join(TOOL, 'kit-copy.json'), 'utf8'));
+// kit-copy.json states the fleet and battlefield totals as product-stat tokens (src/productStats.ts)
+const copy = JSON.parse(renderProductStats(readFileSync(join(TOOL, 'kit-copy.json'), 'utf8')));
 for (const d of ['films', 'frames50', 'key-art', 'posters', 'logos']) mkdirSync(join(KIT, d), { recursive: true });
 const rel = p => p.slice(KIT.length + 1);
 const jpg = (src, dst, w) => { if (!existsSync(dst)) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-vf', `scale=${w}:-2`, '-q:v', '3', dst]); return dst; };

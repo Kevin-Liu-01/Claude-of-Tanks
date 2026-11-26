@@ -1645,7 +1645,11 @@ receipt would have passed). The versioned rule compares the first error message 
 
 `src/productStats.ts` holds the boot-safe vehicle, battlefield, and mode totals plus
 the public repository summary. `npm run test:stats` checks those totals against the
-registered fleet, maps, and game modes. After changing the totals, run
+registered fleet, maps, and game modes, and fails on any vehicle, battlefield, or mode count
+a public surface states (the README and the docs it links, site pages, public text files,
+the manual's prerenders and search indexes, the UI catalogs in every locale, the media kit
+copy) that its source does not have. "N battle modes" must be the whole set; a bare
+"N modes" may be a sourced subset (Watch's `WATCH_RULES.modes`). After changing the totals, run
 `node tools/sync-product-summary.mjs` to refresh the README summary. Use its explicit
 `--github` option when publishing that summary to the repository About field.
 

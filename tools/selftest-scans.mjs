@@ -89,6 +89,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
   'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  // vehicle-count-278: every public surface's stated vehicle count against the roster
+  'src/productStats.selftest.mjs': lists('site/*.html', 'public/*.{txt,webmanifest,xml,json,html}', 'public/docs/*.txt',
+    'src/docs/*.json', 'src/ui/i18nCatalog.*.json'),
   // round 5 S2: every source, for a new listener of the two bus events a teammate ram raises (tank:ram, tank:impact)
   'src/sim/teammateRamListeners.selftest.mjs': lists('src/**/*.ts'),
   // (combined-arms-276) the id checks for a part's mode, in every source of the client and the server

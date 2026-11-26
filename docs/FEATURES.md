@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 311 production-visible and 311 local-development first-party procedural vehicles |
+| Playable fleet | 313 production-visible and 313 local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -562,7 +562,7 @@ decision records.
 
 ## Vehicle lighting and current manual references
 
-Every one of the 205 playable vehicles registers actual driving-light apertures.
+Every playable vehicle registers actual driving-light apertures.
 The auxiliary inventory is generated from the complete model, including inherited
 variants, so the Lights control follows working fittings rather than a name list.
 Blackout/service markers do not claim a driving-beam slot, and shared optics and
