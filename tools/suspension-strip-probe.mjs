@@ -522,7 +522,8 @@ async function stageCase(page, stage) {
     window.__stripRestGap = restGap;
     // the contact floor the sim seats the hull on, against the running gear's own (a rest scan that finds a surface
     // under the tracks lowers the seat floor up to 12 cm, and the road wheels then droop that much at rest)
-    const cg = p.contactGeom;
+    // (275: the spec's published receipt, the only contact the sim reads; hulls no longer carry the drawn one)
+    const cg = p.spec?.armor?.trackContact ?? null;
     const visualCg = p.visual.contactGeom ?? null;
     const contact = cg ? { bottomYM: cg.bottomYM, gearBottomYM: visualCg?.gearBottomYM ?? cg.gearBottomYM ?? null,
       halfLenM: cg.halfLenM, zCenterM: cg.zCenterM } : null;

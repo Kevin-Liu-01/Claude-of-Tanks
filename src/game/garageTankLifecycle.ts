@@ -40,9 +40,7 @@ interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
   team: string;
   isPlayer: boolean;
   rigidGear?: boolean;
-  contactGeom?: RuntimeValue;
   _destroyedAnnounced?: boolean;
-  _glbContactStampedVisual?: RuntimeValue;
   _openingRoute?: RuntimeValue;
   _lastImpactT?: number;
   _reloadEvent?: RuntimeValue;
@@ -154,9 +152,7 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
     entity.team = 'enemy';
     entity.isPlayer = false;
     entity.rigidGear = false;
-    entity.contactGeom = null;
     entity._destroyedAnnounced = false;
-    entity._glbContactStampedVisual = null;
     entity._openingRoute = null;
     entity._lastImpactT = -1;
     entity._reloadEvent = null;

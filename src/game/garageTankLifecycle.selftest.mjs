@@ -60,7 +60,6 @@ const makeEntity = (visual, isPlayer) => ({
   team: isPlayer ? 'player' : 'enemy',
   isPlayer,
   _destroyedAnnounced: true,
-  _glbContactStampedVisual: visual,
   _openingRoute: [[1, 2]],
   _lastImpactT: 12,
   _reloadEvent: { specId: 'old-battle' },
@@ -69,7 +68,6 @@ const makeEntity = (visual, isPlayer) => ({
   _fxAcc: 0.75,
   _dustTravelAcc: 4,
   rigidGear: true,
-  contactGeom: { halfLenM: 4 },
   input: {
     throttle: 1,
     steer: -1,
@@ -121,7 +119,6 @@ for (const entity of game.allTanks) {
   assert.equal(entity._soloRenderPose, null, 'interpolated battlefield pose is empty');
   assert.equal(entity._fxAcc, 0, 'per-actor FX cadence is reset');
   assert.equal(entity._dustTravelAcc, 0, 'dust travel state is reset');
-  assert.equal(entity.contactGeom, null, 'visual-dependent contact geometry is empty');
   assert.deepEqual(entity.input.aimPoint.xyz, [0, 0, 0], 'aim state is reset');
 }
 

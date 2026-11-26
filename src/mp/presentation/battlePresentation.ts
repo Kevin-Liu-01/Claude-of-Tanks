@@ -122,7 +122,6 @@ export interface MatchActor {
   specialAction: SpecialActionState;
   input: MatchActorInput;
   visual: TankVisual;
-  contactGeom: null;
   rigidGear: false;
   networkVisible: boolean;
   modeSpeedMultiplier: number;
@@ -699,8 +698,7 @@ export function createBattlePresentation({
       state, combat: createCombatState(spec), specialAction: createSpecialActionState(spec),
       input: { throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false, shellSlot: 0, aimPoint: state.aimPoint.clone() },
       visual,
-      // Authority uses the spec-derived contact footprint; the visual's measured one stays presentation-only.
-      contactGeom: null, rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
+      rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
       eraNames: eraPlateNames(spec.armor),
       _networkPoseReady: false, _authoritySlot: -1, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0, _reviveOwed: false,

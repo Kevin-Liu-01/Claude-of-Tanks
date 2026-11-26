@@ -7,6 +7,7 @@
  * the spec's armour, so the host, its Worker, the client's prediction, the torture matrix and solo play read the same
  * contact. Before, only solo play had it (from the drawn model); the rest ran a support line of 0.9 x the hull's length
  * centred on its root, 1.5-2.5 m longer than the real track, with no rising ends, no belly pan and the hull's full width.
+ * Since 275 it is the only footprint the simulation reads: solo play no longer stamps the drawn model's on its hulls.
  *
  * DOM-free and Node-runnable: data and arithmetic only.
  */
@@ -77,9 +78,10 @@ export function validatedContactGeometry(
   };
 }
 
+/** Any driver's spec: the receipt rides on its armour from finalizeCombatAnatomy, read where present. */
 interface PublishedContactSpec {
   readonly dims: ContactDims;
-  readonly armor?: { readonly trackContact?: TrackContactReceipt | null } | null;
+  readonly armor?: object | null;
 }
 
 const published = new WeakMap<object, { receipt: TrackContactReceipt; contact: MovementContactGeometry }>();
@@ -89,7 +91,7 @@ const published = new WeakMap<object, { receipt: TrackContactReceipt; contact: M
  * synthetic test hull, which keeps the solve's default support line (0.45 x the hull's length either side of its root).
  */
 export function publishedTrackContact(spec: PublishedContactSpec): MovementContactGeometry | null {
-  const receipt = spec?.armor?.trackContact;
+  const receipt = (spec?.armor as { readonly trackContact?: TrackContactReceipt | null } | null | undefined)?.trackContact;
   if (!receipt) return null;
   const cached = published.get(spec);
   if (cached && cached.receipt === receipt) return cached.contact;

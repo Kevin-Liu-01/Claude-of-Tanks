@@ -903,8 +903,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   of 2026-10-04: `sim/trackContact.ts`; the combat anatomy generator measures the built model's flat run, its centre,
   outer half width, lowest surface, belly pan and track-end rises, and `finalizeCombatAnatomy` puts it on the spec's
   armour), and the support solve reads it wherever it runs: the host, its Worker, the client's prediction, the torture
-  matrix and solo play alike. The host used to run 0.45 x the hull's length either side of its root at the hull's full
-  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only. The flat
+  matrix, the Studio and solo play alike. The host used to run 0.45 x the hull's length either side of its root at the hull's full
+  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only. Since 275 it
+  is the only footprint the simulation reads: no hull carries the drawn model's. Solo play used to stamp it, and judged a
+  step from the root plus its lowest surface, which its own obstacle solver did not. Every driver now hands the
+  structure support field the root, from which the spec's footprint measures the underside. The flat
   run is read off the drawn band (the coordinator's ruling of 2026-10-04 on item 1; `tankFactoryCore.ts`
   `bandGroundContact`, `drawnBandContact`): each band's loop, the same on every render tier, ends where the band has
   risen 4 cm off its ground run, carried through the band's transforms to the tank's frame and moved with the

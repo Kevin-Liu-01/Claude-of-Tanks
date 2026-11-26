@@ -93,9 +93,18 @@ assert.equal(field2.getHeightAt(72, 20), 12);
 // --- wiring: both sims ride the support field
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 // (the Drone mode parks a pilot's hull between the two, 2026-10-02: the order and arguments are what matter)
-assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y \+ \(entity\.contactGeom\?\.bottomYM \?\? 0\), hullSupportPose\(entity\.spec, entity\.state, _supportPose\)\);[\s\S]{0,700}?updateTank\(entity, support, SIM_DT, collider\.collide\);/,
+// (275) every driver judges a step from the hull's root, the line its obstacle solver's standing rule reads (the solo
+// step added the drawn model's lowest surface, so a step 1.4-4.3 cm in band was neither its floor nor its wall)
+assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y, hullSupportPose\(entity\.spec, entity\.state, _supportPose\)\);[\s\S]{0,700}?updateTank\(entity, support, SIM_DT, collider\.collide\);/,
   'the solo step selects the hull and rides the support field');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
 assert.match(authority, /structureSupport\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z, entity\.state\.pos\.y,\n\s*hullSupportPose\(entity\.spec, entity\.state, _supportPose\)\);[\s\S]{0,700}?updateTank\(entity, structureSupport, dt, collideMovingEntity\);/,
   'the authority rides the same field');
+// (275) the client's prediction and the Studio judge from the same line
+const prediction = readFileSync(new URL('../mp/presentation/predictionWorld.ts', import.meta.url), 'utf8');
+assert.match(prediction, /support\.beginHull\(state\.pos\.x, state\.pos\.z, state\.pos\.y, hullSupportPose\(ownSpec, state, supportPose\)\);/,
+  'the client\'s prediction judges a step from the root');
+const studio = readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
+assert.match(studio, /studioSupportBelly\(_deckCandidates, x, z, a\.state\.pos\.y, _deckScratch\)/,
+  'the Studio judges a step from the root');
 console.log('structureSupport.selftest: containment per primitive, standable tops, field composition and sim wiring');

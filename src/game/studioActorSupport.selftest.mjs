@@ -7,13 +7,19 @@ import {getSpec} from '../vehicles/specs.ts';
 import {createTankState,SIM_DT} from '../sim/movement.ts';
 import {conformStudioActor,resetStudioActorSupport} from './studioActorSupport.ts';
 
+// The hull's track contact, published on its spec as finalizeCombatAnatomy publishes it (sim/trackContact.ts): the only
+// footprint the movement solve reads (275; before, the actor carried a stamped copy, which this spec without a receipt
+// fell back to).
+const SPEC=(() => {
+  const base=getSpec('m1a1_abrams_hc');
+  return {...base,armor:{...base.armor,trackContact:{halfLenM:2.4,halfWidM:1.4,zCenterM:0,bottomYM:.18}}};
+})();
 function actor(x=0,z=0,yaw=0) {
-  const spec=getSpec('m1a1_abrams_hc');
+  const spec=SPEC;
   const state=createTankState(spec,new Vector3(x,0,z),yaw);
   state.speed=4; state.yawRate=.15; state.turretYaw=.6; state.gunPitch=.07;
   state.trackScroll.l=8; state.trackScroll.r=12;
-  return {spec,state,input:{throttle:0,steer:0,brake:true},combat:null,
-    contactGeom:{halfLenM:2.4,halfWidM:1.4,zCenterM:0,bottomYM:.18,gearBottomYM:.18}};
+  return {spec,state,input:{throttle:0,steer:0,brake:true},combat:null};
 }
 for(const rigid of [false,true])for(const height of [()=>0,(x,z)=>.1*x+.05*z]) {
   const a=actor(12,9,.35),s=a.state;

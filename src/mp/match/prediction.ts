@@ -16,7 +16,7 @@ import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
 import { restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
 import type {
-  MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
+  MovementCollisionResolver, MovementCombatState, MovementHeightField, MovementSpec,
   TankState,
 } from '../../sim/movement.ts';
 import type { AirSpinRules, RulesetPhysics } from '../../sim/matchRuleset.ts';
@@ -37,8 +37,6 @@ export interface PredictionWorld {
   heightField: MovementHeightField;
   /** Static obstacles, the playable bounds and disclosed hulls; null on an open field. */
   collide?: MovementCollisionResolver | null;
-  /** Keep null: authority uses the spec-derived contact footprint, not the visual's measured one. */
-  contactGeom?: MovementContactGeometry | null;
   /** The room's ruleset impact physics (landing rebound); absent = the whole-game block. */
   physics?: RulesetPhysics | null;
   /** The room's impact physics at the gravity the authority sends (Gravity mode's Earth rewrites the rebound). */
@@ -240,7 +238,7 @@ export class LocalPredictor {
   private readonly world: PredictionWorld;
   private readonly collide: MovementCollisionResolver | null;
   private readonly sim: {
-    spec: MovementSpec; state: TankState; combat: MovementCombatState; contactGeom: MovementContactGeometry | null;
+    spec: MovementSpec; state: TankState; combat: MovementCombatState;
     modeSpeedMultiplier: number; modeGravityScale: number; modePhysics: RulesetPhysics | null; rigidGear: boolean;
     modeAirSpin: AirSpinRules | null;
     input: { throttle: number; steer: number; brake: boolean; aimLocked: boolean; aimPoint: Vector3 };
@@ -290,7 +288,7 @@ export class LocalPredictor {
     const state = createTankState(spec, origin, 0);
     this.sim = {
       spec, state, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
-      contactGeom: world.contactGeom ?? null, modeSpeedMultiplier: 1, modeGravityScale: 1, modePhysics: world.physics ?? null, rigidGear: false,
+      modeSpeedMultiplier: 1, modeGravityScale: 1, modePhysics: world.physics ?? null, rigidGear: false,
       modeAirSpin: world.airSpin ?? null,
       input: { throttle: 0, steer: 0, brake: false, aimLocked: false, aimPoint: state.aimPoint.clone() },
     };
@@ -538,11 +536,11 @@ export class LocalPredictor {
   private restoreCheckpoint(viewer: ViewerState | null): void {
     if (!viewer || viewer.movementVersion === 0) { this.stats.checkpointsMissing++; return; }
     // the support cache is restored against the contact the solve reads (movement.ts trackContactOf: the published
-    // receipt, else the drawn one): against another object it never matched, and the replay re-solved the support the
-    // authority had cached, 1.4 mm off at rest and 5 mm through a landing (physics lane round 8)
+    // receipt): against another object it never matched, and the replay re-solved the support the authority had cached,
+    // 1.4 mm off at rest and 5 mm through a landing (physics lane round 8)
     const applied = applyMovementCheckpoint(this.sim.state, {
       version: viewer.movementVersion, values: viewer.movementValues, flags: viewer.movementFlags,
-    }, publishedTrackContact(this.sim.spec) ?? this.sim.contactGeom);
+    }, publishedTrackContact(this.sim.spec));
     if (applied) this.stats.checkpointsApplied++;
     else this.stats.checkpointsRejected++;
   }
