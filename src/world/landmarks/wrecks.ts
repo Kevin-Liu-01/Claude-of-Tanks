@@ -6,8 +6,8 @@
 // each half; the twin fins at the tips of a 32.6 m stabiliser) cannot lie whole on the 56 × 36 m hangar plot, so it lies
 // as the photographs show it, broken up and burnt: the forward fuselage with the flight deck and the wing's centre box
 // under the hangar's broken arch ribs, its nose toward the apron; the outer wing panels broken off along the plot's back,
-// one engine still on its pylon and others fallen; the twin-fin tail torn away and lying apart, its fins standing, the
-// flag on them; burnt skin, a door panel and debris spilling out onto the apron's edge (dressing, no collision). Paint
+// one engine still on its pylon and others fallen; the twin-fin tail torn away and lying apart, its fins standing (in
+// the livery's white: world-flags-278, no nation's flag in the world's dressing); burnt skin, a door panel and debris spilling out onto the apron's edge (dressing, no collision). Paint
 // from the Antonov livery — white over pale grey, the blue and yellow band — under the fire's soot.
 //
 // Round 2 (2026-10-06; gauntlet wave 154: "an unburnt, airbrushed toy under a few undersized arches with no hangar floor
@@ -316,7 +316,7 @@ function hangingSheet(sink: PartSink, top: Vec3, along: Vec3, out: Vec3, w: numb
  *   curled and melted at both rims; the flight deck's glazed windscreen stepped down over the nose and its visor; the high
  *   wing still on the hull, gone soft in the fire — its 88.4 m span drooping from the roots to the tips, burnt to its spars
  *   over the gap — with the six D-18T nacelles on their pylons, intakes forward, fan faces and spinners in them; the
- *   32.6 m stabiliser on the upswept tail cone with the twin fins at its tips, the flag on them.
+ *   32.6 m stabiliser on the upswept tail cone with the twin fins at its tips (white: no flag on them, world-flags-278).
  * - Burnt aluminium: one smooth gradient a vertex (burntAlu) — soot-black and grey-white ash where the fire burnt, bare
  *   metal at its margin, the livery past it streaked with soot; no rust anywhere.
  * - The hangar at its full size: a concrete floor with the fire's scorch field black round the airframe, ash, puddles of
@@ -693,8 +693,8 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
       }
     }
   }
-  // the tail: the stabiliser across the tail cone's top, the twin fins at its tips, the flag on their outer faces —
-  // soot streaked aft on them, the fire's least
+  // the tail: the stabiliser across the tail cone's top, the twin fins at its tips in the livery's white (world-flags-278:
+  // the flag their outer faces carried left off) — soot streaked aft on them, the fire's least
   {
     // (the connectivity sweep, 217: the stabiliser's root stood 18 cm over the tail cone's top) seated on it
     const sStab = -37.6, yStab = 8.5;
@@ -704,10 +704,7 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
       panel(sink, P, 16.3, 7.4, 4.6, 4.6, 0.1, (s, a) => burntAlu(WHITE, s - 60, a, 0.24), { n: 8, decor: true });
       const tip = at(P, [16.3, 0, 0]);
       const F = pose(-0.035, 0, Math.PI / 2, [tip[0], tip[1], tip[2] - 4.6 + 0.4]);
-      panel(sink, F, 9.6, 6.8, 4.0, 4.2, 0.09, (s, a) => {
-        const outer = Math.sin(a) * side > 0.2, flag = outer ? (s > 4.6 ? BLUE : s > 1.2 ? YELLOW : WHITE) : WHITE;
-        return burntAlu(flag, s - 80, a, 0.2);
-      }, { n: 8, decor: true });
+      panel(sink, F, 9.6, 6.8, 4.0, 4.2, 0.09, (s, a) => burntAlu(WHITE, s - 80, a, 0.2), { n: 8, decor: true });
     }
   }
 

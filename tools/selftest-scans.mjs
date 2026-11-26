@@ -120,6 +120,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
   // mp-fixes-277: every module, for a battlefield found by name instead of from its owner (src/world/activeWorld.ts)
   'src/world/activeWorld.selftest.mjs': lists('src/**/*.ts'),
+  // world-flags-278: the world's modules, for a flag colour or a nation's flag kept outside worldFlags.ts
+  'src/world/worldFlags.selftest.mjs': lists('src/world/**/*.ts'),
   // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
   'src/ui/battleNoticeCensus.selftest.mjs': lists('src/ui/**/*.ts', 'src/game/**/*.ts', 'src/app/**/*.ts'),

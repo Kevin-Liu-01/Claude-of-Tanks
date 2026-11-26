@@ -6,7 +6,7 @@
 //   merlons worn round (a few slumped to stumps), towers at two opposite corners, the gate raised in its own block with
 //   the machicolation box over the arch, the rooms along the inside of the walls under flat roofs, the timber water
 //   spouts, the steel water tank on its braced stand, sand drifted against the walls and fallen render at their feet,
-//   the flag of Jordan (black, white and green, the red chevron and its white seven-pointed star) stirring on the tower.
+//   a world flag (worldFlags.ts 'dune': no nation's flag) stirring on the tower.
 //
 // Drawn in its own frame (x across, y up, z out of the front) into the regional part sink, in the map kit's masonry and
 // render (no draw call of its own). The walls, rooms and towers are structure; the merlons are structure too (a shell
@@ -17,9 +17,9 @@ import { jeridFrame } from '../maps/regional/souqs.ts';
 import type { GroundsDestructible } from './grounds.ts';
 import { archSurround, archedFace, bar, extrude, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
+import { drawWorldFlag } from '../worldFlags.ts';
 
 const DOOR = rgb(0x5a4a38), IRON = rgb(0x2c2b2a);
-const FLAG_BLACK = rgb(0x1a1a1a), FLAG_WHITE = rgb(0xeeeeee), FLAG_GREEN = rgb(0x1f7a3a), FLAG_RED = rgb(0xb4232a);
 const SAND = rgb(0xcf9d68), MUD = rgb(0xa77d55);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -28,17 +28,6 @@ const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] 
 const clamp01 = (t: number): number => Math.min(1, Math.max(0, t));
 
 type UV = [number, number];
-/** Sutherland–Hodgman: the part of a convex polygon where the linear `f` is ≥ 0. */
-function clipPoly(poly: readonly UV[], f: (p: UV) => number): UV[] {
-  const out: UV[] = [];
-  for (let i = 0; i < poly.length; i++) {
-    const a = poly[i], b = poly[(i + 1) % poly.length], fa = f(a), fb = f(b);
-    if (fa >= 0) out.push(a);
-    if ((fa >= 0) !== (fb >= 0)) { const t = fa / (fa - fb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
-  }
-  return out;
-}
-
 /** A sheet through rows of points (each row the same count): row to row along +x, point to point over the profile. */
 function sheet(sink: PartSink, bucket: RegionalBucket, rows: ReadonlyArray<readonly Vec3[]>, opts: EmitOptions): void {
   for (let i = 0; i + 1 < rows.length; i++) for (let j = 0; j + 1 < rows[i].length; j++) {
@@ -266,41 +255,15 @@ export const desertFort: LandmarkBuilder = (ctx) => {
     const r = 0.55 + v() * 0.35;
     mound(sink, [x, foot, z], [1, 0, 0], [0, 0, 1], r, r * 0.8, 0.35 + v() * 0.35 - foot, MUD, { decor: true }, v() * 3, 5);
   }
-  // the flagpole on the tower and the flag of Jordan: black, white and green, the red chevron at the hoist reaching half
-  // the fly and the white seven-pointed star in it; a cloth (six panels) that ripples and droops toward the fly, both
-  // faces, the chevron and the star on the same surface as the stripes (dressing)
+  // the flagpole on the tower and its flag (world-flags-278, Kevin on the real flag it flew: "that flag looks too much
+  // like a real flag. fix"): the desert's world flag, a sand swallowtail with its terracotta band and umber annulet, in a cloth of six
+  // strips that ripples and droops toward the fly, both faces (dressing)
   const fx = tx + 1.4, fz = tz - 1.4, poleTop = TH + 7.5;
   bar(sink, 'structureMetal', [fx, TH, fz], [fx, poleTop, fz], 0.1, { colour: rgb(0xb8b8b0), decor: true });
   sink.cylinder('structureMetal', [fx, poleTop, fz], 'y', 0.16, 0.1, 6, { colour: rgb(0xc8b070), decor: true });
-  const fw = 3.6, fh = 1.8, fy = poleTop - 0.12 - fh, ph = v() * Math.PI * 2, cw = fw / 2;
-  const cloth = (x: number, y: number, lift = 0): Vec3 => {
-    const t = x / fw;
-    return [fx + 0.06 + x * 0.97, fy + y - 0.3 * t * t, fz + Math.sin(t * 4.4 + ph) * 0.2 * t + lift];
-  };
-  const panel = (poly: readonly UV[], colour: Rgb): void => {
-    if (poly.length < 3) return;
-    const front = poly.map(([x, y]) => cloth(x, y));
-    sink.polygon('structureMetal', front, { colour, decor: true });
-    sink.polygon('structureMetal', [...front].reverse(), { colour: shade(colour, 0.82), decor: true });
-  };
-  const upper = (x: number): number => fh / 2 + fh / 2 * (1 - x / cw), lower = (x: number): number => fh / 2 - fh / 2 * (1 - x / cw);
-  const bands: Array<[number, number, Rgb]> = [[fh * 2 / 3, fh, FLAG_BLACK], [fh / 3, fh * 2 / 3, FLAG_WHITE], [0, fh / 3, FLAG_GREEN]];
-  for (let k = 0; k < 6; k++) {
-    const a = k / 6 * fw, b = (k + 1) / 6 * fw;
-    for (const [y0, y1, colour] of bands) {
-      const cell: UV[] = [[a, y0], [b, y0], [b, y1], [a, y1]];
-      if (a >= cw - 1e-6) { panel(cell, colour); continue; }
-      panel(clipPoly(cell, (p) => p[1] - upper(p[0])), colour);
-      panel(clipPoly(cell, (p) => lower(p[0]) - p[1]), colour);
-    }
-    if (a < cw - 1e-6) panel(clipPoly(clipPoly([[a, 0], [b, 0], [b, fh], [a, fh]], (p) => upper(p[0]) - p[1]), (p) => p[1] - lower(p[0])), FLAG_RED);
-  }
-  const sx = cw * 0.34, sy = fh / 2, sr = fh * 0.12;
-  for (const s of [1, -1]) for (let i = 0; i < 14; i++) {
-    const r0 = i % 2 === 0 ? sr : sr * 0.48, r1 = i % 2 === 0 ? sr * 0.48 : sr, a0 = Math.PI / 2 + i * Math.PI / 7, a1 = a0 + Math.PI / 7;
-    const cc = cloth(sx, sy, s * 0.012), p0 = cloth(sx + Math.cos(a0) * r0, sy + Math.sin(a0) * r0, s * 0.012), p1 = cloth(sx + Math.cos(a1) * r1, sy + Math.sin(a1) * r1, s * 0.012);
-    sink.polygon('structureMetal', s > 0 ? [cc, p0, p1] : [cc, p1, p0], { colour: FLAG_WHITE, decor: true });
-  }
+  const fw = 3.6, fh = 1.8, fy = poleTop - 0.12 - fh, ph = v() * Math.PI * 2;
+  drawWorldFlag(sink, 'structureMetal', 'dune', (u, w, lift) => [fx + 0.06 + u * fw * 0.97, fy + w * fh - 0.3 * u * u, fz + Math.sin(u * 4.4 + ph) * 0.2 * u + lift],
+    { aspect: fw / fh, columns: 6 });
   // the stair up to the wall walk along the left range's court face, its flights' parapet; the shade over the court's
   // front corner with the patrol's stores under it (landmark-primitives-278: the souq's jerid shade standing free,
   // souqs.ts jeridFrame, its fronds hanging over the court; the stores the map's drums and a crate)
