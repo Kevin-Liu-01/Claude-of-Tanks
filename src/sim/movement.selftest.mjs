@@ -92,6 +92,9 @@ function makeField(fn, groundType = 'medium') {
   };
 }
 
+/** SPEC with a published track contact receipt (sim/trackContact.ts), the only footprint the solve reads (275). */
+const withTrackContact = (trackContact) => ({ ...SPEC, armor: { ...SPEC.armor, trackContact } });
+
 function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
   const pos = new Vector3(x, field.getHeightAt(x, z), z);
   return {
@@ -380,26 +383,20 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
 }
 
 // -------------------------------------------- 7. measured contact geometry --
-// Measured visual contact metadata must seat the actual track floor, not the
-// root origin, and a shorter sourced-model run must not perch on phantom
-// support beyond its rendered track ends.
+// A published contact receipt (the built model's, measured by the combat anatomy generator) must seat the actual track
+// floor, not the root origin, and a shorter run must not perch on phantom support beyond its track ends.
 {
   const field = makeField(() => 2.0);
-  const ent = makeEntity(field, 0, 0, 0);
-  ent.contactGeom = {
-    halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0.15, bottomYM: 0.12,
-  };
+  const contact = { halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0.15, bottomYM: 0.12 };
+  const ent = makeEntity(field, 0, 0, 0, withTrackContact(contact));
   run(ent, field, 180);
-  const renderedFloor = ent.state.pos.y + ent.contactGeom.bottomYM;
+  const renderedFloor = ent.state.pos.y + contact.bottomYM;
   assert(renderedFloor >= 2.0 && renderedFloor < 2.04,
     `measured floor seats on terrain (${renderedFloor.toFixed(3)} m)`);
 }
 {
   const field = makeField((x, z) => (z > 2.45 && z < 2.95 ? 0.45 : 0));
-  const ent = makeEntity(field, 0, 0, 0);
-  ent.contactGeom = {
-    halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0, bottomYM: 0,
-  };
+  const ent = makeEntity(field, 0, 0, 0, withTrackContact({ halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0, bottomYM: 0 }));
   run(ent, field, 240);
   assert(ent.state.pos.y < 0.06,
     `measured short track ignores phantom end support (height ${ent.state.pos.y.toFixed(3)} m)`);
@@ -1190,15 +1187,13 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   near(hydraulic.state.suspensionAimPitch, heldSuspensionPitch, 1e-12,
     'sight-independent gun hold also preserves the hydraulic suspension lay');
 
-  const wrapped = makeEntity(field);
-  wrapped.contactGeom = {
+  const wrapped = makeEntity(field, 0, 0, 0, withTrackContact({
     halfLenM: 2.2,
     halfWidM: 1.3,
     zCenterM: 0,
     bottomYM: 0,
-    gearBottomYM: 0,
     endRise: { dzM: 0.3, frontM: 0.22, rearM: 0.18 },
-  };
+  }));
   run(wrapped, field, 60);
   assert(Number.isFinite(wrapped.state.pos.y),
     'track-wrap support metadata resolves to a finite chassis pose');

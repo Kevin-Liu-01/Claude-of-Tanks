@@ -28,7 +28,7 @@ import { mulberry32 } from './stateCore.ts';
 import { botCamoRoll } from '../sim/camoPaint.ts';
 import type { BotCamo } from '../sim/camoPaint.ts';
 import type { CombatState } from '../sim/damage.ts';
-import type { MovementContactGeometry, TankState } from '../sim/movement.ts';
+import type { TankState } from '../sim/movement.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 
 type GroundSampler = (x: number, z: number) => number;
@@ -82,7 +82,6 @@ export interface RosterEntity {
   };
   visual: BattleVisual | null;
   rigidGear: boolean;
-  contactGeom: MovementContactGeometry | null;
   _camoSeed: number;
   ai: object | null;
   aiCtl: object | null;
@@ -143,9 +142,6 @@ function createRosterEntity(specId: string, id: string, seed: number, matchReinf
     // terrain-conformance layer. Some swapped visuals remain rigid; newer
     // ones publish __glbConformingGear after both layers are discovered.
     rigidGear: false,
-    // gameplay_feel r7: measured contact footprint (null = procedural
-    // spec fractions). Stamped with rigidGear — see measureContactGeom.
-    contactGeom: null,
     _camoSeed: seed,
     ai: null,
     aiCtl: null,

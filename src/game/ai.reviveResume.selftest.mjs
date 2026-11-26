@@ -11,7 +11,9 @@
 // bot's first tick on the new host read the drive from its spawn to its restored pose as one tick of progress, and the
 // hp it had lost before the keyframe as one burst (reproduced on 92f415e879: progressRate 766 and 812 m/s, burstDamage
 // 1755, no resume() call). Pins: [2] the restore hands each bot's brain its hull once, on the new authority's clock, and
-// the first tick reads no progress spike and no burst.
+// the first tick reads no progress spike and no burst. (275: the brain runs on the battle clock, the old host's gone on,
+// and takes up the old host's brain, its progress rate and burst included: the hand-back is on the battle clock, and the
+// first tick reads what the old host's own brain reads, where it read under 5 m/s, a progress rate begun afresh.)
 // Round 3 (B17): the solo battle's half moved to its own file and the fleet narrowed to the roster (this receipt took
 // 14 s of CPU, most of it the whole fleet's combat anatomy and the solo battle's import graph).
 import { Vector3 } from 'three';
@@ -95,7 +97,7 @@ console.log('[2] a migrated host hands each bot\'s brain the hull it restored');
     modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame }));
   const fresh = make({ tick, battleTimeMs });
   const calls = new Map(bots.map(({ playerId }) => [playerId, spyResume(fresh.authority.entityById.get(playerId))]));
-  const clockAtRestore = fresh.authority.timeS;
+  const clockAtRestore = fresh.authority.battleS;
   applyResumeState(fresh, sealed);
   fresh.authority.onMatchReady();
   fresh.authority.step({ dt: SIM_DT, inputs });
@@ -107,10 +109,11 @@ console.log('[2] a migrated host hands each bot\'s brain the hull it restored');
     const heard = calls.get(playerId);
     ok(driven > 60 && hull.combat.hp < hull.combat.maxHp * 0.5,
       `${playerId}: setup: restored ${driven.toFixed(0)} m from its spawn at ${(100 * hull.combat.hp / hull.combat.maxHp).toFixed(0)} % hp`);
-    ok(heard.length === 1 && heard[0] === clockAtRestore,
-      `${playerId}: the restore hands the brain its hull once, on the new authority's clock (${heard.length} call(s)${heard.length ? ` at ${heard[0]} s` : ''})`);
-    ok(info.progressRate < 5 && info.burstDamage === 0,
-      `${playerId}: the first tick on the new host reads no progress spike and no burst (progressRate ${info.progressRate} m/s, burstDamage ${info.burstDamage}; the old host's own brain ${was.progressRate} m/s, ${was.burstDamage})`);
+    ok(heard.length === 1 && heard[0] === clockAtRestore && clockAtRestore > 9,
+      `${playerId}: the restore hands the brain its hull once, on the battle clock (${heard.length} call(s)${heard.length ? ` at ${heard[0]} s` : ''})`);
+    ok(Math.abs(info.progressRate - was.progressRate) < 0.01 && info.burstDamage === 0 && was.burstDamage === 0,
+      `${playerId}: the first tick on the new host reads no progress spike and no burst: what the old host's own brain reads (progressRate `
+        + `${info.progressRate} m/s, burstDamage ${info.burstDamage}; the old host's own brain ${was.progressRate} m/s, ${was.burstDamage})`);
   }
   old.stop();
   fresh.stop();

@@ -148,7 +148,6 @@ import {
 import { getLocale } from '../ui/i18n.ts';
 import { pathForLocale, resolveLocalePath } from '../ui/localeRouting.ts';
 import type {
-  MovementContactGeometry,
   MovementEntity,
   MovementHeightField,
   MovementInput,
@@ -362,7 +361,6 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   };
   combat: null;
   rigidGear: boolean;
-  contactGeom: MovementContactGeometry | null;
   pose: {
     x: number;
     z: number;
@@ -1140,7 +1138,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const x = a.state.pos.x, z = a.state.pos.z;
     _deckCandidates.length = 0;
     world.queryObstacles(x - 4, z - 4, x + 4, z + 4, _deckCandidates);
-    a.support.beginHull(x, z, studioSupportBelly(_deckCandidates, x, z, a.state.pos.y + (a.contactGeom?.bottomYM ?? 0), _deckScratch));
+    a.support.beginHull(x, z, studioSupportBelly(_deckCandidates, x, z, a.state.pos.y, _deckScratch));
     return a.support;
   }
 
@@ -1359,10 +1357,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       },
       combat: null,
       rigidGear: false,
-      contactGeom: visual.contactGeom ? {
-        ...visual.contactGeom,
-        endRise: visual.contactGeom.endRise ? { ...visual.contactGeom.endRise } : null,
-      } : null,
       pose: {
         x, z,
         facingDeg: cfg.facingDeg || 0,

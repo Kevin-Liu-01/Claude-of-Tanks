@@ -723,7 +723,7 @@ function replayStateFrom(entity) {
   state._ride.supportY = NaN;
   const checkpoint = captureMovementPredictionState(source);
   // (the support cache against the contact the solve reads, as the client's prediction restores it)
-  if (checkpoint) applyMovementPredictionState(state, checkpoint, publishedTrackContact(entity.spec) ?? entity.contactGeom ?? null);
+  if (checkpoint) applyMovementPredictionState(state, checkpoint, publishedTrackContact(entity.spec));
   state._groundType = source._groundType;
   return state;
 }
@@ -912,7 +912,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         replayState = replayStateFrom(subject);
         predictionWorld.anchor?.(replayState);
         const sim = { spec: subject.spec, state: replayState, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
-          contactGeom: null, modeSpeedMultiplier: subject.modeSpeedMultiplier ?? 1, modeGravityScale: subject.modeGravityScale ?? 1,
+          modeSpeedMultiplier: subject.modeSpeedMultiplier ?? 1, modeGravityScale: subject.modeGravityScale ?? 1,
           modePhysics: predictionWorld.physicsAt?.(subject.modeGravityScale ?? 1) ?? predictionWorld.physics ?? null, rigidGear: false,
           input: { throttle: 0, steer: 0, brake: false, aimLocked: true, aimPoint: replayState.aimPoint.clone() } };
         for (let k = 0; k < REPLAY_TICKS; k++) {

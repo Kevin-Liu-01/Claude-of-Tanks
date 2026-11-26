@@ -48,7 +48,7 @@ interface PlayerInputEntity {
 
 /** A bot's controller (game/ai.ts createAI): it writes the hull's controls each tick. */
 interface BotController {
-  update(dt: number, timeS: number): void;
+  update(dt: number, timeS: number, hullTimeS?: number): void;
 }
 
 /** The driver's event sink: the authority's emit, or the page's bus. */
@@ -111,9 +111,10 @@ export function applyPlayerInput(
  * (a wreck's zeroes its drive and trigger), and the slot it asks for is taken when stocked, else the request falls back
  * to the slot held, so a bot holds the same ammunition every tick on either driver whether or not it fires.
  */
-export function applyBotInput(entity: PlayerInputEntity & { aiCtl?: BotController | null }, dt: number, timeS: number): void {
+export function applyBotInput(entity: PlayerInputEntity & { aiCtl?: BotController | null }, dt: number, timeS: number, hullTimeS: number = timeS): void {
   if (!entity.combat.destroyed) entity.input.aimLocked = false;
-  entity.aiCtl?.update(dt, timeS);
+  // the brain's clock, and the hull's own where a driver runs them apart (the authority: the battle's and its own; 275)
+  entity.aiCtl?.update(dt, timeS, hullTimeS);
   const shellSlot = rackSlot(entity, entity.input.shellSlot);
   if (shellSlot === entity.combat.shellSlot) return;
   if (!selectShell(entity.combat, shellSlot, entity.spec)) entity.input.shellSlot = entity.combat.shellSlot;

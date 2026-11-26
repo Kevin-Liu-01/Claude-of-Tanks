@@ -251,7 +251,7 @@ function createRecordedPresentation(options, record) {
     setVisibility() {},
     predictionWorld() {
       const heightField = options.worldCollision?.heightField;
-      return heightField ? { heightField, collide: null, contactGeom: null } : null;
+      return heightField ? { heightField, collide: null } : null;
     },
     mount() {},
     unmount() {},

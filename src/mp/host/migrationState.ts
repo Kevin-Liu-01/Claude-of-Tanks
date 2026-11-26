@@ -18,10 +18,11 @@ import { ENTITY_FLAGS, INPUT_MARGIN_UNKNOWN, MAX_EVENT_JSON_BYTES, NO_TICK, PHAS
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent } from '../wire/quantize.ts';
-import { bytesToBase64Url } from '../match/base64url.ts';
+import { base64UrlToBytes, bytesToBase64Url } from '../match/base64url.ts';
 import { applyAuthorityRow } from '../match/authorityRow.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
-import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import type { HostBootConfig, HostResumeState, MigrationBrain, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import type { BotBrain } from '../../game/ai.ts';
 import type { RoomMatchStatus } from '../room/protocol.ts';
 import { FIRE_BASE_TICKS, selectShell, strainModule, tickModuleRepairs, tickReload } from '../../sim/damage.ts';
 import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
@@ -29,6 +30,7 @@ import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import { airSpinRateOf, encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
+import { spoolFromRest } from '../../sim/movement.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -56,6 +58,8 @@ function cryptoOf(injected?: CryptoLike): CryptoLike {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const IV_BYTES = 12;
+/** AES-GCM's tag on a sealed blob (sealMigrationBlob). */
+const SEAL_TAG_BYTES = 16;
 /** base64 of this many bytes plus the JSON envelope stays under MAX_EVENT_JSON_BYTES (4096). */
 export const MIGRATION_CHUNK_BYTES = 2400;
 const MAX_CHUNKS = MIGRATION_MAX_CHUNKS;
@@ -95,6 +99,8 @@ export interface MigrationKeyframe {
   battleTimeMs: number;
   /** The authority clock (s) at `tick` (authority.timeS; battleTimeMs also counts a resumed host's offset). */
   timeS?: number;
+  /** The battle clock (s) at `tick`, exact (275; authority.battleS): the float sum a new host's battle clock goes on from. */
+  battleS?: number;
   phase: 'countdown' | 'playing' | 'ended';
   frame: SnapshotFrame;
   entities: MigrationEntityExtras[];
@@ -102,13 +108,39 @@ export interface MigrationKeyframe {
 
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
+  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, ...(typeof keyframe.battleS === 'number' ? { battleS: keyframe.battleS } : {}), phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
     ...(keyframe.battleId ? { battleId: keyframe.battleId } : {}) }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
   out.set(packet, 4);
   out.set(extras, 4 + packet.byteLength);
   return out;
+}
+
+/**
+ * The keyframe's bytes within what MIGRATION_MAX_CHUNKS chunks carry once sealed (275). A blob over it is no keyframe at all
+ * (chunkMigrationBlob throws, and the seats keep an older one), and a full field's (42 hulls, CTF, a minute in) came near
+ * it with the brains. Past it the keyframe sheds the 275 parts, the brains first, then the integrators, then the
+ * spotting, each a part a new host does without as gaps 274's did; `shed` names what went.
+ */
+export function encodeMigrationKeyframeWithin(keyframe: MigrationKeyframe): { bytes: Uint8Array; shed: string[] } {
+  const limit = MIGRATION_CHUNK_BYTES * MAX_CHUNKS - IV_BYTES - SEAL_TAG_BYTES;
+  const shed: string[] = [];
+  let current = keyframe;
+  let bytes = encodeMigrationKeyframe(current);
+  const cuts: [string, (k: MigrationKeyframe) => MigrationKeyframe][] = [
+    ['brains', (k) => ({ ...k, entities: k.entities.map(({ brain: _brain, ...rest }) => rest) })],
+    ['integrators', (k) => ({ ...k, entities: k.entities.map(({ integrator: _integrator, ...rest }) => rest) })],
+    ['spotting', (k) => (k.modeCheckpoint?.host ? { ...k, modeCheckpoint: { ...k.modeCheckpoint, host: { ...k.modeCheckpoint.host,
+      spotting: { stream: null, records: [] } } } } : k)],
+  ];
+  for (const [what, cut] of cuts) {
+    if (bytes.byteLength <= limit) break;
+    current = cut(current);
+    shed.push(what);
+    bytes = encodeMigrationKeyframe(current);
+  }
+  return { bytes, shed };
 }
 
 function isExtras(value: unknown): value is MigrationEntityExtras {
@@ -133,6 +165,7 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
   return {
     tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities,
     ...(typeof extras.timeS === 'number' && Number.isFinite(extras.timeS) && extras.timeS >= 0 ? { timeS: extras.timeS } : {}),
+    ...(typeof extras.battleS === 'number' && Number.isFinite(extras.battleS) && extras.battleS >= 0 ? { battleS: extras.battleS } : {}),
     ...(extras.modeCheckpoint ? { modeCheckpoint: extras.modeCheckpoint as NewModeCheckpoint } : {}),
     ...(isBattleId(extras.battleId) && extras.battleId !== 0 ? { battleId: extras.battleId } : {}),
   };
@@ -356,14 +389,21 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
     .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   const trickled = horde && horde.queued > 0 ? arrived().slice(0, horde.queued) : [];
   const reinforced = line ? arrived() : [];
+  // the hostiles a due respawn stood up (275): a Horde arrival refused and due again, an Infected arrival on its ring
+  const ringRisen = [...revived].filter((id) => hostile.has(id) && pending.has(id))
+    .map((id): [string, number] => [id, known.told.get(id) ?? known.frameAtS]).filter(([, atS]) => Number.isFinite(atS))
+    .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   return {
     ...checkpoint,
+    // a revive clears the bot's last pushed target (matchModes.ts reviveAtSpawn), so its next route push is made (275)
+    ...(checkpoint.host ? { host: { ...checkpoint.host, targets: checkpoint.host.targets.filter(([id]) => !revived.has(id)) } } : {}),
     mode: {
       ...mode,
       respawns: mode.respawns.filter(([id]) => !revived.has(id)),
       destroyed: mode.destroyed.map(([id, dead]): [string, boolean] => [id, dead && !revived.has(id)]),
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
+      ...(ringRisen.length ? { ringRisen } : {}),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
         ...(line && (line.attack || reinforced.length) ? { line: { ...line, ...(line.attack ? { attack: line.attack.filter(([id]) => !revived.has(id)) } : {}),
           ...(reinforced.length ? { reinforced } : {}) } } : {}),
@@ -656,6 +696,23 @@ function restoreRowCounts(combat: CombatState, row: EntityRow, spec: DamageTankS
 }
 
 /**
+ * The old host's battle clock at a newer frame (275): the keyframe's exact clock (MigrationKeyframe.battleS) with one
+ * step's dt (TICK_MS / 1000, the fixed-step loop's) added a step, as the old host's authority added them, for each step
+ * between the two frames' milliseconds. Absent (an older keyframe, or a step count the frame's milliseconds do not bear
+ * out): the frame's milliseconds stand alone.
+ */
+function battleClockAt(keyframe: MigrationKeyframe, battleTimeMs: number): number | undefined {
+  const from = keyframe.battleS;
+  if (typeof from !== 'number' || !Number.isFinite(from) || !Number.isFinite(battleTimeMs)) return undefined;
+  const dt = TICK_MS / 1000;
+  const steps = Math.round((battleTimeMs - keyframe.battleTimeMs) / TICK_MS);
+  if (steps < 0 || steps > 60 * 60) return undefined;
+  let clock = from;
+  for (let k = 0; k < steps; k++) clock += dt;
+  return Math.abs(clock * 1000 - battleTimeMs) <= 2 ? clock : undefined;
+}
+
+/**
  * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
  * own newest frame — that frame's rows overlaid on the keyframe's, hidden entities keeping the keyframe's — and every
  * prop it was told fell. A `world_prop_destroyed` reaches a peer the tick its prop falls; the destroyed list rides the
@@ -700,6 +757,7 @@ export function resumeStateFromRetained(
       destruction: (latest.destruction ?? []).length >= (state.frame.destruction ?? []).length ? latest.destruction : state.frame.destruction };
     state.tick = latest.tick;
     state.battleTimeMs = latest.meta.battleTimeMs;
+    state.battleS = battleClockAt(keyframe, latest.meta.battleTimeMs);
     baseTick = latest.tick;
     baseAtMs = latestAtMs;
   }
@@ -842,6 +900,13 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
   const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
+  // every hull where its row has it before the mode is restored (275): the restore's replays read where the hulls stand
+  // (an arrival's ring round the humans, a hunt's plans, a line slot's placement), which were the construction's spawns;
+  // the rows are applied again in full below
+  for (const row of state.frame.entities) {
+    const entity = actor.entityForWireId(row.entityId);
+    if (entity) applyAuthorityRow(entity.state, row);
+  }
   if (state.modeCheckpoint) {
     // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1), and what the
     // seat was told of the window between them (gaps 274 fix-up r1)
@@ -852,6 +917,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
+  const toldRevives = new Map(state.respawnTicks ?? []);
   for (const row of state.frame.entities) {
     const entity = actor.entityForWireId(row.entityId);
     if (!entity) { skipped++; continue; }
@@ -919,7 +985,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // a bot's brain takes the hull as restored (round 3 M3): the fresh actor built it at the spawn, so what it measures
     // between its own ticks (the ground covered, the hp it last saw) would read the move to this row and the hp lost
     // before the keyframe as one tick of its own; resume() restarts them from the hull, as a revive's hand-back does
-    entity.aiCtl?.resume?.(actor.authority.timeS);
+    entity.aiCtl?.resume?.(actor.authority.battleS);
     // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the integrator's spool and turn
     // rate, which the row does not carry (a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
     // route, cursor, mission and watchdog; game/ai.ts takeDrive), which a fresh brain planned afresh and re-planned
@@ -950,8 +1016,29 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
       }
       if (lifeGoesOn && extras.flipUsed === true) tank._flipUsed = true;
+      // the rest of the integrator no row carries (275): the gun's bloom first among them. From a row newer than the
+      // keyframe only the bloom and the turret's slew (round 1 review): the last speed, the rollover's clock and the
+      // attitude's parts belong with the pose, and the newer row's reseat already stands them there
+      const integrator = lifeGoesOn && extras.integrator ? unpackIntegrator(extras.integrator) : null;
+      if (integrator) restoreIntegrator(tank, gapS > 0 ? { bloom: integrator.bloom, slew: integrator.slew } : integrator);
+      // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
+      // revive it was told, as a fresh life's does under an open throttle (275; a spool at rest pulled away 0.3 s behind)
+      const roseAt = toldRevives.get(entity.id);
+      if (revived.has(entity.id) && !combat.destroyed && roseAt !== undefined && row.tick > roseAt && Math.abs(tank.speed) > 0.05) {
+        tank._spool = spoolFromRest(row.tick - roseAt);
+      }
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
+      // the brain itself (275): its traffic with its allies, its detours, windows, timers' phases, aim and search, as the
+      // old host's had them (a new brain began at its construction's, and Frontline attackers parted 112 m in 14 s). A
+      // hull that rose since the capture, or lies down, takes it too and then the revive's hand-back, as the old host's
+      // own revive handed the brain its new life (resume() keeps what outlives a life: the windows on match time, the
+      // counts, the aim's draw)
+      if (extras.brain) {
+        const brain = unpackBrain(extras.brain);
+        if (brain) entity.aiCtl?.takeBrain?.(brain, lifeGoesOn ? gapS : 0, (id) => actor.authority.entityById.get(id));
+        if (!lifeGoesOn) entity.aiCtl?.resume?.(actor.authority.battleS);
+      }
     }
     restored++;
   }
@@ -994,6 +1081,170 @@ function freshAuxiliaryOf(spec: { id?: string }): AuxiliaryState {
 function auxiliaryAtRest(entry: NonNullable<MigrationEntityExtras['auxiliary']>, fresh: AuxiliaryState): boolean {
   return entry.lights === fresh.lights && entry.gunOn === fresh.gunOn && entry.smokeCharges === fresh.smokeCharges && entry.smokeReadyIn === 0 &&
     entry.shots === fresh.shots && entry.nextShotIn === 0 && (entry.stations ?? []).every(([shots, nextShotIn]) => shots === 0 && nextShotIn === 0);
+}
+
+// ---- the 275 parts' wire form: exact doubles, packed (a full field's keyframe came to 61 of the 64 chunks as JSON text)
+/** Doubles as base64url of their little-endian Float64 bytes, exact; null for a text that is not one. */
+function packDoubles(values: readonly number[], head: readonly number[] = []): string {
+  const bytes = new Uint8Array(head.length + values.length * 8);
+  bytes.set(head, 0);
+  const view = new DataView(bytes.buffer);
+  values.forEach((value, i) => view.setFloat64(head.length + i * 8, value, true));
+  return bytesToBase64Url(bytes);
+}
+function unpackBytes(text: unknown): Uint8Array | null {
+  return typeof text === 'string' && text.length <= 64 * 1024 ? base64UrlToBytes(text) : null;
+}
+function doublesOf(bytes: Uint8Array, from: number): number[] | null {
+  if ((bytes.length - from) % 8 || from > bytes.length) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Array.from({ length: (bytes.length - from) / 8 }, (_, i) => view.getFloat64(from + i * 8, true));
+}
+/** A BotBrain number as the record holds it: a non-finite one by its name (game/ai.ts decodeNumber reads either). */
+const brainNumber = (value: number): number | string => (Number.isFinite(value) ? value : String(value));
+const brainValue = (value: number | string): number => (typeof value === 'number' ? value : Number(value));
+/** BotBrain with its numbers and ability clocks packed (MigrationBrain). A record whose pairs are not (index, number) packs
+ *  them as they are, and the restore refuses it as it would. */
+function packBrain(brain: BotBrain): MigrationBrain {
+  const { n, a, ...rest } = brain;
+  const out: MigrationBrain = { ...rest };
+  if (n?.length) {
+    let top = -1;
+    for (let i = 0; i < n.length; i += 2) top = Math.max(top, Number(n[i]));
+    const maskBytes = Math.ceil((top + 1) / 8);
+    const head = new Array<number>(2 + maskBytes).fill(0);
+    head[0] = maskBytes & 0xff; head[1] = maskBytes >> 8;
+    const byIndex = new Map<number, number>();
+    for (let i = 0; i < n.length; i += 2) byIndex.set(Number(n[i]), brainValue(n[i + 1]!));
+    const values: number[] = [];
+    for (const index of [...byIndex.keys()].sort((x, y) => x - y)) { head[2 + (index >> 3)]! |= 1 << (index & 7); values.push(byIndex.get(index)!); }
+    out.n = packDoubles(values, head);
+  }
+  if (a?.length) out.a = packDoubles(a.map(brainValue));
+  return out;
+}
+/** MigrationBrain back to BotBrain for game/ai.ts takeBrain (which validates it); null for a packing that is not one. */
+function unpackBrain(packed: MigrationBrain | null | undefined): BotBrain | null {
+  if (!packed || typeof packed !== 'object') return null;
+  const { n, a, ...rest } = packed;
+  const brain: BotBrain = { ...rest } as BotBrain;
+  if (n !== undefined) {
+    const bytes = unpackBytes(n);
+    if (!bytes || bytes.length < 2) return null;
+    const maskBytes = bytes[0]! | (bytes[1]! << 8);
+    const values = bytes.length >= 2 + maskBytes ? doublesOf(bytes, 2 + maskBytes) : null;
+    if (!values) return null;
+    const pairs: (number | string)[] = [];
+    let next = 0;
+    for (let index = 0; index < maskBytes * 8; index++) {
+      if (!(bytes[2 + (index >> 3)]! & (1 << (index & 7)))) continue;
+      if (next >= values.length) return null;
+      pairs.push(index, brainNumber(values[next++]!));
+    }
+    if (next !== values.length) return null;
+    brain.n = pairs;
+  }
+  if (a !== undefined) {
+    const bytes = unpackBytes(a), values = bytes ? doublesOf(bytes, 0) : null;
+    if (!values) return null;
+    brain.a = values.map(brainNumber);
+  }
+  return brain;
+}
+/** The integrator's parts in their packed order, each its count of doubles (rollover: elapsed, expired as 0 or 1, countdown). */
+const INTEGRATOR_PARTS = [['bloom', 1], ['slew', 1], ['prevSpeed', 1], ['rollover', 3], ['hold', 4], ['seat', 4], ['susp', 8], ['spring', 6]] as const;
+type IntegratorParts = { bloom?: number; slew?: number; prevSpeed?: number; rollover?: [elapsedS: number, expired: boolean, countdownS: number];
+  hold?: number[]; seat?: number[]; susp?: number[]; spring?: number[] };
+/** The integrator's parts packed (MigrationEntityExtras.integrator): a byte naming the parts present, then their doubles. */
+function packIntegrator(parts: IntegratorParts): string {
+  let mask = 0;
+  const values: number[] = [];
+  INTEGRATOR_PARTS.forEach(([key], bit) => {
+    const part = parts[key];
+    if (part === undefined) return;
+    mask |= 1 << bit;
+    if (key === 'rollover') { const [elapsed, expired, countdown] = part as [number, boolean, number]; values.push(elapsed, expired ? 1 : 0, countdown); }
+    else if (Array.isArray(part)) values.push(...part as number[]);
+    else values.push(part as number);
+  });
+  return packDoubles(values, [mask]);
+}
+/** The packed integrator's parts, or null for a packing that is not one. */
+function unpackIntegrator(text: unknown): IntegratorParts | null {
+  const bytes = unpackBytes(text);
+  const values = bytes && bytes.length >= 1 ? doublesOf(bytes, 1) : null;
+  if (!bytes || !values) return null;
+  const mask = bytes[0]!, parts: IntegratorParts = {};
+  let next = 0;
+  for (const [bit, [key, count]] of INTEGRATOR_PARTS.entries()) {
+    if (!(mask & (1 << bit))) continue;
+    const slice = values.slice(next, next + count);
+    next += count;
+    if (slice.length !== count) return null;
+    if (key === 'rollover') parts.rollover = [slice[0]!, slice[1] === 1, slice[2]!];
+    else if (count === 1) (parts as Record<string, number>)[key] = slice[0]!;
+    else (parts as Record<string, number[]>)[key] = slice;
+  }
+  return next === values.length ? parts : null;
+}
+
+/** The integrator parts a migration carries (MigrationEntityExtras.integrator; 275), as the hull's state holds them. */
+interface IntegratorState {
+  bloomF: number; turretYawRate: number; _prevSpeed: number; rolloverCountdownS: number;
+  _rollover: { elapsedS: number; expired: boolean };
+  _hold: { p: number; r: number; pv: number; rv: number }; _holdSeat: { p: number; r: number; pv: number; rv: number };
+  _susp: { p: number; r: number; pv: number; rv: number; d: number; dv: number; c: number; cv: number };
+  _spring: { pitch: number; roll: number; pitchV: number; rollV: number; recoilVX: number; recoilVZ: number };
+}
+/** A gun's bloom within this of 1 is at rest (MigrationEntityExtras.integrator): at most a 0.1 % wider cone (a fresh host's own guns settle
+ *  to 1.0002 in their construction steps), against a keyframe entry for every hull. */
+const BLOOM_REST = 1e-3;
+const ROCK_KEYS = ['p', 'r', 'pv', 'rv'] as const;
+const SUSP_KEYS = ['p', 'r', 'pv', 'rv', 'd', 'dv', 'c', 'cv'] as const;
+const SPRING_KEYS = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
+/** A live hull's integrator state no row carries (275), each part absent at rest (a fresh host's own); null: all at rest. */
+function captureIntegrator(state: IntegratorState): IntegratorParts | null {
+  const out: IntegratorParts = {};
+  const finite = (value: number): boolean => typeof value === 'number' && Number.isFinite(value);
+  // (a bloom decays toward 1 and never quite reaches it: within BLOOM_REST of it, a gun is at rest, as a fresh host builds it)
+  if (finite(state.bloomF) && state.bloomF > 1 + BLOOM_REST) out.bloom = state.bloomF;
+  if (finite(state.turretYawRate) && state.turretYawRate !== 0) out.slew = state.turretYawRate;
+  if (finite(state._prevSpeed) && state._prevSpeed !== 0) out.prevSpeed = state._prevSpeed;
+  const rollover = state._rollover;
+  if (rollover && (rollover.elapsedS || rollover.expired || state.rolloverCountdownS) && finite(rollover.elapsedS) && finite(state.rolloverCountdownS)) {
+    out.rollover = [rollover.elapsedS, rollover.expired === true, state.rolloverCountdownS];
+  }
+  const part = <K extends string>(from: Record<K, number> | undefined, keys: readonly K[]): number[] | null => {
+    if (!from) return null;
+    const values = keys.map((key) => from[key]);
+    return values.every(finite) && values.some((value) => value !== 0) ? values : null;
+  };
+  const hold = part(state._hold, ROCK_KEYS), seat = part(state._holdSeat, ROCK_KEYS);
+  const susp = part(state._susp, SUSP_KEYS), spring = part(state._spring, SPRING_KEYS);
+  if (hold) out.hold = hold;
+  if (seat) out.seat = seat;
+  if (susp) out.susp = susp;
+  if (spring) out.spring = spring;
+  return Object.keys(out).length ? out : null;
+}
+/** The old host's integrator taken up (275): each part that is one, onto the fresh hull's own state objects. */
+function restoreIntegrator(state: IntegratorState, carried: IntegratorParts): void {
+  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+  if (finite(carried.bloom) && carried.bloom >= 1) state.bloomF = carried.bloom;
+  if (finite(carried.slew)) state.turretYawRate = carried.slew;
+  if (finite(carried.prevSpeed)) state._prevSpeed = carried.prevSpeed;
+  const rollover = carried.rollover;
+  if (Array.isArray(rollover) && finite(rollover[0]) && finite(rollover[2]) && state._rollover) {
+    state._rollover.elapsedS = rollover[0]; state._rollover.expired = rollover[1] === true; state.rolloverCountdownS = rollover[2];
+  }
+  const part = <K extends string>(to: Record<K, number> | undefined, keys: readonly K[], values: unknown): void => {
+    if (!to || !Array.isArray(values) || values.length !== keys.length || !values.every(finite)) return;
+    keys.forEach((key, i) => { to[key] = values[i] as number; });
+  };
+  part(state._hold, ROCK_KEYS, carried.hold);
+  part(state._holdSeat, ROCK_KEYS, carried.seat);
+  part(state._susp, SUSP_KEYS, carried.susp);
+  part(state._spring, SPRING_KEYS, carried.spring);
 }
 
 /**
@@ -1062,12 +1313,17 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
       if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
       if (entity.state._flipUsed === true) extras.flipUsed = true;
+      const integrator = captureIntegrator(entity.state);
+      if (integrator) extras.integrator = packIntegrator(integrator);
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {
       const streams = entity.aiCtl?.captureStreams?.();
       if (streams && (streams[0] !== null || streams[1] !== null)) extras.streams = streams;
     }
+    // a bot's brain, live or down (275; game/ai.ts BotBrain): absent where it is the construction's
+    const brain = entity.aiCtl?.captureBrain?.();
+    if (brain) extras.brain = packBrain(brain);
     out.push(extras);
   }
   return out;
