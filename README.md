@@ -48,7 +48,7 @@ Every picture here is captured in the game engine. The four above come from the
   Gravity Mode, cooperative Endless Horde, Gun Game, Juggernaut, Infected, Realistic, AC-130, or Air Support, solo against
   bots or in a room. The six-operation campaign runs on Frontline Assault, and the Proving Ground is a practice range with
   no enemies and no clock. Shells travel, armor has geometry, components break, structures fall, and wrecks stay.
-- **Watch:** start a watched battle in any of 13 modes (all but AC-130) on any map. Fly a spectator drone, ride along in
+- **Watch:** start a watched battle in any mode but AC-130 on any map. Fly a spectator drone, ride along in
   any tank, or take a living bot's seat and fight from there.
 - **Couch:** put a QR code on the big screen and up to eight phones join one local battle, each driving its own tank. The
   lobby opens on one Shared view; Split gives each player a pane and is marked Experimental.
