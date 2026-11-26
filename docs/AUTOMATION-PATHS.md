@@ -62,6 +62,7 @@ loading-budget-probe and solo-cold-import-cover-probe serve the checkout they ru
 - `tools/gate-audio-probe.mjs`: the entry gate and the audio it unlocks
 - `tools/loading-budget-probe.mjs`: with `--transitions`, the player-facing fades
 - `tools/nav-timeline.mjs`: the navigation timings with every veil and fade
+- `tools/sniper-zoom-drawn.browser.selftest.mjs`: the sight a player enters by Shift, wheel, right button or SCOPE, drawn at its zoom (`capture` takes the harness path, as the capture tool did)
 - `tools/solo-cold-import-cover-probe.mjs`: the cold solo entry's cover
 <!-- /census -->
 
@@ -128,6 +129,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/render-stability-audit.mjs`
 - `tools/second-solo-battle.browser.selftest.mjs`
 - `tools/shadow-render-truth.mjs`
+- `tools/sniper-zoom-drawn.browser.selftest.mjs`
 - `tools/suspension-strip-probe.mjs`
 - `tools/track-system-audit.mjs`
 - `tools/training-layout-probe.mjs`
