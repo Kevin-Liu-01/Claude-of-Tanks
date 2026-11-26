@@ -47,10 +47,12 @@ export function decodeAuxiliaryRoofGuns(bodies: readonly RoofGunBody[], rows: re
   return out;
 }
 
-/** The compact form of a roof-gun table; throws when the form would not give every record back exactly. */
-export function encodeAuxiliaryRoofGuns(table: Readonly<Record<string, RoofGun>>): { bodies: RoofGunBody[]; rows: RoofGunRow[] } {
-  const bodies: RoofGunBody[] = [];
+/** The compact form of a roof-gun table; throws when the form would not give every record back exactly. `seed`: bodies
+ *  already written elsewhere (the inventory reuses this table's), kept first and in order, so rows may point at them. */
+export function encodeAuxiliaryRoofGuns(table: Readonly<Record<string, RoofGun>>, seed: readonly RoofGunBody[] = []): { bodies: RoofGunBody[]; rows: RoofGunRow[] } {
+  const bodies: RoofGunBody[] = [...seed];
   const index = new Map<string, number>();
+  seed.forEach((body, at) => { if (!index.has(JSON.stringify(body))) index.set(JSON.stringify(body), at); });
   const rows: RoofGunRow[] = [];
   for (const [id, gun] of Object.entries(table)) {
     const keys = Object.keys(gun);
@@ -91,5 +93,7 @@ export function auxiliaryRoofGunsModuleSource(table: Readonly<Record<string, Roo
     + 'import { decodeAuxiliaryRoofGuns } from \'./auxiliaryRoofGunsCodec.ts\';\n'
     + `const BODIES: readonly RoofGunBody[] = ${JSON.stringify(bodies)};\n`
     + `const ROWS: readonly RoofGunRow[] = ${JSON.stringify(rows)};\n`
-    + 'export const AUXILIARY_ROOF_GUNS = decodeAuxiliaryRoofGuns(BODIES, ROWS);\n';
+    + 'export const AUXILIARY_ROOF_GUNS = decodeAuxiliaryRoofGuns(BODIES, ROWS);\n'
+    + '// The inventory\'s rows point at these bodies too (auxiliaryInventoryCodec.ts): each is written once.\n'
+    + 'export const AUXILIARY_ROOF_GUN_BODIES = BODIES;\n';
 }
