@@ -177,10 +177,10 @@ export default {
     // before and only what would stand on a piece's ground is left out); off the zone discs, the pads and the field works.
     landmarks: [
       // the station: the module train with the search radar at its east end, the fuel caches by its doors
-      // (landmark-lanes-278) 14 m east of where it stood on the Turbo Ball lane into alpha's goal, the radar 7 m south of
-      // its east end, off the east zone's disc
+      // (landmark-lanes-278) 14 m east of where it stood on the Turbo Ball lane into alpha's goal, the radar due south of
+      // its east end, past the east zone's 30 m placement footprint (at (20, -36) it moved zone 3 8 m off its apron)
       { kind: 'moduleTrain', x: -16, z: -30, yawDeg: 0, params: { modules: 8 }, ground: 'veto', name: 'the module train' },
-      { kind: 'radomeTower', x: 20, z: -36, yawDeg: 0, ground: 'veto', name: 'the search radar' },
+      { kind: 'radomeTower', x: 14, z: -46, yawDeg: 0, ground: 'veto', name: 'the search radar' },
       { kind: 'drumCache', x: 40, z: -62, yawDeg: 0, ground: 'veto', name: 'the station fuel cache' },
       // the POL tank farms: the main farm south-east of the melt pan, the motor pool's and the north berm's tanks
       { kind: 'fuelTankFarm', x: 110, z: -150, yawDeg: 0, ground: 'veto', name: 'the POL tank farm' },
