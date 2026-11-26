@@ -145,7 +145,20 @@ Solo Battle hover/focus/touch is an explicit preload boundary. It resolves the
 deterministic next solo roster without mutating the battle ordinal, transfers
 only those profile families, starts the selected map promise, and decodes the
 shipped deterministic FX atlases. Private/LAN/Ranked intent must not start that
-solo warm: it transfers the selected network handoff instead. Once a room is
+solo warm: it transfers the selected network handoff instead.
+
+Passive Garage dwell transfers code, never constructs. Once the Garage is ready
+and quiet (1.5 s, then an idle callback), `src/app/battleChunkPrefetch.ts`
+adds a low-priority `modulepreload` for each chunk the game document lists, two
+at a time, at the `idle` fetch class (`src/engine/fetchClasses.ts`). The build
+writes that list (`tools/viteBattleChunkPrefetch.ts`): the static-import
+closure of the solo entry's dynamic imports (world and kits, effects, HUD, warm,
+start and client runtimes), less the boot graph, as an inert JSON script the
+CSP does not hash. A modulepreload fetches and compiles and evaluates nothing,
+so the press's own imports still run every module. Roster and map-specific
+chunks stay out. Before it, a cold press at 4 Mbps waited about 6 s at 2 %
+"Surveying terrain" for 2.8 MB of these chunks with the main thread idle
+(entry-cpu-278). Save-Data skips it. Once a room is
 joined, its exact roster families transfer concurrently and a fixed host map
 may build behind the garage-lull gate; Random remains unresolved until start.
 

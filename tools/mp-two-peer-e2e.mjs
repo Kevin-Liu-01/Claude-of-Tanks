@@ -112,6 +112,20 @@ const soloSpec = argValue('spec', 'm1a2_abrams_sepv3');
 // every presented frame (rAF deltas: the longest, how many passed 50 ms) and reading the wrecks' swap after the reveal
 // (world/deferredWrecks.ts: when each bake's hulks swapped in, and the swap's own longest main-thread step)
 const postRevealS = Number(argValue('post-reveal-s', 0));
+// --cpu-profile (entry-cpu-278): the solo page's renderer threads sampled through a Chrome trace (V8's sampler, the
+// DevTools Performance panel's method; CDP Profiler.start under 4x throttling froze the page) from the entry press to the
+// reveal, written to <out>/entry-trace.json with entry-profile.json (the loader rows and the page clock of a user-timing
+// mark at the start), so tools/entry-cpu-profile.mjs can name the self-time costs by loader stage. Profiling adds
+// overhead: never read a profiled run's reveal as a timing. --reveal-timeout-s bounds the wait for the reveal (300).
+const cpuProfile = process.argv.includes('--cpu-profile');
+const revealTimeoutMs = Number(argValue('reveal-timeout-s', 300)) * 1000;
+// --chrome=<executable>: the solo page's browser binary (a fresh temporary profile either way). V8's sampler deadlocked
+// Chrome for Testing 151's renderer in native code at a random point of the entry (entry-cpu-278: four runs, at 1x and 4x)
+const chromePath = argValue('chrome', '');
+// --garage-dwell-s=<s> (entry-cpu-278): the solo page sits in its ready Garage this long before the press, as a player does
+// (0 by default: the press at once, the worst case). The report records what the Garage's battle chunk preload had done
+// by the press (window.__BATTLE_CHUNK_PREFETCH, src/app/battleChunkPrefetch.ts).
+const garageDwellS = Number(argValue('garage-dwell-s', 0));
 const RELAY_VARIABLES = 'COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN (the rooms Worker\'s Cloudflare TURN key), '
   + 'or COT_TURN_URLS and COT_TURN_SHARED_SECRET (a coturn), or COT_TURN_ICE_SERVERS_JSON';
 // (the launcher asks every page for the harness path, which installs __DEBUG and __MULTIPLAYER_V2; ?debug=1 would add the
@@ -377,7 +391,7 @@ async function recordFetches(page) {
 /** One cold page's solo entry, throttled as the joiner, measured as the joiner's (the --solo mode). */
 async function runSolo(origin) {
   const browser = await launchGuardedBrowser(puppeteer, {
-    headless: !headful, protocolTimeout: 360_000,
+    headless: !headful, protocolTimeout: 360_000, ...(chromePath ? { executablePath: chromePath } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],
   });
@@ -400,17 +414,84 @@ async function runSolo(origin) {
   const openedAt = elapsedMs();
   await bootPage(page, `${origin}/?${BOOT_QUERY}`, 'S');
   const out = { map: hostMaps[0], spec: soloSpec, bootMs: elapsedMs() - openedAt, bytesAtBoot: await bytes() };
+  if (garageDwellS > 0) {
+    // the Garage's frames over the dwell (rAF deltas): the preload must leave them as they were
+    out.garageFrames = await page.evaluate((ms) => new Promise((done) => {
+      const deltas = [];
+      const start = performance.now();
+      let last = start;
+      const tick = (now) => {
+        deltas.push(now - last);
+        last = now;
+        if (now - start < ms) requestAnimationFrame(tick);
+        else {
+          const sorted = [...deltas].sort((a, b) => a - b);
+          done({ frames: deltas.length, longestMs: +sorted.at(-1).toFixed(1), p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
+            over50: deltas.filter((delta) => delta > 50).length });
+        }
+      };
+      requestAnimationFrame(tick);
+    }), garageDwellS * 1000);
+    out.garageDwellS = garageDwellS;
+    out.bytesAtPress = await bytes();
+  }
+  out.chunkPrefetchAtPress = await page.evaluate(() => (window.__BATTLE_CHUNK_PREFETCH ? { ...window.__BATTLE_CHUNK_PREFETCH } : null)).catch(() => null);
   const mark = await page.evaluate(() => (window.__MP2_LOAD ?? []).length);
   const startedAt = elapsedMs();
   net.entryAt = Date.now();
+  let profileClock = null;
+  if (cpuProfile) {
+    await page.tracing.start({ categories: ['-*', 'disabled-by-default-v8.cpu_profiler', 'blink.user_timing', '__metadata'] });
+    profileClock = await page.evaluate(() => performance.mark('cot-entry-profile').startTime);
+  }
   await page.evaluate((specId, mapId) => {
     window.__SOLO = { done: false, error: null };
     Promise.resolve(window.__DEBUG.beginSoloBattle({ specId, mapId, randomRoster: false }))
       .then(() => { window.__SOLO.done = true; }, (error) => { window.__SOLO.done = true; window.__SOLO.error = String(error?.message ?? error).slice(0, 300); });
   }, soloSpec, hostMaps[0]);
-  await waitFor(page, readinessExpression('battleRevealed'), 'S solo battle revealed', 300_000);
+  // (a profiled run logs the loader's state every 5 s: where a page the sampler slows sits, or 'no answer' if frozen)
+  // Two silent beats in a row: the main thread is held. The debugger's pause interrupts running JavaScript (a native wait
+  // does not answer it), and the paused call stack goes to <out>/hang-stack.json: where the page is held.
+  let silentBeats = 0;
+  let hangProbe = null;
+  const probeHang = async () => {
+    const paused = new Promise((done) => net.session.once('Debugger.paused', done));
+    await net.session.send('Debugger.enable');
+    await net.session.send('Debugger.pause');
+    const event = await Promise.race([paused, sleep(20_000).then(() => null)]);
+    const frames = (event?.callFrames ?? []).map((frame) => ({ functionName: frame.functionName, url: frame.url,
+      line: frame.location.lineNumber, column: frame.location.columnNumber }));
+    const asyncFrames = [];
+    for (let trace = event?.asyncStackTrace; trace && asyncFrames.length < 60; trace = trace.parent) {
+      for (const frame of trace.callFrames) asyncFrames.push({ description: trace.description ?? '', functionName: frame.functionName,
+        url: frame.url, line: frame.lineNumber, column: frame.columnNumber });
+    }
+    await writeFile(join(outputDir, 'hang-stack.json'), JSON.stringify({ atS: (elapsedMs() - startedAt) / 1000, answered: !!event,
+      reason: event?.reason ?? null, frames, asyncFrames }, null, 1));
+    log(`hang probe: ${event ? `paused in ${frames.slice(0, 3).map((frame) => `${frame.functionName || '(anon)'}@${frame.url.split('/').pop()}:${frame.line}:${frame.column}`).join(' < ')}` : 'no pause in 20 s (a native wait)'}`);
+  };
+  const heartbeat = cpuProfile ? setInterval(() => {
+    Promise.race([
+      page.evaluate(() => { const rows = window.__MP2_LOAD ?? []; const row = rows[rows.length - 1]; return row ? `${row.pct} ${row.stage}` : '(no rows)'; }),
+      sleep(4000).then(() => null),
+    ]).then((state) => {
+      silentBeats = state === null ? silentBeats + 1 : 0;
+      log(`heartbeat ${((elapsedMs() - startedAt) / 1000).toFixed(0)} s: ${state ?? 'no answer in 4 s'}`);
+      if (silentBeats >= 2 && !hangProbe) hangProbe = probeHang().catch((error) => log(`hang probe failed: ${error.message}`));
+    }, () => {});
+  }, 5000) : null;
+  try {
+    await waitFor(page, readinessExpression('battleRevealed'), 'S solo battle revealed', revealTimeoutMs);
+  } finally { if (heartbeat) clearInterval(heartbeat); }
   out.revealMs = elapsedMs() - startedAt;
   net.revealAt = Date.now();
+  if (cpuProfile) {
+    const revealClock = await page.evaluate(() => performance.now());
+    const trace = await page.tracing.stop();
+    await writeFile(join(outputDir, 'entry-trace.json'), trace);
+    const loadRows = (await page.evaluate((from) => (window.__MP2_LOAD ?? []).slice(from), mark)) ?? [];
+    await writeFile(join(outputDir, 'entry-profile.json'), JSON.stringify({ profileClock, revealClock, markName: 'cot-entry-profile', loadRows }, null, 1));
+  }
   out.bytesAtReveal = await bytes();
   const rows = (await page.evaluate((from) => (window.__MP2_LOAD ?? []).slice(from), mark)) ?? [];
   const t0 = rows[0]?.atMs ?? 0;
@@ -424,6 +505,9 @@ async function runSolo(origin) {
   }
   out.longestHold = longest;
   out.trace = await page.evaluate(() => (window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null)).catch(() => null);
+  // (entry-cpu-278) the deployment warm's own record: its steps' ms (camo, programs, allied and enemy visuals, terrain,
+  // effects, shadows, forward and post passes), the 'warm' stage of the trace in parts
+  out.deploymentWarm = await page.evaluate(() => (window.__BATTLE_COUNTDOWN_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_COUNTDOWN_WARM)) : null)).catch(() => null);
   // the terrain photographs against the reveal: one that lands after it swaps in on screen (the pop)
   out.terrainPhotos = await page.evaluate(terrainPhotoTimes).catch(() => null);
   out.propsBuild = await page.evaluate(propsBuildDetail).catch(() => null);

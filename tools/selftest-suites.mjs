@@ -986,6 +986,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-freshness.selftest.mjs',
     'tools/media-page-unique.selftest.mjs',
     'tools/viteGameEntryMeta.selftest.mjs',
+    // entry-cpu-278: the game document lists the solo battle's chunks for the Garage's idle preload
+    'tools/viteBattleChunkPrefetch.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     // 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite
     'tools/media-r5/fleet-coverage.selftest.mjs',
@@ -1643,6 +1645,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/frameScheduler.selftest.mjs',
     // entry-bytes-278: decor and idle fetches held behind the entry's own while the loading card is up
     'src/engine/fetchClasses.selftest.mjs',
+    // entry-cpu-278: the solo battle's chunks preloaded behind the ready Garage at the idle class
+    'src/app/battleChunkPrefetch.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
     'src/workerCalls.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
