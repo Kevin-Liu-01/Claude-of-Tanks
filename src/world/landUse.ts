@@ -975,14 +975,24 @@ export function withLevelPaddies(
   profile: LandUseProfile | null, heightAt: (x: number, z: number) => number, halfExtentM: number,
 ): LandUseProfile | null {
   if (!profile || !(profile.strength > 0) || !profileFloods(profile)) return profile;
-  let level: Set<number> | null = null;
   const derived: LandUseProfile = { ...profile };
-  Object.defineProperty(derived, 'floodIds', {
-    enumerable: true,
-    get: () => (level ??= levelFloodFields(profile, heightAt, halfExtentM)),
-  });
+  levelPaddyScans.set(derived, { profile, heightAt, halfExtentM, level: null });
+  Object.defineProperty(derived, 'floodIds', LEVEL_FLOOD_IDS);
   return derived;
 }
+// (webcontent-diet-278) the lazy scan's accessor is this module-level function over a weak table, never a closure made per
+// map: V8 keeps an accessor's getter in the hidden class's shared descriptor array, where a closure over a world's
+// heightAt outlives the world (world/maps/buildLatch.ts; tools/accessor-closures.selftest.mjs)
+interface LevelPaddyScan { profile: LandUseProfile; heightAt: (x: number, z: number) => number; halfExtentM: number; level: Set<number> | null }
+const levelPaddyScans = new WeakMap<LandUseProfile, LevelPaddyScan>();
+const LEVEL_FLOOD_IDS: PropertyDescriptor = {
+  enumerable: true,
+  get(this: LandUseProfile) {
+    const scan = levelPaddyScans.get(this);
+    if (!scan) return undefined;
+    return (scan.level ??= levelFloodFields(scan.profile, scan.heightAt, scan.halfExtentM));
+  },
+};
 
 // --------------------------------------------------------------------------------------------- the GLSL
 

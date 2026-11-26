@@ -402,6 +402,18 @@ function fittedRunners(e: CartEntry, role: CartRole): RunnerTrack | undefined {
   return { xs: raw.xs.map((x) => x * s), z0: (raw.z0 - cz) * s, z1: (raw.z1 - cz) * s, width: raw.width * s };
 }
 
+// (webcontent-diet-278) the footprint fields' accessors are these module-level functions over a weak table, never closures
+// made per map: V8 keeps an accessor's getter in the hidden class's shared descriptor array, where a closure made in a
+// world's build outlives the world (buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const overrideCarts = new WeakMap<object, { e: CartEntry; role: CartRole }>();
+const footprintOf = (override: object) => { const held = overrideCarts.get(override)!; return cartFootprint(held.e, held.role); };
+const CART_FOOTPRINT_FIELDS: PropertyDescriptorMap = {
+  hw: { enumerable: true, get(this: object) { return footprintOf(this).hw; } },
+  hl: { enumerable: true, get(this: object) { return footprintOf(this).hl; } },
+  contactBand: { enumerable: true, get(this: object) { return footprintOf(this).contactBand; } },
+  bodyHull: { enumerable: true, get(this: object) { return footprintOf(this).hull; } },
+};
+
 /** One map's carts: each role's builders from the map's set and soil, its copies' colours, its collision (lazily). */
 export function cartOverrides(mapId: string, mobile: boolean): Record<CartRole, CartOverride> {
   const ctx: BuildContext = { climate: climateForMap(mapId), coarse: mobile };
@@ -419,12 +431,8 @@ export function cartOverrides(mapId: string, mobile: boolean): Record<CartRole, 
       ...(mobile ? {} : { shadowBuild: () => canonicalSolid(e, role) }),
       ...(ctx.climate.snow ? { runners: fittedRunners(e, role) } : {}),
     };
-    out[role] = Object.defineProperties(o, {
-      hw: { enumerable: true, get: () => cartFootprint(e, role).hw },
-      hl: { enumerable: true, get: () => cartFootprint(e, role).hl },
-      contactBand: { enumerable: true, get: () => cartFootprint(e, role).contactBand },
-      bodyHull: { enumerable: true, get: () => cartFootprint(e, role).hull },
-    }) as CartOverride;
+    overrideCarts.set(o, { e, role });
+    out[role] = Object.defineProperties(o, CART_FOOTPRINT_FIELDS) as CartOverride;
   }
   return out;
 }

@@ -166,18 +166,30 @@ function defer(anatomy: StructureDamageAnatomy, args: DescribeStructureArgs): vo
     x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z0 = Math.min(z0, b.min.z); z1 = Math.max(z1, b.max.z); y1 = Math.max(y1, b.max.y);
   }
   if (Number.isFinite(x0)) job.box = [x0, x1, z0, z1, y1];
-  Object.defineProperty(anatomy, 'intact', {
-    configurable: true, enumerable: true,
-    get: () => { measureNow(job); return job.intact ?? undefined; },
-    set: (v) => { measureNow(job); job.intact = v ?? null; },
-  });
-  Object.defineProperty(anatomy, 'enclosure', {
-    configurable: true, enumerable: true,
-    get: () => { measureNow(job); return job.enclosure ?? undefined; },
-    set: (v) => { measureNow(job); job.enclosure = v ?? null; },
-  });
+  deferredJobs.set(anatomy, job);
+  Object.defineProperty(anatomy, 'intact', DEFERRED_INTACT);
+  Object.defineProperty(anatomy, 'enclosure', DEFERRED_ENCLOSURE);
   pendingMeasures.push(job);
 }
+// (webcontent-diet-278) the measures' accessors are these module-level functions over a weak table, never closures made
+// per structure: V8 keeps an accessor's getter in the hidden class's shared descriptor array, where a closure made in a
+// world's build outlives the world (buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const deferredJobs = new WeakMap<StructureDamageAnatomy, DeferredMeasure>();
+function deferredJobOf(anatomy: StructureDamageAnatomy): DeferredMeasure {
+  const job = deferredJobs.get(anatomy);
+  if (!job) throw new Error('structureDamageSeam: a deferred measure read off an anatomy it was not described for');
+  return job;
+}
+const DEFERRED_INTACT: PropertyDescriptor = {
+  configurable: true, enumerable: true,
+  get(this: StructureDamageAnatomy) { const job = deferredJobOf(this); measureNow(job); return job.intact ?? undefined; },
+  set(this: StructureDamageAnatomy, v: StructureDamageAnatomy['intact']) { const job = deferredJobOf(this); measureNow(job); job.intact = v ?? null; },
+};
+const DEFERRED_ENCLOSURE: PropertyDescriptor = {
+  configurable: true, enumerable: true,
+  get(this: StructureDamageAnatomy) { const job = deferredJobOf(this); measureNow(job); return job.enclosure ?? undefined; },
+  set(this: StructureDamageAnatomy, v: StructureDamageAnatomy['enclosure']) { const job = deferredJobOf(this); measureNow(job); job.enclosure = v ?? null; },
+};
 /** A deferred structure's two measures, now (once): its parts read back into the body frame if they were placed since. */
 function measureNow(job: DeferredMeasure): void {
   const steps = job.steps ?? measureSteps(job);

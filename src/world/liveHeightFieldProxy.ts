@@ -127,6 +127,11 @@ export function createLiveHeightFieldProxy<Normal>({
   };
 }
 
+// (webcontent-diet-278) maxY's accessor is this module-level function over a weak table, never a closure made per proxy: V8
+// keeps an accessor's getter in the hidden class's descriptor array (world/maps/buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const proxyCurrent = new WeakMap<object, () => DeformableHeightField>();
+const PROXY_MAX_Y: PropertyDescriptor = { configurable: true, get(this: object) { return proxyCurrent.get(this)?.().maxY ?? 0; } };
+
 /**
  * The live ground as the battle (or the Studio) has dug it (DST-04, 2026-10-15; docs/DESTRUCTION.md §7): the world's
  * bound overlay added as the simulation adds it (sim/terrainDeformation.ts createDeformedHeightField: heights plus
@@ -166,7 +171,8 @@ export function createDugHeightFieldProxy<P extends DeformableHeightField>(
       configurable: true,
     },
     getNormalAt: { value: (x: number, z: number) => current().getNormalAt?.(x, z), configurable: true },
-    maxY: { get: () => current().maxY ?? 0, configurable: true },
   });
+  proxyCurrent.set(proxy, current);
+  Object.defineProperty(proxy, 'maxY', PROXY_MAX_Y);
   return proxy;
 }

@@ -67,6 +67,12 @@ export function createLatticeGround(sample: (x: number, z: number) => number, re
     return d + (c - d) * (1 - u) + (b - d) * (1 - v);
   }) as LatticeGround;
   ground.clear = () => { held.clear(); };
-  Object.defineProperty(ground, 'size', { get: () => held.size });
+  latticeHeld.set(ground, held);
+  Object.defineProperty(ground, 'size', LATTICE_SIZE);
   return ground;
 }
+// (webcontent-diet-278) `size` is this module-level accessor over a weak table, never a closure made per ground: V8 keeps an
+// accessor's getter in the hidden class's descriptor array, which every arrow function's shape shares, so a closure made
+// here would outlive its ground and the world it samples (world/maps/buildLatch.ts; tools/accessor-closures.selftest.mjs)
+const latticeHeld = new WeakMap<object, Map<number, number>>();
+const LATTICE_SIZE: PropertyDescriptor = { get(this: object) { return latticeHeld.get(this)?.size ?? 0; } };
