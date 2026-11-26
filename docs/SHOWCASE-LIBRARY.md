@@ -112,7 +112,7 @@ acceptance contract.
 
 ### Landing fleet image
 
-The home page's “Choose from 113 tanks” panel uses the owner-selected
+The home page's fleet panel uses the owner-selected
 1920×1080 production Garage capture at
 `public/media/home/garage-m1a3-fleet.webp`. It shows the M1A3 Abrams with the
 full battlefield, camouflage, dossier, nation, and vehicle-catalog interface.

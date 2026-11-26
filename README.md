@@ -61,7 +61,7 @@ Every picture here is captured in the game engine. The four above come from the
 
 | | Live at [cot.kevinliu.studio](https://cot.kevinliu.studio) |
 | --- | --- |
-| Fleet | **311** first-party procedural vehicles, every one playable in battle |
+| Fleet | **313** first-party procedural vehicles, every one playable in battle |
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -137,7 +137,7 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 
 Vehicles do not share one gun and one movement model. A specification can add its own loading, guidance, suspension,
 ammunition, anatomy, and controls, and all of it still runs inside the fixed-step authority. Battle, Garage, Gallery,
-Studio, bots, icons, diagrams, and technical dossiers all read the same 311 vehicle specifications.
+Studio, bots, icons, diagrams, and technical dossiers all read the same vehicle specifications.
 
 - **Swedish siege suspension:** the Strv 103A, Strv 103B, and UDES 03 aim their fixed guns by pitching the physical hull.
   Wheels and both loaded track runs reshape around the solved pose.
@@ -198,7 +198,7 @@ Studio, bots, icons, diagrams, and technical dossiers all read the same 311 vehi
 <td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/ui-246/gallery-hero.webp" alt="The Tank Gallery showing a T-90M Proryv and its technical dossier"><br><sub><b>Tank Gallery:</b> search all 311 vehicles, orbit and articulate the current rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/ui-246/gallery-hero.webp" alt="The Tank Gallery showing a T-90M Proryv and its technical dossier"><br><sub><b>Tank Gallery:</b> search the whole fleet, orbit and articulate the current rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/ui-246/garage-closeup.webp" alt="The Garage's photo mode: a first-party procedural Challenger 3 alone on the turntable"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>

@@ -159,11 +159,9 @@ exhaust density fixed across 60, 120, and 240 Hz displays.
 
 ## First-party vehicle pipeline
 
-The registry currently retains **156 vehicle records**. The production
-projection exposes **117**; an explicit local-development key unlocks all
-**154 first-party playable models** with `DEV` labels, while two generic
-reference placeholders remain report-only. The generated inventory is
-maintained in `VEHICLE-ROSTER.md`.
+The registry's saved vehicle records, the production projection, and the
+models an explicit local-development key unlocks with `DEV` labels are counted
+in the generated inventory, `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
 `src/vehicles/factoryGeometry.ts`, `src/vehicles/tankFactoryCore.ts`,
