@@ -1321,6 +1321,7 @@
     "src/world/landformSupportBounds.selftest.mjs": 1000,
     "src/world/landmarks/landmarkDamage.selftest.mjs": 2000,
     "src/world/landmarks/landmarks.selftest.mjs": 74000,
+    "src/world/landmarks/landmarkLanes.selftest.mjs": 10000,
     "src/world/landscapeWoods.selftest.mjs": 27000,
     "src/world/leafDetail.selftest.mjs": 1000,
     "src/world/leafyBush.selftest.mjs": 9000,

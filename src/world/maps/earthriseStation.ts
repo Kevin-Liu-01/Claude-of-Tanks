@@ -91,11 +91,13 @@ export const EXCAVATION_FRONT = Object.freeze({ x: -150, z: -225, yawDeg: APOLLO
  * props, and only a thin comms tower stands out (no strong hero landmark)"): a pressurised dome 24 m across under its
  * shielding collar where the north road leaves the landing field and at its rotation, each serving its habitat row and
  * the yard across the road (landmarks/lunar.ts stationDome), its main airlock (local -z) turned to the hub. They take the
- * seats of the round-1 berm pair north and south of the apron.
+ * seats of the round-1 berm pair north and south of the apron. (landmark-lanes-278) At (12, 88) each stood on a Turbo Ball
+ * lane (the ball stalled against the north one); they stand 38 m east (west) along the station's rows, 13 m and more off
+ * the lanes (landmarks/landmarkLanes.selftest.mjs).
  */
 export const STATION_DOMES = Object.freeze([
-  Object.freeze({ x: 12, z: 88, yawDeg: Math.round(detMath.atan2(12, 88) * 1800 / Math.PI) / 10 }),
-  Object.freeze({ x: -12, z: -88, yawDeg: Math.round(detMath.atan2(12, 88) * 1800 / Math.PI) / 10 + 180 }),
+  Object.freeze({ x: 50, z: 82, yawDeg: Math.round(detMath.atan2(50, 82) * 1800 / Math.PI) / 10 }),
+  Object.freeze({ x: -50, z: -82, yawDeg: Math.round(detMath.atan2(50, 82) * 1800 / Math.PI) / 10 + 180 }),
 ]);
 
 type XZ = readonly [number, number];

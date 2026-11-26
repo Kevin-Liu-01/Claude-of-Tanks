@@ -736,6 +736,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/world/kitConnectivity.selftest.mjs',
     'src/world/landformGeology.selftest.mjs',
     'src/world/landmarks/landmarks.selftest.mjs',
+    'src/world/landmarks/landmarkLanes.selftest.mjs',
     'src/world/landscapeWoods.selftest.mjs',
     'src/world/liquidMarshSurface.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',

@@ -195,6 +195,41 @@ export function landmarkObjectiveDiscs(mapId: string, spawns: ReadonlyArray<{ x:
   return discs;
 }
 
+/**
+ * A Turbo Ball lane's half width (m): the ground each side of the ball's run from the kick-off to a goal that a set piece
+ * keeps clear — the kick-off reserve's 12 m (sim/matchRuleset.ts middleReserve), a 24 m corridor for the ball (4.4 m) and
+ * the three hulls a side the crowd cap lets close on it.
+ */
+export const OBJECTIVE_LANE_HALF_M = 12;
+
+/**
+ * (landmark-lanes-278) The least distance between a segment a-b and a set piece's oriented footprint (centre x, z; half
+ * extents hw across, hl along; heading yaw), 0 where they meet. landmarkLanes.selftest.mjs holds every authored piece
+ * this far from the real Turbo Ball lanes: the objectives exist only once the whole world stands (the match placement
+ * moves a goal off ground it cannot hold), so the lane is a receipt on the committed world, not a compose-time admission.
+ */
+export function segmentFootprintGap(ax: number, az: number, bx: number, bz: number, x: number, z: number, hw: number, hl: number,
+  yaw: number): number {
+  // into the footprint's frame (the inverse of the probes' local -> world)
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const local = (px: number, pz: number): [number, number] => { const ox = px - x, oz = pz - z; return [ox * c - oz * s, ox * s + oz * c]; };
+  const [lax, laz] = local(ax, az), [lbx, lbz] = local(bx, bz);
+  // a slab clip of the segment against the rectangle: any overlap is a meeting
+  let t0 = 0, t1 = 1;
+  const dx = lbx - lax, dz = lbz - laz;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0;
+    const t = q / p;
+    if (p < 0) { if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+    return true;
+  };
+  if (clip(-dx, lax + hw) && clip(dx, hw - lax) && clip(-dz, laz + hl) && clip(dz, hl - laz)) return 0;
+  const boxGap = (px: number, pz: number) => Math.hypot(Math.max(0, Math.abs(px) - hw), Math.max(0, Math.abs(pz) - hl));
+  let gap = Math.min(boxGap(lax, laz), boxGap(lbx, lbz));
+  for (const [cx, cz] of [[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]] as const) gap = Math.min(gap, pointSegment(cx, cz, lax, laz, lbx, lbz));
+  return gap;
+}
+
 /** The footprint's world corners and edge midpoints (and centre) for the admission probes. */
 function footprintProbes(x: number, z: number, hw: number, hl: number, yaw: number): Array<[number, number]> {
   const c = Math.cos(yaw), s = Math.sin(yaw);

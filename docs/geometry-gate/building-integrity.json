@@ -6147,7 +6147,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 23.558,
    "invertedM2": 0
   },
   "landmark/oasis:shaliMosque#0": {
@@ -6162,5 +6162,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-11-24T22:57:35.295Z"
+ "updatedAt": "2026-11-26T03:58:05.190Z"
 }

@@ -206,8 +206,9 @@ export default {
       { kind: 'headframe', x: 300, z: -140, yawDeg: 90, params: { height: 17, paint: 'black' }, ground: 'veto', name: 'the east shaft' },
       { kind: 'conveyor', x: 10, z: -40, yawDeg: 90, ground: 'veto', name: 'the open cut conveyor' },
       { kind: 'oreBin', x: 44, z: -40, yawDeg: 90, ground: 'veto', name: 'the open cut ore bin' },
-      { kind: 'conveyor', x: -20, z: 160, yawDeg: 90, params: { length: 52, head: 9 }, ground: 'veto', name: 'the north conveyor' },
-      { kind: 'oreBin', x: 14, z: 160, yawDeg: 90, params: { height: 12 }, ground: 'veto', name: 'the north ore bin' },
+      // (landmark-lanes-278) the north conveyor and its bin 42 m east, off the Turbo Ball lane into bravo's goal it crossed
+      { kind: 'conveyor', x: 22, z: 160, yawDeg: 90, params: { length: 52, head: 9 }, ground: 'veto', name: 'the north conveyor' },
+      { kind: 'oreBin', x: 56, z: 160, yawDeg: 90, params: { height: 12 }, ground: 'veto', name: 'the north ore bin' },
       { kind: 'oreBin', x: 60, z: -150, yawDeg: 0, ground: 'veto', name: 'the town ore bin' },
       { kind: 'oreCars', x: 90, z: -250, yawDeg: 90, ground: 'veto', name: 'the south spur' },
       { kind: 'oreCars', x: -60, z: 260, yawDeg: 90, params: { cars: 5 }, ground: 'veto', name: 'the north spur' },
