@@ -9561,6 +9561,66 @@
       },
       {
         "hitboxId": "T01",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.5303,1.0015,0.4018],
+          [0.5303,0.8833,0.5355],
+          [0.6982,0.8833,0.5355],
+          [0.6982,1.0015,0.4018]
+        ]
+      },
+      {
+        "hitboxId": "T02",
+        "name": "turret_era_R",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [0.5303,0.8531,0.5698],
+          [0.5303,0.7349,0.7035],
+          [0.6982,0.7349,0.7035],
+          [0.6982,0.8531,0.5698]
+        ]
+      },
+      {
+        "hitboxId": "T03",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6982,1.0015,0.4018],
+          [-0.6982,0.8833,0.5355],
+          [-0.5303,0.8833,0.5355],
+          [-0.5303,1.0015,0.4018]
+        ]
+      },
+      {
+        "hitboxId": "T04",
+        "name": "turret_era_L",
+        "physicalMm": 15,
+        "keMm": 15,
+        "ceMm": 15,
+        "kind": "era",
+        "turretLocal": true,
+        "verts": [
+          [-0.6982,0.8531,0.5698],
+          [-0.6982,0.7349,0.7035],
+          [-0.5303,0.7349,0.7035],
+          [-0.5303,0.8531,0.5698]
+        ]
+      },
+      {
+        "hitboxId": "T05",
         "name": "turret_cheek_R",
         "physicalMm": 650,
         "keMm": 560,
@@ -9575,7 +9635,7 @@
         ]
       },
       {
-        "hitboxId": "T02",
+        "hitboxId": "T06",
         "name": "turret_cheek_L",
         "physicalMm": 650,
         "keMm": 560,
@@ -9590,7 +9650,7 @@
         ]
       },
       {
-        "hitboxId": "T03",
+        "hitboxId": "T07",
         "name": "mantlet",
         "physicalMm": 300,
         "keMm": 320,
@@ -9605,7 +9665,7 @@
         ]
       },
       {
-        "hitboxId": "T04",
+        "hitboxId": "T08",
         "name": "turret_side_R",
         "physicalMm": 300,
         "keMm": 280,
@@ -9620,7 +9680,7 @@
         ]
       },
       {
-        "hitboxId": "T05",
+        "hitboxId": "T09",
         "name": "turret_side_L",
         "physicalMm": 300,
         "keMm": 280,
@@ -9635,7 +9695,7 @@
         ]
       },
       {
-        "hitboxId": "T06",
+        "hitboxId": "T10",
         "name": "turret_bustle",
         "physicalMm": 45,
         "keMm": 36,
@@ -9650,7 +9710,7 @@
         ]
       },
       {
-        "hitboxId": "T07",
+        "hitboxId": "T11",
         "name": "turret_roof",
         "physicalMm": 45,
         "keMm": 36,
@@ -9665,37 +9725,7 @@
         ]
       },
       {
-        "hitboxId": "T08",
-        "name": "side_era_R",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [0.5303,1.0015,0.4018],
-          [0.5303,0.8833,0.5355],
-          [0.6982,0.8833,0.5355],
-          [0.6982,1.0015,0.4018]
-        ]
-      },
-      {
-        "hitboxId": "T09",
-        "name": "side_era_R",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [0.5303,0.8531,0.5698],
-          [0.5303,0.7349,0.7035],
-          [0.6982,0.7349,0.7035],
-          [0.6982,0.8531,0.5698]
-        ]
-      },
-      {
-        "hitboxId": "T10",
+        "hitboxId": "T12",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9710,7 +9740,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T13",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9725,7 +9755,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T14",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9740,7 +9770,7 @@
         ]
       },
       {
-        "hitboxId": "T13",
+        "hitboxId": "T15",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9755,7 +9785,7 @@
         ]
       },
       {
-        "hitboxId": "T14",
+        "hitboxId": "T16",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9770,7 +9800,7 @@
         ]
       },
       {
-        "hitboxId": "T15",
+        "hitboxId": "T17",
         "name": "side_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -9782,36 +9812,6 @@
           [1.2154,1.0385,0.987],
           [1.2521,1.0385,0.987],
           [1.2521,1.0385,0.693]
-        ]
-      },
-      {
-        "hitboxId": "T16",
-        "name": "side_era_L",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [-0.6982,1.0015,0.4018],
-          [-0.6982,0.8833,0.5355],
-          [-0.5303,0.8833,0.5355],
-          [-0.5303,1.0015,0.4018]
-        ]
-      },
-      {
-        "hitboxId": "T17",
-        "name": "side_era_L",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [-0.6982,0.8531,0.5698],
-          [-0.6982,0.7349,0.7035],
-          [-0.5303,0.7349,0.7035],
-          [-0.5303,0.8531,0.5698]
         ]
       },
       {
@@ -10048,7 +10048,7 @@
     ]
   },
   "geometryHash": "8fc9c4ea",
-  "metadataHash": "ce69adaf",
+  "metadataHash": "3e77d46b",
   "presentationAnchor": {
     "xM": -0.0057,
     "zM": -0.1173
