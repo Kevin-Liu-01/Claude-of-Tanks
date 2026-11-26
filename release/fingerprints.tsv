@@ -130,7 +130,7 @@ comp	world:map:collision:steppe	8899a778212f94ac
 comp	world:map:collision:titan_gorge	ba4f0357beda5696
 comp	world:map:collision:urban	5d806f76e9ba0e3f
 comp	world:map:collision:verdant	3b6387d506b30848
-comp	world:map:collision:whiteout	f744ffcde5f7b2dd
+comp	world:map:collision:whiteout	b58e21f3c720beab
 comp	world:map:collision:winter	8be5504b53f983f9
 comp	world:map:trenches:airfield	f02d8c5fb5c96dda
 comp	world:map:trenches:alpine	6240a6de8529d1f5
@@ -163,7 +163,7 @@ comp	world:map:trenches:steppe	8899a778212f94ac
 comp	world:map:trenches:titan_gorge	ba4f0357beda5696
 comp	world:map:trenches:urban	5d806f76e9ba0e3f
 comp	world:map:trenches:verdant	3b6387d506b30848
-comp	world:map:trenches:whiteout	f744ffcde5f7b2dd
+comp	world:map:trenches:whiteout	b58e21f3c720beab
 comp	world:map:trenches:winter	8be5504b53f983f9
 comp	world:map:wreckPlan:airfield	f02d8c5fb5c96dda
 comp	world:map:wreckPlan:alpine	6240a6de8529d1f5
@@ -196,7 +196,7 @@ comp	world:map:wreckPlan:steppe	8899a778212f94ac
 comp	world:map:wreckPlan:titan_gorge	ba4f0357beda5696
 comp	world:map:wreckPlan:urban	5d806f76e9ba0e3f
 comp	world:map:wreckPlan:verdant	3b6387d506b30848
-comp	world:map:wreckPlan:whiteout	f744ffcde5f7b2dd
+comp	world:map:wreckPlan:whiteout	b58e21f3c720beab
 comp	world:map:wreckPlan:winter	8be5504b53f983f9
 comp	world:tool:collision	cee6bb05cd5fef95
 comp	world:tool:trenches	034ff1c404287d59
@@ -1761,7 +1761,7 @@ key	collision	steppe	9e5c707e8643a9d9	42effc81cc73e79f
 key	collision	titan_gorge	13b2c80f2251434f	b22fccadc61dcbbc
 key	collision	urban	5d2fd7f6942dfea8	8b8222989a8f7ebe
 key	collision	verdant	1e9e0caed0c08cb8	c65ffc079e88cee5
-key	collision	whiteout	b8cbaef24885cc9d	497551bc0f5436bf
+key	collision	whiteout	a259fc07b14a6f71	cb58fb12710fe608
 key	collision	winter	107c9271251400e3	fd9736bb1ba63fac
 key	controls	abramsx	19e57e1c7adb287f	24a265f7d3d83395
 key	controls	aft10	c10d06edf8491551	3946b5f7fd4317bb
@@ -4592,7 +4592,7 @@ key	trenches	steppe	401687c9a1d1bb25	f6b36a15c65f0043
 key	trenches	titan_gorge	88653991b1f384cd	02ca1a35cf4e84c0
 key	trenches	urban	767f6e92e7e3abb0	d83de2c59df9bb6a
 key	trenches	verdant	f2940faa365d7195	aa3055abf9b0262a
-key	trenches	whiteout	dd11574cf52c9458	1d0afb1ee81c2402
+key	trenches	whiteout	78d85cc3a3e88eed	485ed3319f2e4dda
 key	trenches	winter	20263451d56b7157	6abbd69548799f7e
 key	wreckPlan	airfield	ad41ae9d543915ac	899ff45063b4544c
 key	wreckPlan	alpine	b8bad74f1159c731	17d7ac50d0551188
@@ -4625,7 +4625,7 @@ key	wreckPlan	steppe	8b4eebe3fac826dc	1435cac507c4b74d
 key	wreckPlan	titan_gorge	42feba64b406dda0	5dc7fe28fe0e5297
 key	wreckPlan	urban	987efce23a146a3f	e6372c9c27735dd6
 key	wreckPlan	verdant	d4fd7aa3ad273610	5f2ee2a7f69a47c0
-key	wreckPlan	whiteout	ec83a5a2641d05a2	50a567c9905a872f
+key	wreckPlan	whiteout	50b3bb339a354036	50a567c9905a872f
 key	wreckPlan	winter	60e36d97962d55ea	c6210636e7e2720f
 roster	anatomy	f4b7ed2e07df201b
 roster	centering	f4b7ed2e07df201b
