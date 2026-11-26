@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { ENVELOPE_GAP_M, OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, roofPockets } from './roof-pocket.mjs';
 
 // Roof-pocket receipt (264, Main 2026-10-28: "Put the census --gate in a receipt that's shrink-only fleet-wide"; the
@@ -37,6 +37,14 @@ const stale = ALL_TANK_IDS.filter((id) => {
 });
 assert.deepEqual(stale, [], `hull, turret or gun geometry moved since these rows were measured; re-measure them (shrink-only): ${refresh(stale)}`);
 for (const id of ALL_TANK_IDS) for (const k of POCKET_CLASSES) assert.ok(Number.isInteger(rows[id][k]) && rows[id][k] >= 0, `${id}: ${k} ${rows[id][k]}`);
+// 279 (Main 2026-11-26): a row the owner ruled real (a true stowage recess, bustle clearance) names why, who ruled and the
+// still it was ruled from (a committed image). Shrink-only still holds it: the ruling covers the pocket as photographed.
+const realRows = ALL_TANK_IDS.filter((id) => rows[id].real);
+for (const id of realRows) {
+  const { reason, ruled, still } = rows[id].real;
+  assert.ok(typeof reason === 'string' && reason.length >= 20 && typeof ruled === 'string' && ruled.length > 0, `${id}: a real row names its reason and ruling`);
+  assert.ok(typeof still === 'string' && existsSync(still) && /\.(png|jpg)$/.test(still), `${id}: a real row's still is committed (${still})`);
+}
 const total = (k) => ALL_TANK_IDS.reduce((t, id) => t + rows[id][k], 0);
 
 // Two rows re-measured: the Leclerc S2 (its false roofs closed in 263) and a tank with no pocket at all.
