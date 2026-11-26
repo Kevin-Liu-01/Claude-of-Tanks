@@ -101,12 +101,44 @@ const positive = (value, fallback) => {
   return value !== undefined && value !== null && value !== '' && Number.isFinite(number) && number >= 0 ? number : fallback;
 };
 
+/** The whole-browser tree cap (MB) for every launch without a reviewed row below. */
+export const DEFAULT_TREE_CAP_MB = 10240;
+/**
+ * (integ/278, Main's ruling 2026-11-25 14:12) The only tree caps above the default, keyed by the guard label's first word
+ * (the tool). Frozen: a new row, or a higher one, is Main's or Kevin's ruling with its reason and date, never a lane's.
+ * An option or COT_BROWSER_TREE_CAP_MB may only lower a launch's cap; a higher ask is clamped to the ceiling and logged.
+ * (277: world-pools-278 Monsoon pages passed 15 GB trees; a cap a lane can raise is no rail.) Receipt:
+ * tools/browser-tree-cap.selftest.mjs.
+ */
+export const REVIEWED_TREE_CAPS = Object.freeze({
+  'battle-spike-census': Object.freeze({ mb: 16384, reason: '2026-10-27: the 10 GB default killed a 7v7 Steinburg census at 10.09 GB with its renderer at 2.9 GB, the rest the GPU process\'s targets and textures; the renderer\'s 6 GB cap stays the runaway guard' }),
+});
+
+/** The tree cap ceiling for a guard label: its reviewed row's, else the default. */
+export function treeCapCeilingMb(label = '') {
+  return REVIEWED_TREE_CAPS[String(label ?? '').split(/\s/)[0]]?.mb ?? DEFAULT_TREE_CAP_MB;
+}
+
+const clampedTreeCapAsks = new Set();
+/** A launch's tree cap: the option, then COT_BROWSER_TREE_CAP_MB, then the ceiling, never above the ceiling. */
+export function clampedTreeCapMb(guard = {}, { envCapMb = process.env.COT_BROWSER_TREE_CAP_MB, log = (line) => writeSync(2, `${line}\n`) } = {}) {
+  const ceiling = treeCapCeilingMb(guard.label);
+  const asked = positive(guard.treeCapMb, positive(envCapMb, ceiling));
+  if (asked <= ceiling) return asked;
+  const key = `${guard.label ?? ''}:${asked}`;
+  if (!clampedTreeCapAsks.has(key)) {
+    clampedTreeCapAsks.add(key);
+    log(`[browser-guard] ${guard.label ?? 'browser'}: tree cap ${asked} MB asked, clamped to ${ceiling} MB (REVIEWED_TREE_CAPS; a cap only goes down)`);
+  }
+  return ceiling;
+}
+
 /** The caps and limits for one launch: the guard options, then the environment (read by name), then the defaults. */
 export function browserGuardConfig(guard = {}) {
   return {
     heapMb: positive(guard.heapMb, positive(process.env.COT_BROWSER_HEAP_MB, 3072)),
     rendererCapMb: positive(guard.rendererCapMb, positive(process.env.COT_BROWSER_RENDERER_CAP_MB, 6144)),
-    treeCapMb: positive(guard.treeCapMb, positive(process.env.COT_BROWSER_TREE_CAP_MB, 10240)),
+    treeCapMb: clampedTreeCapMb(guard),
     intervalMs: Math.max(100, positive(guard.intervalMs, positive(process.env.COT_BROWSER_GUARD_INTERVAL_MS, 2000))),
     rendererProcessLimit: positive(guard.rendererProcessLimit, positive(process.env.COT_BROWSER_RENDERER_LIMIT, 4)),
   };
@@ -412,6 +444,7 @@ function readCompanions(companions = null) {
  */
 function watchBrowserTree(target, rootPid, guardOptions = {}) {
   const config = { ...browserGuardConfig(guardOptions), ...guardOptions.resolved };
+  config.treeCapMb = Math.min(config.treeCapMb, treeCapCeilingMb(guardOptions.label)); // a resolved config cannot raise it
   const label = guardOptions.label ?? (basename(process.argv[1] ?? 'node') || 'browser');
   const exit = guardOptions.exit !== false;
   const releaseScope = tripReleaseScope(guardOptions);

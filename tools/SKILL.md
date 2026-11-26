@@ -147,7 +147,10 @@ holds is released (`releaseAllCaptureHolds`); the process exits 86. Still
 close the browser in `finally`: the guard also reaps the tree on disconnect,
 process exit and SIGALRM (a perl alarm). Caps come from the guard options or
 `COT_BROWSER_HEAP_MB`, `COT_BROWSER_RENDERER_CAP_MB`, `COT_BROWSER_TREE_CAP_MB`,
-`COT_BROWSER_GUARD_INTERVAL_MS`, `COT_BROWSER_RENDERER_LIMIT`; `exit: false`
+`COT_BROWSER_GUARD_INTERVAL_MS`, `COT_BROWSER_RENDERER_LIMIT`. The tree cap only goes down: an option or
+`COT_BROWSER_TREE_CAP_MB` above 10240 MB is clamped and logged, and the one reviewed raise is a `REVIEWED_TREE_CAPS`
+row keyed by the guard label's first word (battle-spike-census 16384; a new row is Main's or Kevin's ruling,
+tools/browser-tree-cap.selftest.mjs). `exit: false`
 reports and kills without ending the process (`browserGuardOf(browser)`). A
 fixture's fake launcher gets its fake browser back unwatched; a fixture that
 strips imports and runs a tool's source passes a `launchGuardedBrowser` port.

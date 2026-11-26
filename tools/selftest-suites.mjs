@@ -1065,6 +1065,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // integ/278 (owed from 277): memory-capped.mjs caps the command's whole process tree (group + descendants); a grandchild
     // allocator under an npm-shaped parent is stopped at the cap (the 275 direct-PID tool, the reverted control, is not)
     'tools/memory-capped.selftest.mjs',
+    // integ/278 (Main 11-25 14:12): the browser guard's tree cap only goes down; REVIEWED_TREE_CAPS (battle-spike-census
+    // 16384 by its label) is the one raise
+    'tools/browser-tree-cap.selftest.mjs',
     // capture-slot-ports-277: each render slot hands its children its own port block; two concurrent holds serve their
     // previews (tools/with-preview.mjs) inside their blocks, and one hold's teardown leaves the other's server alive
     'tools/capture-slot-ports.selftest.mjs',

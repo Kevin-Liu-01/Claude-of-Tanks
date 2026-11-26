@@ -250,6 +250,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  'tools/browser-tree-cap.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/typing-keys-census.selftest.mjs': tracked('src/**'),
   // build-loop-yield-277: every Node script under src and tools (git ls-files, tracked and new) for build loops without the yield
   'tools/build-loop-census.mjs': tracked('{src,tools}/**/*.{mjs,js,cjs}'),
