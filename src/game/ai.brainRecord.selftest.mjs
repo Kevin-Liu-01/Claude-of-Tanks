@@ -32,7 +32,9 @@ const NOT_CARRIED = {
     'navNoProgressT', 'missionRouteX', 'missionRouteZ', 'missionRouteAtS', 'missionRouteHasEnd'],
   'the hull and the world, read afresh': ['spec', 'heSlot', 'obstacles', 'gridList', 'gridListLength', 'gridMatchesList'],
   'the tick\'s own, set before any read in a tick': ['objectiveTick', 'objectiveReadTick', 'objectiveNow', 'inUpdate', 'nowS', 'hullNowS', 'allyAvoidingId',
-    'allyClosestM', 'recoveryTurn', 'claimedSteer', 'tickTurnDecided', 'layFirstClamped', 'tickAllyYieldingPrev', 'driveOwner'],
+    'allyClosestM', 'recoveryTurn', 'claimedSteer', 'tickTurnDecided', 'layFirstClamped', 'tickAllyYieldingPrev', 'driveOwner',
+    // (bot-turbo-276) turboChaseM writes it, and only its own tick's Turbo probe reads it after that
+    'turboChasesTank'],
   'the news queue, empty between steps (resume clears it)': ['pendingCount', 'pendingSeq', 'draining'],
   'a Watch park (a solo battle\'s)': ['parkedAtS', 'ownShellsFromId', 'parkTargetId', 'parkTargetX', 'parkTargetZ', 'parkTargetYaw', 'parkTargetReloadT',
     'parkHullX', 'parkHullY', 'parkHullZ', 'parkHullYaw'],
