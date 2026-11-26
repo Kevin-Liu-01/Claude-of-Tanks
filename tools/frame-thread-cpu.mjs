@@ -24,7 +24,7 @@ import { MAP_PROBE_BROWSER_ARGS, beginSoloBattle, sleep } from './map-probe-runt
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { awaitTextures, freezeBattle, grassSettled, hideOtherVehicles, installObservers, openPreview, pinnedOpponents, poseView } from './frame-budget-probe.mjs';
-import { FAR_POSES, farPose } from './far-poses.mjs';
+import { FAR_POSES, farLodCensus, farPose } from './far-poses.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const roots = arg('roots', '').split(',').filter(Boolean).map((r) => path.resolve(r));
@@ -44,17 +44,6 @@ const tag = arg('tag', 'cpu');
 /** --lean: the toplevel category alone (every top-level task with its thread time; no per-event breakdown), a smaller
  * trace buffer for a page near the browser guard's tree cap. */
 const showBots = process.argv.includes('--bots');
-/** Page side: how many vehicles show their far LOD (it builds one vehicle at a time). */
-function farShowing() {
-  let n = 0;
-  window.__DEBUG.scene.traverse((o) => {
-    if (!/^tank_/.test(o.name || '') || o.userData.farLod === undefined) return;
-    let far = false; o.traverse((c) => { if (c.userData?.farLod && c.visible) far = true; });
-    if (far) n += 1000;
-    if (o.userData.farLod?.hullDraw) n++;
-  });
-  return n;
-}
 const CATEGORIES = process.argv.includes('--lean') ? ['toplevel'] : ['toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline'];
 if (!roots.length || roots.length !== labels.length || queries.length !== roots.length) throw new Error('--roots, --labels and --queries must match');
 mkdirSync(out, { recursive: true });
@@ -142,9 +131,17 @@ try {
         if (view in FAR_POSES) {
           await page.evaluate(farPose, FAR_POSES[view]);
           let last = -1, still = 0;
-          for (let i = 0; i < 60 && still < 4; i++) { await sleep(500); const n = await page.evaluate(farShowing); still = n === last ? still + 1 : 0; last = n; }
-          slot.farShowing = Math.floor(last / 1000);
-          slot.farDrawsBuilt = last % 1000;
+          // (the far LOD builds one vehicle at a time: wait for the full-far count and its builds to stand still)
+          let census = null;
+          for (let i = 0; i < 60 && still < 4; i++) {
+            await sleep(500); census = await page.evaluate(farLodCensus);
+            const n = census.far * 1000 + census.built; still = n === last ? still + 1 : 0; last = n;
+          }
+          slot.farShowing = census.far;
+          slot.farDrawsBuilt = census.built;
+          slot.farRefused = census.refused;
+          slot.farMissing = census.missing;
+          slot.gearStage = census.gear;
         } else await poseView(page, view);
         await sleep(1500);
         await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
@@ -161,7 +158,7 @@ try {
         await server.close().catch(() => {});
       }
       report.slots.push(slot);
-      console.log(`${mapId} s${s} ${label}: far ${slot.farShowing ?? '-'}, thread ${slot.threadMsPerFrame} ms/frame (${slot.threadTimed}/${slot.traced} tasks timed, ${slot.frames} frames in ${slot.spanMs} ms), wall-in-task ${slot.wallMsPerFrame} ms/frame, draws ${slot.drawsMedian}, batches ${slot.batches}, load ${slot.loadBefore}→${slot.loadAfter}${slot.error ? ` ERROR ${slot.error}` : ''}`);
+      console.log(`${mapId} s${s} ${label}: far ${slot.farShowing ?? '-'} (built ${slot.farDrawsBuilt ?? '-'}, gear stage ${slot.gearStage ?? '-'}), thread ${slot.threadMsPerFrame} ms/frame (${slot.threadTimed}/${slot.traced} tasks timed, ${slot.frames} frames in ${slot.spanMs} ms), wall-in-task ${slot.wallMsPerFrame} ms/frame, draws ${slot.drawsMedian}, batches ${slot.batches}, load ${slot.loadBefore}→${slot.loadAfter}${slot.error ? ` ERROR ${slot.error}` : ''}`);
     }
   }
 } finally {
