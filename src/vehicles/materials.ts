@@ -2824,6 +2824,7 @@ const FIELD_DUST_UNIFORM = Object.freeze({
     return fieldDustValue;
   },
 });
+// shader-text:begin rubber-tiles
 /**
  * The rubber's tile, broken up (274, t80-skirts-274; Kevin, 2026-11-21: "the texture repeating is too jarring"). The
  * rubber's detail maps (rubberSurface.ts) are one 0.4 m tile, so a 5.7 m skirt showed the same grime blotches fourteen
@@ -2851,6 +2852,7 @@ vec4 cotRubberTexture( sampler2D t, vec2 uv ) {
 }`;
 /** The rubber's three map chunks, each between the sampler swap and its restore (RUBBER_TILES_GLSL). */
 const RUBBER_TILE_CHUNKS = ['#include <map_fragment>', '#include <roughnessmap_fragment>', '#include <normal_fragment_maps>'] as const;
+// shader-text:end rubber-tiles
 const FIELD_DUST_GLSL = /* glsl */ `
 float cotFdHash( vec3 p ) {
 	p = fract( p * 0.3183099 + 0.1 );
@@ -2882,6 +2884,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
   shader.uniforms.uCotFieldDust = FIELD_DUST_UNIFORM;
+  // shader-text:begin rubber-tiles
   if (shader.defines?.COT_RUBBER_TILES !== undefined) {
     let fragment = `${RUBBER_TILES_GLSL}\n${shader.fragmentShader}`;
     for (const chunk of RUBBER_TILE_CHUNKS) {
@@ -2890,6 +2893,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
     }
     shader.fragmentShader = fragment;
   }
+  // shader-text:end rubber-tiles
   shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\nvarying float vCotSuitShade;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
   // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves); (264) the
   // suit's shade passes through with it
@@ -3301,10 +3305,15 @@ export function chainVehicleMaterialHook<T extends THREE.Material>(
  * with it. COT_NO_FIELD_DUST (2026-10-24, transitions-249; the owner: rubber stays rubber): the tyres', tracks', mats'
  * and glass's opt-out of the field dust, which the Garage hero's dormant energy skins (clones) dropped, dusting them.
  * COT_RUBBER_TILES (274): the rubber's broken-up tile (RUBBER_TILES_GLSL), kept by the hull's rubber (tankFactoryCore
- * separateHullRubber clones it), so skirts and flaps lose the repeat with the tyres.
+ * separateHullRubber clones it), so skirts and flaps lose the repeat with the tyres. (279) A switch only a shader reads
+ * sits in a `shader-text` region here, in its hook and where a material sets it: the CPU steps' keys mask those
+ * (tools/changed-only/shader-text.mjs), so a shader-only edit re-runs only the GPU steps.
  */
 const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS', 'COT_NO_FIELD_DUST',
-  'COT_RUBBER_TILES'] as const;
+  // shader-text:begin rubber-tiles
+  'COT_RUBBER_TILES'
+  // shader-text:end rubber-tiles
+] as const;
 
 /**
  * A clone of a cascade-registered material outside vehicleMaterialSetup: a dev build and the node receipts say so; the
@@ -3619,8 +3628,10 @@ export function createTankMaterials(
   // and dust in rubberSurface.ts's maps, so the field-dust term leaves it out; a second dust film would wash the tyres
   // pale grey (launch night 2026-10-08: "dusty dark grey is right and pale grey is not").
   rubber.defines = { ...rubber.defines, COT_NO_FIELD_DUST: 1 };
+  // shader-text:begin rubber-tiles
   // 274 (t80-skirts-274; Kevin: "the texture repeating is too jarring"): its 0.4 m tile, broken up (RUBBER_TILES_GLSL)
   rubber.defines.COT_RUBBER_TILES = 1;
+  // shader-text:end rubber-tiles
   // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
   // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
   const rubberCavity = track(setup(new THREE.MeshStandardMaterial({

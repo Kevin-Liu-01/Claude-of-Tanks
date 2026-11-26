@@ -274,6 +274,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fleet-partition.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // 274: computeState of this checkout with replayed edits overlaid (graph.mjs overlay; it writes nothing)
   'tools/changed-only/regen-keys.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
+  // 279: the same, with shader-region edits overlaid
+  'tools/changed-only/shader-text.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // computeState of this checkout against release/fingerprints.tsv (live: it reads the manifest no closure holds)
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
