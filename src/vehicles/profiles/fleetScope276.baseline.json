@@ -17,7 +17,7 @@
    "anatomy": "2cf2e90144cb4cae"
   },
   "ajax": {
-   "armor": "dabef5a70501a431",
+   "armor": "13949c1fdb76255e",
    "build": "03fa6c010c5277ce",
    "anatomy": "06d8210cd95a9c94"
   },
@@ -57,7 +57,7 @@
    "anatomy": "cd727cd6908fe5d9"
   },
   "amx56": {
-   "armor": "a8378c3787cc0d72",
+   "armor": "205895b340cfc49c",
    "build": "02ab96b52132319c",
    "anatomy": "a136d40e6c849b39"
   },
@@ -97,9 +97,9 @@
    "anatomy": "fb50ab65d95b90dc"
   },
   "bmpt_t90": {
-   "armor": "17612c247957afa5",
+   "armor": "23a874f40a1cd7c9",
    "build": "eae2e84b3301c18d",
-   "anatomy": "4f7ae28ba89d7fd5"
+   "anatomy": "922b6cb3e5421669"
   },
   "bmpt_terminator": {
    "armor": "968adc0ecd8c12a7",
@@ -122,7 +122,7 @@
    "anatomy": "056c4d820efd20a1"
   },
   "c1_ariete": {
-   "armor": "257f248cc09c6a58",
+   "armor": "31297b0d91a973fb",
    "build": "521206669a357a5d",
    "anatomy": "cd634047cf154576"
   },
@@ -137,7 +137,7 @@
    "anatomy": "5a9c0ca0ff9db374"
   },
   "c2_ariete": {
-   "armor": "4a0fc0a479204e2d",
+   "armor": "66d870703f3944b8",
    "build": "51c6b71f743a358e",
    "anatomy": "95004655671a0388"
   },
@@ -237,7 +237,7 @@
    "anatomy": "d0631156abd6eb20"
   },
   "chieftain3": {
-   "armor": "1fcd32a4516a7c64",
+   "armor": "30a3f65d8e2292e5",
    "build": "29c7166242c87582",
    "anatomy": "42f08e9993dc7338"
   },
@@ -289,7 +289,7 @@
   "cv90_mk4_concept": {
    "armor": "5af66a3836037d11",
    "build": "b639153a04f802e8",
-   "anatomy": "1b2a3a73eb8fb462"
+   "anatomy": "1f51aa01f7fc872a"
   },
   "dardo": {
    "armor": "a3c97dbae11bbdd8",
@@ -327,12 +327,12 @@
    "anatomy": "b4ba7030bb362b1d"
   },
   "griffin50mm": {
-   "armor": "d98911bf2c000a3a",
+   "armor": "2683d6105003078f",
    "build": "42dda29afaf7c0b5",
    "anatomy": "945fe1d74e154d36"
   },
   "griffin_viper": {
-   "armor": "524a7c7b5a2ea8f8",
+   "armor": "a4aa3770d15e94d6",
    "build": "efaa47280c146b00",
    "anatomy": "9c28493bbf0f834a"
   },
@@ -362,7 +362,7 @@
    "anatomy": "c69c3b46390644df"
   },
   "k21": {
-   "armor": "4c7585932e820328",
+   "armor": "14b88fcc4b0e6bcb",
    "build": "b8d4d4962a53636b",
    "anatomy": "6b130a7ae163af0a"
   },
@@ -427,7 +427,7 @@
    "anatomy": "3848d9dea2be39aa"
   },
   "leclerc_xlr": {
-   "armor": "55f1d96cc05cae80",
+   "armor": "13339fbe34e23033",
    "build": "02c41a1053bc6a1d",
    "anatomy": "ee0593df4a27574d"
   },
@@ -697,12 +697,12 @@
    "anatomy": "c3633ec04521ef4a"
   },
   "m46_patton": {
-   "armor": "b0fa11876469da80",
+   "armor": "a5b03f92df2ac631",
    "build": "c3f303109c489235",
    "anatomy": "9cdb05394d5760a8"
   },
   "m47_patton": {
-   "armor": "1ac02085c89f4abc",
+   "armor": "af8d0e549cb1923d",
    "build": "064ebd2d2bbae4d5",
    "anatomy": "6d24c0a109168b56"
   },
@@ -757,14 +757,14 @@
    "anatomy": "e3a59acf0c036f6f"
   },
   "magach3": {
-   "armor": "164fa82a0fe2f45d",
+   "armor": "78d8e3cf1c0ac2c2",
    "build": "8dc74465ee061ec8",
-   "anatomy": "f8d95d74bb88b36e"
+   "anatomy": "a21a717b869f593a"
   },
   "magach6b": {
-   "armor": "d5945fb9ea123e48",
+   "armor": "959e8addedd88e57",
    "build": "08f685b4d6371cc4",
-   "anatomy": "bef7b5056b0abc0e"
+   "anatomy": "fbca8b6a0b379e5a"
   },
   "magach7c": {
    "armor": "5dc34b296a40c8bf",
@@ -772,9 +772,9 @@
    "anatomy": "afc2fd13cb51ef40"
   },
   "marder1a3": {
-   "armor": "21deb7cb0a4f96d4",
+   "armor": "ab3355ef17fb959b",
    "build": "0867f87e3fdcc174",
-   "anatomy": "7c8587dea4151892"
+   "anatomy": "0ae40d17c5c71d1c"
   },
   "marder2": {
    "armor": "2f7b71a0f36a6b74",
@@ -807,17 +807,17 @@
    "anatomy": "b717261804eff07a"
   },
   "merkava3_baz": {
-   "armor": "712921e967da0c42",
+   "armor": "6d143b396d6ab446",
    "build": "698946adcb346c03",
    "anatomy": "53ad6efeac063280"
   },
   "merkava3c": {
-   "armor": "d5d6138794171b25",
+   "armor": "f527c7445d2eb0ac",
    "build": "e2b515f3b093e8a0",
    "anatomy": "a6c423e7e52dc365"
   },
   "merkava3d": {
-   "armor": "7e58d98630bf6c8e",
+   "armor": "8df39980017e68ef",
    "build": "00f03d2fc4a2598b",
    "anatomy": "c65469002688fb2c"
   },
@@ -842,7 +842,7 @@
    "anatomy": "91c3cfb62e6f528a"
   },
   "namer_ifv": {
-   "armor": "0d07a8837fa9b6b4",
+   "armor": "1ca0ef130531d24b",
    "build": "133d1eb7a087267a",
    "anatomy": "a1c84c6bfc4e741c"
   },
@@ -887,9 +887,9 @@
    "anatomy": "acc631f9cfa98799"
   },
   "olifant_mk2": {
-   "armor": "06c8f58dc4ebdaaf",
-   "build": "fbbe6593ee35de16",
-   "anatomy": "02919269ba511d7c"
+   "armor": "106e0b3d59e0f437",
+   "build": "0f1245416ce9f1e2",
+   "anatomy": "b59c26e9b440dfa8"
   },
   "osorio_p1": {
    "armor": "d6e781d929cca67c",
@@ -917,12 +917,12 @@
    "anatomy": "1c8ef26eee8f87ac"
   },
   "pl01": {
-   "armor": "6707727c92d0d91c",
+   "armor": "9c3b7193bd10382f",
    "build": "7e1a65ded5ef31df",
    "anatomy": "8df6671b989a3133"
   },
   "pl01_105": {
-   "armor": "2a819880e071f113",
+   "armor": "cc1a68ec38f37c9d",
    "build": "dac88788c4261b91",
    "anatomy": "76c28a5d9ff5cf6e"
   },
@@ -962,14 +962,14 @@
    "anatomy": "2236c6dcb3d3d281"
   },
   "pza_loara": {
-   "armor": "03a10dc270ad8525",
-   "build": "b5432c71dae2f199",
-   "anatomy": "5e56e595709b3959"
+   "armor": "2382f0420650c306",
+   "build": "f9f913a580cb908c",
+   "anatomy": "f674e116d66a1ab1"
   },
   "raiju_ifv": {
    "armor": "55835e0e074c68ef",
    "build": "fb4adb5a82276881",
-   "anatomy": "762b98a9912bd74e"
+   "anatomy": "a2ccd6d550761aec"
   },
   "redback": {
    "armor": "bd08461a3f45b361",
@@ -977,7 +977,7 @@
    "anatomy": "3ec82e8f6528cee0"
   },
   "sabra_mk2": {
-   "armor": "69d784b84e979f19",
+   "armor": "43614c6e8ba15c65",
    "build": "b0af84517183d317",
    "anatomy": "1c02444663601ea2"
   },
@@ -1307,9 +1307,9 @@
    "anatomy": "f035207f9d88a3a2"
   },
   "t90am": {
-   "armor": "5b1eb9cd431d5eef",
-   "build": "849eb0828949026b",
-   "anatomy": "b49a59171a6a5782"
+   "armor": "a497fdcb12f4a988",
+   "build": "24cd3b703384a54c",
+   "anatomy": "ce52d95c8975646e"
   },
   "t90m": {
    "armor": "e53f367e4a8ef28f",
@@ -1332,17 +1332,17 @@
    "anatomy": "dac773947a2cc65d"
   },
   "t90sm": {
-   "armor": "36bcc972d2c61db0",
-   "build": "489bee5f0967dc95",
-   "anatomy": "1a7de76aa6fe7812"
+   "armor": "5b6cbd79d4cd09d3",
+   "build": "731dd7946262aa99",
+   "anatomy": "109eddd9dbdfe206"
   },
   "t90sm_2013": {
-   "armor": "6bff9462f2eb918d",
-   "build": "1c1f3f2fa8c4cd05",
-   "anatomy": "54196f239dd48e13"
+   "armor": "d4bf0c86b333eac4",
+   "build": "50afceb720c65f8f",
+   "anatomy": "2e10cca69bd87c59"
   },
   "t95": {
-   "armor": "6c89e8a075962bbb",
+   "armor": "8466728fcf0ed966",
    "build": "bfadf412436eacc7",
    "anatomy": "b6a600aa358fabc3"
   },
@@ -1497,8 +1497,8 @@
    "anatomy": "769fc8a53a4006ab"
   },
   "vt4a1": {
-   "armor": "c5c92987afb3fff3",
-   "build": "4a2703bf8e8769fe",
+   "armor": "1fb810a943898bbe",
+   "build": "fb2dd42a29faf46c",
    "anatomy": "26abe25760febb1e"
   },
   "vt4a1_baihu": {
@@ -1507,7 +1507,7 @@
    "anatomy": "11f77551f97c4d3b"
   },
   "warrior_tes_h": {
-   "armor": "b16d3f62895f2b97",
+   "armor": "1a0e1abac52c96e3",
    "build": "680e07803457ec1f",
    "anatomy": "71432968b31afa9f"
   },
@@ -1557,13 +1557,13 @@
    "anatomy": "b59487ae8afd53e0"
   },
   "ztz99a": {
-   "armor": "3bb3f7e8f7147153",
-   "build": "a4f909d32ea04b2b",
+   "armor": "8566ecb2de92d044",
+   "build": "1018fcc1f6ea2c55",
    "anatomy": "7333b1167f26f3bd"
   },
   "ztz99a2": {
-   "armor": "30d714dbb75c36cf",
-   "build": "56155dc0009b3afe",
+   "armor": "0d2f730ca17345c9",
+   "build": "cfc510b8eb9f4605",
    "anatomy": "48c1be36114cf414"
   },
   "ztz99a2_qinglong": {
