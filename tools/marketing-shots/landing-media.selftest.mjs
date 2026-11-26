@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import { mediaBytes } from '../media-files.mjs';
 import { resolve } from 'node:path';
 
 const root = resolve('.');
@@ -73,7 +74,7 @@ const altKeyOf = (clip) => clip.altKey ?? `media.homeR2.${clip.id.replace(/-([a-
 for (const clip of [...reel.hero, ...Object.values(reel.features)]) {
   assert.ok(en[altKeyOf(clip)] && zh[altKeyOf(clip)], `${clip.id}: its alt text is in both catalogs`);
   for (const file of clipFiles(clip)) {
-    assert.equal((await stat(resolve(root, 'public', file.path.slice(1)))).size, file.bytes, `${file.path} is the manifest's file`);
+    assert.equal(mediaBytes(file.path), file.bytes, `${file.path} is the manifest's file`);
   }
 }
 for (const clip of reel.hero) assert.ok(clip.mobile, `${clip.id}: the hero clip has its phone rung`);

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { mediaBytes, mediaDigest, mediaExists, mediaFile, mediaFolder } from '../../tools/media-files.mjs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript-compiler-api';
@@ -113,11 +112,14 @@ assert.equal(bootPicks[0].bootStill, 'verdant-blast-f16', 'the Verdant Fields bl
   assert.deepEqual([item.width, item.height], [1824, 1080], 'the frame less its left 96 px');
   assert.deepEqual(item.rungs.map((rung) => [rung.rung, rung.width, rung.height]), [[1280, 1216, 720]], 'its 1280 rung, cut the same way');
   for (const file of [item, ...item.rungs]) {
-    const bytes = await readFile(new URL(`../../public${file.path}`, import.meta.url));
-    assert.deepEqual(webpDimensions(bytes), [file.width, file.height], `${file.path}: ${file.width}x${file.height}`);
+    // (media-blob-279) the still ships from public/ or Vercel Blob: tools/media-files.mjs gives either's bytes, hash and size
+    const found = mediaFile(file.path);
+    const size = found.where === 'blob' ? [found.width, found.height] : webpDimensions(await readFile(found.file));
+    assert.deepEqual(size, [file.width, file.height], `${file.path}: ${file.width}x${file.height}`);
     assert.equal(file.width * 1080, file.height * 1824, `${file.path}: the cut's 1824:1080`);
-    assert.equal(bytes.length, file.bytes, `${file.path}: the manifest's bytes`);
-    assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256, `${file.path}: the manifest's sha256`);
+    const digest = mediaDigest(file.path);
+    assert.equal(digest.bytes, file.bytes, `${file.path}: the manifest's bytes`);
+    assert.equal(digest.sha256, file.sha256, `${file.path}: the manifest's sha256`);
   }
   assert.ok(item.bytes <= 600 * 1024, `${item.path}: ${item.bytes} B, at most 600 KB`);
   const boot = FEATURED_SHOTS[0];
@@ -152,8 +154,8 @@ assert.equal(
   pickBoot(bootPicks[0]),
   'the featured panel must retain its screen-sized preview derivative',
 );
-const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
-const fullHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].img}`, import.meta.url));
+const bootHeroAsset = { size: mediaBytes(TRANSITION_SHOTS[0].bootImg) };
+const fullHeroAsset = { size: mediaBytes(TRANSITION_SHOTS[0].img) };
 assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
   'the featured preview must be materially smaller than its gallery source');
 assert.deepEqual(
@@ -171,7 +173,7 @@ assert.deepEqual(
     zh: JSON.parse(await readFile(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8')),
   };
   assert.deepEqual(loadingManifest.dimensions, { width: 1920, height: 1080 });
-  const files = new Set(await readdir(loadingDir));
+  const files = new Set(mediaFolder(`/media/${sitePicks.gallery.collection}/`));
   const close = new Set(sitePicks.gallery.close);
   for (const [n, id] of loadingPicks.entries()) {
     const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
@@ -185,11 +187,12 @@ assert.deepEqual(
     assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);
     assert.equal(item.path, `/media/${sitePicks.gallery.collection}/${id}.webp`);
     assert.ok(item.group === (close.has(id) ? 'close' : 'elevated'), `${id}: its gallery section (${item.group})`);
-    const file = await readFile(new URL(`${id}.webp`, loadingDir));
-    assert.deepEqual(webpDimensions(file), [1920, 1080], `${id}: a 1920x1080 webp`);
-    assert.ok(file.length > 50_000 && file.length <= 600 * 1024, `${id}: ${file.length} B, between 50 KB and 600 KB`);
-    assert.equal(file.length, item.bytes, `${id}: the manifest's bytes`);
-    assert.equal(createHash('sha256').update(file).digest('hex'), item.sha256, `${id}: the manifest's sha256`);
+    const found = mediaFile(item.path), digest = mediaDigest(item.path);
+    const size = found.where === 'blob' ? [found.width, found.height] : webpDimensions(await readFile(found.file));
+    assert.deepEqual(size, [1920, 1080], `${id}: a 1920x1080 webp`);
+    assert.ok(digest.bytes > 50_000 && digest.bytes <= 600 * 1024, `${id}: ${digest.bytes} B, between 50 KB and 600 KB`);
+    assert.equal(digest.bytes, item.bytes, `${id}: the manifest's bytes`);
+    assert.equal(digest.sha256, item.sha256, `${id}: the manifest's sha256`);
     assert.match(item.revision, /^[0-9a-f]{40}$/, `${id}: the commit it was rendered on`);
     assert.ok(MAP_IDS.includes(item.map), `${id}: ${item.map} is a battlefield`);
     assert.equal(shot.img, item.path);
@@ -337,8 +340,7 @@ assert.ok(FEATURED_SHOTS.some((shot) => shot.img.endsWith('-4k.webp')),
 
 for (const shot of FEATURED_SHOTS) {
   assert.ok(shot.capKey && shot.focal, `missing loading-screen metadata for ${shot.img}`);
-  const asset = fileURLToPath(new URL(`../../public${shot.img}`, import.meta.url));
-  assert.ok((await stat(asset)).size > 50_000, `featured capture is missing or undersized: ${shot.img}`);
+  assert.ok(mediaExists(shot.img) && mediaBytes(shot.img) > 50_000, `featured capture is missing or undersized: ${shot.img}`);
 }
 
 assert.ok(TRANSITION_SHOTS.every((shot) => shot.maps?.length),

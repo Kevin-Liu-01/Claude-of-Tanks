@@ -19,11 +19,12 @@
 // plays it on a press (src/presentation/mediaLibrary.ts). New words or clips rewrite the indexes only, never the sheets.
 // After publishing a folder under public/media (or re-rendering a picture in place), run --write and commit the
 // library with it; the library's receipt (tools/marketing-shots/media-library.selftest.mjs) fails until then.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  LIB, LOCK_FILE, ROOT, census, differences, entriesOf, lockOf, planLibrary, publicFile, readLibrary, readLock, sha16,
+  LIB, LIBRARY_ROOT, LOCK_FILE, ROOT, census, differences, entriesOf, lockOf, planLibrary, publicFile, readLibrary, readLock, mediaSha16,
 } from './library.mjs';
+import { mediaBytes, mediaFolder, mediaSource, removeMedia, STAGING, writeMedia } from '../media-files.mjs';
 
 const args = new Set(process.argv.slice(2));
 const WRITE = args.has('--write');
@@ -59,7 +60,7 @@ function layout(items) {
   return { cells, heights };
 }
 
-const stale = (lock, url) => lock[url] !== sha16(readFileSync(publicFile(url)));
+const stale = (lock, url) => lock[url] !== mediaSha16(url);
 
 function check(library, plan, results, log) {
   const { problems, counts } = census(plan, results);
@@ -84,10 +85,13 @@ async function write(library, plan) {
   const filter = masterFilter();
   console.log(filter ? `sheets through the master filter (${filter})` : 'no master filter configured: sheets as encoded');
   const lock = readLock();
+  const written = new Set();
+  const gone = [];
   const packBytes = new Map();
   const packedBytes = (collectionKey, ref) => {
     const old = library.collections.find((c) => c.key === collectionKey);
-    const file = join(LIB, collectionKey, old.packs[ref.pack]);
+    // (media-blob-279) a pack is big media: its bytes are in the staging folder on the machine that builds the library
+    const file = mediaSource(`/media/${LIBRARY_ROOT}/${collectionKey}/${old.packs[ref.pack]}`);
     if (!packBytes.has(file)) packBytes.set(file, readFileSync(file));
     return packBytes.get(file).subarray(ref.offset, ref.offset + ref.length);
   };
@@ -129,7 +133,7 @@ async function write(library, plan) {
       });
       for (const [k, item] of items.entries()) {
         const [sheet, x, y, tw, th] = cells[k];
-        const image = await loadImage(item.bytes ?? readFileSync(publicFile(item.ref.url)));
+        const image = await loadImage(item.bytes ?? readFileSync(item.ref.url.startsWith('/media/') ? mediaSource(item.ref.url) : publicFile(item.ref.url)));
         // halve toward the cell before the last draw, so the thumbnail averages its picture instead of sampling it
         let src = image, w = image.width, h = image.height;
         while (w / 2 >= tw && h / 2 >= th) {
@@ -152,17 +156,18 @@ async function write(library, plan) {
         const name = `thumbs-${String(k).padStart(3, '0')}.webp`;
         const encoded = await canvas.encode('webp', SHEET_QUALITY);
         const bytes = await filterPublishedImage(encoded, `media-${c.key}-${name.replace('.webp', '')}`, { type: 'image/webp', quality: SHEET_QUALITY }, filter);
-        writeFileSync(join(dir, name), bytes);
+        written.add(writeMedia(`/media/${LIBRARY_ROOT}/${c.key}/${name}`, Buffer.from(bytes)));
         sheets.push([name, SHEET_W, heights[k]]);
       }
       for (const [k, f] of files.entries()) {
-        const target = join(dir, packs[k]);
-        const bytes = Buffer.concat(f.parts);
-        if (!existsSync(target) || !readFileSync(target).equals(bytes)) writeFileSync(target, bytes);
+        written.add(writeMedia(`/media/${LIBRARY_ROOT}/${c.key}/${packs[k]}`, Buffer.concat(f.parts)));
       }
       // files the collection no longer uses
-      for (const f of readdirSync(dir)) {
-        if (/^(?:pack-\d+\.bin|thumbs-\d+\.webp)$/.test(f) && !packs.includes(f) && !sheets.some(([n]) => n === f)) rmSync(join(dir, f));
+      for (const f of mediaFolder(`/media/${LIBRARY_ROOT}/${c.key}/`)) {
+        if (/^(?:pack-\d+\.bin|thumbs-\d+\.webp)$/.test(f) && !packs.includes(f) && !sheets.some(([n]) => n === f)) {
+          removeMedia(`/media/${LIBRARY_ROOT}/${c.key}/${f}`);
+          gone.push(`/media/${LIBRARY_ROOT}/${c.key}/${f}`);
+        }
       }
       console.log(`${c.key}: ${items.length} pictures, ${packs.length} packs, ${sheets.length} sheets written`);
     } else {
@@ -178,7 +183,10 @@ async function write(library, plan) {
       })),
     };
     writeFileSync(join(dir, 'index.json'), JSON.stringify(index));
-    const bytes = readdirSync(dir).reduce((sum, f) => sum + statSync(join(dir, f)).size, 0);
+    // a file just written to the staging folder is not in the Blob manifest until adopt: its size is the staged file's
+    const sizeOf = (f) => (existsSync(join(STAGING, LIBRARY_ROOT, c.key, f)) ? statSync(join(STAGING, LIBRARY_ROOT, c.key, f)).size
+      : mediaBytes(`/media/${LIBRARY_ROOT}/${c.key}/${f}`));
+    const bytes = mediaFolder(`/media/${LIBRARY_ROOT}/${c.key}/`).reduce((sum, f) => sum + sizeOf(f), 0);
     summaries.push({ key: c.key, title: c.title, blurb: c.blurb, count: items.length, sets: c.sets.length, bytes });
   }
   // a collection the plan no longer has
@@ -193,6 +201,9 @@ async function write(library, plan) {
   const next = docs.replace(COUNT_RE, (_, a, _n, b, _t, c) => `${a}${shown}${b}${shown} pictures${c}`);
   if (next === docs && !COUNT_RE.test(docs)) throw new Error('site/docs.html has no library count to write');
   writeFileSync(DOCS, next);
+  if (written.has('staging') || gone.length) {
+    console.log(`library: big packs and sheets are in the staging folder; run node tools/blob-media.mjs adopt${gone.length ? ` and drop --path=${gone.join(',')}` : ''}, then families --write`);
+  }
   console.log(`library: ${count} pictures in ${summaries.length} collections, ${(summaries.reduce((s, c) => s + c.bytes, 0) / 1048576).toFixed(1)} MB; the manual prints ${shown}`);
 }
 

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaExists } from '../../tools/media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
@@ -86,7 +87,7 @@ const used = [...quotes.matchAll(/v5-social-card--(desert-duel|winter-breaker|ve
 assert.equal(new Set(used).size, 5, 'every X post uses a distinct battle photo');
 for (const modifier of used) {
   const relative = backgrounds.get(modifier);
-  assert.ok(relative && existsSync(join(ROOT, 'public', relative)), `missing battle background for ${modifier}`);
+  assert.ok(relative && mediaExists(relative), `missing battle background for ${modifier}`);
   assert.ok(styles.includes(`--social-card-image:url('/${relative}')`), `battle background ${relative} must be wired into the card layer`);
 }
 assert.match(styles, /\.v5-social-card::after\{[^}]*background:var\(--social-card-image\)[^}]*\/cover no-repeat;[^}]*opacity:\.26;[^}]*pointer-events:none/,

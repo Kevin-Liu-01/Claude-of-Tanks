@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { mediaExists } from '../media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,12 +55,12 @@ assert.deepEqual(manifest.qualityGate.required, { images: 22, passed: 22, failed
 for (const shot of manifest.shots) {
   assert.ok(shot.feature && shot.map && shot.alt && shot.title, `${shot.id} archive metadata`);
   assert.ok(shot.quality?.passed, `${shot.id} must pass the image gate`);
-  assert.ok(existsSync(join(ROOT, 'public', shot.src)), `${shot.id} public rendition`);
+  assert.ok(mediaExists(shot.src), `${shot.id} public rendition`);
 }
 assert.equal(manifest.process.contactSheets.length, 3, 'R2 must publish three review sheets');
 assert.deepEqual(manifest.process.contactSheets.map((sheet) => sheet.frames.length), [10, 10, 2]);
 for (const sheet of manifest.process.contactSheets) {
-  assert.ok(existsSync(join(ROOT, 'public', sheet.src)), `review sheet ${sheet.page} file`);
+  assert.ok(mediaExists(sheet.src), `review sheet ${sheet.page} file`);
 }
 
 const archiveSource = readFileSync(join(ROOT, 'src/presentation/mediaArchive.ts'), 'utf8');

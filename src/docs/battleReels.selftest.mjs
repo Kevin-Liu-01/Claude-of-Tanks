@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { mediaBytes, mediaExists, mediaPathOf } from '../../tools/media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATTLE_REELS } from './battleReels.ts';
@@ -23,7 +24,8 @@ assert.deepEqual(BATTLE_REELS.map(({ id }) => id), picks.docs.reels, 'the takes 
 for (const reel of BATTLE_REELS) {
   assert.ok(reel.title && !reel.title.startsWith('media.'), `${reel.id} title resolves from the catalog`);
   assert.ok(reel.map && !reel.map.startsWith('map.'), `${reel.id} battlefield resolves from the catalog`);
-  const video = files.get(reel.video);
+  // (media-blob-279) a reel's film is a Blob family URL (blobMediaFamily.ts) standing for its old /media/ path
+  const video = files.get(mediaPathOf(reel.video));
   assert.ok(video, `${reel.id} video is in the collection's receipt`);
   assert.equal(`${video.width}x${video.height}`, '1280x720', `${reel.id} plays at 720p`);
   assert.equal(video.fps, 30, `${reel.id} frame rate`);
@@ -32,16 +34,17 @@ for (const reel of BATTLE_REELS) {
     ['video', reel.video, 500_000],
     ['poster', reel.poster, 10_000],
   ]) {
-    const file = join(ROOT, 'public', url.replace(/^\//, ''));
-    assert.ok(existsSync(file), `missing ${kind} for ${reel.id}`);
-    assert.ok(statSync(file).size > minimumBytes, `${kind} for ${reel.id} is unexpectedly small`);
+    // (media-blob-279) a reel ships from Vercel Blob, its poster from public/: tools/media-files.mjs answers for both
+    assert.ok(mediaExists(url), `missing ${kind} for ${reel.id}`);
+    assert.ok(mediaBytes(url) > minimumBytes, `${kind} for ${reel.id} is unexpectedly small`);
   }
 }
 
 const library = /<div class="battle-reels"[\s\S]*?<\/noscript>/.exec(docs)?.[0];
 assert.ok(library, 'the manual index carries the take library');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load takes through one shared player');
-assert.ok(library.includes(`src="${BATTLE_REELS[0].video}"`), 'the player opens on the first take');
+// (the markup keeps the old /media/ path; the build rewrites it to the Blob URL the module builds: media-blob-279)
+assert.ok(library.includes(`src="${mediaPathOf(BATTLE_REELS[0].video)}"`), 'the player opens on the first take');
 // (2026-10-25) the landing's hero reel and features show the footage; the takes live in the manual alone
 assert.doesNotMatch(home, /href="\/docs#battle-reels"/, 'the landing no longer lists the takes');
 

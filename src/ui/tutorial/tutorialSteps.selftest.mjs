@@ -20,7 +20,8 @@
 //     shared duration tokens (1 ms under reduced motion), transform and opacity only, and the beat's check holds still
 //     there; the card never scrolls (no overflow:auto) and fits by one ladder.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { mediaBytes as mediaFileBytes, mediaExists, mediaPathOf } from '../../../tools/media-files.mjs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AFTER_TRAINING_STEPS, TRAINING_STEPS, TUTORIAL_STEPS, chapterSteps } from './tutorialSteps.ts';
@@ -122,10 +123,10 @@ const media = [];
 for (const step of TUTORIAL_STEPS) {
   if (!step.media) continue;
   for (const [src, max] of [[step.media.src, step.media.kind === 'image' ? STILL_MAX : LOOP_MAX], ...(step.media.poster ? [[step.media.poster, STILL_MAX]] : [])]) {
-    assert.ok(src.startsWith('/media/'), `${step.id}: ${src} is served from public/media`);
-    const file = resolve(ROOT, 'public', src.slice(1));
-    assert.ok(existsSync(file), `${step.id}: ${src} exists`);
-    const bytes = statSync(file).size;
+    // (media-blob-279) a moved loop is a Blob family URL (blobMediaFamily.ts) standing for its old /media/ path
+    assert.ok((mediaPathOf(src) ?? '').startsWith('/media/'), `${step.id}: ${src} is served from public/media or its Blob copy`);
+    assert.ok(mediaExists(src), `${step.id}: ${src} exists`);
+    const bytes = mediaFileBytes(src);
     assert.ok(bytes <= max, `${step.id}: ${src} is ${bytes} bytes, over ${max}`);
     mediaBytes += bytes;
     media.push(`${src} ${bytes}`);
