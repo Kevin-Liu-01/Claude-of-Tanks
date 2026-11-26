@@ -59,7 +59,9 @@ function cast(root, frame, origin, direction, far = 3) {
 function checkLaunchMouths(root, frame) {
   for (const x of L.columns) for (const y of L.rows) {
     // 2026-10-21 Object 695 canisters: open air down to a sealed launch terminal recessed in each collar.
-    const back = cast(root, frame, [x, y, 1.02], [0, 0, -1]);
+    // 278: 5 mm off the cell's axis (the terminal disc is r .111): a ray down the axis itself passes through the cap
+    // fan's centre vertex, which every triangle shares, and float rounding let it slip between them at one cell
+    const back = cast(root, frame, [x + .005, y + .002, 1.02], [0, 0, -1]);
     assert.ok(back, 'each open cell has a real sealed terminal');
     near(frame.worldToLocal(back.point.clone()).z, L.mouth - C.recess, .001, 'mouth air reaches its recessed terminal');
     for (let i = 0; i < 8; i++) {
