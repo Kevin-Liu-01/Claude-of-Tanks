@@ -9,7 +9,8 @@ import {near} from '../../../tools/receipt-kit.test-support.mjs';
 import {measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
-const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1'];
+// 269: the Australian M1A1 AIM SA (australiaSpecs.ts, on the m1a1 turret) joins the family's fit checks
+const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1','m1a1_aim_sa_aus'];
 assert.deepEqual(ALL_TANK_IDS.filter(id=>/^M1A1\b/.test(getSpec(id).name)).sort(),[...ids].sort(),
   'Every playable M1A1 configuration participates in the fit checks');
 assert.deepEqual(Object.keys(M1A1_GUN_PITCH_BY_YAW).sort(),[...ids].sort());

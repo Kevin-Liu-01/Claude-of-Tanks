@@ -124,7 +124,10 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
         `${id}: standardized M2 cannot expand primary armor hitboxes`);
     });
   }
-  if (id !== 'm551_sheridan') {
+  // the post-war American fit (guarded light groups, two whips, the seated rack) is the M46's and M47's: the M60A1 and
+  // M60A3 were rebuilt on the owner's model (10-27/28, the M60 rounds through 9a73d33fa8; the A1 carries one roof mast),
+  // so they keep only the M2 standard above and the gun finish below (Main's ruling, 278)
+  if (!['m551_sheridan', 'm60a1', 'm60a3'].includes(id)) {
     const receipt = tank.root.getObjectByName('rig_turret')?.userData.americanModernizationReceipt;
     assert.equal(receipt?.standardMachineGun, 'sheridan-m2hb-v2',
       `${id}: publishes its American modernization receipt`);
