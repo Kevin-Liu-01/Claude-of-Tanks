@@ -39,7 +39,10 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   type89: [-1,1].map(side => turret(side*1.25,.63,.40)),
   spz_wotan: [.36, .59].map(y => turret(-1.02 * .9, y * .9, .839 * .9)),
   raiju_ifv: [-1, 1].flatMap(s => [.32, .56].map(y => turret(s * 1.39 * .9, y * .9, .7175 * .9))),
-  cv90_mk4_concept: [.42, .70].map(y => turret(-1.20 * .9, y * .9, .68 * .9)),
+  // 267 (fb694e0dd6): the twin pod raised on its arm at the turret's left (profiles/cv90.ts, x 1.24), its two tubes at
+  // y 1.12 and 1.29 and their collar rings' plane at z .393, in the 0.9 turret scale (the exits stayed on the old low
+  // right-side pod until 278)
+  cv90_mk4_concept: [1.12, 1.29].map(y => turret(1.24 * .9, y * .9, .393 * .9)),
   hayate_ifv: [-1, 1].map(s => turret(s * .92, .385 + .02 * detMath.sin(.14), .285 + .02 * detMath.cos(.14), .14)),
   fv510_milan: [turret(.56 * 1.1, (.92 + .0125 * detMath.sin(.04)) * 1.1 * .84,
     (.927 + .0125 * detMath.cos(.04)) * 1.1, detMath.atan(detMath.tan(.04) * .84))],

@@ -716,6 +716,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
+    // 278 (fleet-debt-278): the anatomy generator measures the authored launcher exits, not its last calibration's
+    'src/vehicles/combatLauncherRigAuthored.selftest.mjs',
     // 276 (sim-det-trig, Main's gap-3 rule): every id's drawn muzzle within p99 3 cm / max 10 cm of the pose both drivers
     // fire from (sim/gunPose.ts); ids beyond are listed by distance
     'src/vehicles/gunPoseVisualFit.selftest.mjs',
