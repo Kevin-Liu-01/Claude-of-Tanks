@@ -441,7 +441,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     if (!graph.isFile(abs(file))) { shaderProblems.push(`${file}: no such file`); continue; }
     const { masked, problems, switches } = maskShaderText(graph.readText(abs(file)), file, declaration);
     if (masked === null) { shaderProblems.push(...problems.map((problem) => `${file}: ${problem}`)); continue; }
-    const named = [...executed].sort().flatMap((other) => switchSites(other === abs(file) ? masked : graph.readText(other), rel(other), switches)
+    // (a node the graph holds may name no file here: an untracked build output a module only names)
+    const named = [...executed].filter((other) => graph.isFile(other)).sort().flatMap((other) => switchSites(other === abs(file) ? masked : graph.readText(other), rel(other), switches)
       .map((name) => `${file}: its switch ${name} is named in ${rel(other)}${other === abs(file) ? ' outside its regions' : ''}`));
     if (named.length) { shaderProblems.push(...named); continue; }
     shaderMasked.set(abs(file), sha256(masked));
@@ -449,7 +450,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   }
   /** A tool file that names a masked switch: the step (a CPU or world one) cannot trust the mask. */
   const shaderSwitchProblem = (file) => {
-    const named = shaderSwitches.length && !shaderMasked.has(file) ? switchSites(graph.readText(file), rel(file), shaderSwitches) : [];
+    const named = shaderSwitches.length && !shaderMasked.has(file) && graph.isFile(file) ? switchSites(graph.readText(file), rel(file), shaderSwitches) : [];
     return named.length ? `${rel(file)} names the shader switch ${named.join(', ')} that a masked region sets` : null;
   };
   const nodeRows = (files, options = {}) => graph.rowsOf(files, { ...options, masked: shaderMasked });
