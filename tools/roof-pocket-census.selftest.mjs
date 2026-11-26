@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, roofPockets } from './roof-pocket.mjs';
+import { ENVELOPE_GAP_M, OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, roofPockets } from './roof-pocket.mjs';
 
 // Roof-pocket receipt (264, Main 2026-10-28: "Put the census --gate in a receipt that's shrink-only fleet-wide"; the
 // owner on the Leclercs, 2026-10-27: "basically they create "roofs" that imply solid areas but have no side plating or
@@ -24,6 +24,8 @@ assert.ok(S.voxelM <= VOXEL_M && S.minAreaCm2 <= POCKET_MIN_AREA_M2 * 1e4 && S.m
 assert.ok(S.raisedRoofY === RAISED_ROOF_Y && S.toleranceCm2 <= 40 && S.toleranceFrac <= 0.02, `ledger classes and tolerance ${JSON.stringify(S)}`);
 // 279 (turret-foot-seat, Main 2026-11-26): the turret is measured seated on its own hull, never alone again
 assert.equal(S.turretWithHull, true, `ledger turret rows measured on the hull (${JSON.stringify(S)})`);
+// and only the seat's gap over the hull's swept top is traverse clearance: no wider allowance
+assert.ok(S.sweptClearanceM === ENVELOPE_GAP_M && ENVELOPE_GAP_M <= 0.03, `swept clearance ${S.sweptClearanceM} m`);
 
 const rows = ledger.tanks;
 const missing = ALL_TANK_IDS.filter((id) => !rows[id]);
@@ -65,6 +67,13 @@ const bodyTris = slot.length / 9, seated = [...slot];
 boxTris(seated, 0, 0, 0, 0.6, 0.40, 0.13);
 const onHull = roofPockets(Float64Array.from(seated), { ...OWNER_RULES.turret, body: bodyTris });
 assert.equal(onHull.length, 0, `the slot filled by the hull reads no pocket (${JSON.stringify(onHull.map((p) => p.box))})`);
+// the turret's swept clearance: a hull top passing over every radius at another yaw 2 cm under the plate makes the slot
+// traverse clearance; the same top 10 cm lower (8 cm of air over it) leaves the slot a pocket
+const sweptAt = (y) => ({ bin: VOXEL_M, top: new Float64Array(64).fill(y) });
+assert.equal(roofPockets(Float64Array.from(slot), { ...OWNER_RULES.turret, envelope: sweptAt(0.38) }).length, 0,
+  'air under the hull\'s swept top plus the seat gap is traverse clearance');
+assert.ok(roofPockets(Float64Array.from(slot), { ...OWNER_RULES.turret, envelope: sweptAt(0.28) }).some((p) => p.areaM2 > 0.004),
+  'air over the hull\'s swept top plus the seat gap is still a pocket');
 assert.equal(roofPockets(Float64Array.from(slot), { ...OWNER_RULES.turret, body: bodyTris - 12 }).length, 0,
   'the same plate as the hull\'s (after the body: the last box) is no turret roof');
 assert.ok(caught.some((p) => p.box[2] >= -0.02 && p.box[5] <= 0.15 && p.areaM2 > 0.004), `a plate over a slot reads as a pocket (${JSON.stringify(caught.map((p) => p.box))})`);
@@ -72,4 +81,4 @@ assert.equal(closed.length, 0, `the slot filled reads no pocket (${JSON.stringif
 
 console.log(`roof-pocket-census.selftest: ${ALL_TANK_IDS.length} rows current (turret raised ${total('turretRaisedCm2')} cm2, `
   + `turret base ${total('turretBaseCm2')} cm2, hull ${total('hullCm2')} cm2 fleet-wide, shrink-only); leclerc_s2 and ${clean} `
-  + 're-measured on their hulls; the plate over a slot caught, the filled slot (turret or hull) clear, a hull plate no turret roof PASS');
+  + 're-measured on their hulls; the plate over a slot caught, the filled slot (turret or hull) clear, a hull plate no turret roof, swept clearance left out PASS');

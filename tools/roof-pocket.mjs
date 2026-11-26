@@ -23,6 +23,10 @@
 //   turret, at the turret's rest yaw, join the turret's soup as walls and floors only (they never roof a pocket), so a
 //   turret-alone slot the hull closes (the MBT-70's) is not counted and a slot between the turret's lip and the deck under
 //   it (the M46's, after the 274 foot band) is.
+// - Except where the hull passes at another yaw: the hull's highest top at each radius round the turret's axis over every
+//   bearing (its swept envelope, measured from the hull's own triangles), plus the seat's 3 cm gap, is traverse clearance a
+//   rigid turret cannot fill without striking the hull as it turns (a raised engine deck under a bustle; Main 2026-11-26,
+//   the turret-foot-seat ruling). Air in a turret's pocket at or under that height at its own radius is no pocket.
 import * as THREE from 'three';
 import { meshTriangles, meshesUnder } from '../src/vehicles/gunHullClearance.test-support.mjs';
 
@@ -55,6 +59,36 @@ export function pocketClasses(found) {
  *  the voxel frame's margin, so the hull reaches the frame's border round the turret and the outside air still comes in
  *  over it. */
 const HULL_REACH_M = SLOT_M + 0.10;
+/** The turret's swept clearance over the hull (see the header): the seat's gap over the hull's highest swept top
+ *  (turretSeatPlane.ts TURRET_SEAT_GAP_M), and the radius band and plan step the envelope is read at (m). */
+export const ENVELOPE_GAP_M = 0.03;
+const ENVELOPE_BIN_M = VOXEL_M, ENVELOPE_STEP_M = 0.01;
+
+/** The hull's swept envelope round the turret's axis (the turret frame's y axis): per ENVELOPE_BIN_M radius band out to
+ *  `reach`, the highest up-facing hull surface on any bearing (-Infinity where none). */
+function sweptEnvelope(tri, reach) {
+  const bins = Math.ceil(reach / ENVELOPE_BIN_M) + 1, top = new Float64Array(bins).fill(-Infinity);
+  for (let t = 0; t < tri.length; t += 9) {
+    const ax = tri[t], ay = tri[t + 1], az = tri[t + 2], bx = tri[t + 3], by = tri[t + 4], bz = tri[t + 5], cx = tri[t + 6], cy = tri[t + 7], cz = tri[t + 8];
+    const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
+    const ny = uz * vx - ux * vz, len = Math.hypot(uy * vz - uz * vy, ny, ux * vy - uy * vx);
+    if (!(len > 1e-12) || Math.abs(ny) < 0.02 * len) continue;                  // a wall: its top edge is another face's
+    const x0 = Math.min(ax, bx, cx), x1 = Math.max(ax, bx, cx), z0 = Math.min(az, bz, cz), z1 = Math.max(az, bz, cz);
+    if (Math.hypot(Math.max(0, x0, -x1), Math.max(0, z0, -z1)) > reach) continue;
+    const den = ux * vz - uz * vx;
+    // its corners and its plan on an ENVELOPE_STEP_M grid
+    const put = (x, y, z) => { const r = Math.hypot(x, z); if (r <= reach) { const k = Math.floor(r / ENVELOPE_BIN_M); if (y > top[k]) top[k] = y; } };
+    put(ax, ay, az); put(bx, by, bz); put(cx, cy, cz);
+    for (let x = Math.ceil(x0 / ENVELOPE_STEP_M) * ENVELOPE_STEP_M; x <= x1; x += ENVELOPE_STEP_M) {
+      for (let z = Math.ceil(z0 / ENVELOPE_STEP_M) * ENVELOPE_STEP_M; z <= z1; z += ENVELOPE_STEP_M) {
+        const wx = x - ax, wz = z - az, s = (wx * vz - wz * vx) / den, q = (ux * wz - uz * wx) / den;
+        if (s < -1e-7 || q < -1e-7 || s + q > 1 + 1e-7) continue;
+        put(x, ay + s * uy + q * vy, z);
+      }
+    }
+  }
+  return { bin: ENVELOPE_BIN_M, top };
+}
 
 /** The triangles of `tri` (9 per triangle) whose box meets [lo, hi] (each [x, y, z]). */
 function trianglesIn(tri, lo, hi) {
@@ -95,9 +129,12 @@ export function ownerSoups(tank, { turretWithHull = true } = {}) {
       for (let i = 0; i < own.length; i += 3) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], own[i + k]); hi[k] = Math.max(hi[k], own[i + k]); }
       for (let k = 0; k < 3; k++) { lo[k] -= HULL_REACH_M; hi[k] += HULL_REACH_M; }
       const inv = new THREE.Matrix4().copy(turret.matrixWorld).invert();
-      const seat = own.length ? trianglesIn(meshTriangles(meshesUnder(hull, [turret]), inv).tri, lo, hi) : new Float64Array(0);
+      const whole = meshTriangles(meshesUnder(hull, [turret]), inv).tri;
+      const seat = own.length ? trianglesIn(whole, lo, hi) : new Float64Array(0);
       const tri = new Float64Array(own.length + seat.length); tri.set(own); tri.set(seat, own.length);
-      out.turret = { ...out.turret, tri, seatedOn: seat.length / 9 };
+      let reach = 0;
+      for (let i = 0; i < own.length; i += 3) reach = Math.max(reach, Math.hypot(own[i], own[i + 2]));
+      out.turret = { ...out.turret, tri, seatedOn: seat.length / 9, envelope: sweptEnvelope(whole, reach + 2 * VOXEL_M) };
     }
   }
   if (hull) {
@@ -110,7 +147,7 @@ export function ownerSoups(tank, { turretWithHull = true } = {}) {
 }
 
 /** The exposed pockets in one soup (Float64Array, 9 per triangle), largest plan area first. */
-export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity, cells: withCells = false, glass = null } = {}) {
+export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity, cells: withCells = false, glass = null, envelope = null } = {}) {
   const n = tri.length / 9;
   if (!n) return [];
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -203,6 +240,14 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     const along = (r1, di, dk) => roofed(i - di * r1, k - dk * r1) || roofed(i + di * r1, k + dk * r1);
     if (!((along(reach, 1, 0) && along(narrow, 0, 1)) || (along(reach, 0, 1) && along(narrow, 1, 0)))) continue;
     if (j < baseCells || lo[1] + (j + 0.5) * voxel < minY) continue;
+    // traverse clearance (see the header): under the hull's swept top at this cell's radius (either radius band the cell
+    // spans) plus the seat's gap
+    if (envelope) {
+      const r = Math.hypot(cx(i), cz(k)), k0 = Math.max(0, Math.floor((r - voxel * Math.SQRT1_2) / envelope.bin)), k1 = Math.min(envelope.top.length - 1, Math.floor((r + voxel * Math.SQRT1_2) / envelope.bin));
+      let swept = -Infinity;
+      for (let e = k0; e <= k1; e++) swept = Math.max(swept, envelope.top[e]);
+      if (lo[1] + (j + 0.5) * voxel <= swept + ENVELOPE_GAP_M) continue;
+    }
     if ((wall(i, j, k, 1, 0) && wall(i, j, k, -1, 0)) || (wall(i, j, k, 0, 1) && wall(i, j, k, 0, -1))) pocket[p] = 1;
   }
   // the outside air: a flood fill through air from the frame's border
