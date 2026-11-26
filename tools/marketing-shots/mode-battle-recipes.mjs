@@ -1,3 +1,4 @@
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // Per-slot recipes for tools/marketing-shots/mode-battle-shots.mjs (home page r2, 2026-10-12).
 //
 // A recipe names the battle (spec, map, mode; defaults come from the shot list's tool.config), the hour, extra

@@ -9,6 +9,13 @@
  * The module imports nothing and runs nothing at import; it never enters the game entry's boot graph.
  */
 
+/** (media-blob-279) The old /media/ path a moved still's Vercel Blob URL stands for (blobMediaPath.ts sitePathOf, kept
+ *  here so this module imports nothing: tools/blob-media-cutover.selftest.mjs holds the two equal). */
+export function stillPathOf(url: string): string {
+  const match = /^[a-z][a-z0-9+.-]*:\/\/[^/]+(\/media\/.+)-[0-9a-f]{16}(\.[a-z0-9]+)$/i.exec(url);
+  return match ? `${match[1]}${match[2]}` : url;
+}
+
 export interface StillRung {
   readonly src: string;
   /** The file's width in pixels (the srcset descriptor). */
@@ -41,9 +48,12 @@ const RUNG_CONVENTIONS: ReadonlyArray<{ readonly test: RegExp; readonly rungs: R
 /** The rungs `src` (its largest web file, `width` wide) ships in, smallest first. */
 export function stillRungs(src: string, width = 1920): StillRung[] {
   const rungs: StillRung[] = [{ src, width }];
-  const convention = RUNG_CONVENTIONS.find(({ test }) => test.test(src));
+  // (media-blob-279) a big still is a Vercel Blob URL in the built page: its rungs are named from the path it stands for,
+  // and a rung (640 wide, small) ships from public/
+  const path = stillPathOf(src);
+  const convention = RUNG_CONVENTIONS.find(({ test }) => test.test(path));
   for (const [pattern, rungWidth] of convention?.rungs ?? []) {
-    if (convention && rungWidth < width) rungs.push({ src: src.replace(convention.test, pattern), width: rungWidth });
+    if (convention && rungWidth < width) rungs.push({ src: path.replace(convention.test, pattern), width: rungWidth });
   }
   return rungs.sort((a, b) => a.width - b.width);
 }

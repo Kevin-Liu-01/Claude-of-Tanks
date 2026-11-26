@@ -12,7 +12,11 @@
  * the manifest, or when a moved file has no URL yet. Receipts map a URL back to its path with tools/media-files.mjs.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
-import { idForPath, pathnameFor } from './blobMediaPath.ts';
+import { pathnameForPath } from './blobMediaPath.ts';
+
+/** Only a page resolves through a map: Node (the prerender, the receipts) keeps the old path, which the build rewrites,
+ *  so the committed pages never hold a Blob URL. */
+const IN_PAGE = typeof document !== 'undefined';
 
 export interface BlobMediaFamily {
   /** The site path every member starts with (`/media/maps-r1/`). */
@@ -27,8 +31,14 @@ export interface BlobMediaFamily {
 export function familyMediaUrl(family: BlobMediaFamily, path: string): string {
   if (!path.startsWith(family.prefix)) throw new Error(`blobMediaFamily: ${path} is not under ${family.prefix}`);
   const sha16 = family.items[path.slice(family.prefix.length)];
-  if (sha16 === undefined) return path;
-  // Before the upload the origin is null and the URL is the bare pathname, which no host serves: the build refuses to ship
-  // a manifest with a path item that has no URL (tools/blob-media.mjs rewrite), so such a URL never reaches a visitor.
-  return `${family.origin ?? ''}/${pathnameFor(idForPath(path), sha16, path)}`;
+  if (sha16 === undefined || !IN_PAGE) return path;
+  return familyBlobUrl(family, path, sha16);
+}
+
+/** The Blob URL of a family member (the map's origin and the item's pathname). Before the upload the origin is null and
+ *  the URL is the bare pathname, which no host serves: the build refuses to ship a manifest with a path item that has no
+ *  URL (tools/blob-media.mjs rewrite), so such a URL never reaches a visitor. */
+export function familyBlobUrl(family: BlobMediaFamily, path: string, sha16 = family.items[path.slice(family.prefix.length)]): string {
+  if (sha16 === undefined) throw new Error(`blobMediaFamily: ${path} is not a member of ${family.prefix}`);
+  return `${family.origin ?? ''}/${pathnameForPath(path, sha16)}`;
 }

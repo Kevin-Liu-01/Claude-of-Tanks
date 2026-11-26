@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The Deploy screen's mode tiles (brand-ui 245, the owner's UI sweep: our actual images in place of flat rows).
 // Copyright © 2026 Kevin B. Liu.
 // Each tile's picture is a centre cut of that mode's in-engine still (public/media/site50-r14/home/modes/<id>.webp,

@@ -6,6 +6,7 @@ import { cardHtml, OG_IMAGE_CARDS, OG_TYPE, OG_ZH_LABELS, ogCardPath } from './g
 import { localizeHtmlDocument } from '../../src/presentation/localizedHtml.ts';
 import { localizedStudioMetadata, privateRoomMetadata, SITE_ORIGIN } from '../../src/presentation/siteMetadata.ts';
 import { renderProductStats } from '../../src/productStats.ts';
+import { mediaExists } from '../media-files.mjs';
 import { PUBLIC_ROUTE_RECORDS } from '../../src/ui/localeRouting.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -30,7 +31,8 @@ for (const [id, title, source, , corner] of OG_IMAGE_CARDS) {
   assert.equal(!title, ['game', 'home'].includes(id), `${id}: only the game and the landing are wordless`);
   if (title) assert.match(OG_ZH_LABELS[id], /[一-鿿]/, `${id}: the zh-CN title must be Chinese`);
   assert.ok(['tl', 'tr'].includes(corner), `${id}: its text stands in a top corner (${corner})`);
-  assert.ok(existsSync(new URL(source.split('#t=')[0], root)), `${id}: its source ${source} is in the tree`);
+  // (media-blob-279) a source may be big media on Vercel Blob; the generator reads its bytes from the staging folder
+  assert.ok(mediaExists(`/${source.split('#t=')[0].replace(/^public\//, '')}`), `${id}: its source ${source} is in the tree or on Blob`);
 }
 // legible where a share shows the card at a third of its width (a phone timeline, ~340 px): the title keeps a cap
 // of 20 px and more

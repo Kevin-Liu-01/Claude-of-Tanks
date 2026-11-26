@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // generate-garage-display-atlas.mjs (garage r9, 2026-10-17): the Garages' ONE display atlas and its manifest.
 //
 // The owner (2026-10-17): "we can certainly put up more areas of images of tanks, computers or screens showing tanks,
@@ -35,6 +36,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaDigest, mediaExists, mediaSource } from './media-files.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SELF = fileURLToPath(import.meta.url);
@@ -89,8 +91,15 @@ const BRAND = Object.freeze({
 
 const stillPath = (id) => {
   const thumb = `public/media/site50-r14/stills/${id}-thumb.webp`;
-  return fs.existsSync(path.join(ROOT, thumb)) ? thumb : `public/media/site50-r14/stills/${id}.webp`;
+  return mediaExists(thumb) ? thumb : `public/media/site50-r14/stills/${id}.webp`;
 };
+// (media-blob-279) an input under public/media may be big media on Vercel Blob: its bytes are read from the staging folder
+// when the atlas is drawn, and it is hashed by its SHA-256 (the Blob manifest's row), so the check needs no bytes
+const isMediaInput = (file) => file.startsWith('public/media/');
+const inputPath = (file) => (isMediaInput(file) ? mediaSource(file) : path.join(ROOT, file));
+const inputExists = (file) => (isMediaInput(file) ? mediaExists(file) : fs.existsSync(path.join(ROOT, file)));
+const inputSha256 = (file) => (isMediaInput(file) ? mediaDigest(file).sha256
+  : crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex'));
 
 /** Every rect, by name: size, emission (0..1 of its albedo in the emissive atlas), what draws it. */
 function atlasItems() {
@@ -190,7 +199,7 @@ function inputHash(items) {
   const hash = crypto.createHash('sha256');
   for (const file of inputFiles(items)) {
     hash.update(file);
-    hash.update(fs.readFileSync(path.join(ROOT, file)));
+    hash.update(inputSha256(file));
   }
   return hash.digest('hex');
 }
@@ -263,7 +272,7 @@ function check(strict) {
     (strict ? failures : warnings).push('a picture input changed since the last generation (brand marks, stills, readouts or map thumbs):'
       + ' run npm run garage:atlas:update to show the current pictures');
   }
-  for (const file of inputFiles(items)) if (!fs.existsSync(path.join(ROOT, file))) failures.push(`input ${file} is missing`);
+  for (const file of inputFiles(items)) if (!inputExists(file)) failures.push(`input ${file} is missing`);
   if (stored) {
     const expected = manifestOf(items, placed, hash, stored.bytes);
     if (JSON.stringify(expected.rects) !== JSON.stringify(stored.rects)) failures.push('the packed layout differs from the manifest');
@@ -775,11 +784,11 @@ async function generate() {
     if (draw[item.name]) draw[item.name](a, r);
     else if (decal[item.name]) decal[item.name](a, r);
     else if (item.kind === 'still') {
-      const image = await loadImage(path.join(ROOT, item.source));
+      const image = await loadImage(inputPath(item.source));
       fit(a, image, r.x, r.y, r.w, r.h, 'cover');
     } else if (item.kind === 'map' || item.kind === 'readout') {
       a.fillStyle = '#0c1216'; a.fillRect(r.x, r.y, r.w, r.h);
-      const image = await loadImage(path.join(ROOT, item.source));
+      const image = await loadImage(inputPath(item.source));
       fit(a, image, r.x, r.y, r.w, r.h, item.kind === 'map' ? 'cover' : 'contain');
     } else if (item.kind === 'name') nameboard(a, r, item.garage);
     else if (item.kind === 'picto') { a.fillStyle = '#f2f2ec'; a.fillRect(r.x, r.y, r.w, r.h); pictogram(a, item.name.slice(6), r); }
