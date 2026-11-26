@@ -3398,6 +3398,7 @@
   "docs.controls.photo.key.zoom": "Aproximar ou afastar",
   "docs.controls.photo.key.roll": "Girar a câmera no próprio eixo",
   "docs.controls.photo.key.exit": "Sair do modo foto (P também funciona)",
+  "docs.controls.photo.back": "{esc} leva você de volta para onde abriu o modo foto: para a batalha em andamento se usou {key}, ou para as configurações pausadas se tocou em {photo}.",
   "docs.controls.photo.pointer": "Com o mouse, arraste para girar em torno, arraste com Shift ou com o botão direito para deslocar a vista e use a roda para dar zoom. Em uma tela sensível ao toque, faça o gesto de pinça para dar zoom e arraste com dois dedos para deslocar a vista.",
   "docs.controls.photo.where": "O modo foto funciona em batalhas solo e replays, não em batalhas online nem no modo Sofá.",
   "docs.controls.watch.lede": "Assista a uma batalha entre bots pela garagem: Assistir fica ao lado de Entrar em combate. Todos os tanques são controlados por bots, todos ficam visíveis e nada é gravado. Disponível em {modes} modos.",

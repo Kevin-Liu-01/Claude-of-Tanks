@@ -3398,6 +3398,7 @@
   "docs.controls.photo.key.zoom": "Move in or out",
   "docs.controls.photo.key.roll": "Roll the camera",
   "docs.controls.photo.key.exit": "Leave photo mode (P works too)",
+  "docs.controls.photo.back": "{esc} takes you back to where you came from: the running battle if you pressed {key}, or the paused settings if you tapped {photo}.",
   "docs.controls.photo.pointer": "With a mouse, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On a touch screen, pinch to zoom and drag two fingers to pan.",
   "docs.controls.photo.where": "Photo mode works in solo battles and replays, not in online or couch battles.",
   "docs.controls.watch.lede": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in {modes} modes.",

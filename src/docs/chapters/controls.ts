@@ -185,7 +185,11 @@ function photoSection(): string {
     [['Escape'], 'docs.controls.photo.key.exit'],
   ];
   const list = keys.map(([codes, key]) => `<li>${codes.map((code) => kbd(labelForCode(code))).join(' ')}<span>${esc(t(key))}</span></li>`).join('');
-  return `<p>${open}</p><p>${frame}</p><ul class="dm-keylist">${list}</ul>`
+  // the way back is the way in (settings-unify-278): opened by its key, Esc returns to the running battle; opened by
+  // Settings' Photo button, to the paused Settings (tools/photo-mode-gauntlet.browser.mjs proves both)
+  const back = line('docs.controls.photo.back', { photo: t('photo.open') },
+    { esc: kbd(labelForCode('Escape')), key: kbd(labelForCode(DEFAULT_BINDINGS.photoMode ?? 'KeyP')) });
+  return `<p>${open}</p><p>${frame}</p><ul class="dm-keylist">${list}</ul><p>${back}</p>`
     + `<p>${esc(t('docs.controls.photo.pointer'))}</p><p>${esc(t('docs.controls.photo.where'))}</p>`;
 }
 

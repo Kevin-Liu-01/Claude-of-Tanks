@@ -3398,6 +3398,7 @@
   "docs.controls.photo.key.zoom": "Näher heran oder weiter weg",
   "docs.controls.photo.key.roll": "Kamera rollen",
   "docs.controls.photo.key.exit": "Fotomodus verlassen (P geht auch)",
+  "docs.controls.photo.back": "{esc} bringt dich dorthin zurück, wo du den Fotomodus geöffnet hast: nach {key} ins laufende Gefecht, nach {photo} in die pausierten Einstellungen.",
   "docs.controls.photo.pointer": "Mit der Maus ziehst du zum Kreisen, mit gedrückter Umschalttaste oder rechter Maustaste zum Schwenken, und mit dem Mausrad zoomst du. Auf einem Touchscreen zoomst du, indem du zwei Finger zusammen- oder auseinanderziehst, und schwenkst, indem du mit zwei Fingern ziehst.",
   "docs.controls.photo.where": "Der Fotomodus funktioniert in Solo-Gefechten und Wiederholungen, nicht in Online-Gefechten oder im Couch-Modus.",
   "docs.controls.watch.lede": "Schau dir von der Garage aus ein Bot-Gefecht an: „Zuschauen“ steht neben „Ausrücken“. Alle Plätze sind mit Bots besetzt, alle Panzer sind sichtbar und nichts wird aufgezeichnet. Das funktioniert in {modes} Modi.",

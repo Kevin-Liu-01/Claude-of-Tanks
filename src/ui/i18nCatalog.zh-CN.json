@@ -3450,6 +3450,7 @@
   "docs.controls.photo.key.zoom": "拉近或拉远",
   "docs.controls.photo.key.roll": "旋转镜头",
   "docs.controls.photo.key.exit": "退出拍照模式（也可按 P）",
+  "docs.controls.photo.back": "按 {esc} 会回到你打开拍照模式的地方：用 {key} 打开时回到进行中的战斗，从{photo}按钮打开时回到已暂停的设置。",
   "docs.controls.photo.pointer": "使用鼠标时，拖动可环绕，按住 Shift 拖动或按住右键拖动可平移，滚动滚轮可缩放。在触屏上，双指捏合可缩放，双指拖动可平移。",
   "docs.controls.photo.where": "拍照模式可在单人战斗和回放中使用，联机和同屏战斗中不可用。",
   "docs.controls.watch.lede": "在车库中观看机器人之间的战斗：“观战”按钮位于“出击”旁。所有席位均由机器人担任，所有坦克可见，且不计入战绩。共支持 {modes} 种模式。",

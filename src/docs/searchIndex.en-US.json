@@ -87,7 +87,7 @@
   "href": "/docs/controls#photo",
   "title": "Photo mode",
   "chapter": "Controls and Watch",
-  "text": "In a solo battle, press P , or tap Photo in the battle's settings, to pause and frame your tank. Pick a framing (Hero, Front, Side, Rear, Top), a lens (18 / 24 / 35 / 50 / 85 mm) and a tilt, then Save PNG. The picture is saved at twice your screen's size. W A S D Orbit the tank R F Move in or out Q E Roll the camera ESC Leave photo mode (P works too) With a mouse, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On a touch screen, pinch to zoom and drag two fingers to pan. Photo mode works in solo battles and replays, not in online or couch battles."
+  "text": "In a solo battle, press P , or tap Photo in the battle's settings, to pause and frame your tank. Pick a framing (Hero, Front, Side, Rear, Top), a lens (18 / 24 / 35 / 50 / 85 mm) and a tilt, then Save PNG. The picture is saved at twice your screen's size. W A S D Orbit the tank R F Move in or out Q E Roll the camera ESC Leave photo mode (P works too) ESC takes you back to where you came from: the running battle if you pressed P , or the paused settings if you tapped Photo. With a mouse, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On a touch screen, pinch to zoom and drag two fingers to pan. Photo mode works in solo battles and replays, not in online or couch battles."
  },
  {
   "href": "/docs/controls#hud",

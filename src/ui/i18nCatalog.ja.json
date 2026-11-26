@@ -3398,6 +3398,7 @@
   "docs.controls.photo.key.zoom": "寄る・引く",
   "docs.controls.photo.key.roll": "カメラを回転",
   "docs.controls.photo.key.exit": "フォトモードを終了（Pキーでも可）",
+  "docs.controls.photo.back": "{esc}を押すと、フォトモードを開いた場所に戻ります。{key}で開いた場合は進行中の戦闘へ、{photo}から開いた場合は一時停止中の設定へ戻ります。",
   "docs.controls.photo.pointer": "マウスでは、ドラッグで周回、Shift+ドラッグまたは右ドラッグでパン、スクロールでズームします。タッチスクリーンでは、ピンチでズーム、2本指のドラッグでパンします。",
   "docs.controls.photo.where": "フォトモードはソロ戦闘とリプレイで使えます。オンライン戦闘やローカルマルチプレイの戦闘では使えません。",
   "docs.controls.watch.lede": "ガレージからボット同士の戦闘を観戦できます。「観戦」は「出撃」の横にあります。全車両をボットが操作し、すべての戦車が表示されます。録画は行われません。{modes}種類のモードに対応しています。",
