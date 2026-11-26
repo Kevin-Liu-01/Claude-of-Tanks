@@ -149,7 +149,7 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
-import { createCrushPressLedger } from './crushPress.ts';
+import { CRUSH_PRESS_GAP_S, createCrushPressLedger } from './crushPress.ts';
 import { botShotClear, deliverShellHit, deliverShotFired } from './botEvents.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
@@ -396,6 +396,13 @@ export interface NewModeCheckpoint {
     /** (279) Each hull's last damaging enemy and when, on the battle clock: a crew that scuttles just after a migration
      *  still hands its kill to the enemy that hurt it last (SCUTTLE_CREDIT_S). Absent: none, or an older keyframe. */
     recentDamage?: [targetId: string, attackerId: string, atS: number][];
+    /** (279) Each press under way on a crushable record (sim/crushPress.ts), by the record's index in the world's static
+     *  obstacles (the destroyed list's index), on the battle clock: a press begun on the old host fells the record on its
+     *  tick on the new. Absent: none, or an older keyframe. */
+    crushPresses?: [obstacleIndex: number, hullId: string, lastS: number, pressedS: number][];
+    /** (279) Each ram pair's last ram on the battle clock (RAM_PAIR_COOLDOWN_S): a pair cooling on the old host stays cooling
+     *  on the new. Absent: none, or an older keyframe. */
+    ramPairs?: [pairKey: string, atS: number][];
   };
 }
 
@@ -1365,7 +1372,8 @@ export function createAuthoritativeMatch({
     // crushing them)
     if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
     // this match's press of this hull on this record (sim/crushPress.ts, the solo step's ledger; 2026-11-02 audit M6)
-    return crushPress.press(obstacle, entity.id, timeS, SIM_DT);
+    // on the battle clock (279): the ledger rides a migration, and a migrated host's own clock restarts at 0
+    return crushPress.press(obstacle, entity.id, battleS, SIM_DT);
   }
 
   function queueCrushedObstacle(
@@ -1659,7 +1667,8 @@ export function createAuthoritativeMatch({
 
   function ramPairCooling(key: string): boolean {
     const last = ramPairTime.get(key);
-    return last != null && timeS - last < RAM_PAIR_COOLDOWN_S;
+    // on the battle clock (279): the cooldown rides a migration
+    return last != null && battleS - last < RAM_PAIR_COOLDOWN_S;
   }
 
   function recordRamDestructions(
@@ -1691,7 +1700,7 @@ export function createAuthoritativeMatch({
     // a wreck rams nothing, and a teammate contact is reported with no damage, module hit or kill credit: 2026-11-02 audit M6)
     const dealt = resolveRamPairDamage(ruleset.physics, contact);
     if (!dealt) return;
-    ramPairTime.set(key, timeS);
+    ramPairTime.set(key, battleS);
     const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
     const ram = emit('tank_ram', {
       aId: a.id,
@@ -3034,6 +3043,14 @@ export function createAuthoritativeMatch({
       const starters = fireCredit.capture(), damaged = recentDamage.capture();
       if (starters.length) host.fireStarters = starters;
       if (damaged.length) host.recentDamage = damaged;
+      // and the presses under way and the ram pairs cooling (279), absent when none. Only the live ones: a press past its
+      // gap starts over and a pair past its cooldown rams, as with no entry (neither ledger is pruned, and a match's every
+      // pair would ride the keyframe)
+      const presses = crushPress.capture((record) => obstacleIndex.get(record as AuthoritativeObstacle))
+        .filter(([, , lastS]) => battleS - lastS <= CRUSH_PRESS_GAP_S);
+      if (presses.length) host.crushPresses = presses;
+      const cooling = [...ramPairTime].filter(([, atS]) => battleS - atS < RAM_PAIR_COOLDOWN_S);
+      if (cooling.length) host.ramPairs = cooling;
       return { mode: modeController.captureCheckpoint(battleS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}), host };
     },
     restoreModeCheckpoint(checkpoint) {
@@ -3054,6 +3071,11 @@ export function createAuthoritativeMatch({
         if (host.spotting) spotting.restore(host.spotting, 0);
         fireCredit.restore(host.fireStarters ?? []);
         recentDamage.restore(host.recentDamage ?? []);
+        crushPress.restore(host.crushPresses ?? [], (index) => staticObstacles[index] ?? null);
+        ramPairTime.clear();
+        for (const entry of Array.isArray(host.ramPairs) ? host.ramPairs : []) {
+          if (Array.isArray(entry) && typeof entry[0] === 'string' && Number.isFinite(entry[1])) ramPairTime.set(entry[0], entry[1]);
+        }
       }
       // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
       // up to a keyframe interval older than the newest frame the match resumed from

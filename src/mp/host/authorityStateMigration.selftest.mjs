@@ -6,9 +6,9 @@
 // and rode no keyframe until 279, and neither census could see them. This one reads sim/authoritativeMatch.ts: every
 // `let` of createAuthoritativeMatch and every `const` it builds as a Map, a Set or a create*() instance is either carried
 // to a migrated host (and where: the proof is the receipt named beside it) or named with the reason it need not be. A
-// new one fails here until it is decided; a name listed that the source no longer declares fails as stale.
-// Open (named so, and told to Main 2026-11-26): the crush press under way and the ram pairs' cooldown, both on the
-// authority's own clock, are lost to a migration.
+// new one fails here until it is decided; a name listed that the source no longer declares fails as stale. Its first run
+// found two more lost to a migration (a crush press under way, the ram pairs' cooldown, both on the authority's own
+// clock); both ride since (pressAndRamMigration). A name whose reason begins OPEN is a known loss, printed below.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -24,6 +24,8 @@ const CARRIED = new Map([
   ['fortified', 'NewModeCheckpoint.fortified (combatMigration)'],
   ['fireCredit', 'NewModeCheckpoint.host.fireStarters, 279 (killCreditMigration)'],
   ['recentDamage', 'NewModeCheckpoint.host.recentDamage on the battle clock, 279 (killCreditMigration)'],
+  ['crushPress', 'NewModeCheckpoint.host.crushPresses by the record\'s static obstacle index, on the battle clock, 279 (pressAndRamMigration [1])'],
+  ['ramPairTime', 'NewModeCheckpoint.host.ramPairs on the battle clock, the pairs still cooling, 279 (pressAndRamMigration [2])'],
   ['destruction', 'the destruction log the seat was told of -> restoreDestruction (windowReplay [6])'],
   ['destroyedObstacleSet', 'the frame\'s destroyed list -> restoreDestroyedObstacles (migrationState.selftest)'],
   ['destructibleRevision', 'the frame meta\'s revision -> restoreDestroyedObstacles (migrationState.selftest)'],
@@ -64,9 +66,6 @@ const NOT_CARRIED = new Map([
   ['_supportPose', 'a step\'s scratch'],
   ['eventSources', 'keyed by an event waiting to be sent: no pending event rides a keyframe (the new host drops its own opening events, waveStartMigration)'],
   ['withheldCopies', 'the same: a pending event\'s per-viewer copy'],
-  // open: told to Main (279's census found them); the press and the cooldown restart on the new host
-  ['crushPress', 'OPEN (279 census, told to Main): a press under way on a prop (up to CRUSH_PRESS_S, on the authority\'s own clock) starts over on a new host'],
-  ['ramPairTime', 'OPEN (279 census, told to Main): a ram pair\'s cooldown (on the authority\'s own clock) is lost, so a pair may ram again sooner'],
 ]);
 
 const text = readFileSync(SOURCE, 'utf8');
@@ -87,4 +86,4 @@ const stale = [...CARRIED.keys(), ...NOT_CARRIED.keys()].filter((name) => !decla
 assert.deepEqual(stale, [], `no name is listed that the factory no longer declares (stale: ${stale.join(', ') || 'none'})`);
 const open = [...NOT_CARRIED].filter(([, why]) => why.startsWith('OPEN')).map(([name]) => name);
 
-console.log(`authorityStateMigration.selftest: the authority's ${declared.length} lets and stateful consts are each carried (${CARRIED.size}) or named (${NOT_CARRIED.size}); open: ${open.join(', ')}`);
+console.log(`authorityStateMigration.selftest: the authority's ${declared.length} lets and stateful consts are each carried (${CARRIED.size}) or named (${NOT_CARRIED.size}); open: ${open.join(', ') || 'none'}`);
