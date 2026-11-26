@@ -19,7 +19,7 @@
 //   browser process puppeteer and playwright start detached) every 2 s by RSS, and every ~10 s by physical footprint for
 //   large renderers, which counts the pages the compressor took from RSS on a Mac under pressure. A renderer past 6 GB
 //   or the tree past 10 GB trips it: the tree is killed by its exact pids, a `[browser-guard]` line on stderr names the
-//   label, the hold, the open pages and the peaks (also appended to /tmp/cot-browser-guard.log), every capture lock this
+//   label, the hold, the open pages and the peaks (also appended to ~/Library/Logs/cot-browser-guard.log), every capture lock this
 //   process holds is released at once (tools/capture-lock.mjs releaseAllCaptureHolds: the queue moves on), and the
 //   process exits 86 so the caller fails fast instead of freezing the Mac. `exit: false` keeps the process running
 //   (browserGuardOf(browser).tripped says why; the browser's pending calls reject as disconnected).
@@ -47,6 +47,7 @@ import { keepTutorial, prepareToolBrowser } from './game-readiness.mjs';
 import { appendFileSync, writeSync } from 'node:fs';
 import { basename } from 'node:path';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
+import { cotLogPath } from './durable-paths.mjs';
 
 /**
  * Which capture holds a trip releases: every one when the trip ends the process; otherwise the caller's `releaseHolds`
@@ -75,8 +76,9 @@ export function releaseForTrip(scope, reason = null) {
 
 /** The exit code of a process whose browser the guard killed. */
 export const BROWSER_GUARD_EXIT_CODE = 86;
-/** Machine-wide record of every trip, one JSON line each (the job's own log gets the `[browser-guard]` line). */
-const BROWSER_GUARD_LOG = '/tmp/cot-browser-guard.log';
+/** Machine-wide record of every trip, one JSON line each (the job's own log gets the `[browser-guard]` line). A trip is
+ *  a finding, so the record lives where a reboot does not clear it (practice audit 2026-11-26; it was in /tmp). */
+const BROWSER_GUARD_LOG = cotLogPath('cot-browser-guard.log');
 
 const GUARD_SWITCH = '--cot-browser-guard';
 // (Main 2026-11-25, modal-layer-277: Kevin heard a lane's battle from its overlap probe's browser) no test browser plays on

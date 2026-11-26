@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { classifyCommand, createCaptureLock, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
+import { classifyCommand, createCaptureLock, readHoldLogLines, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
 // This receipt pins the lock's own semantics, so it owns every variable the lock reads (267), taken from the lock's
 // source so a new one is owned without a list: a landing chain's COT_SHOTS_LOCK_TIMEOUT_MS, a lane's COT_SHOTS_LOCK_CLASS
 // and the integrator's COT_CAPTURE_PRIORITY=release (under which the dead-lock reaping waiter never got the lock) would
@@ -401,6 +401,15 @@ async function checkWarmingKeepsPlace() {
   assert.ok(Number.isFinite(lines[3].heldMs) && lines[3].released === true);
   const stats = summarizeHoldLog(lines.map((line) => JSON.stringify(line)), { hours: 1 });
   assert.deepEqual([stats.holds, stats.warmedHolds, stats.reaped], [2, 1, 0], 'the status summary counts holds and warmed holds');
+  // practice audit 2026-11-26: during the switch older copies still log to /tmp; --status reads both logs and counts the old one
+  const oldLog = join(root, 'pre-audit.log');
+  writeFileSync(`${oldLog}.1`, `${JSON.stringify(lines[0])}\n`);
+  writeFileSync(oldLog, `${JSON.stringify(lines[2])}\n`);
+  const both = readHoldLogLines([logFile], [oldLog]);
+  assert.deepEqual([both.lines.length, both.legacyLines.length], [6, 2], 'both logs and their rotations are read');
+  assert.equal(summarizeHoldLog(both.lines, { hours: 1 }).holds, 4, 'holds from older copies count in the summary');
+  assert.deepEqual(readHoldLogLines([logFile], [logFile]).legacyLines, [], 'one file is never read twice');
+  rmSync(oldLog); rmSync(`${oldLog}.1`);
 
   // a prepare that throws leaves the queue; a wait that times out hands prepare's result back to close
   await assert.rejects(warmer.acquire(5_000, { prepare: async () => { throw new Error('warm failed'); } }), /warm failed/);

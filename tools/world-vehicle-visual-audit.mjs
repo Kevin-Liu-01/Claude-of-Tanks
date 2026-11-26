@@ -9,6 +9,7 @@ import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { cotEvidencePath } from './durable-paths.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -19,7 +20,7 @@ const option = (name, fallback = '') => {
 };
 const mapId = option('map', 'urban');
 const requestedKind = option('kind', 'auto');
-const outputPath = resolve(option('out', `/tmp/cot-${mapId}-vehicle-audit.png`));
+const outputPath = resolve(option('out', cotEvidencePath(`cot-${mapId}-vehicle-audit.png`)));
 const width = Number(option('width', '1600'));
 const height = Number(option('height', '1000'));
 mkdirSync(dirname(outputPath), { recursive: true });

@@ -1,7 +1,8 @@
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
-import { resolve } from 'node:path';
+import { cotEvidencePath } from './durable-paths.mjs';
+import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import '../src/vehicles/tankFactory.ts';
@@ -9,7 +10,7 @@ import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 
 const outputArg = process.argv.find((arg) => arg.startsWith('--sheet='));
 const sheetPath = resolve(outputArg?.slice('--sheet='.length)
-  || '/tmp/claude-of-tanks-vehicle-markings-fleet.png');
+  || cotEvidencePath('claude-of-tanks-vehicle-markings-fleet.png'));
 const requestedIds = uniqueIds(process.argv.find((arg) => arg.startsWith('--ids='))
   ?.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean), 'vehicle-marking-visibility --ids');
 const ids = requestedIds?.length ? requestedIds : ALL_TANK_IDS;
@@ -68,6 +69,7 @@ try {
     }
   }
   if (report.sheet) {
+    mkdirSync(dirname(sheetPath), { recursive: true });
     writeFileSync(sheetPath, report.sheet);
   }
 } catch (error) {

@@ -126,7 +126,7 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
   change during the gate fails it. The gate never fetches: fetch and integrate first (step 1).
 
 The gate stops at the first red step (`--keep-going` runs the rest) and writes `gate.json` and
-`gate.md` to `--out` (default `<tmp>/cot-gate/<time>-<sha>`). Like the landing chains, it waits up to
+`gate.md` to `--out` (default `~/.local/state/cot/evidence/cot-gate/<time>-<sha>`, where a reboot does not clear it). Like the landing chains, it waits up to
 three hours for the capture lock unless `COT_SHOTS_LOCK_TIMEOUT_MS` is set. It never pushes, deploys,
 fetches or changes a setting; publishing and deploying stay separate steps.
 
@@ -367,9 +367,12 @@ only:
   killed waiter whose pid came back could stall the head for an hour.
 - **Places.** `acquire(ms, { place: '<lane>-<item>' })` (genHeroCards `--place=`) puts a run killed while it waited
   back at its first run's stamp, for up to 12 hours. Size wall-clock alarms for the hold, never the wait.
-- **The meter.** Every hold, release and reap appends a line to `/tmp/cot-shots.log`. `node tools/capture-lock.mjs
-  --status [--hours=N]` prints the holder, the queue (ready, warming, dead) and holds per hour. Holds taken through
-  an older copy of the lock are not logged.
+- **The meter.** Every hold, release and reap appends a line to `~/Library/Logs/cot-shots.log` (elsewhere
+  `$XDG_STATE_HOME/cot/logs`). It was `/tmp/cot-shots.log` until the 2026-11-26 reboot wiped it; the lock and the
+  queue stay in /tmp, where a reboot should clear them. `node tools/capture-lock.mjs --status [--hours=N]` prints the
+  holder, the queue (ready, warming, dead) and holds per hour, reading both logs while lanes on an older base still
+  write the old one (its last line says how many holds came from there). Holds taken through a copy older than item
+  240 are not logged.
 - **Frozen pages that reload (2026-10-23).** A page on a Vite dev server keeps the Vite client's HMR socket. When that
   socket closed (another lane's server on the same port, or a re-bundle broadcast during a ~50-minute freeze), the
   client reloaded the page at the thaw ("Execution context was destroyed") and world-polish's hold shot nothing.
@@ -677,6 +680,28 @@ one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free 
 The build output is byte-identical: each run diffs the old and new steps' `dist/` from the same Vite output. The
 integrator's pre-deploy light pass is `npm run typecheck` (with lint), `npm run build` and `npm run check:bundle`.
 Lanes get lint through typecheck, or run `npm run lint` on its own.
+
+**`npm run check`, the size ratchet and state outside /tmp (practice audit 2026-11-26).** `npm run check` is the fast
+tier CI runs on every pull request and push to main (`.github/workflows/check.yml`): `npm run lint`, the /tmp scan
+and `npm run typecheck`, 15.6 s wall (31.5 s CPU) at load 40. It runs no receipt: the default tier runs in the
+release gate (`tools/selftest-tiers.selftest.mjs` holds the workflows to that).
+
+- `npm run lint` ends with `tools/size-ratchet.mjs`: a hand-written source over 1,500 lines may not grow past its row
+  in `tools/size-ratchet.json`. To grow one (a hero tank in `tankFactoryCore.ts` or a profile), record the bump in
+  the same commit: `node tools/size-ratchet.mjs --bump=<path> --why="<reason>"`. A new file over 1,500 lines is
+  recorded the same way. Shrinking never fails; `--tighten` records the lower sizes. `*.generated.ts` files are
+  left out (`.gitattributes` marks them `linguist-generated`), and the receipt registry is exempt.
+- `tools/no-tmp-state.mjs` fails on a log, receipt or store under /tmp or `tmpdir()` in `tools/`: the 00:35 reboot
+  (the system file table filled) wiped the capture lock's log and the receipt result cache. Logs go to
+  `cotLogPath`, caches to `cotCacheDir` and evidence defaults to `cotEvidencePath` (`tools/durable-paths.mjs`);
+  locks, queues and per-run scratch stay in /tmp. `--lanes` also reports (never fails) the /tmp paths in
+  `~/cot-lanes` scripts.
+- The receipt result cache lives in `${XDG_CACHE_HOME:-~/.cache}/cot-selftests/v2/<root commit>`. The first run moves
+  the `$TMPDIR` store there and leaves a link, so runners on an older base keep sharing it, and puts the link back
+  after a reboot (`tools/selftest-cache-dir.mjs`).
+- Lane scripts source `~/cot-lanes/lane-probe.sh`, which loads `tools/lane-probe.sh`: load and port probes that fail
+  closed (a probe error counts as busy or over the gate) and waits with a deadline that poll at least 60 s apart
+  with backoff (`cot_wait`, `cot_retry`). It bridges to the shared `job wait` from Kevin-Wiki.
 
 `npm run tank:release:check -- --ids=<ids> [--gate]` runs two stages (`tools/tank-release-plan.mjs`):
 the load-sensitive browser scoring (standard, sealed) one step at a time, then the

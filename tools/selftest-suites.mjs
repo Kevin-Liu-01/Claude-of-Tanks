@@ -1022,6 +1022,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/test-base.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
+    // practice audit 2026-11-26 (mechanism 10): no /tmp log, receipt or store in tools/; the 1,500-line size ratchet
+    'tools/no-tmp-state.selftest.mjs',
+    'tools/size-ratchet.selftest.mjs',
+    // and the lane scripts' shared probe: an error counts as busy, waits have deadlines and 60 s+ backoff
+    'tools/lane-probe.selftest.mjs',
     // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
     'tools/selftest-scans.selftest.mjs',
     'tools/selftest-cpu-pool.selftest.mjs',

@@ -9,6 +9,7 @@ import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { waitForBootLoaded } from './game-readiness.mjs';
+import { cotEvidencePath } from './durable-paths.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -17,7 +18,7 @@ const option = (name, fallback = '') => {
   const index = args.indexOf(`--${name}`);
   return index >= 0 ? args[index + 1] : fallback;
 };
-const outputPath = resolve(option('out', '/tmp/cot-wreck-audit.png'));
+const outputPath = resolve(option('out', cotEvidencePath('cot-wreck-audit.png')));
 const width = Number(option('width', '1920'));
 const height = Number(option('height', '1080'));
 mkdirSync(dirname(outputPath), { recursive: true });

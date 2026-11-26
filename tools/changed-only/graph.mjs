@@ -21,10 +21,10 @@
 import { createHash } from 'node:crypto';
 import { closeSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, readlinkSync, realpathSync, renameSync,
   statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { collectSelftestInputs } from '../selftest-inputs.mjs';
+import { cotCacheDir } from '../durable-paths.mjs';
 
 export const GRAPH_VERSION = 1;
 const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'shots', 'tests', 'cloudflare', 'node_modules']);
@@ -57,7 +57,7 @@ const machineLocal = (path) => path === 'public/models' || path.startsWith('publ
 export function defaultGraphCacheDir(env = process.env) {
   return env.COT_CHANGED_ONLY_CACHE_DIR
     ? resolve(env.COT_CHANGED_ONLY_CACHE_DIR)
-    : join(tmpdir(), `cot-changed-only-v${GRAPH_VERSION}-${process.getuid?.() ?? 'user'}`);
+    : cotCacheDir(join('cot-changed-only', `v${GRAPH_VERSION}`), { env }); // out of $TMPDIR: a reboot cleared it (practice audit 2026-11-26)
 }
 
 /** Source text of every call that makes a file broad or computed, normalised: the pin a dynamic-read declaration binds. */

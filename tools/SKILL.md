@@ -142,7 +142,7 @@ fails on a direct call). It adds `--js-flags=--max-old-space-size=3072` and
 2 s (physical footprint every ~10 s for large renderers). A renderer past
 6 GB, or the tree past 10 GB, is killed by its exact pids; a
 `[browser-guard]` line names the label, the `runWarmHold` hold, the pages and
-the peaks (also `/tmp/cot-browser-guard.log`); every capture lock the process
+the peaks (also `~/Library/Logs/cot-browser-guard.log`); every capture lock the process
 holds is released (`releaseAllCaptureHolds`); the process exits 86. Still
 close the browser in `finally`: the guard also reaps the tree on disconnect,
 process exit and SIGALRM (a perl alarm). Caps come from the guard options or

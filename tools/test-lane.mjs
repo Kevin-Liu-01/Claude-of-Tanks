@@ -21,12 +21,13 @@
 // `--root=<dir>` evaluates another checkout's registry and closures (a report only: it implies --dry-run).
 // A branch carrying an integration tree beyond the base (origin/integ/*) gets the suggested --base printed first;
 // `--base=integ` takes it. The command stops its children and exits on SIGTERM/SIGINT/SIGHUP/SIGALRM or its parent's exit.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
 import { classifyLaneReds, laneRedLines } from './lane-reds.mjs';
+import { cotLogPath } from './durable-paths.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { isStarved } from './selftest-verdict.mjs';
 import { waitForTimingHold } from './timing-gate.mjs';
@@ -179,7 +180,9 @@ async function main(argv) {
     }
     let classified = null;
     if (reds.length) {
-      const logDir = mkdtempSync(join(tmpdir(), 'cot-test-lane-reds-')); // kept: the pair logs of every red
+      // kept: the pair logs of every red, where a reboot does not clear them (practice audit 2026-11-26)
+      mkdirSync(cotLogPath('cot-test-lane-reds'), { recursive: true });
+      const logDir = mkdtempSync(join(cotLogPath('cot-test-lane-reds'), `${new Date().toISOString().slice(0, 10)}-`));
       classified = await classifyLaneReds(reds, {
         root, commit: diff.mergeBase, headCache: cache, logDir, runFile: runner.runSelftestFile,
         storeDir: join(resolveSelftestCacheDir(root, process.env).dir, 'lane-base'),

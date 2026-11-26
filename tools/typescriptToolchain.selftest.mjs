@@ -24,7 +24,10 @@ assert.match(typecheckSource, /'--noUnusedLocals', '--noUnusedParameters'/, 'one
 assert.match(typecheckSource, /realpathSync\(process\.argv\[1\]\) === fileURLToPath\(import\.meta\.url\)/,
   'typecheck runs as a command through a symlinked checkout too, never skipping silently');
 assert.match(manifest.devDependencies.oxlint, /^\d+\.\d+\.\d+$/, 'oxlint is pinned to an exact version');
-assert.equal(manifest.scripts.lint, 'oxlint', 'npm run lint runs oxlint with .oxlintrc.json');
+assert.equal(manifest.scripts.lint, 'oxlint && node tools/size-ratchet.mjs',
+  'npm run lint runs oxlint with .oxlintrc.json, then the 1,500-line size ratchet (practice audit 2026-11-26)');
+assert.equal(manifest.scripts.check, 'npm run lint && node tools/no-tmp-state.mjs && npm run typecheck',
+  'npm run check is the fast tier CI runs: lint, the /tmp-literal scan and the one compile (no receipts: tools/selftest-tiers.selftest.mjs)');
 
 // The one-compile verdict: every non-unused diagnostic fails, unused symbols fail only in the core owners, and a
 // compiler whose output is not a complete diagnostic list fails closed.
