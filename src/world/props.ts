@@ -5070,6 +5070,30 @@ function* propsBuildSteps(
   const civicClearedSites: Array<{ x: number; z: number }> = [];
   const civicClearAt = (x: number, z: number, kind: string): boolean => civicClears.some((c) =>
     c.kinds.includes(kind) && x >= c.rect.x0 && x <= c.rect.x1 && z >= c.rect.z0 && z <= c.rect.z1);
+  // (landmark-lanes-278 fix-back; Main's ruling 2026-11-26) an authored parked vehicle (a civic piece of a vehicle or a
+  // cart kind: road life, street parking, an area's cars) is never moved by the seating passes, so every scatter pass
+  // after composeCivicAreas keeps its contact band grown by PARKED_VEHICLE_CLEARANCE as a keep-out: a destructible whose
+  // band would come that near is left out here, its draws taken (a set piece's veto), and nothing else moves. Cliffbridge's
+  // re-placed yard ran a cane fence 0.07 m into the road-life sedan at (-7.8, -219.8). The scatter's own carts and vehicles
+  // are exempt: the seating passes slide them clear of an authored vehicle (seatCartRecords).
+  const parkedKeepOuts: Array<{ x: number; z: number; reach: number; poly: FootprintPolygon }> = [];
+  // (the receipts: civicArea and roadLife hold every other record where it stood, these named sites excepted)
+  const parkedKeepOutLeft: Array<{ kind: string; x: number; z: number }> = [];
+  const footprintPolygon = (kind: string, x: number, z: number, yaw: number, sc: number): FootprintPolygon => {
+    const [ax, al] = destructibleFootprint(kind);
+    const c = Math.cos(yaw), s = Math.sin(yaw), hw = ax * sc, hl = al * sc;
+    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [x + u * hw * c + v * hl * s, z - u * hw * s + v * hl * c] as const);
+  };
+  const parkedKeepOutAt = (kind: string, x: number, z: number, yaw: number, sc: number, r: number): boolean => {
+    if (landmarkFurniture || GROUND_POSED_KINDS.has(kind)) return false;
+    let poly: FootprintPolygon | null = null;
+    for (const keep of parkedKeepOuts) {
+      if (Math.abs(x - keep.x) > keep.reach + r + 8 || Math.abs(z - keep.z) > keep.reach + r + 8) continue;
+      poly ??= footprintPolygon(kind, x, z, yaw, sc);
+      if (polygonGap(poly, keep.poly).gap < PARKED_VEHICLE_CLEARANCE) return true;
+    }
+    return false;
+  };
   const civicPlots = () => (civicClearedSites.length
     ? buildingFeatures.filter((b) => !civicClearedSites.some((c) => Math.abs(c.x - b.x) < 1e-6 && Math.abs(c.z - b.z) < 1e-6))
     : buildingFeatures);
@@ -5116,6 +5140,13 @@ function* propsBuildSteps(
       const meta = resolveDestructibleMeta(destructibleContext, kind);
       civicVetoed[kind] = (civicVetoed[kind] ?? 0) + 1;
       return { kind, cls: meta.cls, x, y, z, yaw, sc, r: meta.r * sc, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+    }
+    if (parkedKeepOuts.length) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      if (parkedKeepOutAt(kind, x, z, yaw, sc, meta.r * sc)) {
+        parkedKeepOutLeft.push({ kind, x, z });
+        return { kind, cls: meta.cls, x, y, z, yaw, sc, r: meta.r * sc, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+      }
     }
     if (landmarkVetoes.length && !landmarkFurniture) {
       // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
@@ -6760,6 +6791,12 @@ function* propsBuildSteps(
     group.userData.civic = { areas, debugPolys, vetoed: civicVetoed };
   }
   yield* composeCivicAreas();
+  for (const piece of civicPieces) {
+    if (!GROUND_POSED_KINDS.has(piece.kind)) continue;
+    const [ax, al] = destructibleFootprint(piece.kind);
+    parkedKeepOuts.push({ x: piece.x, z: piece.z, reach: Math.hypot(ax, al) * piece.scale + PARKED_VEHICLE_CLEARANCE,
+      poly: footprintPolygon(piece.kind, piece.x, piece.z, piece.yaw, piece.scale) });
+  }
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -11415,6 +11452,7 @@ function* propsBuildSteps(
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
+  if (parkedKeepOutLeft.length) group.userData.parkedKeepOutLeft = parkedKeepOutLeft.map((d) => ({ ...d }));
   group.userData.deploymentClearance = { slots: deploymentSlots.length, vetoed: { ...deploymentVetoed } };
   group.userData.bridgePierClearance = { piers: bridgePiers.length, vetoed: { ...bridgePierVetoed } };
 

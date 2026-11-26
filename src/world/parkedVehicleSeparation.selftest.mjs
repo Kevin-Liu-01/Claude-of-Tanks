@@ -265,6 +265,25 @@ for (const mapId of MAP_IDS) {
   const fences = obstacles.filter((r) => r.k === 'fenceplank' && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) < 8);
   assert.ok(fences.length > 0, 'the fence line is there');
 }
+// (landmark-lanes-278 fix-back, Main 2026-11-26) an authored parked vehicle (road life, street parking, a civic area's
+// cars) never moves, so every scatter pass keeps out of its band grown by the clearance (props.ts parkedKeepOuts): 278's
+// re-placed Cliffbridge yard ran a cane fence 0.07 m into the road-life sedan; the sedan keeps its 277 seat and the run
+// stands the clearance off it
+let keptOff = 0;
+{
+  const obstacles = loader.get('cliffbridge').obstacles;
+  const sedan = obstacles.find((r) => r.k === 'sedan' && Math.abs(r.b[0] + 7.76) < 0.05 && Math.abs(r.b[2] + 219.76) < 0.05);
+  assert.ok(sedan, "Cliffbridge's road-life sedan keeps its 277 seat");
+  const own = hull(shapePoints(sedan.s));
+  const fences = obstacles.filter((r) => r.k === 'fencewattle' && Math.abs(r.b[0] - sedan.b[0]) < 12 && Math.abs(r.b[2] - sedan.b[2]) < 12);
+  assert.ok(fences.length >= 3, 'the yard fence beside it is there');
+  for (const fence of fences) {
+    const g = gap(own, hull(shapePoints(fence.s)));
+    assert.ok(g >= PARKED_VEHICLE_CLEARANCE - 0.05,
+      `cliffbridge: a fencewattle at (${fence.b[0].toFixed(1)}, ${fence.b[2].toFixed(1)}) stands ${g.toFixed(2)} m off the road-life sedan`);
+    keptOff++;
+  }
+}
 console.log(`parkedVehicleSeparation.selftest: the pass's footprint, order, seat and drop rules; ${vehicles} parked vehicles `
   + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m, ${parkedClear} clear of every `
-  + `other obstacle; ${carts} carts, none inside an obstacle; Longleaf's haycart across the road from its steep station`);
+  + `other obstacle; ${carts} carts, none inside an obstacle; Longleaf's haycart across the road from its steep station; Cliffbridge's road-life sedan in its seat, ${keptOff} fence modules the clearance off it`);

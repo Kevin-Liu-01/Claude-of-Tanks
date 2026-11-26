@@ -71,6 +71,15 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     before.delete(`lamp@${m.from[0].toFixed(1)},${m.from[1].toFixed(1)}`);
     after.delete(`lamp@${m.to[0].toFixed(1)},${m.to[1].toFixed(1)}`);
   }
+  // (landmark-lanes-278 fix-back) what the scatter left out at an authored vehicle's keep-out (props.ts parkedKeepOuts:
+  // its band and the parked clearance), each beside one, and only what the map without the plan does not leave out too
+  const leftBase = new Set((base.built.group.userData.parkedKeepOutLeft ?? []).map(key));
+  for (const d of built.group.userData.parkedKeepOutLeft ?? []) {
+    if (leftBase.has(key(d))) continue;
+    assert.ok(built.destructibles.some((v) => v.slot >= 0 && VEHICLES.has(v.kind) && Math.hypot(v.x - d.x, v.z - d.z) < 10),
+      `${mapId}: the ${d.kind} left out at (${d.x.toFixed(1)}, ${d.z.toFixed(1)}) stands beside an authored vehicle`);
+    before.delete(key(d));
+  }
   const lost = [...before].filter((k) => !after.has(k)), gained = [...after].filter((k) => !before.has(k));
   assert.deepEqual([lost, gained], [[], []], `${mapId}: every record outside the rooms stands where it stood`);
   // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the parked vehicles and

@@ -44,6 +44,15 @@ for (const mapId of mapIds) {
   const key = (d) => `${d.kind}@${d.x.toFixed(2)},${d.z.toFixed(2)}`;
   const before = new Set(base.built.destructibles.filter((d) => d.slot >= 0).map(key));
   const after = new Set(built.destructibles.filter((d) => d.slot >= 0 && !own(d)).map(key));
+  // (landmark-lanes-278 fix-back) what the scatter left out at a piece's keep-out (props.ts parkedKeepOuts: its band and
+  // the parked clearance) is the only other record to differ, each beside a piece of the road life (what the map without
+  // it leaves out too stands at another authored vehicle: a civic plan's street parking)
+  const leftBase = new Set((base.built.group.userData.parkedKeepOutLeft ?? []).map(key));
+  for (const d of built.group.userData.parkedKeepOutLeft ?? []) {
+    if (leftBase.has(key(d))) continue;
+    assert.ok(seats.some((p) => Math.hypot(p.x - d.x, p.z - d.z) < 10), `${mapId}: the ${d.kind} left out at (${d.x.toFixed(1)}, ${d.z.toFixed(1)}) stands beside a road-life piece`);
+    before.delete(key(d));
+  }
   const lost = [...before].filter((k) => !after.has(k)), gained = [...after].filter((k) => !before.has(k));
   assert.deepEqual([lost.slice(0, 6), gained.slice(0, 6)], [[], []], `${mapId}: every other record stands where it stood (${lost.length} lost, ${gained.length} gained)`);
   // ---- the pieces
