@@ -79,6 +79,8 @@ export function installGpuTracker(loseOverBytes) {
     live: 0, tex: 0, rt: 0, buf: 0, rb: 0, peak: 0, links: 0, losses: 0, restores: 0, generation: 0,
     loseOverBytes, modeledLosses: 0, windowPeak: 0, windowPeakAt: 0, windowPeakStage: '', windowPeakWorlds: null,
     stage: '', timeline: [], lostAt: [],
+    // the bytes newly allocated since the last animation frame, and the largest such frame in the window
+    frameBytes: 0, frameMax: 0, frameMaxAt: 0, frameMaxStage: '', frameItems: [], frameMaxItems: [], lastShape: '',
   };
   const records = new WeakMap(); // texture | buffer | renderbuffer -> { kind, parts: Map<key, bytes>, total, generation, shape }
   const liveRecords = new Set(); // the same records, for the census of the largest at the peak
@@ -142,6 +144,7 @@ export function installGpuTracker(loseOverBytes) {
     }
     if (shape && (key === '*' || key.endsWith(':0') || key === '0')) record.shape = shape;
     const old = record.total;
+    T.lastShape = record.shape || shape;
     // '*' (immutable storage) replaces every part
     if (key === '*') record.parts.clear();
     record.parts.set(key, bytes);
@@ -159,6 +162,11 @@ export function installGpuTracker(loseOverBytes) {
   };
   const adjust = (kind, delta) => {
     if (!delta) return;
+    if (delta > 0) {
+      T.frameBytes += delta;
+      // what the frame allocated, by the allocation (1 MB and up): the largest frame's list says what it was made of
+      if (delta >= 1048576 && T.frameItems.length < 64) T.frameItems.push({ kind, shape: T.lastShape, mb: +(delta / 1048576).toFixed(2) });
+    }
     T[kind] += delta;
     T.live += delta;
     if (T.live > T.peak) T.peak = T.live;
@@ -300,6 +308,18 @@ export function installGpuTracker(loseOverBytes) {
     T.live = 0; T.tex = 0; T.rt = 0; T.buf = 0; T.rb = 0; liveRecords.clear();
   }, true);
   window.addEventListener('webglcontextrestored', () => { T.restores += 1; }, true);
+  if (typeof window.requestAnimationFrame === 'function') {
+    const frame = () => {
+      if (T.recording && T.frameBytes > T.frameMax) {
+        T.frameMax = T.frameBytes; T.frameMaxAt = Math.round(performance.now()); T.frameMaxStage = T.stage;
+        T.frameMaxItems = T.frameItems;
+      }
+      T.frameBytes = 0;
+      T.frameItems = [];
+      window.requestAnimationFrame(frame);
+    };
+    window.requestAnimationFrame(frame);
+  }
   setInterval(() => {
     const loader = document.querySelector('.cot-bl');
     const on = !!loader && loader.classList.contains('on');
@@ -398,6 +418,40 @@ function geometryByOwner() {
   return rows.filter((row) => row.mb >= 0.5).sort((a, b) => b.mb - a.mb).slice(0, 40);
 }
 
+/**
+ * In-page: every render target reachable from the debug surface's post, lighting, renderer and scene (a bounded object
+ * walk), by the property path that holds it, with its size, type, samples and texture name: the owners of the targets the
+ * tracker counts by shape.
+ */
+function renderTargetOwners() {
+  const debug = window.__DEBUG;
+  if (!debug) return null;
+  const roots = { post: debug.post, lighting: debug.lighting, renderer: debug.renderer, scene: debug.scene, fx: debug.fx };
+  const seen = new Set();
+  const found = new Map();
+  const walk = (value, path, depth) => {
+    if (!value || typeof value !== 'object' || seen.has(value) || depth > 7) return;
+    seen.add(value);
+    if (value.isWebGLRenderTarget) {
+      const texture = value.texture ?? value.textures?.[0];
+      if (!found.has(value)) found.set(value, { path, w: value.width, h: value.height, type: texture?.type, format: texture?.format,
+        internal: texture?.internalFormat ?? null, samples: value.samples ?? 0, depth: !!value.depthBuffer, depthTexture: !!value.depthTexture,
+        name: texture?.name ?? '', count: value.textures?.length ?? 1 });
+      return;
+    }
+    if (value.isObject3D && depth > 1 && path.startsWith('scene')) return;
+    if (ArrayBuffer.isView(value) || value instanceof Element || value.isMaterial || value.isBufferGeometry) return;
+    const keys = value instanceof Map ? [...value.keys()] : Object.keys(value);
+    for (const key of keys.slice(0, 400)) {
+      let child;
+      try { child = value instanceof Map ? value.get(key) : value[key]; } catch { continue; }
+      walk(child, `${path}.${String(key)}`, depth + 1);
+    }
+  };
+  for (const [name, root] of Object.entries(roots)) walk(root, name, 0);
+  return [...found.values()].sort((a, b) => b.w * b.h - a.w * a.h);
+}
+
 const resident = (page) => page.evaluate(() => ({
   worlds: window.__DEBUG?.worldCacheIds ?? null,
   garageGpu: (() => { try { return JSON.parse(JSON.stringify(window.__DEBUG?.garageGpuResidency ?? null)); } catch { return null; } })(),
@@ -412,6 +466,7 @@ const beginWindow = (page) => page.evaluate(() => {
   T.windowStartLinks = T.links; T.windowStartLosses = T.losses; T.windowStartModeled = T.modeledLosses;
   T.windowStartAt = Math.round(performance.now()); T.armed = true;
   T.windowPeakCensusAt = 0; T.windowPeakCensus = T.census();
+  T.frameBytes = 0; T.frameMax = 0; T.frameMaxAt = 0; T.frameMaxStage = ''; T.frameItems = []; T.frameMaxItems = [];
   T.recording = true; T.timeline.length = 0;
   return { live: T.live, links: T.links };
 });
@@ -421,6 +476,7 @@ const endWindow = (page) => page.evaluate(() => {
   T.recording = false;
   return {
     peak: T.windowPeak, peakAtS: +((T.windowPeakAt - T.windowStartAt) / 1000).toFixed(1), peakStage: T.windowPeakStage,
+    frameMax: T.frameMax, frameMaxItems: T.frameMaxItems, frameMaxAtS: +((T.frameMaxAt - T.windowStartAt) / 1000).toFixed(1), frameMaxStage: T.frameMaxStage,
     peakWorlds: T.windowPeakWorlds, peakCensus: T.windowPeakCensus, revealedCensus: T.census(), live: T.live, links: T.links - T.windowStartLinks,
     losses: T.losses - T.windowStartLosses, modeledLosses: T.modeledLosses - T.windowStartModeled, lostAt: T.lostAt.slice(-4),
     timeline: T.timeline.map((row) => ({ s: +((row.atMs - T.windowStartAt) / 1000).toFixed(2), mb: +(row.live / 1048576).toFixed(1),
@@ -432,6 +488,7 @@ function summarize(entry) {
   log(`entry ${entry.index} ${entry.map} (planned ${entry.planned ?? '-'}): peak ${MB(entry.window.peak)} MB at ${entry.window.peakAtS} s `
     + `"${entry.window.peakStage}" worlds ${JSON.stringify(entry.window.peakWorlds)}; at press ${MB(entry.atPress.live)} MB `
     + `worlds ${JSON.stringify(entry.atPressResident.worlds)}; revealed ${MB(entry.window.live)} MB; links ${entry.window.links}; `
+    + `largest frame ${MB(entry.window.frameMax)} MB at ${entry.window.frameMaxAtS} s "${entry.window.frameMaxStage}"; `
     + `losses ${entry.window.losses} (modeled ${entry.window.modeledLosses}); reveal ${entry.revealS} s; at peak ${JSON.stringify(entry.window.peakCensus?.byKindMb)}`);
 }
 
@@ -537,6 +594,7 @@ async function main() {
       entry.window = await endWindow(phone);
       entry.revealed = await resident(phone);
       entry.geometry = await phone.evaluate(geometryByOwner).catch(() => null);
+    entry.renderTargets = await phone.evaluate(renderTargetOwners).catch((error) => String(error));
       if (entry.geometry) log(`geometry by owner: ${entry.geometry.slice(0, 12).map((row) => `${row.owner} ${row.mb}`).join(' | ')}`);
       await phone.screenshot({ path: join(outputDir, `entry-${index + 1}-${map}.png`) }).catch(() => {});
       summarize(entry);
@@ -559,6 +617,7 @@ async function main() {
       losses: report.entries.reduce((sum, entry) => sum + entry.window.losses, 0),
       modeledLosses: report.entries.reduce((sum, entry) => sum + entry.window.modeledLosses, 0),
       secondWorldAtPeak: report.entries.filter((entry) => (entry.window.peakWorlds?.length ?? 0) > 1).length,
+    largestFrameMb: Math.max(...report.entries.map((entry) => MB(entry.window.frameMax))),
     };
     log(`totals ${JSON.stringify(report.totals)}; ${report.errors.length} page errors`);
   } catch (error) {

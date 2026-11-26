@@ -174,6 +174,8 @@ interface ExtendedGtaoPass extends GTAOPass {
 interface ExtendedSmaaPass extends SMAAPass {
   _materialEdges?: THREE.ShaderMaterial;
   _materialWeights?: THREE.ShaderMaterial;
+  _edgesRT?: THREE.WebGLRenderTarget;
+  _weightsRT?: THREE.WebGLRenderTarget;
 }
 
 interface OutputGradePass extends OutputPass {
@@ -2687,6 +2689,12 @@ export function createPost(
     }
     if (smaa._materialWeights && smaa._materialWeights.defines) {
       smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
+    }
+    // (mobile-gpu-reset-278) the edge and blend-weight buffers hold values in [0, 1] from the graded display-space
+    // frame, the reference SMAA's RG8/RGBA8 formats; three allocates them half float. On a phone the two full-size
+    // targets take 4.1 MB of the entry's GPU peak at RGBA16F, half that at RGBA8 (set before their first render).
+    if (getDeviceTier() === 'mobile') {
+      for (const target of [smaa._edgesRT, smaa._weightsRT]) if (target) target.texture.type = THREE.UnsignedByteType;
     }
     // the slot's place (insertPass sizes the pass to the composer as addPass did)
     const at = composer.passes.indexOf(smaaSlot);

@@ -61,6 +61,13 @@ interface OffscreenWarmBatchOptions {
   uncull?: boolean;
   /** The owned warmer's target samples (OffscreenSceneWarmerOptions.samples): the live scene pass's MSAA count. */
   samples?: (() => number) | null;
+  /**
+   * (mobile-gpu-reset-278) A byte budget per presented frame for the batches' first uploads: once the batches drawn
+   * since the last frame hold `budget` bytes of vertex, index and instance data this warm has not drawn yet, the next
+   * batch waits for `nextFrame`. The 6 ms time budget alone let tens of MB of buffer copies land in one frame on a phone
+   * (+68 MB in a quarter second at "Preparing shadows"). A batch over the budget on its own still goes in one frame.
+   */
+  frameBytes?: { budget: number; nextFrame(): Promise<void> } | null;
 }
 
 /** Options of a scene warmer's private target. */
@@ -206,6 +213,7 @@ export async function warmSceneOffscreenBatched(
   renderBatch = null,
   uncull = false,
   samples = null,
+  frameBytes = null,
   }: OffscreenWarmBatchOptions = {},
 ): Promise<number[]> {
   const ownedWarmer = renderBatch ? null : createOffscreenSceneWarmer(renderer, scene, camera, scale, { samples });
@@ -215,8 +223,18 @@ export async function warmSceneOffscreenBatched(
   const timings: number[] = [];
   try {
     if (prepareObjects) await prepareObjects(renderables.map(({ object }) => object));
+    const counted = new WeakSet<object>();
+    let frameBytesSoFar = 0;
     for (let index = 0; index < batches.length; index++) {
       if (yieldBeforeBatch) await yieldBeforeBatch(index);
+      if (frameBytes) {
+        const bytes = warmBatchUploadBytes(batches[index]!, counted);
+        if (frameBytesSoFar > 0 && frameBytesSoFar + bytes > frameBytes.budget) {
+          await frameBytes.nextFrame();
+          frameBytesSoFar = 0;
+        }
+        frameBytesSoFar += bytes;
+      }
       const startedAt = performance.now();
       renderSelectedWarmBatch(renderables, batches[index]!, lods, warmer, uncull);
       timings.push(Math.round(performance.now() - startedAt));
@@ -235,6 +253,34 @@ export async function warmSceneOffscreenBatched(
 export function renderBatchAlone(scene: Scene, camera: Camera, batch: readonly Object3D[], render: () => void): void {
   const { renderables, lods } = collectWarmBatchSelection(scene, camera);
   renderSelectedWarmBatch(renderables, batch as WarmRenderable[], lods, render, true);
+}
+
+/**
+ * (mobile-gpu-reset-278) The vertex, index and instance bytes a batch's draw may upload: each array once per warm (shared
+ * geometry, interleaved buffers and instance attributes are counted where first met).
+ */
+export function warmBatchUploadBytes(batch: readonly Object3D[], counted: WeakSet<object>): number {
+  let bytes = 0;
+  const add = (array: ArrayBufferView | undefined | null): void => {
+    if (!array || counted.has(array)) return;
+    counted.add(array);
+    bytes += array.byteLength;
+  };
+  for (const object of batch) {
+    const renderable = object as Object3D & {
+      geometry?: { attributes?: Record<string, { array?: ArrayBufferView; data?: { array?: ArrayBufferView } }>;
+        index?: { array?: ArrayBufferView } | null };
+      instanceMatrix?: { array?: ArrayBufferView }; instanceColor?: { array?: ArrayBufferView } | null;
+    };
+    const geometry = renderable.geometry;
+    if (geometry) {
+      for (const attribute of Object.values(geometry.attributes ?? {})) add(attribute?.array ?? attribute?.data?.array);
+      add(geometry.index?.array);
+    }
+    add(renderable.instanceMatrix?.array);
+    add(renderable.instanceColor?.array);
+  }
+  return bytes;
 }
 
 function collectWarmBatchSelection(scene: Scene, camera: Camera): WarmBatchSelection {

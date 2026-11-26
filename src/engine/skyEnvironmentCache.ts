@@ -17,14 +17,23 @@ export class SkyEnvironmentCache {
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
   private active: THREE.WebGLRenderTarget | null = null;
-  /** (garage-env-276) how many keyed bakes stay resident: the default pair, or the Garage's per-pack set while it shows */
-  private capacity = RETAINED_ENVIRONMENTS;
+  /**
+   * (garage-env-276) the Garage's per-pack set while it shows (0: none asked). The bakes that stay resident are the
+   * larger of it and the device's retained count (integ/278: mobile-gpu-reset-278's phone keeps one in battle).
+   */
+  private capacity = 0;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private readonly retainedLimit: () => number;
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
+  /**
+   * `retained`: how many validated environments stay cached (read at every installation). (mobile-gpu-reset-278) A
+   * phone keeps one: each 768x1024 half-float cubeUV target is 6 MB of its battle entry's GPU peak.
+   */
+  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, retained: () => number = () => RETAINED_ENVIRONMENTS) {
     this.renderer = renderer;
     this.scene = scene;
+    this.retainedLimit = retained;
   }
 
   private readonly disposed = (event: { target: THREE.WebGLRenderTarget }): void => {
@@ -100,19 +109,20 @@ export class SkyEnvironmentCache {
 
   /** Release the least recently used keyed bakes past the capacity, never the installed one. */
   private trim(): void {
+    const limit = Math.max(Math.max(1, Math.floor(this.retainedLimit())), this.capacity);
     for (const target of [...this.cached.values()]) {
-      if (this.cached.size <= this.capacity) return;
+      if (this.cached.size <= limit) return;
       if (target !== this.active) this.release(target);
     }
   }
 
   /**
-   * (garage-env-276) How many keyed bakes stay resident (at least the default pair): the Garage holds one per pack it
-   * has baked, up to its device's cap, while it shows, and gives them back when it leaves. Lowering it releases the
-   * least recently used at once, never the installed bake.
+   * (garage-env-276) How many keyed bakes stay resident (at least the device's retained count, `retained`): the Garage
+   * holds one per pack it has baked, up to its device's cap, while it shows, and gives them back (0) when it leaves.
+   * Lowering it releases the least recently used at once, never the installed bake.
    */
   setCapacity(count: number): void {
-    this.capacity = Math.max(RETAINED_ENVIRONMENTS, Math.floor(count));
+    this.capacity = Math.max(0, Math.floor(count));
     this.trim();
   }
 

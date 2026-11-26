@@ -16,7 +16,9 @@ for (const name of ['activeTexture', 'bindTexture', 'deleteTexture', 'texImage2D
 const listeners = {};
 const intervals = [];
 const saved = { window: globalThis.window, document: globalThis.document, setInterval: globalThis.setInterval };
-globalThis.window = { WebGL2RenderingContext: FakeContext, addEventListener: (type, listener) => { listeners[type] = listener; } };
+const frames = [];
+globalThis.window = { WebGL2RenderingContext: FakeContext, addEventListener: (type, listener) => { listeners[type] = listener; },
+  requestAnimationFrame: (callback) => { frames.push(callback); return frames.length; } };
 globalThis.document = { querySelector: () => null };
 globalThis.setInterval = (callback) => { intervals.push(callback); return 0; };
 try {
@@ -108,6 +110,23 @@ try {
   gl.bufferData(ARRAY_BUFFER, 4096, 0x88E4);
   assert.equal(T.live, 4096, 'the restored context counts afresh');
   assert.equal(intervals.length, 1, 'one sampler');
+  // the largest single-frame allocation: positive bytes between two animation frames, deletes not subtracted
+  T.recording = true; T.frameBytes = 0; T.frameMax = 0;
+  const tick = () => frames.shift()();
+  const fresh = {};
+  gl.bindBuffer(ARRAY_BUFFER, fresh);
+  gl.bufferData(ARRAY_BUFFER, 1000, 0x88E4);
+  gl.bufferData(ARRAY_BUFFER, 3000, 0x88E4);
+  tick();
+  assert.equal(T.frameMax, 3000, 'a re-specified buffer counts only its growth (1000, then 2000 more)');
+  gl.deleteBuffer(fresh);
+  const big = {};
+  gl.bindBuffer(ARRAY_BUFFER, big);
+  gl.bufferData(ARRAY_BUFFER, 8192, 0x88E4);
+  tick();
+  assert.equal(T.frameMax, 8192, 'a frame that freed and allocated counts what it allocated');
+  tick();
+  assert.equal(T.frameMax, 8192, 'an empty frame changes nothing');
   void RGBA8;
 } finally {
   globalThis.window = saved.window;

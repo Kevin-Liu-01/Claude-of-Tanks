@@ -56,4 +56,16 @@ assert.ok(awaitAt > 0 && awaitAt < stage.indexOf('if (STUDIO_BOOT_INTENT) return
   assert.deepEqual(smaa.size, [1200, 675], 'sized to the composer like every pass');
 }
 
+// (mobile-gpu-reset-278) on a phone the edge and blend-weight buffers are 8-bit (the reference SMAA's formats, values in
+// [0, 1]), set on the pass's own targets before their first render; three's half float stays elsewhere
+{
+  const stock = await readFile(new URL('../../node_modules/three/examples/jsm/postprocessing/SMAAPass.js', import.meta.url), 'utf8');
+  assert.match(stock, /this\._edgesRT = new WebGLRenderTarget\( 1, 1, \{[^}]*type: HalfFloatType/, 'three allocates them half float by default');
+  assert.match(post, /if \(getDeviceTier\(\) === 'mobile'\) \{\s*for \(const target of \[smaa\._edgesRT, smaa\._weightsRT\]\) if \(target\) target\.texture\.type = THREE\.UnsignedByteType;/,
+    'the phone tier sets both SMAA buffers to UnsignedByteType');
+  const constructed = post.indexOf('const smaa = new SmaaPass()'), typed = post.indexOf('target.texture.type = THREE.UnsignedByteType');
+  const inserted = post.indexOf('composer.insertPass(smaa, at)');
+  assert.ok(constructed > 0 && constructed < typed && typed < inserted, 'typed after construction, before the pass joins the chain');
+}
+
 console.log('postLazySmaa.selftest: SMAA loads as its own chunk into its reserved slot (same defines, same place); the boot awaits it before any frame');

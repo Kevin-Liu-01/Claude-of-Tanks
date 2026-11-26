@@ -12,6 +12,13 @@ import { createOffscreenSceneWarmer, warmSceneOffscreenBatched, type OffscreenSc
 import { prepareDeploymentUploadPrograms, type DeploymentUploadProgramReceipt } from './deploymentUploadPrograms.ts';
 import { nextPaintFrame } from './frameScheduler.ts';
 import { renderShadowOnlyWarm, SHADOW_ONLY_LAYER } from './renderLayers.ts';
+import { getDeviceTier } from './quality.ts';
+
+/**
+ * (mobile-gpu-reset-278) The phone tier's buffer upload per presented frame in the deployment upload: a phone's entry
+ * copied +68 MB of vertex data in a quarter second here (tools/phone-entry-gpu.mjs). Desktop keeps the time budget alone.
+ */
+export const PHONE_UPLOAD_FRAME_BYTES = 8 * 1024 * 1024;
 
 type BudgetYield = (covered?: boolean) => Promise<void>;
 type WarmRender = (() => void) & { dispose?: () => void };
@@ -115,6 +122,8 @@ interface DeploymentShadowWarmOptions {
   now?: () => number;
   yieldProgramFrame?: () => Promise<void>;
   shadowOnlyWarmRender?: WarmRender;
+  /** (mobile-gpu-reset-278) The upload's bytes per frame; default the phone tier's budget, unbounded elsewhere. */
+  uploadFrameBytes?: () => number;
 }
 
 type DirectDraw = WebGLRenderer['renderBufferDirect'];
@@ -334,6 +343,7 @@ export function createDeploymentShadowWarmOwner({
   now = () => performance.now(),
   yieldProgramFrame = nextPaintFrame,
   shadowOnlyWarmRender: injectedShadowWarm,
+  uploadFrameBytes = () => (getDeviceTier() === 'mobile' ? PHONE_UPLOAD_FRAME_BYTES : Infinity),
 }: DeploymentShadowWarmOptions): DeploymentShadowWarmOwner {
   const shadowOnlyCamera = new THREE.PerspectiveCamera(1, 1, 0.5, 2);
   shadowOnlyCamera.position.set(100_000, 100_000, 100_000);
@@ -388,6 +398,10 @@ export function createDeploymentShadowWarmOwner({
       // (perf-245) every object's buffers, not only the deployment camera's: the far side of the map uploaded at its
       // first live draw
       uncull: true,
+      // (mobile-gpu-reset-278) a phone's uploads spread over frames by bytes, not only by the loader's time budget
+      frameBytes: Number.isFinite(uploadFrameBytes())
+        ? { budget: uploadFrameBytes(), nextFrame: async () => { await yieldProgramFrame(); await yieldCovered(yieldForBudget); } }
+        : null,
       async prepareObjects(objects) {
         preparation = await prepareDeploymentUploadPrograms(objects, uploadMaterial,
           warmRender, () => yieldCovered(yieldForBudget), now, yieldProgramFrame);
