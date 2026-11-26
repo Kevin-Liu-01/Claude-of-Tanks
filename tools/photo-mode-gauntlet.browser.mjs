@@ -142,6 +142,25 @@ async function clickIn(page, selector) {
     }, selector).catch((probe) => ({ probe: String(probe) }));
     throw new Error(`${selector} never showed: ${JSON.stringify(state)}`, { cause: error });
   });
+  // (settings-unify-278 fix-back) shown is not pressable: the click lands on whatever is drawn at the target's centre. A
+  // control under another layer (the first-game tutorial offer's START over the Garage's Photo button) fails here by
+  // name, not as the next wait's timeout after the press went to the cover.
+  const cover = await page.evaluate((sel) => {
+    const node = document.querySelector(sel);
+    let r = node.getBoundingClientRect();
+    if (r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth) {
+      node.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // puppeteer's click scrolls the same way first
+      r = node.getBoundingClientRect();
+    }
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    if (hit && (hit === node || node.contains(hit))) return null;
+    const describe = (el) => (el ? `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${[...el.classList].map((c) => `.${c}`).join('')}` : 'nothing');
+    const host = hit?.closest('[popover], dialog, section, [role="dialog"]');
+    return { at: [Math.round(x), Math.round(y)], hit: describe(hit), within: host ? describe(host) : null,
+      text: (hit?.closest('button, section, [role="dialog"]')?.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80) };
+  }, selector);
+  if (cover) throw new Error(`${selector} is covered at its centre: ${JSON.stringify(cover)}`);
   await (await page.$(selector)).click();
 }
 
@@ -153,9 +172,16 @@ async function warmBattle(browser, url, spec) {
     viewport,
     ready: 'window.__GAME_READY === true && !!window.__DEBUG',
     after: async (p) => {
-      await p.evaluate(async (tank, map) => {
-        await window.__DEBUG.startBattle(tank, map);
-      }, TANK, MAP);
+      // desktop-en: the training battle (the loaner on its ground, src/sim/trainingGround.ts), where 274's journey shows
+      // its cards: photo mode is judged beside a live one (settings-unify-278 fix-back)
+      if (spec.id === 'desktop-en') {
+        await p.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); },
+          { specId: 'm1a1', mapId: 'verdant', gameMode: 'training' });
+      } else {
+        await p.evaluate(async (tank, map) => {
+          await window.__DEBUG.startBattle(tank, map);
+        }, TANK, MAP);
+      }
       await p.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on'),
         { timeout: 900_000, polling: 1000 });
       await p.evaluate(() => window.__DEBUG.fastForward?.(4));
@@ -247,25 +273,67 @@ async function shootPage(page, spec, { signal, checkpoint }) {
     }
     if (!open.frozen) report.problems.push(`${spec.id} ${size}: the battle clock ran under photo mode`);
     if (!(open.openShiftPx <= 0.5)) report.problems.push(`${spec.id} ${size}: the bar moved ${open.openShiftPx} px after it showed`);
-    // 5. Esc returns to the battle, which runs again
+    // 5. the ways back (integ 278, settings-unify-278's shipped flow, c0281c2099): photo mode opened from Settings returns to
+    //    the paused Settings it came from, by Esc; Settings' Photo mode button opens it again; Resume runs the battle; and on
+    //    a desktop P opens it from the running battle, whose Esc returns to the battle, running (main.ts openBattlePhoto)
     const before = await page.evaluate(() => ({ surfaces: window.__cotSurfaces?.() ?? null,
       focus: document.activeElement?.className ?? null }));
-    await page.keyboard.press('Escape');
-    const closed = await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 8_000 }).then(() => true, () => false);
-    if (!closed) {
-      report.problems.push(`${spec.id} ${size}: Esc left photo mode open ${JSON.stringify(before)}`);
-      await clickIn(page, '[data-photo-exit]');
-      await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 20_000 });
+    const closePhoto = async (how) => {
+      await page.keyboard.press('Escape');
+      const closed = await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 8_000 }).then(() => true, () => false);
+      if (!closed) {
+        report.problems.push(`${spec.id} ${size}: Esc left photo mode open (${how}) ${JSON.stringify(before)}`);
+        await clickIn(page, '[data-photo-exit]');
+        await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 20_000 });
+      }
+      await sleep(600);
+    };
+    const state = () => page.evaluate(() => ({ on: document.body.classList.contains('cot-photo-on'),
+      paused: window.__DEBUG.pauseInfo.paused, hud: !!document.querySelector('.cot-hud')?.checkVisibility(),
+      settings: !!document.querySelector('.cot-settings.open')?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) }));
+    const backToSettings = (how, at) => {
+      if (at.on || !at.paused || !at.settings) report.problems.push(`${spec.id} ${size}: ${how} did not return to the paused Settings ${JSON.stringify(at)}`);
+    };
+    const backToBattle = (how, at) => {
+      if (at.on || at.paused || at.settings || !at.hud) report.problems.push(`${spec.id} ${size}: ${how} did not return to the running battle ${JSON.stringify(at)}`);
+    };
+    await closePhoto('opened from Settings');
+    entry.ways = { settingsAfterEsc: await state() };
+    backToSettings('Esc from photo mode opened in Settings', entry.ways.settingsAfterEsc);
+    // way back in 1: Settings' Photo mode button, and Esc returns to Settings again
+    await clickIn(page, '.cot-set-btn.photo');
+    entry.ways.reopenedFromSettings = await waitShown(page, '.cot-photo-bar', { timeout: 20_000 }).then(() => true, () => false);
+    if (!entry.ways.reopenedFromSettings) report.problems.push(`${spec.id} ${size}: Settings' Photo mode button did not open photo mode again`);
+    else {
+      await sleep(600);
+      await closePhoto('reopened from Settings');
+      entry.ways.settingsAgain = await state();
+      backToSettings('Esc from photo mode reopened in Settings', entry.ways.settingsAgain);
     }
+    // Resume runs the battle. Chrome refuses every pointer relock for 1250 ms after an Esc, and a refused relock reopens
+    // Settings paused by design (aim-focus 243, settings.ts relockRefused), so Resume waits out that window as a player's
+    // hand does, then the battle must be running (unpaused, Settings closed) before anything else is pressed
+    await sleep(1500);
+    await clickIn(page, '.cot-set-btn.resume');
+    await page.waitForFunction(() => !window.__DEBUG.pauseInfo.paused && !document.querySelector('.cot-settings.open'),
+      { timeout: 8_000, polling: 100 }).catch(() => {});
     await sleep(600);
-    const back = await page.evaluate(() => ({ on: document.body.classList.contains('cot-photo-on'),
-      paused: window.__DEBUG.pauseInfo.paused, hud: !!document.querySelector('.cot-hud')?.checkVisibility() }));
+    entry.ways.resumed = await state();
+    backToBattle('Resume', entry.ways.resumed);
+    // way back in 2, a desktop's: P from the running battle; its Esc returns to the battle, running
+    if (!spec.touch && !entry.ways.resumed.paused && !entry.ways.resumed.settings) {
+      await page.keyboard.press('KeyP');
+      entry.ways.openedByP = await waitShown(page, '.cot-photo-bar', { timeout: 20_000 }).then(() => true, () => false);
+      if (!entry.ways.openedByP) report.problems.push(`${spec.id} ${size}: P did not open photo mode from the running battle`);
+      else { await sleep(600); await closePhoto('opened by P'); }
+    }
+    const back = await state();
     entry.back = back;
     // the tutorial's card, live before photo mode, is live again after it (it hides while photo mode shows: stray above)
     await sleep(400);
     entry.tutorialAfter = await tutorialCard();
     if (entry.tutorialBefore && !entry.tutorialAfter) report.problems.push(`${spec.id} ${size}: the tutorial card did not come back after photo mode`);
-    if (back.on || back.paused || !back.hud) report.problems.push(`${spec.id} ${size}: closing left ${JSON.stringify(back)}`);
+    backToBattle(spec.touch ? 'Resume' : 'Esc from photo mode opened by P', back);
     report.sizes.push(entry);
     await checkpoint?.();
   }
@@ -280,9 +348,10 @@ async function shootPage(page, spec, { signal, checkpoint }) {
     report.saveStates.push(states);
     report.problems.push(...saveStateProblems(`${spec.id} ${states.size}`, states));
   }
-  // desktop-en exercises the tutorial beside photo mode: its card must have been live at some size
+  // desktop-en exercises the tutorial beside photo mode, in the training battle (274's journey runs its cards there only):
+  // its card must have been live at some size
   if (spec.id === 'desktop-en' && !report.sizes.some((entry) => entry.tutorialBefore)) {
-    report.problems.push('desktop-en: the tutorial battle chapter never showed, so photo mode was not judged beside it');
+    report.problems.push('desktop-en: the training battle\'s tutorial card never showed, so photo mode was not judged beside it');
   }
   // the Garage keeps photo mode to its docked layout (showroom.css hides the button in the overlay one, a phone's)
   if (!signal.aborted && !spec.touch) report.garage = await garagePhoto(page, spec, dir);
@@ -378,10 +447,14 @@ async function saveStill(page, dir) {
   // each page has a browser context of its own: the download rule must name it
   await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads,
     browserContextId: page.browserContext().id });
+  // (integ 278) the battle runs here (step 5 ended in it: Resume, then P and Esc), so P opens photo mode from the battle
+  const entered = await page.evaluate(() => ({ paused: window.__DEBUG.pauseInfo.paused,
+    settings: !!document.querySelector('.cot-settings.open')?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) }));
   await page.keyboard.press('KeyP');
-  await waitShown(page, '.cot-photo-bar', { timeout: 60_000 });
+  const opened = await waitShown(page, '.cot-photo-bar', { timeout: 60_000 }).then(() => true, () => false);
+  if (!opened) return { entered, opened };
   await sleep(800);
-  const result = { busy: await pressSaveBusy(page, dir, '1440x900') };
+  const result = { entered, opened, busy: await pressSaveBusy(page, dir, '1440x900') };
   let file = null;
   for (let i = 0; i < 120 && !file; i += 1) {
     await sleep(500);
@@ -412,12 +485,19 @@ async function saveStill(page, dir) {
   await page.emulateMediaFeatures([]);
   await page.keyboard.press('KeyP');
   await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 20_000 });
+  await sleep(600);
+  // opened by P from the battle, it closes back to the battle, running
+  result.closedTo = await page.evaluate(() => ({ paused: window.__DEBUG.pauseInfo.paused,
+    settings: !!document.querySelector('.cot-settings.open')?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) }));
   result.toastAfterClose = await page.evaluate(() => document.querySelectorAll('.cot-photo-notices > :not([data-state=exit])').length);
   return result;
 }
 
 function saveProblems(save) {
   const problems = [];
+  if (save.entered.paused || save.entered.settings) problems.push(`save: the battle was not running before P ${JSON.stringify(save.entered)}`);
+  if (!save.opened) return [...problems, 'save: P did not open photo mode from the running battle'];
+  if (save.closedTo.paused || save.closedTo.settings) problems.push(`save: P closed photo mode to ${JSON.stringify(save.closedTo)}, not the running battle`);
   if (!save.file || save.width !== 2880 || save.height !== 1800) problems.push(`save: no 2880x1800 still (${save.file} ${save.width}x${save.height})`);
   problems.push(...saveStateProblems('1440x900', save));
   if (!(save.reducedMotion.movedAfterFirstFramesM < 0.01)) problems.push(`save: under reduced motion the camera eased ${save.reducedMotion.movedAfterFirstFramesM} m`);
@@ -431,6 +511,15 @@ async function garagePhoto(page, spec, dir) {
   await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage' && !document.querySelector('.cot-bl.on'),
     { timeout: 600_000, polling: 1000 });
   await sleep(4000);
+  // (settings-unify-278 fix-back) a tutorial card left open over the Garage (an unanswered first-game offer: the 272 record
+  // shape opened it, the v:2 records above do not) is answered Not now, its quiet button, as a player does, before the
+  // Photo press; clickIn's hit test names any other cover
+  const offer = await waitShown(page, '.cot-tut .cot-tut-skip', { timeout: 6_000 }).then(() => true, () => false);
+  if (offer) {
+    await clickIn(page, '.cot-tut .cot-tut-skip');
+    await waitShown(page, '.cot-tut .cot-tut-card', { hidden: true, timeout: 10_000 });
+    await sleep(600);
+  }
   const shots = [];
   for (const [width, height] of [spec.sizes[2], [1024, 600]]) {
     await page.setViewport({ width, height, deviceScaleFactor: 1, isMobile: spec.touch, hasTouch: spec.touch });
@@ -452,7 +541,7 @@ async function garagePhoto(page, spec, dir) {
     await page.keyboard.press('Escape');
     await waitShown(page, '.cot-photo-bar', { hidden: true, timeout: 20_000 });
   }
-  return { shots, settled: shots.every((entry) => entry.settled) };
+  return { offerAnsweredNotNow: offer, shots, settled: shots.every((entry) => entry.settled) };
 }
 
 await mkdir(out, { recursive: true });
@@ -482,8 +571,12 @@ const result = await runWarmHold({
           const fresh = await context.newPage();
           // the first-game tutorial (272.1): desktop-en leaves its battle chapter due, so photo mode is judged beside a
           // live card (it must step aside while photo mode shows, and come back); every other page has played it
-          const tutorial = spec.id === 'desktop-en' ? { garage: 'done', tips: 'done' }
-            : { garage: 'skipped', battle: 'skipped', tips: 'skipped' };
+          // (settings-unify-278 fix-back) the journey's v:2 record (274, tutorialRecord.ts RECORD_VERSION). The 272 shape
+          // (garage, battle, tips; no v) reads as a returning player's: its offer opened over the Garage, and 274's
+          // journey runs no card in a plain battle. desktop-en is a player who pressed the offer's Start (what
+          // answerTutorialOffer writes): the training chapter is due, and its battle is the training one (warmBattle)
+          const tutorial = spec.id === 'desktop-en' ? { v: 2, offer: 'start', garage: 'done' }
+            : { v: 2, garage: 'skipped', training: 'skipped', debrief: 'skipped', tour: 'skipped', offer: 'later' };
           await fresh.evaluateOnNewDocument((locale, record) => {
             try {
               localStorage.setItem('cot.locale', locale);
