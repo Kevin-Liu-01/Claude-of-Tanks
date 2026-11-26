@@ -88,6 +88,35 @@ turret crown 2.23 m. Hull 6.86 m construction length (btvt 6,917 mm; Wikipedia 6
 Chassis of the 2018 BMPT batch: Interfax (2017) and BFM (2018) say T-90A units; the archived Uralvagonzavod page and
 English Wikipedia say a modernised T-72. The game keeps it on the T-90 family chassis.
 
+## Front lights (lane t90am-lamps-273, 2026-11-16)
+
+Every dated photograph shows one lamp a side on the upper glacis near its outer corner, standing on the glacis in a
+guard; none shows fender pods or twin lamps. The 2011 and 2013 tanks carry a round lamp in a cowl with a hoop guard;
+the 2016-2018 export tanks an LED block in a tube guard at the same station; the T-90M an armoured lamp box between
+its glacis ERA blocks.
+
+| Vehicle | Photograph | Lamps |
+|---|---|---|
+| T-90AM debut (REA-2011, Nizhny Tagil, 2011-09-10) | [btvt-REA2011] (forum member Shot) | Round, one a side at the upper glacis corners, Relikt laid round them |
+| T-90SM (RAE-2013, 2013-09-25) | [Commons-RAE2013] (Aleksey Kitaev, CC BY-SA 3.0) | As 2011 |
+| T-90MS (Army-2016, 2016-09-08) | [Commons-Army2016] (Vitaly V. Kuzmin, CC BY-SA 4.0) | LED block a side, about x ±0.73 m, mid upper glacis |
+| T-90M (Army-2021, 2021-08-27) | [Commons-T90M] (CC0) | Armoured box a side at the glacis corner, on the plate between ERA blocks |
+| T-90A (Army-2016, 2016-09-07) | [Commons-T90A] (Boevaya mashina, CC BY-SA 4.0) | Round lamp in a hoop guard at the glacis corner |
+
+The shared `bowGear` lamp (`profiles/t90X.ts`) hung at each build's nose edge (65-340 mm of air under it; the SM's
+420 mm ahead of its Relikt cover). Each X build now passes a measured seat: the housing's rear rim rests on the top
+stock and a 90 mm bracket runs down to the hull plate, through the Relikt cover where there is one.
+
+| X build (ids) | Lamp axis x, y, z (builder frame) | Stands on |
+|---|---|---|
+| `t90sm` (`t90sm_2013`, `t90am`) | ±0.85, 1.0566, 3.42: the 2011 and 2013 photographs' corner at the front of the upper glacis, level with the fender fronts (the source's later LED block sits inboard at x ±0.73; blind A/B rounds preferred the corner) | the Relikt cover's front edge; bracket to the plate (fall 0.4053) |
+| `t90a` (`t90a_2004`, `t90a_burlak_proto`) | ±0.90, 1.0657, 3.18 (outboard of the K-5 blocks, which end near x 0.81) | the bare plate (fall 0.4556) |
+| `t90a_vladimir` (`t90a_2006`) | ±0.80, 1.1337, 3.254 (rear rim against the bow strip) | the nose ledge (fall 0.075) to its tapering edge; the lens lip overhangs the chamfer |
+| `t90m` (`t90m_proryv`, `bmpt_t90`) | ±0.87, 1.0624, 3.31 | the outer Relikt container's lid; bracket to the plate (fall 0.3564) |
+
+`vehicleNightLighting.selftest.mjs` holds it for `t90am` and `t90m_proryv`: two lenses, each held by its housing, and no
+light under the lamp 4 mm above the glacis.
+
 ## Rulings (Main, under the owner's delegation, 2026-10-30)
 
 1. Do not build a new hull; update what the marks share, in place, including the BMPT T-90.
@@ -136,6 +165,10 @@ English Wikipedia say a modernised T-72. The game keeps it on the T-90 family ch
 | Bellingcat | https://www.bellingcat.com/news/europe/2017/04/02/tankspotting-t-90as-donbass/ |
 | Kubinka | https://commons.wikimedia.org/wiki/File:Soviet_and_Russian_vehicles_in_Kubinka_tank_museum_361.jpg |
 | WM-2020 | https://warriormaven.com/land/the-russian-army-just-received-its-first-new-t-90m-proryv-tanks |
+| Commons-RAE2013 | https://commons.wikimedia.org/wiki/File:T-90SM_-_RAE2013-04.jpg |
+| Commons-Army2016 | https://commons.wikimedia.org/wiki/File:Army2016-171.jpg |
+| Commons-T90M | https://commons.wikimedia.org/wiki/File:T-90M_01.jpg |
+| Commons-T90A | https://commons.wikimedia.org/wiki/File:T-90A_front_Army-2016.jpg |
 
 Reference photographs (54, six a mark) were studied from Wikimedia Commons (CC / public domain), btvt.info and
 armoredwarfare.com; the latter two carry no stated licence and stay internal. None are committed; the lane evidence

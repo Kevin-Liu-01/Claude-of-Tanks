@@ -1,18 +1,24 @@
 // Mudguard and fender seating on every tank (formerly mudguardFenderSeating.selftest.mjs): every registered guard part
-// meets the fixed hull or fender structure in its textured family bucket, and the T-72BU donor gear, the T-90M Proryv
-// guards and the closed Chieftain, T-90MS, Leopard 2 and KF51 shoulders keep their laws. A fleet audit
+// meets the fixed hull or fender structure in its textured family bucket, and the T-72BU donor gear, the T-90AM and AM
+// II's twin guards and the closed Chieftain, T-90MS, Leopard 2 and KF51 shoulders keep their laws. A fleet audit
 // (fleetPass.test-support.mjs) on the factory's default build, shared by fleetPassDefault.selftest. Reads only.
 import assert from 'node:assert/strict';
 import { ALL_TANK_IDS } from './specs.ts';
 import { FLEET_RENEWAL_DONORS } from './fleetRenewalSpecs.ts';
+
+// The T-90AM and AM II's source-X twins (profiles/t90.ts T90_PROFILES: each builds on its twin's builder).
+const T90_SOURCE_TWINS = Object.freeze({ t90am: 't90sm', t90m_proryv: 't90m' });
+const guardLabels = (seats) => seats.map((seat) => seat.label).sort();
 
 export function createMudguardFenderSeatingAudit() {
   let coveredVehicles = 0;
   let registeredParts = 0;
   let t72buGear = null;
   let t72buXGear = null;
-  const proryvGuards = new Map();
   const shoulderReceipts = new Map();
+  // each twin pair's guard labels as built in this pass, and the pairs already compared
+  const twinGuards = new Map();
+  const comparedTwins = new Set();
   return {
     check(id, visual) {
       const seats = visual.root.userData.mudguardFenderSeats || [];
@@ -36,9 +42,23 @@ export function createMudguardFenderSeatingAudit() {
         [t72buGear] = hullRig.userData.runningGearReceipts || [];
       }
       if (id === 't72bu') [t72buXGear] = hullRig?.userData.runningGearReceipts || [];
-      if (id === 't90am' || id === 't90m_proryv') {
-        proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
-          .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
+      // 275 (t90am-lamps-273): the AM and AM II build from their source-X twins since 267 (259579e51c, t90-family.md),
+      // and the retired Proryv builder's four terminal shared mudguards went with it (the 266 receipt retirement missed
+      // this fleet audit). Each carries every fender guard its twin registers in this same pass (read from the twin's
+      // build, never a pinned list), each seated by the law above, and no retired Proryv receipt.
+      if (T90_SOURCE_TWINS[id]) {
+        assert.ok(!(hullRig?.userData.sharedMudguards || []).some((guard) => guard.label.startsWith('t90m-proryv-')),
+          `${id}: no retired Proryv mudguard returns`);
+      }
+      for (const [mark, twin] of Object.entries(T90_SOURCE_TWINS)) {
+        if (id !== mark && id !== twin) continue;
+        twinGuards.set(id, guardLabels(seats));
+        if (!twinGuards.has(mark) || !twinGuards.has(twin) || comparedTwins.has(mark)) continue;
+        const own = [...twinGuards.get(mark)], wanted = twinGuards.get(twin);
+        assert.ok(wanted.length > 0, `${twin}: registers fender guards for its marks to carry`);
+        const missing = wanted.filter((label) => { const at = own.indexOf(label); if (at < 0) return true; own.splice(at, 1); return false; });
+        assert.deepEqual(missing, [], `${mark}: carries every fender guard its source-X twin ${twin} registers`);
+        comparedTwins.add(mark);
       }
       if (hullRig?.userData.t90MSFrontMudguardReceipt) {
         shoulderReceipts.set(id, hullRig.userData.t90MSFrontMudguardReceipt);
@@ -53,6 +73,9 @@ export function createMudguardFenderSeatingAudit() {
         `fleet mudguard receipt coverage regressed (${coveredVehicles} vehicles)`);
       assert(registeredParts >= 104,
         `fleet mudguard receipt coverage regressed (${registeredParts} parts)`);
+      for (const [mark, twin] of Object.entries(T90_SOURCE_TWINS)) {
+        assert.ok(comparedTwins.has(mark), `${mark}: compared with its source-X twin ${twin} in this pass`);
+      }
 
       // 2026-10-01: the owner's September renewal (4c34b3e8b, docs/tank-generation/fleet-renewal-publication-20260930.md)
       // rebuilt the T-72BU 1989 on the t72bu foundation, so its running gear is the source-measured t72bu course. The
@@ -76,17 +99,6 @@ export function createMudguardFenderSeatingAudit() {
         `t72bu_1989: forward idler clears lead road wheel in the side plane (${frontTerminalGap})`);
       assert(rearTerminalGap > 0.02,
         `t72bu_1989: aft sprocket clears rear road wheel in the side plane (${rearTerminalGap})`);
-
-      for (const id of ['t90am', 't90m_proryv']) {
-        const guards = proryvGuards.get(id) || [];
-        assert.equal(guards.length, 4, `${id}: four terminal Proryv mudguards are registered`);
-        assert.ok(guards.every((guard) => guard.material === 'painted-steel' && guard.bucket === 'hull'),
-          `${id}: mudguards use textured camouflage, never generic gray fitting paint`);
-        assert.ok(guards.filter((guard) => guard.label.includes('front')).every((guard) => guard.y <= 0.81),
-          `${id}: front mudguards are lowered to the skirt/fender line`);
-        assert.ok(guards.filter((guard) => guard.label.includes('rear')).every((guard) => guard.y <= 0.78),
-          `${id}: rear mudguards are lowered to the skirt/fender line`);
-      }
 
       // (262: the 2A2 and the 2A3 OTCO left leopard.ts's hull for the shared Leopard 2-pattern hull,
       // profiles/leopard2Hull.ts, beside the 2A3 and the Christian II: its front mudguard over the idler is one closed
