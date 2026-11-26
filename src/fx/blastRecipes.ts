@@ -1006,6 +1006,10 @@ interface PlateBurstInput {
   /** the ground under the burst (its dust when the burst is low), null when it is high */
   ground: SurfaceKind | null;
   birthOffset?: number;
+  /** (aircraft-hit-fire-278) a burst on an aircraft in flight: the heavy path whatever the munition (the fireball a crew
+   *  reads from the ground at a few hundred metres), its smoke thinning out aloft in seconds (nothing stays at the point
+   *  the aircraft has left) */
+  aloft?: boolean;
 }
 
 /**
@@ -1018,7 +1022,7 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   // (FX-05) each weapon's own: a tandem ATGM's two flashes, liner and airframe; a drone's burning battery and frame; the
   // gunship's heavy shell's fragments
   const tandem = I.munition === 'atgm', fpv = I.munition === 'drone_fpv';
-  const heavyHit = I.munition === 'howitzer' || I.munition === 'missile';
+  const heavyHit = I.munition === 'howitzer' || I.munition === 'missile' || I.aloft === true;
   const bo0 = I.birthOffset ?? 0;
   const bo = bo0 + (tandem ? TANDEM_DELAY_S : 0);
   const s = blastScale(I.chargeKg);
@@ -1117,7 +1121,7 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
     place(m, cx + Math.cos(a) * r, cy + 0.4 * u * D, cz + Math.sin(a) * r, bo + 0.04 + 0.1 * u);
     const out = (2.0 + 2.6 * R()) * sq;
     move(m, Math.cos(a) * out, (2.2 + 2.4 * u) * sq * 1.3, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
-    const life = (9 + 4 * R()) * 1.2 * (1 - 0.25 * crowd);
+    const life = (9 + 4 * R()) * 1.2 * (1 - 0.25 * crowd) * (I.aloft ? AIRBURST_SMOKE_K : 1);
     shape(m, life, 0.4 * D * dk, (1.5 + 0.4 * u + 0.35 * R()) * D * dk * (1 + 0.35 * crowd), 6, R);
     look(m, smokeC0, SMOKE_AGED, column ? HEAVY_COLUMN_DENSITY : 0.78, 0.0, 0.33);
     book(m, 'billow', R, life);
@@ -1139,6 +1143,9 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
     dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
   }
 }
+/** (aircraft-hit-fire-278) an airburst's smoke lives this share of a hull burst's (10.8-15.6 s -> 3.8-5.5 s): the wind
+ *  aloft takes it, and a hit on an aircraft leaves nothing standing where the aircraft was */
+const AIRBURST_SMOKE_K = 0.35;
 /** (ac130-fx-228 r3) the share of a heavy hull burst's charge that throws the ground's earth round the hull */
 const HULL_EARTH_SHARE = 0.6;
 /** (ac130-fx-228 r3) the least charge (kg) whose hull burst throws the ground's earth, and reaches it from a roof

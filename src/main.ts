@@ -561,8 +561,11 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
     // (aircraft-solid-277) a round on an airframe: a penetration's sparks off its skin, an explosive's burst on it
     hit(x, y, z, nx, ny, nz, caliberMm, explosive) {
       fxRuntimeAccess.current?.impact(explosive ? 'he_pen' : 'pen', _aircraftFxAt.set(x, y, z), _aircraftFxNormal.set(nx, ny, nz), caliberMm);
-      // a heavy charge on the airframe (a drone's warhead, an HE shell) bursts as its fuel and stores do
-      if (explosive && caliberMm >= 90) fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack');
+      // a heavy charge on the airframe (a drone's warhead, an HE shell) bursts in the air, one-shot (aircraft-hit-fire-278:
+      // a hull's destruction left its burning column standing in the sky after the aircraft flew on)
+      if (explosive && caliberMm >= 90) {
+        fxRuntimeAccess.current?.airframeBurst(_aircraftFxAt.set(x, y, z), _aircraftFxNormal.set(nx, ny, nz), caliberMm);
+      }
     },
   },
   // (guidance-pointers-276) Juggernaut's boss wears its icon while the viewer's side sees it (never over the viewer's own)

@@ -62,6 +62,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/strikeLooks.selftest.mjs',
     // 2026-10-27 (261, premiere-battle on live 259): the APS interception's flash, fragments and grey-white puff
     'src/fx/apsIntercept.selftest.mjs',
+    // aircraft-hit-fire-278: an aircraft in flight is drawn a one-shot burst, never a hull's burning column left in the sky
+    'src/fx/aircraftFxPort.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
     'src/fx/thermalGroundAndEmbers.selftest.mjs',
     // (orange-rings-230) the crater marks lit as the ground they lie on (Steinburg's glowing rings)
