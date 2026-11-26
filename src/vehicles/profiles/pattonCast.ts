@@ -2244,7 +2244,7 @@ function magachTurretEra(P: CastPort, seat: CastSeat): void {
   };
   for (const side of [1, -1]) {
     for (let k = 0; k < 7; k++) brackets(side, 0.95 - k * 0.29);
-    P.destructibleCluster(`magach3_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
+    P.destructibleCluster(`magach3_turret_era_${side > 0 ? 'R' : 'L'}`, () => {
       for (let k = 0; k < 7; k++) flankBox(side, 0.95 - k * 0.29, k);
       for (const z of [0.70, 0.40, 0.10, -0.20, -0.50]) shoulderBox(side, z);
       for (const y of [1.98, 2.22]) cheekCourse(side, y, 5);
@@ -3442,7 +3442,7 @@ function m60BlazerTurret(P: CastPort): void {
         next += 0.27; k++;
       }
     }
-    P.destructibleCluster(`magach6b_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
+    P.destructibleCluster(`magach6b_turret_era_${side > 0 ? 'R' : 'L'}`, () => {
       for (let k = 0; k < 8; k++) {
         const z = 0.95 - k * 0.27, y0 = bandFoot(k), y1 = bandTop(k);
         // (round 20: turned 15 degrees, so each front edge stands proud of its neighbour, Yad la-Shiryon 005's shingles)
