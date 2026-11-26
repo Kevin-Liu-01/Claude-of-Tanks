@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bytesOf, existsPublic, pageMedia, pageShell, publicPages, srcsetCandidates, topicData, topicPageMedia, topicSlug }
   from '../media-page-scan.mjs';
+// (media-blob-279) a film's weight is the same from public/ or Vercel Blob: tools/media-files.mjs reads either
+import { mediaBytes } from '../media-files.mjs';
 
 // The site's video budget (owner 2026-10-14: "we dont need them all to be super duuper highh quality 4k, they can be
 // good quality but shouldnt be too heavy on storage or take a long time to load in"; the coordinator: VMAF 93 at least
@@ -53,7 +55,7 @@ let bytes = 0;
 for (const f of files) {
   const rule = RULES.find(([re]) => re.test(f.path))?.[1];
   if (!rule) continue;
-  const size = statSync(join(ROOT, 'public', f.path)).size;
+  const size = mediaBytes(f.path);
   seen[rule.what]++;
   bytes += size;
   assert.ok(size <= rule.max, `${f.path}: ${(size / MB).toFixed(2)} MB, at most ${(rule.max / MB).toFixed(1)} MB for a ${rule.what}`);
@@ -75,7 +77,7 @@ for (const [name, max] of trioLanded ? [['trailer', 24], ['trailer-30', 14], ['t
 // stays under 15 MB on its own
 const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const first = [...home.matchAll(/<source[^>]*\sdata-src="([^"]+)"/g)].map((m) => m[1])[0];
-const firstBytes = first ? statSync(join(ROOT, 'public', first.replace(/^\//, ''))).size : 0;
+const firstBytes = first ? mediaBytes(first) : 0;
 assert.ok(firstBytes <= 15 * MB, `the home page's first video (${first}) is ${(firstBytes / MB).toFixed(1)} MB, 15 MB at most`);
 
 // --- the phone rung (rung 4): ≤ 1.0 MB per 6 s of loop, measured against its source's length --------------------------
@@ -215,7 +217,8 @@ for (const page of publicPages()) {
 // (docs-refresh-279; Main 2026-11-26) the films on Vercel Blob (src/presentation/blobMedia.json): each at most 14 MB, played
 // on a click (the index's feature videos are preload="none": tools/blob-media.selftest.mjs), so none counts before a scroll
 const blob = JSON.parse(readFileSync(join(ROOT, 'src/presentation/blobMedia.json'), 'utf8'));
-const blobFilms = Object.entries(blob.items).filter(([, item]) => item.type.startsWith('video/'));
+// (media-blob-279: the path items, the site's own films moved to Blob, keep their rules above by their old paths)
+const blobFilms = Object.entries(blob.items).filter(([, item]) => item.type.startsWith('video/') && !item.path);
 for (const [id, item] of blobFilms) {
   assert.ok(item.bytes > 0 && item.bytes <= 14 * MB, `${id}: ${(item.bytes / MB).toFixed(2)} MB on Blob, 14 MB at most for a click-to-play film`);
 }

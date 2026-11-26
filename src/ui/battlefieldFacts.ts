@@ -16,6 +16,8 @@
 // so a size class would sort all but one map together.
 import { MAP_IDS, RANDOM_BATTLE_MAP_IDS, isMapId, type MapId } from '../world/maps/catalog.ts';
 import { getLocalizedMapName } from './mapNames.ts';
+import mapsMap from '../presentation/blobMediaFamilies/maps-r1.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../presentation/blobMediaFamily.ts';
 import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import { mapRegionTags } from './regionTags.ts';
@@ -48,16 +50,18 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
+/** The map stills and loops on Vercel Blob (media-blob-279): their paths are built per map here. */
+const MAPS_MEDIA = mapsMap as BlobMediaFamily;
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
   const thumb = `/maps/thumbs/${id}.webp`;
   if (!STILLS.has(id)) {
     return { src: thumb, srcset: `${thumb} 512w, /maps/cards/${id}.webp 1280w`, hero: `/maps/${id}.webp`, thumb };
   }
-  const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
+  const still = (width: number): string => familyMediaUrl(MAPS_MEDIA, `/media/maps-r1/${id}-${width}.webp`);
   return {
     src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb,
-    loop: `/media/maps-r1/${id}-loop-960.mp4`,
+    loop: familyMediaUrl(MAPS_MEDIA, `/media/maps-r1/${id}-loop-960.mp4`),
   };
 }
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);

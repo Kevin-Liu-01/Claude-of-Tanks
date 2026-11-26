@@ -3,7 +3,8 @@
 // that makes them true, so the page cannot drift from the pipeline it describes.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { mediaBytes, mediaExists, mediaFolder, mediaPathOf } from '../../tools/media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FILMING_STAGES, FILMING_TAKES, filmingFrames, filmingPoster, filmingScene, filmingStudioLink, filmingThumb, filmingVideo } from './filming.ts';
@@ -33,11 +34,11 @@ for (const take of FILMING_TAKES) {
   assert.ok(take.stages.includes('r4') && take.stages.includes('review1'), `${take.id}: every take shows where it started`);
   for (const stage of take.stages) {
     const entry = shipped.stages[stage];
-    assert.equal(entry.video, filmingVideo(take, stage));
-    assert.equal(entry.poster, filmingPoster(take, stage));
-    const video = publicFile(entry.video);
-    assert.ok(existsSync(video) && existsSync(publicFile(entry.poster)), `${take.id} ${stage}: video and poster exist`);
-    assert.equal(statSync(video).size, entry.bytes, `${take.id} ${stage}: the manifest records the file that shipped`);
+    // (media-blob-279) a moved film or still is a Blob family URL (blobMediaFamily.ts) standing for its old /media/ path
+    assert.equal(entry.video, mediaPathOf(filmingVideo(take, stage)));
+    assert.equal(entry.poster, mediaPathOf(filmingPoster(take, stage)));
+    assert.ok(mediaExists(entry.video) && mediaExists(entry.poster), `${take.id} ${stage}: video and poster exist`);
+    assert.equal(mediaBytes(entry.video), entry.bytes, `${take.id} ${stage}: the manifest records the file that shipped`);
     assert.ok(entry.seconds >= 5.9 && entry.seconds <= 6.7, `${take.id} ${stage}: one 6–6.6 s take (${entry.seconds} s)`);
     assert.ok(entry.bytes < 4.5 * 1048576, `${take.id} ${stage}: ${(entry.bytes / 1048576).toFixed(1)} MB is over the page's clip budget`);
     referenced.add(`${take.id}-${stage}.mp4`).add(`${take.id}-${stage}.webp`);
@@ -45,10 +46,10 @@ for (const take of FILMING_TAKES) {
   assert.equal(take.frames, ENGINE_LATEST.find((stage) => take.stages.includes(stage)), `${take.id}: frames from its latest engine render`);
   assert.equal(shipped.frames.from, take.frames, `${take.id}: the strip on disk was cut from that render`);
   assert.equal(shipped.thumb.from, CARD_FROM.find((stage) => take.stages.includes(stage)), `${take.id}: the card from its most finished render`);
-  assert.equal(shipped.frames.image, filmingFrames(take));
-  assert.equal(shipped.thumb.image, filmingThumb(take));
+  assert.equal(shipped.frames.image, mediaPathOf(filmingFrames(take)));
+  assert.equal(shipped.thumb.image, mediaPathOf(filmingThumb(take)));
   for (const image of [shipped.frames.image, shipped.thumb.image]) {
-    assert.ok(existsSync(publicFile(image)), `${take.id}: ${image} exists`);
+    assert.ok(mediaExists(image), `${take.id}: ${image} exists`);
     referenced.add(image.split('/').at(-1));
   }
   assert.ok(take.title && take.story && take.place && take.time, `${take.id}: title, story, place and time`);
@@ -67,13 +68,13 @@ for (const take of FILMING_TAKES) {
 assert.deepEqual(manifest.figures.map((entry) => entry.name), [...FIGURES.map((figure) => figure.name), 'card'],
   'the figures, the cover and the manual index\'s card shipped');
 for (const shipped of manifest.figures) {
-  assert.ok(existsSync(publicFile(shipped.image)), `figure ${shipped.name} exists`);
+  assert.ok(mediaExists(shipped.image), `figure ${shipped.name} exists`);
   referenced.add(shipped.image.split('/').at(-1));
 }
 assert.match(manifest.figures.at(-1).source, new RegExp(`^${CARD.take}: previz at `), 'the card is one take across the pipeline');
-const orphans = readdirSync(MEDIA).filter((name) => !referenced.has(name));
+const orphans = mediaFolder('/media/filming-r1/').filter((name) => !referenced.has(name));
 assert.deepEqual(orphans, [], 'every file in filming-r1 is in the manifest (rebuild with tools/media-r5/docs-media.mjs)');
-const total = readdirSync(MEDIA).reduce((sum, name) => sum + statSync(join(MEDIA, name)).size, 0);
+const total = mediaFolder('/media/filming-r1/').reduce((sum, name) => sum + mediaBytes(`/media/filming-r1/${name}`), 0);
 assert.ok(total < 84 * 1048576, `filming-r1 is ${(total / 1048576).toFixed(1)} MB; the collection's budget is 84 MB`);
 
 // The page: its figures are the builder's, and its card feeds the manual index.

@@ -3,6 +3,8 @@ import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs as kitTabs, wireRoving } from '../ui/components/components.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { createMediaPlayer, type MediaRung } from './mediaPlayer.ts';
+import libraryMap from './blobMediaFamilies/library-r3.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from './blobMediaFamily.ts';
 
 // The media library: every finished picture of the media rounds' current takes (library-r3, 2026-10-21: r2's one final
 // a subject left out "so many pictures"; r1's 11,215, every render, review sheet and candidate, were "way too much"),
@@ -14,6 +16,8 @@ import { createMediaPlayer, type MediaRung } from './mediaPlayer.ts';
 // and its shot (close-up, another moment...). tools/media-library/build.mjs builds it from the published folders'
 // manifests (2026-11-16; before, a snapshot built outside the repository fell three weeks behind the site).
 const ROOT_URL = '/media/library-r3';
+/** The library's packs and contact sheets on Vercel Blob (media-blob-279); its indexes stay in public/. */
+const LIBRARY_MEDIA = libraryMap as BlobMediaFamily;
 /** [name, width, height, sheet, x, y, thumb width, thumb height, pack, offset, length] or [..., published url] */
 type LibraryItem = [string, number, number, number, number, number, number, number, ...(number | string)[]];
 /** A text in each locale, or one string that reads the same in all of them (a vehicle's name). */
@@ -61,7 +65,7 @@ async function pictureUrl(collection: LibraryCollection, item: LibraryItem): Pro
   const cacheKey = `${collection.key}/${pack}/${offset}`;
   const cached = pictureUrls.get(cacheKey);
   if (cached) return cached;
-  const response = await fetch(`${ROOT_URL}/${collection.key}/${collection.packs[pack]}`, {
+  const response = await fetch(familyMediaUrl(LIBRARY_MEDIA, `${ROOT_URL}/${collection.key}/${collection.packs[pack]}`), {
     headers: { Range: `bytes=${offset}-${offset + length - 1}` },
   });
   if (!response.ok) throw new Error(t('mediaLibrary.unavailable', { status: String(response.status) }));
@@ -217,7 +221,7 @@ function setSection(collection: LibraryCollection, set: LibrarySet, viewer: View
     if (set.clips?.[index]) button.dataset.clip = '';
     button.style.width = `${Math.round(tw * scale)}px`;
     button.style.height = `${Math.round(th * scale)}px`;
-    button.style.backgroundImage = `url("${ROOT_URL}/${collection.key}/${sheetName}")`;
+    button.style.backgroundImage = `url("${familyMediaUrl(LIBRARY_MEDIA, `${ROOT_URL}/${collection.key}/${sheetName}`)}")`;
     button.style.backgroundSize = `${Math.round(sheetW * scale)}px ${Math.round(sheetH * scale)}px`;
     button.style.backgroundPosition = `${-Math.round(x * scale)}px ${-Math.round(y * scale)}px`;
     button.addEventListener('click', () => viewer.open(collection, set, index));

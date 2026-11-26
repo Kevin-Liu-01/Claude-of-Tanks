@@ -2,8 +2,12 @@ import { onLocaleChange, t } from '../ui/i18n.ts';
 import { designationHtml, holdNameText } from './designations.ts';
 import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
+import reelsMap from '../presentation/blobMediaFamilies/site50-reels.json' with { type: 'json' };
+import { familyMediaUrl, type BlobMediaFamily } from '../presentation/blobMediaFamily.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
+/** The reels' films on Vercel Blob (media-blob-279): their paths are built per reel here. */
+const REELS_MEDIA = reelsMap as BlobMediaFamily;
 
 export interface BattleReel {
   id: string;
@@ -47,8 +51,8 @@ export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.ma
   id,
   get title() { return t(titleKey); },
   get map() { return t(mapKey); },
-  video: `${MEDIA_ROOT}/${id}.mp4`,
-  poster: `${MEDIA_ROOT}/${id}.webp`,
+  video: familyMediaUrl(REELS_MEDIA, `${MEDIA_ROOT}/${id}.mp4`),
+  poster: familyMediaUrl(REELS_MEDIA, `${MEDIA_ROOT}/${id}.webp`),
 })));
 
 function reelNumber(index: number): string {

@@ -9,7 +9,8 @@
 // the features are the curated home-r2 set (public/media/home-r2/manifest.json, home-premiere.mjs) and the modes and
 // mechanics are one rail of large cards behind the switch.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { mediaExists } from '../media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../../src/sim/matchModes.ts';
@@ -55,7 +56,7 @@ for (const { group, entry, slot } of picked) {
   assert.ok([attr(tag, 'src'), ...attr(tag, 'srcset').split(', ').map((c) => c.split(' ')[0])].includes(own), `${slot} shows its delivered shot`);
   assert.equal(attr(tag, 'data-i18n-alt'), `media.home.${group}.${camel(entry.id)}`, `${slot} describes its own shot`);
   for (const url of [attr(tag, 'src'), ...attr(tag, 'srcset').split(', ').map((c) => c.split(' ')[0])]) {
-    assert.ok(built.has(url) && existsSync(join(ROOT, 'public', url)), `${slot}: ${url} is published`);
+    assert.ok(built.has(url) && mediaExists(url), `${slot}: ${url} is published`);
   }
   assert.ok(en[attr(tag, 'data-i18n-alt')] && zh[attr(tag, 'data-i18n-alt')], `${slot} alt key is in both catalogs`);
 }

@@ -3,10 +3,10 @@
 // tools/media-r5/site-media-wire.mjs. Every take and frame comes from the picks' round, every take with its sound, every
 // file matches its receipt, and the formats are the ones the pages were built for.
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaBytes, mediaDigest, mediaExists } from '../media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const picks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
@@ -36,10 +36,11 @@ assert.equal(new Set(manifest.frames.map((frame) => frame.id)).size, 50);
 
 const files = new Map(manifest.files.map((file) => [file.path, file]));
 for (const file of manifest.files) {
-  const path = join(ROOT, 'public', file.path);
-  assert.ok(existsSync(path), `${file.path} is published`);
-  assert.equal(statSync(path).size, file.bytes, `${file.path} byte receipt`);
-  assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'), file.sha256, `${file.path} sha256 receipt`);
+  // (media-blob-279) published from public/ or from Vercel Blob: tools/media-files.mjs gives either's bytes and hash
+  assert.ok(mediaExists(file.path), `${file.path} is published`);
+  const digest = mediaDigest(file.path);
+  assert.equal(digest.bytes, file.bytes, `${file.path} byte receipt`);
+  assert.equal(digest.sha256, file.sha256, `${file.path} sha256 receipt`);
   assert.ok(file.bytes < 50 * 1048576, `${file.path} stays under 50 MiB`);
 }
 const media = (pattern) => manifest.files.filter((file) => pattern.test(file.path));
@@ -113,7 +114,7 @@ const chapterRungs = new Set((picks.docs.chapterLoops ?? []).map((take) => `${ta
 const landingBytes = proxies.files.filter((file) => !chapterRungs.has(file.path)).reduce((sum, file) => sum + file.bytes, 0);
 assert.ok(landingBytes < 9_000_000, `the landing's phone proxies weigh ${landingBytes} bytes`);
 for (const proxy of proxies.files) {
-  assert.equal(statSync(join(ROOT, 'public/media/web-video-r1', proxy.path)).size, proxy.bytes, `${proxy.path} byte receipt`);
+  assert.equal(mediaBytes(`/media/web-video-r1/${proxy.path}`), proxy.bytes, `${proxy.path} byte receipt`);
 }
 
 // the trailers (round six, 2026-10-15, the owner: "also make better new trailers"): the main cut, the 30 s cut and the
