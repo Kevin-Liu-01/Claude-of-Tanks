@@ -98,7 +98,9 @@ assert.match(equipIconSVG('rammer', 38), new RegExp(`stroke="${EQUIPMENT.firepow
 assert.match(consumableIconSVG('extinguisher', 38), new RegExp(`stroke="${consumables.fire}"`), 'a consumable badge frames in its token');
 const TOKEN_FILES = new Set(['src/ui/tokens/tokens.json', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-badge.ts',
   'src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/badgeColours.selftest.mjs']);
-const literal = new RegExp([...Object.values(EQUIPMENT), ...Object.values(consumables)].map((hex) => hex.slice(1)).join('|'), 'i');
+// (integ 278) a hue is six hex digits standing alone (#856280, 0x856280, '856280'), never six digits inside a longer run:
+// the wreck facts modules (wreck-bake-after-reveal-278) hold thousands of floats, and 0.856280165… is no badge hue
+const literal = new RegExp(`(?<![0-9a-f])(?:${[...Object.values(EQUIPMENT), ...Object.values(consumables)].map((hex) => hex.slice(1)).join('|')})(?![0-9a-f])`, 'i');
 const walk = (dir, out = []) => {
   for (const name of readdirSync(join(ROOT, dir))) {
     const path = join(dir, name);

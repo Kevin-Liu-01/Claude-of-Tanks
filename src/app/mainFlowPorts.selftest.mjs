@@ -330,6 +330,7 @@ function phaseListener(game, battleEntryIntent) {
     onlinePump: { pump() {} },
     battleWarmHold: { pending: true },
     tutorialHolds: () => false, // tutorial-journey-273: the frame also pauses while the tutorial holds the battle
+    battlePhotoOpen: false, // settings-unify-278: a solo battle's photo mode is the pause's third source (main.ts battleFrame)
     currentHud: () => null,
     bus: { emit: (type, payload) => events.push([type, payload]) },
     console: { warn: (message) => warnings.push(message), error() {}, info() {} },

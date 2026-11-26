@@ -260,6 +260,7 @@ Waits and polls built by hand:
 - `tools/mp-room-census.mjs`: another lane's file (tools-chains); migrate after it lands
 - `tools/mp-two-peer-e2e.mjs`: the joiner's loader is its subject: a blocked joiner waits for the loader to clear with its entry failure recorded, and the loader's stage is sampled every 250 ms for its stall gate (mp-fixes-277)
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
+- `tools/photo-mode-gauntlet.browser.mjs`: photo mode over a frozen battle is its subject: it waits for the battle phase with the loader gone, then for the countdown's end, before it opens photo mode (settings-unify-278, 271b's gauntlet)
 - `tools/phone-entry-gpu.mjs`: the phone page's GPU through the entry is its subject: it waits for the debug surface and each phase edge while it samples the GPU tracker's stage, the resident worlds and every context loss (mobile-gpu-reset-277)
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle

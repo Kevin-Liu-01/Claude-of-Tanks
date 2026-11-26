@@ -106,7 +106,9 @@ assert.match(propsSource, /const registerDestructibles = \(\): \(\(\) => void\) 
   'partially constructed props expose a deferred registration, not a global retained closure');
 // (PERF's program variants, 1c23e8e74: the props' variant twins are split between the registration and the return;
 // integ 254: battle-spikes' sliced build yields after the registration and shows a sliced group before the return)
-assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*(?:yield;\s*)?(?:\/\/[^\n]*\n\s*)*(?:const programVariants = splitProgramVariants\(props\.group\);\s*group\.userData\.programVariants = programVariants;\s*)?(?:if \(sliced\) group\.visible = true;\s*)?return \{\s*mapId: config\.id,\s*(?:terrainVariant: [^\n]*,\s*)?dispose\(\) \{\s*terrain\.userData\.cancelSourcedTextures\?\.\(\);\s*(?:delete terrain\.userData\.cancelSourcedTextures;\s*)?unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
+// (integ 278, wreck-bake-after-reveal-278) the deferred wreck bakes: their run, the bake method, and dispose cancels
+// them first (source work, so before the bindings and the vegetation)
+assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*(?:yield;\s*)?(?:\/\/[^\n]*\n\s*)*let deferredWrecksRun: [^\n]*= null;\s*(?:const programVariants = splitProgramVariants\(props\.group\);\s*group\.userData\.programVariants = programVariants;\s*)?(?:if \(sliced\) group\.visible = true;\s*)?return \{\s*mapId: config\.id,\s*(?:terrainVariant: [^\n]*,\s*)?bakeDeferredWrecks\(focus\) \{[\s\S]*?\n    \},\s*dispose\(\) \{\s*\(props\.group\.userData\.deferredWrecks as DeferredWreckPlan \| undefined\)\?\.cancel\?\.\(\);\s*terrain\.userData\.cancelSourcedTextures\?\.\(\);\s*(?:delete terrain\.userData\.cancelSourcedTextures;\s*)?unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
   'completed assembly cancels source work before releasing external bindings and vegetation on eviction');
 
 let grantBlockedLease;

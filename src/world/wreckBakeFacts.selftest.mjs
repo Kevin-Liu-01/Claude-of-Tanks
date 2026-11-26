@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installWorldBuildFixture } from '../../tools/headlessWorldCollision.mjs';
+import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 installWorldBuildFixture();
 const [{ getMapConfig }, { createHeightField }, { createVegetationAsync }, { createProps }, fleet, models, wrecks,
@@ -130,6 +131,7 @@ for (const order of [MAPS, [...MAPS].reverse()]) {
     assert.equal(shadowCount(placed, ['tank-wrecks-shadow', 'tank-wrecks-deferred-shadow']), shadowCount(baked, ['tank-wrecks-shadow']),
       `${mapId}: the swapped shadow proxies are the baking build's`);
     console.log(`  ${mapId}: ${plan.hulks.length} hulks, ${stats.bakes} bakes; world identical; ${standIn.tris} stand-in triangles -> ${after.tris} after the swap`);
+    await betweenBuilds(); // (integ 278) this map's two worlds are free to go before the next map's (tools/build-loop-yield.mjs)
   }
 }
 console.log('wreckBakeFacts.selftest: the facts build lays out the baking build\'s world, and its swap draws the baking build\'s wrecks');
