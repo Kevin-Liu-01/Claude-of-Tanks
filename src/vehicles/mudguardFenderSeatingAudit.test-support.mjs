@@ -12,9 +12,11 @@ export function createMudguardFenderSeatingAudit() {
   let t72buGear = null;
   let t72buXGear = null;
   const shoulderReceipts = new Map();
+  const seatLabels = new Map();
   return {
     check(id, visual) {
       const seats = visual.root.userData.mudguardFenderSeats || [];
+      seatLabels.set(id, seats.map((seat) => seat.label).sort());
       if (seats.length) coveredVehicles++;
       registeredParts += seats.length;
       for (const seat of seats) {
@@ -81,9 +83,15 @@ export function createMudguardFenderSeatingAudit() {
       // (268: the Chieftain Mk 3 and Mk 9 left uk.ts's closed shoulder for the Mk 5 X's own bow guards,
       // profiles/chieftain5XSourceHullEquipment.ts, with the source-built Mk 5; 268b: the Mk 9 moved on to the Mk 10 X's,
       // profiles/chieftain10XFenders.ts)
+      // (267: the KF51 EVO was rebuilt on its own hull, profiles/kf51Evo.ts (fb694e0dd6), with the 2A4-pattern box
+      // mudguards over the idlers its photos show; the Panther closed shoulder stays the KF51-U's alone, 278)
       const expectedClosedShoulders = [
-        'kf51_evo', 'kf51_u',
+        'kf51_u',
       ];
+      // the EVO's own guards stay under the seating check above: its four rubber flaps hang from the box mudguards' lips
+      // and the rear guards, each one seated (supported) on the hull (278)
+      assert.deepEqual(seatLabels.get('kf51_evo'), ['kf51evo-front-flap-left', 'kf51evo-front-flap-right',
+        'kf51evo-rear-flap-left', 'kf51evo-rear-flap-right'], 'kf51_evo: its box mudguards hang their four seated flaps');
       for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
         assert(receipt, `${id}: closed shoulder/mudguard receipt`);
@@ -97,7 +105,7 @@ export function createMudguardFenderSeatingAudit() {
       }
 
 
-      for (const id of ['kf51_evo', 'kf51_u']) {
+      for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: Panther shoulder must merge into the glacis`);
