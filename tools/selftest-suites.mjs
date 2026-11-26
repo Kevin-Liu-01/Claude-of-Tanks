@@ -455,6 +455,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gun-junction-census.selftest.mjs',
     // release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured
     'tools/roof-pocket-census.selftest.mjs',
+    // 279 (turret-foot-seat; Main 2026-11-26): the seat's tilt and split foot fits, the 2 % rule, spans that follow the split
+    // copy (stale-span controls), and the M46's slots back with the fit reverted
+    'tools/turret-foot-fit.selftest.mjs',
     // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
     'tools/hull-contact-census.selftest.mjs',
     // hitbox-fit-274 (the owner, 2026-11-18: floating hit boxes): crop, fit or drop, and the pinned ids' layers on their builds

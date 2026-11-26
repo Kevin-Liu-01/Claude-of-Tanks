@@ -42,6 +42,10 @@ export class WeaponDamageVisuals {
     return this.ranges.filter((range) => range.geometry === geometry).map((range) => [range.start, range.count]);
   }
   holds(geometry: BufferGeometry): boolean { return this.ranges.some((range) => range.geometry === geometry); }
+  /** The modules whose ranges lie over `geometry` (the turret seat's split receipt). */
+  modulesOf(geometry: BufferGeometry): string[] {
+    return [...new Set(this.ranges.filter((range) => range.geometry === geometry).map((range) => range.module))];
+  }
   follow(built: BufferGeometry, seated: BufferGeometry): void {
     for (const range of this.ranges) if (range.geometry === built) range.geometry = seated;
   }
