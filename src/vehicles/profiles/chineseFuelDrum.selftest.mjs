@@ -76,7 +76,10 @@ function continuousMainGunClearance(tank,id,observations){
   for(let i=0;i<p.count;i++)vertices.push({v:new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix),moving});});
  const state=createTankState(spec,new THREE.Vector3(),0);tank.syncFromState(state,0);
  tank.recoilKick(0,1);tank.syncFromState(state,.12);
- const travel=-recoil.position.z,kick=-gun.rotation.x;
+ // the cradle's pitch-rock measured on the bore in the world (as recoilRig, audit M9 2e2668364b): the visual now rocks the
+ // hull on its own spring after a shot and the stabilizer counter-rotates rig_gun against it, so rig_gun's own angle is
+ // the cradle kick less that counter-rotation, not the kick
+ const travel=-recoil.position.z,kick=Math.asin(tank.gunDirWorld(new THREE.Vector3()).y);
  assert(travel>.13&&travel<.14&&kick>.013&&kick<.015,'actual cannon recuperator supplies stroke and pitch-rock endpoints');
  tank.syncFromState(state,.8);gun.rotation.x=0;turret.rotation.y=0;recoil.position.z=0;root.updateMatrixWorld(true);
  const lo=-spec.gunDepressionDeg*Math.PI/180,hi=spec.gunElevationDeg*Math.PI/180+kick;

@@ -241,6 +241,10 @@ interface FactoryGunSpec extends FleetGunSpec {
 }
 
 /** Missile mouths follow elevation but never cannon recuperation. */
+/** A visual ERA cluster named in the gameplay plates' own form (turret_era_L, side_era_R): it must name one of its owner's
+ *  plates (278, the bmpt_t90 station). Builders' descriptive cluster names (hyphenated) never take this form. */
+const PLATE_NAMED_ERA_CLUSTER = /^[a-z0-9]+(?:_[a-z0-9]+)*_era_[LR]$/;
+
 function createLauncherTips(gun: THREE.Group, turret: THREE.Group, muzzles: FactoryGunSpec['launcherMuzzles']): THREE.Object3D[] {
   return (muzzles ?? []).map((position, index) => {
     const tip = new THREE.Object3D();
@@ -291,6 +295,9 @@ interface GearEndpoint {
   rimR?: number;
   /** 'datum': the band's inner face sits exactly on trackR (an authored sink such as the Type 10's 0.975 r tread bore). */
   trackFace?: 'datum';
+  /** An outer road wheel authored above the common seat (per-station wheelYs): how far (m). Its band wraps it at the seated
+   * wheels' radius, the foot under its tire, not at the reach down to the ground run (roadWheelWrap). */
+  liftM?: number;
   /** Independent axial casting envelopes; rolling radius and track lanes stay fixed. */
   axialScaleLeft?: number;
   axialScaleRight?: number;
@@ -2803,10 +2810,13 @@ export function endRoadWheels(
   if (!wheelZs.length) return null;
   const frontIndex = wheelZs.indexOf(Math.max(...wheelZs));
   const rearIndex = wheelZs.indexOf(Math.min(...wheelZs));
-  return {
-    front: { z: wheelZs[frontIndex], y: wheelYs?.[frontIndex] ?? wheelY, r: wheelR },
-    rear: { z: wheelZs[rearIndex], y: wheelYs?.[rearIndex] ?? wheelY, r: wheelR },
+  // 278 (trackGlitchSimulation t90am): an outer wheel raised over the common seat (the T-90SM X build's front +59 mm,
+  // rear +17 mm) keeps the seated radius; its lift is published so the wrap does not reach under it to the ground run
+  const end = (index: number): GearEndpoint => {
+    const y = wheelYs?.[index] ?? wheelY;
+    return y - wheelY > 1e-4 ? { z: wheelZs[index], y, r: wheelR, liftM: y - wheelY } : { z: wheelZs[index], y, r: wheelR };
   };
+  return { front: end(frontIndex), rear: end(rearIndex) };
 }
 
 interface RoadWheelWrap {
@@ -2881,7 +2891,9 @@ function roadWheelWrap(
   wrap: number = TRACK_WRAP_CLEARANCE_M,
 ): RoadWheelWrap | null {
   const endRadius = end.r + endpointWrap(end, wrap);
-  const wheelRadius = wheel.y - botY;
+  // the band's centreline radius about the road wheel is its seat over the ground run; a raised outer wheel keeps the
+  // seated wheels' radius, so its foot stands under its own tire and the loaded run climbs to it from the next station
+  const wheelRadius = wheel.y - botY - (wheel.liftM ?? 0);
   if (!(wheelRadius > 0.05)) return null;
   if (end.y - endRadius <= botY + 0.005) return null;
   const dz = wheel.z - end.z;
@@ -9330,6 +9342,11 @@ function* buildTankCoreSteps(
     if (!liveExternalParts[owner].has(part)) return null;
     if (/cage|slat|screen|net/i.test(sector)) return null;
     if (destructiblePartCluster.has(part)) return null;
+    // 278: a cluster named in the gameplay plates' own form (<zone>_era_L/R) binds that plate or fails: no fallback to the
+    // family rules below, which would hand its parts to whatever plate sits nearest
+    if (PLATE_NAMED_ERA_CLUSTER.test(sector) && !gameplayEraByOwner[owner].some((plate) => plate.name === sector)) {
+      throw new Error(`${specId}: visual ERA cluster ${sector} names no ${owner} ERA plate`);
+    }
     const candidates = gameplayEraByOwner[owner];
     if (!candidates.length) return null;
     if (!part.boundingBox) part.computeBoundingBox();
@@ -9349,6 +9366,13 @@ function* buildTankCoreSteps(
   ): GameplayEraPlate[] => {
     const { sector, owner, center } = record;
     let { candidates } = record;
+    // 278: a visual cluster named for one of its owner's gameplay plates binds that plate. The BMPT T-90 station's
+    // glacis bricks (bmptT90Station.ts turret_era_L/R, x +-0.585, z .40/.56) sat where the cheek rule below reads a flank,
+    // so they bound side_era and the turret_era plates fitted nothing (274's plate fits dropped them). Only that station
+    // names its clusters after plates; every other builder's cluster names are descriptive and never equal a plate's
+    // (prepareVisualEraPart has already refused a plate-named cluster with no plate).
+    const named = candidates.find((plate) => plate.name === sector);
+    if (named) return [named];
     const narrow = (pattern: RegExp): void => {
       candidates = narrowEraCandidates(candidates, pattern);
     };

@@ -11,11 +11,14 @@ import type { TankSpecRegistry } from './specContracts.ts';
 
 const TURRET_SCALE_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> = Object.freeze({
   // depression 6, elevation 14; mountConflicts [[179,180]]
+  // 278 (fleet-debt-278, Main's ruling): the 267 stowage deck runs to the hull's rear stock (0a3b7c9d82), so dead astern
+  // the barrel came 21.65 mm off it at -0.5; tools/gun-depression-sweep.mjs (26 mm) floors yaw 180 at -0.22, and only
+  // that degree stood below its floor: the stop astern rises to -0.2, every other station unchanged
 t90am: [
   [0, -6], [19, -6], [20, -5.7], [23, -5.3], [39, -5.1], [49, -3.2], [50, -3], [133, -3], [135, -2.3],
   [136, -2.1], [139, -1.9], [140, -1.4], [141, -1.2], [147, -0.5], [148, -0.1], [149, 1], [150, 1.9], [162, 2],
   [163, 3.6], [164, 4.9], [165, 5.1], [170, 5.3], [171, 5], [172, 5.4], [177, 5.3], [178, 5], [179, 3.3],
-  [180, -0.5]],
+  [180, -0.2]],
   // depression 6, elevation 14; mountConflicts []
 t90m_proryv: [
   [0, -6], [19, -6], [20, -5.7], [23, -5.3], [39, -5.1], [49, -3.2], [50, -3], [133, -3], [135, -2.3],

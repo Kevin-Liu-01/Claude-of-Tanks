@@ -28,8 +28,10 @@ const CURVES = {
   t72b3_bastion_m: [],
   type96b: [],
   gepard_1a2: [], // 268: its published curve lifts the guns at most 1 deg over the stern deck's outlet covers (yaw 140-180)
-  marksman_t55: [], // 269: the Marksman turret's measured stern curves (marksmanSpecs.ts), on the T-55A deck
-  itpsv_leopard2: [], // 269: and on the Leopard 2A4 deck
+  // 269: the Marksman turret's measured stern curve on the Leopard 2A4 deck (marksmanSpecs.ts). The T-55 Marksman has
+  // none since round 5 (929d5f9131: its guns keep their full -10 deg all round over the T-55A deck); profiles/marksman.selftest
+  // holds its hull clearance at every bearing from -10 to full elevation
+  itpsv_leopard2: [],
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],

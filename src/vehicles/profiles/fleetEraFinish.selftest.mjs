@@ -14,7 +14,8 @@ const ERA_VEHICLE_IDS = Object.freeze([
   'ztz99_longwei', 'ztz99a', 'ztz99a2', 'object148_proto',
   'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',
-  'merkava3_baz', 'merkava4b', 'amx30b2', 'm60a3',
+  // (the M60A3 left the list with its reactive armour: d7b880cade, Main's ruling on the owner's model, 2026-10-28)
+  'merkava3_baz', 'merkava4b', 'amx30b2',
   't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
   'leo2a6_ua', 't72m1_jaguar', 'pt91a_twardy',
   'bmpt_terminator2', 'm3a3_bradley', 'bmpt_t90',

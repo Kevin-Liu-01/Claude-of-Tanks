@@ -9,10 +9,18 @@ import {near} from '../../../tools/receipt-kit.test-support.mjs';
 import {measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 import { betweenBuilds } from '../../../tools/build-loop-yield.mjs';
 
-const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1'];
+// 269: the Australian M1A1 AIM SA (australiaSpecs.ts, on the m1a1 turret) joins the family's fit checks
+const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1','m1a1_aim_sa_aus'];
 assert.deepEqual(ALL_TANK_IDS.filter(id=>/^M1A1\b/.test(getSpec(id).name)).sort(),[...ids].sort(),
   'Every playable M1A1 configuration participates in the fit checks');
-assert.deepEqual(Object.keys(M1A1_GUN_PITCH_BY_YAW).sort(),[...ids].sort());
+// the AIM SA (Aus) carries its own swept curve on its spec (australiaSpecs.ts, tools/gun-depression-sweep.mjs, 269), so
+// the legacy M256 table holds the other seven (278)
+const OWN_CURVE=['m1a1_aim_sa_aus'];
+for(const id of OWN_CURVE){
+  assert.ok(getSpec(id).gunPitchByYawDeg?.length>1,`${id}: carries its own measured gun stops`);
+  assert.ok(!Object.hasOwn(M1A1_GUN_PITCH_BY_YAW,id),`${id}: one source for its stops (its spec, not the M256 table)`);
+}
+assert.deepEqual(Object.keys(M1A1_GUN_PITCH_BY_YAW).sort(),ids.filter(id=>!OWN_CURVE.includes(id)).sort());
 // 2026-10-22 (release 240): these frames may publish their own measured curves (the M1A2 X family since the gun-hull
 // lane's batch 3, the MBT-70 since its rebuild); what must hold is that none carries one of the M1A1 donor's curves.
 const donorCurves=Object.values(M1A1_GUN_PITCH_BY_YAW).map(curve=>JSON.stringify(curve));

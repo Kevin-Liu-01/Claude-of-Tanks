@@ -124,7 +124,10 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
         `${id}: standardized M2 cannot expand primary armor hitboxes`);
     });
   }
-  if (id !== 'm551_sheridan') {
+  // the post-war American fit (guarded light groups, two whips, the seated rack) is the M46's and M47's: the M60A1 and
+  // M60A3 were rebuilt on the owner's model (10-27/28, the M60 rounds through 9a73d33fa8; the A1 carries one roof mast),
+  // so they keep only the M2 standard above and the gun finish below (Main's ruling, 278)
+  if (!['m551_sheridan', 'm60a1', 'm60a3'].includes(id)) {
     const receipt = tank.root.getObjectByName('rig_turret')?.userData.americanModernizationReceipt;
     assert.equal(receipt?.standardMachineGun, 'sheridan-m2hb-v2',
       `${id}: publishes its American modernization receipt`);
@@ -136,44 +139,58 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   tank.dispose();
 }
 
+// The gun finish read off what the gun draws (278): the M60s' owner-model builds (10-27/28) publish no finish marker
+// (9a73d33fa8 deleted the retired builders that set it), so every id is held to its drawn gun. A near-black surface on
+// rig_gun is only the bore's own stock (muzzleBore*), the mount's dark bucket, a sight's glass or a mantlet cover's
+// cloth; the old decorative bands were near-black sleeve rings in their own bucket (gunDark, 4ccbb29bfa), so a band
+// drawn again lands outside that set. The drawn check is the one mechanism for all five ids (Main's ruling, 278): the
+// Sheridans' markers are no longer read.
+const DARK_GUN_STOCK = /^(muzzleBore\w*|gunMountDark|gunMountGlass|gunMountCloth)$/;
+const darkSurfaces = (gun) => {
+  const out = [];
+  gun.traverse((object) => {
+    if (!object.isMesh) return;
+    for (const material of [].concat(object.material)) {
+      const hsl = {};
+      material?.color?.getHSL(hsl);
+      if (hsl.l < 0.06) out.push(object.name);
+    }
+  });
+  return out;
+};
+function gunFinishFaults(gun) {
+  const dark = darkSurfaces(gun);
+  const faults = dark.filter((name) => !DARK_GUN_STOCK.test(name)).map((name) => `near-black ${name} on the gun`);
+  if (!dark.includes('muzzleBoreShadowDisc')) faults.push('no dark muzzle bore');
+  return faults;
+}
+{
+  // control: a near-black sleeve ring planted on a gun is caught
+  const tank = make('m60a1');
+  const gun = tank.root.getObjectByName('rig_gun');
+  assert.deepEqual(gunFinishFaults(gun), [], 'm60a1: the control starts clean');
+  const ring = gun.getObjectByName('muzzleBoreShadowDisc').clone();
+  ring.name = 'gunDark';
+  gun.add(ring);
+  assert.deepEqual(gunFinishFaults(gun), ['near-black gunDark on the gun'], 'a planted black band is caught');
+  tank.dispose();
+}
 for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
   await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = make(id);
   const gun = tank.root.getObjectByName('rig_gun');
-  const receipt = gun?.userData.americanGunFinishReceipt;
-  assert.equal(receipt?.decorativeBlackBands, 0,
-    `${id}: gun sleeves use painted relief instead of decorative black bands`);
-  assert.equal(receipt?.muzzleBoresDark, true,
-    `${id}: true muzzle openings remain dark after the band cleanup`);
-  assert.equal(receipt?.exposedWeaponsGunmetal, true,
-    `${id}: exposed secondary weapons retain their gunmetal finish`);
+  assert.deepEqual(gunFinishFaults(gun), [],
+    `${id}: gun sleeves use painted relief instead of decorative black bands, and the true muzzle opening stays dark`);
+  const finishes = fittings(tank.root, (object) => object.userData.machineGunFinish !== undefined)
+    .map((object) => object.userData.machineGunFinish);
+  assert.ok(finishes.every((finish) => finish === 'gunmetal'),
+    `${id}: exposed secondary weapons retain their gunmetal finish (${finishes.join(', ')})`);
   tank.dispose();
 }
 
-{
-  const tank = make('m60a2');
-  const turret = tank.root.getObjectByName('rig_turret');
-  const station = fittings(tank.root,
-    (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
-  assert.equal(station.length, 1, 'M60A2 replaces the stowed MG with one visible TTS-derived RWS');
-  assert.equal(station[0].userData.stationVariant, 'hunter');
-  assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint');
-  assert.equal(station[0].userData.hasVisibleFeedBelt, true);
-  assert.equal(station[0].userData.hasWorkLights, true);
-  assert.equal(station[0].userData.hasSteelReceiverGuard, true);
-  assert.equal(station[0].userData.machineGunFinish, 'gunmetal');
-  assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
-    'M60A2 RWS keeps the weapon mechanism gunmetal while its armor stays painted');
-  assert.equal(turret.userData.americanModernizationReceipt?.stationVariant, 'hunter');
-  assert.equal(turret.userData.americanModernizationReceipt?.guardedAuxiliaryLights, 2);
-  assert.equal(turret.userData.americanModernizationReceipt?.properMantletSearchlight, true,
-    'M60A2 replaces the old dark block with a complete mantlet searchlight');
-  assert.equal(turret.userData.americanModernizationReceipt?.rearBustle, true,
-    'M60A2 carries a turret-owned rear bustle');
-  assert.equal(turret.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
-    'M60A2 applique has no decorative black outline geometry');
-  tank.dispose();
-}
+// The M60A2's station block (TTS-derived RWS, bustle, mantlet searchlight, modernization and armor-finish receipts)
+// left with the retired builder 9a73d33fa8 deleted: the owner-model M60A2 (10-27/28) is held by the drawn gun-finish
+// check above, like the M60A1 and A3 (Main's ruling, 278). Its current kit is not pinned here.
 
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [

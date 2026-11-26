@@ -11,11 +11,12 @@ export function createMudguardFenderSeatingAudit() {
   let registeredParts = 0;
   let t72buGear = null;
   let t72buXGear = null;
-  const proryvGuards = new Map();
   const shoulderReceipts = new Map();
+  const seatLabels = new Map();
   return {
     check(id, visual) {
       const seats = visual.root.userData.mudguardFenderSeats || [];
+      seatLabels.set(id, seats.map((seat) => seat.label).sort());
       if (seats.length) coveredVehicles++;
       registeredParts += seats.length;
       for (const seat of seats) {
@@ -36,13 +37,7 @@ export function createMudguardFenderSeatingAudit() {
         [t72buGear] = hullRig.userData.runningGearReceipts || [];
       }
       if (id === 't72bu') [t72buXGear] = hullRig?.userData.runningGearReceipts || [];
-      if (id === 't90am' || id === 't90m_proryv') {
-        proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
-          .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
-      }
-      if (hullRig?.userData.t90MSFrontMudguardReceipt) {
-        shoulderReceipts.set(id, hullRig.userData.t90MSFrontMudguardReceipt);
-      } else if (hullRig?.userData.leopardShoulderMudguardReceipt) {
+      if (hullRig?.userData.leopardShoulderMudguardReceipt) {
         shoulderReceipts.set(id, hullRig.userData.leopardShoulderMudguardReceipt);
       } else if (hullRig?.userData.kf51ShoulderMudguardReceipt) {
         shoulderReceipts.set(id, hullRig.userData.kf51ShoulderMudguardReceipt);
@@ -77,17 +72,10 @@ export function createMudguardFenderSeatingAudit() {
       assert(rearTerminalGap > 0.02,
         `t72bu_1989: aft sprocket clears rear road wheel in the side plane (${rearTerminalGap})`);
 
-      for (const id of ['t90am', 't90m_proryv']) {
-        const guards = proryvGuards.get(id) || [];
-        assert.equal(guards.length, 4, `${id}: four terminal Proryv mudguards are registered`);
-        assert.ok(guards.every((guard) => guard.material === 'painted-steel' && guard.bucket === 'hull'),
-          `${id}: mudguards use textured camouflage, never generic gray fitting paint`);
-        assert.ok(guards.filter((guard) => guard.label.includes('front')).every((guard) => guard.y <= 0.81),
-          `${id}: front mudguards are lowered to the skirt/fender line`);
-        assert.ok(guards.filter((guard) => guard.label.includes('rear')).every((guard) => guard.y <= 0.78),
-          `${id}: rear mudguards are lowered to the skirt/fender line`);
-      }
-
+      // (267: the T-90 family moved onto the source-X twins, one family chassis for the obr. 1992, AM, AM II, MS and SM
+      // (259579e51c, 07fc1eb544, the old build's receipts retired with it): the AM's and the M Proryv's four hung
+      // t90m-proryv-* mudguards and the MS's closed front shoulder receipt (t90MSFrontMudguardReceipt) left with the old
+      // hulls; whatever mudguards the X hulls hang are held by the fleet-wide seating checks above)
       // (262: the 2A2 and the 2A3 OTCO left leopard.ts's hull for the shared Leopard 2-pattern hull,
       // profiles/leopard2Hull.ts, beside the 2A3 and the Christian II: its front mudguard over the idler is one closed
       // section solid per side, not this receipt's raked flange and terminal web; release 265: the 2A4 and the 2A4 OTCO
@@ -95,10 +83,15 @@ export function createMudguardFenderSeatingAudit() {
       // (268: the Chieftain Mk 3 and Mk 9 left uk.ts's closed shoulder for the Mk 5 X's own bow guards,
       // profiles/chieftain5XSourceHullEquipment.ts, with the source-built Mk 5; 268b: the Mk 9 moved on to the Mk 10 X's,
       // profiles/chieftain10XFenders.ts)
+      // (267: the KF51 EVO was rebuilt on its own hull, profiles/kf51Evo.ts (fb694e0dd6), with the 2A4-pattern box
+      // mudguards over the idlers its photos show; the Panther closed shoulder stays the KF51-U's alone, 278)
       const expectedClosedShoulders = [
-        't90ms_2011',
-        'kf51_evo', 'kf51_u',
+        'kf51_u',
       ];
+      // the EVO's own guards stay under the seating check above: its four rubber flaps hang from the box mudguards' lips
+      // and the rear guards, each one seated (supported) on the hull (278)
+      assert.deepEqual(seatLabels.get('kf51_evo'), ['kf51evo-front-flap-left', 'kf51evo-front-flap-right',
+        'kf51evo-rear-flap-left', 'kf51evo-rear-flap-right'], 'kf51_evo: its box mudguards hang their four seated flaps');
       for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
         assert(receipt, `${id}: closed shoulder/mudguard receipt`);
@@ -112,16 +105,7 @@ export function createMudguardFenderSeatingAudit() {
       }
 
 
-      {
-        const receipt = shoulderReceipts.get('t90ms_2011');
-        assert.equal(receipt.steppedShelves, false,
-          't90ms_2011: replace thin craft stairs with a continuous rake');
-        assert.equal(receipt.architecture, 'continuous-sloped-shoulder-and-closed-outer-shell');
-        assert.ok(receipt.shellRearTopY > receipt.shellFrontTopY,
-          't90ms_2011: terminal guard follows a decisive forward/downward slope');
-      }
-
-      for (const id of ['kf51_evo', 'kf51_u']) {
+      for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: Panther shoulder must merge into the glacis`);

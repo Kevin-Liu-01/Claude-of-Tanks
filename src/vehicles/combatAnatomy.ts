@@ -1938,7 +1938,10 @@ export function applyCombatGunRig(spec: { id: string; armor: ArmorAnatomy; gun?:
   if (gun && (rig.mouths?.length || rig.launchers?.length)) {
     const measured: RigGun = rememberAuthoredGun({ ...gun }, gun);
     if (rig.mouths?.length && gun.muzzles) measured.muzzles = gun.muzzles.map((mouth, i) => ({ ...mouth, ...(rig.mouths![i] ?? {}) }));
-    if (rig.launchers?.length && gun.launcherMuzzles) {
+    // 278: the generator's measurement pass draws the launcher tubes at their authored exits. The tubes' anchors are
+    // built from spec.gun.launcherMuzzles, so measuring a build that carries the last calibration's exits only measured
+    // that calibration again, and an authored move (fleetLauncherMuzzles.ts) never reached the rig.
+    if (rig.launchers?.length && gun.launcherMuzzles && !isCombatAnatomyMeasurementMode()) {
       measured.launcherMuzzles = gun.launcherMuzzles.map((tube, i) => ({ ...tube, ...(rig.launchers![i] ?? {}) }));
     }
     spec.gun = measured;

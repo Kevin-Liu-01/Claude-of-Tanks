@@ -10,7 +10,8 @@ import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
   'amx40_proto', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws', 'mbt70', 'object148_proto',
-  'k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv',
+  // 267 (9f3534e1ab, the Japan line): type10_tk_x left modern3's canonical build for its own profile (profiles/type10X.ts)
+  'k1e1', 'm2a2_bradley', 'bmp2', 'hayate_ifv',
 ]);
 const owners = new Map();
 for (const [group, ids] of Object.entries(FLEET_GROUP_IDS)) {
