@@ -295,9 +295,6 @@ interface GearEndpoint {
   rimR?: number;
   /** 'datum': the band's inner face sits exactly on trackR (an authored sink such as the Type 10's 0.975 r tread bore). */
   trackFace?: 'datum';
-  /** An outer road wheel authored above the common seat (per-station wheelYs): how far (m). Its band wraps it at the seated
-   * wheels' radius, the foot under its tire, not at the reach down to the ground run (roadWheelWrap). */
-  liftM?: number;
   /** Independent axial casting envelopes; rolling radius and track lanes stay fixed. */
   axialScaleLeft?: number;
   axialScaleRight?: number;
@@ -2810,13 +2807,10 @@ export function endRoadWheels(
   if (!wheelZs.length) return null;
   const frontIndex = wheelZs.indexOf(Math.max(...wheelZs));
   const rearIndex = wheelZs.indexOf(Math.min(...wheelZs));
-  // 278 (trackGlitchSimulation t90am): an outer wheel raised over the common seat (the T-90SM X build's front +59 mm,
-  // rear +17 mm) keeps the seated radius; its lift is published so the wrap does not reach under it to the ground run
-  const end = (index: number): GearEndpoint => {
-    const y = wheelYs?.[index] ?? wheelY;
-    return y - wheelY > 1e-4 ? { z: wheelZs[index], y, r: wheelR, liftM: y - wheelY } : { z: wheelZs[index], y, r: wheelR };
+  return {
+    front: { z: wheelZs[frontIndex], y: wheelYs?.[frontIndex] ?? wheelY, r: wheelR },
+    rear: { z: wheelZs[rearIndex], y: wheelYs?.[rearIndex] ?? wheelY, r: wheelR },
   };
-  return { front: end(frontIndex), rear: end(rearIndex) };
 }
 
 interface RoadWheelWrap {
@@ -2891,9 +2885,7 @@ function roadWheelWrap(
   wrap: number = TRACK_WRAP_CLEARANCE_M,
 ): RoadWheelWrap | null {
   const endRadius = end.r + endpointWrap(end, wrap);
-  // the band's centreline radius about the road wheel is its seat over the ground run; a raised outer wheel keeps the
-  // seated wheels' radius, so its foot stands under its own tire and the loaded run climbs to it from the next station
-  const wheelRadius = wheel.y - botY - (wheel.liftM ?? 0);
+  const wheelRadius = wheel.y - botY;
   if (!(wheelRadius > 0.05)) return null;
   if (end.y - endRadius <= botY + 0.005) return null;
   const dz = wheel.z - end.z;
