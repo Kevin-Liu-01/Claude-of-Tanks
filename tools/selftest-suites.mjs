@@ -3617,6 +3617,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby and
     // Deploy open, by mouse at 1920x1080 and 1200x819 and by touch at 390x844
     'tools/couch-open.browser.selftest.mjs',
+    // scope-and-names-278: the sniper frame draws a 4 m calibration square at 300 m at the size the reported zoom
+    // predicts (Shift, wheel, RMB, the phone's SCOPE and the capture's snapSniper), read from the frame's pixels
+    'tools/sniper-zoom-drawn.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
