@@ -10032,7 +10032,7 @@ function* buildTankCoreSteps(
       equipmentDamage.follow(built, seated);
       weaponDamage.follow(built, seated);
     };
-    const splitBuilt: THREE.BufferGeometry[] = [];
+    const splitBuilt: THREE.BufferGeometry[] = [], splitCopies: THREE.BufferGeometry[] = [];
     seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
       const camoScale = built.userData.camoFaceProjection as number | undefined;
       if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null);
@@ -10042,12 +10042,29 @@ function* buildTankCoreSteps(
       const position = geometry.getAttribute('position'), spans: [number, number][] = [];
       for (const cluster of destructibleClusters.values()) for (const range of cluster.ranges) if (range.position === position) spans.push([range.start, range.count]);
       return [...spans, ...equipmentDamage.spansOf(geometry), ...weaponDamage.spansOf(geometry)];
-    }, onSplit: (built, split) => { followSeat(built, split); splitBuilt.push(built); } });
+    }, onSplit: (built, split) => { followSeat(built, split); splitBuilt.push(built); splitCopies.push(split); } });
     if (splitBuilt.length) {
       const stale = staleSeatSpans(splitBuilt, [...destructibleClusters.values()].flatMap((cluster) => cluster.ranges.map((range) => range.position)),
         (geometry) => equipmentDamage.holds(geometry) || weaponDamage.holds(geometry));
       if (stale) throw new Error(`${specId}: the turret seat's split left ${stale} span(s) on the built buffers it replaced`);
-      if (geometryReceipt) turretSeatSplitBuilt.set(turretG, splitBuilt);
+      if (geometryReceipt) {
+        turretSeatSplitBuilt.set(turretG, splitBuilt);
+        // the spans that followed onto the split copies, per owner, with each lid's centre (the copy's frame) and each
+        // weapon module, so a receipt can damage them (tools/turret-foot-fit.selftest.mjs)
+        const copies = new Set(splitCopies.map((geometry) => geometry.getAttribute('position')));
+        const centre = (geometry: THREE.BufferGeometry, [start, count]: readonly [number, number]): [number, number, number] => {
+          const p = geometry.getAttribute('position'), c: [number, number, number] = [0, 0, 0];
+          for (let i = start; i < start + count; i++) { c[0] += p.getX(i) / count; c[1] += p.getY(i) / count; c[2] += p.getZ(i) / count; }
+          return c;
+        };
+        turretG.userData.turretSeatSplitSpans = {
+          era: [...destructibleClusters.values()].flatMap((cluster) => cluster.ranges).filter((range) => copies.has(range.position)).length,
+          equipment: splitCopies.reduce((n, geometry) => n + equipmentDamage.spansOf(geometry).length, 0),
+          weapon: splitCopies.reduce((n, geometry) => n + weaponDamage.spansOf(geometry).length, 0),
+          equipmentAt: splitCopies.flatMap((geometry) => equipmentDamage.spansOf(geometry).map((span) => centre(geometry, span))),
+          weaponModules: [...new Set(splitCopies.flatMap((geometry) => weaponDamage.modulesOf(geometry)))],
+        };
+      }
     }
     // 274: hull kit standing over the seated turret's foot, named for the turret-deck gate (ringZoneGuard.ts)
     if (ringZoneParts.length) {

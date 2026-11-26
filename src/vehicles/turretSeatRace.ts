@@ -207,7 +207,21 @@ export type TurretFootFit = 'whole' | 'tilt' | 'split';
  *  the tank's high triangles (docs/references/fleet-geometry-ledger.json), else, or when the two close about the same, the
  *  tilt. A split runs at high quality only; the low build keeps 'whole' (turretFootFitFor). Measured per id in
  *  turret-foot-seat-279 (tools/turret-foot-fit.selftest.mjs holds the split ids to the 2 % rule). */
-export const TURRET_FOOT_FIT: Readonly<Record<string, Exclude<TurretFootFit, 'whole'>>> = Object.freeze({});
+export const TURRET_FOOT_FIT: Readonly<Record<string, Exclude<TurretFootFit, 'whole'>>> = Object.freeze({
+  // slot cm² whole → fit (split: added triangles, share of the high LOD)
+  m46_patton: 'split', // 4632 → 120 (+818, 0.96 %)
+  pl01: 'split', // 4808 → 3576 (+418, 0.45 %)
+  pl01_105: 'split', // 3916 → 2484 (+794, 0.77 %)
+  t90a_burlak_proto: 'split', // 4820 → 4312 (+418, 0.37 %)
+  m6_linebacker: 'split', // 920 → 736 (+874, 0.90 %)
+  // (the 274 photo verdict's louvres and panel, :89-:92, lowered up to 2.5 cm in a measurement close 0 cm²)
+  object148_proto: 'split', // 2620 → 2204 (+626, 0.83 %)
+  amx40_proto: 'tilt', // 6180 → 4564
+  mbt70: 'tilt', // 768 → 328 (the split 348)
+  chieftain_mk10: 'tilt', // 8184 → 8080 (the split is 2.09 %, over the rule)
+  // (the 274 photo verdict's hinge pairs, pattonCast.ts m48HullSteps, lowered up to flush in a measurement close 0 cm²)
+  m48_super: 'tilt', // 1868 → 1700 (the split grows it, 2360)
+});
 
 /** With a geometry receipt, the built geometries a turret's split replaced (receipts audit the spans against them). */
 export const turretSeatSplitBuilt = new WeakMap<THREE.Object3D, readonly THREE.BufferGeometry[]>();
