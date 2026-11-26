@@ -15,6 +15,7 @@ import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck, bakeTankWreckSteps } from './wrecks.ts';
 import { outputIdentity } from '../../tools/wreck-paint-bench.mjs';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
+import { PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel } from './propsProgress.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('export async function createPropsAsync(');
@@ -70,9 +71,13 @@ function harness({ steps, modes, timeoutMs = 60, acquire = async () => {}, mainB
   }, timeoutMs);
   // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    'bakeTankWreckSteps', 'console', 'assertNoBuildScopeOpen', `${wrapper}\nreturn createPropsAsync;`)(build, acquire,
+    'bakeTankWreckSteps', 'console', 'assertNoBuildScopeOpen',
+    // (integ 278) the props build's progress names (mp-fixes-277 257d499fd1, src/world/propsProgress.ts), as the other harnesses
+    'PROPS_PHASE_LABELS', 'PROPS_PROGRESS_SCALE', 'propsPhaseOf', 'propsProgress', 'propsWreckLabel',
+    `${wrapper}\nreturn createPropsAsync;`)(build, acquire,
     function Worker() {}, makeClient, performance, mainBake ?? (function* () { throw new Error('unexpected main-thread bake'); }),
-    { ...console, warn: (...args) => warnings.push(args.join(' ')) }, assertNoBuildScopeOpen);
+    { ...console, warn: (...args) => warnings.push(args.join(' ')) }, assertNoBuildScopeOpen,
+    PROPS_PHASE_LABELS, PROPS_PROGRESS_SCALE, propsPhaseOf, propsProgress, propsWreckLabel);
   return { run: () => run({}, {}, 2002, null, tick, true, null, prefetch), workers, events, warnings };
 }
 
