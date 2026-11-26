@@ -51,8 +51,8 @@ for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
     const entry = { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) };
     donor.dispose();
     if (NATIONAL_GUN_BUILDS[d.donor]) {
-      registerProfiledBuilders({ [d.donor]: NATIONAL_GUN_BUILDS[d.donor] });
       try {
+        registerProfiledBuilders({ [d.donor]: NATIONAL_GUN_BUILDS[d.donor] });
         const national = build();
         const gun = vertexSet(owned(national, 'rig_gun', 'gun'));
         national.dispose();
