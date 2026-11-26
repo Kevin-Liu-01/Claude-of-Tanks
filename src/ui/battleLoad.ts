@@ -28,6 +28,7 @@ import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import { revealWhenReady } from './components/reveal.ts';
+import { openFetchWindow } from '../engine/fetchClasses.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
@@ -784,6 +785,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
 
   let visible = false;
+  /** (entry-bytes-278) the fetch-class window this card holds open while it is up (engine/fetchClasses.ts) */
+  let fetchWindow: ReturnType<typeof openFetchWindow> | null = null;
   /** The thumb and battlefield whose art the screen staged last (show() keeps it while the cover stays up). */
   let stagedArt = '';
   // `visible` is the requested open state and flips false when hide() starts.
@@ -1056,6 +1059,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
       if (!visible) loadStartedAt = performance.now();
+      // (entry-bytes-278) while the card is up, the fetches the entry never waits for (photographs, bulk sounds) are held
+      // to a few at a time behind the ones it does (engine/fetchClasses.ts); hide() lets them all go
+      fetchWindow ??= openFetchWindow();
       supersedeExitFade();
       visible = true;
       covering = true;
@@ -1143,6 +1149,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     hide() {
       if (!visible) return exitFade?.done ?? Promise.resolve(); // a fade in flight answers for itself
       visible = false;
+      fetchWindow?.close();
+      fetchWindow = null;
       loadStartedAt = 0;
       // hold display through the opacity transition (.on carries display:flex,
       // so removing it alone would cut the fade to a hard pop)

@@ -1627,6 +1627,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/coplanar-surface-overlap.selftest.mjs',
     'tools/circular-cap-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
+    // entry-bytes-278: decor and idle fetches held behind the entry's own while the loading card is up
+    'src/engine/fetchClasses.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
     'src/workerCalls.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
