@@ -14,6 +14,7 @@
 // Turret: the low faceted two-man drum with the 20 mm Rh 202 in its external housing on the right of centre, the
 // coaxial MG3 beside the gun, the six smoke dischargers on the feed housing's face, the MILAN firing post on the left,
 // the commander's cupola front right and the gunner's sight front left.
+import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -312,11 +313,15 @@ function addMilan(P: TankBuilderPort): void {
   // the drum's left rear, the equipment box
   P.addEquipment('turret', box(0.44, 0.46, 0.66), 0.78, 0.49, -0.57);                    // left-rear equipment box
   P.addEquipment('turretDetail', box(0.08, 0.32, 0.10), 0.62, 0.43, 0.20);               // bracket post
-  P.addEquipment('turretDetail', box(0.16, 0.05, 0.22), 0.62, 0.60, 0.20);               // cradle
-  P.add('turretDark', cylZ(0.062, 1.22, 16), 0.62, 0.66, 0.46);                          // launch tube -0.15..1.07
-  P.add('turretDetail', cylZ(0.072, 0.04, 16), 0.62, 0.66, 1.05);                       // mouth ring
-  P.add('turretDetail', cylZ(0.072, 0.04, 16), 0.62, 0.66, -0.13);                      // breech ring
-  P.addEquipment('turretDetail', box(0.18, 0.16, 0.24), 0.62, 0.80, 0.02);               // sight unit on the tube
+  // 278 (externalWeapons, launcherOrigins): the launcher is the vehicle's damageable missile stock, its collision and
+  // its drawn launch terminal (fleetLauncherMuzzles.ts marder1a3, the mouth ring's face at z 1.07)
+  weaponAssembly(P, () => {
+    P.addEquipment('turretDetail', box(0.16, 0.05, 0.22), 0.62, 0.60, 0.20);             // cradle
+    P.add('turretDark', cylZ(0.062, 1.22, 16), 0.62, 0.66, 0.46);                        // launch tube -0.15..1.07
+    P.add('turretDetail', cylZ(0.072, 0.04, 16), 0.62, 0.66, 1.05);                     // mouth ring
+    P.add('turretDetail', cylZ(0.072, 0.04, 16), 0.62, 0.66, -0.13);                    // breech ring
+    P.addEquipment('turretDetail', box(0.18, 0.16, 0.24), 0.62, 0.80, 0.02);             // sight unit on the tube
+  });
   P.addEquipment('turretGlass', box(0.12, 0.05, 0.012), 0.62, 0.81, 0.145);
 }
 
