@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { balanceTokens, computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, CATALOG_FILES, gpuChunks } from './steps.mjs';
+  PROCESS_MARKER_ENV, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, CATALOG_FILES, gpuChunks } from './steps.mjs';
 import { browserIdCap } from '../browser-id-chunks.mjs';
 import { declaredNotInput, tableFileList } from './globs.mjs';
 import { tokenPin } from './world.mjs';
@@ -181,6 +181,30 @@ for (const name of ['icons', 'centering']) {
 const launchEnv = graph.edges(join(root, 'tools/browser-launch.mjs')).flags.environment;
 assert.ok(launchEnv.includes('COT_BROWSER_TREE_CAP_MB') && launchEnv.every((name) => Object.hasOwn(SCHEDULING_ENV, name)),
   `tools/browser-launch.mjs reads ${launchEnv.join(', ')}: each only schedules, so each is a SCHEDULING_ENV row`);
+// practice audit 2026-11-26: the receipt runner's run directory marks a receipt's process (media-r5/paths.mjs, which icons
+// reaches through master-filter) and is a fresh path every run: a PROCESS_MARKER_ENV row, keyed as `<unset>` whatever
+// its value, so a runner pass keeps the icons key and the keys recorded before the row still hold. Controls: the closure
+// really reads it, and a variable the same closure reads that is no marker (MEDIA_R5_FEATURES) still moves the key.
+const runDirReaders = state.steps.icons.toolFiles.filter((file) => {
+  try { return graph.edges(join(root, file)).flags.environment.includes('COT_SELFTEST_RUN_DIR'); } catch { return false; }
+});
+assert.ok(runDirReaders.includes('tools/media-r5/paths.mjs'), `icons reaches COT_SELFTEST_RUN_DIR through ${runDirReaders.join(', ') || 'nothing'}`);
+assert.ok(Object.hasOwn(PROCESS_MARKER_ENV, 'COT_SELFTEST_RUN_DIR') && !Object.hasOwn(SCHEDULING_ENV, 'COT_SELFTEST_RUN_DIR'),
+  'the run directory is a marker (kept in the key as <unset>), not a SCHEDULING_ENV row (dropped from it, which re-keys)');
+{
+  // these states reuse the graph cache the first one warmed (a few seconds each)
+  const envWith = (patch) => {
+    const env = { ...process.env, ...patch };
+    for (const name of ['COT_SELFTEST_RUN_DIR', 'MEDIA_R5_FEATURES']) if (!(name in patch)) delete env[name];
+    return env;
+  };
+  const outside = computeState({ root, steps: STEPS, env: envWith({}) });
+  const inside = computeState({ root, steps: STEPS, env: envWith({ COT_SELFTEST_RUN_DIR: join(root, '.no-such-run-dir') }) });
+  assert.equal(inside.steps.icons.tool, outside.steps.icons.tool, 'a runner pass keeps the icons key');
+  const keyed = computeState({ root, steps: STEPS, env: envWith({ MEDIA_R5_FEATURES: join(root, '.no-such-survey-dir') }) });
+  assert.notEqual(keyed.steps.icons.tool, outside.steps.icons.tool,
+    'control: a variable the same closure reads that is no marker (MEDIA_R5_FEATURES) moves the key');
+}
 // 266: the GPU steps key the public directories their page is served (tools/icons-page-public.mjs, whose list is keyed),
 // never all of public/: the vehicle count in public/llms.txt moved both on every id.
 for (const name of ['icons', 'centering']) {
