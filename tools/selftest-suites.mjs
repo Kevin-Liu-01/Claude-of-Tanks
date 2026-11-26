@@ -3175,6 +3175,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    // world-flags-278 (Kevin, 2026-11-26: the fort's flag "looks too much like a real flag"): every world flag is invented
+    'src/world/worldFlags.selftest.mjs',
     // the maps-restyle lane (2026-10-22, from the destructible-kits lane 2026-10-11): the roadside light buildings and
     // random hulks in 180-degree twins on a map that declares its rotation centre (the fairness ask)
     'src/world/roadsideTwins.selftest.mjs',

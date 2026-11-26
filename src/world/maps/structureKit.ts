@@ -26,6 +26,7 @@ import {
   auditRoofPlanePitch, gableAttic, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
 import { registerBuildScope } from './buildScopes.ts';
+import { WORLD_FLAG_LIFT, worldFlagPanels, type WorldFlagId } from '../worldFlags.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -416,6 +417,30 @@ function paint<T extends THREE.BufferGeometry>(geo: T, hex: number, rng: Rng, ji
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return geo;
+}
+
+/** A world flag (worldFlags.ts) as one part, both faces, its colours as paint() sets them; `cloth` as drawWorldFlag's. */
+function worldFlagGeometry(id: WorldFlagId, cloth: (u: number, v: number, lift: number) => [number, number, number], aspect: number): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], uvs: number[] = [], col: number[] = [];
+  const n = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (const p of worldFlagPanels(id, { aspect })) {
+    _color.set(p.hex);
+    for (const side of [1, -1]) {
+      const pts = p.poly.map(([u, v]) => cloth(u, v, side * p.layer * WORLD_FLAG_LIFT)), uv = side > 0 ? p.poly : [...p.poly].reverse();
+      if (side < 0) pts.reverse();
+      a.set(...pts[0]); b.set(...pts[1]); c.set(...pts[2]);
+      n.subVectors(b, a).cross(c.sub(a)).normalize();
+      for (let k = 1; k + 1 < pts.length; k++) for (const i of [0, k, k + 1]) {
+        pos.push(...pts[i]); nor.push(n.x, n.y, n.z); uvs.push(uv[i][0], uv[i][1]); col.push(_color.r, _color.g, _color.b);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
 }
 
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
@@ -3019,12 +3044,12 @@ function makeSecurityOfficeCraft(rng: Rng, style?: Palette, form: SecurityForm =
     // sandbags piled under the front windows, three courses
     for (const o of front) for (let k = 0; k < 3; k++) colored(out, mbox(o.w + 0.4, 0.24, 0.4, 0.07).translate(o.u, 0.12 + k * 0.24, d / 2 + 0.22), toneOf(0x8e7f5e, 1 - (k % 2) * 0.05), r, 0.06);
   } else if (form.extra === 'flagpole') {
-    // the flagpole on its footing by the porch, the flag hanging from its head
-    colored(out, mbox(0.5, 0.2, 0.5).translate(w / 2 + 0.45, 0.1, d / 2 + 0.6), conc, r, 0.03);
-    colored(out, cylinder(0.04, 0.065, 5.0, 6).translate(w / 2 + 0.45, 2.7, d / 2 + 0.6), 0xc8c8c4, r, 0.02);
-    for (const [k, c] of [[0, 0x1a1a1a], [1, 0xc8262a], [2, 0xe8b820]] as const) {
-      colored(out, box(0.02, 0.17, 0.82).translate(w / 2 + 0.45, 5.0 - k * 0.17, d / 2 + 0.6 - 0.45), c, r, 0.02);
-    }
+    // the flagpole on its footing by the porch, the flag hanging from its head (world-flags-278: no nation's flag, the
+    // uplands' world flag, worldFlags.ts 'march')
+    const px = w / 2 + 0.45, pz = d / 2 + 0.6;
+    colored(out, mbox(0.5, 0.2, 0.5).translate(px, 0.1, pz), conc, r, 0.03);
+    colored(out, cylinder(0.04, 0.065, 5.0, 6).translate(px, 2.7, pz), 0xc8c8c4, r, 0.02);
+    out.push(worldFlagGeometry('march', (u, v, lift) => [px + lift, 4.575 + v * 0.51, pz - 0.04 - u * 0.82], 0.82 / 0.51));
   }
   return mergeConnectedStructure('securityoffice', out);
 }
