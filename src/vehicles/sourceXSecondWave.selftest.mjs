@@ -7,7 +7,7 @@ import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
 import { displayTier } from '../techTree/tiers.ts';
-import { donorSpec } from './donorSpecs.ts';
+import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
 import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the nineteen pinned pre-work donor fingerprints are gone; the
@@ -44,6 +44,31 @@ assert.deepEqual(armament(TANK_SPECS.t72b3m_2022.gun), armament(TANK_SPECS.t90sm
   't72b3m_2022: the obr. 2022 keeps the 2022 gun');
 const weaponReference = (id, donorRow) => id === 't62mv1' ? TANK_SPECS.t72b_1987.gun
   : id === 't72b3m_2016' ? { ...donorSpec(TANK_SPECS, 't72b3').gun, reloadS: 6.5 } : donorRow.gun;
+// 278 (Main's ruling): the reload and the autoloader cycle are the balance pass's (fleetBalancePass.ts cannonReload,
+// autoloaderCycle). A donor template (donorSpecs.ts DONOR_SPECS) never passes through it, so against a template those
+// fields are not the donor's payload: the Type 90's 9 s cycle is its balance ruling (balanceAudit.ts) on the
+// tkx_prototype_frame template's raw 18.5 s (the template since 274). A registered donor is balanced with the fleet, so
+// its row is still compared in full.
+const balanceOwnedOff = (gun) => ({
+  ...gun,
+  reloadS: undefined,
+  ...(gun.autoloader ? { autoloader: { ...gun.autoloader, fullReloadS: undefined } } : {}),
+  shells: gun.shells?.map((round) => ({ ...round, reloadS: undefined })),
+});
+const comparedPayload = (gun, donor) => armament(Object.hasOwn(DONOR_SPECS, donor) ? balanceOwnedOff(gun) : gun);
+{
+  // controls: an unbalanced reload planted on a registered donor's row is caught; against a template, a payload field the
+  // balance pass does not own (the caliber) is still caught
+  const registered = SECOND_WAVE_X_IDS.find((id) => !Object.hasOwn(DONOR_SPECS, SECOND_WAVE_X_DONORS[id])
+    && !['t62mv1', 't72b3m_2016'].includes(id));
+  const gun = TANK_SPECS[registered].gun, donor = SECOND_WAVE_X_DONORS[registered];
+  assert.throws(() => assert.deepEqual(comparedPayload({ ...gun, reloadS: gun.reloadS + 1 }, donor),
+    comparedPayload(weaponReference(registered, donorSpec(TANK_SPECS, donor)), donor)), 'control: a planted reload is caught');
+  const type90 = TANK_SPECS.type90.gun;
+  assert.throws(() => assert.deepEqual(comparedPayload({ ...type90, caliberMm: type90.caliberMm + 5 }, SECOND_WAVE_X_DONORS.type90),
+    comparedPayload(donorSpec(TANK_SPECS, SECOND_WAVE_X_DONORS.type90).gun, SECOND_WAVE_X_DONORS.type90)),
+    'control: a template payload field the balance pass does not own is caught');
+}
 for (const id of SECOND_WAVE_X_IDS) {
   const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
@@ -60,7 +85,8 @@ for (const id of SECOND_WAVE_X_IDS) {
   // shares the donor's id string, so the donor's builder cannot be looked up by it: it must own an X builder.
   if (donor === id) assert.match(PROCEDURAL_PROFILES[id].build.name, /X$/, `${id}: its own X builder, not its donor template's`);
   else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  assert.deepEqual(armament(spec.gun), armament(weaponReference(id, donorRow)), `${id}: donor weapon payload retained`);
+  assert.deepEqual(comparedPayload(spec.gun, donor), comparedPayload(weaponReference(id, donorRow), donor),
+    `${id}: donor weapon payload retained`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {
