@@ -26,7 +26,6 @@ import {
   canComposeSourcedTextureInWorker, sourceFileBitmap, tryComposeSourcedTexture,
 } from './sourcedTextureCompositionClient.ts';
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
-import { classFetch } from '../engine/fetchClasses.ts';
 import * as detMath from '../sim/detMath.ts';
 
 /**
@@ -469,12 +468,25 @@ export function sourcedTerrainLayerSet(
 // (building-tex-diet-278: 24, the largest battlefield's 18 photos and room for a tier change's next set; 27 in all).
 const IMAGE_CACHE_MAX = 24;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
+/** How a photograph's load starts (entry-bytes-278): see setPhotoLoadGate. */
+type PhotoLoadGate = <T>(start: () => Promise<T>) => Promise<T>;
+let photoLoadGate: PhotoLoadGate = (start) => start();
+
+/**
+ * (entry-bytes-278) A photograph is drawn when it lands and never awaited by a battle entry, so the client's world
+ * (world/map.ts) gates its loads with the fetch classes' 'decor' slots (engine/fetchClasses.ts): held to a few at a time
+ * while the loading card is up, so the script chunks and atlases the entry waits for keep the link. Injected, not
+ * imported: the match core reaches this module through terrain.ts and carries no scheduler (driver-boundaries' pin), and
+ * without a gate every load starts at once.
+ */
+export function setPhotoLoadGate(gate: PhotoLoadGate): void {
+  photoLoadGate = gate;
+}
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = _imgCache.get(url);
   if (cached) return touchLru(_imgCache, url, cached, IMAGE_CACHE_MAX);
-  // (entry-bytes-278) a photograph is drawn when it lands and never awaited by a battle entry: 'decor', held to a few at
-  // a time while the loading card is up, so the script chunks and atlases the entry waits for keep the link
-  const request = classFetch('decor', () => new Promise<HTMLImageElement>((resolve, reject) => {
+  const request = photoLoadGate(() => new Promise<HTMLImageElement>((resolve, reject) => {
     const im = new Image();
     im.onload = () => resolve(im);
     im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
