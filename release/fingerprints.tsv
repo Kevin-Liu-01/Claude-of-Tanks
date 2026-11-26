@@ -105,7 +105,7 @@ comp	world:map:collision:autumn	efa9c6eab230569f
 comp	world:map:collision:badlands	7bb030694cb1d4b0
 comp	world:map:collision:blackglass	b4c6a819a53491eb
 comp	world:map:collision:caldera	a19c3e5d1a3e471a
-comp	world:map:collision:cliffbridge	fd6dfce7d3237842
+comp	world:map:collision:cliffbridge	e572ccffb4d5beb0
 comp	world:map:collision:coastal	c04cacae852f4448
 comp	world:map:collision:copper_mesa	72137cd9e9821c15
 comp	world:map:collision:delta	88dbde7c895250f7
@@ -138,7 +138,7 @@ comp	world:map:trenches:autumn	efa9c6eab230569f
 comp	world:map:trenches:badlands	7bb030694cb1d4b0
 comp	world:map:trenches:blackglass	b4c6a819a53491eb
 comp	world:map:trenches:caldera	a19c3e5d1a3e471a
-comp	world:map:trenches:cliffbridge	fd6dfce7d3237842
+comp	world:map:trenches:cliffbridge	e572ccffb4d5beb0
 comp	world:map:trenches:coastal	c04cacae852f4448
 comp	world:map:trenches:copper_mesa	72137cd9e9821c15
 comp	world:map:trenches:delta	88dbde7c895250f7
@@ -171,7 +171,7 @@ comp	world:map:wreckPlan:autumn	efa9c6eab230569f
 comp	world:map:wreckPlan:badlands	7bb030694cb1d4b0
 comp	world:map:wreckPlan:blackglass	b4c6a819a53491eb
 comp	world:map:wreckPlan:caldera	a19c3e5d1a3e471a
-comp	world:map:wreckPlan:cliffbridge	fd6dfce7d3237842
+comp	world:map:wreckPlan:cliffbridge	e572ccffb4d5beb0
 comp	world:map:wreckPlan:coastal	c04cacae852f4448
 comp	world:map:wreckPlan:copper_mesa	72137cd9e9821c15
 comp	world:map:wreckPlan:delta	88dbde7c895250f7
@@ -1735,7 +1735,7 @@ key	collision	autumn	4e4fdbc3107d61f3	98e8cf862408133e
 key	collision	badlands	a40e70d1a2c35b4f	0664431759dee859
 key	collision	blackglass	bc70e8ccdd4f4d6d	b539c648556383bb
 key	collision	caldera	d1c2d45ead6c3f1d	f05b4acbebfe529d
-key	collision	cliffbridge	101eb0e0da10acd6	38d3fc0430a30a1a
+key	collision	cliffbridge	554a0f65e56339bb	609f8a412d063685
 key	collision	coastal	83ff416a69e0e91f	4e7c891b7cba743f
 key	collision	copper_mesa	4f9594d729b06857	9e100f06671bd94e
 key	collision	delta	d071654284925405	49fead8677893ecb
@@ -4566,7 +4566,7 @@ key	trenches	autumn	3717e303c1fb9acf	d622c0bab7e4ee3e
 key	trenches	badlands	2a0a47018ccf5325	18f41a47cf840b35
 key	trenches	blackglass	436dc1d38c8b51f3	ecb4fdb9e922a0ae
 key	trenches	caldera	87f097c2a92677e8	e886eca494041195
-key	trenches	cliffbridge	4cf0c18e4dec0f6c	ebb3c6e5ed3c6b04
+key	trenches	cliffbridge	934f7585461e8de4	dc25bdeb08fcbb39
 key	trenches	coastal	7c427649de06a8a5	a0e11fec0d317ccc
 key	trenches	copper_mesa	bd56498e1e3a09fe	9730950b7da586a2
 key	trenches	delta	13a7fb2c0923f13b	596f7d6cf234f0de
@@ -4599,7 +4599,7 @@ key	wreckPlan	autumn	6b48d2e2f01f5261	67aaf5b9f0214389
 key	wreckPlan	badlands	d9b6aeaf7d477918	6bcc0ce50de25ac4
 key	wreckPlan	blackglass	8b24c2d3c34f79e3	db65887cd1d3d0e2
 key	wreckPlan	caldera	6c3c3653249dc7b9	0b7a7ca2b0171a8d
-key	wreckPlan	cliffbridge	8d0f9c680ab488a3	c23b02ad5fe6f7c3
+key	wreckPlan	cliffbridge	4a59136feb65382b	c23b02ad5fe6f7c3
 key	wreckPlan	coastal	11a18afa34d5601a	8648cb543dde8557
 key	wreckPlan	copper_mesa	4992c34119bdfc4d	9d9cab5026625e66
 key	wreckPlan	delta	48a28bb5e39c462f	95498a1f08d53729
