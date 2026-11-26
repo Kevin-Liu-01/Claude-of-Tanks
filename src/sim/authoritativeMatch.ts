@@ -390,6 +390,12 @@ export interface NewModeCheckpoint {
     targets: [id: string, x: number, z: number][];
     wreckTicks: number;
     spotting: SpottingCheckpoint;
+    /** (279) Who set each burning hull alight (sim/fireCredit.ts): a hull that burns out after the migration is its
+     *  starter's kill, as on the old host. Absent: none burning, or an older keyframe. */
+    fireStarters?: [targetId: string, starterId: string][];
+    /** (279) Each hull's last damaging enemy and when, on the battle clock: a crew that scuttles just after a migration
+     *  still hands its kill to the enemy that hurt it last (SCUTTLE_CREDIT_S). Absent: none, or an older keyframe. */
+    recentDamage?: [targetId: string, attackerId: string, atS: number][];
   };
 }
 
@@ -1250,6 +1256,9 @@ export function createAuthoritativeMatch({
     bindSpecialActionState(tank);
     // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
     resetHullCrashMemory(tank);
+    // nor its fire's starter or its last attacker (death-flow-275 R7, R8: a revived hull forgets them; the solo revive too)
+    fireCredit.clear(tank.id);
+    recentDamage.clear(tank.id);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
     // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn
     // (game/ai.ts resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
@@ -1774,7 +1783,8 @@ export function createAuthoritativeMatch({
     // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
     scuttle: (entity) => {
       if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
-      const credited = entityById.get(recentDamage.creditFor(entity.id, timeS, SCUTTLE_CREDIT_S) ?? '');
+      // on the battle clock (279): the ledger rides a migration, and a migrated host's own clock restarts at 0
+      const credited = entityById.get(recentDamage.creditFor(entity.id, battleS, SCUTTLE_CREDIT_S) ?? '');
       const killer = credited && credited.team !== entity.team ? credited : null;
       entity.combat.hp = 0;
       entity.combat.destroyed = true;
@@ -1963,7 +1973,7 @@ export function createAuthoritativeMatch({
       state: module.newState,
       source: 'hit',
     });
-    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, timeS);
+    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, battleS);
     if (hit.fireStarted) {
       fireCredit.ignite(target.id, hit.attackerId);
       emit('tank_fire', { id: target.id, burning: true });
@@ -3020,6 +3030,10 @@ export function createAuthoritativeMatch({
       }
       const host: NonNullable<NewModeCheckpoint['host']> = { atS: battleS, stream: Number.isInteger(rng.state) ? rng.state : null, fireTickS: fireTickAcc,
         routeDue: [nextModeRouteS.alpha, nextModeRouteS.bravo], targets, wreckTicks: navigationWreckTicks, spotting: spotting.capture(0) };
+      // the kill credits' ledgers (death-flow-275 R7, R8; 279): absent when empty, as a fresh host's are
+      const starters = fireCredit.capture(), damaged = recentDamage.capture();
+      if (starters.length) host.fireStarters = starters;
+      if (damaged.length) host.recentDamage = damaged;
       return { mode: modeController.captureCheckpoint(battleS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}), host };
     },
     restoreModeCheckpoint(checkpoint) {
@@ -3038,6 +3052,8 @@ export function createAuthoritativeMatch({
         }
         if (Number.isInteger(host.wreckTicks) && host.wreckTicks >= 0) navigationWreckTicks = host.wreckTicks;
         if (host.spotting) spotting.restore(host.spotting, 0);
+        fireCredit.restore(host.fireStarters ?? []);
+        recentDamage.restore(host.recentDamage ?? []);
       }
       // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
       // up to a keyframe interval older than the newest frame the match resumed from

@@ -1581,6 +1581,9 @@ export function setupBattle(
       ent._destroyedAnnounced = false;
       // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the authority's revive too)
       resetHullCrashMemory(ent);
+      // nor its fire's starter or its last attacker (death-flow-275 R7, R8: a revived hull forgets them; the authority too)
+      game._fireCredit?.clear(ent.id);
+      game._recentDamage?.clear(ent.id);
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       for (let tick = 0; !isGunship(ent) && tick < 30; tick++) {
