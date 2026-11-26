@@ -101,7 +101,7 @@ for (const order of [MAPS, [...MAPS].reverse()]) {
     const plan = placed.group.userData.deferredWrecks;
     assert.equal(plan?.hulks.length, baked.tankWreckSpots.length, `${mapId}: every hulk waits for its bake`);
     assert.equal(plan.state, 'pending');
-    assert.equal(named(baked, 'tank-wrecks-deferred'), null, `${mapId}: the baking build defers nothing`);
+    assert.ok(named(baked, 'tank-wrecks-deferred') === null, `${mapId}: the baking build defers nothing`);
     const standIn = drawnWrecks(allNamed(placed, 'tank-wrecks-deferred'));
     assert.ok(standIn.tris > 0 && standIn.tris < 600 * plan.hulks.length, `${mapId}: the stand-ins are drawn, a few hundred triangles a hulk (${standIn.tris})`);
     // the swap: the hulks baked as the worker bakes them, then the drawn wrecks equal the baking build's
@@ -115,7 +115,7 @@ for (const order of [MAPS, [...MAPS].reverse()]) {
     assert.equal(plan.state, 'done');
     assert.equal(stats.failed, 0);
     assert.equal(stats.baked, stats.bakes);
-    assert.equal(placed.group.getObjectByName('tank-wrecks-deferred'), undefined, `${mapId}: no stand-in is left drawn`);
+    assert.ok(placed.group.getObjectByName('tank-wrecks-deferred') === undefined, `${mapId}: no stand-in is left drawn`);
     const after = drawnWrecks(allNamed(placed, 'tank-wrecks'));
     const before = drawnWrecks(allNamed(baked, 'tank-wrecks'));
     assert.equal(after.tris, before.tris, `${mapId}: after the swap the wrecks draw the baking build's triangles`);

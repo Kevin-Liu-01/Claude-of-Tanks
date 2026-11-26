@@ -74,14 +74,14 @@ assert.deepEqual(deferredBakeOrder([hulk('a', 1, 100), hulk('b', 2, 50)], null),
     { hulks: 3, bakes: 2, baked: 2, failed: 0, swaps: 2 });
   const hulks = group.children.filter((o) => o.name === 'hulk');
   assert.equal(hulks.length, 3);
-  assert.equal(hulks[1].geometry, hulks[2].geometry, 'a bake\'s hulks share its geometry');
+  assert.ok(hulks[1].geometry === hulks[2].geometry, 'a bake\'s hulks share its geometry');
   assert.ok(hulks.every((m) => Math.abs(m.matrix.elements[13] - 2) < 1e-9), 'each posed at its seat');
   // what the renderer reads: the world matrix, under a frozen world group (the browser's KV-2 drew nowhere without it)
   assert.ok(hulks.every((m) => Math.abs(m.matrixWorld.elements[13] - 2.5) < 1e-9 && Math.abs(m.matrixWorld.elements[12] - m.matrix.elements[12]) < 1e-9),
     'each hulk\'s world matrix is its pose under the frozen world');
   assert.equal(group.children.filter((o) => o.name === 'hulk-shadow').length, 3, 'each with its shadow proxy');
-  assert.equal(plan.mesh.parent, null, 'the stand-ins left the scene');
-  assert.equal(plan.shadow.parent, null, 'and their shadow');
+  assert.ok(plan.mesh.parent === null, 'the stand-ins left the scene');
+  assert.ok(plan.shadow.parent === null, 'and their shadow');
   assert.ok(plan.hulks.every((h) => h.standIn === null), 'the stand-ins are released');
   assert.equal(await bakeDeferredWrecks(plan), stats, 'a second call returns the first run');
 }
@@ -94,7 +94,7 @@ assert.deepEqual(deferredBakeOrder([hulk('a', 1, 100), hulk('b', 2, 50)], null),
   assert.equal(stats.failed, 1);
   assert.equal(plan.state, 'done');
   assert.equal(group.children.filter((o) => o.name === 'hulk').length, 1, 'the baked hulk swapped');
-  assert.equal(plan.mesh.parent, group, 'the failed hulk\'s stand-in stays');
+  assert.ok(plan.mesh.parent === group, 'the failed hulk\'s stand-in stays');
   assert.equal(plan.mesh.geometry.attributes.position.count, 36, 'and draws it alone');
 }
 // 4. a cancel while baking swaps nothing and stops the client
@@ -114,7 +114,7 @@ assert.deepEqual(deferredBakeOrder([hulk('a', 1, 100), hulk('b', 2, 50)], null),
   await run;
   assert.equal(plan.state, 'cancelled');
   assert.ok(stopped, 'the client is stopped');
-  assert.equal(plan.mesh.geometry, before, 'the stand-ins stay drawn');
+  assert.ok(plan.mesh.geometry === before, 'the stand-ins stay drawn');
   assert.equal(group.children.filter((o) => o.name === 'hulk').length, 0, 'no hulk swapped');
 }
 console.log('deferredWrecks.selftest: nearest bake first, one bake a key, each key\'s hulks swapped as it lands; a failed bake keeps its stand-in; a cancel swaps nothing');
