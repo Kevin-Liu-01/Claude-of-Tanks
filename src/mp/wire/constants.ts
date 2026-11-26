@@ -95,7 +95,13 @@ export const WIRE_VERSION = 13;
 // strikes an Air Support aircraft where its path enters the airframe's boxes, of either side (friendly fire), and a downed
 // aircraft's wreck is a solid the hulls meet and the rounds stop on (the mode state's `air.wrecks`, the migration
 // checkpoint's `wrecks`). The wire is unchanged (13). The Rooms Worker ships first. A later 277 change rides 17 unreleased.
-export const PROTOCOL_VERSION = 17; // wire 13 (u32 action bits)
+// 18 (mp-migration-drift-279, release 279): the migration keyframe a 278 build cannot read (each live hull exact, 276's
+// `hull` for 275's `motion`, `integrator` and the spin's extras; the brains and ways; the authority's kill-credit
+// ledgers) and authority rules a 278 build plays otherwise (a damaged gun's dispersion online, one weapons order, one
+// contact footprint). The keyframe now names its own layout as well (migrationState.ts MIGRATION_KEYFRAME_LAYOUT), which
+// refuses a keyframe of another build between peers the HELLO's build check admits (the authority's code differs
+// alone, or an unstamped build). The wire is unchanged (13). A later 279 change rides 18 unreleased.
+export const PROTOCOL_VERSION = 18; // wire 13 (u32 action bits)
 
 export const TICK_HZ = 60;
 /**

@@ -1,5 +1,6 @@
 // Host migration state: the AES-GCM seal under the key derived from the host secret opens with the same secret and
-// with no other; the keyframe codec round-trips rows, meta, destroyed indices and the extras; chunking stays under
+// with no other; the keyframe codec round-trips rows, meta, destroyed indices and the extras, and refuses a keyframe of
+// another layout or none (279); chunking stays under
 // MAX_EVENT_JSON_BYTES and the store assembles chunks out of order, drops duplicates and malformed ones, keeps the
 // newest complete blob per kind and clears for a new match; the boot configuration blob never carries the secret;
 // a keyframe captured from one actor restores another at the same poses, health, ammo, reload, ERA, kills, damage,
@@ -11,7 +12,7 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import {
   MIGRATION_CHUNK_BYTES, MigrationStore, applyResumeState, captureEntityExtras, chunkMigrationBlob, decodeBootConfig, decodeMigrationKeyframe,
-  deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, openMigrationBlob, resumeStateFromRetained, sealMigrationBlob,
+  deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, MIGRATION_KEYFRAME_LAYOUT, openMigrationBlob, resumeStateFromRetained, sealMigrationBlob,
 } from './migrationState.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
@@ -100,6 +101,25 @@ assert.equal(decoded.entities.find((entry) => entry.entityId === 1).modules[modu
 assert.equal(decoded.entities.find((entry) => entry.entityId === 1).crew[crewId], false);
 assert.equal(decoded.entities.find((entry) => entry.entityId === 1).burning, true);
 assert.throws(() => decodeMigrationKeyframe(new Uint8Array(2)), /too short/);
+// the keyframe's layout (279, MIGRATION_KEYFRAME_LAYOUT): one of another build's layout, or of a build before the stamp,
+// is refused whole (the elected seat takes the fallback), never read as this build's; the same bytes re-packed with this
+// build's layout still decode (the control: the re-packing is not what fails)
+const withExtras = (bytes, change) => {
+  const packetBytes = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, true);
+  const extras = JSON.parse(new TextDecoder().decode(bytes.subarray(4 + packetBytes)));
+  change(extras);
+  const tail = new TextEncoder().encode(JSON.stringify(extras));
+  const out = new Uint8Array(4 + packetBytes + tail.byteLength);
+  out.set(bytes.subarray(0, 4 + packetBytes)); out.set(tail, 4 + packetBytes);
+  return out;
+};
+assert.equal(JSON.parse(new TextDecoder().decode(encoded.subarray(4 + new DataView(encoded.buffer, encoded.byteOffset).getUint32(0, true)))).layout, MIGRATION_KEYFRAME_LAYOUT,
+  'the keyframe names its layout');
+assert.equal(decodeMigrationKeyframe(withExtras(encoded, () => {})).tick, keyframe.tick, 'control: this build\'s layout re-packed decodes');
+assert.throws(() => decodeMigrationKeyframe(withExtras(encoded, (extras) => { extras.layout = MIGRATION_KEYFRAME_LAYOUT + 1; })), /layout/,
+  'a keyframe of another layout is refused');
+assert.throws(() => decodeMigrationKeyframe(withExtras(encoded, (extras) => { delete extras.layout; })), /layout/,
+  'a keyframe of a build before the stamp (278) is refused');
 const roundTripped = await openMigrationBlob(key, await sealMigrationBlob(key, encoded));
 assert.deepEqual([...roundTripped], [...encoded]);
 
