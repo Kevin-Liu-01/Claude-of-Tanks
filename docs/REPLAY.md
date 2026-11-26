@@ -70,7 +70,7 @@ One binary file, `.cotreplay`, gzip-framed:
   plus a new **replay digest** (a hash of the local driver's step closure, computed at build time like
   `tools/matchBuild.ts`'s digests); which driver recorded it (`local` or `authority`); map, mode, ruleset, campaign
   operation, arrangement, brain setting; the battle seed; the resolved roster in order (ids, spec ids, teams, bot
-  flag, difficulty, loadout, consumables, camo, camo bonus); each hull's contact footprint (8 numbers, see item 4).
+  flag, difficulty, loadout, consumables, camo, camo bonus).
 - **Seat streams**: per fixed step, per seat, a 16-bit change mask and the changed fields as zigzag varints of the
   wire's integer units (`src/mp/wire/quantize.ts`: throttle, steer, aim yaw, pitch, distance) or small ints (flags,
   shell slot, action bits, auxiliary bits, fire sequence). A tick with no change costs 2 bytes per seat.
@@ -109,10 +109,10 @@ small change and each also makes solo match the online authority more closely.
    seat goes through `applyPlayerInput` once per step with those presses as action bits, as couch seats already do
    (`couchRuntime.ts beforeStep`). Then the recorder has one tap, and couch replays come free.
 3. **No integer tick.** `game.timeS += SIM_DT` is the only clock. Fix: `game.tick`, counted beside it.
-4. **Contact footprint comes from the built model.** `refreshContactGeometry` reads `visual.contactGeom`. The headless
-   re-sim has no model, so the header carries each hull's footprint (8 numbers) and the re-sim seats it. (Found here:
-   the online authority has no contact footprint at all, so solo and online hulls ride on different footprints. Not
-   this lane's to fix; reported to Main.)
+4. **Contact footprint came from the built model.** `refreshContactGeometry` read `visual.contactGeom`, and the
+   online authority had no drawn footprint at all, so solo and online hulls rode on different footprints. Fixed in
+   275 (contact-footprint): every driver reads the spec's published track-contact receipt, the drawn model is read by
+   no step, and recordings carry no footprint.
 
 Known limit: the local step still calls native `Math.sin` and friends in six places (crush, shell knock, impacts,
 roof-gun lead, blast felling). A replay re-simulates on the viewer's browser, so a file recorded in Chrome and played
@@ -309,9 +309,8 @@ Differences from the plan above, each for a measured or found reason:
   `playerBattleActions`' `rules` (shell, magazine, special action, consumable, self-right, jump) plus one direct write
   (`previousShellSlot`); the recorder wraps that port. Lights, smoke, the roof gun, drones and Air Support call-ins
   ride `auxiliaryBits`, which the seat control already carries.
-- **Footprints are recorded at the step they appear.** A hull's contact footprint is published when its visual streams
-  in, mid-battle; the recorder notes the step, the replayer sets it then. (migration-parity is moving footprints to one
-  data source for both drivers; then they are known at setup.)
+- **No footprints are recorded.** Every driver's step reads the spec's track-contact receipt (275), so a visual that
+  streams in mid-battle changes nothing the replayer needs.
 - **Any step the recorder did not see** (a debug fast-forward stepping `simStep` itself) marks the recording staged.
 - **"Download replay" and "Watch replay" move to P2**, where the end screen and Garage list get their one stills
   round. P1 keeps recordings in IndexedDB; tools read them through `window.__COT_REPLAY`.
@@ -394,7 +393,7 @@ anything is entered (refused over 2 MB before it is read; then gzip, the magic, 
 recording). A good file joins the Replays list and is watched as a saved one; a file from another build opens its
 timeline alone with the refusal (§7). A file that is not a replay, one of another format ("This replay uses format 2;
 this version of the game reads format 1."), a damaged one and a too-large one say why in the Replays tab and enter
-nothing. Size: 5.0-5.6 KB for 20-28 s solo battles, of which ~5 KB is fixed (the header, the hulls' footprints and
+nothing. Size: 5.0-5.6 KB for 20-28 s solo battles, of which ~5 KB is fixed (the header and
 actions); the seat stream adds ~2.5 KB per minute (§1), so a 7-minute battle is ~20-25 KB. Receipts:
 `src/game/replay/replayImport.selftest.mjs`, and the UI-flow receipt's path C (A's downloaded file opened on a fresh
 profile through the browser's own file chooser, after a non-replay and an other-format file are refused).
