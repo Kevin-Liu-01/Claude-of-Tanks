@@ -1,10 +1,13 @@
 // Mudguard and fender seating on every tank (formerly mudguardFenderSeating.selftest.mjs): every registered guard part
-// meets the fixed hull or fender structure in its textured family bucket, and the T-72BU donor gear, the T-90M Proryv
-// guards and the closed Chieftain, T-90MS, Leopard 2 and KF51 shoulders keep their laws. A fleet audit
+// meets the fixed hull or fender structure in its textured family bucket, and the T-72BU donor gear, the T-90AM and AM
+// II's twin guards and the closed KF51 shoulder keep their laws. A fleet audit
 // (fleetPass.test-support.mjs) on the factory's default build, shared by fleetPassDefault.selftest. Reads only.
 import assert from 'node:assert/strict';
 import { ALL_TANK_IDS } from './specs.ts';
 import { FLEET_RENEWAL_DONORS } from './fleetRenewalSpecs.ts';
+
+// The T-90AM and AM II's source-X twins (profiles/t90.ts T90_PROFILES: each builds on its twin's builder).
+const T90_SOURCE_TWINS = Object.freeze({ t90am: 't90sm', t90m_proryv: 't90m' });
 
 export function createMudguardFenderSeatingAudit() {
   let coveredVehicles = 0;
@@ -76,6 +79,16 @@ export function createMudguardFenderSeatingAudit() {
       // (259579e51c, 07fc1eb544, the old build's receipts retired with it): the AM's and the M Proryv's four hung
       // t90m-proryv-* mudguards and the MS's closed front shoulder receipt (t90MSFrontMudguardReceipt) left with the old
       // hulls; whatever mudguards the X hulls hang are held by the fleet-wide seating checks above)
+      // 279 (t90am-lamps-273): the AM and AM II build from their source-X twins since 267 (259579e51c, t90-family.md).
+      // Each carries every fender guard its twin registers in this same pass (read from the twin's build, never a
+      // pinned list), each seated by the law above.
+      for (const [mark, twin] of Object.entries(T90_SOURCE_TWINS)) {
+        const own = [...(seatLabels.get(mark) || [])], wanted = seatLabels.get(twin) || [];
+        assert.ok(seatLabels.has(mark) && wanted.length > 0, `${twin}: registers fender guards for its mark ${mark} to carry`);
+        const missing = wanted.filter((label) => { const at = own.indexOf(label); if (at < 0) return true; own.splice(at, 1); return false; });
+        assert.deepEqual(missing, [], `${mark}: carries every fender guard its source-X twin ${twin} registers`);
+      }
+
       // (262: the 2A2 and the 2A3 OTCO left leopard.ts's hull for the shared Leopard 2-pattern hull,
       // profiles/leopard2Hull.ts, beside the 2A3 and the Christian II: its front mudguard over the idler is one closed
       // section solid per side, not this receipt's raked flange and terminal web; release 265: the 2A4 and the 2A4 OTCO
