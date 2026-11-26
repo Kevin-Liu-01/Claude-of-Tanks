@@ -13,13 +13,14 @@ import { getSpec } from '../src/vehicles/specs.ts';
 import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.ts';
 import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { cotEvidencePath } from './durable-paths.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));
 const all = process.argv.includes('--all');
 const ids = all ? [] : idsArg ? uniqueIds(idsArg.slice(6).split(',').filter(Boolean), 'muzzle-bore-probe --ids') : ['m1a1_abrams_hc', 'bmp2', 'kv2'];
-const outDir = resolve(outArg ? outArg.slice(6) : '/private/tmp/cot-muzzle-bore-proof');
+const outDir = resolve(outArg ? outArg.slice(6) : cotEvidencePath('cot-muzzle-bore-proof'));
 mkdirSync(outDir, { recursive: true });
 const server = await createServer({
   root: process.cwd(), configFile: false, logLevel: 'error',

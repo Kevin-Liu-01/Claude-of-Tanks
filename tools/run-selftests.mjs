@@ -569,6 +569,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
     const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
     if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
+    if (cacheLocation.move === 'moved' || cacheLocation.move === 'merged') console.log(`[selftests] result cache ${cacheLocation.move} out of $TMPDIR into ${cacheLocation.dir} (a reboot no longer clears it)`);
+    else if (cacheLocation.move === 'failed') console.log(`[selftests] could not make ${cacheLocation.dir}; using ${cacheLocation.tmpDir} (a reboot clears it)`);
     const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, fixtureKeyed: SELFTEST_FIXTURE_KEYED_FILES,
       declaredInputs: SELFTEST_DECLARED_INPUTS,
       env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });

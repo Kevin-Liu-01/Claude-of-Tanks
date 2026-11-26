@@ -34,9 +34,9 @@ import ts from 'typescript-compiler-api';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cotCacheDir } from './durable-paths.mjs';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ALLOW_MARK = 'object3d-assert-ok';
@@ -545,7 +545,7 @@ export function applyFixes(text, findings) {
 const LINT_SALT = createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).update(`\0${ts.version}\0`).digest('hex');
 const RESULT_KEYS = ['findings', 'allowed', 'stale', 'badAllow'];
 const lintCachePath = (env = process.env) => env.COT_OBJECT3D_LINT_CACHE
-  ?? join(tmpdir(), `cot-object3d-assert-lint-${process.getuid?.() ?? 'user'}`, 'results-v1.json');
+  ?? join(cotCacheDir('cot-object3d-assert-lint', { env }), 'results-v1.json'); // out of $TMPDIR (practice audit 2026-11-26)
 
 /**
  * The typed-operand findings that predate the rule (2026-11-22), pinned per file by count: a file may not gain one, and a

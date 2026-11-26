@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { openCaptureHold } from './capture-hold.mjs';
+import { cotEvidencePath } from './durable-paths.mjs';
 let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { sampleRenderedFrames } from './render-frame-sampler.mjs';
 import { evaluateWorldResidency, RESIDENCY_SCHEMA } from './world-residency-policy.mjs';
@@ -39,7 +40,7 @@ import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const root = path.resolve(option('root', process.cwd()));
-const output = path.resolve(option('out', '/private/tmp/cot-world-residency.json'));
+const output = path.resolve(option('out', cotEvidencePath('cot-world-residency.json')));
 const baselinePath = option('baseline', '');
 const baseline = baselinePath ? JSON.parse(fs.readFileSync(path.resolve(baselinePath), 'utf8')) : null;
 // Optional instrumentation changes the diagnostic scenario, never the default

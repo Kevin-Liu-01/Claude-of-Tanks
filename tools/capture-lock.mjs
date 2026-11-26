@@ -21,9 +21,10 @@ import {
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portBlockEnv } from './capture-ports.mjs';
+import { cotLogPath } from './durable-paths.mjs';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
@@ -1008,18 +1009,35 @@ function placeStamp(queueDir, key) {
 }
 
 // ---- the hold log (2026-10-22, item 240) -----------------------------------------------------------------------------
-// One JSON line per hold, release and reap in `logFile` (`/tmp/cot-shots.log`): `node tools/capture-lock.mjs --status`
-// reads holds per hour, hold lengths and waits from it. Bounded: past LOG_MAX_BYTES it moves to `<logFile>.1`.
-const DEFAULT_LOG_FILE = '/tmp/cot-shots.log';
+// One JSON line per hold, release and reap in `logFile` (~/Library/Logs/cot-shots.log on macOS): `node
+// tools/capture-lock.mjs --status` reads holds per hour, hold lengths and waits from it. Bounded: past LOG_MAX_BYTES it
+// moves to `<logFile>.1`. Practice audit 2026-11-26: the log lived in /tmp, and the 00:35 reboot wiped it; the lock
+// and the queue stay in /tmp, where a reboot should clear them.
+const DEFAULT_LOG_FILE = cotLogPath('cot-shots.log');
+// Copies of this module from before the move (lanes on an older base) still append to /tmp. `--status` reads both
+// until no worktree runs such a copy (it says when the old log still gets lines); then this goes.
+const PRE_AUDIT_LOG_FILE = '/tmp/cot-shots.log';
 const LOG_MAX_BYTES = 4 * 1024 * 1024;
 function appendHoldLog(logFile, record) {
   if (!logFile) return;
   try {
     if (statSync(logFile).size > LOG_MAX_BYTES) renameSync(logFile, `${logFile}.1`);
   } catch { /* none yet */ }
+  const line = `${JSON.stringify({ at: new Date().toISOString(), ...record })}\n`;
   try {
-    appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), ...record })}\n`);
-  } catch { /* the meter misses a line; the lock is unaffected */ }
+    appendFileSync(logFile, line);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') return; // the meter misses a line; the lock is unaffected
+    try { mkdirSync(dirname(logFile), { recursive: true }); appendFileSync(logFile, line); } catch { /* as above */ }
+  }
+}
+
+/** Hold-log lines from the current log and the pre-audit /tmp one (`--status`), with how many came from the old one. */
+export function readHoldLogLines(files = [DEFAULT_LOG_FILE], legacyFiles = [PRE_AUDIT_LOG_FILE]) {
+  const read = (file) => { try { return readFileSync(file, 'utf8').split('\n').filter(Boolean); } catch { return []; } };
+  const lines = files.flatMap((file) => [...read(`${file}.1`), ...read(file)]);
+  const legacy = legacyFiles.filter((file) => !files.includes(file)).flatMap((file) => [...read(`${file}.1`), ...read(file)]);
+  return { lines: [...lines, ...legacy], legacyLines: legacy };
 }
 
 /** This process's ticket at `stamp` (ms since the epoch), for acquire's `ticket` (2026-10-07): a run split over several
@@ -1538,12 +1556,11 @@ if (process.argv[1] && process.argv.includes('--status') && startedAsCommand()) 
     console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${ticketClass(state.meta).padEnd(6)}  `
       + `${state.meta?.priority === 'release' ? 'RELEASE  ' : ''}${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
   }
-  let lines = [];
-  for (const file of [`${DEFAULT_LOG_FILE}.1`, DEFAULT_LOG_FILE]) {
-    try { lines = lines.concat(readFileSync(file, 'utf8').split('\n').filter(Boolean)); } catch { /* none */ }
-  }
+  const { lines, legacyLines } = readHoldLogLines();
   const stats = summarizeHoldLog(lines, { hours });
+  const legacyRecent = summarizeHoldLog(legacyLines, { hours });
   const fmt = (value) => value === null ? '—' : `${value.toFixed(1)} min`;
   console.log(`last ${hours} h: ${stats.holds} holds (${stats.perHour.toFixed(2)}/h), ${stats.reaped} reaped; held median ${fmt(stats.heldMedianMin)}, `
     + `p90 ${fmt(stats.heldP90Min)}; waited median ${fmt(stats.waitedMedianMin)}; warmed while queued ${stats.warmedHolds} (median ${fmt(stats.warmMedianMin)})`);
+  console.log(`log: ${DEFAULT_LOG_FILE}${legacyRecent.holds ? `; ${legacyRecent.holds} of those holds came from older copies writing ${PRE_AUDIT_LOG_FILE}` : ''}`);
 }
