@@ -173,5 +173,50 @@ for (const id of ['m1a2_abrams_sepv3', 't90m', 't80u']) {
   rows.push(`${id}: far LOD ${before.length} draws -> ${shown.length} (carried ${info.hullDraw.carried} of ${info.hullDraw.of}, live ${info.hullDraw.live}, fallbacks ${JSON.stringify(info.hullDraw.fallbacks)})`);
   identity.dispose(); dual.dispose();
 }
+// (far-hull-278) the battle law: every vehicle that shows the full far LOD ends up with its one draw built or a stated
+// refusal, and the gear stage (90-180 m) is not the far LOD. The census is the one tools/frame-thread-cpu.mjs and
+// tools/far-hull-truth.mjs read in the page (it counted the gear stage as far, so 3 frozen allies in the band read as far
+// tanks with no draw). Six vehicles share the one-build-at-a-time claim: three start in the gear band and drive out past
+// 180 m, one goes near and out again, one syncs on the off-screen cadence (every 4th frame). The control: with the build
+// switched off the census must report the full-far vehicles as missing (the receipt can fail).
+{
+  const { farLodCensus } = await import('../../tools/far-poses.mjs');
+  const ids = ['c1_ariete', 'olifant_mk1', 'type59', 't90m', 'kv2', 'leo2a6'];
+  const fleet = [];
+  for (const id of ids) {
+    await ensureTankBuilder(id);
+    fleet.push({ id, visual: build(id), state: createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0) });
+  }
+  const census = () => farLodCensus(fleet.map((v) => v.visual.root));
+  let frame = 0;
+  const step = async (distOf) => {
+    frame++;
+    for (const [i, v] of fleet.entries()) if (i !== 5 || frame % 4 === 0) v.visual.syncFromState(v.state, 1 / 30, distOf(v.id, i));
+    await new Promise((r) => setTimeout(r, 20));
+  };
+  const until = async (distOf, done, label) => {
+    const end = performance.now() + 30_000;
+    let c;
+    do { await step(distOf); c = census(); } while (!done(c) && performance.now() < end);
+    assert.ok(done(c), `battle: ${label} (${JSON.stringify({ far: c.far, gear: c.gear, built: c.built, refused: c.refused, missing: c.missing })})`);
+    return c;
+  };
+  // the band: three in the gear stage (120 m), three past the far LOD (250 m)
+  const band = (id, i) => (i < 3 ? 120 : 250);
+  let c = await until(band, (x) => x.gear === 3 && x.far === 3 && x.missing.length === 0, 'three in the gear stage, three far and built');
+  assert.equal(c.records.filter((r) => r.stage === 'gear').map((r) => r.name).join(), 'tank_c1_ariete,tank_olifant_mk1,tank_type59',
+    'battle: the gear stage is not the far LOD');
+  // the control: the build off, the band drives out; the census sees them far and missing
+  setFarHullDrawEnabled(false);
+  const out = (id, i) => (i === 4 ? 50 : 230);
+  c = await until(out, (x) => x.far === 5 && x.gear === 0, 'control: the band past 180 m');
+  assert.deepEqual(c.missing, ['tank_c1_ariete', 'tank_olifant_mk1', 'tank_type59'], 'control: with no build the census reports them missing');
+  setFarHullDrawEnabled(true);
+  c = await until(out, (x) => x.far === 5 && x.missing.length === 0, 'every far vehicle built or refused');
+  c = await until((id, i) => 230, (x) => x.far === 6 && x.missing.length === 0, 'back out again, built or refused');
+  assert.equal(c.built + c.refused, 6, 'battle: six far, six with a record');
+  rows.push(`battle: 6 vehicles, ${c.built} built, ${c.refused} refused, 0 missing; gear stage 3 counted apart; control (build off) 3 missing`);
+  for (const v of fleet) v.visual.dispose();
+}
 restoreCanvas();
 console.log(`farHullDraw.selftest: ${rows.join('; ')}`);

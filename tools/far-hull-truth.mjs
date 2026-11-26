@@ -27,25 +27,12 @@ import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { awaitTextures, freezeBattle, grassSettled, installObservers, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
 import { encodeRgbPng } from './frame-capture-compare.mjs';
-import { FAR_POSES, farPose } from './far-poses.mjs';
+import { FAR_POSES, farLodCensus, farPose } from './far-poses.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const out = path.resolve(arg('out', '.qa-dev/far-hull-truth'));
 mkdirSync(out, { recursive: true });
 
-/** Page side: the vehicles whose far LOD has been built and shows, and those past the range still building it. */
-function farState() {
-  const D = window.__DEBUG; const roots = [];
-  D.scene.traverse((o) => { if (/^tank_/.test(o.name || '') && o.userData.farLod !== undefined) roots.push(o); });
-  let showing = 0, drawsBuilt = 0; const records = [];
-  for (const root of roots) {
-    let far = false; root.traverse((n) => { if (n.userData?.farLod && n.visible) far = true; });
-    if (far) showing++;
-    if (root.userData.farLod?.hullDraw) drawsBuilt++;
-    records.push({ name: root.name, far, hullDraw: root.userData.farLod?.hullDraw ?? null, hullDraws: root.userData.farLod?.hullDraws });
-  }
-  return { built: roots.length, showing, drawsBuilt, records };
-}
 
 /** Page side: the helpers (serialized). */
 function installHelpers() {
@@ -217,8 +204,8 @@ try {
       let last = -1, still = 0, state = null;
       for (let i = 0; i < 60 && still < 4; i++) {
         await sleep(500);
-        state = await page.evaluate(farState);
-        const key = state.showing * 1000 + state.drawsBuilt;
+        state = await page.evaluate(farLodCensus);
+        const key = state.far * 1000 + state.built;
         still = key === last ? still + 1 : 0; last = key;
       }
       await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
@@ -241,8 +228,9 @@ try {
       }
       writeFileSync(`${stem}-diff.png`, encodeRgbPng(r.width, r.height, map));
       delete r.a; delete r.b;
-      const after = await page.evaluate(farState);
-      entry.views[view] = { ...r, far: { built: after.built, showing: after.showing }, records: after.records };
+      const after = await page.evaluate(farLodCensus);
+      entry.views[view] = { ...r, far: { vehicles: after.vehicles, showing: after.far, built: after.built, refused: after.refused,
+        missing: after.missing, gear: after.gear }, records: after.records };
       // --control=paired: the same pose and scene state with every far hull draw's colour x 0.8 (the pose's own control);
       // gate: a far hull is in view when the tint moved at least one pixel
       if (arg('control', '') === 'paired') {
