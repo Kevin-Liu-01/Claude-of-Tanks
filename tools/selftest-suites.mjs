@@ -3189,6 +3189,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/towerDamage.selftest.mjs', // 2026-10-15 props census #9 (E13): every placed tower kind records its bodies, read in storey bands through the multi-body route
     // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
     'src/world/landmarks/landmarks.selftest.mjs',
+    // world-flags-278 (Kevin, 2026-11-26: the fort's flag "looks too much like a real flag"): every world flag is invented
+    'src/world/worldFlags.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit

@@ -8,6 +8,7 @@ import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, t
 import { figure } from './monuments.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
+import { drawWorldFlag } from '../worldFlags.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
 const SANDSTONE = rgb(0xb59a7c);
@@ -839,12 +840,12 @@ export const piazza: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
 };
 
-const IRON_BLACK = rgb(0x26282a), FLAG_RED = rgb(0xc8102e), FLAG_WHITE = rgb(0xeae6dc), FLAG_BLUE = rgb(0x171796), BRONZE = rgb(0x6e5a34), PLANTER_BOX = rgb(0x3f5a32);
+const IRON_BLACK = rgb(0x26282a), MAST_WHITE = rgb(0xeae6dc), BRONZE = rgb(0x6e5a34), PLANTER_BOX = rgb(0x3f5a32);
 
 /**
  * A Dalmatian square's furniture (the landmarks lane, round 5: wave 389, the campanile "stands on a blank slab with no
  * closed square around it"): the well-head on its stepped platform under its iron arch and pulley at the square's north
- * end, the Venetian flag pedestal (stendardo) with its mast and Croatia's flag at the south end, stone benches before the house
+ * end, the Venetian flag pedestal (stendardo) with its mast and the coast's world flag at the south end, stone benches before the house
  * fronts, an iron lamp at each quarter, two stone planters of box. All dressing (a hull drives through them as through
  * the square's other dressing); each stands a step over the ground at its own seat.
  */
@@ -866,20 +867,12 @@ function furnishSquare(sink: PartSink, W: number, D: number, flags: number, grou
     sink.span('stone', x - 0.75, y - 0.3, z - 0.75, x + 0.75, y + 0.3, z + 0.75, { decor: true });
     revolve(sink, 'stone', x, z, [[0.5, y + 0.3], [0.5, y + 0.45], [0.36, y + 0.55], [0.32, y + 1.9], [0.42, y + 2.0], [0.42, y + 2.12], [0.12, y + 2.12]], 8, { decor: true });
     revolve(sink, 'structureMetal', x, z, [[0.335, y + 1.2], [0.335, y + 1.32]], 8, { colour: BRONZE, decor: true });
-    revolve(sink, 'structureWood', x, z, [[0.08, y + 2.1], [0.05, y + 9.5], [0.07, y + 9.6], [0.0, y + 9.75]], 8, { colour: shade(FLAG_WHITE, 0.82), decor: true });
-    // (round 6, wave 418a: St Mark's crimson banner "doesn't read as a Croatian flag of 1992") Croatia's flag since
-    // December 1990: the red, white and blue tricolour, the chequy shield of thirteen red and twelve white over its
-    // middle band, its crown of five small shields above (both faces; the fly drooping 5 cm)
-    const L = 1.84, H = 1.1, x0 = 0.06, y0 = 8.25, droop = (fx: number) => 0.05 * (fx - x0) / L;
-    const field = (fx0: number, fx1: number, fy0: number, fy1: number, c: Rgb, dz: number) => {
-      sink.quad('structureMetal', [x + fx0, y + fy0 - droop(fx0), z + dz], [x + fx1, y + fy0 - droop(fx1), z + dz], [x + fx1, y + fy1 - droop(fx1), z + dz], [x + fx0, y + fy1 - droop(fx0), z + dz], { colour: c, decor: true });
-      sink.quad('structureMetal', [x + fx1, y + fy0 - droop(fx1), z - dz], [x + fx0, y + fy0 - droop(fx0), z - dz], [x + fx0, y + fy1 - droop(fx0), z - dz], [x + fx1, y + fy1 - droop(fx1), z - dz], { colour: c, decor: true });
-    };
-    [FLAG_BLUE, FLAG_WHITE, FLAG_RED].forEach((c, k) => field(x0, x0 + L, y0 + (k * H) / 3, y0 + ((k + 1) * H) / 3, c, 0));
-    const sx = x0 + L / 2 - 0.25, sy = y0 + 0.18, cell = 0.1;
-    field(sx - 0.02, sx + 0.52, sy - 0.02, sy + 0.52, FLAG_WHITE, 0.004);
-    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) if ((i + j) % 2 === 0) field(sx + i * cell, sx + (i + 1) * cell, sy + (4 - j) * cell, sy + (5 - j) * cell, FLAG_RED, 0.008);
-    for (let k = 0; k < 5; k++) field(sx + k * 0.104, sx + k * 0.104 + 0.09, sy + 0.54, sy + 0.66 + (k === 2 ? 0.03 : 0), k % 2 ? FLAG_RED : FLAG_BLUE, 0.006);
+    revolve(sink, 'structureWood', x, z, [[0.08, y + 2.1], [0.05, y + 9.5], [0.07, y + 9.6], [0.0, y + 9.75]], 8, { colour: shade(MAST_WHITE, 0.82), decor: true });
+    // (round 6, wave 418a: St Mark's crimson banner "doesn't read as a Croatian flag of 1992"; world-flags-278: and no
+    // nation's flag on a mast in the world) the coast's world flag, a stone swallowtail with its slate-teal band and open
+    // lozenge (worldFlags.ts 'quay'), both faces, the fly drooping 5 cm
+    const L = 1.84, H = 1.1, x0 = 0.06, y0 = 8.25;
+    drawWorldFlag(sink, 'structureMetal', 'quay', (u, v, lift) => [x + x0 + u * L, y + y0 + v * H - 0.05 * u, z + lift], { aspect: L / H, back: 1 });
   }
   // the benches before the house fronts: a slab on two blocks
   for (const sz of [-1, 1]) for (const x of [-5.2, 4.2]) {

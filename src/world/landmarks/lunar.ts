@@ -1,8 +1,8 @@
 // src/world/landmarks/lunar.ts — Taurus-Littrow Station's set pieces (the Earthrise 228 rebuild, 2026-10-18; the owner,
 // 2026-10-17: Earthrise rebuilt "the way Verdant was" — its real place, a hero landmark, the mills on the swells).
 //   - apolloSite  Challenger's site, kept as found inside a ring of posts (Apollo 17, December 1972): the descent stage in
-//                 its gold and black foil on four legs, the ladder with the plaque on the forward leg, a quad bay open; the
-//                 flag bleached white; the ALSEP central station under its sunshield, the finned RTG, the experiments and
+//                 its gold and black foil on four legs, the ladder with the plaque on the forward leg, a quad bay open; a
+//                 world flag bleached pale (worldFlags.ts 'survey': no nation's flag); the ALSEP central station under its sunshield, the finned RTG, the experiments and
 //                 their flat cables, the seismic-profiling geophone line on its flags; the ring of sixteen posts and a low
 //                 tape, the interpretive stand at the gate (local -z). The one Lunar Roving Vehicle is the map's set piece
 //                 (maps/vehicleSetPieces.ts), parked inside the ring.
@@ -28,6 +28,7 @@
 import { PartSink, normalize3, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark } from './pieces.ts';
+import { drawWorldFlag } from '../worldFlags.ts';
 
 const GOLD = rgb(0xc8a04a), GOLD_DARK = rgb(0x8a6a2c), BLACK = rgb(0x1f2023), SILVER = rgb(0xb8babd), WHITE = rgb(0xe6e4de);
 const STEEL = rgb(0x8d8a84), DARK = rgb(0x3e4349), ORANGE = rgb(0xd46f2a), CELL = rgb(0x151b28), PANEL = rgb(0xeceae4);
@@ -174,28 +175,16 @@ export const apolloSite: LandmarkBuilder = (ctx) => {
   const g = ctx.ground ?? (() => 0), r = num(ctx, 'radius', 12), variant = ctx.variant;
   void PANEL;
   descentStage(sink, g, variant);
-  // the flag, bleached white by fifty years of sun, on its pole and crossbar south-west of the stage
+  // the mission banner on its pole and crossbar south-west of the stage, bleached pale by fifty years of sun; (round 2,
+  // 2026-10-18; the blind critics read a bleached white cloth as "blank grey signboards on posts") its band and device
+  // still read as a flag at the tank's range; (world-flags-278) the survey's world flag, no nation's, hanging from the
+  // crossbar in three folds
   {
     const fx = -5.2, fz = -6.4, y = g(fx, fz);
     bar(sink, [fx, y - 0.2, fz], [fx, y + 2.45, fz], 0.035, { colour: SILVER, decor: true });
     bar(sink, [fx, y + 2.42, fz], [fx + 1.55, y + 2.42, fz], 0.025, { colour: SILVER, decor: true });
-    // the cloth in three panels, a little rippled where it was folded, hanging from the crossbar; (round 2, 2026-10-18; the
-    // blind critics read the bleached cloth as "blank grey signboards on posts") its stripes and its canton faded by fifty
-    // years of sun to a pale rose and a pale blue on the white, still a flag at the tank's range
-    const STRIPE = rgb(0xd2aaa3), CANTON = rgb(0x9eabc4);
-    for (let k = 0; k < 3; k++) {
-      const x0 = fx + 0.02 + k * 0.51, o = (k % 2 ? 0.035 : -0.02);
-      sink.span(M, x0, y + 1.5, fz + o - 0.008, x0 + 0.51, y + 2.41, fz + o + 0.008, { colour: shade(WHITE, 0.97 - k * 0.02), decor: true });
-      for (const sd of [-1, 1]) {
-        const zf = fz + o + sd * 0.011;
-        for (let b = 0; b < 7; b += 2) {
-          const yb = y + 2.41 - (b + 1) * (0.91 / 7), ya = yb + 0.91 / 7;
-          if (k === 0 && b < 4) continue;
-          sink.span(M, x0, yb, zf - 0.002, x0 + 0.51, ya, zf + 0.002, { colour: STRIPE, decor: true });
-        }
-        if (k === 0) sink.span(M, x0, y + 2.41 - 0.91 * 4 / 7, zf - 0.002, x0 + 0.51, y + 2.41, zf + 0.002, { colour: CANTON, decor: true });
-      }
-    }
+    drawWorldFlag(sink, M, 'survey', (u, v, lift) => [fx + 0.02 + u * 1.53, y + 1.5 + v * 0.91, fz + 0.028 * Math.sin(u * Math.PI * 3) + lift],
+      { aspect: 1.53 / 0.91, columns: 6, fade: 0.25, back: 0.94 });
   }
   // the ALSEP: the central station under its sunshield, its antenna turned to the Earth, the finned RTG beside it, the
   // experiments out round them on their flat cables, and the geophone line on its flags
