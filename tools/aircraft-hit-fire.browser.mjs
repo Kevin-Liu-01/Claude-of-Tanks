@@ -17,16 +17,32 @@
 // The pass rule, fixed before the first measurement. The disc: the hit point's projection, radius the projection of
 // DISC_M metres (at least 18 px). A pixel has changed where its luma differs from `pre`'s by more than CHANGED_LUMA.
 //   1. the round struck the aircraft (tryHitAircraft true; `downed`: its strike downed);
-//   2. the burst is drawn: at `burst`, at least BURST_MIN_SHARE of the disc changed;
+//   2. the burst is drawn: at `burst`, at least 0.1 of the disc changed (amended below: Main 2026-11-26);
 //   3. nothing stays: at `late`, at most LATE_MAX_SHARE of the disc changed and its mean luma difference <= LATE_MAX_MEAN;
 //   4. the aircraft has moved on: its drawn root (matrixWorld) is gone from the scene (its run flown out) or at least
 //      MOVED_MIN_M from the hit point at `late`, and its root's projection at least two disc radii from the disc's centre
 //      (so a change left in the disc at `late` is never the aircraft itself).
 // The negative control is the reverted port (main.ts aircraftFx.hit drawing a hull's destruction, 'ammorack'): it must
 // fail 3. Exit 1 on any failed case.
+//
+// Harness changes after the first measured pair (2026-11-26, approved by Main; the bar is unchanged):
+//   - each case begins with fx.resetAll(): the cases share one battle, and the control's `downed` and `drone` `pre`
+//     frames held the `struck` case's 40 s column;
+//   - each measured frame is taken with the effects frozen (fx.setFrozen) in the poll that sees its time, released once
+//     read: the screenshot's ~0.4 s let the effects age, so `burst` was measured at +0.7 s. Each frame records fxAgeS.
+//
+// Rule 2 amendment (Main 2026-11-26, rule 2 re-anchored to the control because the control fails the absolute bar).
+// Rule 2 is there so the fix does not take away Kevin's hit feedback. The control, the burst Kevin saw, fails the absolute
+// 0.1 itself, so the bar was miscalibrated against that goal. Amended rule 2: in each case the fix's changed share of the
+// disc is at least the control's, at `burst` (+0.3 s) and at `mid` (+3 s). It is judged against a control run's report
+// (--control=JSON, or offline with --judge). Rules 1, 3 and 4 are unchanged. The corrected-probe pair that settled it:
+//   share at +0.3 s   struck  downed  drone        share at +3 s   struck  downed  drone
+//   fix               0.0954  0.1117  0.0596       fix             0.336   0.298   0.212
+//   control           0.059   0.061   0.054        control         0.192   0.273   0.138
 //   node tools/with-capture-lock.mjs --lock-class=render --place=<key> -- node tools/aircraft-hit-fire.browser.mjs \
-//     --out=DIR [--map=verdant] [--cases=struck,downed,drone] [--time=day|night] [--tag=fix]
-import { mkdirSync, writeFileSync } from 'node:fs';
+//     --out=DIR [--map=verdant] [--cases=struck,downed,drone] [--time=day|night] [--tag=fix] [--control=CONTROL.json]
+//   node tools/aircraft-hit-fire.browser.mjs --judge --fix=FIX.json --control=CONTROL.json   (no browser: the rule on two reports)
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
@@ -38,7 +54,6 @@ import { beginSoloBattle, mapProbeLaunchOptions, mapProbeServerOptions, sleep } 
 
 const DISC_M = 12;
 const CHANGED_LUMA = 24;
-const BURST_MIN_SHARE = 0.1;
 const LATE_S = 10;
 const LATE_MAX_SHARE = 0.02;
 const LATE_MAX_MEAN = 3;
@@ -51,6 +66,8 @@ const mapId = arg('map', 'verdant');
 const cases = (arg('cases', 'struck,downed,drone')).split(',');
 const timeOfDay = arg('time', 'day');
 const tag = arg('tag', 'run');
+const controlFile = arg('control');
+const control = controlFile ? JSON.parse(readFileSync(path.resolve(controlFile), 'utf8')) : null;
 const VIEW = { width: 1280, height: 720 };
 
 const luma = (d, o) => 0.2126 * d[o] + 0.7152 * d[o + 1] + 0.0722 * d[o + 2];
@@ -68,12 +85,15 @@ function discChange(a, b, cx, cy, r) {
   return { px: n, share: n ? +(changed / n).toFixed(4) : 0, mean: n ? +(sum / n).toFixed(2) : 0 };
 }
 
-/** The pass rule on one case's measurements: the list of what failed (empty: pass). */
-function caseProblems(m) {
+/** The pass rule on one case's measurements, rule 2 against the control's same case (c): what failed (empty: pass). */
+function caseProblems(m, c) {
   const problems = [];
   if (!m.struck) problems.push('1: the round did not strike the aircraft');
   if (m.wantDowned && !m.downed) problems.push('1: the lethal round did not down the aircraft');
-  if (!(m.burst?.share >= BURST_MIN_SHARE)) problems.push(`2: the burst is not drawn (share ${m.burst?.share} < ${BURST_MIN_SHARE})`);
+  if (!c) problems.push('2: no control report to judge the burst against (--control=JSON)');
+  for (const at of c ? ['burst', 'mid'] : []) {
+    if (!(m[at]?.share >= c[at]?.share)) problems.push(`2: the ${at} draws less than the control's (share ${m[at]?.share} < ${c[at]?.share})`);
+  }
   if (!(m.late?.share <= LATE_MAX_SHARE)) problems.push(`3: ${m.late?.share} of the disc still changed at +${LATE_S} s (> ${LATE_MAX_SHARE})`);
   if (!(m.late?.mean <= LATE_MAX_MEAN)) problems.push(`3: mean luma difference ${m.late?.mean} at +${LATE_S} s (> ${LATE_MAX_MEAN})`);
   if (m.lateCraftM != null && !(m.lateCraftM >= MOVED_MIN_M)) problems.push(`4: the drawn aircraft is ${m.lateCraftM} m from the hit point (< ${MOVED_MIN_M})`);
@@ -113,13 +133,17 @@ const stageCase = async () => {
   saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
   saved.strikes = [];
   air.restore(saved);
+  // each case starts on a clean sky: the case before's effects (the reverted build's 40 s column) gone
+  D.fx.resetAll();
   const p = game.player.state.pos, d = Math.hypot(p.x, p.z) || 1;
   const x = p.x - (p.x / d) * 400, z = p.z - (p.z / d) * 400;
   if (!air.requestStrike(game.player.id, 'strafe', x, z, game.timeS)) return { error: 'the strike was refused' };
   const strike = air.strikes[air.strikes.length - 1];
   const pose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, pose2 = { ...pose };
   let tHit = null;
-  for (let t = game.timeS + 6; t < strike.landsS; t += 0.1) {
+  // its whole run (the inbound leg from its call, the pass, the egress): the first moment, past the `pre` frame's lead,
+  // 80 m over the ground
+  for (let t = game.timeS + 4; t < runs.runExitS(air.rules, strike) - 0.5; t += 0.1) {
     runs.runPose(air.rules, strike, t, pose);
     if (pose.y - hf.getHeightAt(pose.x, pose.z) >= 80) { tHit = t; break; }
   }
@@ -176,8 +200,22 @@ const measureView = ({ at, strikeId }) => {
     timeS: D.game.timeS };
 };
 
-const report = { map: mapId, time: timeOfDay, tag, rule: { DISC_M, CHANGED_LUMA, BURST_MIN_SHARE, LATE_S, LATE_MAX_SHARE, LATE_MAX_MEAN, MOVED_MIN_M },
-  cases: {}, errors: [], pass: false };
+const RULE = { DISC_M, CHANGED_LUMA, RULE_2: "share >= the control's at burst and mid", LATE_S, LATE_MAX_SHARE, LATE_MAX_MEAN, MOVED_MIN_M };
+if (argv.includes('--judge')) {
+  // offline: the rule on a fix report against a control report, no browser
+  const fix = JSON.parse(readFileSync(path.resolve(arg('fix')), 'utf8'));
+  if (!control) throw new Error('--judge needs --control=JSON');
+  let bad = 0;
+  for (const [kind, m] of Object.entries(fix.cases)) {
+    const problems = caseProblems(m, control.cases[kind]);
+    if (problems.length) bad++;
+    console.log(`[aircraft-hit-fire] judge ${kind}: burst ${m.burst?.share} vs ${control.cases[kind]?.burst?.share}, mid ${m.mid?.share} vs `
+      + `${control.cases[kind]?.mid?.share}, late ${m.late?.share}/${m.late?.mean} craft ${m.lateCraftM} m ${problems.length ? `FAIL ${problems.join('; ')}` : 'PASS'}`);
+  }
+  console.log(`aircraft-hit-fire (judge): ${Object.keys(fix.cases).length} cases ${bad ? 'FAIL' : 'PASS'}`);
+  process.exit(bad || !Object.keys(fix.cases).length ? 1 : 0);
+}
+const report = { map: mapId, time: timeOfDay, tag, rule: RULE, control: controlFile, cases: {}, errors: [], pass: false };
 mkdirSync(out, { recursive: true });
 console.log(`[aircraft-hit-fire] ${tag}: the pass rule ${JSON.stringify(report.rule)}`);
 let hold, server, browser;
@@ -201,6 +239,14 @@ try {
   await beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500, timeoutMs: 900_000 });
   await page.evaluate(install);
   const waitTime = (t) => page.waitForFunction((t) => window.__DEBUG.game.timeS >= t, { timeout: 120_000, polling: 50 }, t);
+  // a measured frame is the effects at their age: frozen in the poll that sees the time (the screenshot takes ~0.4 s, and
+  // the effects would age through it), released once it is read
+  const freezeAt = (t) => page.waitForFunction((t) => {
+    const D = window.__DEBUG;
+    if (D.game.timeS < t) return false;
+    D.fx.setFrozen(true);
+    return D.game.timeS;
+  }, { timeout: 120_000, polling: 50 }, t).then((h) => h.jsonValue());
   const frame = async (name) => {
     const file = path.join(out, `${tag}-${name}.png`);
     const buffer = await page.screenshot({ path: file });
@@ -215,17 +261,19 @@ try {
     await waitTime(staged.tHit);
     const hit = await page.evaluate(hitNow, { strikeId: staged.strikeId, kind });
     Object.assign(m, { struck: hit.struck, downed: hit.downed, hit });
-    if (!hit.struck) { m.problems = caseProblems(m); continue; }
+    if (!hit.struck) { m.problems = caseProblems(m, control?.cases[kind]); continue; }
     const at = hit.at;
     for (const [name, dt] of [['burst', 0.3], ['mid', 3], ['late', LATE_S]]) {
-      await waitTime(hit.timeS + dt);
+      const frozenS = await freezeAt(hit.timeS + dt);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const img = await frame(`${kind}-${name}`);
       const view = await page.evaluate(measureView, { at, strikeId: staged.strikeId });
+      await page.evaluate(() => window.__DEBUG.fx.setFrozen(false));
       m[name] = { ...discChange(img, pre, view.cx, view.cy, Math.max(18, view.r)), disc: [Math.round(view.cx), Math.round(view.cy), Math.round(Math.max(18, view.r))],
-        craftM: view.craftM, jetVisible: view.jetVisible, jetDiscPx: view.jetDiscPx, jetFront: view.jetFront, timeS: +view.timeS.toFixed(2) };
+        craftM: view.craftM, jetVisible: view.jetVisible, jetDiscPx: view.jetDiscPx, jetFront: view.jetFront, timeS: +view.timeS.toFixed(2), fxAgeS: +(frozenS - hit.timeS).toFixed(3) };
     }
     m.lateCraftM = m.late.craftM;
-    m.problems = caseProblems(m);
+    m.problems = caseProblems(m, control?.cases[kind]);
     console.log(`[aircraft-hit-fire] ${tag} ${kind}: burst ${m.burst.share} late ${m.late.share}/${m.late.mean} craft ${m.lateCraftM} m `
       + `${m.problems.length ? `FAIL ${m.problems.join('; ')}` : 'PASS'}`);
     await page.evaluate(() => { window.__hfCam = null; });

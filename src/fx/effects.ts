@@ -667,7 +667,8 @@ export interface FxRuntime {
   setLocalLights(on: boolean): boolean;
   clearVehicleDecals(visual: FxDecalVisual): void;
   /** (aircraft-hit-fire-278) A heavy charge bursting on an airframe in flight (a drone's warhead, an HE or HEAT round):
-   *  a hull's plate burst with no ground under it, one-shot. Nothing of it stays where the aircraft flies on from. */
+   *  the heavy hull burst aloft (blastRecipes plateBurst, `aloft`: its fireball dome, its smoke gone in seconds), no ground
+   *  under it, one-shot. Nothing of it stays where the aircraft flies on from. */
   airframeBurst(pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   destruction(
     pos: THREE.Vector3,
@@ -8205,7 +8206,7 @@ function* createFxSteps(
       if (!blast) return;
       const info = heByCaliber(caliberMm);
       plateBurst(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, munition: info.munition,
-        chargeKg: Math.max(0.3, info.chargeKg), ground: null });
+        chargeKg: Math.max(0.3, info.chargeKg), ground: null, aloft: true });
     },
 
     /**
