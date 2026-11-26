@@ -46,6 +46,9 @@ export const LIVED_IN_RACKS: Readonly<Record<string, readonly StowageRack[]>> = 
   m1a1: [M1A1_BUSTLE_RACK],
   m1a1_abrams_sa: [M1A1_BUSTLE_RACK],
   m1a1_abrams_aim: [M1A1_BUSTLE_RACK],
+  // the AIM's rack loaded as the AIM's, and its lengthened rack's extension behind the rear rail (profiles/abramsAus.ts
+  // RACK: x +-1.65, z -2.95 to -3.45, floor 0.26, its full-width rail at 0.62) packed through decorations.ts LIVED_IN_ROWS
+  m1a1_aim_sa_aus: [M1A1_BUSTLE_RACK, rack(-1.65, 1.65, -3.45, -2.95, 0.26, 0.62)],
   m1a1_abrams_hc: [TEJAS_BUSTLE_RACK],
   m1a1_abrams_fep: [TEJAS_BUSTLE_RACK],
   // the classic turret's bustle rack, its bags to 0.55
