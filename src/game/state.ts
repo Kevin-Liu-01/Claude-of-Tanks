@@ -97,6 +97,7 @@ import * as detMath from '../sim/detMath.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
 import { pushModeRoutes } from '../sim/modeRoutePush.ts';
 import { applyHullActions, tickHullConsumables } from '../sim/hullActions.ts';
+import { resetHullModeMoves } from '../sim/modeMoves.ts';
 import type { HullActionsHost } from '../sim/hullActions.ts';
 import { pushFromHulls } from '../sim/tankPairContact.ts';
 import { createBotController, createOpeningPlan, openingRoute } from './botConstruction.ts';
@@ -995,6 +996,7 @@ function initializeBattleEntity(
   entity._openingRoute = null;
   entity._lastImpactT = -1;
   resetHullCrashMemory(entity);
+  resetHullModeMoves(entity);
   entity.ai = null;
   entity._provingMark = null;
   entity._provingPatrol = null;
@@ -1591,6 +1593,8 @@ export function setupBattle(
       ent._destroyedAnnounced = false;
       // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the authority's revive too)
       resetHullCrashMemory(ent);
+      // Turbo and the air spin ready (life-reset-279; Kevin 2026-11-26: Turbo starts READY on revive), the authority's too
+      resetHullModeMoves(ent);
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);

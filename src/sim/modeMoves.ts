@@ -18,6 +18,17 @@ export interface TurboHull {
   airSpinReadyS?: number;
 }
 
+/**
+ * A new life's moves (life-reset-279; Kevin 2026-11-26: Turbo starts READY on revive): Turbo and the air spin ready, their
+ * cooldowns the last life's. Both drivers' revive (a death's, a kick-off's) and the solo battle seat call it, as they
+ * call impact.ts resetHullCrashMemory; a migrated host restores a cooldown only for a life that goes on
+ * (mp/host/migrationState.ts).
+ */
+export function resetHullModeMoves(hull: TurboHull): void {
+  hull.turboReadyS = undefined;
+  hull.airSpinReadyS = undefined;
+}
+
 /** Seconds until the hull's turbo is ready (0: ready, or no turbo). The HUD reads it; the press checks it. */
 export function turboReadyIn(entity: TurboHull, timeS: number): number {
   return entity.modeTurbo ? Math.max(0, (entity.turboReadyS ?? -Infinity) - timeS) : 0;

@@ -94,9 +94,9 @@ assert.deepEqual(counts(), { timers: 0, intervals: 0, frames: 0, listeners: 0, d
 endBattleScope('garage');
 unhook();
 
-// --- Turbo's tile and the phone's key (game/turboCooldown.ts): the cooldown is the hull's across a revive (the sim's
-// turboReadyS spans it on both drivers) but the battle's alone: the next battle's clock restarts at 0, and a Turbo used
-// at 500 s greyed its first 500 s ---
+// --- Turbo's tile and the phone's key (game/turboCooldown.ts): the life's (Kevin 2026-11-26: Turbo starts READY on
+// revive; both drivers' revive readies the hull, sim/modeMoves.ts resetHullModeMoves) and the battle's: the next battle's
+// clock restarts at 0, and a Turbo used at 500 s greyed its first 500 s ---
 {
   const { createBus } = await import('./stateCore.ts');
   const { createTurboCooldown } = await import('./turboCooldown.ts');
@@ -104,11 +104,17 @@ unhook();
   let clock = 500;
   const turbo = createTurboCooldown(turboBus, () => 'player', () => clock);
   openBattleScope('battle:turbo');
+  lifeScopeFrame(hull('player'));
   turboBus.emit('tank:turbo', { id: 'player', readyS: 12 });
   assert.equal(turbo.readyIn(500), 12, 'Turbo cools for 12 s');
-  lifeScopeFrame(hull('player', true));
   lifeScopeFrame(hull('player'), 'player');
-  assert.equal(turbo.readyIn(504), 8, "a revive keeps the hull's own cooldown");
+  assert.equal(turbo.readyIn(501), 11, 'another live frame keeps it cooling');
+  lifeScopeFrame(hull('bot-9'), 'bot-9');
+  assert.equal(turbo.readyIn(501), 11, "another seat's life leaves the seat's cooldown");
+  lifeScopeFrame(hull('player', true), 'player');
+  lifeScopeFrame(hull('player'), 'player');
+  assert.equal(turbo.readyIn(504), 0, 'a revive starts Turbo ready');
+  assert.equal(turbo.refill(504), 1, 'its charge full');
   endBattleScope('garage');
   openBattleScope('battle:next');
   clock = 0;
