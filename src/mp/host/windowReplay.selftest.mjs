@@ -413,15 +413,27 @@ for (const mode of ['zone_control', 'gun_game']) {
   // the seat's shell in the window (the play never fires it): b-1 destroyed and scored as tank_destroyed scores a kill; the
   // frame's view then differs (the score), and the new host takes it without rewriting a life or re-arming a gun
   // (Zone Control 60 s in, where bravo holds the zones: the kill scores for the side whose running score carries a fraction
-  // the play keeps exact; a hand the play never saw, credited to b-0)
-  const [victimId, killerId] = mode === 'zone_control' ? ['a-1', 'b-0'] : ['b-1', 'h0'];
+  // the play keeps exact; a hand the play never saw, credited to b-0. The victim is an alpha hull alive and off every zone,
+  // a bot first, never the viewer's own: the play holds it alive until the frame's row, so one inside a zone would move the window's trickle, which
+  // this does not judge; a-1, the victim until 277, stood in zone-3 once the 277 bots drove there)
+  const killerId = mode === 'zone_control' ? 'b-0' : 'h0';
+  let victimId = mode === 'zone_control' ? null : 'b-1', offZoneM = Infinity;
   const staged = stage({ mode, t0: mode === 'zone_control' ? 60 : 20, during: (old, k) => {
     if (k !== 5) return;
+    if (!victimId) {
+      const zones = old.authority.modeController.state.zones;
+      const offZone = (entity) => Math.min(...zones.map((zone) => Math.hypot(entity.state.pos.x - zone.x, entity.state.pos.z - zone.z)));
+      const pick = old.authority.entities.filter((entity) => entity.team === 'alpha' && entity.id !== 'h0' && !entity.combat.destroyed && entity.modeLife !== 'down' && offZone(entity) > 60)
+        .sort((a, b) => Number(!a.bot) - Number(!b.bot))[0];
+      victimId = pick?.id ?? 'a-1';
+      offZoneM = pick ? offZone(pick) : 0;
+    }
     const victim = old.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true;
     old.authority.modeController.recordDestruction(victimId, killerId, true);
   } });
   const { fresh, applied } = resumeOf(staged);
   const old = staged.old.authority, sim = fresh.authority;
+  if (mode === 'zone_control') ok(offZoneM > 60, `zone_control setup: the victim (${victimId}) stood alive off every zone at its death (${offZoneM.toFixed(0)} m from the nearest)`);
   const guns = (actor) => actor.authority.entities.filter((e) => e.bot && !e.combat.destroyed).map((e) => `${e.id} ${e.combat.reload.kind} ${e.combat.reload.t.toFixed(4)} ${e.combat.ammo[0]}`).join('; ');
   const scoreOf = (actor) => JSON.stringify(actor.authority.modeController.captureCheckpoint(actor.authority.battleS).score);
   ok(applied.replayed?.modeFromFrame === true && sim.entityById.get(victimId).combat.destroyed && scoreOf(fresh) === scoreOf(staged.old) && guns(fresh) === guns(staged.old),
