@@ -36,6 +36,13 @@ const pattern = arg('pattern', 'ABBA');
  * the same settings as every slot; recorded in report.warm with judged: false, never in report.slots (the first slot of a
  * hold ran cold, slower than the same build later in the hold, in 5 of 5 holds). */
 const warm = process.argv.includes('--warm');
+/** --load-gate=T (far-hull PASS-RULE addendum 4): with the hold held, read the 1-min load right before the first slot (the
+ * warm-up's, under --warm), every 15 s for up to --load-gate-wait-s (default 180); still over T, the hold runs no slot,
+ * records report.stopped, releases the lock and exits 3 for the caller's retry. The judged gate is unchanged: the first
+ * slot's loadBefore, read after its browser launches. */
+const loadGate = arg('load-gate', undefined) === undefined ? null : Number(arg('load-gate'));
+const loadGateWaitS = Number(arg('load-gate-wait-s', 180));
+if (loadGate !== null && !(loadGate > 0)) throw new Error('--load-gate takes a positive number');
 const view = arg('view', 'chase');
 const tier = arg('tier', 'desktop');
 const preset = arg('preset', tier === 'desktop' ? 'high' : 'mobile');
@@ -108,8 +115,19 @@ const report = { roots, labels, queries, maps, pattern, view, tier, preset, view
 let hold = null;
 try {
   hold = await openCaptureHold({ label: 'frame-thread-cpu', place: arg('place', undefined), timeoutMs: 6 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/frame-thread-cpu.mjs' });
+  if (loadGate !== null) {
+    const readings = []; const t0 = Date.now();
+    for (;;) {
+      const l = +os.loadavg()[0].toFixed(2); readings.push(l);
+      if (l <= loadGate || Date.now() - t0 >= loadGateWaitS * 1000) break;
+      await sleep(15000);
+    }
+    report.loadGate = { T: loadGate, waitS: loadGateWaitS, readings, passed: readings.at(-1) <= loadGate };
+    console.log(`[frame-thread-cpu] load gate ${loadGate}: ${readings.join(' ')} → ${report.loadGate.passed ? 'start' : 'over, no slot run'}`);
+    if (!report.loadGate.passed) report.stopped = `1-min load over ${loadGate} before the first slot`;
+  }
   const startedAt = Date.now();
-  for (const mapId of maps) {
+  for (const mapId of report.stopped ? [] : maps) {
     const plan = [...(warm ? [{ s: 'warm', k: pattern.charCodeAt(0) - 65 }] : []), ...[...pattern].map((c, s) => ({ s, k: c.charCodeAt(0) - 65 }))];
     for (const { s, k } of plan) {
       if (Date.now() - startedAt > 18 * 60 * 1000) { report.stopped = 'past 18 minutes of hold'; break; }
@@ -170,4 +188,4 @@ try {
   await hold?.release?.();
   writeFileSync(path.join(out, `${tag}.json`), JSON.stringify(report, null, 1));
 }
-process.exit(0);
+process.exit(report.loadGate?.passed === false ? 3 : 0);
