@@ -13,8 +13,8 @@ interface PointerUnlockContext {
   readonly pointerLocked?: boolean;
   readonly settingsOpen?: boolean;
   readonly battleActive?: boolean;
-  readonly replayActive?: boolean;
-  readonly activeElement?: EditingControlTarget | null;
+  /** Who owns the free pointer (input.pointerUnlockOwner): a mode's claim or the owner whose release freed it. */
+  readonly unlockOwner?: string | null;
 }
 
 /** True when a focused DOM node owns typed keyboard input. */
@@ -50,16 +50,16 @@ export function isTypingTarget(event: TypingKeyEvent | Event | null | undefined)
 }
 
 /**
- * Pointer lock normally disappears because the browser consumed Escape. Text
- * editors are the exception: chat deliberately unlocks while retaining focus.
+ * Pointer lock normally disappears because the browser consumed Escape: that unclaimed unlock, in a battle, opens
+ * Settings. Every unlock something meant is claimed by its owner (input.releaseLock(owner), input.claimPointerUnlock:
+ * photo mode, a kill-cam replay or ending beat, a focused text editor such as chat), so no mode is listed here
+ * (settings-unify-278 fix-back: photo mode, missing from the old list of exceptions, opened Settings under its bar).
  */
 export function shouldOpenSettingsFromPointerUnlock({
   pointerLocked = false,
   settingsOpen = false,
   battleActive = false,
-  replayActive = false,
-  activeElement = null,
+  unlockOwner = null,
 }: PointerUnlockContext = {}): boolean {
-  return !pointerLocked && !settingsOpen && battleActive && !replayActive &&
-    !isEditingControl(activeElement);
+  return !pointerLocked && !settingsOpen && battleActive && unlockOwner === null;
 }

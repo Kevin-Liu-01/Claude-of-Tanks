@@ -2410,7 +2410,7 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
   // (round 6 V6) through the input layer, whose releaseLock also withdraws a request still in flight (input.ts, round 5
   // Q2): a canvas recapture asked in the frame before the verdict lands a task later, after document.exitPointerLock
   // had nothing to release, and held the pointer over the result. `input` is built below; the port runs at a verdict.
-  exitPointerLock: () => { input.releaseLock(); },
+  exitPointerLock: () => { input.releaseLock('battle-result'); },
   recordFlow: (receipt: RuntimeValue) => { debugFlags.lastEndFlow = receipt; },
   ending: {
     camera: battleEndingCamera,
@@ -3972,7 +3972,7 @@ const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Pro
   // while it waits for this return (holdPointerLock, released by its own refusal only after this notice) or one the
   // battle held (a room's return that failed before its screen's exitPointerLock). releaseLock also withdraws a request
   // still in flight.
-  input.releaseLock();
+  input.releaseLock('garage-return-failure');
   return import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
     .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
 };
@@ -4113,7 +4113,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   // toward cursor aim; the announcement's own request, every entry's, still is
   holdPointerLock: () => {
     input.requestLock({ fromUi: true });
-    return () => input.releaseLock();
+    return () => input.releaseLock('battle-start');
   },
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
