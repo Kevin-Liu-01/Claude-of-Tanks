@@ -33,7 +33,7 @@ import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import { spoolFromRest } from '../../sim/movement.ts';
 import { encodeAimIntent } from '../../sim/aimIntent.ts';
 import type { TankState } from '../../sim/movement.ts';
-import { airSpinRateOf, applyMovementPredictionState, captureMovementPredictionState, encodeAirSpin, MOVEMENT_PREDICTION_SCALARS,
+import { applyMovementPredictionState, captureMovementPredictionState, checkpointAirSpin, MOVEMENT_PREDICTION_SCALARS,
   MOVEMENT_PREDICTION_STATE_VALUES, restoreAirSpin } from '../../sim/movementPredictionState.ts';
 import { bindSpecialActionState } from '../../sim/specialActions.ts';
 import { magazineIndicator } from '../../sim/magazineIndicator.ts';
@@ -1043,25 +1043,19 @@ function restoreFrom(actor: MatchActor, state: HostResumeState): ResumeApplied {
     // its next life from the construction's positions, 55 m off the old host's raider within 25 s)
     if (extras) {
       const lifeGoesOn = !revived.has(entity.id) && !combat.destroyed;
-      // Turbo's cooldown runs on through the gap to the resume frame; a flip or roll turns on from the row's attitude
-      // (turbo-spin-275: a migration mid-spin finished the turn the old host owed; without it the hull stopped turning)
+      // Turbo's cooldown and the air spin's run on through the gap to the resume frame (turbo-spin-275, flip-boost-276):
+      // a new host refuses a press as the old did
       if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
         entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
       }
-      // (thrust-flips-277) with the rate it turns at: the turn rides its momentum, and the burn reads it
-      if (lifeGoesOn && typeof extras.airSpin === 'number') {
-        restoreAirSpin(tank, extras.airSpin, gapS, Number.isFinite(extras.airSpinRate) ? extras.airSpinRate! : null);
-      }
-      // the air spin's cooldown and the flight's spent dodge (flip-boost-276): a new host refuses a second as the old did
       if (lifeGoesOn && Number.isFinite(extras.airSpinReadyIn)) {
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
       }
-      if (lifeGoesOn && extras.flipUsed === true) tank._flipUsed = true;
-      // the hull exact (276; restoreHull): from its own row rounded, the old host's hull to the bit (its checkpoint's spin,
-      // spring and spent dodge over the ones above); from a newer row, its drive (the turn rate, the slew, the bloom, the
-      // spool) and held input
+      // the hull exact (276; restoreHull): from its own row rounded, the old host's hull to the bit (a flip or roll mid-turn,
+      // the rate it turns at and a spent dodge among it); from a newer row, its drive (the turn rate, the slew, the bloom,
+      // the spool), the spin aged by the gap, and held input
       const hull = lifeGoesOn && extras.hull ? unpackHull(extras.hull) : null;
-      if (hull) restoreHull(entity as unknown as HullHolder, row, hull);
+      if (hull) restoreHull(entity as unknown as HullHolder, row, hull, gapS);
       // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
       // revive it was told, as a fresh life's does under an open throttle (275; a spool at rest pulled away 0.3 s behind)
       const roseAt = toldRevives.get(entity.id);
@@ -1576,7 +1570,7 @@ const HULL_DRIVE_SCALARS = (['yawRate', 'turretYawRate', 'bloomF', '_spool'] as 
  * own), the drive alone (the turn rate, the slew, the bloom, the spool); the rest belongs with the pose the row seats.
  * Either way the held input, the roof guns' slew and the special action's toggle, which no pose seats.
  */
-function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading): void {
+function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading, gapS: number): void {
   const state = entity.state, input = entity.input;
   const n = (key: HullNumber): number => hullNumber(reading, key);
   const own = rowReadsHull(row, reading);
@@ -1594,6 +1588,12 @@ function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading): 
     if (Math.round(n('hp')) === row.hp) entity.combat.hp = n('hp');
   } else if (reading.checkpoint.values.length === MOVEMENT_PREDICTION_STATE_VALUES) {
     for (const [key, index] of HULL_DRIVE_SCALARS) (state as unknown as Record<string, number>)[key] = reading.checkpoint.values[index]!;
+    // a flip or roll mid-turn at the keyframe turns on, less the turn it made to the row at the rate it turned (turbo-spin-275,
+    // thrust-flips-277: a migration mid-spin finished the turn the old host owed), and a spent dodge stays spent
+    // (flip-boost-276): no row carries either
+    const spin = checkpointAirSpin(reading.checkpoint);
+    if (spin.code) restoreAirSpin(state, spin.code, gapS, spin.rate);
+    if (spin.flipUsed) state._flipUsed = true;
   }
   const aux = entity.combat.auxiliary;
   if (aux) {
@@ -1669,18 +1669,12 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     // a live hull exact (276: its pose, hp, integrator and held input) and a bot's way; a down bot's brain streams alone
     // (fix-up r2: down or benched, it drives a next life on from them on the old host)
     if (!combat.destroyed) {
-      // Turbo's cooldown and a flip or roll still turning (turbo-spin-275): a fresh host has both at rest
+      // Turbo's cooldown and the air spin's (turbo-spin-275, flip-boost-276): a fresh host has both ready; a flip or roll
+      // still turning, its rate and a spent dodge ride the hull exact's checkpoint (276)
       const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
-      const airSpin = encodeAirSpin(entity.state._airSpinAxis ?? 0, entity.state._airSpinLeft ?? 0);
-      if (airSpin !== 0) {
-        extras.airSpin = airSpin;
-        const airSpinRate = airSpinRateOf(entity.state);
-        if (airSpinRate !== 0 && Number.isFinite(airSpinRate)) extras.airSpinRate = airSpinRate;
-      }
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
       if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
-      if (entity.state._flipUsed === true) extras.flipUsed = true;
       const hull = packHull(entity as unknown as HullHolder);
       if (hull) extras.hull = hull;
       const way = entity.aiCtl?.captureDrive?.();
