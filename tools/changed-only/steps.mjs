@@ -406,6 +406,16 @@ export const SCHEDULING_ENV = Object.freeze({
   COT_BROWSER_RENDERER_LIMIT: 'browser-launch: how many renderer processes Chrome may start',
 });
 
+/** Environment variables that only mark what kind of process runs (a receipt's child), never what a tool writes. Unlike
+ *  a SCHEDULING_ENV row, which is left out of the key, a marker stays in it as `<unset>` whatever its value, so the keys
+ *  recorded before it was declared still hold (dropping the row would have moved every key that names it).
+ *  Practice audit 2026-11-26 (tooling-practice-279): the receipt runner gives every child a fresh run directory, and
+ *  media-r5/paths.mjs (in the icons closure through master-filter) reads it to tell a receipt's process from a tool run.
+ *  Keyed with its value, every runner pass moved icons on all 313 ids (changed-only/fresh red under the runner on main). */
+export const PROCESS_MARKER_ENV = Object.freeze({
+  COT_SELFTEST_RUN_DIR: 'run-selftests: the run\'s own directory, fresh every run; it marks a receipt\'s process',
+});
+
 /**
  * Tool-side modules that read a per-id table only at the id they are handed. A step that reaches a table through one
  * of these (and no other edge) keys that table per id instead of whole. `pin` is sha256/16 of the module's sorted

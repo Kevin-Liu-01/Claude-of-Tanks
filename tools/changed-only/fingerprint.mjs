@@ -31,7 +31,7 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { budgetedSync, watchChild } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
+  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, PROCESS_MARKER_ENV, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
   WORLD_STEPS, stepDefinition } from './steps.mjs';
 import { maskShaderText } from './shader-text.mjs';
 import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
@@ -408,7 +408,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     return null;
   };
   const environmentOf = (files) => [...new Set([...files].flatMap((file) => graph.edges(file).flags.environment))].sort();
-  const envRows = (names) => names.filter((name) => !Object.hasOwn(SCHEDULING_ENV, name)).map((name) => `env:${name}=${env[name] ?? '<unset>'}`);
+  const envRows = (names) => names.filter((name) => !Object.hasOwn(SCHEDULING_ENV, name))
+    .map((name) => `env:${name}=${Object.hasOwn(PROCESS_MARKER_ENV, name) ? '<unset>' : env[name] ?? '<unset>'}`);
 
   for (const file of executed) {
     const problem = dynamicProblem(file);
