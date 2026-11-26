@@ -1130,6 +1130,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 274: each step's key holds what it reads: 273.1 and 274.0 replayed on the real fleet mark only the steps that read
     // their files (the shader text, the world's fleet core, the icons page's locale prefix); the re-key; the opt-in gate
     'tools/changed-only/regen-keys.selftest.mjs',
+    // 279: the shader-text mask's marked regions: a splice inside one marks only the GPU steps, an edit just outside one
+    // every step; the checker's refusals on fixtures; the re-key from a marker-free table
+    'tools/changed-only/shader-text.selftest.mjs',
     // The world steps' per-map keys on a fixture world (map configs, world core, wreck donors, fail-closed reads).
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.

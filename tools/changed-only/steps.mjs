@@ -378,14 +378,26 @@ export const DECLARED_DYNAMIC = Object.freeze({
  * file keyed by its bytes, as before (fingerprint.mjs partition.shaderText names why), and fleet-partition.selftest.mjs
  * fails until it is reviewed. tools/changed-only/closure-trace.mjs --shaders moves the text at run time: no ledger digest
  * may follow it. 274.0: an armour-paint GLSL edit marked every step on all 311 ids and every map.
+ * (279) A file may also declare marked regions (`regions`), splices in named hooks (`hooks`) and define-copy lists a
+ * region adds switches to (`switchLists`): shader-text.mjs says what each may hold, and fingerprint.mjs proves no CPU or
+ * world code names a switch they set. 277: the rubber tile's switch, splice and define keyed every step on every id.
  */
 export const SHADER_TEXT = Object.freeze({
   'src/vehicles/materials.ts': {
     consts: Object.freeze(['BURN_COMMON_GLSL', 'BURN_DIFFUSE_GLSL', 'BURN_EMISSIVE_GLSL', 'ARMOR_PAINT_COMMON_GLSL',
       'ARMOR_PAINT_VERTEX_GLSL', 'ARMOR_PAINT_DIFFUSE_GLSL', 'ARMOR_PAINT_EMISSIVE_GLSL', 'CRUMPLE_COMMON_GLSL',
-      'CRUMPLE_NORMAL_GLSL']),
-    note: 'applyBurnHook\'s onBeforeCompile splices them into the vertex and fragment shaders; FIELD_DUST_GLSL stays keyed '
-      + '(vehicleAmbientFloorHook is a named export any code may call)',
+      'CRUMPLE_NORMAL_GLSL', 'FIELD_DUST_GLSL']),
+    // (279) the `// shader-text:begin <name>` ... `end` regions (shader-text.mjs): rubber-tiles is t80-skirts-274's tile
+    // (its GLSL, the splice in the family hook, its switch and the rubber's define)
+    regions: Object.freeze(['rubber-tiles']),
+    // (279) named hooks every vehicle program compiles: a region in one's body is a splice, and its code outside the
+    // regions reads its shader text only into its shader text
+    hooks: Object.freeze(['vehicleAmbientFloorHook']),
+    // (279) define-copy lists a region may add a switch to: cloneVehicleMaterial copies a define its source holds; the
+    // list's uses outside the regions are pinned
+    switchLists: Object.freeze({ VEHICLE_SHADER_SWITCHES: Object.freeze({ pin: '0a1e46cc042cf1d2' }) }),
+    note: 'applyBurnHook\'s onBeforeCompile splices the burn, armour-paint and crumple text into the vertex and fragment '
+      + 'shaders; vehicleAmbientFloorHook splices FIELD_DUST_GLSL and the rubber-tiles region',
   },
 });
 
