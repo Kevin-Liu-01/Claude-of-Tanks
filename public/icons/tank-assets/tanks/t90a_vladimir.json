@@ -6152,7 +6152,7 @@
       }
     ]
   },
-  "geometryHash": "20da2c88",
+  "geometryHash": "5f2de48f",
   "metadataHash": "43648233",
   "presentationAnchor": {
     "xM": 0,
@@ -6234,15 +6234,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26468,
-      "sha256": "416003217deda82f51de78406bdfb0a450c25dd1994da9dab38e43a871d94ba4",
+      "bytes": 26388,
+      "sha256": "8fde1c258a9c18e1f6255f69bf7e4b8bf9e8b7ad8b6fda8052a510eaf6e5ceaa",
       "thumbnail": {
         "file": "thumbs/t90a_vladimir_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10638,
-        "sha256": "bdc21beaa4e340f8540d82ef87d84c260623218c6738e5a9eca7dcea9fa58860",
+        "bytes": 10662,
+        "sha256": "c69052b1958d428b5b40b5e1c0cef446fa7e0040ff7afe45c126e26a5dbe1f2a",
         "frame": [22,120,225,249]
       }
     },
@@ -6251,16 +6251,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12350,
-      "sha256": "caa55f4007350051266e0fa970880cbe1c0a04ef326ecd8f4ed4845fcd56642a"
+      "bytes": 12344,
+      "sha256": "9c88a4b18ee65a2507633769e18d12d3ecb17b2b6464567fbbbec765176894d4"
     },
     "side": {
       "file": "t90a_vladimir_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10140,
-      "sha256": "cbc6c17c37a1bdfb841c856eb90ed775b91eef9ffc59ff1b0a31bca96f312c7c"
+      "bytes": 10138,
+      "sha256": "bc3cd19906499a20a0128f66f3c1a62f49d2d749358a1394fcc81e539809e185"
     },
     "topSilhouette": {
       "file": "t90a_vladimir_top_silhouette.png",
@@ -6275,8 +6275,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4047,
-      "sha256": "6d2cd7a5fa46b5aff21f4c4822c479886fe541954e576f032ae3c7633ca6bdea"
+      "bytes": 4035,
+      "sha256": "638ba00693dee9338926e92b90d7773ea9186efb1452069511042eb832c2290d"
     },
     "markings": {
       "file": "t90a_vladimir_markings.png",
