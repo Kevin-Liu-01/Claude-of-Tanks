@@ -45,7 +45,8 @@ import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
-import { prepareSourcedTerrain } from './sourcedTextures.ts';
+import { prepareSourcedTerrain, setPhotoLoadGate } from './sourcedTextures.ts';
+import { classFetch } from '../engine/fetchClasses.ts';
 import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
@@ -82,6 +83,10 @@ import { createStructureDamage } from '../sim/structureDamage.ts';
 
 /** The idle measurer's slice a frame (ms): the structures' deferred damage measures (structureDamageSeam.ts). */
 const DEFERRED_MEASURE_MS = 2;
+
+// (entry-bytes-278) the client's world gates the sourced photographs with the fetch classes' decor slots; the match core
+// reaches sourcedTextures.ts without this module, so it never carries the scheduler (driver-boundaries' pin)
+setPhotoLoadGate((start) => classFetch('decor', start));
 import { createDeformedHeightField, rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
 import { mapCraterStamps, type MapCraterStamp } from './mapCraters.ts';

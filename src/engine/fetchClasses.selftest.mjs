@@ -1,8 +1,8 @@
 // entry-bytes-278: the fetch classes (engine/fetchClasses.ts). With no battle entry open every class starts at once; while
 // one is open, decor runs at most DECOR_SLOTS at a time in request order, idle starts only once no decor waits or runs (at most
 // IDLE_SLOTS), critical is never held, and closing the window starts everything held. The loading card opens and closes
-// the window (ui/battleLoad.ts); the photographs ask for decor (world/sourcedTextures.ts) and the bulk and voice sounds
-// for idle, outside the library's own slot (audio/assetLibrary.ts).
+// the window (ui/battleLoad.ts); the photographs are decor (world/map.ts gates world/sourcedTextures.ts) and the bulk
+// and voice sounds idle, outside the library's own slot (audio/assetLibrary.ts).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
@@ -100,7 +100,10 @@ function harness() {
   const battleLoad = read('../ui/battleLoad.ts');
   assert.match(battleLoad, /fetchWindow \?\?= openFetchWindow\(\)/, 'the loading card opens the window when it shows');
   assert.match(battleLoad, /fetchWindow\?\.close\(\)/, 'and closes it when it hides');
-  assert.match(read('../world/sourcedTextures.ts'), /classFetch\('decor'/, 'the sourced photographs are decor');
+  const sourced = read('../world/sourcedTextures.ts');
+  assert.match(sourced, /photoLoadGate\(\(\) => new Promise<HTMLImageElement>/, 'the sourced photographs load through the injected gate');
+  assert.doesNotMatch(sourced, /['"][./]*engine\/fetchClasses\.ts['"]/, 'the match core reaches sourcedTextures.ts: it imports no scheduler');
+  assert.match(read('../world/map.ts'), /setPhotoLoadGate\(\(start\) => classFetch\('decor', start\)\)/, 'the client\'s world makes them decor');
   const audio = read('../audio/assetLibrary.ts');
   assert.match(audio, /frontIds\.has\(id\) \? task\(\) : classFetch\('idle', task\)/, 'bulk sounds are idle, the front lane is not held');
   assert.match(audio, /onLink\(id, \(\) => slot\(id,/, 'the hold comes before the library slot');
