@@ -112,9 +112,19 @@ export interface MigrationKeyframe {
   entities: MigrationEntityExtras[];
 }
 
+/**
+ * The keyframe's own layout (279): the extras' shape (MigrationEntityExtras, the mode checkpoint's `host`) as this build
+ * writes and reads them. A keyframe of another layout, or of a build before the stamp, is refused whole at decode, and the
+ * elected seat takes the fallback (matchSession.ts: a battle in progress declined, never restarted at 0): the HELLO's build
+ * check refuses a seat only for its prediction code, so a peer whose authority code alone differs, or an unstamped build,
+ * could otherwise be elected and read a keyframe written to another shape. Bump it with any change to what the extras or
+ * the checkpoint carry.
+ */
+export const MIGRATION_KEYFRAME_LAYOUT = 1;
+
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, ...(typeof keyframe.battleS === 'number' ? { battleS: keyframe.battleS } : {}), phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
+  const extras = encoder.encode(JSON.stringify({ layout: MIGRATION_KEYFRAME_LAYOUT, tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, ...(typeof keyframe.battleS === 'number' ? { battleS: keyframe.battleS } : {}), phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
     ...(keyframe.battleId ? { battleId: keyframe.battleId } : {}) }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
@@ -165,6 +175,9 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
   // A keyframe applies against no baseline, so this never throws missing_baseline.
   const frame = applySnapshotPacket(decoded.message, null);
   const extras = JSON.parse(decoder.decode(bytes.subarray(4 + packetBytes))) as Record<string, unknown>;
+  if (extras.layout !== MIGRATION_KEYFRAME_LAYOUT) {
+    throw new Error(`migration keyframe layout ${JSON.stringify(extras.layout ?? null)}, this build reads ${MIGRATION_KEYFRAME_LAYOUT}`);
+  }
   const phase = extras.phase === 'countdown' || extras.phase === 'ended' ? extras.phase : 'playing';
   const entities = Array.isArray(extras.entities) ? extras.entities.filter(isExtras) : [];
   if (!Number.isInteger(extras.tick) || typeof extras.battleTimeMs !== 'number') throw new Error('migration keyframe extras invalid');
