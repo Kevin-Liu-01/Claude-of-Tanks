@@ -401,8 +401,11 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
     .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   return {
     ...checkpoint,
-    // a revive clears the bot's last pushed target (matchModes.ts reviveAtSpawn), so its next route push is made (275)
-    ...(checkpoint.host ? { host: { ...checkpoint.host, targets: checkpoint.host.targets.filter(([id]) => !revived.has(id)) } } : {}),
+    // a revive clears the bot's last pushed target (matchModes.ts reviveAtSpawn), so its next route push is made (275),
+    // and its fire's starter and last attacker (279: authoritativeMatch.ts reviveForMode)
+    ...(checkpoint.host ? { host: { ...checkpoint.host, targets: checkpoint.host.targets.filter(([id]) => !revived.has(id)),
+      ...(checkpoint.host.fireStarters ? { fireStarters: checkpoint.host.fireStarters.filter(([id]) => !revived.has(id)) } : {}),
+      ...(checkpoint.host.recentDamage ? { recentDamage: checkpoint.host.recentDamage.filter(([id]) => !revived.has(id)) } : {}) } } : {}),
     mode: {
       ...mode,
       respawns: mode.respawns.filter(([id]) => !revived.has(id)),
