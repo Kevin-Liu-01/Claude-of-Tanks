@@ -128,6 +128,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/phase-resource-probe.mjs`
 - `tools/phone-entry-gpu.mjs`
 - `tools/phone-smoke-reach.browser.mjs`
+- `tools/photo-mode-gauntlet.browser.mjs`
 - `tools/render-stability-audit.mjs`
 - `tools/second-solo-battle.browser.selftest.mjs`
 - `tools/settings-unify.browser.mjs`
