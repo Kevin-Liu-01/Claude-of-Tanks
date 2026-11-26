@@ -270,6 +270,14 @@ export class EquipmentDamage {
     return clone;
   }
 
+  /** 279: the lid spans (first vertex, vertex count) over `geometry`, which the turret seat's split leaves whole
+   * (turretSeatRace.ts protectedSpans), and whether any lid still reads it (the factory's stale-span check). */
+  spansOf(geometry: THREE.BufferGeometry): [number, number][] {
+    const owner = this.owners.find((candidate) => candidate.geometry === geometry);
+    return owner ? this.ranges.filter((range) => range.owner === owner).map((range) => [range.start, EQUIPMENT_DAMAGE_LIMITS.verticesPerPart]) : [];
+  }
+  holds(geometry: THREE.BufferGeometry): boolean { return this.owners.some((owner) => owner.geometry === geometry); }
+
   /** The turret seat drew a mesh on its own copy of its geometry (turretSeatRace.ts onSeated): the lid ranges over the
    * built buffers follow the copy. Bound before any damage, so no lid holds an original yet. */
   follow(built: THREE.BufferGeometry, seated: THREE.BufferGeometry): void {
