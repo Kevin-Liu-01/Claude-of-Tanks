@@ -13,9 +13,10 @@
 //   draws the same either way, so there is no tie-break).
 // A settled mesh draws its own copy of its geometry, as a seated one does: `onSettled(built, settled, sourceOf)` lets the
 // build's followers (camouflage projection, ERA spans, damage ranges) move to the copy; `sourceOf[i]` is the built
-// vertex each settled vertex was copied from.
+// vertex each settled vertex was copied from. A turret-seat foot split's copy draws its own table (splitSlabQuadTable,
+// tankFactoryCore's onSplit) that skips the quads the split cut, so the settle and the census read the split copies too.
 import * as THREE from 'three';
-import { SLAB_VERTICES, slabQuadTable } from './factoryGeometry.ts';
+import { SLAB_VERTICES, slabQuadTable, type SlabQuadTable } from './factoryGeometry.ts';
 
 /** The least gap between a quad's two diagonals that counts as twisted (1 mm). */
 export const SLAB_TWIST_M = 1e-3;
@@ -77,11 +78,33 @@ interface DrawnQuad {
   readonly mirrorKey: string;
 }
 
-/** The slab quads a mesh draws, in the root frame; a group no longer in the slab pattern (a→a, c→c) is skipped. */
+/**
+ * The slab table a turret-seat foot split's copy draws (turretSeatRace.ts splitFootFaces, non-indexed): the built vertices
+ * keep their slots, a cut triangle's slot holds its first piece and the pieces past the first are appended, so the built
+ * runs still index the copy and every quad group with a vertex the split changed is skipped. Null when the built geometry
+ * has no table or the split is indexed.
+ */
+export function splitSlabQuadTable(built: THREE.BufferGeometry, split: THREE.BufferGeometry): SlabQuadTable | null {
+  const table = slabQuadTable(built), was = built.getAttribute('position'), now = split.getAttribute('position');
+  if (!table || split.index || !now || now.count < table.vertexCount) return null;
+  const skip = new Set(table.skip ?? []);
+  for (let k = 0; k < table.runs.length; k += 2) {
+    for (let start = table.runs[k]; start < table.runs[k] + table.runs[k + 1]; start += 6) {
+      for (let i = start; i < start + 6; i++) {
+        if (was.getX(i) !== now.getX(i) || was.getY(i) !== now.getY(i) || was.getZ(i) !== now.getZ(i)) { skip.add(start); break; }
+      }
+    }
+  }
+  return { vertexCount: now.count, runs: table.runs, skip: [...skip].sort((a, b) => a - b) };
+}
+
+/** The slab quads a mesh draws, in the root frame; a skipped group (SlabQuadTable.skip), or one no longer in the slab
+ *  pattern (a→a, c→c), is left out. */
 function drawnSlabQuads(mesh: THREE.Mesh, toRoot: THREE.Matrix4): DrawnQuad[] {
   const geometry = mesh.geometry as THREE.BufferGeometry;
   const table = slabQuadTable(geometry);
   if (!table) return [];
+  const skip = new Set(table.skip ?? []);
   const position = geometry.getAttribute('position');
   const e = toRoot.elements;
   const at = (i: number): Vec => {
@@ -96,7 +119,7 @@ function drawnSlabQuads(mesh: THREE.Mesh, toRoot: THREE.Matrix4): DrawnQuad[] {
       const groups: Array<{ start: number; corners: [Vec, Vec, Vec, Vec] }> = [];
       const centroid: Vec = [0, 0, 0];
       for (let start = slab; start < slab + SLAB_VERTICES; start += 6) {
-        if (!same(start, start + 3) || !same(start + 2, start + 4)) continue;
+        if (skip.has(start) || !same(start, start + 3) || !same(start + 2, start + 4)) continue;
         const corners: [Vec, Vec, Vec, Vec] = [at(start), at(start + 1), at(start + 2), at(start + 5)];
         for (const p of corners) { centroid[0] += p[0]; centroid[1] += p[1]; centroid[2] += p[2]; }
         groups.push({ start, corners });

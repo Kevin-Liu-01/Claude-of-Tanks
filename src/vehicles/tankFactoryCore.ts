@@ -60,7 +60,7 @@ import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
 import { applyTurretSeatRace, seatTurretOverDeck, staleSeatSpans, turretFootFitFor, turretSeatSplitBuilt, type TurretFootFit } from './turretSeatRace.ts';
-import { settleSlabDiagonals } from './slabDiagonalSettle.ts';
+import { settleSlabDiagonals, splitSlabQuadTable } from './slabDiagonalSettle.ts';
 import { ringZonePart, ringZoneViolations, type RingZonePart } from './ringZoneGuard.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -10226,7 +10226,13 @@ function* buildTankCoreSteps(
       const position = geometry.getAttribute('position'), spans: [number, number][] = [];
       for (const cluster of destructibleClusters.values()) for (const range of cluster.ranges) if (range.position === position) spans.push([range.start, range.count]);
       return [...spans, ...equipmentDamage.spansOf(geometry), ...weaponDamage.spansOf(geometry)];
-    }, onSplit: (built, split) => { followSeat(built, split); splitBuilt.push(built); splitCopies.push(split); } });
+    }, onSplit: (built, split) => {
+      followSeat(built, split);
+      // 279 (slab-mirror): the split copy draws its own slab table over the quads the split left whole (own userData)
+      const slabQuads = splitSlabQuadTable(built, split);
+      if (slabQuads) split.userData = { ...built.userData, slabQuads };
+      splitBuilt.push(built); splitCopies.push(split);
+    } });
     if (splitBuilt.length) {
       const stale = staleSeatSpans(splitBuilt, [...destructibleClusters.values()].flatMap((cluster) => cluster.ranges.map((range) => range.position)),
         (geometry) => equipmentDamage.holds(geometry) || weaponDamage.holds(geometry));
@@ -10254,8 +10260,8 @@ function* buildTankCoreSteps(
     // drawn along the other diagonal takes the convex split with it (slabDiagonalSettle.ts), before the ring-zone check
     // and the ERA binding below read the drawn skin (the Challenger 2E's cheek cassettes stood 7-14 mm deeper on the L).
     // A settled mesh draws its own copy, as a seated one does: the camo re-projects what moved (`sourceOf` maps each copied
-    // vertex to the built one it came from) and the spans follow the copy. A foot-split copy keeps no slab table (its
-    // vertex count grew: slabQuadTable), so the settle never turns a quad the split cut.
+    // vertex to the built one it came from) and the spans follow the copy. A foot-split copy reads its own table (onSplit
+    // above), which skips every quad the split cut.
     // The geometry a settled mesh drew before is released when this build owns it and no mesh draws it any more (the
     // settle runs before the first frame: it never reached the GPU, only the heap).
     if (slabDiagonalSettle) {

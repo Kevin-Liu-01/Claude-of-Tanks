@@ -3,14 +3,18 @@
 // kit.ts). Read on the drawn meshes: with the settle, no twisted slab quad draws the other diagonal from its mirror twin;
 // with it off (the control), the same census finds the pairs. And the CR2's cheeks: inward rays at the cassette heights
 // meet the turret shell at mirrored depths on both sides (the L side stood 7-14 mm out before; fleet-debt-279).
+// And the PL-01, a turret-seat 'split' foot fit (turretSeatRace.ts): its turret draws a foot-split copy that carries its own
+// slab table, skipping the quads the split cut (splitSlabQuadTable), so the settle turns its pairs too. Its control strips
+// the split copies' tables before the settle (the guard that hid them before): the census then finds the turret's
+// front-cheek pair (18.62 mm) still drawn along opposite diagonals.
 // The whole fleet runs as fleetPassHigh's slabMirrorDiagonal audit.
 import assert from 'node:assert/strict';
 import { Raycaster, Vector3 } from 'three';
-import { slabMirrorCensus } from './slabDiagonalSettle.ts';
+import { settleSlabDiagonals, slabMirrorCensus } from './slabDiagonalSettle.ts';
 import { createTank } from './tankFactory.ts';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
-const IDS = ['challenger2e', 'abramsx', 'fv510'];
+const IDS = ['challenger2e', 'abramsx', 'fv510', 'pl01'];
 
 function cheekDepths(root) {
   root.updateMatrixWorld(true);
@@ -81,5 +85,28 @@ for (const id of IDS) {
     }
     assert.ok(results.off.cheeks.some((row) => Math.abs(row.L - row.R) > 5e-3), 'challenger2e: the control keeps the 7-14 mm cheek asymmetry');
   }
+}
+// the PL-01's split copies: a table that skips the cut quads; without it (the old guard) the settle leaves the cheek pair
+{
+  const splitMeshes = (root) => {
+    const meshes = [];
+    root.traverse((object) => { if (object.isMesh && object.geometry?.userData?.slabQuads?.skip) meshes.push(object); });
+    return meshes;
+  };
+  const settled = createTank('pl01', null, BUILD);
+  const split = splitMeshes(settled.root);
+  assert.ok(split.some((mesh) => mesh.name === 'turret' && mesh.geometry.userData.slabQuads.skip.length > 0),
+    `pl01: the turret's foot-split copy carries a slab table that skips the quads the split cut`);
+  settled.dispose?.();
+  const control = createTank('pl01', null, { ...BUILD, slabDiagonalSettle: false });
+  const hidden = splitMeshes(control.root).map((mesh) => [mesh, mesh.geometry.userData]);
+  for (const [mesh, data] of hidden) { const { slabQuads: _, ...rest } = data; mesh.geometry.userData = rest; }
+  settleSlabDiagonals(control.root, []);
+  for (const [mesh, data] of hidden) mesh.geometry.userData = data;
+  const left = slabMirrorCensus(control.root).pairs;
+  control.dispose?.();
+  console.log(`slabMirrorDiagonal pl01 split tables stripped: ${left.length} pairs left, ${left.map((pair) => `${pair.mesh} ${pair.gapMm} mm`).join(', ')}`);
+  assert.ok(left.some((pair) => pair.mesh === 'turret' && Math.abs(pair.gapMm - 18.62) < 0.05),
+    `pl01 control: with the split copies' tables stripped, the turret's front-cheek pair (18.62 mm) stays on opposite diagonals`);
 }
 console.log('slabMirrorDiagonal: PASS');

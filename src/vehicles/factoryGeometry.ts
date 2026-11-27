@@ -191,10 +191,12 @@ export const SLAB_VERTICES = 36;
  * 279 (slab-mirror): which vertices of a geometry are slab()-authored quads, as a side-table on the geometry (not a
  * vertex attribute, which mergeGeometries refuses beside untagged parts): `runs` lists [start, count] vertex runs of
  * whole slabs (SLAB_VERTICES each) over `vertexCount` non-indexed vertices. slab() writes it, mergeAll() offsets and
- * concatenates it, clone()/copy() share it (and the transforms keep it); every other merge drops it. The end-of-build
- * settle (slabDiagonalSettle.ts) reads it to pick each twisted quad's diagonal on the drawn corners.
+ * concatenates it, clone()/copy() share it (and the transforms keep it), a foot split's copy draws its own; every other merge drops it. The end-of-build
+ * settle (slabDiagonalSettle.ts) reads it to pick each twisted quad's diagonal on the drawn corners. `skip` lists quad groups
+ * (each group's first vertex) inside the runs that no longer draw their quad: the turret seat's foot split cut them
+ * (splitSlabQuadTable).
  */
-export interface SlabQuadTable { readonly vertexCount: number; readonly runs: readonly number[] }
+export interface SlabQuadTable { readonly vertexCount: number; readonly runs: readonly number[]; readonly skip?: readonly number[] }
 
 /** The geometry's slab side-table, or null when it has none or no longer indexes this vertex layout. */
 export function slabQuadTable(geometry: THREE.BufferGeometry): SlabQuadTable | null {
@@ -735,7 +737,7 @@ export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.Buf
   for (const geometry of flat) geometry.dispose();
   if (!merged) throw new Error('Unable to merge procedural vehicle geometry');
   // the parts' slab side-tables (SlabQuadTable), offset to where each part lands in the merge
-  const runs: number[] = [];
+  const runs: number[] = [], skip: number[] = [];
   let offset = 0;
   for (const part of flat) {
     const table = slabQuadTable(part);
@@ -745,9 +747,10 @@ export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.Buf
         if (runs.length && runs[runs.length - 2] + runs[runs.length - 1] === start) runs[runs.length - 1] += count;
         else runs.push(start, count);
       }
+      for (const group of table.skip ?? []) skip.push(group + offset);
     }
     offset += part.getAttribute('position')?.count ?? 0;
   }
-  if (runs.length) merged.userData.slabQuads = { vertexCount: offset, runs } satisfies SlabQuadTable;
+  if (runs.length) merged.userData.slabQuads = { vertexCount: offset, runs, ...(skip.length ? { skip } : {}) } satisfies SlabQuadTable;
   return merged;
 }
