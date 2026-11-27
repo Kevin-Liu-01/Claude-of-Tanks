@@ -7,7 +7,7 @@
  * the page sends them, so the replay collides with exactly what the battle did, without a fetch. The height field is
  * built here, from the map and the recording's mode (replaySetup.ts recordedTerrainVariant).
  */
-import { decodeReplay } from '../../sim/replayFormat.ts';
+import { decodeReplay, type ReplayRecording } from '../../sim/replayFormat.ts';
 import { createHeadlessCollisionWorld, type CollisionManifest } from '../../world/headlessCollisionWorld.ts';
 import { createHeightField } from '../../world/terrain.ts';
 import { worldBuildConfig } from '../../world/worldBuildConfig.ts';
@@ -34,15 +34,20 @@ declare const self: {
   postMessage(reply: ReplayIndexReply, transfer?: ArrayBuffer[]): void;
 };
 
+/** The world `recording` re-simulates on: its battle's collision records (the job's) over its map's field in its mode's
+ *  variant (replay-receipts-279: Frontline Assault's trenches; the manifest the page sends is that world's already). The
+ *  replay-trace parity receipt's planted Worker builds its world here too (tools/replay-trace-parity.planted-worker.ts). */
+export function replayIndexWorld(recording: ReplayRecording, job: Pick<ReplayIndexJob, 'manifest' | 'terrainSeed'>) {
+  const mapId = String(recording.header.setup.mapId);
+  const heightField = createHeightField(job.terrainSeed, worldBuildConfig(mapId, recordedTerrainVariant(recording.header)));
+  return withLayoutSpawnPoints(createHeadlessCollisionWorld({ mapId, heightField, manifest: job.manifest }));
+}
+
 /** The job, done: the reply to post and the buffers it hands over. */
 export async function runReplayIndexJob(job: ReplayIndexJob, post: (reply: ReplayIndexReply) => void): Promise<{ index: ReplayIndex; transfer: ArrayBuffer[] }> {
   const recording = decodeReplay(await unpackReplay(new Uint8Array(job.file)));
   await ensureReplayFleet(recording);
-  const mapId = String(recording.header.setup.mapId);
-  // the field the battle stepped on: its map in its mode's variant (replay-receipts-279: Frontline Assault's trenches; the
-  // manifest the page sends is that world's already)
-  const heightField = createHeightField(job.terrainSeed, worldBuildConfig(mapId, recordedTerrainVariant(recording.header)));
-  const world = withLayoutSpawnPoints(createHeadlessCollisionWorld({ mapId, heightField, manifest: job.manifest }));
+  const world = replayIndexWorld(recording, job);
   const index = indexReplay(recording, world as never, { onProgress: (tick, lastTick) => post({ type: 'progress', tick, lastTick }) });
   const track = index.track;
   return { index, transfer: track ? [track.data.buffer as ArrayBuffer, track.shellOffsets.buffer as ArrayBuffer, track.shellData.buffer as ArrayBuffer] : [] };

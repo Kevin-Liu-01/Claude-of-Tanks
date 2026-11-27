@@ -3593,6 +3593,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // replay-fixes-277: a battle played, left and watched from the Service Record, another ended and watched from its
     // end screen, each replay playing to its end (live 276: the indexer's Worker drew another roster and refused them)
     'tools/replay-ui-flow.browser.selftest.mjs',
+    // replay-receipts-279: the page's replay indexer Worker indexes a recording byte for byte as Node's does over the same
+    // job; a planted getter keyed wrongly in the page's world is named
+    'tools/replay-trace-parity.browser.selftest.mjs',
     // 2026-11-06 (crew-languages-270): the crew voice picker lists languages, and a real touch drag (wheel on desktop)
     // reaches and chooses its last row and an RTL row on a phone sheet
     'tools/crew-voice-picker.browser.selftest.mjs',
