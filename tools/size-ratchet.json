@@ -106,7 +106,7 @@
     "tools/capture-lock.mjs": {"start":1566},
     "tools/destruction-slab-check.mjs": {"start":1840},
     "tools/frame-budget-probe.mjs": {"start":1911},
-    "tools/marketing-shots/mode-battle-recipes.mjs": {"start":2515},
+    "tools/marketing-shots/mode-battle-recipes.mjs": {"start":2515,"bumps":[{"to":2516,"why":"media-blob-279-r3 merge (integ/279, per 279-MERGE-NOTES ratchet rule)"}]},
     "tools/media-r5/site50.mjs": {"start":1525},
     "tools/mode-aggression-harness.mjs": {"start":1779},
     "tools/mp-p2p-e2e.mjs": {"start":1659},

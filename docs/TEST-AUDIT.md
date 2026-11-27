@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1955 | 428.0 |
+| KEEP | 1958 | 428.0 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 681 | 1195.9 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2637 | 1624.2 | 276.1 |
-| After: the default tier | 1955 | 428.0 | 70.0 |
+| Before: every receipt (npm test without the tiers) | 2640 | 1624.3 | 276.1 |
+| After: the default tier | 1958 | 428.0 | 70.0 |
 
-Default tier: 26.3 % of the whole registry's CPU; 46.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.1 min pool, 18.6 min browser receipts.
+Default tier: 26.4 % of the whole registry's CPU; 46.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.1 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -830,7 +830,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/ai.watchResumeLevels.selftest.mjs` | 1.1 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 1.1 s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
 | `src/vehicles/fleetBattleBuilds.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: The battle fleet pass (roster-errors-279, 2026-11-26; manual `fleet` suite): every roster id built as a battle | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1955)
+## KEEP (1958)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1011,9 +1011,9 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/m41.selftest.mjs` | 21 | KEEP | vehicle rule, 21 s: 265: the M41 family on its supplied print's datums, each mark's kit and tree | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankIdAliases.selftest.mjs` | 21 | KEEP | the versioned tank id alias layer (id boundary) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/chain-lifecycle.selftest.mjs` | 21 | KEEP | tool contract, 21 s: 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child g | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/changed-only/catalog-keys.selftest.mjs` | 21 | KEEP | test, gate or release tooling, 21 s: 279: every locale's string catalog is one by its name: an edit of the strings no generator draws moves no key | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/late-fx-matrix.browser.selftest.mjs` | 21 | KEEP | GPU regression, 21 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/track-texture-source.browser.selftest.mjs` | 21 | KEEP | GPU regression, 21 s | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/changed-only/catalog-keys.selftest.mjs` | 21 | KEEP | test, gate or release tooling, 21 s: 279: every locale's string catalog is one by its name: an edit of the strings no generator draws moves no key | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/crewProcedure.selftest.mjs` | 20 | KEEP | audio contract, 20 s: round 8 Y3 (the 269 crew procedure's machines): the crew's battle and life on the engine's edges (the pause si | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleSides.selftest.mjs` | 20 | KEEP | game flow, 20 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/killcamReplayLifecycle.selftest.mjs` | 20 | KEEP | game flow, 20 s: 2026-11-02 audit A9 (round 3): a replay that throws while built, in onDone or in a restore still clears its fl | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1664,6 +1664,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/build-loop-census.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: build-loop-yield-277: every Node loop that builds tank after tank or world after world awaits betweenBuilds() | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/starvation-meter.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: 267: the soak's starvation meter on driven clocks | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/blob-media-cutover.selftest.mjs` | 1.1 | KEEP | tool contract, 1.1 s: media-blob-279: all the big media is on Vercel Blob and only there: no big file in public/media, every row ref | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/app/mainFlowPorts.selftest.mjs` | 1.1 | KEEP | site, manual or app contract, 1.1 s: 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/armorLivePen.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: 274 (the owner: "update on enemy tanks when we're scoped on them based on their actual penetrability ... same | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/couchCamera.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: couch-mode-268: the shared camera frames every seat | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2764,6 +2765,8 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/probe-sample-clock.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: tree-breakdown-277: every frame-budget sample keeps its clock and the machine's thermal state at each end | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/terrain-texture-tiers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs); b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/timing-gate.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 277: heavy work outside the lock waits while a timing hold runs (prebuild, test:lane's tanks tier, tank:regen: | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/blob-media.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: docs-refresh-279: the site's large media lives on Vercel Blob: the manifest, no media bytes in the repository, | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/docs/featureVideos.selftest.mjs` | 0.0 | KEEP | site, manual or app contract, 0.0 s: docs-refresh-279: the index's feature videos, from the Blob manifest, loading nothing before play | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/gpuResetReport.selftest.mjs` | 0.0 | KEEP | renderer contract, 0.0 s: mobile-gpu-reset-277: one field record per graphics reset (stage, preset, tier, mode, whether it came back) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/aircraftFxPort.selftest.mjs` | 0.0 | KEEP | effects contract, 0.0 s: aircraft-hit-fire-278: an aircraft in flight is drawn a one-shot burst, never a hull's burning column left in | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/armourOverlayDefault.selftest.mjs` | 0.0 | KEEP | game flow, 0.0 s: 273: armour colours on for everyone, once, and the one-time tip (Kevin 2026-11-12) | default tier (npm test, the release gate; lane mode by its closure) |
