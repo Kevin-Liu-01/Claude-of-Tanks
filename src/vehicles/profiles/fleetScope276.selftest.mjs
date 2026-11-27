@@ -50,6 +50,11 @@ const MOVED_ON_PURPOSE = Object.freeze({
   // (split) are named above already.
   ...Object.fromEntries(['t90a_burlak_proto', 'm6_linebacker', 'object148_proto', 'amx40_proto', 'mbt70', 'chieftain_mk10',
     'm48_super'].map((id) => [id, 'turret-foot-seat-279: the seat\'s foot fit closes the slots under the lip [armor, build, anatomy]'])),
+  // fleet-debt-279 8a03d75d8e (Main 2026-11-27, ruling (a) on the t90-endwrap fix-back): the T-90SM X build's raised outer
+  // road wheels (front +59.5 mm, rear +16.9 mm) keep their track wrapped at the seated radius with a tangent lay-in, and
+  // the hull rides the support span past them; kinds measured by integ-279 fleetScope276 on 1be6e141e9
+  ...Object.fromEntries(['t90am', 't90sm', 't90sm_2013'].map((id) => [id,
+    'fleet-debt-279 8a03d75d8e: the raised outer road wheels wrap their track at the seated radius and carry the hull (support span) [armor, build, anatomy]'])),
 });
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);

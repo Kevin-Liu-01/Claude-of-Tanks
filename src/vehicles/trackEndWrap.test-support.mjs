@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, runningGearBands } from '../../tools/track-end-wrap.mjs';
+import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, runningGearBands, outerWheelLiftM } from '../../tools/track-end-wrap.mjs';
 
 // Fleet end-wrap receipt (owner 2026-09-21: the TOS-1A "tracks have the improper wrapping issue around the front road
 // wheel and back road wheel. research why this happens then have a check for this for all tanks").
@@ -14,7 +14,7 @@ const EXEMPT_STATUSES = new Set(['ok', 'ground-level']);
 export function createTrackEndWrapAudit() {
   const statuses = {};
   const failures = [];
-  let measured = 0, worstCut = 0, worstDeviation = 0, staggeredEnds = 0;
+  let measured = 0, worstCut = 0, worstDeviation = 0, staggeredEnds = 0, raisedEnds = 0;
   function check(id, tank) {
     const rows = endWrapRows(tank.root);
     assert.ok(rows.length >= 4, `${id}: both sides of a running-gear unit were measured (${rows.length} rows)`);
@@ -29,6 +29,35 @@ export function createTrackEndWrapAudit() {
       const flags = endWrapFlags(row);
       if (flags.length) failures.push(`${label}: ${flags.join(',')} — band centreline ${row.cutMm} mm from its seat, ${row.deviationMm} mm off the tangent wrap at ${JSON.stringify(row.worstAt)} (station offset ${row.offsetMm} mm)`);
       if (Math.abs(row.offsetMm) >= 30) staggeredEnds++;
+    }
+    // an outer wheel raised over the common seat (the T-90SM X build's authored wheelYs) is read at the seated wheels'
+    // reach about its own axle; the band fleet-debt-278 drew there reached under the tire to the ground run (59.5 mm
+    // daylight front, 16.9 mm rear: trackGlitchSimulation t90am 61.7 mm) and the axle-to-ground seat passed it. Negative
+    // control: this side's drawn band pushed out radially by the lift, below the axle and beyond it, must be flagged.
+    for (const { receipt, bands } of runningGearBands(tank.root)) {
+      const { wheelZs, wheelYs } = receipt;
+      for (const end of ['front', 'rear']) {
+        const liftM = outerWheelLiftM(receipt, end);
+        if (!(liftM > 0)) continue;
+        const idx = end === 'front' ? wheelZs.indexOf(Math.max(...wheelZs)) : wheelZs.indexOf(Math.min(...wheelZs));
+        for (const side of [-1, 1]) {
+          if (!bands[side]) continue;
+          const cells = bandCentrelineCells(bands[side]);
+          const own = measureEndWrap(receipt, cells, side, end);
+          if (own.status !== 'ok') continue;
+          raisedEnds++;
+          const axleZ = ((side < 0 ? receipt.wheelZsLeftM : receipt.wheelZsRightM) ?? wheelZs)[idx], axleY = wheelYs[idx];
+          const reachDown = cells.map(([z, y]) => {
+            if ((end === 'front' ? z < axleZ : z > axleZ) || y >= axleY) return [z, y];
+            const rho = Math.hypot(z - axleZ, y - axleY), k = (rho + liftM) / rho;
+            return [axleZ + (z - axleZ) * k, axleY + (y - axleY) * k];
+          });
+          const wrong = measureEndWrap(receipt, reachDown, side, end);
+          if (!(wrong.status === 'ok' && endWrapFlags(wrong).length)) {
+            failures.push(`${id} ${side < 0 ? 'L' : 'R'} ${end}: negative control — the check must flag a band hung ${(liftM * 1000).toFixed(1)} mm below the raised outer tire (${JSON.stringify(wrong)})`);
+          }
+        }
+      }
     }
     if (STAGGERED.includes(id)) {
       // the staggered rigs are the reason this receipt exists: their bands must be wrapped about their OWN wheels, and
@@ -54,8 +83,9 @@ export function createTrackEndWrapAudit() {
   function finish() {
     assert.ok(measured >= 700, `the fleet exposes its end wraps (${measured} measured ends)`);
     assert.ok(staggeredEnds >= 12, `the staggered-station rigs took part with their own stations (${staggeredEnds} ends offset ≥ 30 mm)`);
+    assert.ok(raisedEnds >= 12, `the raised-outer-wheel builds took part with their lift (${raisedEnds} ends; the T-90SM X build: 3 ids × 2 sides × 2 ends)`);
     assert.deepEqual(failures, [], `end-wrap failures:\n  ${failures.join('\n  ')}`);
-    return { measured, worstCut, worstDeviation, staggeredEnds, statuses };
+    return { measured, worstCut, worstDeviation, staggeredEnds, raisedEnds, statuses };
   }
   return { check, finish };
 }
