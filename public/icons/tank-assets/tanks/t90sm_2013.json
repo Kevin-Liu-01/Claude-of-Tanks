@@ -4268,17 +4268,17 @@
       }
     ]
   },
-  "geometryHash": "376f6fdf",
+  "geometryHash": "cdda5970",
   "metadataHash": "b18f8feb",
   "presentationAnchor": {
     "xM": 0.0008,
-    "zM": -0.1583
+    "zM": -0.1612
   },
-  "presentationHash": "b59bae1f",
+  "presentationHash": "90cb1842",
   "presentationProjection": {
     "centerYM": 1.6537,
-    "topHalfM": 8.0787,
-    "sideHalfM": 4.0394
+    "topHalfM": 8.0818,
+    "sideHalfM": 4.0409
   },
   "appearance": {
     "version": 1,
@@ -4327,15 +4327,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29512,
-      "sha256": "872e80e03e35d7e134279cf455f92584950c4d2e04807a669680a446425396ac",
+      "bytes": 29546,
+      "sha256": "e735e77f92c0bbc824208412d215734b658dc71178241adcf4d27016a6d210d7",
       "thumbnail": {
         "file": "thumbs/t90sm_2013_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11544,
-        "sha256": "4fa2923aa4fbfcac5ff73a5daf0f3726732484aed0979c3b3e50e3a5ab1590ae"
+        "bytes": 11552,
+        "sha256": "bca48f708398a7f9d08675049dad77ccb3cc9389d138849ded1cb8ee30f33166"
       }
     },
     "top": {
@@ -4343,56 +4343,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12770,
-      "sha256": "cbfec29c1d5bbab7aac58490297096a2a014a7429a518807d5339b9467f2cb06"
+      "bytes": 12760,
+      "sha256": "6652164f840f9ceaf18098d9d67ce9cb2b66ad571500066216c71163f050a29e"
     },
     "side": {
       "file": "t90sm_2013_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10444,
-      "sha256": "f63fc6269e2bd2fb9b3843f6572e51b3d905aabd26b90cb5643b0ea13e567006"
+      "bytes": 10432,
+      "sha256": "2ec5b38b306624295a05282f095cfc05107639b118be509bd74dec7254a6ad49"
     },
     "topSilhouette": {
       "file": "t90sm_2013_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1299,
-      "sha256": "bab28060dd1b882924f5abef5a04e2f631d1a19ebae8fa2b59324e6c1173dffb"
+      "bytes": 1286,
+      "sha256": "3e6bd66244ee2dbba3b4a37d1413affc6d5ec7186053c9996682450d835e0c42"
     },
     "sideSilhouette": {
       "file": "t90sm_2013_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4151,
-      "sha256": "f0d73c36436c762449d50994b15ad2cfb1351c45c74dc9605073bc94afe747df"
+      "bytes": 4153,
+      "sha256": "b0d7b97ebc4cbed6ba42e410848a2a28abcc0fd6db77fdda68392ddd0bcd63b5"
     },
     "armorSide": {
       "file": "t90sm_2013_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27018,
-      "sha256": "9bb901ff65515843da255cabd48ec8c58e2076f3ab68eedcf5f717fa6d29923b"
+      "bytes": 26974,
+      "sha256": "c40d6bf9dafb04e745eb770b4a17f779945e5c733daf2cb8b96e325f954c408e"
     },
     "modulesSide": {
       "file": "t90sm_2013_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24176,
-      "sha256": "8550e4cc05ef194f484f7670a0006f6f6196ff79fcba20a8268091613fb61c5f"
+      "bytes": 24052,
+      "sha256": "95b150ca6d4239e08ece115a8ceddd39475ecb3e86a4ad578aa94a246177e730"
     },
     "crewSide": {
       "file": "t90sm_2013_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22834,
-      "sha256": "4d110644d579e792d1816d14cf7ea88fd92130d3568d2ba512824bca3ae5ece5"
+      "bytes": 22750,
+      "sha256": "0baef36017f395e08e617d8e0e6d150fcd13a8e6aa0af49a4b85bfbf649c004e"
     },
     "markings": {
       "file": "t90sm_2013_markings.png",
@@ -4405,8 +4405,8 @@
     "technicalLabels": {
       "file": "t90sm_2013_technical.json",
       "mime": "application/json",
-      "bytes": 4936,
-      "sha256": "efc6b77ff19813728d7c7d0d6ba55c2a065f7243d9f388ad1cf78efedcb62679"
+      "bytes": 4940,
+      "sha256": "a45d953911ffc21d96d8227e9dd687d3fa4abb0f007764c4be1d8271ca96c9cd"
     }
   }
 }

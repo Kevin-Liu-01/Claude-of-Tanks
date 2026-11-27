@@ -269,15 +269,30 @@ function engineDeck(P: TankBuilderPort,y: number,rear: number,width: number): vo
   P.addEquipment('hullDetail',box(1.52,.08,.30),0,y+.04,rear+1.38);
 }
 
-function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,driverY=modern?1.54:1.50,driverZ=1.81,sourceM=false,finalBowStrip=true): void {
+/** A glacis headlight's seat in the builder frame: its housing's axis at (±x, y, z), and the hull plate under it,
+ * plateY at z, falling `fall` metres per metre forward. The bracket stands on that plate from 45 mm behind z to
+ * `footFront` ahead of it. */
+type GlacisLamp = readonly [x: number, y: number, z: number, plateY: number, fall: number, footFront?: number];
+
+function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,lamp: GlacisLamp,driverY=modern?1.54:1.50,driverZ=1.81,sourceM=false,finalBowStrip=true): void {
+  // 273 (lamps lane; photographs in docs/references/tanks/t90-family.md "Front lights"): every T-90 carries one lamp a
+  // side on the upper glacis near its corner, in a guard, standing on the glacis. The cluster hung at the nose's top
+  // edge on every build (65-340 mm of air under it; the SM's 420 mm ahead of its Relikt cover). Each build now seats it
+  // where its glacis carries it: the housing's rear rim rests on the top stock and a bracket under it runs down to the
+  // hull plate, through the Relikt cover where there is one, so it still stands when the cover is spent.
+  const [lx,ly,lz,plateY,fall,footFront=.045]=lamp;
+  const plate=(at: number): number => plateY-fall*(at-lz)-.002;
   for(const side of [-1,1]) {
-    // 2026-10-19 (owner float sweep): the headlight cluster stood 96 mm off the glacis; it is seated on it.
     P.snapGroup('t90-headlight',()=>{
-      P.addEquipment('hullDark',cylZ(.09,.10,14),side*.85,y,z);
-      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*.85,y,z+.057);
-      P.addEquipment('hullDetail',box(.27,.028,.28),side*.85,y+.115,z-.018,-.12);
+      P.addEquipment('hullDark',cylZ(.09,.10,14),side*lx,ly,lz);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*lx,ly,lz+.057);
+      P.addEquipment('hullDetail',box(.27,.028,.28),side*lx,ly+.115,lz-.018,-.12);
       // the guard's posts stand on the housing's face (they stood 24 mm clear of it, outside its rim)
-      for(const dx of [-.07,.07])P.addEquipment('hullDetail',cylY(.013,.16,8),side*.85+dx,y+.034,z+.06);
+      for(const dx of [-.07,.07])P.addEquipment('hullDetail',cylY(.013,.16,8),side*lx+dx,ly+.034,lz+.06);
+      // the bracket: 90 mm wide, from 2 mm into the plate to 13 mm up into the housing's underside
+      const x0=side*lx-.045,x1=side*lx+.045,top=ly-.077;
+      P.addEquipment('hullDetail',sectionSolid([lz-.045,lz+footFront].map((at): SolidSection =>
+        ({z:at,ring:[[x0,plate(at)],[x1,plate(at)],[x1,top],[x0,top]]}))));
     },{reachM:.12});
     // the tow hook and its block are seated on the nose (on the SM they stood 128 mm ahead of it)
     P.snapGroup('t90-tow-hook',()=>{
@@ -1761,7 +1776,7 @@ function buildT90AX(P: TankBuilderPort): void {
   classicSkirts(P,'kontakt5-source-a',1.312,-3.28,3.24);
   addT90AXFenderClosures(P);
   engineDeck(P,1.465,-3.36,1.91);aDrums(P);
-  bowGear(P,1.092,3.207,false,1.49);aGlacis(P);  // (release 240: the driver's station 1 cm lower, its periscopes under the turret's front corners)
+  bowGear(P,1.092,3.207,false,[.90,1.0657,3.18,.9529,.4556],1.49);aGlacis(P);  // (release 240: the driver's station 1 cm lower, its periscopes under the turret's front corners)
   P.add('turret',turretSolid(A,[
     [-1.456,.105,2.088,1.522],[-1.10,.82,2.149,1.521],[-.58,1.028,2.205,1.519],
     [.05,1.286,2.154,1.515],[.515,1.476,2.096,1.513],[.84,1.23,2.056,1.512],
@@ -1805,7 +1820,10 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
   // and out over the hull's rear ledge (x 1.15), closing the notch the stern corner leaves open between the deck and
   // that ledge (x 1.04-1.11, z -3.24 to -3.40, open to the ground in plan).
   for(const side of [-1,1])P.addEquipment('hullDetail',stowagePart(box(.98,.025,.355)),side*.68,1.278,-3.3975); // stowage (267)
-  bowGear(P,1.174,3.27,false,1.460);vGlacis(P);
+  // 279: the bracket's foot runs to 10 mm ahead of the housing's axis (z 3.264), still on the nose ledge (flat at
+  // y 1.04 to z 3.265, then the chamfer), so the housing's rear half stands on it (it stopped 4 mm behind the axis and
+  // light passed under the housing 65 mm behind the aperture, here and on the 2006, which builds on this X)
+  bowGear(P,1.174,3.27,false,[.80,1.1337,3.254,1.04,.075,.010],1.460);vGlacis(P);
   P.add('turret',turretSolid(V,[
     [-1.218,.12,2.055,1.884],[-1.04,.73,2.174,1.528],[-.55,.914,2.249,1.528],
     [-.37,1.04,2.2595,1.528],[.12,1.254,2.227,1.528],[.53,1.450,2.176,1.528],
@@ -1841,7 +1859,7 @@ function buildT90MX(P: TankBuilderPort): void {
   addT90MFenders(P);
   modernSkirts(P,1.335);
   addT90MEngineDeck(P);addT90MRearDrums(P);
-  bowGear(P,1.115,3.31,true,1.345,1.64,true);mGlacis(P);
+  bowGear(P,1.115,3.31,true,[.87,1.0624,3.31,.8328,.3564],1.345,1.64,true);mGlacis(P);
   P.addEquipment('hullDetail',box(2.07,.028,.87),0,1.354,-1.694);
   // The external chin seats at 1.37 m. The separate source-visible internal
   // rotating neck extends down into the tub; it is not a hull body filler.
@@ -1884,7 +1902,7 @@ function buildT90SMX(P: TankBuilderPort): void {
     trackShoeDimensions:{padHeight:.036,grouserHeight:.0135,webHeight:.018,hornHeight:.0853,pinRadius:.012,pinCentreY:-.004}});
   sourceWheelFaces(P,.3981,.179,1.05575);
   smFendersAndSkirts(P);
-  addT90SMEngineDeck(P);bowGear(P,1.068,3.46,true,1.54,1.81,false,false);addT90SMFrontEra(P);
+  addT90SMEngineDeck(P);bowGear(P,1.068,3.46,true,[.85,1.0566,3.42,.8950,.4053,.005],1.54,1.81,false,false);addT90SMFrontEra(P);
   buildT90SMXTurret(P);
 }
 

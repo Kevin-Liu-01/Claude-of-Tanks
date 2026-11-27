@@ -264,6 +264,37 @@ function assertM1A3RoadBeams(root, label) {
   root.matrix.copy(savedMatrix); root.matrixAutoUpdate = savedAuto; root.updateMatrixWorld(true);
 }
 
+// 273/279 (t90am lamps; Main's ruling 2026-11-26): every physical lamp's housing is carried by the hull. At each
+// station under the rear half of its housing (65 and 95 mm behind the aperture) either the structural hull already
+// stands behind the lens nearer than the station (a pod on the bow's face: the M1E3's 38 mm, the MBT-70's 8 mm), or
+// the housing stands on the plate below it: a level ray 2 mm above the hull plate, from either side, meets stock other
+// than armour bricks before it reaches the housing's axis. The hull, not its Relikt or K-5 cover: the cover is spent in
+// battle, and a lamp seated on it (or a bracket that stops in it) then hangs. The 266-277 T-90 lamps hung 65-420 mm clear of
+// the bow with the hull 311-871 mm behind them and let it through; 2 mm (not 4) so a housing lifted 5 mm off a bracket
+// sunk 2 mm into the plate fails too. The plate is found from the housing's axis down, never from above (an overhang
+// over the lamp is not what it stands on).
+function assertLampStandsOnHull(root, point, direction, label) {
+  const meshes = [];
+  root.traverseVisible(mesh => { if (mesh.isMesh && !mesh.userData.shadowOnly && mesh.name !== 'hullExternalArmor') meshes.push(mesh); });
+  const base = [root.getObjectByName('hull')].filter(Boolean);
+  const up = new THREE.Vector3(0, 1, 0).transformDirection(root.matrixWorld);
+  const across = new THREE.Vector3().crossVectors(direction, up).normalize();
+  const wall = new THREE.Raycaster(point, direction.clone().negate(), 0, .095).intersectObjects(base, false)[0];
+  for (const behind of [.065, .095]) {
+    if (wall && wall.distance <= behind) continue;
+    const under = point.clone().addScaledVector(direction, -behind);
+    const glacis = new THREE.Raycaster(under, up.clone().negate(), 0, .6).intersectObjects(base, false)[0];
+    assert.ok(glacis, `${label}: the hull lies under the lamp ${behind * 1000} mm behind its aperture`);
+    const level = glacis.point.clone().addScaledVector(up, .002);
+    for (const sign of [-1, 1]) {
+      const hit = new THREE.Raycaster(level.clone().addScaledVector(across, sign * .2), across.clone().multiplyScalar(-sign), 0, .2)
+        .intersectObjects(meshes, false)[0];
+      assert.ok(hit && hit.distance < .18,
+        `${label}: no light passes under the lamp ${behind * 1000} mm behind its aperture (${hit ? hit.object.name + ' at ' + hit.distance.toFixed(3) + ' m' : 'clear through'})`);
+    }
+  }
+}
+
 // Opt-in CPU integration oracle. --baseline=<ref> loads edited vehicle sources
 // from that known revision, making geometry/draw-order parity visible
 // without maintaining duplicate builders or requiring a native renderer.
@@ -327,7 +358,11 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     'chieftain5', 't90', 't90a_burlak', 't90ms_tagil',
   ]);
   const requestedIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',');
-  const physicalIds = ['m1a3', 'mbt70', 't90am', 't90m_proryv'];
+  // 279: every T-90 that carries the X builds' glacis lamp (profiles/t90X.ts bowGear), so a floating seat on any of
+  // them is caught (t90a_vladimir and t90a_2006 floated under the 273 receipt, which covered only the two AMs)
+  const t90GlacisLampIds = ['t90a', 't90a_2004', 't90a_burlak_proto', 't90a_vladimir', 't90a_2006', 't90m', 't90m_proryv',
+    'bmpt_t90', 't90sm', 't90sm_2013', 't90am'];
+  const physicalIds = ['m1a3', 'mbt70', ...t90GlacisLampIds];
   const allIds = process.argv.includes('--all') ? (await import('./specs.ts')).DEVELOPMENT_TANK_IDS : null;
   const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
@@ -389,20 +424,24 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
             assert.equal(ray.intersectObject(hull, false).length, 0,
               `${id}/${quality} actual emitting aperture is not buried behind the rebuilt bow`);
             if(physicalIds.includes(id)){
-              // m1e3-264: the M1E3 carries the M1 family's bow-lamp pods (a pod box and bezel in the detail buckets),
-              // so its lens is held by that pod stock, not by the structural hull 38 mm behind it
-              const stock=id==='m1a3'?['hull','hullDetail','hullDark'].map(n=>visual.root.getObjectByName(n)).filter(Boolean):[hull];
+              // 279 (Main's ruling 2026-11-26), one rule for every physical id, no per-id stock list: (1) the lens is
+              // held by the vehicle's own stock within 25 mm behind it (its housing or pod: hull, hullDetail or
+              // hullDark), and (2) that housing stands on the hull (assertLampStandsOnHull). A lamp on a bracket can
+              // never put the structural hull 25 mm behind its lens (the T-90 lenses meet their housing at 14-15 mm
+              // and the hull 311-871 mm back; docs/references/tanks/t90-family.md "Front lights"), so (1) alone
+              // passed a floating pod and (2) is what holds it down. (m1e3-264's M1E3 pods were the first case.)
+              const stock=['hull','hullDetail','hullDark'].map(n=>visual.root.getObjectByName(n)).filter(Boolean);
               const support=new THREE.Raycaster(point,direction.clone().negate(),0,.025).intersectObjects(stock,false)[0];
               assert.ok(support&&support.distance>.005,
-                `${id}/${quality} original pod remains connected to nearby hull stock behind its exposed lens`);
+                `${id}/${quality} lens is held by its own housing stock within 25 mm behind it`);
+              assertLampStandsOnHull(visual.root,point,direction,`${id}/${quality}`);
             }
             checked++;
           }
         });
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
-        if (physicalIds.includes(id)) assert.equal(checked, tankSeedId(id).startsWith('t90') ? 4 : 2,
-          `${id}/${quality} restores only the existing lamp apertures`);
-        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,tankSeedId(id).startsWith('t90')?120:72);
+        if (physicalIds.includes(id)) assert.equal(checked, 2, `${id}/${quality} restores only the existing lamp apertures`);
+        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,t90GlacisLampIds.includes(id)?96:72);
       }
     }
     const hull = visual.root.getObjectByName('hull'), hullHash = createHash('sha256');
