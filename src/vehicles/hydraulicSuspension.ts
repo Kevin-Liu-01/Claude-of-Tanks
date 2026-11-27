@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { cylX, cylZ, mergeAll, xform } from './factoryGeometry.ts';
+import { hypot2 } from './scalarHypot.ts';
 import type { HydraulicUnitKind } from './suspensionPatterns.ts';
 
 type Side = -1 | 1;
@@ -106,13 +107,6 @@ const _X = new THREE.Vector3(1, 0, 0);
 const LEFT_TURN = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
 const HALF_TURN_X = new THREE.Quaternion().setFromAxisAngle(_X, Math.PI);
 
-/** The quaternion that points a part's +z along (dy, dz) in the hull's y-z plane, outboard +x on its own side. */
-function pointAlong(side: Side, dy: number, dz: number, target: THREE.Quaternion): THREE.Quaternion {
-  target.setFromAxisAngle(_X, Math.atan2(-dy, dz));
-  if (side < 0) target.multiply(LEFT_TURN);
-  return target;
-}
-
 /** The left side's turn for a part already placed by a rotation about x (the fleet arm and its bosses). */
 export function turnForSide(side: Side, q: THREE.Quaternion): THREE.Quaternion {
   return side < 0 ? q.multiply(LEFT_TURN) : q;
@@ -148,15 +142,19 @@ const HYDROGAS_REAR = -0.14;
 const HYDROGAS_FRONT = 0.9;
 
 /** Arm unit vector (pivot to axle) and the lug's perpendicular, which points up and aft on a leading-pivot arm. */
-function armFrame(link: HydraulicArmLink) {
+interface ArmFrame { axleY: number; length: number; uy: number; uz: number; ny: number; nz: number }
+/** The per-frame arm frame updateHydraulicUnits reuses (gear-alloc-279: no record per station per frame). */
+const _armFrame: ArmFrame = { axleY: 0, length: 0, uy: 0, uz: 0, ny: 0, nz: 0 };
+function armFrame(link: HydraulicArmLink, out: ArmFrame = { axleY: 0, length: 0, uy: 0, uz: 0, ny: 0, nz: 0 }): ArmFrame {
   const axleY = link.wheel.y + (link.wheel.off || 0);
   const dy = axleY - link.anchorY;
   const dz = link.wheel.z - link.anchorZ;
-  const length = Math.max(Math.hypot(dy, dz), 1e-6);
+  const length = Math.max(hypot2(dy, dz), 1e-6);
   const uy = dy / length, uz = dz / length;
   // (-uz, uy) is the perpendicular whose y component is positive whenever the pivot leads the axle
   const sign = -uz >= 0 ? 1 : -1;
-  return { axleY, length, uy, uz, ny: -uz * sign, nz: uy * sign };
+  out.axleY = axleY; out.length = length; out.uy = uy; out.uz = uz; out.ny = -uz * sign; out.nz = uy * sign;
+  return out;
 }
 
 function strutGeometries(p: ReturnType<typeof unitProportions>, bodyLength: number, rodLength: number,
@@ -398,9 +396,12 @@ export function updateHydraulicUnits(rig: HydraulicUnitRig): void {
       bodyIM.setMatrixAt(i, _m);
       continue;
     }
-    const frame = armFrame(link);
+    const frame = armFrame(link, _armFrame);
     if (kind === 'in-arm') {
-      pointAlong(side, frame.uy, frame.uz, _q);
+      // the quaternion that points a part's +z along (dy, dz) in the hull's y-z plane, outboard +x on its own side; written
+      // out at each use, since a helper taking (dy, dz) boxed both numbers per call (gear-alloc-279)
+      _q.setFromAxisAngle(_X, Math.atan2(-frame.uy, frame.uz));
+      if (side < 0) _q.multiply(LEFT_TURN);
       _v.set(station.x, link.anchorY, link.anchorZ);
       _m.compose(_v, _q, _s);
       bodyIM.setMatrixAt(i, _m);
@@ -410,13 +411,15 @@ export function updateHydraulicUnits(rig: HydraulicUnitRig): void {
     const lugY = link.anchorY + frame.uy * frame.length * rig.lugT + frame.ny * lift;
     const lugZ = link.anchorZ + frame.uz * frame.length * rig.lugT + frame.nz * lift;
     const dy = lugY - station.mountY, dz = lugZ - station.mountZ;
-    pointAlong(side, dy, dz, _q);
+    _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
+    if (side < 0) _q.multiply(LEFT_TURN);
     _v.set(station.x, station.mountY, station.mountZ);
     _m.compose(_v, _q, _s);
     bodyIM.setMatrixAt(i, _m);
-    pointAlong(side, -dy, -dz, _q);
+    _q.setFromAxisAngle(_X, Math.atan2(-(-dy), -dz));
+    if (side < 0) _q.multiply(LEFT_TURN);
     _v.set(station.x, lugY, lugZ);
-    _rodScale.z = Math.max(0.2, (Math.hypot(dy, dz) - rig.headReach) / rig.rodNominal);
+    _rodScale.z = Math.max(0.2, (hypot2(dy, dz) - rig.headReach) / rig.rodNominal);
     _m.compose(_v, _q, _rodScale);
     rodIM!.setMatrixAt(i, _m);
   }

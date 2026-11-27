@@ -530,6 +530,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/loadedTrackContact.selftest.mjs',
     // 229 perf: the allocation-free hypot the per-frame track paths use equals Math.hypot bit for bit
     'src/vehicles/scalarHypot.selftest.mjs',
+    // gear-alloc-279: the running gear's per-frame conform + update allocates nothing of its own (a 4-unit rig in a fresh
+    // process; the budget is the ground sampler's scalar call contract) and the bench's option contract
+    'tools/gear-frame-bench.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
     'src/vehicles/trackRollerSag.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
