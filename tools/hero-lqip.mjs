@@ -12,19 +12,21 @@
 // there, so topics.selftest (the prerender's check) and landing-media.selftest (home-premiere's) fail until
 //   node tools/hero-lqip.mjs --write     re-encodes them (cwebp; only this step needs it)
 //   node tools/hero-lqip.mjs             checks the table against the sources and the pages' pictures
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaDigest, mediaSource } from './media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TABLE = join(ROOT, 'src/docs/heroLqip.json');
 const WIDTH = 32;
 const MAX_BYTES = 1024; // responsivePicture.ts LQIP_MAX_BYTES: the data URI's payload
 
-const sha = (path) => createHash('sha256').update(readFileSync(join(ROOT, 'public', path))).digest('hex');
+// A picture's identity is media-files' (media-blob-279): its SHA-256 hashed from public/, or the Blob manifest's row for a
+// path item (the bytes tools/blob-media.mjs staged and uploaded), so a picture that moved to Blob keeps its preview.
+const sha = (path) => mediaDigest(path).sha256;
 
 /** The preview (a data URI) for a public picture path, checked against its source; throws when missing or stale. */
 export function heroLqip(path, table = JSON.parse(readFileSync(TABLE, 'utf8'))) {
@@ -59,7 +61,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const next = {};
     for (const path of wanted) {
       const out = join(scratch, 'lqip.webp');
-      execFileSync('cwebp', ['-quiet', '-resize', String(WIDTH), '0', '-q', '75', '-m', '6', '-metadata', 'none', join(ROOT, 'public', path), '-o', out]);
+      execFileSync('cwebp', ['-quiet', '-resize', String(WIDTH), '0', '-q', '75', '-m', '6', '-metadata', 'none', mediaSource(path), '-o', out]);
       const bytes = readFileSync(out);
       if (bytes.length > MAX_BYTES) throw new Error(`hero-lqip: ${path}'s preview is ${bytes.length} B (over ${MAX_BYTES})`);
       next[path] = { sha256: sha(path), lqip: `data:image/webp;base64,${bytes.toString('base64')}` };

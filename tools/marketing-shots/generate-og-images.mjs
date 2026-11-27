@@ -22,6 +22,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { filterPublishedImage, masterFilter } from '../media-r5/master-filter.mjs';
+import { mediaSource } from '../media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const OG_DIR = 'public/brand/og-r2';
@@ -79,13 +80,15 @@ const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').r
 const asDataUrl = (path, mime) => `data:${mime};base64,${readFileSync(path).toString('base64')}`;
 const MIME = { webp: 'image/webp', jpg: 'image/jpeg', png: 'image/png' };
 
-/** A source as a data URL: a still as it is, a clip's frame (`<clip>.mp4#t=<s>`) through ffmpeg. */
+/** A source as a data URL: a still as it is, a clip's frame (`<clip>.mp4#t=<s>`) through ffmpeg. Its bytes come from
+ *  public/, or for big media on Blob from the staging folder (tools/media-files.mjs mediaSource). */
 export function sourceDataUrl(source) {
-  const [file, at] = source.split('#t=');
-  if (!at) return asDataUrl(join(ROOT, file), MIME[file.split('.').pop()]);
+  const [path, at] = source.split('#t=');
+  const file = mediaSource(`/${path.replace(/^public\//, '')}`);
+  if (!at) return asDataUrl(file, MIME[path.split('.').pop()]);
   const dir = mkdtempSync(join(tmpdir(), 'og-frame-'));
   try {
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', at, '-i', join(ROOT, file), '-frames:v', '1', join(dir, 'frame.png')]);
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', at, '-i', file, '-frames:v', '1', join(dir, 'frame.png')]);
     return asDataUrl(join(dir, 'frame.png'), 'image/png');
   } finally {
     rmSync(dir, { recursive: true, force: true });

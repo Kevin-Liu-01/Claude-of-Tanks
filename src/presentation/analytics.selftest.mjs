@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
+import { blobOrigin } from '../../tools/media-files.mjs';
 
 const entrypoints = [
   'site/home.html',
@@ -46,13 +47,32 @@ assert.match(analyticsSource, /requestIdleCallback/,
 assert.match(analyticsSource, /VITE_SELF_HOSTED\s*===\s*['"]1['"]/,
   'self-hosted builds can compile out hosted telemetry');
 
+// An automatic subresource from another origin. The site's own media store is the one allowed (media-blob-279, Main's
+// ruling at integ 279): a film with no /media/ path (an id item of src/presentation/blobMedia.json, the manual's feature
+// videos) is named by its Blob URL.
+const externalSubresources = (html) => [...html.matchAll(/<(?:script|img|audio|video|source)\b[^>]*\bsrc=["'](https?:\/\/[^"']+)/gi)]
+  .map(([, url]) => url).filter((url) => new URL(url).origin !== blobOrigin());
+assert.deepEqual(externalSubresources(`<source src="${blobOrigin()}/media/a-0123456789abcdef.mp4">`), [], 'the Blob store is the site\'s own');
+// the store's origin is read from src/presentation/blobMedia.json (tools/media-files.mjs blobOrigin), never written here
+assert.match(blobOrigin() ?? '', /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com$/, 'the manifest names one public Blob store');
+// planted: a second origin, another public Blob store included, fails by its URL
+const otherStore = 'https://zz0000000000000.public.blob.vercel-storage.com/media/a-0123456789abcdef.mp4';
+assert.deepEqual(externalSubresources(`<video preload="none"><source src="${otherStore}"></video><img src="https://cdn.example.com/b.webp">`),
+  [otherStore, 'https://cdn.example.com/b.webp'], 'control: any other origin, another public Blob store too, fails by name');
+// A film on the store loads its bytes only on play: its <video> keeps preload="none" and never autoplays.
+const storeVideosEager = (html) => [...html.matchAll(/<video\b([^>]*)>([\s\S]*?)<\/video>/gi)]
+  .filter(([, , body]) => [...body.matchAll(/<source\b[^>]*\bsrc=["'](https?:\/\/[^"']+)/gi)].some(([, url]) => new URL(url).origin === blobOrigin()))
+  .filter(([, attrs]) => !/\bpreload=["']none["']/i.test(attrs) || /\bautoplay\b/i.test(attrs)).map(([open]) => open.slice(0, 120));
+assert.equal(storeVideosEager(`<video controls preload="none"><source src="${blobOrigin()}/media/a.mp4"></video>`).length, 0);
+assert.equal(storeVideosEager(`<video controls preload="metadata"><source src="${blobOrigin()}/media/a.mp4"></video>`).length, 1,
+  'control: a store film that preloads fails');
+
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');
   const references = html.match(/src=["']\/src\/analytics\.ts["']/g) ?? [];
   assert.equal(references.length, 1, `${entrypoint} must load analytics exactly once`);
-  assert.doesNotMatch(html,
-    /<(?:script|img|audio|video|source)\b[^>]*\bsrc=["']https?:\/\//i,
-    `${entrypoint} must package every automatic subresource locally`);
+  assert.deepEqual(externalSubresources(html), [], `${entrypoint} must package every automatic subresource locally (or on the site's Blob store)`);
+  assert.deepEqual(storeVideosEager(html), [], `${entrypoint}: a film on the Blob store keeps preload="none" (its bytes load on play)`);
 }
 
 // --- Google Analytics 4: the listed public non-game pages only --------------------------------------------------

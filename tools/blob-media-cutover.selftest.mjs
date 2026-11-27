@@ -10,10 +10,15 @@
 //       too, a small file and another origin's path stay; it refuses a moved file without a URL, a moved file left in
 //       dist, a /media/ path that names nothing, a path built from a folder of moved files outside a family, and a chunk
 //       that carries the manifest;
+//   (e) a served file's identity has one resolver (tools/media-files.mjs mediaFile/mediaDigest: public/ when the file is
+//       there, else the manifest's row): the landing's and the manual's inline previews (tools/hero-lqip.mjs) hold against
+//       it, and a page that names a Blob URL (an id item, the manual's feature videos) names a file (media-page-scan);
 //   and controls: a deleted public file with no row, a big file committed, a row nothing references, and a family map
-//   off the manifest each make the matching check fail.
+//   off the manifest each make the matching check fail; the old public/ read of a preview's source fails on this tree;
+//   a manifest whose row disagrees with a preview fails hero-lqip by the picture's name.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -25,6 +30,8 @@ import {
   BIG_BYTES, RUNTIME_FAMILIES, familyMaps, familyProblems, idForPath, isBigMedia, manifestProblems, mediaPaths, pathIndex, pathnameForPath,
   readManifest, rewriteDist,
 } from './blob-media.mjs';
+import { mediaDigest, mediaExists } from './media-files.mjs';
+import { bytesOf, pageMedia } from './media-page-scan.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = readManifest();
@@ -169,8 +176,44 @@ try {
   rmSync(scratch, { recursive: true, force: true });
 }
 
+// (e) the previews' sources through the one resolver
+const previews = JSON.parse(readFileSync(join(ROOT, 'src/docs/heroLqip.json'), 'utf8'));
+const onBlob = Object.keys(previews).filter((path) => index.has(path));
+assert.ok(onBlob.length > 0, 'some previews stand on Blob pictures (the control below needs one)');
+for (const [path, { sha256 }] of Object.entries(previews)) {
+  assert.equal(mediaDigest(path).sha256, sha256, `${path}: its preview's sha256 is the resolver's (${index.has(path) ? 'the Blob row' : 'public/'})`);
+}
+// control, reverted: the old read (public/<path>, hero-lqip before r4) fails on every Blob source on this tree
+const oldSha = (path) => createHash('sha256').update(readFileSync(join(ROOT, 'public', path))).digest('hex');
+assert.equal(onBlob.filter((path) => { try { oldSha(path); return false; } catch (error) { return error.code === 'ENOENT'; } }).length, onBlob.length,
+  'control: the old public/ read of a Blob preview source fails (ENOENT)');
+// a page that names an id item by its Blob URL (the manual's feature videos) names a file, with the row's bytes
+const film = Object.values(manifest.items).find((row) => !row.path && row.url && /\.mp4$/.test(row.url));
+const [video] = pageMedia(`<video preload="none"><source src="${film.url}" type="video/mp4"></video>`);
+assert.equal(video.videos.length, 1, `media-page-scan reads ${film.url} as a file`);
+assert.ok(mediaExists(video.videos[0].src) && bytesOf(video.videos[0].src) === film.bytes, 'an id item named by its URL ships, with its bytes');
+const [still] = pageMedia(`<video poster="${index.get(onBlob[0]).url}"><source src="${film.url}" type="video/mp4"></video>`);
+assert.equal(still.poster, onBlob[0], 'a path item named by its Blob URL reads as its /media/ path');
+// control, planted: a manifest whose row disagrees with a preview fails hero-lqip, naming the picture
+{
+  const planted = mkdtempSync(join(tmpdir(), 'blob-media-planted-'));
+  try {
+    const [id, row] = Object.entries(manifest.items).find(([, item]) => item.path === onBlob[0]);
+    const file = join(planted, 'blobMedia.json');
+    writeFileSync(file, JSON.stringify({ ...manifest, items: { ...manifest.items, [id]: { ...row, sha256: '0'.repeat(64) } } }));
+    let failed = null;
+    try {
+      execFileSync(process.execPath, [join(ROOT, 'tools/hero-lqip.mjs')], { cwd: ROOT, env: { ...process.env, COT_BLOB_MEDIA_MANIFEST: file }, stdio: 'pipe' });
+    } catch (error) { failed = String(error.stderr); }
+    assert.ok(failed?.includes(`hero-lqip: ${onBlob[0]} changed since its preview`), `control: a planted manifest row fails hero-lqip by name (${failed ?? 'it passed'})`);
+  } finally {
+    rmSync(planted, { recursive: true, force: true });
+  }
+}
+
 const movedBytes = [...index.values()].reduce((sum, row) => sum + row.bytes, 0);
 const keptBytes = tracked.reduce((sum, file) => sum + file.bytes, 0);
 console.log(`blob-media-cutover.selftest: ${index.size} path items (${(movedBytes / 1048576).toFixed(1)} MB) on Blob, `
   + `${tracked.length} small files (${(keptBytes / 1048576).toFixed(1)} MB) in public/media, none big; ${references.size} references all ship; `
-  + `${Object.keys(RUNTIME_FAMILIES).length} family maps (${familyBytes} B) agree; the rewrite and its six refusals hold, and every Blob URL reads back as its path`);
+  + `${Object.keys(RUNTIME_FAMILIES).length} family maps (${familyBytes} B) agree; the rewrite and its six refusals hold, and every Blob URL reads back as its path; ${Object.keys(previews).length} previews `
+  + `(${onBlob.length} of Blob pictures) hold against the one resolver, whose old public/ read and a planted row both fail`);

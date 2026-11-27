@@ -6,7 +6,7 @@
 // Studio panel shows (studio.* in the catalogs: effects, tank states, rigs, lenses, transitions, blur, shake). The
 // site's films come from the fleet's takes (public/media/site50-r14/fleet/index.json), each opening its scene in the
 // Studio. The workspace picture shows once the media lane's still is in public/ (re-run the prerender). Node only.
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STUDIO_SPACE_MAPS, STUDIO_TIMES } from '../../game/studioLight.ts';
@@ -18,6 +18,7 @@ import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { getLocale, t } from '../../ui/i18n.ts';
 import { hrefForLocale } from '../../ui/localeRouting.ts';
 import type { RichSection } from './types.ts';
+import { mediaExists } from '../../../tools/media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const WORKSPACE_STILL = '/media/docs-r1/studio-workspace-1920.webp';
@@ -54,7 +55,7 @@ function openSection(): string {
     ['gallery', 'docs.studio.way.openScene', 'docs.studio.way.take'],
     ['copy', 'studio.sceneLink.copyButton', 'docs.studio.way.link'],
   ];
-  const workspace = existsSync(join(ROOT, 'public', WORKSPACE_STILL))
+  const workspace = mediaExists(WORKSPACE_STILL)
     ? `<figure class="dm-figure">${pictureMarkup({ src: WORKSPACE_STILL, width: 1920, height: 1080, alt: t('docs.studio.workspaceAlt'), sizes: '(width < 1100px) 100vw, 60vw',
       rungs: [{ src: WORKSPACE_STILL.replace('-1920.', '-640.'), width: 640 }, { src: WORKSPACE_STILL, width: 1920 }] }, false)}</figure>` : '';
   return workspace
