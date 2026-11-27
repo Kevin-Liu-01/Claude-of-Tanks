@@ -3200,7 +3200,7 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
     P.turretG.scale.y *= 1.40;
     P.gunG.scale.y *= 1 / 1.40;
     P.topY = 1.03;
-    if(P.spec.id==='ua_challenger2')addModernFieldCage(P);
+    if(P.spec.id==='ua_challenger2')addModernFieldCage(P,{mirrorFeet:[11]}); // 279: the settled right front wall is the left's
     scaleChallenger2Family(P);
   };
   buildChallenger2MarkingsStage1();

@@ -16,7 +16,7 @@
 // vertex each settled vertex was copied from. A turret-seat foot split's copy draws its own table (splitSlabQuadTable,
 // tankFactoryCore's onSplit) that skips the quads the split cut, so the settle and the census read the split copies too.
 import * as THREE from 'three';
-import { SLAB_VERTICES, slabQuadTable, type SlabQuadTable } from './factoryGeometry.ts';
+import { SLAB_VERTICES, slabTableOf, type SlabQuadTable } from './factoryGeometry.ts';
 
 /** The least gap between a quad's two diagonals that counts as twisted (1 mm). */
 export const SLAB_TWIST_M = 1e-3;
@@ -85,7 +85,7 @@ interface DrawnQuad {
  * has no table or the split is indexed.
  */
 export function splitSlabQuadTable(built: THREE.BufferGeometry, split: THREE.BufferGeometry): SlabQuadTable | null {
-  const table = slabQuadTable(built), was = built.getAttribute('position'), now = split.getAttribute('position');
+  const table = slabTableOf(built), was = built.getAttribute('position'), now = split.getAttribute('position');
   if (!table || split.index || !now || now.count < table.vertexCount) return null;
   const skip = new Set(table.skip ?? []);
   for (let k = 0; k < table.runs.length; k += 2) {
@@ -102,7 +102,7 @@ export function splitSlabQuadTable(built: THREE.BufferGeometry, split: THREE.Buf
  *  pattern (a→a, c→c), is left out. */
 function drawnSlabQuads(mesh: THREE.Mesh, toRoot: THREE.Matrix4): DrawnQuad[] {
   const geometry = mesh.geometry as THREE.BufferGeometry;
-  const table = slabQuadTable(geometry);
+  const table = slabTableOf(geometry);
   if (!table) return [];
   const skip = new Set(table.skip ?? []);
   const position = geometry.getAttribute('position');
@@ -184,7 +184,7 @@ function survey(root: THREE.Object3D): { census: SlabMirrorCensus; plans: MeshPl
   root.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh || (mesh as unknown as THREE.InstancedMesh).isInstancedMesh || !mesh.geometry) return;
-    if (!slabQuadTable(mesh.geometry)) return;
+    if (!slabTableOf(mesh.geometry)) return;
     toRoot.multiplyMatrices(fromRoot, mesh.matrixWorld);
     // A mirror class: the quads over one corner set facing one way, with those over its mirror facing the mirrored way
     // (several slabs can draw the same face: coincident duplicates join their class; a back-to-back face is its own).

@@ -45,7 +45,7 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import { getSpec, TANK_SPECS } from './specs.ts';
 import {
   box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, reprojectMovedFaceBoxUV, thinPartBoxUV,
-  polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
+  polyLoft, polyMultiLoft, polyTurret, setSlabTable, slab, sph, straightRidgeGunMask,
   torus, xform, type CamoUvRemap,
 } from './factoryGeometry.ts';
 import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
@@ -10230,7 +10230,7 @@ function* buildTankCoreSteps(
       followSeat(built, split);
       // 279 (slab-mirror): the split copy draws its own slab table over the quads the split left whole (own userData)
       const slabQuads = splitSlabQuadTable(built, split);
-      if (slabQuads) split.userData = { ...built.userData, slabQuads };
+      if (slabQuads) { split.userData = { ...built.userData }; setSlabTable(split, slabQuads); }
       splitBuilt.push(built); splitCopies.push(split);
     } });
     if (splitBuilt.length) {

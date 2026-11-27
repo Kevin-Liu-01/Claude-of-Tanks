@@ -7,8 +7,10 @@ type Point=readonly[number,number,number];
 
 /** Three independently supported side panels and folded shoulder returns.
  * The central roof, hatch openings and main-gun corridor stay open.
- * `lowRail`: the panels' low rail no lower than this (turret frame), where the turret turns over a raised engine deck. */
-export function addModernFieldCage(P:Port,opts:{readonly lowRail?:number}={}):void {
+ * `lowRail`: the panels' low rail no lower than this (turret frame), where the turret turns over a raised engine deck.
+ * `mirrorFeet`: right-side feet (anchors 6-11) that stand at their left twin's |x| (anchor - 6): the cast reads the wall
+ * before the turret seat and the end-of-build slab settle (slabDiagonalSettle.ts), which draws that wall mirror-symmetric. */
+export function addModernFieldCage(P:Port,opts:{readonly lowRail?:number;readonly mirrorFeet?:readonly number[]}={}):void {
  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),stock:THREE.Mesh[]=[],outerStock:THREE.Mesh[]=[],bounds=new THREE.Box3();
  P.forEachBucketPart(['turret'],geometry=>{
   const mesh=new THREE.Mesh(geometry,material);mesh.updateMatrixWorld();stock.push(mesh);bounds.expandByObject(mesh);
@@ -43,6 +45,8 @@ export function addModernFieldCage(P:Port,opts:{readonly lowRail?:number}={}):vo
     const inward=z0<(a+b)/2?1:-1;
     for(let k=0;k<15&&hit&&banks.some(bank=>bank.intersectsBox(standoff(hit!.point)));k++){z+=inward*.02;hit=cast(z);}
     if(!hit)throw Error(`${P.spec.id}: modern cage needs a structural side receiver at ${z}`);
+    const twin=opts.mirrorFeet?.includes(anchors.length)?anchors[anchors.length-6]:undefined;
+    if(twin)hit.point.x=side*Math.abs(twin[0]);
     feet.push(hit.point);anchors.push(hit.point.toArray());
    }
    let outer=Math.max(...feet.map(p=>Math.abs(p.x)));

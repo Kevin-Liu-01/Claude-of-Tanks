@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import { Raycaster, Vector3 } from 'three';
 import { settleSlabDiagonals, slabMirrorCensus } from './slabDiagonalSettle.ts';
+import { setSlabTable, slabTableOf } from './factoryGeometry.ts';
 import { createTank } from './tankFactory.ts';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
@@ -43,7 +44,7 @@ for (const id of IDS) {
     const tank = createTank(id, null, { ...BUILD, slabDiagonalSettle: settle });
     const census = slabMirrorCensus(tank.root);
     const meshes = [];
-    tank.root.traverse((object) => { if (object.isMesh && object.geometry?.userData?.slabQuads) meshes.push(object); });
+    tank.root.traverse((object) => { if (object.isMesh && slabTableOf(object.geometry)) meshes.push(object); });
     results[settle ? 'on' : 'off'] = { pairs: census.pairs.length, census,
       drawn: meshes.map((mesh) => ({ name: mesh.name, position: Float32Array.from(mesh.geometry.attributes.position.array) })), worstMm: Math.max(0, ...census.pairs.map((pair) => pair.gapMm)),
       agreeing: census.agreeingPairs, nonConvex: census.nonConvex, settled: tank.root.userData.slabDiagonalSettle?.pairs ?? 0,
@@ -90,19 +91,19 @@ for (const id of IDS) {
 {
   const splitMeshes = (root) => {
     const meshes = [];
-    root.traverse((object) => { if (object.isMesh && object.geometry?.userData?.slabQuads?.skip) meshes.push(object); });
+    root.traverse((object) => { if (object.isMesh && slabTableOf(object.geometry)?.skip) meshes.push(object); });
     return meshes;
   };
   const settled = createTank('pl01', null, BUILD);
   const split = splitMeshes(settled.root);
-  assert.ok(split.some((mesh) => mesh.name === 'turret' && mesh.geometry.userData.slabQuads.skip.length > 0),
+  assert.ok(split.some((mesh) => mesh.name === 'turret' && slabTableOf(mesh.geometry).skip.length > 0),
     `pl01: the turret's foot-split copy carries a slab table that skips the quads the split cut`);
   settled.dispose?.();
   const control = createTank('pl01', null, { ...BUILD, slabDiagonalSettle: false });
-  const hidden = splitMeshes(control.root).map((mesh) => [mesh, mesh.geometry.userData]);
-  for (const [mesh, data] of hidden) { const { slabQuads: _, ...rest } = data; mesh.geometry.userData = rest; }
+  const hidden = splitMeshes(control.root).map((mesh) => [mesh, slabTableOf(mesh.geometry)]);
+  for (const [mesh] of hidden) setSlabTable(mesh.geometry, null);
   settleSlabDiagonals(control.root, []);
-  for (const [mesh, data] of hidden) mesh.geometry.userData = data;
+  for (const [mesh, table] of hidden) setSlabTable(mesh.geometry, table);
   const left = slabMirrorCensus(control.root).pairs;
   control.dispose?.();
   console.log(`slabMirrorDiagonal pl01 split tables stripped: ${left.length} pairs left, ${left.map((pair) => `${pair.mesh} ${pair.gapMm} mm`).join(', ')}`);

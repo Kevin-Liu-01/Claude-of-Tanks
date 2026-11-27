@@ -180,7 +180,7 @@ export function slab(
   quad(top0, top1, top2, top3);
   quad(bottom3, bottom2, bottom1, bottom0);
   const geometry = geometryFromTriangles(positions);
-  geometry.userData.slabQuads = { vertexCount: SLAB_VERTICES, runs: [0, SLAB_VERTICES] } satisfies SlabQuadTable;
+  setSlabTable(geometry, { vertexCount: SLAB_VERTICES, runs: [0, SLAB_VERTICES] });
   return geometry;
 }
 
@@ -188,8 +188,9 @@ export function slab(
 export const SLAB_VERTICES = 36;
 
 /**
- * 279 (slab-mirror): which vertices of a geometry are slab()-authored quads, as a side-table on the geometry (not a
- * vertex attribute, which mergeGeometries refuses beside untagged parts): `runs` lists [start, count] vertex runs of
+ * 279 (slab-mirror): which vertices of a geometry are slab()-authored quads, as a side table (setSlabTable/slabTableOf;
+ * not a vertex attribute, which mergeGeometries refuses beside untagged parts, and not a userData key, which the
+ * wheel dressing, static merge and battle pool read as a job of its own): `runs` lists [start, count] vertex runs of
  * whole slabs (SLAB_VERTICES each) over `vertexCount` non-indexed vertices. slab() writes it, mergeAll() offsets and
  * concatenates it, clone()/copy() share it (and the transforms keep it), a foot split's copy draws its own; every other merge drops it. The end-of-build
  * settle (slabDiagonalSettle.ts) reads it to pick each twisted quad's diagonal on the drawn corners. `skip` lists quad groups
@@ -198,9 +199,17 @@ export const SLAB_VERTICES = 36;
  */
 export interface SlabQuadTable { readonly vertexCount: number; readonly runs: readonly number[]; readonly skip?: readonly number[] }
 
-/** The geometry's slab side-table, or null when it has none or no longer indexes this vertex layout. */
-export function slabQuadTable(geometry: THREE.BufferGeometry): SlabQuadTable | null {
-  const table = geometry.userData.slabQuads as SlabQuadTable | undefined;
+// keyed by the geometry's userData object, which BufferGeometry.copy() (so clone()) shares: a clone keeps its source's table
+const SLAB_TABLES = new WeakMap<object, SlabQuadTable>();
+
+/** Writes (or with null, drops) the geometry's slab table; it is shared with every geometry sharing its userData. */
+export function setSlabTable(geometry: THREE.BufferGeometry, table: SlabQuadTable | null): void {
+  if (table) SLAB_TABLES.set(geometry.userData, table); else SLAB_TABLES.delete(geometry.userData);
+}
+
+/** The geometry's slab table, or null when it has none or no longer indexes this vertex layout. */
+export function slabTableOf(geometry: THREE.BufferGeometry): SlabQuadTable | null {
+  const table = SLAB_TABLES.get(geometry.userData);
   const position = geometry.getAttribute('position');
   return table && !geometry.index && position && position.count === table.vertexCount ? table : null;
 }
@@ -740,7 +749,7 @@ export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.Buf
   const runs: number[] = [], skip: number[] = [];
   let offset = 0;
   for (const part of flat) {
-    const table = slabQuadTable(part);
+    const table = slabTableOf(part);
     if (table) {
       for (let k = 0; k < table.runs.length; k += 2) {
         const start = table.runs[k] + offset, count = table.runs[k + 1];
@@ -751,6 +760,6 @@ export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.Buf
     }
     offset += part.getAttribute('position')?.count ?? 0;
   }
-  if (runs.length) merged.userData.slabQuads = { vertexCount: offset, runs, ...(skip.length ? { skip } : {}) } satisfies SlabQuadTable;
+  if (runs.length) setSlabTable(merged, { vertexCount: offset, runs, ...(skip.length ? { skip } : {}) });
   return merged;
 }
