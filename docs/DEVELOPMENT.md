@@ -659,14 +659,20 @@ one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free 
   `--noUnusedLocals --noUnusedParameters`. Any other diagnostic fails, as a plain `tsc --noEmit` would. Unused
   symbols fail only in the core owners. A killed compiler, or output that is not a diagnostic list, fails too. It
   used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
-  before Oxlint was added skips it with a notice until `npm ci`.
+  before Oxlint was added fails the check until `npm ci`. Every tracked `.ts`/`.mts`/`.js`/`.mjs` file has an owner
+  (`tools/typecheck-coverage.mjs`): the compile (it lists the files it read), Oxlint's `no-undef` for JavaScript, or
+  that module's one exclusion list with a reason (the two Workers, which `npm run typecheck:rooms` and
+  `typecheck:telemetry:cloudflare` compile). A file with no owner fails the check. The last line is the whole
+  verdict, `typecheck: PASSED` or `typecheck: FAILED: <why>`, on one stream, so `2>&1 | tail -1` reads it right.
+  Until 279 the last line was Oxlint's own "oxlint clean", which a lane read over two TS2304s.
 - `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
   no formatter. It adds `no-undef` on JavaScript (`.js`, `.mjs`, `.cjs`), which has no compiler here: an
   unimported name fails the lint, not the first tier that runs it. A page global read inside `page.evaluate` is
   declared in the `globals` of its override. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
   with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
   simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
-  hash-pinned sources are ignored.
+  hash-pinned sources are ignored: the vehicle profiles' TypeScript only, since their `.mjs` receipts have no other
+  scope check.
 - `tools/asset-provenance.mjs` (363 → 39 s, CPU 10.9 → 4.2 s) hashes the ~10,900 files (1.2 GB) of its scope 16 at
   a time.
 - `tools/strip-nc-assets.mjs` (30 → 1-3 s; 37 s on a cold probe) reuses its registry probe's result while every

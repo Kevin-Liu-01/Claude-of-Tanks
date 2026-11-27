@@ -7,13 +7,20 @@
 // - A compiler that is killed or prints anything but diagnostics fails the check too.
 // - Oxlint runs while the compiler does (it takes seconds, the compiler minutes under load) and fails the check on
 //   any finding. A checkout whose node_modules predates it skips it with a notice; `npm ci` installs it.
+// - Every tracked script file has an owner (tools/typecheck-coverage.mjs): the compile lists the files it checked
+//   (--listFiles), oxlint's no-undef owns the JavaScript, and the rest sit in that module's one exclusion list with a
+//   reason. A file with no owner fails the check (typecheck-coverage-279).
+// - The last line of every run is the whole verdict, `typecheck: PASSED` or `typecheck: FAILED: <why>`, and the whole
+//   report goes to one stream (stdout on a pass, stderr on a failure), so `2>&1 | tail -1` reads it. Until 279 the last
+//   line was oxlint's own: a lane read "oxlint clean" under `| tail -1` over two TS2304s (dome-detail-275, 2026-11-24).
 // Until 2026-10-22 typecheck ran two full compiles: plain tsc, then this file (then core-unused-check.mjs)
 // with the unused flags. One compile gives the same verdicts in half the time.
 import { spawn } from 'node:child_process';
-import { existsSync, realpathSync } from 'node:fs';
-import { relative, resolve, sep } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { coverageReport, coverageSummary, lintIgnorePatterns, listedSources, trackedScripts, typecheckCoverage } from './typecheck-coverage.mjs';
 
 // Byte-authenticated sources keep their remaining unused names until the receipts that compare their
 // exact text move: the map configs (badlandsRelief's historical byte projection, villageWear and
@@ -71,6 +78,35 @@ export function typecheckVerdict({ output, status, root = process.cwd() }) {
   return { ok: true, kind: 'clean', report: '', count: 0 };
 }
 
+// A line `--listFiles` prints: an absolute path to a source the program read. Anything else is the compile's own output.
+const LISTED_FILE = /^\/\S.*\.(?:d\.[cm]?ts|[cm]?tsx?|[cm]?js|json)$/;
+
+/** Splits a `--listFiles` compile's output into the files it listed and the rest (the diagnostics' text). */
+export function splitListing(output) {
+  const listed = [], rest = [];
+  for (const line of output.split('\n')) (LISTED_FILE.test(line) && !/\(\d+,\d+\): error TS/.test(line) ? listed : rest).push(line);
+  return { listed, output: rest.join('\n') };
+}
+
+/** The last line of a run: the whole verdict, so a reader of one line reads every check's. */
+export function finalLine({ verdict, lint, coverage }) {
+  const failures = [];
+  if (!verdict.ok) {
+    failures.push(verdict.kind === 'type' ? `${verdict.count} TypeScript error(s)`
+      : verdict.kind === 'unused' ? `${verdict.count} unused symbol(s) in the core owners` : 'the compiler did not finish');
+  }
+  if (lint !== 'clean') failures.push(lint === 'missing' ? 'oxlint is not installed' : 'oxlint findings');
+  if (coverage && !coverage.ok) {
+    failures.push(`${coverage.unchecked.length + coverage.staleExclusions.length} coverage gap(s) (tools/typecheck-coverage.mjs)`);
+  }
+  if (!coverage && verdict.ok) failures.push('no coverage census');
+  return failures.length ? `typecheck: FAILED: ${failures.join('; ')}` : 'typecheck: PASSED';
+}
+
+/** The one compile's arguments after the compiler's path (typecheck-coverage.selftest runs the same compile). */
+export const COMPILE_ARGS = Object.freeze(['-p', 'tsconfig.json', '--noEmit', '--pretty', 'false', '--noUnusedLocals', '--noUnusedParameters',
+  '--listFiles']);
+
 /** Runs a node entry point to completion: { output (stdout, then stderr), status, signal, error }. */
 function runNode(root, args) {
   return new Promise((resolveRun) => {
@@ -98,29 +134,35 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   const elapsed = () => `${((Date.now() - started) / 1000).toFixed(1)} s`;
   const linter = linterOf(root);
   const lint = linter.oxlint ? runNode(root, [linter.oxlint, '--format', 'unix']).then((run) => ({ ...run, seconds: elapsed() })) : null;
-  const compile = await runNode(root, [resolve(root, 'node_modules/@typescript/native/bin/tsc'),
-    '-p', 'tsconfig.json', '--noEmit', '--pretty', 'false', '--noUnusedLocals', '--noUnusedParameters']);
+  const compile = await runNode(root, [resolve(root, 'node_modules/@typescript/native/bin/tsc'), ...COMPILE_ARGS]);
   if (compile.error) throw compile.error;
-  const verdict = typecheckVerdict({ output: compile.output, status: compile.status, root });
+  const { listed, output } = splitListing(compile.output);
+  const verdict = typecheckVerdict({ output, status: compile.status, root });
+  const lines = [];
   if (verdict.ok) {
-    console.log(`typecheck: TypeScript 7 clean; the application, network, simulation, UI, vehicle and world owners have no unused symbols (${elapsed()})`);
+    lines.push(`typecheck: TypeScript 7 clean; the application, network, simulation, UI, vehicle and world owners have no unused symbols (${elapsed()})`);
   } else {
-    process.stderr.write(`${verdict.report.trimEnd()}\n`);
-    process.stderr.write(verdict.kind === 'type' ? `typecheck: ${verdict.count} TypeScript error(s) (${elapsed()})\n`
-      : verdict.kind === 'unused' ? `typecheck: ${verdict.count} unused symbol(s) in the core owners (${elapsed()})\n`
-        : `typecheck: the compiler exited ${compile.status ?? compile.signal} with output that is not a diagnostic list (${elapsed()})\n`);
-    process.exitCode = 1;
+    lines.push(verdict.report.trimEnd(), verdict.kind === 'type' ? `typecheck: ${verdict.count} TypeScript error(s) (${elapsed()})`
+      : verdict.kind === 'unused' ? `typecheck: ${verdict.count} unused symbol(s) in the core owners (${elapsed()})`
+        : `typecheck: the compiler exited ${compile.status ?? compile.signal} with output that is not a diagnostic list (${elapsed()})`);
   }
-  if (!lint) {
-    process.stderr.write(`${linter.missing}\n`);
-    process.exitCode = 1;
-  } else {
+  // A compile that did not finish listed only part of its files: its census would name holes that are not there.
+  const coverage = verdict.kind === 'compiler' ? null : typecheckCoverage({
+    tracked: trackedScripts(root), tscListed: listedSources(root, listed), lintIgnore: lintIgnorePatterns(root),
+    source: (file) => readFileSync(join(root, file), 'utf8'),
+  });
+  if (coverage) lines.push(...(coverage.ok ? [coverageSummary(coverage)] : coverageReport(coverage)));
+  let lintState = 'missing';
+  if (!lint) lines.push(linter.missing);
+  else {
     const linted = await lint;
     if (linted.error) throw linted.error;
-    if (linted.status === 0) console.log(`typecheck: oxlint clean (${linted.seconds})`);
-    else {
-      process.stderr.write(`${linted.output.trimEnd()}\ntypecheck: oxlint failed (npm run lint shows each finding in full)\n`);
-      process.exitCode = 1;
-    }
+    lintState = linted.status === 0 ? 'clean' : 'findings';
+    lines.push(linted.status === 0 ? `typecheck: oxlint clean (${linted.seconds})`
+      : `${linted.output.trimEnd()}\ntypecheck: oxlint failed (npm run lint shows each finding in full)`);
   }
+  const last = finalLine({ verdict, lint: lintState, coverage });
+  const passed = last === 'typecheck: PASSED';
+  (passed ? process.stdout : process.stderr).write(`${[...lines, last].join('\n')}\n`);
+  if (!passed) process.exitCode = 1;
 }

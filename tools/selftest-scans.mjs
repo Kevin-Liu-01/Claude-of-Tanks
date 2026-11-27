@@ -252,6 +252,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/vehicles/vehicleNightLighting.selftest.mjs': tracked('src/vehicles/**'),
   'tools/attribution-audit.mjs': tracked('**'),
   'tools/gallery-link-stamps.selftest.mjs': tracked('**'),
+  // typecheck-coverage-279: every tracked script file, each owned by tsc, oxlint or the exclusion list (git ls-files)
+  'tools/typecheck-coverage.mjs': tracked('**/*.{ts,tsx,mts,cts,js,mjs,cjs}'),
+  // the same census, and a mirror of every tracked top-level entry (cp of the git ls-files roots) it plants names in
+  'tools/typecheck-coverage.selftest.mjs': tracked('**'),
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),

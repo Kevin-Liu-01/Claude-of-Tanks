@@ -62,8 +62,10 @@ assert.equal(manifest.scripts.check, 'npm run lint && node tools/no-tmp-state.mj
   const absent = linterOf('/repo', () => false);
   assert.equal(absent.oxlint, null);
   assert.match(absent.missing, /oxlint is not installed.*typecheck fails \(run npm ci\)/);
-  assert.match(typecheckSource, /if \(!lint\) \{\n\s+process\.stderr\.write\(`\$\{linter\.missing\}\\n`\);\n\s+process\.exitCode = 1;/,
-    'the missing linter sets a failing exit code');
+  // The missing linter reaches the last line, which alone sets the exit code (typecheck-coverage.selftest holds finalLine).
+  assert.match(typecheckSource, /if \(!lint\) lines\.push\(linter\.missing\);/, 'the missing linter is reported');
+  assert.match(typecheckSource, /const passed = last === 'typecheck: PASSED';[\s\S]*if \(!passed\) process\.exitCode = 1;/,
+    'only a PASSED last line exits 0');
 }
 
 const require = createRequire(import.meta.url);
