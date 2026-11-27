@@ -39,6 +39,7 @@ import { glslMinify } from './tools/viteGlslMinify.ts';
 import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
+import { optimizerReloadReport } from './tools/viteOptimizerReload.ts';
 import { gameEntryMeta } from './tools/viteGameEntryMeta.ts';
 import { battleChunkPrefetch } from './tools/viteBattleChunkPrefetch.ts';
 import { responsiveSeed } from './tools/viteResponsiveSeed.ts';
@@ -238,6 +239,9 @@ function forceNotFoundStatus(res: ServerResponse): void {
 }
 
 export default defineConfig({
+  // (roster-errors-279) each checkout's own optimizer cache: vite's optimizer hash includes the root, so the lane worktrees
+  // that link one node_modules re-bundled one another's dependencies (node_modules/.vite) on every server start
+  cacheDir: '.vite',
   // 2026-10-13 (MP plan step 13): the same-wire build check's line — the page and the match host Worker read the same
   // constant (src/mp/wire/matchBuild.ts MATCH_BUILD), so a host can refuse a seat whose prediction code differs.
   define: { __COT_MATCH_BUILD__: JSON.stringify(matchBuild), __COT_REPLAY_DIGEST__: JSON.stringify(replayDigest) },
@@ -248,6 +252,9 @@ export default defineConfig({
   // catalog files.
   worker: { format: 'es', plugins: () => [i18nStudioCatalog({ gameKeys: gameCatalogKeys })], rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
+    // (roster-errors-279, tools/viteOptimizerReload.ts) a dependency re-bundle mid-session on a page with hmr off is a
+    // second copy of three; say so as it happens, not later as a tank build's failed instanceof
+    optimizerReloadReport(),
     // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
     // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
