@@ -63,7 +63,7 @@ const KNOWN_STALLS = new Map([
   ['monsoon->bravo', 'the ball never comes nearer than its 60 m start (no set piece on the run)'],
   ['ruinspires->bravo', 'the ball never comes nearer than its 60 m start (the map has no set piece near the run)'],
   ['ruinspires->alpha', 'the ball never comes nearer than its 60 m start (the map has no set piece near the run)'],
-  ['fjord->alpha', 'the ball never comes nearer than its 60 m start (the same with every set piece left out)'],
+  ['skybridge->bravo', 'the ball comes to rest on a 2 m ledge 19.6 m short of the goal, at (-75.6, 4.3, 277.4) against the goal\'s (-60.2, 2.3, 289.4), and the runner never dislodges it (thrust-boosts-279; base b6c100411f scored it on 1 of 4 seeds, and the scoring bot fired belly boosts upside down, which bots no longer do)'],
 ]);
 /** One run toward `goalTeam`'s goal: the ball `fromM` before it on the kick-off's line, the runner 22 m behind it. */
 function ballRun(mapId, world, goalTeam, fromM, seed, capS) {

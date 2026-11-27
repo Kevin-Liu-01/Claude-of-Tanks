@@ -52,11 +52,13 @@ const AIR_THREAT_M = 450;
 /**
  * Bot Turbo and boost (bot-turbo-276; owner 2026-11-22, turbo-spin-275 left bots out): Turbo is taken at a chase dead
  * ahead on the ground, `groundMinM`-`groundMaxM` from it at `minSpeedMps` or faster and drive held, the landing probed
- * first, and a leap at a tank comes down `targetStandoffM` short of it (no ram). Never in flight (thrust-boosts-279,
- * Main's ruling 5: in flight Turbo fires the butt's nozzles, whose nose-down turn would plant a bot's nose). The boost is
- * the belly's alone (no turn: the hull lands on its tracks), one a flight, pressed early in a real climb (ride airtime
- * `spinAfterS`-`spinWindowS`, still rising at `spinClimbMps`: a hop off a bump is no flight) with the burn and
- * `spinMarginS` of flight still ahead, and only while the drive the bot holds picks the belly (W or none, not A/D or S).
+ * first, and a leap at a tank comes down `targetStandoffM` short of it (no ram). In flight a bot presses Turbo once, the
+ * butt's burn (thrust-boosts-279, Main's ruling 5 as amended 2026-11-27): 277's dodge in this physics, the forward push
+ * that carried a jump into the ball (with the belly's climb instead, 8 of the Turbo Ball sweep's 66 runs from 60 m stopped
+ * scoring: server/botObjectives.selftest.mjs). It is pressed early in a real climb (ride airtime `spinAfterS`-
+ * `spinWindowS`, still rising at `spinClimbMps`: a hop off a bump is no flight), with the burn and `spinMarginS` of flight
+ * still ahead, Turbo off cooldown, no boost yet this flight, and only while the drive the bot holds is W or none. Bots
+ * never fire the belly, a side or the nose, and never jump once the ride has left the ground (F in flight boosts).
  */
 export const BOT_TURBO = Object.freeze({
   groundMinM: 12, groundMaxM: 80, minSpeedMps: 3, targetStandoffM: 20,
@@ -74,7 +76,7 @@ export function createBotAbilityPlanner(spec: { id: string }) {
   function jumpEligible(entity: AbilityEntity, timeS: number, context: BotAbilityContext): boolean {
     return !!entity.combat && !entity.combat.destroyed && entity.modeActive !== false
       && (entity.modeJumpMps ?? 0) > 0 && timeS >= nextJumpS && timeS >= nextThinkS
-      && entity.state.grounded && !entity.state.overturned && entity.state.speed > 3
+      && entity.state.grounded && !tankAirborne(entity.state) && !entity.state.overturned && entity.state.speed > 3
       && (context.offensive === true || (timeS - context.hitAtS < 2.5 && context.reloadS > 1.5 && context.retreating));
   }
 
@@ -88,9 +90,10 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     return !entity.state.overturned && chaseM <= BOT_TURBO.groundMaxM && entity.state.speed >= BOT_TURBO.minSpeedMps;
   }
 
-  /** One belly boost a flight, early in it, with the burn still ahead of the landing. */
-  function airSpinDue(entity: AbilityEntity, context: BotAbilityContext): boolean {
+  /** Turbo's butt burn once a flight, early in it, with the burn still ahead of the landing (the old dodge's moment). */
+  function airDashDue(entity: AbilityEntity, timeS: number, context: BotAbilityContext): boolean {
     const rules = entity.modeAirSpin;
+    if (!entity.modeTurbo || turboReadyIn(entity, timeS) > 0) return false;
     const airTime = entity.state._ride?.airTime ?? 0;
     return !!rules && tankAirborne(entity.state) && canTankBoost(entity.state, rules.charges)
       && (entity.state._boostsUsed ?? 0) === 0
@@ -139,7 +142,7 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     }
     if (jump) { bits |= PLAYER_ACTION_BITS.SELF_RIGHT; nextJumpS = timeS + 10; }
     if (turbo) bits |= PLAYER_ACTION_BITS.TURBO;
-    if (airSpinDue(entity, context)) bits |= PLAYER_ACTION_BITS.AIR_SPIN;
+    if (!turbo && airDashDue(entity, timeS, context)) bits |= PLAYER_ACTION_BITS.TURBO;
     return bits;
   }
   /** The planner's clocks, on the brain's clock (275: a migration keyframe carries them with the brain, game/ai.ts

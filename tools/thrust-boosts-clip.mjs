@@ -131,6 +131,23 @@ async function filmBall(page, signal) {
     await press(page, 'ball', ['KeyF'], 'F on its roof: self-right');
     await sleep(3500);
   }
+  if (signal.aborted) return;
+  // one side boost and its honest landing (Main: "one side boost that ends on its side and the F self-right")
+  await caption(page, 'one side boost, then the landing as it comes');
+  await sleep(1200);
+  await press(page, 'ball', ['KeyF'], 'F: jump');
+  await sleep(450);
+  await press(page, 'ball', ['KeyD', 'KeyF'], 'D + F: side boost (pushed right, rolls)');
+  await untilGrounded(page);
+  await sleep(1600);
+  take.sideLanding = await page.evaluate(hullNow);
+  if (take.sideLanding.overturned) {
+    await caption(page, `landed on its ${Math.abs(take.sideLanding.roll) > 2.4 ? 'roof' : 'side'}`);
+    await sleep(1200);
+    await press(page, 'ball', ['KeyF'], 'F: self-right');
+    await sleep(3500);
+    take.righted = await page.evaluate(hullNow);
+  }
   await caption(page, '');
   await sleep(800);
 }
@@ -166,41 +183,49 @@ const warm = async () => {
   const browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions({ width: 1600, height: 900 }), { label: 'thrust-boosts-clip' });
   receipt.browserPid = browser.process()?.pid ?? null;
   receipt.serverPort = listening;
-  const byTag = {};
-  for (const [tag, spec] of Object.entries(TAKES)) {
-    if (only && only !== tag) continue;
-    const errors = receipt.errors[tag] = [];
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1600, height: 900 });
-    await stubViteSocket(page);
-    rememberWarm(page, {
-      url: `http://127.0.0.1:${listening}/?nosplash=1&tier=desktop&gfxreset=1`, ready: BOOT_LOADED_EXPRESSION,
-      after: async (p) => {
-        if (spec.arrangement) await p.evaluate((value) => localStorage.setItem('cot.game.teams.v1', JSON.stringify(value)), spec.arrangement);
-        await beginSoloBattle(p, { specId: 'm1a1_abrams_hc', mapId, gameMode: spec.gameMode, settleMs: 2500, timeoutMs: 900_000 });
-      },
-    });
-    await rewarmPage(page);
-    page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 400)));
-    page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });
-    byTag[tag] = page;
-  }
-  return { pages: Object.values(byTag), byTag, close: async () => { await browser.close(); await server.close(); } };
+  // One live battle at a time (the dry run, 2026-11-27: two booted battles took the browser tree to 10.35 GB, past the
+  // guard's 10 GB cap): the first take boots while the ticket waits, each later one after the one before has closed.
+  const tags = Object.keys(TAKES).filter((tag) => !only || only === tag);
+  const first = tags.length ? await bootTake(browser, listening, tags[0]) : null;
+  return { pages: first ? [first] : [], browser, listening, tags, first,
+    close: async () => { await browser.close(); await server.close(); } };
 };
-const shoot = async ({ byTag, signal }) => {
-  for (const [tag, film] of [['ball', filmBall], ['moon', filmMoon]]) {
-    const page = byTag[tag];
-    if (!page || signal.aborted) continue;
-    await page.bringToFront();
-    await page.evaluate(clearMenus);
-    await page.evaluate(stage);
-    receipt.takes[`${tag}Rules`] = await page.evaluate(() => {
-      const p = window.__DEBUG.game.player;
-      return { gravityScale: p.modeGravityScale, jumpMps: p.modeJumpMps, airSpin: p.modeAirSpin };
-    });
-    await sleep(800);
-    const recorder = await page.screencast({ path: path.join(out, `${tag}.webm`), fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' });
-    try { await film(page, signal); } finally { await recorder.stop(); }
+/** A fresh page in `tag`'s battle (TAKES[tag]), its errors kept in the receipt. */
+const bootTake = async (browser, listening, tag) => {
+  const spec = TAKES[tag];
+  const errors = receipt.errors[tag] = [];
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1600, height: 900 });
+  await stubViteSocket(page);
+  rememberWarm(page, {
+    url: `http://127.0.0.1:${listening}/?nosplash=1&tier=desktop&gfxreset=1`, ready: BOOT_LOADED_EXPRESSION,
+    after: async (p) => {
+      if (spec.arrangement) await p.evaluate((value) => localStorage.setItem('cot.game.teams.v1', JSON.stringify(value)), spec.arrangement);
+      await beginSoloBattle(p, { specId: 'm1a1_abrams_hc', mapId, gameMode: spec.gameMode, settleMs: 2500, timeoutMs: 900_000 });
+    },
+  });
+  await rewarmPage(page);
+  page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 400)));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });
+  return page;
+};
+const FILMS = { ball: filmBall, moon: filmMoon };
+const shoot = async ({ browser, listening, tags, first, signal }) => {
+  for (const tag of tags) {
+    if (signal.aborted) break;
+    const page = tag === tags[0] ? first : await bootTake(browser, listening, tag);
+    try {
+      await page.bringToFront();
+      await page.evaluate(clearMenus);
+      await page.evaluate(stage);
+      receipt.takes[`${tag}Rules`] = await page.evaluate(() => {
+        const p = window.__DEBUG.game.player;
+        return { gravityScale: p.modeGravityScale, jumpMps: p.modeJumpMps, airSpin: p.modeAirSpin };
+      });
+      await sleep(800);
+      const recorder = await page.screencast({ path: path.join(out, `${tag}.webm`), fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' });
+      try { await FILMS[tag](page, signal); } finally { await recorder.stop(); }
+    } finally { await page.close(); }
   }
 };
 if (dry) {

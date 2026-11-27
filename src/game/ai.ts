@@ -453,8 +453,10 @@ export function chooseAiSupportActionBits(
   // Round 60 pacing (2026-09-24, Caldera seed 3): a bot that rolled onto its roof at 20 s lay there for the
   // rest of the battle — the rollover lifecycle rights a settled hull after five seconds, but the bot's unstick
   // throttle and steer kept resetting the settle, and no bot ever asked for the self-right a player has. An
-  // overturned hull asks for it (both authorities consume the bit) and finishStep holds its drive still.
-  if (entity.state?.overturned === true) return PLAYER_ACTION_BITS.SELF_RIGHT;
+  // overturned hull asks for it (both authorities consume the bit) and finishStep holds its drive still. Only on the
+  // ground (thrust-boosts-279): in a boosts mode F in flight fires the belly, and a hull turned over mid-flight (the butt
+  // burn's nose-down turn) spent its five on a push at the ground.
+  if (entity.state?.overturned === true) return tankAirborne(entity.state) ? 0 : PLAYER_ACTION_BITS.SELF_RIGHT;
   // the catalog (2026-10-26): each slot's item by its own trigger, a fire first, then repairs, then the crew
   const items = entity.consumableItems ?? DEFAULT_CONSUMABLE_LOADOUT;
   for (const pass of SUPPORT_PASSES) {
@@ -6757,7 +6759,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /** How far Turbo's leap carries the hull before it lands: its run speed plus the leap's, over the flight the lift gives. */
   function turboTravelM(turbo: TurboRules): number {
     const st = entity.state;
-    // the ground leap's (bots never Turbo in flight: botAbilities.ts BOT_TURBO)
+    // the ground leap's (in flight a bot's Turbo is the butt's burn, pressed by botAbilities.ts BOT_TURBO's own gate)
     const speed = Math.min(45, Math.max(0, st.speed) + turbo.forwardMps);
     const climb = Math.max(0, st.verticalSpeed || 0) + turbo.liftMps;
     const flight = 2 * climb / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
@@ -7316,7 +7318,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
       abilityContext.safeJump = leapLandingClear(travel);
     }
-    // Turbo and the belly boost (bot-turbo-276; thrust-boosts-279): only where the mode stamped them, through the same action bits as a player
+    // Turbo on the ground and its butt burn in flight (bot-turbo-276; thrust-boosts-279): only where the mode stamped them, through the same action bits as a player
     abilityContext.safeTurbo = false;
     abilityContext.chaseM = entity.modeTurbo ? turboChaseM(abilityContext.retreating) : Infinity;
     abilityContext.flightS = entity.modeAirSpin ? flightLeftS() : 0;
