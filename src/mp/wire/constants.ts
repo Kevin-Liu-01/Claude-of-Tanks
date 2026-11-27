@@ -87,7 +87,7 @@ export const WIRE_VERSION = 13;
 // tank_turbo and tank_air_spin events.
 // flip-boost-276 (no bump: the match build's prediction and authority digests already part builds that differ): the air
 // spin a dodge, the movement checkpoint's version 11 (flag bit 13, the flight's dodge spent), the migration extras'
-// airSpinReadyIn and flipUsed, and tank_air_spin's readyS.
+// airSpinReadyIn and the spent dodge's, and tank_air_spin's readyS.
 // thrust-boosts-279 (rides 279's 18, Main's ruling): the air spin a boost, nozzles as plain force vectors and five a
 // flight; the movement checkpoint's version 12 (its 64th value the boost, flag bits 13-15 the boosts spent), which the
 // migration keyframe's hull exact carries in its version and flag bytes (no field of its own).

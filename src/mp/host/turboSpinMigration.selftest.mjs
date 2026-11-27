@@ -100,9 +100,8 @@ function handoff({ dropBoost = false, dropMotion = false, dropUsed = false } = {
   const flipperExtras = extras.find((entry) => entry.entityId === old.wireIdOf('flipper'));
   const dasherExtras = extras.find((entry) => entry.entityId === old.wireIdOf('dasher'));
   assert.ok(typeof flipperExtras.hull === 'string', 'the hull exact carries the boosted flight, its spin and drift and the boosts spent (276)');
-  for (const gone of ['boost', 'boostMotion', 'boostsUsed', 'airSpin', 'airSpinRate', 'flipUsed']) {
-    assert.ok(!(gone in flipperExtras), `no extras field of its own (${gone}): the hull exact is the one carrier`);
-  }
+  const own = Object.keys(flipperExtras).filter((key) => /boost|spin|flip/i.test(key) && key !== 'airSpinReadyIn');
+  assert.deepEqual(own, [], 'no extras field of the flight\'s own beside the boost gap: the hull exact is the one carrier');
   assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'the extras carry Turbo\'s cooldown left');
   const sealed = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs, timeS: sim.timeS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: extras, frame }));

@@ -84,8 +84,8 @@ export interface MigrationEntityExtras {
    * ledger and a landing's bounces; the roof guns' slew, the special action's toggle and the held input). base64url: the
    * layout, the checkpoint's version and flags, the flags, the further roof stations' count, a mask of the non-zero
    * numbers and those numbers as Float64s, exact (migrationHull.selftest's census). It replaces gaps 274's spool and turn rate
-   * (`motion`), 275's hand-picked integrator parts (`integrator`) and the spin's own extras (`airSpin`, `airSpinRate`,
-   * `flipUsed`; turbo-spin-275 to thrust-flips-277): a fight from a keyframe alone still parted by tens
+   * (`motion`), 275's hand-picked integrator parts (`integrator`) and the spin's own extras (turbo-spin-275 to
+   * thrust-flips-277; the spin retired in thrust-boosts-279): a fight from a keyframe alone still parted by tens
    * of metres on the rows' rounding and the gun's limit flag (the CTF probe: 23 m in 10 s; none now).
    */
   hull?: string;

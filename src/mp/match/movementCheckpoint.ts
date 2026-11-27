@@ -39,10 +39,10 @@
  * plane the authority fitted only with it. A version-8 checkpoint still decodes, resting on no body contact; a build that
  * decodes only version 8 never meets a version-9 host, whose prediction digest refuses it at join
  * (src/mp/wire/matchBuild.ts).
- * Version 10 (turbo-spin-275) appends the air spin in progress as one value (movement.ts `_airSpinAxis`, `_airSpinLeft`;
- * movementPredictionState.ts encodeAirSpin): a replay mid-flip turns at the spin's rate past the flight's angular cap, as the
+ * Version 10 (turbo-spin-275) appends the air spin in progress as one value (its axis and the turn
+ * it owed; retired in version 12): a replay mid-flip turns at the spin's rate past the flight's angular cap, as the
  * authority does, and stops where it stops. A version-9 checkpoint still decodes, no spin turning.
- * Version 11 (flip-boost-276) adds the flight's dodge spent (movement.ts `_flipUsed`, flag bit 13; the values are version
+ * Version 11 (flip-boost-276) adds the flight's dodge spent (flag bit 13; retired in version 12; the values are version
  * 10's): one air spin a flight, so a replay after a flip refuses a second as the authority does and the HUD greys it. A
  * version-10 checkpoint still decodes, the dodge unspent.
  * Version 12 (thrust-boosts-279) gives the 64th value and the flag bits to the boosts: the value is the boosted flight
