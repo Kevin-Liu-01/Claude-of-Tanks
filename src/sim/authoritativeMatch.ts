@@ -24,6 +24,7 @@ import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { worldBuildConfig } from '../world/worldBuildConfig.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import type { HeightField, TerrainLayout } from '../world/terrain.ts';
@@ -613,8 +614,8 @@ function sharedTerrain(mapId: string, assaultTrenches = false): SharedTerrain {
     terrainCache.set(key, cached);
     return cached;
   }
-  const baseConfig = getMapConfig(String(mapId || 'verdant'));
-  const config = assaultTrenches ? { ...baseConfig, assaultTrenches: true } : baseConfig;
+  // the live world's config (world/worldBuildConfig.ts: the page's world, the replay's and the dedicated shards' build it)
+  const config = worldBuildConfig(String(mapId || 'verdant'), assaultTrenches ? 'assault-trenches' : null);
   // The rendered battlefields use seed 1337 unless explicitly overridden.
   // Height fields are immutable after construction, so dedicated matches can
   // safely share this expensive 1 km terrain bake while keeping combat state
@@ -888,7 +889,11 @@ export function createAuthoritativeMatch({
   const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
   // the world's shells, sight lines and drones march this match's ground (a crater's bowl, a heap), as the solo world's do
   worldCollision?.bindGroundOverlay?.(ground);
-  const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
+  // the layout is the field's own (a field built by createHeightField carries it; the deformed field inherits it). A field
+  // without one (a receipt's stub) gets its map's in this mode's battlefield variant (replay-receipts-279: one config rule,
+  // world/worldBuildConfig.ts; the map id alone would be the base map's in a Frontline Assault match)
+  const layout = heightField._layout || shared?.layout
+    || createLayout(worldBuildConfig(String(mapId || 'verdant'), terrainVariantFor(normalizedGameMode)));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
   const entityById = new Map<string, AuthoritativeEntity>();

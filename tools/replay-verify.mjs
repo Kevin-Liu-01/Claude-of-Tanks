@@ -28,7 +28,7 @@ try {
 }
 await ensureReplayFleet(recording);
 const setup = recording.header.setup;
-const world = await createReplayWorldFor(setup.mapId);
+const world = await createReplayWorldFor(recording);
 const started = performance.now();
 let run = null, error = null;
 try {

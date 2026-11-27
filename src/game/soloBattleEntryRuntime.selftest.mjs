@@ -343,4 +343,92 @@ assert.match(pendingComposition, /if \(game\.gameMode === 'frontline_assault' &&
 assert.match(pendingComposition, /bus\.on\('battle:rollout', \(\) => \{ briefShownForCountdown = false; \}\);/, 'the latch resets when the count rolls out');
 assert.match(pendingComposition, /missionBrief\.hide\(\);\s*briefShownForCountdown = false;/, 'and when the Garage takes the screen');
 
-console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');
+
+// (replay-receipts-279 r2) The player's own Leave while the entry loads (main.ts leaveBattleToGarage: the one Leave path
+// cancels the solo entry in flight): the supersede its return causes comes back to the Garage quietly, the recovery's
+// order kept, with no failure notice and no failure beacon. A supersede nobody asked for still surfaces, and a cancel
+// belongs to the entry it was made in. Control: the failure branch with the cancel mark ignored fails N1 by name.
+const SUPERSEDED = 'Solo battle deployment was superseded';
+async function cancelCases(create, label) {
+  const events = [];
+  let release = null;
+  let failNext = true;
+  const latch = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const entry = create({
+    lifecycle: latch,
+    loading: { begin: () => new Promise((resolve, reject) => {
+      events.push('load');
+      release = () => (failNext ? reject(new Error(SUPERSEDED)) : resolve());
+    }) },
+    battleLoad: { showPending: () => events.push('cover'), hide: async () => { events.push('hide'); } },
+    audio: { loadingOn: (on) => events.push(`loading:${on}`) },
+    enterGarage: () => events.push('garage'), nextFrame: async () => { events.push('frame'); },
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+    reportError: () => events.push('error'),
+    presentFailure: async (error) => { events.push(`notice:${error.message}`); },
+    onFailure: (error) => events.push(`beacon:${error.message}`),
+  });
+  const loadingStarted = async () => { while (!release) await new Promise((done) => setTimeout(done, 0)); };
+  const runEntry = async (between) => {
+    events.length = 0; release = null;
+    const pending = entry.beginSelected({});
+    await loadingStarted();
+    const answer = between?.();
+    release();
+    await pending;
+    return answer;
+  };
+  // N1 the player's Leave: cancelled, then superseded
+  const cancelled = await runEntry(() => entry.cancel());
+  assert.equal(cancelled, true, `${label} N1: cancel() finds the entry in flight`);
+  assert.deepEqual(events, ['cover', 'load', 'loading:false', 'garage', 'frame', 'hide'],
+    `${label} N1: a Leave during the load returns to the Garage with no failure notice and no failure beacon`);
+  assert.equal(latch.pending, false, `${label} N1: the latch is released`);
+  // N2 the same supersede nobody asked for
+  await runEntry();
+  assert.deepEqual(events, ['cover', 'load', 'error', `beacon:${SUPERSEDED}`, 'loading:false', 'garage', 'frame', 'hide', `notice:${SUPERSEDED}`],
+    `${label} N2: a supersede nobody asked for still says the battle could not start`);
+  // N3 a cancel with no entry in flight marks nothing
+  assert.equal(entry.cancel(), false, `${label} N3: no entry in flight, nothing to cancel`);
+  await runEntry();
+  assert.ok(events.includes(`notice:${SUPERSEDED}`), `${label} N3: the next entry's failure still surfaces`);
+  // N4 a cancel belongs to its entry: entry 1 cancelled but loaded, entry 2's failure surfaces
+  failNext = false;
+  await runEntry(() => entry.cancel());
+  assert.deepEqual(events, ['cover', 'load'], `${label} N4: a cancelled entry that loads anyway runs as it would`);
+  failNext = true;
+  await runEntry();
+  assert.ok(events.includes(`notice:${SUPERSEDED}`), `${label} N4: the next entry's failure surfaces`);
+}
+await cancelCases(createSoloBattleEntryRuntime, 'cancel');
+{
+  // control: the failure branch with the cancel mark ignored (the code before r2), loaded from a copy with absolute imports
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const pathMod = await import('node:path');
+  const source = await readFile(new URL('./soloBattleEntryRuntime.ts', import.meta.url), 'utf8');
+  const MARK = 'if (entry.cancelled) {';
+  assert.equal(source.split(MARK).length, 2, 'control: the failure branch reads the cancel mark once');
+  const here = new URL('.', import.meta.url);
+  const reverted = source.replace(MARK, 'if (false && entry.cancelled) {')
+    .replace(/from '(\.\.?\/[^']+)'/g, (_, spec) => `from '${new URL(spec, here).href}'`);
+  const dir = await mkdtemp(pathMod.join(tmpdir(), 'cot-entry-cancel-'));
+  try {
+    const file = pathMod.join(dir, 'soloBattleEntryRuntime.control.ts');
+    await writeFile(file, reverted);
+    const { createSoloBattleEntryRuntime: revertedRuntime } = await import(new URL(`file://${file}`).href);
+    await assert.rejects(cancelCases(revertedRuntime, 'control'), /control N1: a Leave during the load returns to the Garage/,
+      'control: with the cancel mark ignored, a Leave during the load shows the failure notice (N1 fails by name)');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+// N5 wiring: the one Leave path cancels the solo entry in flight, before its return; nothing else in main cancels one
+{
+  const leave = /const leaveBattleToGarage = \(\): Promise<void> => \{[\s\S]*?\n\};/.exec(pendingComposition)?.[0] ?? '';
+  const cancelAt = leave.indexOf('soloBattleEntry.cancel()');
+  assert.ok(cancelAt > 0 && cancelAt < leave.indexOf('garageReturn.leave()'), 'N5: leaveBattleToGarage cancels the solo entry before its return');
+  assert.equal(pendingComposition.split('soloBattleEntry.cancel()').length, 2, 'N5: and nothing else in main cancels one');
+}
+
+console.log("soloBattleEntryRuntime.selftest: selection, the named pending cover, covered failure recovery and a Leave's quiet cancel pass");

@@ -10,6 +10,11 @@
  *   D  (asked for: --paths=...,D) a battle's replay filmed to an MP4 through the strip's Export video and its dialog
  *      (--film=1280x720@30:30, --hud=1 for Include HUD) and read back (ffprobe where installed): H.264 at the size
  *      asked, as long as the range; its size and export time in the receipt.
+ *   E  (asked for: --paths=...,E; replay-receipts-279 r2) a battle's recording watched from the Service Record, its
+ *      replay bar's Leave pressed while the replay's battle still loads (the app lifecycle 'loading' at the press): the
+ *      page lands in the Garage with no dialog and no page error. Live 278: "The battle could not start: Solo battle
+ *      deployment was superseded" answered the player's own Leave. --cancel=0 (dev server only) is its control: the
+ *      served main.ts with the Leave's cancel removed (one replacement, or the path throws) must fail by that dialog.
  *
  * The built page's battle pool (game.allTanks) must be Node's, id for id. Each path must reach a viewer that shows no
  * notice and whose transport enables; then what is DRAWN must be the battle (drawnMotion: paused at three moments, every
@@ -22,7 +27,12 @@
  * ("This replay can't be played."), while the Node round trip and the recorder's browser check both passed.
  *
  *   node tools/replay-ui-flow.browser.selftest.mjs [--dist=<built dist> | --url=<origin>] [--out=<dir>] [--port=4238]
- *     [--seconds=20] [--paths=A,B,C[,D]] [--film=1280x720@30:30] [--hud=1]
+ *     [--seconds=20] [--paths=A,B,C[,D]] [--film=1280x720@30:30] [--hud=1] [--map=<id>] [--raise=0] [--cancel=0]
+ *
+ * (replay-receipts-279) The drive raises the gun before it fires (drive below; --raise=0 is the 278 drive, the control), so
+ * a shell always flies long enough for the track to sample it, and the effects gate also reads the indexer's own track
+ * census (shell entries in the track > 0) beside the shells drawn. --map enters that map (the 278 failures: cliffbridge,
+ * ruinspires, steppe, foundry, titan_gorge) through the debug surface's solo start.
  *
  * --dist serves a build (vite preview), --url opens a running origin, and with neither it starts a dev server. Takes the shared
  * capture lock (render class; nests in a with-capture-lock hold): the manual `browser` suite's
@@ -40,38 +50,16 @@ import { openCaptureHold, startViteChild } from './capture-hold.mjs';
 import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 import { createGameState } from '../src/game/stateCore.ts';
+import { WATCH_INDEXER, clickVisible, drive, enterBattle, leaveBattle } from './replay-flow.test-support.mjs';
 import { spawnTanks } from '../src/game/rosterState.ts';
 
 const TOOL = 'replay-ui-flow';
 const QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 
-/** In-page, before any script: every replay indexer Worker's last reply kept on window.__replayIndexJobs (the problem it
- *  named, the steps it indexed), so a viewer that says "can't be played" says why in the receipt. */
-const WATCH_INDEXER = `(() => {
-  const Native = window.Worker;
-  if (!Native || Native.__cotReplayWatch) return;
-  window.__replayIndexJobs = [];
-  window.Worker = new Proxy(Native, {
-    construct(target, args, newTarget) {
-      const worker = Reflect.construct(target, args, newTarget);
-      if (args[1] && args[1].name === 'cot-replay-indexer') {
-        const job = { started: performance.now(), reply: null };
-        window.__replayIndexJobs.push(job);
-        worker.addEventListener('message', ({ data }) => {
-          if (data?.type === 'done') job.reply = { type: 'done', problem: data.index?.problem ?? null, indexedSteps: data.index?.indexedSteps,
-            lastTick: data.index?.lastTick, track: !!data.index?.track, ms: Math.round(performance.now() - job.started) };
-          else if (data?.type === 'error') job.reply = { type: 'error', message: data.message };
-        });
-        worker.addEventListener('error', (event) => { job.reply = { type: 'workerError', message: String(event?.message ?? event) }; });
-      }
-      return worker;
-    },
-    get(target, key, receiver) { return key === '__cotReplayWatch' ? true : Reflect.get(target, key, receiver); },
-  });
-})();`;
 
 export function parseFlowArgs(argv) {
-  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, film: null, hud: false, width: 1600, height: 900 };
+  const out = { out: null, dist: null, port: 4238, seconds: 20, paths: ['A', 'B', 'C'], url: null, film: null, hud: false, width: 1600, height: 900,
+    map: null, raise: true, cancel: true };
   for (const arg of argv) {
     const m = /^--([a-z]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -79,61 +67,30 @@ export function parseFlowArgs(argv) {
     else if (m[1] === 'dist') out.dist = m[2];
     else if (m[1] === 'port') out.port = Number(m[2]);
     else if (m[1] === 'seconds') out.seconds = Number(m[2]);
-    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => ['A', 'B', 'C', 'D'].includes(p));
+    else if (m[1] === 'paths') out.paths = m[2].split(',').filter((p) => ['A', 'B', 'C', 'D', 'E'].includes(p));
     else if (m[1] === 'url') out.url = m[2].replace(/\/$/, '');
     // D's film: <width>x<height>@<fps>:<seconds> (default 1280x720@30:30)
     else if (m[1] === 'film') out.film = m[2];
     else if (m[1] === 'hud') out.hud = m[2] === '1' || m[2] === 'true';
+    // (replay-receipts-279) a battle on this map (entered through the debug surface's solo start), and --raise=0: the
+    // drive fires with its gun down as before 279 (the control for the gun raise)
+    else if (m[1] === 'map') out.map = m[2];
+    else if (m[1] === 'raise') out.raise = !(m[2] === '0' || m[2] === 'false');
+    // (279 r2) --cancel=0: E's control, the Leave's cancel removed from the served main.ts
+    else if (m[1] === 'cancel') out.cancel = !(m[2] === '0' || m[2] === 'false');
     else throw new Error(`unknown flag --${m[1]}`);
   }
   out.out ??= mkdtempSync(path.join(tmpdir(), 'replay-ui-flow-'));
-  if (!out.paths.length) throw new Error('--paths takes A, B, C and/or D');
+  if (!out.paths.length) throw new Error('--paths takes A, B, C, D and/or E');
+  if (!out.cancel && (out.dist || out.url)) throw new Error('--cancel=0 edits the served main.ts: a dev server only (no --dist or --url)');
   return out;
 }
 
 const stamp = () => new Date().toISOString().slice(11, 19);
 const say = (line) => console.log(`[${TOOL}] ${stamp()} ${line}`);
 
-/** In-page: a visible element's click (no coordinates: the HUD may cover it). */
-export const clickVisible = (page, selector) => page.evaluate((sel) => {
-  const node = [...document.querySelectorAll(sel)].find((el) => el instanceof HTMLElement && el.offsetParent !== null);
-  if (!node) return false;
-  node.click();
-  return true;
-}, selector);
 
-/** Enter a solo battle as the player does: the Garage's Deploy key (Enter), then any entry gate, until controls release. */
-export async function enterBattle(page) {
-  await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
-  await sleep(500);
-  await page.keyboard.press('Enter');
-  const until = Date.now() + 300_000;
-  while (Date.now() < until) {
-    if (await page.evaluate(readinessExpression('controlsReleased'))) return;
-    // a "press any key" gate on the entry's load screen (the player presses one)
-    const gate = await page.evaluate(() => /press\s+any\s+key/i.test(document.body.innerText || ''));
-    if (gate) await page.keyboard.press('Space');
-    await sleep(750);
-  }
-  throw new Error('the battle never released its controls');
-}
 
-/** Drive with real keys for `seconds`: forward and turns, the gun fired now and then. */
-export async function drive(page, seconds) {
-  const end = Date.now() + seconds * 1000;
-  let turn = 0;
-  await page.keyboard.down('KeyW');
-  try {
-    while (Date.now() < end) {
-      const key = turn++ % 2 ? 'KeyA' : 'KeyD';
-      await page.keyboard.down(key);
-      await sleep(900);
-      await page.keyboard.up(key);
-      await page.mouse.click(800, 420);
-      await sleep(1100);
-    }
-  } finally { await page.keyboard.up('KeyW'); }
-}
 
 const recorderState = (page) => page.evaluate(() => ({
   loaded: !!window.__COT_REPLAY?.recorder,
@@ -302,8 +259,12 @@ async function watchToEnd(page, shot, log) {
   log.push({ at: 'effects', ...effects });
   if (!effects || effects.total === 0) return { ok: false, why: 'the replay holds no effects (no shot, hit or kill cue)' };
   if (effects.played < effects.total * 0.9) return { ok: false, why: `a whole play crossed ${effects.played} of ${effects.total} cues` };
+  // (replay-receipts-279) the track's census as the indexer replied (shells in the track at all), beside what is drawn
+  const census = [...(last.jobs ?? [])].reverse().find((reply) => reply?.type === 'done') ?? null;
+  log.push({ at: 'track-census', samples: census?.samples ?? null, shellSamples: census?.shellSamples ?? null, shellEntries: census?.shellEntries ?? null });
+  if (!census || !(census.shellEntries > 0)) return { ok: false, why: `the indexer's track holds no shell in flight (${census?.shellSamples ?? 0} of ${census?.samples ?? 0} samples)` };
   if (effects.shellsPeak === 0) return { ok: false, why: 'no shell was drawn in flight' };
-  return { ok: true, why: `played ${span.end} s to the end at 4x in ${((Date.now() - started) / 1000).toFixed(1)} s (${effects.played} cues, up to ${effects.shellsPeak} shells drawn)` };
+  return { ok: true, why: `played ${span.end} s to the end at 4x in ${((Date.now() - started) / 1000).toFixed(1)} s (${effects.played} cues, up to ${effects.shellsPeak} shells drawn, ${census.shellSamples} of ${census.samples} track samples with a shell)` };
 }
 
 /** The saved recording `id`'s file, as stored, beside the receipt (tools/replay-verify.mjs reads it). */
@@ -318,38 +279,82 @@ async function leaveViewer(page) {
   await page.waitForFunction(readinessExpression('garage'), { timeout: 120_000, polling: 250 });
 }
 
+/**
+ * (279 r2) E's control: the page's main.ts as the dev server serves it, with the Leave's cancel of the solo entry in
+ * flight removed (the code before r2). Exactly one call is replaced, or the control has not reverted what it names.
+ */
+async function revertLeaveCancel(page) {
+  const state = { replaced: null };
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname !== '/src/main.ts') { void request.continue(); return; }
+    void (async () => {
+      // (no conditional headers: a 304 would carry no body to edit)
+      const served = await fetch(url, { headers: { accept: '*/*' } });
+      const body = await served.text();
+      const parts = body.split('soloBattleEntry.cancel()');
+      state.replaced = parts.length - 1;
+      await request.respond({ status: served.status, contentType: served.headers.get('content-type') ?? 'text/javascript', body: parts.join('void 0') });
+    })().catch((error) => { state.replaced = `error: ${error.message}`; void request.abort(); });
+  });
+  return state;
+}
+
+/** Any modal dialog shown now, by its title. */
+const shownDialogs = (page) => page.evaluate(() => [...document.querySelectorAll('.cot-modal-root:not([hidden])')]
+  .map((root) => root.querySelector('.cot-modal__title')?.textContent?.trim() ?? '(untitled)'));
+
+/** E: a recording watched, its replay bar's Leave pressed while the replay's battle still loads. */
+async function pathE(page, options, shot, log) {
+  await enterBattle(page, options.map);
+  await drive(page, Math.min(options.seconds, 8), { raise: options.raise });
+  const opened = await openSavedReplay(page, { ...options, openOnly: true }, shot, log);
+  if (!opened.ok) return opened;
+  // the Leave as soon as the replay bar shows it, the replay's battle still loading
+  const until = Date.now() + 60_000;
+  let pressed = null;
+  const entered = ['countdown', 'live', 'verdict', 'report'];
+  while (Date.now() < until) {
+    pressed = await page.evaluate(() => {
+      const state = window.__APP_LIFECYCLE?.state ?? null;
+      const leave = [...document.querySelectorAll('.cot-replay .leave')].find((el) => el.offsetParent);
+      if (!leave || state !== 'loading') return { state, leave: !!leave, clicked: false };
+      leave.click();
+      return { state, leave: true, clicked: true };
+    });
+    // pressed, or the replay's battle entered before its Leave could be pressed in the load: either ends the wait
+    if (pressed.clicked || entered.includes(pressed.state)) break;
+    await sleep(50);
+  }
+  log.push({ at: 'leave', pressed });
+  if (!pressed?.clicked) return { ok: false, why: `the replay bar's Leave never showed while the battle loaded (${JSON.stringify(pressed)})` };
+  await shot('left-loading');
+  try { await page.waitForFunction(readinessExpression('garage'), { timeout: 60_000, polling: 250 }); } catch {
+    await shot('landed');
+    return { ok: false, why: 'the Leave during the load never reached the Garage' };
+  }
+  await sleep(3000);
+  const dialogs = await shownDialogs(page);
+  await shot('landed');
+  log.push({ at: 'landed', dialogs, state: await page.evaluate(() => window.__APP_LIFECYCLE?.state ?? null) });
+  if (dialogs.length) return { ok: false, why: `a Leave during the load landed under a dialog: ${dialogs.map((d) => `"${d}"`).join(', ')}` };
+  return { ok: true, why: 'the Leave during the load landed in the Garage with no dialog' };
+}
+
 async function pathA(page, options, shot, log) {
-  await enterBattle(page);
-  log.push({ at: 'battle', recorder: await recorderState(page) });
-  await drive(page, options.seconds);
-  log.push({ at: 'driven', recorder: await recorderState(page) });
+  await enterBattle(page, options.map);
+  log.push({ at: 'battle', recorder: await recorderState(page), map: await page.evaluate(() => window.__DEBUG?.game?.mapId ?? null) });
+  const shots = [];
+  await drive(page, options.seconds, { raise: options.raise, shots });
+  log.push({ at: 'driven', recorder: await recorderState(page), raise: options.raise, shots });
   await shot('battle');
   return openSavedReplay(page, options, shot, log);
 }
 
 /** From a live battle: leave it as the player does, then watch its recording from the Service Record's Replays tab. */
 export async function openSavedReplay(page, options, shot, log) {
-  // leave as the player does: Esc opens Settings, its Leave (and a confirm, if one asks)
-  await page.keyboard.press('Escape');
-  await sleep(800);
-  if (!(await clickVisible(page, '.cot-set-btn.leave'))) {
-    // the player's tank was destroyed: the battle is spectated, and its bar's Garage is the way out
-    await page.keyboard.press('Escape');
-    await sleep(300);
-    const spectating = await page.evaluate(() => {
-      const garage = [...document.querySelectorAll('button')].find((b) => b.offsetParent && /^garage$/i.test(b.textContent.trim()));
-      garage?.click();
-      return !!garage;
-    });
-    if (!spectating) throw new Error('Settings showed no Leave and no spectator Garage');
-  }
-  await sleep(600);
-  await page.evaluate(() => {
-    const confirm = [...document.querySelectorAll('button')].find((b) => b.offsetParent && /^(leave|confirm|yes)/i.test(b.textContent.trim())
-      && !b.classList.contains('cot-set-btn'));
-    confirm?.click();
-  });
-  await page.waitForFunction(readinessExpression('garage'), { timeout: 120_000, polling: 250 });
+  await leaveBattle(page);
   await sleep(1500);
   const saved = await listReplays(page);
   log.push({ at: 'garage', saved });
@@ -462,8 +467,8 @@ async function pathD(page, options, shot, log) {
   const [size, rest] = (options.film ?? '1280x720@30:30').split('@');
   const [width, height] = size.split('x').map(Number);
   const [fps, seconds] = rest.split(':').map(Number);
-  await enterBattle(page);
-  await drive(page, Math.max(options.seconds, seconds + 6));
+  await enterBattle(page, options.map);
+  await drive(page, Math.max(options.seconds, seconds + 6), { raise: options.raise });
   const opened = await openSavedReplay(page, { ...options, openOnly: true }, shot, log);
   if (!opened.ok) return opened;
   await page.waitForFunction(() => { const b = document.querySelector('.cot-replay .play'); return b && !b.disabled; }, { timeout: 240_000 });
@@ -539,9 +544,11 @@ const seconds_ = (clock) => {
 };
 
 async function pathB(page, options, shot, log) {
-  await enterBattle(page);
-  log.push({ at: 'battle', recorder: await recorderState(page) });
-  await drive(page, options.seconds);
+  await enterBattle(page, options.map);
+  log.push({ at: 'battle', recorder: await recorderState(page), map: await page.evaluate(() => window.__DEBUG?.game?.mapId ?? null) });
+  const shots = [];
+  await drive(page, options.seconds, { raise: options.raise, shots });
+  log.push({ at: 'shots', raise: options.raise, shots });
   // the battle's clock runs out a few seconds on (the debug surface's game; the rule the step reads, a timeout result)
   await page.evaluate(() => {
     const game = window.__DEBUG.game;
@@ -594,6 +601,7 @@ export async function runFlow(options) {
       const page = await context.newPage();
       await page.setViewport({ width: options.width, height: options.height, deviceScaleFactor: 1 });
       await page.evaluateOnNewDocument(WATCH_INDEXER);
+      const reverted = name === 'E' && !options.cancel ? await revertLeaveCancel(page) : null;
       page.on('pageerror', (error) => receipt.errors.push({ path: name, kind: 'pageerror', text: String(error?.message ?? error) }));
       page.on('console', (message) => {
         const text = message.text();
@@ -616,10 +624,18 @@ export async function runFlow(options) {
         say(`battle pool: ${receipt.pool.same ? 'the page\'s is Node\'s' : `the page's parts from Node's at ${receipt.pool.partsAt}`}`);
       }
       let result;
-      try { result = await ({ A: pathA, B: pathB, C: pathC, D: pathD })[name](page, options, shot, log); } catch (error) {
+      try {
+        if (reverted && reverted.replaced !== 1) throw new Error(`E's control replaced ${reverted.replaced} cancel call(s) in the served main.ts, not 1`);
+        result = await ({ A: pathA, B: pathB, C: pathC, D: pathD, E: pathE })[name](page, options, shot, log);
+        if (reverted && reverted.replaced !== 1) throw new Error(`E's control replaced ${reverted.replaced} cancel call(s) in the served main.ts, not 1`);
+      } catch (error) {
         await shot('error');
         result = { ok: false, why: `threw: ${error.message}` };
       }
+      // (279 r2) E lands with no page error as well
+      const pageErrors = receipt.errors.filter((entry) => entry.path === name && entry.kind === 'pageerror');
+      if (name === 'E' && result.ok && pageErrors.length) result = { ok: false, why: `page error: ${pageErrors[0].text.slice(0, 200)}` };
+      if (reverted) result = { ...result, control: { cancelRemoved: reverted.replaced } };
       receipt.paths[name] = { ...result, log };
       say(`path ${name}: ${result.ok ? 'PASS' : 'FAIL'} ${result.why}`);
       await context.close();

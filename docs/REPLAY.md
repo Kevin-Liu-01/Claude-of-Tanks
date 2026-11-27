@@ -434,3 +434,42 @@ and top middle and notifications", and "be able to export it as a mp4". Approved
   and a plate's clip-path slant is drawn square (v1).
 - Measured (UI-flow path D, through the dialog, this build): 30 s at 1920x1080@60, H.264 High, 41-48 MB clean and
   46-48 MB with the HUD (the battle's picture sets it), each exported in 29-36 s on this Mac (about real time).
+
+## A replay steps on its mode's battlefield (replay-receipts-279, 2026-11-27)
+
+Live 276-278, every Frontline Assault replay stopped at 0:10 ("the battle played out differently here"). The indexer
+Worker built its height field from the map alone, while the battle stepped on its mode's variant (Frontline Assault's
+`assault-trenches`: trenches carved into the field). Every world a replay builds now takes its variant from the
+recording's mode (`replaySetup.ts recordedTerrainVariant`, the live battle's rule: `terrainVariantFor`), and every
+battle-world config is `world/worldBuildConfig.ts` (the Worker, `tools/replay-world.mjs`, the dedicated shards, the
+browser host and the authority, whose stub-field layout fallback now takes the mode's variant too). The shard capture
+(`tools/headlessWorldCollision.mjs`) and the wreck-bake plan build the same config inline, left as they are: editing
+them moves every map's world-step key for no change in what they build. The recording, its format and the
+wire are unchanged: only the viewer was wrong, so a 279 viewer plays 279 Frontline recordings. Receipt:
+`replayTerrainVariant.selftest.mjs` (MANUAL 'sims'): every mode with a variant replays headless and through the
+Worker's job, its track the battle's byte for byte; the Worker's old flat field drifts at step 600 (the control).
+
+## The UI-flow drive raises its gun; replay-trace parity (replay-receipts-279, 2026-11-27)
+
+- `tools/replay-ui-flow.browser.selftest.mjs` failed paths A and C on 278 by luck of the map: its blind drive pressed a
+  little under the middle of the screen, so on a hilly map every shot left into the ground ahead and died before the
+  track's first sample. The drive (`tools/replay-flow.test-support.mjs`) now moves the mouse up and fires there (a
+  pointer-locked aim turns up; the cursor-aim fallback aims into the sky), logging each press's gun pitch. The effects gate
+  reads the indexer's own track census (shell entries > 0) beside the shells drawn. `--raise=0` is the old drive, the
+  control; `--map=<id>` enters a given map.
+- `tools/replay-trace-parity.browser.selftest.mjs` (manual 'browser' suite): the page's indexer Worker's job, copied as
+  posted, and its reply must equal Node's `runReplayIndexJob` over the same job byte for byte (track samples, shells,
+  hulls, steps, problem, cues), the first difference named by field. The planted control,
+  `tools/replay-trace-parity.planted-worker.ts`, is the Worker with its world's `heightField` getter keyed by the job
+  instead of the world; the receipt must name where it parts.
+
+## A Leave while a replay loads (replay-receipts-279 r2, 2026-11-27)
+
+The replay bar, and its Leave, show as soon as the indexer replies, which is often while the replay's battle is still
+loading. A Leave there made the Garage return supersede the entry, and the entry's failure branch answered the player's
+own Leave with "The battle could not start: Solo battle deployment was superseded". The class: every Leave goes through
+`main.ts` `leaveBattleToGarage`, which now cancels the solo entry in flight (`soloBattleEntryRuntime.ts` `cancel()`), and a
+cancelled entry comes back to the Garage with no notice and no failure beacon; a supersede nobody asked for still
+surfaces. Receipts: `src/game/soloBattleEntryRuntime.selftest.mjs` (the cancel cases, its reverted control and the
+wiring), and `tools/replay-ui-flow.browser.selftest.mjs` path E (Leave pressed while the app lifecycle reads 'loading';
+`--cancel=0` serves `main.ts` without the cancel and must fail by that dialog).

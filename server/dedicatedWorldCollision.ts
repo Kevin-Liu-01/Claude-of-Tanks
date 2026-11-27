@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import type { WorldKernelModule } from '../src/world/wasmWorldKernels.ts';
-import { getMapConfig } from '../src/world/maps/index.ts';
+import { worldBuildConfig } from '../src/world/worldBuildConfig.ts';
 import { createHeightField } from '../src/world/terrain.ts';
 import { createCollisionManifestLoader } from './collisionManifestLoader.ts';
 import { createMapResourceCache } from './mapResourceCache.ts';
@@ -23,12 +23,10 @@ function terrain(): NonNullable<typeof terrainCache> {
   }, 2);
 }
 
-/** The map's config as the variant builds it (sim/matchRuleset.ts terrainVariant; the world's map.ts does the same). */
+/** The map's config as the variant builds it: the live world's own (world/worldBuildConfig.ts), an unknown variant refused. */
 function variantMapConfig(id: string, variant: string | null) {
-  const config = getMapConfig(id);
-  if (variant === null) return config;
-  if (variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
-  return { ...config, assaultTrenches: true };
+  if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
+  return worldBuildConfig(id, variant);
 }
 
 /**

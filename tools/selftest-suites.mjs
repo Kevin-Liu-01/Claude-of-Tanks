@@ -370,6 +370,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayPageOnly.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
+    // replay-receipts-279: every mode with a battlefield variant (Frontline Assault's trenches) replays on its variant,
+    // headless and through the indexer Worker's job; the Worker's old flat field drifts at step 600 (MANUAL 'sims')
+    'src/game/replay/replayTerrainVariant.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',
@@ -3643,6 +3646,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // replay-fixes-277: a battle played, left and watched from the Service Record, another ended and watched from its
     // end screen, each replay playing to its end (live 276: the indexer's Worker drew another roster and refused them)
     'tools/replay-ui-flow.browser.selftest.mjs',
+    // replay-receipts-279: the page's replay indexer Worker indexes a recording byte for byte as Node's does over the same
+    // job; a planted getter keyed wrongly in the page's world is named
+    'tools/replay-trace-parity.browser.selftest.mjs',
     // 2026-11-06 (crew-languages-270): the crew voice picker lists languages, and a real touch drag (wheel on desktop)
     // reaches and chooses its last row and an RTL row on a phone sheet
     'tools/crew-voice-picker.browser.selftest.mjs',

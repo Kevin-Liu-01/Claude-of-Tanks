@@ -9,6 +9,7 @@
  */
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { ReplayHeader, ReplayTeamNations } from '../../sim/replayFormat.ts';
+import { terrainVariantFor, type TerrainVariant } from '../../sim/matchRuleset.ts';
 
 /** The options a recorded setup passes to state.ts setupBattle (the caller adds its own beside them). */
 export interface RecordedSetupOptions {
@@ -44,6 +45,16 @@ export function recordedBattle(header: ReplayHeader): RecordedBattle {
     campaignOperationId: typeof options.campaignOperationId === 'string' ? options.campaignOperationId : null,
     randomRoster: options.random === true,
   };
+}
+
+/**
+ * The battlefield variant the recording's battle stepped on (replay-receipts-279): its mode's, by the rule the live battle's
+ * world is built with (main.ts: terrainVariantFor(mode) to world/map.ts, whose config is world/worldBuildConfig.ts). Every
+ * world a replay builds from a map id (the indexer Worker, tools/replay-world.mjs) builds it with this, or a Frontline
+ * Assault replay steps on a field without its trenches and drifts at its first checksum (live 276-278).
+ */
+export function recordedTerrainVariant(header: ReplayHeader): TerrainVariant | null {
+  return terrainVariantFor(recordedBattle(header).gameMode);
 }
 
 /** A localStorage that answers what the recording read, installed on globalThis until the returned release runs. */

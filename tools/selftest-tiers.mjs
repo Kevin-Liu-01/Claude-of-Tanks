@@ -179,6 +179,10 @@ export const MANUAL_SUITES = Object.freeze({
     // seat-stage, track and seat-action receipts stay default (src/sim/replayFormat.selftest.mjs, src/game/replay/replayTrack.selftest.mjs,
     // src/game/replay/seatActions.selftest.mjs)
     'src/game/replay/replayRoundTrip.selftest.mjs',
+    // replay-receipts-279 (live 276-278: every Frontline Assault replay stopped at 0:10): each variant mode's battle,
+    // 1200 steps recorded on its variant's shard, replayed headless and through the indexer Worker's job, and the
+    // control on the Worker's old flat field (about 7 s of user CPU, peak 0.55 GiB under its own 1.5 GiB cap)
+    'src/game/replay/replayTerrainVariant.selftest.mjs',
     // round 8 Y4 (2026-11-02 audit, sm-fix, ROUND8 amendment 4): a couch battle's Battle Again through main's intent and
     // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
     // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
@@ -857,6 +861,7 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/replay-ui-flow.browser.selftest.mjs',
+    'tools/replay-trace-parity.browser.selftest.mjs',
   ]),
   // round 5 U12 (2026-11-02 audit, sm-fix): the census's two houses cost about 1.7 s of its 4.1-4.4 s of CPU; the default
   // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves what only their destruction stamps or
