@@ -124,6 +124,8 @@ html[data-cot-scoped] .cot-touch .round.scope{border-color:var(--accent);backgro
 .cot-touch .round.turbo[hidden],.cot-touch .round.air-spin[hidden]{display:none;}
 .cot-touch .round.turbo svg,.cot-touch .round.air-spin svg{width:28px;height:28px;}
 .cot-touch .round[data-unavailable]{opacity:.38;filter:grayscale(1);}
+/* thrust-boosts-279: the boost's charges as pips across its foot, one segment a charge, the ones left in the accent */
+.cot-touch .round.air-spin[data-charges]::after{content:'';position:absolute;left:14px;right:14px;bottom:8px;height:3px;pointer-events:none;background:linear-gradient(to right,var(--accent) 0 calc(var(--pips,0) / var(--charges,1) * 100%),var(--hud-muted) 0);-webkit-mask:repeating-linear-gradient(to right,#000 0 calc(100% / var(--charges,1) - 2px),transparent 0 calc(100% / var(--charges,1)));mask:repeating-linear-gradient(to right,#000 0 calc(100% / var(--charges,1) - 2px),transparent 0 calc(100% / var(--charges,1)));}
 .cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
 .cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
@@ -777,9 +779,13 @@ export function createTouchControls({
     spinButton.hidden = !(on && airSpin);
   });
   bus.on('ui:modeMoves', (payload) => {
-    const { turboReady, spinReady } = payload as { turboReady?: boolean; spinReady?: boolean };
+    const { turboReady, spinReady, boostsLeft = 0, charges = 0 } = payload as { turboReady?: boolean; spinReady?: boolean; boostsLeft?: number; charges?: number };
     turboButton.toggleAttribute('data-unavailable', !turboReady);
     spinButton.toggleAttribute('data-unavailable', !spinReady);
+    // the flight's charges as pips along the button's foot, as the HUD tile's (thrust-boosts-279; its label stands aside on a phone)
+    spinButton.toggleAttribute('data-charges', charges > 0);
+    spinButton.style.setProperty('--pips', String(boostsLeft));
+    spinButton.style.setProperty('--charges', String(Math.max(1, charges)));
   });
   const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
   const toggleAutoAim = (): void => { bus.emit('ui:autoAimToggle', {}); bus.emit('ui:click', {}); };

@@ -34,9 +34,14 @@ const port = Number(arg('port', '4259'));
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
 const receipt = { root, map: mapId, takes: {}, errors: {} };
+// (the phone take is stills of the boost's pips on the round button, Main 2026-11-27: "check it in the take's drawn frames,
+// at desktop and phone width"; a phone's landscape viewport on the phone tier, as tools/turbo-spin-clip.mjs shot it)
+const DESKTOP = { width: 1600, height: 900 };
+const PHONE = { width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 const TAKES = Object.freeze({
-  ball: { gameMode: 'turbo_ball', arrangement: null },
-  moon: { gameMode: 'mars', arrangement: { mars: { marsGravity: 'moon' } } },
+  ball: { gameMode: 'turbo_ball', arrangement: null, viewport: DESKTOP, tier: 'desktop' },
+  moon: { gameMode: 'mars', arrangement: { mars: { marsGravity: 'moon' } }, viewport: DESKTOP, tier: 'desktop' },
+  phone: { gameMode: 'turbo_ball', arrangement: null, viewport: PHONE, tier: 'phone', still: true },
 });
 
 /** The player's hull as the receipt reads it. */
@@ -115,6 +120,7 @@ async function filmBall(page, signal) {
   for (let k = 1; k <= 3 && !signal.aborted; k++) {
     await untilApex(page);
     await press(page, 'ball', ['KeyF'], `F at the apex: belly boost ${k} of 5`);
+    if (k === 2) await page.screenshot({ path: path.join(out, 'desktop-boost2.png') });
   }
   await untilApex(page);
   await press(page, 'ball', ['KeyA', 'KeyF'], 'A + F: side boost (pushed left, rolls)');
@@ -195,10 +201,10 @@ const bootTake = async (browser, listening, tag) => {
   const spec = TAKES[tag];
   const errors = receipt.errors[tag] = [];
   const page = await browser.newPage();
-  await page.setViewport({ width: 1600, height: 900 });
+  await page.setViewport(spec.viewport);
   await stubViteSocket(page);
   rememberWarm(page, {
-    url: `http://127.0.0.1:${listening}/?nosplash=1&tier=desktop&gfxreset=1`, ready: BOOT_LOADED_EXPRESSION,
+    url: `http://127.0.0.1:${listening}/?nosplash=1&tier=${spec.tier}&gfxreset=1`, ready: BOOT_LOADED_EXPRESSION,
     after: async (p) => {
       if (spec.arrangement) await p.evaluate((value) => localStorage.setItem('cot.game.teams.v1', JSON.stringify(value)), spec.arrangement);
       await beginSoloBattle(p, { specId: 'm1a1_abrams_hc', mapId, gameMode: spec.gameMode, settleMs: 2500, timeoutMs: 900_000 });
@@ -209,7 +215,27 @@ const bootTake = async (browser, listening, tag) => {
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });
   return page;
 };
-const FILMS = { ball: filmBall, moon: filmMoon };
+/** The phone's round boost button and its pips: on the ground (all five), then in flight after two belly boosts. */
+async function filmPhone(page, signal) {
+  const take = receipt.takes.phone = { presses: [], shots: [] };
+  await sleep(1200);
+  await page.screenshot({ path: path.join(out, 'phone-ground.png') });
+  take.shots.push('phone-ground');
+  await press(page, 'phone', ['KeyF'], 'F: jump');
+  for (let k = 1; k <= 2 && !signal.aborted; k++) {
+    await untilApex(page);
+    await press(page, 'phone', ['KeyF'], `F at the apex: belly boost ${k} of 5`);
+  }
+  await sleep(500);
+  await page.screenshot({ path: path.join(out, 'phone-boost2.png') });
+  take.shots.push('phone-boost2');
+  take.button = await page.evaluate(() => {
+    const b = document.querySelector('.cot-touch .round.air-spin');
+    return b && { hidden: b.hidden, charges: b.hasAttribute('data-charges'), pips: b.style.getPropertyValue('--pips'), box: b.getBoundingClientRect().toJSON() };
+  });
+  await untilGrounded(page);
+}
+const FILMS = { ball: filmBall, moon: filmMoon, phone: filmPhone };
 const shoot = async ({ browser, listening, tags, first, signal }) => {
   for (const tag of tags) {
     if (signal.aborted) break;
@@ -223,6 +249,7 @@ const shoot = async ({ browser, listening, tags, first, signal }) => {
         return { gravityScale: p.modeGravityScale, jumpMps: p.modeJumpMps, airSpin: p.modeAirSpin };
       });
       await sleep(800);
+      if (TAKES[tag].still) { await FILMS[tag](page, signal); continue; }
       const recorder = await page.screencast({ path: path.join(out, `${tag}.webm`), fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' });
       try { await FILMS[tag](page, signal); } finally { await recorder.stop(); }
     } finally { await page.close(); }

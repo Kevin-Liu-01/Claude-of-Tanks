@@ -603,7 +603,7 @@ in `sim/matchRuleset.ts`):
   action, unbound by default, action bit 19 for the tile, the phone key and the touch button) fires the nozzle the drive
   picks at the press: W or nothing the belly (straight up the hull's own up), S the nose's underside (back and a little
   up), A or D the side away from the push (toward the side the steer turns to, a little up). Five a flight
-  (`AirSpinRules.charges`), refilled by the ground, at least 0.35 s apart; the HUD tile shows the charges left as pips.
+  (`AirSpinRules.charges`), refilled by the ground, at least 0.35 s apart; the HUD tile counts the charges left and shows them as pips along its foot.
   The belly pushes 0.75 × the mode's jump (Turbo Ball 9.75 m/s; Mars, the Moon and Earth by their world's jump), and no
   nozzle lifts the climb past 1.25 × the jump (`climbCapMps`, a cap on vertical speed alone), so pressed at each apex the
   climb comes in steps: Turbo Ball 14 → 49 m over five, Mars 12 → 42 m, the Moon 47 → 174 m, Earth 1.8 → 4.6 m. On the

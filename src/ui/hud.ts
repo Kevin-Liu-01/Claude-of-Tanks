@@ -3127,9 +3127,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
   // turbo-spin-275 (owner 2026-11-22, Turbo Ball and Gravity): Turbo (Z) and the boost (F in flight; thrust-boosts-279)
   // follow the jump, tiles of its kind (.cot-jump: shown with it, off the phone row, where the touch layer's round buttons
-  // stand). The boost greys when the sim would refuse it (data-grounded) and its caption shows the flight's charges left
-  // as pips (data-pips); the jump dims in flight (data-airborne), where F boosts; Turbo counts its cooldown down and refills
-  // its edge (data-cooling, --refill).
+  // stand). The boost greys when the sim would refuse it (data-grounded); its caption counts the flight's charges left
+  // and its foot shows them as pips (data-pips, data-charges, --pips, --charges); the jump dims in flight (data-airborne),
+  // where F boosts; Turbo counts its cooldown down and refills its edge (data-cooling, --refill).
   const modeMoveTile = (id: 'turbo' | 'airSpin', act: () => void): { button: HTMLButtonElement; label: HTMLElement; key: HTMLElement } => {
     const def = vehicleAction(id);
     const button = el('button', `cot-jump cot-mode-move cot-${id === 'turbo' ? 'turbo' : 'air-spin'} cot-m-rise cot-m-by-on`, controlsRow);
@@ -3254,11 +3254,16 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const spinGrey=!canTankBoost(player?.state,charges)||airSpinCooldown.readyIn(lastTimeS)>0;
     spinTile.button.toggleAttribute('data-grounded',spinGrey);
     const boostsLeft=tankBoostsLeft(player?.state,charges);
-    const pips=charges>0?'\u25cf'.repeat(boostsLeft)+'\u25cb'.repeat(Math.max(0,charges-boostsLeft)):'';
+    // (the count a figure in the label's slot, as the smoke's; the pips a strip of `charges` along the tile's foot,
+    // battleHudLayout.css: the dry run's five glyphs overflowed the tile onto the key and Turbo's)
+    const pips=charges>0?`${boostsLeft}/${charges}`:'';
     if(pips!==lastSpinPips){
       lastSpinPips=pips;
       spinTile.button.dataset.pips=String(boostsLeft);
-      setControlText(spinTile.label,pips||t(vehicleAction('airSpin').label),!!pips);
+      spinTile.button.toggleAttribute('data-charges',charges>0);
+      spinTile.button.style.setProperty('--pips',String(boostsLeft));
+      spinTile.button.style.setProperty('--charges',String(Math.max(1,charges)));
+      setControlText(spinTile.label,charges>0?String(boostsLeft):t(vehicleAction('airSpin').label),charges>0);
     }
     setDisabled(spinTile.button,!canControl||spinGrey);
     const turboWait=turboCooldown.readyIn(lastTimeS);
@@ -3268,8 +3273,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if(turboTile.button.dataset.refill!==refill){turboTile.button.dataset.refill=refill;turboTile.button.style.setProperty('--refill',refill);}
     setControlText(turboTile.label,turboWait>0?t('systems.cooldown',{seconds:Math.ceil(turboWait)}):t('hud.turbo'),turboWait>0);
     // the touch layer's round buttons grey with the tiles (touchControls.ts): told only when either changes
-    const movesKey=(turboWait>0?0:1)|(spinGrey?0:2);
-    if(movesKey!==lastModeMovesKey){lastModeMovesKey=movesKey;bus.emit('ui:modeMoves',{turboReady:turboWait<=0,spinReady:!spinGrey});}
+    // (and the charges left, for the round button's own pips on a phone, where the tiles stand aside: thrust-boosts-279)
+    const movesKey=(turboWait>0?0:1)|(spinGrey?0:2)|(boostsLeft<<2)|(charges<<6);
+    if(movesKey!==lastModeMovesKey){lastModeMovesKey=movesKey;bus.emit('ui:modeMoves',{turboReady:turboWait<=0,spinReady:!spinGrey,boostsLeft,charges});}
     setHidden(controlsRow,!player);
     const flight = player?.aerial;
     setHidden(droneButton, flight?.kind !== 'drone');
