@@ -18,6 +18,7 @@ import { bench, wallLantern, woodpile } from './dressing.ts';
 import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
+import { drawWorldFlag } from '../../worldFlags.ts';
 
 /** Shutters: the Lorraine grey-green, pale grey, brown, blue-grey, an oxblood, a sage. */
 const SHUTTERS: readonly Rgb[] = [0x7a8a78, 0xa4a69e, 0x6a5040, 0x6a7e8e, 0x7a3a30, 0x8a9a7a].map(rgb);
@@ -587,13 +588,14 @@ const mairie: RegionalBuilder = (ctx) => {
     sink.span('structureWood', -0.5, ry + 1.0, rz - 0.06, 0.5, ry + 1.12, rz + 0.06, { colour: rgb(0x4a3a2c), decor: true });
     sink.cylinder('structureMetal', [0, ry + 0.96, rz], 'y', 0.05, 0.03, 6, { colour: IRON, decor: true });
     sink.cylinder('structureMetal', [0, ry + 0.52, rz], 'y', 0.45, 0.24, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.12);
-    // the flagstaff over the door with the tricolour (dressing)
+    // the flagstaff over the door and the commune's world flag hanging from it (dressing; world-flags-279: it flew a real
+    // nation's tricolour, now worldFlags.ts 'commune', the hoist along the staff's foot, the fly out from the wall)
     if (look() < 0.85) {
       // (kitConnectivity: its foot in its bracket on the wall, not 5 cm off it)
       faceBox(sink, 'structureMetal', frame.faces.front, 0, frame.floors[1] + 0.22, 0.04, 0.12, 0.16, 0.08, { colour: IRON, decor: true });
       sink.member('structureMetal', [0, frame.floors[1] + 0.2, D / 2 + 0.02], [0, frame.floors[1] + 1.4, D / 2 + 1.4], 0.04, 0.04, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
-      const colours = [rgb(0x24376e), rgb(0xe8e6e0), rgb(0xb0302a)];
-      colours.forEach((c, k) => sink.span('structureWood', -0.012, frame.floors[1] + 0.55 + k * 0, D / 2 + 0.75 + k * 0.32, 0.012, frame.floors[1] + 1.25, D / 2 + 1.07 + k * 0.32, { colour: c, decor: true }));
+      const fy = frame.floors[1] + 0.55, fl = 0.96, fh = 0.7;
+      drawWorldFlag(sink, 'structureWood', 'commune', (u, v, lift) => [-lift, fy + v * fh, D / 2 + 0.75 + u * fl], { aspect: fl / fh, site: 'lorrain mairie flagstaff' });
     }
   });
   return sink.finish();

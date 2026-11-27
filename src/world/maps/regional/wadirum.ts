@@ -11,6 +11,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
+import { noteWorldCloth } from '../../worldFlags.ts';
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
 const TANK = rgb(0x262626), REBAR = rgb(0x5a3e2e);
@@ -496,6 +497,7 @@ const fort: RegionalBuilder = (ctx) => {
   // plain pennant of sun-faded khaki cloth on the gate tower's mast, 2.4 m to the fly, 0.9 m at the hoist
   {
     const fz = gz - 0.976, cloth = rgb(0xb9a98a);
+    noteWorldCloth('khakiPennant', 'wadirum gate pennant');
     sink.prism('structureWood', [[0.06, gth + 5.4, fz], [2.46, gth + 5.9, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: cloth, decor: true });
   }
   // the court: rooms along the back and the west wall, flat roofs behind a low parapet, doors and windows on the court

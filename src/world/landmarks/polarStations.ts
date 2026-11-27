@@ -12,6 +12,7 @@ import { holedPolygon } from '../maps/regional/house.ts';
 import { chamferedSection, panelSlab, sectionMember, shellBody, type ShellHole } from '../maps/regional/steelMembers.ts';
 import type { LandmarkBuilder, LandmarkBuildContext, LandmarkPlacement } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
+import { noteWorldCloth } from '../worldFlags.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026), TRIM_BLUE = rgb(0x34506e);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30);
@@ -308,6 +309,7 @@ export const stripShack: LandmarkBuilder = (ctx) => {
     for (let k = 0; k < 8; k++) bar(sink, 'structureMetal', sock[k], sock[(k + 1) % 8], 0.04, { colour: STEEL_DARK, decor: true });
     bar(sink, 'structureMetal', [wx, wg + 6.42, wz], [wx + 0.15, wg + 6.65, wz], 0.04, { colour: STEEL_DARK, decor: true });
     bar(sink, 'structureMetal', [wx, wg + 5.75, wz], [wx + 0.17, wg + 5.75, wz], 0.04, { colour: STEEL_DARK, decor: true });
+    noteWorldCloth('windsock', 'airstrip windsock');
     for (let k = 0; k < 8; k++) {
       const n = (k + 1) % 8, tip = (p: Vec3): Vec3 => [p[0] + 2.4, wg + 6.0 + (p[1] - wg - 6.2) * 0.4, p[2] * 0.4 + wz * 0.6];
       sink.quad('structureMetal', sock[k], sock[n], tip(sock[n]), tip(sock[k]), { colour: k % 2 ? AVI_ORANGE : AVI_WHITE, decor: true });

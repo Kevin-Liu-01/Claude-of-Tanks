@@ -263,7 +263,7 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   sink.cylinder('structureMetal', [fx, poleTop, fz], 'y', 0.16, 0.1, 6, { colour: rgb(0xc8b070), decor: true });
   const fw = 3.6, fh = 1.8, fy = poleTop - 0.12 - fh, ph = v() * Math.PI * 2;
   drawWorldFlag(sink, 'structureMetal', 'dune', (u, w, lift) => [fx + 0.06 + u * fw * 0.97, fy + w * fh - 0.3 * u * u, fz + Math.sin(u * 4.4 + ph) * 0.2 * u + lift],
-    { aspect: fw / fh, columns: 6 });
+    { aspect: fw / fh, columns: 6, site: 'desertFort tower' });
   // the stair up to the wall walk along the left range's court face, its flights' parapet; the shade over the court's
   // front corner with the patrol's stores under it (landmark-primitives-278: the souq's jerid shade standing free,
   // souqs.ts jeridFrame, its fronds hanging over the court; the stores the map's drums and a crate)

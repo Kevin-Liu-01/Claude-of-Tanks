@@ -10,7 +10,8 @@
 // drawn cloth) against a table of real flags.
 //
 // Out of scope by design: the vehicles' national markings, the nation picker and the gallery's flags (src/ui/flags.ts),
-// which name a vehicle's real nation on purpose; plain one-colour pennants and survey flags (no design to borrow).
+// which name a vehicle's real nation on purpose. Plain one-colour cloths (survey flags, pennants, a windsock) have no
+// design to borrow: they keep their colour and are noted by a PLAIN_CLOTHS id, so the census lists every cloth.
 import * as THREE from 'three';
 // (types only: the structure kit draws these too, and stays clear of the regional kits' module)
 import type { EmitOptions, PartSink, RegionalBucket, Rgb, Vec3 } from './maps/regional/geometry.ts';
@@ -37,8 +38,38 @@ export const WORLD_FLAG_DESIGNS = Object.freeze({
   march: { field: 0x56626b, band: { hex: 0xd6c7a1, edge: 'head', share: 0.28 }, device: { kind: 'annulet', hex: 0xd6c7a1, u: 0.36, v: 0.37, r: 0.2 }, notch: 0.2 },
   // the survey: a steel-blue field, a white band at its foot, a white lozenge (the lunar site's mission banner)
   survey: { field: 0x5d7896, band: { hex: 0xf1efe8, edge: 'foot', share: 0.3 }, device: { kind: 'lozenge', hex: 0xf1efe8, u: 0.36, v: 0.64, r: 0.21 }, notch: 0.2 },
+  // (world-flags-279, Kevin on the kolkhoz arch: its red banners "read as real Soviet flags") the farm: an umber field, an
+  // ochre band at its foot, a cream annulet (the kolkhoz arch's pillar flags; its name banner takes the field and band)
+  furrow: { field: 0x5e4a33, band: { hex: 0xc9a24f, edge: 'foot', share: 0.28 }, device: { kind: 'annulet', hex: 0xe2d6b0, u: 0.36, v: 0.62, r: 0.2 }, notch: 0.2 },
+  // the commune: an ochre field, a slate band at its head, a slate lozenge (the Lorraine mairie's staff; it flew a real
+  // tricolour until world-flags-279)
+  commune: { field: 0xb8913f, band: { hex: 0x3f4a52, edge: 'head', share: 0.28 }, device: { kind: 'lozenge', hex: 0x3f4a52, u: 0.36, v: 0.37, r: 0.21 }, notch: 0.2 },
 } satisfies Record<string, WorldFlagDesign>);
 export type WorldFlagId = keyof typeof WORLD_FLAG_DESIGNS;
+
+/**
+ * The plain cloths: one colour, no design to borrow, so no real flag to read (world-flags-279's census lists them by
+ * these ids beside the designs).
+ */
+export const PLAIN_CLOTHS = Object.freeze({
+  surveyOrange: 'an orange survey flag on a wire stake (the lunar site)',
+  beaconPennant: 'an orange pennant on a delineator or a tether line (the lunar works)',
+  khakiPennant: 'a sun-faded khaki pennant (the Wadi Rum post\'s gate tower)',
+  windsock: 'an orange windsock on its mast (the polar airstrip)',
+});
+type PlainClothId = keyof typeof PLAIN_CLOTHS;
+
+/** One flag-like cloth a build drew: its design or plain id and the site that flies it. */
+interface WorldClothEntry { readonly id: WorldFlagId | PlainClothId; readonly kind: 'design' | 'plain'; readonly site: string }
+let census: WorldClothEntry[] | null = null;
+/** The census (world-flags-279): from here until it is closed, every cloth drawn is noted. Off otherwise (no cost). */
+export function openWorldClothCensus(): void { census = []; }
+/** The cloths noted since the census opened; closes it. */
+export function closeWorldClothCensus(): WorldClothEntry[] { const out = census ?? []; census = null; return out; }
+/** Note one cloth: drawWorldFlag notes its own; a site that draws worldFlagPanels or a plain cloth itself calls this. */
+export function noteWorldCloth(id: WorldFlagId | PlainClothId, site: string): void {
+  census?.push({ id, kind: id in WORLD_FLAG_DESIGNS ? 'design' : 'plain', site });
+}
 
 /** One convex piece of the cloth in one colour; layer 1 lies on layer 0 (the device on the field and band). */
 interface WorldFlagPanel { readonly poly: readonly FlagUV[]; readonly hex: number; readonly layer: 0 | 1 }
@@ -116,7 +147,8 @@ export const WORLD_FLAG_LIFT = 0.008;
  * light), dressing (no collision).
  */
 export function drawWorldFlag(sink: PartSink, bucket: RegionalBucket, id: WorldFlagId,
-  cloth: (u: number, v: number, lift: number) => Vec3, opts: WorldFlagOptions & { emit?: EmitOptions; back?: number } = {}): void {
+  cloth: (u: number, v: number, lift: number) => Vec3, opts: WorldFlagOptions & { site: string; emit?: EmitOptions; back?: number }): void {
+  noteWorldCloth(id, opts.site);
   const back = opts.back ?? 0.82, c = new THREE.Color();
   for (const p of worldFlagPanels(id, opts)) {
     c.setHex(p.hex, THREE.SRGBColorSpace);

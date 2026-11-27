@@ -8,21 +8,29 @@
 //      site's mission banner, the Franconian border post) is built, the triangles in its flag's window are rendered in
 //      software (the nearest face at each sample, each column's cloth stretched to its own height, so the droop and
 //      ripple come out) and that picture is the site's own design and no real flag;
-//   3. the source: no world module but worldFlags.ts keeps flag colours (a FLAG_* constant) or names a nation's flag,
-//      and the modules that draw a world flag are exactly the sites part 2 renders (a new one gets a window here).
+//   3. the source: no world module but worldFlags.ts keeps flag or banner colours (a FLAG_* or BANNER_* hex constant) or
+//      names a nation's flag, and the modules that use worldFlags.ts are exactly the sites part 2 renders and the
+//      plain cloths' sites (a new one gets a window here, or a PLAIN_CLOTHS id).
+// (world-flags-279, Kevin on the kolkhoz arch: its red banners "read as real Soviet flags") part 2 also renders the arch's
+// pillar flag, the Lorraine mairie's (a real tricolour until 279) and the arch's name banner: a banner is no design, so
+// it must read as no real flag and keep no red field. Each site's build is censused: it notes its cloth by design id.
 //
-// Control: forts.ts with the flag of Jordan restored (git show 1e7afa12dc:src/world/landmarks/forts.ts) fails parts 2
+// Controls: forts.ts with the flag of Jordan restored (git show 1e7afa12dc:src/world/landmarks/forts.ts) fails parts 2
 // and 3: its drawn cloth matches Jordan and Palestine, it keeps FLAG_* colours, names the flag of Jordan, and leaves the
-// helper. Out of scope: the vehicles' markings and the UI's nation flags (src/ui/flags.ts), real on purpose.
+// helper; gates.ts and lorrain.ts as b6c100411f had them fail part 2 (plain red, a red banner, France) and part 3.
+// Out of scope: the vehicles' markings and the UI's nation flags (src/ui/flags.ts), real on purpose; the period emblems
+// (the arch's and the memorials' red stars: Main's ruling, 279) are no cloth.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import * as THREE from 'three';
-import { WORLD_FLAG_DESIGNS, worldFlagPanels } from './worldFlags.ts';
+import { PLAIN_CLOTHS, WORLD_FLAG_DESIGNS, closeWorldClothCensus, openWorldClothCensus, worldFlagPanels } from './worldFlags.ts';
 import { LANDMARK_BUILDERS } from './landmarks/index.ts';
 import { resolveLandmarkParams } from './landmarks/plan.ts';
 import { REGIONAL_BUCKETS, streamFrom } from './maps/regional/geometry.ts';
 import { REGIONAL_DESTRUCTIBLE_TYPES } from './maps/structureKit.ts';
+import { buildRegionalParts } from './maps/regional/index.ts';
+import { LORRAIN_STYLE } from './maps/regional/lorrain.ts';
 
 const ROOT = new URL('../..', import.meta.url).pathname;
 const COLS = 60, ROWS = 40, ASPECT = 1.5;
@@ -122,6 +130,9 @@ const REAL_FLAGS = {
   palau: [base(0x0099ff), disc(0.45, 0.5, 0.33, 0xffde00)], laos: [HW([1, 2, 1], [0xce1126, 0x002868, 0xce1126]), disc(0.5, 0.5, 0.2, 0xffffff)],
   vietnam: [base(0xda251d), disc(0.5, 0.5, 0.25, 0xffff00)], china: [base(0xee1c25), disc(0.17, 0.75, 0.1, 0xffff00)],
   sovietUnion: [base(0xcc0000), disc(0.12, 0.85, 0.06, 0xffd700)], redBanner: [base(0xcc0000)],
+  // (279) a red field with a star at its middle, and a red banner in a white frame (the lettered Soviet banner's read)
+  redStar: [base(0xcc0000), disc(0.5, 0.5, 0.18, 0xffd700)], redBannerFramed: [base(0xcc0000), rect(0, 0, 1, 0.12, 0xffffff), rect(0, 0.88, 1, 1, 0xffffff)],
+  northKorea: [HW([6, 1, 22, 1, 6], [0x024fa2, 0xffffff, 0xed1c27, 0xffffff, 0x024fa2]), disc(0.33, 0.5, 0.17, 0xffffff), disc(0.33, 0.5, 0.06, 0xed1c27)],
   somalia: [base(0x4189dd), disc(0.5, 0.5, 0.17, 0xffffff)], kazakhstan: [base(0x00afca), rect(0, 0, 0.1, 1, 0xfec50c), disc(0.5, 0.55, 0.2, 0xfec50c)],
   brazil: [base(0x009c3b), lozenge(0.42, 0.4, 0xfedf00), disc(0.5, 0.5, 0.2, 0x002776)],
   bhutan: [diagonal(0xffd520, 0xff4e12)],
@@ -233,6 +244,7 @@ const landmark = (kind, params) => () => {
   const parts = out.parts ?? out;
   return REGIONAL_BUCKETS.flatMap((b) => parts[b] ?? []);
 };
+const KOLKHOZ = landmark('kolkhozArch', { span: 10, height: 6.2, sign: 'КОЛХОЗ «ЗАРЯ ЦЕЛИНЫ»' });
 /** Each site that flies a flag: its build, the box its cloth hangs in (the piece's frame), the axis it faces along. */
 const SITES = [
   { file: 'src/world/landmarks/forts.ts', name: 'the badlands fort', design: 'dune', build: landmark('desertFort', {}),
@@ -243,13 +255,26 @@ const SITES = [
     box: [[-5.16, 1.3, -6.7], [-3.4, 2.43, -6.1]], face: 'z', fade: 0.25 },
   { file: 'src/world/maps/structureKit.ts', name: 'the Franconian border post', design: 'march',
     build: () => [REGIONAL_DESTRUCTIBLE_TYPES.franconian.securityoffice.build(streamFrom(5))], box: [[3.8, 4.3, 3.9], [4.3, 5.3, 4.95]], face: 'x' },
+  // (279) the kolkhoz arch's right pillar flag (span 10, height 6.2: the pillar at x 5.4, the cloth 6.59–7.55 m up)
+  { file: 'src/world/landmarks/gates.ts', name: "the kolkhoz arch's pillar flag", design: 'furrow', build: KOLKHOZ,
+    box: [[5.38, 6.5, -0.06], [6.6, 7.6, 0.06]], face: 'z' },
+  // (279) the Lorraine mairie's staff over its door (a 9 × 11 m lot: the cloth on the front's centre line, 4.75–5.45 m up)
+  { file: 'src/world/maps/regional/lorrain.ts', name: 'the Lorraine mairie', design: 'commune', build: () => {
+    const [w, d, h] = [9, 11, 8];
+    return Object.values(buildRegionalParts(LORRAIN_STYLE, { structureId: 'schoolhouse', info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+      wallBucket: 'plaster', rng: streamFrom(11), variant: streamFrom(80), mapId: 'selftest', snowCap: false, tier: 'desktop' }, streamFrom(38))).flat();
+  }, box: [[-0.05, 4.65, 6.15], [0.05, 5.55, 7.2]], face: '-x' },
+];
+/** (279) The banners: lettered boards, no design, so no real flag and no red field. */
+const BANNERS = [
+  { file: 'src/world/landmarks/gates.ts', name: "the kolkhoz arch's name banner", build: KOLKHOZ, box: [[-5, 3.48, 0], [5, 4.83, 0.2]], face: 'z' },
 ];
 const _c = new THREE.Color();
 /** The cloth in the window as drawn: the faces turned to the viewer, nearest first, each column stretched to its height. */
 function drawnGrid(geoms, [lo, hi], face) {
   const tris = [];
   const P = (g, i) => [g.getX(i), g.getY(i), g.getZ(i)];
-  const screen = (p) => (face === 'z' ? [p[0], p[1], p[2]] : [-p[2], p[1], p[0]]);
+  const screen = (p) => (face === 'z' ? [p[0], p[1], p[2]] : face === 'x' ? [-p[2], p[1], p[0]] : [p[2], p[1], -p[0]]);
   for (const geo of geoms) {
     const pos = geo.getAttribute('position'), col = geo.getAttribute('color'), index = geo.index;
     if (!col) continue;
@@ -283,7 +308,11 @@ function drawnGrid(geoms, [lo, hi], face) {
   return { grid: Array.from({ length: ROWS }, (_, j) => columns.map((c) => c[j])), area: tris.reduce((a, t) => a + t.area, 0) };
 }
 for (const site of SITES) {
-  const { grid: g, area } = drawnGrid(site.build(), site.box, site.face);
+  openWorldClothCensus();
+  const geoms = site.build(), noted = closeWorldClothCensus();
+  check(noted.some((e) => e.id === site.design && e.kind === 'design' && e.site),
+    `${site.name}: its build notes its cloth in the census by design id '${site.design}' (noted: ${JSON.stringify(noted)})`);
+  const { grid: g, area } = drawnGrid(geoms, site.box, site.face);
   check(area > 0.3, `${site.name}: the window holds a flag's cloth (${area.toFixed(2)} m² faces it)`);
   if (area <= 0.3) continue;
   const near = nearestReal(g);
@@ -295,6 +324,18 @@ for (const site of SITES) {
   console.log(`  ${site.name}: ${area.toFixed(2)} m² of cloth, design ${own[0][0]} (${own[0][1].toFixed(2)}), nearest real flag ${fmt(near)}`);
 }
 
+for (const banner of BANNERS) {
+  const { grid: g, area } = drawnGrid(banner.build(), banner.box, banner.face);
+  check(area > 1, `${banner.name}: the window holds the banner (${area.toFixed(2)} m² faces it)`);
+  if (area <= 1) continue;
+  const near = nearestReal(g), { labels, means } = cluster(g), counts = means.map(() => 0);
+  for (const row of labels) for (const k of row) if (k >= 0) counts[k]++;
+  const field = means[counts.indexOf(Math.max(...counts))];
+  check(!near.match, `${banner.name}: reads as a real flag: ${fmt(near)}`);
+  check(family(field) !== 'red', `${banner.name}: its field is red (a red banner reads as a real Soviet flag: Kevin, 279)`);
+  console.log(`  ${banner.name}: ${area.toFixed(2)} m², field ${family(field)}, nearest real flag ${fmt(near)}`);
+}
+
 // ---------------------------------------------------------------------------------------------------- 3. the source
 const WORLD = join(ROOT, 'src/world');
 const sources = readdirSync(WORLD, { recursive: true }).filter((f) => f.endsWith('.ts')).map((f) => join(WORLD, f));
@@ -303,17 +344,23 @@ for (const file of sources) {
   const rel = relative(ROOT, file);
   if (rel === 'src/world/worldFlags.ts') continue;
   const text = readFileSync(file, 'utf8');
-  for (const m of text.matchAll(/\b[A-Z_]*FLAG_[A-Z_]*\s*=\s*(?:rgb\()?0x[0-9a-f]{6}/gi)) check(false, `${rel}: keeps a flag colour of its own (${m[0]}); a world flag is worldFlags.ts's`);
+  for (const m of text.matchAll(/\b[A-Z_]*(?:FLAG|BANNER)_[A-Z_]*\s*=\s*(?:rgb\()?0x[0-9a-f]{6}/gi)) check(false, `${rel}: keeps a flag colour of its own (${m[0]}); a world flag is worldFlags.ts's`);
   for (const m of text.matchAll(/\bflag of (?!the\b|its\b|a\b)[A-Z]\w+|\b(?!Main\b)[A-Z][a-z]+'s (?:national )?flag\b|\bnational flag\b/g)) {
     check(false, `${rel}: names a nation's flag ("${m[0]}"); world dressing flies worldFlags.ts's`);
   }
   if (/from '(?:\.\.?\/)+(?:world\/)?worldFlags\.ts'/.test(text)) drawers.push(rel);
 }
-check(JSON.stringify(drawers.sort()) === JSON.stringify(SITES.map((s) => s.file).sort()),
-  `the modules that draw a world flag (${drawers.join(', ')}) are the sites rendered here (${SITES.map((s) => s.file).join(', ')})`);
+// (279) the plain cloths' sites note their cloth by a PLAIN_CLOTHS id and draw no design
+const PLAIN_FILES = ['src/world/landmarks/lunar.ts', 'src/world/maps/regional/lunarWorks.ts', 'src/world/maps/regional/wadirum.ts', 'src/world/landmarks/polarStations.ts'];
+const users = [...new Set([...SITES.map((s) => s.file), ...PLAIN_FILES])].sort();
+check(JSON.stringify(drawers.sort()) === JSON.stringify(users),
+  `the modules that use worldFlags.ts (${drawers.join(', ')}) are the sites rendered here and the plain cloths' (${users.join(', ')})`);
+for (const id of Object.keys(PLAIN_CLOTHS)) {
+  check(sources.some((f) => readFileSync(f, 'utf8').includes(`noteWorldCloth('${id}'`)), `the plain cloth '${id}' is noted by a site`);
+}
 
 if (failures.length) {
   for (const f of failures) console.error(`FAIL ${f}`);
   process.exit(1);
 }
-console.log(`worldFlags.selftest: PASS (${Object.keys(WORLD_FLAG_DESIGNS).length} designs and ${SITES.length} drawn flags against ${Object.keys(REAL_FLAGS).length} real flags; the source keeps no flag of its own)`);
+console.log(`worldFlags.selftest: PASS (${Object.keys(WORLD_FLAG_DESIGNS).length} designs, ${SITES.length} drawn flags and ${BANNERS.length} banner against ${Object.keys(REAL_FLAGS).length} real flags; the source keeps no flag of its own)`);
